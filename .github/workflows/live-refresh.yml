@@ -83,7 +83,7 @@ jobs:
                 home:{name:"Inter Miami CF",short_name:"MIA"},
                 away:{name:"Columbus Crew",short_name:"CLB"},
                 kickoff_utc:"2026-08-01T23:30:00.000Z",
-                status:"scheduled"
+                status:($detail[0].data.status // $detail[0].status // $stored[0].data.status // $stored[0].status // "scheduled")
               },
               api_response:$detail[0],
               stored_response:$stored[0]
