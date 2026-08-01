@@ -59,6 +59,32 @@ def same_team(a: Any, b: Any) -> bool:
     return bool(x and y and (x == y or x in y or y in x))
 
 
+def canonical_team_name(api_value: Any, fallback: str) -> str:
+    candidate = re.sub(r"\s+", " ", str(api_value or "")).strip()
+    if not candidate:
+        return fallback
+    if same_team(candidate, fallback):
+        return fallback
+    words = candidate.split()
+    if len(words) % 2 == 0:
+        midpoint = len(words) // 2
+        if words[:midpoint] == words[midpoint:]:
+            return " ".join(words[:midpoint])
+    return candidate
+
+
+def parse_utc(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return None
+
+
 def normalize_status(value: Any) -> str:
     status = str(value or "scheduled").strip().lower().replace("-", "_")
     if status in {"in_progress", "in progress", "live", "1h", "2h", "first_half", "second_half"}:
@@ -74,7 +100,7 @@ def fetch_json(url: str, api_key: str, attempts: int = 3) -> tuple[int | None, d
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Accept": "application/json",
-        "User-Agent": "nomadtips3-live-test/2.0",
+        "User-Agent": "nomadtips3-live-test/2.1",
     }
     last_error: str | None = None
     for attempt in range(1, attempts + 1):
@@ -97,17 +123,27 @@ def fetch_json(url: str, api_key: str, attempts: int = 3) -> tuple[int | None, d
 
 
 def team_ids(stored_match: dict[str, Any]) -> tuple[Any, Any]:
-    home_id = first(
-        dig(stored_match, "home", "id"),
-        stored_match.get("home_team_id"),
-        dig(stored_match, "home_team", "id"),
+    return (
+        first(
+            dig(stored_match, "home", "id"),
+            stored_match.get("home_team_id"),
+            dig(stored_match, "home_team", "id"),
+        ),
+        first(
+            dig(stored_match, "away", "id"),
+            stored_match.get("away_team_id"),
+            dig(stored_match, "away_team", "id"),
+        ),
     )
-    away_id = first(
-        dig(stored_match, "away", "id"),
-        stored_match.get("away_team_id"),
-        dig(stored_match, "away_team", "id"),
-    )
-    return home_id, away_id
+
+
+def team_id_from_rows(rows: Any, team_name: str) -> Any:
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        if isinstance(row, dict) and same_team(row.get("team_name"), team_name):
+            return row.get("team_id")
+    return None
 
 
 def direct_pair(stats_obj: Any, side: str, keys: tuple[str, ...]) -> Any:
@@ -199,12 +235,21 @@ def normalize_events(rows: Any) -> list[dict[str, Any]]:
     return normalized
 
 
+def has_stats(stats_obj: dict[str, Any]) -> bool:
+    for category, values in stats_obj.items():
+        if category == "dangerous_attacks" or not isinstance(values, dict):
+            continue
+        if values.get("home") is not None or values.get("away") is not None:
+            return True
+    return False
+
+
 def main() -> int:
     api_key = os.environ.get("BIGBALLS_API_KEY", "").strip()
     match_id = os.environ.get("MATCH_ID", "f1236384-4184-46ff-b168-bdb638126682")
     home_name = os.environ.get("HOME_NAME", "Inter Miami CF")
     away_name = os.environ.get("AWAY_NAME", "Columbus Crew")
-    kickoff = os.environ.get("KICKOFF_UTC", "2026-08-01T23:30:00.000Z")
+    kickoff_fallback = os.environ.get("KICKOFF_UTC", "2026-08-01T23:30:00.000Z")
 
     if not api_key:
         raise RuntimeError("BIGBALLS_API_KEY is missing")
@@ -233,19 +278,24 @@ def main() -> int:
         score_value = {}
     stats_value = dig(detail, "data", "stats", "value", default={})
     stored_rows = dig(stats, "data", "team_stats", default=[])
-    event_rows = first(dig(detail, "data", "events", "value"), dig(events, "data"), [])
+    event_rows = first(
+        dig(detail, "data", "events", "value"),
+        dig(events, "data", "events"),
+        [],
+    )
 
-    home_id, away_id = team_ids(stored_match)
-    home_display = first(
-        dig(stored_match, "home", "name"),
-        dig(stored_match, "home_team", "name"),
+    home_display = canonical_team_name(
+        first(dig(stored_match, "home", "name"), dig(stored_match, "home_team", "name")),
         home_name,
     )
-    away_display = first(
-        dig(stored_match, "away", "name"),
-        dig(stored_match, "away_team", "name"),
+    away_display = canonical_team_name(
+        first(dig(stored_match, "away", "name"), dig(stored_match, "away_team", "name")),
         away_name,
     )
+
+    home_id, away_id = team_ids(stored_match)
+    home_id = first(home_id, team_id_from_rows(stored_rows, home_display))
+    away_id = first(away_id, team_id_from_rows(stored_rows, away_display))
 
     elapsed_seconds = first(
         dig(score_value, "clock", "elapsed_seconds"),
@@ -260,11 +310,67 @@ def main() -> int:
 
     def pair(keys: tuple[str, ...]) -> dict[str, Any]:
         return {
-            "home": stat_value(stats_value, stored_rows, "home", home_id, str(home_display), keys),
-            "away": stat_value(stats_value, stored_rows, "away", away_id, str(away_display), keys),
+            "home": stat_value(stats_value, stored_rows, "home", home_id, home_display, keys),
+            "away": stat_value(stats_value, stored_rows, "away", away_id, away_display, keys),
         }
 
     possession = pair(("possession_percent", "possession", "ball_possession"))
+    normalized_stats = {
+        "possession": {
+            "home": format_percent(possession["home"]),
+            "away": format_percent(possession["away"]),
+        },
+        "shots": pair(("shots", "total_shots")),
+        "shots_on_target": pair(("shots_on_target",)),
+        "corners": pair(("corners", "corner_kicks")),
+        "yellow_cards": pair(("cards_yellow", "yellow_cards")),
+        "red_cards": pair(("cards_red", "red_cards")),
+        "dangerous_attacks": {"home": None, "away": None},
+    }
+    normalized_events = normalize_events(event_rows)
+
+    home_score = first(
+        score_value.get("home"),
+        dig(detail, "data", "score", "home"),
+        dig(detail, "data", "scores", "home"),
+        stored_match.get("home_score"),
+    )
+    away_score = first(
+        score_value.get("away"),
+        dig(detail, "data", "score", "away"),
+        dig(detail, "data", "scores", "away"),
+        stored_match.get("away_score"),
+    )
+    kickoff = first(stored_match.get("kickoff_utc"), stored_match.get("kickoff"), kickoff_fallback)
+    provider_status = normalize_status(
+        first(score_value.get("status"), dig(detail, "data", "status"), stored_match.get("status"))
+    )
+
+    kickoff_time = parse_utc(kickoff)
+    kickoff_passed = bool(kickoff_time and datetime.now(timezone.utc) >= kickoff_time)
+    events_coverage = dig(events, "meta", "coverage")
+    detail_source = str(dig(detail, "meta", "source", default="") or "").lower()
+    detail_note = str(dig(detail, "meta", "note", default="") or "").lower()
+    upstream_unavailable = (
+        kickoff_passed
+        and provider_status == "scheduled"
+        and home_score is None
+        and away_score is None
+        and not has_stats(normalized_stats)
+        and not normalized_events
+        and (
+            events_coverage is False
+            or detail_source == "stored"
+            or "stored matches table" in detail_note
+        )
+    )
+    display_status = "ไม่มีข้อมูลสดจาก BigBalls" if upstream_unavailable else provider_status
+    coverage_message = first(
+        dig(events, "meta", "message"),
+        dig(detail, "meta", "note"),
+        "BigBalls ยังไม่ส่งข้อมูลสดของคู่นี้",
+    ) if upstream_unavailable else None
+
     output = {
         "source": "bigballs",
         "fetched_at_utc": now_utc(),
@@ -293,38 +399,17 @@ def main() -> int:
                     "CLB",
                 ),
             },
-            "kickoff_utc": first(stored_match.get("kickoff_utc"), stored_match.get("kickoff"), kickoff),
-            "status": normalize_status(
-                first(score_value.get("status"), dig(detail, "data", "status"), stored_match.get("status"))
-            ),
+            "kickoff_utc": kickoff,
+            "status": display_status,
+            "provider_status": provider_status,
             "elapsed": elapsed,
-            "score": {
-                "home": first(
-                    score_value.get("home"),
-                    dig(detail, "data", "score", "home"),
-                    dig(detail, "data", "scores", "home"),
-                    stored_match.get("home_score"),
-                ),
-                "away": first(
-                    score_value.get("away"),
-                    dig(detail, "data", "score", "away"),
-                    dig(detail, "data", "scores", "away"),
-                    stored_match.get("away_score"),
-                ),
+            "score": {"home": home_score, "away": away_score},
+            "stats": normalized_stats,
+            "events": normalized_events,
+            "coverage": {
+                "live_available": not upstream_unavailable,
+                "message": coverage_message,
             },
-            "stats": {
-                "possession": {
-                    "home": format_percent(possession["home"]),
-                    "away": format_percent(possession["away"]),
-                },
-                "shots": pair(("shots", "total_shots")),
-                "shots_on_target": pair(("shots_on_target",)),
-                "corners": pair(("corners", "corner_kicks")),
-                "yellow_cards": pair(("cards_yellow", "yellow_cards")),
-                "red_cards": pair(("cards_red", "red_cards")),
-                "dangerous_attacks": {"home": None, "away": None},
-            },
-            "events": normalize_events(event_rows),
         },
         "api_response": detail,
         "stored_response": stored,
@@ -339,6 +424,8 @@ def main() -> int:
                 "fetched_at_utc": output["fetched_at_utc"],
                 "http": statuses,
                 "status": output["match"]["status"],
+                "provider_status": output["match"]["provider_status"],
+                "coverage": output["match"]["coverage"],
                 "elapsed": output["match"]["elapsed"],
                 "score": output["match"]["score"],
                 "stats": output["match"]["stats"],
