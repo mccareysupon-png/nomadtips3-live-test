@@ -2,45 +2,346 @@
 <html lang="th">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
-  <title>NOMADTIPS3 Live Test</title>
+  <meta name="theme-color" content="#111315">
+  <title>NOMADTIPS3 — Live Test V2</title>
   <style>
-    :root{color-scheme:dark;--bg:#07100c;--card:#0d1913;--line:#233a2d;--text:#f4f8f5;--muted:#91a599;--green:#38e07b;--amber:#ffc857}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0%,rgba(56,224,123,.12),transparent 35rem),var(--bg);color:var(--text);font-family:Arial,sans-serif}
-    .wrap{max-width:900px;margin:auto;padding:24px 14px 50px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.brand{font-size:20px;font-weight:900;letter-spacing:.08em}.brand span{color:var(--green)}.badge{border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:var(--muted);font-size:12px}
-    .card{background:rgba(13,25,19,.95);border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 24px 65px rgba(0,0,0,.3)}.head{text-align:center;padding:22px;border-bottom:1px solid var(--line)}.league{color:var(--green);font-weight:800;font-size:13px}.status{margin-top:8px;color:var(--amber);font-weight:800}.teams{display:grid;grid-template-columns:1fr auto 1fr;gap:16px;align-items:center;padding:28px 20px}.team{text-align:center;font-weight:800}.score{font-size:42px;font-weight:900;min-width:120px;text-align:center}.kickoff{text-align:center;color:var(--muted);padding:0 20px 24px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:0 20px 20px}.stat{background:#122219;border:1px solid var(--line);border-radius:14px;padding:14px}.stat .label{color:var(--muted);font-size:12px}.stat .value{font-size:20px;font-weight:900;margin-top:5px}.foot{border-top:1px solid var(--line);padding:16px 20px;color:var(--muted);font-size:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.error{color:#ff777d}.events{padding:0 20px 20px}.events h3{font-size:14px}.event{border-left:2px solid var(--green);padding:8px 10px;margin:8px 0;background:#122219;border-radius:0 10px 10px 0;font-size:13px}@media(max-width:620px){.teams{grid-template-columns:1fr}.score{order:-1}.grid{grid-template-columns:1fr}}
+    :root{
+      color-scheme:dark;
+      --bg-top:#101214;
+      --bg-bottom:#1d2023;
+      --panel:#121513;
+      --panel-soft:#181c19;
+      --panel-light:#202522;
+      --line:#303632;
+      --line-soft:#252a27;
+      --text:#f4f6f5;
+      --muted:#9ba39e;
+      --green:#54d884;
+      --green-deep:#244b34;
+      --amber:#e8c55d;
+      --red:#ef7077;
+      --blue:#8aa8dc;
+    }
+
+    *{box-sizing:border-box}
+    html{background:var(--bg-bottom)}
+    body{
+      margin:0;
+      min-height:100vh;
+      background:linear-gradient(180deg,var(--bg-top) 0%,#16191b 45%,var(--bg-bottom) 100%);
+      color:var(--text);
+      font-family:Inter,Arial,"Noto Sans Thai",sans-serif;
+    }
+    button{font:inherit}
+    .wrap{width:min(100%,940px);margin:auto;padding:18px 12px 46px}
+
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+    .brand{font-size:20px;font-weight:950;letter-spacing:.08em}
+    .brand span{color:var(--green)}
+    .v2{border:1px solid var(--line);border-radius:999px;padding:7px 10px;color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.1em;background:#171a18}
+
+    .shell{overflow:hidden;border:1px solid var(--line);border-radius:20px;background:var(--panel);box-shadow:0 16px 34px rgba(0,0,0,.22)}
+
+    .match-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid var(--line-soft);background:#151816}
+    .league{min-width:0;font-size:12px;font-weight:850;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .meta-right{display:flex;align-items:center;gap:7px;justify-content:flex-end;flex-wrap:wrap}
+    .source,.live-pill{border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:10px;color:var(--muted);background:#191d1a}
+    .live-pill{color:var(--green);border-color:#3a654a;font-weight:900}
+    .live-pill.finished{color:#e9ecea;border-color:#59615c}
+    .live-pill.waiting{color:var(--amber);border-color:#665a36}
+    .live-pill.error{color:var(--red);border-color:#6d3f43}
+
+    .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:14px;padding:22px 16px 18px;background:linear-gradient(180deg,#171b18 0%,#111412 100%)}
+    .team{text-align:center;min-width:0}
+    .crest{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 9px;border:1px solid var(--line);border-radius:50%;background:#1b211d;color:var(--muted);font-size:15px;font-weight:950}
+    .team-name{font-size:clamp(13px,3vw,19px);font-weight:900;overflow-wrap:anywhere}
+    .team-side{margin-top:5px;color:var(--muted);font-size:10px;letter-spacing:.13em}
+    .score-center{text-align:center;min-width:132px}
+    .minute{min-height:18px;color:var(--green);font-size:13px;font-weight:900}
+    .score{margin:3px 0;font-size:clamp(42px,8vw,64px);line-height:1;font-weight:950;letter-spacing:-.05em}
+    .kickoff{color:var(--muted);font-size:11px;line-height:1.4}
+
+    .latest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:#181c19}
+    .pulse{width:8px;height:8px;border-radius:50%;background:var(--green)}
+    .latest-main{min-width:0}
+    .latest-label{color:var(--muted);font-size:10px;letter-spacing:.09em}
+    .latest-text{margin-top:2px;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .latest-minute{color:var(--amber);font-size:12px;font-weight:900}
+
+    .pitch-wrap{padding:14px;background:#121512}
+    .pitch{
+      position:relative;
+      width:100%;
+      aspect-ratio:16/8.4;
+      overflow:hidden;
+      border:1px solid #526459;
+      border-radius:12px;
+      background:linear-gradient(90deg,#24392d 0 12.5%,#294031 12.5% 25%,#24392d 25% 37.5%,#294031 37.5% 50%,#24392d 50% 62.5%,#294031 62.5% 75%,#24392d 75% 87.5%,#294031 87.5% 100%);
+    }
+    .pitch:before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#839288;transform:translateX(-50%)}
+    .pitch:after{content:"";position:absolute;left:50%;top:50%;width:18%;aspect-ratio:1;border:1px solid #839288;border-radius:50%;transform:translate(-50%,-50%)}
+    .box{position:absolute;top:22%;bottom:22%;width:15%;border:1px solid #839288}
+    .box.left{left:-1px}.box.right{right:-1px}
+    .goal{position:absolute;top:38%;bottom:38%;width:3.5%;border:1px solid #839288}
+    .goal.left{left:-1px}.goal.right{right:-1px}
+    .marker{position:absolute;left:50%;top:50%;width:16px;height:16px;border:3px solid #f0f4f1;border-radius:50%;background:var(--green);transform:translate(-50%,-50%);transition:left .35s ease}
+    .marker.home{left:28%}.marker.away{left:72%}.marker.neutral{left:50%}
+    .pitch-team{position:absolute;bottom:7px;padding:4px 7px;border-radius:7px;background:rgba(10,13,11,.72);color:#e8ece9;font-size:10px;font-weight:800}
+    .pitch-team.home{left:7px}.pitch-team.away{right:7px}
+
+    .tabs{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);background:#161a17}
+    .tab{border:0;background:transparent;color:var(--muted);padding:13px 10px;font-weight:850;cursor:pointer}
+    .tab.active{color:var(--text);box-shadow:inset 0 -2px 0 var(--green);background:#1b201c}
+
+    .panel{display:none;padding:15px;background:var(--panel)}
+    .panel.active{display:block}
+    .empty{padding:22px 12px;text-align:center;color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:12px;background:#161a17}
+
+    .stat-list{display:grid;gap:9px}
+    .stat-row{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;gap:10px;padding:11px 12px;border:1px solid var(--line-soft);border-radius:12px;background:var(--panel-soft)}
+    .stat-value{font-size:17px;font-weight:950}.stat-value.home{text-align:left}.stat-value.away{text-align:right}
+    .stat-center{text-align:center;min-width:0}
+    .stat-name{font-size:11px;color:var(--muted);font-weight:800}
+    .bars{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}
+    .bar{height:4px;background:#303632;overflow:hidden}.bar:first-child{border-radius:3px 0 0 3px}.bar:last-child{border-radius:0 3px 3px 0}
+    .fill{height:100%;background:var(--green)}.bar.away .fill{margin-left:auto;background:var(--blue)}
+
+    .timeline{display:grid;gap:9px}
+    .event{display:grid;grid-template-columns:44px 1fr;gap:10px;padding:11px 12px;border:1px solid var(--line-soft);border-radius:12px;background:var(--panel-soft)}
+    .event-time{color:var(--amber);font-size:12px;font-weight:950}
+    .event-type{font-size:12px;font-weight:900}
+    .event-detail{margin-top:3px;color:var(--muted);font-size:11px;line-height:1.4}
+
+    .footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:13px 15px;border-top:1px solid var(--line-soft);background:#151816;color:var(--muted);font-size:10px}
+    .error-text{color:var(--red)}
+
+    @media(max-width:620px){
+      .wrap{padding:12px 8px 34px}
+      .shell{border-radius:16px}
+      .scoreboard{grid-template-columns:minmax(0,1fr) 110px minmax(0,1fr);gap:7px;padding:18px 10px 15px}
+      .crest{width:40px;height:40px;font-size:13px}
+      .score-center{min-width:100px}.score{font-size:40px}
+      .pitch{aspect-ratio:15/9}
+      .stat-row{grid-template-columns:52px 1fr 52px;padding:10px 9px}
+      .stat-value{font-size:15px}
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top"><div class="brand">NOMAD<span>TIPS3</span></div><div class="badge">LIVE TEST</div></div>
-  <main class="card">
-    <div class="head"><div class="league" id="league">MLS</div><div class="status" id="status">กำลังโหลดข้อมูล…</div></div>
-    <section class="teams"><div class="team" id="home">Inter Miami CF</div><div class="score" id="score">– : –</div><div class="team" id="away">Columbus Crew</div></section>
-    <div class="kickoff" id="kickoff">เวลาแข่งขันจะแปลงตามอุปกรณ์</div>
-    <section class="grid" id="stats"></section>
-    <section class="events"><h3>เหตุการณ์ในเกม</h3><div id="events">ยังไม่มีเหตุการณ์</div></section>
-    <footer class="foot"><span id="updated">ยังไม่อัปเดต</span><span>รีเฟรชหน้าอัตโนมัติทุก 60 วินาที</span></footer>
-  </main>
-</div>
-<script>
-const pick=(obj,paths)=>{for(const p of paths){let v=obj;for(const k of p.split('.'))v=v?.[k];if(v!==undefined&&v!==null)return v}return null};
-const text=(id,v)=>document.getElementById(id).textContent=v;
-function fmtStatus(s){const m={scheduled:'รอเริ่มแข่งขัน',live:'กำลังแข่งขัน',in_progress:'กำลังแข่งขัน',halftime:'พักครึ่ง',finished:'จบการแข่งขัน',completed:'จบการแข่งขัน',postponed:'เลื่อนการแข่งขัน',cancelled:'ยกเลิกการแข่งขัน'};return m[String(s||'').toLowerCase()]||s||'ไม่ทราบสถานะ'}
-function num(v){return v===null||v===undefined?'–':v}
-function render(d){
- const a=d.api_response?.data||{}, b=d.stored_response?.data||{}, m=d.match||{}; const x={...m,...b,...a};
- text('league',x.league||'FOOTBALL'); text('home',x.home?.name||m.home?.name||'Home'); text('away',x.away?.name||m.away?.name||'Away'); text('status',fmtStatus(x.status));
- const hs=pick(x,['score.home','scores.home','score.home_score','home_score']); const as=pick(x,['score.away','scores.away','score.away_score','away_score']); text('score',`${num(hs)} : ${num(as)}`);
- if(x.kickoff_utc){const dt=new Date(x.kickoff_utc);text('kickoff',`เริ่มแข่งขัน ${dt.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}`)}
- const st=x.stats||x.statistics||{}; const items=[['ครองบอล',pick(st,['possession.home','home.possession']),pick(st,['possession.away','away.possession'])],['ยิงทั้งหมด',pick(st,['shots.home','home.shots','total_shots.home']),pick(st,['shots.away','away.shots','total_shots.away'])],['ยิงเข้ากรอบ',pick(st,['shots_on_target.home','home.shots_on_target']),pick(st,['shots_on_target.away','away.shots_on_target'])],['เตะมุม',pick(st,['corners.home','home.corners']),pick(st,['corners.away','away.corners'])],['ใบเหลือง',pick(st,['yellow_cards.home','home.yellow_cards']),pick(st,['yellow_cards.away','away.yellow_cards'])],['บุกอันตราย',pick(st,['dangerous_attacks.home','home.dangerous_attacks']),pick(st,['dangerous_attacks.away','away.dangerous_attacks'])]];
- document.getElementById('stats').innerHTML=items.map(i=>`<div class="stat"><div class="label">${i[0]}</div><div class="value">${num(i[1])} – ${num(i[2])}</div></div>`).join('');
- const ev=x.events||[];document.getElementById('events').innerHTML=Array.isArray(ev)&&ev.length?ev.slice(-12).reverse().map(e=>`<div class="event">${e.minute??''}' ${e.type??e.event??''} ${e.player??e.detail??''}</div>`).join(''):'ยังไม่มีเหตุการณ์';
- text('updated',d.fetched_at_utc?`อัปเดตล่าสุด ${new Date(d.fetched_at_utc).toLocaleString('th-TH')}`:'ยังไม่อัปเดต');
-}
-async function load(){try{const r=await fetch(`live-data.json?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);render(await r.json())}catch(e){text('status','โหลดข้อมูลไม่สำเร็จ');document.getElementById('status').className='status error';text('updated',String(e.message||e))}}
-load();setInterval(load,60000);
-</script>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">NOMAD<span>TIPS3</span></div>
+      <div class="v2">LIVE TEST V2</div>
+    </header>
+
+    <main class="shell">
+      <section class="match-meta">
+        <div class="league" id="league">FOOTBALL</div>
+        <div class="meta-right">
+          <span class="source" id="source">SOURCE —</span>
+          <span class="live-pill waiting" id="statusPill">กำลังโหลด</span>
+        </div>
+      </section>
+
+      <section class="scoreboard">
+        <div class="team">
+          <div class="crest" id="homeInitial">H</div>
+          <div class="team-name" id="home">Home</div>
+          <div class="team-side">HOME</div>
+        </div>
+
+        <div class="score-center">
+          <div class="minute" id="minute">—</div>
+          <div class="score" id="score">– : –</div>
+          <div class="kickoff" id="kickoff">กำลังโหลดเวลาแข่งขัน</div>
+        </div>
+
+        <div class="team">
+          <div class="crest" id="awayInitial">A</div>
+          <div class="team-name" id="away">Away</div>
+          <div class="team-side">AWAY</div>
+        </div>
+      </section>
+
+      <section class="latest">
+        <div class="pulse"></div>
+        <div class="latest-main">
+          <div class="latest-label">LATEST EVENT</div>
+          <div class="latest-text" id="latestText">ยังไม่มีเหตุการณ์</div>
+        </div>
+        <div class="latest-minute" id="latestMinute">—</div>
+      </section>
+
+      <section class="pitch-wrap">
+        <div class="pitch" aria-label="สนามฟุตบอลจำลอง">
+          <div class="box left"></div><div class="box right"></div>
+          <div class="goal left"></div><div class="goal right"></div>
+          <div class="marker neutral" id="marker"></div>
+          <div class="pitch-team home" id="pitchHome">HOME</div>
+          <div class="pitch-team away" id="pitchAway">AWAY</div>
+        </div>
+      </section>
+
+      <nav class="tabs" aria-label="ข้อมูลการแข่งขัน">
+        <button class="tab active" type="button" data-panel="statsPanel">Stats</button>
+        <button class="tab" type="button" data-panel="timelinePanel">Timeline</button>
+      </nav>
+
+      <section class="panel active" id="statsPanel">
+        <div class="stat-list" id="stats"><div class="empty">กำลังโหลดสถิติ</div></div>
+      </section>
+
+      <section class="panel" id="timelinePanel">
+        <div class="timeline" id="events"><div class="empty">ยังไม่มีเหตุการณ์</div></div>
+      </section>
+
+      <footer class="footer">
+        <span id="updated">ยังไม่อัปเดต</span>
+        <span>หน้าเว็บตรวจไฟล์ใหม่ทุก 60 วินาที</span>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const esc = value => String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const pick = (obj, paths) => {
+      for (const path of paths) {
+        let value = obj;
+        for (const key of path.split('.')) value = value?.[key];
+        if (value !== undefined && value !== null && value !== '') return value;
+      }
+      return null;
+    };
+    const shown = value => value === null || value === undefined || value === '' ? '–' : value;
+    const numeric = value => {
+      if (value === null || value === undefined) return null;
+      const n = Number(String(value).replace('%',''));
+      return Number.isFinite(n) ? n : null;
+    };
+    const initial = name => String(name || '?').trim().charAt(0).toUpperCase();
+
+    function statusInfo(status, elapsed) {
+      const raw = String(status || '').toLowerCase();
+      const finished = /finished|full time|completed|after extra time|penalties/.test(raw);
+      const waiting = /not started|scheduled|time to be defined/.test(raw);
+      const halftime = /half time|halftime/.test(raw);
+      const live = !finished && !waiting && (/first half|second half|in progress|live|extra time|break/.test(raw) || Number.isFinite(Number(elapsed)));
+      if (finished) return {label:'FT', cls:'finished'};
+      if (halftime) return {label:'HT', cls:'live-pill'};
+      if (live) return {label: elapsed ? `LIVE ${elapsed}′` : 'LIVE', cls:'live-pill'};
+      if (waiting) return {label:'รอแข่งขัน', cls:'waiting'};
+      return {label:status || 'ไม่ทราบสถานะ', cls:'waiting'};
+    }
+
+    function statRow(label, home, away) {
+      if ((home === null || home === undefined || home === '') && (away === null || away === undefined || away === '')) return '';
+      const h = numeric(home), a = numeric(away);
+      const total = h !== null && a !== null && h + a > 0 ? h + a : null;
+      const hp = total ? Math.max(0, Math.min(100, h / total * 100)) : 50;
+      const ap = total ? Math.max(0, Math.min(100, a / total * 100)) : 50;
+      return `<div class="stat-row">
+        <div class="stat-value home">${esc(shown(home))}</div>
+        <div class="stat-center">
+          <div class="stat-name">${esc(label)}</div>
+          <div class="bars"><div class="bar"><div class="fill" style="width:${hp}%"></div></div><div class="bar away"><div class="fill" style="width:${ap}%"></div></div></div>
+        </div>
+        <div class="stat-value away">${esc(shown(away))}</div>
+      </div>`;
+    }
+
+    function render(data) {
+      const match = data.match || {};
+      const home = match.home?.name || 'Home';
+      const away = match.away?.name || 'Away';
+      const stats = match.stats || match.statistics || {};
+      const events = Array.isArray(match.events) ? match.events : [];
+      const status = statusInfo(match.status, match.elapsed);
+
+      $('league').textContent = [match.league, match.country].filter(Boolean).join(' · ') || 'FOOTBALL';
+      $('source').textContent = `SOURCE ${String(data.source || 'unknown').toUpperCase()}`;
+      $('statusPill').textContent = status.label;
+      $('statusPill').className = `live-pill ${status.cls}`;
+      $('home').textContent = home;
+      $('away').textContent = away;
+      $('homeInitial').textContent = initial(home);
+      $('awayInitial').textContent = initial(away);
+      $('pitchHome').textContent = home;
+      $('pitchAway').textContent = away;
+
+      const hs = pick(match,['score.home','scores.home','home_score']);
+      const as = pick(match,['score.away','scores.away','away_score']);
+      $('score').textContent = `${shown(hs)} : ${shown(as)}`;
+      $('minute').textContent = status.label;
+
+      if (match.kickoff_utc) {
+        const dt = new Date(match.kickoff_utc);
+        $('kickoff').textContent = Number.isNaN(dt.getTime()) ? String(match.kickoff_utc) : dt.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'});
+      }
+
+      const statHtml = [
+        statRow('Attacks', pick(stats,['attacks.home','home.attacks']), pick(stats,['attacks.away','away.attacks'])),
+        statRow('Dangerous Attacks', pick(stats,['dangerous_attacks.home','home.dangerous_attacks']), pick(stats,['dangerous_attacks.away','away.dangerous_attacks'])),
+        statRow('Possession', pick(stats,['possession.home','home.possession']), pick(stats,['possession.away','away.possession'])),
+        statRow('Total Shots', pick(stats,['shots.home','total_shots.home','home.shots']), pick(stats,['shots.away','total_shots.away','away.shots'])),
+        statRow('Shots on Target', pick(stats,['shots_on_target.home','home.shots_on_target']), pick(stats,['shots_on_target.away','away.shots_on_target'])),
+        statRow('Corners', pick(stats,['corners.home','home.corners']), pick(stats,['corners.away','away.corners'])),
+        statRow('Yellow Cards', pick(stats,['yellow_cards.home','home.yellow_cards']), pick(stats,['yellow_cards.away','away.yellow_cards'])),
+        statRow('Red Cards', pick(stats,['red_cards.home','home.red_cards']), pick(stats,['red_cards.away','away.red_cards']))
+      ].filter(Boolean).join('');
+      $('stats').innerHTML = statHtml || '<div class="empty">API ยังไม่มีสถิติของคู่นี้</div>';
+
+      const ordered = [...events].sort((a,b)=>(Number(b.minute)||0)-(Number(a.minute)||0));
+      $('events').innerHTML = ordered.length ? ordered.slice(0,20).map(event => {
+        const title = [event.type || event.event, event.team].filter(Boolean).join(' — ');
+        const detail = [event.detail, event.player].filter(Boolean).join(' · ');
+        return `<div class="event"><div class="event-time">${esc(event.minute ?? '–')}′</div><div><div class="event-type">${esc(title || 'เหตุการณ์')}</div><div class="event-detail">${esc(detail || 'ไม่มีรายละเอียดเพิ่มเติม')}</div></div></div>`;
+      }).join('') : '<div class="empty">ยังไม่มีเหตุการณ์จาก API</div>';
+
+      const latest = ordered[0];
+      if (latest) {
+        $('latestText').textContent = [latest.team, latest.type || latest.event, latest.detail].filter(Boolean).join(' · ');
+        $('latestMinute').textContent = latest.minute !== null && latest.minute !== undefined ? `${latest.minute}′` : '—';
+        const marker = $('marker');
+        marker.className = 'marker neutral';
+        if (latest.team === home) marker.className = 'marker home';
+        else if (latest.team === away) marker.className = 'marker away';
+      } else {
+        $('latestText').textContent = 'ยังไม่มีเหตุการณ์จาก API';
+        $('latestMinute').textContent = '—';
+        $('marker').className = 'marker neutral';
+      }
+
+      $('updated').textContent = data.fetched_at_utc
+        ? `อัปเดตข้อมูล ${new Date(data.fetched_at_utc).toLocaleString('th-TH')}`
+        : 'ยังไม่อัปเดต';
+    }
+
+    async function load() {
+      try {
+        const response = await fetch(`live-data.json?t=${Date.now()}`,{cache:'no-store'});
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        render(await response.json());
+      } catch (error) {
+        $('statusPill').textContent = 'โหลดไม่สำเร็จ';
+        $('statusPill').className = 'live-pill error';
+        $('updated').innerHTML = `<span class="error-text">${esc(error.message || error)}</span>`;
+      }
+    }
+
+    document.querySelectorAll('.tab').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(item => item.classList.remove('active'));
+        button.classList.add('active');
+        $(button.dataset.panel).classList.add('active');
+      });
+    });
+
+    load();
+    setInterval(load,60000);
+  </script>
 </body>
 </html>
