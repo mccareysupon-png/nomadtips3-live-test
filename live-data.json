@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T15:32:19Z",
+  "fetched_at_utc": "2026-08-01T15:37:20Z",
   "http_status": 200,
   "match": {
     "id": "1556829",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-01T14:00:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 72,
+    "elapsed": 77,
     "score": {
       "home": 0,
       "away": 0
@@ -117,6 +117,27 @@
         "detail": "Substitution 1",
         "player": "J. Longridge",
         "team": "Morton"
+      },
+      {
+        "minute": 71,
+        "type": "subst",
+        "detail": "Substitution 2",
+        "player": "C. Sandilands",
+        "team": "Morton"
+      },
+      {
+        "minute": 73,
+        "type": "subst",
+        "detail": "Substitution 4",
+        "player": "E. Ingram",
+        "team": "Partick"
+      },
+      {
+        "minute": 73,
+        "type": "subst",
+        "detail": "Substitution 5",
+        "player": "T. Watt",
+        "team": "Partick"
       }
     ]
   },
@@ -140,7 +161,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 72,
+          "elapsed": 77,
           "extra": null
         }
       },
@@ -366,6 +387,72 @@
           "type": "subst",
           "detail": "Substitution 1",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 71,
+            "extra": null
+          },
+          "team": {
+            "id": 1383,
+            "name": "Morton",
+            "logo": "https://media.api-sports.io/football/teams/1383.png"
+          },
+          "player": {
+            "id": 375558,
+            "name": "C. Sandilands"
+          },
+          "assist": {
+            "id": 453423,
+            "name": "A. Greenock"
+          },
+          "type": "subst",
+          "detail": "Substitution 2",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 73,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 284518,
+            "name": "E. Ingram"
+          },
+          "assist": {
+            "id": 503683,
+            "name": "M. Falconer"
+          },
+          "type": "subst",
+          "detail": "Substitution 4",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 73,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 44909,
+            "name": "T. Watt"
+          },
+          "assist": {
+            "id": 20280,
+            "name": "A. Samuel"
+          },
+          "type": "subst",
+          "detail": "Substitution 5",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -375,7 +462,7 @@
   },
   "stored_response": {
     "mode": "continuous-five-minute",
-    "cycle": 9,
+    "cycle": 10,
     "details_refreshed": true
   }
 }
