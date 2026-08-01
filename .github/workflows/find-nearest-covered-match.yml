@@ -1,0 +1,77 @@
+name: Find nearest covered match
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/find-nearest-covered-match.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  find-nearest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Query supported football leagues
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BIGBALLS_API_KEY"
+          : > /tmp/all.jsonl
+
+          for date in 2026-08-01 2026-08-02; do
+            for league in epl laliga bundesliga serie_a ligue1 cl mls; do
+              curl --silent --show-error \
+                -H "Authorization: Bearer $BIGBALLS_API_KEY" \
+                "https://api.bigballsdata.com/v1/matches?sport=football&league=${league}&date=${date}" \
+                > "/tmp/${league}-${date}.json"
+
+              jq -c --arg league_slug "$league" --arg query_date "$date" '
+                if (.data | type) == "array" then
+                  .data[] | . + {league_slug:$league_slug,query_date:$query_date}
+                elif (.data.scores | type) == "array" then
+                  .data.scores[] | . + {league_slug:$league_slug,query_date:$query_date}
+                else empty end
+              ' "/tmp/${league}-${date}.json" >> /tmp/all.jsonl || true
+            done
+          done
+
+          now="$(date -u +%s)"
+          jq -s --argjson now "$now" '
+            map(
+              . + {
+                kickoff_epoch: ((.kickoff_utc // .start_time // .date // "") | fromdateiso8601?),
+                status_norm: ((.status // "") | ascii_downcase)
+              }
+            )
+            | map(select(.kickoff_epoch != null))
+            | map(. + {
+                is_live: (.status_norm == "live" or .status_norm == "in_progress" or .status_norm == "halftime"),
+                seconds_from_now: (.kickoff_epoch - $now)
+              })
+            | map(select(.is_live or .seconds_from_now >= -10800))
+            | sort_by((if .is_live then 0 else 1 end), (if .is_live then 0 else .seconds_from_now end))
+            | {
+                checked_at_utc: (now | todateiso8601),
+                total_candidates: length,
+                nearest: (.[0] // null),
+                next_five: .[0:5]
+              }
+          ' /tmp/all.jsonl > nearest-covered-match.json
+
+      - name: Save result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nearest-covered-match.json
+          git commit -m "Record nearest covered match" || exit 0
+          git push
