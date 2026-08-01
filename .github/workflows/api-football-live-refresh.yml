@@ -5,44 +5,53 @@ on:
   push:
     paths:
       - '.github/workflows/api-football-live-refresh.yml'
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: write
 
 concurrency:
-  group: api-football-live-continuous
+  group: api-football-greenock-partick
   cancel-in-progress: true
 
 jobs:
-  refresh-until-finished:
+  refresh-once:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 5
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-      TARGET_DATE: "2026-08-01"
-      WINDOW_END_UTC: "2026-08-01T17:30:00Z"
+      TARGET_DATE: '2026-08-01'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve fixture and poll every five minutes until FT
+      - name: Stop API polling after final state
+        id: guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_status="$(jq -r '.match.status // ""' live-data.json 2>/dev/null || true)"
+          if [[ "$current_status" =~ ^(FT|AET|PEN|CANC|ABD|AWD|WO)$ ]]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Stored match is final: $current_status"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve fixture and fetch live data
+        if: steps.guard.outputs.run == 'true'
         shell: bash
         run: |
           set -euo pipefail
           test -n "$API_FOOTBALL_KEY"
-
-          BASE="https://v3.football.api-sports.io"
-          end_epoch="$(date -u -d "$WINDOW_END_UTC" +%s)"
-          cycle=0
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BASE='https://v3.football.api-sports.io'
 
           curl --fail --silent --show-error --get \
             -H "x-apisports-key: $API_FOOTBALL_KEY" \
             --data-urlencode "date=$TARGET_DATE" \
-            --data-urlencode "timezone=UTC" \
+            --data-urlencode 'timezone=UTC' \
             "$BASE/fixtures" > /tmp/day-fixtures.json
 
           FIXTURE_ID="$(jq -r '
@@ -58,111 +67,83 @@ jobs:
             ][0] // empty
           ' /tmp/day-fixtures.json)"
 
-          if [ -z "$FIXTURE_ID" ]; then
-            echo "Could not resolve Greenock Morton v Partick Thistle on $TARGET_DATE"
-            jq '.response[]? | {id:.fixture.id,date:.fixture.date,home:.teams.home.name,away:.teams.away.name}' /tmp/day-fixtures.json || true
-            exit 1
-          fi
+          test -n "$FIXTURE_ID"
 
-          echo "Resolved fixture ID: $FIXTURE_ID"
+          curl --fail --silent --show-error \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "$BASE/fixtures?id=$FIXTURE_ID" > /tmp/fixture.json
+          curl --silent --show-error \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "$BASE/fixtures/statistics?fixture=$FIXTURE_ID" > /tmp/stats.json || echo '{"response":[]}' > /tmp/stats.json
+          curl --silent --show-error \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "$BASE/fixtures/events?fixture=$FIXTURE_ID" > /tmp/events.json || echo '{"response":[]}' > /tmp/events.json
 
-          while [ "$(date -u +%s)" -le "$end_epoch" ]; do
-            cycle=$((cycle + 1))
-            echo "Live refresh cycle $cycle at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          jq -e '.response[0]' /tmp/fixture.json >/dev/null
+          jq -e '.response | arrays' /tmp/stats.json >/dev/null 2>&1 || echo '{"response":[]}' > /tmp/stats.json
+          jq -e '.response | arrays' /tmp/events.json >/dev/null 2>&1 || echo '{"response":[]}' > /tmp/events.json
 
-            git pull --rebase origin main || true
-            cp live-data.json /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
-
-            curl --fail --silent --show-error \
-              -H "x-apisports-key: $API_FOOTBALL_KEY" \
-              "$BASE/fixtures?id=$FIXTURE_ID" > /tmp/fixture.json
-            jq -e '.response[0]' /tmp/fixture.json >/dev/null
-
-            status_short="$(jq -r '.response[0].fixture.status.short // ""' /tmp/fixture.json)"
-            details=false
-            echo '{"response":[]}' > /tmp/stats.json
-            echo '{"response":[]}' > /tmp/events.json
-
-            if [ $((cycle % 4)) -eq 1 ] || [[ "$status_short" =~ ^(FT|AET|PEN|CANC|ABD|AWD|WO)$ ]]; then
-              details=true
-              curl --silent --show-error \
-                -H "x-apisports-key: $API_FOOTBALL_KEY" \
-                "$BASE/fixtures/statistics?fixture=$FIXTURE_ID" > /tmp/stats.raw || true
-              curl --silent --show-error \
-                -H "x-apisports-key: $API_FOOTBALL_KEY" \
-                "$BASE/fixtures/events?fixture=$FIXTURE_ID" > /tmp/events.raw || true
-
-              if jq -e '.response | arrays' /tmp/stats.raw >/dev/null 2>&1; then mv /tmp/stats.raw /tmp/stats.json; fi
-              if jq -e '.response | arrays' /tmp/events.raw >/dev/null 2>&1; then mv /tmp/events.raw /tmp/events.json; fi
-            fi
-
-            jq -n \
-              --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-              --argjson details "$details" \
-              --argjson cycle "$cycle" \
-              --slurpfile fixture /tmp/fixture.json \
-              --slurpfile stats /tmp/stats.json \
-              --slurpfile events /tmp/events.json \
-              --slurpfile previous /tmp/previous.json \
-              '
-              def value_for($team_id; $type):
-                ([ $stats[0].response[]?
-                   | select(.team.id == $team_id)
-                   | .statistics[]?
-                   | select(.type == $type)
-                   | .value ][0] // null);
-
-              ($fixture[0].response[0]) as $f
-              | ($previous[0].match.stats // {}) as $old_stats
-              | ($previous[0].match.events // []) as $old_events
-              | {
-                  source:"api-football",
-                  fetched_at_utc:$fetched_at,
-                  http_status:200,
-                  match:{
-                    id:($f.fixture.id|tostring),
-                    sport:"football",
-                    league:$f.league.name,
-                    country:$f.league.country,
-                    home:{name:$f.teams.home.name,short_name:$f.teams.home.name},
-                    away:{name:$f.teams.away.name,short_name:$f.teams.away.name},
-                    kickoff_utc:$f.fixture.date,
-                    status:$f.fixture.status.short,
-                    status_long:$f.fixture.status.long,
-                    elapsed:$f.fixture.status.elapsed,
-                    score:{home:$f.goals.home,away:$f.goals.away},
-                    halftime_score:{home:$f.score.halftime.home,away:$f.score.halftime.away},
-                    fulltime_score:{home:$f.score.fulltime.home,away:$f.score.fulltime.away},
-                    stats:(if $details then {
-                      possession:{home:value_for($f.teams.home.id; "Ball Possession"),away:value_for($f.teams.away.id; "Ball Possession")},
-                      shots:{home:value_for($f.teams.home.id; "Total Shots"),away:value_for($f.teams.away.id; "Total Shots")},
-                      shots_on_target:{home:value_for($f.teams.home.id; "Shots on Goal"),away:value_for($f.teams.away.id; "Shots on Goal")},
-                      corners:{home:value_for($f.teams.home.id; "Corner Kicks"),away:value_for($f.teams.away.id; "Corner Kicks")},
-                      yellow_cards:{home:value_for($f.teams.home.id; "Yellow Cards"),away:value_for($f.teams.away.id; "Yellow Cards")},
-                      red_cards:{home:value_for($f.teams.home.id; "Red Cards"),away:value_for($f.teams.away.id; "Red Cards")},
-                      dangerous_attacks:{home:value_for($f.teams.home.id; "Dangerous Attacks"),away:value_for($f.teams.away.id; "Dangerous Attacks")}
-                    } else $old_stats end),
-                    events:(if $details then [
-                      $events[0].response[]?
-                      | {minute:.time.elapsed,type:.type,detail:.detail,player:(.player.name // ""),team:(.team.name // "")}
-                    ] else $old_events end)
+          jq -n \
+            --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --slurpfile fixture /tmp/fixture.json \
+            --slurpfile stats /tmp/stats.json \
+            --slurpfile events /tmp/events.json \
+            '
+            def value_for($team_id; $type):
+              ([ $stats[0].response[]?
+                 | select(.team.id == $team_id)
+                 | .statistics[]?
+                 | select(.type == $type)
+                 | .value ][0] // null);
+            ($fixture[0].response[0]) as $f
+            | {
+                source:"api-football",
+                fetched_at_utc:$fetched_at,
+                http_status:200,
+                match:{
+                  id:($f.fixture.id|tostring),
+                  sport:"football",
+                  league:$f.league.name,
+                  country:$f.league.country,
+                  home:{name:$f.teams.home.name,short_name:$f.teams.home.name},
+                  away:{name:$f.teams.away.name,short_name:$f.teams.away.name},
+                  kickoff_utc:$f.fixture.date,
+                  status:$f.fixture.status.short,
+                  status_long:$f.fixture.status.long,
+                  elapsed:$f.fixture.status.elapsed,
+                  score:{home:$f.goals.home,away:$f.goals.away},
+                  halftime_score:{home:$f.score.halftime.home,away:$f.score.halftime.away},
+                  fulltime_score:{home:$f.score.fulltime.home,away:$f.score.fulltime.away},
+                  stats:{
+                    possession:{home:value_for($f.teams.home.id; "Ball Possession"),away:value_for($f.teams.away.id; "Ball Possession")},
+                    shots:{home:value_for($f.teams.home.id; "Total Shots"),away:value_for($f.teams.away.id; "Total Shots")},
+                    shots_on_target:{home:value_for($f.teams.home.id; "Shots on Goal"),away:value_for($f.teams.away.id; "Shots on Goal")},
+                    corners:{home:value_for($f.teams.home.id; "Corner Kicks"),away:value_for($f.teams.away.id; "Corner Kicks")},
+                    yellow_cards:{home:value_for($f.teams.home.id; "Yellow Cards"),away:value_for($f.teams.away.id; "Yellow Cards")},
+                    red_cards:{home:value_for($f.teams.home.id; "Red Cards"),away:value_for($f.teams.away.id; "Red Cards")},
+                    dangerous_attacks:{home:value_for($f.teams.home.id; "Dangerous Attacks"),away:value_for($f.teams.away.id; "Dangerous Attacks")}
                   },
-                  api_response:{fixture:$f},
-                  stored_response:{mode:"continuous-five-minute",cycle:$cycle,details_refreshed:$details}
-                }
-              ' > live-data.json
+                  events:[
+                    $events[0].response[]?
+                    | {minute:.time.elapsed,type:.type,detail:.detail,player:(.player.name // ""),team:(.team.name // "")}
+                  ]
+                },
+                api_response:{fixture:$f},
+                stored_response:{mode:"scheduled-five-minute",details_refreshed:true}
+              }
+          ' > live-data.json
 
-            git add live-data.json
-            if ! git diff --cached --quiet; then
-              git commit -m "Refresh Greenock Morton v Partick Thistle"
-              git pull --rebase origin main
-              git push origin main
-            fi
-
-            if [[ "$status_short" =~ ^(FT|AET|PEN|CANC|ABD|AWD|WO)$ ]]; then
-              echo "Match reached final state: $status_short"
-              break
-            fi
-
-            sleep 300
-          done
+      - name: Commit refreshed live data
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add live-data.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m 'Refresh Greenock Morton v Partick Thistle'
+          git pull --rebase origin main
+          git push origin main
