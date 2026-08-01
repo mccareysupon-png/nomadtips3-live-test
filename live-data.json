@@ -1,59 +1,206 @@
 {
-  "source": "verified-web-fallback",
-  "fetched_at_utc": "2026-08-01T14:44:17Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-01T14:47:31Z",
   "http_status": 200,
   "match": {
-    "id": "greenock-morton-partick-thistle-2026-08-01",
+    "id": "1556829",
     "sport": "football",
     "league": "Championship",
     "country": "Scotland",
     "home": {
-      "name": "Greenock Morton",
-      "short_name": "Greenock Morton"
+      "name": "Morton",
+      "short_name": "Morton"
     },
     "away": {
-      "name": "Partick Thistle",
-      "short_name": "Partick Thistle"
+      "name": "Partick",
+      "short_name": "Partick"
     },
-    "kickoff_utc": "2026-08-01T14:00:00Z",
+    "kickoff_utc": "2026-08-01T14:00:00+00:00",
     "status": "1H",
-    "status_long": "Live — temporary verified fallback while API feed is delayed",
-    "elapsed": 31,
+    "status_long": "First Half",
+    "elapsed": 45,
     "score": {
       "home": 0,
       "away": 0
     },
     "halftime_score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 0
     },
     "fulltime_score": {
       "home": null,
       "away": null
     },
     "stats": {
-      "possession": {"home": "38%", "away": "62%"},
-      "shots": {"home": 2, "away": 2},
-      "shots_on_target": {"home": 0, "away": 0},
-      "corners": {"home": 0, "away": 0},
-      "yellow_cards": {"home": 0, "away": 1},
-      "red_cards": {"home": 0, "away": 0},
-      "dangerous_attacks": {"home": null, "away": null}
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": null,
+        "away": null
+      },
+      "red_cards": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      }
     },
     "events": [
       {
         "minute": 15,
-        "type": "Yellow card",
-        "detail": "Patrick Reading",
+        "type": "Card",
+        "detail": "Yellow Card",
         "player": "Patrick Reading",
-        "team": "Partick Thistle"
+        "team": "Partick"
+      },
+      {
+        "minute": 45,
+        "type": "subst",
+        "detail": "Substitution 1",
+        "player": "Cammy Logan",
+        "team": "Partick"
       }
     ]
   },
-  "api_response": {},
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1556829,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-01T14:00:00+00:00",
+        "timestamp": 1785592800,
+        "periods": {
+          "first": 1785592800,
+          "second": null
+        },
+        "venue": {
+          "id": 1391,
+          "name": "Cappielow Park",
+          "city": "Greenock"
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 45,
+          "extra": 3
+        }
+      },
+      "league": {
+        "id": 180,
+        "name": "Championship",
+        "country": "Scotland",
+        "logo": "https://media.api-sports.io/football/leagues/180.png",
+        "flag": "https://media.api-sports.io/flags/gb-sct.svg",
+        "season": 2026,
+        "round": "Regular Season - 1",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 1383,
+          "name": "Morton",
+          "logo": "https://media.api-sports.io/football/teams/1383.png",
+          "winner": null
+        },
+        "away": {
+          "id": 901,
+          "name": "Partick",
+          "logo": "https://media.api-sports.io/football/teams/901.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": [
+        {
+          "time": {
+            "elapsed": 15,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 19254,
+            "name": "Patrick Reading"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": "Foul"
+        },
+        {
+          "time": {
+            "elapsed": 45,
+            "extra": 2
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 493688,
+            "name": "Cammy Logan"
+          },
+          "assist": {
+            "id": 284518,
+            "name": "Ethan Ingram"
+          },
+          "type": "subst",
+          "detail": "Substitution 1",
+          "comments": null
+        }
+      ],
+      "lineups": [],
+      "statistics": [],
+      "players": []
+    }
+  },
   "stored_response": {
-    "mode": "verified-web-fallback",
-    "details_refreshed": true,
-    "note": "Temporary snapshot added because the scheduled API-Football refresh had not updated the repository."
+    "mode": "scheduled-five-minute",
+    "details_refreshed": true
   }
 }
