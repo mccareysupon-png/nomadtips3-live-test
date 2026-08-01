@@ -1,4 +1,4 @@
-name: Refresh API-Football Live Match
+name: Refresh Greenock Morton v Partick Thistle
 
 on:
   workflow_dispatch:
@@ -19,14 +19,14 @@ jobs:
     timeout-minutes: 180
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-      FIXTURE_ID: "1506639"
-      WINDOW_END_UTC: "2026-08-01T15:30:00Z"
+      TARGET_DATE: "2026-08-01"
+      WINDOW_END_UTC: "2026-08-01T17:30:00Z"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Poll every five minutes until FT
+      - name: Resolve fixture and poll every five minutes until FT
         shell: bash
         run: |
           set -euo pipefail
@@ -38,6 +38,33 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          curl --fail --silent --show-error --get \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            --data-urlencode "date=$TARGET_DATE" \
+            --data-urlencode "timezone=UTC" \
+            "$BASE/fixtures" > /tmp/day-fixtures.json
+
+          FIXTURE_ID="$(jq -r '
+            def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+            [
+              .response[]?
+              | select(
+                  ((.teams.home.name | norm) | test("greenockmorton|morton"))
+                  and
+                  ((.teams.away.name | norm) | test("partickthistle"))
+                )
+              | .fixture.id
+            ][0] // empty
+          ' /tmp/day-fixtures.json)"
+
+          if [ -z "$FIXTURE_ID" ]; then
+            echo "Could not resolve Greenock Morton v Partick Thistle on $TARGET_DATE"
+            jq '.response[]? | {id:.fixture.id,date:.fixture.date,home:.teams.home.name,away:.teams.away.name}' /tmp/day-fixtures.json || true
+            exit 1
+          fi
+
+          echo "Resolved fixture ID: $FIXTURE_ID"
 
           while [ "$(date -u +%s)" -le "$end_epoch" ]; do
             cycle=$((cycle + 1))
@@ -127,7 +154,7 @@ jobs:
 
             git add live-data.json
             if ! git diff --cached --quiet; then
-              git commit -m "Refresh API-Football live score"
+              git commit -m "Refresh Greenock Morton v Partick Thistle"
               git pull --rebase origin main
               git push origin main
             fi
