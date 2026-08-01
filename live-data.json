@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T15:47:23Z",
+  "fetched_at_utc": "2026-08-01T15:52:25Z",
   "http_status": 200,
   "match": {
     "id": "1556829",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-01T14:00:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 87,
+    "elapsed": 90,
     "score": {
       "home": 0,
       "away": 1
@@ -152,6 +152,13 @@
         "detail": "Normal Goal",
         "player": "T. Letsosa",
         "team": "Partick"
+      },
+      {
+        "minute": 89,
+        "type": "Card",
+        "detail": "Yellow Card",
+        "player": "S. Drozd",
+        "team": "Partick"
       }
     ]
   },
@@ -175,7 +182,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 87,
+          "elapsed": 90,
           "extra": null
         }
       },
@@ -511,6 +518,28 @@
           "type": "Goal",
           "detail": "Normal Goal",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 89,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 408765,
+            "name": "S. Drozd"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -520,7 +549,7 @@
   },
   "stored_response": {
     "mode": "continuous-five-minute",
-    "cycle": 12,
+    "cycle": 13,
     "details_refreshed": true
   }
 }
