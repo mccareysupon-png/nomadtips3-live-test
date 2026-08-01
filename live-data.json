@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T14:16:40Z",
+  "fetched_at_utc": "2026-08-01T14:21:42Z",
   "http_status": 200,
   "match": {
     "id": "1506639",
@@ -16,8 +16,8 @@
       "short_name": "TB"
     },
     "kickoff_utc": "2026-08-01T12:30:00+00:00",
-    "status": "2H",
-    "status_long": "Second Half",
+    "status": "FT",
+    "status_long": "Match Finished",
     "elapsed": 90,
     "score": {
       "home": 1,
@@ -28,8 +28,8 @@
       "away": 1
     },
     "fulltime_score": {
-      "home": null,
-      "away": null
+      "home": 1,
+      "away": 3
     },
     "stats": {
       "possession": {
@@ -117,10 +117,10 @@
           "city": null
         },
         "status": {
-          "long": "Second Half",
-          "short": "2H",
+          "long": "Match Finished",
+          "short": "FT",
           "elapsed": 90,
-          "extra": 1
+          "extra": 2
         }
       },
       "league": {
@@ -157,8 +157,8 @@
           "away": 1
         },
         "fulltime": {
-          "home": null,
-          "away": null
+          "home": 1,
+          "away": 3
         },
         "extratime": {
           "home": null,
@@ -288,7 +288,7 @@
   },
   "stored_response": {
     "mode": "continuous-five-minute",
-    "cycle": 10,
-    "details_refreshed": false
+    "cycle": 11,
+    "details_refreshed": true
   }
 }
