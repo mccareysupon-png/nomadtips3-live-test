@@ -1,6 +1,6 @@
 {
   "source": "bigballs",
-  "fetched_at_utc": "2026-08-01T23:55:11Z",
+  "fetched_at_utc": "2026-08-01T23:56:42Z",
   "http_status": 200,
   "stored_http_status": 200,
   "stats_http_status": 200,
@@ -11,7 +11,7 @@
     "league": "MLS",
     "country": "USA",
     "home": {
-      "name": "Inter Miami CF Inter Miami CF",
+      "name": "Inter Miami CF",
       "short_name": "MIA"
     },
     "away": {
@@ -19,181 +19,39 @@
       "short_name": "CLB"
     },
     "kickoff_utc": "2026-08-01T23:30:00.000Z",
-    "status": "scheduled",
+    "status": "ไม่มีข้อมูลสดจาก BigBalls",
+    "provider_status": "scheduled",
     "elapsed": null,
     "score": {
       "home": null,
       "away": null
     },
     "stats": {
-      "possession": {
-        "home": null,
-        "away": null
-      },
-      "shots": {
-        "home": null,
-        "away": null
-      },
-      "shots_on_target": {
-        "home": null,
-        "away": null
-      },
-      "corners": {
-        "home": null,
-        "away": null
-      },
-      "yellow_cards": {
-        "home": null,
-        "away": null
-      },
-      "red_cards": {
-        "home": null,
-        "away": null
-      },
-      "dangerous_attacks": {
-        "home": null,
-        "away": null
-      }
+      "possession": {"home": null, "away": null},
+      "shots": {"home": null, "away": null},
+      "shots_on_target": {"home": null, "away": null},
+      "corners": {"home": null, "away": null},
+      "yellow_cards": {"home": null, "away": null},
+      "red_cards": {"home": null, "away": null},
+      "dangerous_attacks": {"home": null, "away": null}
     },
-    "events": []
+    "events": [],
+    "coverage": {
+      "live_available": false,
+      "message": "No data available for this sport/league combination yet."
+    }
   },
   "api_response": {
-    "data": {
-      "id": "f1236384-4184-46ff-b168-bdb638126682",
-      "sport": "football",
-      "league": "MLS",
-      "home": {
-        "name": "Inter Miami CF Inter Miami CF",
-        "short_name": "MIA",
-        "logo_url": null
-      },
-      "away": {
-        "name": "Columbus Crew",
-        "short_name": "CLB",
-        "logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png"
-      },
-      "kickoff_utc": "2026-08-01T23:30:00.000Z",
-      "status": "scheduled",
-      "score": null,
-      "linescore": null,
-      "attendance": null,
-      "broadcast": "Apple TV",
-      "has_odds": true
-    },
+    "data": null,
     "meta": {
       "source": "stored",
-      "cached": false,
-      "request_id": "7814fc69-1830-43a0-bd15-b17d52460165",
-      "note": "Served from the stored matches table; live enrichment did not respond within the 2000ms budget. Retry for the live multi-field envelope."
+      "note": "Live enrichment did not respond; the provider returned stored fixture data only."
     },
     "error": null
   },
-  "stored_response": {
-    "data": {
-      "id": "f1236384-4184-46ff-b168-bdb638126682",
-      "sport": "football",
-      "league": "MLS",
-      "home": {
-        "name": "Inter Miami CF Inter Miami CF",
-        "short_name": "MIA",
-        "logo_url": null
-      },
-      "away": {
-        "name": "Columbus Crew",
-        "short_name": "CLB",
-        "logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png"
-      },
-      "kickoff_utc": "2026-08-01T23:30:00.000Z",
-      "status": "scheduled",
-      "score": null,
-      "linescore": null,
-      "attendance": null,
-      "broadcast": "Apple TV",
-      "has_odds": true,
-      "odds": [
-        {
-          "market": "total",
-          "participant": "Under",
-          "decimal_odds": 2.2,
-          "line": 3.312,
-          "updated_at": "2026-08-01T20:19:32.642Z",
-          "book_count": 85
-        },
-        {
-          "market": "total",
-          "participant": "Over",
-          "decimal_odds": 1.776,
-          "line": 3.312,
-          "updated_at": "2026-08-01T20:19:32.593Z",
-          "book_count": 85
-        },
-        {
-          "market": "handicap",
-          "participant": "Inter Miami CF",
-          "decimal_odds": 1.98,
-          "line": -0.977,
-          "updated_at": "2026-08-01T20:19:32.544Z",
-          "book_count": 75
-        },
-        {
-          "market": "handicap",
-          "participant": "Columbus Crew",
-          "decimal_odds": 1.888,
-          "line": 1.028,
-          "updated_at": "2026-08-01T20:19:32.503Z",
-          "book_count": 63
-        },
-        {
-          "market": "moneyline",
-          "participant": "Draw",
-          "decimal_odds": 4.396,
-          "line": null,
-          "updated_at": "2026-08-01T20:19:32.460Z",
-          "book_count": 64
-        },
-        {
-          "market": "moneyline",
-          "participant": "Inter Miami CF",
-          "decimal_odds": 1.597,
-          "line": null,
-          "updated_at": "2026-08-01T20:19:32.414Z",
-          "book_count": 64
-        },
-        {
-          "market": "moneyline",
-          "participant": "Columbus Crew",
-          "decimal_odds": 5.01,
-          "line": null,
-          "updated_at": "2026-08-01T20:19:32.369Z",
-          "book_count": 64
-        }
-      ],
-      "odds_available": true
-    }
-  },
   "stats_response": {
     "data": {
-      "team_stats": [
-        {
-          "team_id": "9de2c632-9d21-4c5a-88f6-89e34cd725c5",
-          "team_name": "Columbus Crew",
-          "team_logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png",
-          "field": "score",
-          "label": null,
-          "display_value": null,
-          "fetched_at": "2026-08-01T20:19:32.320Z"
-        },
-        {
-          "team_id": "d25defed-5417-4ed7-b3fa-6944b03ed4eb",
-          "team_name": "Inter Miami CF Inter Miami CF",
-          "team_logo_url": null,
-          "field": "score",
-          "label": null,
-          "display_value": null,
-          "fetched_at": "2026-08-01T20:19:32.317Z"
-        }
-      ],
-      "players": []
+      "team_stats": []
     }
   },
   "events_response": {
@@ -202,13 +60,6 @@
     },
     "meta": {
       "source": "none",
-      "confidence": 0,
-      "cached": false,
-      "cache_age_ms": 0,
-      "request_id": "897ac969-41f8-4037-b691-ac509839ade6",
-      "fields_missing": [
-        "events"
-      ],
       "coverage": false,
       "message": "No data available for this sport/league combination yet."
     },
