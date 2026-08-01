@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T13:05:21Z",
+  "fetched_at_utc": "2026-08-01T13:18:27Z",
   "http_status": 200,
   "match": {
     "id": "1506639",
@@ -16,11 +16,19 @@
       "short_name": "TB"
     },
     "kickoff_utc": "2026-08-01T12:30:00+00:00",
-    "status": "First Half",
-    "elapsed": 35,
+    "status": "Halftime",
+    "elapsed": 45,
     "score": {
-      "home": 0,
+      "home": 1,
       "away": 1
+    },
+    "halftime_score": {
+      "home": 1,
+      "away": 1
+    },
+    "fulltime_score": {
+      "home": null,
+      "away": null
     },
     "stats": {
       "possession": {
@@ -62,6 +70,13 @@
         "detail": "Red Card",
         "player": "S. Joensen",
         "team": "HB II"
+      },
+      {
+        "minute": 44,
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "player": "M. Ebiye",
+        "team": "HB II"
       }
     ]
   },
@@ -83,10 +98,10 @@
           "city": null
         },
         "status": {
-          "long": "First Half",
-          "short": "1H",
-          "elapsed": 35,
-          "extra": null
+          "long": "Halftime",
+          "short": "HT",
+          "elapsed": 45,
+          "extra": 2
         }
       },
       "league": {
@@ -104,22 +119,22 @@
           "id": 4179,
           "name": "HB II",
           "logo": "https://media.api-sports.io/football/teams/4179.png",
-          "winner": false
+          "winner": null
         },
         "away": {
           "id": 4192,
           "name": "TB",
           "logo": "https://media.api-sports.io/football/teams/4192.png",
-          "winner": true
+          "winner": null
         }
       },
       "goals": {
-        "home": 0,
+        "home": 1,
         "away": 1
       },
       "score": {
         "halftime": {
-          "home": 0,
+          "home": 1,
           "away": 1
         },
         "fulltime": {
@@ -179,6 +194,28 @@
           "type": "Card",
           "detail": "Red Card",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 44,
+            "extra": null
+          },
+          "team": {
+            "id": 4179,
+            "name": "HB II",
+            "logo": "https://media.api-sports.io/football/teams/4179.png"
+          },
+          "player": {
+            "id": 39322,
+            "name": "M. Ebiye"
+          },
+          "assist": {
+            "id": 73034,
+            "name": "J. Nolsoe"
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -187,6 +224,6 @@
     }
   },
   "stored_response": {
-    "details_refreshed": true
+    "mode": "score-first-five-minute"
   }
 }
