@@ -1,294 +1,50 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T14:21:42Z",
-  "http_status": 200,
+  "fetched_at_utc": null,
+  "http_status": null,
   "match": {
-    "id": "1506639",
+    "id": "pending-greenock-morton-partick-thistle",
     "sport": "football",
-    "league": "1. Deild",
-    "country": "Faroe-Islands",
+    "league": "Championship",
+    "country": "Scotland",
     "home": {
-      "name": "HB II",
-      "short_name": "HB II"
+      "name": "Greenock Morton",
+      "short_name": "Greenock Morton"
     },
     "away": {
-      "name": "TB",
-      "short_name": "TB"
+      "name": "Partick Thistle",
+      "short_name": "Partick Thistle"
     },
-    "kickoff_utc": "2026-08-01T12:30:00+00:00",
-    "status": "FT",
-    "status_long": "Match Finished",
-    "elapsed": 90,
+    "kickoff_utc": "2026-08-01T14:00:00Z",
+    "status": "NS",
+    "status_long": "Waiting for live feed",
+    "elapsed": null,
     "score": {
-      "home": 1,
-      "away": 3
+      "home": null,
+      "away": null
     },
     "halftime_score": {
-      "home": 1,
-      "away": 1
+      "home": null,
+      "away": null
     },
     "fulltime_score": {
-      "home": 1,
-      "away": 3
+      "home": null,
+      "away": null
     },
     "stats": {
-      "possession": {
-        "home": null,
-        "away": null
-      },
-      "shots": {
-        "home": null,
-        "away": null
-      },
-      "shots_on_target": {
-        "home": null,
-        "away": null
-      },
-      "corners": {
-        "home": null,
-        "away": null
-      },
-      "yellow_cards": {
-        "home": null,
-        "away": null
-      },
-      "red_cards": {
-        "home": null,
-        "away": null
-      },
-      "dangerous_attacks": {
-        "home": null,
-        "away": null
-      }
+      "possession": {"home": null, "away": null},
+      "shots": {"home": null, "away": null},
+      "shots_on_target": {"home": null, "away": null},
+      "corners": {"home": null, "away": null},
+      "yellow_cards": {"home": null, "away": null},
+      "red_cards": {"home": null, "away": null},
+      "dangerous_attacks": {"home": null, "away": null}
     },
-    "events": [
-      {
-        "minute": 3,
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "player": "S. Musah",
-        "team": "TB"
-      },
-      {
-        "minute": 34,
-        "type": "Card",
-        "detail": "Red Card",
-        "player": "S. Joensen",
-        "team": "HB II"
-      },
-      {
-        "minute": 44,
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "player": "M. Ebiye",
-        "team": "HB II"
-      },
-      {
-        "minute": 62,
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "player": "S. Musah",
-        "team": "TB"
-      },
-      {
-        "minute": 81,
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "player": "A. Arnholdsson",
-        "team": "TB"
-      }
-    ]
+    "events": []
   },
-  "api_response": {
-    "fixture": {
-      "fixture": {
-        "id": 1506639,
-        "referee": null,
-        "timezone": "UTC",
-        "date": "2026-08-01T12:30:00+00:00",
-        "timestamp": 1785587400,
-        "periods": {
-          "first": 1785587400,
-          "second": 1785591000
-        },
-        "venue": {
-          "id": null,
-          "name": null,
-          "city": null
-        },
-        "status": {
-          "long": "Match Finished",
-          "short": "FT",
-          "elapsed": 90,
-          "extra": 2
-        }
-      },
-      "league": {
-        "id": 366,
-        "name": "1. Deild",
-        "country": "Faroe-Islands",
-        "logo": "https://media.api-sports.io/football/leagues/366.png",
-        "flag": "https://media.api-sports.io/flags/fo.svg",
-        "season": 2026,
-        "round": "Regular Season - 17",
-        "standings": true
-      },
-      "teams": {
-        "home": {
-          "id": 4179,
-          "name": "HB II",
-          "logo": "https://media.api-sports.io/football/teams/4179.png",
-          "winner": false
-        },
-        "away": {
-          "id": 4192,
-          "name": "TB",
-          "logo": "https://media.api-sports.io/football/teams/4192.png",
-          "winner": true
-        }
-      },
-      "goals": {
-        "home": 1,
-        "away": 3
-      },
-      "score": {
-        "halftime": {
-          "home": 1,
-          "away": 1
-        },
-        "fulltime": {
-          "home": 1,
-          "away": 3
-        },
-        "extratime": {
-          "home": null,
-          "away": null
-        },
-        "penalty": {
-          "home": null,
-          "away": null
-        }
-      },
-      "events": [
-        {
-          "time": {
-            "elapsed": 3,
-            "extra": null
-          },
-          "team": {
-            "id": 4192,
-            "name": "TB",
-            "logo": "https://media.api-sports.io/football/teams/4192.png"
-          },
-          "player": {
-            "id": 562035,
-            "name": "S. Musah"
-          },
-          "assist": {
-            "id": 547533,
-            "name": "A. Sheik"
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 34,
-            "extra": null
-          },
-          "team": {
-            "id": 4179,
-            "name": "HB II",
-            "logo": "https://media.api-sports.io/football/teams/4179.png"
-          },
-          "player": {
-            "id": 485891,
-            "name": "S. Joensen"
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Card",
-          "detail": "Red Card",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 44,
-            "extra": null
-          },
-          "team": {
-            "id": 4179,
-            "name": "HB II",
-            "logo": "https://media.api-sports.io/football/teams/4179.png"
-          },
-          "player": {
-            "id": 39322,
-            "name": "M. Ebiye"
-          },
-          "assist": {
-            "id": 73034,
-            "name": "J. Nolsoe"
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 62,
-            "extra": null
-          },
-          "team": {
-            "id": 4192,
-            "name": "TB",
-            "logo": "https://media.api-sports.io/football/teams/4192.png"
-          },
-          "player": {
-            "id": 562035,
-            "name": "S. Musah"
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 81,
-            "extra": null
-          },
-          "team": {
-            "id": 4192,
-            "name": "TB",
-            "logo": "https://media.api-sports.io/football/teams/4192.png"
-          },
-          "player": {
-            "id": 590313,
-            "name": "A. Arnholdsson"
-          },
-          "assist": {
-            "id": 590312,
-            "name": "M. Armah"
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        }
-      ],
-      "lineups": [],
-      "statistics": [],
-      "players": []
-    }
-  },
+  "api_response": {},
   "stored_response": {
-    "mode": "continuous-five-minute",
-    "cycle": 11,
-    "details_refreshed": true
+    "mode": "target-switch-pending",
+    "details_refreshed": false
   }
 }
