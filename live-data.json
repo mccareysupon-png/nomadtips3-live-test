@@ -1,16 +1,101 @@
 {
-  "fetched_at_utc": "2026-08-01T11:55:51Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-01T12:32:41Z",
   "http_status": 200,
-  "stored_http_status": 200,
   "match": {
-    "id": "f1236384-4184-46ff-b168-bdb638126682",
+    "id": "1506639",
     "sport": "football",
-    "league": "MLS",
-    "home": {"name": "Inter Miami CF", "short_name": "MIA"},
-    "away": {"name": "Columbus Crew", "short_name": "CLB"},
-    "kickoff_utc": "2026-08-01T23:30:00.000Z",
-    "status": "scheduled"
+    "league": "1. Deild",
+    "country": "Faroe-Islands",
+    "home": {
+      "name": "HB II",
+      "short_name": "HB II"
+    },
+    "away": {
+      "name": "TB",
+      "short_name": "TB"
+    },
+    "kickoff_utc": "2026-08-01T19:30:00+07:00",
+    "status": "First Half",
+    "score": {
+      "home": 0,
+      "away": 0
+    },
+    "stats": {},
+    "events": []
   },
-  "api_response": {"data": null},
-  "stored_response": {"data": null}
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1506639,
+        "referee": null,
+        "timezone": "Asia/Bangkok",
+        "date": "2026-08-01T19:30:00+07:00",
+        "timestamp": 1785587400,
+        "periods": {
+          "first": 1785587400,
+          "second": null
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 2,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 366,
+        "name": "1. Deild",
+        "country": "Faroe-Islands",
+        "logo": "https://media.api-sports.io/football/leagues/366.png",
+        "flag": "https://media.api-sports.io/flags/fo.svg",
+        "season": 2026,
+        "round": "Regular Season - 17",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 4179,
+          "name": "HB II",
+          "logo": "https://media.api-sports.io/football/teams/4179.png",
+          "winner": null
+        },
+        "away": {
+          "id": 4192,
+          "name": "TB",
+          "logo": "https://media.api-sports.io/football/teams/4192.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "distance_seconds": 161
+    }
+  },
+  "stored_response": {}
 }
