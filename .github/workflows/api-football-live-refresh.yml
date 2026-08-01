@@ -2,8 +2,14 @@ name: Refresh API-Football Live Match
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/api-football-live-refresh.yml'
   schedule:
-    - cron: "*/10 * * * *"
+    # Score/status every 5 minutes, offset from busy clock boundaries.
+    - cron: "2-57/5 * * * *"
+    # Full statistics and events every 20 minutes.
+    - cron: "4,24,44 * * * *"
 
 permissions:
   contents: write
@@ -21,6 +27,7 @@ jobs:
       FIXTURE_ID: "1506639"
       WINDOW_START_UTC: "2026-08-01T12:20:00Z"
       WINDOW_END_UTC: "2026-08-01T15:30:00Z"
+      SCHEDULE_KIND: ${{ github.event.schedule }}
     steps:
       - uses: actions/checkout@v4
 
@@ -38,7 +45,7 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Fetch API-Football live data
+      - name: Fetch score first and optional details
         if: steps.window.outputs.run == 'true'
         shell: bash
         run: |
@@ -46,25 +53,43 @@ jobs:
           test -n "$API_FOOTBALL_KEY"
 
           BASE="https://v3.football.api-sports.io"
+          cp live-data.json /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
+
+          # This request is mandatory. A score/status update can succeed even
+          # when statistics or event endpoints are unavailable.
           curl --fail --silent --show-error \
             -H "x-apisports-key: $API_FOOTBALL_KEY" \
             "$BASE/fixtures?id=$FIXTURE_ID" > /tmp/fixture.json
-
-          curl --fail --silent --show-error \
-            -H "x-apisports-key: $API_FOOTBALL_KEY" \
-            "$BASE/fixtures/statistics?fixture=$FIXTURE_ID" > /tmp/stats.json
-
-          curl --fail --silent --show-error \
-            -H "x-apisports-key: $API_FOOTBALL_KEY" \
-            "$BASE/fixtures/events?fixture=$FIXTURE_ID" > /tmp/events.json
-
           jq -e '.response[0]' /tmp/fixture.json >/dev/null
+
+          echo '{"response":[]}' > /tmp/stats.json
+          echo '{"response":[]}' > /tmp/events.json
+          DETAILS=false
+
+          if [ "${GITHUB_EVENT_NAME}" != "schedule" ] || [ "$SCHEDULE_KIND" = "4,24,44 * * * *" ]; then
+            DETAILS=true
+            curl --silent --show-error \
+              -H "x-apisports-key: $API_FOOTBALL_KEY" \
+              "$BASE/fixtures/statistics?fixture=$FIXTURE_ID" > /tmp/stats.raw || true
+            curl --silent --show-error \
+              -H "x-apisports-key: $API_FOOTBALL_KEY" \
+              "$BASE/fixtures/events?fixture=$FIXTURE_ID" > /tmp/events.raw || true
+
+            if jq -e '.response | arrays' /tmp/stats.raw >/dev/null 2>&1; then
+              mv /tmp/stats.raw /tmp/stats.json
+            fi
+            if jq -e '.response | arrays' /tmp/events.raw >/dev/null 2>&1; then
+              mv /tmp/events.raw /tmp/events.json
+            fi
+          fi
 
           jq -n \
             --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --argjson details "$DETAILS" \
             --slurpfile fixture /tmp/fixture.json \
             --slurpfile stats /tmp/stats.json \
             --slurpfile events /tmp/events.json \
+            --slurpfile previous /tmp/previous.json \
             '
             def value_for($team_id; $type):
               ([ $stats[0].response[]?
@@ -74,6 +99,8 @@ jobs:
                  | .value ][0] // null);
 
             ($fixture[0].response[0]) as $f
+            | ($previous[0].match.stats // {}) as $old_stats
+            | ($previous[0].match.events // []) as $old_events
             | {
                 source:"api-football",
                 fetched_at_utc:$fetched_at,
@@ -89,45 +116,21 @@ jobs:
                   status:$f.fixture.status.long,
                   elapsed:$f.fixture.status.elapsed,
                   score:{home:$f.goals.home,away:$f.goals.away},
-                  stats:{
-                    possession:{
-                      home:value_for($f.teams.home.id; "Ball Possession"),
-                      away:value_for($f.teams.away.id; "Ball Possession")
-                    },
-                    shots:{
-                      home:value_for($f.teams.home.id; "Total Shots"),
-                      away:value_for($f.teams.away.id; "Total Shots")
-                    },
-                    shots_on_target:{
-                      home:value_for($f.teams.home.id; "Shots on Goal"),
-                      away:value_for($f.teams.away.id; "Shots on Goal")
-                    },
-                    corners:{
-                      home:value_for($f.teams.home.id; "Corner Kicks"),
-                      away:value_for($f.teams.away.id; "Corner Kicks")
-                    },
-                    yellow_cards:{
-                      home:value_for($f.teams.home.id; "Yellow Cards"),
-                      away:value_for($f.teams.away.id; "Yellow Cards")
-                    },
-                    dangerous_attacks:{
-                      home:value_for($f.teams.home.id; "Dangerous Attacks"),
-                      away:value_for($f.teams.away.id; "Dangerous Attacks")
-                    }
-                  },
-                  events:[
+                  stats:(if $details then {
+                    possession:{home:value_for($f.teams.home.id; "Ball Possession"),away:value_for($f.teams.away.id; "Ball Possession")},
+                    shots:{home:value_for($f.teams.home.id; "Total Shots"),away:value_for($f.teams.away.id; "Total Shots")},
+                    shots_on_target:{home:value_for($f.teams.home.id; "Shots on Goal"),away:value_for($f.teams.away.id; "Shots on Goal")},
+                    corners:{home:value_for($f.teams.home.id; "Corner Kicks"),away:value_for($f.teams.away.id; "Corner Kicks")},
+                    yellow_cards:{home:value_for($f.teams.home.id; "Yellow Cards"),away:value_for($f.teams.away.id; "Yellow Cards")},
+                    dangerous_attacks:{home:value_for($f.teams.home.id; "Dangerous Attacks"),away:value_for($f.teams.away.id; "Dangerous Attacks")}
+                  } else $old_stats end),
+                  events:(if $details then [
                     $events[0].response[]?
-                    | {
-                        minute:.time.elapsed,
-                        type:.type,
-                        detail:.detail,
-                        player:(.player.name // ""),
-                        team:(.team.name // "")
-                      }
-                  ]
+                    | {minute:.time.elapsed,type:.type,detail:.detail,player:(.player.name // ""),team:(.team.name // "")}
+                  ] else $old_events end)
                 },
                 api_response:{fixture:$f},
-                stored_response:{}
+                stored_response:{details_refreshed:$details}
               }
             ' > live-data.json
 
@@ -142,5 +145,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Refresh API-Football live match"
+          git commit -m "Refresh API-Football live score"
           git push
