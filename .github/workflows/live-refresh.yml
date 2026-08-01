@@ -1,4 +1,4 @@
-name: Refresh NOMADTIPS3 Live Test
+name: Refresh BigBalls Live Match
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: nomadtips3-live-refresh
+  group: bigballs-live-refresh
   cancel-in-progress: true
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Fetch live match data
+      - name: Fetch BigBalls match data
         if: steps.window.outputs.run == 'true'
         shell: bash
         run: |
@@ -71,6 +71,7 @@ jobs:
             --slurpfile detail /tmp/detail.json \
             --slurpfile stored /tmp/stored.json \
             '{
+              source:"bigballs",
               fetched_at_utc:$fetched_at,
               http_status:($detail_http|tonumber),
               stored_http_status:($stored_http|tonumber),
@@ -78,24 +79,26 @@ jobs:
                 id:"f1236384-4184-46ff-b168-bdb638126682",
                 sport:"football",
                 league:"MLS",
+                country:"USA",
                 home:{name:"Inter Miami CF",short_name:"MIA"},
                 away:{name:"Columbus Crew",short_name:"CLB"},
-                kickoff_utc:"2026-08-01T23:30:00.000Z"
+                kickoff_utc:"2026-08-01T23:30:00.000Z",
+                status:"scheduled"
               },
               api_response:$detail[0],
               stored_response:$stored[0]
-            }' > live-data.json
+            }' > live-data-bigballs.json
 
-      - name: Commit refreshed data
+      - name: Commit refreshed BigBalls data
         if: steps.window.outputs.run == 'true'
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add live-data.json
+          git add live-data-bigballs.json
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "Update live match data"
+          git commit -m "Refresh BigBalls live match"
           git push
