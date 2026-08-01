@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - '.github/workflows/api-football-live-refresh.yml'
+      - 'live-data.json'
   schedule:
     - cron: '*/5 * * * *'
 
@@ -17,6 +18,7 @@ concurrency:
 
 jobs:
   refresh-once:
+    if: github.event_name != 'push' || github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -45,7 +47,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$API_FOOTBALL_KEY"
+          if [ -z "${API_FOOTBALL_KEY:-}" ]; then
+            echo 'API_FOOTBALL_KEY is missing'
+            exit 1
+          fi
+
           BASE='https://v3.football.api-sports.io'
 
           curl --fail --silent --show-error --get \
@@ -61,13 +67,19 @@ jobs:
               | select(
                   ((.teams.home.name | norm) | test("greenockmorton|morton"))
                   and
-                  ((.teams.away.name | norm) | test("partickthistle"))
+                  ((.teams.away.name | norm) | test("partickthistle|partick"))
                 )
               | .fixture.id
             ][0] // empty
           ' /tmp/day-fixtures.json)"
 
-          test -n "$FIXTURE_ID"
+          if [ -z "$FIXTURE_ID" ]; then
+            echo 'Fixture not found yet; preserving the current verified fallback snapshot.'
+            jq '{errors,results,paging,fixtures:[.response[]? | {id:.fixture.id,date:.fixture.date,home:.teams.home.name,away:.teams.away.name}]}' /tmp/day-fixtures.json || true
+            exit 0
+          fi
+
+          echo "Resolved fixture ID: $FIXTURE_ID"
 
           curl --fail --silent --show-error \
             -H "x-apisports-key: $API_FOOTBALL_KEY" \
