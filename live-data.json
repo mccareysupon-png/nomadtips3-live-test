@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T12:32:54Z",
+  "fetched_at_utc": "2026-08-01T13:05:21Z",
   "http_status": 200,
   "match": {
     "id": "1506639",
@@ -15,22 +15,63 @@
       "name": "TB",
       "short_name": "TB"
     },
-    "kickoff_utc": "2026-08-01T19:30:00+07:00",
+    "kickoff_utc": "2026-08-01T12:30:00+00:00",
     "status": "First Half",
+    "elapsed": 35,
     "score": {
       "home": 0,
-      "away": 0
+      "away": 1
     },
-    "stats": {},
-    "events": []
+    "stats": {
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      }
+    },
+    "events": [
+      {
+        "minute": 3,
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "player": "S. Musah",
+        "team": "TB"
+      },
+      {
+        "minute": 34,
+        "type": "Card",
+        "detail": "Red Card",
+        "player": "S. Joensen",
+        "team": "HB II"
+      }
+    ]
   },
   "api_response": {
     "fixture": {
       "fixture": {
         "id": 1506639,
         "referee": null,
-        "timezone": "Asia/Bangkok",
-        "date": "2026-08-01T19:30:00+07:00",
+        "timezone": "UTC",
+        "date": "2026-08-01T12:30:00+00:00",
         "timestamp": 1785587400,
         "periods": {
           "first": 1785587400,
@@ -44,7 +85,7 @@
         "status": {
           "long": "First Half",
           "short": "1H",
-          "elapsed": 3,
+          "elapsed": 35,
           "extra": null
         }
       },
@@ -63,23 +104,23 @@
           "id": 4179,
           "name": "HB II",
           "logo": "https://media.api-sports.io/football/teams/4179.png",
-          "winner": null
+          "winner": false
         },
         "away": {
           "id": 4192,
           "name": "TB",
           "logo": "https://media.api-sports.io/football/teams/4192.png",
-          "winner": null
+          "winner": true
         }
       },
       "goals": {
         "home": 0,
-        "away": 0
+        "away": 1
       },
       "score": {
         "halftime": {
           "home": 0,
-          "away": 0
+          "away": 1
         },
         "fulltime": {
           "home": null,
@@ -94,8 +135,58 @@
           "away": null
         }
       },
-      "distance_seconds": 173
+      "events": [
+        {
+          "time": {
+            "elapsed": 3,
+            "extra": null
+          },
+          "team": {
+            "id": 4192,
+            "name": "TB",
+            "logo": "https://media.api-sports.io/football/teams/4192.png"
+          },
+          "player": {
+            "id": 562035,
+            "name": "S. Musah"
+          },
+          "assist": {
+            "id": 547533,
+            "name": "A. Sheik"
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 34,
+            "extra": null
+          },
+          "team": {
+            "id": 4179,
+            "name": "HB II",
+            "logo": "https://media.api-sports.io/football/teams/4179.png"
+          },
+          "player": {
+            "id": 485891,
+            "name": "S. Joensen"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Red Card",
+          "comments": null
+        }
+      ],
+      "lineups": [],
+      "statistics": [],
+      "players": []
     }
   },
-  "stored_response": {}
+  "stored_response": {
+    "details_refreshed": true
+  }
 }
