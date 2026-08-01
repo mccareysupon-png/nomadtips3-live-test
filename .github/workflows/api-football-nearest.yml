@@ -1,0 +1,99 @@
+name: Find nearest API-Football match
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/api-football-nearest.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  find-nearest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test key and find nearest covered fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$API_FOOTBALL_KEY"
+
+          TODAY="$(TZ=Asia/Bangkok date +%F)"
+          TOMORROW="$(TZ=Asia/Bangkok date -d '+1 day' +%F)"
+
+          curl --fail --silent --show-error \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "https://v3.football.api-sports.io/fixtures?date=${TODAY}&timezone=Asia%2FBangkok" \
+            > /tmp/today.json
+
+          curl --fail --silent --show-error \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "https://v3.football.api-sports.io/fixtures?date=${TOMORROW}&timezone=Asia%2FBangkok" \
+            > /tmp/tomorrow.json
+
+          jq -e '.response' /tmp/today.json >/dev/null
+          jq -e '.response' /tmp/tomorrow.json >/dev/null
+
+          jq -s '[.[0].response[], .[1].response[]]' /tmp/today.json /tmp/tomorrow.json > /tmp/all.json
+
+          NOW="$(date -u +%s)"
+          jq --argjson now "$NOW" '
+            [ .[]
+              | select((.fixture.status.short // "") as $s
+                  | (["FT","AET","PEN","CANC","ABD","AWD","WO","PST"] | index($s) | not))
+              | . + {distance_seconds: ((.fixture.timestamp - $now) | if . < 0 then -. else . end)}
+            ]
+            | sort_by(.distance_seconds)
+            | .[0]
+          ' /tmp/all.json > /tmp/nearest.json
+
+          if [ "$(jq -r 'type' /tmp/nearest.json)" = "null" ]; then
+            echo "No available fixture found"
+            exit 1
+          fi
+
+          jq -n \
+            --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --slurpfile f /tmp/nearest.json \
+            '{
+              source:"api-football",
+              fetched_at_utc:$fetched_at,
+              http_status:200,
+              match:{
+                id:($f[0].fixture.id|tostring),
+                sport:"football",
+                league:$f[0].league.name,
+                country:$f[0].league.country,
+                home:{name:$f[0].teams.home.name,short_name:$f[0].teams.home.name},
+                away:{name:$f[0].teams.away.name,short_name:$f[0].teams.away.name},
+                kickoff_utc:$f[0].fixture.date,
+                status:$f[0].fixture.status.long,
+                score:{home:$f[0].goals.home,away:$f[0].goals.away},
+                stats:{},
+                events:[]
+              },
+              api_response:{fixture:$f[0]},
+              stored_response:{}
+            }' > live-data.json
+
+          echo "Selected fixture:"
+          jq -r '"\(.league.name): \(.teams.home.name) vs \(.teams.away.name) | \(.fixture.date) | \(.fixture.status.long) | ID \(.fixture.id)"' /tmp/nearest.json
+
+      - name: Commit selected fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live-data.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Select nearest API-Football fixture"
+          git push
