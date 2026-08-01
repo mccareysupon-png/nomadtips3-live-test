@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T15:07:10Z",
+  "fetched_at_utc": "2026-08-01T15:12:12Z",
   "http_status": 200,
   "match": {
     "id": "1556829",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-01T14:00:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 48,
+    "elapsed": 53,
     "score": {
       "home": 0,
       "away": 0
@@ -75,6 +75,13 @@
         "detail": "Substitution 1",
         "player": "C. Logan",
         "team": "Partick"
+      },
+      {
+        "minute": 51,
+        "type": "Card",
+        "detail": "Yellow Card",
+        "player": "",
+        "team": "Morton"
       }
     ]
   },
@@ -98,7 +105,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 48,
+          "elapsed": 53,
           "extra": null
         }
       },
@@ -192,6 +199,28 @@
           "type": "subst",
           "detail": "Substitution 1",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 51,
+            "extra": null
+          },
+          "team": {
+            "id": 1383,
+            "name": "Morton",
+            "logo": "https://media.api-sports.io/football/teams/1383.png"
+          },
+          "player": {
+            "id": null,
+            "name": null
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -201,7 +230,7 @@
   },
   "stored_response": {
     "mode": "continuous-five-minute",
-    "cycle": 4,
+    "cycle": 5,
     "details_refreshed": true
   }
 }
