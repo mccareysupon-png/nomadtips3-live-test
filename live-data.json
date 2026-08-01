@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-01T15:22:15Z",
+  "fetched_at_utc": "2026-08-01T15:27:17Z",
   "http_status": 200,
   "match": {
     "id": "1556829",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-01T14:00:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 63,
+    "elapsed": 67,
     "score": {
       "home": 0,
       "away": 0
@@ -94,7 +94,28 @@
         "minute": 62,
         "type": "Card",
         "detail": "Yellow Card",
-        "player": "",
+        "player": "G. Gillespie",
+        "team": "Morton"
+      },
+      {
+        "minute": 63,
+        "type": "subst",
+        "detail": "Substitution 2",
+        "player": "G. Mackay-Steven",
+        "team": "Partick"
+      },
+      {
+        "minute": 63,
+        "type": "subst",
+        "detail": "Substitution 3",
+        "player": "R. Crawford",
+        "team": "Partick"
+      },
+      {
+        "minute": 64,
+        "type": "subst",
+        "detail": "Substitution 1",
+        "player": "J. Longridge",
         "team": "Morton"
       }
     ]
@@ -119,7 +140,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 63,
+          "elapsed": 67,
           "extra": null
         }
       },
@@ -269,8 +290,8 @@
             "logo": "https://media.api-sports.io/football/teams/1383.png"
           },
           "player": {
-            "id": null,
-            "name": null
+            "id": 97894,
+            "name": "G. Gillespie"
           },
           "assist": {
             "id": null,
@@ -278,6 +299,72 @@
           },
           "type": "Card",
           "detail": "Yellow Card",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 63,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 44816,
+            "name": "G. Mackay-Steven"
+          },
+          "assist": {
+            "id": 408765,
+            "name": "S. Drozd"
+          },
+          "type": "subst",
+          "detail": "Substitution 2",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 63,
+            "extra": null
+          },
+          "team": {
+            "id": 901,
+            "name": "Partick",
+            "logo": "https://media.api-sports.io/football/teams/901.png"
+          },
+          "player": {
+            "id": 45163,
+            "name": "R. Crawford"
+          },
+          "assist": {
+            "id": 104753,
+            "name": "E. Henderson"
+          },
+          "type": "subst",
+          "detail": "Substitution 3",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 64,
+            "extra": null
+          },
+          "team": {
+            "id": 1383,
+            "name": "Morton",
+            "logo": "https://media.api-sports.io/football/teams/1383.png"
+          },
+          "player": {
+            "id": 45238,
+            "name": "J. Longridge"
+          },
+          "assist": {
+            "id": 539166,
+            "name": "L. Murphy"
+          },
+          "type": "subst",
+          "detail": "Substitution 1",
           "comments": null
         }
       ],
@@ -288,7 +375,7 @@
   },
   "stored_response": {
     "mode": "continuous-five-minute",
-    "cycle": 7,
+    "cycle": 8,
     "details_refreshed": true
   }
 }
