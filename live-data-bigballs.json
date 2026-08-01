@@ -1,21 +1,217 @@
 {
   "source": "bigballs",
-  "fetched_at_utc": null,
-  "http_status": null,
-  "stored_http_status": null,
+  "fetched_at_utc": "2026-08-01T23:53:43Z",
+  "http_status": 200,
+  "stored_http_status": 200,
+  "stats_http_status": 200,
+  "events_http_status": 200,
   "match": {
     "id": "f1236384-4184-46ff-b168-bdb638126682",
     "sport": "football",
     "league": "MLS",
     "country": "USA",
-    "home": {"name": "Inter Miami CF", "short_name": "MIA"},
-    "away": {"name": "Columbus Crew", "short_name": "CLB"},
+    "home": {
+      "name": "Inter Miami CF Inter Miami CF",
+      "short_name": "MIA"
+    },
+    "away": {
+      "name": "Columbus Crew",
+      "short_name": "CLB"
+    },
     "kickoff_utc": "2026-08-01T23:30:00.000Z",
     "status": "scheduled",
-    "score": {"home": null, "away": null},
-    "stats": {},
+    "elapsed": null,
+    "score": {
+      "home": null,
+      "away": null
+    },
+    "stats": {
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": null,
+        "away": null
+      },
+      "red_cards": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      }
+    },
     "events": []
   },
-  "api_response": {"data": null},
-  "stored_response": {"data": null}
+  "api_response": {
+    "data": {
+      "id": "f1236384-4184-46ff-b168-bdb638126682",
+      "sport": "football",
+      "league": "MLS",
+      "home": {
+        "name": "Inter Miami CF Inter Miami CF",
+        "short_name": "MIA",
+        "logo_url": null
+      },
+      "away": {
+        "name": "Columbus Crew",
+        "short_name": "CLB",
+        "logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png"
+      },
+      "kickoff_utc": "2026-08-01T23:30:00.000Z",
+      "status": "scheduled",
+      "score": null,
+      "linescore": null,
+      "attendance": null,
+      "broadcast": "Apple TV",
+      "has_odds": true
+    },
+    "meta": {
+      "source": "stored",
+      "cached": false,
+      "request_id": "165f6d9f-c070-47c1-b5e3-42257c45bcef",
+      "note": "Served from the stored matches table; live enrichment did not respond within the 2000ms budget. Retry for the live multi-field envelope."
+    },
+    "error": null
+  },
+  "stored_response": {
+    "data": {
+      "id": "f1236384-4184-46ff-b168-bdb638126682",
+      "sport": "football",
+      "league": "MLS",
+      "home": {
+        "name": "Inter Miami CF Inter Miami CF",
+        "short_name": "MIA",
+        "logo_url": null
+      },
+      "away": {
+        "name": "Columbus Crew",
+        "short_name": "CLB",
+        "logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png"
+      },
+      "kickoff_utc": "2026-08-01T23:30:00.000Z",
+      "status": "scheduled",
+      "score": null,
+      "linescore": null,
+      "attendance": null,
+      "broadcast": "Apple TV",
+      "has_odds": true,
+      "odds": [
+        {
+          "market": "total",
+          "participant": "Under",
+          "decimal_odds": 2.2,
+          "line": 3.312,
+          "updated_at": "2026-08-01T20:19:32.642Z",
+          "book_count": 85
+        },
+        {
+          "market": "total",
+          "participant": "Over",
+          "decimal_odds": 1.776,
+          "line": 3.312,
+          "updated_at": "2026-08-01T20:19:32.593Z",
+          "book_count": 85
+        },
+        {
+          "market": "handicap",
+          "participant": "Inter Miami CF",
+          "decimal_odds": 1.98,
+          "line": -0.977,
+          "updated_at": "2026-08-01T20:19:32.544Z",
+          "book_count": 75
+        },
+        {
+          "market": "handicap",
+          "participant": "Columbus Crew",
+          "decimal_odds": 1.888,
+          "line": 1.028,
+          "updated_at": "2026-08-01T20:19:32.503Z",
+          "book_count": 63
+        },
+        {
+          "market": "moneyline",
+          "participant": "Draw",
+          "decimal_odds": 4.396,
+          "line": null,
+          "updated_at": "2026-08-01T20:19:32.460Z",
+          "book_count": 64
+        },
+        {
+          "market": "moneyline",
+          "participant": "Inter Miami CF",
+          "decimal_odds": 1.597,
+          "line": null,
+          "updated_at": "2026-08-01T20:19:32.414Z",
+          "book_count": 64
+        },
+        {
+          "market": "moneyline",
+          "participant": "Columbus Crew",
+          "decimal_odds": 5.01,
+          "line": null,
+          "updated_at": "2026-08-01T20:19:32.369Z",
+          "book_count": 64
+        }
+      ],
+      "odds_available": true
+    }
+  },
+  "stats_response": {
+    "data": {
+      "team_stats": [
+        {
+          "team_id": "9de2c632-9d21-4c5a-88f6-89e34cd725c5",
+          "team_name": "Columbus Crew",
+          "team_logo_url": "https://r2.thesportsdb.com/images/media/team/badge/dzs8cp1629059854.png",
+          "field": "score",
+          "label": null,
+          "display_value": null,
+          "fetched_at": "2026-08-01T20:19:32.320Z"
+        },
+        {
+          "team_id": "d25defed-5417-4ed7-b3fa-6944b03ed4eb",
+          "team_name": "Inter Miami CF Inter Miami CF",
+          "team_logo_url": null,
+          "field": "score",
+          "label": null,
+          "display_value": null,
+          "fetched_at": "2026-08-01T20:19:32.317Z"
+        }
+      ],
+      "players": []
+    }
+  },
+  "events_response": {
+    "data": {
+      "events": null
+    },
+    "meta": {
+      "source": "none",
+      "confidence": 0,
+      "cached": false,
+      "cache_age_ms": 0,
+      "request_id": "cb41554e-6779-4b85-b8e3-4fe20ac2c690",
+      "fields_missing": [
+        "events"
+      ],
+      "coverage": false,
+      "message": "No data available for this sport/league combination yet."
+    },
+    "error": null
+  }
 }
