@@ -43,8 +43,6 @@ jobs:
             cycle=$((cycle + 1))
             echo "Live refresh cycle $cycle at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
-            # Keep current branch current because the BigBalls workflow writes
-            # a different data file in the same repository.
             git pull --rebase origin main || true
             cp live-data.json /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
 
@@ -58,7 +56,6 @@ jobs:
             echo '{"response":[]}' > /tmp/stats.json
             echo '{"response":[]}' > /tmp/events.json
 
-            # Refresh details every fourth cycle and always on a final state.
             if [ $((cycle % 4)) -eq 1 ] || [[ "$status_short" =~ ^(FT|AET|PEN|CANC|ABD|AWD|WO)$ ]]; then
               details=true
               curl --silent --show-error \
@@ -75,6 +72,7 @@ jobs:
             jq -n \
               --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
               --argjson details "$details" \
+              --argjson cycle "$cycle" \
               --slurpfile fixture /tmp/fixture.json \
               --slurpfile stats /tmp/stats.json \
               --slurpfile events /tmp/events.json \
@@ -125,7 +123,7 @@ jobs:
                   api_response:{fixture:$f},
                   stored_response:{mode:"continuous-five-minute",cycle:$cycle,details_refreshed:$details}
                 }
-              ' --argjson cycle "$cycle" > live-data.json
+              ' > live-data.json
 
             git add live-data.json
             if ! git diff --cached --quiet; then
