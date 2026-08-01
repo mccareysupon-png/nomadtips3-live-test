@@ -2,121 +2,255 @@ name: Refresh BigBalls Live Match
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/live-refresh.yml"
   schedule:
-    # Multiple start chances around 05:25–05:55 Thailand time.
-    # The first run stays alive and polls continuously; later runs queue and exit.
-    - cron: "25,35,45,55 22 1 8 *"
+    - cron: "*/10 * * * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: bigballs-live-continuous
-  cancel-in-progress: false
+  group: bigballs-live-refresh
+  cancel-in-progress: true
 
 jobs:
-  refresh-until-window-ends:
+  refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 8
     env:
       BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
       MATCH_ID: f1236384-4184-46ff-b168-bdb638126682
-      WINDOW_START_UTC: "2026-08-01T22:30:00Z"
+      WINDOW_START_UTC: "2026-08-01T22:20:00Z"
       WINDOW_END_UTC: "2026-08-02T04:30:00Z"
+      HOME_NAME: "Inter Miami CF"
+      AWAY_NAME: "Columbus Crew"
+      KICKOFF_UTC: "2026-08-01T23:30:00.000Z"
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Poll BigBalls every ten minutes
+      - name: Check match window and API key
+        id: guard
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$BIGBALLS_API_KEY"
+          test -n "${BIGBALLS_API_KEY:-}"
 
-          start_epoch="$(date -u -d "$WINDOW_START_UTC" +%s)"
-          end_epoch="$(date -u -d "$WINDOW_END_UTC" +%s)"
-          now_epoch="$(date -u +%s)"
+          now="$(date -u +%s)"
+          start="$(date -u -d "$WINDOW_START_UTC" +%s)"
+          end="$(date -u -d "$WINDOW_END_UTC" +%s)"
 
-          if [ "$now_epoch" -gt "$end_epoch" ]; then
-            echo "Match window already ended."
+          if [ "$now" -ge "$start" ] && [ "$now" -le "$end" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "Outside BigBalls match window."
+          fi
+
+      - name: Fetch and normalize BigBalls live data
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          request() {
+            local url="$1"
+            local output="$2"
+            curl --silent --show-error \
+              --retry 3 --retry-delay 2 --retry-all-errors \
+              --connect-timeout 15 --max-time 45 \
+              --output "$output" \
+              --write-out '%{http_code}' \
+              -H "Authorization: Bearer $BIGBALLS_API_KEY" \
+              "$url"
+          }
+
+          DETAIL_HTTP="$(request "https://api.bigballsdata.com/v1/matches/${MATCH_ID}?sport=football&fields=scores%2Cstats%2Cevents" /tmp/detail.json)"
+          STORED_HTTP="$(request "https://api.bigballsdata.com/v1/stored/matches/${MATCH_ID}" /tmp/stored.json)"
+          STATS_HTTP="$(request "https://api.bigballsdata.com/v1/stored/matches/${MATCH_ID}/stats" /tmp/stats.json)"
+          EVENTS_HTTP="$(request "https://api.bigballsdata.com/v1/matches/${MATCH_ID}/events?sport=football" /tmp/events.json)"
+
+          for file in /tmp/detail.json /tmp/stored.json /tmp/stats.json /tmp/events.json; do
+            if ! jq -e . "$file" >/dev/null 2>&1; then
+              jq -n --rawfile raw "$file" '{data:null,error:{code:"invalid_json",message:$raw}}' > "${file}.fixed"
+              mv "${file}.fixed" "$file"
+            fi
+          done
+
+          jq -n \
+            --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --arg detail_http "$DETAIL_HTTP" \
+            --arg stored_http "$STORED_HTTP" \
+            --arg stats_http "$STATS_HTTP" \
+            --arg events_http "$EVENTS_HTTP" \
+            --arg match_id "$MATCH_ID" \
+            --arg home_name "$HOME_NAME" \
+            --arg away_name "$AWAY_NAME" \
+            --arg kickoff "$KICKOFF_UTC" \
+            --slurpfile detail /tmp/detail.json \
+            --slurpfile stored /tmp/stored.json \
+            --slurpfile stats /tmp/stats.json \
+            --slurpfile events /tmp/events.json \
+            '
+            def clean_name:
+              tostring | ascii_downcase | gsub("[^a-z0-9]"; "");
+
+            def same_team($a; $b):
+              ($a | clean_name) as $x |
+              ($b | clean_name) as $y |
+              ($x != "" and $y != "" and ($x == $y or ($x | contains($y)) or ($y | contains($x))));
+
+            def number_value:
+              if . == null then null
+              elif type == "number" then .
+              elif type == "string" then (gsub("%"; "") | tonumber?)
+              else null end;
+
+            def stored_stat($team; $fields):
+              ([($stats[0].data.team_stats // [])[]?
+                | select(same_team((.team_name // ""); $team))
+                | select(.field as $f | (($fields | index($f)) != null))
+                | (.display_value // .value // null)
+                | number_value
+                | select(. != null)] | .[0]) // null;
+
+            def detail_stat($team_id; $metrics):
+              ([($detail[0].data.stats.value // [])[]?
+                | select(($team_id != null) and ((.team_id // "") == $team_id))
+                | select(.metric as $m | (($metrics | index($m)) != null))
+                | (.value // null)
+                | number_value
+                | select(. != null)] | .[0]) // null;
+
+            def normalize_status($status):
+              ($status // "scheduled" | tostring | ascii_downcase) as $s |
+              if (["in_progress","in progress","live","1h","2h","first_half","second_half"] | index($s)) != null then "live"
+              elif (["finished","final","ft","completed","full time"] | index($s)) != null then "finished"
+              elif (["scheduled","not_started","not started","ns"] | index($s)) != null then "scheduled"
+              else $s end;
+
+            def percent($value):
+              if $value == null then null else (($value | tostring) + "%") end;
+
+            ($stored[0].data // {}) as $stored_match |
+            ($stored_match.home.id // $stored_match.home_team_id // $stored_match.home_team.id // null) as $home_id |
+            ($stored_match.away.id // $stored_match.away_team_id // $stored_match.away_team.id // null) as $away_id |
+            ($detail[0].data.stats.value // {}) as $live_stats |
+            ($detail[0].data.scores.value // {}) as $score_value |
+            ($score_value.clock.elapsed_seconds // $detail[0].data.elapsed_seconds // null) as $elapsed_seconds |
+            ($detail[0].data.events.value // $events[0].data // []) as $event_rows |
+
+            (
+              detail_stat($home_id; ["possession_percent","possession","ball_possession"])
+              // $live_stats.possession_percent.home
+              // $live_stats.possession.home
+              // $live_stats.ball_possession.home
+              // stored_stat($home_name; ["possession_percent","possession","ball_possession"])
+            ) as $home_possession |
+            (
+              detail_stat($away_id; ["possession_percent","possession","ball_possession"])
+              // $live_stats.possession_percent.away
+              // $live_stats.possession.away
+              // $live_stats.ball_possession.away
+              // stored_stat($away_name; ["possession_percent","possession","ball_possession"])
+            ) as $away_possession |
+
+            {
+              source: "bigballs",
+              fetched_at_utc: $fetched_at,
+              http_status: ($detail_http | tonumber),
+              stored_http_status: ($stored_http | tonumber),
+              stats_http_status: ($stats_http | tonumber),
+              events_http_status: ($events_http | tonumber),
+              match: {
+                id: $match_id,
+                sport: "football",
+                league: ($stored_match.league.name // $stored_match.league // "MLS"),
+                country: ($stored_match.country // "USA"),
+                home: {
+                  name: ($stored_match.home.name // $stored_match.home_team.name // $home_name),
+                  short_name: ($stored_match.home.short_name // $stored_match.home_team.short_name // "MIA")
+                },
+                away: {
+                  name: ($stored_match.away.name // $stored_match.away_team.name // $away_name),
+                  short_name: ($stored_match.away.short_name // $stored_match.away_team.short_name // "CLB")
+                },
+                kickoff_utc: ($stored_match.kickoff_utc // $stored_match.kickoff // $kickoff),
+                status: normalize_status($score_value.status // $detail[0].data.status // $stored_match.status // "scheduled"),
+                elapsed: (
+                  if $elapsed_seconds != null then (($elapsed_seconds | number_value) / 60 | floor)
+                  else ($detail[0].data.elapsed // null) end
+                ),
+                score: {
+                  home: ($score_value.home // $detail[0].data.score.home // $detail[0].data.scores.home // $stored_match.home_score // null),
+                  away: ($score_value.away // $detail[0].data.score.away // $detail[0].data.scores.away // $stored_match.away_score // null)
+                },
+                stats: {
+                  possession: {home: percent($home_possession), away: percent($away_possession)},
+                  shots: {
+                    home: (detail_stat($home_id; ["shots","total_shots"]) // $live_stats.shots.home // $live_stats.total_shots.home // stored_stat($home_name; ["shots","total_shots"])),
+                    away: (detail_stat($away_id; ["shots","total_shots"]) // $live_stats.shots.away // $live_stats.total_shots.away // stored_stat($away_name; ["shots","total_shots"]))
+                  },
+                  shots_on_target: {
+                    home: (detail_stat($home_id; ["shots_on_target"]) // $live_stats.shots_on_target.home // stored_stat($home_name; ["shots_on_target"])),
+                    away: (detail_stat($away_id; ["shots_on_target"]) // $live_stats.shots_on_target.away // stored_stat($away_name; ["shots_on_target"]))
+                  },
+                  corners: {
+                    home: (detail_stat($home_id; ["corners","corner_kicks"]) // $live_stats.corners.home // $live_stats.corner_kicks.home // stored_stat($home_name; ["corners","corner_kicks"])),
+                    away: (detail_stat($away_id; ["corners","corner_kicks"]) // $live_stats.corners.away // $live_stats.corner_kicks.away // stored_stat($away_name; ["corners","corner_kicks"]))
+                  },
+                  yellow_cards: {
+                    home: (detail_stat($home_id; ["cards_yellow","yellow_cards"]) // $live_stats.cards_yellow.home // $live_stats.yellow_cards.home // stored_stat($home_name; ["cards_yellow","yellow_cards"])),
+                    away: (detail_stat($away_id; ["cards_yellow","yellow_cards"]) // $live_stats.cards_yellow.away // $live_stats.yellow_cards.away // stored_stat($away_name; ["cards_yellow","yellow_cards"]))
+                  },
+                  red_cards: {
+                    home: (detail_stat($home_id; ["cards_red","red_cards"]) // $live_stats.cards_red.home // $live_stats.red_cards.home // stored_stat($home_name; ["cards_red","red_cards"])),
+                    away: (detail_stat($away_id; ["cards_red","red_cards"]) // $live_stats.cards_red.away // $live_stats.red_cards.away // stored_stat($away_name; ["cards_red","red_cards"]))
+                  },
+                  dangerous_attacks: {home: null, away: null}
+                },
+                events: [
+                  $event_rows[]? |
+                  {
+                    minute: (
+                      if (.clock.elapsed_seconds // null) != null then (((.clock.elapsed_seconds | number_value) / 60) | floor)
+                      else (.minute // .elapsed // null) end
+                    ),
+                    type: (.type // "Event"),
+                    detail: (.description // .detail // .type // "Event"),
+                    player: (.player_name // .player.display_name // .player.name // .player_id // null),
+                    team: (.team_name // .team.name // .team_id // null)
+                  }
+                ]
+              },
+              api_response: $detail[0],
+              stored_response: $stored[0],
+              stats_response: $stats[0],
+              events_response: $events[0]
+            }
+            ' > live-data-bigballs.json
+
+          jq -e . live-data-bigballs.json >/dev/null
+          jq '{fetched_at_utc,http_status,stats_http_status,events_http_status,match:{status,elapsed,score,stats,event_count:(.events|length)}}' live-data-bigballs.json
+
+      - name: Commit refreshed BigBalls data
+        if: steps.guard.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live-data-bigballs.json
+
+          if git diff --cached --quiet; then
+            echo "No BigBalls data changes."
             exit 0
           fi
 
-          if [ "$now_epoch" -lt "$start_epoch" ]; then
-            wait_seconds=$((start_epoch - now_epoch))
-            echo "Waiting $wait_seconds seconds for BigBalls match window."
-            sleep "$wait_seconds"
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          cycle=0
-
-          while [ "$(date -u +%s)" -le "$end_epoch" ]; do
-            cycle=$((cycle + 1))
-            echo "BigBalls refresh cycle $cycle at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-            git pull --rebase origin main || true
-
-            DETAIL_HTTP="$(curl --silent --show-error \
-              --output /tmp/detail.json \
-              --write-out '%{http_code}' \
-              -H "Authorization: Bearer $BIGBALLS_API_KEY" \
-              "https://api.bigballsdata.com/v1/matches/${MATCH_ID}?sport=football&fields=scores%2Cstats%2Cevents%2Codds")"
-
-            STORED_HTTP="$(curl --silent --show-error \
-              --output /tmp/stored.json \
-              --write-out '%{http_code}' \
-              -H "Authorization: Bearer $BIGBALLS_API_KEY" \
-              "https://api.bigballsdata.com/v1/stored/matches/${MATCH_ID}")"
-
-            for file in /tmp/detail.json /tmp/stored.json; do
-              if ! jq -e . "$file" >/dev/null 2>&1; then
-                jq -n --rawfile raw "$file" '{raw:$raw}' > "${file}.fixed"
-                mv "${file}.fixed" "$file"
-              fi
-            done
-
-            jq -n \
-              --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
-              --arg detail_http "$DETAIL_HTTP" \
-              --arg stored_http "$STORED_HTTP" \
-              --argjson cycle "$cycle" \
-              --slurpfile detail /tmp/detail.json \
-              --slurpfile stored /tmp/stored.json \
-              '{
-                source:"bigballs",
-                fetched_at_utc:$fetched_at,
-                http_status:($detail_http|tonumber),
-                stored_http_status:($stored_http|tonumber),
-                match:{
-                  id:"f1236384-4184-46ff-b168-bdb638126682",
-                  sport:"football",
-                  league:"MLS",
-                  country:"USA",
-                  home:{name:"Inter Miami CF",short_name:"MIA"},
-                  away:{name:"Columbus Crew",short_name:"CLB"},
-                  kickoff_utc:"2026-08-01T23:30:00.000Z",
-                  status:($detail[0].data.status // $detail[0].status // $stored[0].data.status // "scheduled"),
-                  elapsed:($detail[0].data.elapsed // $detail[0].elapsed // null),
-                  score:{
-                    home:($detail[0].data.score.home // $detail[0].data.scores.home // $detail[0].score.home // null),
-                    away:($detail[0].data.score.away // $detail[0].data.scores.away // $detail[0].score.away // null)
-                  },
-                  stats:{},
-                  events:[]
-                },
-                api_response:$detail[0],
-                stored_response:{payload:$stored[0],mode:"continuous-ten-minute",cycle:$cycle}
-              }' > live-data-bigballs.json
-
-            git add live-data-bigballs.json
-            if ! git diff --cached --quiet; then
-              git commit -m "Refresh BigBalls live match"
-              git pull --rebase origin main
-              git push origin main
-            fi
-
-            sleep 600
-          done
+          git commit -m "Refresh BigBalls live match"
+          git pull --rebase origin main
+          git push origin main
