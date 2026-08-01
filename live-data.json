@@ -1,9 +1,9 @@
 {
-  "source": "api-football",
-  "fetched_at_utc": null,
-  "http_status": null,
+  "source": "verified-web-fallback",
+  "fetched_at_utc": "2026-08-01T14:44:17Z",
+  "http_status": 200,
   "match": {
-    "id": "pending-greenock-morton-partick-thistle",
+    "id": "greenock-morton-partick-thistle-2026-08-01",
     "sport": "football",
     "league": "Championship",
     "country": "Scotland",
@@ -16,12 +16,12 @@
       "short_name": "Partick Thistle"
     },
     "kickoff_utc": "2026-08-01T14:00:00Z",
-    "status": "NS",
-    "status_long": "Waiting for live feed",
-    "elapsed": null,
+    "status": "1H",
+    "status_long": "Live — temporary verified fallback while API feed is delayed",
+    "elapsed": 31,
     "score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 0
     },
     "halftime_score": {
       "home": null,
@@ -32,19 +32,28 @@
       "away": null
     },
     "stats": {
-      "possession": {"home": null, "away": null},
-      "shots": {"home": null, "away": null},
-      "shots_on_target": {"home": null, "away": null},
-      "corners": {"home": null, "away": null},
-      "yellow_cards": {"home": null, "away": null},
-      "red_cards": {"home": null, "away": null},
+      "possession": {"home": "38%", "away": "62%"},
+      "shots": {"home": 2, "away": 2},
+      "shots_on_target": {"home": 0, "away": 0},
+      "corners": {"home": 0, "away": 0},
+      "yellow_cards": {"home": 0, "away": 1},
+      "red_cards": {"home": 0, "away": 0},
       "dangerous_attacks": {"home": null, "away": null}
     },
-    "events": []
+    "events": [
+      {
+        "minute": 15,
+        "type": "Yellow card",
+        "detail": "Patrick Reading",
+        "player": "Patrick Reading",
+        "team": "Partick Thistle"
+      }
+    ]
   },
   "api_response": {},
   "stored_response": {
-    "mode": "target-switch-pending",
-    "details_refreshed": false
+    "mode": "verified-web-fallback",
+    "details_refreshed": true,
+    "note": "Temporary snapshot added because the scheduled API-Football refresh had not updated the repository."
   }
 }
