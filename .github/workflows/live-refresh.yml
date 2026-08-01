@@ -1,0 +1,101 @@
+name: Refresh NOMADTIPS3 Live Test
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-live-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
+      MATCH_ID: f1236384-4184-46ff-b168-bdb638126682
+      WINDOW_START_UTC: "2026-08-01T22:30:00Z"
+      WINDOW_END_UTC: "2026-08-02T04:30:00Z"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check match window
+        id: window
+        shell: bash
+        run: |
+          set -euo pipefail
+          now="$(date -u +%s)"
+          start="$(date -u -d "$WINDOW_START_UTC" +%s)"
+          end="$(date -u -d "$WINDOW_END_UTC" +%s)"
+          if [ "${GITHUB_EVENT_NAME}" != "schedule" ] || { [ "$now" -ge "$start" ] && [ "$now" -le "$end" ]; }; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch live match data
+        if: steps.window.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$BIGBALLS_API_KEY"
+
+          DETAIL_HTTP="$(curl --silent --show-error \
+            --output /tmp/detail.json \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer $BIGBALLS_API_KEY" \
+            "https://api.bigballsdata.com/v1/matches/${MATCH_ID}?sport=football&fields=scores%2Cstats%2Cevents%2Codds")"
+
+          STORED_HTTP="$(curl --silent --show-error \
+            --output /tmp/stored.json \
+            --write-out '%{http_code}' \
+            -H "Authorization: Bearer $BIGBALLS_API_KEY" \
+            "https://api.bigballsdata.com/v1/stored/matches/${MATCH_ID}")"
+
+          for file in /tmp/detail.json /tmp/stored.json; do
+            if ! jq -e . "$file" >/dev/null 2>&1; then
+              jq -n --rawfile raw "$file" '{raw:$raw}' > "${file}.fixed"
+              mv "${file}.fixed" "$file"
+            fi
+          done
+
+          jq -n \
+            --arg fetched_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --arg detail_http "$DETAIL_HTTP" \
+            --arg stored_http "$STORED_HTTP" \
+            --slurpfile detail /tmp/detail.json \
+            --slurpfile stored /tmp/stored.json \
+            '{
+              fetched_at_utc:$fetched_at,
+              http_status:($detail_http|tonumber),
+              stored_http_status:($stored_http|tonumber),
+              match:{
+                id:"f1236384-4184-46ff-b168-bdb638126682",
+                sport:"football",
+                league:"MLS",
+                home:{name:"Inter Miami CF",short_name:"MIA"},
+                away:{name:"Columbus Crew",short_name:"CLB"},
+                kickoff_utc:"2026-08-01T23:30:00.000Z"
+              },
+              api_response:$detail[0],
+              stored_response:$stored[0]
+            }' > live-data.json
+
+      - name: Commit refreshed data
+        if: steps.window.outputs.run == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live-data.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Update live match data"
+          git push
