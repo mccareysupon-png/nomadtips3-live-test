@@ -1,0 +1,58 @@
+name: Fetch Day 4 Remaining Results
+
+on:
+  push:
+    paths:
+      - ".github/workflows/fetch-day4-remaining-results.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch remaining Day 4 fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          curl --fail --silent --show-error --retry 3 --get \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            --data-urlencode "date=2026-08-02" \
+            --data-urlencode "timezone=UTC" \
+            https://v3.football.api-sports.io/fixtures > /tmp/day4.json
+          jq '
+            def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+            [
+              .response[]?
+              | select(
+                  ((((.teams.home.name // "") | norm) | test("brinje|grosuplje")) and (((.teams.away.name // "") | norm) | test("koper")))
+                  or
+                  ((((.teams.home.name // "") | norm) | test("gkskatowice|katowice")) and (((.teams.away.name // "") | norm) | test("radomiak")))
+                )
+              | {
+                  source:"api-football",
+                  fixture_id:.fixture.id,
+                  date:.fixture.date,
+                  status:.fixture.status,
+                  league:.league.name,
+                  home:.teams.home.name,
+                  away:.teams.away.name,
+                  goals:.goals,
+                  halftime:.score.halftime,
+                  fulltime:.score.fulltime
+                }
+            ]
+          ' /tmp/day4.json > day4-remaining-results.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add day4-remaining-results.json
+          git commit -m "Fetch Day 4 remaining final results"
+          git pull --rebase origin main
+          git push
