@@ -1,0 +1,68 @@
+name: Check Latest Results from BigBalls
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/check-latest-results-bigballs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      BIGBALLS_API_KEY: ${{ secrets.BIGBALLS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query completed football matches by date
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${BIGBALLS_API_KEY:-}"
+          mkdir -p api-result-check
+          : > api-result-check/all.jsonl
+
+          for date in 2026-08-02 2026-08-03; do
+            for offset in 0 200 400; do
+              file="api-result-check/${date}-offset-${offset}.json"
+              curl --fail-with-body --silent --show-error --retry 2 \
+                -H "Authorization: Bearer $BIGBALLS_API_KEY" \
+                "https://api.bigballsdata.com/v1/matches?sport=football&date=${date}&limit=200&offset=${offset}" \
+                | jq '.' > "$file"
+              jq -c '.data[]?' "$file" >> api-result-check/all.jsonl
+            done
+          done
+
+          jq -s '
+            def txt: tostring | ascii_downcase;
+            def hname: (.home.name // .home_team.name // .home_team // .home // "") | txt;
+            def aname: (.away.name // .away_team.name // .away_team // .away // "") | txt;
+            [ .[]
+              | select(
+                  ((hname | test("brinje|grosuplje")) and (aname | test("koper")))
+                  or
+                  ((hname | test("gks katowice|katowice")) and (aname | test("radomiak")))
+                )
+            ]
+          ' api-result-check/all.jsonl > api-result-check/selected-results.json
+
+          jq -n \
+            --arg checkedAt "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            --slurpfile matches api-result-check/selected-results.json \
+            '{checkedAt:$checkedAt,matches:($matches[0] // [])}' \
+            > api-result-check/summary.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api-result-check
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Record latest selected results from BigBalls API"
+          git pull --rebase origin main
+          git push
