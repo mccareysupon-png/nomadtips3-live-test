@@ -1,0 +1,179 @@
+name: Refresh NOMAD Manual Set 2 Day 4 Live Scores
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/manual-set-2-day4-live-refresh.yml"
+  schedule:
+    - cron: "*/5 11-15 2 8 *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomad-manual-set-2-day-4-live
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TARGET_DATE: "2026-08-02"
+      WINDOW_START_UTC: "2026-08-02T11:00:00Z"
+      WINDOW_END_UTC: "2026-08-02T16:00:00Z"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh the three selected matches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${API_FOOTBALL_KEY:-}" ]; then
+            echo "API_FOOTBALL_KEY is missing."
+            exit 1
+          fi
+
+          now_epoch="$(date -u +%s)"
+          start_epoch="$(date -u -d "$WINDOW_START_UTC" +%s)"
+          end_epoch="$(date -u -d "$WINDOW_END_UTC" +%s)"
+          if [ "$now_epoch" -lt "$start_epoch" ] || [ "$now_epoch" -gt "$end_epoch" ]; then
+            echo "Outside the Day 4 live-score window."
+            exit 0
+          fi
+
+          BASE="https://v3.football.api-sports.io"
+          files=(
+            "live-data-ifk-goteborg-degerfors.json"
+            "live-data-brommapojkarna-malmo-ff.json"
+            "live-data-fc-vaduz-st-gallen.json"
+          )
+          home_patterns=(
+            "ifkgoteborg|goteborg"
+            "brommapojkarna|ifbrommapojkarna"
+            "fcvaduz|vaduz"
+          )
+          away_patterns=(
+            "degerfors|degerforsif"
+            "malmoff|malmo"
+            "stgallen|fcstgallen1879|fcstgallen"
+          )
+          fixture_ids=()
+          needs_lookup=false
+
+          for file in "${files[@]}"; do
+            id="$(jq -r '.match.id // empty' "$file" 2>/dev/null || true)"
+            if ! [[ "$id" =~ ^[0-9]+$ ]]; then
+              id=""
+              needs_lookup=true
+            fi
+            fixture_ids+=("$id")
+          done
+
+          if [ "$needs_lookup" = true ]; then
+            curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors --get               -H "x-apisports-key: $API_FOOTBALL_KEY"               --data-urlencode "date=$TARGET_DATE"               --data-urlencode "timezone=UTC"               "$BASE/fixtures" > /tmp/day-fixtures.json
+
+            for i in "${!files[@]}"; do
+              if [[ "${fixture_ids[$i]}" =~ ^[0-9]+$ ]]; then
+                continue
+              fi
+              fixture_ids[$i]="$(jq -r                 --arg home_pattern "${home_patterns[$i]}"                 --arg away_pattern "${away_patterns[$i]}" '
+                  def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+                  [
+                    .response[]?
+                    | select(
+                        ((.teams.home.name | norm) | test($home_pattern))
+                        and
+                        ((.teams.away.name | norm) | test($away_pattern))
+                      )
+                    | .fixture.id
+                  ][0] // empty
+                ' /tmp/day-fixtures.json)"
+            done
+          fi
+
+          valid_ids=()
+          for id in "${fixture_ids[@]}"; do
+            if [[ "$id" =~ ^[0-9]+$ ]]; then
+              valid_ids+=("$id")
+            fi
+          done
+
+          if [ "${#valid_ids[@]}" -eq 0 ]; then
+            echo "None of the selected matches is covered yet; preserving WAITING data."
+            exit 0
+          fi
+
+          joined_ids="$(IFS=-; echo "${valid_ids[*]}")"
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors             -H "x-apisports-key: $API_FOOTBALL_KEY"             "$BASE/fixtures?ids=$joined_ids&timezone=UTC" > /tmp/live-fixtures.json
+
+          fetched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          for i in "${!files[@]}"; do
+            file="${files[$i]}"
+            id="${fixture_ids[$i]}"
+            if ! [[ "$id" =~ ^[0-9]+$ ]]; then
+              echo "Fixture is not covered yet: $file"
+              continue
+            fi
+
+            if ! jq -e --arg id "$id" '.response[]? | select((.fixture.id | tostring) == $id)'               /tmp/live-fixtures.json >/dev/null; then
+              echo "Provider omitted fixture $id; preserving $file"
+              continue
+            fi
+
+            jq -n               --arg id "$id"               --arg fetched_at "$fetched_at"               --slurpfile batch /tmp/live-fixtures.json               --slurpfile old "$file" '
+                ($batch[0].response[] | select((.fixture.id | tostring) == $id)) as $f
+                | ($old[0]) as $o
+                | {
+                    source:"api-football",
+                    fetched_at_utc:$fetched_at,
+                    http_status:200,
+                    match:{
+                      id:($f.fixture.id | tostring),
+                      sport:"football",
+                      league:($f.league.name // $o.match.league),
+                      country:($f.league.country // $o.match.country),
+                      home:{name:$f.teams.home.name,short_name:($o.match.home.short_name // $f.teams.home.name)},
+                      away:{name:$f.teams.away.name,short_name:($o.match.away.short_name // $f.teams.away.name)},
+                      kickoff_utc:($f.fixture.date // $o.match.kickoff_utc),
+                      status:($f.fixture.status.short // $o.match.status),
+                      status_long:($f.fixture.status.long // $o.match.status_long),
+                      elapsed:$f.fixture.status.elapsed,
+                      score:{home:$f.goals.home,away:$f.goals.away},
+                      halftime_score:{home:$f.score.halftime.home,away:$f.score.halftime.away},
+                      fulltime_score:{home:$f.score.fulltime.home,away:$f.score.fulltime.away},
+                      pick:$o.match.pick,
+                      confidence:$o.match.confidence,
+                      predicted_score:$o.match.predicted_score,
+                      stats:$o.match.stats,
+                      events:$o.match.events
+                    },
+                    api_response:{fixture:$f},
+                    stored_response:{
+                      mode:"scheduled-five-minute",
+                      cycle:(($o.stored_response.cycle // 0) + 1),
+                      details_refreshed:false
+                    }
+                  }
+              ' > "$file.tmp"
+            mv "$file.tmp" "$file"
+          done
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${files[@]}"
+
+          if git diff --cached --quiet; then
+            echo "No live-score changes."
+            exit 0
+          fi
+
+          git commit -m "Refresh Day 4 live scores"
+          git pull --rebase origin main
+          git push origin main
