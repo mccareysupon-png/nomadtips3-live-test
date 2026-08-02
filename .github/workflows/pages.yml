@@ -29,6 +29,33 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Apply exact 40 percent visual reduction to heading
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("index.html")
+          text = path.read_text(encoding="utf-8")
+          override = """
+          <style id="live-scores-beta-heading-fix">
+            .v2 {
+              font-size: 9px !important;
+              font-weight: 900 !important;
+              transform: scale(.6);
+              transform-origin: right center;
+            }
+            @media (max-width: 640px) {
+              .v2 { font-size: 7px !important; }
+            }
+          </style>
+          """
+          marker = "</head>"
+          if marker not in text:
+              raise SystemExit("Closing head tag not found")
+          text = text.replace(marker, override + "\n" + marker, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
