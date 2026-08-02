@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/check-main-page-results.yml"
-      - "scripts/fetch_main_page_results.py"
+      - "scripts/fetch_authoritative_results.py"
 
 permissions:
   contents: write
@@ -22,8 +22,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Fetch final results
-        run: python scripts/fetch_main_page_results.py
+      - name: Fetch authoritative final results
+        run: python scripts/fetch_authoritative_results.py
 
       - name: Commit result snapshot
         shell: bash
@@ -36,6 +36,6 @@ jobs:
             echo "No result changes."
             exit 0
           fi
-          git commit -m "Update main page final results"
+          git commit -m "Update authoritative Day 3 results"
           git pull --rebase origin main
           git push origin main
