@@ -1,296 +1,38 @@
-name: Refresh Four Live Test Matches Fast
+name: Central Live Refresh 15-30-60
 
 on:
   workflow_dispatch:
   push:
     paths:
       - ".github/workflows/live-four-test-refresh.yml"
+      - "scripts/live_refresh.py"
   schedule:
-    - cron: "*/5 10-15 3 8 *"
+    - cron: "*/5 10-16 3 8 *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: nomad-four-live-test-fast
+  group: nomad-central-live-refresh
   cancel-in-progress: true
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TARGET_DATE: "2026-08-03"
+      RUN_SECONDS: "285"
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Pull scores, every available statistic, and events
+      - name: Run centralized live-data server loop
         shell: bash
         run: |
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
-
-          python3 - <<'PY'
-          import datetime as dt
-          import json
-          import os
-          import re
-          import time
-          import urllib.parse
-          import urllib.request
-          from pathlib import Path
-
-          API_KEY = os.environ["API_FOOTBALL_KEY"]
-          BASE = "https://v3.football.api-sports.io"
-          TARGET_DATE = "2026-08-03"
-          WINDOW_START = dt.datetime(2026, 8, 3, 10, 30, tzinfo=dt.timezone.utc)
-          WINDOW_END = dt.datetime(2026, 8, 3, 15, 30, tzinfo=dt.timezone.utc)
-          PASSES = 4
-          SLEEP_SECONDS = 55
-
-          MATCHES = [
-              ("live-data-bss-sporting-east-bengal.json", r"bsssporting|bss", r"eastbengal"),
-              ("live-data-inhulets-polissya-ii.json", r"inhulets|ingulets", r"polissyaii|polissya2|polissya"),
-              ("live-data-melbourne-victory-ii-melbourne-srbija.json", r"melbournevictoryii|melbournevictory2", r"melbournesrbija|srbija"),
-              ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
-          ]
-
-          def api_get(path, params=None):
-              query = urllib.parse.urlencode(params or {})
-              url = f"{BASE}{path}" + (f"?{query}" if query else "")
-              req = urllib.request.Request(url, headers={"x-apisports-key": API_KEY})
-              last_error = None
-              for attempt in range(3):
-                  try:
-                      with urllib.request.urlopen(req, timeout=30) as res:
-                          payload = json.load(res)
-                      if payload.get("errors"):
-                          raise RuntimeError(str(payload["errors"]))
-                      return payload
-                  except Exception as exc:
-                      last_error = exc
-                      if attempt < 2:
-                          time.sleep(3)
-              raise last_error
-
-          def norm(value):
-              return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
-
-          def match_fixture(fixtures, home_pat, away_pat):
-              for item in fixtures:
-                  home = norm(item.get("teams", {}).get("home", {}).get("name"))
-                  away = norm(item.get("teams", {}).get("away", {}).get("name"))
-                  if re.search(home_pat, home) and re.search(away_pat, away):
-                      return item
-              return None
-
-          def stat_dict(blocks, team_id):
-              values = {}
-              for block in blocks or []:
-                  if block.get("team", {}).get("id") != team_id:
-                      continue
-                  for stat in block.get("statistics", []):
-                      name = stat.get("type")
-                      if name:
-                          values[name] = stat.get("value")
-              return values
-
-          def first_stat(values, names):
-              for name in names:
-                  if name in values and values[name] is not None:
-                      return values[name]
-              return None
-
-          def old_pair(old_stats, key):
-              pair = old_stats.get(key) or {}
-              return {"home": pair.get("home"), "away": pair.get("away")}
-
-          def merged_pair(old_stats, key, home_values, away_values, aliases):
-              old = old_pair(old_stats, key)
-              home = first_stat(home_values, aliases)
-              away = first_stat(away_values, aliases)
-              return {
-                  "home": old["home"] if home is None else home,
-                  "away": old["away"] if away is None else away,
-              }
-
-          def card_count(events, team_id, detail):
-              return sum(
-                  1 for event in events
-                  if event.get("team", {}).get("id") == team_id
-                  and event.get("type") == "Card"
-                  and event.get("detail") == detail
-              )
-
-          def save_cycle():
-              now = dt.datetime.now(dt.timezone.utc)
-              if not (WINDOW_START <= now <= WINDOW_END):
-                  print("Outside live test window")
-                  return False
-
-              day_payload = api_get("/fixtures", {"date": TARGET_DATE, "timezone": "UTC"})
-              fixtures = day_payload.get("response", [])
-              fetched_at = now.replace(microsecond=0).isoformat().replace("+00:00", "Z")
-              any_changed = False
-
-              for filename, home_pat, away_pat in MATCHES:
-                  path = Path(filename)
-                  old_text = path.read_text(encoding="utf-8")
-                  old = json.loads(old_text)
-                  fixture = match_fixture(fixtures, home_pat, away_pat)
-                  if fixture is None:
-                      print(f"Not covered: {filename}; keeping manual score")
-                      continue
-
-                  fixture_id = fixture.get("fixture", {}).get("id")
-                  old_match = old.get("match", {})
-                  old_stats = old_match.get("stats", {})
-                  old_api = old.get("api_response", {})
-                  cycle = int(old.get("stored_response", {}).get("cycle") or 0) + 1
-
-                  try:
-                      stat_response = api_get("/fixtures/statistics", {"fixture": fixture_id}).get("response", [])
-                  except Exception as exc:
-                      print(f"Stats unavailable for {filename}: {exc}")
-                      stat_response = old_api.get("statistics") or []
-
-                  try:
-                      event_response = api_get("/fixtures/events", {"fixture": fixture_id}).get("response", [])
-                  except Exception as exc:
-                      print(f"Events unavailable for {filename}: {exc}")
-                      event_response = old_api.get("events") or []
-
-                  home_id = fixture.get("teams", {}).get("home", {}).get("id")
-                  away_id = fixture.get("teams", {}).get("away", {}).get("id")
-                  home_values = stat_dict(stat_response, home_id)
-                  away_values = stat_dict(stat_response, away_id)
-
-                  stats = {
-                      "attacks": merged_pair(old_stats, "attacks", home_values, away_values, ["Attacks", "Total Attacks"]),
-                      "dangerous_attacks": merged_pair(old_stats, "dangerous_attacks", home_values, away_values, ["Dangerous Attacks"]),
-                      "expected_goals": merged_pair(old_stats, "expected_goals", home_values, away_values, ["expected_goals", "Expected Goals"]),
-                      "possession": merged_pair(old_stats, "possession", home_values, away_values, ["Ball Possession"]),
-                      "shots": merged_pair(old_stats, "shots", home_values, away_values, ["Total Shots"]),
-                      "shots_on_target": merged_pair(old_stats, "shots_on_target", home_values, away_values, ["Shots on Goal"]),
-                      "shots_off_target": merged_pair(old_stats, "shots_off_target", home_values, away_values, ["Shots off Goal"]),
-                      "blocked_shots": merged_pair(old_stats, "blocked_shots", home_values, away_values, ["Blocked Shots"]),
-                      "shots_inside_box": merged_pair(old_stats, "shots_inside_box", home_values, away_values, ["Shots insidebox", "Shots inside box"]),
-                      "shots_outside_box": merged_pair(old_stats, "shots_outside_box", home_values, away_values, ["Shots outsidebox", "Shots outside box"]),
-                      "corners": merged_pair(old_stats, "corners", home_values, away_values, ["Corner Kicks"]),
-                      "fouls": merged_pair(old_stats, "fouls", home_values, away_values, ["Fouls"]),
-                      "offsides": merged_pair(old_stats, "offsides", home_values, away_values, ["Offsides"]),
-                      "goalkeeper_saves": merged_pair(old_stats, "goalkeeper_saves", home_values, away_values, ["Goalkeeper Saves"]),
-                      "total_passes": merged_pair(old_stats, "total_passes", home_values, away_values, ["Total passes"]),
-                      "accurate_passes": merged_pair(old_stats, "accurate_passes", home_values, away_values, ["Passes accurate"]),
-                      "pass_accuracy": merged_pair(old_stats, "pass_accuracy", home_values, away_values, ["Passes %"]),
-                      "yellow_cards": {
-                          "home": card_count(event_response, home_id, "Yellow Card"),
-                          "away": card_count(event_response, away_id, "Yellow Card"),
-                      },
-                      "red_cards": {
-                          "home": card_count(event_response, home_id, "Red Card"),
-                          "away": card_count(event_response, away_id, "Red Card"),
-                      },
-                      "provider_all": {
-                          "home": home_values,
-                          "away": away_values,
-                      },
-                  }
-
-                  events = [
-                      {
-                          "minute": event.get("time", {}).get("elapsed"),
-                          "extra": event.get("time", {}).get("extra"),
-                          "team": event.get("team", {}).get("name"),
-                          "player": event.get("player", {}).get("name"),
-                          "assist": event.get("assist", {}).get("name"),
-                          "type": event.get("type"),
-                          "detail": event.get("detail"),
-                      }
-                      for event in event_response
-                  ]
-
-                  new_data = {
-                      "source": "api-football",
-                      "fetched_at_utc": fetched_at,
-                      "http_status": 200,
-                      "match": {
-                          "id": str(fixture_id),
-                          "sport": "football",
-                          "league": fixture.get("league", {}).get("name") or old_match.get("league"),
-                          "country": fixture.get("league", {}).get("country") or old_match.get("country"),
-                          "home": {
-                              "name": fixture.get("teams", {}).get("home", {}).get("name") or old_match.get("home", {}).get("name"),
-                              "short_name": old_match.get("home", {}).get("short_name") or fixture.get("teams", {}).get("home", {}).get("name"),
-                          },
-                          "away": {
-                              "name": fixture.get("teams", {}).get("away", {}).get("name") or old_match.get("away", {}).get("name"),
-                              "short_name": old_match.get("away", {}).get("short_name") or fixture.get("teams", {}).get("away", {}).get("name"),
-                          },
-                          "kickoff_utc": fixture.get("fixture", {}).get("date") or old_match.get("kickoff_utc"),
-                          "status": fixture.get("fixture", {}).get("status", {}).get("short") or old_match.get("status"),
-                          "status_long": fixture.get("fixture", {}).get("status", {}).get("long") or old_match.get("status_long"),
-                          "elapsed": fixture.get("fixture", {}).get("status", {}).get("elapsed"),
-                          "score": {
-                              "home": fixture.get("goals", {}).get("home"),
-                              "away": fixture.get("goals", {}).get("away"),
-                          },
-                          "halftime_score": fixture.get("score", {}).get("halftime") or old_match.get("halftime_score"),
-                          "fulltime_score": fixture.get("score", {}).get("fulltime") or old_match.get("fulltime_score"),
-                          "pick": old_match.get("pick"),
-                          "confidence": old_match.get("confidence"),
-                          "predicted_score": old_match.get("predicted_score"),
-                          "stats": stats,
-                          "events": events,
-                      },
-                      "api_response": {
-                          "fixture": fixture,
-                          "statistics": stat_response,
-                          "events": event_response,
-                      },
-                      "stored_response": {
-                          "mode": "fast-live-test",
-                          "cycle": cycle,
-                          "details_refreshed": True,
-                          "provider_stat_names": sorted(set(home_values) | set(away_values)),
-                      },
-                  }
-
-                  rendered = json.dumps(new_data, ensure_ascii=False, indent=2) + "\n"
-                  if rendered != old_text:
-                      path.write_text(rendered, encoding="utf-8")
-                      any_changed = True
-
-              return any_changed
-
-          changed = False
-          for pass_index in range(PASSES):
-              print(f"Live pull {pass_index + 1}/{PASSES}")
-              try:
-                  changed = save_cycle() or changed
-              except Exception as exc:
-                  print(f"Cycle failed: {exc}")
-              if pass_index < PASSES - 1:
-                  time.sleep(SLEEP_SECONDS)
-
-          print("Changed:", changed)
-          PY
-
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add live-data-bss-sporting-east-bengal.json \
-                  live-data-inhulets-polissya-ii.json \
-                  live-data-melbourne-victory-ii-melbourne-srbija.json \
-                  live-data-cambodia-timor-leste.json
-
-          if git diff --cached --quiet; then
-            echo "No provider-backed changes"
-            exit 0
-          fi
-
-          git commit -m "Fast refresh four live test matches"
-          git pull --rebase origin main
-          git push origin main
+          python3 scripts/live_refresh.py
