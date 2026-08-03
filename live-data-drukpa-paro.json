@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T13:55:14Z",
+  "fetched_at_utc": "2026-08-03T13:55:29Z",
   "http_status": 200,
   "match": {
     "id": "1604136",
@@ -16,8 +16,8 @@
       "short_name": "Paro"
     },
     "kickoff_utc": "2026-08-03T12:00:00+00:00",
-    "status": "2H",
-    "status_long": "Second Half",
+    "status": "FT",
+    "status_long": "Match Finished",
     "elapsed": 90,
     "score": {
       "home": 1,
@@ -28,8 +28,8 @@
       "away": 3
     },
     "fulltime_score": {
-      "home": null,
-      "away": null
+      "home": 1,
+      "away": 3
     },
     "pick": "Live System Test",
     "confidence": null,
@@ -182,10 +182,10 @@
           "city": null
         },
         "status": {
-          "long": "Second Half",
-          "short": "2H",
+          "long": "Match Finished",
+          "short": "FT",
           "elapsed": 90,
-          "extra": 6
+          "extra": null
         }
       },
       "league": {
@@ -222,8 +222,8 @@
           "away": 3
         },
         "fulltime": {
-          "home": null,
-          "away": null
+          "home": 1,
+          "away": 3
         },
         "extratime": {
           "home": null,
@@ -470,8 +470,9 @@
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T13:55:14Z",
+    "score_updated_at": "2026-08-03T13:55:29Z",
     "events_updated_at": "2026-08-03T13:54:59Z",
-    "stats_updated_at": "2026-08-03T13:54:59Z"
+    "stats_updated_at": "2026-08-03T13:54:59Z",
+    "stopped_at": "2026-08-03T13:55:29Z"
   }
 }
