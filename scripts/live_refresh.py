@@ -37,7 +37,6 @@ LIVE = {"1H", "HT", "2H", "ET", "BT", "P", "INT", "SUSP", "LIVE"}
 MATCHES = [
     ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
     ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),
-    ("live-data-sjk-hjk-helsinki.json", r"sjk|seinajoki", r"hjkhelsinki|hjk"),
 ]
 
 LIVE_ALIASES = {
