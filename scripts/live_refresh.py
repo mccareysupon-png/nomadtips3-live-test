@@ -35,8 +35,8 @@ TERMINAL = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
 LIVE = {"1H", "HT", "2H", "ET", "BT", "P", "INT", "SUSP", "LIVE"}
 
 MATCHES = [
-    ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
     ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
+    ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),
 ]
 
 LIVE_ALIASES = {
