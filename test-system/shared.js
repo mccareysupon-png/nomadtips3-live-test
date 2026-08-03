@@ -94,7 +94,7 @@ export function resultText(record) {
 }
 
 export function scoreText(record) {
-  return Number.isFinite(Number(record.homeScore)) && Number.isFinite(Number(record.awayScore))
-    ? `${record.homeScore}–${record.awayScore}`
-    : '—';
+  const hasHome = record.homeScore !== null && record.homeScore !== '' && Number.isFinite(Number(record.homeScore));
+  const hasAway = record.awayScore !== null && record.awayScore !== '' && Number.isFinite(Number(record.awayScore));
+  return hasHome && hasAway ? `${record.homeScore}–${record.awayScore}` : '—';
 }
