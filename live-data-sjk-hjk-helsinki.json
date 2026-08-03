@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T16:44:36Z",
+  "fetched_at_utc": "2026-08-03T16:44:51Z",
   "http_status": 200,
   "match": {
     "id": "1495750",
@@ -104,7 +104,7 @@
         "away": null
       },
       "yellow_cards": {
-        "home": 0,
+        "home": 1,
         "away": 0
       },
       "red_cards": {
@@ -116,7 +116,17 @@
         "away": {}
       }
     },
-    "events": []
+    "events": [
+      {
+        "minute": 45,
+        "extra": null,
+        "team": "SJK",
+        "player": "J. Streng",
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      }
+    ]
   },
   "api_response": {
     "fixture": {
@@ -188,7 +198,30 @@
           "away": null
         }
       },
-      "events": [],
+      "events": [
+        {
+          "time": {
+            "elapsed": 45,
+            "extra": null
+          },
+          "team": {
+            "id": 689,
+            "name": "SJK",
+            "logo": "https://media.api-sports.io/football/teams/689.png"
+          },
+          "player": {
+            "id": 55356,
+            "name": "J. Streng"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": "Foul"
+        }
+      ],
       "lineups": [
         {
           "team": {
@@ -604,7 +637,30 @@
       "players": []
     },
     "statistics": [],
-    "events": []
+    "events": [
+      {
+        "time": {
+          "elapsed": 45,
+          "extra": null
+        },
+        "team": {
+          "id": 689,
+          "name": "SJK",
+          "logo": "https://media.api-sports.io/football/teams/689.png"
+        },
+        "player": {
+          "id": 55356,
+          "name": "J. Streng"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": "Foul"
+      }
+    ]
   },
   "stored_response": {
     "mode": "scheduled-five-minute",
@@ -612,8 +668,8 @@
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T16:44:36Z",
-    "events_updated_at": "2026-08-03T16:44:21Z",
-    "stats_updated_at": "2026-08-03T16:43:51Z"
+    "score_updated_at": "2026-08-03T16:44:51Z",
+    "events_updated_at": "2026-08-03T16:44:51Z",
+    "stats_updated_at": "2026-08-03T16:44:51Z"
   }
 }
