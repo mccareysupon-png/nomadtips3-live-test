@@ -1,0 +1,97 @@
+name: Split Manual Set 2 Review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/split-manual-set2-review.yml'
+      - 'manual-set2-candidates-2026-08-04.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: split-manual-set2-review
+  cancel-in-progress: true
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create review index and per-candidate files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, shutil
+          from pathlib import Path
+
+          src=Path('manual-set2-candidates-2026-08-04.json')
+          outdir=Path('manual-set2-review')
+          if outdir.exists(): shutil.rmtree(outdir)
+          outdir.mkdir()
+          data=json.loads(src.read_text(encoding='utf-8'))
+
+          def safe_num(v, default=0.0):
+              try:return float(v)
+              except:return default
+
+          def side_metrics(c, side):
+              opp='away' if side=='home' else 'home'
+              f=c.get(f'{side}_form') or {}; vf=c.get(f'{side}_venue_form') or {}
+              of=c.get(f'{opp}_form') or {}; ovf=c.get(f'{opp}_venue_form') or {}
+              tid=str((c.get(side) or {}).get('id')); oid=str((c.get(opp) or {}).get('id'))
+              st=c.get('standings') or {}; s=st.get(tid) or {}; o=st.get(oid) or {}
+              n=max(1,safe_num(f.get('n'),1)); vn=max(1,safe_num(vf.get('n'),1))
+              on=max(1,safe_num(of.get('n'),1)); ovn=max(1,safe_num(ovf.get('n'),1))
+              recent=(safe_num(f.get('wins'))*3+safe_num(f.get('draws')))/n
+              venue=(safe_num(vf.get('wins'))*3+safe_num(vf.get('draws')))/vn
+              opp_recent=(safe_num(of.get('wins'))*3+safe_num(of.get('draws')))/on
+              opp_venue=(safe_num(ovf.get('wins'))*3+safe_num(ovf.get('draws')))/ovn
+              goal=(safe_num(f.get('gf'))-safe_num(f.get('ga')))/n
+              opp_goal=(safe_num(of.get('gf'))-safe_num(of.get('ga')))/on
+              rank_edge=(safe_num(o.get('rank'))-safe_num(s.get('rank')))/10 if s.get('rank') and o.get('rank') else 0
+              points_edge=(safe_num(s.get('points'))-safe_num(o.get('points')))/20 if s.get('points') is not None and o.get('points') is not None else 0
+              score=(recent-opp_recent)*1.2+(venue-opp_venue)*1.5+(goal-opp_goal)*0.5+rank_edge+points_edge
+              return {'review_score':round(score,3),'recent_ppg':round(recent,3),'venue_ppg':round(venue,3),
+                      'opponent_recent_ppg':round(opp_recent,3),'opponent_venue_ppg':round(opp_venue,3),
+                      'goal_balance':round(goal,3),'opponent_goal_balance':round(opp_goal,3),
+                      'rank':s.get('rank'),'opponent_rank':o.get('rank'),'points':s.get('points'),'opponent_points':o.get('points')}
+
+          index=[]
+          for i,c in enumerate(data.get('candidates') or [],1):
+              sides=[]
+              for side in c.get('plausible_sides') or []:
+                  m=side_metrics(c,side); odds=(c.get('odds_lock') or {}).get(side)
+                  sides.append({'side':side,'team':(c.get(side) or {}).get('name'),'odds':odds,**m})
+              sides.sort(key=lambda x:x['review_score'], reverse=True)
+              slug=f"{i:02d}-{c.get('fixture_id')}"
+              (outdir/f'{slug}.json').write_text(json.dumps(c,ensure_ascii=False,indent=2),encoding='utf-8')
+              index.append({'file':f'manual-set2-review/{slug}.json','fixture_id':c.get('fixture_id'),
+                            'kickoff_utc':c.get('kickoff_utc'),'league':c.get('league'),'country':c.get('country'),
+                            'home':(c.get('home') or {}).get('name'),'away':(c.get('away') or {}).get('name'),
+                            'bookmaker':(c.get('odds_lock') or {}).get('bookmaker'),'sides':sides})
+          index.sort(key=lambda x:max([s['review_score'] for s in x['sides']] or [-999]), reverse=True)
+          (outdir/'index.json').write_text(json.dumps({'generated_at_utc':data.get('generated_at_utc'),
+             'candidate_count':len(index),'note':'review_score orders manual review only; not a pick or confidence',
+             'candidates':index},ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps({'candidate_count':len(index),'files':len(list(outdir.glob('*.json')))}))
+          PY
+
+      - name: Commit review files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-review
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Split Manual Set 2 candidates for review'
+          git pull --rebase origin main
+          git push origin main
