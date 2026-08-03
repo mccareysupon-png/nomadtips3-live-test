@@ -1,0 +1,65 @@
+name: Activate Today's SJK HJK Pick
+
+on:
+  push:
+    paths:
+      - ".github/workflows/add-today-pick-sjk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add SJK HJK to live tracking
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          filename = "live-data-sjk-hjk-helsinki.json"
+          bukovyna_line = '    ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),\n'
+          sjk_line = '    ("live-data-sjk-hjk-helsinki.json", r"sjk|seinajoki", r"hjkhelsinki|hjk"),\n'
+
+          script_path = Path("scripts/live_refresh.py")
+          script = script_path.read_text(encoding="utf-8")
+          if filename not in script:
+              script = script.replace(bukovyna_line, bukovyna_line + sjk_line)
+              script_path.write_text(script, encoding="utf-8")
+
+          manifest_path = Path("live-matches.json")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {"files": []}
+          files = manifest.setdefault("files", [])
+          if filename not in files:
+              files.append(filename)
+          manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+          workflow_path = Path(".github/workflows/live-four-test-refresh.yml")
+          workflow = workflow_path.read_text(encoding="utf-8")
+          marker = '              "live-data-bukovyna-lnz-cherkasy.json",\n'
+          addition = marker + '              "live-data-sjk-hjk-helsinki.json",\n'
+          if '"live-data-sjk-hjk-helsinki.json"' not in workflow:
+              workflow = workflow.replace(marker, addition)
+              workflow = workflow.replace(
+                  'files = ["live-data-drukpa-paro.json", "live-data-bukovyna-lnz-cherkasy.json"]',
+                  'files = ["live-data-drukpa-paro.json", "live-data-bukovyna-lnz-cherkasy.json", "live-data-sjk-hjk-helsinki.json"]'
+              )
+              workflow_path.write_text(workflow, encoding="utf-8")
+          PY
+
+          git add scripts/live_refresh.py live-matches.json .github/workflows/live-four-test-refresh.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "Track SJK vs HJK from Today's Picks"
+            git pull --rebase origin main
+            git push origin main
+          fi
