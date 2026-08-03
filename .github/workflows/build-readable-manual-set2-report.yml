@@ -1,0 +1,99 @@
+name: Build Readable Manual Set 2 Report
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-readable-manual-set2-report.yml'
+      - 'manual-set2-candidates-2026-08-04.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build readable report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          d=json.loads(Path('manual-set2-candidates-2026-08-04.json').read_text(encoding='utf-8'))
+          lines=[]
+          lines.append(f"GENERATED_AT={d.get('generated_at_utc')}")
+          lines.append(f"SCAN_DATE={d.get('scan_date')}")
+          lines.append(f"CANDIDATES={len(d.get('candidates') or [])}")
+          lines.append('')
+
+          def fmt_form(x):
+              x=x or {}
+              return f"N={x.get('n')} W={x.get('wins')} D={x.get('draws')} L={x.get('losses')} GF={x.get('gf')} GA={x.get('ga')}"
+
+          def result_line(x):
+              if not x:return '-'
+              return f"{x.get('date')} | {x.get('home')} {x.get('gf')}-{x.get('ga')} {x.get('away')} | team-result={x.get('result')} venue={x.get('venue')}"
+
+          for i,c in enumerate(d.get('candidates') or [],1):
+              h=c.get('home') or {}; a=c.get('away') or {}; o=c.get('odds_lock') or {}
+              lines.append(f"=== CANDIDATE {i:02d} ===")
+              lines.append(f"FIXTURE_ID={c.get('fixture_id')}")
+              lines.append(f"KICKOFF_UTC={c.get('kickoff_utc')}")
+              lines.append(f"LEAGUE={c.get('country')} | {c.get('league')} | {c.get('round')}")
+              lines.append(f"MATCH={h.get('name')} vs {a.get('name')}")
+              lines.append(f"BOOKMAKER={o.get('bookmaker')}")
+              lines.append(f"ODDS=HOME {o.get('home')} | DRAW {o.get('draw')} | AWAY {o.get('away')}")
+              lines.append(f"PLAUSIBLE_SIDES={','.join(c.get('plausible_sides') or [])}")
+              lines.append(f"HOME_FORM={fmt_form(c.get('home_form'))}")
+              lines.append(f"HOME_AT_HOME={fmt_form(c.get('home_venue_form'))}")
+              lines.append(f"AWAY_FORM={fmt_form(c.get('away_form'))}")
+              lines.append(f"AWAY_AWAY={fmt_form(c.get('away_venue_form'))}")
+              st=c.get('standings') or {}
+              lines.append(f"STANDING_HOME={json.dumps(st.get(str(h.get('id'))) or {},ensure_ascii=False,separators=(',',':'))}")
+              lines.append(f"STANDING_AWAY={json.dumps(st.get(str(a.get('id'))) or {},ensure_ascii=False,separators=(',',':'))}")
+              lines.append('HOME_RECENT:')
+              for x in (c.get('home_recent') or [])[:6]: lines.append('  '+result_line(x))
+              lines.append('HOME_VENUE_RECENT:')
+              for x in (c.get('home_venue_recent') or [])[:5]: lines.append('  '+result_line(x))
+              lines.append('AWAY_RECENT:')
+              for x in (c.get('away_recent') or [])[:6]: lines.append('  '+result_line(x))
+              lines.append('AWAY_VENUE_RECENT:')
+              for x in (c.get('away_venue_recent') or [])[:5]: lines.append('  '+result_line(x))
+              lines.append('COMMON_OPPONENTS:')
+              for co in (c.get('common_opponents') or [])[:8]:
+                  lines.append(f"  OPPONENT={co.get('opponent')} ID={co.get('opponent_id')}")
+                  for x in (co.get('home_team_results') or [])[:2]: lines.append('    HOME_TEAM '+result_line(x))
+                  for x in (co.get('away_team_results') or [])[:2]: lines.append('    AWAY_TEAM '+result_line(x))
+              lines.append('H2H:')
+              for x in (c.get('h2h') or [])[:6]:
+                  lines.append(f"  {x.get('date')} | {x.get('home')} {x.get('home_goals')}-{x.get('away_goals')} {x.get('away')}")
+              lines.append('INJURIES:')
+              if c.get('injuries'):
+                  for x in c.get('injuries')[:20]: lines.append('  '+json.dumps(x,ensure_ascii=False,separators=(',',':')))
+              else: lines.append('  NONE_REPORTED')
+              lines.append('')
+
+          Path('manual-set2-readable-2026-08-04.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print({'lines':len(lines),'candidates':len(d.get('candidates') or [])})
+          PY
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-readable-2026-08-04.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Build readable Manual Set 2 report'
+          git pull --rebase origin main
+          git push origin main
