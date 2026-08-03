@@ -31,7 +31,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure current active matches
+      - name: Configure dynamic live matches
         shell: bash
         run: |
           set -euo pipefail
@@ -42,6 +42,15 @@ jobs:
           import json
           import re
 
+          active_files = [
+              "live-data-cambodia-timor-leste.json",
+              "live-data-drukpa-paro.json",
+          ]
+          Path("live-matches.json").write_text(
+              json.dumps({"files": active_files}, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+
           seed_path = Path("live-data-drukpa-paro.json")
           if not seed_path.exists():
               seed = {
@@ -51,10 +60,10 @@ jobs:
                   "match": {
                       "id": None,
                       "sport": "football",
-                      "league": "Bank of Bhutan Premier League",
+                      "league": "Premier League",
                       "country": "Bhutan",
                       "home": {"name": "Drukpa", "short_name": "Drukpa"},
-                      "away": {"name": "Paro FC", "short_name": "Paro"},
+                      "away": {"name": "Paro", "short_name": "Paro"},
                       "kickoff_utc": "2026-08-03T12:00:00Z",
                       "status": "1H",
                       "status_long": "First Half",
@@ -65,74 +74,114 @@ jobs:
                       "pick": "Live System Test",
                       "confidence": None,
                       "predicted_score": None,
-                      "stats": {
-                          "attacks": {"home": None, "away": None},
-                          "dangerous_attacks": {"home": None, "away": None},
-                          "expected_goals": {"home": None, "away": None},
-                          "possession": {"home": None, "away": None},
-                          "shots": {"home": None, "away": None},
-                          "shots_on_target": {"home": None, "away": None},
-                          "shots_off_target": {"home": None, "away": None},
-                          "blocked_shots": {"home": None, "away": None},
-                          "shots_inside_box": {"home": None, "away": None},
-                          "shots_outside_box": {"home": None, "away": None},
-                          "corners": {"home": None, "away": None},
-                          "fouls": {"home": None, "away": None},
-                          "offsides": {"home": None, "away": None},
-                          "goalkeeper_saves": {"home": None, "away": None},
-                          "total_passes": {"home": None, "away": None},
-                          "accurate_passes": {"home": None, "away": None},
-                          "pass_accuracy": {"home": None, "away": None},
-                          "yellow_cards": {"home": 0, "away": 0},
-                          "red_cards": {"home": 0, "away": 0},
-                          "provider_all": {"home": {}, "away": {}},
-                      },
+                      "stats": {},
                       "events": [],
                   },
                   "api_response": {},
-                  "stored_response": {"mode": "fast-live-test", "cycle": 0, "details_refreshed": False},
-                  "live_meta": {
-                      "score_updated_at": "2026-08-03T12:20:00Z",
-                      "events_updated_at": None,
-                      "stats_updated_at": None,
-                  },
+                  "stored_response": {"mode": "fast-live-test", "cycle": 0},
+                  "live_meta": {"score_updated_at": "2026-08-03T12:20:00Z"},
               }
               seed_path.write_text(json.dumps(seed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
           script_path = Path("scripts/live_refresh.py")
           script = script_path.read_text(encoding="utf-8")
-          matches = '''MATCHES = [
+          match_config = '''MATCHES = [
               ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
               ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
           ]
 
+          LIVE_ALIASES = {
+              "live-data-drukpa-paro.json": ["live-data-bss-sporting-east-bengal.json"],
+          }
+
           '''
-          script = re.sub(r"MATCHES = \[\n.*?\n\]\n\n", matches, script, count=1, flags=re.S)
+          script = re.sub(
+              r"MATCHES = \[\n.*?\n\]\n\n(?:LIVE_ALIASES = \{.*?\}\n\n)?",
+              match_config,
+              script,
+              count=1,
+              flags=re.S,
+          )
+          if "Compatibility alias for already-open browser tabs" not in script:
+              script = script.replace(
+                  '        git_publish(changed_paths, f"Live refresh {timestamp}")',
+                  '''        # Compatibility alias for already-open browser tabs that still know the old file list.
+                  for entry in entries:
+                      for alias_name in LIVE_ALIASES.get(entry["path"].name, []):
+                          alias_path = Path(alias_name)
+                          alias_text = json.dumps(entry["data"], ensure_ascii=False, indent=2) + "\\n"
+                          if not alias_path.exists() or alias_path.read_text(encoding="utf-8") != alias_text:
+                              alias_path.write_text(alias_text, encoding="utf-8")
+                              changed_paths.append(alias_path)
+
+                  manifest_path = Path("live-matches.json")
+                  manifest = {
+                      "files": [
+                          entry["path"].name
+                          for entry in entries
+                          if str(entry["data"].get("match", {}).get("status") or "").upper() not in TERMINAL
+                      ]
+                  }
+                  manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n"
+                  if not manifest_path.exists() or manifest_path.read_text(encoding="utf-8") != manifest_text:
+                      manifest_path.write_text(manifest_text, encoding="utf-8")
+                      changed_paths.append(manifest_path)
+
+                  git_publish(changed_paths, f"Live refresh {timestamp}")'''
+              )
           script_path.write_text(script, encoding="utf-8")
 
           index_path = Path("index.html")
           index = index_path.read_text(encoding="utf-8")
-          sources = '''    const sources=[
-              {file:`${RAW}live-data-cambodia-timor-leste.json`,fallbackSource:'manual-live-seed'},
-              {file:`${RAW}live-data-drukpa-paro.json`,fallbackSource:'manual-live-seed'}
-            ];'''
-          index = re.sub(r"    const sources=\[\n.*?\n    \];", sources, index, count=1, flags=re.S)
-          index = index.replace("LIVE SCORES BETA · 4 MATCHES", "LIVE SCORES BETA · 2 MATCHES")
-          index = index.replace("--lime:#b7f34a", "--yellow:#f2c94c")
-          index = index.replace("var(--lime)", "var(--yellow)")
-          index = index.replace(".tab.active{color:var(--green);background:#202020;box-shadow:inset 0 -2px 0 var(--green)}", ".tab.active{color:var(--yellow);background:#202020;box-shadow:inset 0 -2px 0 var(--yellow)}")
-          index = index.replace(".main-nav a.active{color:var(--green)}", ".main-nav a.active{color:var(--yellow)}")
-          index = index.replace(".fill{height:100%;background:var(--green)}", ".fill{height:100%;background:var(--yellow)}")
-          index = index.replace(
-              "    async function loadOne(root,src){try{const r=await fetch(`${src.file}?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(!data.source)data.source=src.fallbackSource;render(root,data)}catch(e){node(root,'statusPill').textContent='LOAD ERROR';node(root,'statusPill').className='live-pill error';node(root,'updated').textContent=String(e.message||e)}}",
-              "    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}\n    async function loadOne(root,src){try{const r=await fetch(`${src.file}?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(!data.source)data.source=src.fallbackSource;const status=String(data.match?.status||'').toUpperCase();if(['FT','AET','PEN','CANC','ABD','AWD','WO','PST'].includes(status)){root.remove();updateVisibleCount();return}render(root,data)}catch(e){node(root,'statusPill').textContent='LOAD ERROR';node(root,'statusPill').className='live-pill error';node(root,'updated').textContent=String(e.message||e)}}"
+          index = re.sub(
+              r"    const sources=\[\n.*?\n\s*\];",
+              "    const sourceRoots=new Map();",
+              index,
+              count=1,
+              flags=re.S,
+          )
+          dynamic_boot = '''    const host=document.getElementById('matches');
+              function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
+              async function syncSources(){
+                try{
+                  const response=await fetch(`${RAW}live-matches.json?t=${Date.now()}`,{cache:'no-store'});
+                  if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);
+                  const manifest=await response.json();
+                  const files=Array.isArray(manifest.files)?manifest.files:[];
+                  const wanted=new Set(files);
+                  for(const [name,state] of sourceRoots){
+                    if(!wanted.has(name)){
+                      clearInterval(state.loadTimer);clearInterval(state.clockTimer);
+                      state.root.remove();sourceRoots.delete(name);
+                    }
+                  }
+                  for(const name of files){
+                    if(sourceRoots.has(name))continue;
+                    const src={file:`${RAW}${name}`,fallbackSource:'manual-live-seed'};
+                    host.insertAdjacentHTML('beforeend',card(name));
+                    const root=host.lastElementChild;
+                    bindTabs(root);loadOne(root,src);
+                    const loadTimer=setInterval(()=>loadOne(root,src),15000);
+                    const clockTimer=setInterval(()=>refreshClock(root),15000);
+                    sourceRoots.set(name,{root,loadTimer,clockTimer});
+                  }
+                  updateVisibleCount();
+                }catch(error){console.error(error)}
+              }
+              syncSources();setInterval(syncSources,15000);'''
+          index = re.sub(
+              r"    document\.getElementById\('matchCount'\)\.textContent=.*?sources\.forEach\(.*?\);",
+              dynamic_boot,
+              index,
+              count=1,
+              flags=re.S,
           )
           index_path.write_text(index, encoding="utf-8")
           PY
 
-          git add index.html scripts/live_refresh.py live-data-drukpa-paro.json
+          git add index.html scripts/live_refresh.py live-data-drukpa-paro.json live-matches.json
           if ! git diff --cached --quiet; then
-            git commit -m "Activate Drukpa vs Paro live match"
+            git commit -m "Enable dynamic live match manifest"
             git pull --rebase origin main
             git push origin main
           fi
@@ -155,10 +204,7 @@ jobs:
           import json
           from pathlib import Path
           terminal = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
-          files = [
-              "live-data-cambodia-timor-leste.json",
-              "live-data-drukpa-paro.json",
-          ]
+          files = ["live-data-cambodia-timor-leste.json", "live-data-drukpa-paro.json"]
           active = False
           for name in files:
               path = Path(name)
