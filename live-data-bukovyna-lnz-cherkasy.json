@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T13:44:50Z",
+  "fetched_at_utc": "2026-08-03T13:45:05Z",
   "http_status": 200,
   "match": {
     "id": "1565433",
@@ -105,7 +105,7 @@
       },
       "yellow_cards": {
         "home": 0,
-        "away": 0
+        "away": 1
       },
       "red_cards": {
         "home": 0,
@@ -125,6 +125,15 @@
         "assist": "M. Assinor",
         "type": "subst",
         "detail": "Substitution 1"
+      },
+      {
+        "minute": 50,
+        "extra": null,
+        "team": "LNZ Cherkasy",
+        "player": null,
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
       }
     ]
   },
@@ -220,6 +229,28 @@
           "type": "subst",
           "detail": "Substitution 1",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 50,
+            "extra": null
+          },
+          "team": {
+            "id": 17161,
+            "name": "LNZ Cherkasy",
+            "logo": "https://media.api-sports.io/football/teams/17161.png"
+          },
+          "player": {
+            "id": null,
+            "name": null
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -248,6 +279,28 @@
         "type": "subst",
         "detail": "Substitution 1",
         "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 50,
+          "extra": null
+        },
+        "team": {
+          "id": 17161,
+          "name": "LNZ Cherkasy",
+          "logo": "https://media.api-sports.io/football/teams/17161.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": null
       }
     ],
     "statistics": []
@@ -257,8 +310,8 @@
     "cycle": 0
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T13:44:50Z",
-    "events_updated_at": "2026-08-03T13:44:35Z",
-    "stats_updated_at": "2026-08-03T13:44:05Z"
+    "score_updated_at": "2026-08-03T13:45:05Z",
+    "events_updated_at": "2026-08-03T13:45:05Z",
+    "stats_updated_at": "2026-08-03T13:45:05Z"
   }
 }
