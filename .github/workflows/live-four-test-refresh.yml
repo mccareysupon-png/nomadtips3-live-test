@@ -1,11 +1,11 @@
-name: Central Live Refresh 15-30-60
+name: Central Live Refresh V2 15-30-60
 
 on:
   workflow_dispatch:
   push:
     paths:
       - ".github/workflows/live-four-test-refresh.yml"
-      - "scripts/live_refresh.py"
+      - "scripts/live_refresh_v2.py"
       - "live-matches.json"
   schedule:
     - cron: "*/5 10-20 3 8 *"
@@ -32,12 +32,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run centralized live-data server loop
+      - name: Run unified live-data V2 loop
         shell: bash
         run: |
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
-          python3 scripts/live_refresh.py
+          python3 scripts/live_refresh_v2.py
 
       - name: Start next cycle while a match remains active
         if: always()
