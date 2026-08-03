@@ -85,7 +85,7 @@
       <section class="panel active" data-panel="stats"><div class="stat-list" data-k="stats"><div class="empty">Loading statistics</div></div></section>
       <section class="panel" data-panel="timeline"><div class="timeline" data-k="events"><div class="empty">No events yet</div></div></section>
       <section class="pick-row"><div><span>CORE PICK</span><strong data-k="pick">N/A</strong></div><div><span>CONFIDENCE</span><strong data-k="confidence">N/A</strong></div><div><span>PREDICTED</span><strong data-k="predicted">N/A</strong></div></section>
-      <footer class="footer"><span data-k="updated">Not updated yet</span><span>Data refresh: 5 min · Page check: 60 sec</span></footer>
+      <footer class="footer"><span data-k="updated">Not updated yet</span><span>API pull: ~60 sec while live · Page check: 20 sec</span></footer>
     </article>`}
 
     function node(root,key){return root.querySelector(`[data-k="${key}"]`)}
@@ -113,19 +113,25 @@
       if(m.kickoff_utc){const d=new Date(m.kickoff_utc);node(root,'kickoff').textContent=Number.isNaN(d.getTime())?m.kickoff_utc:d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}
       const stats=m.stats||{};
       const html=[
+        statRow('Attacks',s(stats,'attacks','home'),s(stats,'attacks','away')),
+        statRow('Dangerous Attacks',s(stats,'dangerous_attacks','home'),s(stats,'dangerous_attacks','away')),
+        statRow('Expected Goals (xG)',s(stats,'expected_goals','home'),s(stats,'expected_goals','away')),
         statRow('Ball Possession',s(stats,'possession','home'),s(stats,'possession','away')),
         statRow('Total Shots',s(stats,'shots','home'),s(stats,'shots','away')),
         statRow('Shots on Target',s(stats,'shots_on_target','home'),s(stats,'shots_on_target','away')),
+        statRow('Shots off Target',s(stats,'shots_off_target','home'),s(stats,'shots_off_target','away')),
+        statRow('Blocked Shots',s(stats,'blocked_shots','home'),s(stats,'blocked_shots','away')),
+        statRow('Shots Inside Box',s(stats,'shots_inside_box','home'),s(stats,'shots_inside_box','away')),
+        statRow('Shots Outside Box',s(stats,'shots_outside_box','home'),s(stats,'shots_outside_box','away')),
         statRow('Corner Kicks',s(stats,'corners','home'),s(stats,'corners','away')),
         statRow('Fouls',s(stats,'fouls','home'),s(stats,'fouls','away')),
         statRow('Offsides',s(stats,'offsides','home'),s(stats,'offsides','away')),
         statRow('Goalkeeper Saves',s(stats,'goalkeeper_saves','home'),s(stats,'goalkeeper_saves','away')),
         statRow('Total Passes',s(stats,'total_passes','home'),s(stats,'total_passes','away')),
+        statRow('Accurate Passes',s(stats,'accurate_passes','home'),s(stats,'accurate_passes','away')),
         statRow('Pass Accuracy',s(stats,'pass_accuracy','home'),s(stats,'pass_accuracy','away')),
         statRow('Yellow Cards',s(stats,'yellow_cards','home'),s(stats,'yellow_cards','away')),
-        statRow('Red Cards',s(stats,'red_cards','home'),s(stats,'red_cards','away')),
-        statRow('Attacks',s(stats,'attacks','home'),s(stats,'attacks','away')),
-        statRow('Dangerous Attacks',s(stats,'dangerous_attacks','home'),s(stats,'dangerous_attacks','away'))
+        statRow('Red Cards',s(stats,'red_cards','home'),s(stats,'red_cards','away'))
       ].filter(Boolean).join('');
       node(root,'stats').innerHTML=html||'<div class="empty">Statistics will appear when the provider supplies them during the match.</div>';
 
@@ -141,7 +147,7 @@
 
     document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${sources.length} ${sources.length===1?'MATCH':'MATCHES'}`;
     const host=document.getElementById('matches');
-    sources.forEach((src,i)=>{host.insertAdjacentHTML('beforeend',card(i));const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),60000);setInterval(()=>refreshClock(root),15000)});
+    sources.forEach((src,i)=>{host.insertAdjacentHTML('beforeend',card(i));const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),20000);setInterval(()=>refreshClock(root),15000)});
   </script>
 </body>
 </html>
