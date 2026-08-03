@@ -1,0 +1,146 @@
+name: Compact Manual Set 2 Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/compact-manual-set2-scan.yml'
+      - 'manual-set2-scan-2026-08-04.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: compact-manual-set2-scan
+  cancel-in-progress: true
+
+jobs:
+  compact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build compact raw-data report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          src=Path('manual-set2-scan-2026-08-04.json')
+          dst=Path('manual-set2-candidates-2026-08-04.json')
+          data=json.loads(src.read_text(encoding='utf-8'))
+
+          def form_summary(form):
+              if not isinstance(form,dict): return {}
+              return {k:form.get(k) for k in ('n','wins','draws','losses','gf','ga')}
+
+          def compact_match(m):
+              if not isinstance(m,dict): return {}
+              return {k:m.get(k) for k in ('date','league','home','away','gf','ga','result','venue')}
+
+          def common_summary(rows):
+              out=[]
+              for x in rows or []:
+                  hr=x.get('home_team_results') or []
+                  ar=x.get('away_team_results') or []
+                  opponent=None
+                  for group in (hr,ar):
+                      if group and group[0].get('opponent'):
+                          opponent=group[0].get('opponent'); break
+                  out.append({
+                      'opponent_id':x.get('opponent_id'),
+                      'opponent':opponent,
+                      'home_team_results':[compact_match(z) for z in hr[:2]],
+                      'away_team_results':[compact_match(z) for z in ar[:2]],
+                  })
+              return out
+
+          def h2h_summary(rows):
+              out=[]
+              for x in rows or []:
+                  fx=x.get('fixture') or {}; teams=x.get('teams') or {}; goals=x.get('goals') or {}
+                  out.append({
+                      'date':fx.get('date'),
+                      'home':(teams.get('home') or {}).get('name'),
+                      'away':(teams.get('away') or {}).get('name'),
+                      'home_goals':goals.get('home'),'away_goals':goals.get('away')
+                  })
+              return out[:6]
+
+          def injury_summary(rows):
+              out=[]
+              for x in rows or []:
+                  p=x.get('player') or {}; t=x.get('team') or {}
+                  out.append({'team':t.get('name'),'player':p.get('name'),'type':p.get('type'),'reason':p.get('reason')})
+              return out
+
+          def standings_summary(raw, home_id, away_id):
+              out={}
+              try:
+                  groups=(raw[0].get('league') or {}).get('standings') or []
+              except Exception:
+                  groups=[]
+              for group in groups:
+                  for row in group or []:
+                      tid=((row.get('team') or {}).get('id'))
+                      if tid not in (home_id,away_id): continue
+                      out[str(tid)]={
+                          'rank':row.get('rank'),'points':row.get('points'),'goalsDiff':row.get('goalsDiff'),
+                          'form':row.get('form'),'description':row.get('description'),
+                          'all':row.get('all'),'home':row.get('home'),'away':row.get('away')
+                      }
+              return out
+
+          compact=[]
+          for c in data.get('candidates') or []:
+              hid=(c.get('home') or {}).get('id'); aid=(c.get('away') or {}).get('id')
+              compact.append({
+                  'fixture_id':c.get('fixture_id'),'kickoff_utc':c.get('kickoff_utc'),
+                  'league':c.get('league'),'country':c.get('country'),'round':c.get('round'),
+                  'home':c.get('home'),'away':c.get('away'),
+                  'odds_lock':c.get('odds_lock'),'odds_all':c.get('odds_all'),
+                  'plausible_sides':c.get('plausible_sides'),
+                  'home_form':form_summary(c.get('home_form')),
+                  'home_venue_form':form_summary(c.get('home_venue_form')),
+                  'away_form':form_summary(c.get('away_form')),
+                  'away_venue_form':form_summary(c.get('away_venue_form')),
+                  'home_recent':[compact_match(x) for x in (c.get('home_form') or {}).get('matches',[])],
+                  'home_venue_recent':[compact_match(x) for x in (c.get('home_venue_form') or {}).get('matches',[])],
+                  'away_recent':[compact_match(x) for x in (c.get('away_form') or {}).get('matches',[])],
+                  'away_venue_recent':[compact_match(x) for x in (c.get('away_venue_form') or {}).get('matches',[])],
+                  'common_opponents':common_summary(c.get('common_opponents')),
+                  'h2h':h2h_summary(c.get('h2h_raw')),
+                  'injuries':injury_summary(c.get('injuries_raw')),
+                  'standings':standings_summary(c.get('standings_raw'),hid,aid),
+              })
+
+          out={
+              'generated_at_utc':data.get('generated_at_utc'),
+              'scan_date':data.get('scan_date'),
+              'fixture_count':data.get('fixture_count'),
+              'odds_fixture_count':data.get('odds_fixture_count'),
+              'candidate_count':len(compact),
+              'criteria':data.get('criteria'),
+              'candidates':compact,
+          }
+          dst.write_text(json.dumps(out,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
+          print(json.dumps({'output':str(dst),'candidates':len(compact),'bytes':dst.stat().st_size}))
+          PY
+
+      - name: Commit compact report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-candidates-2026-08-04.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Build compact Manual Set 2 candidate report'
+          git pull --rebase origin main
+          git push origin main
