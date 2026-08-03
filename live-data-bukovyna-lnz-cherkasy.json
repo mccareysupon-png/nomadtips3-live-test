@@ -1,9 +1,9 @@
 {
-  "source": "manual-live-seed",
-  "fetched_at_utc": "2026-08-03T12:39:00Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-03T12:40:55Z",
   "http_status": 200,
   "match": {
-    "id": null,
+    "id": "1565433",
     "sport": "football",
     "league": "Premier League",
     "country": "Ukraine",
@@ -15,17 +15,17 @@
       "name": "LNZ Cherkasy",
       "short_name": "LNZ Cherkasy"
     },
-    "kickoff_utc": "2026-08-03T12:30:00Z",
+    "kickoff_utc": "2026-08-03T12:30:00+00:00",
     "status": "1H",
     "status_long": "First Half",
-    "elapsed": 4,
+    "elapsed": 6,
     "score": {
       "home": 0,
       "away": 0
     },
     "halftime_score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 0
     },
     "fulltime_score": {
       "home": null,
@@ -34,15 +34,175 @@
     "pick": "Live System Test",
     "confidence": null,
     "predicted_score": null,
-    "stats": {},
+    "stats": {
+      "attacks": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      },
+      "expected_goals": {
+        "home": null,
+        "away": null
+      },
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "shots_off_target": {
+        "home": null,
+        "away": null
+      },
+      "blocked_shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_inside_box": {
+        "home": null,
+        "away": null
+      },
+      "shots_outside_box": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "fouls": {
+        "home": null,
+        "away": null
+      },
+      "offsides": {
+        "home": null,
+        "away": null
+      },
+      "goalkeeper_saves": {
+        "home": null,
+        "away": null
+      },
+      "total_passes": {
+        "home": null,
+        "away": null
+      },
+      "accurate_passes": {
+        "home": null,
+        "away": null
+      },
+      "pass_accuracy": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "red_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "provider_all": {
+        "home": {},
+        "away": {}
+      }
+    },
     "events": []
   },
-  "api_response": {},
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1565433,
+        "referee": "M. Kozyryatskiy",
+        "timezone": "UTC",
+        "date": "2026-08-03T12:30:00+00:00",
+        "timestamp": 1785760200,
+        "periods": {
+          "first": 1785760200,
+          "second": null
+        },
+        "venue": {
+          "id": null,
+          "name": "Bukovyna Stadium",
+          "city": "Chernivtsi"
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 6,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 333,
+        "name": "Premier League",
+        "country": "Ukraine",
+        "logo": "https://media.api-sports.io/football/leagues/333.png",
+        "flag": "https://media.api-sports.io/flags/ua.svg",
+        "season": 2026,
+        "round": "Regular Season - 1",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 6486,
+          "name": "Bukovyna",
+          "logo": "https://media.api-sports.io/football/teams/6486.png",
+          "winner": null
+        },
+        "away": {
+          "id": 17161,
+          "name": "LNZ Cherkasy",
+          "logo": "https://media.api-sports.io/football/teams/17161.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 0
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 0
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": [],
+      "lineups": [],
+      "statistics": [],
+      "players": []
+    },
+    "events": [],
+    "statistics": []
+  },
   "stored_response": {
     "mode": "fast-live-test",
     "cycle": 0
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T12:39:00Z"
+    "score_updated_at": "2026-08-03T12:40:55Z",
+    "events_updated_at": "2026-08-03T12:40:55Z",
+    "stats_updated_at": "2026-08-03T12:40:55Z"
   }
 }
