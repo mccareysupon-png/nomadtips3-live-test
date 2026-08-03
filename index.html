@@ -85,7 +85,7 @@
       <section class="panel active" data-panel="stats"><div class="stat-list" data-k="stats"><div class="empty">Loading statistics</div></div></section>
       <section class="panel" data-panel="timeline"><div class="timeline" data-k="events"><div class="empty">No events yet</div></div></section>
       <section class="pick-row"><div><span>CORE PICK</span><strong data-k="pick">N/A</strong></div><div><span>CONFIDENCE</span><strong data-k="confidence">N/A</strong></div><div><span>PREDICTED</span><strong data-k="predicted">N/A</strong></div></section>
-      <footer class="footer"><span data-k="updated">Not updated yet</span><span>API pull: ~60 sec while live · Page check: 20 sec</span></footer>
+      <footer class="footer"><span data-k="updated">Not updated yet</span><span>Score 15 sec · Events 30 sec · Stats 60 sec · Central server</span></footer>
     </article>`}
 
     function node(root,key){return root.querySelector(`[data-k="${key}"]`)}
@@ -147,7 +147,7 @@
 
     document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${sources.length} ${sources.length===1?'MATCH':'MATCHES'}`;
     const host=document.getElementById('matches');
-    sources.forEach((src,i)=>{host.insertAdjacentHTML('beforeend',card(i));const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),20000);setInterval(()=>refreshClock(root),15000)});
+    sources.forEach((src,i)=>{host.insertAdjacentHTML('beforeend',card(i));const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),15000);setInterval(()=>refreshClock(root),15000)});
   </script>
 </body>
 </html>
