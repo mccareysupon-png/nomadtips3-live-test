@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T17:13:23Z",
+  "fetched_at_utc": "2026-08-03T17:13:38Z",
   "http_status": 200,
   "match": {
     "id": "1495750",
@@ -20,7 +20,7 @@
     "status_long": "Second Half",
     "elapsed": 56,
     "score": {
-      "home": 0,
+      "home": 1,
       "away": 0
     },
     "halftime_score": {
@@ -125,6 +125,15 @@
         "assist": null,
         "type": "Card",
         "detail": "Yellow Card"
+      },
+      {
+        "minute": 56,
+        "extra": null,
+        "team": "SJK",
+        "player": "Kelwin",
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
       }
     ]
   },
@@ -167,17 +176,17 @@
           "id": 689,
           "name": "SJK",
           "logo": "https://media.api-sports.io/football/teams/689.png",
-          "winner": null
+          "winner": true
         },
         "away": {
           "id": 649,
           "name": "HJK Helsinki",
           "logo": "https://media.api-sports.io/football/teams/649.png",
-          "winner": null
+          "winner": false
         }
       },
       "goals": {
-        "home": 0,
+        "home": 1,
         "away": 0
       },
       "score": {
@@ -220,6 +229,28 @@
           "type": "Card",
           "detail": "Yellow Card",
           "comments": "Foul"
+        },
+        {
+          "time": {
+            "elapsed": 56,
+            "extra": null
+          },
+          "team": {
+            "id": 689,
+            "name": "SJK",
+            "logo": "https://media.api-sports.io/football/teams/689.png"
+          },
+          "player": {
+            "id": 519808,
+            "name": "Kelwin"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
         }
       ],
       "lineups": [
@@ -659,6 +690,28 @@
         "type": "Card",
         "detail": "Yellow Card",
         "comments": "Foul"
+      },
+      {
+        "time": {
+          "elapsed": 56,
+          "extra": null
+        },
+        "team": {
+          "id": 689,
+          "name": "SJK",
+          "logo": "https://media.api-sports.io/football/teams/689.png"
+        },
+        "player": {
+          "id": 519808,
+          "name": "Kelwin"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
       }
     ]
   },
@@ -668,8 +721,8 @@
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T17:13:23Z",
-    "events_updated_at": "2026-08-03T17:13:08Z",
-    "stats_updated_at": "2026-08-03T17:12:38Z"
+    "score_updated_at": "2026-08-03T17:13:38Z",
+    "events_updated_at": "2026-08-03T17:13:38Z",
+    "stats_updated_at": "2026-08-03T17:13:38Z"
   }
 }
