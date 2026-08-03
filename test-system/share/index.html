@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#07543c">
+  <title>NOMADTIPS3 Test System — Share Poster</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../">nomad<b>tips3</b></a>
+    <span class="environment">TEST SHARE POSTER · DRAFT STORE</span>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">SAME RECORD · SAME PICKS</span>
+        <h1>Share Poster</h1>
+        <p>โปสเตอร์ทดสอบนี้อ่านคู่จาก Draft Store ชุดเดียวกับ Today’s Picks และ Statistics</p>
+      </div>
+      <div class="hero-actions"><a class="button primary" href="../../nomad-control/?draft-owner=1">Open NOMAD Control</a></div>
+    </section>
+
+    <div class="share-actions">
+      <button id="copyButton" class="button primary">Copy Share Text</button>
+      <button id="shareButton" class="button yellow">Open Share Sheet</button>
+      <button id="printButton" class="button">Print / Save PDF</button>
+    </div>
+
+    <section id="poster" class="poster">
+      <div class="poster-head">
+        <span class="eyebrow">NOMADTIPS3 VERSION 2 · TEST SYSTEM</span>
+        <h1>Today's <b id="posterCount">7</b> Picks</h1>
+        <p id="posterDate">DRAFT STORE · TEST DATA ONLY</p>
+      </div>
+      <div id="posterList" class="poster-list"></div>
+      <div class="poster-foot"><span>Manual Set 2 Test Environment</span><span id="posterAccuracy">Accuracy 0.00%</span></div>
+    </section>
+  </main>
+
+  <nav class="main-nav" aria-label="Test system navigation">
+    <a href="../">Today's 7 Picks</a>
+    <a href="../stats/">Statistics</a>
+    <a class="active" href="./">Share Poster</a>
+    <a href="../../">Live Test</a>
+    <a href="../../nomad-control/?draft-owner=1">NOMAD Control</a>
+  </nav>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
