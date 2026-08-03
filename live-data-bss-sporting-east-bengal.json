@@ -1,41 +1,358 @@
 {
-  "source": "manual-live-seed",
-  "fetched_at_utc": "2026-08-03T10:49:00Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-03T11:38:36Z",
   "http_status": 200,
   "match": {
-    "id": null,
+    "id": "1610881",
     "sport": "football",
     "league": "Calcutta Premier Division",
     "country": "India",
-    "home": {"name": "BSS Sporting", "short_name": "BSS Sporting"},
-    "away": {"name": "East Bengal", "short_name": "East Bengal"},
-    "kickoff_utc": "2026-08-03T10:04:00Z",
-    "status": "1H",
-    "status_long": "First Half",
-    "elapsed": 45,
-    "score": {"home": 2, "away": 1},
-    "halftime_score": {"home": null, "away": null},
-    "fulltime_score": {"home": null, "away": null},
+    "home": {
+      "name": "BSS Sporting",
+      "short_name": "BSS Sporting"
+    },
+    "away": {
+      "name": "East Bengal",
+      "short_name": "East Bengal"
+    },
+    "kickoff_utc": "2026-08-03T09:30:00+00:00",
+    "status": "2H",
+    "status_long": "Second Half",
+    "elapsed": 77,
+    "score": {
+      "home": 3,
+      "away": 2
+    },
+    "halftime_score": {
+      "home": 2,
+      "away": 1
+    },
+    "fulltime_score": {
+      "home": null,
+      "away": null
+    },
     "pick": "Live System Test",
     "confidence": null,
     "predicted_score": null,
     "stats": {
-      "possession": {"home": null, "away": null},
-      "shots": {"home": null, "away": null},
-      "shots_on_target": {"home": null, "away": null},
-      "corners": {"home": null, "away": null},
-      "fouls": {"home": null, "away": null},
-      "offsides": {"home": null, "away": null},
-      "goalkeeper_saves": {"home": null, "away": null},
-      "total_passes": {"home": null, "away": null},
-      "pass_accuracy": {"home": null, "away": null},
-      "yellow_cards": {"home": null, "away": null},
-      "red_cards": {"home": null, "away": null},
-      "attacks": {"home": null, "away": null},
-      "dangerous_attacks": {"home": null, "away": null}
+      "attacks": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      },
+      "expected_goals": {
+        "home": null,
+        "away": null
+      },
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "shots_off_target": {
+        "home": null,
+        "away": null
+      },
+      "blocked_shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_inside_box": {
+        "home": null,
+        "away": null
+      },
+      "shots_outside_box": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "fouls": {
+        "home": null,
+        "away": null
+      },
+      "offsides": {
+        "home": null,
+        "away": null
+      },
+      "goalkeeper_saves": {
+        "home": null,
+        "away": null
+      },
+      "total_passes": {
+        "home": null,
+        "away": null
+      },
+      "accurate_passes": {
+        "home": null,
+        "away": null
+      },
+      "pass_accuracy": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "red_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "provider_all": {
+        "home": {},
+        "away": {}
+      }
     },
-    "events": []
+    "events": [
+      {
+        "minute": 5,
+        "extra": null,
+        "team": "BSS Sporting",
+        "player": null,
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 31,
+        "extra": null,
+        "team": "East Bengal",
+        "player": null,
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 37,
+        "extra": null,
+        "team": "BSS Sporting",
+        "player": null,
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 47,
+        "extra": null,
+        "team": "BSS Sporting",
+        "player": null,
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 63,
+        "extra": null,
+        "team": "East Bengal",
+        "player": null,
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      }
+    ]
   },
-  "api_response": {"fixture": null, "statistics": null, "events": null},
-  "stored_response": {"mode": "scheduled-five-minute", "cycle": 0, "details_refreshed": false}
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1610881,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-03T09:30:00+00:00",
+        "timestamp": 1785749400,
+        "periods": {
+          "first": 1785749400,
+          "second": 1785753000
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "Second Half",
+          "short": "2H",
+          "elapsed": 77,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 1020,
+        "name": "Calcutta Premier Division",
+        "country": "India",
+        "logo": "https://media.api-sports.io/football/leagues/1020.png",
+        "flag": "https://media.api-sports.io/flags/in.svg",
+        "season": 2026,
+        "round": "Regular season",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 21597,
+          "name": "BSS Sporting",
+          "logo": "https://media.api-sports.io/football/teams/21597.png",
+          "winner": true
+        },
+        "away": {
+          "id": 3463,
+          "name": "East Bengal",
+          "logo": "https://media.api-sports.io/football/teams/3463.png",
+          "winner": false
+        }
+      },
+      "goals": {
+        "home": 3,
+        "away": 2
+      },
+      "score": {
+        "halftime": {
+          "home": 2,
+          "away": 1
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      }
+    },
+    "statistics": [],
+    "events": [
+      {
+        "time": {
+          "elapsed": 5,
+          "extra": null
+        },
+        "team": {
+          "id": 21597,
+          "name": "BSS Sporting",
+          "logo": "https://media.api-sports.io/football/teams/21597.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 31,
+          "extra": null
+        },
+        "team": {
+          "id": 3463,
+          "name": "East Bengal",
+          "logo": "https://media.api-sports.io/football/teams/3463.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 37,
+          "extra": null
+        },
+        "team": {
+          "id": 21597,
+          "name": "BSS Sporting",
+          "logo": "https://media.api-sports.io/football/teams/21597.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 47,
+          "extra": null
+        },
+        "team": {
+          "id": 21597,
+          "name": "BSS Sporting",
+          "logo": "https://media.api-sports.io/football/teams/21597.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 63,
+          "extra": null
+        },
+        "team": {
+          "id": 3463,
+          "name": "East Bengal",
+          "logo": "https://media.api-sports.io/football/teams/3463.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      }
+    ]
+  },
+  "stored_response": {
+    "mode": "fast-live-test",
+    "cycle": 4,
+    "details_refreshed": true,
+    "provider_stat_names": []
+  }
 }

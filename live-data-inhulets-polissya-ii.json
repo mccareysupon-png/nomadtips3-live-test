@@ -1,41 +1,451 @@
 {
-  "source": "manual-live-seed",
-  "fetched_at_utc": "2026-08-03T10:49:00Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-03T11:38:36Z",
   "http_status": 200,
   "match": {
-    "id": null,
+    "id": "1581859",
     "sport": "football",
     "league": "Persha Liga",
     "country": "Ukraine",
-    "home": {"name": "Inhulets", "short_name": "Inhulets"},
-    "away": {"name": "Polissya II", "short_name": "Polissya II"},
-    "kickoff_utc": "2026-08-03T10:05:00Z",
-    "status": "1H",
-    "status_long": "First Half",
-    "elapsed": 44,
-    "score": {"home": 1, "away": 0},
-    "halftime_score": {"home": null, "away": null},
-    "fulltime_score": {"home": null, "away": null},
+    "home": {
+      "name": "Inhulets",
+      "short_name": "Inhulets"
+    },
+    "away": {
+      "name": "Polissya II",
+      "short_name": "Polissya II"
+    },
+    "kickoff_utc": "2026-08-03T10:00:00+00:00",
+    "status": "2H",
+    "status_long": "Second Half",
+    "elapsed": 74,
+    "score": {
+      "home": 1,
+      "away": 1
+    },
+    "halftime_score": {
+      "home": 1,
+      "away": 1
+    },
+    "fulltime_score": {
+      "home": null,
+      "away": null
+    },
     "pick": "Live System Test",
     "confidence": null,
     "predicted_score": null,
     "stats": {
-      "possession": {"home": null, "away": null},
-      "shots": {"home": null, "away": null},
-      "shots_on_target": {"home": null, "away": null},
-      "corners": {"home": null, "away": null},
-      "fouls": {"home": null, "away": null},
-      "offsides": {"home": null, "away": null},
-      "goalkeeper_saves": {"home": null, "away": null},
-      "total_passes": {"home": null, "away": null},
-      "pass_accuracy": {"home": null, "away": null},
-      "yellow_cards": {"home": null, "away": null},
-      "red_cards": {"home": null, "away": null},
-      "attacks": {"home": null, "away": null},
-      "dangerous_attacks": {"home": null, "away": null}
+      "attacks": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      },
+      "expected_goals": {
+        "home": null,
+        "away": null
+      },
+      "possession": {
+        "home": null,
+        "away": null
+      },
+      "shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_on_target": {
+        "home": null,
+        "away": null
+      },
+      "shots_off_target": {
+        "home": null,
+        "away": null
+      },
+      "blocked_shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_inside_box": {
+        "home": null,
+        "away": null
+      },
+      "shots_outside_box": {
+        "home": null,
+        "away": null
+      },
+      "corners": {
+        "home": null,
+        "away": null
+      },
+      "fouls": {
+        "home": null,
+        "away": null
+      },
+      "offsides": {
+        "home": null,
+        "away": null
+      },
+      "goalkeeper_saves": {
+        "home": null,
+        "away": null
+      },
+      "total_passes": {
+        "home": null,
+        "away": null
+      },
+      "accurate_passes": {
+        "home": null,
+        "away": null
+      },
+      "pass_accuracy": {
+        "home": null,
+        "away": null
+      },
+      "yellow_cards": {
+        "home": 2,
+        "away": 2
+      },
+      "red_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "provider_all": {
+        "home": {},
+        "away": {}
+      }
     },
-    "events": []
+    "events": [
+      {
+        "minute": 3,
+        "extra": null,
+        "team": "Inhulets",
+        "player": "O. Yevtushenko",
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 15,
+        "extra": null,
+        "team": "Polissya II",
+        "player": null,
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      },
+      {
+        "minute": 21,
+        "extra": null,
+        "team": "Polissya II",
+        "player": "Y. Karaman",
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      },
+      {
+        "minute": 45,
+        "extra": null,
+        "team": "Inhulets",
+        "player": "A. Benedyuk",
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      },
+      {
+        "minute": 45,
+        "extra": 1,
+        "team": "Polissya II",
+        "player": "O. Avramenko",
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      },
+      {
+        "minute": 56,
+        "extra": null,
+        "team": "Inhulets",
+        "player": "V. Dubiley",
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      },
+      {
+        "minute": 62,
+        "extra": null,
+        "team": "Inhulets",
+        "player": "D. Tuzenko",
+        "assist": "S. Ursolov",
+        "type": "subst",
+        "detail": "Substitution 1"
+      },
+      {
+        "minute": 62,
+        "extra": null,
+        "team": "Inhulets",
+        "player": "B. Mogylnyi",
+        "assist": "T. Khussin",
+        "type": "subst",
+        "detail": "Substitution 2"
+      }
+    ]
   },
-  "api_response": {"fixture": null, "statistics": null, "events": null},
-  "stored_response": {"mode": "scheduled-five-minute", "cycle": 0, "details_refreshed": false}
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1581859,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-03T10:00:00+00:00",
+        "timestamp": 1785751200,
+        "periods": {
+          "first": 1785751200,
+          "second": 1785754800
+        },
+        "venue": {
+          "id": null,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "Second Half",
+          "short": "2H",
+          "elapsed": 74,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 334,
+        "name": "Persha Liga",
+        "country": "Ukraine",
+        "logo": "https://media.api-sports.io/football/leagues/334.png",
+        "flag": "https://media.api-sports.io/flags/ua.svg",
+        "season": 2026,
+        "round": "Regular Season - 2",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png",
+          "winner": null
+        },
+        "away": {
+          "id": 24589,
+          "name": "Polissya II",
+          "logo": "https://media.api-sports.io/football/teams/24589.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": 1,
+        "away": 1
+      },
+      "score": {
+        "halftime": {
+          "home": 1,
+          "away": 1
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      }
+    },
+    "statistics": [],
+    "events": [
+      {
+        "time": {
+          "elapsed": 3,
+          "extra": null
+        },
+        "team": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png"
+        },
+        "player": {
+          "id": 547228,
+          "name": "O. Yevtushenko"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 15,
+          "extra": null
+        },
+        "team": {
+          "id": 24589,
+          "name": "Polissya II",
+          "logo": "https://media.api-sports.io/football/teams/24589.png"
+        },
+        "player": {
+          "id": null,
+          "name": null
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 21,
+          "extra": null
+        },
+        "team": {
+          "id": 24589,
+          "name": "Polissya II",
+          "logo": "https://media.api-sports.io/football/teams/24589.png"
+        },
+        "player": {
+          "id": 478932,
+          "name": "Y. Karaman"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 45,
+          "extra": null
+        },
+        "team": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png"
+        },
+        "player": {
+          "id": 335038,
+          "name": "A. Benedyuk"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 45,
+          "extra": 1
+        },
+        "team": {
+          "id": 24589,
+          "name": "Polissya II",
+          "logo": "https://media.api-sports.io/football/teams/24589.png"
+        },
+        "player": {
+          "id": 458525,
+          "name": "O. Avramenko"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 56,
+          "extra": null
+        },
+        "team": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png"
+        },
+        "player": {
+          "id": 333297,
+          "name": "V. Dubiley"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Card",
+        "detail": "Yellow Card",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 62,
+          "extra": null
+        },
+        "team": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png"
+        },
+        "player": {
+          "id": 547088,
+          "name": "D. Tuzenko"
+        },
+        "assist": {
+          "id": 645143,
+          "name": "S. Ursolov"
+        },
+        "type": "subst",
+        "detail": "Substitution 1",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 62,
+          "extra": null
+        },
+        "team": {
+          "id": 3625,
+          "name": "Inhulets",
+          "logo": "https://media.api-sports.io/football/teams/3625.png"
+        },
+        "player": {
+          "id": 130948,
+          "name": "B. Mogylnyi"
+        },
+        "assist": {
+          "id": 570157,
+          "name": "T. Khussin"
+        },
+        "type": "subst",
+        "detail": "Substitution 2",
+        "comments": null
+      }
+    ]
+  },
+  "stored_response": {
+    "mode": "fast-live-test",
+    "cycle": 4,
+    "details_refreshed": true,
+    "provider_stat_names": []
+  }
 }
