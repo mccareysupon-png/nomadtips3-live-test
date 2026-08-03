@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#07543c">
+  <title>NOMADTIPS3 Test System — Today's 7 Picks</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./">nomad<b>tips3</b></a>
+    <span class="environment">TEST SYSTEM · DRAFT STORE</span>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">NOMADTIPS3 VERSION 2 · TEST ENVIRONMENT</span>
+        <h1>Today's 7 Picks</h1>
+        <p>หน้าเว็บทดสอบที่อ่านข้อมูลจาก Draft Store เดียวกับ NOMAD Control ในเบราว์เซอร์เครื่องนี้ ไม่แตะเว็บไซต์หลักและไม่วิเคราะห์คู่จริง</p>
+      </div>
+      <div class="hero-actions">
+        <a class="button primary" href="../nomad-control/?draft-owner=1">Open NOMAD Control</a>
+        <a class="button yellow" href="../">Open Live Test</a>
+      </div>
+    </section>
+
+    <section class="summary" aria-label="Daily summary">
+      <div class="metric"><small>Total Picks</small><b id="total">7</b></div>
+      <div class="metric"><small>Correct</small><b id="correct">0</b></div>
+      <div class="metric"><small>Incorrect</small><b id="incorrect">0</b></div>
+      <div class="metric"><small>Void</small><b id="voids">0</b></div>
+      <div class="metric"><small>Waiting</small><b id="pending">7</b></div>
+      <div class="metric"><small>Accuracy</small><b id="accuracy">0.00%</b></div>
+    </section>
+
+    <div class="section-head">
+      <h2>Manual Set 2 — Test Picks</h2>
+      <span id="sourceNote">Loading Draft Store…</span>
+    </div>
+    <section id="pickGrid" class="pick-grid"></section>
+  </main>
+
+  <nav class="main-nav" aria-label="Test system navigation">
+    <a class="active" href="./">Today's 7 Picks</a>
+    <a href="./stats/">Statistics</a>
+    <a href="./share/">Share Poster</a>
+    <a href="../">Live Test</a>
+    <a href="../nomad-control/?draft-owner=1">NOMAD Control</a>
+  </nav>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
