@@ -1,0 +1,212 @@
+name: Manual Set 2 Daily Scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/manual-set2-daily-scan.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-set2-daily-scan
+  cancel-in-progress: true
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      SCAN_DATE: '2026-08-04'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan fixtures, odds and raw form data
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          python3 - <<'PY'
+          import json, os, time, urllib.parse, urllib.request
+          from collections import defaultdict
+          from datetime import datetime, timezone, timedelta
+
+          KEY=os.environ['API_FOOTBALL_KEY']
+          BASE='https://v3.football.api-sports.io'
+          SCAN_DATE=os.environ.get('SCAN_DATE','2026-08-04')
+          OUT=f'manual-set2-scan-{SCAN_DATE}.json'
+          headers={'x-apisports-key':KEY}
+
+          def api(path, params=None, tries=4):
+              url=BASE+path
+              if params:
+                  url += '?' + urllib.parse.urlencode(params)
+              last=None
+              for attempt in range(tries):
+                  try:
+                      req=urllib.request.Request(url, headers=headers)
+                      with urllib.request.urlopen(req, timeout=45) as r:
+                          data=json.load(r)
+                      if data.get('errors'):
+                          raise RuntimeError(str(data['errors']))
+                      return data
+                  except Exception as e:
+                      last=e
+                      time.sleep(2+attempt*2)
+              raise last
+
+          def all_pages(path, params):
+              first=api(path,{**params,'page':1})
+              rows=list(first.get('response') or [])
+              total=int((first.get('paging') or {}).get('total') or 1)
+              for page in range(2,total+1):
+                  rows.extend(api(path,{**params,'page':page}).get('response') or [])
+              return rows
+
+          now=datetime.now(timezone.utc)
+          window_end=now+timedelta(hours=34)
+          dates=[SCAN_DATE,(datetime.fromisoformat(SCAN_DATE)+timedelta(days=1)).date().isoformat()]
+
+          fixtures=[]
+          for d in dates:
+              fixtures.extend(api('/fixtures',{'date':d,'timezone':'UTC'}).get('response') or [])
+
+          odds_rows=[]
+          for d in dates:
+              odds_rows.extend(all_pages('/odds',{'date':d,'timezone':'UTC'}))
+
+          odds_by_fixture={}
+          for row in odds_rows:
+              fid=(row.get('fixture') or {}).get('id')
+              books=[]
+              for b in row.get('bookmakers') or []:
+                  for bet in b.get('bets') or []:
+                      name=(bet.get('name') or '').lower()
+                      if name not in ('match winner','match result','1x2'):
+                          continue
+                      vals={str(v.get('value')):v.get('odd') for v in (bet.get('values') or [])}
+                      home=vals.get('Home') or vals.get('1')
+                      draw=vals.get('Draw') or vals.get('X')
+                      away=vals.get('Away') or vals.get('2')
+                      if home and draw and away:
+                          try:
+                              books.append({'bookmaker':b.get('name'),'home':float(home),'draw':float(draw),'away':float(away)})
+                          except Exception:
+                              pass
+              if books:
+                  odds_by_fixture[fid]=books
+
+          preferred=['Bet365','Pinnacle','Unibet','Betfair','1xBet','Marathonbet','William Hill']
+          def lock_odds(books):
+              if not books:return None
+              for p in preferred:
+                  for b in books:
+                      if (b.get('bookmaker') or '').lower()==p.lower():
+                          return b
+              books=sorted(books,key=lambda x:x.get('bookmaker') or '')
+              return books[0]
+
+          def norm_fixture(f, team_id):
+              fx=f.get('fixture') or {}; lg=f.get('league') or {}; teams=f.get('teams') or {}; goals=f.get('goals') or {}
+              home=(teams.get('home') or {}); away=(teams.get('away') or {})
+              is_home=home.get('id')==team_id
+              gf=goals.get('home') if is_home else goals.get('away')
+              ga=goals.get('away') if is_home else goals.get('home')
+              winner=(home if is_home else away).get('winner')
+              if winner is True: result='W'
+              elif winner is False: result='L'
+              elif gf is not None and ga is not None and gf==ga: result='D'
+              else: result='?'
+              return {'date':fx.get('date'),'league':lg.get('name'),'league_id':lg.get('id'),'season':lg.get('season'),
+                      'home_id':home.get('id'),'home':home.get('name'),'away_id':away.get('id'),'away':away.get('name'),
+                      'gf':gf,'ga':ga,'result':result,'venue':'home' if is_home else 'away'}
+
+          candidates=[]
+          for f in fixtures:
+              fx=f.get('fixture') or {}; status=(fx.get('status') or {}).get('short')
+              if status not in ('NS','TBD'):
+                  continue
+              try: kickoff=datetime.fromisoformat(fx['date'].replace('Z','+00:00'))
+              except Exception: continue
+              if kickoff < now-timedelta(hours=1) or kickoff > window_end:
+                  continue
+              fid=fx.get('id'); books=odds_by_fixture.get(fid) or []; lock=lock_odds(books)
+              if not lock: continue
+              # A side must meet the fixed Manual Set 2 price floor and remain a plausible favourite/value side.
+              plausible=[]
+              if 1.70 <= lock['home'] <= 2.60: plausible.append('home')
+              if 1.70 <= lock['away'] <= 2.60: plausible.append('away')
+              if not plausible: continue
+              teams=f.get('teams') or {}; lg=f.get('league') or {}
+              candidates.append({'fixture_id':fid,'kickoff_utc':fx.get('date'),'status':status,
+                  'league':lg.get('name'),'country':lg.get('country'),'league_id':lg.get('id'),'season':lg.get('season'),
+                  'round':lg.get('round'),'home':teams.get('home'),'away':teams.get('away'),
+                  'odds_lock':lock,'odds_all':books,'plausible_sides':plausible})
+
+          # Limit expensive enrichment to candidates only; this still covers all matches meeting the price screen.
+          team_cache={}; h2h_cache={}; injury_cache={}; standings_cache={}
+          for c in candidates:
+              for side in ('home','away'):
+                  tid=c[side].get('id')
+                  if tid not in team_cache:
+                      raw=api('/fixtures',{'team':tid,'last':15,'timezone':'UTC'}).get('response') or []
+                      team_cache[tid]=[norm_fixture(x,tid) for x in raw]
+              pair=f"{c['home']['id']}-{c['away']['id']}"
+              try: h2h_cache[pair]=api('/fixtures/headtohead',{'h2h':pair,'last':6,'timezone':'UTC'}).get('response') or []
+              except Exception: h2h_cache[pair]=[]
+              try: injury_cache[c['fixture_id']]=api('/injuries',{'fixture':c['fixture_id']}).get('response') or []
+              except Exception: injury_cache[c['fixture_id']]=[]
+              sk=f"{c['league_id']}:{c['season']}"
+              if sk not in standings_cache:
+                  try: standings_cache[sk]=api('/standings',{'league':c['league_id'],'season':c['season']}).get('response') or []
+                  except Exception: standings_cache[sk]=[]
+
+          def recent_summary(rows, venue=None, n=6):
+              r=[x for x in rows if venue is None or x['venue']==venue][:n]
+              return {'matches':r,'n':len(r),'wins':sum(x['result']=='W' for x in r),'draws':sum(x['result']=='D' for x in r),
+                      'losses':sum(x['result']=='L' for x in r),'gf':sum((x['gf'] or 0) for x in r),'ga':sum((x['ga'] or 0) for x in r)}
+
+          enriched=[]
+          for c in candidates:
+              hr=team_cache[c['home']['id']]; ar=team_cache[c['away']['id']]
+              h_opp=defaultdict(list); a_opp=defaultdict(list)
+              for x in hr:
+                  oid=x['away_id'] if x['venue']=='home' else x['home_id']; on=x['away'] if x['venue']=='home' else x['home']
+                  h_opp[oid].append({'opponent':on,**x})
+              for x in ar:
+                  oid=x['away_id'] if x['venue']=='home' else x['home_id']; on=x['away'] if x['venue']=='home' else x['home']
+                  a_opp[oid].append({'opponent':on,**x})
+              common=[]
+              for oid in list(set(h_opp)&set(a_opp))[:8]:
+                  common.append({'opponent_id':oid,'home_team_results':h_opp[oid][:2],'away_team_results':a_opp[oid][:2]})
+              e={**c,'home_form':recent_summary(hr,None,6),'home_venue_form':recent_summary(hr,'home',5),
+                 'away_form':recent_summary(ar,None,6),'away_venue_form':recent_summary(ar,'away',5),
+                 'common_opponents':common,'h2h_raw':h2h_cache.get(f"{c['home']['id']}-{c['away']['id']}",[]),
+                 'injuries_raw':injury_cache.get(c['fixture_id'],[]),
+                 'standings_raw':standings_cache.get(f"{c['league_id']}:{c['season']}",[])}
+              enriched.append(e)
+
+          out={'generated_at_utc':now.isoformat(),'scan_date':SCAN_DATE,'window_end_utc':window_end.isoformat(),
+               'fixture_count':len(fixtures),'odds_fixture_count':len(odds_by_fixture),'candidate_count':len(enriched),
+               'criteria':{'market':'1X2','odds_min':1.70,'odds_candidate_max':2.60,'confidence_min':0.58,
+                           'analysis':'manual from raw data; no copied predictions'},'candidates':enriched}
+          with open(OUT,'w',encoding='utf-8') as fh: json.dump(out,fh,ensure_ascii=False,indent=2)
+          print(json.dumps({'output':OUT,'fixtures':len(fixtures),'odds':len(odds_by_fixture),'candidates':len(enriched)}))
+          PY
+
+      - name: Commit scan result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-scan-2026-08-04.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Generate Manual Set 2 scan for 2026-08-04'
+          git pull --rebase origin main
+          git push origin main
