@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T11:46:18Z",
+  "fetched_at_utc": "2026-08-03T11:46:33Z",
   "http_status": 200,
   "match": {
     "id": "1567783",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-03T10:30:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 57,
+    "elapsed": 58,
     "score": {
       "home": 1,
       "away": 0
@@ -143,6 +143,15 @@
         "assist": "R. Mon",
         "type": "subst",
         "detail": "Substitution 1"
+      },
+      {
+        "minute": 57,
+        "extra": null,
+        "team": "Cambodia",
+        "player": "T. Sa",
+        "assist": "V. Mon",
+        "type": "subst",
+        "detail": "Substitution 2"
       }
     ]
   },
@@ -166,7 +175,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 57,
+          "elapsed": 58,
           "extra": null
         }
       },
@@ -282,6 +291,28 @@
           "type": "subst",
           "detail": "Substitution 1",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 57,
+            "extra": null
+          },
+          "team": {
+            "id": 1543,
+            "name": "Cambodia",
+            "logo": "https://media.api-sports.io/football/teams/1543.png"
+          },
+          "player": {
+            "id": 542570,
+            "name": "T. Sa"
+          },
+          "assist": {
+            "id": 552966,
+            "name": "V. Mon"
+          },
+          "type": "subst",
+          "detail": "Substitution 2",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -355,6 +386,28 @@
         "type": "subst",
         "detail": "Substitution 1",
         "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 57,
+          "extra": null
+        },
+        "team": {
+          "id": 1543,
+          "name": "Cambodia",
+          "logo": "https://media.api-sports.io/football/teams/1543.png"
+        },
+        "player": {
+          "id": 542570,
+          "name": "T. Sa"
+        },
+        "assist": {
+          "id": 552966,
+          "name": "V. Mon"
+        },
+        "type": "subst",
+        "detail": "Substitution 2",
+        "comments": null
       }
     ]
   },
@@ -365,8 +418,8 @@
     "provider_stat_names": []
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T11:46:18Z",
-    "events_updated_at": "2026-08-03T11:46:03Z",
+    "score_updated_at": "2026-08-03T11:46:33Z",
+    "events_updated_at": "2026-08-03T11:46:33Z",
     "stats_updated_at": "2026-08-03T11:46:03Z"
   }
 }
