@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T17:16:49Z",
+  "fetched_at_utc": "2026-08-03T17:17:04Z",
   "http_status": 200,
   "match": {
     "id": "1495750",
@@ -18,7 +18,7 @@
     "kickoff_utc": "2026-08-03T16:00:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 59,
+    "elapsed": 60,
     "score": {
       "home": 1,
       "away": 0
@@ -134,6 +134,24 @@
         "assist": "E. Mommo",
         "type": "Goal",
         "detail": "Normal Goal"
+      },
+      {
+        "minute": 59,
+        "extra": null,
+        "team": "HJK Helsinki",
+        "player": "T. Mero",
+        "assist": "M. Borchers",
+        "type": "subst",
+        "detail": "Substitution 1"
+      },
+      {
+        "minute": 59,
+        "extra": null,
+        "team": "HJK Helsinki",
+        "player": "L. Moller",
+        "assist": "A. Cicale",
+        "type": "subst",
+        "detail": "Substitution 2"
       }
     ]
   },
@@ -157,7 +175,7 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 59,
+          "elapsed": 60,
           "extra": null
         }
       },
@@ -250,6 +268,50 @@
           },
           "type": "Goal",
           "detail": "Normal Goal",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 59,
+            "extra": null
+          },
+          "team": {
+            "id": 649,
+            "name": "HJK Helsinki",
+            "logo": "https://media.api-sports.io/football/teams/649.png"
+          },
+          "player": {
+            "id": 444974,
+            "name": "T. Mero"
+          },
+          "assist": {
+            "id": 163497,
+            "name": "M. Borchers"
+          },
+          "type": "subst",
+          "detail": "Substitution 1",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 59,
+            "extra": null
+          },
+          "team": {
+            "id": 649,
+            "name": "HJK Helsinki",
+            "logo": "https://media.api-sports.io/football/teams/649.png"
+          },
+          "player": {
+            "id": 546389,
+            "name": "L. Moller"
+          },
+          "assist": {
+            "id": 465212,
+            "name": "A. Cicale"
+          },
+          "type": "subst",
+          "detail": "Substitution 2",
           "comments": null
         }
       ],
@@ -712,6 +774,50 @@
         "type": "Goal",
         "detail": "Normal Goal",
         "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 59,
+          "extra": null
+        },
+        "team": {
+          "id": 649,
+          "name": "HJK Helsinki",
+          "logo": "https://media.api-sports.io/football/teams/649.png"
+        },
+        "player": {
+          "id": 444974,
+          "name": "T. Mero"
+        },
+        "assist": {
+          "id": 163497,
+          "name": "M. Borchers"
+        },
+        "type": "subst",
+        "detail": "Substitution 1",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 59,
+          "extra": null
+        },
+        "team": {
+          "id": 649,
+          "name": "HJK Helsinki",
+          "logo": "https://media.api-sports.io/football/teams/649.png"
+        },
+        "player": {
+          "id": 546389,
+          "name": "L. Moller"
+        },
+        "assist": {
+          "id": 465212,
+          "name": "A. Cicale"
+        },
+        "type": "subst",
+        "detail": "Substitution 2",
+        "comments": null
       }
     ]
   },
@@ -721,8 +827,8 @@
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T17:16:49Z",
-    "events_updated_at": "2026-08-03T17:16:34Z",
+    "score_updated_at": "2026-08-03T17:17:04Z",
+    "events_updated_at": "2026-08-03T17:17:04Z",
     "stats_updated_at": "2026-08-03T17:16:34Z"
   }
 }
