@@ -1,9 +1,9 @@
 {
   "source": "api-football",
-  "fetched_at_utc": null,
-  "http_status": null,
+  "fetched_at_utc": "2026-08-03T12:49:45Z",
+  "http_status": 200,
   "match": {
-    "id": null,
+    "id": "1495750",
     "sport": "football",
     "league": "Veikkausliiga",
     "country": "Finland",
@@ -15,7 +15,7 @@
       "name": "HJK Helsinki",
       "short_name": "HJK"
     },
-    "kickoff_utc": "2026-08-03T16:00:00.000Z",
+    "kickoff_utc": "2026-08-03T16:00:00+00:00",
     "status": "NS",
     "status_long": "Not Started",
     "elapsed": null,
@@ -91,7 +91,80 @@
     "events": []
   },
   "api_response": {
-    "fixture": null,
+    "fixture": {
+      "fixture": {
+        "id": 1495750,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-03T16:00:00+00:00",
+        "timestamp": 1785772800,
+        "periods": {
+          "first": null,
+          "second": null
+        },
+        "venue": {
+          "id": 629,
+          "name": "OmaSp Stadion",
+          "city": "Seinajoki"
+        },
+        "status": {
+          "long": "Not Started",
+          "short": "NS",
+          "elapsed": null,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 244,
+        "name": "Veikkausliiga",
+        "country": "Finland",
+        "logo": "https://media.api-sports.io/football/leagues/244.png",
+        "flag": "https://media.api-sports.io/flags/fi.svg",
+        "season": 2026,
+        "round": "Regular Season - 18",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 689,
+          "name": "SJK",
+          "logo": "https://media.api-sports.io/football/teams/689.png",
+          "winner": null
+        },
+        "away": {
+          "id": 649,
+          "name": "HJK Helsinki",
+          "logo": "https://media.api-sports.io/football/teams/649.png",
+          "winner": null
+        }
+      },
+      "goals": {
+        "home": null,
+        "away": null
+      },
+      "score": {
+        "halftime": {
+          "home": null,
+          "away": null
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": [],
+      "lineups": [],
+      "statistics": [],
+      "players": []
+    },
     "statistics": null,
     "events": null
   },
@@ -99,5 +172,8 @@
     "mode": "scheduled-five-minute",
     "cycle": 0,
     "details_refreshed": false
+  },
+  "live_meta": {
+    "score_updated_at": "2026-08-03T12:49:45Z"
   }
 }
