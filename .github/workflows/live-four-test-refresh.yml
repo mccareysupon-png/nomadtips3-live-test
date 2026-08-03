@@ -1,0 +1,262 @@
+name: Refresh Four Live Test Matches
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/live-four-test-refresh.yml"
+  schedule:
+    - cron: "*/5 10-14 3 8 *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomad-four-live-test
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh scores, statistics and events
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+
+          python3 - <<'PY'
+          import datetime as dt
+          import json
+          import os
+          import re
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          API_KEY = os.environ["API_FOOTBALL_KEY"]
+          BASE = "https://v3.football.api-sports.io"
+          TARGET_DATE = "2026-08-03"
+          WINDOW_START = dt.datetime(2026, 8, 3, 10, 30, tzinfo=dt.timezone.utc)
+          WINDOW_END = dt.datetime(2026, 8, 3, 14, 30, tzinfo=dt.timezone.utc)
+          now = dt.datetime.now(dt.timezone.utc)
+          if not (WINDOW_START <= now <= WINDOW_END):
+              print("Outside live test window")
+              raise SystemExit(0)
+
+          MATCHES = [
+              ("live-data-bss-sporting-east-bengal.json", r"bsssporting|bss", r"eastbengal"),
+              ("live-data-inhulets-polissya-ii.json", r"inhulets|ingulets", r"polissyaii|polissya2|polissya"),
+              ("live-data-melbourne-victory-ii-melbourne-srbija.json", r"melbournevictoryii|melbournevictory2", r"melbournesrbija|srbija"),
+              ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
+          ]
+
+          def api_get(path, params=None):
+              query = urllib.parse.urlencode(params or {})
+              url = f"{BASE}{path}" + (f"?{query}" if query else "")
+              req = urllib.request.Request(url, headers={"x-apisports-key": API_KEY})
+              with urllib.request.urlopen(req, timeout=30) as res:
+                  return json.load(res)
+
+          def norm(value):
+              return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+
+          def match_fixture(fixtures, home_pat, away_pat):
+              for item in fixtures:
+                  home = norm(item.get("teams", {}).get("home", {}).get("name"))
+                  away = norm(item.get("teams", {}).get("away", {}).get("name"))
+                  if re.search(home_pat, home) and re.search(away_pat, away):
+                      return item
+              return None
+
+          def team_stat(stat_response, team_id, stat_type):
+              for block in stat_response or []:
+                  if block.get("team", {}).get("id") != team_id:
+                      continue
+                  for stat in block.get("statistics", []):
+                      if stat.get("type") == stat_type:
+                          return stat.get("value")
+              return None
+
+          def keep(old, new):
+              return old if new is None else new
+
+          def old_pair(old_stats, key):
+              pair = old_stats.get(key) or {}
+              return {"home": pair.get("home"), "away": pair.get("away")}
+
+          day_payload = api_get("/fixtures", {"date": TARGET_DATE, "timezone": "UTC"})
+          fixtures = day_payload.get("response", [])
+          fetched_at = now.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+          changed = False
+
+          for filename, home_pat, away_pat in MATCHES:
+              path = Path(filename)
+              old = json.loads(path.read_text(encoding="utf-8"))
+              fixture = match_fixture(fixtures, home_pat, away_pat)
+              if fixture is None:
+                  print(f"Provider did not cover {filename}; preserving manual seed")
+                  continue
+
+              old_match = old.get("match", {})
+              old_stats = old_match.get("stats", {})
+              old_api = old.get("api_response", {})
+              cycle = int(old.get("stored_response", {}).get("cycle") or 0) + 1
+              status = fixture.get("fixture", {}).get("status", {}).get("short") or old_match.get("status") or "NS"
+              live_or_done = status in {"1H", "HT", "2H", "ET", "BT", "P", "INT", "SUSP", "FT", "AET", "PEN"}
+              core_keys = ["possession", "shots", "shots_on_target", "corners"]
+              stats_missing = all(
+                  (old_stats.get(k, {}).get("home") is None and old_stats.get(k, {}).get("away") is None)
+                  for k in core_keys
+              )
+              refresh_details = live_or_done and (stats_missing or cycle % 4 == 0 or status in {"FT", "AET", "PEN"})
+
+              stat_response = old_api.get("statistics") or []
+              event_response = old_api.get("events") or []
+              if refresh_details:
+                  fixture_id = fixture.get("fixture", {}).get("id")
+                  try:
+                      stat_response = api_get("/fixtures/statistics", {"fixture": fixture_id}).get("response", [])
+                  except Exception as exc:
+                      print(f"Statistics unavailable for {filename}: {exc}")
+                  try:
+                      event_response = api_get("/fixtures/events", {"fixture": fixture_id}).get("response", [])
+                  except Exception as exc:
+                      print(f"Events unavailable for {filename}: {exc}")
+
+              home_id = fixture.get("teams", {}).get("home", {}).get("id")
+              away_id = fixture.get("teams", {}).get("away", {}).get("id")
+
+              def pair(key, provider_type):
+                  old_value = old_pair(old_stats, key)
+                  return {
+                      "home": keep(old_value["home"], team_stat(stat_response, home_id, provider_type)),
+                      "away": keep(old_value["away"], team_stat(stat_response, away_id, provider_type)),
+                  }
+
+              def card_count(team_id, detail):
+                  return sum(
+                      1 for event in event_response
+                      if event.get("team", {}).get("id") == team_id
+                      and event.get("type") == "Card"
+                      and event.get("detail") == detail
+                  )
+
+              events = old_match.get("events", [])
+              if refresh_details:
+                  events = [
+                      {
+                          "minute": event.get("time", {}).get("elapsed"),
+                          "extra": event.get("time", {}).get("extra"),
+                          "team": event.get("team", {}).get("name"),
+                          "player": event.get("player", {}).get("name"),
+                          "assist": event.get("assist", {}).get("name"),
+                          "type": event.get("type"),
+                          "detail": event.get("detail"),
+                      }
+                      for event in event_response
+                  ]
+
+              yellow_old = old_pair(old_stats, "yellow_cards")
+              red_old = old_pair(old_stats, "red_cards")
+              new_data = {
+                  "source": "api-football",
+                  "fetched_at_utc": fetched_at,
+                  "http_status": 200,
+                  "match": {
+                      "id": str(fixture.get("fixture", {}).get("id")),
+                      "sport": "football",
+                      "league": fixture.get("league", {}).get("name") or old_match.get("league"),
+                      "country": fixture.get("league", {}).get("country") or old_match.get("country"),
+                      "home": {
+                          "name": fixture.get("teams", {}).get("home", {}).get("name") or old_match.get("home", {}).get("name"),
+                          "short_name": old_match.get("home", {}).get("short_name") or fixture.get("teams", {}).get("home", {}).get("name"),
+                      },
+                      "away": {
+                          "name": fixture.get("teams", {}).get("away", {}).get("name") or old_match.get("away", {}).get("name"),
+                          "short_name": old_match.get("away", {}).get("short_name") or fixture.get("teams", {}).get("away", {}).get("name"),
+                      },
+                      "kickoff_utc": fixture.get("fixture", {}).get("date") or old_match.get("kickoff_utc"),
+                      "status": status,
+                      "status_long": fixture.get("fixture", {}).get("status", {}).get("long") or old_match.get("status_long"),
+                      "elapsed": fixture.get("fixture", {}).get("status", {}).get("elapsed"),
+                      "score": {
+                          "home": fixture.get("goals", {}).get("home"),
+                          "away": fixture.get("goals", {}).get("away"),
+                      },
+                      "halftime_score": {
+                          "home": fixture.get("score", {}).get("halftime", {}).get("home"),
+                          "away": fixture.get("score", {}).get("halftime", {}).get("away"),
+                      },
+                      "fulltime_score": {
+                          "home": fixture.get("score", {}).get("fulltime", {}).get("home"),
+                          "away": fixture.get("score", {}).get("fulltime", {}).get("away"),
+                      },
+                      "pick": old_match.get("pick"),
+                      "confidence": old_match.get("confidence"),
+                      "predicted_score": old_match.get("predicted_score"),
+                      "stats": {
+                          "possession": pair("possession", "Ball Possession"),
+                          "shots": pair("shots", "Total Shots"),
+                          "shots_on_target": pair("shots_on_target", "Shots on Goal"),
+                          "corners": pair("corners", "Corner Kicks"),
+                          "fouls": pair("fouls", "Fouls"),
+                          "offsides": pair("offsides", "Offsides"),
+                          "goalkeeper_saves": pair("goalkeeper_saves", "Goalkeeper Saves"),
+                          "total_passes": pair("total_passes", "Total passes"),
+                          "pass_accuracy": pair("pass_accuracy", "Passes %"),
+                          "yellow_cards": {
+                              "home": card_count(home_id, "Yellow Card") if refresh_details else yellow_old["home"],
+                              "away": card_count(away_id, "Yellow Card") if refresh_details else yellow_old["away"],
+                          },
+                          "red_cards": {
+                              "home": card_count(home_id, "Red Card") if refresh_details else red_old["home"],
+                              "away": card_count(away_id, "Red Card") if refresh_details else red_old["away"],
+                          },
+                          "attacks": old_pair(old_stats, "attacks"),
+                          "dangerous_attacks": old_pair(old_stats, "dangerous_attacks"),
+                      },
+                      "events": events,
+                  },
+                  "api_response": {
+                      "fixture": fixture,
+                      "statistics": stat_response,
+                      "events": event_response,
+                  },
+                  "stored_response": {
+                      "mode": "scheduled-five-minute",
+                      "cycle": cycle,
+                      "details_refreshed": refresh_details,
+                  },
+              }
+              rendered = json.dumps(new_data, ensure_ascii=False, indent=2) + "\n"
+              if path.read_text(encoding="utf-8") != rendered:
+                  path.write_text(rendered, encoding="utf-8")
+                  changed = True
+
+          if not changed:
+              print("No provider-backed changes")
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add live-data-bss-sporting-east-bengal.json \
+                  live-data-inhulets-polissya-ii.json \
+                  live-data-melbourne-victory-ii-melbourne-srbija.json \
+                  live-data-cambodia-timor-leste.json
+
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+
+          git commit -m "Refresh four live test matches"
+          git pull --rebase origin main
+          git push origin main
