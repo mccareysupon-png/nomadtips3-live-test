@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T15:59:57Z",
+  "fetched_at_utc": "2026-08-03T16:00:12Z",
   "http_status": 200,
   "match": {
     "id": "1495750",
@@ -16,16 +16,16 @@
       "short_name": "HJK"
     },
     "kickoff_utc": "2026-08-03T16:00:00+00:00",
-    "status": "NS",
-    "status_long": "Not Started",
-    "elapsed": null,
+    "status": "1H",
+    "status_long": "First Half",
+    "elapsed": 1,
     "score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 0
     },
     "halftime_score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 0
     },
     "fulltime_score": {
       "home": null,
@@ -35,6 +35,18 @@
     "confidence": 58,
     "predicted_score": "1–2",
     "stats": {
+      "attacks": {
+        "home": null,
+        "away": null
+      },
+      "dangerous_attacks": {
+        "home": null,
+        "away": null
+      },
+      "expected_goals": {
+        "home": null,
+        "away": null
+      },
       "possession": {
         "home": null,
         "away": null
@@ -47,15 +59,23 @@
         "home": null,
         "away": null
       },
+      "shots_off_target": {
+        "home": null,
+        "away": null
+      },
+      "blocked_shots": {
+        "home": null,
+        "away": null
+      },
+      "shots_inside_box": {
+        "home": null,
+        "away": null
+      },
+      "shots_outside_box": {
+        "home": null,
+        "away": null
+      },
       "corners": {
-        "home": null,
-        "away": null
-      },
-      "yellow_cards": {
-        "home": null,
-        "away": null
-      },
-      "red_cards": {
         "home": null,
         "away": null
       },
@@ -75,17 +95,25 @@
         "home": null,
         "away": null
       },
+      "accurate_passes": {
+        "home": null,
+        "away": null
+      },
       "pass_accuracy": {
         "home": null,
         "away": null
       },
-      "attacks": {
-        "home": null,
-        "away": null
+      "yellow_cards": {
+        "home": 0,
+        "away": 0
       },
-      "dangerous_attacks": {
-        "home": null,
-        "away": null
+      "red_cards": {
+        "home": 0,
+        "away": 0
+      },
+      "provider_all": {
+        "home": {},
+        "away": {}
       }
     },
     "events": []
@@ -99,7 +127,7 @@
         "date": "2026-08-03T16:00:00+00:00",
         "timestamp": 1785772800,
         "periods": {
-          "first": null,
+          "first": 1785772800,
           "second": null
         },
         "venue": {
@@ -108,9 +136,9 @@
           "city": "Seinajoki"
         },
         "status": {
-          "long": "Not Started",
-          "short": "NS",
-          "elapsed": null,
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 1,
           "extra": null
         }
       },
@@ -139,13 +167,13 @@
         }
       },
       "goals": {
-        "home": null,
-        "away": null
+        "home": 0,
+        "away": 0
       },
       "score": {
         "halftime": {
-          "home": null,
-          "away": null
+          "home": 0,
+          "away": 0
         },
         "fulltime": {
           "home": null,
@@ -575,8 +603,8 @@
       "statistics": [],
       "players": []
     },
-    "statistics": null,
-    "events": null
+    "statistics": [],
+    "events": []
   },
   "stored_response": {
     "mode": "scheduled-five-minute",
@@ -584,6 +612,8 @@
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T15:59:57Z"
+    "score_updated_at": "2026-08-03T16:00:12Z",
+    "events_updated_at": "2026-08-03T16:00:12Z",
+    "stats_updated_at": "2026-08-03T16:00:12Z"
   }
 }
