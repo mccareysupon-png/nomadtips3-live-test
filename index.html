@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 — Live Scores Beta</title>
+  <title>NOMADTIPS3 Test System — Live Scores</title>
   <style>
     :root{color-scheme:dark;--bg:#1b1b1b;--panel:#222;--soft:#292929;--line:#3d3d3d;--text:#f3f5f4;--muted:#aeb4b1;--green:#00f0a8;--yellow:#f2c94c;--red:#ff9298;--blue:#87aef5}
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Arial,"Noto Sans Thai",sans-serif}button{font:inherit}
     .wrap{width:min(calc(100% - 24px),760px);margin:auto;padding:76px 0 96px}
     .topbar{position:fixed;z-index:30;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 max(12px,calc((100vw - 760px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
-    .brand{font-size:28px;font-weight:950;letter-spacing:-.055em;color:#fff}.brand b{color:var(--yellow)}
+    .brand{font-size:28px;font-weight:950;letter-spacing:-.055em;color:#fff;text-decoration:none}.brand b{color:var(--yellow)}
     .count{padding:6px 9px;border:1px solid rgba(242,201,76,.35);border-radius:999px;color:#f8e7a2;font-size:8px;font-weight:900}
     #matches{display:grid;gap:14px}.match-card{overflow:hidden;border:1px solid var(--line);border-radius:6px;background:var(--panel);box-shadow:0 12px 28px rgba(0,0,0,.2)}
     .match-head{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:#191919;border-bottom:1px solid #343434}.match-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.06em}.status{padding:5px 8px;border:1px solid #3b694e;border-radius:999px;color:var(--green);font-size:9px}.status.waiting{color:var(--yellow);border-color:#725f2b}.status.finished{color:#ddd;border-color:#666}.status.error{color:var(--red);border-color:#704247}
@@ -26,18 +26,18 @@
     .event{display:grid;grid-template-columns:42px 1fr;gap:9px;padding:9px 10px;border:1px solid #373737;border-radius:5px;background:var(--soft)}.event>b{color:var(--yellow)}.event strong,.event small{display:block}.event strong{font-size:11px}.event small{margin-top:3px;color:var(--muted);font-size:9px}
     .pick{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:1px;background:#393939;border-top:1px solid #393939}.pick>div{padding:10px;background:#252525}.pick small,.pick b{display:block}.pick small{color:var(--muted);font-size:8px}.pick b{margin-top:4px;font-size:11px}.pick>div:first-child b{color:var(--green)}
     .match-card footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #343434;color:#858b88;font-size:8px}
-    .main-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px max(6px,env(safe-area-inset-bottom));background:#171717;border-top:1px solid #3d3d3d}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:42px;color:var(--muted);font-size:9px;text-decoration:none;text-align:center}.main-nav a.active{color:var(--yellow)}
-    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.count{font-size:6px}.scoreboard{grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);min-height:145px;padding:14px 6px}.shirt{width:40px;height:40px}.team strong{font-size:13px}.scorebox>b{font-size:33px}.main-nav a{font-size:8px}}
+    .main-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);padding:6px 8px max(6px,env(safe-area-inset-bottom));background:#171717;border-top:1px solid #3d3d3d}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:42px;color:var(--muted);font-size:8px;text-decoration:none;text-align:center}.main-nav a.active{color:var(--yellow)}
+    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.count{font-size:6px}.scoreboard{grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);min-height:145px;padding:14px 6px}.shirt{width:40px;height:40px}.team strong{font-size:13px}.scorebox>b{font-size:33px}.main-nav a{font-size:7px}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="topbar"><div class="brand">nomad<b>tips3</b></div><div class="count" id="matchCount">LIVE SCORES BETA · 0 MATCHES</div></header>
+    <header class="topbar"><a class="brand" href="./test-system/">nomad<b>tips3</b></a><div class="count" id="matchCount">TEST SUITE · LIVE SCORES · 0 MATCHES</div></header>
     <main id="matches"></main>
   </div>
-  <nav class="main-nav" aria-label="Main navigation">
-    <a href="https://nomadtips3.com/">Today's 3 Picks</a><a href="https://nomadtips3.com/stats">Statistics</a><a href="https://nomadtips3.com/share">Share Picks</a><a class="active" href="https://nomadtips3.com/live">Live Beta</a>
+  <nav class="main-nav" aria-label="Test system navigation">
+    <a href="./test-system/">Today's 7 Picks</a><a href="./test-system/stats/">Statistics</a><a href="./test-system/share/">Share Poster</a><a class="active" href="./">Live Test</a><a href="./nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
-  <script src="live-app.js?v=202608031930"></script>
+  <script src="live-app.js?v=202608040700"></script>
 </body>
 </html>
