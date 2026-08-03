@@ -31,7 +31,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure dynamic live matches
+      - name: Configure active live matches
         shell: bash
         run: |
           set -euo pipefail
@@ -42,52 +42,44 @@ jobs:
           import json
           import re
 
-          active_files = [
-              "live-data-cambodia-timor-leste.json",
-              "live-data-drukpa-paro.json",
-          ]
-          Path("live-matches.json").write_text(
-              json.dumps({"files": active_files}, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
-
-          seed_path = Path("live-data-drukpa-paro.json")
-          if not seed_path.exists():
+          filename = "live-data-bukovyna-lnz-cherkasy.json"
+          path = Path(filename)
+          if not path.exists():
               seed = {
                   "source": "manual-live-seed",
-                  "fetched_at_utc": "2026-08-03T12:20:00Z",
+                  "fetched_at_utc": "2026-08-03T12:39:00Z",
                   "http_status": 200,
                   "match": {
                       "id": None,
                       "sport": "football",
                       "league": "Premier League",
-                      "country": "Bhutan",
-                      "home": {"name": "Drukpa", "short_name": "Drukpa"},
-                      "away": {"name": "Paro", "short_name": "Paro"},
-                      "kickoff_utc": "2026-08-03T12:00:00Z",
+                      "country": "Ukraine",
+                      "home": {"name": "Bukovyna", "short_name": "Bukovyna"},
+                      "away": {"name": "LNZ Cherkasy", "short_name": "LNZ Cherkasy"},
+                      "kickoff_utc": "2026-08-03T12:30:00Z",
                       "status": "1H",
                       "status_long": "First Half",
-                      "elapsed": 18,
-                      "score": {"home": 0, "away": 1},
+                      "elapsed": 4,
+                      "score": {"home": 0, "away": 0},
                       "halftime_score": {"home": None, "away": None},
                       "fulltime_score": {"home": None, "away": None},
                       "pick": "Live System Test",
                       "confidence": None,
                       "predicted_score": None,
                       "stats": {},
-                      "events": [],
+                      "events": []
                   },
                   "api_response": {},
                   "stored_response": {"mode": "fast-live-test", "cycle": 0},
-                  "live_meta": {"score_updated_at": "2026-08-03T12:20:00Z"},
+                  "live_meta": {"score_updated_at": "2026-08-03T12:39:00Z"}
               }
-              seed_path.write_text(json.dumps(seed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+              path.write_text(json.dumps(seed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
           script_path = Path("scripts/live_refresh.py")
           script = script_path.read_text(encoding="utf-8")
-          match_config = '''MATCHES = [
-              ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
+          config = '''MATCHES = [
               ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
+              ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),
           ]
 
           LIVE_ALIASES = {
@@ -97,91 +89,28 @@ jobs:
           '''
           script = re.sub(
               r"MATCHES = \[\n.*?\n\]\n\n(?:LIVE_ALIASES = \{.*?\}\n\n)?",
-              match_config,
+              config,
               script,
               count=1,
               flags=re.S,
           )
-          if "Compatibility alias for already-open browser tabs" not in script:
-              script = script.replace(
-                  '        git_publish(changed_paths, f"Live refresh {timestamp}")',
-                  '''        # Compatibility alias for already-open browser tabs that still know the old file list.
-                  for entry in entries:
-                      for alias_name in LIVE_ALIASES.get(entry["path"].name, []):
-                          alias_path = Path(alias_name)
-                          alias_text = json.dumps(entry["data"], ensure_ascii=False, indent=2) + "\\n"
-                          if not alias_path.exists() or alias_path.read_text(encoding="utf-8") != alias_text:
-                              alias_path.write_text(alias_text, encoding="utf-8")
-                              changed_paths.append(alias_path)
-
-                  manifest_path = Path("live-matches.json")
-                  manifest = {
-                      "files": [
-                          entry["path"].name
-                          for entry in entries
-                          if str(entry["data"].get("match", {}).get("status") or "").upper() not in TERMINAL
-                      ]
-                  }
-                  manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\\n"
-                  if not manifest_path.exists() or manifest_path.read_text(encoding="utf-8") != manifest_text:
-                      manifest_path.write_text(manifest_text, encoding="utf-8")
-                      changed_paths.append(manifest_path)
-
-                  git_publish(changed_paths, f"Live refresh {timestamp}")'''
-              )
           script_path.write_text(script, encoding="utf-8")
 
-          index_path = Path("index.html")
-          index = index_path.read_text(encoding="utf-8")
-          index = re.sub(
-              r"    const sources=\[\n.*?\n\s*\];",
-              "    const sourceRoots=new Map();",
-              index,
-              count=1,
-              flags=re.S,
+          manifest = {
+              "files": [
+                  "live-data-drukpa-paro.json",
+                  "live-data-bukovyna-lnz-cherkasy.json"
+              ]
+          }
+          Path("live-matches.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
           )
-          dynamic_boot = '''    const host=document.getElementById('matches');
-              function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
-              async function syncSources(){
-                try{
-                  const response=await fetch(`${RAW}live-matches.json?t=${Date.now()}`,{cache:'no-store'});
-                  if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);
-                  const manifest=await response.json();
-                  const files=Array.isArray(manifest.files)?manifest.files:[];
-                  const wanted=new Set(files);
-                  for(const [name,state] of sourceRoots){
-                    if(!wanted.has(name)){
-                      clearInterval(state.loadTimer);clearInterval(state.clockTimer);
-                      state.root.remove();sourceRoots.delete(name);
-                    }
-                  }
-                  for(const name of files){
-                    if(sourceRoots.has(name))continue;
-                    const src={file:`${RAW}${name}`,fallbackSource:'manual-live-seed'};
-                    host.insertAdjacentHTML('beforeend',card(name));
-                    const root=host.lastElementChild;
-                    bindTabs(root);loadOne(root,src);
-                    const loadTimer=setInterval(()=>loadOne(root,src),15000);
-                    const clockTimer=setInterval(()=>refreshClock(root),15000);
-                    sourceRoots.set(name,{root,loadTimer,clockTimer});
-                  }
-                  updateVisibleCount();
-                }catch(error){console.error(error)}
-              }
-              syncSources();setInterval(syncSources,15000);'''
-          index = re.sub(
-              r"    document\.getElementById\('matchCount'\)\.textContent=.*?sources\.forEach\(.*?\);",
-              dynamic_boot,
-              index,
-              count=1,
-              flags=re.S,
-          )
-          index_path.write_text(index, encoding="utf-8")
           PY
 
-          git add index.html scripts/live_refresh.py live-data-drukpa-paro.json live-matches.json
+          git add scripts/live_refresh.py live-data-bukovyna-lnz-cherkasy.json live-matches.json
           if ! git diff --cached --quiet; then
-            git commit -m "Enable dynamic live match manifest"
+            git commit -m "Activate Bukovyna vs LNZ Cherkasy live match"
             git pull --rebase origin main
             git push origin main
           fi
@@ -204,7 +133,10 @@ jobs:
           import json
           from pathlib import Path
           terminal = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
-          files = ["live-data-cambodia-timor-leste.json", "live-data-drukpa-paro.json"]
+          files = [
+              "live-data-drukpa-paro.json",
+              "live-data-bukovyna-lnz-cherkasy.json"
+          ]
           active = False
           for name in files:
               path = Path(name)
