@@ -1,0 +1,255 @@
+name: Refresh NOMAD Day 5 Live Match
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/manual-set-2-day5-live-refresh.yml"
+  schedule:
+    - cron: "*/5 15-19 3 8 *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomad-manual-set-2-day-5-live
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TARGET_DATE: "2026-08-03"
+      WINDOW_START_UTC: "2026-08-03T15:00:00Z"
+      WINDOW_END_UTC: "2026-08-03T19:30:00Z"
+      DATA_FILE: "live-data-sjk-hjk-helsinki.json"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh SJK vs HJK Helsinki
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${API_FOOTBALL_KEY:-}" ]; then
+            echo "API_FOOTBALL_KEY is missing."
+            exit 1
+          fi
+
+          now_epoch="$(date -u +%s)"
+          start_epoch="$(date -u -d "$WINDOW_START_UTC" +%s)"
+          end_epoch="$(date -u -d "$WINDOW_END_UTC" +%s)"
+          if [ "$now_epoch" -lt "$start_epoch" ] || [ "$now_epoch" -gt "$end_epoch" ]; then
+            echo "Outside the Day 5 live window."
+            exit 0
+          fi
+
+          BASE="https://v3.football.api-sports.io"
+          fixture_id="$(jq -r '.match.id // empty' "$DATA_FILE" 2>/dev/null || true)"
+
+          if ! [[ "$fixture_id" =~ ^[0-9]+$ ]]; then
+            curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors --get \
+              -H "x-apisports-key: $API_FOOTBALL_KEY" \
+              --data-urlencode "date=$TARGET_DATE" \
+              --data-urlencode "timezone=UTC" \
+              "$BASE/fixtures" > /tmp/day-fixtures.json
+
+            fixture_id="$(jq -r '
+              def norm: ascii_downcase | gsub("[^a-z0-9]"; "");
+              [
+                .response[]?
+                | select(
+                    ((.teams.home.name | norm) | test("^sjk$|seinajoen|seinajoki"))
+                    and
+                    ((.teams.away.name | norm) | test("hjk|helsinki"))
+                  )
+                | .fixture.id
+              ][0] // empty
+            ' /tmp/day-fixtures.json)"
+          fi
+
+          if ! [[ "$fixture_id" =~ ^[0-9]+$ ]]; then
+            echo "SJK vs HJK Helsinki is not covered by API-Football yet."
+            exit 0
+          fi
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
+            -H "x-apisports-key: $API_FOOTBALL_KEY" \
+            "$BASE/fixtures?id=$fixture_id&timezone=UTC" > /tmp/fixture.json
+
+          if ! jq -e '.response[0]' /tmp/fixture.json >/dev/null; then
+            echo "Fixture response is empty; preserving existing data."
+            exit 0
+          fi
+
+          old_cycle="$(jq -r '.stored_response.cycle // 0' "$DATA_FILE")"
+          next_cycle="$((old_cycle + 1))"
+          status_short="$(jq -r '.response[0].fixture.status.short // "NS"' /tmp/fixture.json)"
+          refresh_details=false
+
+          if [[ "$status_short" =~ ^(1H|HT|2H|ET|BT|P|INT|SUSP|FT|AET|PEN)$ ]] && [ $((next_cycle % 2)) -eq 0 ]; then
+            refresh_details=true
+          fi
+
+          if [ "$refresh_details" = true ]; then
+            curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
+              -H "x-apisports-key: $API_FOOTBALL_KEY" \
+              "$BASE/fixtures/statistics?fixture=$fixture_id" > /tmp/statistics.json || echo '{"response":[]}' > /tmp/statistics.json
+
+            curl --fail --silent --show-error --retry 3 --retry-delay 5 --retry-all-errors \
+              -H "x-apisports-key: $API_FOOTBALL_KEY" \
+              "$BASE/fixtures/events?fixture=$fixture_id" > /tmp/events.json || echo '{"response":[]}' > /tmp/events.json
+          else
+            printf '%s\n' '{"response":[]}' > /tmp/statistics.json
+            printf '%s\n' '{"response":[]}' > /tmp/events.json
+          fi
+
+          fetched_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          jq -n \
+            --arg fetched_at "$fetched_at" \
+            --argjson next_cycle "$next_cycle" \
+            --argjson details_refreshed "$refresh_details" \
+            --slurpfile fixture /tmp/fixture.json \
+            --slurpfile statistics /tmp/statistics.json \
+            --slurpfile events /tmp/events.json \
+            --slurpfile old "$DATA_FILE" '
+              ($fixture[0].response[0]) as $f
+              | ($statistics[0]) as $s
+              | ($events[0]) as $e
+              | ($old[0]) as $o
+              | ($f.teams.home.id) as $home_id
+              | ($f.teams.away.id) as $away_id
+              | def stat_for($team_id; $type):
+                  [
+                    $s.response[]?
+                    | select(.team.id == $team_id)
+                    | .statistics[]?
+                    | select(.type == $type)
+                    | .value
+                  ][0] // null;
+                def keep_or_new($old_value; $new_value):
+                  if $new_value == null then $old_value else $new_value end;
+                def card_count($team_id; $detail):
+                  [
+                    $e.response[]?
+                    | select(.team.id == $team_id and .type == "Card" and (.detail // "") == $detail)
+                  ] | length;
+                {
+                  source:"api-football",
+                  fetched_at_utc:$fetched_at,
+                  http_status:200,
+                  match:{
+                    id:($f.fixture.id | tostring),
+                    sport:"football",
+                    league:($f.league.name // $o.match.league),
+                    country:($f.league.country // $o.match.country),
+                    home:{name:$f.teams.home.name,short_name:($o.match.home.short_name // $f.teams.home.name)},
+                    away:{name:$f.teams.away.name,short_name:($o.match.away.short_name // $f.teams.away.name)},
+                    kickoff_utc:($f.fixture.date // $o.match.kickoff_utc),
+                    status:($f.fixture.status.short // $o.match.status),
+                    status_long:($f.fixture.status.long // $o.match.status_long),
+                    elapsed:$f.fixture.status.elapsed,
+                    score:{home:$f.goals.home,away:$f.goals.away},
+                    halftime_score:{home:$f.score.halftime.home,away:$f.score.halftime.away},
+                    fulltime_score:{home:$f.score.fulltime.home,away:$f.score.fulltime.away},
+                    pick:$o.match.pick,
+                    confidence:$o.match.confidence,
+                    predicted_score:$o.match.predicted_score,
+                    stats:{
+                      possession:{
+                        home:keep_or_new($o.match.stats.possession.home; stat_for($home_id;"Ball Possession")),
+                        away:keep_or_new($o.match.stats.possession.away; stat_for($away_id;"Ball Possession"))
+                      },
+                      shots:{
+                        home:keep_or_new($o.match.stats.shots.home; stat_for($home_id;"Total Shots")),
+                        away:keep_or_new($o.match.stats.shots.away; stat_for($away_id;"Total Shots"))
+                      },
+                      shots_on_target:{
+                        home:keep_or_new($o.match.stats.shots_on_target.home; stat_for($home_id;"Shots on Goal")),
+                        away:keep_or_new($o.match.stats.shots_on_target.away; stat_for($away_id;"Shots on Goal"))
+                      },
+                      corners:{
+                        home:keep_or_new($o.match.stats.corners.home; stat_for($home_id;"Corner Kicks")),
+                        away:keep_or_new($o.match.stats.corners.away; stat_for($away_id;"Corner Kicks"))
+                      },
+                      fouls:{
+                        home:keep_or_new($o.match.stats.fouls.home; stat_for($home_id;"Fouls")),
+                        away:keep_or_new($o.match.stats.fouls.away; stat_for($away_id;"Fouls"))
+                      },
+                      offsides:{
+                        home:keep_or_new($o.match.stats.offsides.home; stat_for($home_id;"Offsides")),
+                        away:keep_or_new($o.match.stats.offsides.away; stat_for($away_id;"Offsides"))
+                      },
+                      goalkeeper_saves:{
+                        home:keep_or_new($o.match.stats.goalkeeper_saves.home; stat_for($home_id;"Goalkeeper Saves")),
+                        away:keep_or_new($o.match.stats.goalkeeper_saves.away; stat_for($away_id;"Goalkeeper Saves"))
+                      },
+                      total_passes:{
+                        home:keep_or_new($o.match.stats.total_passes.home; stat_for($home_id;"Total passes")),
+                        away:keep_or_new($o.match.stats.total_passes.away; stat_for($away_id;"Total passes"))
+                      },
+                      pass_accuracy:{
+                        home:keep_or_new($o.match.stats.pass_accuracy.home; stat_for($home_id;"Passes %")),
+                        away:keep_or_new($o.match.stats.pass_accuracy.away; stat_for($away_id;"Passes %"))
+                      },
+                      yellow_cards:{
+                        home:(if $details_refreshed then card_count($home_id;"Yellow Card") else $o.match.stats.yellow_cards.home end),
+                        away:(if $details_refreshed then card_count($away_id;"Yellow Card") else $o.match.stats.yellow_cards.away end)
+                      },
+                      red_cards:{
+                        home:(if $details_refreshed then card_count($home_id;"Red Card") else $o.match.stats.red_cards.home end),
+                        away:(if $details_refreshed then card_count($away_id;"Red Card") else $o.match.stats.red_cards.away end)
+                      },
+                      attacks:$o.match.stats.attacks,
+                      dangerous_attacks:$o.match.stats.dangerous_attacks
+                    },
+                    events:(
+                      if $details_refreshed then
+                        [
+                          $e.response[]?
+                          | {
+                              minute:(.time.elapsed // null),
+                              extra:(.time.extra // null),
+                              team:(.team.name // null),
+                              player:(.player.name // null),
+                              assist:(.assist.name // null),
+                              type:(.type // null),
+                              detail:(.detail // null)
+                            }
+                        ]
+                      else $o.match.events end
+                    )
+                  },
+                  api_response:{
+                    fixture:$f,
+                    statistics:(if $details_refreshed then $s.response else $o.api_response.statistics end),
+                    events:(if $details_refreshed then $e.response else $o.api_response.events end)
+                  },
+                  stored_response:{
+                    mode:"scheduled-five-minute",
+                    cycle:$next_cycle,
+                    details_refreshed:$details_refreshed
+                  }
+                }
+            ' > "$DATA_FILE.tmp"
+
+          mv "$DATA_FILE.tmp" "$DATA_FILE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$DATA_FILE"
+
+          if git diff --cached --quiet; then
+            echo "No live-data changes."
+            exit 0
+          fi
+
+          git commit -m "Refresh SJK vs HJK live data"
+          git pull --rebase origin main
+          git push origin main
