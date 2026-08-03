@@ -1,0 +1,29 @@
+name: Run Live V2 Once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/run-live-v2-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      TARGET_DATE: "2026-08-03"
+      RUN_SECONDS: "30"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify unified live refresher
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          python3 scripts/live_refresh_v2.py
