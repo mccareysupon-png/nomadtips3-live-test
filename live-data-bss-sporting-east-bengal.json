@@ -1,35 +1,35 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T12:16:31Z",
+  "fetched_at_utc": "2026-08-03T12:28:15Z",
   "http_status": 200,
   "match": {
-    "id": "1610881",
+    "id": "1604136",
     "sport": "football",
-    "league": "Calcutta Premier Division",
-    "country": "India",
+    "league": "Premier League",
+    "country": "Bhutan",
     "home": {
-      "name": "BSS Sporting",
-      "short_name": "BSS Sporting"
+      "name": "Drukpa",
+      "short_name": "Drukpa"
     },
     "away": {
-      "name": "East Bengal",
-      "short_name": "East Bengal"
+      "name": "Paro",
+      "short_name": "Paro"
     },
-    "kickoff_utc": "2026-08-03T09:30:00+00:00",
-    "status": "FT",
-    "status_long": "Match Finished",
-    "elapsed": 90,
+    "kickoff_utc": "2026-08-03T12:00:00+00:00",
+    "status": "1H",
+    "status_long": "First Half",
+    "elapsed": 27,
     "score": {
-      "home": 3,
-      "away": 3
+      "home": 0,
+      "away": 1
     },
     "halftime_score": {
-      "home": 2,
+      "home": 0,
       "away": 1
     },
     "fulltime_score": {
-      "home": 3,
-      "away": 3
+      "home": null,
+      "away": null
     },
     "pick": "Live System Test",
     "confidence": null,
@@ -120,44 +120,8 @@
       {
         "minute": 5,
         "extra": null,
-        "team": "BSS Sporting",
-        "player": null,
-        "assist": null,
-        "type": "Goal",
-        "detail": "Normal Goal"
-      },
-      {
-        "minute": 31,
-        "extra": null,
-        "team": "East Bengal",
-        "player": null,
-        "assist": null,
-        "type": "Goal",
-        "detail": "Normal Goal"
-      },
-      {
-        "minute": 37,
-        "extra": null,
-        "team": "BSS Sporting",
-        "player": null,
-        "assist": null,
-        "type": "Goal",
-        "detail": "Normal Goal"
-      },
-      {
-        "minute": 47,
-        "extra": null,
-        "team": "BSS Sporting",
-        "player": null,
-        "assist": null,
-        "type": "Goal",
-        "detail": "Normal Goal"
-      },
-      {
-        "minute": 63,
-        "extra": null,
-        "team": "East Bengal",
-        "player": null,
+        "team": "Paro",
+        "player": "Mustapha Jallow",
         "assist": null,
         "type": "Goal",
         "detail": "Normal Goal"
@@ -167,63 +131,63 @@
   "api_response": {
     "fixture": {
       "fixture": {
-        "id": 1610881,
+        "id": 1604136,
         "referee": null,
         "timezone": "UTC",
-        "date": "2026-08-03T09:30:00+00:00",
-        "timestamp": 1785749400,
+        "date": "2026-08-03T12:00:00+00:00",
+        "timestamp": 1785758400,
         "periods": {
-          "first": 1785749400,
-          "second": 1785753000
+          "first": null,
+          "second": null
         },
         "venue": {
-          "id": null,
+          "id": 0,
           "name": null,
           "city": null
         },
         "status": {
-          "long": "Match Finished",
-          "short": "FT",
-          "elapsed": 90,
-          "extra": 11
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 27,
+          "extra": null
         }
       },
       "league": {
-        "id": 1020,
-        "name": "Calcutta Premier Division",
-        "country": "India",
-        "logo": "https://media.api-sports.io/football/leagues/1020.png",
-        "flag": "https://media.api-sports.io/flags/in.svg",
+        "id": 1031,
+        "name": "Premier League",
+        "country": "Bhutan",
+        "logo": "https://media.api-sports.io/football/leagues/1031.png",
+        "flag": "https://media.api-sports.io/flags/bt.svg",
         "season": 2026,
-        "round": "Regular season",
+        "round": "Regular Season",
         "standings": true
       },
       "teams": {
         "home": {
-          "id": 21597,
-          "name": "BSS Sporting",
-          "logo": "https://media.api-sports.io/football/teams/21597.png",
-          "winner": null
+          "id": 27725,
+          "name": "Drukpa",
+          "logo": "https://media.api-sports.io/football/teams/27725.png",
+          "winner": false
         },
         "away": {
-          "id": 3463,
-          "name": "East Bengal",
-          "logo": "https://media.api-sports.io/football/teams/3463.png",
-          "winner": null
+          "id": 9426,
+          "name": "Paro",
+          "logo": "https://media.api-sports.io/football/teams/9426.png",
+          "winner": true
         }
       },
       "goals": {
-        "home": 3,
-        "away": 3
+        "home": 0,
+        "away": 1
       },
       "score": {
         "halftime": {
-          "home": 2,
+          "home": 0,
           "away": 1
         },
         "fulltime": {
-          "home": 3,
-          "away": 3
+          "home": null,
+          "away": null
         },
         "extratime": {
           "home": null,
@@ -241,123 +205,13 @@
             "extra": null
           },
           "team": {
-            "id": 21597,
-            "name": "BSS Sporting",
-            "logo": "https://media.api-sports.io/football/teams/21597.png"
+            "id": 9426,
+            "name": "Paro",
+            "logo": "https://media.api-sports.io/football/teams/9426.png"
           },
           "player": {
-            "id": null,
-            "name": null
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 31,
-            "extra": null
-          },
-          "team": {
-            "id": 3463,
-            "name": "East Bengal",
-            "logo": "https://media.api-sports.io/football/teams/3463.png"
-          },
-          "player": {
-            "id": null,
-            "name": null
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 37,
-            "extra": null
-          },
-          "team": {
-            "id": 21597,
-            "name": "BSS Sporting",
-            "logo": "https://media.api-sports.io/football/teams/21597.png"
-          },
-          "player": {
-            "id": null,
-            "name": null
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 47,
-            "extra": null
-          },
-          "team": {
-            "id": 21597,
-            "name": "BSS Sporting",
-            "logo": "https://media.api-sports.io/football/teams/21597.png"
-          },
-          "player": {
-            "id": null,
-            "name": null
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 63,
-            "extra": null
-          },
-          "team": {
-            "id": 3463,
-            "name": "East Bengal",
-            "logo": "https://media.api-sports.io/football/teams/3463.png"
-          },
-          "player": {
-            "id": null,
-            "name": null
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Goal",
-          "detail": "Normal Goal",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 90,
-            "extra": 1
-          },
-          "team": {
-            "id": 3463,
-            "name": "East Bengal",
-            "logo": "https://media.api-sports.io/football/teams/3463.png"
-          },
-          "player": {
-            "id": null,
-            "name": null
+            "id": 643372,
+            "name": "Mustapha Jallow"
           },
           "assist": {
             "id": null,
@@ -372,7 +226,6 @@
       "statistics": [],
       "players": []
     },
-    "statistics": [],
     "events": [
       {
         "time": {
@@ -380,101 +233,13 @@
           "extra": null
         },
         "team": {
-          "id": 21597,
-          "name": "BSS Sporting",
-          "logo": "https://media.api-sports.io/football/teams/21597.png"
+          "id": 9426,
+          "name": "Paro",
+          "logo": "https://media.api-sports.io/football/teams/9426.png"
         },
         "player": {
-          "id": null,
-          "name": null
-        },
-        "assist": {
-          "id": null,
-          "name": null
-        },
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "comments": null
-      },
-      {
-        "time": {
-          "elapsed": 31,
-          "extra": null
-        },
-        "team": {
-          "id": 3463,
-          "name": "East Bengal",
-          "logo": "https://media.api-sports.io/football/teams/3463.png"
-        },
-        "player": {
-          "id": null,
-          "name": null
-        },
-        "assist": {
-          "id": null,
-          "name": null
-        },
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "comments": null
-      },
-      {
-        "time": {
-          "elapsed": 37,
-          "extra": null
-        },
-        "team": {
-          "id": 21597,
-          "name": "BSS Sporting",
-          "logo": "https://media.api-sports.io/football/teams/21597.png"
-        },
-        "player": {
-          "id": null,
-          "name": null
-        },
-        "assist": {
-          "id": null,
-          "name": null
-        },
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "comments": null
-      },
-      {
-        "time": {
-          "elapsed": 47,
-          "extra": null
-        },
-        "team": {
-          "id": 21597,
-          "name": "BSS Sporting",
-          "logo": "https://media.api-sports.io/football/teams/21597.png"
-        },
-        "player": {
-          "id": null,
-          "name": null
-        },
-        "assist": {
-          "id": null,
-          "name": null
-        },
-        "type": "Goal",
-        "detail": "Normal Goal",
-        "comments": null
-      },
-      {
-        "time": {
-          "elapsed": 63,
-          "extra": null
-        },
-        "team": {
-          "id": 3463,
-          "name": "East Bengal",
-          "logo": "https://media.api-sports.io/football/teams/3463.png"
-        },
-        "player": {
-          "id": null,
-          "name": null
+          "id": 643372,
+          "name": "Mustapha Jallow"
         },
         "assist": {
           "id": null,
@@ -484,18 +249,17 @@
         "detail": "Normal Goal",
         "comments": null
       }
-    ]
+    ],
+    "statistics": []
   },
   "stored_response": {
     "mode": "fast-live-test",
-    "cycle": 4,
-    "details_refreshed": true,
-    "provider_stat_names": []
+    "cycle": 0,
+    "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T12:16:31Z",
-    "events_updated_at": "2026-08-03T11:47:33Z",
-    "stats_updated_at": "2026-08-03T11:47:03Z",
-    "stopped_at": "2026-08-03T12:16:31Z"
+    "score_updated_at": "2026-08-03T12:28:15Z",
+    "events_updated_at": "2026-08-03T12:28:15Z",
+    "stats_updated_at": "2026-08-03T12:28:15Z"
   }
 }
