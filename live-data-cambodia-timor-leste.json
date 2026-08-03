@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T12:18:16Z",
+  "fetched_at_utc": "2026-08-03T12:23:25Z",
   "http_status": 200,
   "match": {
     "id": "1567783",
@@ -18,9 +18,9 @@
     "kickoff_utc": "2026-08-03T10:30:00+00:00",
     "status": "2H",
     "status_long": "Second Half",
-    "elapsed": 89,
+    "elapsed": 90,
     "score": {
-      "home": 2,
+      "home": 3,
       "away": 0
     },
     "halftime_score": {
@@ -224,6 +224,33 @@
         "assist": null,
         "type": "Card",
         "detail": "Yellow Card"
+      },
+      {
+        "minute": 89,
+        "extra": null,
+        "team": "Cambodia",
+        "player": "P. Sokha",
+        "assist": "S. Chea",
+        "type": "subst",
+        "detail": "Substitution 4"
+      },
+      {
+        "minute": 89,
+        "extra": null,
+        "team": "Cambodia",
+        "player": "S. Hav",
+        "assist": "D. Sophal",
+        "type": "subst",
+        "detail": "Substitution 5"
+      },
+      {
+        "minute": 90,
+        "extra": null,
+        "team": "Cambodia",
+        "player": "R. Mon",
+        "assist": "S. Chea",
+        "type": "Goal",
+        "detail": "Normal Goal"
       }
     ]
   },
@@ -247,8 +274,8 @@
         "status": {
           "long": "Second Half",
           "short": "2H",
-          "elapsed": 89,
-          "extra": null
+          "elapsed": 90,
+          "extra": 4
         }
       },
       "league": {
@@ -276,7 +303,7 @@
         }
       },
       "goals": {
-        "home": 2,
+        "home": 3,
         "away": 0
       },
       "score": {
@@ -605,6 +632,28 @@
           "type": "subst",
           "detail": "Substitution 5",
           "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 90,
+            "extra": null
+          },
+          "team": {
+            "id": 1543,
+            "name": "Cambodia",
+            "logo": "https://media.api-sports.io/football/teams/1543.png"
+          },
+          "player": {
+            "id": 564618,
+            "name": "R. Mon"
+          },
+          "assist": {
+            "id": 564685,
+            "name": "S. Chea"
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
         }
       ],
       "lineups": [],
@@ -876,6 +925,72 @@
         "type": "Card",
         "detail": "Yellow Card",
         "comments": "Foul"
+      },
+      {
+        "time": {
+          "elapsed": 89,
+          "extra": null
+        },
+        "team": {
+          "id": 1543,
+          "name": "Cambodia",
+          "logo": "https://media.api-sports.io/football/teams/1543.png"
+        },
+        "player": {
+          "id": 561751,
+          "name": "P. Sokha"
+        },
+        "assist": {
+          "id": 564685,
+          "name": "S. Chea"
+        },
+        "type": "subst",
+        "detail": "Substitution 4",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 89,
+          "extra": null
+        },
+        "team": {
+          "id": 1543,
+          "name": "Cambodia",
+          "logo": "https://media.api-sports.io/football/teams/1543.png"
+        },
+        "player": {
+          "id": 487418,
+          "name": "S. Hav"
+        },
+        "assist": {
+          "id": 564677,
+          "name": "D. Sophal"
+        },
+        "type": "subst",
+        "detail": "Substitution 5",
+        "comments": null
+      },
+      {
+        "time": {
+          "elapsed": 90,
+          "extra": null
+        },
+        "team": {
+          "id": 1543,
+          "name": "Cambodia",
+          "logo": "https://media.api-sports.io/football/teams/1543.png"
+        },
+        "player": {
+          "id": 564618,
+          "name": "R. Mon"
+        },
+        "assist": {
+          "id": 564685,
+          "name": "S. Chea"
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
       }
     ]
   },
@@ -886,8 +1001,8 @@
     "provider_stat_names": []
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T12:18:16Z",
-    "events_updated_at": "2026-08-03T12:18:01Z",
-    "stats_updated_at": "2026-08-03T12:17:31Z"
+    "score_updated_at": "2026-08-03T12:23:25Z",
+    "events_updated_at": "2026-08-03T12:23:25Z",
+    "stats_updated_at": "2026-08-03T12:23:25Z"
   }
 }

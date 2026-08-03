@@ -1,31 +1,31 @@
 {
-  "source": "manual-live-seed",
-  "fetched_at_utc": "2026-08-03T12:20:00Z",
+  "source": "api-football",
+  "fetched_at_utc": "2026-08-03T12:23:25Z",
   "http_status": 200,
   "match": {
-    "id": null,
+    "id": "1604136",
     "sport": "football",
-    "league": "Bank of Bhutan Premier League",
+    "league": "Premier League",
     "country": "Bhutan",
     "home": {
       "name": "Drukpa",
       "short_name": "Drukpa"
     },
     "away": {
-      "name": "Paro FC",
+      "name": "Paro",
       "short_name": "Paro"
     },
-    "kickoff_utc": "2026-08-03T12:00:00Z",
+    "kickoff_utc": "2026-08-03T12:00:00+00:00",
     "status": "1H",
     "status_long": "First Half",
-    "elapsed": 18,
+    "elapsed": 22,
     "score": {
       "home": 0,
       "away": 1
     },
     "halftime_score": {
-      "home": null,
-      "away": null
+      "home": 0,
+      "away": 1
     },
     "fulltime_score": {
       "home": null,
@@ -116,17 +116,150 @@
         "away": {}
       }
     },
-    "events": []
+    "events": [
+      {
+        "minute": 5,
+        "extra": null,
+        "team": "Paro",
+        "player": "Mustapha Jallow",
+        "assist": null,
+        "type": "Goal",
+        "detail": "Normal Goal"
+      }
+    ]
   },
-  "api_response": {},
+  "api_response": {
+    "fixture": {
+      "fixture": {
+        "id": 1604136,
+        "referee": null,
+        "timezone": "UTC",
+        "date": "2026-08-03T12:00:00+00:00",
+        "timestamp": 1785758400,
+        "periods": {
+          "first": null,
+          "second": null
+        },
+        "venue": {
+          "id": 0,
+          "name": null,
+          "city": null
+        },
+        "status": {
+          "long": "First Half",
+          "short": "1H",
+          "elapsed": 22,
+          "extra": null
+        }
+      },
+      "league": {
+        "id": 1031,
+        "name": "Premier League",
+        "country": "Bhutan",
+        "logo": "https://media.api-sports.io/football/leagues/1031.png",
+        "flag": "https://media.api-sports.io/flags/bt.svg",
+        "season": 2026,
+        "round": "Regular Season",
+        "standings": true
+      },
+      "teams": {
+        "home": {
+          "id": 27725,
+          "name": "Drukpa",
+          "logo": "https://media.api-sports.io/football/teams/27725.png",
+          "winner": false
+        },
+        "away": {
+          "id": 9426,
+          "name": "Paro",
+          "logo": "https://media.api-sports.io/football/teams/9426.png",
+          "winner": true
+        }
+      },
+      "goals": {
+        "home": 0,
+        "away": 1
+      },
+      "score": {
+        "halftime": {
+          "home": 0,
+          "away": 1
+        },
+        "fulltime": {
+          "home": null,
+          "away": null
+        },
+        "extratime": {
+          "home": null,
+          "away": null
+        },
+        "penalty": {
+          "home": null,
+          "away": null
+        }
+      },
+      "events": [
+        {
+          "time": {
+            "elapsed": 5,
+            "extra": null
+          },
+          "team": {
+            "id": 9426,
+            "name": "Paro",
+            "logo": "https://media.api-sports.io/football/teams/9426.png"
+          },
+          "player": {
+            "id": 643372,
+            "name": "Mustapha Jallow"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
+        }
+      ],
+      "lineups": [],
+      "statistics": [],
+      "players": []
+    },
+    "events": [
+      {
+        "time": {
+          "elapsed": 5,
+          "extra": null
+        },
+        "team": {
+          "id": 9426,
+          "name": "Paro",
+          "logo": "https://media.api-sports.io/football/teams/9426.png"
+        },
+        "player": {
+          "id": 643372,
+          "name": "Mustapha Jallow"
+        },
+        "assist": {
+          "id": null,
+          "name": null
+        },
+        "type": "Goal",
+        "detail": "Normal Goal",
+        "comments": null
+      }
+    ],
+    "statistics": []
+  },
   "stored_response": {
     "mode": "fast-live-test",
     "cycle": 0,
     "details_refreshed": false
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T12:20:00Z",
-    "events_updated_at": null,
-    "stats_updated_at": null
+    "score_updated_at": "2026-08-03T12:23:25Z",
+    "events_updated_at": "2026-08-03T12:23:25Z",
+    "stats_updated_at": "2026-08-03T12:23:25Z"
   }
 }
