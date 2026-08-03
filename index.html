@@ -20,7 +20,7 @@
     .meta-right{display:flex;align-items:center;gap:7px}.source,.live-pill{border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:9px;color:var(--muted);background:#191d1a}.source{display:none}
     .live-pill{color:var(--green);border-color:#3a654a;font-weight:900}.live-pill.waiting{color:var(--lime);border-color:#665a36}.live-pill.finished{color:#e9ecea;border-color:#59615c}.live-pill.error{color:var(--red);border-color:#6d3f43}
     .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) 126px minmax(0,1fr);align-items:center;gap:10px;min-height:180px;padding:20px 12px;background:linear-gradient(180deg,#252525,#202020)}
-    .team{text-align:center;min-width:0}.crest{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 9px;border:1px solid #484848;border-radius:50%;background:#1b1b1b;color:var(--muted);font-size:15px;font-weight:950}.team-name{font-size:18px;font-weight:900;overflow-wrap:anywhere}.team-side{margin-top:5px;color:var(--muted);font-size:8px;letter-spacing:.13em}
+    .team{text-align:center;min-width:0}.crest{position:relative;width:48px;height:48px;margin:0 auto 9px}.crest::before{content:"";position:absolute;inset:2px 1px 1px;background:var(--shirt,#2563eb);clip-path:polygon(25% 9%,40% 2%,60% 2%,75% 9%,98% 28%,82% 44%,72% 35%,72% 96%,28% 96%,28% 35%,18% 44%,2% 28%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.32))}.crest::after{content:"";position:absolute;top:3px;left:50%;width:14px;height:8px;border-radius:0 0 10px 10px;background:#222;transform:translateX(-50%)}.team-name{font-size:18px;font-weight:900;overflow-wrap:anywhere}.team-side{margin-top:5px;color:var(--muted);font-size:8px;letter-spacing:.13em}
     .score-center{text-align:center;min-width:0;padding:12px 6px;background:#171717;border:1px solid #454545;border-radius:4px}.minute{min-height:18px;color:var(--green);font-size:11px;font-weight:900}.score{margin:4px 0;font-size:42px;line-height:1;font-weight:950;letter-spacing:-.05em}.kickoff{color:var(--muted);font-size:9px;line-height:1.5}
     .latest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);background:#1b1b1b}.pulse{width:8px;height:8px;border-radius:50%;background:var(--green)}.latest-label{color:var(--muted);font-size:8px;letter-spacing:.09em}.latest-text{margin-top:2px;font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.latest-minute{color:var(--lime);font-size:10px;font-weight:900}
     .tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line2);background:#161a17}.tab{border:0;background:transparent;color:var(--muted);padding:12px 8px;font-size:10px;font-weight:850;cursor:pointer}.tab.active{color:var(--green);background:#202020;box-shadow:inset 0 -2px 0 var(--green)}
@@ -52,7 +52,13 @@
     const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     const shown=v=>v===null||v===undefined||v===''?'–':v;
     const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%',''));return Number.isFinite(n)?n:null};
-    const initial=n=>String(n||'?').trim().charAt(0).toUpperCase();
+    const shirtPalette=['#2563eb','#dc2626','#f59e0b','#16a34a','#7c3aed','#0891b2','#e11d48','#f97316','#4f46e5','#65a30d'];
+    function shirtColor(name,avoid=''){
+      let hash=0;for(const ch of String(name||''))hash=((hash<<5)-hash)+ch.charCodeAt(0);
+      let index=Math.abs(hash)%shirtPalette.length;
+      if(shirtPalette[index]===avoid)index=(index+3)%shirtPalette.length;
+      return shirtPalette[index];
+    }
 
     function statusInfo(status,elapsed,updated){
       const raw=String(status||'').trim().toLowerCase();
@@ -76,9 +82,9 @@
     function card(id){return `<article class="shell" data-id="${id}">
       <section class="match-meta"><div class="league" data-k="league">FOOTBALL</div><div class="meta-right"><span class="source" data-k="source">SOURCE —</span><span class="live-pill waiting" data-k="statusPill">Loading</span></div></section>
       <section class="scoreboard">
-        <div class="team"><div class="crest" data-k="homeInitial">H</div><div class="team-name" data-k="home">Home</div><div class="team-side">HOME</div></div>
+        <div class="team"><div class="crest" data-k="homeJersey" aria-label="Home team shirt"></div><div class="team-name" data-k="home">Home</div><div class="team-side">HOME</div></div>
         <div class="score-center"><div class="minute" data-k="minute">—</div><div class="score" data-k="score">– : –</div><div class="kickoff" data-k="kickoff">Loading kickoff</div></div>
-        <div class="team"><div class="crest" data-k="awayInitial">A</div><div class="team-name" data-k="away">Away</div><div class="team-side">AWAY</div></div>
+        <div class="team"><div class="crest" data-k="awayJersey" aria-label="Away team shirt"></div><div class="team-name" data-k="away">Away</div><div class="team-side">AWAY</div></div>
       </section>
       <section class="latest"><div class="pulse"></div><div><div class="latest-label">LATEST EVENT</div><div class="latest-text" data-k="latestText">No events yet</div></div><div class="latest-minute" data-k="latestMinute">—</div></section>
       <nav class="tabs"><button class="tab active" type="button" data-tab="stats">Stats</button><button class="tab" type="button" data-tab="timeline">Timeline</button></nav>
@@ -108,7 +114,10 @@
       node(root,'league').textContent=[m.league,m.country].filter(Boolean).join(' · ');
       node(root,'source').textContent=`SOURCE ${String(data.source||'unknown').toUpperCase()}`;
       node(root,'statusPill').textContent=st.label;node(root,'statusPill').className=`live-pill ${st.cls}`;
-      node(root,'home').textContent=home;node(root,'away').textContent=away;node(root,'homeInitial').textContent=initial(home);node(root,'awayInitial').textContent=initial(away);
+      node(root,'home').textContent=home;node(root,'away').textContent=away;
+      const homeShirt=shirtColor(home),awayShirt=shirtColor(away,homeShirt);
+      node(root,'homeJersey').style.setProperty('--shirt',homeShirt);node(root,'awayJersey').style.setProperty('--shirt',awayShirt);
+      node(root,'homeJersey').setAttribute('aria-label',`${home} shirt`);node(root,'awayJersey').setAttribute('aria-label',`${away} shirt`);
       node(root,'score').textContent=`${shown(m.score?.home)} : ${shown(m.score?.away)}`;node(root,'minute').textContent=st.minute;
       if(m.kickoff_utc){const d=new Date(m.kickoff_utc);node(root,'kickoff').textContent=Number.isNaN(d.getTime())?m.kickoff_utc:d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}
       const stats=m.stats||{};
