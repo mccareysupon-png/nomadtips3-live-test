@@ -1,0 +1,41 @@
+name: Repair Dynamic Live Page
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/fix-live-page.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove stale JavaScript tail
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('index.html')
+          text = path.read_text(encoding='utf-8')
+          bad = "syncSources();setInterval(syncSources,15000);const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),15000);setInterval(()=>refreshClock(root),15000)});"
+          text = text.replace(bad, "syncSources();setInterval(syncSources,15000);")
+          duplicate = "    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}\n\n    const host=document.getElementById('matches');\n    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}"
+          replacement = "    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}\n\n    const host=document.getElementById('matches');"
+          text = text.replace(duplicate, replacement)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git add index.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Repair dynamic live page JavaScript"
+            git pull --rebase origin main
+            git push origin main
+          fi
