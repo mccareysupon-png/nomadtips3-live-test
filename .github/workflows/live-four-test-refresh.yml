@@ -24,6 +24,7 @@ jobs:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       TARGET_DATE: "2026-08-03"
       RUN_SECONDS: "285"
+      MANUAL_RESTART: "2026-08-03T12:15:00Z"
 
     steps:
       - uses: actions/checkout@v4
