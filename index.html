@@ -43,10 +43,7 @@
   </div>
   <script>
     const RAW='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/';
-    const sources=[
-    {file:`${RAW}live-data-cambodia-timor-leste.json`,fallbackSource:'manual-live-seed'},
-    {file:`${RAW}live-data-drukpa-paro.json`,fallbackSource:'manual-live-seed'}
-  ];
+    const sourceRoots=new Map();
     const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
     const shown=v=>v===null||v===undefined||v===''?'–':v;
     const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%',''));return Number.isFinite(n)?n:null};
@@ -153,9 +150,35 @@
     function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
     async function loadOne(root,src){try{const r=await fetch(`${src.file}?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(!data.source)data.source=src.fallbackSource;const status=String(data.match?.status||'').toUpperCase();if(['FT','AET','PEN','CANC','ABD','AWD','WO','PST'].includes(status)){root.remove();updateVisibleCount();return}render(root,data)}catch(e){node(root,'statusPill').textContent='LOAD ERROR';node(root,'statusPill').className='live-pill error';node(root,'updated').textContent=String(e.message||e)}}
 
-    document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${sources.length} ${sources.length===1?'MATCH':'MATCHES'}`;
     const host=document.getElementById('matches');
-    sources.forEach((src,i)=>{host.insertAdjacentHTML('beforeend',card(i));const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),15000);setInterval(()=>refreshClock(root),15000)});
+    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
+    async function syncSources(){
+      try{
+        const response=await fetch(`${RAW}live-matches.json?t=${Date.now()}`,{cache:'no-store'});
+        if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);
+        const manifest=await response.json();
+        const files=Array.isArray(manifest.files)?manifest.files:[];
+        const wanted=new Set(files);
+        for(const [name,state] of sourceRoots){
+          if(!wanted.has(name)){
+            clearInterval(state.loadTimer);clearInterval(state.clockTimer);
+            state.root.remove();sourceRoots.delete(name);
+          }
+        }
+        for(const name of files){
+          if(sourceRoots.has(name))continue;
+          const src={file:`${RAW}${name}`,fallbackSource:'manual-live-seed'};
+          host.insertAdjacentHTML('beforeend',card(name));
+          const root=host.lastElementChild;
+          bindTabs(root);loadOne(root,src);
+          const loadTimer=setInterval(()=>loadOne(root,src),15000);
+          const clockTimer=setInterval(()=>refreshClock(root),15000);
+          sourceRoots.set(name,{root,loadTimer,clockTimer});
+        }
+        updateVisibleCount();
+      }catch(error){console.error(error)}
+    }
+    syncSources();setInterval(syncSources,15000);const root=host.lastElementChild;bindTabs(root);loadOne(root,src);setInterval(()=>loadOne(root,src),15000);setInterval(()=>refreshClock(root),15000)});
   </script>
 </body>
 </html>

@@ -39,6 +39,10 @@ MATCHES = [
     ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
 ]
 
+LIVE_ALIASES = {
+    "live-data-drukpa-paro.json": ["live-data-bss-sporting-east-bengal.json"],
+}
+
 
 def utc_now() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
@@ -377,6 +381,28 @@ def main() -> None:
             if after != before:
                 entry["path"].write_text(json.dumps(entry["data"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 changed_paths.append(entry["path"])
+
+        # Compatibility alias for already-open browser tabs that still know the old file list.
+        for entry in entries:
+            for alias_name in LIVE_ALIASES.get(entry["path"].name, []):
+                alias_path = Path(alias_name)
+                alias_text = json.dumps(entry["data"], ensure_ascii=False, indent=2) + "\n"
+                if not alias_path.exists() or alias_path.read_text(encoding="utf-8") != alias_text:
+                    alias_path.write_text(alias_text, encoding="utf-8")
+                    changed_paths.append(alias_path)
+
+        manifest_path = Path("live-matches.json")
+        manifest = {
+            "files": [
+                entry["path"].name
+                for entry in entries
+                if str(entry["data"].get("match", {}).get("status") or "").upper() not in TERMINAL
+            ]
+        }
+        manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+        if not manifest_path.exists() or manifest_path.read_text(encoding="utf-8") != manifest_text:
+            manifest_path.write_text(manifest_text, encoding="utf-8")
+            changed_paths.append(manifest_path)
 
         git_publish(changed_paths, f"Live refresh {timestamp}")
         pass_number += 1
