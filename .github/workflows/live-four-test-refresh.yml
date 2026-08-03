@@ -6,8 +6,9 @@ on:
     paths:
       - ".github/workflows/live-four-test-refresh.yml"
       - "scripts/live_refresh.py"
+      - "live-matches.json"
   schedule:
-    - cron: "*/5 10-16 3 8 *"
+    - cron: "*/5 10-20 3 8 *"
 
 permissions:
   contents: write
@@ -31,90 +32,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Configure active live matches
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          python3 - <<'PY'
-          from pathlib import Path
-          import json
-          import re
-
-          filename = "live-data-bukovyna-lnz-cherkasy.json"
-          path = Path(filename)
-          if not path.exists():
-              seed = {
-                  "source": "manual-live-seed",
-                  "fetched_at_utc": "2026-08-03T12:39:00Z",
-                  "http_status": 200,
-                  "match": {
-                      "id": None,
-                      "sport": "football",
-                      "league": "Premier League",
-                      "country": "Ukraine",
-                      "home": {"name": "Bukovyna", "short_name": "Bukovyna"},
-                      "away": {"name": "LNZ Cherkasy", "short_name": "LNZ Cherkasy"},
-                      "kickoff_utc": "2026-08-03T12:30:00Z",
-                      "status": "1H",
-                      "status_long": "First Half",
-                      "elapsed": 4,
-                      "score": {"home": 0, "away": 0},
-                      "halftime_score": {"home": None, "away": None},
-                      "fulltime_score": {"home": None, "away": None},
-                      "pick": "Live System Test",
-                      "confidence": None,
-                      "predicted_score": None,
-                      "stats": {},
-                      "events": []
-                  },
-                  "api_response": {},
-                  "stored_response": {"mode": "fast-live-test", "cycle": 0},
-                  "live_meta": {"score_updated_at": "2026-08-03T12:39:00Z"}
-              }
-              path.write_text(json.dumps(seed, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-          script_path = Path("scripts/live_refresh.py")
-          script = script_path.read_text(encoding="utf-8")
-          config = '''MATCHES = [
-              ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
-              ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),
-          ]
-
-          LIVE_ALIASES = {
-              "live-data-drukpa-paro.json": ["live-data-bss-sporting-east-bengal.json"],
-          }
-
-          '''
-          script = re.sub(
-              r"MATCHES = \[\n.*?\n\]\n\n(?:LIVE_ALIASES = \{.*?\}\n\n)?",
-              config,
-              script,
-              count=1,
-              flags=re.S,
-          )
-          script_path.write_text(script, encoding="utf-8")
-
-          manifest = {
-              "files": [
-                  "live-data-drukpa-paro.json",
-                  "live-data-bukovyna-lnz-cherkasy.json"
-              ]
-          }
-          Path("live-matches.json").write_text(
-              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8",
-          )
-          PY
-
-          git add scripts/live_refresh.py live-data-bukovyna-lnz-cherkasy.json live-matches.json
-          if ! git diff --cached --quiet; then
-            git commit -m "Activate Bukovyna vs LNZ Cherkasy live match"
-            git pull --rebase origin main
-            git push origin main
-          fi
-
       - name: Run centralized live-data server loop
         shell: bash
         run: |
@@ -122,36 +39,38 @@ jobs:
           test -n "${API_FOOTBALL_KEY:-}"
           python3 scripts/live_refresh.py
 
-      - name: Start next cycle while a match is active
+      - name: Start next cycle while a match remains active
         if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          git pull --rebase origin main || true
           ACTIVE=$(python3 - <<'PY'
           import json
           from pathlib import Path
+
           terminal = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
-          files = [
-              "live-data-drukpa-paro.json",
-              "live-data-bukovyna-lnz-cherkasy.json"
-          ]
+          manifest_path = Path("live-matches.json")
           active = False
-          for name in files:
-              path = Path(name)
-              if not path.exists():
-                  continue
-              data = json.loads(path.read_text(encoding="utf-8"))
-              status = str(data.get("match", {}).get("status") or "").upper()
-              if status not in terminal:
-                  active = True
-                  break
+          if manifest_path.exists():
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+              for name in manifest.get("files", []):
+                  path = Path(name)
+                  if not path.exists():
+                      continue
+                  data = json.loads(path.read_text(encoding="utf-8"))
+                  status = str(data.get("match", {}).get("status") or "").upper()
+                  if status not in terminal:
+                      active = True
+                      break
           print("yes" if active else "no")
           PY
           )
+
           NOW=$(date -u +%s)
-          END=$(date -u -d '2026-08-03 16:30:00' +%s)
+          END=$(date -u -d '2026-08-03 20:30:00' +%s)
           if [ "$ACTIVE" = "yes" ] && [ "$NOW" -lt "$END" ]; then
             curl --fail-with-body -L -X POST \
               -H "Accept: application/vnd.github+json" \
