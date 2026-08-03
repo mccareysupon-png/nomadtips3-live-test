@@ -17,7 +17,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Add SJK HJK to live tracking
+      - name: Persist SJK HJK in live tracking
         shell: bash
         run: |
           set -euo pipefail
@@ -28,13 +28,13 @@ jobs:
           import json
 
           filename = "live-data-sjk-hjk-helsinki.json"
-          bukovyna_line = '    ("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),\n'
-          sjk_line = '    ("live-data-sjk-hjk-helsinki.json", r"sjk|seinajoki", r"hjkhelsinki|hjk"),\n'
+          sjk_tuple = '("live-data-sjk-hjk-helsinki.json", r"sjk|seinajoki", r"hjkhelsinki|hjk"),'
 
           script_path = Path("scripts/live_refresh.py")
           script = script_path.read_text(encoding="utf-8")
           if filename not in script:
-              script = script.replace(bukovyna_line, bukovyna_line + sjk_line)
+              anchor = '("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),'
+              script = script.replace(anchor, anchor + '\n    ' + sjk_tuple)
               script_path.write_text(script, encoding="utf-8")
 
           manifest_path = Path("live-matches.json")
@@ -46,12 +46,19 @@ jobs:
 
           workflow_path = Path(".github/workflows/live-four-test-refresh.yml")
           workflow = workflow_path.read_text(encoding="utf-8")
-          marker = '              "live-data-bukovyna-lnz-cherkasy.json",\n'
-          addition = marker + '              "live-data-sjk-hjk-helsinki.json",\n'
-          if '"live-data-sjk-hjk-helsinki.json"' not in workflow:
-              workflow = workflow.replace(marker, addition)
+          if filename not in workflow:
+              tuple_anchor = '("live-data-bukovyna-lnz-cherkasy.json", r"bukovyna|bukovina", r"lnzcherkasy|lnz"),'
+              workflow = workflow.replace(tuple_anchor, tuple_anchor + '\n              ' + sjk_tuple)
+
+              list_anchor = '"live-data-bukovyna-lnz-cherkasy.json",'
               workflow = workflow.replace(
-                  'files = ["live-data-drukpa-paro.json", "live-data-bukovyna-lnz-cherkasy.json"]',
+                  list_anchor,
+                  list_anchor + '\n              "live-data-sjk-hjk-helsinki.json",'
+              )
+
+              compact_anchor = 'files = ["live-data-drukpa-paro.json", "live-data-bukovyna-lnz-cherkasy.json"]'
+              workflow = workflow.replace(
+                  compact_anchor,
                   'files = ["live-data-drukpa-paro.json", "live-data-bukovyna-lnz-cherkasy.json", "live-data-sjk-hjk-helsinki.json"]'
               )
               workflow_path.write_text(workflow, encoding="utf-8")
@@ -59,7 +66,7 @@ jobs:
 
           git add scripts/live_refresh.py live-matches.json .github/workflows/live-four-test-refresh.yml
           if ! git diff --cached --quiet; then
-            git commit -m "Track SJK vs HJK from Today's Picks"
+            git commit -m "Persist SJK vs HJK in central live workflow"
             git pull --rebase origin main
             git push origin main
           fi
