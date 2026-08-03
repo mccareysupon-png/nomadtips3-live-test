@@ -35,14 +35,8 @@ TERMINAL = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
 LIVE = {"1H", "HT", "2H", "ET", "BT", "P", "INT", "SUSP", "LIVE"}
 
 MATCHES = [
-    ("live-data-bss-sporting-east-bengal.json", r"bsssporting|bss", r"eastbengal"),
-    ("live-data-inhulets-polissya-ii.json", r"inhulets|ingulets", r"polissyaii|polissya2|polissya"),
-    (
-        "live-data-melbourne-victory-ii-melbourne-srbija.json",
-        r"melbournevictoryii|melbournevictory2",
-        r"melbournesrbija|srbija",
-    ),
     ("live-data-cambodia-timor-leste.json", r"cambodia", r"timorleste|easttimor"),
+    ("live-data-drukpa-paro.json", r"drukpa|drukpafc", r"parofc|paro"),
 ]
 
 
