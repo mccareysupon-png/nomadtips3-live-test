@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T11:47:33Z",
+  "fetched_at_utc": "2026-08-03T12:16:31Z",
   "http_status": 200,
   "match": {
     "id": "1610881",
@@ -16,20 +16,20 @@
       "short_name": "East Bengal"
     },
     "kickoff_utc": "2026-08-03T09:30:00+00:00",
-    "status": "2H",
-    "status_long": "Second Half",
-    "elapsed": 86,
+    "status": "FT",
+    "status_long": "Match Finished",
+    "elapsed": 90,
     "score": {
       "home": 3,
-      "away": 2
+      "away": 3
     },
     "halftime_score": {
       "home": 2,
       "away": 1
     },
     "fulltime_score": {
-      "home": null,
-      "away": null
+      "home": 3,
+      "away": 3
     },
     "pick": "Live System Test",
     "confidence": null,
@@ -182,10 +182,10 @@
           "city": null
         },
         "status": {
-          "long": "Second Half",
-          "short": "2H",
-          "elapsed": 86,
-          "extra": null
+          "long": "Match Finished",
+          "short": "FT",
+          "elapsed": 90,
+          "extra": 11
         }
       },
       "league": {
@@ -203,18 +203,18 @@
           "id": 21597,
           "name": "BSS Sporting",
           "logo": "https://media.api-sports.io/football/teams/21597.png",
-          "winner": true
+          "winner": null
         },
         "away": {
           "id": 3463,
           "name": "East Bengal",
           "logo": "https://media.api-sports.io/football/teams/3463.png",
-          "winner": false
+          "winner": null
         }
       },
       "goals": {
         "home": 3,
-        "away": 2
+        "away": 3
       },
       "score": {
         "halftime": {
@@ -222,8 +222,8 @@
           "away": 1
         },
         "fulltime": {
-          "home": null,
-          "away": null
+          "home": 3,
+          "away": 3
         },
         "extratime": {
           "home": null,
@@ -327,6 +327,28 @@
           "time": {
             "elapsed": 63,
             "extra": null
+          },
+          "team": {
+            "id": 3463,
+            "name": "East Bengal",
+            "logo": "https://media.api-sports.io/football/teams/3463.png"
+          },
+          "player": {
+            "id": null,
+            "name": null
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 90,
+            "extra": 1
           },
           "team": {
             "id": 3463,
@@ -471,8 +493,9 @@
     "provider_stat_names": []
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T11:47:33Z",
+    "score_updated_at": "2026-08-03T12:16:31Z",
     "events_updated_at": "2026-08-03T11:47:33Z",
-    "stats_updated_at": "2026-08-03T11:47:03Z"
+    "stats_updated_at": "2026-08-03T11:47:03Z",
+    "stopped_at": "2026-08-03T12:16:31Z"
   }
 }

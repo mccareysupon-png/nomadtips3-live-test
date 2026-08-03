@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T11:47:33Z",
+  "fetched_at_utc": "2026-08-03T12:16:31Z",
   "http_status": 200,
   "match": {
     "id": "1581859",
@@ -16,11 +16,11 @@
       "short_name": "Polissya II"
     },
     "kickoff_utc": "2026-08-03T10:00:00+00:00",
-    "status": "2H",
-    "status_long": "Second Half",
-    "elapsed": 83,
+    "status": "FT",
+    "status_long": "Match Finished",
+    "elapsed": 90,
     "score": {
-      "home": 1,
+      "home": 2,
       "away": 1
     },
     "halftime_score": {
@@ -28,8 +28,8 @@
       "away": 1
     },
     "fulltime_score": {
-      "home": null,
-      "away": null
+      "home": 2,
+      "away": 1
     },
     "pick": "Live System Test",
     "confidence": null,
@@ -236,10 +236,10 @@
           "city": null
         },
         "status": {
-          "long": "Second Half",
-          "short": "2H",
-          "elapsed": 83,
-          "extra": null
+          "long": "Match Finished",
+          "short": "FT",
+          "elapsed": 90,
+          "extra": 5
         }
       },
       "league": {
@@ -257,17 +257,17 @@
           "id": 3625,
           "name": "Inhulets",
           "logo": "https://media.api-sports.io/football/teams/3625.png",
-          "winner": null
+          "winner": true
         },
         "away": {
           "id": 24589,
           "name": "Polissya II",
           "logo": "https://media.api-sports.io/football/teams/24589.png",
-          "winner": null
+          "winner": false
         }
       },
       "goals": {
-        "home": 1,
+        "home": 2,
         "away": 1
       },
       "score": {
@@ -276,8 +276,8 @@
           "away": 1
         },
         "fulltime": {
-          "home": null,
-          "away": null
+          "home": 2,
+          "away": 1
         },
         "extratime": {
           "home": null,
@@ -358,28 +358,6 @@
         {
           "time": {
             "elapsed": 45,
-            "extra": null
-          },
-          "team": {
-            "id": 3625,
-            "name": "Inhulets",
-            "logo": "https://media.api-sports.io/football/teams/3625.png"
-          },
-          "player": {
-            "id": 335038,
-            "name": "A. Benedyuk"
-          },
-          "assist": {
-            "id": null,
-            "name": null
-          },
-          "type": "Card",
-          "detail": "Yellow Card",
-          "comments": null
-        },
-        {
-          "time": {
-            "elapsed": 45,
             "extra": 1
           },
           "team": {
@@ -397,6 +375,28 @@
           },
           "type": "Goal",
           "detail": "Normal Goal",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 45,
+            "extra": null
+          },
+          "team": {
+            "id": 3625,
+            "name": "Inhulets",
+            "logo": "https://media.api-sports.io/football/teams/3625.png"
+          },
+          "player": {
+            "id": 335038,
+            "name": "A. Benedyuk"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
           "comments": null
         },
         {
@@ -529,6 +529,94 @@
           },
           "type": "subst",
           "detail": "Substitution 5",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 84,
+            "extra": null
+          },
+          "team": {
+            "id": 24589,
+            "name": "Polissya II",
+            "logo": "https://media.api-sports.io/football/teams/24589.png"
+          },
+          "player": {
+            "id": 478932,
+            "name": "Y. Karaman"
+          },
+          "assist": {
+            "id": 478932,
+            "name": "Y. Karaman"
+          },
+          "type": "Goal",
+          "detail": "Missed Penalty",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 87,
+            "extra": null
+          },
+          "team": {
+            "id": 3625,
+            "name": "Inhulets",
+            "logo": "https://media.api-sports.io/football/teams/3625.png"
+          },
+          "player": {
+            "id": null,
+            "name": null
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 88,
+            "extra": null
+          },
+          "team": {
+            "id": 24589,
+            "name": "Polissya II",
+            "logo": "https://media.api-sports.io/football/teams/24589.png"
+          },
+          "player": {
+            "id": null,
+            "name": null
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Card",
+          "detail": "Yellow Card",
+          "comments": null
+        },
+        {
+          "time": {
+            "elapsed": 90,
+            "extra": 5
+          },
+          "team": {
+            "id": 3625,
+            "name": "Inhulets",
+            "logo": "https://media.api-sports.io/football/teams/3625.png"
+          },
+          "player": {
+            "id": 547222,
+            "name": "Y. Yanovich"
+          },
+          "assist": {
+            "id": null,
+            "name": null
+          },
+          "type": "Goal",
+          "detail": "Normal Goal",
           "comments": null
         }
       ],
@@ -789,8 +877,9 @@
     "provider_stat_names": []
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T11:47:33Z",
+    "score_updated_at": "2026-08-03T12:16:31Z",
     "events_updated_at": "2026-08-03T11:47:33Z",
-    "stats_updated_at": "2026-08-03T11:47:03Z"
+    "stats_updated_at": "2026-08-03T11:47:03Z",
+    "stopped_at": "2026-08-03T12:16:31Z"
   }
 }

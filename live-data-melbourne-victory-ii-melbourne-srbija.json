@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-03T11:47:33Z",
+  "fetched_at_utc": "2026-08-03T12:16:31Z",
   "http_status": 200,
   "match": {
     "id": "1522158",
@@ -16,9 +16,9 @@
       "short_name": "Melbourne Srbija"
     },
     "kickoff_utc": "2026-08-03T10:15:00+00:00",
-    "status": "2H",
-    "status_long": "Second Half",
-    "elapsed": 71,
+    "status": "FT",
+    "status_long": "Match Finished",
+    "elapsed": 90,
     "score": {
       "home": 1,
       "away": 0
@@ -28,8 +28,8 @@
       "away": 0
     },
     "fulltime_score": {
-      "home": null,
-      "away": null
+      "home": 1,
+      "away": 0
     },
     "pick": "Live System Test",
     "confidence": null,
@@ -146,10 +146,10 @@
           "city": null
         },
         "status": {
-          "long": "Second Half",
-          "short": "2H",
-          "elapsed": 71,
-          "extra": null
+          "long": "Match Finished",
+          "short": "FT",
+          "elapsed": 90,
+          "extra": 4
         }
       },
       "league": {
@@ -186,8 +186,8 @@
           "away": 0
         },
         "fulltime": {
-          "home": null,
-          "away": null
+          "home": 1,
+          "away": 0
         },
         "extratime": {
           "home": null,
@@ -259,8 +259,9 @@
     "provider_stat_names": []
   },
   "live_meta": {
-    "score_updated_at": "2026-08-03T11:47:33Z",
+    "score_updated_at": "2026-08-03T12:16:31Z",
     "events_updated_at": "2026-08-03T11:47:33Z",
-    "stats_updated_at": "2026-08-03T11:47:03Z"
+    "stats_updated_at": "2026-08-03T11:47:03Z",
+    "stopped_at": "2026-08-03T12:16:31Z"
   }
 }
