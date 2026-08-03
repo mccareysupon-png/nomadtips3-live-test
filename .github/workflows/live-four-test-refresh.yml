@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: nomad-central-live-refresh
@@ -24,7 +25,6 @@ jobs:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
       TARGET_DATE: "2026-08-03"
       RUN_SECONDS: "285"
-      MANUAL_RESTART: "2026-08-03T12:15:00Z"
 
     steps:
       - uses: actions/checkout@v4
@@ -37,3 +37,43 @@ jobs:
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
           python3 scripts/live_refresh.py
+
+      - name: Start next cycle while a match is active
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ACTIVE=$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          terminal = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
+          files = [
+              "live-data-bss-sporting-east-bengal.json",
+              "live-data-inhulets-polissya-ii.json",
+              "live-data-melbourne-victory-ii-melbourne-srbija.json",
+              "live-data-cambodia-timor-leste.json",
+          ]
+          active = False
+          for name in files:
+              data = json.loads(Path(name).read_text(encoding="utf-8"))
+              status = str(data.get("match", {}).get("status") or "").upper()
+              if status not in terminal:
+                  active = True
+                  break
+          print("yes" if active else "no")
+          PY
+          )
+          NOW=$(date -u +%s)
+          END=$(date -u -d '2026-08-03 16:30:00' +%s)
+          if [ "$ACTIVE" = "yes" ] && [ "$NOW" -lt "$END" ]; then
+            curl --fail-with-body -L -X POST \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/live-four-test-refresh.yml/dispatches" \
+              -d '{"ref":"main"}'
+          else
+            echo "No active matches remain; refresh chain stopped."
+          fi
