@@ -7,178 +7,37 @@
   <meta name="theme-color" content="#07543c">
   <title>NOMADTIPS3 — Live Scores Beta</title>
   <style>
-    :root{color-scheme:dark;--bg:#1b1b1b;--panel:#222;--soft:#272727;--line:#414141;--line2:#363636;--text:#f3f5f4;--muted:#aeb4b1;--green:#00f0a8;--yellow:#f2c94c;--red:#ff9298;--blue:#87aef5}
+    :root{color-scheme:dark;--bg:#1b1b1b;--panel:#222;--soft:#292929;--line:#3d3d3d;--text:#f3f5f4;--muted:#aeb4b1;--green:#00f0a8;--yellow:#f2c94c;--red:#ff9298;--blue:#87aef5}
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Arial,"Noto Sans Thai",sans-serif}button{font:inherit}
-    .wrap{width:min(calc(100% - 40px),1120px);margin:auto;padding:96px 0 116px}
-    .topbar{position:fixed;z-index:50;top:0;left:0;right:0;height:72px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 max(20px,calc((100vw - 1120px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
-    .brand{display:inline-flex;align-items:baseline;color:#fff;font-size:34px;font-weight:900;letter-spacing:-.055em;line-height:1;text-transform:lowercase}.brand b{color:var(--yellow)}
-    .v2{padding:7px 10px;border:1px solid rgba(199,249,217,.25);border-radius:999px;background:rgba(0,230,118,.08);color:#c7f9d9;font-size:7px;font-weight:900;letter-spacing:.08em}
-    .match-list{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;max-width:760px;margin:auto}
-    .shell{overflow:hidden;border:1px solid var(--line);border-radius:5px;background:var(--panel);box-shadow:0 14px 28px rgba(0,0,0,.17)}
-    .match-meta{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;background:#1a1a1a;border-bottom:1px solid var(--line2)}
-    .league{min-width:0;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.07em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .meta-right{display:flex;align-items:center;gap:7px}.source,.live-pill{border:1px solid var(--line);border-radius:999px;padding:5px 8px;font-size:9px;color:var(--muted);background:#191d1a}.source{display:none}
-    .live-pill{color:var(--green);border-color:#3a654a;font-weight:900}.live-pill.waiting{color:var(--yellow);border-color:#665a36}.live-pill.finished{color:#e9ecea;border-color:#59615c}.live-pill.error{color:var(--red);border-color:#6d3f43}
-    .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) 126px minmax(0,1fr);align-items:center;gap:10px;min-height:180px;padding:20px 12px;background:linear-gradient(180deg,#252525,#202020)}
-    .team{text-align:center;min-width:0}.crest{position:relative;width:48px;height:48px;margin:0 auto 9px}.crest::before{content:"";position:absolute;inset:2px 1px 1px;background:var(--shirt,#2563eb);clip-path:polygon(25% 9%,40% 2%,60% 2%,75% 9%,98% 28%,82% 44%,72% 35%,72% 96%,28% 96%,28% 35%,18% 44%,2% 28%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.32))}.crest::after{content:"";position:absolute;top:3px;left:50%;width:14px;height:8px;border-radius:0 0 10px 10px;background:#222;transform:translateX(-50%)}.team-name{font-size:18px;font-weight:900;overflow-wrap:anywhere}.team-side{margin-top:5px;color:var(--muted);font-size:8px;letter-spacing:.13em}
-    .score-center{text-align:center;min-width:0;padding:12px 6px;background:#171717;border:1px solid #454545;border-radius:4px}.minute{min-height:18px;color:var(--green);font-size:11px;font-weight:900}.score{margin:4px 0;font-size:42px;line-height:1;font-weight:950;letter-spacing:-.05em}.kickoff{color:var(--muted);font-size:9px;line-height:1.5}
-    .latest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);background:#1b1b1b}.pulse{width:8px;height:8px;border-radius:50%;background:var(--green)}.latest-label{color:var(--muted);font-size:8px;letter-spacing:.09em}.latest-text{margin-top:2px;font-size:10px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.latest-minute{color:var(--yellow);font-size:10px;font-weight:900}
-    .tabs{display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line2);background:#161a17}.tab{border:0;background:transparent;color:var(--muted);padding:12px 8px;font-size:10px;font-weight:850;cursor:pointer}.tab.active{color:var(--yellow);background:#202020;box-shadow:inset 0 -2px 0 var(--yellow)}
-    .panel{display:none;padding:12px;background:var(--panel)}.panel.active{display:block}.empty{padding:22px 12px;text-align:center;color:var(--muted);font-size:10px;border:1px dashed var(--line);border-radius:4px;background:#202020}
-    .stat-list,.timeline{display:grid;gap:8px}.stat-row{display:grid;grid-template-columns:70px 1fr 70px;align-items:center;gap:10px;padding:10px 11px;border:1px solid var(--line2);border-radius:4px;background:var(--soft)}.stat-value{font-size:16px;font-weight:950}.stat-value.away{text-align:right}.stat-center{text-align:center}.stat-name{font-size:9px;color:var(--muted);font-weight:800}.bars{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}.bar{height:4px;background:#303632;overflow:hidden}.fill{height:100%;background:var(--yellow)}.bar.away .fill{margin-left:auto;background:var(--blue)}
-    .event{display:grid;grid-template-columns:46px 1fr;gap:10px;padding:10px 11px;border:1px solid var(--line2);border-radius:4px;background:var(--soft)}.event-time{color:var(--yellow);font-size:11px;font-weight:950}.event-type{font-size:11px;font-weight:900}.event-detail{margin-top:3px;color:var(--muted);font-size:9px;line-height:1.4}
-    .pick-row{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(2,minmax(0,.7fr));gap:1px;background:var(--line2);border-top:1px solid var(--line2)}.pick-row>div{min-width:0;padding:11px 12px;background:#252525}.pick-row span,.pick-row strong{display:block}.pick-row span{margin-bottom:4px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.08em}.pick-row strong{font-size:11px;overflow-wrap:anywhere}.pick-row>div:first-child strong{color:var(--green)}
-    .footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line2);background:#1d1d1d;color:#7f8783;font-size:8px}
-    .site-foot{display:flex;justify-content:space-between;gap:12px;max-width:760px;margin:26px auto 0;padding:18px 0;color:#7f8783;border-top:1px solid #3d3d3d;font-size:9px}.site-foot a{color:var(--muted);text-decoration:none}
-    .main-nav{position:fixed;z-index:50;left:50%;bottom:max(10px,env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:min(calc(100% - 40px),1120px);padding:6px 8px;background:#171717;border-top:1px solid #3d3d3d;transform:translateX(-50%)}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:44px;padding:9px 4px;color:var(--muted);font-size:10px;font-weight:700;text-align:center;text-decoration:none}.main-nav a.active{color:var(--yellow)}
-    @media(max-width:640px){.wrap{width:min(calc(100% - 16px),1120px);padding-top:66px}.topbar{height:50px;padding:0 10px}.brand{font-size:25px}.v2{padding:5px 7px;font-size:5px}.scoreboard{grid-template-columns:minmax(0,1fr) 102px minmax(0,1fr);min-height:146px;padding:16px 8px}.crest{width:40px;height:40px;font-size:13px}.team-name{font-size:13px}.score{font-size:34px}.stat-row{grid-template-columns:54px 1fr 54px}.site-foot{align-items:flex-start;flex-direction:column;padding-inline:6px}.main-nav{bottom:0;width:100%;padding:5px 8px max(5px,env(safe-area-inset-bottom))}.main-nav a{font-size:8px}}
+    .wrap{width:min(calc(100% - 24px),760px);margin:auto;padding:76px 0 96px}
+    .topbar{position:fixed;z-index:30;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 max(12px,calc((100vw - 760px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
+    .brand{font-size:28px;font-weight:950;letter-spacing:-.055em;color:#fff}.brand b{color:var(--yellow)}
+    .count{padding:6px 9px;border:1px solid rgba(242,201,76,.35);border-radius:999px;color:#f8e7a2;font-size:8px;font-weight:900}
+    #matches{display:grid;gap:14px}.match-card{overflow:hidden;border:1px solid var(--line);border-radius:6px;background:var(--panel);box-shadow:0 12px 28px rgba(0,0,0,.2)}
+    .match-head{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:#191919;border-bottom:1px solid #343434}.match-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.06em}.status{padding:5px 8px;border:1px solid #3b694e;border-radius:999px;color:var(--green);font-size:9px}.status.waiting{color:var(--yellow);border-color:#725f2b}.status.finished{color:#ddd;border-color:#666}.status.error{color:var(--red);border-color:#704247}
+    .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) 118px minmax(0,1fr);align-items:center;gap:8px;min-height:164px;padding:17px 10px;background:linear-gradient(180deg,#272727,#202020)}
+    .team{text-align:center;min-width:0}.team strong{display:block;font-size:16px;overflow-wrap:anywhere}.team small{display:block;margin-top:5px;color:var(--muted);font-size:8px;letter-spacing:.12em}
+    .shirt{position:relative;display:block;width:46px;height:46px;margin:0 auto 8px}.shirt:before{content:"";position:absolute;inset:2px;background:var(--shirt,#2563eb);clip-path:polygon(25% 9%,40% 2%,60% 2%,75% 9%,98% 28%,82% 44%,72% 35%,72% 96%,28% 96%,28% 35%,18% 44%,2% 28%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}.shirt:after{content:"";position:absolute;top:3px;left:50%;width:13px;height:7px;border-radius:0 0 9px 9px;background:#222;transform:translateX(-50%)}
+    .scorebox{text-align:center;padding:11px 5px;border:1px solid #454545;border-radius:5px;background:#171717}.scorebox>span{display:block;color:var(--green);font-size:11px;font-weight:900}.scorebox>b{display:block;margin:5px 0;font-size:39px;line-height:1}.scorebox>small{display:block;color:var(--muted);font-size:9px;line-height:1.45}
+    .latest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:10px 12px;background:#1b1b1b;border-top:1px solid #343434;border-bottom:1px solid #343434}.latest>i{width:8px;height:8px;border-radius:50%;background:var(--green)}.latest small{display:block;color:var(--muted);font-size:8px}.latest b{display:block;margin-top:2px;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.latest>strong{color:var(--yellow);font-size:10px}
+    .tabs{display:grid;grid-template-columns:1fr 1fr;background:#171717;border-bottom:1px solid #343434}.tabs button{border:0;background:transparent;color:var(--muted);padding:11px;cursor:pointer}.tabs button.active{color:var(--yellow);background:#222;box-shadow:inset 0 -2px 0 var(--yellow)}
+    .panel{display:none;padding:11px}.panel.active{display:block}.stat-list,.event-list{display:grid;gap:8px}.empty{margin:0;padding:22px 10px;text-align:center;color:var(--muted);font-size:10px;border:1px dashed #444;border-radius:5px}
+    .stat-row{display:grid;grid-template-columns:58px 1fr 58px;align-items:center;gap:8px;padding:9px 10px;border:1px solid #373737;border-radius:5px;background:var(--soft)}.stat-row>b:last-child{text-align:right}.stat-row>div{text-align:center}.stat-row small{display:block;color:var(--muted);font-size:9px}.stat-row span{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}.stat-row span i{display:block;height:4px;background:var(--yellow)}.stat-row span i.away{margin-left:auto;background:var(--blue)}
+    .event{display:grid;grid-template-columns:42px 1fr;gap:9px;padding:9px 10px;border:1px solid #373737;border-radius:5px;background:var(--soft)}.event>b{color:var(--yellow)}.event strong,.event small{display:block}.event strong{font-size:11px}.event small{margin-top:3px;color:var(--muted);font-size:9px}
+    .pick{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:1px;background:#393939;border-top:1px solid #393939}.pick>div{padding:10px;background:#252525}.pick small,.pick b{display:block}.pick small{color:var(--muted);font-size:8px}.pick b{margin-top:4px;font-size:11px}.pick>div:first-child b{color:var(--green)}
+    .match-card footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #343434;color:#858b88;font-size:8px}
+    .main-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px max(6px,env(safe-area-inset-bottom));background:#171717;border-top:1px solid #3d3d3d}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:42px;color:var(--muted);font-size:9px;text-decoration:none;text-align:center}.main-nav a.active{color:var(--yellow)}
+    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.count{font-size:6px}.scoreboard{grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);min-height:145px;padding:14px 6px}.shirt{width:40px;height:40px}.team strong{font-size:13px}.scorebox>b{font-size:33px}.main-nav a{font-size:8px}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="topbar"><div class="brand">nomad<b>tips3</b></div><div class="v2" id="matchCount">LIVE SCORES BETA · 2 MATCHES</div></header>
-    <main class="match-list" id="matches"></main>
-    <footer class="site-foot"><span>© 2026 NOMADTIPS3. All Rights Reserved.</span><a href="https://nomadtips3.com/copyright-terms">Copyright &amp; Terms</a></footer>
-    <nav class="main-nav" aria-label="Main navigation"><a href="https://nomadtips3.com/">Today's 3 Picks</a><a href="https://nomadtips3.com/stats">Statistics</a><a href="https://nomadtips3.com/share">Share Picks</a><a class="active" href="https://nomadtips3.com/live">Live Beta</a></nav>
+    <header class="topbar"><div class="brand">nomad<b>tips3</b></div><div class="count" id="matchCount">LIVE SCORES BETA · 0 MATCHES</div></header>
+    <main id="matches"></main>
   </div>
-  <script>
-    const RAW='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/';
-    const sourceRoots=new Map();
-    const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-    const shown=v=>v===null||v===undefined||v===''?'–':v;
-    const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%',''));return Number.isFinite(n)?n:null};
-    const shirtPalette=['#2563eb','#dc2626','#f59e0b','#16a34a','#7c3aed','#0891b2','#e11d48','#f97316','#4f46e5','#65a30d'];
-    function shirtColor(name,avoid=''){
-      let hash=0;for(const ch of String(name||''))hash=((hash<<5)-hash)+ch.charCodeAt(0);
-      let index=Math.abs(hash)%shirtPalette.length;
-      if(shirtPalette[index]===avoid)index=(index+3)%shirtPalette.length;
-      return shirtPalette[index];
-    }
-
-    function statusInfo(status,elapsed,updated){
-      const raw=String(status||'').trim().toLowerCase();
-      if(/^(ht|half time|halftime)$/.test(raw))return{label:'HT',minute:'HT · 45′',cls:''};
-      if(/^(ft|finished|full time|completed|aet|pen)$/.test(raw))return{label:'FT',minute:'FT',cls:'finished'};
-      if(/^(ns|not started|scheduled|tbd)$/.test(raw))return{label:'WAITING',minute:'WAITING',cls:'waiting'};
-      if(/^(1h|2h|live|in progress|et|break)$/.test(raw)){
-        let minute=Number(elapsed);
-        if(Number.isFinite(minute)&&updated){
-          const age=Math.max(0,Math.floor((Date.now()-new Date(updated).getTime())/60000));
-          minute+=Math.min(age,5);
-          if(raw==='1h')minute=Math.min(minute,45);
-          if(raw==='2h')minute=Math.min(minute,90);
-        }
-        const text=Number.isFinite(minute)?`LIVE ${minute}′`:'LIVE';
-        return{label:text,minute:text,cls:''};
-      }
-      return{label:status||'UNKNOWN',minute:status||'UNKNOWN',cls:'waiting'};
-    }
-
-    function card(id){return `<article class="shell" data-id="${id}">
-      <section class="match-meta"><div class="league" data-k="league">FOOTBALL</div><div class="meta-right"><span class="source" data-k="source">SOURCE —</span><span class="live-pill waiting" data-k="statusPill">Loading</span></div></section>
-      <section class="scoreboard">
-        <div class="team"><div class="crest" data-k="homeJersey" aria-label="Home team shirt"></div><div class="team-name" data-k="home">Home</div><div class="team-side">HOME</div></div>
-        <div class="score-center"><div class="minute" data-k="minute">—</div><div class="score" data-k="score">– : –</div><div class="kickoff" data-k="kickoff">Loading kickoff</div></div>
-        <div class="team"><div class="crest" data-k="awayJersey" aria-label="Away team shirt"></div><div class="team-name" data-k="away">Away</div><div class="team-side">AWAY</div></div>
-      </section>
-      <section class="latest"><div class="pulse"></div><div><div class="latest-label">LATEST EVENT</div><div class="latest-text" data-k="latestText">No events yet</div></div><div class="latest-minute" data-k="latestMinute">—</div></section>
-      <nav class="tabs"><button class="tab active" type="button" data-tab="stats">Stats</button><button class="tab" type="button" data-tab="timeline">Timeline</button></nav>
-      <section class="panel active" data-panel="stats"><div class="stat-list" data-k="stats"><div class="empty">Loading statistics</div></div></section>
-      <section class="panel" data-panel="timeline"><div class="timeline" data-k="events"><div class="empty">No events yet</div></div></section>
-      <section class="pick-row"><div><span>CORE PICK</span><strong data-k="pick">N/A</strong></div><div><span>CONFIDENCE</span><strong data-k="confidence">N/A</strong></div><div><span>PREDICTED</span><strong data-k="predicted">N/A</strong></div></section>
-      <footer class="footer"><span data-k="updated">Not updated yet</span><span>Score 15 sec · Events 30 sec · Stats 60 sec · Central server</span></footer>
-    </article>`}
-
-    function node(root,key){return root.querySelector(`[data-k="${key}"]`)}
-    function statRow(label,home,away){
-      if((home===null||home===undefined||home==='')&&(away===null||away===undefined||away===''))return'';
-      const h=numeric(home),a=numeric(away),t=h!==null&&a!==null&&h+a>0?h+a:null,hp=t?Math.max(0,Math.min(100,h/t*100)):50,ap=t?Math.max(0,Math.min(100,a/t*100)):50;
-      return `<div class="stat-row"><div class="stat-value">${esc(shown(home))}</div><div class="stat-center"><div class="stat-name">${esc(label)}</div><div class="bars"><div class="bar"><div class="fill" style="width:${hp}%"></div></div><div class="bar away"><div class="fill" style="width:${ap}%"></div></div></div></div><div class="stat-value away">${esc(shown(away))}</div></div>`
-    }
-    function s(stats,key,side){return stats?.[key]?.[side]}
-
-    function refreshClock(root){
-      const c=root._clock;if(!c)return;
-      const st=statusInfo(c.status,c.elapsed,c.updated);
-      node(root,'statusPill').textContent=st.label;node(root,'statusPill').className=`live-pill ${st.cls}`;node(root,'minute').textContent=st.minute;
-    }
-
-    function render(root,data){
-      const m=data.match||{},home=m.home?.name||'Home',away=m.away?.name||'Away',st=statusInfo(m.status,m.elapsed,data.fetched_at_utc);
-      root._clock={status:m.status,elapsed:m.elapsed,updated:data.fetched_at_utc};
-      node(root,'league').textContent=[m.league,m.country].filter(Boolean).join(' · ');
-      node(root,'source').textContent=`SOURCE ${String(data.source||'unknown').toUpperCase()}`;
-      node(root,'statusPill').textContent=st.label;node(root,'statusPill').className=`live-pill ${st.cls}`;
-      node(root,'home').textContent=home;node(root,'away').textContent=away;
-      const homeShirt=shirtColor(home),awayShirt=shirtColor(away,homeShirt);
-      node(root,'homeJersey').style.setProperty('--shirt',homeShirt);node(root,'awayJersey').style.setProperty('--shirt',awayShirt);
-      node(root,'homeJersey').setAttribute('aria-label',`${home} shirt`);node(root,'awayJersey').setAttribute('aria-label',`${away} shirt`);
-      node(root,'score').textContent=`${shown(m.score?.home)} : ${shown(m.score?.away)}`;node(root,'minute').textContent=st.minute;
-      if(m.kickoff_utc){const d=new Date(m.kickoff_utc);node(root,'kickoff').textContent=Number.isNaN(d.getTime())?m.kickoff_utc:d.toLocaleString('th-TH',{dateStyle:'medium',timeStyle:'short'})}
-      const stats=m.stats||{};
-      const html=[
-        statRow('Attacks',s(stats,'attacks','home'),s(stats,'attacks','away')),
-        statRow('Dangerous Attacks',s(stats,'dangerous_attacks','home'),s(stats,'dangerous_attacks','away')),
-        statRow('Expected Goals (xG)',s(stats,'expected_goals','home'),s(stats,'expected_goals','away')),
-        statRow('Ball Possession',s(stats,'possession','home'),s(stats,'possession','away')),
-        statRow('Total Shots',s(stats,'shots','home'),s(stats,'shots','away')),
-        statRow('Shots on Target',s(stats,'shots_on_target','home'),s(stats,'shots_on_target','away')),
-        statRow('Shots off Target',s(stats,'shots_off_target','home'),s(stats,'shots_off_target','away')),
-        statRow('Blocked Shots',s(stats,'blocked_shots','home'),s(stats,'blocked_shots','away')),
-        statRow('Shots Inside Box',s(stats,'shots_inside_box','home'),s(stats,'shots_inside_box','away')),
-        statRow('Shots Outside Box',s(stats,'shots_outside_box','home'),s(stats,'shots_outside_box','away')),
-        statRow('Corner Kicks',s(stats,'corners','home'),s(stats,'corners','away')),
-        statRow('Fouls',s(stats,'fouls','home'),s(stats,'fouls','away')),
-        statRow('Offsides',s(stats,'offsides','home'),s(stats,'offsides','away')),
-        statRow('Goalkeeper Saves',s(stats,'goalkeeper_saves','home'),s(stats,'goalkeeper_saves','away')),
-        statRow('Total Passes',s(stats,'total_passes','home'),s(stats,'total_passes','away')),
-        statRow('Accurate Passes',s(stats,'accurate_passes','home'),s(stats,'accurate_passes','away')),
-        statRow('Pass Accuracy',s(stats,'pass_accuracy','home'),s(stats,'pass_accuracy','away')),
-        statRow('Yellow Cards',s(stats,'yellow_cards','home'),s(stats,'yellow_cards','away')),
-        statRow('Red Cards',s(stats,'red_cards','home'),s(stats,'red_cards','away'))
-      ].filter(Boolean).join('');
-      node(root,'stats').innerHTML=html||'<div class="empty">Statistics will appear when the provider supplies them during the match.</div>';
-
-      const events=Array.isArray(m.events)?[...m.events].sort((a,b)=>(Number(b.minute)||0)-(Number(a.minute)||0)):[];
-      node(root,'events').innerHTML=events.length?events.slice(0,30).map(e=>`<div class="event"><div class="event-time">${esc(e.minute??'–')}′</div><div><div class="event-type">${esc([e.type,e.team].filter(Boolean).join(' — ')||'Event')}</div><div class="event-detail">${esc([e.detail,e.player].filter(Boolean).join(' · ')||'No additional details')}</div></div></div>`).join(''):'<div class="empty">Timeline will appear when match events are available.</div>';
-      const latest=events[0];node(root,'latestText').textContent=latest?[latest.team,latest.type,latest.detail].filter(Boolean).join(' · '):'No events available yet';node(root,'latestMinute').textContent=latest?`${latest.minute??'—'}′`:'—';
-      node(root,'pick').textContent=m.pick||'N/A';node(root,'confidence').textContent=m.confidence!==null&&m.confidence!==undefined?`${m.confidence}%`:'N/A';node(root,'predicted').textContent=m.predicted_score||'N/A';
-      node(root,'updated').textContent=data.fetched_at_utc?`Updated ${new Date(data.fetched_at_utc).toLocaleString('th-TH')}`:'Waiting for first provider update';
-    }
-
-    function bindTabs(root){root.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{root.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));root.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));btn.classList.add('active');root.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add('active')}))}
-    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
-    async function loadOne(root,src){try{const r=await fetch(`${src.file}?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);const data=await r.json();if(!data.source)data.source=src.fallbackSource;const status=String(data.match?.status||'').toUpperCase();if(['FT','AET','PEN','CANC','ABD','AWD','WO','PST'].includes(status)){root.remove();updateVisibleCount();return}render(root,data)}catch(e){node(root,'statusPill').textContent='LOAD ERROR';node(root,'statusPill').className='live-pill error';node(root,'updated').textContent=String(e.message||e)}}
-
-    const host=document.getElementById('matches');
-    function updateVisibleCount(){const n=document.querySelectorAll('.shell').length;document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`}
-    async function syncSources(){
-      try{
-        const response=await fetch(`${RAW}live-matches.json?t=${Date.now()}`,{cache:'no-store'});
-        if(!response.ok)throw new Error(`Manifest HTTP ${response.status}`);
-        const manifest=await response.json();
-        const files=Array.isArray(manifest.files)?manifest.files:[];
-        const wanted=new Set(files);
-        for(const [name,state] of sourceRoots){
-          if(!wanted.has(name)){
-            clearInterval(state.loadTimer);clearInterval(state.clockTimer);
-            state.root.remove();sourceRoots.delete(name);
-          }
-        }
-        for(const name of files){
-          if(sourceRoots.has(name))continue;
-          const src={file:`${RAW}${name}`,fallbackSource:'manual-live-seed'};
-          host.insertAdjacentHTML('beforeend',card(name));
-          const root=host.lastElementChild;
-          bindTabs(root);loadOne(root,src);
-          const loadTimer=setInterval(()=>loadOne(root,src),15000);
-          const clockTimer=setInterval(()=>refreshClock(root),15000);
-          sourceRoots.set(name,{root,loadTimer,clockTimer});
-        }
-        updateVisibleCount();
-      }catch(error){console.error(error)}
-    }
-    syncSources();setInterval(syncSources,15000);
-  </script>
+  <nav class="main-nav" aria-label="Main navigation">
+    <a href="https://nomadtips3.com/">Today's 3 Picks</a><a href="https://nomadtips3.com/stats">Statistics</a><a href="https://nomadtips3.com/share">Share Picks</a><a class="active" href="https://nomadtips3.com/live">Live Beta</a>
+  </nav>
+  <script src="live-app.js?v=202608031930"></script>
 </body>
 </html>
