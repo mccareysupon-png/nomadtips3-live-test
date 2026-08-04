@@ -1,0 +1,70 @@
+:root{
+  --nomad-wordmark-size:30px;
+  --nomad-wordmark-yellow:#f2c94c;
+}
+
+/* Contemporary sportsbook-style wordmark using system sans-serif fonts only. */
+.brand{
+  display:inline-flex!important;
+  align-items:center;
+  flex:0 0 auto;
+  min-width:max-content;
+  color:#fff!important;
+  font-family:"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif!important;
+  font-size:var(--nomad-wordmark-size)!important;
+  font-weight:900!important;
+  font-style:normal!important;
+  font-variant:normal!important;
+  line-height:.9!important;
+  letter-spacing:-.075em!important;
+  text-transform:lowercase!important;
+  white-space:nowrap!important;
+  text-decoration:none!important;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+
+.brand>b{
+  color:var(--nomad-wordmark-yellow)!important;
+  font:inherit!important;
+}
+
+/* NOMAD Control uses an h1 inside the brand link. Render the same wordmark there. */
+.brand h1{
+  display:inline-flex!important;
+  align-items:baseline;
+  margin:0!important;
+  color:transparent!important;
+  font-size:0!important;
+  line-height:.9!important;
+  letter-spacing:0!important;
+  white-space:nowrap!important;
+}
+.brand h1::before,
+.brand h1::after{
+  font-family:"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif!important;
+  font-size:var(--nomad-wordmark-size)!important;
+  font-weight:900!important;
+  line-height:.9!important;
+  letter-spacing:-.075em!important;
+  text-transform:lowercase!important;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:geometricPrecision;
+}
+.brand h1::before{content:"nomad";color:#fff}
+.brand h1::after{content:"tips3";color:var(--nomad-wordmark-yellow)}
+.brand small{font-family:Inter,Arial,sans-serif!important;letter-spacing:.11em!important}
+
+@media (max-width:720px){
+  :root{--nomad-wordmark-size:25px}
+  .brand{letter-spacing:-.07em!important}
+  .brand h1::before,.brand h1::after{letter-spacing:-.07em!important}
+}
+
+@media (max-width:380px){
+  :root{--nomad-wordmark-size:22px}
+}
+
+@media (min-width:1280px){
+  :root{--nomad-wordmark-size:31px}
+}
