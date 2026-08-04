@@ -1,0 +1,225 @@
+name: Resolve NOMADTIPS3 Live Test Request
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/resolve-live-test-request.yml'
+      - 'live-test-request.json'
+  schedule:
+    - cron: '*/5 * 4-5 8 *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-selected-matches-live
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve fixture and seed API data
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          python3 - <<'PY'
+          import json, os, re, time, unicodedata, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          KEY=os.environ['API_FOOTBALL_KEY']
+          BASE='https://v3.football.api-sports.io'
+          TERMINAL={'FT','AET','PEN','CANC','ABD','AWD','WO','PST'}
+          request_path=Path('live-test-request.json')
+          request=json.loads(request_path.read_text(encoding='utf-8'))
+          selected=request.get('match') or {}
+          slug=selected.get('slug')
+          if not slug:
+              raise SystemExit('live-test-request.json has no match slug')
+
+          config_path=Path('selected-live-matches.json')
+          config=json.loads(config_path.read_text(encoding='utf-8'))
+          existing=next((m for m in config.get('matches',[]) if m.get('slug')==slug),None)
+          if request.get('status')=='resolved' and existing and existing.get('fixture_id'):
+              print(json.dumps({'status':'already-resolved','fixture_id':existing['fixture_id']}))
+              raise SystemExit(0)
+
+          headers={'x-apisports-key':KEY}
+          def api(path,tries=3):
+              last=None
+              for attempt in range(tries):
+                  try:
+                      req=urllib.request.Request(BASE+path,headers=headers)
+                      with urllib.request.urlopen(req,timeout=45) as response:
+                          data=json.load(response)
+                      if data.get('errors'):
+                          raise RuntimeError(str(data['errors']))
+                      return data.get('response') or []
+                  except Exception as error:
+                      last=error
+                      time.sleep(2+attempt*2)
+              raise last
+
+          def norm(value):
+              value=unicodedata.normalize('NFKD',str(value or ''))
+              value=''.join(ch for ch in value if not unicodedata.combining(ch)).lower()
+              return re.sub(r'[^a-z0-9]+',' ',value).strip()
+
+          def team_match(expected,actual):
+              expected=norm(expected); actual=norm(actual)
+              return expected==actual or expected in actual or actual in expected
+
+          target=datetime.fromisoformat(str(selected.get('kickoff_utc')).replace('Z','+00:00'))
+          candidates=[]
+          for day in selected.get('search_dates') or [target.date().isoformat()]:
+              for row in api(f'/fixtures?date={day}'):
+                  teams=row.get('teams') or {}
+                  home=(teams.get('home') or {}).get('name')
+                  away=(teams.get('away') or {}).get('name')
+                  if team_match(selected.get('home'),home) and team_match(selected.get('away'),away):
+                      kickoff=(row.get('fixture') or {}).get('date')
+                      dt=datetime.fromisoformat(kickoff.replace('Z','+00:00')) if kickoff else target
+                      candidates.append((abs((dt-target).total_seconds()),row))
+
+          if not candidates:
+              raise SystemExit('API-FOOTBALL fixture not found for Xelaju vs Aurora in configured date window')
+
+          candidates.sort(key=lambda item:item[0])
+          row=candidates[0][1]
+          fixture=row.get('fixture') or {}
+          fixture_id=fixture.get('id')
+          league=row.get('league') or {}
+          teams=row.get('teams') or {}
+          goals=row.get('goals') or {}
+          score=row.get('score') or {}
+          home=teams.get('home') or {}
+          away=teams.get('away') or {}
+          status=(fixture.get('status') or {}).get('short') or selected.get('seed_status') or 'NS'
+          now=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          try:
+              stats_raw=api(f'/fixtures/statistics?fixture={fixture_id}')
+          except Exception:
+              stats_raw=[]
+          try:
+              events_raw=api(f'/fixtures/events?fixture={fixture_id}')
+          except Exception:
+              events_raw=[]
+
+          def value_for(team_id,kind):
+              for team_row in stats_raw:
+                  if (team_row.get('team') or {}).get('id')!=team_id:
+                      continue
+                  for item in team_row.get('statistics') or []:
+                      if item.get('type')==kind:
+                          return item.get('value')
+              return None
+
+          def pair(kind):
+              return {'home':value_for(home.get('id'),kind),'away':value_for(away.get('id'),kind)}
+
+          stats={
+            'attacks':pair('Attacks'),
+            'dangerous_attacks':pair('Dangerous Attacks'),
+            'expected_goals':pair('expected_goals'),
+            'possession':pair('Ball Possession'),
+            'shots':pair('Total Shots'),
+            'shots_on_target':pair('Shots on Goal'),
+            'shots_off_target':pair('Shots off Goal'),
+            'blocked_shots':pair('Blocked Shots'),
+            'shots_inside_box':pair('Shots insidebox'),
+            'shots_outside_box':pair('Shots outsidebox'),
+            'corners':pair('Corner Kicks'),
+            'fouls':pair('Fouls'),
+            'offsides':pair('Offsides'),
+            'goalkeeper_saves':pair('Goalkeeper Saves'),
+            'total_passes':pair('Total passes'),
+            'accurate_passes':pair('Passes accurate'),
+            'pass_accuracy':pair('Passes %'),
+            'yellow_cards':pair('Yellow Cards'),
+            'red_cards':pair('Red Cards')
+          }
+          events=[]
+          for event in events_raw:
+              tm=event.get('time') or {}; player=event.get('player') or {}; assist=event.get('assist') or {}; team=event.get('team') or {}
+              events.append({'minute':tm.get('elapsed'),'extra':tm.get('extra'),'team':team.get('name'),'player':player.get('name'),'assist':assist.get('name'),'type':event.get('type'),'detail':event.get('detail')})
+
+          selected_record={
+            'fixture_id':fixture_id,
+            'slug':slug,
+            'home':home.get('name') or selected.get('home'),
+            'away':away.get('name') or selected.get('away'),
+            'kickoff_utc':fixture.get('date') or selected.get('kickoff_utc'),
+            'pick':selected.get('pick','Live Score Test'),
+            'pick_side':selected.get('pick_side','none'),
+            'odds':selected.get('odds',0),
+            'confidence':selected.get('confidence',0),
+            'predicted_score':selected.get('predicted_score','N/A'),
+            'btts':selected.get('btts','N/A'),
+            'double_chance':selected.get('double_chance','N/A'),
+            'asian_handicap':selected.get('asian_handicap','N/A'),
+            'reason':selected.get('reason','API-FOOTBALL live score retrieval test only.')
+          }
+          matches=config.setdefault('matches',[])
+          if existing:
+              matches[matches.index(existing)]=selected_record
+          else:
+              matches.append(selected_record)
+          config_path.write_text(json.dumps(config,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          out={
+            'source':'api-football','fetched_at_utc':now,'http_status':200,
+            'selection_date':config.get('selection_date'),'locked_at_utc':request.get('requested_at_utc'),
+            'match':{
+              'id':str(fixture_id),'sport':'football','league':league.get('name') or selected.get('league'),'country':league.get('country') or selected.get('country'),
+              'home':{'name':home.get('name') or selected.get('home'),'short_name':home.get('name') or selected.get('home')},
+              'away':{'name':away.get('name') or selected.get('away'),'short_name':away.get('name') or selected.get('away')},
+              'kickoff_utc':fixture.get('date') or selected.get('kickoff_utc'),'status':status,
+              'status_long':(fixture.get('status') or {}).get('long'),'elapsed':(fixture.get('status') or {}).get('elapsed'),
+              'score':{'home':goals.get('home'),'away':goals.get('away')},
+              'halftime_score':score.get('halftime') or {'home':None,'away':None},
+              'fulltime_score':score.get('fulltime') or {'home':None,'away':None},
+              'pick':selected_record['pick'],'pick_side':selected_record['pick_side'],'odds':selected_record['odds'],
+              'confidence':selected_record['confidence'],'predicted_score':selected_record['predicted_score'],'btts':selected_record['btts'],
+              'double_chance':selected_record['double_chance'],'asian_handicap':selected_record['asian_handicap'],'reason':selected_record['reason'],
+              'stats':stats,'events':events
+            }
+          }
+          data_path=Path(f'live-data-{slug}.json')
+          data_path.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          manifest_path=Path('live-matches.json')
+          manifest=json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {'files':[]}
+          files=[name for name in manifest.get('files',[]) if name!=data_path.name]
+          if status.upper() not in TERMINAL:
+              files.insert(0,data_path.name)
+          manifest.update({'selection_date':config.get('selection_date'),'locked_at_utc':request.get('requested_at_utc'),'files':files})
+          manifest_path.write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+
+          request.update({'status':'resolved','resolved_at_utc':now,'fixture_id':fixture_id,'actual_kickoff_utc':fixture.get('date'),'provider_status':status})
+          request_path.write_text(json.dumps(request,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'status':'resolved','fixture_id':fixture_id,'provider_status':status,'score':goals},ensure_ascii=False))
+          PY
+
+      - name: Commit resolved live test
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add selected-live-matches.json live-test-request.json live-data-xelaju-aurora.json live-matches.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Resolve Xelaju Aurora live score test'
+          git pull --rebase origin main
+          git push origin main
