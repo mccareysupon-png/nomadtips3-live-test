@@ -43,7 +43,7 @@ function render() {
       </div>
       <div class="pick-data">
         <div class="prediction-primary"><small>Match Prediction</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
-        <div><small>Odds</small><b style="color:var(--yellow);font-size:13px">${formatOdds(record.odds)}</b><small style="margin-top:3px;text-transform:none">Source: ${escapeHtml(record.bookmaker || '—')}</small></div>
+        <div><small style="color:#fff">Odds</small><b style="color:#fff;font-size:13px">${formatOdds(record.odds)}</b><small style="margin-top:3px;text-transform:none;color:#fff">Source: ${escapeHtml(record.bookmaker || '—')}</small></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
         <div><small>Predicted Score</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
