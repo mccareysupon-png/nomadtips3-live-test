@@ -40,24 +40,30 @@ a{color:inherit}
   display:flex;
   align-items:flex-end;
   padding:0;
-  background:#10201a url('about/media/about-poster.jpg') center 38%/cover no-repeat;
+  background:#10201a;
 }
 .info-hero__video{
   position:absolute;
-  z-index:-2;
+  z-index:0;
   inset:0;
   width:100%;
   height:100%;
   object-fit:cover;
   object-position:center 38%;
+  opacity:0;
+  transition:opacity .25s ease;
 }
+.info-hero__video.is-ready{opacity:1}
 .info-hero__overlay{
   position:absolute;
-  z-index:-1;
+  z-index:1;
   inset:0;
-  background:rgba(4,76,53,.64);
+  background:rgba(4,76,53,.58);
+  pointer-events:none;
 }
 .info-hero__content{
+  position:relative;
+  z-index:2;
   width:100%;
   padding:36px 34px;
 }
@@ -70,11 +76,7 @@ a{color:inherit}
   .info-page{width:min(calc(100% - 16px),940px);padding-top:28px}
   .info-hero{padding:24px 18px}.info-hero p{font-size:12px}
   .info-grid{grid-template-columns:1fr}.info-card{padding:19px}.info-card.wide{grid-column:auto}
-  .info-hero--video{min-height:390px;padding:0;background-position:center 32%}
+  .info-hero--video{min-height:390px;padding:0}
   .info-hero__video{object-position:center 32%}
   .info-hero__content{padding:26px 20px}
-}
-
-@media(prefers-reduced-motion:reduce){
-  .info-hero__video{display:none}
 }
