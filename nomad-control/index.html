@@ -6,19 +6,27 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#0d1110">
   <title>NOMAD Selection Dashboard — Test System</title>
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=202608040728">
 </head>
 <body>
   <section id="accessDenied" class="access-denied" hidden>
     <span class="eyebrow">OWNER ACCESS REQUIRED</span>
     <h1>NOMAD Control is private</h1>
-    <p>The production route must inject a verified owner session. Draft preview can be opened with <code>?draft-owner=1</code>.</p>
+    <p>Open the Draft preview with <code>?draft-owner=1</code>.</p>
+    <a class="back-home" href="../test-system/">← Back to Today’s Picks</a>
   </section>
 
   <main id="app" class="shell" hidden>
     <header class="topbar">
-      <div class="brand"><small>NOMADTIPS3 VERSION 2</small><h1>NOMAD Selection Dashboard</h1></div>
-      <div class="owner"><span class="badge">TEST SYSTEM</span><span id="modeBadge" class="badge">DRAFT MODE</span><span>Signed in: <b id="ownerName">Owner</b></span></div>
+      <a class="brand" href="../test-system/" aria-label="Back to Today’s Picks">
+        <div><small>NOMADTIPS3 VERSION 2</small><h1>NOMAD Selection Dashboard</h1></div>
+      </a>
+      <div class="owner">
+        <a class="back-home" href="../test-system/">← Today’s Picks</a>
+        <span class="badge">TEST SYSTEM</span>
+        <span id="modeBadge" class="badge">DRAFT MODE</span>
+        <span>Signed in: <b id="ownerName">Owner</b></span>
+      </div>
     </header>
 
     <nav class="suite-nav" aria-label="NOMADTIPS3 test system navigation">
@@ -32,16 +40,17 @@
     <section class="hero">
       <article class="panel intro">
         <span class="eyebrow">TEST OWNER DASHBOARD · SHARED DRAFT STORE</span>
-        <h2>Selection and result control from one place.</h2>
+        <h2>Selection and result control</h2>
         <p>The locked Manual Set 2 picks for 4 August 2026 are shared with Today’s Picks, Statistics and Share Poster on this device. Nothing writes to nomadtips3.com.</p>
         <div class="actions">
+          <a class="action-link home" href="../test-system/">← Back to Today’s Picks</a>
           <button class="primary" data-action="standard-analysis">Start Manual Set 2 Analysis</button>
           <button data-action="open-custom">Custom Selection Settings</button>
           <button data-action="review">Review Selected Matches</button>
           <button data-action="publish">Lock &amp; Publish Test Pages</button>
           <button data-action="results">Manual Result Entry</button>
           <button data-action="audit">View Audit Log</button>
-          <button class="danger" data-action="reset">Reset to Manual Set 2 Standard</button>
+          <button class="danger" data-action="reset">Restore Locked Test Set</button>
         </div>
       </article>
       <aside class="panel status-panel">
@@ -93,7 +102,7 @@
     </section>
 
     <section id="review" class="panel section">
-      <div class="section-head"><div><span class="eyebrow">OWNER REVIEW</span><h3>Review Selected Matches</h3><p>The imported locked set is available in Manual Result Entry. New analysis remains isolated inside this test environment.</p></div></div>
+      <div class="section-head"><div><span class="eyebrow">OWNER REVIEW</span><h3>Review Selected Matches</h3><p>Start Analysis loads the 11 locked matches with league, home team, away team, kickoff, pick, odds and confidence.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Use</th><th>League</th><th>Match</th><th>Kickoff</th><th>Pick</th><th>Odds</th><th>Confidence</th><th>Predicted</th><th>Status</th><th>Reason</th></tr></thead><tbody id="reviewRows"></tbody></table></div>
     </section>
 
@@ -103,11 +112,11 @@
     </section>
 
     <section id="audit" class="panel section audit">
-      <div class="section-head"><div><span class="eyebrow">IMMUTABLE TEST HISTORY</span><h3>Audit Log</h3><p>Draft events include old values, new values, actor, reason, and timestamps.</p></div></div>
+      <div class="section-head"><div><span class="eyebrow">IMMUTABLE TEST HISTORY</span><h3>Audit Log</h3><p>Draft events include old values, new values, actor, reason and timestamps.</p></div></div>
       <div class="table-wrap"><table><thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead><tbody id="auditRows"></tbody></table></div>
     </section>
   </main>
   <div id="toast" role="status"></div>
-  <script type="module" src="./app.js?v=202608040709"></script>
+  <script type="module" src="./app.js?v=202608040728"></script>
 </body>
 </html>
