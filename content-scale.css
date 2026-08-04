@@ -1,0 +1,69 @@
+:root{
+  --nomad-content-body:11px;
+  --nomad-content-small:9px;
+  --nomad-content-medium:10.5px;
+  --nomad-content-strong:12px;
+}
+
+/* Pages 1–3: increase readable content without enlarging page headings. */
+.hero p{font-size:var(--nomad-content-body)!important;line-height:1.7!important}
+.button{font-size:11px!important}
+.metric small{font-size:var(--nomad-content-small)!important}
+.section-head span,.panel-head small{font-size:var(--nomad-content-medium)!important}
+.league{font-size:10px!important}
+.state{font-size:9px!important}
+.team strong{font-size:15px!important;line-height:1.3!important}
+.team small,.score small,.pick-data small{font-size:8px!important}
+.pick-data b{font-size:10.5px!important;line-height:1.4!important}
+.reason{font-size:10.5px!important;line-height:1.65!important}
+.bar-row span{font-size:11px!important}
+.bar-row b{font-size:12px!important}
+.history th,.history td{font-size:10.5px!important;line-height:1.45!important}
+.poster-head p{font-size:10px!important}
+.poster-pick b{font-size:12px!important;line-height:1.35!important}
+.poster-pick small{font-size:9px!important;line-height:1.45!important}
+.poster-pick>span{font-size:11px!important}
+.poster-foot{font-size:9.5px!important}
+
+/* Page 4: Live Test content. */
+.test-note,.count{font-size:9px!important}
+.match-head>span{font-size:10px!important}
+.status{font-size:9px!important}
+.scorebox>span{font-size:10px!important}
+.scorebox>small{font-size:9px!important}
+.latest small{font-size:8px!important}
+.latest b,.latest>strong{font-size:10.5px!important}
+.tabs button{font-size:11px!important}
+.empty{font-size:10.5px!important;line-height:1.55!important}
+.stat-row>b{font-size:11.5px!important}
+.stat-row small{font-size:9px!important}
+.event>b,.event strong{font-size:11px!important}
+.event small{font-size:9px!important;line-height:1.45!important}
+.momentum-head small{font-size:8px!important}
+.momentum-head strong{font-size:12px!important}
+.momentum-legend{font-size:8.5px!important}
+.momentum-note{font-size:9.5px!important;line-height:1.6!important}
+.pick small,.markets small{font-size:8px!important}
+.pick b,.markets b{font-size:11px!important;line-height:1.4!important}
+.reason small{font-size:8px!important}
+.reason p{font-size:10.5px!important;line-height:1.65!important}
+.match-card footer{font-size:8.5px!important;line-height:1.45!important}
+.empty-state span{font-size:10px!important}
+
+@media(max-width:720px){
+  :root{--nomad-content-body:10.5px;--nomad-content-medium:10px}
+  .button{font-size:10.5px!important}
+  .team strong{font-size:14.5px!important}
+  .history th,.history td{font-size:10px!important}
+  .poster-pick b{font-size:11.5px!important}
+  .match-head>span{font-size:9.5px!important}
+  .stat-row>b{font-size:11px!important}
+  .event>b,.event strong{font-size:10.5px!important}
+  .pick b,.markets b{font-size:10.5px!important}
+  .reason p{font-size:10px!important}
+}
+
+@media(max-width:380px){
+  .team strong{font-size:14px!important}
+  .test-note,.count{font-size:8px!important}
+}
