@@ -3,6 +3,17 @@ import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAG
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '\"':'&quot;' })[char]);
 const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
+const LIVE = new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
+
+function displayResult(record) {
+  if (record.outcome === 'correct') return 'CORRECT';
+  if (record.outcome === 'incorrect') return 'INCORRECT';
+  if (record.outcome === 'void') return 'VOID';
+  const status = String(record.matchStatus || '').toUpperCase();
+  if (LIVE.has(status)) return record.elapsed ? `LIVE ${record.elapsed}′` : 'LIVE';
+  if (status === 'NOT_CONFIRMED') return 'UNDER REVIEW';
+  return resultText(record);
+}
 
 function stateClass(record) {
   if (record.outcome === 'correct') return 'correct';
@@ -24,7 +35,7 @@ function render() {
 
   const stored = localStorage.getItem(STORAGE_KEY);
   $('#sourceNote').textContent = stored
-    ? `Finalized Manual Set 2 · ${records.length} predictions`
+    ? (summary.pending ? `Automatic result processing · ${summary.pending} waiting` : `Finalized Manual Set 2 · ${records.length} predictions`)
     : 'Loading finalized Manual Set 2 analysis';
 
   $('#pickGrid').innerHTML = records.map((record, index) => `
@@ -34,7 +45,7 @@ function render() {
           <span class="pick-rank">MATCH ${index + 1}</span>
           <span class="league">${escapeHtml(record.league)}</span>
         </div>
-        <span class="state ${stateClass(record)}">${escapeHtml(resultText(record))}</span>
+        <span class="state ${stateClass(record)}">${escapeHtml(displayResult(record))}</span>
       </header>
       <div class="teams">
         <div class="team"><strong>${escapeHtml(record.home)}</strong><small>HOME</small></div>
@@ -53,4 +64,5 @@ function render() {
 
 render();
 window.addEventListener('storage', render);
+window.addEventListener('nomad-results-updated', render);
 window.setInterval(render, 3000);
