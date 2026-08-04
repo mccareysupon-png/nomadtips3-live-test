@@ -1,0 +1,175 @@
+name: NOMADTIPS3 Selected Matches Live
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-selected-matches.yml'
+      - 'selected-live-matches.json'
+  schedule:
+    - cron: '*/10 * 4-5 8 *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-selected-matches-live
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Refresh selected match score, events and statistics
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          KEY=os.environ['API_FOOTBALL_KEY']
+          BASE='https://v3.football.api-sports.io'
+          TERMINAL={'FT','AET','PEN','CANC','ABD','AWD','WO','PST'}
+          config=json.loads(Path('selected-live-matches.json').read_text(encoding='utf-8'))
+          headers={'x-apisports-key':KEY}
+
+          def api(path, tries=3):
+              last=None
+              for attempt in range(tries):
+                  try:
+                      req=urllib.request.Request(BASE+path,headers=headers)
+                      with urllib.request.urlopen(req,timeout=45) as r:
+                          data=json.load(r)
+                      if data.get('errors'):
+                          raise RuntimeError(str(data['errors']))
+                      return data.get('response') or []
+                  except Exception as e:
+                      last=e
+                      time.sleep(2+attempt*2)
+              raise last
+
+          def value_for(stats,team_id,kind):
+              for row in stats:
+                  if (row.get('team') or {}).get('id') != team_id: continue
+                  for item in row.get('statistics') or []:
+                      if item.get('type') == kind:
+                          return item.get('value')
+              return None
+
+          active=[]
+          now=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+          for selected in config.get('matches') or []:
+              slug=selected['slug']
+              path=Path(f'live-data-{slug}.json')
+              previous={}
+              if path.exists():
+                  try: previous=json.loads(path.read_text(encoding='utf-8'))
+                  except Exception: previous={}
+              try:
+                  fixture_rows=api(f"/fixtures?id={selected['fixture_id']}")
+                  if not fixture_rows: raise RuntimeError('fixture not found')
+                  f=fixture_rows[0]
+                  fixture=f.get('fixture') or {}; league=f.get('league') or {}; teams=f.get('teams') or {}; goals=f.get('goals') or {}; score=f.get('score') or {}
+                  home=teams.get('home') or {}; away=teams.get('away') or {}
+                  status=(fixture.get('status') or {}).get('short') or 'NS'
+                  try: stats=api(f"/fixtures/statistics?fixture={selected['fixture_id']}")
+                  except Exception: stats=[]
+                  try: events_raw=api(f"/fixtures/events?fixture={selected['fixture_id']}")
+                  except Exception: events_raw=[]
+                  events=[]
+                  for e in events_raw:
+                      tm=e.get('time') or {}; player=e.get('player') or {}; assist=e.get('assist') or {}; team=e.get('team') or {}
+                      events.append({'minute':tm.get('elapsed'),'extra':tm.get('extra'),'team':team.get('name'),'player':player.get('name'),
+                                     'assist':assist.get('name'),'type':e.get('type'),'detail':e.get('detail')})
+                  old_stats=((previous.get('match') or {}).get('stats') or {})
+                  def keep(kind,h,a):
+                      hv=value_for(stats,home.get('id'),h); av=value_for(stats,away.get('id'),a or h)
+                      old=old_stats.get(kind) or {}
+                      return {'home':old.get('home') if hv is None else hv,'away':old.get('away') if av is None else av}
+                  match_stats={
+                    'attacks':keep('attacks','Attacks',None),
+                    'dangerous_attacks':keep('dangerous_attacks','Dangerous Attacks',None),
+                    'expected_goals':keep('expected_goals','expected_goals',None),
+                    'possession':keep('possession','Ball Possession',None),
+                    'shots':keep('shots','Total Shots',None),
+                    'shots_on_target':keep('shots_on_target','Shots on Goal',None),
+                    'shots_off_target':keep('shots_off_target','Shots off Goal',None),
+                    'blocked_shots':keep('blocked_shots','Blocked Shots',None),
+                    'shots_inside_box':keep('shots_inside_box','Shots insidebox',None),
+                    'shots_outside_box':keep('shots_outside_box','Shots outsidebox',None),
+                    'corners':keep('corners','Corner Kicks',None),
+                    'fouls':keep('fouls','Fouls',None),
+                    'offsides':keep('offsides','Offsides',None),
+                    'goalkeeper_saves':keep('goalkeeper_saves','Goalkeeper Saves',None),
+                    'total_passes':keep('total_passes','Total passes',None),
+                    'accurate_passes':keep('accurate_passes','Passes accurate',None),
+                    'pass_accuracy':keep('pass_accuracy','Passes %',None),
+                    'yellow_cards':keep('yellow_cards','Yellow Cards',None),
+                    'red_cards':keep('red_cards','Red Cards',None)
+                  }
+                  out={
+                    'source':'api-football','fetched_at_utc':now,'http_status':200,
+                    'selection_date':config.get('selection_date'),'locked_at_utc':config.get('locked_at_utc'),
+                    'match':{
+                      'id':str(fixture.get('id') or selected['fixture_id']),'sport':'football','league':league.get('name'),'country':league.get('country'),
+                      'home':{'name':home.get('name') or selected['home'],'short_name':home.get('name') or selected['home']},
+                      'away':{'name':away.get('name') or selected['away'],'short_name':away.get('name') or selected['away']},
+                      'kickoff_utc':fixture.get('date') or selected['kickoff_utc'],'status':status,
+                      'status_long':(fixture.get('status') or {}).get('long'),'elapsed':(fixture.get('status') or {}).get('elapsed'),
+                      'score':{'home':goals.get('home'),'away':goals.get('away')},
+                      'halftime_score':(score.get('halftime') or {}),'fulltime_score':(score.get('fulltime') or {}),
+                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],'bookmaker':selected['bookmaker'],
+                      'confidence':selected['confidence'],'predicted_score':selected['predicted_score'],'btts':selected['btts'],
+                      'double_chance':selected['double_chance'],'asian_handicap':selected['asian_handicap'],'reason':selected['reason'],
+                      'stats':match_stats,'events':events or ((previous.get('match') or {}).get('events') or [])
+                    }
+                  }
+              except Exception as error:
+                  old_match=previous.get('match') or {}
+                  out={
+                    'source':'api-football','fetched_at_utc':now,'http_status':0,'error':str(error),
+                    'selection_date':config.get('selection_date'),'locked_at_utc':config.get('locked_at_utc'),
+                    'match':{
+                      'id':str(selected['fixture_id']),'sport':'football','league':old_match.get('league'),'country':old_match.get('country'),
+                      'home':old_match.get('home') or {'name':selected['home'],'short_name':selected['home']},
+                      'away':old_match.get('away') or {'name':selected['away'],'short_name':selected['away']},
+                      'kickoff_utc':old_match.get('kickoff_utc') or selected['kickoff_utc'],'status':old_match.get('status') or 'NS',
+                      'status_long':old_match.get('status_long') or 'Not Started','elapsed':old_match.get('elapsed'),
+                      'score':old_match.get('score') or {'home':None,'away':None},'halftime_score':old_match.get('halftime_score') or {'home':None,'away':None},
+                      'fulltime_score':old_match.get('fulltime_score') or {'home':None,'away':None},
+                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],'bookmaker':selected['bookmaker'],
+                      'confidence':selected['confidence'],'predicted_score':selected['predicted_score'],'btts':selected['btts'],
+                      'double_chance':selected['double_chance'],'asian_handicap':selected['asian_handicap'],'reason':selected['reason'],
+                      'stats':old_match.get('stats') or {},'events':old_match.get('events') or []
+                    }
+                  }
+              path.write_text(json.dumps(out,ensure_ascii=False,indent=2),encoding='utf-8')
+              if str((out.get('match') or {}).get('status') or '').upper() not in TERMINAL:
+                  active.append(path.name)
+
+          Path('live-matches.json').write_text(json.dumps({'selection_date':config.get('selection_date'),'locked_at_utc':config.get('locked_at_utc'),'files':active},ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'active':len(active),'total':len(config.get('matches') or [])}))
+          PY
+
+      - name: Commit refreshed data
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add live-data-*.json live-matches.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh selected Manual Set 2 live matches"
+          git pull --rebase origin main
+          git push origin main
