@@ -1,0 +1,32 @@
+.site-footer{
+  position:relative;
+  z-index:5;
+  width:min(calc(100% - 24px),1120px);
+  margin:34px auto 0;
+  padding:28px 18px 32px;
+  border-top:1px solid rgba(242,201,76,.28);
+  background:linear-gradient(180deg,rgba(16,24,21,.18),rgba(7,84,60,.16));
+  color:#aeb4b1;
+  text-align:center;
+  font-family:Inter,Arial,"Noto Sans Thai",sans-serif;
+}
+.has-fixed-site-nav .site-footer{padding-bottom:92px}
+.site-footer__inner{display:grid;justify-items:center;gap:10px}
+.site-footer p{margin:0}
+.site-footer__copyright{color:#f3f5f4;font-size:12px;font-weight:800;letter-spacing:.015em}
+.site-footer__links{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;font-size:11px}
+.site-footer__links span{color:#58625e}
+.site-footer a{color:#f2c94c;text-decoration:none;transition:color .18s ease,opacity .18s ease}
+.site-footer a:hover,.site-footer a:focus-visible{color:#fff1a8;text-decoration:underline;text-underline-offset:3px}
+.site-footer__email{color:#77ddb9!important;font-size:11px;font-weight:750;overflow-wrap:anywhere}
+@media(max-width:560px){
+  .site-footer{width:min(calc(100% - 14px),1120px);margin-top:24px;padding:22px 12px 28px}
+  .has-fixed-site-nav .site-footer{padding-bottom:82px}
+  .site-footer__copyright{font-size:10px}
+  .site-footer__links,.site-footer__email{font-size:9px}
+}
+@media print{
+  .site-footer{width:100%;padding:18px 0;margin-top:22px;background:none;color:#444;border-top:1px solid #bbb}
+  .site-footer__copyright{color:#111}
+  .site-footer a{color:#333!important}
+}
