@@ -1,7 +1,7 @@
 import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAGE_KEY } from './shared.js?v=202608040728';
 
 const $ = selector => document.querySelector(selector);
-const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '\"':'&quot;' })[char]);
 
 function stateClass(record) {
   if (record.outcome === 'correct') return 'correct';
@@ -23,7 +23,7 @@ function render() {
 
   const stored = localStorage.getItem(STORAGE_KEY);
   $('#sourceNote').textContent = stored
-    ? `Locked Manual Set 2 · ${records.length} picks · Shared Draft Store`
+    ? `Locked Manual Set 2 · ${records.length} picks`
     : 'Loading locked Manual Set 2 set';
 
   $('#pickGrid').innerHTML = records.map((record, index) => `
@@ -39,11 +39,11 @@ function render() {
       </div>
       <div class="pick-data">
         <div><small>1X2 Pick</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
-        <div><small>Locked Odds</small><b>${record.odds.toFixed(2)}</b></div>
+        <div><small>Locked Odds</small><b>${Number(record.odds).toFixed(2)}</b></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
         <div><small>Predicted</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
-      <div class="reason">BTTS ${escapeHtml(record.btts)} · Double Chance ${escapeHtml(record.doubleChance)} · AH ${escapeHtml(record.asianHandicap)}<br>${escapeHtml(record.reason)} · A–B–C: ${escapeHtml(record.abcResult)} · Source: ${escapeHtml(record.source)}</div>
+      <div class="reason">BTTS ${escapeHtml(record.btts)} · Double Chance ${escapeHtml(record.doubleChance)} · AH ${escapeHtml(record.asianHandicap)}<br>${escapeHtml(record.reason)} · A–B–C: ${escapeHtml(record.abcResult)}</div>
     </article>`).join('');
 }
 
