@@ -23,13 +23,13 @@ function render() {
 
   const stored = localStorage.getItem(STORAGE_KEY);
   $('#sourceNote').textContent = stored
-    ? `Locked Manual Set 2 · ${records.length} picks`
-    : 'Loading locked Manual Set 2 set';
+    ? `Finalized Manual Set 2 · ${records.length} predictions`
+    : 'Loading finalized Manual Set 2 analysis';
 
   $('#pickGrid').innerHTML = records.map((record, index) => `
     <article class="pick-card">
       <header>
-        <span class="league">${escapeHtml(record.league)} · PICK ${index + 1}</span>
+        <span class="league">${escapeHtml(record.league)} · PREDICTION ${index + 1}</span>
         <span class="state ${stateClass(record)}">${escapeHtml(resultText(record))}</span>
       </header>
       <div class="teams">
@@ -38,12 +38,11 @@ function render() {
         <div class="team"><strong>${escapeHtml(record.away)}</strong><small>AWAY</small></div>
       </div>
       <div class="pick-data">
-        <div><small>1X2 Pick</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
-        <div><small>Locked Odds</small><b>${Number(record.odds).toFixed(2)}</b></div>
+        <div class="prediction-primary"><small>Match Prediction</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
-        <div><small>Predicted</small><b>${escapeHtml(record.predictedScore)}</b></div>
+        <div><small>Predicted Score</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
-      <div class="reason">BTTS ${escapeHtml(record.btts)} · Double Chance ${escapeHtml(record.doubleChance)} · AH ${escapeHtml(record.asianHandicap)}<br>${escapeHtml(record.reason)} · A–B–C: ${escapeHtml(record.abcResult)}</div>
+      <div class="reason"><strong>Match Analysis</strong><br>${escapeHtml(record.reason)} · A–B–C comparison: ${escapeHtml(record.abcResult)}</div>
     </article>`).join('');
 }
 
