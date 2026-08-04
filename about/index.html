@@ -6,8 +6,9 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
   <title>About Us — NOMADTIPS3</title>
+  <link rel="preload" href="./media/about-poster.jpg" as="image">
   <link rel="stylesheet" href="../brand.css?v=202608040836">
-  <link rel="stylesheet" href="../info-pages.css?v=202608040836">
+  <link rel="stylesheet" href="../info-pages.css?v=202608040901">
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
 <body>
@@ -17,10 +18,16 @@
   </header>
 
   <main class="info-page">
-    <section class="info-hero">
-      <span class="eyebrow">Manual prototype · Independent analysis</span>
-      <h1>About Us</h1>
-      <p>NOMADTIPS3 is an independent football-analysis prototype built around disciplined manual selection, transparent records and practical live-match statistics.</p>
+    <section class="info-hero info-hero--video" aria-labelledby="about-title">
+      <video class="info-hero__video" autoplay muted loop playsinline preload="metadata" poster="./media/about-poster.jpg" aria-hidden="true">
+        <source src="./media/about-loop.mp4" type="video/mp4">
+      </video>
+      <div class="info-hero__overlay" aria-hidden="true"></div>
+      <div class="info-hero__content">
+        <span class="eyebrow">Manual prototype · Independent analysis</span>
+        <h1 id="about-title">About Us</h1>
+        <p>NOMADTIPS3 is an independent football-analysis prototype built around disciplined manual selection, transparent records and practical live-match statistics.</p>
+      </div>
     </section>
 
     <section class="info-grid">
@@ -56,6 +63,12 @@
     </section>
   </main>
 
-  <script src="../site-footer.js?v=202608040844"></script>
+  <script>
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      const video = document.querySelector('.info-hero__video');
+      if (video) { video.pause(); video.removeAttribute('autoplay'); }
+    }
+  </script>
+  <script src="../site-footer.js?v=202608040901"></script>
 </body>
 </html>
