@@ -18,9 +18,13 @@
       .replace(/Today's \d+ Picks/gi,'Today’s Match Predictions')
       .replace(/Today's Picks/gi,'Match Predictions');
 
-    replaceExact('.main-nav a,.suite-nav a,.back-home,.action-link.home',"Today's Picks",'Match Predictions');
-    replaceExact('.main-nav a,.suite-nav a,.back-home,.action-link.home','← Today’s Picks','← Match Predictions');
-    replaceExact('.main-nav a,.suite-nav a,.back-home,.action-link.home','← Back to Today’s Picks','← Back to Match Predictions');
+    const navSelector='.main-nav a,.suite-nav a,.back-home,.action-link.home,.hero-actions a';
+    replaceExact(navSelector,"Today's Picks",'Match Predictions');
+    replaceExact(navSelector,'← Today’s Picks','← Match Predictions');
+    replaceExact(navSelector,'← Back to Today’s Picks','← Back to Match Predictions');
+    replaceExact(navSelector,'Share Poster','Analysis Poster');
+    replaceExact(navSelector,'Live Test','Live Analysis');
+    replaceExact(navSelector,'Open Live Test','Open Live Analysis');
     replaceExact('[data-action="publish"]','Lock & Publish Test Pages','Finalize & Publish Analysis');
 
     document.querySelectorAll('.league').forEach(node=>{
