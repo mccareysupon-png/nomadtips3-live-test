@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="../../brand.css?v=202608041153">
   <link rel="stylesheet" href="../../content-scale.css?v=202608041015">
   <link rel="stylesheet" href="../../draft-responsive.css?v=202608041140">
+  <link rel="stylesheet" href="../../heading-scale.css?v=202608041200">
+  <link rel="stylesheet" href="./chart.css?v=202608041200">
   <link rel="stylesheet" href="../../terminology.css?v=202608040954">
   <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
 </head>
@@ -40,8 +42,18 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><h2>Outcome Distribution</h2><small>Current prediction results</small></div></div>
-      <div id="bars" class="bar-list"></div>
+      <div class="panel-head"><div><h2>Result Performance</h2><small>Cumulative confirmed results in chronological order</small></div></div>
+      <div class="performance-toolbar">
+        <div class="performance-legend">
+          <span class="correct-line"><i></i>Correct</span>
+          <span class="incorrect-line"><i></i>Incorrect</span>
+        </div>
+        <span id="chartMeta" class="performance-meta">0 settled results</span>
+      </div>
+      <div class="chart-viewport" aria-label="Scrollable long-range result chart">
+        <div id="performanceChart" class="chart-stage"></div>
+      </div>
+      <div class="chart-footnote">Thin cumulative lines similar to a market chart. Scroll horizontally to inspect older results when the history becomes long.</div>
     </section>
 
     <section class="panel" style="margin-top:14px">
@@ -58,7 +70,7 @@
     <a href="../../nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
   <script src="../../device-time-sync.js?v=202608041114"></script>
-  <script type="module" src="./app.js?v=202608040952"></script>
+  <script type="module" src="./app.js?v=202608041200"></script>
   <script src="../../remote-results.js?v=202608041105" defer></script>
   <script src="../../terminology.js?v=202608040954" defer></script>
   <script src="../../site-footer.js?v=202608040844"></script>
