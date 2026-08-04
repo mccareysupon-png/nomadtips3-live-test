@@ -29,7 +29,10 @@ function render() {
   $('#pickGrid').innerHTML = records.map((record, index) => `
     <article class="pick-card">
       <header>
-        <span class="league">${escapeHtml(record.league)} · PREDICTION ${index + 1}</span>
+        <div class="pick-heading">
+          <span class="pick-rank">PICK ${index + 1}</span>
+          <span class="league">${escapeHtml(record.league)}</span>
+        </div>
         <span class="state ${stateClass(record)}">${escapeHtml(resultText(record))}</span>
       </header>
       <div class="teams">
