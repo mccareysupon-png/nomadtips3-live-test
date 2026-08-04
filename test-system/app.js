@@ -2,6 +2,7 @@ import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAG
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '\"':'&quot;' })[char]);
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
 
 function stateClass(record) {
   if (record.outcome === 'correct') return 'correct';
@@ -42,6 +43,7 @@ function render() {
       </div>
       <div class="pick-data">
         <div class="prediction-primary"><small>Match Prediction</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
+        <div><small>Locked Odds</small><b>${formatOdds(record.odds)}</b></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
         <div><small>Predicted Score</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
