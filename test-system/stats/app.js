@@ -10,7 +10,7 @@ function render() {
   $('#settled').textContent = summary.settled;
   $('#correct').textContent = summary.correct;
   $('#incorrect').textContent = summary.incorrect;
-  $('#averageOdds').textContent = summary.averageOdds.toFixed(2);
+  $('#pending').textContent = summary.pending;
   $('#accuracy').textContent = `${summary.accuracy.toFixed(2)}%`;
 
   const rows = [
@@ -30,7 +30,7 @@ function render() {
       <td>${escapeHtml(record.league)}</td>
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}</td>
       <td>${escapeHtml(record.pickLabel || record.pick)}</td>
-      <td>${record.odds.toFixed(2)}</td>
+      <td>${record.confidence}%</td>
       <td>${escapeHtml(scoreText(record))}</td>
       <td>${escapeHtml(resultText(record))}</td>
       <td>${escapeHtml(record.resultSource ?? record.source)}</td>
