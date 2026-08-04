@@ -1,0 +1,76 @@
+name: Build Manual Set 2 Shortlist Detail Report
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-shortlist-detail-report.yml'
+      - 'manual-set2-candidates-2026-08-04.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build shortlist detail report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          wanted={1557945,1563636,1551656,1549709,1545399,1549999,1607166,1576857,1610530,1530109,1610531,1576856,1576854,1563635,1563640,1549707,1499993,1606352,1598826,1607168,1598825,1546856}
+          d=json.loads(Path('manual-set2-candidates-2026-08-04.json').read_text(encoding='utf-8'))
+          rows=[c for c in d.get('candidates') or [] if c.get('fixture_id') in wanted]
+          rows.sort(key=lambda c:str(c.get('kickoff_utc')))
+          lines=[]
+          def fs(x):
+              x=x or {}; return f"N{x.get('n')} W{x.get('wins')} D{x.get('draws')} L{x.get('losses')} GF{x.get('gf')} GA{x.get('ga')}"
+          def mr(x):
+              return f"{x.get('date')}::{x.get('home')} {x.get('gf')}-{x.get('ga')} {x.get('away')}::{x.get('result')}::{x.get('venue')}"
+          for c in rows:
+              h=c.get('home') or {}; a=c.get('away') or {}; o=c.get('odds_lock') or {}; st=c.get('standings') or {}
+              lines += [
+                f"### FIXTURE {c.get('fixture_id')} ###",
+                f"KICKOFF={c.get('kickoff_utc')}",
+                f"LEAGUE={c.get('country')} / {c.get('league')} / {c.get('round')}",
+                f"MATCH={h.get('name')} vs {a.get('name')}",
+                f"ODDS={o.get('bookmaker')} H{o.get('home')} D{o.get('draw')} A{o.get('away')}",
+                f"PLAUSIBLE={','.join(c.get('plausible_sides') or [])}",
+                f"HOME_FORM={fs(c.get('home_form'))}",f"HOME_HOME={fs(c.get('home_venue_form'))}",
+                f"AWAY_FORM={fs(c.get('away_form'))}",f"AWAY_AWAY={fs(c.get('away_venue_form'))}",
+                f"HOME_STANDING={json.dumps(st.get(str(h.get('id'))) or {},ensure_ascii=False,separators=(',',':'))}",
+                f"AWAY_STANDING={json.dumps(st.get(str(a.get('id'))) or {},ensure_ascii=False,separators=(',',':'))}",
+                "HOME_RECENT="+' || '.join(mr(x) for x in (c.get('home_recent') or [])[:6]),
+                "HOME_HOME_RECENT="+' || '.join(mr(x) for x in (c.get('home_venue_recent') or [])[:5]),
+                "AWAY_RECENT="+' || '.join(mr(x) for x in (c.get('away_recent') or [])[:6]),
+                "AWAY_AWAY_RECENT="+' || '.join(mr(x) for x in (c.get('away_venue_recent') or [])[:5]),
+              ]
+              for co in (c.get('common_opponents') or [])[:8]:
+                  lines.append(f"COMMON={co.get('opponent')}::H[{';'.join(mr(x) for x in (co.get('home_team_results') or [])[:2])}]::A[{';'.join(mr(x) for x in (co.get('away_team_results') or [])[:2])}]")
+              lines.append('H2H='+' || '.join(f"{x.get('date')}::{x.get('home')} {x.get('home_goals')}-{x.get('away_goals')} {x.get('away')}" for x in (c.get('h2h') or [])[:6]))
+              lines.append('INJURIES='+json.dumps(c.get('injuries') or [],ensure_ascii=False,separators=(',',':')))
+              lines.append('')
+          Path('manual-set2-shortlist-detail-2026-08-04.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print({'fixtures':len(rows),'lines':len(lines)})
+          PY
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-shortlist-detail-2026-08-04.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Build Manual Set 2 shortlist detail report'
+          git pull --rebase origin main
+          git push origin main
