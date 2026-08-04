@@ -25,6 +25,14 @@
 .poster-pick>span{font-size:11px!important}
 .poster-foot{font-size:9.5px!important}
 
+/* Pages 1–3 headings: exactly 10% larger than the previous scale. */
+.page .hero h1,.page .poster-head h1{
+  font-size:13.2px!important;
+}
+.page .section-head h2,.page .section-head h3,.page .panel-head h2{
+  font-size:12.1px!important;
+}
+
 /* Page 4: Live Test content. */
 .test-note,.count{font-size:9px!important}
 .match-head>span{font-size:10px!important}
@@ -61,6 +69,8 @@
   .event>b,.event strong{font-size:10.5px!important}
   .pick b,.markets b{font-size:10.5px!important}
   .reason p{font-size:10px!important}
+  .page .hero h1,.page .poster-head h1{font-size:12.1px!important}
+  .page .section-head h2,.page .section-head h3,.page .panel-head h2{font-size:11px!important}
 }
 
 @media(max-width:380px){
