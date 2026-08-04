@@ -25,12 +25,10 @@ body>.topbar,
 body>.topbar + .page{padding-top:86px!important}
 .wrap{padding-top:88px!important}
 
-/* Bottom navigation: text only. No rectangular item, border, fill or persistent glow. */
+/* Bottom navigation: text only. Green is hover-only; clicked links never stay green. */
 .main-nav a,
 .main-nav a:link,
-.main-nav a:visited,
-.main-nav a.active,
-.main-nav a[aria-current="page"]{
+.main-nav a:visited{
   border:0!important;
   border-radius:0!important;
   outline:0!important;
@@ -41,24 +39,37 @@ body>.topbar + .page{padding-top:86px!important}
   filter:none!important;
   text-decoration:none!important;
   text-shadow:none!important;
+  color:var(--muted,#aeb4b1)!important;
 }
 .main-nav a::before,
 .main-nav a::after{
   display:none!important;
   content:none!important;
 }
+.main-nav a:focus,
+.main-nav a:focus-visible,
+.main-nav a:active{
+  color:var(--muted,#aeb4b1)!important;
+  text-shadow:none!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
 .main-nav a.active,
 .main-nav a[aria-current="page"]{
   color:var(--yellow,#f2c94c)!important;
-}
-.main-nav a:hover,
-.main-nav a:focus-visible{
-  border:0!important;
-  border-radius:0!important;
   background:transparent!important;
   box-shadow:none!important;
-  color:var(--green,#00f0a8)!important;
   text-shadow:none!important;
+}
+@media(hover:hover) and (pointer:fine){
+  .main-nav a:hover,
+  .main-nav a.active:hover,
+  .main-nav a[aria-current="page"]:hover{
+    color:var(--green,#00f0a8)!important;
+    text-shadow:none!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
 }
 
 @media(max-width:720px){
