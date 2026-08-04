@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#07543c">
   <title>About Us — NOMADTIPS3</title>
   <link rel="stylesheet" href="../brand.css?v=202608040836">
-  <link rel="stylesheet" href="../info-pages.css?v=202608040950">
+  <link rel="stylesheet" href="../info-pages.css?v=202608041004">
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
 <body>
@@ -17,9 +17,12 @@
   </header>
 
   <main class="info-page">
-    <section class="info-hero info-hero--video" aria-labelledby="about-title">
-      <video class="info-hero__video" autoplay muted loop playsinline preload="auto" aria-hidden="true"></video>
-      <div class="info-hero__overlay" aria-hidden="true"></div>
+    <section class="info-hero info-hero--image" aria-labelledby="about-title">
+      <div class="info-hero__frame">
+        <img class="info-hero__image" alt="NOMADTIPS3 company storefront with Kate Rabin standing in front" decoding="async">
+        <span class="info-hero__loading" role="status">Loading company image…</span>
+      </div>
+
       <div class="info-hero__content">
         <span class="eyebrow">Manual prototype · Independent analysis</span>
         <h1 id="about-title">About Us</h1>
@@ -60,8 +63,7 @@
     </section>
   </main>
 
-  <script src="./about-video-inline.js?v=202608040950"></script>
-  <script src="./about-media-loader.js?v=202608040950"></script>
+  <script src="./about-image-loader.js?v=202608041004"></script>
   <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
