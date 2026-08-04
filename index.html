@@ -12,7 +12,7 @@
     .wrap{width:min(calc(100% - 24px),760px);margin:auto;padding:76px 0 96px}
     .topbar{position:fixed;z-index:30;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 max(12px,calc((100vw - 760px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
     .brand{font-size:28px;font-weight:950;letter-spacing:-.055em;color:#fff;text-decoration:none}.brand b{color:var(--yellow)}
-    .count{padding:6px 9px;border:1px solid rgba(242,201,76,.35);border-radius:999px;color:#f8e7a2;font-size:8px;font-weight:900}
+    .top-meta{display:flex;align-items:center;gap:7px}.test-note,.count{padding:6px 9px;border:1px solid rgba(242,201,76,.35);border-radius:999px;color:#f8e7a2;font-size:8px;font-weight:900}.test-note{background:rgba(242,201,76,.12);color:#fff1a8}
     #matches{display:grid;gap:14px}.match-card{overflow:hidden;border:1px solid var(--line);border-radius:6px;background:var(--panel);box-shadow:0 12px 28px rgba(0,0,0,.2)}
     .match-head{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:#191919;border-bottom:1px solid #343434}.match-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.06em}.status{padding:5px 8px;border:1px solid #3b694e;border-radius:999px;color:var(--green);font-size:9px}.status.waiting{color:var(--yellow);border-color:#725f2b}.status.finished{color:#ddd;border-color:#666}.status.error{color:var(--red);border-color:#704247}
     .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) 118px minmax(0,1fr);align-items:center;gap:8px;min-height:164px;padding:17px 10px;background:linear-gradient(180deg,#272727,#202020)}
@@ -30,12 +30,12 @@
     .empty-state{display:grid;gap:8px;padding:42px 20px;text-align:center;border:1px dashed #4c4c4c;border-radius:8px;background:#202020}.empty-state strong{color:var(--yellow);font-size:14px}.empty-state span{color:var(--muted);font-size:10px}
     .match-card footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #343434;color:#858b88;font-size:8px}
     .main-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);padding:6px 8px max(6px,env(safe-area-inset-bottom));background:#171717;border-top:1px solid #3d3d3d}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:42px;color:var(--muted);font-size:8px;text-decoration:none;text-align:center}.main-nav a.active{color:var(--yellow)}
-    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.count{font-size:6px}.scoreboard{grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);min-height:145px;padding:14px 6px}.shirt{width:40px;height:40px}.team strong{font-size:13px}.scorebox>b{font-size:33px}.markets{grid-template-columns:1fr 1fr}.main-nav a{font-size:7px}}
+    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.top-meta{gap:4px}.test-note,.count{font-size:6px;padding:5px 6px}.scoreboard{grid-template-columns:minmax(0,1fr) 98px minmax(0,1fr);min-height:145px;padding:14px 6px}.shirt{width:40px;height:40px}.team strong{font-size:13px}.scorebox>b{font-size:33px}.markets{grid-template-columns:1fr 1fr}.main-nav a{font-size:7px}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header class="topbar"><a class="brand" href="./test-system/">nomad<b>tips3</b></a><div class="count" id="matchCount">MANUAL SET 2 · 0 MATCHES</div></header>
+    <header class="topbar"><a class="brand" href="./test-system/">nomad<b>tips3</b></a><div class="top-meta"><span class="test-note">TEST SYSTEM</span><div class="count" id="matchCount">MANUAL SET 2 · 0 MATCHES</div></div></header>
     <main id="matches"></main>
   </div>
   <nav class="main-nav" aria-label="Test system navigation">
