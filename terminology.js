@@ -36,11 +36,11 @@
       }
       cells.forEach(cell=>{
         const label=cell.querySelector('small')?.textContent.trim().toLowerCase();
-        if(label==='locked odds'||label==='odds'||label==='bookmaker') cell.remove();
+        if(label==='locked odds'||label==='odds'||label==='bookmaker') cell.hidden=true;
       });
     });
 
-    document.querySelectorAll('.markets').forEach(node=>node.remove());
+    document.querySelectorAll('.markets').forEach(node=>node.hidden=true);
 
     document.querySelectorAll('.pick small').forEach(node=>{
       if(node.textContent.trim()==='CORE PICK') node.textContent='MATCH PREDICTION';
@@ -50,9 +50,9 @@
     });
 
     const minOdds=document.getElementById('minimumOdds');
-    minOdds?.closest('label')?.remove();
+    if(minOdds?.closest('label')) minOdds.closest('label').hidden=true;
 
-    document.querySelectorAll('#reviewRows td[data-label="Odds"]').forEach(node=>node.remove());
+    document.querySelectorAll('#reviewRows td[data-label="Odds"]').forEach(node=>node.hidden=true);
     document.querySelectorAll('#reviewRows td[data-label="Pick"]').forEach(node=>node.dataset.label='Prediction');
 
     document.querySelectorAll('.result-card footer>span').forEach(node=>{
