@@ -1,0 +1,95 @@
+name: NOMADTIPS3 Live Feed Watchdog
+
+on:
+  schedule:
+    # Runs three minutes after the primary polling schedule.
+    - cron: '0-59/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-live-feed-watchdog
+  cancel-in-progress: false
+
+jobs:
+  recover-stale-feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check feed age and recover automatically
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git pull --rebase origin main
+
+          stale=$(python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          path = Path('result-feed.json')
+          if not path.exists():
+              print(1)
+              raise SystemExit
+
+          try:
+              feed = json.loads(path.read_text(encoding='utf-8'))
+              if (feed.get('summary') or {}).get('allSettled'):
+                  print(0)
+                  raise SystemExit
+              generated = datetime.fromisoformat(str(feed.get('generatedAt') or '').replace('Z', '+00:00'))
+              age = (datetime.now(timezone.utc) - generated).total_seconds()
+              print(1 if age >= 180 else 0)
+          except SystemExit:
+              raise
+          except Exception:
+              print(1)
+          PY
+          )
+
+          if [ "$stale" != "1" ]; then
+            echo 'Live feed is fresh; watchdog does not need to intervene.'
+            exit 0
+          fi
+
+          echo 'Live feed is older than three minutes; starting automatic recovery.'
+          export DETAIL_REFRESH=1
+          refreshed=0
+          for attempt in 1 2 3; do
+            if python3 .github/scripts/refresh_live_selected.py; then
+              refreshed=1
+              break
+            fi
+            echo "Watchdog refresh attempt ${attempt} failed; retrying."
+            sleep $((attempt * 5))
+          done
+          test "$refreshed" -eq 1
+
+          git add live-data-*.json live-matches.json result-feed.json
+          if git diff --cached --quiet; then
+            echo 'Recovery completed; no feed changes required.'
+            exit 0
+          fi
+
+          git commit -m "Recover stale live feed $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          pushed=0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin main; then
+              pushed=1
+              break
+            fi
+            git rebase --abort 2>/dev/null || true
+            sleep 2
+          done
+          test "$pushed" -eq 1
