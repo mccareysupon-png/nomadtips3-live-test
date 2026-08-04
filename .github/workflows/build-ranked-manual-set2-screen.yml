@@ -1,0 +1,111 @@
+name: Build Ranked Manual Set 2 Review Screen
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-ranked-manual-set2-screen.yml'
+      - 'manual-set2-candidates-2026-08-04.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build ranked one-line review screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          d=json.loads(Path('manual-set2-candidates-2026-08-04.json').read_text(encoding='utf-8'))
+
+          def n(v,default=0.0):
+              try:return float(v)
+              except:return default
+          def ppg(f):
+              f=f or {}; z=max(1,n(f.get('n'),1)); return (3*n(f.get('wins'))+n(f.get('draws')))/z
+          def gd(f):
+              f=f or {}; z=max(1,n(f.get('n'),1)); return (n(f.get('gf'))-n(f.get('ga')))/z
+          def res_pts(r):
+              return {'W':3,'D':1,'L':0}.get((r or {}).get('result'),0)
+          def h2h_for(c,side):
+              name=(c.get(side) or {}).get('name'); w=d_=l=0
+              for x in c.get('h2h') or []:
+                  hg=x.get('home_goals'); ag=x.get('away_goals')
+                  if hg is None or ag is None: continue
+                  is_home=x.get('home')==name
+                  gf=hg if is_home else ag; ga=ag if is_home else hg
+                  if gf>ga:w+=1
+                  elif gf==ga:d_+=1
+                  else:l+=1
+              return w,d_,l
+          def common_edge(c,side):
+              hp=ap=used=0
+              for co in c.get('common_opponents') or []:
+                  hr=co.get('home_team_results') or []; ar=co.get('away_team_results') or []
+                  if not hr or not ar: continue
+                  hp+=sum(res_pts(x) for x in hr)/len(hr)
+                  ap+=sum(res_pts(x) for x in ar)/len(ar)
+                  used+=1
+              if not used:return 0.0,0
+              edge=(hp-ap)/used
+              return (edge if side=='home' else -edge),used
+          rows=[]
+          for c in d.get('candidates') or []:
+              h=c.get('home') or {}; a=c.get('away') or {}; odds=c.get('odds_lock') or {}
+              st=c.get('standings') or {}; hs=st.get(str(h.get('id'))) or {}; ass=st.get(str(a.get('id'))) or {}
+              for side in c.get('plausible_sides') or []:
+                  opp='away' if side=='home' else 'home'
+                  sf=c.get(f'{side}_form') or {}; sv=c.get(f'{side}_venue_form') or {}
+                  of=c.get(f'{opp}_form') or {}; ov=c.get(f'{opp}_venue_form') or {}
+                  sst=hs if side=='home' else ass; ost=ass if side=='home' else hs
+                  h2w,h2d,h2l=h2h_for(c,side); ce,cn=common_edge(c,side)
+                  form_edge=ppg(sf)-ppg(of); venue_edge=ppg(sv)-ppg(ov); goal_edge=gd(sf)-gd(of)
+                  rank_edge=(n(ost.get('rank'))-n(sst.get('rank')))/10 if sst.get('rank') and ost.get('rank') else 0
+                  pts_edge=(n(sst.get('points'))-n(ost.get('points')))/20 if sst.get('points') is not None and ost.get('points') is not None else 0
+                  h2_edge=(h2w-h2l)/max(1,h2w+h2d+h2l)
+                  score=1.15*form_edge+1.35*venue_edge+0.55*goal_edge+rank_edge+pts_edge+0.35*h2_edge+0.20*ce
+                  rows.append({
+                    'score':score,'fixture':c.get('fixture_id'),'kickoff':c.get('kickoff_utc'),
+                    'league':f"{c.get('country')} / {c.get('league')}",'match':f"{h.get('name')} vs {a.get('name')}",
+                    'side':side,'team':(c.get(side) or {}).get('name'),'odds':odds.get(side),'book':odds.get('bookmaker'),
+                    'sf':sf,'sv':sv,'of':of,'ov':ov,'rank':sst.get('rank'),'orank':ost.get('rank'),
+                    'points':sst.get('points'),'opoints':ost.get('points'),'h2':(h2w,h2d,h2l),'ce':ce,'cn':cn,
+                    'inj':len(c.get('injuries') or [])
+                  })
+          rows.sort(key=lambda x:x['score'],reverse=True)
+          lines=['NOTE=SCREENING ORDER ONLY; NOT AN AUTO PICK OR CONFIDENCE','FIELDS=rank|score|fixture|kickoff|league|match|side|team|odds|book|side_form|side_venue|opp_form|opp_venue|ranks|points|h2h_wdl|common_edge/common_n|injuries','']
+          def fs(f):
+              f=f or {}; return f"{f.get('wins')}-{f.get('draws')}-{f.get('losses')} GF{f.get('gf')} GA{f.get('ga')}"
+          for i,r in enumerate(rows,1):
+              lines.append('|'.join([
+                f"{i:02d}",f"{r['score']:.3f}",str(r['fixture']),str(r['kickoff']),r['league'],r['match'],r['side'],r['team'],str(r['odds']),str(r['book']),
+                fs(r['sf']),fs(r['sv']),fs(r['of']),fs(r['ov']),f"{r['rank']}:{r['orank']}",f"{r['points']}:{r['opoints']}",
+                f"{r['h2'][0]}-{r['h2'][1]}-{r['h2'][2]}",f"{r['ce']:.2f}/{r['cn']}",str(r['inj'])
+              ]))
+          Path('manual-set2-ranked-screen-2026-08-04.txt').write_text('\n'.join(lines)+'\n',encoding='utf-8')
+          print({'rows':len(rows)})
+          PY
+
+      - name: Commit ranked screen
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add manual-set2-ranked-screen-2026-08-04.txt
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Build ranked Manual Set 2 review screen'
+          git pull --rebase origin main
+          git push origin main
