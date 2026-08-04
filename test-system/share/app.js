@@ -2,6 +2,7 @@ import { buildSummary, loadRecords, resultText } from '../shared.js?v=2026080407
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
 let currentRecords = [];
 
 function shareText(records) {
@@ -18,7 +19,7 @@ function render() {
   $('#posterList').innerHTML = currentRecords.map((record, index) => `
     <article class="poster-pick">
       <strong>${index + 1}</strong>
-      <div><b>${escapeHtml(record.home)} vs ${escapeHtml(record.away)}</b><small>${escapeHtml(record.league)} · Confidence ${record.confidence}% · Predicted ${escapeHtml(record.predictedScore)}</small></div>
+      <div><b>${escapeHtml(record.home)} vs ${escapeHtml(record.away)}</b><small>${escapeHtml(record.league)} · Odds ${formatOdds(record.odds)} · Confidence ${record.confidence}% · Predicted ${escapeHtml(record.predictedScore)}</small></div>
       <span>${escapeHtml(record.pickLabel || record.pick)}<small>${escapeHtml(resultText(record))}</small></span>
     </article>`).join('');
 }
