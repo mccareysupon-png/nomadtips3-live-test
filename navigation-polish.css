@@ -24,7 +24,8 @@ body>.topbar,
 /* TEST SYSTEM is plain text with a slow green activity indicator. */
 .environment,
 .test-note,
-.system-status{
+.system-status,
+.owner .badge:first-of-type{
   display:inline-flex!important;
   align-items:center!important;
   gap:7px!important;
@@ -40,7 +41,8 @@ body>.topbar,
 }
 .environment::before,
 .test-note::before,
-.system-status::before{
+.system-status::before,
+.owner .badge:first-of-type::before{
   content:""!important;
   display:block!important;
   width:7px!important;
@@ -57,7 +59,8 @@ body>.topbar,
 @media(prefers-reduced-motion:reduce){
   .environment::before,
   .test-note::before,
-  .system-status::before{
+  .system-status::before,
+  .owner .badge:first-of-type::before{
     animation:none!important;
     opacity:1!important;
     transform:none!important;
