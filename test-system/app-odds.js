@@ -5,6 +5,26 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({ 
 const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
 const LIVE = new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
 
+function loadDisplayRecords() {
+  const records = loadRecords();
+  try {
+    const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    const details = new Map((state.publishedPicks || []).map(record => [String(record.fixtureId), record]));
+    return records.map(record => {
+      const detail = details.get(String(record.fixtureId)) || {};
+      return {
+        ...record,
+        matchStatus: detail.matchStatus || null,
+        matchStatusLong: detail.matchStatusLong || null,
+        elapsed: detail.elapsed ?? null,
+        resultAutoVoid: Boolean(detail.resultAutoVoid)
+      };
+    });
+  } catch {
+    return records;
+  }
+}
+
 function displayResult(record) {
   if (record.outcome === 'correct') return 'CORRECT';
   if (record.outcome === 'incorrect') return 'INCORRECT';
@@ -24,7 +44,7 @@ function stateClass(record) {
 }
 
 function render() {
-  const records = loadRecords();
+  const records = loadDisplayRecords();
   const summary = buildSummary(records);
   $('#total').textContent = summary.total;
   $('#correct').textContent = summary.correct;
