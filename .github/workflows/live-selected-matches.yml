@@ -8,7 +8,7 @@ on:
       - '.github/scripts/refresh_live_selected.py'
       - 'selected-live-matches.json'
   schedule:
-    - cron: '*/10 * 4-5 8 *'
+    - cron: '*/5 * 4-5 8 *'
   workflow_dispatch:
 
 permissions:
@@ -16,20 +16,21 @@ permissions:
 
 concurrency:
   group: nomadtips3-selected-matches-live
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      DETAIL_REFRESH: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Refresh selected scores every 15 seconds
+      - name: Refresh selected scores
         shell: bash
         run: |
           set -euo pipefail
@@ -37,41 +38,22 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          # Twenty minutes of coverage. The next ten-minute cron run takes over
-          # before this run ends, preventing a gap when GitHub schedules late.
-          for cycle in $(seq 0 79); do
-            if (( cycle % 20 == 0 )); then
-              export DETAIL_REFRESH=1
-            else
-              export DETAIL_REFRESH=0
-            fi
+          python3 .github/scripts/refresh_live_selected.py
 
-            python3 .github/scripts/refresh_live_selected.py
+          git add live-data-*.json live-matches.json result-feed.json
+          if git diff --cached --quiet; then
+            echo 'No score or status change.'
+            exit 0
+          fi
 
-            git add live-data-*.json live-matches.json result-feed.json
-            if ! git diff --cached --quiet; then
-              git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-              pushed=0
-              for attempt in 1 2 3; do
-                if git pull --rebase origin main && git push origin main; then
-                  pushed=1
-                  break
-                fi
-                git rebase --abort 2>/dev/null || true
-                sleep 2
-              done
-              test "$pushed" -eq 1
-            fi
-
-            active=$(python3 -c "import json; print(json.load(open('/tmp/nomad-live-state.json'))['active'])")
-            live=$(python3 -c "import json; print(json.load(open('/tmp/nomad-live-state.json'))['live'])")
-            next=$(python3 -c "import json; v=json.load(open('/tmp/nomad-live-state.json'))['next_kickoff_seconds']; print(-1 if v is None else int(v))")
-
-            if [ "$active" -eq 0 ]; then
+          git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          pushed=0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin main; then
+              pushed=1
               break
             fi
-            if [ "$live" -eq 0 ] && { [ "$next" -lt 0 ] || [ "$next" -gt 900 ]; }; then
-              break
-            fi
-            sleep 15
+            git rebase --abort 2>/dev/null || true
+            sleep 2
           done
+          test "$pushed" -eq 1
