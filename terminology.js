@@ -67,11 +67,12 @@
     });
     document.querySelectorAll('[data-unlock-pick]').forEach(button=>button.textContent='Reopen Prediction');
 
-    document.querySelectorAll('p,.empty-state,.progress-label').forEach(node=>{
+    document.querySelectorAll('p,.empty-state,.empty-cell,.progress-label,#toast').forEach(node=>{
       node.textContent=node.textContent
         .replace(/locked Draft picks/gi,'finalized match predictions')
         .replace(/Draft picks/gi,'match predictions')
         .replace(/Today’s Picks/gi,'Match Predictions')
+        .replace(/\bPick\b/gi,'Prediction')
         .replace(/\bpicks\b/gi,'predictions');
     });
 
@@ -83,7 +84,7 @@
       hero.appendChild(note);
     }
 
-    observer?.observe(document.body,{childList:true,subtree:true,characterData:true});
+    observer?.observe(document.body,{childList:true,subtree:true});
   }
 
   function schedule(){
