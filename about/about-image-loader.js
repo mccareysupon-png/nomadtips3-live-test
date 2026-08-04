@@ -25,7 +25,7 @@
 
   async function loadHeroImage() {
     try {
-      const responses = await Promise.all(parts.map(path => fetch(`${path}?v=202608041004`, {cache:'force-cache'})));
+      const responses = await Promise.all(parts.map(path => fetch(`${path}?v=202608041307`, {cache:'force-cache'})));
       if (responses.some(response => !response.ok)) throw new Error('Hero image part unavailable');
 
       const encodedParts = await Promise.all(responses.map(response => response.text()));
