@@ -13,13 +13,17 @@ const checks = Object.freeze({
 });
 
 export const DEFAULT_PICKS = Object.freeze([
-  { fixtureId:'TEST-2001', pickDate:'2026-08-04', league:'NOMAD Test League A', home:'Alpha City', away:'Beta United', kickoffUtc:'2026-08-04T08:00:00.000Z', pick:'HOME', odds:1.82, confidence:63, predictedScore:'2-0', reason:'Synthetic record for the NOMADTIPS3 test environment.', abcResult:'PASS', source:'TEST DATA', status:'RESULT_CONFIRMED', resultSource:'MANUAL', resultConfirmed:true, outcome:'correct', homeScore:2, awayScore:0, checks },
-  { fixtureId:'TEST-2002', pickDate:'2026-08-04', league:'NOMAD Test League B', home:'Coastal FC', away:'Delta Rovers', kickoffUtc:'2026-08-04T09:30:00.000Z', pick:'AWAY', odds:1.76, confidence:58, predictedScore:'0-1', reason:'Synthetic record proving API coverage is not a selection filter.', abcResult:'PASS', source:'TEST DATA', status:'RESULT_CONFIRMED', resultSource:'API', resultConfirmed:true, outcome:'correct', homeScore:0, awayScore:1, checks },
-  { fixtureId:'TEST-2003', pickDate:'2026-08-04', league:'NOMAD Test League A', home:'Eastern Stars', away:'Forest Athletic', kickoffUtc:'2026-08-04T11:00:00.000Z', pick:'DRAW', odds:1.91, confidence:57, predictedScore:'1-1', reason:'Synthetic draw-market test record.', abcResult:'PASS', source:'TEST DATA', status:'RESULT_CONFIRMED', resultSource:'API', resultConfirmed:true, outcome:'incorrect', homeScore:2, awayScore:1, checks },
-  { fixtureId:'TEST-2004', pickDate:'2026-08-04', league:'NOMAD Test League C', home:'Harbour Town', away:'Island Club', kickoffUtc:'2026-08-04T12:30:00.000Z', pick:'HOME', odds:1.88, confidence:61, predictedScore:'2-1', reason:'Synthetic waiting-result record.', abcResult:'PASS', source:'TEST DATA', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'TEST-2005', pickDate:'2026-08-04', league:'NOMAD Test League C', home:'Jade Warriors', away:'Kingdom FC', kickoffUtc:'2026-08-04T14:00:00.000Z', pick:'AWAY', odds:2.05, confidence:59, predictedScore:'1-2', reason:'Synthetic waiting-result record.', abcResult:'PASS', source:'TEST DATA', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'TEST-2006', pickDate:'2026-08-04', league:'NOMAD Test League D', home:'Metro Eleven', away:'Northern Lights', kickoffUtc:'2026-08-04T15:30:00.000Z', pick:'HOME', odds:1.73, confidence:56, predictedScore:'1-0', reason:'Synthetic minimum-threshold validation record.', abcResult:'PASS', source:'TEST DATA', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'TEST-2007', pickDate:'2026-08-04', league:'NOMAD Test League D', home:'Orchid SC', away:'Phoenix United', kickoffUtc:'2026-08-04T17:00:00.000Z', pick:'AWAY', odds:1.95, confidence:62, predictedScore:'0-2', reason:'Synthetic seventh selection for variable-count testing.', abcResult:'PASS', source:'TEST DATA', status:'MANUAL_RESULT_REQUIRED', resultSource:null, resultConfirmed:false, outcome:'pending', checks }
+  { fixtureId:'1551656', pickDate:'2026-08-04', league:'Costa-Rica Primera División', home:'Perez Zeledon', away:'CS Cartagines', kickoffUtc:'2026-08-03T19:00:00.000Z', pick:'AWAY', pickLabel:'CS Cartagines Win', odds:1.95, bookmaker:'Bet365', confidence:63, predictedScore:'0–2', btts:'No', doubleChance:'X2', asianHandicap:'CS Cartagines -0.25', reason:'Cartagines has the stronger six-match form, superior away record, a higher early league position and a clear recent H2H edge. Common-opponent results also favour Cartagines overall.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1610530', pickDate:'2026-08-04', league:'Indonesia Piala Presiden', home:'Persebaya Surabaya', away:'Arema FC', kickoffUtc:'2026-08-04T05:00:00.000Z', pick:'HOME', pickLabel:'Persebaya Surabaya Win', odds:2.15, bookmaker:'Bet365', confidence:61, predictedScore:'2–1', btts:'Yes', doubleChance:'1X', asianHandicap:'Persebaya Surabaya -0.25', reason:'Persebaya is unbeaten in six, has won four of its last five home matches and holds a strong recent H2H record against Arema. Arema remains dangerous, so confidence is controlled.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1610531', pickDate:'2026-08-04', league:'Indonesia Piala Presiden', home:'Persib Bandung', away:'Persija', kickoffUtc:'2026-08-04T05:00:00.000Z', pick:'HOME', pickLabel:'Persib Bandung Win', odds:2.25, bookmaker:'Bet365', confidence:61, predictedScore:'1–0', btts:'No', doubleChance:'1X', asianHandicap:'Persib Bandung -0.25', reason:'Persib is unbeaten in six and has not conceded across its five-match home sample. It also won both recent direct meetings and enters the semi-final with the stronger group record.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1563636', pickDate:'2026-08-04', league:'Russia Cup', home:'Dinamo Makhachkala', away:'Krylia Sovetov', kickoffUtc:'2026-08-04T08:30:00.000Z', pick:'HOME', pickLabel:'Dinamo Makhachkala Win', odds:2.08, bookmaker:'Pinnacle', confidence:61, predictedScore:'2–0', btts:'No', doubleChance:'1X', asianHandicap:'Dinamo Makhachkala -0.25', reason:'Dinamo has four wins in six and four wins in its five-match home sample, while Krylia is winless in the recent and away samples. Dinamo also leads the recent H2H set. Cup rotation risk limits confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1557945', pickDate:'2026-08-04', league:'Israel Toto Cup Ligat Al', home:'Ironi Kiryat Shmona', away:'Bnei Sakhnin', kickoffUtc:'2026-08-04T09:45:00.000Z', pick:'HOME', pickLabel:'Ironi Kiryat Shmona Win', odds:1.95, bookmaker:'Bet365', confidence:66, predictedScore:'2–0', btts:'No', doubleChance:'1X', asianHandicap:'Ironi Kiryat Shmona -0.50', reason:'Kiryat Shmona has won four of five at home. Bnei Sakhnin has lost all six recent matches and all five away matches. Recent H2H and common-opponent evidence strongly support the home side.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1607166', pickDate:'2026-08-04', league:'UEFA Champions League Qualifying', home:'Hapoel Beer Sheva', away:'FK Crvena Zvezda', kickoffUtc:'2026-08-04T10:30:00.000Z', pick:'AWAY', pickLabel:'FK Crvena Zvezda Win', odds:1.75, bookmaker:'Bet365', confidence:62, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'FK Crvena Zvezda -0.50', reason:'Crvena Zvezda carries the higher team-quality level and has four wins in its completed recent sample with an 18–4 goal balance. Hapoel has lost three of its five completed recent matches.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1576856', pickDate:'2026-08-04', league:'Argentina Reserve League', home:'Godoy Cruz Res.', away:'Racing Club Res.', kickoffUtc:'2026-08-04T11:00:00.000Z', pick:'AWAY', pickLabel:'Racing Club Res. Win', odds:2.30, bookmaker:'Bet365', confidence:58, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'Racing Club Res. -0.25', reason:'Racing has the stronger recent and away form and has won all four recorded H2H meetings. Reserve-team rotation creates additional uncertainty, so the selection is held at the minimum qualifying confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1576857', pickDate:'2026-08-04', league:'Argentina Reserve League', home:'Gimnasia Mendoza 2', away:'River Plate Res.', kickoffUtc:'2026-08-04T11:00:00.000Z', pick:'AWAY', pickLabel:'River Plate Res. Win', odds:1.91, bookmaker:'Bet365', confidence:59, predictedScore:'0–1', btts:'No', doubleChance:'X2', asianHandicap:'River Plate Res. -0.25', reason:'River has the stronger recent defensive record, a better away sample, the higher early-table position and a 5–1 win in the latest H2H. Reserve-lineup volatility keeps confidence below the senior-team selections.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1549709', pickDate:'2026-08-04', league:'Colombia Primera A', home:'Llaneros', away:'Fortaleza FC', kickoffUtc:'2026-08-04T14:10:00.000Z', pick:'HOME', pickLabel:'Llaneros Win', odds:2.10, bookmaker:'Bet365', confidence:61, predictedScore:'1–0', btts:'No', doubleChance:'1X', asianHandicap:'Llaneros -0.25', reason:'Llaneros has four wins in six and is unbeaten across the five-match home sample, while Fortaleza is winless in five away matches. The common-opponent evidence is mixed, limiting confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1545399', pickDate:'2026-08-04', league:'Bolivia Primera División', home:'Independiente Petrolero', away:'Aurora', kickoffUtc:'2026-08-04T15:00:00.000Z', pick:'AWAY', pickLabel:'Aurora Win', odds:2.45, bookmaker:'Bet365', confidence:60, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'Aurora 0.00', reason:'Aurora has the stronger current form, away record and league position. Independiente has lost five of six and three of five at home. Common-opponent evidence generally favours Aurora.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
+  { fixtureId:'1530109', pickDate:'2026-08-04', league:'Leagues Cup', home:'FC Cincinnati', away:'CF Pachuca', kickoffUtc:'2026-08-04T16:45:00.000Z', pick:'HOME', pickLabel:'FC Cincinnati Win', odds:2.05, bookmaker:'Bet365', confidence:60, predictedScore:'3–2', btts:'Yes', doubleChance:'1X', asianHandicap:'FC Cincinnati -0.25', reason:'Cincinnati has four wins in six and four wins in five at home, producing 20 goals in that home sample. Pachuca has lost three of six and three of five away, though Cincinnati defensive volatility caps confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks }
 ]);
 
 function normalize(record) {
@@ -31,9 +35,14 @@ function normalize(record) {
     away: record.away ?? record.awayTeam ?? 'Away',
     kickoffUtc: record.kickoffUtc ?? record.kickoff_utc ?? new Date().toISOString(),
     pick: String(record.pick ?? record.pick_1x2 ?? 'HOME').toUpperCase(),
+    pickLabel: record.pickLabel ?? record.pick_label ?? record.pick ?? 'HOME',
     odds: Number(record.odds ?? record.lockedOdds ?? record.locked_odds ?? 0),
+    bookmaker: record.bookmaker ?? 'Locked',
     confidence: Number(record.confidence ?? 0),
     predictedScore: record.predictedScore ?? record.predicted_score ?? '—',
+    btts: record.btts ?? '—',
+    doubleChance: record.doubleChance ?? record.double_chance ?? '—',
+    asianHandicap: record.asianHandicap ?? record.asian_handicap ?? '—',
     reason: record.reason ?? record.analysisReason ?? 'Draft Store record.',
     abcResult: record.abcResult ?? record.commonOpponentsResult ?? '—',
     source: record.source ?? record.resultSource ?? 'DRAFT STORE',
@@ -46,16 +55,40 @@ function normalize(record) {
   };
 }
 
+function createLockedState() {
+  const now = new Date().toISOString();
+  return {
+    mode: 'DRAFT',
+    ruleVersions: [{ id:'locked-2026-08-04T00:04:00+07:00', name:'Manual Set 2 — Locked 4 August 2026', createdAt:'2026-08-03T17:04:00.000Z', minimumOdds:1.70, minimumConfidence:58 }],
+    candidates: [],
+    reviewItems: [],
+    publishedPicks: DEFAULT_PICKS.map(item => ({ ...item, ruleVersionId:'locked-2026-08-04T00:04:00+07:00', lockedAt:'2026-08-03T17:04:00.000Z' })),
+    auditLog: [{ id:'seed-2026-08-04', createdAt:now, actor:'test-system', action:'LOCKED_SET_IMPORTED', entity:'2026-08-04', details:{ count:DEFAULT_PICKS.length, productionWrite:false } }],
+    analysisRun: null,
+    updatedAt: now
+  };
+}
+
+function shouldSeed(state) {
+  const picks = state?.publishedPicks;
+  if (!Array.isArray(picks) || picks.length === 0) return true;
+  return picks.every(pick => /^TEST-(100|200)/.test(String(pick.fixtureId ?? '')));
+}
+
 export function loadRecords() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const state = raw ? JSON.parse(raw) : null;
-    const records = Array.isArray(state?.publishedPicks) && state.publishedPicks.length
-      ? state.publishedPicks
-      : DEFAULT_PICKS;
-    return records.map(normalize);
+    if (shouldSeed(state)) {
+      const seeded = createLockedState();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+      return seeded.publishedPicks.map(normalize);
+    }
+    return state.publishedPicks.map(normalize);
   } catch {
-    return DEFAULT_PICKS.map(normalize);
+    const seeded = createLockedState();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
+    return seeded.publishedPicks.map(normalize);
   }
 }
 
