@@ -8,7 +8,7 @@ on:
       - '.github/scripts/refresh_live_selected.py'
       - 'selected-live-matches.json'
   schedule:
-    - cron: '*/5 * 4-5 8 *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -16,12 +16,12 @@ permissions:
 
 concurrency:
   group: nomadtips3-selected-matches-live
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
     steps:
@@ -37,10 +37,10 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          # GitHub cron starts every five minutes. Inside each run, refresh the
-          # score feed every 30 seconds while a selected match is live or close
-          # to kickoff. Detailed statistics/events refresh every two minutes.
-          for cycle in $(seq 0 9); do
+          # GitHub cron starts every five minutes. Each run stays below the next
+          # schedule boundary, preventing cancellation gaps and queue build-up.
+          # Detailed statistics/events refresh every two minutes.
+          for cycle in $(seq 0 7); do
             if (( cycle % 4 == 0 )); then
               export DETAIL_REFRESH=1
             else
@@ -80,5 +80,7 @@ jobs:
               break
             fi
 
-            sleep 30
+            if [ "$cycle" -lt 7 ]; then
+              sleep 30
+            fi
           done
