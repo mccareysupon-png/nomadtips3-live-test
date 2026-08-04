@@ -6,6 +6,7 @@
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
   const termsUrl = new URL('terms/', root).href;
+  const privacyUrl = new URL('privacy/', root).href;
   const aboutUrl = new URL('about/', root).href;
 
   // Replace these two URLs with the official NOMADTIPS3 profile links when ready.
@@ -27,6 +28,8 @@
       <div class="site-footer__right">
         <nav class="site-footer__links" aria-label="Legal and company information">
           <a href="${termsUrl}">Copyright &amp; Terms</a>
+          <span class="site-footer__divider" aria-hidden="true"></span>
+          <a href="${privacyUrl}">Privacy Policy</a>
           <span class="site-footer__divider" aria-hidden="true"></span>
           <a href="${aboutUrl}">About Us</a>
         </nav>
