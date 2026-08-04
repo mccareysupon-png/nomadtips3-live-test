@@ -15,6 +15,14 @@
   letter-spacing:normal;
 }
 
+/* Live Analysis only: 40% smaller and visually subdued. */
+.live-analysis-disclaimer{
+  font-size:60%!important;
+  line-height:1.35!important;
+  opacity:.58!important;
+  max-width:720px!important;
+}
+
 /* Betting-market fields are retained only in internal data, not displayed. */
 .markets,
 [data-public-betting-field],
@@ -28,5 +36,6 @@
 
 @media(max-width:720px){
   .analysis-disclaimer{margin-top:3px}
+  .live-analysis-disclaimer{font-size:60%!important;opacity:.52!important}
   .pick-data{grid-template-columns:1.35fr 1fr!important}
 }
