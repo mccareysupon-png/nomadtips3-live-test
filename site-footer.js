@@ -1,10 +1,29 @@
 (()=>{
   'use strict';
 
-  if (document.querySelector('.site-footer')) return;
-
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
+
+  const hasMatchLists = document.querySelector('#pickGrid, #historyRows, #posterList, #matches');
+  if (hasMatchLists) {
+    if (!document.querySelector('link[data-nomad-match-order]')) {
+      const style = document.createElement('link');
+      style.rel = 'stylesheet';
+      style.href = new URL('test-system/pick-order.css?v=202608041350', root).href;
+      style.dataset.nomadMatchOrder = 'true';
+      document.head.appendChild(style);
+    }
+    if (!document.querySelector('script[data-nomad-match-order]')) {
+      const orderScript = document.createElement('script');
+      orderScript.src = new URL('match-order.js?v=202608041350', root).href;
+      orderScript.defer = true;
+      orderScript.dataset.nomadMatchOrder = 'true';
+      document.head.appendChild(orderScript);
+    }
+  }
+
+  if (document.querySelector('.site-footer')) return;
+
   const termsUrl = new URL('terms/', root).href;
   const privacyUrl = new URL('privacy/', root).href;
   const aboutUrl = new URL('about/', root).href;
