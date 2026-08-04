@@ -21,6 +21,7 @@
   }
 
   function applyHistoryOrder() {
+    setText(document.querySelector('.history thead th:first-child'), 'Order');
     document.querySelectorAll('#historyRows tr').forEach((row, index) => {
       const cell = row.cells?.[0];
       if (!cell) return;
