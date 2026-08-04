@@ -53,7 +53,9 @@ function card(name){
     <section class="panel active" data-panel="stats"><div data-k="stats" class="stat-list"><p class="empty">Loading statistics</p></div></section>
     <section class="panel" data-panel="timeline"><div data-k="events" class="event-list"><p class="empty">No events yet</p></div></section>
     <section class="pick"><div><small>CORE PICK</small><b data-k="pick">N/A</b></div><div><small>CONFIDENCE</small><b data-k="confidence">N/A</b></div><div><small>PREDICTED</small><b data-k="predicted">N/A</b></div></section>
-    <footer><span data-k="updated">Waiting for update</span><span>Score 15 sec · Events 30 sec · Stats 60 sec</span></footer>
+    <section class="markets"><div><small>LOCKED ODDS</small><b data-k="odds">N/A</b></div><div><small>BTTS</small><b data-k="btts">N/A</b></div><div><small>DOUBLE CHANCE</small><b data-k="doubleChance">N/A</b></div><div><small>ASIAN HANDICAP</small><b data-k="asianHandicap">N/A</b></div></section>
+    <section class="reason"><small>MANUAL SET 2 REASON</small><p data-k="reason">Waiting for selection data.</p></section>
+    <footer><span data-k="updated">Waiting for update</span><span>Score 15 sec · API refresh 10 min</span></footer>
   </article>`;
 }
 
@@ -75,9 +77,22 @@ function statRow(label,home,away){
   return `<div class="stat-row"><b>${esc(shown(home))}</b><div><small>${esc(label)}</small><span><i style="width:${hp}%"></i><i class="away" style="width:${ap}%"></i></span></div><b>${esc(shown(away))}</b></div>`;
 }
 
+function emptyState(){
+  if(host.querySelector('.match-card'))return;
+  if(!host.querySelector('.empty-state')){
+    host.innerHTML='<section class="empty-state"><strong>NO ACTIVE MATCHES</strong><span>Waiting for the next locked Manual Set 2 fixtures.</span></section>';
+  }
+}
+
+function clearEmptyState(){
+  const node=host.querySelector('.empty-state');
+  if(node)node.remove();
+}
+
 function updateCount(){
   const n=host.querySelectorAll('.match-card').length;
-  document.getElementById('matchCount').textContent=`LIVE SCORES BETA · ${n} ${n===1?'MATCH':'MATCHES'}`;
+  document.getElementById('matchCount').textContent=`MANUAL SET 2 · ${n} ${n===1?'MATCH':'MATCHES'}`;
+  if(n===0)emptyState();
 }
 
 function removeMatch(name){
@@ -115,6 +130,11 @@ function render(name,data){
   el(root,'pick').textContent=m.pick||'N/A';
   el(root,'confidence').textContent=m.confidence!==null&&m.confidence!==undefined?`${m.confidence}%`:'N/A';
   el(root,'predicted').textContent=m.predicted_score||'N/A';
+  el(root,'odds').textContent=m.odds!==null&&m.odds!==undefined?`${m.odds} · ${m.bookmaker||'Locked'}`:'N/A';
+  el(root,'btts').textContent=m.btts||'N/A';
+  el(root,'doubleChance').textContent=m.double_chance||'N/A';
+  el(root,'asianHandicap').textContent=m.asian_handicap||'N/A';
+  el(root,'reason').textContent=m.reason||'Manual analysis recorded.';
   el(root,'updated').textContent=data.fetched_at_utc?`Updated ${new Date(data.fetched_at_utc).toLocaleString('th-TH')}`:'Waiting for update';
 }
 
@@ -147,8 +167,10 @@ async function syncManifest(){
     const files=Array.isArray(data.files)?data.files:[];
     const wanted=new Set(files);
     for(const name of [...state.keys()])if(!wanted.has(name))removeMatch(name);
+    if(files.length)clearEmptyState();
     for(const name of files){
       if(state.has(name))continue;
+      clearEmptyState();
       host.insertAdjacentHTML('beforeend',card(name));
       const root=host.lastElementChild;bindTabs(root);
       const timer=setInterval(()=>loadMatch(name),15000);
@@ -156,7 +178,7 @@ async function syncManifest(){
       loadMatch(name);
     }
     updateCount();
-  }catch(error){console.error(error);}
+  }catch(error){console.error(error);emptyState();}
 }
 
 syncManifest();
