@@ -1,4 +1,4 @@
-import { buildSummary, loadRecords, resultText, scoreText } from '../shared.js';
+import { buildSummary, loadRecords, resultText, scoreText } from '../shared.js?v=202608040728';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
@@ -29,7 +29,7 @@ function render() {
       <td>${index + 1}</td>
       <td>${escapeHtml(record.league)}</td>
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}</td>
-      <td>${escapeHtml(record.pick)}</td>
+      <td>${escapeHtml(record.pickLabel || record.pick)}</td>
       <td>${record.odds.toFixed(2)}</td>
       <td>${escapeHtml(scoreText(record))}</td>
       <td>${escapeHtml(resultText(record))}</td>
