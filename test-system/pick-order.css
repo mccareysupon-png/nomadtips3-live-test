@@ -7,15 +7,14 @@
   flex:1;
 }
 .pick-card header .pick-rank{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
+  display:inline-block;
   flex:0 0 auto;
-  min-width:48px;
-  padding:4px 7px;
+  min-width:0;
+  padding:0;
   border:0;
-  border-radius:4px;
-  background:var(--green-deep,#07543c);
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
   color:var(--green,#00f0a8);
   font-size:9px;
   font-weight:950;
@@ -28,9 +27,5 @@
 }
 @media(max-width:430px){
   .pick-card header .pick-heading{gap:6px}
-  .pick-card header .pick-rank{
-    min-width:44px;
-    padding:4px 6px;
-    font-size:8.5px;
-  }
+  .pick-card header .pick-rank{font-size:8.5px}
 }
