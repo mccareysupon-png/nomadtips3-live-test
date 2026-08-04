@@ -1,70 +1,77 @@
 :root{
-  --nomad-wordmark-size:30px;
-  --nomad-wordmark-yellow:#f2c94c;
+  --nomad-wordmark-width:176px;
+  --nomad-wordmark-height:31px;
+  --nomad-ui-font:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Noto Sans Thai",sans-serif;
 }
 
-/* Contemporary sportsbook-style wordmark using system sans-serif fonts only. */
-.brand{
-  display:inline-flex!important;
-  align-items:center;
-  flex:0 0 auto;
-  min-width:max-content;
-  color:#fff!important;
-  font-family:"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif!important;
-  font-size:var(--nomad-wordmark-size)!important;
-  font-weight:900!important;
-  font-style:normal!important;
-  font-variant:normal!important;
-  line-height:.9!important;
-  letter-spacing:-.075em!important;
-  text-transform:lowercase!important;
-  white-space:nowrap!important;
-  text-decoration:none!important;
+html,body,button,input,select,textarea,a{
+  font-family:var(--nomad-ui-font)!important;
+  font-kerning:normal;
+  font-variant-ligatures:common-ligatures;
   -webkit-font-smoothing:antialiased;
-  text-rendering:geometricPrecision;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
 }
 
-.brand>b{
-  color:var(--nomad-wordmark-yellow)!important;
-  font:inherit!important;
-}
-
-/* NOMAD Control uses an h1 inside the brand link. Render the same wordmark there. */
-.brand h1{
-  display:inline-flex!important;
-  align-items:baseline;
+/* SVG paths make the wordmark identical on Windows, Android, iOS and tablets. */
+.brand{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:var(--nomad-wordmark-width)!important;
+  height:var(--nomad-wordmark-height)!important;
+  min-width:var(--nomad-wordmark-width)!important;
   margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border:0!important;
+  background:url("./brand-logo.svg") left center/contain no-repeat!important;
   color:transparent!important;
   font-size:0!important;
-  line-height:.9!important;
+  line-height:0!important;
   letter-spacing:0!important;
   white-space:nowrap!important;
+  text-decoration:none!important;
 }
-.brand h1::before,
-.brand h1::after{
-  font-family:"Arial Black","Helvetica Neue",Helvetica,Arial,sans-serif!important;
-  font-size:var(--nomad-wordmark-size)!important;
-  font-weight:900!important;
-  line-height:.9!important;
-  letter-spacing:-.075em!important;
-  text-transform:lowercase!important;
-  -webkit-font-smoothing:antialiased;
-  text-rendering:geometricPrecision;
-}
-.brand h1::before{content:"nomad";color:#fff}
-.brand h1::after{content:"tips3";color:var(--nomad-wordmark-yellow)}
-.brand small{font-family:Inter,Arial,sans-serif!important;letter-spacing:.11em!important}
+.brand>b,.brand>div{display:none!important}
 
-@media (max-width:720px){
-  :root{--nomad-wordmark-size:25px}
-  .brand{letter-spacing:-.07em!important}
-  .brand h1::before,.brand h1::after{letter-spacing:-.07em!important}
+/* New-page headings are intentionally compact and always smaller than the logo. */
+.hero h1,.poster-head h1{
+  margin-block:4px!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+  font-weight:850!important;
+  letter-spacing:-.01em!important;
+}
+.intro h2,.access-denied h1{
+  font-size:12px!important;
+  line-height:1.35!important;
+  font-weight:850!important;
+}
+.section-head h2,.section-head h3,.panel-head h2,.status-panel h3{
+  font-size:11px!important;
+  line-height:1.35!important;
+  font-weight:850!important;
+}
+.hero p,.intro p,.section-head p,.panel-head small{
+  font-size:10px!important;
+  line-height:1.65!important;
+  font-weight:450!important;
+}
+.metric b{font-size:16px!important;line-height:1.15!important}
+.team strong,.result-card header strong{font-weight:750!important}
+
+@media(max-width:720px){
+  :root{--nomad-wordmark-width:148px;--nomad-wordmark-height:27px}
+  .hero h1,.poster-head h1,.intro h2,.access-denied h1{font-size:11px!important}
+  .section-head h2,.section-head h3,.panel-head h2,.status-panel h3{font-size:10px!important}
+  .hero p,.intro p,.section-head p,.panel-head small{font-size:9.5px!important}
+  .metric b{font-size:15px!important}
 }
 
-@media (max-width:380px){
-  :root{--nomad-wordmark-size:22px}
+@media(max-width:380px){
+  :root{--nomad-wordmark-width:132px;--nomad-wordmark-height:24px}
 }
 
-@media (min-width:1280px){
-  :root{--nomad-wordmark-size:31px}
+@media(min-width:1280px){
+  :root{--nomad-wordmark-width:184px;--nomad-wordmark-height:32px}
 }
