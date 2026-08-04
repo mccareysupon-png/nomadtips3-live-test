@@ -1,4 +1,4 @@
-import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAGE_KEY } from './shared.js';
+import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAGE_KEY } from './shared.js?v=202608040728';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
@@ -24,7 +24,7 @@ function render() {
   const stored = localStorage.getItem(STORAGE_KEY);
   $('#sourceNote').textContent = stored
     ? `Locked Manual Set 2 · ${records.length} picks · Shared Draft Store`
-    : `Loading locked Manual Set 2 set`;
+    : 'Loading locked Manual Set 2 set';
 
   $('#pickGrid').innerHTML = records.map((record, index) => `
     <article class="pick-card">
