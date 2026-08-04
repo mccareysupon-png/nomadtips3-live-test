@@ -1,17 +1,22 @@
 (()=>{
   'use strict';
 
+  const textFor = index => `MATCH ${index + 1}`;
+
   function label(index, className) {
     const node = document.createElement('span');
     node.className = className;
-    node.textContent = `MATCH ${index + 1}`;
+    node.textContent = textFor(index);
     return node;
+  }
+
+  function setText(node, value) {
+    if (node && node.textContent !== value) node.textContent = value;
   }
 
   function applyPredictionOrder() {
     document.querySelectorAll('#pickGrid .pick-card').forEach((card, index) => {
-      const rank = card.querySelector('.pick-rank');
-      if (rank) rank.textContent = `MATCH ${index + 1}`;
+      setText(card.querySelector('.pick-rank'), textFor(index));
     });
   }
 
@@ -25,7 +30,7 @@
         rank = label(index, 'history-match');
         cell.appendChild(rank);
       } else {
-        rank.textContent = `MATCH ${index + 1}`;
+        setText(rank, textFor(index));
       }
     });
   }
@@ -39,7 +44,7 @@
         if (first) first.replaceWith(rank);
         else item.prepend(rank);
       } else {
-        rank.textContent = `MATCH ${index + 1}`;
+        setText(rank, textFor(index));
       }
     });
   }
@@ -64,7 +69,7 @@
         rank = label(index, 'live-match-order');
         group.insertBefore(rank, group.firstChild);
       } else {
-        rank.textContent = `MATCH ${index + 1}`;
+        setText(rank, textFor(index));
       }
     });
   }
