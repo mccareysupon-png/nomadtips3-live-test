@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Share Poster</title>
+  <title>NOMADTIPS3 Test System — Analysis Poster</title>
   <link rel="stylesheet" href="../styles.css?v=202608040728">
   <link rel="stylesheet" href="../../brand.css?v=202608040907">
   <link rel="stylesheet" href="../../content-scale.css?v=202608040925">
+  <link rel="stylesheet" href="../../terminology.css?v=202608040952">
   <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
 </head>
 <body>
@@ -20,15 +21,16 @@
   <main class="page">
     <section class="hero">
       <div>
-        <span class="eyebrow">SAME RECORD · SAME PICKS</span>
-        <h1>Share Poster</h1>
-        <p>This test poster reads the same locked picks used by Today’s Picks, Statistics and NOMAD Control.</p>
+        <span class="eyebrow">SAME RECORD · SAME ANALYSIS</span>
+        <h1>Analysis Poster</h1>
+        <p>This poster reads the same finalized match predictions used by Match Predictions, Statistics and NOMAD Control.</p>
+        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
       <div class="hero-actions"><a class="button primary" href="../../nomad-control/?draft-owner=1">Open NOMAD Control</a></div>
     </section>
 
     <div class="share-actions">
-      <button id="copyButton" class="button primary">Copy Share Text</button>
+      <button id="copyButton" class="button primary">Copy Analysis Text</button>
       <button id="shareButton" class="button yellow">Open Share Sheet</button>
       <button id="printButton" class="button">Print / Save PDF</button>
     </div>
@@ -36,22 +38,23 @@
     <section id="poster" class="poster">
       <div class="poster-head">
         <span class="eyebrow">NOMADTIPS3 VERSION 2 · TEST SYSTEM</span>
-        <h1>Today's <b id="posterCount">11</b> Picks</h1>
-        <p id="posterDate">LOCKED MANUAL SET 2 · 4 AUGUST 2026</p>
+        <h1>Today’s <b id="posterCount">11</b> Match Predictions</h1>
+        <p id="posterDate">FINALIZED MANUAL SET 2 · 4 AUGUST 2026</p>
       </div>
       <div id="posterList" class="poster-list"></div>
-      <div class="poster-foot"><span>Manual Set 2 Test Environment</span><span id="posterAccuracy">Accuracy 0.00%</span></div>
+      <div class="poster-foot"><span>Manual Set 2 Sports Analysis</span><span id="posterAccuracy">Accuracy 0.00%</span></div>
     </section>
   </main>
 
   <nav class="main-nav" aria-label="Test system navigation">
-    <a href="../">Today's Picks</a>
+    <a href="../">Match Predictions</a>
     <a href="../stats/">Statistics</a>
-    <a class="active" href="./">Share Poster</a>
+    <a class="active" href="./">Analysis Poster</a>
     <a href="../../">Live Test</a>
     <a href="../../nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
-  <script type="module" src="./app.js?v=202608040728"></script>
+  <script type="module" src="./app.js?v=202608040952"></script>
+  <script src="../../terminology.js?v=202608040952" defer></script>
   <script src="../../site-footer.js?v=202608040844"></script>
 </body>
 </html>
