@@ -1,0 +1,75 @@
+name: Apply NOMADTIPS3 Site Footer
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-site-footer.yml'
+      - 'site-footer.js'
+      - 'site-footer.css'
+      - 'info-pages.css'
+      - 'about/index.html'
+      - 'terms/index.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-site-footer
+  cancel-in-progress: true
+
+jobs:
+  apply-footer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add shared footer assets to every HTML page
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+
+          version = '202608040836'
+          changed = []
+
+          for path in sorted(Path('.').rglob('index.html')):
+              if '.git' in path.parts:
+                  continue
+
+              text = path.read_text(encoding='utf-8')
+              original = text
+              rel_root = os.path.relpath('.', path.parent).replace(os.sep, '/')
+              prefix = '.' if rel_root == '.' else rel_root
+
+              css = f'<link rel="stylesheet" href="{prefix}/site-footer.css?v={version}">'
+              js = f'<script src="{prefix}/site-footer.js?v={version}"></script>'
+
+              if 'site-footer.css' not in text:
+                  text = text.replace('</head>', f'  {css}\n</head>', 1)
+
+              if 'site-footer.js' not in text:
+                  text = text.replace('</body>', f'  {js}\n</body>', 1)
+
+              if text != original:
+                  path.write_text(text, encoding='utf-8')
+                  changed.append(str(path))
+
+          print('\n'.join(changed) if changed else 'All pages already use the shared footer.')
+          PY
+
+      - name: Commit footer links
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- '*.html'
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Apply shared NOMADTIPS3 footer to all pages'
+          git pull --rebase origin main
+          git push origin main
