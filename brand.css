@@ -60,6 +60,20 @@ html,body,button,input,select,textarea,a{
 .metric b{font-size:16px!important;line-height:1.15!important}
 .team strong,.result-card header strong{font-weight:750!important}
 
+/* Keep bottom navigation above all live cards and make taps deterministic. */
+.main-nav{
+  z-index:1000!important;
+  pointer-events:auto!important;
+  isolation:isolate;
+}
+.main-nav a{
+  position:relative;
+  z-index:1;
+  pointer-events:auto!important;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:rgba(242,201,76,.16);
+}
+
 @media(max-width:720px){
   :root{--nomad-wordmark-width:148px;--nomad-wordmark-height:27px}
   .hero h1,.poster-head h1,.intro h2,.access-denied h1{font-size:11px!important}
