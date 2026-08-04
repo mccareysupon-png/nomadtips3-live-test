@@ -129,7 +129,7 @@ jobs:
                       'status_long':(fixture.get('status') or {}).get('long'),'elapsed':(fixture.get('status') or {}).get('elapsed'),
                       'score':{'home':goals.get('home'),'away':goals.get('away')},
                       'halftime_score':(score.get('halftime') or {}),'fulltime_score':(score.get('fulltime') or {}),
-                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],'bookmaker':selected['bookmaker'],
+                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],
                       'confidence':selected['confidence'],'predicted_score':selected['predicted_score'],'btts':selected['btts'],
                       'double_chance':selected['double_chance'],'asian_handicap':selected['asian_handicap'],'reason':selected['reason'],
                       'stats':match_stats,'events':events or ((previous.get('match') or {}).get('events') or [])
@@ -148,7 +148,7 @@ jobs:
                       'status_long':old_match.get('status_long') or 'Not Started','elapsed':old_match.get('elapsed'),
                       'score':old_match.get('score') or {'home':None,'away':None},'halftime_score':old_match.get('halftime_score') or {'home':None,'away':None},
                       'fulltime_score':old_match.get('fulltime_score') or {'home':None,'away':None},
-                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],'bookmaker':selected['bookmaker'],
+                      'pick':selected['pick'],'pick_side':selected['pick_side'],'odds':selected['odds'],
                       'confidence':selected['confidence'],'predicted_score':selected['predicted_score'],'btts':selected['btts'],
                       'double_chance':selected['double_chance'],'asian_handicap':selected['asian_handicap'],'reason':selected['reason'],
                       'stats':old_match.get('stats') or {},'events':old_match.get('events') or []
