@@ -16,21 +16,20 @@ permissions:
 
 concurrency:
   group: nomadtips3-selected-matches-live
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
-      DETAIL_REFRESH: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Refresh selected scores
+      - name: Refresh selected scores frequently while live
         shell: bash
         run: |
           set -euo pipefail
@@ -38,22 +37,48 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          python3 .github/scripts/refresh_live_selected.py
+          # GitHub cron starts every five minutes. Inside each run, refresh the
+          # score feed every 30 seconds while a selected match is live or close
+          # to kickoff. Detailed statistics/events refresh every two minutes.
+          for cycle in $(seq 0 9); do
+            if (( cycle % 4 == 0 )); then
+              export DETAIL_REFRESH=1
+            else
+              export DETAIL_REFRESH=0
+            fi
 
-          git add live-data-*.json live-matches.json result-feed.json
-          if git diff --cached --quiet; then
-            echo 'No score or status change.'
-            exit 0
-          fi
+            python3 .github/scripts/refresh_live_selected.py
 
-          git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          pushed=0
-          for attempt in 1 2 3; do
-            if git pull --rebase origin main && git push origin main; then
-              pushed=1
+            git add live-data-*.json live-matches.json result-feed.json
+            if ! git diff --cached --quiet; then
+              git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              pushed=0
+              for attempt in 1 2 3; do
+                if git pull --rebase origin main && git push origin main; then
+                  pushed=1
+                  break
+                fi
+                git rebase --abort 2>/dev/null || true
+                sleep 2
+              done
+              test "$pushed" -eq 1
+            fi
+
+            active=$(python3 -c "import json; print(json.load(open('/tmp/nomad-live-state.json'))['active'])")
+            live=$(python3 -c "import json; print(json.load(open('/tmp/nomad-live-state.json'))['live'])")
+            next=$(python3 -c "import json; v=json.load(open('/tmp/nomad-live-state.json'))['next_kickoff_seconds']; print(-1 if v is None else int(v))")
+
+            if [ "$active" -eq 0 ]; then
+              echo 'All selected matches are settled.'
               break
             fi
-            git rebase --abort 2>/dev/null || true
-            sleep 2
+
+            # Outside the live window, one full check every five minutes is
+            # enough. The next scheduled run will take over automatically.
+            if [ "$live" -eq 0 ] && { [ "$next" -lt 0 ] || [ "$next" -gt 900 ]; }; then
+              echo 'No live match or kickoff within fifteen minutes.'
+              break
+            fi
+
+            sleep 30
           done
-          test "$pushed" -eq 1
