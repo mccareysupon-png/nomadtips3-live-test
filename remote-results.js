@@ -1,7 +1,11 @@
 (()=>{
   const KEY='nomadtips3.nomad-control.draft.v2';
   const URL='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/result-feed.json';
+  const LIVE=new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
   let busy=false;
+
+  const finite=value=>value!==null&&value!==''&&Number.isFinite(Number(value));
+  const same=(a,b)=>String(a??'')===String(b??'');
 
   async function syncResults(){
     if(busy||document.hidden)return;
@@ -14,26 +18,64 @@
       if(!raw)return;
       const state=JSON.parse(raw);
       if(!Array.isArray(state.publishedPicks))return;
+
       const resultMap=new Map((feed.results||[]).map(item=>[String(item.fixtureId),item]));
       let changed=false;
+
       state.publishedPicks=state.publishedPicks.map(pick=>{
         const result=resultMap.get(String(pick.fixtureId));
-        if(!result||!result.resultConfirmed)return pick;
-        if(pick.resultConfirmed&&pick.outcome===result.outcome&&Number(pick.homeScore)===Number(result.homeScore)&&Number(pick.awayScore)===Number(result.awayScore))return pick;
-        changed=true;
-        return {
+        if(!result)return pick;
+
+        const live=LIVE.has(String(result.status||'').toUpperCase());
+        const confirmed=Boolean(result.resultConfirmed);
+        const autoVoid=Boolean(result.autoVoid);
+        const previousAutoVoid=Boolean(pick.resultAutoVoid);
+
+        const next={
           ...pick,
-          homeScore:result.homeScore,
-          awayScore:result.awayScore,
-          matchStatus:result.status,
-          status:'RESULT_CONFIRMED',
-          resultSource:result.resultSource||'API-FOOTBALL',
-          resultConfirmed:true,
-          outcome:result.outcome,
-          resultUpdatedAt:result.updatedAt||feed.generatedAt
+          kickoffUtc:result.kickoffUtc||pick.kickoffUtc,
+          homeScore:finite(result.homeScore)?Number(result.homeScore):null,
+          awayScore:finite(result.awayScore)?Number(result.awayScore):null,
+          matchStatus:result.status||pick.matchStatus||'NS',
+          matchStatusLong:result.statusLong||null,
+          elapsed:result.elapsed??null,
+          resultSource:result.resultSource||pick.resultSource||'API-FOOTBALL',
+          resultUpdatedAt:result.updatedAt||feed.generatedAt,
+          resultAutoVoid:autoVoid
         };
+
+        if(confirmed){
+          next.status='RESULT_CONFIRMED';
+          next.resultConfirmed=true;
+          next.outcome=result.outcome||'pending';
+        }else if(previousAutoVoid&&!autoVoid){
+          next.status=live?'MATCH_IN_PROGRESS':'WAITING_FOR_RESULT';
+          next.resultConfirmed=false;
+          next.outcome='pending';
+        }else if(!pick.resultConfirmed){
+          next.status=live?'MATCH_IN_PROGRESS':'WAITING_FOR_RESULT';
+          next.resultConfirmed=false;
+          next.outcome='pending';
+        }
+
+        const fields=['kickoffUtc','homeScore','awayScore','matchStatus','matchStatusLong','elapsed','resultSource','resultUpdatedAt','resultAutoVoid','status','resultConfirmed','outcome'];
+        if(fields.some(field=>!same(pick[field],next[field])))changed=true;
+        return next;
       });
-      if(!changed)return;
+
+      state.resultFeedSummary=feed.summary||null;
+      state.resultFeedGeneratedAt=feed.generatedAt||null;
+      if(feed.summary?.allSettled){
+        state.batchStatus='FINALIZED';
+        state.batchFinalizedAt=feed.summary.finalizedAt||feed.generatedAt;
+      }else{
+        state.batchStatus='IN_PROGRESS';
+      }
+
+      if(!changed){
+        localStorage.setItem(KEY,JSON.stringify(state));
+        return;
+      }
       state.updatedAt=feed.generatedAt||new Date().toISOString();
       localStorage.setItem(KEY,JSON.stringify(state));
       window.dispatchEvent(new Event('nomad-results-updated'));
@@ -45,7 +87,7 @@
     }
   }
 
-  setTimeout(syncResults,1000);
+  setTimeout(syncResults,800);
   setInterval(syncResults,15000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncResults()});
 })();
