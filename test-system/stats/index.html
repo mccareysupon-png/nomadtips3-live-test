@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Statistics</title>
+  <title>NOMADTIPS3 Test System — Prediction Statistics</title>
   <link rel="stylesheet" href="../styles.css?v=202608040728">
   <link rel="stylesheet" href="../../brand.css?v=202608040907">
   <link rel="stylesheet" href="../../content-scale.css?v=202608040925">
+  <link rel="stylesheet" href="../../terminology.css?v=202608040952">
   <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
 </head>
 <body>
@@ -21,10 +22,11 @@
     <section class="hero">
       <div>
         <span class="eyebrow">ONE TEST DATA SOURCE</span>
-        <h1>Statistics</h1>
-        <p>Statistics are calculated from the same locked records used by Today’s Picks and NOMAD Control. Void and Pending are excluded from Accuracy.</p>
+        <h1>Prediction Statistics</h1>
+        <p>Statistics are calculated from the same finalized match predictions used by the analysis pages and NOMAD Control. Void and Pending are excluded from Accuracy.</p>
+        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
-      <div class="hero-actions"><a class="button primary" href="../../nomad-control/?draft-owner=1">Manage Draft Results</a></div>
+      <div class="hero-actions"><a class="button primary" href="../../nomad-control/?draft-owner=1">Manage Results</a></div>
     </section>
 
     <section class="summary">
@@ -32,29 +34,30 @@
       <div class="metric"><small>Settled</small><b id="settled">0</b></div>
       <div class="metric"><small>Correct</small><b id="correct">0</b></div>
       <div class="metric"><small>Incorrect</small><b id="incorrect">0</b></div>
-      <div class="metric"><small>Average Odds</small><b id="averageOdds">0.00</b></div>
+      <div class="metric"><small>Pending</small><b id="pending">0</b></div>
       <div class="metric"><small>Accuracy</small><b id="accuracy">0.00%</b></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><h2>Outcome Distribution</h2><small>Current Draft Store projection</small></div></div>
+      <div class="panel-head"><div><h2>Outcome Distribution</h2><small>Current prediction results</small></div></div>
       <div id="bars" class="bar-list"></div>
     </section>
 
     <section class="panel" style="margin-top:14px">
-      <div class="panel-head"><div><h2>Test History</h2><small>Variable number of picks</small></div></div>
-      <div class="table-wrap"><table class="history"><thead><tr><th>#</th><th>League</th><th>Match</th><th>Pick</th><th>Odds</th><th>Score</th><th>Result</th><th>Source</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+      <div class="panel-head"><div><h2>Prediction History</h2><small>Finalized match analysis records</small></div></div>
+      <div class="table-wrap"><table class="history"><thead><tr><th>#</th><th>League</th><th>Match</th><th>Prediction</th><th>Confidence</th><th>Score</th><th>Result</th><th>Source</th></tr></thead><tbody id="historyRows"></tbody></table></div>
     </section>
   </main>
 
   <nav class="main-nav" aria-label="Test system navigation">
-    <a href="../">Today's Picks</a>
+    <a href="../">Match Predictions</a>
     <a class="active" href="./">Statistics</a>
     <a href="../share/">Share Poster</a>
     <a href="../../">Live Test</a>
     <a href="../../nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
-  <script type="module" src="./app.js?v=202608040728"></script>
+  <script type="module" src="./app.js?v=202608040952"></script>
+  <script src="../../terminology.js?v=202608040952" defer></script>
   <script src="../../site-footer.js?v=202608040844"></script>
 </body>
 </html>
