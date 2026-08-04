@@ -48,7 +48,16 @@ jobs:
               export DETAIL_REFRESH=0
             fi
 
-            python3 .github/scripts/refresh_live_selected.py
+            refreshed=0
+            for attempt in 1 2 3; do
+              if python3 .github/scripts/refresh_live_selected.py; then
+                refreshed=1
+                break
+              fi
+              echo "Live refresh attempt ${attempt} failed; retrying automatically."
+              sleep $((attempt * 5))
+            done
+            test "$refreshed" -eq 1
 
             git add live-data-*.json live-matches.json result-feed.json
             if ! git diff --cached --quiet; then
