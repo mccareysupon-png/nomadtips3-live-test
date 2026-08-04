@@ -2,85 +2,62 @@
   'use strict';
 
   const video = document.querySelector('.info-hero__video');
-  if (!video) return;
+  const encoded = window.NOMAD_ABOUT_VIDEO_B64;
+  if (!video || !encoded) return;
 
-  const repoRaw = 'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/';
-  const videoPath = new URL('./media/about-loop.mp4', window.location.href).href;
-  const posterPath = new URL('./media/about-poster.jpg', window.location.href).href;
-  const videoParts = Array.from({length:7}, (_, index) =>
-    `${repoRaw}.media-upload/about-loop.part${String(index).padStart(2,'0')}.b64`
-  );
-  const posterFallback = `${repoRaw}.media-upload/about-poster.b64`;
-  const objectUrls = [];
-
-  async function fetchBlob(url, type) {
-    const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}v=${Date.now()}`, {cache:'no-store'});
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const blob = await response.blob();
-    if (!blob.size) throw new Error('Empty media response');
-    return type && blob.type !== type ? new Blob([blob], {type}) : blob;
-  }
+  let objectUrl = '';
 
   function base64ToBlob(base64, type) {
-    const clean = base64.replace(/\s+/g, '');
-    const binary = atob(clean);
+    const binary = atob(base64.replace(/\s+/g, ''));
     const bytes = new Uint8Array(binary.length);
-    for (let index=0; index<binary.length; index++) bytes[index] = binary.charCodeAt(index);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
     return new Blob([bytes], {type});
   }
 
-  async function fetchBase64Blob(urls, type) {
-    const texts = await Promise.all(urls.map(async url => {
-      const response = await fetch(`${url}?v=${Date.now()}`, {cache:'no-store'});
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.text();
-    }));
-    return base64ToBlob(texts.join(''), type);
-  }
-
-  function useObjectUrl(blob) {
-    const url = URL.createObjectURL(blob);
-    objectUrls.push(url);
-    return url;
-  }
-
-  async function loadPoster() {
+  async function playVideo() {
+    if (document.hidden) return;
     try {
-      const posterBlob = await fetchBlob(posterPath, 'image/jpeg');
-      video.poster = useObjectUrl(posterBlob);
-      return;
-    } catch {}
-
-    try {
-      const posterBlob = await fetchBase64Blob([posterFallback], 'image/jpeg');
-      video.poster = useObjectUrl(posterBlob);
-    } catch (error) {
-      console.warn('About poster fallback unavailable.', error);
-    }
-  }
-
-  async function loadVideo() {
-    let mediaBlob;
-    try {
-      mediaBlob = await fetchBlob(videoPath, 'video/mp4');
+      await video.play();
     } catch {
-      mediaBlob = await fetchBase64Blob(videoParts, 'video/mp4');
+      // Some mobile browsers require one interaction before playback.
     }
+  }
 
-    video.src = useObjectUrl(mediaBlob);
+  try {
+    const blob = base64ToBlob(encoded, 'video/mp4');
+    objectUrl = URL.createObjectURL(blob);
+
     video.muted = true;
+    video.defaultMuted = true;
+    video.autoplay = true;
     video.loop = true;
     video.playsInline = true;
-    video.load();
+    video.setAttribute('muted', '');
+    video.setAttribute('autoplay', '');
+    video.setAttribute('loop', '');
+    video.setAttribute('playsinline', '');
+    video.src = objectUrl;
 
-    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      try { await video.play(); } catch {}
-    }
+    video.addEventListener('loadeddata', () => {
+      video.classList.add('is-ready');
+      playVideo();
+    }, {once: true});
+
+    video.addEventListener('canplay', playVideo, {once: true});
+    video.load();
+    playVideo();
+
+    document.addEventListener('visibilitychange', playVideo);
+    window.addEventListener('pageshow', playVideo);
+    document.addEventListener('pointerdown', playVideo, {once: true, passive: true});
+    document.addEventListener('touchstart', playVideo, {once: true, passive: true});
+  } catch (error) {
+    console.error('About video could not be initialized.', error);
   }
 
-  Promise.allSettled([loadPoster(), loadVideo()]);
-
   window.addEventListener('pagehide', () => {
-    objectUrls.forEach(url => URL.revokeObjectURL(url));
-  }, {once:true});
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }, {once: true});
 })();
