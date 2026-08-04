@@ -25,10 +25,13 @@ body>.topbar,
 body>.topbar + .page{padding-top:86px!important}
 .wrap{padding-top:88px!important}
 
-/* Bottom navigation: text only. Green is hover-only; clicked links never stay green. */
+/* Navigation items are text only. The current page and mouse hover use the website green. */
 .main-nav a,
 .main-nav a:link,
-.main-nav a:visited{
+.main-nav a:visited,
+.suite-nav a,
+.suite-nav a:link,
+.suite-nav a:visited{
   border:0!important;
   border-radius:0!important;
   outline:0!important;
@@ -42,21 +45,28 @@ body>.topbar + .page{padding-top:86px!important}
   color:var(--muted,#aeb4b1)!important;
 }
 .main-nav a::before,
-.main-nav a::after{
+.main-nav a::after,
+.suite-nav a::before,
+.suite-nav a::after{
   display:none!important;
   content:none!important;
 }
 .main-nav a:focus,
 .main-nav a:focus-visible,
-.main-nav a:active{
+.main-nav a:active,
+.suite-nav a:focus,
+.suite-nav a:focus-visible,
+.suite-nav a:active{
   color:var(--muted,#aeb4b1)!important;
   text-shadow:none!important;
   background:transparent!important;
   box-shadow:none!important;
 }
 .main-nav a.active,
-.main-nav a[aria-current="page"]{
-  color:var(--yellow,#f2c94c)!important;
+.main-nav a[aria-current="page"],
+.suite-nav a.active,
+.suite-nav a[aria-current="page"]{
+  color:var(--green,#00f0a8)!important;
   background:transparent!important;
   box-shadow:none!important;
   text-shadow:none!important;
@@ -64,7 +74,10 @@ body>.topbar + .page{padding-top:86px!important}
 @media(hover:hover) and (pointer:fine){
   .main-nav a:hover,
   .main-nav a.active:hover,
-  .main-nav a[aria-current="page"]:hover{
+  .main-nav a[aria-current="page"]:hover,
+  .suite-nav a:hover,
+  .suite-nav a.active:hover,
+  .suite-nav a[aria-current="page"]:hover{
     color:var(--green,#00f0a8)!important;
     text-shadow:none!important;
     background:transparent!important;
