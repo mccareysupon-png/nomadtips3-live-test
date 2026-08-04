@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Today's 11 Picks</title>
+  <title>NOMADTIPS3 Test System — Today’s Match Predictions</title>
   <link rel="stylesheet" href="./styles.css?v=202608040728">
   <link rel="stylesheet" href="../brand.css?v=202608040907">
   <link rel="stylesheet" href="../content-scale.css?v=202608040925">
+  <link rel="stylesheet" href="../terminology.css?v=202608040952">
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
 <body>
@@ -21,8 +22,9 @@
     <section class="hero">
       <div>
         <span class="eyebrow">NOMADTIPS3 VERSION 2 · TEST ENVIRONMENT</span>
-        <h1>Today's 11 Picks</h1>
-        <p>Locked Manual Set 2 picks for 4 August 2026. This test environment shares one Draft Store with NOMAD Control and does not write to the main website.</p>
+        <h1>Today’s Match Predictions</h1>
+        <p>Manual Set 2 sports analysis for 4 August 2026. The same finalized records are shared with Statistics, Share Poster and NOMAD Control.</p>
+        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
       <div class="hero-actions">
         <a class="button primary" href="../nomad-control/?draft-owner=1">Open NOMAD Control</a>
@@ -30,8 +32,8 @@
       </div>
     </section>
 
-    <section class="summary" aria-label="Daily summary">
-      <div class="metric"><small>Total Picks</small><b id="total">11</b></div>
+    <section class="summary" aria-label="Daily prediction summary">
+      <div class="metric"><small>Total Predictions</small><b id="total">11</b></div>
       <div class="metric"><small>Correct</small><b id="correct">0</b></div>
       <div class="metric"><small>Incorrect</small><b id="incorrect">0</b></div>
       <div class="metric"><small>Void</small><b id="voids">0</b></div>
@@ -40,21 +42,22 @@
     </section>
 
     <div class="section-head">
-      <h2>Manual Set 2 — Locked Picks</h2>
-      <span id="sourceNote">Loading locked set…</span>
+      <h2>Manual Set 2 — Finalized Match Predictions</h2>
+      <span id="sourceNote">Loading finalized analysis…</span>
     </div>
     <section id="pickGrid" class="pick-grid"></section>
   </main>
 
   <nav class="main-nav" aria-label="Test system navigation">
-    <a class="active" href="./">Today's Picks</a>
+    <a class="active" href="./">Match Predictions</a>
     <a href="./stats/">Statistics</a>
     <a href="./share/">Share Poster</a>
     <a href="../">Live Test</a>
     <a href="../nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
 
-  <script type="module" src="./app.js?v=202608040826"></script>
+  <script type="module" src="./app.js?v=202608040952"></script>
+  <script src="../terminology.js?v=202608040952" defer></script>
   <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
