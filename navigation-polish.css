@@ -1,0 +1,82 @@
+/* Final navigation treatment for the Draft Test suite. */
+
+/* Top green bar: 20% taller, no separator line. Logo dimensions remain controlled by brand.css. */
+body>.topbar,
+.wrap>.topbar{
+  height:67px!important;
+  min-height:67px!important;
+  border:0!important;
+  border-bottom:0!important;
+  box-shadow:none!important;
+}
+.shell>.topbar{
+  min-height:67px!important;
+  border:0!important;
+  border-bottom:0!important;
+  box-shadow:none!important;
+}
+.topbar .brand{
+  width:var(--nomad-wordmark-width)!important;
+  height:var(--nomad-wordmark-height)!important;
+  min-width:var(--nomad-wordmark-width)!important;
+}
+
+/* Keep content clear of the taller fixed header. */
+body>.topbar + .page{padding-top:86px!important}
+.wrap{padding-top:88px!important}
+
+/* Bottom navigation: text only. No rectangular item, border, fill or persistent glow. */
+.main-nav a,
+.main-nav a:link,
+.main-nav a:visited,
+.main-nav a.active,
+.main-nav a[aria-current="page"]{
+  border:0!important;
+  border-radius:0!important;
+  outline:0!important;
+  background:none!important;
+  background-color:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+  text-decoration:none!important;
+  text-shadow:none!important;
+}
+.main-nav a::before,
+.main-nav a::after{
+  display:none!important;
+  content:none!important;
+}
+.main-nav a.active,
+.main-nav a[aria-current="page"]{
+  color:var(--yellow,#f2c94c)!important;
+}
+.main-nav a:hover,
+.main-nav a:focus-visible{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#fff2a8!important;
+  text-shadow:0 0 7px rgba(242,201,76,.92),0 0 18px rgba(242,201,76,.52)!important;
+}
+
+@media(max-width:720px){
+  body>.topbar,
+  .wrap>.topbar{
+    height:60px!important;
+    min-height:60px!important;
+  }
+  .shell>.topbar{min-height:60px!important}
+  body>.topbar + .page{padding-top:74px!important}
+  .wrap{padding-top:76px!important}
+}
+
+@media(max-height:520px) and (orientation:landscape){
+  body>.topbar,
+  .wrap>.topbar{
+    height:60px!important;
+    min-height:60px!important;
+  }
+  .page,.wrap{padding-top:12px!important}
+}
