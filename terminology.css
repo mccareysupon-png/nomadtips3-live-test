@@ -1,13 +1,18 @@
 /* Public-facing terminology and layout safeguards for sports analysis. */
 .analysis-disclaimer{
-  margin-top:10px;
-  padding:9px 11px;
-  border:1px solid rgba(0,240,168,.2);
-  border-radius:6px;
-  background:rgba(0,240,168,.045);
-  color:#b9c8c1;
-  font-size:9.5px;
-  line-height:1.55;
+  display:block;
+  max-width:680px;
+  margin:4px 0 0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  color:var(--muted,#aeb4b1);
+  font-size:inherit;
+  line-height:inherit;
+  text-align:left;
+  letter-spacing:normal;
 }
 
 /* Betting-market fields are retained only in internal data, not displayed. */
@@ -22,6 +27,6 @@
 #reviewRows td:nth-child(6){display:none!important}
 
 @media(max-width:720px){
-  .analysis-disclaimer{font-size:9px}
+  .analysis-disclaimer{margin-top:3px}
   .pick-data{grid-template-columns:1.35fr 1fr!important}
 }
