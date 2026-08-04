@@ -2,7 +2,7 @@ import json
 import os
 import time
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 KEY = os.environ["API_FOOTBALL_KEY"]
@@ -10,7 +10,9 @@ BASE = "https://v3.football.api-sports.io"
 TERMINAL = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
 VOID_STATUSES = {"CANC", "ABD", "AWD", "WO", "PST"}
 LIVE = {"1H", "HT", "2H", "ET", "BT", "P", "INT", "LIVE"}
+NOT_STARTED = {"NS", "TBD"}
 DETAIL_REFRESH = os.environ.get("DETAIL_REFRESH") == "1"
+STALE_NS_MINUTES = max(120, int(os.environ.get("STALE_NS_MINUTES", "180")))
 CONFIG = json.loads(Path("selected-live-matches.json").read_text(encoding="utf-8"))
 HEADERS = {"x-apisports-key": KEY}
 
@@ -80,17 +82,30 @@ def parse_events(rows):
 
 def finite_score(value):
     try:
+        if value is None or value == "":
+            return None
         return int(value)
     except (TypeError, ValueError):
         return None
 
 
-def settle_result(selected, match):
+def is_stale_not_started(match, now_dt):
     status = str(match.get("status") or "").upper()
+    if status not in NOT_STARTED:
+        return False
+    kickoff = parse_iso(match.get("kickoff_utc"))
+    if not kickoff:
+        return False
+    return now_dt >= kickoff + timedelta(minutes=STALE_NS_MINUTES)
+
+
+def settle_result(selected, match, now_dt):
+    status = str(match.get("status") or "").upper()
+    auto_void = is_stale_not_started(match, now_dt)
+    if auto_void or status in VOID_STATUSES:
+        return "void", None, None, auto_void
     if status not in TERMINAL:
-        return "pending", None, None
-    if status in VOID_STATUSES:
-        return "void", None, None
+        return "pending", None, None, False
 
     fulltime = match.get("fulltime_score") or {}
     current = match.get("score") or {}
@@ -100,12 +115,12 @@ def settle_result(selected, match):
         home_score = finite_score(current.get("home"))
         away_score = finite_score(current.get("away"))
     if home_score is None or away_score is None:
-        return "pending", None, None
+        return "pending", None, None, False
 
     actual = "home" if home_score > away_score else "away" if away_score > home_score else "draw"
     pick_side = str(selected.get("pick_side") or "").lower()
     outcome = "correct" if actual == pick_side else "incorrect"
-    return outcome, home_score, away_score
+    return outcome, home_score, away_score, False
 
 
 selected_matches = CONFIG.get("matches") or []
@@ -113,7 +128,6 @@ selected_ids = {int(item["fixture_id"]) for item in selected_matches}
 now_dt = datetime.now(timezone.utc)
 now_text = now_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-# One score request covers every live fixture, then only selected fixture IDs are retained.
 live_rows = api("/fixtures?live=all")
 live_map = {
     int((row.get("fixture") or {}).get("id")): row
@@ -121,7 +135,6 @@ live_map = {
     if int((row.get("fixture") or {}).get("id") or 0) in selected_ids
 }
 
-# A wider selected-day snapshot is used only on the slower detail cycle.
 detail_map = {}
 if DETAIL_REFRESH and CONFIG.get("selection_date"):
     rows = api(f"/fixtures?date={CONFIG['selection_date']}")
@@ -144,7 +157,6 @@ for selected in selected_matches:
     old_status = str(old_match.get("status") or "NS").upper()
     row = live_map.get(fixture_id) or detail_map.get(fixture_id)
 
-    # A selected fixture that disappears from live=all is checked directly so FT is not missed.
     if row is None and old_status in LIVE:
         rows = api(f"/fixtures?id={fixture_id}")
         row = rows[0] if rows else None
@@ -245,36 +257,58 @@ for selected in selected_matches:
         old_match = output["match"]
         kickoff_value = old_match["kickoff_utc"]
 
-    if current_status not in TERMINAL:
+    match = read_json(path).get("match") or old_match
+    status = str(match.get("status") or current_status or "NS").upper()
+    outcome, final_home, final_away, auto_void = settle_result(selected, match, now_dt)
+    effective_status = "NOT_CONFIRMED" if auto_void else status
+    result_confirmed = outcome != "pending" and (status in TERMINAL or auto_void)
+    current_score = match.get("score") or {}
+
+    if not result_confirmed:
         active_files.append(path.name)
-    if current_status in LIVE:
+    if effective_status in LIVE:
         live_count += 1
-    elif current_status not in TERMINAL:
-        kickoff = parse_iso(kickoff_value)
+    elif not result_confirmed:
+        kickoff = parse_iso(match.get("kickoff_utc") or kickoff_value)
         if kickoff:
             seconds = (kickoff - now_dt).total_seconds()
             if seconds > 0 and (next_kickoff_seconds is None or seconds < next_kickoff_seconds):
                 next_kickoff_seconds = seconds
 
-    match = (read_json(path).get("match") or old_match)
-    outcome, final_home, final_away = settle_result(selected, match)
-    status = str(match.get("status") or current_status or "NS").upper()
-    current_score = match.get("score") or {}
+    counted = str(selected.get("pick_side") or "").lower() in {"home", "away", "draw"}
     result_feed.append({
         "fixtureId": str(fixture_id),
         "slug": selected["slug"],
         "home": selected["home"],
         "away": selected["away"],
-        "status": status,
-        "statusLong": match.get("status_long"),
+        "kickoffUtc": match.get("kickoff_utc") or selected.get("kickoff_utc"),
+        "status": effective_status,
+        "providerStatus": status,
+        "statusLong": "Match not confirmed after scheduled kickoff" if auto_void else match.get("status_long"),
         "elapsed": match.get("elapsed"),
         "homeScore": final_home if final_home is not None else finite_score(current_score.get("home")),
         "awayScore": final_away if final_away is not None else finite_score(current_score.get("away")),
         "outcome": outcome,
-        "resultConfirmed": status in TERMINAL and outcome != "pending",
-        "resultSource": "API-FOOTBALL",
+        "resultConfirmed": result_confirmed,
+        "autoVoid": auto_void,
+        "voidReason": "Fixture remained not started for three hours after kickoff" if auto_void else None,
+        "resultSource": "API-FOOTBALL / NOMAD VALIDATION" if auto_void else "API-FOOTBALL",
         "updatedAt": previous.get("fetched_at_utc") or now_text,
+        "counted": counted,
     })
+
+counted_results = [item for item in result_feed if item["counted"]]
+summary = {
+    "total": len(counted_results),
+    "correct": sum(item["outcome"] == "correct" for item in counted_results),
+    "incorrect": sum(item["outcome"] == "incorrect" for item in counted_results),
+    "void": sum(item["outcome"] == "void" for item in counted_results),
+    "pending": sum(item["outcome"] == "pending" for item in counted_results),
+}
+summary["settled"] = summary["correct"] + summary["incorrect"]
+summary["allSettled"] = summary["pending"] == 0
+summary["accuracy"] = round((summary["correct"] / summary["settled"]) * 100, 2) if summary["settled"] else 0.0
+summary["finalizedAt"] = now_text if summary["allSettled"] else None
 
 Path("live-matches.json").write_text(
     json.dumps({
@@ -289,6 +323,8 @@ Path("result-feed.json").write_text(
         "selectionDate": CONFIG.get("selection_date"),
         "generatedAt": now_text,
         "source": "API-FOOTBALL",
+        "staleNotStartedMinutes": STALE_NS_MINUTES,
+        "summary": summary,
         "results": result_feed,
     }, ensure_ascii=False, indent=2) + "\n",
     encoding="utf-8",
@@ -298,6 +334,7 @@ Path("/tmp/nomad-live-state.json").write_text(
         "active": len(active_files),
         "live": live_count,
         "next_kickoff_seconds": next_kickoff_seconds,
+        "all_settled": summary["allSettled"],
     }),
     encoding="utf-8",
 )
@@ -307,5 +344,6 @@ print(json.dumps({
     "detail_refresh": DETAIL_REFRESH,
     "next_kickoff_seconds": next_kickoff_seconds,
     "result_feed": len(result_feed),
+    "all_settled": summary["allSettled"],
     "scope": "selected_ids_only",
 }))
