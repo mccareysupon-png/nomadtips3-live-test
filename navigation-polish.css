@@ -25,6 +25,14 @@ body>.topbar,
 body>.topbar + .page{padding-top:86px!important}
 .wrap{padding-top:88px!important}
 
+/* Four public navigation items after removing the private control link. */
+@media(min-width:721px){
+  .main-nav,
+  .suite-nav{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+}
+
 /* Navigation items are text only. The current page and mouse hover use the website green. */
 .main-nav a,
 .main-nav a:link,
@@ -82,6 +90,37 @@ body>.topbar + .page{padding-top:86px!important}
     text-shadow:none!important;
     background:transparent!important;
     box-shadow:none!important;
+  }
+}
+
+/* Match Predictions: Open Live Analysis is a plain text link, not a button. */
+.hero-actions .plain-live-link,
+.hero-actions .plain-live-link:link,
+.hero-actions .plain-live-link:visited{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:auto!important;
+  padding:2px 0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:var(--yellow,#f2c94c)!important;
+  font-size:10px;
+  font-weight:900;
+  text-decoration:none;
+}
+.hero-actions .plain-live-link:focus,
+.hero-actions .plain-live-link:active{
+  outline:0;
+  color:var(--yellow,#f2c94c)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+@media(hover:hover) and (pointer:fine){
+  .hero-actions .plain-live-link:hover{
+    color:var(--green,#00f0a8)!important;
   }
 }
 
