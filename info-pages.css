@@ -1,0 +1,39 @@
+:root{
+  color-scheme:dark;
+  --bg:#1b1b1b;
+  --panel:#222;
+  --soft:#292929;
+  --line:#3d3d3d;
+  --text:#f3f5f4;
+  --muted:#aeb4b1;
+  --green:#00f0a8;
+  --yellow:#f2c94c;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Arial,"Noto Sans Thai",sans-serif}
+a{color:inherit}
+.info-topbar{min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0 max(16px,calc((100vw - 940px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
+.info-topbar .back{color:#f8e7a2;font-size:11px;font-weight:850;text-decoration:none}
+.info-topbar .back:hover{text-decoration:underline;text-underline-offset:3px}
+.info-page{width:min(calc(100% - 28px),940px);margin:auto;padding:58px 0 24px}
+.info-hero{padding:34px;border:1px solid #3a4842;border-radius:10px;background:linear-gradient(135deg,#0b4c39,#202724 64%,#252525);box-shadow:0 20px 50px rgba(0,0,0,.23)}
+.eyebrow{display:block;color:var(--yellow);font-size:10px;font-weight:950;letter-spacing:.12em;text-transform:uppercase}
+.info-hero h1{margin:10px 0 10px;font-size:clamp(32px,7vw,62px);line-height:.96;letter-spacing:-.055em}
+.info-hero p{max-width:730px;margin:0;color:#d1d7d4;font-size:14px;line-height:1.75}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+.info-card{padding:24px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.info-card.wide{grid-column:1/-1}
+.info-card h2{margin:0 0 10px;font-size:18px;color:#fff}
+.info-card p{margin:0;color:#c4cbc7;font-size:13px;line-height:1.75}
+.info-card p+p{margin-top:10px}
+.info-card ul{margin:10px 0 0;padding-left:20px;color:#c4cbc7;font-size:13px;line-height:1.75}
+.info-card strong{color:#fff}
+.info-card a{color:#77ddb9;text-decoration:none}
+.info-card a:hover{text-decoration:underline;text-underline-offset:3px}
+.info-note{margin-top:16px;padding:16px 18px;border-left:3px solid var(--yellow);background:#202522;color:#cbd2ce;font-size:12px;line-height:1.7}
+@media(max-width:680px){
+  .info-topbar{min-height:52px;padding:0 10px}.info-topbar .back{font-size:9px}
+  .info-page{width:min(calc(100% - 16px),940px);padding-top:28px}
+  .info-hero{padding:24px 18px}.info-hero p{font-size:12px}
+  .info-grid{grid-template-columns:1fr}.info-card{padding:19px}.info-card.wide{grid-column:auto}
+}
