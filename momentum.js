@@ -220,8 +220,19 @@ async function refreshCard(card){
   }
 }
 
+function hideOddsSource(card){
+  const odds=card.querySelector('[data-k="odds"]');
+  if(!odds)return;
+  const text=String(odds.textContent||'').trim();
+  if(!text.includes('·'))return;
+  const number=text.split('·')[0].trim();
+  odds.textContent=number||'N/A';
+  odds.setAttribute('aria-label',number||'N/A');
+}
+
 function scan(){
   document.querySelectorAll('.match-card[data-file]').forEach(card=>{
+    hideOddsSource(card);
     ensureUI(card);
     refreshCard(card);
   });
