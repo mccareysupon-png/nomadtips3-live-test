@@ -2,6 +2,7 @@ import { buildSummary, loadRecords, resultText, scoreText } from '../shared.js?v
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' })[char]);
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
 const settledOutcomes = new Set(['correct','incorrect']);
 let lastChartSignature = '';
 
@@ -120,10 +121,10 @@ function render() {
       <td>${escapeHtml(record.league)}</td>
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}</td>
       <td>${escapeHtml(record.pickLabel || record.pick)}</td>
+      <td>${formatOdds(record.odds)}</td>
       <td>${record.confidence}%</td>
       <td>${escapeHtml(scoreText(record))}</td>
       <td>${escapeHtml(resultText(record))}</td>
-      <td>${escapeHtml(record.resultSource ?? record.source)}</td>
     </tr>`).join('');
 }
 
