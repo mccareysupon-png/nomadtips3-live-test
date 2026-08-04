@@ -39,7 +39,7 @@ function render() {
       </div>
       <div class="pick-data">
         <div><small>1X2 Pick</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
-        <div><small>Locked Odds</small><b>${record.odds.toFixed(2)} · ${escapeHtml(record.bookmaker)}</b></div>
+        <div><small>Locked Odds</small><b>${record.odds.toFixed(2)}</b></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
         <div><small>Predicted</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
