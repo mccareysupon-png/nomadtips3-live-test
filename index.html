@@ -6,48 +6,29 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
   <title>NOMADTIPS3 Test System — Live Scores</title>
-  <style>
-    :root{color-scheme:dark;--bg:#1b1b1b;--panel:#222;--soft:#292929;--line:#3d3d3d;--text:#f3f5f4;--muted:#aeb4b1;--green:#00f0a8;--yellow:#f2c94c;--red:#ff9298;--blue:#87aef5}
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,Arial,"Noto Sans Thai",sans-serif}button{font:inherit}
-    .wrap{width:min(calc(100% - 24px),760px);margin:auto;padding:76px 0 112px}
-    .topbar{position:fixed;z-index:30;top:0;left:0;right:0;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 max(12px,calc((100vw - 760px)/2));background:linear-gradient(180deg,#07543c,#063f2f);border-bottom:1px solid #0a664a}
-    .brand{font-size:28px;font-weight:950;letter-spacing:-.055em;color:#fff;text-decoration:none;line-height:1}.brand b{color:var(--yellow)}
-    .top-meta{display:flex;align-items:center;gap:7px}.test-note,.count{padding:6px 9px;border:1px solid rgba(242,201,76,.35);border-radius:999px;color:#f8e7a2;font-size:8px;font-weight:900}.test-note{background:rgba(242,201,76,.12);color:#fff1a8}
-    #matches{display:grid;gap:14px}.match-card{overflow:hidden;border:1px solid var(--line);border-radius:6px;background:var(--panel);box-shadow:0 12px 28px rgba(0,0,0,.2)}
-    .match-head{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;background:#191919;border-bottom:1px solid #343434}.match-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:9px;font-weight:850;letter-spacing:.05em}.status{padding:5px 8px;border:1px solid #3b694e;border-radius:999px;color:var(--green);font-size:8px}.status.waiting{color:var(--yellow);border-color:#725f2b}.status.finished{color:#ddd;border-color:#666}.status.error{color:var(--red);border-color:#704247}
-    .scoreboard{display:grid;grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr);align-items:center;gap:8px;min-height:154px;padding:15px 9px;background:linear-gradient(180deg,#272727,#202020)}
-    .team{text-align:center;min-width:0}.team strong{display:block;font-size:14px;line-height:1.25;overflow-wrap:anywhere}.team small{display:block;margin-top:5px;color:var(--muted);font-size:7px;letter-spacing:.1em}
-    .shirt{position:relative;display:block;width:42px;height:42px;margin:0 auto 8px}.shirt:before{content:"";position:absolute;inset:2px;background:var(--shirt,#2563eb);clip-path:polygon(25% 9%,40% 2%,60% 2%,75% 9%,98% 28%,82% 44%,72% 35%,72% 96%,28% 96%,28% 35%,18% 44%,2% 28%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}.shirt:after{content:"";position:absolute;top:3px;left:50%;width:13px;height:7px;border-radius:0 0 9px 9px;background:#222;transform:translateX(-50%)}
-    .scorebox{text-align:center;padding:10px 5px;border:1px solid #454545;border-radius:5px;background:#171717}.scorebox>span{display:block;color:var(--green);font-size:9px;font-weight:900}.scorebox>b{display:block;margin:5px 0;font-size:24px;line-height:1}.scorebox>small{display:block;color:var(--muted);font-size:8px;line-height:1.4}
-    .latest{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:10px 12px;background:#1b1b1b;border-top:1px solid #343434;border-bottom:1px solid #343434}.latest>i{width:8px;height:8px;border-radius:50%;background:var(--green)}.latest small{display:block;color:var(--muted);font-size:7px}.latest b{display:block;margin-top:2px;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.latest>strong{color:var(--yellow);font-size:9px}
-    .tabs{display:grid;grid-template-columns:repeat(3,1fr);background:#171717;border-bottom:1px solid #343434}.tabs button{border:0;background:transparent;color:var(--muted);padding:11px 6px;font-size:10px;cursor:pointer}.tabs button.active{color:var(--yellow);background:#222;box-shadow:inset 0 -2px 0 var(--yellow)}
-    .panel{display:none;padding:11px}.panel.active{display:block}.stat-list,.event-list{display:grid;gap:8px}.empty{margin:0;padding:22px 10px;text-align:center;color:var(--muted);font-size:9px;border:1px dashed #444;border-radius:5px}
-    .stat-row{display:grid;grid-template-columns:58px 1fr 58px;align-items:center;gap:8px;padding:9px 10px;border:1px solid #373737;border-radius:5px;background:var(--soft)}.stat-row>b{font-size:10px}.stat-row>b:last-child{text-align:right}.stat-row>div{text-align:center}.stat-row small{display:block;color:var(--muted);font-size:8px}.stat-row span{display:grid;grid-template-columns:1fr 1fr;gap:3px;margin-top:6px}.stat-row span i{display:block;height:4px;background:var(--yellow)}.stat-row span i.away{margin-left:auto;background:var(--blue)}
-    .event{display:grid;grid-template-columns:42px 1fr;gap:9px;padding:9px 10px;border:1px solid #373737;border-radius:5px;background:var(--soft)}.event>b{color:var(--yellow);font-size:10px}.event strong,.event small{display:block}.event strong{font-size:10px}.event small{margin-top:3px;color:var(--muted);font-size:8px}
-    .momentum-panel{padding:12px;background:#202020}.momentum-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:8px}.momentum-head small,.momentum-head strong{display:block}.momentum-head small{color:var(--yellow);font-size:7px;font-weight:900;letter-spacing:.08em}.momentum-head strong{margin-top:4px;font-size:12px}.momentum-head>b{min-width:52px;text-align:right;font-size:20px}.momentum-head>b.positive{color:var(--green)}.momentum-head>b.negative{color:var(--red)}
-    .momentum-chart{overflow:hidden;border:1px solid #3a3a3a;border-radius:6px;background:#171717}.momentum-chart svg{display:block;width:100%;height:auto;min-height:190px}.mom-zone-up{fill:rgba(0,240,168,.035)}.mom-zone-down{fill:rgba(255,115,125,.035)}.mom-grid{stroke:#303030;stroke-width:1;stroke-dasharray:4 5}.mom-baseline{stroke:#f2c94c;stroke-width:1.7;stroke-dasharray:8 6}.mom-positive{fill:url(#momGreen)}.mom-negative{fill:url(#momRed)}.mom-line{fill:none;stroke:#e8ecea;stroke-width:1.7;stroke-linejoin:round;stroke-linecap:round;opacity:.82}.momentum-chart text{fill:#8f9692;font-size:8px;font-family:Inter,Arial,sans-serif}.mom-axis-label{font-size:7px;font-weight:900;letter-spacing:.08em}.mom-axis-label.up{fill:#4bdcb0}.mom-axis-label.down{fill:#ff8d96}
-    .momentum-legend{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:9px;color:var(--muted);font-size:7px}.momentum-legend span{display:flex;align-items:center;gap:5px}.momentum-legend i{display:block;width:13px;height:4px;border-radius:999px}.momentum-legend i.positive{background:var(--green)}.momentum-legend i.negative{background:var(--red)}.momentum-legend i.baseline{height:1px;background:var(--yellow)}.momentum-note{margin:9px 0 0;text-align:center;color:#b8bfbb;font-size:8px;line-height:1.5}
-    .pick{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:1px;background:#393939;border-top:1px solid #393939}.pick>div,.markets>div{padding:10px;background:#252525}.pick small,.pick b,.markets small,.markets b{display:block}.pick small,.markets small{color:var(--muted);font-size:7px}.pick b,.markets b{margin-top:4px;font-size:10px}.pick>div:first-child b{color:var(--green)}
-    .markets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:#393939;border-top:1px solid #393939}.markets b{overflow-wrap:anywhere}.markets>div:first-child b{color:var(--yellow)}
-    .reason{padding:12px;background:#202020;border-top:1px solid #393939}.reason small{color:var(--yellow);font-size:7px;font-weight:900;letter-spacing:.08em}.reason p{margin:6px 0 0;color:#c9cecb;font-size:9px;line-height:1.55}
-    .empty-state{display:grid;gap:8px;padding:42px 20px;text-align:center;border:1px dashed #4c4c4c;border-radius:8px;background:#202020}.empty-state strong{color:var(--yellow);font-size:13px}.empty-state span{color:var(--muted);font-size:9px}
-    .match-card footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #343434;color:#858b88;font-size:7px}
-    .main-nav{position:fixed;z-index:30;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);padding:6px 8px max(7px,env(safe-area-inset-bottom));background:#171717;border-top:1px solid #3d3d3d;box-shadow:0 -10px 30px rgba(0,0,0,.22)}.main-nav a{display:flex;align-items:center;justify-content:center;min-height:52px;padding:6px 3px;color:var(--muted);font-size:12px;font-weight:850;line-height:1.15;text-decoration:none;text-align:center}.main-nav a.active{color:var(--yellow);background:rgba(242,201,76,.05);border-radius:6px}
-    @media(max-width:560px){.wrap{width:min(calc(100% - 14px),760px);padding-top:64px;padding-bottom:108px}.topbar{height:50px;padding:0 9px}.brand{font-size:24px}.top-meta{gap:4px}.test-note,.count{font-size:6px;padding:5px 6px}.scoreboard{grid-template-columns:minmax(0,1fr) 86px minmax(0,1fr);min-height:140px;padding:13px 6px}.shirt{width:38px;height:38px}.team strong{font-size:13px}.scorebox>b{font-size:21px}.markets{grid-template-columns:1fr 1fr}.momentum-panel{padding:9px}.momentum-chart svg{min-height:160px}.momentum-legend{gap:8px}.main-nav{padding-left:4px;padding-right:4px}.main-nav a{min-height:50px;font-size:9.5px;padding-inline:2px}}
-  </style>
-  <link rel="stylesheet" href="./brand.css?v=202608040746">
+  <link rel="stylesheet" href="./live.css?v=202608040907">
+  <link rel="stylesheet" href="./brand.css?v=202608040907">
   <link rel="stylesheet" href="./site-footer.css?v=202608040844">
 </head>
 <body>
   <div class="wrap">
-    <header class="topbar"><a class="brand" href="./test-system/">nomad<b>tips3</b></a><div class="top-meta"><span class="test-note">TEST SYSTEM</span><div class="count" id="matchCount">MANUAL SET 2 · 0 MATCHES</div></div></header>
-    <main id="matches"></main>
+    <header class="topbar">
+      <a class="brand" href="./test-system/" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
+      <div class="top-meta"><span class="test-note">TEST SYSTEM</span><div class="count" id="matchCount">MANUAL SET 2 · 0 MATCHES</div></div>
+    </header>
+    <main id="matches" aria-live="polite"></main>
   </div>
+
   <nav class="main-nav" aria-label="Test system navigation">
-    <a href="./test-system/">Today's Picks</a><a href="./test-system/stats/">Statistics</a><a href="./test-system/share/">Share Poster</a><a class="active" href="./">Live Test</a><a href="./nomad-control/?draft-owner=1">NOMAD Control</a>
+    <a href="./test-system/">Today's Picks</a>
+    <a href="./test-system/stats/">Statistics</a>
+    <a href="./test-system/share/">Share Poster</a>
+    <a class="active" href="./" aria-current="page">Live Test</a>
+    <a href="./nomad-control/?draft-owner=1">NOMAD Control</a>
   </nav>
-  <script src="live-app.js?v=202608040728"></script>
-  <script src="momentum.js?v=202608040826"></script>
-  <script src="./site-footer.js?v=202608040844"></script>
+
+  <script src="./live-app.js?v=202608040907" defer></script>
+  <script src="./momentum.js?v=202608040907" defer></script>
+  <script src="./site-footer.js?v=202608040844" defer></script>
 </body>
 </html>
