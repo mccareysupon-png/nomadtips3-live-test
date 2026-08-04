@@ -15,6 +15,19 @@
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
   <link rel="stylesheet" href="../navigation-polish.css?v=202608041251">
   <link rel="stylesheet" href="./pick-order.css?v=202608041336">
+  <style>
+    .nomad-local-time {
+      margin-top: 2px;
+      color: #7d8782;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 8px;
+      font-weight: 600;
+      line-height: 1.4;
+      letter-spacing: .08em;
+      opacity: .72;
+      overflow-wrap: anywhere;
+    }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -63,5 +76,37 @@
   <script src="../remote-results.js?v=202608041105" defer></script>
   <script src="../terminology.js?v=202608040954" defer></script>
   <script src="../site-footer.js?v=202608040844"></script>
+  <script>
+  (() => {
+    'use strict';
+
+    const email = document.querySelector('.site-footer__email');
+    if (!email || document.querySelector('.nomad-local-time')) return;
+
+    const localTime = document.createElement('div');
+    localTime.className = 'nomad-local-time';
+    localTime.setAttribute('aria-label', 'Local device time');
+    email.insertAdjacentElement('afterend', localTime);
+
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'LOCAL';
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+
+    const renderLocalTime = () => {
+      const formattedTime = formatter.format(new Date()).replace(',', '');
+      localTime.textContent = `NOMAD LOCAL TIME · ${timeZone.toUpperCase()} · ${formattedTime}`;
+    };
+
+    renderLocalTime();
+    window.setInterval(renderLocalTime, 1000);
+  })();
+  </script>
 </body>
 </html>
