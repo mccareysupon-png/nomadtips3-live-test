@@ -5,6 +5,7 @@ const ALLOWED_ORIGINS = new Set([
   'https://www.nomadtips3.com'
 ]);
 const FINISHED = new Set(['FT', 'AET', 'PEN', 'WO', 'AWD']);
+const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE']);
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -124,6 +125,64 @@ async function apiFetch(path, env, cacheSeconds = 30) {
   return payload;
 }
 
+function normalizeStatKey(type) {
+  const key = String(type || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const map = {
+    attacks: 'attacks',
+    dangerousattacks: 'dangerous_attacks',
+    expectedgoals: 'expected_goals',
+    ballpossession: 'possession',
+    totalshots: 'shots',
+    shotsongoal: 'shots_on_target',
+    shotsontarget: 'shots_on_target',
+    shotsoffgoal: 'shots_off_target',
+    shotsofftarget: 'shots_off_target',
+    blockedshots: 'blocked_shots',
+    shotsinsidebox: 'shots_inside_box',
+    shotsoutsidebox: 'shots_outside_box',
+    cornerkicks: 'corners',
+    fouls: 'fouls',
+    offsides: 'offsides',
+    goalkeepersaves: 'goalkeeper_saves',
+    totalpasses: 'total_passes',
+    passesaccurate: 'accurate_passes',
+    passesaccuracy: 'pass_accuracy',
+    passes: 'pass_accuracy',
+    yellowcards: 'yellow_cards',
+    redcards: 'red_cards'
+  };
+  return map[key] || null;
+}
+
+function normalizeStatistics(payload) {
+  const output = {};
+  const teams = Array.isArray(payload?.response) ? payload.response : [];
+  teams.slice(0, 2).forEach((team, index) => {
+    const side = index === 0 ? 'home' : 'away';
+    for (const stat of team?.statistics || []) {
+      const key = normalizeStatKey(stat?.type);
+      if (!key) continue;
+      if (!output[key]) output[key] = { home: null, away: null };
+      output[key][side] = stat?.value ?? null;
+    }
+  });
+  return output;
+}
+
+function normalizeEvents(payload) {
+  const events = Array.isArray(payload?.response) ? payload.response : [];
+  return events.map(event => ({
+    minute: event?.time?.elapsed ?? null,
+    extra: event?.time?.extra ?? null,
+    team: event?.team?.name ?? null,
+    player: event?.player?.name ?? null,
+    assist: event?.assist?.name ?? null,
+    type: event?.type ?? null,
+    detail: event?.detail ?? null,
+    comments: event?.comments ?? null
+  }));
+}
+
 async function handleFixture(request, url, env) {
   const id = Number(url.searchParams.get('id'));
   if (!Number.isInteger(id) || id <= 0) {
@@ -184,6 +243,84 @@ async function handleFixtures(request, url, env) {
   }, errors.length === ids.length ? 502 : 200);
 }
 
+async function handleLiveTest(request, env) {
+  const livePayload = await apiFetch('/fixtures?live=all', env, 20);
+  const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
+    .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()))
+    .sort((a, b) => Number(b?.fixture?.status?.elapsed || 0) - Number(a?.fixture?.status?.elapsed || 0));
+
+  const item = liveItems[0] || null;
+  if (!item) {
+    return json(request, {
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      testOnly: true,
+      countedInStatistics: false,
+      match: null,
+      message: 'No live fixture is available from API-FOOTBALL right now.'
+    });
+  }
+
+  const fixture = normalizeFixture(item);
+  const id = Number(fixture.fixtureId);
+  const [statisticsResult, eventsResult] = await Promise.allSettled([
+    apiFetch(`/fixtures/statistics?fixture=${id}`, env, 25),
+    apiFetch(`/fixtures/events?fixture=${id}`, env, 25)
+  ]);
+
+  const statistics = statisticsResult.status === 'fulfilled'
+    ? normalizeStatistics(statisticsResult.value)
+    : {};
+  const events = eventsResult.status === 'fulfilled'
+    ? normalizeEvents(eventsResult.value)
+    : [];
+
+  return json(request, {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    fetched_at_utc: new Date().toISOString(),
+    testOnly: true,
+    countedInStatistics: false,
+    source: 'cloudflare-worker · api-football',
+    match: {
+      id: String(fixture.fixtureId),
+      client_fixture_id: `CLOUDFLARE-LIVE-TEST-${fixture.fixtureId}`,
+      sport: 'football',
+      league: fixture.league?.name || 'Live Football',
+      country: fixture.league?.country || 'World',
+      home: {
+        name: fixture.home?.name || 'Home',
+        short_name: fixture.home?.name || 'Home'
+      },
+      away: {
+        name: fixture.away?.name || 'Away',
+        short_name: fixture.away?.name || 'Away'
+      },
+      kickoff_utc: fixture.kickoffUtc,
+      status: fixture.status,
+      status_long: fixture.statusLong,
+      elapsed: fixture.elapsed,
+      score: {
+        home: fixture.homeScore,
+        away: fixture.awayScore
+      },
+      halftime_score: fixture.halftime,
+      fulltime_score: fixture.fulltime,
+      pick: 'LIVE ENGINE TEST — NOT COUNTED',
+      pick_side: null,
+      odds: null,
+      confidence: null,
+      predicted_score: null,
+      btts: 'TEST ONLY',
+      double_chance: 'TEST ONLY',
+      asian_handicap: 'TEST ONLY',
+      reason: 'Temporary Cloudflare Worker test match. This card is isolated from Match Predictions, Statistics and Analysis Poster.',
+      stats: statistics,
+      events
+    }
+  });
+}
+
 async function handleStatus(request, env) {
   const payload = await apiFetch('/status', env, 60);
   return json(request, {
@@ -213,13 +350,14 @@ export default {
           environment: 'TEST',
           apiKeyConfigured: Boolean(env.API_FOOTBALL_KEY),
           generatedAt: new Date().toISOString(),
-          endpoints: ['/health', '/status', '/fixture?id=FIXTURE_ID', '/fixtures?ids=ID1,ID2']
+          endpoints: ['/health', '/status', '/fixture?id=FIXTURE_ID', '/fixtures?ids=ID1,ID2', '/live-test']
         });
       }
 
       if (url.pathname === '/status') return handleStatus(request, env);
       if (url.pathname === '/fixture') return handleFixture(request, url, env);
       if (url.pathname === '/fixtures') return handleFixtures(request, url, env);
+      if (url.pathname === '/live-test') return handleLiveTest(request, env);
 
       return json(request, { ok: false, error: 'Not found' }, 404);
     } catch (error) {
