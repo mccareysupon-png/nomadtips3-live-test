@@ -1,4 +1,5 @@
 export const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
+export const DATASET_ID = 'manual-test-v2-day7-2026-08-05-v3';
 
 const checks = Object.freeze({
   recentForm: true,
@@ -12,24 +13,108 @@ const checks = Object.freeze({
   motivation: true
 });
 
+const pendingMarket = (pick, confidence) => Object.freeze({
+  pick,
+  odds: null,
+  oddsStatus: 'PENDING',
+  confidence,
+  outcome: 'pending'
+});
+
 export const DEFAULT_PICKS = Object.freeze([
-  { fixtureId:'1551656', pickDate:'2026-08-04', league:'Costa-Rica Primera División', home:'Perez Zeledon', away:'CS Cartagines', kickoffUtc:'2026-08-03T19:00:00.000Z', pick:'AWAY', pickLabel:'CS Cartagines Win', odds:1.95, bookmaker:'Bet365', confidence:63, predictedScore:'0–2', btts:'No', doubleChance:'X2', asianHandicap:'CS Cartagines -0.25', reason:'Cartagines has the stronger six-match form, superior away record, a higher early league position and a clear recent H2H edge. Common-opponent results also favour Cartagines overall.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1610530', pickDate:'2026-08-04', league:'Indonesia Piala Presiden', home:'Persebaya Surabaya', away:'Arema FC', kickoffUtc:'2026-08-04T05:00:00.000Z', pick:'HOME', pickLabel:'Persebaya Surabaya Win', odds:2.15, bookmaker:'Bet365', confidence:61, predictedScore:'2–1', btts:'Yes', doubleChance:'1X', asianHandicap:'Persebaya Surabaya -0.25', reason:'Persebaya is unbeaten in six, has won four of its last five home matches and holds a strong recent H2H record against Arema. Arema remains dangerous, so confidence is controlled.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1610531', pickDate:'2026-08-04', league:'Indonesia Piala Presiden', home:'Persib Bandung', away:'Persija', kickoffUtc:'2026-08-04T05:00:00.000Z', pick:'HOME', pickLabel:'Persib Bandung Win', odds:2.25, bookmaker:'Bet365', confidence:61, predictedScore:'1–0', btts:'No', doubleChance:'1X', asianHandicap:'Persib Bandung -0.25', reason:'Persib is unbeaten in six and has not conceded across its five-match home sample. It also won both recent direct meetings and enters the semi-final with the stronger group record.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1563636', pickDate:'2026-08-04', league:'Russia Cup', home:'Dinamo Makhachkala', away:'Krylia Sovetov', kickoffUtc:'2026-08-04T08:30:00.000Z', pick:'HOME', pickLabel:'Dinamo Makhachkala Win', odds:2.08, bookmaker:'Pinnacle', confidence:61, predictedScore:'2–0', btts:'No', doubleChance:'1X', asianHandicap:'Dinamo Makhachkala -0.25', reason:'Dinamo has four wins in six and four wins in its five-match home sample, while Krylia is winless in the recent and away samples. Dinamo also leads the recent H2H set. Cup rotation risk limits confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1557945', pickDate:'2026-08-04', league:'Israel Toto Cup Ligat Al', home:'Ironi Kiryat Shmona', away:'Bnei Sakhnin', kickoffUtc:'2026-08-04T09:45:00.000Z', pick:'HOME', pickLabel:'Ironi Kiryat Shmona Win', odds:1.95, bookmaker:'Bet365', confidence:66, predictedScore:'2–0', btts:'No', doubleChance:'1X', asianHandicap:'Ironi Kiryat Shmona -0.50', reason:'Kiryat Shmona has won four of five at home. Bnei Sakhnin has lost all six recent matches and all five away matches. Recent H2H and common-opponent evidence strongly support the home side.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1607166', pickDate:'2026-08-04', league:'UEFA Champions League Qualifying', home:'Hapoel Beer Sheva', away:'FK Crvena Zvezda', kickoffUtc:'2026-08-04T10:30:00.000Z', pick:'AWAY', pickLabel:'FK Crvena Zvezda Win', odds:1.75, bookmaker:'Bet365', confidence:62, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'FK Crvena Zvezda -0.50', reason:'Crvena Zvezda carries the higher team-quality level and has four wins in its completed recent sample with an 18–4 goal balance. Hapoel has lost three of its five completed recent matches.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1576856', pickDate:'2026-08-04', league:'Argentina Reserve League', home:'Godoy Cruz Res.', away:'Racing Club Res.', kickoffUtc:'2026-08-04T11:00:00.000Z', pick:'AWAY', pickLabel:'Racing Club Res. Win', odds:2.30, bookmaker:'Bet365', confidence:58, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'Racing Club Res. -0.25', reason:'Racing has the stronger recent and away form and has won all four recorded H2H meetings. Reserve-team rotation creates additional uncertainty, so the selection is held at the minimum qualifying confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1576857', pickDate:'2026-08-04', league:'Argentina Reserve League', home:'Gimnasia Mendoza 2', away:'River Plate Res.', kickoffUtc:'2026-08-04T11:00:00.000Z', pick:'AWAY', pickLabel:'River Plate Res. Win', odds:1.91, bookmaker:'Bet365', confidence:59, predictedScore:'0–1', btts:'No', doubleChance:'X2', asianHandicap:'River Plate Res. -0.25', reason:'River has the stronger recent defensive record, a better away sample, the higher early-table position and a 5–1 win in the latest H2H. Reserve-lineup volatility keeps confidence below the senior-team selections.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1549709', pickDate:'2026-08-04', league:'Colombia Primera A', home:'Llaneros', away:'Fortaleza FC', kickoffUtc:'2026-08-04T14:10:00.000Z', pick:'HOME', pickLabel:'Llaneros Win', odds:2.10, bookmaker:'Bet365', confidence:61, predictedScore:'1–0', btts:'No', doubleChance:'1X', asianHandicap:'Llaneros -0.25', reason:'Llaneros has four wins in six and is unbeaten across the five-match home sample, while Fortaleza is winless in five away matches. The common-opponent evidence is mixed, limiting confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1545399', pickDate:'2026-08-04', league:'Bolivia Primera División', home:'Independiente Petrolero', away:'Aurora', kickoffUtc:'2026-08-04T15:00:00.000Z', pick:'AWAY', pickLabel:'Aurora Win', odds:2.45, bookmaker:'Bet365', confidence:60, predictedScore:'1–2', btts:'Yes', doubleChance:'X2', asianHandicap:'Aurora 0.00', reason:'Aurora has the stronger current form, away record and league position. Independiente has lost five of six and three of five at home. Common-opponent evidence generally favours Aurora.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks },
-  { fixtureId:'1530109', pickDate:'2026-08-04', league:'Leagues Cup', home:'FC Cincinnati', away:'CF Pachuca', kickoffUtc:'2026-08-04T16:45:00.000Z', pick:'HOME', pickLabel:'FC Cincinnati Win', odds:2.05, bookmaker:'Bet365', confidence:60, predictedScore:'3–2', btts:'Yes', doubleChance:'1X', asianHandicap:'FC Cincinnati -0.25', reason:'Cincinnati has four wins in six and four wins in five at home, producing 20 goals in that home sample. Pachuca has lost three of six and three of five away, though Cincinnati defensive volatility caps confidence.', abcResult:'CHECKED', source:'LOCKED MANUAL SET 2', status:'WAITING_FOR_RESULT', resultSource:null, resultConfirmed:false, outcome:'pending', checks }
+  {
+    fixtureId: 'DAY7-APOLLON-CZARNI',
+    pickDate: '2026-08-05',
+    league: "UEFA Women's Champions League Qualifying",
+    home: 'Apollon Ladies FC',
+    away: 'Czarni Sosnowiec Women',
+    kickoffUtc: '2026-08-05T14:00:00.000Z',
+    pick: 'AWAY',
+    pickLabel: 'Czarni Sosnowiec Women Win',
+    odds: 1.75,
+    bookmaker: 'Locked market',
+    confidence: 57,
+    predictedScore: '1–2',
+    markets: {
+      btts: pendingMarket('Yes', 61),
+      doubleChance: pendingMarket('X2 — Czarni or Draw', 68),
+      asianHandicap: pendingMarket('Czarni 0', 60)
+    },
+    reason: 'Czarni scored 10 and conceded 2 across the previous two European qualifiers. Their attacking form supports the away selection, while the Asian Handicap line is kept conservative because Apollon hosts the match.',
+    abcResult: 'LIMITED — no reliable like-for-like common-opponent sample',
+    source: 'NOMAD SYSTEM · MANUAL TEST V.2',
+    status: 'WAITING_FOR_RESULT',
+    resultSource: null,
+    resultConfirmed: false,
+    outcome: 'pending',
+    homeScore: null,
+    awayScore: null,
+    checks
+  },
+  {
+    fixtureId: 'DAY7-RANGERS-SLAVIA',
+    pickDate: '2026-08-05',
+    league: "UEFA Women's Champions League Qualifying",
+    home: 'Rangers Women',
+    away: 'Slavia Praha Women',
+    kickoffUtc: '2026-08-05T18:30:00.000Z',
+    pick: 'AWAY',
+    pickLabel: 'Slavia Praha Women Win',
+    odds: 1.80,
+    bookmaker: 'Locked market',
+    confidence: 56,
+    predictedScore: '1–2',
+    markets: {
+      btts: pendingMarket('Yes', 58),
+      doubleChance: pendingMarket('X2 — Slavia or Draw', 66),
+      asianHandicap: pendingMarket('Slavia 0', 60)
+    },
+    reason: 'Slavia produced strong July scoring results and carries the higher recent attacking level. Rangers has home-tournament advantage, so the safer secondary positions are X2 and Slavia 0.',
+    abcResult: 'LIMITED — no reliable like-for-like common-opponent sample',
+    source: 'NOMAD SYSTEM · MANUAL TEST V.2',
+    status: 'WAITING_FOR_RESULT',
+    resultSource: null,
+    resultConfirmed: false,
+    outcome: 'pending',
+    homeScore: null,
+    awayScore: null,
+    checks
+  }
 ]);
 
+export const INTEGRITY_NOTE = 'Shamrock Rovers vs Egnatia was removed from the official set because the recorded lock time was after kickoff. It is excluded from all statistics.';
+
+function normalizeMarket(value, fallbackPick = '—') {
+  if (value && typeof value === 'object') {
+    return {
+      pick: value.pick ?? fallbackPick,
+      odds: Number(value.odds) > 0 ? Number(value.odds) : null,
+      oddsStatus: value.oddsStatus ?? (Number(value.odds) > 0 ? 'LOCKED' : 'PENDING'),
+      confidence: Number(value.confidence ?? 0),
+      outcome: value.outcome ?? 'pending',
+      settlement: value.settlement ?? null
+    };
+  }
+  return {
+    pick: value ?? fallbackPick,
+    odds: null,
+    oddsStatus: 'PENDING',
+    confidence: 0,
+    outcome: 'pending',
+    settlement: null
+  };
+}
+
 function normalize(record) {
+  const legacyMarkets = {
+    btts: record.btts,
+    doubleChance: record.doubleChance ?? record.double_chance,
+    asianHandicap: record.asianHandicap ?? record.asian_handicap
+  };
+  const markets = record.markets ?? legacyMarkets;
   return {
     fixtureId: record.fixtureId ?? record.id ?? crypto.randomUUID(),
-    pickDate: record.pickDate ?? record.date ?? new Date(record.kickoffUtc ?? Date.now()).toISOString().slice(0,10),
+    pickDate: record.pickDate ?? record.date ?? new Date(record.kickoffUtc ?? Date.now()).toISOString().slice(0, 10),
     league: record.league ?? 'Test League',
     home: record.home ?? record.homeTeam ?? 'Home',
     away: record.away ?? record.awayTeam ?? 'Away',
@@ -37,12 +122,14 @@ function normalize(record) {
     pick: String(record.pick ?? record.pick_1x2 ?? 'HOME').toUpperCase(),
     pickLabel: record.pickLabel ?? record.pick_label ?? record.pick ?? 'HOME',
     odds: Number(record.odds ?? record.lockedOdds ?? record.locked_odds ?? 0),
-    bookmaker: record.bookmaker ?? 'Locked',
+    bookmaker: record.bookmaker ?? 'Locked market',
     confidence: Number(record.confidence ?? 0),
     predictedScore: record.predictedScore ?? record.predicted_score ?? '—',
-    btts: record.btts ?? '—',
-    doubleChance: record.doubleChance ?? record.double_chance ?? '—',
-    asianHandicap: record.asianHandicap ?? record.asian_handicap ?? '—',
+    markets: {
+      btts: normalizeMarket(markets?.btts, '—'),
+      doubleChance: normalizeMarket(markets?.doubleChance, '—'),
+      asianHandicap: normalizeMarket(markets?.asianHandicap, '—')
+    },
     reason: record.reason ?? record.analysisReason ?? 'Draft Store record.',
     abcResult: record.abcResult ?? record.commonOpponentsResult ?? '—',
     source: record.source ?? record.resultSource ?? 'DRAFT STORE',
@@ -58,21 +145,38 @@ function normalize(record) {
 function createLockedState() {
   const now = new Date().toISOString();
   return {
+    datasetId: DATASET_ID,
     mode: 'DRAFT',
-    ruleVersions: [{ id:'locked-2026-08-04T00:04:00+07:00', name:'Manual Set 2 — Locked 4 August 2026', createdAt:'2026-08-03T17:04:00.000Z', minimumOdds:1.70, minimumConfidence:58 }],
+    ruleVersions: [{
+      id: 'manual-v2-day7-2026-08-05',
+      name: 'Manual Test v.2 — Day 7',
+      createdAt: now,
+      minimumOdds: 1.70,
+      minimumConfidence: 55,
+      unlimitedSelections: true
+    }],
     candidates: [],
     reviewItems: [],
-    publishedPicks: DEFAULT_PICKS.map(item => ({ ...item, ruleVersionId:'locked-2026-08-04T00:04:00+07:00', lockedAt:'2026-08-03T17:04:00.000Z' })),
-    auditLog: [{ id:'seed-2026-08-04', createdAt:now, actor:'test-system', action:'LOCKED_SET_IMPORTED', entity:'2026-08-04', details:{ count:DEFAULT_PICKS.length, productionWrite:false } }],
+    publishedPicks: DEFAULT_PICKS.map(item => ({
+      ...item,
+      ruleVersionId: 'manual-v2-day7-2026-08-05',
+      lockedAt: '2026-08-05T02:42:00.000Z'
+    })),
+    auditLog: [{
+      id: 'seed-day7-2026-08-05',
+      createdAt: now,
+      actor: 'test-system',
+      action: 'LOCKED_SET_IMPORTED',
+      entity: '2026-08-05',
+      details: { count: DEFAULT_PICKS.length, excluded: 1, productionWrite: false }
+    }],
     analysisRun: null,
     updatedAt: now
   };
 }
 
 function shouldSeed(state) {
-  const picks = state?.publishedPicks;
-  if (!Array.isArray(picks) || picks.length === 0) return true;
-  return picks.every(pick => /^TEST-(100|200)/.test(String(pick.fixtureId ?? '')));
+  return state?.datasetId !== DATASET_ID || !Array.isArray(state?.publishedPicks);
 }
 
 export function loadRecords() {
@@ -96,7 +200,7 @@ export function buildSummary(records) {
   const correct = records.filter(record => record.outcome === 'correct').length;
   const incorrect = records.filter(record => record.outcome === 'incorrect').length;
   const voids = records.filter(record => record.outcome === 'void').length;
-  const pending = records.filter(record => !['correct','incorrect','void'].includes(record.outcome)).length;
+  const pending = records.filter(record => !['correct', 'incorrect', 'void'].includes(record.outcome)).length;
   const settled = correct + incorrect;
   return {
     total: records.length,
@@ -110,9 +214,68 @@ export function buildSummary(records) {
   };
 }
 
+function standardMarketStats(records, key) {
+  const values = records.map(record => record.markets?.[key]).filter(Boolean);
+  const correct = values.filter(market => market.outcome === 'correct').length;
+  const incorrect = values.filter(market => market.outcome === 'incorrect').length;
+  const voids = values.filter(market => market.outcome === 'void').length;
+  const pending = values.length - correct - incorrect - voids;
+  const settled = correct + incorrect;
+  return {
+    total: values.length,
+    correct,
+    incorrect,
+    voids,
+    pending,
+    settled,
+    accuracy: settled ? Number(((correct / settled) * 100).toFixed(2)) : 0
+  };
+}
+
+function asianMarketStats(records) {
+  const values = records.map(record => record.markets?.asianHandicap).filter(Boolean);
+  const counts = {
+    win: 0,
+    halfWin: 0,
+    push: 0,
+    halfLoss: 0,
+    loss: 0,
+    pending: 0
+  };
+  values.forEach(market => {
+    const outcome = String(market.outcome ?? 'pending');
+    if (outcome === 'win' || outcome === 'correct') counts.win += 1;
+    else if (outcome === 'half-win') counts.halfWin += 1;
+    else if (outcome === 'push' || outcome === 'void') counts.push += 1;
+    else if (outcome === 'half-loss') counts.halfLoss += 1;
+    else if (outcome === 'loss' || outcome === 'incorrect') counts.loss += 1;
+    else counts.pending += 1;
+  });
+  const decisions = counts.win + counts.halfWin + counts.halfLoss + counts.loss;
+  const weightedRate = decisions
+    ? Number((((counts.win + counts.halfWin * 0.5) / decisions) * 100).toFixed(2))
+    : 0;
+  return { total: values.length, ...counts, decisions, weightedRate };
+}
+
+export function buildMarketSummary(records) {
+  return {
+    oneXTwo: buildSummary(records),
+    btts: standardMarketStats(records, 'btts'),
+    doubleChance: standardMarketStats(records, 'doubleChance'),
+    asianHandicap: asianMarketStats(records)
+  };
+}
+
 export function formatKickoff(iso) {
   try {
-    return new Intl.DateTimeFormat(undefined, { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }).format(new Date(iso));
+    return new Intl.DateTimeFormat(undefined, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(iso));
   } catch {
     return '—';
   }
@@ -124,6 +287,22 @@ export function resultText(record) {
   if (record.outcome === 'void') return 'VOID';
   if (record.status === 'MANUAL_RESULT_REQUIRED') return 'MANUAL REQUIRED';
   return 'WAITING';
+}
+
+export function marketResultText(market) {
+  const outcome = String(market?.outcome ?? 'pending');
+  const labels = {
+    correct: 'CORRECT',
+    incorrect: 'INCORRECT',
+    void: 'VOID',
+    win: 'WIN',
+    'half-win': 'HALF WIN',
+    push: 'PUSH',
+    'half-loss': 'HALF LOSS',
+    loss: 'LOSS',
+    pending: 'WAITING'
+  };
+  return labels[outcome] ?? outcome.toUpperCase();
 }
 
 export function scoreText(record) {
