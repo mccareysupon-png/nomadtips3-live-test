@@ -1,14 +1,15 @@
 /* Homepage-only visual system.
-   Flat colors, thin rules and clear hierarchy. Existing data hooks and logic are untouched. */
+   Subtle gradients separate information layers; unnecessary rules and all shadows are removed.
+   Existing data hooks, colors and application logic are untouched. */
 
 body.home-page{
-  --home-bg:#1b1d1c;
+  --home-bg:#1a1c1b;
   --home-surface:#202321;
-  --home-surface-2:#1d201e;
-  --home-surface-3:#242725;
+  --home-surface-deep:#1b1e1c;
+  --home-surface-soft:#252926;
   --home-rule:#343936;
-  --home-rule-soft:#2b2f2d;
-  background:var(--home-bg);
+  background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%);
+  background-attachment:fixed;
 }
 
 body.home-page .page{
@@ -16,10 +17,10 @@ body.home-page .page{
   padding-top:76px;
 }
 
-/* Flat top bar: no gradient, no shadow. */
+/* Brand stays strongest. Gradient is tonal, not luminous. */
 body.home-page .topbar{
-  background:#07543c;
-  border-bottom:1px solid #0a664a;
+  background:linear-gradient(180deg,#086247 0%,#07543c 100%);
+  border:0;
   box-shadow:none;
 }
 
@@ -29,20 +30,19 @@ body.home-page .brand{
 
 body.home-page .environment{
   border-radius:3px;
-  background:transparent;
+  background:rgba(0,0,0,.08);
   font-size:8px;
 }
 
-/* Open header with one clean divider. */
+/* Open introduction; separation comes from spacing and tone. */
 body.home-page .hero{
   align-items:flex-end;
   gap:22px;
   margin:0;
-  padding:18px 2px 17px;
+  padding:20px 18px 18px;
   border:0;
-  border-bottom:1px solid var(--home-rule);
-  border-radius:0;
-  background:transparent;
+  border-radius:5px;
+  background:linear-gradient(135deg,rgba(7,84,60,.18) 0%,rgba(32,35,33,.84) 48%,rgba(27,30,28,.94) 100%);
   box-shadow:none;
 }
 
@@ -75,68 +75,62 @@ body.home-page .plain-live-link{
   justify-content:center;
   min-height:32px;
   padding:7px 10px;
-  border:1px solid var(--home-rule);
+  border:0;
   border-radius:3px;
-  background:transparent;
+  background:linear-gradient(180deg,#2a302c,#222623);
   color:var(--text);
   font-size:9px;
   font-weight:850;
   text-decoration:none;
   white-space:nowrap;
+  box-shadow:none;
 }
 
 body.home-page .plain-live-link:hover{
-  border-color:#52605a;
-  background:var(--home-surface);
+  background:linear-gradient(180deg,#303832,#272c29);
 }
 
-/* Quiet system note instead of another card. */
+/* Quiet note: no line, no card frame. */
 body.home-page .integrity-note{
   margin:10px 0 0;
-  padding:7px 10px;
+  padding:8px 10px;
   border:0;
-  border-left:2px solid #66562d;
-  border-radius:0;
-  background:transparent;
+  border-radius:3px;
+  background:linear-gradient(90deg,rgba(102,86,45,.18),rgba(102,86,45,.04));
   color:#cdbf8a;
   font-size:8px;
   line-height:1.5;
 }
 
-/* One summary strip with equal cells. */
+/* One clean summary band. Cells are separated by alignment, not rules. */
 body.home-page .summary{
   display:grid;
   grid-template-columns:repeat(6,minmax(0,1fr));
   gap:0;
-  margin:14px 0 24px;
+  margin:14px 0 26px;
   overflow:hidden;
-  border-top:1px solid var(--home-rule);
-  border-bottom:1px solid var(--home-rule);
-  border-radius:0;
-  background:var(--home-surface-2);
+  border:0;
+  border-radius:5px;
+  background:linear-gradient(180deg,#252a27 0%,#1d211f 100%);
+  box-shadow:none;
 }
 
 body.home-page .metric{
   min-width:0;
-  padding:12px 12px 13px;
+  padding:13px 10px 14px;
   border:0;
-  border-right:1px solid var(--home-rule-soft);
   border-radius:0;
   background:transparent;
-  text-align:left;
-}
-
-body.home-page .metric:last-child{
-  border-right:0;
+  text-align:center;
 }
 
 body.home-page .metric small{
   display:block;
   min-height:0;
   color:#969e9a;
-  font-size:7px;
+  font-size:8px;
   line-height:1.35;
-  letter-spacing:.07em;
+  letter-spacing:.06em;
   text-transform:uppercase;
 }
 
@@ -148,13 +142,12 @@ body.home-page .metric b{
   font-weight:900;
 }
 
-/* Prediction section heading: flat and restrained. */
+/* Prediction heading stays open and restrained. */
 body.home-page .section-head{
   align-items:flex-end;
   margin:0;
-  padding:0 2px 10px;
+  padding:0 2px 11px;
   border:0;
-  border-bottom:1px solid var(--home-rule);
   border-radius:0;
   background:transparent;
 }
@@ -174,15 +167,14 @@ body.home-page .section-head span{
   text-align:right;
 }
 
-/* One ordered list, separated by rules rather than floating cards. */
+/* One ordered list. Only the boundary between complete matches remains. */
 body.home-page .pick-grid{
   display:grid;
   grid-template-columns:1fr;
   gap:0;
   overflow:hidden;
   border:0;
-  border-bottom:1px solid var(--home-rule);
-  border-radius:0;
+  border-radius:5px;
   background:transparent;
 }
 
@@ -191,18 +183,27 @@ body.home-page .pick-card{
   border:0;
   border-bottom:1px solid var(--home-rule);
   border-radius:0;
-  background:var(--home-surface);
+  background:linear-gradient(180deg,#202421 0%,#1d201e 100%);
   box-shadow:none;
+}
+
+body.home-page .pick-card:first-child{
+  border-radius:5px 5px 0 0;
 }
 
 body.home-page .pick-card:last-child{
   border-bottom:0;
+  border-radius:0 0 5px 5px;
+}
+
+body.home-page .pick-card:only-child{
+  border-radius:5px;
 }
 
 body.home-page .pick-card header{
-  padding:9px 12px;
-  background:var(--home-surface-2);
-  border-bottom:1px solid var(--home-rule-soft);
+  padding:10px 12px;
+  border:0;
+  background:linear-gradient(90deg,#191c1a 0%,#202421 100%);
 }
 
 body.home-page .pick-rank,
@@ -213,13 +214,13 @@ body.home-page .state{
 
 body.home-page .state{
   border-radius:3px;
-  background:transparent;
+  background:rgba(0,0,0,.08);
 }
 
 body.home-page .teams{
   min-height:100px;
-  padding:12px 10px;
-  background:var(--home-surface-3);
+  padding:13px 10px;
+  background:linear-gradient(180deg,#272c29 0%,#232724 100%);
 }
 
 body.home-page .team strong{
@@ -227,13 +228,13 @@ body.home-page .team strong{
 }
 
 body.home-page .team small{
-  font-size:7px;
+  font-size:8px;
 }
 
 body.home-page .score{
-  border:1px solid var(--home-rule);
+  border:0;
   border-radius:3px;
-  background:#181a19;
+  background:linear-gradient(180deg,#191b1a,#151716);
   box-shadow:none;
 }
 
@@ -241,33 +242,43 @@ body.home-page .score b{
   font-size:20px;
 }
 
+/* Pick facts share one tonal layer; only the primary pick receives a mild green tint. */
 body.home-page .pick-data{
-  background:var(--home-rule-soft);
+  gap:0;
+  background:linear-gradient(180deg,#212522,#1e211f);
 }
 
 body.home-page .pick-data div{
-  padding:9px 10px;
-  background:var(--home-surface);
+  padding:10px;
+  border:0!important;
+  background:transparent;
 }
 
+body.home-page .pick-data div:first-child{
+  background:linear-gradient(90deg,rgba(7,84,60,.20),rgba(7,84,60,.03));
+}
+
+/* Additional markets read as one band instead of three framed cards. */
 body.home-page .market-grid{
-  background:var(--home-rule-soft);
-  border-top:1px solid var(--home-rule-soft);
+  gap:0;
+  border:0;
+  background:linear-gradient(180deg,#1c211e,#202421);
 }
 
 body.home-page .market-card{
-  padding:10px;
-  background:var(--home-surface-2);
+  padding:11px 10px;
+  border:0;
+  background:transparent;
 }
 
 body.home-page .market-meta em{
   border-radius:3px;
-  background:transparent;
+  background:rgba(0,0,0,.08);
 }
 
 body.home-page .pick-data small,
 body.home-page .market-card>small{
-  font-size:7px;
+  font-size:8px;
 }
 
 body.home-page .pick-data b,
@@ -277,12 +288,12 @@ body.home-page .reason{
 }
 
 body.home-page .reason{
-  padding:10px 12px 11px;
-  border-top:1px solid var(--home-rule-soft);
-  background:var(--home-surface);
+  padding:11px 12px 13px;
+  border:0;
+  background:linear-gradient(180deg,#202321,#1c1f1d);
 }
 
-/* Remove remaining decorative depth on the homepage only. */
+/* Remove all decorative depth on the homepage only. */
 body.home-page .pick-card,
 body.home-page .summary,
 body.home-page .hero,
@@ -293,7 +304,8 @@ body.home-page .main-nav{
 }
 
 body.home-page .main-nav{
-  background:#171917;
+  border-top:0;
+  background:linear-gradient(180deg,#1b1e1c,#151715);
 }
 
 @media(max-width:720px){
@@ -310,7 +322,7 @@ body.home-page .main-nav{
     align-items:stretch;
     flex-direction:column;
     gap:10px;
-    padding-top:15px;
+    padding:16px 14px;
   }
 
   body.home-page .hero h1{
@@ -323,14 +335,6 @@ body.home-page .main-nav{
 
   body.home-page .summary{
     grid-template-columns:repeat(3,minmax(0,1fr));
-  }
-
-  body.home-page .metric:nth-child(3n){
-    border-right:0;
-  }
-
-  body.home-page .metric:nth-child(n+4){
-    border-top:1px solid var(--home-rule-soft);
   }
 
   body.home-page .section-head{
@@ -349,16 +353,8 @@ body.home-page .main-nav{
     grid-template-columns:repeat(2,minmax(0,1fr));
   }
 
-  body.home-page .metric:nth-child(3n){
-    border-right:1px solid var(--home-rule-soft);
-  }
-
-  body.home-page .metric:nth-child(2n){
-    border-right:0;
-  }
-
-  body.home-page .metric:nth-child(n+3){
-    border-top:1px solid var(--home-rule-soft);
+  body.home-page .metric{
+    padding:12px 8px 13px;
   }
 
   body.home-page .teams{
