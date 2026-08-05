@@ -2,7 +2,7 @@
   'use strict';
 
   const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
-  const SOURCE_URL = '../selected-live-matches.json';
+  const SOURCE_URL = new URL('../selected-live-matches.json', document.currentScript.src).href;
   const POLL_MS = 60 * 1000;
   const RETRY_MS = 5 * 1000;
   const ODDS_FIELDS = [
