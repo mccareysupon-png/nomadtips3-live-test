@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
   <title>NOMADTIPS3 Test System — Prediction Statistics</title>
-  <link rel="stylesheet" href="../styles.css?v=202608040728">
+  <link rel="stylesheet" href="../styles.css?v=202608051001">
   <link rel="stylesheet" href="../../brand.css?v=202608041153">
   <link rel="stylesheet" href="../../content-scale.css?v=202608041015">
   <link rel="stylesheet" href="../../draft-responsive.css?v=202608041140">
@@ -25,9 +25,9 @@
   <main class="page">
     <section class="hero">
       <div>
-        <span class="eyebrow">ONE TEST DATA SOURCE</span>
+        <span class="eyebrow">SEPARATE MARKET PERFORMANCE</span>
         <h1>Prediction Statistics</h1>
-        <p>Statistics are calculated from the same finalized match predictions used by Match Predictions and Analysis Poster. Void and Pending are excluded from Accuracy.</p>
+        <p>1X2, BTTS, Double Chance and Asian Handicap are settled and measured separately. Pending and Void records are excluded from Accuracy.</p>
         <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
     </section>
@@ -38,27 +38,27 @@
       <div class="metric"><small>Correct</small><b id="correct">0</b></div>
       <div class="metric"><small>Incorrect</small><b id="incorrect">0</b></div>
       <div class="metric"><small>Pending</small><b id="pending">0</b></div>
-      <div class="metric"><small>Accuracy</small><b id="accuracy">0.00%</b></div>
+      <div class="metric"><small>1X2 Accuracy</small><b id="accuracy">0.00%</b></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><h2>Result Performance</h2><small>Cumulative confirmed results in chronological order</small></div></div>
-      <div class="performance-toolbar">
-        <div class="performance-legend">
-          <span class="correct-line"><i></i>Correct</span>
-          <span class="incorrect-line"><i></i>Incorrect</span>
-        </div>
-        <span id="chartMeta" class="performance-meta">0 settled results</span>
-      </div>
-      <div class="chart-viewport" aria-label="Scrollable long-range result chart">
-        <div id="performanceChart" class="chart-stage"></div>
-      </div>
-      <div class="chart-footnote">Thin cumulative lines similar to a market chart. Scroll horizontally to inspect older results when the history becomes long.</div>
+      <div class="panel-head"><div><h2>Separate Market Statistics</h2><small>Never combined into one accuracy figure</small></div></div>
+      <div id="marketStats" class="market-stat-grid"></div>
     </section>
 
     <section class="panel" style="margin-top:14px">
-      <div class="panel-head"><div><h2>Prediction History</h2><small>Finalized match analysis records</small></div></div>
-      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>League</th><th>Match</th><th>Prediction</th><th>Odds</th><th>Confidence</th><th>Score</th><th>Result</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+      <div class="panel-head"><div><h2>Result Performance</h2><small>Cumulative confirmed 1X2 results in chronological order</small></div></div>
+      <div class="performance-toolbar">
+        <div class="performance-legend"><span class="correct-line"><i></i>Correct</span><span class="incorrect-line"><i></i>Incorrect</span></div>
+        <span id="chartMeta" class="performance-meta">0 settled results</span>
+      </div>
+      <div class="chart-viewport" aria-label="Scrollable long-range result chart"><div id="performanceChart" class="chart-stage"></div></div>
+      <div class="chart-footnote">The performance chart represents the main 1X2 market only.</div>
+    </section>
+
+    <section class="panel" style="margin-top:14px">
+      <div class="panel-head"><div><h2>Prediction History</h2><small>Main and additional market records</small></div></div>
+      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>Match</th><th>1X2</th><th>BTTS</th><th>Double Chance</th><th>Asian Handicap</th><th>Score</th><th>Result</th></tr></thead><tbody id="historyRows"></tbody></table></div>
     </section>
   </main>
 
@@ -70,7 +70,7 @@
   </nav>
   <script src="../../device-time-sync.js?v=202608041114"></script>
   <script src="../odds-summary.js?v=202608041933"></script>
-  <script type="module" src="./app.js?v=202608041826"></script>
+  <script type="module" src="./app.js?v=202608051001"></script>
   <script src="../../remote-results.js?v=202608042325" defer></script>
   <script src="../../terminology.js?v=202608040954" defer></script>
   <script src="../../site-footer.js?v=202608041350"></script>
