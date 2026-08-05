@@ -1,8 +1,19 @@
-import { buildSummary, formatKickoff, loadRecords, resultText, scoreText, STORAGE_KEY } from './shared.js?v=202608041840';
+import {
+  buildSummary,
+  formatKickoff,
+  INTEGRITY_NOTE,
+  loadRecords,
+  marketResultText,
+  resultText,
+  scoreText,
+  STORAGE_KEY
+} from './shared.js?v=202608051001';
 
 const $ = selector => document.querySelector(selector);
-const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '\"':'&quot;' })[char]);
-const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : '—';
+const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
+  '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
+})[char]);
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Odds Pending';
 const LIVE = new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
 
 function loadDisplayRecords() {
@@ -43,6 +54,20 @@ function stateClass(record) {
   return 'waiting';
 }
 
+function renderMarket(label, market) {
+  const pendingOdds = !Number(market?.odds);
+  return `
+    <div class="market-card">
+      <small>${escapeHtml(label)}</small>
+      <b>${escapeHtml(market?.pick || '—')}</b>
+      <span class="market-meta">
+        <em class="${pendingOdds ? 'odds-pending' : ''}">${escapeHtml(formatOdds(market?.odds))}</em>
+        <em>Confidence ${Number(market?.confidence || 0)}%</em>
+        <em>${escapeHtml(marketResultText(market))}</em>
+      </span>
+    </div>`;
+}
+
 function render() {
   const records = loadDisplayRecords();
   const summary = buildSummary(records);
@@ -52,11 +77,12 @@ function render() {
   $('#voids').textContent = summary.voids;
   $('#pending').textContent = summary.pending;
   $('#accuracy').textContent = `${summary.accuracy.toFixed(2)}%`;
+  $('#integrityNote').textContent = INTEGRITY_NOTE;
 
   const stored = localStorage.getItem(STORAGE_KEY);
   $('#sourceNote').textContent = stored
-    ? (summary.pending ? `Automatic result processing · ${summary.pending} waiting` : `Finalized Manual Set 2 · ${records.length} predictions`)
-    : 'Loading finalized Manual Set 2 analysis';
+    ? (summary.pending ? `Automatic result processing · ${summary.pending} waiting` : `Finalized NOMAD SYSTEM · ${records.length} predictions`)
+    : 'Loading finalized NOMAD SYSTEM analysis';
 
   $('#pickGrid').innerHTML = records.map((record, index) => `
     <article class="pick-card">
@@ -73,10 +99,15 @@ function render() {
         <div class="team"><strong>${escapeHtml(record.away)}</strong><small>AWAY</small></div>
       </div>
       <div class="pick-data">
-        <div class="prediction-primary"><small>Match Prediction</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
-        <div><small style="color:#fff">Odds</small><b style="color:#fff;font-size:13px">${formatOdds(record.odds)}</b><small style="margin-top:3px;text-transform:none;color:#fff">Source: ${escapeHtml(record.bookmaker || '—')}</small></div>
+        <div class="prediction-primary"><small>Main Pick · 1X2</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
+        <div><small>Odds</small><b>${escapeHtml(formatOdds(record.odds))}</b><small>Source: ${escapeHtml(record.bookmaker || '—')}</small></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
         <div><small>Predicted Score</small><b>${escapeHtml(record.predictedScore)}</b></div>
+      </div>
+      <div class="market-grid" aria-label="Additional market analysis">
+        ${renderMarket('BTTS', record.markets?.btts)}
+        ${renderMarket('Double Chance', record.markets?.doubleChance)}
+        ${renderMarket('Asian Handicap', record.markets?.asianHandicap)}
       </div>
       <div class="reason"><strong>Match Analysis</strong><br>${escapeHtml(record.reason)} · A–B–C comparison: ${escapeHtml(record.abcResult)}</div>
     </article>`).join('');
