@@ -37,21 +37,42 @@
       "markets": {
         "btts": {
           "pick": "Yes",
-          "odds": null,
-          "confidence": 61
+          "odds": 1.73,
+          "confidence": 61,
+          "bookmaker": "Betfair",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T12:38:14+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
         },
         "doubleChance": {
           "pick": "X2 — Czarni or Draw",
           "code": "X2",
-          "odds": null,
-          "confidence": 68
+          "odds": 1.18,
+          "confidence": 68,
+          "bookmaker": "Bet365",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T12:38:14+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Draw/Away"
         },
         "asianHandicap": {
           "pick": "Czarni 0",
           "side": "away",
           "line": 0.0,
-          "odds": null,
-          "confidence": 60
+          "odds": 1.25,
+          "confidence": 60,
+          "bookmaker": "Pinnacle",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T12:38:14+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Away +0"
         }
       },
       "reason": "Czarni scored 10 and conceded 2 across the previous two European qualifiers. Their attacking form supports the away selection, while the Asian Handicap line is kept conservative because Apollon hosts the match.",
@@ -86,21 +107,42 @@
       "markets": {
         "btts": {
           "pick": "Yes",
-          "odds": null,
-          "confidence": 58
+          "odds": 1.45,
+          "confidence": 58,
+          "bookmaker": "Betfair",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T18:00:14+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
         },
         "doubleChance": {
           "pick": "1X — Slavia or Draw",
           "code": "1X",
-          "odds": null,
-          "confidence": 66
+          "odds": 1.57,
+          "confidence": 66,
+          "bookmaker": "Bet365",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T18:00:14+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
         },
         "asianHandicap": {
           "pick": "Slavia 0",
           "side": "home",
           "line": 0.0,
-          "odds": null,
-          "confidence": 60
+          "odds": 2.02,
+          "confidence": 60,
+          "bookmaker": "Bet365",
+          "oddsStatus": "BACKFILLED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-05T23:25:49Z",
+          "oddsProviderUpdatedAt": "2026-08-05T18:00:14+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home +0"
         }
       },
       "reason": "UEFA records Slavia Praha as the home-designated team, although the mini-tournament is hosted at Broadwood. Slavia carries the stronger recent attacking level; the safer secondary positions are 1X and Slavia 0.",
@@ -108,5 +150,15 @@
       "provider_away": "Rangers W",
       "provider_kickoff_utc": "2026-08-05T18:30:00+00:00"
     }
-  ]
+  ],
+  "oddsPolicy": {
+    "markets": [
+      "1X2",
+      "BTTS",
+      "Double Chance",
+      "Asian Handicap"
+    ],
+    "lockRule": "first real API price is preserved; missing prices are never estimated",
+    "source": "API-FOOTBALL"
+  }
 }
