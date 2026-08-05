@@ -1,8 +1,14 @@
 (()=>{
   const KEY='nomadtips3.nomad-control.draft.v2';
-  const URL='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/result-feed.json';
+  const WORKER_BASE='https://nomadtips3-test-api.mccarey-supon.workers.dev';
+  const FALLBACK_URL='https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/result-feed.json';
+  const PROVIDER_ID_BY_FIXTURE=Object.freeze({
+    'DAY7-APOLLON-CZARNI':'1603952',
+    'DAY7-SLAVIA-RANGERS':'1558465'
+  });
   const LIVE=new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
   const STALE_AFTER_MS=3*60*1000;
+  const POLL_MS=30*1000;
   let busy=false;
   let latestFeed=null;
 
@@ -23,6 +29,153 @@
     outcome:incoming?.outcome??base?.outcome??'pending',
     settlement:incoming?.settlement??base?.settlement??null
   });
+
+  function settleMainPick(record,homeScore,awayScore){
+    if(!finite(homeScore)||!finite(awayScore))return'pending';
+    const home=Number(homeScore);
+    const away=Number(awayScore);
+    const pick=String(record?.pick||'').toUpperCase();
+    const correct=(pick==='HOME'&&home>away)||(pick==='AWAY'&&away>home)||(pick==='DRAW'&&home===away);
+    return correct?'correct':'incorrect';
+  }
+
+  function settleBtts(market,homeScore,awayScore){
+    if(!finite(homeScore)||!finite(awayScore))return'pending';
+    const actual=Number(homeScore)>0&&Number(awayScore)>0;
+    const pick=String(market?.pick||'').trim().toLowerCase();
+    if(!pick)return'pending';
+    const selected=pick.startsWith('y')?true:pick.startsWith('n')?false:null;
+    return selected===null?'pending':selected===actual?'correct':'incorrect';
+  }
+
+  function settleDoubleChance(market,homeScore,awayScore){
+    if(!finite(homeScore)||!finite(awayScore))return'pending';
+    const home=Number(homeScore);
+    const away=Number(awayScore);
+    const pick=String(market?.pick||'').toUpperCase().replace(/\s+/g,'');
+    let correct=null;
+    if(pick.startsWith('1X'))correct=home>=away;
+    else if(pick.startsWith('X2'))correct=away>=home;
+    else if(pick.startsWith('12'))correct=home!==away;
+    return correct===null?'pending':correct?'correct':'incorrect';
+  }
+
+  function handicapLine(market){
+    const match=String(market?.pick||'').match(/([+-]?\d+(?:\.\d+)?)\s*$/);
+    return match?Number(match[1]):0;
+  }
+
+  function settleSingleHandicap(selectedScore,opponentScore,line){
+    const adjusted=Number(selectedScore)+Number(line)-Number(opponentScore);
+    if(adjusted>0)return'win';
+    if(adjusted<0)return'loss';
+    return'push';
+  }
+
+  function settleAsianHandicap(record,market,homeScore,awayScore){
+    if(!finite(homeScore)||!finite(awayScore))return'pending';
+    const mainPick=String(record?.pick||'').toUpperCase();
+    if(mainPick!=='HOME'&&mainPick!=='AWAY')return'pending';
+    const selectedScore=mainPick==='HOME'?Number(homeScore):Number(awayScore);
+    const opponentScore=mainPick==='HOME'?Number(awayScore):Number(homeScore);
+    const line=handicapLine(market);
+    const quarter=Math.abs(Math.round(line*4))%2===1;
+    if(!quarter)return settleSingleHandicap(selectedScore,opponentScore,line);
+
+    const first=settleSingleHandicap(selectedScore,opponentScore,line-0.25);
+    const second=settleSingleHandicap(selectedScore,opponentScore,line+0.25);
+    const pair=[first,second].sort().join('|');
+    if(first==='win'&&second==='win')return'win';
+    if(first==='loss'&&second==='loss')return'loss';
+    if(first==='push'&&second==='push')return'push';
+    if(pair==='push|win')return'half-win';
+    if(pair==='loss|push')return'half-loss';
+    return'push';
+  }
+
+  function buildWorkerFeed(state,payload){
+    const fixtures=new Map((payload?.results||[]).map(item=>[String(item.providerFixtureId??item.fixtureId),item]));
+    const results=(state.publishedPicks||[]).map(record=>{
+      const providerFixtureId=String(record.providerFixtureId||PROVIDER_ID_BY_FIXTURE[String(record.fixtureId)]||'');
+      const fixture=fixtures.get(providerFixtureId);
+      if(!fixture)return null;
+      const confirmed=Boolean(fixture.resultConfirmed);
+      const homeScore=fixture.homeScore;
+      const awayScore=fixture.awayScore;
+      const markets=record.markets||{};
+      return{
+        fixtureId:String(record.fixtureId),
+        providerFixtureId,
+        kickoffUtc:fixture.kickoffUtc||record.kickoffUtc,
+        status:fixture.status||'NS',
+        statusLong:fixture.statusLong||null,
+        elapsed:fixture.elapsed??null,
+        homeScore:finite(homeScore)?Number(homeScore):null,
+        awayScore:finite(awayScore)?Number(awayScore):null,
+        outcome:confirmed?settleMainPick(record,homeScore,awayScore):'pending',
+        markets:{
+          btts:{...markets.btts,outcome:confirmed?settleBtts(markets.btts,homeScore,awayScore):'pending'},
+          doubleChance:{...markets.doubleChance,outcome:confirmed?settleDoubleChance(markets.doubleChance,homeScore,awayScore):'pending'},
+          asianHandicap:{...markets.asianHandicap,outcome:confirmed?settleAsianHandicap(record,markets.asianHandicap,homeScore,awayScore):'pending'}
+        },
+        resultConfirmed:confirmed,
+        autoVoid:false,
+        resultSource:'CLOUDFLARE · API-FOOTBALL',
+        updatedAt:payload.generatedAt||new Date().toISOString()
+      };
+    }).filter(Boolean);
+
+    const correct=results.filter(item=>item.outcome==='correct').length;
+    const incorrect=results.filter(item=>item.outcome==='incorrect').length;
+    const voids=results.filter(item=>item.outcome==='void').length;
+    const pending=Math.max(0,(state.publishedPicks||[]).length-correct-incorrect-voids);
+    const settled=correct+incorrect;
+    return{
+      selectionDate:(state.publishedPicks||[])[0]?.pickDate||null,
+      generatedAt:payload.generatedAt||new Date().toISOString(),
+      source:'CLOUDFLARE · API-FOOTBALL',
+      summary:{
+        total:(state.publishedPicks||[]).length,
+        correct,
+        incorrect,
+        void:voids,
+        pending,
+        settled,
+        allSettled:pending===0,
+        accuracy:settled?Number(((correct/settled)*100).toFixed(2)):0,
+        finalizedAt:pending===0?(payload.generatedAt||new Date().toISOString()):null
+      },
+      results
+    };
+  }
+
+  async function fetchWorkerFeed(state){
+    const ids=[...new Set((state.publishedPicks||[])
+      .map(record=>record.providerFixtureId||PROVIDER_ID_BY_FIXTURE[String(record.fixtureId)])
+      .filter(Boolean)
+      .map(String))];
+    if(ids.length===0)throw new Error('No provider fixture ids configured');
+    const response=await fetch(`${WORKER_BASE}/fixtures?ids=${encodeURIComponent(ids.join(','))}&t=${Date.now()}`,{cache:'no-store'});
+    if(!response.ok)throw new Error(`Worker HTTP ${response.status}`);
+    const payload=await response.json();
+    if(!payload?.results?.length)throw new Error(payload?.error||'Worker returned no fixtures');
+    return buildWorkerFeed(state,payload);
+  }
+
+  async function fetchFallbackFeed(){
+    const response=await fetch(`${FALLBACK_URL}?t=${Date.now()}`,{cache:'no-store'});
+    if(!response.ok)throw new Error(`Fallback feed HTTP ${response.status}`);
+    return response.json();
+  }
+
+  async function loadFeed(state){
+    try{
+      return await fetchWorkerFeed(state);
+    }catch(workerError){
+      console.debug('Cloudflare result sync pending',workerError);
+      return fetchFallbackFeed();
+    }
+  }
 
   function ensureDelayBanner(){
     let banner=document.getElementById('nomad-live-delay');
@@ -82,16 +235,13 @@
     if(busy||document.hidden)return;
     busy=true;
     try{
-      const response=await fetch(`${URL}?t=${Date.now()}`,{cache:'no-store'});
-      if(!response.ok)throw new Error(`Result feed HTTP ${response.status}`);
-      const feed=await response.json();
-      updateDelayBanner(feed,false);
-
       const raw=localStorage.getItem(KEY);
       if(!raw)return;
       const state=JSON.parse(raw);
       if(!Array.isArray(state.publishedPicks))return;
 
+      const feed=await loadFeed(state);
+      updateDelayBanner(feed,false);
       const resultMap=new Map((feed.results||[]).map(item=>[String(item.fixtureId),item]));
       let changed=false;
 
@@ -119,7 +269,7 @@
           matchStatus:result.status||pick.matchStatus||'NS',
           matchStatusLong:result.statusLong||null,
           elapsed:result.elapsed??null,
-          resultSource:result.resultSource||pick.resultSource||'API-FOOTBALL',
+          resultSource:result.resultSource||pick.resultSource||'CLOUDFLARE · API-FOOTBALL',
           resultUpdatedAt:result.updatedAt||feed.generatedAt,
           resultAutoVoid:autoVoid,
           markets:nextMarkets
@@ -147,6 +297,7 @@
       state.resultFeedSummary=feed.summary||null;
       state.marketFeedSummary=feed.marketSummary||null;
       state.resultFeedGeneratedAt=feed.generatedAt||null;
+      state.resultFeedSource=feed.source||null;
       if(feed.summary?.allSettled){
         state.batchStatus='FINALIZED';
         state.batchFinalizedAt=feed.summary.finalizedAt||feed.generatedAt;
@@ -154,7 +305,6 @@
         state.batchStatus='IN_PROGRESS';
       }
 
-      localStorage.setItem(KEY,JSON.stringify(state));
       if(!changed)return;
       state.updatedAt=feed.generatedAt||new Date().toISOString();
       localStorage.setItem(KEY,JSON.stringify(state));
@@ -169,7 +319,7 @@
   }
 
   setTimeout(syncResults,800);
-  setInterval(syncResults,15000);
+  setInterval(syncResults,POLL_MS);
   setInterval(()=>updateDelayBanner(latestFeed,false),10000);
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncResults()});
 })();
