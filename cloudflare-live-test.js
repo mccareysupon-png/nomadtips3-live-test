@@ -6,7 +6,7 @@
   const CARD_ID='cloudflareLiveTestCard';
   const TERMINAL=new Set(['FT','AET','PEN','CANC','ABD','AWD','WO','PST']);
   const host=document.getElementById('matches');
-  const palette=['#2563eb','#dc2626','#f59e0b','#16a34a','#7c3aed','#0891b2','#e11d48','#f97316','#4f46e5','#65a30d'];
+  const palette=['#2563eb','#dc2626','#f59e0b','#16a34a','#7c3aed','#0891b2','#e11d48','#f97316'];
   const statRows=[
     ['Attacks','attacks'],['Dangerous Attacks','dangerous_attacks'],['Expected Goals (xG)','expected_goals'],
     ['Ball Possession','possession'],['Total Shots','shots'],['Shots on Target','shots_on_target'],
@@ -21,15 +21,15 @@
 
   const esc=value=>String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
   const shown=value=>value===null||value===undefined||value===''?'–':value;
-  const number=value=>{const parsed=Number(String(value??'').replace('%',''));return Number.isFinite(parsed)?parsed:null};
+  const numeric=value=>{const parsed=Number(String(value??'').replace('%',''));return Number.isFinite(parsed)?parsed:null};
 
-  async function fetchJson(url,timeout=10000){
+  async function fetchJson(url){
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),timeout);
+    const timer=setTimeout(()=>controller.abort(),10000);
     try{
       const response=await fetch(url,{cache:'no-store',signal:controller.signal});
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
-      return response.json();
+      return await response.json();
     }finally{
       clearTimeout(timer);
     }
@@ -39,9 +39,7 @@
     try{return JSON.parse(localStorage.getItem(LOCK_KEY)||'null')}catch{return null}
   }
 
-  function writeLock(value){
-    localStorage.setItem(LOCK_KEY,JSON.stringify(value));
-  }
+  function writeLock(value){localStorage.setItem(LOCK_KEY,JSON.stringify(value))}
 
   function shirtColor(name,avoid=''){
     let hash=0;
@@ -61,7 +59,7 @@
     return{label:text,minute:text,cls:''};
   }
 
-  function cardMarkup(){
+  function markup(){
     return `<article id="${CARD_ID}" class="match-card" data-test-only="true">
       <header class="match-head"><span data-k="league">CLOUDFLARE · LIVE ENGINE TEST</span><b class="status waiting" data-k="status">LOADING</b></header>
       <section class="scoreboard">
@@ -84,7 +82,7 @@
     let card=document.getElementById(CARD_ID);
     if(card)return card;
     host?.querySelector('.empty-state')?.remove();
-    host?.insertAdjacentHTML('afterbegin',cardMarkup());
+    host?.insertAdjacentHTML('afterbegin',markup());
     card=document.getElementById(CARD_ID);
     card?.querySelector('.tabs')?.addEventListener('click',event=>{
       const button=event.target.closest('button[data-tab]');
@@ -97,18 +95,17 @@
     return card;
   }
 
-  function element(card,key){return card.querySelector(`[data-k="${key}"]`)}
+  const field=(card,key)=>card.querySelector(`[data-k="${key}"]`);
 
   function statRow(label,home,away){
     if((home===null||home===undefined||home==='')&&(away===null||away===undefined||away===''))return'';
-    const homeNumber=number(home),awayNumber=number(away);
-    const total=homeNumber!==null&&awayNumber!==null&&homeNumber+awayNumber>0?homeNumber+awayNumber:null;
-    const homePercent=total?Math.round(homeNumber/total*100):50;
-    const awayPercent=total?Math.round(awayNumber/total*100):50;
-    return `<div class="stat-row"><b>${esc(shown(home))}</b><div><small>${esc(label)}</small><span><i style="width:${homePercent}%"></i><i class="away" style="width:${awayPercent}%"></i></span></div><b>${esc(shown(away))}</b></div>`;
+    const h=numeric(home),a=numeric(away),total=h!==null&&a!==null&&h+a>0?h+a:null;
+    const hp=total?Math.round(h/total*100):50;
+    const ap=total?Math.round(a/total*100):50;
+    return `<div class="stat-row"><b>${esc(shown(home))}</b><div><small>${esc(label)}</small><span><i style="width:${hp}%"></i><i class="away" style="width:${ap}%"></i></span></div><b>${esc(shown(away))}</b></div>`;
   }
 
-  function normalizeFixturePayload(payload){
+  function fromFixture(payload){
     const fixture=payload?.result;
     if(!fixture)return null;
     return {
@@ -140,28 +137,28 @@
     const homeColor=shirtColor(home);
     const awayColor=shirtColor(away,homeColor);
 
-    element(card,'league').textContent=`CLOUDFLARE TEST · ${[match.country,match.league].filter(Boolean).join(' · ')}`;
-    element(card,'status').textContent=status.label;
-    element(card,'status').className=`status ${status.cls}`;
-    element(card,'minute').textContent=status.minute;
-    element(card,'home').textContent=home;
-    element(card,'away').textContent=away;
-    element(card,'homeShirt').style.setProperty('--shirt',homeColor);
-    element(card,'awayShirt').style.setProperty('--shirt',awayColor);
-    element(card,'score').textContent=`${shown(match.score?.home)} : ${shown(match.score?.away)}`;
-    if(match.kickoff_utc)element(card,'kickoff').textContent=new Date(match.kickoff_utc).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
+    field(card,'league').textContent=`CLOUDFLARE TEST · ${[match.country,match.league].filter(Boolean).join(' · ')}`;
+    field(card,'status').textContent=status.label;
+    field(card,'status').className=`status ${status.cls}`;
+    field(card,'minute').textContent=status.minute;
+    field(card,'home').textContent=home;
+    field(card,'away').textContent=away;
+    field(card,'homeShirt').style.setProperty('--shirt',homeColor);
+    field(card,'awayShirt').style.setProperty('--shirt',awayColor);
+    field(card,'score').textContent=`${shown(match.score?.home)} : ${shown(match.score?.away)}`;
+    if(match.kickoff_utc)field(card,'kickoff').textContent=new Date(match.kickoff_utc).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'});
 
     const statistics=match.stats||cachedStats||{};
     const statisticsHtml=statRows.map(([label,key])=>statRow(label,statistics[key]?.home,statistics[key]?.away)).filter(Boolean).join('');
-    element(card,'stats').innerHTML=statisticsHtml||'<p class="empty">Basic score and status test active. Detailed statistics may not be supplied for this fixture.</p>';
+    field(card,'stats').innerHTML=statisticsHtml||'<p class="empty">Basic score and status test active. Detailed statistics may not be supplied for this fixture.</p>';
 
     const events=Array.isArray(match.events)?[...match.events]:cachedEvents;
     const sortedEvents=events.sort((a,b)=>(Number(b.minute)||0)-(Number(a.minute)||0));
-    element(card,'events').innerHTML=sortedEvents.length?sortedEvents.slice(0,24).map(event=>`<div class="event"><b>${esc(event.minute??'–')}′</b><div><strong>${esc([event.type,event.team].filter(Boolean).join(' — '))}</strong><small>${esc([event.detail,event.player].filter(Boolean).join(' · '))}</small></div></div>`).join(''):'<p class="empty">No events supplied yet.</p>';
+    field(card,'events').innerHTML=sortedEvents.length?sortedEvents.slice(0,24).map(event=>`<div class="event"><b>${esc(event.minute??'–')}′</b><div><strong>${esc([event.type,event.team].filter(Boolean).join(' — '))}</strong><small>${esc([event.detail,event.player].filter(Boolean).join(' · '))}</small></div></div>`).join(''):'<p class="empty">No events supplied yet.</p>';
     const latest=sortedEvents[0];
-    element(card,'latest').textContent=latest?[latest.team,latest.type,latest.detail].filter(Boolean).join(' · '):'Cloudflare Worker connection active';
-    element(card,'latestMinute').textContent=latest?`${latest.minute??'—'}′':'—';
-    element(card,'updated').textContent=`Updated ${new Date(data.fetched_at_utc||Date.now()).toLocaleString()}`;
+    field(card,'latest').textContent=latest?[latest.team,latest.type,latest.detail].filter(Boolean).join(' · '):'Cloudflare Worker connection active';
+    field(card,'latestMinute').textContent=latest?`${latest.minute??'—'}′`:'—';
+    field(card,'updated').textContent=`Updated ${new Date(data.fetched_at_utc||Date.now()).toLocaleString()}`;
 
     const count=document.getElementById('matchCount');
     if(count)count.textContent='LIVE ENGINE TEST · 1 MATCH · NOT COUNTED';
@@ -172,15 +169,14 @@
     loading=true;
     try{
       const lock=readLock();
-      if(lock?.completedAt){
-        const age=Date.now()-Number(lock.completedAt);
-        if(age>120000){document.getElementById(CARD_ID)?.remove();return;}
+      if(lock?.completedAt&&Date.now()-Number(lock.completedAt)>120000){
+        document.getElementById(CARD_ID)?.remove();
+        return;
       }
 
       let data;
       if(lock?.fixtureId){
-        const payload=await fetchJson(`${WORKER}/fixture?id=${encodeURIComponent(lock.fixtureId)}&t=${Date.now()}`);
-        data=normalizeFixturePayload(payload);
+        data=fromFixture(await fetchJson(`${WORKER}/fixture?id=${encodeURIComponent(lock.fixtureId)}&t=${Date.now()}`));
       }else{
         data=await fetchJson(`${WORKER}/live-test?t=${Date.now()}`);
         if(!data?.match){document.getElementById(CARD_ID)?.remove();return;}
@@ -191,16 +187,15 @@
 
       if(!data?.match)return;
       render(data);
-
       if(TERMINAL.has(String(data.match.status||'').toUpperCase())){
         const current=readLock()||{};
         if(!current.completedAt)writeLock({...current,completedAt:Date.now()});
       }
     }catch(error){
       const card=ensureCard();
-      element(card,'status').textContent='RETRYING';
-      element(card,'status').className='status error';
-      element(card,'updated').textContent=String(error?.message||error);
+      field(card,'status').textContent='RETRYING';
+      field(card,'status').className='status error';
+      field(card,'updated').textContent=String(error?.message||error);
     }finally{
       loading=false;
     }
