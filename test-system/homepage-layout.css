@@ -1,0 +1,268 @@
+/* Homepage-only layout polish.
+   Keeps the existing NOMADTIPS3 palette, data hooks and application logic intact. */
+
+body.home-page{
+  --home-radius:8px;
+  --home-rule:#3d3d3d;
+}
+
+body.home-page .page{
+  width:min(calc(100% - 24px),980px);
+}
+
+/* A single, ordered information surface instead of detached floating cards. */
+body.home-page .hero{
+  align-items:center;
+  margin:0;
+  padding:18px 20px 16px;
+  border-radius:var(--home-radius) var(--home-radius) 0 0;
+  border-bottom-color:#343434;
+  background:linear-gradient(180deg,#252525,#222);
+  box-shadow:none;
+}
+
+body.home-page .hero h1{
+  margin:5px 0 6px;
+  font-size:20px;
+  line-height:1.2;
+  letter-spacing:-.015em;
+}
+
+body.home-page .hero p{
+  font-size:10px;
+  line-height:1.6;
+}
+
+body.home-page .eyebrow{
+  font-size:8px;
+  letter-spacing:.12em;
+}
+
+body.home-page .plain-live-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:34px;
+  padding:7px 10px;
+  border:1px solid var(--line);
+  border-radius:4px;
+  background:#222;
+  color:var(--text);
+  font-size:9px;
+  font-weight:850;
+  text-decoration:none;
+}
+
+body.home-page .integrity-note{
+  margin:0;
+  padding:9px 14px;
+  border-top:0;
+  border-right:1px solid var(--line);
+  border-bottom:1px solid #66562d;
+  border-left:1px solid var(--line);
+  border-radius:0;
+  font-size:8px;
+}
+
+/* One summary band, divided into equal cells. */
+body.home-page .summary{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:0;
+  margin:0 0 18px;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-top:0;
+  border-radius:0 0 var(--home-radius) var(--home-radius);
+  background:var(--panel);
+}
+
+body.home-page .metric{
+  min-width:0;
+  padding:11px 10px 12px;
+  border:0;
+  border-right:1px solid #373737;
+  border-radius:0;
+  background:transparent;
+  text-align:left;
+}
+
+body.home-page .metric:last-child{
+  border-right:0;
+}
+
+body.home-page .metric small{
+  min-height:20px;
+  font-size:7px;
+  line-height:1.35;
+  letter-spacing:.07em;
+}
+
+body.home-page .metric b{
+  margin-top:4px;
+  font-size:16px;
+  line-height:1.15;
+}
+
+/* Section title becomes the header of the same prediction panel. */
+body.home-page .section-head{
+  align-items:center;
+  margin:0;
+  padding:12px 14px;
+  border:1px solid var(--line);
+  border-bottom:1px solid #343434;
+  border-radius:var(--home-radius) var(--home-radius) 0 0;
+  background:#191919;
+}
+
+body.home-page .section-head h2{
+  font-size:14px;
+  line-height:1.3;
+  letter-spacing:-.005em;
+}
+
+body.home-page .section-head span{
+  font-size:8px;
+  line-height:1.4;
+  text-align:right;
+}
+
+/* Predictions are sections inside one system panel, not floating cards. */
+body.home-page .pick-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+  overflow:hidden;
+  border:1px solid var(--line);
+  border-top:0;
+  border-radius:0 0 var(--home-radius) var(--home-radius);
+  background:var(--panel);
+}
+
+body.home-page .pick-card{
+  overflow:hidden;
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  background:var(--panel);
+  box-shadow:none;
+}
+
+body.home-page .pick-card:last-child{
+  border-bottom:0;
+}
+
+body.home-page .pick-card header{
+  padding:9px 12px;
+}
+
+body.home-page .pick-rank,
+body.home-page .league,
+body.home-page .state{
+  font-size:8px;
+}
+
+body.home-page .teams{
+  min-height:104px;
+  padding:12px 10px;
+  background:linear-gradient(180deg,#272727,#232323);
+}
+
+body.home-page .team strong{
+  font-size:13px;
+}
+
+body.home-page .score b{
+  font-size:20px;
+}
+
+body.home-page .pick-data div{
+  padding:9px 10px;
+}
+
+body.home-page .pick-data small,
+body.home-page .market-card>small{
+  font-size:7px;
+}
+
+body.home-page .pick-data b,
+body.home-page .market-card>b,
+body.home-page .reason{
+  font-size:9px;
+}
+
+body.home-page .reason{
+  padding:10px 12px 11px;
+}
+
+/* Keep the logo clearly first in the hierarchy; all other type scales descend gently. */
+body.home-page .brand{
+  font-size:30px;
+}
+
+body.home-page .environment{
+  font-size:8px;
+}
+
+@media(max-width:720px){
+  body.home-page .page{
+    width:min(calc(100% - 14px),980px);
+  }
+
+  body.home-page .hero{
+    align-items:stretch;
+    padding:14px;
+  }
+
+  body.home-page .hero h1{
+    font-size:18px;
+  }
+
+  body.home-page .brand{
+    font-size:25px;
+  }
+
+  body.home-page .summary{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+
+  body.home-page .metric:nth-child(3n){
+    border-right:0;
+  }
+
+  body.home-page .metric:nth-child(n+4){
+    border-top:1px solid #373737;
+  }
+
+  body.home-page .section-head{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:4px;
+  }
+
+  body.home-page .section-head span{
+    text-align:left;
+  }
+}
+
+@media(max-width:430px){
+  body.home-page .summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+
+  body.home-page .metric:nth-child(3n){
+    border-right:1px solid #373737;
+  }
+
+  body.home-page .metric:nth-child(2n){
+    border-right:0;
+  }
+
+  body.home-page .metric:nth-child(n+3){
+    border-top:1px solid #373737;
+  }
+
+  body.home-page .teams{
+    min-height:98px;
+  }
+}
