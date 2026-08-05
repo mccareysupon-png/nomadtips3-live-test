@@ -1,15 +1,15 @@
 {
   "selectionDate": "2026-08-05",
-  "generatedAt": "2026-08-05T16:43:51Z",
+  "generatedAt": "2026-08-05T16:44:23Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 2,
     "correct": 0,
-    "incorrect": 0,
+    "incorrect": 1,
     "void": 0,
-    "pending": 2,
-    "settled": 0,
+    "pending": 1,
+    "settled": 1,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -17,30 +17,30 @@
   "marketSummary": {
     "btts": {
       "total": 2,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 0,
       "void": 0,
-      "pending": 2,
-      "settled": 0,
-      "accuracy": 0.0
+      "pending": 1,
+      "settled": 1,
+      "accuracy": 100.0
     },
     "doubleChance": {
       "total": 2,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 0,
       "void": 0,
-      "pending": 2,
-      "settled": 0,
-      "accuracy": 0.0
+      "pending": 1,
+      "settled": 1,
+      "accuracy": 100.0
     },
     "asianHandicap": {
       "win": 0,
       "half-win": 0,
-      "push": 0,
+      "push": 1,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 2,
+      "pending": 1,
       "total": 2,
       "decisions": 0,
       "weightedRate": 0.0
@@ -54,41 +54,44 @@
       "home": "Apollon Ladies FC",
       "away": "Czarni Sosnowiec Women",
       "kickoffUtc": "2026-08-05T14:00:00+00:00",
-      "status": "P",
-      "providerStatus": "P",
-      "statusLong": "Penalty in progress",
-      "elapsed": null,
+      "status": "PEN",
+      "providerStatus": "PEN",
+      "statusLong": "Match Finished",
+      "elapsed": 120,
       "homeScore": 3,
       "awayScore": 3,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": null,
           "oddsStatus": "PENDING",
           "confidence": 61,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "X2 — Czarni or Draw",
           "odds": null,
           "oddsStatus": "PENDING",
           "confidence": 68,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Czarni 0",
           "odds": null,
           "oddsStatus": "PENDING",
           "confidence": 60,
-          "outcome": "pending"
+          "outcome": "push",
+          "settlement": "push",
+          "line": 0.0,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-05T16:43:51Z",
+      "updatedAt": "2026-08-05T16:44:23Z",
       "counted": true
     },
     {
@@ -132,7 +135,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-05T16:43:51Z",
+      "updatedAt": "2026-08-05T16:44:23Z",
       "counted": true
     }
   ]
