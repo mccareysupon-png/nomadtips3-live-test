@@ -6,6 +6,7 @@ import {
   resultText,
   scoreText
 } from '../shared.js?v=202608051120';
+import { HISTORICAL_RECORDS } from '../history.js?v=202608051145';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
@@ -19,6 +20,14 @@ function recordTime(record) {
   const time = new Date(record.kickoffUtc ?? record.pickDate ?? 0).getTime();
   return Number.isFinite(time) ? time : 0;
 }
+
+function loadCumulativeRecords() {
+  const merged = new Map();
+  HISTORICAL_RECORDS.forEach(record => merged.set(String(record.fixtureId), record));
+  loadRecords().forEach(record => merged.set(String(record.fixtureId), record));
+  return [...merged.values()].sort((a,b) => recordTime(a)-recordTime(b));
+}
+
 function dateLabel(record) {
   try {
     return new Intl.DateTimeFormat(undefined, {day:'2-digit',month:'short',year:'2-digit'}).format(new Date(record.kickoffUtc ?? record.pickDate));
@@ -83,7 +92,7 @@ function marketCell(label, market) {
   return `<b>${escapeHtml(label)}: ${escapeHtml(market?.pick || '—')}</b><br><small>Odds ${escapeHtml(formatOdds(market?.odds))} · ${Number(market?.confidence || 0)}% · ${escapeHtml(marketResultText(market))}</small>`;
 }
 function render() {
-  const records = loadRecords();
+  const records = loadCumulativeRecords();
   const summary = buildSummary(records);
   const markets = buildMarketSummary(records);
   $('#total').textContent = summary.total;
@@ -101,9 +110,9 @@ function render() {
   ].join('');
 
   renderPerformanceChart(records);
-  $('#historyRows').innerHTML = records.map((record,index) => `
+  $('#historyRows').innerHTML = [...records].reverse().map((record,index) => `
     <tr>
-      <td>${index+1}</td>
+      <td>${records.length-index}</td>
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}<br><small>${escapeHtml(record.league)}</small></td>
       <td><b>${escapeHtml(record.pickLabel || record.pick)}</b><br><small>Odds ${formatOdds(record.odds)} · ${record.confidence}%</small></td>
       <td>${marketCell('BTTS', record.markets?.btts)}</td>
