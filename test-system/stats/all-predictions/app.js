@@ -33,11 +33,11 @@ function resultText(outcome) {
   return ({
     correct: 'Correct',
     incorrect: 'Incorrect',
-    win: 'Win',
-    'half-win': 'Half Win',
+    win: 'Correct',
+    'half-win': 'Correct',
     push: 'Push',
-    'half-loss': 'Half Loss',
-    loss: 'Loss',
+    'half-loss': 'Incorrect',
+    loss: 'Incorrect',
     void: 'Void',
     pending: 'Pending'
   })[key] || 'Pending';
@@ -95,8 +95,8 @@ function collectPredictions(records) {
 }
 
 function summarize(predictions) {
-  let positive = 0;
-  let negative = 0;
+  let correct = 0;
+  let incorrect = 0;
   let push = 0;
   let voids = 0;
   let pending = 0;
@@ -106,18 +106,18 @@ function summarize(predictions) {
   for (const prediction of predictions) {
     const outcome = prediction.outcome;
     if (outcome === 'correct' || outcome === 'win') {
-      positive += 1;
+      correct += 1;
       weightedPoints += 1;
       decisions += 1;
     } else if (outcome === 'half-win') {
-      positive += 1;
+      correct += 1;
       weightedPoints += 0.5;
       decisions += 1;
     } else if (outcome === 'incorrect' || outcome === 'loss') {
-      negative += 1;
+      incorrect += 1;
       decisions += 1;
     } else if (outcome === 'half-loss') {
-      negative += 1;
+      incorrect += 1;
       decisions += 1;
     } else if (outcome === 'push') {
       push += 1;
@@ -136,8 +136,8 @@ function summarize(predictions) {
   return {
     total: predictions.length,
     settled: predictions.length - pending,
-    positive,
-    negative,
+    correct,
+    incorrect,
     push,
     voids,
     pending,
@@ -159,8 +159,8 @@ function render() {
 
   $('#total').textContent = summary.total;
   $('#settled').textContent = summary.settled;
-  $('#positive').textContent = summary.positive;
-  $('#negative').textContent = summary.negative;
+  $('#correct').textContent = summary.correct;
+  $('#incorrect').textContent = summary.incorrect;
   $('#push').textContent = summary.push;
   $('#void').textContent = summary.voids;
   $('#pending').textContent = summary.pending;
@@ -182,7 +182,7 @@ function render() {
     return `<a class="market-stat market-stat-link" href="${links[market]}">
       <small>${escapeHtml(market)}</small>
       <b>${item.total} Predictions · ${item.settled} Settled</b>
-      <span>Positive ${item.positive} · Negative ${item.negative} · Pending ${item.pending}</span>
+      <span>Correct ${item.correct} · Incorrect ${item.incorrect} · Pending ${item.pending}</span>
       <span class="market-odds-line">Average Odds ${escapeHtml(average)} · ${item.recordedOdds} recorded</span>
     </a>`;
   }).join('');
