@@ -10,11 +10,22 @@ import {
 } from './shared.js?v=202608051120';
 
 const $ = selector => document.querySelector(selector);
-const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
+const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
 })[char]);
 const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Odds Pending';
 const LIVE = new Set(['1H','HT','2H','ET','BT','P','INT','LIVE']);
+
+function formatMarketOdds(market) {
+  if (Number(market?.odds) > 0) {
+    const suffix = String(market?.oddsStatus || '').toUpperCase() === 'BACKFILLED'
+      ? ' · Backfilled'
+      : '';
+    return `${Number(market.odds).toFixed(2)}${suffix}`;
+  }
+  const status = String(market?.oddsStatus || '').toUpperCase();
+  return ['N/A', 'UNAVAILABLE'].includes(status) ? 'N/A' : 'Odds Pending';
+}
 
 function loadDisplayRecords() {
   const records = loadRecords();
@@ -66,7 +77,7 @@ function renderMarket(label, market) {
       <small>${escapeHtml(label)}</small>
       <b>${escapeHtml(market?.pick || '—')}</b>
       <span class="market-meta">
-        <em class="${pendingOdds ? 'odds-pending' : ''}">${escapeHtml(formatOdds(market?.odds))}</em>
+        <em class="${pendingOdds ? 'odds-pending' : ''}">${escapeHtml(formatMarketOdds(market))}</em>
         <em>Confidence ${Number(market?.confidence || 0)}%</em>
         <em>${escapeHtml(marketResultText(market))}</em>
       </span>
