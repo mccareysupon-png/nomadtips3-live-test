@@ -8,15 +8,25 @@
 
   const finite=value=>value!==null&&value!==''&&Number.isFinite(Number(value));
   const same=(a,b)=>String(a??'')===String(b??'');
+  const jsonSame=(a,b)=>JSON.stringify(a??null)===JSON.stringify(b??null);
   const parsedTime=value=>{
     const timestamp=Date.parse(value||'');
     return Number.isFinite(timestamp)?timestamp:null;
   };
+  const mergeMarket=(base,incoming)=>({
+    ...(base||{}),
+    ...(incoming||{}),
+    pick:incoming?.pick??base?.pick??'—',
+    odds:finite(incoming?.odds)?Number(incoming.odds):(finite(base?.odds)?Number(base.odds):null),
+    oddsStatus:incoming?.oddsStatus??base?.oddsStatus??(finite(incoming?.odds)||finite(base?.odds)?'LOCKED':'PENDING'),
+    confidence:Number(incoming?.confidence??base?.confidence??0),
+    outcome:incoming?.outcome??base?.outcome??'pending',
+    settlement:incoming?.settlement??base?.settlement??null
+  });
 
   function ensureDelayBanner(){
     let banner=document.getElementById('nomad-live-delay');
     if(banner)return banner;
-
     if(!document.getElementById('nomad-live-delay-style')){
       const style=document.createElement('style');
       style.id='nomad-live-delay-style';
@@ -28,7 +38,6 @@
       `;
       document.head.appendChild(style);
     }
-
     banner=document.createElement('div');
     banner.id='nomad-live-delay';
     banner.hidden=true;
@@ -58,7 +67,6 @@
       document.documentElement.removeAttribute('data-live-data');
       return;
     }
-
     document.documentElement.setAttribute('data-live-data','delayed');
     const detail=banner.querySelector('span');
     if(generatedAt!==null){
@@ -95,9 +103,16 @@
         const confirmed=Boolean(result.resultConfirmed);
         const autoVoid=Boolean(result.autoVoid);
         const previousAutoVoid=Boolean(pick.resultAutoVoid);
+        const incomingMarkets=result.markets||{};
+        const nextMarkets={
+          btts:mergeMarket(pick.markets?.btts,incomingMarkets.btts),
+          doubleChance:mergeMarket(pick.markets?.doubleChance,incomingMarkets.doubleChance),
+          asianHandicap:mergeMarket(pick.markets?.asianHandicap,incomingMarkets.asianHandicap)
+        };
 
         const next={
           ...pick,
+          providerFixtureId:result.providerFixtureId||pick.providerFixtureId||null,
           kickoffUtc:result.kickoffUtc||pick.kickoffUtc,
           homeScore:finite(result.homeScore)?Number(result.homeScore):null,
           awayScore:finite(result.awayScore)?Number(result.awayScore):null,
@@ -106,7 +121,8 @@
           elapsed:result.elapsed??null,
           resultSource:result.resultSource||pick.resultSource||'API-FOOTBALL',
           resultUpdatedAt:result.updatedAt||feed.generatedAt,
-          resultAutoVoid:autoVoid
+          resultAutoVoid:autoVoid,
+          markets:nextMarkets
         };
 
         if(confirmed){
@@ -123,12 +139,13 @@
           next.outcome='pending';
         }
 
-        const fields=['kickoffUtc','homeScore','awayScore','matchStatus','matchStatusLong','elapsed','resultSource','resultUpdatedAt','resultAutoVoid','status','resultConfirmed','outcome'];
-        if(fields.some(field=>!same(pick[field],next[field])))changed=true;
+        const fields=['providerFixtureId','kickoffUtc','homeScore','awayScore','matchStatus','matchStatusLong','elapsed','resultSource','resultUpdatedAt','resultAutoVoid','status','resultConfirmed','outcome'];
+        if(fields.some(field=>!same(pick[field],next[field]))||!jsonSame(pick.markets,next.markets))changed=true;
         return next;
       });
 
       state.resultFeedSummary=feed.summary||null;
+      state.marketFeedSummary=feed.marketSummary||null;
       state.resultFeedGeneratedAt=feed.generatedAt||null;
       if(feed.summary?.allSettled){
         state.batchStatus='FINALIZED';
@@ -137,10 +154,8 @@
         state.batchStatus='IN_PROGRESS';
       }
 
-      if(!changed){
-        localStorage.setItem(KEY,JSON.stringify(state));
-        return;
-      }
+      localStorage.setItem(KEY,JSON.stringify(state));
+      if(!changed)return;
       state.updatedAt=feed.generatedAt||new Date().toISOString();
       localStorage.setItem(KEY,JSON.stringify(state));
       window.dispatchEvent(new Event('nomad-results-updated'));
