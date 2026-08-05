@@ -1,12 +1,17 @@
 import {
   buildMarketSummary,
   buildSummary,
-  loadRecords,
   marketResultText,
   resultText,
   scoreText
 } from '../shared.js?v=202608051120';
-import { HISTORICAL_RECORDS } from '../history.js?v=202608051145';
+import {
+  adaptiveChartWidth,
+  dateLabel,
+  loadCumulativeRecords,
+  recordTime,
+  selectChartRange
+} from './cumulative.js?v=202608051149';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
@@ -14,83 +19,97 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
 })[char]);
 const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Pending';
 const settledOutcomes = new Set(['correct','incorrect']);
+let chartRange = '20';
 let lastChartSignature = '';
 
-function recordTime(record) {
-  const time = new Date(record.kickoffUtc ?? record.pickDate ?? 0).getTime();
-  return Number.isFinite(time) ? time : 0;
-}
-
-function loadCumulativeRecords() {
-  const merged = new Map();
-  HISTORICAL_RECORDS.forEach(record => merged.set(String(record.fixtureId), record));
-  loadRecords().forEach(record => merged.set(String(record.fixtureId), record));
-  return [...merged.values()].sort((a,b) => recordTime(a)-recordTime(b));
-}
-
-function dateLabel(record) {
-  try {
-    return new Intl.DateTimeFormat(undefined, {day:'2-digit',month:'short',year:'2-digit'}).format(new Date(record.kickoffUtc ?? record.pickDate));
-  } catch {
-    return record.pickDate ?? '—';
-  }
-}
 function pathFor(points, key, xFor, yFor) {
   return points.map((point, index) => `${index ? 'L' : 'M'}${xFor(index).toFixed(2)},${yFor(point[key]).toFixed(2)}`).join(' ');
 }
+
 function renderPerformanceChart(records) {
   const host = $('#performanceChart');
   if (!host) return;
-  const settled = records.filter(record => settledOutcomes.has(record.outcome)).sort((a,b) => recordTime(a)-recordTime(b));
-  const signature = settled.map(record => `${record.fixtureId}:${record.outcome}:${record.homeScore}:${record.awayScore}`).join('|');
+
+  const allSettled = records
+    .filter(record => settledOutcomes.has(record.outcome))
+    .sort((a, b) => recordTime(a) - recordTime(b));
+  const { before, visible } = selectChartRange(allSettled, chartRange);
+  const signature = `${chartRange}|${allSettled.map(record => `${record.fixtureId}:${record.outcome}:${record.homeScore}:${record.awayScore}`).join('|')}`;
   if (signature === lastChartSignature) return;
   lastChartSignature = signature;
-  if (!settled.length) {
+
+  document.querySelectorAll('[data-chart-range]').forEach(button => {
+    button.classList.toggle('active', button.dataset.chartRange === chartRange);
+  });
+
+  if (!allSettled.length) {
     host.style.width = '100%';
     host.innerHTML = '<div class="chart-empty">The cumulative 1X2 chart will begin when the first official result is confirmed.</div>';
     $('#chartMeta').textContent = '0 settled results';
     return;
   }
-  let correct = 0;
-  let incorrect = 0;
-  const points = [{correct:0,incorrect:0,label:'Start'}];
-  settled.forEach(record => {
+
+  let correct = before.filter(record => record.outcome === 'correct').length;
+  let incorrect = before.filter(record => record.outcome === 'incorrect').length;
+  const points = [{ correct, incorrect, label: 'Start' }];
+
+  visible.forEach(record => {
     if (record.outcome === 'correct') correct += 1;
     if (record.outcome === 'incorrect') incorrect += 1;
-    points.push({correct,incorrect,label:dateLabel(record),record});
+    points.push({ correct, incorrect, label: dateLabel(record), record });
   });
-  const count = settled.length;
-  const width = Math.max(900, 82 + count * 22);
+
+  const count = visible.length;
+  const width = adaptiveChartWidth(host, count, chartRange);
   const height = 320;
-  const margin = {top:20,right:24,bottom:48,left:44};
+  const margin = { top:20, right:24, bottom:48, left:44 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const maxValue = Math.max(5,correct,incorrect);
+  const maxValue = Math.max(5, correct, incorrect);
   const xFor = index => margin.left + (index / Math.max(1, points.length - 1)) * plotWidth;
   const yFor = value => margin.top + plotHeight - (value / maxValue) * plotHeight;
-  const horizontalGrid = Array.from({length:6}, (_, index) => {
+
+  const horizontalGrid = Array.from({ length:6 }, (_, index) => {
     const value = Math.round((maxValue / 5) * index);
     const y = yFor(value);
     return `<line class="chart-grid" x1="${margin.left}" y1="${y}" x2="${width-margin.right}" y2="${y}"></line><text class="chart-label" x="${margin.left-8}" y="${y+3}" text-anchor="end">${value}</text>`;
   }).join('');
-  const correctPath = pathFor(points,'correct',xFor,yFor);
-  const incorrectPath = pathFor(points,'incorrect',xFor,yFor);
+
+  const labelStep = Math.max(1, Math.ceil(visible.length / 6));
+  const dateLabels = visible.map((record, index) => {
+    const show = index === visible.length - 1 || index % labelStep === 0;
+    return show ? `<text class="chart-date" x="${xFor(index + 1)}" y="${height - 22}" text-anchor="middle">${escapeHtml(dateLabel(record))}</text>` : '';
+  }).join('');
+
   host.style.width = `${width}px`;
   host.innerHTML = `<svg viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Cumulative 1X2 results">
     ${horizontalGrid}
     <line class="chart-axis" x1="${margin.left}" y1="${height-margin.bottom}" x2="${width-margin.right}" y2="${height-margin.bottom}"></line>
     <line class="chart-axis" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height-margin.bottom}"></line>
-    <path class="chart-correct" d="${correctPath}"></path>
-    <path class="chart-incorrect" d="${incorrectPath}"></path>
+    <path class="chart-correct" d="${pathFor(points, 'correct', xFor, yFor)}"></path>
+    <path class="chart-incorrect" d="${pathFor(points, 'incorrect', xFor, yFor)}"></path>
+    ${dateLabels}
   </svg>`;
-  $('#chartMeta').textContent = `${count} settled results · Correct ${correct} · Incorrect ${incorrect}`;
+
+  const rangeText = visible.length === allSettled.length
+    ? `All ${allSettled.length}`
+    : `Latest ${visible.length} of ${allSettled.length}`;
+  $('#chartMeta').textContent = `${rangeText} settled · Correct ${correct} · Incorrect ${incorrect}`;
+
+  requestAnimationFrame(() => {
+    const viewport = host.closest('.chart-viewport');
+    if (viewport) viewport.scrollLeft = viewport.scrollWidth;
+  });
 }
-function marketCard(title, stats, detail) {
-  return `<div class="market-stat"><small>${escapeHtml(title)}</small><b>${escapeHtml(detail)}</b><span>Pending ${stats.pending ?? 0} · Accuracy ${(stats.accuracy ?? stats.weightedRate ?? 0).toFixed(2)}%</span></div>`;
+
+function marketCard(title, stats, detail, href, active = false) {
+  return `<a class="market-stat market-stat-link ${active ? 'active' : ''}" href="${href}"><small>${escapeHtml(title)}</small><b>${escapeHtml(detail)}</b><span>Pending ${stats.pending ?? 0} · Accuracy ${(stats.accuracy ?? stats.weightedRate ?? 0).toFixed(2)}%</span></a>`;
 }
+
 function marketCell(label, market) {
   return `<b>${escapeHtml(label)}: ${escapeHtml(market?.pick || '—')}</b><br><small>Odds ${escapeHtml(formatOdds(market?.odds))} · ${Number(market?.confidence || 0)}% · ${escapeHtml(marketResultText(market))}</small>`;
 }
+
 function render() {
   const records = loadCumulativeRecords();
   const summary = buildSummary(records);
@@ -103,14 +122,14 @@ function render() {
   $('#accuracy').textContent = `${summary.accuracy.toFixed(2)}%`;
 
   $('#marketStats').innerHTML = [
-    marketCard('1X2 — Main Pick', markets.oneXTwo, `${markets.oneXTwo.correct} Correct · ${markets.oneXTwo.incorrect} Incorrect`),
-    marketCard('BTTS', markets.btts, `${markets.btts.correct} Correct · ${markets.btts.incorrect} Incorrect`),
-    marketCard('Double Chance', markets.doubleChance, `${markets.doubleChance.correct} Correct · ${markets.doubleChance.incorrect} Incorrect`),
-    `<div class="market-stat"><small>Asian Handicap</small><b>W ${markets.asianHandicap.win} · HW ${markets.asianHandicap.halfWin} · P ${markets.asianHandicap.push} · HL ${markets.asianHandicap.halfLoss} · L ${markets.asianHandicap.loss}</b><span>Pending ${markets.asianHandicap.pending} · Weighted Rate ${markets.asianHandicap.weightedRate.toFixed(2)}%</span></div>`
+    marketCard('1X2 — Main Pick', markets.oneXTwo, `${markets.oneXTwo.correct} Correct · ${markets.oneXTwo.incorrect} Incorrect`, './', true),
+    marketCard('BTTS', markets.btts, `${markets.btts.correct} Correct · ${markets.btts.incorrect} Incorrect`, './btts/'),
+    marketCard('Double Chance', markets.doubleChance, `${markets.doubleChance.correct} Correct · ${markets.doubleChance.incorrect} Incorrect`, './double-chance/'),
+    `<a class="market-stat market-stat-link" href="./asian-handicap/"><small>Asian Handicap</small><b>W ${markets.asianHandicap.win} · HW ${markets.asianHandicap.halfWin} · P ${markets.asianHandicap.push} · HL ${markets.asianHandicap.halfLoss} · L ${markets.asianHandicap.loss}</b><span>Pending ${markets.asianHandicap.pending} · Weighted Rate ${markets.asianHandicap.weightedRate.toFixed(2)}%</span></a>`
   ].join('');
 
   renderPerformanceChart(records);
-  $('#historyRows').innerHTML = [...records].reverse().map((record,index) => `
+  $('#historyRows').innerHTML = [...records].reverse().map((record, index) => `
     <tr>
       <td>${records.length-index}</td>
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}<br><small>${escapeHtml(record.league)}</small></td>
@@ -122,6 +141,15 @@ function render() {
       <td>${escapeHtml(resultText(record))}</td>
     </tr>`).join('');
 }
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-chart-range]');
+  if (!button) return;
+  chartRange = button.dataset.chartRange || '20';
+  lastChartSignature = '';
+  render();
+});
+
 render();
 window.addEventListener('storage', render);
 window.addEventListener('nomad-results-updated', render);
