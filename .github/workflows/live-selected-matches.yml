@@ -38,9 +38,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          # GitHub cron starts every five minutes. Each run stays below the next
-          # schedule boundary, preventing cancellation gaps and queue build-up.
-          # Detailed statistics/events refresh every two minutes.
           for cycle in $(seq 0 7); do
             if (( cycle % 4 == 0 )); then
               export DETAIL_REFRESH=1
@@ -59,7 +56,7 @@ jobs:
             done
             test "$refreshed" -eq 1
 
-            git add live-data-*.json live-matches.json result-feed.json
+            git add selected-live-matches.json live-data-*.json live-matches.json result-feed.json
             if ! git diff --cached --quiet; then
               git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
               pushed=0
@@ -83,8 +80,6 @@ jobs:
               break
             fi
 
-            # Outside the live window, one full check every five minutes is
-            # enough. The next scheduled or chained run will take over.
             if [ "$live" -eq 0 ] && { [ "$next" -lt 0 ] || [ "$next" -gt 900 ]; }; then
               echo 'No live match or kickoff within fifteen minutes.'
               break
@@ -117,8 +112,6 @@ jobs:
             exit 0
           fi
 
-          # When kickoff is still some distance away, hand over at roughly the
-          # same cadence as cron instead of dispatching immediately in a loop.
           if [ "$live" -eq 0 ] && { [ "$next" -lt 0 ] || [ "$next" -gt 900 ]; }; then
             sleep 240
           fi
