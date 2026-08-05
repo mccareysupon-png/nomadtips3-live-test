@@ -11,7 +11,7 @@ const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
 })[char]);
-const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Unavailable';
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'No Odds Data';
 const marketKey = document.body.dataset.market || 'btts';
 const isAsian = marketKey === 'asianHandicap';
 let chartRange = '20';
@@ -39,6 +39,38 @@ function settledMarketRecords(records) {
       ? ['win','half-win','push','half-loss','loss','correct','incorrect','void'].includes(outcome)
       : ['correct','incorrect','void'].includes(outcome);
   }).sort((a, b) => recordTime(a) - recordTime(b));
+}
+
+function averageOdds(records) {
+  const values = records
+    .filter(record => {
+      const outcome = String(marketFor(record)?.outcome || 'pending');
+      return isAsian
+        ? ['win','half-win','push','half-loss','loss','correct','incorrect'].includes(outcome)
+        : ['correct','incorrect'].includes(outcome);
+    })
+    .map(record => Number(marketFor(record)?.odds))
+    .filter(value => Number.isFinite(value) && value > 0);
+  return {
+    count: values.length,
+    text: values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : 'No Odds Data'
+  };
+}
+
+function renderAverageOddsStrip(records) {
+  const summary = document.querySelector('.summary');
+  if (!summary) return;
+  let strip = $('#averageOddsStrip');
+  if (!strip) {
+    strip = document.createElement('div');
+    strip.id = 'averageOddsStrip';
+    strip.className = 'average-odds-strip';
+    summary.insertAdjacentElement('afterend', strip);
+  }
+  const average = averageOdds(records);
+  strip.innerHTML = average.count
+    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from ${average.count} settled ${escapeHtml(config.title)} predictions with recorded odds</small>`
+    : `<span>Average Odds (Settled)</span><strong>No Odds Data</strong><small>No settled ${escapeHtml(config.title)} prediction has a recorded odds value</small>`;
 }
 
 function standardSummary(records) {
@@ -221,6 +253,7 @@ function renderHistory(records) {
 function render() {
   const records = loadCumulativeRecords();
   renderSummary(records);
+  renderAverageOddsStrip(records);
   renderChart(records);
   renderHistory(records);
 }
