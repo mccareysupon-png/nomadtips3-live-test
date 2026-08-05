@@ -1,5 +1,5 @@
 export const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
-export const DATASET_ID = 'manual-test-v2-day7-2026-08-05-v3';
+export const DATASET_ID = 'manual-test-v2-day7-2026-08-05-v4';
 
 const checks = Object.freeze({
   recentForm: true,
@@ -52,24 +52,24 @@ export const DEFAULT_PICKS = Object.freeze([
     checks
   },
   {
-    fixtureId: 'DAY7-RANGERS-SLAVIA',
+    fixtureId: 'DAY7-SLAVIA-RANGERS',
     pickDate: '2026-08-05',
     league: "UEFA Women's Champions League Qualifying",
-    home: 'Rangers Women',
-    away: 'Slavia Praha Women',
+    home: 'Slavia Praha Women',
+    away: 'Rangers Women',
     kickoffUtc: '2026-08-05T18:30:00.000Z',
-    pick: 'AWAY',
+    pick: 'HOME',
     pickLabel: 'Slavia Praha Women Win',
     odds: 1.80,
     bookmaker: 'Locked market',
     confidence: 56,
-    predictedScore: '1–2',
+    predictedScore: '2–1',
     markets: {
       btts: pendingMarket('Yes', 58),
-      doubleChance: pendingMarket('X2 — Slavia or Draw', 66),
+      doubleChance: pendingMarket('1X — Slavia or Draw', 66),
       asianHandicap: pendingMarket('Slavia 0', 60)
     },
-    reason: 'Slavia produced strong July scoring results and carries the higher recent attacking level. Rangers has home-tournament advantage, so the safer secondary positions are X2 and Slavia 0.',
+    reason: 'UEFA records Slavia Praha as the home-designated team, although the mini-tournament is hosted at Broadwood. Slavia carries the stronger recent attacking level; the safer secondary positions are 1X and Slavia 0.',
     abcResult: 'LIMITED — no reliable like-for-like common-opponent sample',
     source: 'NOMAD SYSTEM · MANUAL TEST V.2',
     status: 'WAITING_FOR_RESULT',
