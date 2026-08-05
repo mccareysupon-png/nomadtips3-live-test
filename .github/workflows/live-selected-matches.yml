@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/live-selected-matches.yml'
       - '.github/scripts/refresh_live_selected.py'
+      - '.github/scripts/enrich_selected_odds.py'
       - 'selected-live-matches.json'
   schedule:
     - cron: '*/5 * * * *'
@@ -30,13 +31,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Refresh selected scores frequently while live
+      - name: Refresh selected scores and lock available odds
         shell: bash
         run: |
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          odds_refreshed=0
+          for attempt in 1 2 3; do
+            if python3 .github/scripts/enrich_selected_odds.py; then
+              odds_refreshed=1
+              break
+            fi
+            echo "Odds refresh attempt ${attempt} failed; retrying automatically."
+            sleep $((attempt * 5))
+          done
+          test "$odds_refreshed" -eq 1
 
           for cycle in $(seq 0 7); do
             if (( cycle % 4 == 0 )); then
@@ -58,7 +70,7 @@ jobs:
 
             git add selected-live-matches.json live-data-*.json live-matches.json result-feed.json
             if ! git diff --cached --quiet; then
-              git commit -m "Live score refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              git commit -m "Live score and odds refresh $(date -u +%Y-%m-%dT%H:%M:%SZ)"
               pushed=0
               for attempt in 1 2 3; do
                 if git pull --rebase origin main && git push origin main; then
