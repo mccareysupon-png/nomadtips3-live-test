@@ -4,6 +4,9 @@
   const WORKER='https://nomadtips3-test-api.mccarey-supon.workers.dev';
   const LOCK_KEY='nomadtips3.live-engine-test.fixture.v1';
   const CARD_ID='cloudflareLiveTestCard';
+  const TARGET_MATCHES=3;
+  const SWITCH_DELAY_MS=20000;
+  const FINAL_DISPLAY_MS=120000;
   const TERMINAL=new Set(['FT','AET','PEN','CANC','ABD','AWD','WO','PST']);
   const host=document.getElementById('matches');
   const palette=['#2563eb','#dc2626','#f59e0b','#16a34a','#7c3aed','#0891b2','#e11d48','#f97316'];
@@ -35,11 +38,37 @@
     }
   }
 
-  function readLock(){
-    try{return JSON.parse(localStorage.getItem(LOCK_KEY)||'null')}catch{return null}
+  function normalizeSession(raw){
+    const source=raw&&typeof raw==='object'?raw:{};
+    let fixtureId=source.fixtureId?String(source.fixtureId):null;
+    const completedIds=[...new Set((Array.isArray(source.completedIds)?source.completedIds:[]).map(String))];
+    let completedAt=Number(source.completedAt)||null;
+
+    // Migrate the original one-match test after it has already finished.
+    if(completedAt&&fixtureId&&!completedIds.includes(fixtureId)){
+      completedIds.push(fixtureId);
+      fixtureId=null;
+      completedAt=null;
+    }
+
+    if(completedIds.length<TARGET_MATCHES)completedAt=null;
+    return {
+      version:2,
+      targetTotal:TARGET_MATCHES,
+      fixtureId,
+      startedAt:Number(source.startedAt)||null,
+      completedIds:completedIds.slice(0,TARGET_MATCHES),
+      transitionAt:Number(source.transitionAt)||null,
+      completedAt
+    };
   }
 
-  function writeLock(value){localStorage.setItem(LOCK_KEY,JSON.stringify(value))}
+  function readSession(){
+    try{return normalizeSession(JSON.parse(localStorage.getItem(LOCK_KEY)||'null'))}
+    catch{return normalizeSession(null)}
+  }
+
+  function writeSession(value){localStorage.setItem(LOCK_KEY,JSON.stringify(normalizeSession(value)))}
 
   function shirtColor(name,avoid=''){
     let hash=0;
@@ -73,7 +102,7 @@
       <section class="panel" data-panel="timeline"><div data-k="events" class="event-list"><p class="empty">No events yet.</p></div></section>
       <section class="pick"><div><small>TEST MODE</small><b>NOT COUNTED</b></div><div><small>PROVIDER</small><b>API-FOOTBALL</b></div><div><small>ROUTE</small><b>CLOUDFLARE</b></div></section>
       <section class="markets"><div><small>MAIN PICKS</small><b>ISOLATED</b></div><div><small>STATISTICS</small><b>EXCLUDED</b></div><div><small>POSTER</small><b>EXCLUDED</b></div><div><small>REFRESH</small><b>25 SEC</b></div></section>
-      <section class="reason"><small>CLOUDFLARE TEST NOTE</small><p>Temporary live fixture used only to verify LIVE → SCORE → FT. It is excluded from Match Predictions, Statistics and Analysis Poster.</p></section>
+      <section class="reason"><small>CLOUDFLARE TEST NOTE</small><p data-k="reason">Temporary live fixture used only to verify LIVE → SCORE → FT. It is excluded from Match Predictions, Statistics and Analysis Poster.</p></section>
       <footer><span data-k="updated">Waiting for update</span><span>Cloudflare Worker · isolated test</span></footer>
     </article>`;
   }
@@ -127,7 +156,40 @@
     };
   }
 
-  function render(data){
+  function updateProgress(session,waiting=false){
+    const count=document.getElementById('matchCount');
+    if(!count)return;
+    const completed=session.completedIds.length;
+    if(completed>=TARGET_MATCHES){
+      count.textContent=`LIVE ENGINE TEST · ${TARGET_MATCHES}/${TARGET_MATCHES} COMPLETE`;
+      return;
+    }
+    const current=Math.min(TARGET_MATCHES,completed+1);
+    count.textContent=waiting
+      ?`LIVE ENGINE TEST · WAITING ${current}/${TARGET_MATCHES}`
+      :`LIVE ENGINE TEST · MATCH ${current}/${TARGET_MATCHES} · NOT COUNTED`;
+  }
+
+  function showWaiting(session,message='Searching for the next live fixture'){
+    const card=ensureCard();
+    field(card,'league').textContent='CLOUDFLARE · LIVE ENGINE TEST';
+    field(card,'status').textContent='WAITING';
+    field(card,'status').className='status waiting';
+    field(card,'minute').textContent='WAITING';
+    field(card,'home').textContent='Next';
+    field(card,'away').textContent='Live Match';
+    field(card,'score').textContent='– : –';
+    field(card,'kickoff').textContent='Automatic queue active';
+    field(card,'latest').textContent=message;
+    field(card,'latestMinute').textContent='—';
+    field(card,'stats').innerHTML='<p class="empty">The system will continue automatically when another live fixture is available.</p>';
+    field(card,'events').innerHTML='<p class="empty">Waiting for the next test match.</p>';
+    field(card,'reason').textContent=`Continuous test queue: ${session.completedIds.length} of ${TARGET_MATCHES} matches completed. No result is added to official statistics.`;
+    field(card,'updated').textContent=`Checked ${new Date().toLocaleString()}`;
+    updateProgress(session,true);
+  }
+
+  function render(data,session){
     const match=data?.match;
     if(!match)return;
     const card=ensureCard();
@@ -158,44 +220,74 @@
     const latest=sortedEvents[0];
     field(card,'latest').textContent=latest?[latest.team,latest.type,latest.detail].filter(Boolean).join(' · '):'Cloudflare Worker connection active';
     field(card,'latestMinute').textContent=latest?`${latest.minute??'—'}′`:'—';
+    field(card,'reason').textContent=`Continuous Cloudflare test match ${Math.min(TARGET_MATCHES,session.completedIds.length+1)} of ${TARGET_MATCHES}. This card remains excluded from all official records.`;
     field(card,'updated').textContent=`Updated ${new Date(data.fetched_at_utc||Date.now()).toLocaleString()}`;
-
-    const count=document.getElementById('matchCount');
-    if(count)count.textContent='LIVE ENGINE TEST · 1 MATCH · NOT COUNTED';
+    updateProgress(session,false);
   }
 
   async function load(){
     if(loading||document.hidden)return;
     loading=true;
     try{
-      const lock=readLock();
-      if(lock?.completedAt&&Date.now()-Number(lock.completedAt)>120000){
-        document.getElementById(CARD_ID)?.remove();
+      let session=readSession();
+
+      if(session.completedIds.length>=TARGET_MATCHES){
+        if(!session.completedAt){session.completedAt=Date.now();writeSession(session)}
+        updateProgress(session,false);
+        if(Date.now()-session.completedAt>FINAL_DISPLAY_MS)document.getElementById(CARD_ID)?.remove();
         return;
       }
 
-      let data;
-      if(lock?.fixtureId){
-        data=fromFixture(await fetchJson(`${WORKER}/fixture?id=${encodeURIComponent(lock.fixtureId)}&t=${Date.now()}`));
-      }else{
-        data=await fetchJson(`${WORKER}/live-test?t=${Date.now()}`);
-        if(!data?.match){document.getElementById(CARD_ID)?.remove();return;}
-        cachedStats=data.match.stats||{};
-        cachedEvents=Array.isArray(data.match.events)?data.match.events:[];
-        writeLock({fixtureId:String(data.match.id),startedAt:Date.now(),completedAt:null});
+      if(session.transitionAt){
+        if(Date.now()<session.transitionAt){updateProgress(session,false);return}
+        session={...session,fixtureId:null,startedAt:null,transitionAt:null};
+        cachedStats={};
+        cachedEvents=[];
+        writeSession(session);
       }
 
-      if(!data?.match)return;
-      render(data);
+      let data;
+      if(session.fixtureId){
+        data=fromFixture(await fetchJson(`${WORKER}/fixture?id=${encodeURIComponent(session.fixtureId)}&t=${Date.now()}`));
+      }else{
+        data=await fetchJson(`${WORKER}/live-test?t=${Date.now()}`);
+        if(!data?.match){showWaiting(session);return}
+
+        const candidateId=String(data.match.id);
+        if(session.completedIds.includes(candidateId)){
+          showWaiting(session,'Waiting for API-FOOTBALL to release the completed fixture');
+          return;
+        }
+
+        cachedStats=data.match.stats||{};
+        cachedEvents=Array.isArray(data.match.events)?data.match.events:[];
+        session={...session,fixtureId:candidateId,startedAt:Date.now(),transitionAt:null};
+        writeSession(session);
+      }
+
+      if(!data?.match){showWaiting(session);return}
+      render(data,session);
+
       if(TERMINAL.has(String(data.match.status||'').toUpperCase())){
-        const current=readLock()||{};
-        if(!current.completedAt)writeLock({...current,completedAt:Date.now()});
+        const fixtureId=String(data.match.id||session.fixtureId||'');
+        const completedIds=[...new Set([...session.completedIds,fixtureId].filter(Boolean))].slice(0,TARGET_MATCHES);
+        const complete=completedIds.length>=TARGET_MATCHES;
+        session={
+          ...session,
+          completedIds,
+          transitionAt:complete?null:Date.now()+SWITCH_DELAY_MS,
+          completedAt:complete?Date.now():null
+        };
+        writeSession(session);
+        updateProgress(session,false);
       }
     }catch(error){
+      const session=readSession();
       const card=ensureCard();
       field(card,'status').textContent='RETRYING';
       field(card,'status').className='status error';
       field(card,'updated').textContent=String(error?.message||error);
+      updateProgress(session,true);
     }finally{
       loading=false;
     }
