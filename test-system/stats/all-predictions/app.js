@@ -222,6 +222,11 @@ function formatTHB(value, signed = false) {
   return `${sign}${number.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} THB`;
 }
 
+function formatPercent(value) {
+  const number = Number(value) || 0;
+  return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
+}
+
 function predictionProfitText(prediction) {
   const settlement = flatStakeSettlement(prediction);
   if (settlement.status === 'pending') return 'Pending';
@@ -252,7 +257,7 @@ function render() {
   $('#totalStaked').textContent = formatTHB(flat.totalStaked);
   $('#totalReturn').textContent = formatTHB(flat.totalReturn);
   $('#profitLoss').textContent = formatTHB(flat.profit, true);
-  $('#roi').textContent = `${flat.roi >= 0 ? '+' : ''}${flat.roi.toFixed(2)}%`;
+  $('#roi').textContent = formatPercent(flat.roi);
   $('#profitCoverage').textContent = flat.missingOdds
     ? `Calculated across every settled prediction with real Odds: ${flat.calculated} calculated · ${flat.missingOdds} older settled predictions excluded because no real Odds were recorded · ${flat.pending} pending.`
     : `Calculated across all settled predictions with real Odds: ${flat.calculated} calculated · ${flat.pending} pending.`;
@@ -266,15 +271,16 @@ function render() {
   $('#marketBreakdown').innerHTML = [...MARKET_ORDER.keys()].map(market => {
     const item = marketSummary(predictions, market);
     const average = item.averageOdds === null ? 'No Data' : item.averageOdds.toFixed(2);
-    const marketProfit = item.flatStake.calculated
-      ? `${formatTHB(item.flatStake.profit, true)} · ROI ${item.flatStake.roi >= 0 ? '+' : ''}${item.flatStake.roi.toFixed(2)}%`
-      : 'Profit/Loss No Odds Data';
+    const marketFlat = item.flatStake;
     return `<a class="market-stat market-stat-link" href="${links[market]}">
       <small>${escapeHtml(market)}</small>
       <b>${item.total} Predictions · ${item.settled} Settled</b>
       <span>Correct ${item.correct} · Incorrect ${item.incorrect} · Pending ${item.pending}</span>
       <span class="market-odds-line">Average Odds ${escapeHtml(average)} · ${item.recordedOdds} recorded</span>
-      <span class="market-odds-line">Flat 100 P/L ${escapeHtml(marketProfit)}</span>
+      <span>Calculated ${marketFlat.calculated} · Missing Odds ${marketFlat.missingOdds}</span>
+      <span>Staked ${escapeHtml(formatTHB(marketFlat.totalStaked))} · Return ${escapeHtml(formatTHB(marketFlat.totalReturn))}</span>
+      <span>Profit / Loss ${escapeHtml(formatTHB(marketFlat.profit, true))}</span>
+      <strong class="market-odds-line">${escapeHtml(formatPercent(marketFlat.roi))}</strong>
     </a>`;
   }).join('');
 
