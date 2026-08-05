@@ -17,10 +17,49 @@ const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
 })[char]);
-const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Pending';
+const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'No Odds Data';
 const settledOutcomes = new Set(['correct','incorrect']);
+const standardMarketSettled = new Set(['correct','incorrect']);
+const asianMarketSettled = new Set(['win','half-win','push','half-loss','loss','correct','incorrect']);
 let chartRange = '20';
 let lastChartSignature = '';
+
+function averageOdds(records, oddsGetter, settledPredicate) {
+  const values = records
+    .filter(settledPredicate)
+    .map(oddsGetter)
+    .map(Number)
+    .filter(value => Number.isFinite(value) && value > 0);
+  return {
+    count: values.length,
+    value: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+    text: values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : 'No Odds Data'
+  };
+}
+
+function marketAverage(records, key) {
+  const settledSet = key === 'asianHandicap' ? asianMarketSettled : standardMarketSettled;
+  return averageOdds(
+    records,
+    record => record.markets?.[key]?.odds,
+    record => settledSet.has(String(record.markets?.[key]?.outcome || 'pending'))
+  );
+}
+
+function renderAverageOddsStrip(average) {
+  const summary = document.querySelector('.summary');
+  if (!summary) return;
+  let strip = $('#averageOddsStrip');
+  if (!strip) {
+    strip = document.createElement('div');
+    strip.id = 'averageOddsStrip';
+    strip.className = 'average-odds-strip';
+    summary.insertAdjacentElement('afterend', strip);
+  }
+  strip.innerHTML = average.count
+    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from ${average.count} settled 1X2 predictions with recorded odds</small>`
+    : '<span>Average Odds (Settled)</span><strong>No Odds Data</strong><small>No settled 1X2 prediction has a recorded odds value</small>';
+}
 
 function pathFor(points, key, xFor, yFor) {
   return points.map((point, index) => `${index ? 'L' : 'M'}${xFor(index).toFixed(2)},${yFor(point[key]).toFixed(2)}`).join(' ');
@@ -102,8 +141,11 @@ function renderPerformanceChart(records) {
   });
 }
 
-function marketCard(title, stats, detail, href, active = false) {
-  return `<a class="market-stat market-stat-link ${active ? 'active' : ''}" href="${href}"><small>${escapeHtml(title)}</small><b>${escapeHtml(detail)}</b><span>Pending ${stats.pending ?? 0} · Accuracy ${(stats.accuracy ?? stats.weightedRate ?? 0).toFixed(2)}%</span></a>`;
+function marketCard(title, stats, detail, href, average, active = false) {
+  const oddsDetail = average.count
+    ? `Average Odds (Settled) ${average.text} · ${average.count} recorded`
+    : 'Average Odds (Settled) No Odds Data';
+  return `<a class="market-stat market-stat-link ${active ? 'active' : ''}" href="${href}"><small>${escapeHtml(title)}</small><b>${escapeHtml(detail)}</b><span>Pending ${stats.pending ?? 0} · Accuracy ${(stats.accuracy ?? stats.weightedRate ?? 0).toFixed(2)}%</span><span class="market-odds-line">${escapeHtml(oddsDetail)}</span></a>`;
 }
 
 function marketCell(label, market) {
@@ -114,18 +156,26 @@ function render() {
   const records = loadCumulativeRecords();
   const summary = buildSummary(records);
   const markets = buildMarketSummary(records);
+  const averages = {
+    oneXTwo: averageOdds(records, record => record.odds, record => settledOutcomes.has(record.outcome)),
+    btts: marketAverage(records, 'btts'),
+    doubleChance: marketAverage(records, 'doubleChance'),
+    asianHandicap: marketAverage(records, 'asianHandicap')
+  };
+
   $('#total').textContent = summary.total;
   $('#settled').textContent = summary.settled;
   $('#correct').textContent = summary.correct;
   $('#incorrect').textContent = summary.incorrect;
   $('#pending').textContent = summary.pending;
   $('#accuracy').textContent = `${summary.accuracy.toFixed(2)}%`;
+  renderAverageOddsStrip(averages.oneXTwo);
 
   $('#marketStats').innerHTML = [
-    marketCard('1X2 — Main Pick', markets.oneXTwo, `${markets.oneXTwo.correct} Correct · ${markets.oneXTwo.incorrect} Incorrect`, './', true),
-    marketCard('BTTS', markets.btts, `${markets.btts.correct} Correct · ${markets.btts.incorrect} Incorrect`, './btts/'),
-    marketCard('Double Chance', markets.doubleChance, `${markets.doubleChance.correct} Correct · ${markets.doubleChance.incorrect} Incorrect`, './double-chance/'),
-    `<a class="market-stat market-stat-link" href="./asian-handicap/"><small>Asian Handicap</small><b>W ${markets.asianHandicap.win} · HW ${markets.asianHandicap.halfWin} · P ${markets.asianHandicap.push} · HL ${markets.asianHandicap.halfLoss} · L ${markets.asianHandicap.loss}</b><span>Pending ${markets.asianHandicap.pending} · Weighted Rate ${markets.asianHandicap.weightedRate.toFixed(2)}%</span></a>`
+    marketCard('1X2 — Main Pick', markets.oneXTwo, `${markets.oneXTwo.correct} Correct · ${markets.oneXTwo.incorrect} Incorrect`, './', averages.oneXTwo, true),
+    marketCard('BTTS', markets.btts, `${markets.btts.correct} Correct · ${markets.btts.incorrect} Incorrect`, './btts/', averages.btts),
+    marketCard('Double Chance', markets.doubleChance, `${markets.doubleChance.correct} Correct · ${markets.doubleChance.incorrect} Incorrect`, './double-chance/', averages.doubleChance),
+    marketCard('Asian Handicap', markets.asianHandicap, `W ${markets.asianHandicap.win} · HW ${markets.asianHandicap.halfWin} · P ${markets.asianHandicap.push} · HL ${markets.asianHandicap.halfLoss} · L ${markets.asianHandicap.loss}`, './asian-handicap/', averages.asianHandicap)
   ].join('');
 
   renderPerformanceChart(records);
