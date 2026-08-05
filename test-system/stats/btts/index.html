@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#07543c">
+  <title>NOMADTIPS3 Test System — Cumulative BTTS Statistics</title>
+  <link rel="stylesheet" href="../../styles.css?v=202608051001">
+  <link rel="stylesheet" href="../../../brand.css?v=202608041153">
+  <link rel="stylesheet" href="../../../content-scale.css?v=202608041015">
+  <link rel="stylesheet" href="../../../draft-responsive.css?v=202608041140">
+  <link rel="stylesheet" href="../../../heading-scale.css?v=202608041200">
+  <link rel="stylesheet" href="../chart.css?v=202608051149">
+  <link rel="stylesheet" href="../../../terminology.css?v=202608041231">
+  <link rel="stylesheet" href="../../../site-footer.css?v=202608040844">
+  <link rel="stylesheet" href="../../../navigation-polish.css?v=202608041251">
+</head>
+<body data-market="btts">
+  <header class="topbar">
+    <a class="brand" href="../../" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
+    <span class="environment">TEST SYSTEM</span>
+  </header>
+
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">CUMULATIVE · BOTH TEAMS TO SCORE</span>
+        <h1>Cumulative BTTS Statistics</h1>
+        <p>Historical and current BTTS records are measured independently from 1X2 and other markets.</p>
+        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
+      </div>
+    </section>
+
+    <nav class="stats-subnav" aria-label="Statistics markets">
+      <a href="../">1X2</a>
+      <a class="active" href="../btts/">BTTS</a>
+      <a href="../double-chance/">Double Chance</a>
+      <a href="../asian-handicap/">Asian Handicap</a>
+    </nav>
+
+    <section class="summary">
+      <div class="metric" id="metric1Card"><small id="metric1Label">Total</small><b id="metric1">0</b></div>
+      <div class="metric" id="metric2Card"><small id="metric2Label">Settled</small><b id="metric2">0</b></div>
+      <div class="metric" id="metric3Card"><small id="metric3Label">Correct</small><b id="metric3">0</b></div>
+      <div class="metric" id="metric4Card"><small id="metric4Label">Incorrect</small><b id="metric4">0</b></div>
+      <div class="metric" id="metric5Card"><small id="metric5Label">Pending</small><b id="metric5">0</b></div>
+      <div class="metric" id="metric6Card"><small id="metric6Label">Accuracy</small><b id="metric6">0.00%</b></div>
+      <div class="metric" id="metric7Card" hidden><small id="metric7Label"></small><b id="metric7"></b></div>
+      <div class="metric" id="metric8Card" hidden><small id="metric8Label"></small><b id="metric8"></b></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>BTTS Performance</h2><small>Cumulative confirmed BTTS results in chronological order</small></div></div>
+      <div class="performance-toolbar">
+        <div class="performance-legend"><span class="correct-line"><i></i>Positive</span><span class="incorrect-line"><i></i>Negative</span></div>
+        <div class="chart-range" aria-label="Chart data range">
+          <button class="active" type="button" data-chart-range="20">20</button>
+          <button type="button" data-chart-range="50">50</button>
+          <button type="button" data-chart-range="100">100</button>
+          <button type="button" data-chart-range="ALL">ALL</button>
+        </div>
+        <span id="chartMeta" class="performance-meta">0 settled results</span>
+      </div>
+      <div class="chart-viewport" aria-label="Scrollable long-range BTTS chart"><div id="performanceChart" class="chart-stage"></div></div>
+      <div class="chart-footnote">More selected records use tighter point spacing. The chart remains horizontally scrollable and opens at the latest result.</div>
+    </section>
+
+    <section class="panel" style="margin-top:14px">
+      <div class="panel-head"><div><h2>BTTS History</h2><small>Archived and current BTTS records</small></div></div>
+      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>Match</th><th>BTTS Pick</th><th>Score</th><th>Result</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+    </section>
+  </main>
+
+  <nav class="main-nav" aria-label="Test system navigation">
+    <a href="../../">Match Predictions</a>
+    <a class="active" href="../">Statistics</a>
+    <a href="../../share/">Analysis Poster</a>
+    <a href="../../../">Live Analysis</a>
+  </nav>
+  <script src="../../../device-time-sync.js?v=202608041114"></script>
+  <script type="module" src="../market-app.js?v=202608051149"></script>
+  <script src="../../../remote-results.js?v=202608051110" defer></script>
+  <script src="../../../terminology.js?v=202608040954" defer></script>
+  <script src="../../../site-footer.js?v=202608041350"></script>
+</body>
+</html>
