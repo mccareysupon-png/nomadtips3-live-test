@@ -54,6 +54,16 @@ function stateClass(record) {
   return 'waiting';
 }
 
+function teamNameWithOdds(record, side) {
+  const teamName = side === 'HOME' ? record.home : record.away;
+  const selectedSide = String(record.pick || '').toUpperCase();
+  const odds = Number(record.odds);
+  const oddsHtml = selectedSide === side && odds > 0
+    ? ` <span style="display:inline-block;margin-left:6px;color:#f2c94c;font-size:11px;font-weight:900;white-space:nowrap">Odds ${escapeHtml(odds.toFixed(2))}</span>`
+    : '';
+  return `${escapeHtml(teamName)}${oddsHtml}`;
+}
+
 function renderMarket(label, market) {
   const pendingOdds = !Number(market?.odds);
   return `
@@ -94,9 +104,9 @@ function render() {
         <span class="state ${stateClass(record)}">${escapeHtml(displayResult(record))}</span>
       </header>
       <div class="teams">
-        <div class="team"><strong>${escapeHtml(record.home)}</strong><small>HOME</small></div>
+        <div class="team"><strong>${teamNameWithOdds(record, 'HOME')}</strong><small>HOME</small></div>
         <div class="score"><b>${escapeHtml(scoreText(record))}</b><small>${escapeHtml(formatKickoff(record.kickoffUtc))}</small></div>
-        <div class="team"><strong>${escapeHtml(record.away)}</strong><small>AWAY</small></div>
+        <div class="team"><strong>${teamNameWithOdds(record, 'AWAY')}</strong><small>AWAY</small></div>
       </div>
       <div class="pick-data">
         <div class="prediction-primary"><small>Main Pick · 1X2</small><b>${escapeHtml(record.pickLabel || record.pick)}</b></div>
