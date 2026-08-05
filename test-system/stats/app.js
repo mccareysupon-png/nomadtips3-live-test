@@ -5,7 +5,7 @@ import {
   marketResultText,
   resultText,
   scoreText
-} from '../shared.js?v=202608051001';
+} from '../shared.js?v=202608051120';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
