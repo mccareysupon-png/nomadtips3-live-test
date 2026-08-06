@@ -1,5 +1,5 @@
 export const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
-export const DATASET_ID = 'manual-test-v2-day8-2026-08-06-v1';
+export const DATASET_ID = 'manual-test-v2-day8-2026-08-06-v2';
 
 const checks = Object.freeze({
   recentForm: true,
@@ -25,7 +25,7 @@ const lockedMarket = (pick, odds, confidence, extra = {}) => Object.freeze({
 export const DEFAULT_PICKS = Object.freeze([
   {
     fixtureId: 'DAY8-HJK-MOTHERWELL',
-    providerFixtureId: null,
+    providerFixtureId: '1607586',
     pickDate: '2026-08-06',
     league: 'UEFA Conference League Qualifying',
     home: 'HJK Helsinki',
@@ -57,7 +57,7 @@ export const DEFAULT_PICKS = Object.freeze([
   },
   {
     fixtureId: 'DAY8-CHICAGO-NECAXA',
-    providerFixtureId: null,
+    providerFixtureId: '1530120',
     pickDate: '2026-08-06',
     league: 'Leagues Cup',
     home: 'Chicago Fire FC',
