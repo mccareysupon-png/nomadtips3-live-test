@@ -124,7 +124,7 @@
           "odds": null,
           "confidence": 58,
           "bookmaker": "N/A",
-          "oddsStatus": "N/A",
+          "oddsStatus": "PENDING",
           "oddsSource": "NOT FOUND",
           "oddsLockedAt": "2026-08-06T03:08:00Z"
         }
@@ -149,7 +149,7 @@
       "Double Chance",
       "Asian Handicap"
     ],
-    "lockRule": "approved manual snapshot is preserved; missing prices are shown as N/A and never estimated",
-    "source": "MANUAL LOCK"
+    "lockRule": "first real API price is preserved; missing prices are never estimated",
+    "source": "API-FOOTBALL"
   }
 }
