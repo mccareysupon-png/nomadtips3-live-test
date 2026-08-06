@@ -1,7 +1,6 @@
 import { loadCumulativeRecords, recordTime } from '../cumulative.js?v=202608051149';
 
 const $ = selector => document.querySelector(selector);
-const FLAT_STAKE = 100;
 const EMPTY_PICKS = new Set(['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL']);
 const MARKET_ORDER = new Map([
   ['1X2', 0],
@@ -61,7 +60,6 @@ function collectPredictions(records) {
     if (hasPrediction(record.pickLabel || record.pick)) {
       rows.push({
         ...base,
-        id: `${base.fixtureId}:1x2`,
         market: '1X2',
         pick: record.pickLabel || record.pick,
         odds: finiteOdds(record.odds),
@@ -79,7 +77,6 @@ function collectPredictions(records) {
       if (!value || !hasPrediction(value.pick)) continue;
       rows.push({
         ...base,
-        id: `${base.fixtureId}:${key}`,
         market,
         pick: value.pick,
         odds: finiteOdds(value.odds),
@@ -95,64 +92,43 @@ function collectPredictions(records) {
   });
 }
 
-function flatStakeSettlement(prediction) {
+function outcomeReturn(prediction) {
   const outcome = String(prediction.outcome || 'pending').toLowerCase();
   const odds = finiteOdds(prediction.odds);
   if (outcome === 'pending') return { status: 'pending' };
   if (odds === null) return { status: 'missing-odds' };
 
-  let returned = 0;
-  if (outcome === 'correct' || outcome === 'win') {
-    returned = FLAT_STAKE * odds;
-  } else if (outcome === 'half-win') {
-    returned = FLAT_STAKE + (FLAT_STAKE * (odds - 1) * 0.5);
-  } else if (outcome === 'incorrect' || outcome === 'loss') {
-    returned = 0;
-  } else if (outcome === 'half-loss') {
-    returned = FLAT_STAKE * 0.5;
-  } else if (outcome === 'push' || outcome === 'void') {
-    returned = FLAT_STAKE;
-  } else {
-    return { status: 'pending' };
-  }
-
-  return {
-    status: 'calculated',
-    stake: FLAT_STAKE,
-    returned,
-    profit: returned - FLAT_STAKE
-  };
+  if (outcome === 'correct' || outcome === 'win') return { status: 'calculated', value: odds };
+  if (outcome === 'half-win') return { status: 'calculated', value: 1 + ((odds - 1) * 0.5) };
+  if (outcome === 'incorrect' || outcome === 'loss') return { status: 'calculated', value: 0 };
+  if (outcome === 'half-loss') return { status: 'calculated', value: 0.5 };
+  if (outcome === 'push' || outcome === 'void') return { status: 'calculated', value: 1 };
+  return { status: 'pending' };
 }
 
-function calculateFlatStake(predictions) {
+function calculatePercentage(predictions) {
   let calculated = 0;
   let missingOdds = 0;
   let pending = 0;
-  let totalStaked = 0;
-  let totalReturn = 0;
+  let returned = 0;
 
   for (const prediction of predictions) {
-    const settlement = flatStakeSettlement(prediction);
-    if (settlement.status === 'calculated') {
+    const result = outcomeReturn(prediction);
+    if (result.status === 'calculated') {
       calculated += 1;
-      totalStaked += settlement.stake;
-      totalReturn += settlement.returned;
-    } else if (settlement.status === 'missing-odds') {
+      returned += result.value;
+    } else if (result.status === 'missing-odds') {
       missingOdds += 1;
     } else {
       pending += 1;
     }
   }
 
-  const profit = totalReturn - totalStaked;
   return {
     calculated,
     missingOdds,
     pending,
-    totalStaked,
-    totalReturn,
-    profit,
-    roi: totalStaked ? (profit / totalStaked) * 100 : 0
+    value: calculated ? ((returned - calculated) / calculated) * 100 : 0
   };
 }
 
@@ -175,10 +151,7 @@ function summarize(predictions) {
       correct += 1;
       weightedPoints += 0.5;
       decisions += 1;
-    } else if (outcome === 'incorrect' || outcome === 'loss') {
-      incorrect += 1;
-      decisions += 1;
-    } else if (outcome === 'half-loss') {
+    } else if (outcome === 'incorrect' || outcome === 'loss' || outcome === 'half-loss') {
       incorrect += 1;
       decisions += 1;
     } else if (outcome === 'push') {
@@ -206,20 +179,13 @@ function summarize(predictions) {
     rate: decisions ? (weightedPoints / decisions) * 100 : 0,
     averageOdds,
     recordedOdds: recordedOdds.length,
-    flatStake: calculateFlatStake(predictions)
+    percentage: calculatePercentage(predictions)
   };
 }
 
 function marketSummary(predictions, market) {
   const filtered = predictions.filter(item => item.market === market);
-  const summary = summarize(filtered);
-  return {...summary, market};
-}
-
-function formatTHB(value, signed = false) {
-  const number = Number(value) || 0;
-  const sign = signed && number > 0 ? '+' : '';
-  return `${sign}${number.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} THB`;
+  return { ...summarize(filtered), market };
 }
 
 function formatPercent(value) {
@@ -227,17 +193,16 @@ function formatPercent(value) {
   return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
 }
 
-function predictionProfitText(prediction) {
-  const settlement = flatStakeSettlement(prediction);
-  if (settlement.status === 'pending') return 'Pending';
-  if (settlement.status === 'missing-odds') return 'No Odds Data';
-  return formatTHB(settlement.profit, true);
+function signedStyle(value) {
+  const number = Number(value) || 0;
+  if (number > 0) return 'color:var(--green)';
+  if (number < 0) return 'color:var(--red)';
+  return '';
 }
 
 function render() {
   const predictions = collectPredictions(loadCumulativeRecords());
   const summary = summarize(predictions);
-  const flat = summary.flatStake;
 
   $('#total').textContent = summary.total;
   $('#settled').textContent = summary.settled;
@@ -249,18 +214,12 @@ function render() {
   $('#rate').textContent = `${summary.rate.toFixed(2)}%`;
   $('#averageOdds').textContent = summary.averageOdds === null ? 'No Data' : summary.averageOdds.toFixed(2);
   $('#oddsNote').textContent = summary.recordedOdds
-    ? `Average Odds is calculated from ${summary.recordedOdds} real recorded prices across all predictions. Missing and N/A prices are excluded.`
-    : 'No real recorded Odds are available across all predictions yet.';
+    ? `${summary.recordedOdds} recorded Odds · ${summary.percentage.missingOdds} missing Odds · ${summary.percentage.pending} pending`
+    : 'No recorded Odds data';
 
-  $('#flatStake').textContent = `${FLAT_STAKE} THB`;
-  $('#calculatedPredictions').textContent = flat.calculated;
-  $('#totalStaked').textContent = formatTHB(flat.totalStaked);
-  $('#totalReturn').textContent = formatTHB(flat.totalReturn);
-  $('#profitLoss').textContent = formatTHB(flat.profit, true);
-  $('#roi').textContent = formatPercent(flat.roi);
-  $('#profitCoverage').textContent = flat.missingOdds
-    ? `Calculated across every settled prediction with real Odds: ${flat.calculated} calculated · ${flat.missingOdds} older settled predictions excluded because no real Odds were recorded · ${flat.pending} pending.`
-    : `Calculated across all settled predictions with real Odds: ${flat.calculated} calculated · ${flat.pending} pending.`;
+  const performancePercent = $('#performancePercent');
+  performancePercent.textContent = formatPercent(summary.percentage.value);
+  performancePercent.style.cssText = signedStyle(summary.percentage.value);
 
   const links = {
     '1X2': '../',
@@ -268,19 +227,16 @@ function render() {
     'Double Chance': '../double-chance/',
     'Asian Handicap': '../asian-handicap/'
   };
+
   $('#marketBreakdown').innerHTML = [...MARKET_ORDER.keys()].map(market => {
     const item = marketSummary(predictions, market);
     const average = item.averageOdds === null ? 'No Data' : item.averageOdds.toFixed(2);
-    const marketFlat = item.flatStake;
     return `<a class="market-stat market-stat-link" href="${links[market]}">
       <small>${escapeHtml(market)}</small>
       <b>${item.total} Predictions · ${item.settled} Settled</b>
       <span>Correct ${item.correct} · Incorrect ${item.incorrect} · Pending ${item.pending}</span>
       <span class="market-odds-line">Average Odds ${escapeHtml(average)} · ${item.recordedOdds} recorded</span>
-      <span>Calculated ${marketFlat.calculated} · Missing Odds ${marketFlat.missingOdds}</span>
-      <span>Staked ${escapeHtml(formatTHB(marketFlat.totalStaked))} · Return ${escapeHtml(formatTHB(marketFlat.totalReturn))}</span>
-      <span>Profit / Loss ${escapeHtml(formatTHB(marketFlat.profit, true))}</span>
-      <strong class="market-odds-line">${escapeHtml(formatPercent(marketFlat.roi))}</strong>
+      <strong class="market-odds-line" style="${signedStyle(item.percentage.value)}">${escapeHtml(formatPercent(item.percentage.value))}</strong>
     </a>`;
   }).join('');
 
@@ -293,7 +249,6 @@ function render() {
       <td>${item.odds === null ? 'No Odds Data' : item.odds.toFixed(2)}</td>
       <td>${escapeHtml(scoreText(item))}</td>
       <td>${escapeHtml(resultText(item.outcome))}</td>
-      <td>${escapeHtml(predictionProfitText(item))}</td>
     </tr>`).join('');
 }
 
