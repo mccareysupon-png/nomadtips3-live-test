@@ -56,20 +56,26 @@ function settledMarketRecords(records) {
 }
 
 function averageOdds(records) {
-  const values = records
-    .filter(record => {
-      const market = marketFor(record);
-      if (!market) return false;
-      const outcome = resolvedOutcome(market);
-      return isAsian
-        ? ['win','half-win','push','half-loss','loss','correct','incorrect'].includes(outcome)
-        : ['correct','incorrect'].includes(outcome);
-    })
+  const settledRecords = records.filter(record => {
+    const market = marketFor(record);
+    if (!market) return false;
+    const outcome = resolvedOutcome(market);
+    return isAsian
+      ? ['win','half-win','push','half-loss','loss','correct','incorrect'].includes(outcome)
+      : ['correct','incorrect'].includes(outcome);
+  });
+  const values = settledRecords
     .map(record => Number(marketFor(record)?.odds))
     .filter(value => Number.isFinite(value) && value > 0);
+  const complete = settledRecords.length > 0 && values.length === settledRecords.length;
   return {
     count: values.length,
-    text: values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : 'No Odds Data'
+    settledCount: settledRecords.length,
+    missing: Math.max(0, settledRecords.length - values.length),
+    complete,
+    text: complete
+      ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)
+      : '—'
   };
 }
 
@@ -84,9 +90,9 @@ function renderAverageOddsStrip(records) {
     summary.insertAdjacentElement('afterend', strip);
   }
   const average = averageOdds(records);
-  strip.innerHTML = average.count
-    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from ${average.count} settled ${escapeHtml(config.title)} predictions with recorded odds</small>`
-    : `<span>Average Odds (Settled)</span><strong>No Odds Data</strong><small>No settled ${escapeHtml(config.title)} prediction has a recorded odds value</small>`;
+  strip.innerHTML = average.complete
+    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from all ${average.settledCount} settled ${escapeHtml(config.title)} predictions</small>`
+    : `<span>Average Odds (Settled)</span><strong>—</strong><small>Complete recorded Odds are not available for all settled ${escapeHtml(config.title)} predictions</small>`;
 }
 
 function standardSummary(records) {
