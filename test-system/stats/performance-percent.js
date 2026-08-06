@@ -1,6 +1,7 @@
-import { loadCumulativeRecords } from './cumulative.js?v=202608051149';
+import { loadCumulativeRecords } from './cumulative.js?v=202608061015';
 
 const EMPTY_PICKS = new Set(['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL']);
+const PROFIT_START_DATE = '2026-08-06';
 const marketKey = document.body.dataset.market || 'oneXTwo';
 
 function hasPrediction(value) {
@@ -18,6 +19,18 @@ function resolvedOutcome(value) {
   if (outcome && outcome !== 'pending') return outcome;
   if (settlement && settlement !== 'pending') return settlement;
   return outcome || settlement || 'pending';
+}
+
+function recordDate(record) {
+  const explicit = String(record?.pickDate ?? record?.date ?? '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(explicit)) return explicit;
+  const timestamp = Date.parse(record?.kickoffUtc ?? record?.kickoff_utc ?? '');
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : '';
+}
+
+function isProfitEra(record) {
+  const date = recordDate(record);
+  return Boolean(date && date >= PROFIT_START_DATE);
 }
 
 function predictionFor(record) {
@@ -56,7 +69,7 @@ function calculatePercentage(records) {
   let pending = 0;
   let returned = 0;
 
-  records.forEach(record => {
+  records.filter(isProfitEra).forEach(record => {
     const prediction = predictionFor(record);
     if (!prediction) return;
     const result = outcomeReturn(prediction);
@@ -86,15 +99,24 @@ function formatPercent(value) {
 
 function ensureTarget() {
   let target = document.querySelector('#performancePercent');
-  if (target) return target;
+  if (target) {
+    const card = target.closest('.metric');
+    const label = card?.querySelector('small');
+    if (label) {
+      label.removeAttribute('aria-hidden');
+      label.textContent = 'Profit %';
+    }
+    card?.setAttribute('aria-label', 'Profit percentage from 6 August 2026');
+    return target;
+  }
 
   const summary = document.querySelector('.summary');
   if (!summary) return null;
 
   const card = document.createElement('div');
   card.className = 'metric';
-  card.setAttribute('aria-label', 'Percentage');
-  card.innerHTML = '<small aria-hidden="true">&nbsp;</small><b id="performancePercent">—</b>';
+  card.setAttribute('aria-label', 'Profit percentage from 6 August 2026');
+  card.innerHTML = '<small>Profit %</small><b id="performancePercent">PENDING</b>';
   summary.appendChild(card);
   return card.querySelector('#performancePercent');
 }
@@ -104,11 +126,13 @@ function renderPercentage() {
   if (!target) return;
 
   const result = calculatePercentage(loadCumulativeRecords());
-  target.textContent = result.complete ? formatPercent(result.value) : '—';
+  target.textContent = result.complete ? formatPercent(result.value) : result.pending > 0 ? 'PENDING' : '—';
   target.dataset.calculated = String(result.calculated);
   target.dataset.missingOdds = String(result.missingOdds);
   target.dataset.pending = String(result.pending);
   target.dataset.complete = String(result.complete);
+  target.dataset.startDate = PROFIT_START_DATE;
+  target.title = 'Flat 1-unit calculation starting with predictions dated 6 August 2026.';
   target.style.removeProperty('color');
   if (result.complete && result.value > 0) target.style.color = 'var(--green)';
   if (result.complete && result.value < 0) target.style.color = 'var(--red)';
