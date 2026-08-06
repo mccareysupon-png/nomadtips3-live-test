@@ -15,8 +15,26 @@
   <link rel="stylesheet" href="../../site-footer.css?v=202608070631">
   <link rel="stylesheet" href="../../navigation-polish.css?v=202608041251">
   <link rel="stylesheet" href="./poster.css?v=202608051332">
+  <style>
+    body.poster-page > .main-nav,
+    body.poster-page > .main-nav::before,
+    body.poster-page > .main-nav::after{
+      border:0!important;
+      border-top:0!important;
+      outline:0!important;
+      box-shadow:none!important;
+      -webkit-box-shadow:none!important;
+      background-image:none!important;
+      filter:none!important;
+    }
+    body.poster-page > .main-nav::before,
+    body.poster-page > .main-nav::after{
+      display:none!important;
+      content:none!important;
+    }
+  </style>
 </head>
-<body>
+<body class="poster-page">
   <header class="topbar">
     <a class="brand" href="../" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
     <span class="environment">TEST SYSTEM</span>
