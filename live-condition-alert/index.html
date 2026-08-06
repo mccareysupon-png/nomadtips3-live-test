@@ -45,8 +45,8 @@
     </section>
 
     <section class="paper" id="paperInvestment">
-      <div class="paper-head"><div><h2>NOMAD Paper Investment</h2><div class="tag">100 UNITS PER SIGNAL · HOME LIVE ASIAN HANDICAP</div></div><span id="settlementStatus" class="tag">พร้อมตรวจผล</span></div>
-      <div class="paper-note">ทุก Alert ที่มีราคา AH Odds สมบูรณ์จะจำลองลงทุน 100 หน่วยเพียงครั้งเดียวต่อคู่ ล็อกสกอร์ ราคา และเส้น AH ณ ตอนเข้าเงื่อนไข จากนั้นตรวจผลเมื่อหน้านี้เปิดอยู่หรือเมื่อกลับมาเปิดใหม่ ข้อมูลรุ่นทดสอบเก็บในเบราว์เซอร์เครื่องนี้ ยังไม่ใช่ฐานข้อมูลถาวรข้ามอุปกรณ์</div>
+      <div class="paper-head"><div><h2>NOMAD Paper Investment</h2><div class="tag">100 UNITS PER SIGNAL · HOME LIVE ASIAN HANDICAP</div></div><span id="settlementStatus" class="tag">กำลังเชื่อม Cloudflare D1</span></div>
+      <div class="paper-note">ข้อมูลหลักจะบันทึกใน <b>Cloudflare D1</b> เพื่อเก็บผลระยะยาวและเปิดดูข้ามอุปกรณ์ Local Storage ใช้เป็นสำเนาสำรองในเครื่อง</div>
       <section class="paper-summary" aria-label="paper investment summary">
         <div class="metric"><small>รายการทั้งหมด</small><b id="tradeTotal">0</b></div>
         <div class="metric"><small>รอผล</small><b id="tradePending">0</b></div>
@@ -63,8 +63,9 @@
       </div>
     </section>
 
-    <div class="footer">ISOLATED TEST · PAPER UNITS ONLY · NOT COUNTED IN OFFICIAL STATISTICS</div>
+    <div class="footer">ISOLATED TEST · PAPER UNITS ONLY · D1 LONG-TERM LEDGER</div>
   </div>
   <script src="./app.js?v=20260806-paper-investment"></script>
+  <script src="./d1-sync.js?v=20260806-d1-ledger"></script>
 </body>
 </html>
