@@ -12,6 +12,15 @@
 
 .has-fixed-site-nav .site-footer{padding-bottom:88px}
 
+/* Pages 2-3: bottom navigation must be borderless and flat. */
+body.statistics-page > .main-nav,
+.page:has(#posterStage) + .main-nav{
+  border:0!important;
+  border-top:0!important;
+  outline:0!important;
+  box-shadow:none!important;
+}
+
 .site-footer__inner{
   display:flex;
   align-items:flex-start;
