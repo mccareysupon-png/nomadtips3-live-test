@@ -1,10 +1,22 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-test-api",
-  "main": "src/entry.js",
+  "main": "src/paper-entry.js",
   "compatibility_date": "2026-08-05",
   "workers_dev": true,
   "observability": {
     "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nomadtips3-paper-db",
+      "database_id": "7f2f1bb8-c40c-477d-b82a-ea284291f239"
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
   }
 }
