@@ -48,7 +48,9 @@ jobs:
             echo "Odds refresh attempt ${attempt} failed; retrying automatically."
             sleep $((attempt * 5))
           done
-          test "$odds_refreshed" -eq 1
+          if [ "$odds_refreshed" -ne 1 ]; then
+            echo 'Odds refresh unavailable; continuing with score refresh so live and final results do not stop.'
+          fi
 
           for cycle in $(seq 0 7); do
             if (( cycle % 4 == 0 )); then
