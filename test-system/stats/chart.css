@@ -19,7 +19,7 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 
 /* Floating summary cards: no outlines, tonal gradients distinguish each tile */
 .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:0 0 14px;overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none}
-.metric{min-width:0;min-height:66px;padding:13px 10px 14px;border:0!important;border-radius:4px!important;background:linear-gradient(180deg,#252a27 0%,#1f2321 100%)!important;text-align:center;box-shadow:none!important}
+.metric{min-width:0;min-height:66px;padding:13px 10px 14px;border:0!important;border-radius:0!important;background:linear-gradient(180deg,#252a27 0%,#1f2321 100%)!important;text-align:center;box-shadow:none!important}
 .metric:nth-child(2n){background:linear-gradient(180deg,#29302c 0%,#202522 100%)!important}
 .metric:nth-child(3n){background:linear-gradient(180deg,#232826 0%,#1b1f1d 100%)!important}
 .metric:nth-child(5n){background:linear-gradient(180deg,#27302b 0%,#1e2421 100%)!important}
@@ -27,9 +27,9 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 .metric b{display:block;margin-top:5px;color:var(--text);font-size:17px;line-height:1.1;font-weight:900}
 
 /* Quiet odds note */
-.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:9px;margin:-4px 0 14px;padding:9px 11px;border:0!important;border-radius:4px;background:linear-gradient(90deg,rgba(7,84,60,.20),rgba(32,35,33,.82));box-shadow:none!important}
+.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:9px;margin:-4px 0 14px;padding:9px 11px;border:0!important;border-radius:0;background:linear-gradient(90deg,rgba(7,84,60,.20),rgba(32,35,33,.82));box-shadow:none!important}
 .average-odds-strip span{color:#969e9a;font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
-.average-odds-strip strong{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:4px 8px;border:0!important;border-radius:3px;background:rgba(0,0,0,.10);color:var(--yellow);font-size:12px;font-weight:850;line-height:1.15;white-space:nowrap;box-shadow:none!important}
+.average-odds-strip strong{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:4px 8px;border:0!important;border-radius:0;background:rgba(0,0,0,.10);color:var(--yellow);font-size:12px;font-weight:850;line-height:1.15;white-space:nowrap;box-shadow:none!important}
 .average-odds-strip small{color:#9fb0a7;font-size:8px;line-height:1.45}
 
 /* Open section headings, followed by tonal bands */
@@ -40,7 +40,7 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 
 /* Floating market cards: square-edged tiles separated by space and gradient only */
 .market-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 12px 12px;overflow:visible;border:0;border-radius:0;background:transparent}
-.market-stat{padding:12px;border:0!important;border-radius:4px!important;background:linear-gradient(180deg,#232826 0%,#1d211f 100%)!important;box-shadow:none!important}
+.market-stat{padding:12px;border:0!important;border-radius:0!important;background:linear-gradient(180deg,#232826 0%,#1d211f 100%)!important;box-shadow:none!important}
 .market-stat:nth-child(2n){background:linear-gradient(180deg,#29302c 0%,#202522 100%)!important}
 .market-stat:nth-child(3n){background:linear-gradient(180deg,#212624 0%,#1a1e1c 100%)!important}
 .market-stat:nth-child(4n){background:linear-gradient(180deg,#27302b 0%,#1e2421 100%)!important}
@@ -88,7 +88,7 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 /* Pagination follows the same flat controls */
 .history-pagination{margin:0!important;padding:10px 12px!important;border:0!important;border-radius:0!important;background:linear-gradient(180deg,#202321,#1c1f1d)!important;box-shadow:none!important}
 .history-pagination__status{color:var(--muted)!important}
-.history-pagination button{border:0!important;border-radius:3px!important;background:#252a27!important;color:var(--muted)!important;box-shadow:none!important}
+.history-pagination button{border:0!important;border-radius:0!important;background:#252a27!important;color:var(--muted)!important;box-shadow:none!important}
 .history-pagination button:hover:not(:disabled),.history-pagination button.active{background:rgba(7,84,60,.38)!important;color:#fff!important}
 .history-pagination__ellipsis{color:#969e9a!important}
 
