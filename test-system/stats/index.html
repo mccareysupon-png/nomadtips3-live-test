@@ -3,88 +3,145 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Cumulative 1X2 Statistics</title>
+  <title>NOMADTIPS3 Test System — Statistics Overview</title>
   <link rel="stylesheet" href="../styles.css?v=202608051001">
   <link rel="stylesheet" href="../../brand.css?v=202608041153">
   <link rel="stylesheet" href="../../content-scale.css?v=202608041015">
   <link rel="stylesheet" href="../../draft-responsive.css?v=202608041140">
   <link rel="stylesheet" href="../../heading-scale.css?v=202608041200">
-  <link rel="stylesheet" href="./chart.css?v=202608061254">
   <link rel="stylesheet" href="../../terminology.css?v=202608041231">
   <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
   <link rel="stylesheet" href="../../navigation-polish.css?v=202608060955">
+  <link rel="stylesheet" href="./statistics-v2.css?v=202608061349">
 </head>
-<body>
+<body class="statistics-page" data-market="oneXTwo">
   <header class="topbar">
     <a class="brand" href="../" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
     <span class="environment">TEST SYSTEM</span>
   </header>
 
   <main class="page">
-    <section class="hero">
+    <section class="hero statistics-hero">
       <div>
-        <span class="eyebrow">CUMULATIVE · 1X2 PERFORMANCE</span>
-        <h1>Cumulative 1X2 Statistics</h1>
-        <p>Completed historical records are retained and combined with the current prediction set. Each market has its own cumulative page and calculation.</p>
+        <span class="eyebrow">NOMAD SYSTEM · CONNECTED PERFORMANCE DATA</span>
+        <h1>Statistics Overview</h1>
+        <p>One connected record set for 1X2, BTTS, Double Chance and Asian Handicap. Finalized historical records and the current prediction set update this page together.</p>
         <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
+      <aside class="sync-card" aria-label="Statistics data status">
+        <div>
+          <small>Connected Data Status</small>
+          <strong id="syncTitle">Loading cumulative records…</strong>
+          <p id="syncDetail">Checking finalized history and the current NOMAD SYSTEM set.</p>
+        </div>
+        <div class="sync-status"><i aria-hidden="true"></i><span id="syncTime">Waiting for data</span></div>
+      </aside>
     </section>
 
-    <nav class="stats-subnav" aria-label="Statistics markets">
-      <a href="./all-predictions/">All Predictions</a>
-      <a class="active" href="./">1X2</a>
-      <a href="./btts/">BTTS</a>
-      <a href="./double-chance/">Double Chance</a>
-      <a href="./asian-handicap/">Asian Handicap</a>
+    <nav class="stats-tabs" aria-label="Statistics focus">
+      <button class="active" type="button" data-market-focus="oneXTwo">Overview</button>
+      <button type="button" data-market-focus="oneXTwo">1X2</button>
+      <button type="button" data-market-focus="btts">BTTS</button>
+      <button type="button" data-market-focus="doubleChance">Double Chance</button>
+      <button type="button" data-market-focus="asianHandicap">Asian Handicap</button>
     </nav>
 
-    <section class="summary">
-      <div class="metric"><small>Total</small><b id="total">15</b></div>
-      <div class="metric"><small>Settled</small><b id="settled">13</b></div>
-      <div class="metric"><small>Correct</small><b id="correct">6</b></div>
-      <div class="metric"><small>Incorrect</small><b id="incorrect">7</b></div>
-      <div class="metric"><small>Pending</small><b id="pending">2</b></div>
-      <div class="metric"><small>1X2 Accuracy</small><b id="accuracy">46.15%</b></div>
-      <div class="metric" aria-label="Profit percentage from all recorded 1X2 results"><small>Profit %</small><b id="performancePercent">-4.54%</b></div>
-    </section>
+    <section id="statsSummary" class="summary statistics-summary" aria-label="Selected market summary"></section>
 
-    <div id="marketStats" hidden aria-hidden="true"></div>
-
-    <section class="panel" style="margin-top:14px">
-      <div class="panel-head"><div><h2>1X2 Result Performance</h2><small>Cumulative confirmed results in chronological order</small></div></div>
-      <div class="performance-toolbar">
-        <div class="performance-legend"><span class="correct-line"><i></i>Correct</span><span class="incorrect-line"><i></i>Incorrect</span></div>
-        <div class="chart-range" aria-label="Chart data range">
-          <button class="active" type="button" data-chart-range="20">20</button>
-          <button type="button" data-chart-range="50">50</button>
-          <button type="button" data-chart-range="100">100</button>
-          <button type="button" data-chart-range="ALL">ALL</button>
+    <section class="panel market-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Market Performance</h2>
+          <small>Every market is calculated independently from the same match records</small>
         </div>
-        <span id="chartMeta" class="performance-meta">13 settled results</span>
+        <span id="marketPanelMeta" class="panel-meta">Loading…</span>
       </div>
-      <div class="chart-viewport" aria-label="Scrollable long-range 1X2 chart"><div id="performanceChart" class="chart-stage"></div></div>
-      <div class="chart-footnote">More selected records use tighter point spacing. The chart remains horizontally scrollable and opens at the latest result.</div>
+      <div id="marketGrid" class="market-performance-grid"></div>
     </section>
 
-    <section class="panel" style="margin-top:14px">
-      <div class="panel-head"><div><h2>Prediction History</h2><small>Archived and current main/additional market records</small></div></div>
-      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>Match</th><th>1X2</th><th>BTTS</th><th>Double Chance</th><th>Asian Handicap</th><th>Score</th><th>Result</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+    <div class="statistics-grid">
+      <section class="panel performance-panel">
+        <div class="panel-head">
+          <div>
+            <h2 id="chartTitle">1X2 Result Performance</h2>
+            <small id="chartSubtitle">Cumulative confirmed outcomes in chronological order</small>
+          </div>
+          <span id="chartMeta" class="panel-meta">Loading…</span>
+        </div>
+        <div class="performance-toolbar">
+          <div class="performance-legend">
+            <span class="positive-line"><i></i><b id="positiveLegend">Correct</b></span>
+            <span class="negative-line"><i></i><b id="negativeLegend">Incorrect</b></span>
+          </div>
+          <div class="chart-range" aria-label="Chart data range">
+            <button class="active" type="button" data-chart-range="20">20</button>
+            <button type="button" data-chart-range="50">50</button>
+            <button type="button" data-chart-range="100">100</button>
+            <button type="button" data-chart-range="ALL">ALL</button>
+          </div>
+        </div>
+        <div class="chart-viewport" aria-label="Scrollable performance chart">
+          <div id="performanceChart" class="performance-chart"></div>
+        </div>
+        <p class="chart-footnote">The chart opens at the latest confirmed result and remains horizontally scrollable on smaller screens.</p>
+      </section>
+
+      <aside class="panel recent-panel">
+        <div class="panel-head">
+          <div>
+            <h2 id="recentTitle">Recent 1X2 Form</h2>
+            <small>Latest five confirmed outcomes</small>
+          </div>
+        </div>
+        <div id="recentForm" class="recent-form"></div>
+        <p id="streakText" class="streak-note">Waiting for confirmed records.</p>
+      </aside>
+    </div>
+
+    <section class="panel history-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Prediction History</h2>
+          <small>Finalized archive and current records shown together without changing previous selections</small>
+        </div>
+        <span id="historyMeta" class="panel-meta">Loading…</span>
+      </div>
+      <div class="table-wrap">
+        <table class="history statistics-history">
+          <thead>
+            <tr>
+              <th>Date / League</th>
+              <th>Match</th>
+              <th data-market-column="oneXTwo">1X2</th>
+              <th data-market-column="btts">BTTS</th>
+              <th data-market-column="doubleChance">Double Chance</th>
+              <th data-market-column="asianHandicap">Asian Handicap</th>
+              <th>Score</th>
+              <th>1X2 Result</th>
+            </tr>
+          </thead>
+          <tbody id="historyRows"></tbody>
+        </table>
+      </div>
     </section>
   </main>
 
   <nav class="main-nav" aria-label="Test system navigation">
     <a href="../">Match Predictions</a>
-    <a class="active" href="./">Statistics</a>
+    <a class="active" href="./" aria-current="page">Statistics</a>
     <a href="../share/">Analysis Poster</a>
     <a href="../../">Live Analysis</a>
   </nav>
+
   <script src="../../device-time-sync.js?v=202608041114"></script>
   <script src="../odds-summary.js?v=202608041933"></script>
   <script src="../selected-odds-sync.js?v=202608061015"></script>
-  <script type="module" src="./app.js?v=202608061015"></script>
-  <script type="module" src="./performance-percent.js?v=202608061052"></script>
+  <script type="module" src="./statistics-v2.js?v=202608061349"></script>
   <script src="../../remote-results.js?v=202608061015" defer></script>
   <script src="./official-final-sync.js?v=202608060740" defer></script>
   <script src="../../terminology.js?v=202608040954" defer></script>
