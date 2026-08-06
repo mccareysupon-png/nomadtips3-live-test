@@ -14,8 +14,26 @@
   <link rel="stylesheet" href="./terminology.css?v=202608041324">
   <link rel="stylesheet" href="./site-footer.css?v=202608040844">
   <link rel="stylesheet" href="./navigation-polish.css?v=202608060955">
+  <style>
+    body.live-analysis-page > .main-nav,
+    body.live-analysis-page > .main-nav::before,
+    body.live-analysis-page > .main-nav::after{
+      border:0!important;
+      border-top:0!important;
+      outline:0!important;
+      box-shadow:none!important;
+      -webkit-box-shadow:none!important;
+      background-image:none!important;
+      filter:none!important;
+    }
+    body.live-analysis-page > .main-nav::before,
+    body.live-analysis-page > .main-nav::after{
+      display:none!important;
+      content:none!important;
+    }
+  </style>
 </head>
-<body>
+<body class="live-analysis-page">
   <div class="wrap">
     <header class="topbar">
       <a class="brand" href="./test-system/" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
