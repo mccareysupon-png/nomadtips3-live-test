@@ -1,1 +1,127 @@
-.stats-subnav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px}.stats-subnav a{display:flex;align-items:center;justify-content:center;min-height:42px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#222;color:var(--muted);font-size:9px;font-weight:900;line-height:1.2;text-align:center;text-decoration:none}.stats-subnav a:hover,.stats-subnav a.active{border-color:#2a8a67;background:#0c3c2d;color:#fff}.market-stat-link{display:block;color:inherit;text-decoration:none;transition:border-color .15s ease,transform .15s ease}.market-stat-link:hover{border-color:#2a8a67;transform:translateY(-1px)}.market-stat-link.active{border-color:#2a8a67;background:#152a22}.market-stat .market-odds-line{margin-top:7px;padding-top:7px;border-top:1px solid #314039;color:#d8e7df;font-size:8px;font-weight:750;line-height:1.4}.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:9px;margin:-6px 0 14px;padding:9px 11px;border:1px solid #47534d;border-radius:6px;background:#202522}.average-odds-strip span{color:var(--muted);font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}.average-odds-strip strong{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:4px 8px;border:1px solid #5e5430;border-radius:4px;background:rgba(242,201,76,.06);color:var(--yellow);font-size:12px;font-weight:850;line-height:1.15;white-space:nowrap}.average-odds-strip small{color:#9fb0a7;font-size:8px;line-height:1.45}.performance-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);background:#222}.performance-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:9px}.performance-legend span{display:inline-flex;align-items:center;gap:6px}.performance-legend i{display:block;width:18px;height:1px;background:currentColor;box-shadow:0 0 5px currentColor}.performance-legend .correct-line{color:var(--green)}.performance-legend .incorrect-line{color:var(--red)}.performance-meta{color:var(--muted);font-size:9px}.chart-range{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.chart-range button{min-width:38px;min-height:28px;padding:4px 7px;border:1px solid #494949;border-radius:5px;background:#1b1b1b;color:var(--muted);font-size:8px;font-weight:900;cursor:pointer}.chart-range button.active{border-color:#2a8a67;background:#0c3c2d;color:#fff}.chart-viewport{width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#5a5a5a #242424}.chart-stage{min-width:100%;height:320px}.chart-stage svg{display:block;height:320px;max-width:none}.chart-grid{stroke:#414141;stroke-width:.7;stroke-dasharray:3 5}.chart-axis{stroke:#626262;stroke-width:.8}.chart-correct{fill:none;stroke:var(--green);stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.chart-incorrect{fill:none;stroke:var(--red);stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}.chart-end-correct{fill:var(--green)}.chart-end-incorrect{fill:var(--red)}.chart-label{fill:#aeb4b1;font-size:9px;font-family:inherit}.chart-date{fill:#949b97;font-size:8px;font-family:inherit}.chart-empty{display:grid;place-items:center;height:240px;padding:20px;color:var(--muted);font-size:10px;text-align:center}.chart-footnote{padding:8px 14px 12px;color:var(--muted);font-size:8.5px;line-height:1.5;border-top:1px solid #343434}@media(max-width:720px){.stats-subnav{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.stats-subnav a{min-height:38px;font-size:8px}.average-odds-strip{grid-template-columns:1fr auto;gap:6px 9px;padding:8px 10px}.average-odds-strip strong{min-height:23px;padding:3px 7px;font-size:11px}.average-odds-strip small{grid-column:1/-1}.chart-stage,.chart-stage svg{height:270px}.performance-toolbar{padding:9px 11px}.performance-legend{gap:11px;font-size:8.5px}.performance-meta{width:100%;font-size:8.5px}.chart-range{order:3;width:100%}.chart-range button{flex:1}.chart-footnote{font-size:8px}}
+/* NOMADTIPS3 statistics pages — clean borderless grey layout */
+html,body{background:#252729!important;background-image:none!important}
+body{color:#f3f4f4}
+.page{gap:0}
+
+/* Intro area */
+.hero{margin-bottom:12px;padding:18px;border:0!important;border-radius:8px;background:#303336!important;background-image:none!important;box-shadow:none!important}
+.eyebrow{color:#b8c2bd}
+.hero h1{color:#fff}
+.hero p,.analysis-disclaimer{color:#c5c9c7}
+
+/* Market navigation */
+.stats-subnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;margin:0 0 12px;padding:0;overflow:hidden;border:0;border-radius:7px;background:#292c2e}
+.stats-subnav a{display:flex;align-items:center;justify-content:center;min-height:42px;padding:8px 10px;border:0!important;border-radius:0;background:#343739;color:#c2c7c4;font-size:9px;font-weight:900;line-height:1.2;text-align:center;text-decoration:none;box-shadow:none!important}
+.stats-subnav a:nth-child(even){background:#383b3d}
+.stats-subnav a:hover,.stats-subnav a.active{background:#46504c;color:#fff}
+
+/* Summary becomes one continuous data strip */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:0;margin-bottom:12px;overflow:hidden;border:0;border-radius:8px;background:#2e3133}
+.metric{min-height:70px;padding:12px 14px;border:0!important;border-radius:0!important;background:#36393b!important;box-shadow:none!important}
+.metric:nth-child(even){background:#3b3e40!important}
+.metric small{display:block;color:#bfc4c1;font-size:8px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.metric b{display:block;margin-top:6px;color:#fff;font-size:18px;line-height:1.1}
+
+/* Average odds strip */
+.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:10px;margin:-4px 0 12px;padding:10px 13px;border:0!important;border-radius:7px;background:#323537;box-shadow:none!important}
+.average-odds-strip span{color:#bfc4c1;font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.average-odds-strip strong{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:4px 9px;border:0!important;border-radius:4px;background:#424649;color:#f2c94c;font-size:12px;font-weight:850;line-height:1.15;white-space:nowrap;box-shadow:none!important}
+.average-odds-strip small{color:#c6cac8;font-size:8px;line-height:1.45}
+
+/* Main sections */
+.panel{margin:0 0 12px;border:0!important;border-radius:8px;background:#303335!important;background-image:none!important;box-shadow:none!important;overflow:hidden}
+.panel:nth-of-type(even){background:#343739!important}
+.panel-head{display:flex;justify-content:space-between;gap:12px;padding:14px 15px 10px;border:0!important;background:transparent!important;box-shadow:none!important}
+.panel-head h2{margin:0;color:#fff;font-size:15px;font-weight:900}
+.panel-head small{color:#bcc2bf;font-size:9px}
+
+/* Overview tiles: flat table-like rows, no boxes */
+.market-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0 14px 14px;overflow:hidden;border-radius:6px}
+.market-stat{padding:12px;border:0!important;border-radius:0!important;background:#393c3e!important;box-shadow:none!important}
+.market-stat:nth-child(even){background:#3f4244!important}
+.market-stat-link{display:block;color:inherit;text-decoration:none;transition:background .15s ease}
+.market-stat-link:hover,.market-stat-link.active{background:#48504d!important;transform:none!important}
+.market-stat small{display:block;color:#bfc4c1;font-size:8px;text-transform:uppercase;letter-spacing:.07em}
+.market-stat b{display:block;margin-top:6px;color:#fff;font-size:15px}
+.market-stat span{display:block;margin-top:5px;color:#c2c7c4;font-size:8px;line-height:1.45}
+.market-stat .market-odds-line{margin-top:7px;padding-top:0;border:0!important;color:#d7dbd9;font-size:8px;font-weight:750;line-height:1.4}
+
+/* Chart area */
+.performance-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;border:0!important;background:#383b3d!important;box-shadow:none!important}
+.performance-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;color:#c1c6c3;font-size:9px}
+.performance-legend span{display:inline-flex;align-items:center;gap:6px}
+.performance-legend i{display:block;width:18px;height:2px;background:currentColor;box-shadow:none!important}
+.performance-legend .correct-line{color:#53d69d}
+.performance-legend .incorrect-line{color:#ef8d93}
+.performance-meta{color:#c1c6c3;font-size:9px}
+.chart-range{display:flex;align-items:center;gap:3px;flex-wrap:wrap;overflow:hidden;border-radius:5px}
+.chart-range button{min-width:38px;min-height:28px;padding:4px 7px;border:0!important;border-radius:0;background:#44484a;color:#c8ccca;font-size:8px;font-weight:900;cursor:pointer;box-shadow:none!important}
+.chart-range button:nth-child(even){background:#494d4f}
+.chart-range button.active{background:#59635f;color:#fff}
+.chart-viewport{width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#666b68 #303335;background:#303335}
+.chart-stage{min-width:100%;height:320px}
+.chart-stage svg{display:block;height:320px;max-width:none}
+.chart-grid{stroke:#484c4e;stroke-width:.7;stroke-dasharray:3 5}
+.chart-axis{stroke:#747a77;stroke-width:.8}
+.chart-correct{fill:none;stroke:#53d69d;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.chart-incorrect{fill:none;stroke:#ef8d93;stroke-width:1.35;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.chart-end-correct{fill:#53d69d}.chart-end-incorrect{fill:#ef8d93}
+.chart-label{fill:#bfc4c1;font-size:9px;font-family:inherit}
+.chart-date{fill:#aeb5b1;font-size:8px;font-family:inherit}
+.chart-empty{display:grid;place-items:center;height:240px;padding:20px;color:#bdc3c0;font-size:10px;text-align:center}
+.chart-footnote{padding:8px 14px 12px;color:#b9bfbc;font-size:8.5px;line-height:1.5;border:0!important;background:#303335}
+
+/* History table: borderless zebra rows */
+.table-wrap{overflow:auto;padding:0 14px 14px;background:transparent}
+.history{width:100%;min-width:760px;border:0!important;border-collapse:collapse;background:#36393b;box-shadow:none!important}
+.history th,.history td{padding:10px 12px;border:0!important;text-align:left;font-size:9px}
+.history th{color:#d5d8d6;background:#45494b;font-weight:900}
+.history tbody tr{background:#36393b}
+.history tbody tr:nth-child(even){background:#3d4042}
+.history tbody tr:hover{background:#474c49}
+.history td{color:#eff1f0}
+.history td small{color:#bec4c1}
+
+/* Pagination injected after page load; !important keeps the same clean style */
+.history-pagination{margin:0 14px 14px!important;padding:10px 12px!important;border:0!important;border-radius:6px!important;background:#383b3d!important;box-shadow:none!important}
+.history-pagination__status{color:#c5cac7!important}
+.history-pagination button{border:0!important;border-radius:4px!important;background:#484c4e!important;color:#d4d8d6!important;box-shadow:none!important}
+.history-pagination button:hover:not(:disabled),.history-pagination button.active{background:#59635f!important;color:#fff!important}
+.history-pagination__ellipsis{color:#abb1ae!important}
+
+@media(max-width:900px){
+  .stats-subnav{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .market-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(max-width:720px){
+  .hero{padding:14px}
+  .stats-subnav{grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}
+  .stats-subnav a{min-height:38px;font-size:8px}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .metric{min-height:62px;padding:10px 11px}
+  .metric b{font-size:17px}
+  .average-odds-strip{grid-template-columns:1fr auto;gap:6px 9px;padding:8px 10px}
+  .average-odds-strip strong{min-height:23px;padding:3px 7px;font-size:11px}
+  .average-odds-strip small{grid-column:1/-1}
+  .market-stat-grid{grid-template-columns:1fr;padding:0 10px 10px}
+  .chart-stage,.chart-stage svg{height:270px}
+  .performance-toolbar{padding:9px 11px}
+  .performance-legend{gap:11px;font-size:8.5px}
+  .performance-meta{width:100%;font-size:8.5px}
+  .chart-range{order:3;width:100%}
+  .chart-range button{flex:1}
+  .chart-footnote{font-size:8px}
+  .table-wrap{padding:0 10px 10px}
+  .history th,.history td{padding:9px 8px}
+  .history-pagination{margin:0 10px 10px!important;align-items:stretch!important;padding:9px 10px!important}
+  .history-pagination__status{width:100%!important;text-align:center!important}
+  .history-pagination__controls{width:100%!important;justify-content:center!important}
+}
+
+@media(max-width:430px){
+  .stats-subnav{grid-template-columns:1fr 1fr}
+  .summary{grid-template-columns:1fr 1fr}
+  .metric{min-height:58px}
+  .panel-head{padding:12px 11px 9px}
+}
