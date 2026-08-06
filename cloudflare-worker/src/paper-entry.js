@@ -5,6 +5,7 @@ import {
   handleAutoRequest,
   runAutoMomentumScan
 } from './auto-scan.js';
+import { handleConditionConfig } from './condition-config.js';
 import {
   handleLineWebhook,
   lineStatus,
@@ -49,15 +50,24 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
+    if (url.pathname === '/condition-config') {
+      try {
+        const result = await handleConditionConfig(request, env);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Condition configuration failed'
+        }, 500);
+      }
+    }
+
     if (url.pathname === '/line-webhook' && request.method === 'POST') {
       try {
         const result = await handleLineWebhook(request, env);
         return json(request, result.data, result.status);
       } catch (error) {
-        return json(request, {
-          ok: false,
-          error: error?.message || 'LINE webhook failed'
-        }, 500);
+        return json(request, { ok: false, error: error?.message || 'LINE webhook failed' }, 500);
       }
     }
 

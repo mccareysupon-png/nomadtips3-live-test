@@ -1,4 +1,5 @@
 import baseWorker from './index.js';
+import { getActiveConditionConfig } from './condition-config.js';
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const ALLOWED_ORIGINS = new Set([
@@ -21,7 +22,6 @@ function corsHeaders(request) {
   const allowOrigin = ALLOWED_ORIGINS.has(origin)
     ? origin
     : 'https://mccareysupon-png.github.io';
-
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -48,10 +48,7 @@ function numeric(value) {
 }
 
 async function apiFetch(path, env, cacheSeconds = 55) {
-  if (!env.API_FOOTBALL_KEY) {
-    throw new Error('API_FOOTBALL_KEY is not configured');
-  }
-
+  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
   const apiUrl = `${API_BASE}${path}`;
   const cache = caches.default;
   const key = new Request(apiUrl, { method: 'GET' });
@@ -65,15 +62,9 @@ async function apiFetch(path, env, cacheSeconds = 55) {
     }
   });
   const payload = await response.json().catch(() => null);
-
-  if (!response.ok) {
-    throw new Error(payload?.message || `API HTTP ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
   if (payload?.errors && Object.keys(payload.errors).length) {
-    const detail = typeof payload.errors === 'string'
-      ? payload.errors
-      : JSON.stringify(payload.errors);
+    const detail = typeof payload.errors === 'string' ? payload.errors : JSON.stringify(payload.errors);
     throw new Error(detail);
   }
 
@@ -83,7 +74,6 @@ async function apiFetch(path, env, cacheSeconds = 55) {
       'Cache-Control': `public, max-age=${cacheSeconds}`
     }
   }));
-
   return payload;
 }
 
@@ -104,7 +94,6 @@ function normalizeStatKey(type) {
 function normalizeStatistics(raw) {
   const output = {};
   const teams = Array.isArray(raw) ? raw : [];
-
   teams.slice(0, 2).forEach((team, index) => {
     const side = index === 0 ? 'home' : 'away';
     for (const row of team?.statistics || team?.stats || []) {
@@ -114,7 +103,14 @@ function normalizeStatistics(raw) {
       output[key][side] = row?.value ?? null;
     }
   });
+  return output;
+}
 
+function swapStatistics(stats) {
+  const output = {};
+  for (const [key, value] of Object.entries(stats || {})) {
+    output[key] = { home: value?.away ?? null, away: value?.home ?? null };
+  }
   return output;
 }
 
@@ -122,7 +118,6 @@ function fixtureSummary(item) {
   const fixture = item?.fixture || {};
   const teams = item?.teams || {};
   const goals = item?.goals || {};
-
   return {
     id: Number(fixture.id) || null,
     status: String(fixture?.status?.short || '').toUpperCase(),
@@ -137,14 +132,10 @@ function fixtureSummary(item) {
   };
 }
 
-function scoreContext(homeScore, awayScore) {
-  const goalDifference = homeScore - awayScore;
-  if (goalDifference > 0) {
-    return { state: 'HOME_LEADING', goalDifference };
-  }
-  if (goalDifference < 0) {
-    return { state: 'HOME_TRAILING', goalDifference };
-  }
+function scoreContext(selectedScore, opponentScore) {
+  const difference = selectedScore - opponentScore;
+  if (difference > 0) return { state: 'HOME_LEADING', goalDifference: difference };
+  if (difference < 0) return { state: 'HOME_TRAILING', goalDifference: difference };
   return { state: 'TIED', goalDifference: 0 };
 }
 
@@ -155,48 +146,39 @@ function completeStatistics(stats) {
   return { ok: missing.length === 0, missing };
 }
 
-function isHomeValue(value, homeName) {
+function isSideValue(value, teamName, side) {
   const text = String(value ?? '').trim().toLowerCase();
-  const home = String(homeName ?? '').trim().toLowerCase();
-  return text === 'home' || text === '1' || (home && text.includes(home));
+  const team = String(teamName ?? '').trim().toLowerCase();
+  if (team && text.includes(team)) return true;
+  if (side === 'HOME') return text === 'home' || text === '1';
+  return text === 'away' || text === '2';
 }
 
 function handicapNumber(value) {
-  const match = String(value ?? '')
-    .replace(',', '.')
-    .match(/([+-](?:\d+(?:\.\d+)?|\.\d+))/);
+  const match = String(value ?? '').replace(',', '.').match(/([+-]?(?:\d+(?:\.\d+)?|\.\d+))/);
   return match ? numeric(match[1]) : null;
 }
 
 function flattenBetContainers(root) {
   const results = [];
   const seen = new Set();
-
   function walk(value, context = '') {
     if (!value || typeof value !== 'object' || seen.has(value)) return;
     seen.add(value);
-
     if (Array.isArray(value)) {
       value.slice(0, 500).forEach((child, index) => walk(child, `${context} ${index}`));
       return;
     }
-
     const name = value.name || value.bet?.name || value.label || '';
     const values = value.values || value.outcomes || value.selections;
-    if (Array.isArray(values)) {
-      results.push({ name: String(name), values, context });
-    }
-
-    Object.entries(value)
-      .slice(0, 500)
-      .forEach(([key, child]) => walk(child, `${context} ${key} ${name}`));
+    if (Array.isArray(values)) results.push({ name: String(name), values, context });
+    Object.entries(value).slice(0, 500).forEach(([key, child]) => walk(child, `${context} ${key} ${name}`));
   }
-
   walk(root);
   return results;
 }
 
-function homeMarkets(oddsItem, homeName) {
+function sideMarkets(oddsItem, teamName, side) {
   let win = null;
   let ah = null;
   let ahOdd = null;
@@ -210,74 +192,107 @@ function homeMarkets(oddsItem, homeName) {
 
     const ordered = [...container.values]
       .sort((a, b) => Number(Boolean(b?.main)) - Number(Boolean(a?.main)));
-
     for (const value of ordered) {
       const sideValue = value?.value ?? value?.name ?? value?.label ?? value?.team;
-      if (!isHomeValue(sideValue, homeName)) continue;
-
+      if (!isSideValue(sideValue, teamName, side)) continue;
       const odd = numeric(value?.odd ?? value?.odds ?? value?.price ?? value?.decimal);
       if (isWinner && win === null && odd !== null) win = odd;
-
       if (isAh && ah === null) {
         ah = handicapNumber(value?.handicap ?? value?.line ?? value?.hdp ?? sideValue);
         if (ah !== null) ahOdd = odd;
       }
     }
   }
+  return { win, ah, ahOdd };
+}
 
-  return { win, ah, ahOdd, complete: win !== null && ah !== null };
+function inOptionalRange(value, min, max) {
+  if (value === null) return false;
+  if (value < min) return false;
+  if (max !== null && value > max) return false;
+  return true;
+}
+
+function selectedCandidate(source, markets, config) {
+  const awaySelected = config.side === 'AWAY';
+  const stats = awaySelected ? swapStatistics(source.stats) : source.stats;
+  const selectedName = awaySelected ? source.match.away : source.match.home;
+  const opponentName = awaySelected ? source.match.home : source.match.away;
+  const selectedScore = awaySelected ? source.match.awayScore : source.match.homeScore;
+  const opponentScore = awaySelected ? source.match.homeScore : source.match.awayScore;
+  const selectedRed = numeric(stats.red_cards?.home) || 0;
+  const opponentRed = numeric(stats.red_cards?.away) || 0;
+  const score = scoreContext(selectedScore, opponentScore);
+  const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
+
+  return {
+    fixtureId: source.match.id,
+    kickoffUtc: source.match.kickoffUtc,
+    status: source.match.status,
+    minute: source.match.minute,
+    league: source.match.league,
+    country: source.match.country,
+    home: selectedName,
+    away: opponentName,
+    actualHome: source.match.home,
+    actualAway: source.match.away,
+    selectedSide: config.side,
+    selectedMarket: config.market,
+    selectedOdds,
+    score: { home: selectedScore, away: opponentScore },
+    actualScore: { home: source.match.homeScore, away: source.match.awayScore },
+    scoreState: score.state,
+    goalDifference: score.goalDifference,
+    stats,
+    markets: {
+      homeWin: markets.win,
+      homeAh: markets.ah,
+      homeAhOdds: markets.ahOdd,
+      selectedOdds
+    },
+    redCards: { home: selectedRed, away: opponentRed },
+    completeData: true
+  };
 }
 
 async function liveConditionScan(request, env) {
   const warnings = [];
+  const config = await getActiveConditionConfig(env);
   const livePayload = await apiFetch('/fixtures?live=all', env, 55);
   const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
     .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()));
 
-  // Score is intentionally unrestricted. Only a valid score and minute 60-80 are required here.
   const preliminary = liveItems
     .map(item => ({ item, match: fixtureSummary(item) }))
-    .filter(({ match }) =>
-      match.id &&
-      match.minute !== null &&
-      match.minute >= 60 &&
-      match.minute <= 80 &&
-      match.homeScore !== null &&
-      match.awayScore !== null
-    );
+    .filter(({ match }) => {
+      if (!match.id || match.minute === null || match.homeScore === null || match.awayScore === null) return false;
+      if (match.minute < config.minuteMin || match.minute > config.minuteMax) return false;
+      if (config.goalGapLimited && Math.abs(match.homeScore - match.awayScore) > config.maxGoalGap) return false;
+      return true;
+    });
 
   const statisticsSettled = await Promise.allSettled(
-    preliminary.map(({ match }) =>
-      apiFetch(`/fixtures/statistics?fixture=${match.id}`, env, 55)
-    )
+    preliminary.map(({ match }) => apiFetch(`/fixtures/statistics?fixture=${match.id}`, env, 55))
   );
-
   const statEligible = [];
   let completeStats = 0;
 
   statisticsSettled.forEach((entry, index) => {
     const source = preliminary[index];
     if (!source) return;
-
     if (entry.status !== 'fulfilled') {
       warnings.push(`statistics ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
       return;
     }
-
     const stats = normalizeStatistics(entry.value?.response);
-    const quality = completeStatistics(stats);
-    if (!quality.ok) return;
-
+    if (!completeStatistics(stats).ok) return;
     completeStats += 1;
     statEligible.push({ ...source, stats });
   });
 
   const oddsSettled = await Promise.allSettled(
-    statEligible.map(({ match }) =>
-      apiFetch(`/odds/live?fixture=${match.id}`, env, 55)
-    )
+    statEligible.map(({ match }) => apiFetch(`/odds/live?fixture=${match.id}`, env, 55))
   );
-
   const candidates = [];
   let completeMarkets = 0;
   let redSafe = 0;
@@ -285,69 +300,36 @@ async function liveConditionScan(request, env) {
   oddsSettled.forEach((entry, index) => {
     const source = statEligible[index];
     if (!source) return;
-
     if (entry.status !== 'fulfilled') {
       warnings.push(`live odds ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
       return;
     }
-
-    const oddsItem = Array.isArray(entry.value?.response)
-      ? entry.value.response[0]
-      : null;
-    const markets = homeMarkets(oddsItem, source.match.home);
-    if (!markets.complete) return;
-
+    const oddsItem = Array.isArray(entry.value?.response) ? entry.value.response[0] : null;
+    const teamName = config.side === 'AWAY' ? source.match.away : source.match.home;
+    const markets = sideMarkets(oddsItem, teamName, config.side);
+    if (markets.win === null && markets.ah === null && markets.ahOdd === null) return;
     completeMarkets += 1;
-    if (!(markets.win > 1.70 && markets.ah >= 0.25)) return;
 
-    const homeRed = numeric(source.stats.red_cards?.home) || 0;
-    const awayRed = numeric(source.stats.red_cards?.away) || 0;
-    if (homeRed > awayRed) return;
+    const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
+    if (!inOptionalRange(selectedOdds, config.oddsMin, config.oddsMax)) return;
+    if (!inOptionalRange(markets.ah, config.ahMin, config.ahMax)) return;
 
+    const candidate = selectedCandidate(source, markets, config);
+    if (candidate.redCards.home > candidate.redCards.away) return;
     redSafe += 1;
-    const score = scoreContext(source.match.homeScore, source.match.awayScore);
-
-    candidates.push({
-      fixtureId: source.match.id,
-      kickoffUtc: source.match.kickoffUtc,
-      status: source.match.status,
-      minute: source.match.minute,
-      league: source.match.league,
-      country: source.match.country,
-      home: source.match.home,
-      away: source.match.away,
-      score: {
-        home: source.match.homeScore,
-        away: source.match.awayScore
-      },
-      scoreState: score.state,
-      goalDifference: score.goalDifference,
-      stats: source.stats,
-      markets: {
-        homeWin: markets.win,
-        homeAh: markets.ah,
-        homeAhOdds: markets.ahOdd
-      },
-      redCards: {
-        home: homeRed,
-        away: awayRed
-      },
-      homeOnly: true,
-      scoreRestricted: false,
-      completeData: true
-    });
+    candidates.push(candidate);
   });
 
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
     source: 'cloudflare-worker · api-football',
-    mode: 'PAGE-5-ALL-LIVE-HOME-ONLY-ANY-SCORE',
+    mode: 'PAGE-5-CONDITION-CONTROL',
     refreshSeconds: 60,
+    config,
     counts: {
       allLive: liveItems.length,
-      minute60To80: preliminary.length,
-      detailed: preliminary.length,
+      minuteWindow: preliminary.length,
       completeStats,
       completeMarkets,
       redSafe,
@@ -361,39 +343,23 @@ async function liveConditionScan(request, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
     if (url.pathname === '/live') {
-      if (request.method !== 'GET') {
-        return json(request, { ok: false, error: 'Method not allowed' }, 405);
-      }
-
+      if (request.method !== 'GET') return json(request, { ok: false, error: 'Method not allowed' }, 405);
       try {
         const payload = await apiFetch('/fixtures?live=all', env, 55);
-        const results = (Array.isArray(payload?.response) ? payload.response : [])
-          .map(fixtureSummary);
-        return json(request, {
-          ok: true,
-          generatedAt: new Date().toISOString(),
-          count: results.length,
-          results
-        });
+        const results = (Array.isArray(payload?.response) ? payload.response : []).map(fixtureSummary);
+        return json(request, { ok: true, generatedAt: new Date().toISOString(), count: results.length, results });
       } catch (error) {
-        return json(request, {
-          ok: false,
-          error: error?.message || 'Live fixture request failed'
-        }, 502);
+        return json(request, { ok: false, error: error?.message || 'Live fixture request failed' }, 502);
       }
     }
 
     if (url.pathname === '/live-condition-scan') {
-      if (request.method !== 'GET') {
-        return json(request, { ok: false, error: 'Method not allowed' }, 405);
-      }
-
+      if (request.method !== 'GET') return json(request, { ok: false, error: 'Method not allowed' }, 405);
       try {
         return await liveConditionScan(request, env);
       } catch (error) {
