@@ -5,6 +5,11 @@ import {
   handleAutoRequest,
   runAutoMomentumScan
 } from './auto-scan.js';
+import {
+  handleLineWebhook,
+  lineStatus,
+  notifyPendingLineEvents
+} from './line.js';
 
 const ALLOWED_ORIGINS = new Set([
   'https://mccareysupon-png.github.io',
@@ -44,6 +49,30 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
+    if (url.pathname === '/line-webhook' && request.method === 'POST') {
+      try {
+        const result = await handleLineWebhook(request, env);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'LINE webhook failed'
+        }, 500);
+      }
+    }
+
+    if (url.pathname === '/line-status' && request.method === 'GET') {
+      try {
+        return json(request, await lineStatus(env), 200);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          configured: false,
+          error: error?.message || 'LINE status failed'
+        }, 500);
+      }
+    }
+
     if (url.pathname === '/auto-scan-status') {
       try {
         const result = await handleAutoRequest(request, env, url);
@@ -60,6 +89,9 @@ export default {
     if (url.pathname.startsWith('/paper-')) {
       try {
         const result = await handlePaperRequest(request, env, url);
+        if (request.method === 'POST') {
+          ctx.waitUntil(notifyPendingLineEvents(env).catch(console.error));
+        }
         return json(request, result.data, result.status);
       } catch (error) {
         return json(request, {
@@ -90,6 +122,11 @@ export default {
       ]);
       for (const result of results) {
         if (result.status === 'rejected') console.error(result.reason);
+      }
+      try {
+        await notifyPendingLineEvents(env);
+      } catch (error) {
+        console.error(error);
       }
     })());
   }
