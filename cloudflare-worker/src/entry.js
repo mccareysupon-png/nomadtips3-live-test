@@ -53,7 +53,10 @@ async function apiFetch(path, env, cacheSeconds = 55) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-  if (payload?.errors && Object.keys(payload.errors).length) throw new Error(JSON.stringify(payload.errors));
+  if (payload?.errors && Object.keys(payload.errors).length) {
+    const detail = typeof payload.errors === 'string' ? payload.errors : JSON.stringify(payload.errors);
+    throw new Error(detail);
+  }
 
   await cache.put(key, new Response(JSON.stringify(payload), {
     headers: {
@@ -186,16 +189,8 @@ function homeMarkets(oddsItem, homeName) {
   return { win, ah, ahOdd, complete: win !== null && ah !== null };
 }
 
-function oddsByFixture(payload) {
-  const map = new Map();
-  for (const item of Array.isArray(payload?.response) ? payload.response : []) {
-    const id = Number(item?.fixture?.id ?? item?.fixtureId ?? item?.id);
-    if (Number.isInteger(id)) map.set(id, item);
-  }
-  return map;
-}
-
 async function liveConditionScan(request, env) {
+  const warnings = [];
   const livePayload = await apiFetch('/fixtures?live=all', env, 55);
   const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
     .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()));
@@ -210,46 +205,68 @@ async function liveConditionScan(request, env) {
   const chunks = [];
   for (let index = 0; index < ids.length; index += 20) chunks.push(ids.slice(index, index + 20));
 
-  const detailPayloads = await Promise.all(
+  const detailSettled = await Promise.allSettled(
     chunks.map(chunk => apiFetch(`/fixtures?ids=${chunk.join('-')}`, env, 55))
   );
-  const detailedItems = detailPayloads.flatMap(payload => Array.isArray(payload?.response) ? payload.response : []);
-  const oddsPayload = ids.length ? await apiFetch('/odds/live', env, 55) : { response: [] };
-  const oddsMap = oddsByFixture(oddsPayload);
+  const detailedItems = [];
+  for (const entry of detailSettled) {
+    if (entry.status === 'fulfilled') {
+      detailedItems.push(...(Array.isArray(entry.value?.response) ? entry.value.response : []));
+    } else {
+      warnings.push(`fixture details: ${entry.reason?.message || 'request failed'}`);
+    }
+  }
 
   let completeStats = 0;
   let completeMarkets = 0;
   let redSafe = 0;
-  const candidates = [];
+  const statEligible = [];
 
   for (const item of detailedItems) {
     const match = fixtureSummary(item);
     const stats = normalizeStatistics(item?.statistics);
-    if (!completeStatistics(stats).ok) continue;
+    const quality = completeStatistics(stats);
+    if (!quality.ok) continue;
     completeStats += 1;
+    statEligible.push({ item, match, stats });
+  }
 
-    const markets = homeMarkets(oddsMap.get(match.id), match.home);
-    if (!markets.complete) continue;
+  const oddsSettled = await Promise.allSettled(
+    statEligible.map(entry => apiFetch(`/odds/live?fixture=${entry.match.id}`, env, 55))
+  );
+
+  const candidates = [];
+  oddsSettled.forEach((entry, index) => {
+    const source = statEligible[index];
+    if (!source) return;
+    if (entry.status !== 'fulfilled') {
+      warnings.push(`live odds ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
+      return;
+    }
+
+    const oddsItem = Array.isArray(entry.value?.response) ? entry.value.response[0] : null;
+    const markets = homeMarkets(oddsItem, source.match.home);
+    if (!markets.complete) return;
     completeMarkets += 1;
-    if (!(markets.win > 1.70 && markets.ah >= 0.25)) continue;
+    if (!(markets.win > 1.70 && markets.ah >= 0.25)) return;
 
-    const homeRed = numeric(stats.red_cards?.home) || 0;
-    const awayRed = numeric(stats.red_cards?.away) || 0;
-    if (homeRed > awayRed) continue;
+    const homeRed = numeric(source.stats.red_cards?.home) || 0;
+    const awayRed = numeric(source.stats.red_cards?.away) || 0;
+    if (homeRed > awayRed) return;
     redSafe += 1;
 
     candidates.push({
-      fixtureId: match.id,
-      kickoffUtc: match.kickoffUtc,
-      status: match.status,
-      minute: match.minute,
-      league: match.league,
-      country: match.country,
-      home: match.home,
-      away: match.away,
-      score: { home: match.homeScore, away: match.awayScore },
-      stats,
-      events: normalizeEvents(item?.events),
+      fixtureId: source.match.id,
+      kickoffUtc: source.match.kickoffUtc,
+      status: source.match.status,
+      minute: source.match.minute,
+      league: source.match.league,
+      country: source.match.country,
+      home: source.match.home,
+      away: source.match.away,
+      score: { home: source.match.homeScore, away: source.match.awayScore },
+      stats: source.stats,
+      events: normalizeEvents(source.item?.events),
       markets: {
         homeWin: markets.win,
         homeAh: markets.ah,
@@ -259,7 +276,7 @@ async function liveConditionScan(request, env) {
       homeOnly: true,
       completeData: true
     });
-  }
+  });
 
   return json(request, {
     ok: true,
@@ -276,7 +293,8 @@ async function liveConditionScan(request, env) {
       redSafe,
       baseCandidates: candidates.length
     },
-    candidates
+    candidates,
+    warnings: warnings.slice(0, 20)
   });
 }
 
