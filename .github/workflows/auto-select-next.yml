@@ -1,6 +1,12 @@
 name: NOMADTIPS3 Auto Selector — Test
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/auto-select-next.yml'
+      - '.github/scripts/auto_select_next.py'
+      - 'config/nomad-auto-rules.json'
   workflow_dispatch:
     inputs:
       force:
@@ -37,22 +43,25 @@ jobs:
           test -n "${API_FOOTBALL_KEY:-}"
           python3 .github/scripts/auto_select_next.py
 
-      - name: Publish automatic test selection state
+      - name: Publish a new automatic test set only when selections changed
         id: publish
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add selected-live-matches.json auto-selection-state.json auto-selection-report.json archive/auto-selections 2>/dev/null || true
-          if git diff --cached --quiet; then
-            echo 'changed=false' >> "$GITHUB_OUTPUT"
+
+          if git diff --quiet -- selected-live-matches.json; then
+            echo 'selection_changed=false' >> "$GITHUB_OUTPUT"
+            echo 'No new qualifying set was published; current test set remains unchanged.'
             exit 0
           fi
+
+          git add selected-live-matches.json auto-selection-state.json auto-selection-report.json archive/auto-selections 2>/dev/null || true
           git commit -m "Auto-select next NOMAD test set $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3; do
             if git pull --rebase origin main && git push origin main; then
-              echo 'changed=true' >> "$GITHUB_OUTPUT"
+              echo 'selection_changed=true' >> "$GITHUB_OUTPUT"
               exit 0
             fi
             git rebase --abort 2>/dev/null || true
@@ -61,7 +70,7 @@ jobs:
           exit 1
 
       - name: Start live tracking for the new set
-        if: steps.publish.outputs.changed == 'true'
+        if: steps.publish.outputs.selection_changed == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
