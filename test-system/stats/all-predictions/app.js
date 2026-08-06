@@ -136,6 +136,7 @@ function calculatePercentage(predictions) {
     calculated,
     missingOdds,
     pending,
+    complete: missingOdds === 0 && calculated > 0,
     value: calculated ? ((returned - calculated) / calculated) * 100 : 0
   };
 }
@@ -226,11 +227,12 @@ function render() {
     : 'No recorded Odds data';
 
   const performancePercent = $('#performancePercent');
-  performancePercent.textContent = formatPercent(summary.percentage.value);
+  performancePercent.textContent = summary.percentage.complete ? formatPercent(summary.percentage.value) : '—';
   performancePercent.dataset.calculated = String(summary.percentage.calculated);
   performancePercent.dataset.missingOdds = String(summary.percentage.missingOdds);
   performancePercent.dataset.pending = String(summary.percentage.pending);
-  performancePercent.style.cssText = signedStyle(summary.percentage.value);
+  performancePercent.dataset.complete = String(summary.percentage.complete);
+  performancePercent.style.cssText = summary.percentage.complete ? signedStyle(summary.percentage.value) : '';
 
   const links = {
     '1X2': '../',
@@ -242,12 +244,14 @@ function render() {
   $('#marketBreakdown').innerHTML = [...MARKET_ORDER.keys()].map(market => {
     const item = marketSummary(predictions, market);
     const average = item.averageOdds === null ? 'No Data' : item.averageOdds.toFixed(2);
+    const percentageText = item.percentage.complete ? formatPercent(item.percentage.value) : '—';
+    const percentageStyle = item.percentage.complete ? signedStyle(item.percentage.value) : '';
     return `<a class="market-stat market-stat-link" href="${links[market]}">
       <small>${escapeHtml(market)}</small>
       <b>${item.total} Predictions · ${item.settled} Settled</b>
       <span>Correct ${item.correct} · Incorrect ${item.incorrect} · Pending ${item.pending}</span>
       <span class="market-odds-line">Average Odds ${escapeHtml(average)} · ${item.recordedOdds} recorded</span>
-      <strong class="market-odds-line" style="${signedStyle(item.percentage.value)}">${escapeHtml(formatPercent(item.percentage.value))}</strong>
+      <strong class="market-odds-line" style="${percentageStyle}">${escapeHtml(percentageText)}</strong>
     </a>`;
   }).join('');
 
