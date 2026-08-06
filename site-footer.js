@@ -4,6 +4,16 @@
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
 
+  if (window.location.pathname.includes('/test-system/stats/')) {
+    if (!document.querySelector('script[data-nomad-official-final-sync]')) {
+      const officialSync = document.createElement('script');
+      officialSync.src = new URL('test-system/stats/official-final-sync.js?v=202608060721', root).href;
+      officialSync.async = false;
+      officialSync.dataset.nomadOfficialFinalSync = 'true';
+      document.head.appendChild(officialSync);
+    }
+  }
+
   const hasMatchLists = document.querySelector('#pickGrid, #historyRows, #posterList, #matches');
   if (hasMatchLists) {
     if (!document.querySelector('link[data-nomad-match-order]')) {
