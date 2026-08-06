@@ -179,6 +179,129 @@ body>.topbar + .page{padding-top:86px!important}
   }
 }
 
+/* Statistics page: softer surfaces, fewer visible borders and clearer hierarchy. */
+body:has(.stats-subnav){
+  background:
+    radial-gradient(circle at 10% 0,rgba(0,240,168,.065),transparent 34rem),
+    linear-gradient(180deg,#171b1a 0%,#1b1d1c 58%,#171918 100%)!important;
+}
+.page:has(> .stats-subnav) > .hero{
+  border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:18px!important;
+  background:
+    radial-gradient(circle at 0 0,rgba(0,240,168,.075),transparent 26rem),
+    linear-gradient(145deg,rgba(38,43,41,.96),rgba(25,29,28,.98))!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.15)!important;
+}
+.stats-subnav{
+  gap:10px!important;
+  margin-bottom:24px!important;
+}
+.stats-subnav a{
+  border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:14px!important;
+  background:linear-gradient(180deg,rgba(36,40,39,.9),rgba(27,31,30,.94))!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.11)!important;
+}
+.stats-subnav a.active{
+  border-color:rgba(0,240,168,.2)!important;
+  background:linear-gradient(145deg,rgba(7,84,60,.94),rgba(5,64,47,.96))!important;
+  box-shadow:0 10px 24px rgba(0,84,60,.16)!important;
+}
+.stats-subnav + .summary .metric{
+  border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:14px!important;
+  background:linear-gradient(155deg,rgba(38,41,40,.96),rgba(29,32,31,.98))!important;
+  box-shadow:0 8px 20px rgba(0,0,0,.1)!important;
+}
+.stats-subnav ~ .average-odds-strip,
+.stats-subnav ~ .panel{
+  border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:18px!important;
+  background:linear-gradient(155deg,rgba(34,39,37,.96),rgba(24,29,27,.98))!important;
+  box-shadow:0 14px 32px rgba(0,0,0,.14)!important;
+}
+.stats-subnav ~ .panel .panel-head{
+  border-bottom:1px solid rgba(255,255,255,.04)!important;
+  background:linear-gradient(180deg,rgba(35,39,38,.74),rgba(28,32,31,.54))!important;
+}
+.stats-subnav ~ .panel .history th{
+  background:rgba(20,24,23,.55)!important;
+}
+.stats-subnav ~ .panel .history th,
+.stats-subnav ~ .panel .history td{
+  border-bottom-color:rgba(255,255,255,.04)!important;
+}
+.stats-subnav ~ .panel .chart-viewport,
+.stats-subnav ~ .panel .market-stat{
+  border-color:rgba(255,255,255,.04)!important;
+  background:linear-gradient(155deg,rgba(31,36,34,.84),rgba(24,28,27,.9))!important;
+}
+
+/* Live Analysis page: keep only faint separators and use calm layered gradients. */
+body:has(.wrap > #matches){
+  background:
+    radial-gradient(circle at 50% -12rem,rgba(0,240,168,.08),transparent 34rem),
+    linear-gradient(180deg,#171a19 0%,#1b1d1c 52%,#161817 100%)!important;
+}
+.wrap > #matches .match-card{
+  border:1px solid rgba(255,255,255,.045)!important;
+  border-radius:18px!important;
+  background:linear-gradient(155deg,rgba(35,40,38,.97),rgba(23,28,26,.99))!important;
+  box-shadow:0 16px 36px rgba(0,0,0,.17)!important;
+}
+.wrap > #matches .match-head{
+  border-bottom:1px solid rgba(255,255,255,.04)!important;
+  background:linear-gradient(180deg,rgba(31,35,34,.78),rgba(25,29,28,.62))!important;
+}
+.wrap > #matches .scoreboard{
+  background:
+    radial-gradient(circle at 50% 0,rgba(0,240,168,.045),transparent 15rem),
+    linear-gradient(180deg,rgba(39,43,42,.92),rgba(28,32,31,.96))!important;
+}
+.wrap > #matches .scorebox{
+  border:1px solid rgba(255,255,255,.055)!important;
+  border-radius:12px!important;
+  background:linear-gradient(180deg,rgba(24,28,27,.96),rgba(19,23,22,.98))!important;
+  box-shadow:0 8px 18px rgba(0,0,0,.1)!important;
+}
+.wrap > #matches .latest,
+.wrap > #matches .tabs,
+.wrap > #matches .reason,
+.wrap > #matches .match-card footer{
+  border-color:rgba(255,255,255,.04)!important;
+  background:linear-gradient(180deg,rgba(28,32,31,.74),rgba(23,27,26,.8))!important;
+}
+.wrap > #matches .tabs button.active{
+  background:rgba(255,255,255,.025)!important;
+}
+.wrap > #matches .stat-row,
+.wrap > #matches .event,
+.wrap > #matches .empty,
+.wrap > #matches .momentum-chart{
+  border-color:rgba(255,255,255,.045)!important;
+  border-radius:12px!important;
+  background:linear-gradient(155deg,rgba(40,44,43,.72),rgba(30,34,33,.82))!important;
+}
+.wrap > #matches .momentum-panel{
+  background:linear-gradient(180deg,rgba(31,35,34,.8),rgba(25,29,28,.9))!important;
+}
+.wrap > #matches .pick,
+.wrap > #matches .markets{
+  gap:0!important;
+  border-top:1px solid rgba(255,255,255,.04)!important;
+  background:transparent!important;
+}
+.wrap > #matches .pick > div,
+.wrap > #matches .markets > div{
+  border-right:1px solid rgba(255,255,255,.035)!important;
+  background:linear-gradient(155deg,rgba(36,40,39,.8),rgba(28,32,31,.88))!important;
+}
+.wrap > #matches .pick > div:last-child,
+.wrap > #matches .markets > div:last-child{
+  border-right:0!important;
+}
+
 @media(max-width:720px){
   body>.topbar,
   .wrap>.topbar{
