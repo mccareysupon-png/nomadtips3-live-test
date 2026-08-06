@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#07110d">
+  <meta name="theme-color" content="#0a0b0d">
   <title>NOMADTIPS3 — Page 5 Live Condition Alert</title>
   <style>
     :root{--bg:#07110d;--panel:#0e1e17;--panel2:#132d21;--line:#29483b;--text:#eff9f3;--muted:#91aa9e;--green:#00df91;--yellow:#f2c94c;--red:#ff6573;--blue:#67b7ff}
@@ -16,6 +16,30 @@
     .history,.paper{margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:15px;background:#0c1b14}.history h2,.paper h2{margin:0;font-size:13px}.history-head,.paper-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:9px}.log div{padding:8px;margin-top:6px;background:#091711;border-radius:9px;color:#bdd0c6;font-size:10px;line-height:1.5}.notify{border:1px solid #416353;border-radius:10px;background:#10271d;color:#dff8eb;padding:8px 10px;font-weight:800;font-size:10px;cursor:pointer}.notify:disabled{opacity:.55;cursor:default}
     .paper-note{margin:10px 0 12px;padding:10px 12px;border:1px solid #395848;border-radius:11px;background:#0a1912;color:#a9c0b5;font-size:10px;line-height:1.55}.paper-summary{grid-template-columns:repeat(4,1fr)}.paper-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;margin-top:12px}.equity{padding:12px;border:1px solid #213e31;border-radius:13px;background:#08170f}.equity h3,.trades h3{margin:0 0 8px;font-size:12px}.equity-chart{height:220px;border:1px solid #1d382c;border-radius:11px;background:#06110c;overflow:hidden}.equity-caption{display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:var(--muted);font-size:9px}.trades{padding:12px;border:1px solid #213e31;border-radius:13px;background:#08170f}.trade-list{display:grid;gap:8px;max-height:520px;overflow:auto}.trade{padding:10px;border:1px solid #234233;border-radius:11px;background:#0c1c15}.trade-top{display:flex;justify-content:space-between;gap:10px}.trade-top b{font-size:11px}.trade-status{font-size:9px;font-weight:900}.trade-status.win{color:var(--green)}.trade-status.loss{color:var(--red)}.trade-status.neutral{color:var(--yellow)}.trade-status.pending{color:var(--blue)}.trade-meta{margin-top:5px;color:#a9c0b5;font-size:9px;line-height:1.55}.trade-profit{margin-top:6px;font-size:12px;font-weight:900}.footer{margin-top:15px;text-align:center;color:#6f887c;font-size:9px}
     @media(max-width:850px){.summary{grid-template-columns:repeat(3,1fr)}.paper-summary{grid-template-columns:repeat(2,1fr)}.card-body,.paper-grid{grid-template-columns:1fr}}@media(max-width:620px){.note{align-items:stretch;flex-direction:column}.note-link{width:100%}}@media(max-width:520px){.summary,.paper-summary{grid-template-columns:repeat(2,1fr)}.top{align-items:flex-start}.scan small{max-width:140px}.facts{grid-template-columns:1fr 1fr}.paper-head,.history-head{align-items:flex-start;flex-direction:column}.control-link{padding:7px 8px}}
+
+    /* Dark graphite theme: separate sections by shade, not border lines. */
+    :root{--bg:#090a0c;--panel:#1d2025;--panel2:#282b31;--line:transparent}
+    html{background:#090a0c}
+    body{background:linear-gradient(145deg,#2a2c31 0%,#17191d 42%,#090a0c 100%);background-attachment:fixed}
+    .control-link,.note,.note-link,.metric,.card,.card.triggered,.card-head,.chart,.fact,.analysis,.alert,.empty,.history,.paper,.notify,.paper-note,.equity,.equity-chart,.trades,.trade{border:0}
+    .control-link,.notify{background:#2a2d33}
+    .note{background:#1e2126}
+    .note-link{border:0}
+    .metric{background:#24272d}
+    .card{background:linear-gradient(180deg,#2b2e34,#17191d)}
+    .card.triggered{border:0;background:linear-gradient(180deg,#293d35,#17191d);box-shadow:0 0 30px #00df9144}
+    .card-head{background:#24272d}
+    .chart{background:#111317}
+    .fact{background:#23262c}
+    .analysis{background:#1f2227}
+    .alert{background:#282b31}
+    .empty{background:#1b1e23}
+    .history,.paper{background:#15171b}
+    .log div{background:#23262c}
+    .paper-note{background:#1f2227}
+    .equity,.trades{background:#1d2025}
+    .equity-chart{background:#0f1114}
+    .trade{background:#25282e}
   </style>
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
