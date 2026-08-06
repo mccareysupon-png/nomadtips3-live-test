@@ -172,9 +172,13 @@ function summarize(predictions) {
     }
   }
 
-  const recordedOdds = predictions.map(item => item.odds).filter(value => value !== null);
-  const averageOdds = recordedOdds.length
-    ? recordedOdds.reduce((sum, value) => sum + value, 0) / recordedOdds.length
+  const percentage = calculatePercentage(predictions);
+  const settledOdds = predictions
+    .filter(item => item.outcome !== 'pending')
+    .map(item => item.odds)
+    .filter(value => value !== null);
+  const averageOdds = percentage.complete && settledOdds.length
+    ? settledOdds.reduce((sum, value) => sum + value, 0) / settledOdds.length
     : null;
 
   return {
@@ -187,8 +191,8 @@ function summarize(predictions) {
     pending,
     rate: decisions ? (weightedPoints / decisions) * 100 : 0,
     averageOdds,
-    recordedOdds: recordedOdds.length,
-    percentage: calculatePercentage(predictions)
+    recordedOdds: settledOdds.length,
+    percentage
   };
 }
 
@@ -221,10 +225,10 @@ function render() {
   $('#void').textContent = summary.voids;
   $('#pending').textContent = summary.pending;
   $('#rate').textContent = `${summary.rate.toFixed(2)}%`;
-  $('#averageOdds').textContent = summary.averageOdds === null ? 'No Data' : summary.averageOdds.toFixed(2);
-  $('#oddsNote').textContent = summary.recordedOdds
-    ? `${summary.recordedOdds} recorded Odds · ${summary.percentage.missingOdds} missing Odds · ${summary.percentage.pending} pending`
-    : 'No recorded Odds data';
+  $('#averageOdds').textContent = summary.averageOdds === null ? '—' : summary.averageOdds.toFixed(2);
+  $('#oddsNote').textContent = summary.percentage.complete
+    ? `${summary.percentage.calculated} settled predictions with complete recorded Odds`
+    : `${summary.percentage.missingOdds} settled predictions are missing recorded Odds`;
 
   const performancePercent = $('#performancePercent');
   performancePercent.textContent = summary.percentage.complete ? formatPercent(summary.percentage.value) : '—';
@@ -243,14 +247,14 @@ function render() {
 
   $('#marketBreakdown').innerHTML = [...MARKET_ORDER.keys()].map(market => {
     const item = marketSummary(predictions, market);
-    const average = item.averageOdds === null ? 'No Data' : item.averageOdds.toFixed(2);
+    const average = item.averageOdds === null ? '—' : item.averageOdds.toFixed(2);
     const percentageText = item.percentage.complete ? formatPercent(item.percentage.value) : '—';
     const percentageStyle = item.percentage.complete ? signedStyle(item.percentage.value) : '';
     return `<a class="market-stat market-stat-link" href="${links[market]}">
       <small>${escapeHtml(market)}</small>
       <b>${item.total} Predictions · ${item.settled} Settled</b>
       <span>Correct ${item.correct} · Incorrect ${item.incorrect} · Pending ${item.pending}</span>
-      <span class="market-odds-line">Average Odds ${escapeHtml(average)} · ${item.recordedOdds} recorded</span>
+      <span class="market-odds-line">Average Odds ${escapeHtml(average)}</span>
       <strong class="market-odds-line" style="${percentageStyle}">${escapeHtml(percentageText)}</strong>
     </a>`;
   }).join('');
