@@ -1,3 +1,5 @@
+import { getActiveConditionConfig } from './condition-config.js';
+
 const WEIGHTS = {
   attacks: 0.16,
   dangerous_attacks: 0.52,
@@ -34,6 +36,24 @@ CREATE TABLE IF NOT EXISTS auto_scan_status (
   error TEXT,
   warnings_json TEXT NOT NULL DEFAULT '[]',
   updated_at INTEGER NOT NULL
+)`;
+
+const SIGNAL_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS condition_signals (
+  signal_key TEXT PRIMARY KEY,
+  fixture_id INTEGER NOT NULL,
+  selected_side TEXT NOT NULL,
+  selected_team TEXT NOT NULL,
+  opponent TEXT NOT NULL,
+  minute INTEGER NOT NULL,
+  selected_score INTEGER NOT NULL,
+  opponent_score INTEGER NOT NULL,
+  momentum REAL,
+  selected_odds REAL,
+  ah_line REAL,
+  ah_odds REAL,
+  payload_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL
 )`;
 
 const PAPER_TABLE_SQL = `
@@ -88,8 +108,10 @@ async function ensureSchema(env) {
     env.DB.prepare(PAPER_TABLE_SQL),
     env.DB.prepare(STATE_TABLE_SQL),
     env.DB.prepare(STATUS_TABLE_SQL),
+    env.DB.prepare(SIGNAL_TABLE_SQL),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_state_updated ON auto_momentum_state(updated_at)'),
-    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_paper_status ON paper_trades(status)')
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_paper_status ON paper_trades(status)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_condition_signals_created ON condition_signals(created_at)')
   ]);
   schemaReady = true;
 }
@@ -102,9 +124,7 @@ function activity(currentStats, previousStats, side) {
     const previous = numeric(previousStats?.[key]?.[side]);
     const delta = previous === null || current === null ? 0 : Math.max(0, current - previous);
     weighted += delta * weight;
-    if (['dangerous_attacks', 'shots', 'shots_on_target', 'corners'].includes(key)) {
-      evidence += delta;
-    }
+    if (['dangerous_attacks', 'shots', 'shots_on_target', 'corners'].includes(key)) evidence += delta;
   }
   weighted += Math.max(0, numeric(currentStats?.possession?.[side]) || 0) * 0.07;
   return { weighted, evidence };
@@ -116,22 +136,22 @@ function momentum(candidate, previous, now) {
   const minute = Number(candidate.minute);
   if (age <= 0 || age > 8 * 60_000 || minute < Number(previous.last_minute || 0)) return null;
 
-  let previousStats = null;
-  try { previousStats = JSON.parse(previous.stats_json || '{}'); } catch { previousStats = {}; }
-  const home = activity(candidate.stats, previousStats, 'home');
-  const away = activity(candidate.stats, previousStats, 'away');
-  const total = home.weighted + away.weighted;
-  let homePercent = total > 0 ? (home.weighted / total) * 100 : 50;
+  let previousStats = {};
+  try { previousStats = JSON.parse(previous.stats_json || '{}'); } catch {}
+  const selected = activity(candidate.stats, previousStats, 'home');
+  const opponent = activity(candidate.stats, previousStats, 'away');
+  const total = selected.weighted + opponent.weighted;
+  let selectedPercent = total > 0 ? (selected.weighted / total) * 100 : 50;
   const lastPercent = numeric(previous.last_home_percent);
-  if (lastPercent !== null) homePercent = lastPercent * 0.55 + homePercent * 0.45;
-  homePercent = Math.round(clamp(homePercent, 0, 100));
-  return { home: homePercent, away: 100 - homePercent, evidence: home.evidence };
+  if (lastPercent !== null) selectedPercent = lastPercent * 0.55 + selectedPercent * 0.45;
+  selectedPercent = Math.round(clamp(selectedPercent, 0, 100));
+  return { home: selectedPercent, away: 100 - selectedPercent, evidence: selected.evidence };
 }
 
 function scoreState(candidate) {
   const difference = Number(candidate?.score?.home || 0) - Number(candidate?.score?.away || 0);
-  if (difference > 0) return `เจ้าบ้านนำ ${difference} ลูก`;
-  if (difference < 0) return `เจ้าบ้านตาม ${Math.abs(difference)} ลูก`;
+  if (difference > 0) return `ทีมที่เลือกนำ ${difference} ลูก`;
+  if (difference < 0) return `ทีมที่เลือกตาม ${Math.abs(difference)} ลูก`;
   return 'สกอร์เสมอ';
 }
 
@@ -156,14 +176,48 @@ function stateStatement(env, candidate, calculated, streak, triggered, now) {
       triggered = excluded.triggered,
       updated_at = excluded.updated_at
   `).bind(
-    Number(candidate.fixtureId), String(candidate.home || 'Home'), String(candidate.away || 'Away'),
+    Number(candidate.fixtureId), String(candidate.home || 'Selected'), String(candidate.away || 'Opponent'),
     String(candidate.league || ''), String(candidate.country || ''), now, Number(candidate.minute),
     Number(candidate.score?.home || 0), Number(candidate.score?.away || 0),
     JSON.stringify(candidate.stats || {}), calculated?.home ?? null, streak, triggered ? 1 : 0, now
   );
 }
 
+function signalKey(candidate) {
+  return `${Number(candidate.fixtureId)}:${String(candidate.selectedSide || 'HOME')}`;
+}
+
+function signalStatement(env, candidate, calculated, now) {
+  const payload = {
+    fixtureId: Number(candidate.fixtureId),
+    selectedSide: candidate.selectedSide || 'HOME',
+    selectedTeam: candidate.home,
+    opponent: candidate.away,
+    minute: Number(candidate.minute),
+    score: candidate.score,
+    momentum: calculated?.home ?? null,
+    selectedOdds: numeric(candidate?.markets?.selectedOdds),
+    ahLine: numeric(candidate?.markets?.homeAh),
+    ahOdds: numeric(candidate?.markets?.homeAhOdds),
+    createdAt: now
+  };
+  return env.DB.prepare(`
+    INSERT OR IGNORE INTO condition_signals (
+      signal_key, fixture_id, selected_side, selected_team, opponent, minute,
+      selected_score, opponent_score, momentum, selected_odds, ah_line, ah_odds,
+      payload_json, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    signalKey(candidate), Number(candidate.fixtureId), String(candidate.selectedSide || 'HOME'),
+    String(candidate.home || 'Selected'), String(candidate.away || 'Opponent'), Number(candidate.minute),
+    Number(candidate.score?.home || 0), Number(candidate.score?.away || 0), calculated?.home ?? null,
+    numeric(candidate?.markets?.selectedOdds), numeric(candidate?.markets?.homeAh),
+    numeric(candidate?.markets?.homeAhOdds), JSON.stringify(payload), now
+  );
+}
+
 function tradeStatement(env, candidate, calculated, now) {
+  if (String(candidate.selectedSide || 'HOME') !== 'HOME') return null;
   const ahLine = numeric(candidate?.markets?.homeAh);
   const ahOdds = numeric(candidate?.markets?.homeAhOdds);
   const homeWinOdds = numeric(candidate?.markets?.homeWin);
@@ -180,7 +234,7 @@ function tradeStatement(env, candidate, calculated, now) {
     String(candidate.home || 'Home'), String(candidate.away || 'Away'), String(candidate.league || ''),
     String(candidate.country || ''), scoreState(candidate), calculated?.home ?? null,
     homeWinOdds, ahLine, ahOdds,
-    'Created automatically by Cloudflare Worker momentum scanner', now
+    'Created automatically by Cloudflare Worker condition scanner', now
   );
 }
 
@@ -191,11 +245,28 @@ async function rowsByFixture(env, table, ids) {
     if (!group.length) continue;
     const placeholders = group.map(() => '?').join(',');
     const result = await env.DB.prepare(`SELECT * FROM ${table} WHERE fixture_id IN (${placeholders})`)
-      .bind(...group)
-      .all();
+      .bind(...group).all();
     for (const row of result.results || []) map.set(Number(row.fixture_id), row);
   }
   return map;
+}
+
+async function signalsByFixture(env, candidates) {
+  const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
+  const rows = await rowsByFixture(env, 'condition_signals', ids);
+  const map = new Map();
+  for (const candidate of candidates) {
+    const row = rows.get(Number(candidate.fixtureId));
+    if (row && String(row.selected_side) === String(candidate.selectedSide || 'HOME')) {
+      map.set(Number(candidate.fixtureId), row);
+    }
+  }
+  return map;
+}
+
+function startOfThaiDay(now) {
+  const offset = 7 * 60 * 60_000;
+  return Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset;
 }
 
 async function saveStatus(env, status) {
@@ -211,20 +282,14 @@ async function saveStatus(env, status) {
       warnings_json = excluded.warnings_json,
       updated_at = excluded.updated_at
   `).bind(
-    status.ranAt,
-    status.ok ? 1 : 0,
-    JSON.stringify(status.counts || {}),
-    status.payload ? JSON.stringify(status.payload) : null,
-    status.error || null,
-    JSON.stringify(status.warnings || []),
-    Date.now()
+    status.ranAt, status.ok ? 1 : 0, JSON.stringify(status.counts || {}),
+    status.payload ? JSON.stringify(status.payload) : null, status.error || null,
+    JSON.stringify(status.warnings || []), Date.now()
   ).run();
 }
 
 async function fetchBaseScan(baseWorker, env, ctx) {
-  const request = new Request('https://internal.nomadtips3/live-condition-scan?source=scheduled', {
-    method: 'GET'
-  });
+  const request = new Request('https://internal.nomadtips3/live-condition-scan?source=scheduled', { method: 'GET' });
   const response = await baseWorker.fetch(request, env, ctx);
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.ok) throw new Error(payload?.error || `Live scan HTTP ${response.status}`);
@@ -235,52 +300,78 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
   await ensureSchema(env);
   const now = Date.now();
   try {
-    const payload = await fetchBaseScan(baseWorker, env, ctx);
+    const [payload, config] = await Promise.all([
+      fetchBaseScan(baseWorker, env, ctx),
+      getActiveConditionConfig(env)
+    ]);
     const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
     const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
-    const [states, existingTrades] = await Promise.all([
+    const [states, existingTrades, existingSignals, todayCountRow] = await Promise.all([
       rowsByFixture(env, 'auto_momentum_state', ids),
-      rowsByFixture(env, 'paper_trades', ids)
+      rowsByFixture(env, 'paper_trades', ids),
+      signalsByFixture(env, candidates),
+      env.DB.prepare('SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?')
+        .bind(startOfThaiDay(now)).first()
     ]);
 
     const statements = [];
+    const enriched = [];
     let momentumReady = 0;
     let passing = 0;
     let triggered = 0;
+    let newSignals = 0;
     let newTrades = 0;
+    let dailySignals = Number(todayCountRow?.total || 0);
 
     for (const candidate of candidates) {
       const fixtureId = Number(candidate.fixtureId);
       const previous = states.get(fixtureId) || null;
       const calculated = momentum(candidate, previous, now);
       if (calculated) momentumReady += 1;
-      const threshold = Number(candidate.minute) <= 74 ? 60 : 65;
-      const pass = Boolean(calculated && calculated.home >= threshold && calculated.evidence >= 1);
+      const pass = Boolean(
+        calculated &&
+        calculated.home >= config.momentumMin &&
+        calculated.evidence >= 1
+      );
       if (pass) passing += 1;
+
       const previousStreak = previous ? Number(previous.streak || 0) : 0;
       const streak = pass ? previousStreak + 1 : 0;
       let wasTriggered = Boolean(previous && Number(previous.triggered));
-      const alreadyStored = existingTrades.has(fixtureId);
-      if (alreadyStored) wasTriggered = true;
+      if (existingSignals.has(fixtureId)) wasTriggered = true;
 
-      if (!wasTriggered && streak >= 2) {
-        const insert = tradeStatement(env, candidate, calculated, now);
-        if (insert) {
-          statements.push(insert);
-          wasTriggered = true;
-          newTrades += 1;
+      const limitReached = config.signalLimitEnabled && dailySignals >= config.maxSignalsPerDay;
+      if (!wasTriggered && streak >= config.confirmationRounds && !limitReached) {
+        statements.push(signalStatement(env, candidate, calculated, now));
+        wasTriggered = true;
+        dailySignals += 1;
+        newSignals += 1;
+
+        if (!existingTrades.has(fixtureId)) {
+          const trade = tradeStatement(env, candidate, calculated, now);
+          if (trade) {
+            statements.push(trade);
+            newTrades += 1;
+          }
         }
       }
+
       if (wasTriggered) triggered += 1;
       statements.push(stateStatement(env, candidate, calculated, streak, wasTriggered, now));
+      enriched.push({
+        ...candidate,
+        serverMomentum: calculated,
+        serverStreak: streak,
+        serverTriggered: wasTriggered,
+        signalLimitReached: Boolean(limitReached && !wasTriggered)
+      });
     }
 
     for (let index = 0; index < statements.length; index += 80) {
       await env.DB.batch(statements.slice(index, index + 80));
     }
     await env.DB.prepare('DELETE FROM auto_momentum_state WHERE updated_at < ?')
-      .bind(now - 6 * 60 * 60_000)
-      .run();
+      .bind(now - 6 * 60 * 60_000).run();
 
     const counts = {
       ...(payload.counts || {}),
@@ -288,13 +379,17 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       momentumReady,
       passing,
       triggered,
-      newTrades
+      newSignals,
+      newTrades,
+      dailySignals
     };
     const serverPayload = {
       ...payload,
       generatedAt: new Date(now).toISOString(),
-      mode: 'PAGE-5-WORKER-AUTO-MOMENTUM',
+      mode: 'PAGE-5-WORKER-CONDITION-CONTROL',
       serverOnline: true,
+      config,
+      candidates: enriched,
       counts
     };
     await saveStatus(env, {
@@ -330,15 +425,18 @@ export async function handleAutoRequest(request, env, url) {
   if (url.pathname !== '/auto-scan-status' || request.method !== 'GET') {
     return { status: 404, data: { ok: false, error: 'Auto scanner endpoint not found' } };
   }
-  const row = await env.DB.prepare('SELECT * FROM auto_scan_status WHERE id = 1').first();
-  const active = await env.DB.prepare(`
-    SELECT fixture_id, home, away, last_minute, home_score, away_score,
-           last_home_percent, streak, triggered, updated_at
-    FROM auto_momentum_state
-    WHERE updated_at >= ?
-    ORDER BY triggered DESC, last_home_percent DESC
-    LIMIT 100
-  `).bind(Date.now() - 15 * 60_000).all();
+  const [row, active, config] = await Promise.all([
+    env.DB.prepare('SELECT * FROM auto_scan_status WHERE id = 1').first(),
+    env.DB.prepare(`
+      SELECT fixture_id, home, away, last_minute, home_score, away_score,
+             last_home_percent, streak, triggered, updated_at
+      FROM auto_momentum_state
+      WHERE updated_at >= ?
+      ORDER BY triggered DESC, last_home_percent DESC
+      LIMIT 100
+    `).bind(Date.now() - 15 * 60_000).all(),
+    getActiveConditionConfig(env)
+  ]);
 
   let counts = {};
   let warnings = [];
@@ -351,6 +449,7 @@ export async function handleAutoRequest(request, env, url) {
       online: Boolean(row && Number(row.ok) && Date.now() - Number(row.ran_at || 0) <= 7 * 60_000),
       generatedAt: row?.ran_at ? new Date(Number(row.ran_at)).toISOString() : null,
       error: row?.error || null,
+      config,
       counts,
       warnings,
       active: active.results || []
