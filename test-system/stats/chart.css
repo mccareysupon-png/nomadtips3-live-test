@@ -17,14 +17,17 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 .stats-subnav a{display:flex;align-items:center;justify-content:center;min-height:40px;padding:8px 9px;border:0!important;border-radius:0;background:transparent;color:#969e9a;font-size:8px;font-weight:900;line-height:1.2;text-align:center;text-decoration:none;box-shadow:none!important}
 .stats-subnav a:hover,.stats-subnav a.active{background:linear-gradient(180deg,rgba(7,84,60,.30),rgba(7,84,60,.10));color:#fff}
 
-/* Summary follows page-one continuous band */
-.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:0;margin:0 0 14px;overflow:hidden;border:0;border-radius:5px;background:linear-gradient(180deg,#252a27 0%,#1d211f 100%);box-shadow:none}
-.metric{min-width:0;min-height:66px;padding:13px 10px 14px;border:0!important;border-radius:0!important;background:transparent!important;text-align:center;box-shadow:none!important}
+/* Floating summary cards: no outlines, tonal gradients distinguish each tile */
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:0 0 14px;overflow:visible;border:0;border-radius:0;background:transparent;box-shadow:none}
+.metric{min-width:0;min-height:66px;padding:13px 10px 14px;border:0!important;border-radius:4px!important;background:linear-gradient(180deg,#252a27 0%,#1f2321 100%)!important;text-align:center;box-shadow:none!important}
+.metric:nth-child(2n){background:linear-gradient(180deg,#29302c 0%,#202522 100%)!important}
+.metric:nth-child(3n){background:linear-gradient(180deg,#232826 0%,#1b1f1d 100%)!important}
+.metric:nth-child(5n){background:linear-gradient(180deg,#27302b 0%,#1e2421 100%)!important}
 .metric small{display:block;min-height:0;color:#969e9a;font-size:8px;line-height:1.35;letter-spacing:.06em;text-transform:uppercase}
 .metric b{display:block;margin-top:5px;color:var(--text);font-size:17px;line-height:1.1;font-weight:900}
 
 /* Quiet odds note */
-.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:9px;margin:-4px 0 14px;padding:9px 11px;border:0!important;border-radius:3px;background:linear-gradient(90deg,rgba(7,84,60,.16),rgba(32,35,33,.70));box-shadow:none!important}
+.average-odds-strip{display:grid;grid-template-columns:auto minmax(76px,auto) 1fr;align-items:center;gap:9px;margin:-4px 0 14px;padding:9px 11px;border:0!important;border-radius:4px;background:linear-gradient(90deg,rgba(7,84,60,.20),rgba(32,35,33,.82));box-shadow:none!important}
 .average-odds-strip span{color:#969e9a;font-size:8px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
 .average-odds-strip strong{display:inline-flex;align-items:center;justify-content:center;min-height:25px;padding:4px 8px;border:0!important;border-radius:3px;background:rgba(0,0,0,.10);color:var(--yellow);font-size:12px;font-weight:850;line-height:1.15;white-space:nowrap;box-shadow:none!important}
 .average-odds-strip small{color:#9fb0a7;font-size:8px;line-height:1.45}
@@ -35,11 +38,14 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 .panel-head h2{margin:0;font-size:14px;line-height:1.3;font-weight:900;letter-spacing:-.005em}
 .panel-head small{color:var(--muted);font-size:8px;line-height:1.4}
 
-/* Market overview reads as one strip */
-.market-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0;overflow:hidden;border:0;border-radius:0;background:linear-gradient(180deg,#212522,#1e211f)}
-.market-stat{padding:12px;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
-.market-stat-link{display:block;color:inherit;text-decoration:none;transition:background .15s ease}
-.market-stat-link:hover,.market-stat-link.active{background:linear-gradient(90deg,rgba(7,84,60,.20),rgba(7,84,60,.03))!important;transform:none!important}
+/* Floating market cards: square-edged tiles separated by space and gradient only */
+.market-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding:0 12px 12px;overflow:visible;border:0;border-radius:0;background:transparent}
+.market-stat{padding:12px;border:0!important;border-radius:4px!important;background:linear-gradient(180deg,#232826 0%,#1d211f 100%)!important;box-shadow:none!important}
+.market-stat:nth-child(2n){background:linear-gradient(180deg,#29302c 0%,#202522 100%)!important}
+.market-stat:nth-child(3n){background:linear-gradient(180deg,#212624 0%,#1a1e1c 100%)!important}
+.market-stat:nth-child(4n){background:linear-gradient(180deg,#27302b 0%,#1e2421 100%)!important}
+.market-stat-link{display:block;color:inherit;text-decoration:none;transition:background .15s ease,transform .15s ease}
+.market-stat-link:hover,.market-stat-link.active{background:linear-gradient(135deg,rgba(7,84,60,.34),rgba(31,37,34,.94))!important;transform:translateY(-1px)!important}
 .market-stat small{display:block;color:#969e9a;font-size:8px;text-transform:uppercase;letter-spacing:.07em}
 .market-stat b{display:block;margin-top:6px;font-size:14px}
 .market-stat span{display:block;margin-top:5px;color:#9fb0a7;font-size:8px;line-height:1.45}
@@ -98,11 +104,11 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
   .hero h1{font-size:18px}
   .stats-subnav{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stats-subnav a{min-height:38px;font-size:8px}
-  .summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .summary{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
   .average-odds-strip{grid-template-columns:1fr auto;gap:6px 9px;padding:8px 10px}
   .average-odds-strip strong{min-height:23px;padding:3px 7px;font-size:11px}
   .average-odds-strip small{grid-column:1/-1}
-  .market-stat-grid{grid-template-columns:1fr}
+  .market-stat-grid{grid-template-columns:1fr;gap:8px;padding:0 10px 10px}
   .chart-stage,.chart-stage svg{height:270px}
   .performance-toolbar{padding:9px 11px}
   .performance-legend{gap:11px;font-size:8px}
@@ -116,7 +122,7 @@ html,body{background:linear-gradient(180deg,#191b1a 0%,#1d201e 45%,#191b1a 100%)
 }
 
 @media(max-width:430px){
-  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .metric{padding:12px 8px 13px}
   .panel-head{padding:12px 11px 9px}
 }
