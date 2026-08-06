@@ -61,8 +61,23 @@ function formatPercent(value) {
   return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
 }
 
+function ensureTarget() {
+  let target = document.querySelector('#performancePercent');
+  if (target) return target;
+
+  const summary = document.querySelector('.summary');
+  if (!summary) return null;
+
+  const card = document.createElement('div');
+  card.className = 'metric';
+  card.setAttribute('aria-label', 'Percentage');
+  card.innerHTML = '<small aria-hidden="true">&nbsp;</small><b id="performancePercent">0.00%</b>';
+  summary.appendChild(card);
+  return card.querySelector('#performancePercent');
+}
+
 function renderPercentage() {
-  const target = document.querySelector('#performancePercent');
+  const target = ensureTarget();
   if (!target) return;
 
   const value = calculatePercentage(loadCumulativeRecords());
