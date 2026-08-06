@@ -1,15 +1,18 @@
-import { buildSummary, loadRecords, resultText } from '../shared.js?v=202608051120';
+import { buildSummary, loadRecords, resultText } from '../shared.js?v=202608061015';
 
 const $ = selector => document.querySelector(selector);
 const PAGE_SIZE = 4;
-const DAY_LABEL = 'DAY 7';
+const DAY_LABEL = 'DAY 8';
 let currentRecords = [];
 let currentPage = 0;
 
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
   '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;'
 })[char]);
-const formatOdds = value => Number(value) > 0 ? Number(value).toFixed(2) : 'Pending';
+const formatOdds = (value, status = '') => {
+  if (Number(value) > 0) return Number(value).toFixed(2);
+  return ['N/A','UNAVAILABLE'].includes(String(status).toUpperCase()) ? 'N/A' : 'Pending';
+};
 
 function formatPosterDate(records) {
   const pickDate = records[0]?.pickDate;
@@ -40,7 +43,7 @@ function formatLocalKickoff(iso) {
 }
 
 function marketText(label, market) {
-  return `${label} ${market?.pick || '—'} · Odds ${formatOdds(market?.odds)} · Confidence ${Number(market?.confidence || 0)}%`;
+  return `${label} ${market?.pick || '—'} · Odds ${formatOdds(market?.odds, market?.oddsStatus)} · Confidence ${Number(market?.confidence || 0)}%`;
 }
 
 function shareText(records) {
@@ -50,7 +53,7 @@ function shareText(records) {
     `${String(index + 1).padStart(2, '0')}. ${record.home} vs ${record.away}`,
     `${record.league} · ${formatLocalKickoff(record.kickoffUtc)}`,
     `MAIN PICK: ${record.pickLabel || record.pick}`,
-    `Odds ${formatOdds(record.odds)} · Confidence ${record.confidence}% · Predicted ${record.predictedScore}`,
+    `Odds ${formatOdds(record.odds, record.oddsStatus)} · Confidence ${record.confidence}% · Predicted ${record.predictedScore}`,
     marketText('BTTS:', record.markets?.btts),
     marketText('Double Chance:', record.markets?.doubleChance),
     marketText('Asian Handicap:', record.markets?.asianHandicap)
@@ -123,7 +126,7 @@ function renderPick(record, absoluteIndex) {
         <div class="poster-metrics">
           <div class="poster-metric odds">
             <small>ODDS</small>
-            <b>${escapeHtml(formatOdds(record.odds))}</b>
+            <b>${escapeHtml(formatOdds(record.odds, record.oddsStatus))}</b>
           </div>
           <div class="poster-metric confidence">
             <small>CONFIDENCE</small>
