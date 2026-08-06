@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "environment": "TEST_ONLY",
+  "timezone": "Asia/Bangkok",
+  "cutoff_hour_local": 8,
+  "minimum_lead_minutes": 45,
+  "fixed_confidence": 58,
+  "minimum_main_odds": 1.7,
+  "overall_sample": 6,
+  "venue_sample": 5,
+  "history_fetch": 20,
+  "minimum_sample": 3,
+  "minimum_strength_score": 0.55,
+  "minimum_overall_ppg_edge": 0.25,
+  "minimum_venue_ppg_edge": 0.35,
+  "maximum_fixtures_to_analyze": 240,
+  "maximum_selections": 0,
+  "rules": {
+    "main_market": "1X2 team win",
+    "scan_all_competitions": true,
+    "use_overall_last_matches": true,
+    "use_home_away_splits": true,
+    "use_common_opponents": true,
+    "missing_odds_policy": "N/A — never estimate",
+    "confidence_policy": "Fixed at 58% for every published market"
+  }
+}
