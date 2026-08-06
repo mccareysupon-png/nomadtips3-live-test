@@ -74,6 +74,7 @@ function calculatePercentage(records) {
     calculated,
     missingOdds,
     pending,
+    complete: missingOdds === 0 && calculated > 0,
     value: calculated ? ((returned - calculated) / calculated) * 100 : 0
   };
 }
@@ -93,7 +94,7 @@ function ensureTarget() {
   const card = document.createElement('div');
   card.className = 'metric';
   card.setAttribute('aria-label', 'Percentage');
-  card.innerHTML = '<small aria-hidden="true">&nbsp;</small><b id="performancePercent">0.00%</b>';
+  card.innerHTML = '<small aria-hidden="true">&nbsp;</small><b id="performancePercent">—</b>';
   summary.appendChild(card);
   return card.querySelector('#performancePercent');
 }
@@ -103,13 +104,14 @@ function renderPercentage() {
   if (!target) return;
 
   const result = calculatePercentage(loadCumulativeRecords());
-  target.textContent = formatPercent(result.value);
+  target.textContent = result.complete ? formatPercent(result.value) : '—';
   target.dataset.calculated = String(result.calculated);
   target.dataset.missingOdds = String(result.missingOdds);
   target.dataset.pending = String(result.pending);
+  target.dataset.complete = String(result.complete);
   target.style.removeProperty('color');
-  if (result.value > 0) target.style.color = 'var(--green)';
-  if (result.value < 0) target.style.color = 'var(--red)';
+  if (result.complete && result.value > 0) target.style.color = 'var(--green)';
+  if (result.complete && result.value < 0) target.style.color = 'var(--red)';
 }
 
 renderPercentage();
