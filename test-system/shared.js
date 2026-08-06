@@ -171,7 +171,12 @@ function createLockedState() {
   };
 }
 
-function shouldSeed(state) { return state?.datasetId !== DATASET_ID || !Array.isArray(state?.publishedPicks); }
+function shouldSeed(state) {
+  if (!state || !Array.isArray(state.publishedPicks)) return true;
+  const datasetId = String(state.datasetId || '');
+  const isRemoteDataset = Boolean(state.remoteDatasetId) || datasetId.startsWith('remote:');
+  return !isRemoteDataset && datasetId !== DATASET_ID;
+}
 
 export function loadRecords() {
   try {
