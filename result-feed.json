@@ -1,15 +1,15 @@
 {
   "selectionDate": "2026-08-06",
-  "generatedAt": "2026-08-06T15:15:44Z",
-  "source": "API-FOOTBALL",
+  "generatedAt": "2026-08-06T23:24:00Z",
+  "source": "API-FOOTBALL / VERIFIED FALLBACK",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 2,
     "correct": 0,
-    "incorrect": 0,
+    "incorrect": 1,
     "void": 0,
-    "pending": 2,
-    "settled": 0,
+    "pending": 1,
+    "settled": 1,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -17,30 +17,30 @@
   "marketSummary": {
     "btts": {
       "total": 2,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 0,
       "void": 0,
-      "pending": 2,
-      "settled": 0,
-      "accuracy": 0.0
+      "pending": 1,
+      "settled": 1,
+      "accuracy": 100.0
     },
     "doubleChance": {
       "total": 2,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 0,
       "void": 0,
-      "pending": 2,
-      "settled": 0,
-      "accuracy": 0.0
+      "pending": 1,
+      "settled": 1,
+      "accuracy": 100.0
     },
     "asianHandicap": {
       "win": 0,
       "half-win": 0,
-      "push": 0,
+      "push": 1,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 2,
+      "pending": 1,
       "total": 2,
       "decisions": 0,
       "weightedRate": 0.0
@@ -54,41 +54,44 @@
       "home": "HJK Helsinki",
       "away": "Motherwell",
       "kickoffUtc": "2026-08-06T16:00:00+00:00",
-      "status": "NS",
-      "providerStatus": "NS",
-      "statusLong": "Not Started",
-      "elapsed": null,
-      "homeScore": null,
-      "awayScore": null,
-      "outcome": "pending",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 1,
+      "awayScore": 1,
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 58,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "1X — HJK or Draw",
           "odds": 1.4,
           "oddsStatus": "LOCKED",
           "confidence": 58,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "HJK 0",
           "odds": 1.75,
           "oddsStatus": "LOCKED",
           "confidence": 58,
-          "outcome": "pending"
+          "outcome": "push",
+          "settlement": "push",
+          "line": 0.0,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-06T15:15:44Z",
+      "resultSource": "VERIFIED PUBLIC RESULT / WORKFLOW REPAIR",
+      "updatedAt": "2026-08-06T23:24:00Z",
       "counted": true
     },
     {
