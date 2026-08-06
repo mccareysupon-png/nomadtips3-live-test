@@ -7,7 +7,7 @@ import {
   resultText,
   scoreText,
   STORAGE_KEY
-} from './shared.js?v=202608051120';
+} from './shared.js?v=202608061008';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
