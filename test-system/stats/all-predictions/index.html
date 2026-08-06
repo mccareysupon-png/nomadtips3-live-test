@@ -50,21 +50,9 @@
       <div class="metric"><small>Pending</small><b id="pending">0</b></div>
       <div class="metric"><small>Overall Rate</small><b id="rate">0.00%</b></div>
       <div class="metric"><small>Average Odds</small><b id="averageOdds">No Data</b></div>
+      <div class="metric" aria-label="Percentage"><small aria-hidden="true">&nbsp;</small><b id="performancePercent">0.00%</b></div>
     </section>
     <div id="oddsNote" class="chart-footnote" style="margin-top:-8px;margin-bottom:14px"></div>
-
-    <section class="panel" style="margin-bottom:14px">
-      <div class="panel-head"><div><h2>Flat 100 Performance</h2><small>Every settled match and every prediction market, calculated at 100 THB per prediction</small></div></div>
-      <section class="summary" style="margin:0">
-        <div class="metric"><small>Stake / Prediction</small><b id="flatStake">100 THB</b></div>
-        <div class="metric"><small>Calculated Predictions</small><b id="calculatedPredictions">0</b></div>
-        <div class="metric"><small>Total Staked</small><b id="totalStaked">0.00 THB</b></div>
-        <div class="metric"><small>Total Return</small><b id="totalReturn">0.00 THB</b></div>
-        <div class="metric"><small>Profit / Loss</small><b id="profitLoss">0.00 THB</b></div>
-        <div class="metric" aria-label="Percentage"><small aria-hidden="true">&nbsp;</small><b id="roi">0.00%</b></div>
-      </section>
-      <div id="profitCoverage" class="chart-footnote" style="margin-top:10px"></div>
-    </section>
 
     <section class="panel">
       <div class="panel-head"><div><h2>Market Breakdown</h2><small>Each market is calculated independently from all recorded predictions</small></div></div>
@@ -73,7 +61,7 @@
 
     <section class="panel" style="margin-top:14px">
       <div class="panel-head"><div><h2>All Prediction History</h2><small>Every recorded prediction across all four markets</small></div></div>
-      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>Match</th><th>Market</th><th>Prediction</th><th>Odds</th><th>Score</th><th>Result</th><th>P/L (100)</th></tr></thead><tbody id="historyRows"></tbody></table></div>
+      <div class="table-wrap"><table class="history"><thead><tr><th>Order</th><th>Match</th><th>Market</th><th>Prediction</th><th>Odds</th><th>Score</th><th>Result</th></tr></thead><tbody id="historyRows"></tbody></table></div>
     </section>
   </main>
 
@@ -85,8 +73,7 @@
   </nav>
   <script src="../../../device-time-sync.js?v=202608041114"></script>
   <script src="../../selected-odds-sync.js?v=202608060642"></script>
-  <script type="module" src="./app.js?v=202608060657"></script>
-  <script src="./sign-colors.js?v=202608060703" defer></script>
+  <script type="module" src="./app.js?v=202608060708"></script>
   <script src="../../../remote-results.js?v=202608051110" defer></script>
   <script src="../../../terminology.js?v=202608040954" defer></script>
   <script src="../../../site-footer.js?v=202608041350"></script>
