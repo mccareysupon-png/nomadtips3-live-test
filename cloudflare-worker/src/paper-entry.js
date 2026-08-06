@@ -1,5 +1,10 @@
 import baseWorker from './entry.js';
 import { handlePaperRequest, settlePendingTrades } from './paper-db.js';
+import {
+  getLatestAutoPayload,
+  handleAutoRequest,
+  runAutoMomentumScan
+} from './auto-scan.js';
 
 const ALLOWED_ORIGINS = new Set([
   'https://mccareysupon-png.github.io',
@@ -38,6 +43,20 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
+
+    if (url.pathname === '/auto-scan-status') {
+      try {
+        const result = await handleAutoRequest(request, env, url);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          online: false,
+          error: error?.message || 'Automatic scanner status failed'
+        }, 500);
+      }
+    }
+
     if (url.pathname.startsWith('/paper-')) {
       try {
         const result = await handlePaperRequest(request, env, url);
@@ -50,10 +69,28 @@ export default {
         }, 500);
       }
     }
+
+    if (url.pathname === '/live-condition-scan' && request.method === 'GET') {
+      try {
+        const latest = await getLatestAutoPayload(env);
+        if (latest) return json(request, latest, 200);
+      } catch {
+        // Fall back to a direct scan until the first scheduled run is stored.
+      }
+    }
+
     return baseWorker.fetch(request, env, ctx);
   },
 
   async scheduled(controller, env, ctx) {
-    ctx.waitUntil(settlePendingTrades(env));
+    ctx.waitUntil((async () => {
+      const results = await Promise.allSettled([
+        runAutoMomentumScan(baseWorker, env, ctx),
+        settlePendingTrades(env)
+      ]);
+      for (const result of results) {
+        if (result.status === 'rejected') console.error(result.reason);
+      }
+    })());
   }
 };
