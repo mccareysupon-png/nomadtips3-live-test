@@ -2,6 +2,7 @@ import { loadCumulativeRecords, recordTime } from '../cumulative.js?v=2026080610
 
 const $ = selector => document.querySelector(selector);
 const EMPTY_PICKS = new Set(['', '—', '-', 'N/A', 'NA', 'NONE', 'NULL']);
+const PROFIT_START_DATE = '2026-08-06';
 const MARKET_ORDER = new Map([
   ['1X2', 0],
   ['BTTS', 1],
@@ -30,6 +31,17 @@ function resolvedOutcome(value) {
   return outcome || settlement || 'pending';
 }
 
+function normalizedDate(value, fallback = '') {
+  const explicit = String(value ?? '').slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(explicit)) return explicit;
+  const timestamp = Date.parse(fallback || '');
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : '';
+}
+
+function isProfitEra(prediction) {
+  return Boolean(prediction.pickDate && prediction.pickDate >= PROFIT_START_DATE);
+}
+
 function scoreText(record) {
   const hasHome = record.homeScore !== null && record.homeScore !== '' && Number.isFinite(Number(record.homeScore));
   const hasAway = record.awayScore !== null && record.awayScore !== '' && Number.isFinite(Number(record.awayScore));
@@ -55,12 +67,14 @@ function collectPredictions(records) {
   const rows = [];
 
   for (const record of records) {
+    const kickoffUtc = record.kickoffUtc || record.pickDate || null;
     const base = {
       fixtureId: String(record.fixtureId || ''),
+      pickDate: normalizedDate(record.pickDate || record.date, kickoffUtc),
       home: record.home || 'Home',
       away: record.away || 'Away',
       league: record.league || '',
-      kickoffUtc: record.kickoffUtc || record.pickDate || null,
+      kickoffUtc,
       homeScore: record.homeScore,
       awayScore: record.awayScore
     };
@@ -216,6 +230,8 @@ function signedStyle(value) {
 function render() {
   const predictions = collectPredictions(loadCumulativeRecords());
   const summary = summarize(predictions);
+  const profitPredictions = predictions.filter(isProfitEra);
+  const profitPercentage = calculatePercentage(profitPredictions);
 
   $('#total').textContent = summary.total;
   $('#settled').textContent = summary.settled;
@@ -228,15 +244,19 @@ function render() {
   $('#averageOdds').textContent = summary.averageOdds === null ? '—' : summary.averageOdds.toFixed(2);
   $('#oddsNote').textContent = summary.percentage.complete
     ? `${summary.percentage.calculated} settled predictions with complete recorded Odds`
-    : `${summary.percentage.missingOdds} settled predictions are missing recorded Odds`;
+    : `${summary.percentage.missingOdds} settled historical predictions are missing recorded Odds · Profit % starts 6 Aug 2026`;
 
   const performancePercent = $('#performancePercent');
-  performancePercent.textContent = summary.percentage.complete ? formatPercent(summary.percentage.value) : '—';
-  performancePercent.dataset.calculated = String(summary.percentage.calculated);
-  performancePercent.dataset.missingOdds = String(summary.percentage.missingOdds);
-  performancePercent.dataset.pending = String(summary.percentage.pending);
-  performancePercent.dataset.complete = String(summary.percentage.complete);
-  performancePercent.style.cssText = summary.percentage.complete ? signedStyle(summary.percentage.value) : '';
+  performancePercent.textContent = profitPercentage.complete
+    ? formatPercent(profitPercentage.value)
+    : profitPercentage.pending > 0 ? 'PENDING' : '—';
+  performancePercent.dataset.calculated = String(profitPercentage.calculated);
+  performancePercent.dataset.missingOdds = String(profitPercentage.missingOdds);
+  performancePercent.dataset.pending = String(profitPercentage.pending);
+  performancePercent.dataset.complete = String(profitPercentage.complete);
+  performancePercent.dataset.startDate = PROFIT_START_DATE;
+  performancePercent.title = 'Flat 1-unit calculation starting with predictions dated 6 August 2026.';
+  performancePercent.style.cssText = profitPercentage.complete ? signedStyle(profitPercentage.value) : '';
 
   const links = {
     '1X2': '../',
