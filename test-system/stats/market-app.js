@@ -1,11 +1,11 @@
-import { marketResultText, scoreText } from '../shared.js?v=202608051120';
+import { marketResultText, scoreText } from '../shared.js?v=202608061015';
 import {
   adaptiveChartWidth,
   dateLabel,
   loadCumulativeRecords,
   recordTime,
   selectChartRange
-} from './cumulative.js?v=202608051149';
+} from './cumulative.js?v=202608061015';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'\"]/g, char => ({
