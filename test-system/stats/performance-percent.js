@@ -12,12 +12,20 @@ function finiteOdds(value) {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
+function resolvedOutcome(value) {
+  const outcome = String(value?.outcome ?? '').trim().toLowerCase();
+  const settlement = String(value?.settlement ?? '').trim().toLowerCase();
+  if (outcome && outcome !== 'pending') return outcome;
+  if (settlement && settlement !== 'pending') return settlement;
+  return outcome || settlement || 'pending';
+}
+
 function predictionFor(record) {
   if (marketKey === 'oneXTwo') {
     if (!hasPrediction(record.pickLabel || record.pick)) return null;
     return {
       odds: finiteOdds(record.odds),
-      outcome: String(record.outcome || 'pending').toLowerCase()
+      outcome: resolvedOutcome(record)
     };
   }
 
@@ -25,35 +33,49 @@ function predictionFor(record) {
   if (!market || !hasPrediction(market.pick)) return null;
   return {
     odds: finiteOdds(market.odds),
-    outcome: String(market.outcome || market.settlement || 'pending').toLowerCase()
+    outcome: resolvedOutcome(market)
   };
 }
 
 function outcomeReturn(prediction) {
-  if (!prediction || prediction.outcome === 'pending') return null;
-  if (prediction.odds === null) return null;
+  if (!prediction || prediction.outcome === 'pending') return { status: 'pending' };
+  if (prediction.odds === null) return { status: 'missing-odds' };
 
   const { outcome, odds } = prediction;
-  if (outcome === 'correct' || outcome === 'win') return odds;
-  if (outcome === 'half-win') return 1 + ((odds - 1) * 0.5);
-  if (outcome === 'incorrect' || outcome === 'loss') return 0;
-  if (outcome === 'half-loss') return 0.5;
-  if (outcome === 'push' || outcome === 'void') return 1;
-  return null;
+  if (outcome === 'correct' || outcome === 'win') return { status: 'calculated', value: odds };
+  if (outcome === 'half-win') return { status: 'calculated', value: 1 + ((odds - 1) * 0.5) };
+  if (outcome === 'incorrect' || outcome === 'loss') return { status: 'calculated', value: 0 };
+  if (outcome === 'half-loss') return { status: 'calculated', value: 0.5 };
+  if (outcome === 'push' || outcome === 'void') return { status: 'calculated', value: 1 };
+  return { status: 'pending' };
 }
 
 function calculatePercentage(records) {
   let calculated = 0;
+  let missingOdds = 0;
+  let pending = 0;
   let returned = 0;
 
   records.forEach(record => {
-    const value = outcomeReturn(predictionFor(record));
-    if (value === null) return;
-    calculated += 1;
-    returned += value;
+    const prediction = predictionFor(record);
+    if (!prediction) return;
+    const result = outcomeReturn(prediction);
+    if (result.status === 'calculated') {
+      calculated += 1;
+      returned += result.value;
+    } else if (result.status === 'missing-odds') {
+      missingOdds += 1;
+    } else {
+      pending += 1;
+    }
   });
 
-  return calculated ? ((returned - calculated) / calculated) * 100 : 0;
+  return {
+    calculated,
+    missingOdds,
+    pending,
+    value: calculated ? ((returned - calculated) / calculated) * 100 : 0
+  };
 }
 
 function formatPercent(value) {
@@ -80,14 +102,22 @@ function renderPercentage() {
   const target = ensureTarget();
   if (!target) return;
 
-  const value = calculatePercentage(loadCumulativeRecords());
-  target.textContent = formatPercent(value);
+  const result = calculatePercentage(loadCumulativeRecords());
+  target.textContent = formatPercent(result.value);
+  target.dataset.calculated = String(result.calculated);
+  target.dataset.missingOdds = String(result.missingOdds);
+  target.dataset.pending = String(result.pending);
   target.style.removeProperty('color');
-  if (value > 0) target.style.color = 'var(--green)';
-  if (value < 0) target.style.color = 'var(--red)';
+  if (result.value > 0) target.style.color = 'var(--green)';
+  if (result.value < 0) target.style.color = 'var(--red)';
 }
 
 renderPercentage();
 window.addEventListener('storage', renderPercentage);
 window.addEventListener('nomad-results-updated', renderPercentage);
+window.addEventListener('nomad-official-finals-updated', renderPercentage);
+window.addEventListener('pageshow', renderPercentage);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) renderPercentage();
+});
 window.setInterval(renderPercentage, 3000);
