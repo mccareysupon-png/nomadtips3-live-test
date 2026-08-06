@@ -7,11 +7,21 @@ const ALLOWED_ORIGINS = new Set([
   'https://www.nomadtips3.com'
 ]);
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE']);
-const REQUIRED_STATS = ['attacks', 'dangerous_attacks', 'shots', 'shots_on_target', 'corners', 'possession'];
+const REQUIRED_STATS = [
+  'attacks',
+  'dangerous_attacks',
+  'shots',
+  'shots_on_target',
+  'corners',
+  'possession'
+];
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
-  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : 'https://mccareysupon-png.github.io';
+  const allowOrigin = ALLOWED_ORIGINS.has(origin)
+    ? origin
+    : 'https://mccareysupon-png.github.io';
+
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -38,7 +48,10 @@ function numeric(value) {
 }
 
 async function apiFetch(path, env, cacheSeconds = 55) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
+  if (!env.API_FOOTBALL_KEY) {
+    throw new Error('API_FOOTBALL_KEY is not configured');
+  }
+
   const apiUrl = `${API_BASE}${path}`;
   const cache = caches.default;
   const key = new Request(apiUrl, { method: 'GET' });
@@ -52,9 +65,15 @@ async function apiFetch(path, env, cacheSeconds = 55) {
     }
   });
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
+
+  if (!response.ok) {
+    throw new Error(payload?.message || `API HTTP ${response.status}`);
+  }
+
   if (payload?.errors && Object.keys(payload.errors).length) {
-    const detail = typeof payload.errors === 'string' ? payload.errors : JSON.stringify(payload.errors);
+    const detail = typeof payload.errors === 'string'
+      ? payload.errors
+      : JSON.stringify(payload.errors);
     throw new Error(detail);
   }
 
@@ -64,6 +83,7 @@ async function apiFetch(path, env, cacheSeconds = 55) {
       'Cache-Control': `public, max-age=${cacheSeconds}`
     }
   }));
+
   return payload;
 }
 
@@ -82,35 +102,27 @@ function normalizeStatKey(type) {
 }
 
 function normalizeStatistics(raw) {
-  const out = {};
-  (Array.isArray(raw) ? raw : []).slice(0, 2).forEach((team, index) => {
+  const output = {};
+  const teams = Array.isArray(raw) ? raw : [];
+
+  teams.slice(0, 2).forEach((team, index) => {
     const side = index === 0 ? 'home' : 'away';
     for (const row of team?.statistics || team?.stats || []) {
       const key = normalizeStatKey(row?.type || row?.name);
       if (!key) continue;
-      if (!out[key]) out[key] = { home: null, away: null };
-      out[key][side] = row?.value ?? null;
+      if (!output[key]) output[key] = { home: null, away: null };
+      output[key][side] = row?.value ?? null;
     }
   });
-  return out;
-}
 
-function normalizeEvents(raw) {
-  return (Array.isArray(raw) ? raw : []).map(event => ({
-    minute: event?.time?.elapsed ?? null,
-    extra: event?.time?.extra ?? null,
-    team: event?.team?.name ?? null,
-    type: event?.type ?? null,
-    detail: event?.detail ?? null,
-    player: event?.player?.name ?? null,
-    comments: event?.comments ?? null
-  }));
+  return output;
 }
 
 function fixtureSummary(item) {
   const fixture = item?.fixture || {};
   const teams = item?.teams || {};
   const goals = item?.goals || {};
+
   return {
     id: Number(fixture.id) || null,
     status: String(fixture?.status?.short || '').toUpperCase(),
@@ -123,6 +135,17 @@ function fixtureSummary(item) {
     homeScore: numeric(goals?.home),
     awayScore: numeric(goals?.away)
   };
+}
+
+function scoreContext(homeScore, awayScore) {
+  const goalDifference = homeScore - awayScore;
+  if (goalDifference > 0) {
+    return { state: 'HOME_LEADING', goalDifference };
+  }
+  if (goalDifference < 0) {
+    return { state: 'HOME_TRAILING', goalDifference };
+  }
+  return { state: 'TIED', goalDifference: 0 };
 }
 
 function completeStatistics(stats) {
@@ -139,25 +162,36 @@ function isHomeValue(value, homeName) {
 }
 
 function handicapNumber(value) {
-  const match = String(value ?? '').replace(',', '.').match(/([+-](?:\d+(?:\.\d+)?|\.\d+))/);
+  const match = String(value ?? '')
+    .replace(',', '.')
+    .match(/([+-](?:\d+(?:\.\d+)?|\.\d+))/);
   return match ? numeric(match[1]) : null;
 }
 
 function flattenBetContainers(root) {
   const results = [];
   const seen = new Set();
+
   function walk(value, context = '') {
     if (!value || typeof value !== 'object' || seen.has(value)) return;
     seen.add(value);
+
     if (Array.isArray(value)) {
       value.slice(0, 500).forEach((child, index) => walk(child, `${context} ${index}`));
       return;
     }
+
     const name = value.name || value.bet?.name || value.label || '';
     const values = value.values || value.outcomes || value.selections;
-    if (Array.isArray(values)) results.push({ name: String(name), values, context });
-    Object.entries(value).slice(0, 500).forEach(([key, child]) => walk(child, `${context} ${key} ${name}`));
+    if (Array.isArray(values)) {
+      results.push({ name: String(name), values, context });
+    }
+
+    Object.entries(value)
+      .slice(0, 500)
+      .forEach(([key, child]) => walk(child, `${context} ${key} ${name}`));
   }
+
   walk(root);
   return results;
 }
@@ -174,18 +208,23 @@ function homeMarkets(oddsItem, homeName) {
     const isAh = /(asian handicap|asian line|\bah\b)/.test(betName);
     if (!isWinner && !isAh) continue;
 
-    const ordered = [...container.values].sort((a, b) => Number(Boolean(b?.main)) - Number(Boolean(a?.main)));
+    const ordered = [...container.values]
+      .sort((a, b) => Number(Boolean(b?.main)) - Number(Boolean(a?.main)));
+
     for (const value of ordered) {
       const sideValue = value?.value ?? value?.name ?? value?.label ?? value?.team;
       if (!isHomeValue(sideValue, homeName)) continue;
+
       const odd = numeric(value?.odd ?? value?.odds ?? value?.price ?? value?.decimal);
       if (isWinner && win === null && odd !== null) win = odd;
+
       if (isAh && ah === null) {
         ah = handicapNumber(value?.handicap ?? value?.line ?? value?.hdp ?? sideValue);
         if (ah !== null) ahOdd = odd;
       }
     }
   }
+
   return { win, ah, ahOdd, complete: win !== null && ah !== null };
 }
 
@@ -195,65 +234,78 @@ async function liveConditionScan(request, env) {
   const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
     .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()));
 
-  const preliminary = liveItems.filter(item => {
-    const match = fixtureSummary(item);
-    return match.id && match.minute !== null && match.minute >= 60 && match.minute <= 80 &&
-      match.homeScore !== null && match.awayScore !== null && match.homeScore === match.awayScore;
+  // Score is intentionally unrestricted. Only a valid score and minute 60-80 are required here.
+  const preliminary = liveItems
+    .map(item => ({ item, match: fixtureSummary(item) }))
+    .filter(({ match }) =>
+      match.id &&
+      match.minute !== null &&
+      match.minute >= 60 &&
+      match.minute <= 80 &&
+      match.homeScore !== null &&
+      match.awayScore !== null
+    );
+
+  const statisticsSettled = await Promise.allSettled(
+    preliminary.map(({ match }) =>
+      apiFetch(`/fixtures/statistics?fixture=${match.id}`, env, 55)
+    )
+  );
+
+  const statEligible = [];
+  let completeStats = 0;
+
+  statisticsSettled.forEach((entry, index) => {
+    const source = preliminary[index];
+    if (!source) return;
+
+    if (entry.status !== 'fulfilled') {
+      warnings.push(`statistics ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
+      return;
+    }
+
+    const stats = normalizeStatistics(entry.value?.response);
+    const quality = completeStatistics(stats);
+    if (!quality.ok) return;
+
+    completeStats += 1;
+    statEligible.push({ ...source, stats });
   });
 
-  const ids = preliminary.map(item => Number(item.fixture.id)).filter(Number.isInteger);
-  const chunks = [];
-  for (let index = 0; index < ids.length; index += 20) chunks.push(ids.slice(index, index + 20));
-
-  const detailSettled = await Promise.allSettled(
-    chunks.map(chunk => apiFetch(`/fixtures?ids=${chunk.join('-')}`, env, 55))
-  );
-  const detailedItems = [];
-  for (const entry of detailSettled) {
-    if (entry.status === 'fulfilled') {
-      detailedItems.push(...(Array.isArray(entry.value?.response) ? entry.value.response : []));
-    } else {
-      warnings.push(`fixture details: ${entry.reason?.message || 'request failed'}`);
-    }
-  }
-
-  let completeStats = 0;
-  let completeMarkets = 0;
-  let redSafe = 0;
-  const statEligible = [];
-
-  for (const item of detailedItems) {
-    const match = fixtureSummary(item);
-    const stats = normalizeStatistics(item?.statistics);
-    const quality = completeStatistics(stats);
-    if (!quality.ok) continue;
-    completeStats += 1;
-    statEligible.push({ item, match, stats });
-  }
-
   const oddsSettled = await Promise.allSettled(
-    statEligible.map(entry => apiFetch(`/odds/live?fixture=${entry.match.id}`, env, 55))
+    statEligible.map(({ match }) =>
+      apiFetch(`/odds/live?fixture=${match.id}`, env, 55)
+    )
   );
 
   const candidates = [];
+  let completeMarkets = 0;
+  let redSafe = 0;
+
   oddsSettled.forEach((entry, index) => {
     const source = statEligible[index];
     if (!source) return;
+
     if (entry.status !== 'fulfilled') {
       warnings.push(`live odds ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
       return;
     }
 
-    const oddsItem = Array.isArray(entry.value?.response) ? entry.value.response[0] : null;
+    const oddsItem = Array.isArray(entry.value?.response)
+      ? entry.value.response[0]
+      : null;
     const markets = homeMarkets(oddsItem, source.match.home);
     if (!markets.complete) return;
+
     completeMarkets += 1;
     if (!(markets.win > 1.70 && markets.ah >= 0.25)) return;
 
     const homeRed = numeric(source.stats.red_cards?.home) || 0;
     const awayRed = numeric(source.stats.red_cards?.away) || 0;
     if (homeRed > awayRed) return;
+
     redSafe += 1;
+    const score = scoreContext(source.match.homeScore, source.match.awayScore);
 
     candidates.push({
       fixtureId: source.match.id,
@@ -264,16 +316,24 @@ async function liveConditionScan(request, env) {
       country: source.match.country,
       home: source.match.home,
       away: source.match.away,
-      score: { home: source.match.homeScore, away: source.match.awayScore },
+      score: {
+        home: source.match.homeScore,
+        away: source.match.awayScore
+      },
+      scoreState: score.state,
+      goalDifference: score.goalDifference,
       stats: source.stats,
-      events: normalizeEvents(source.item?.events),
       markets: {
         homeWin: markets.win,
         homeAh: markets.ah,
         homeAhOdds: markets.ahOdd
       },
-      redCards: { home: homeRed, away: awayRed },
+      redCards: {
+        home: homeRed,
+        away: awayRed
+      },
       homeOnly: true,
+      scoreRestricted: false,
       completeData: true
     });
   });
@@ -282,12 +342,12 @@ async function liveConditionScan(request, env) {
     ok: true,
     generatedAt: new Date().toISOString(),
     source: 'cloudflare-worker · api-football',
-    mode: 'PAGE-5-ALL-LIVE-HOME-ONLY',
+    mode: 'PAGE-5-ALL-LIVE-HOME-ONLY-ANY-SCORE',
     refreshSeconds: 60,
     counts: {
       allLive: liveItems.length,
-      tiedMinute60To80: preliminary.length,
-      detailed: detailedItems.length,
+      minute60To80: preliminary.length,
+      detailed: preliminary.length,
       completeStats,
       completeMarkets,
       redSafe,
@@ -301,23 +361,39 @@ async function liveConditionScan(request, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
     if (url.pathname === '/live') {
-      if (request.method !== 'GET') return json(request, { ok: false, error: 'Method not allowed' }, 405);
+      if (request.method !== 'GET') {
+        return json(request, { ok: false, error: 'Method not allowed' }, 405);
+      }
+
       try {
         const payload = await apiFetch('/fixtures?live=all', env, 55);
-        const results = (Array.isArray(payload?.response) ? payload.response : []).map(fixtureSummary);
-        return json(request, { ok: true, generatedAt: new Date().toISOString(), count: results.length, results });
+        const results = (Array.isArray(payload?.response) ? payload.response : [])
+          .map(fixtureSummary);
+        return json(request, {
+          ok: true,
+          generatedAt: new Date().toISOString(),
+          count: results.length,
+          results
+        });
       } catch (error) {
-        return json(request, { ok: false, error: error?.message || 'Live fixture request failed' }, 502);
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Live fixture request failed'
+        }, 502);
       }
     }
 
     if (url.pathname === '/live-condition-scan') {
-      if (request.method !== 'GET') return json(request, { ok: false, error: 'Method not allowed' }, 405);
+      if (request.method !== 'GET') {
+        return json(request, { ok: false, error: 'Method not allowed' }, 405);
+      }
+
       try {
         return await liveConditionScan(request, env);
       } catch (error) {
