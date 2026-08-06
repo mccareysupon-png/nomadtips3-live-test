@@ -25,15 +25,19 @@ let chartRange = '20';
 let lastChartSignature = '';
 
 function averageOdds(records, oddsGetter, settledPredicate) {
-  const values = records
-    .filter(settledPredicate)
+  const settledRecords = records.filter(settledPredicate);
+  const values = settledRecords
     .map(oddsGetter)
     .map(Number)
     .filter(value => Number.isFinite(value) && value > 0);
+  const complete = settledRecords.length > 0 && values.length === settledRecords.length;
   return {
     count: values.length,
-    value: values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
-    text: values.length ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : 'No Odds Data'
+    settledCount: settledRecords.length,
+    missing: Math.max(0, settledRecords.length - values.length),
+    complete,
+    value: complete ? values.reduce((sum, value) => sum + value, 0) / values.length : null,
+    text: complete ? (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2) : '—'
   };
 }
 
@@ -56,9 +60,9 @@ function renderAverageOddsStrip(average) {
     strip.className = 'average-odds-strip';
     summary.insertAdjacentElement('afterend', strip);
   }
-  strip.innerHTML = average.count
-    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from ${average.count} settled 1X2 predictions with recorded odds</small>`
-    : '<span>Average Odds (Settled)</span><strong>No Odds Data</strong><small>No settled 1X2 prediction has a recorded odds value</small>';
+  strip.innerHTML = average.complete
+    ? `<span>Average Odds (Settled)</span><strong>${escapeHtml(average.text)}</strong><small>Calculated from all ${average.settledCount} settled 1X2 predictions</small>`
+    : '<span>Average Odds (Settled)</span><strong>—</strong><small>Complete recorded Odds are not available for all settled 1X2 predictions</small>';
 }
 
 function pathFor(points, key, xFor, yFor) {
@@ -142,9 +146,9 @@ function renderPerformanceChart(records) {
 }
 
 function marketCard(title, stats, detail, href, average, active = false) {
-  const oddsDetail = average.count
-    ? `Average Odds (Settled) ${average.text} · ${average.count} recorded`
-    : 'Average Odds (Settled) No Odds Data';
+  const oddsDetail = average.complete
+    ? `Average Odds (Settled) ${average.text}`
+    : 'Average Odds (Settled) —';
   return `<a class="market-stat market-stat-link ${active ? 'active' : ''}" href="${href}"><small>${escapeHtml(title)}</small><b>${escapeHtml(detail)}</b><span>Pending ${stats.pending ?? 0} · Accuracy ${(stats.accuracy ?? stats.weightedRate ?? 0).toFixed(2)}%</span><span class="market-odds-line">${escapeHtml(oddsDetail)}</span></a>`;
 }
 
@@ -203,4 +207,9 @@ document.addEventListener('click', event => {
 render();
 window.addEventListener('storage', render);
 window.addEventListener('nomad-results-updated', render);
+window.addEventListener('nomad-official-finals-updated', render);
+window.addEventListener('pageshow', render);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) render();
+});
 window.setInterval(render, 3000);
