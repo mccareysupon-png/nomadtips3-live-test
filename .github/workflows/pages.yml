@@ -5,8 +5,10 @@ on:
     branches:
       - main
     paths:
-      - "index.html"
-      - "*.json"
+      - "**/*.html"
+      - "**/*.js"
+      - "**/*.css"
+      - "**/*.json"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
