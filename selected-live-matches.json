@@ -16,9 +16,15 @@
       "slug": "hjk-helsinki-motherwell",
       "league": "UEFA Conference League Qualifying",
       "home": "HJK Helsinki",
-      "home_aliases": ["HJK", "HJK Helsinki"],
+      "home_aliases": [
+        "HJK",
+        "HJK Helsinki"
+      ],
       "away": "Motherwell",
-      "away_aliases": ["Motherwell FC", "Motherwell"],
+      "away_aliases": [
+        "Motherwell FC",
+        "Motherwell"
+      ],
       "kickoff_utc": "2026-08-06T16:00:00Z",
       "pick": "HJK Helsinki Win",
       "pick_side": "home",
@@ -42,7 +48,7 @@
         "doubleChance": {
           "pick": "1X — HJK or Draw",
           "code": "1X",
-          "odds": 1.40,
+          "odds": 1.4,
           "confidence": 58,
           "bookmaker": "Manual market snapshot",
           "oddsStatus": "LOCKED",
@@ -61,16 +67,26 @@
           "oddsLockedAt": "2026-08-06T03:08:00Z"
         }
       },
-      "reason": "HJK carries the stronger recent home profile and the surface advantage in Helsinki. Motherwell travels without Ibrahim Said because of a visa issue and Dylan Williams is unavailable, but the visitors remain competitive, so the selection is fixed at the required 58% confidence."
+      "reason": "HJK carries the stronger recent home profile and the surface advantage in Helsinki. Motherwell travels without Ibrahim Said because of a visa issue and Dylan Williams is unavailable, but the visitors remain competitive, so the selection is fixed at the required 58% confidence.",
+      "fixture_id": 1607586,
+      "provider_home": "HJK Helsinki",
+      "provider_away": "Motherwell",
+      "provider_kickoff_utc": "2026-08-06T16:00:00+00:00"
     },
     {
       "client_fixture_id": "DAY8-CHICAGO-NECAXA",
       "slug": "chicago-fire-necaxa",
       "league": "Leagues Cup",
       "home": "Chicago Fire FC",
-      "home_aliases": ["Chicago Fire", "Chicago Fire FC"],
+      "home_aliases": [
+        "Chicago Fire",
+        "Chicago Fire FC"
+      ],
       "away": "Club Necaxa",
-      "away_aliases": ["Necaxa", "Club Necaxa"],
+      "away_aliases": [
+        "Necaxa",
+        "Club Necaxa"
+      ],
       "kickoff_utc": "2026-08-07T00:30:00Z",
       "pick": "Chicago Fire FC Win",
       "pick_side": "home",
@@ -113,7 +129,11 @@
           "oddsLockedAt": "2026-08-06T03:08:00Z"
         }
       },
-      "reason": "Chicago has the stronger recent overall form and Necaxa has struggled away from home. The venue and attacking output support the home selection, while BTTS remains plausible because both teams show defensive variance."
+      "reason": "Chicago has the stronger recent overall form and Necaxa has struggled away from home. The venue and attacking output support the home selection, while BTTS remains plausible because both teams show defensive variance.",
+      "fixture_id": 1530120,
+      "provider_home": "Chicago Fire",
+      "provider_away": "Necaxa",
+      "provider_kickoff_utc": "2026-08-07T00:30:00+00:00"
     }
   ],
   "excluded": [
@@ -123,7 +143,12 @@
     }
   ],
   "oddsPolicy": {
-    "markets": ["1X2", "BTTS", "Double Chance", "Asian Handicap"],
+    "markets": [
+      "1X2",
+      "BTTS",
+      "Double Chance",
+      "Asian Handicap"
+    ],
     "lockRule": "approved manual snapshot is preserved; missing prices are shown as N/A and never estimated",
     "source": "MANUAL LOCK"
   }
