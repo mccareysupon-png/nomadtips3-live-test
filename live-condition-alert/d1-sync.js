@@ -5,6 +5,7 @@
   const TRADE_KEY = 'nomadtips3.page5.paper-ah.v1';
   const SYNC_MS = 60_000;
   let syncing = false;
+  let internalWrite = false;
 
   function readLocal() {
     try {
@@ -72,7 +73,9 @@
 
       const trades = Array.isArray(remote.trades) ? remote.trades : [];
       const changed = stable(local) !== stable(trades);
+      internalWrite = true;
       localStorage.setItem(TRADE_KEY, JSON.stringify(trades));
+      internalWrite = false;
       setStatus(`D1 ONLINE · ${trades.length} รายการ`, true);
 
       if (changed) {
@@ -83,11 +86,20 @@
         }
       }
     } catch (error) {
+      internalWrite = false;
       setStatus(`D1 สำรองไม่สำเร็จ · ใช้ข้อมูลในเครื่อง (${error.message})`, false);
     } finally {
       syncing = false;
     }
   }
+
+  const nativeSetItem = Storage.prototype.setItem;
+  Storage.prototype.setItem = function patchedSetItem(key, value) {
+    nativeSetItem.call(this, key, value);
+    if (!internalWrite && this === localStorage && key === TRADE_KEY) {
+      setTimeout(sync, 0);
+    }
+  };
 
   window.addEventListener('storage', event => {
     if (event.key === TRADE_KEY) sync();
