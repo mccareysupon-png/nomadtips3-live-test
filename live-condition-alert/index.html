@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#07110d">
-  <title>NOMADTIPS3 — Page 5 Live Condition Alert</title>
+  <title>NOMADTIPS3 — Live Condition Control</title>
   <style>
     :root{--bg:#07110d;--panel:#0e1e17;--panel2:#132d21;--line:#29483b;--text:#eff9f3;--muted:#91aa9e;--green:#00df91;--yellow:#f2c94c;--red:#ff6573;--blue:#67b7ff}
     *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 0,#123a29 0,transparent 38%),var(--bg)}
@@ -22,22 +22,22 @@
 <body>
   <div class="wrap">
     <header class="top">
-      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">PAGE 5 · ALL LIVE · HOME ONLY · ANY SCORE</div></div>
+      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">PAGE 5 · CONDITION CONTROL · TEST</div></div>
       <div class="scan">● AUTO SCAN ACTIVE<small id="nextScan">Starting</small></div>
     </header>
 
-    <div class="note"><strong>เงื่อนไข:</strong> รับทุกสกอร์ในนาที 60–80 กรองเฉพาะเจ้าบ้านที่สถิติครบ ราคา Home Win มากกว่า 1.70, Home AH ตั้งแต่ +0.25 และไม่เสียเปรียบใบแดง ก่อนตรวจ Home Momentum สองรอบติดกัน</div>
+    <div class="note"><strong>เงื่อนไขที่กำลังรัน:</strong> กำลังโหลดค่าจาก Cloudflare Worker</div>
 
     <section class="summary" aria-label="scan summary">
       <div class="metric"><small>คู่สดทั้งหมด</small><b id="allLive">0</b></div>
-      <div class="metric"><small>นาที 60–80 ทุกสกอร์</small><b id="minuteWindow">0</b></div>
+      <div class="metric"><small>อยู่ในช่วงนาที</small><b id="minuteWindow">0</b></div>
       <div class="metric"><small>สถิติครบ</small><b id="completeStats">0</b></div>
       <div class="metric"><small>ราคาครบ</small><b id="completeMarkets">0</b></div>
       <div class="metric"><small>ผู้สมัครพื้นฐาน</small><b id="baseCandidates">0</b></div>
       <div class="metric"><small>เข้าเงื่อนไข</small><b id="conditionHits">0</b></div>
     </section>
 
-    <div class="section-head"><h1>คู่เจ้าบ้านที่กำลังตรวจ Momentum</h1><span id="updatedAt">—</span></div>
+    <div class="section-head"><h1>คู่ที่กำลังตรวจ Momentum</h1><span id="updatedAt">—</span></div>
     <main id="cards"><div class="empty">กำลังตรวจคู่สดทั้งหมด</div></main>
 
     <section class="history">
@@ -47,7 +47,7 @@
 
     <section class="paper" id="paperInvestment">
       <div class="paper-head"><div><h2>NOMAD Paper Investment</h2><div class="tag">100 UNITS PER SIGNAL · HOME LIVE ASIAN HANDICAP</div></div><span id="settlementStatus" class="tag">กำลังเชื่อม Cloudflare D1</span></div>
-      <div class="paper-note">ข้อมูลหลักจะบันทึกใน <b>Cloudflare D1</b> เพื่อเก็บผลระยะยาวและเปิดดูข้ามอุปกรณ์ Local Storage ใช้เป็นสำเนาสำรองในเครื่อง</div>
+      <div class="paper-note">ข้อมูลหลักจะบันทึกใน <b>Cloudflare D1</b> เพื่อเก็บผลระยะยาวและเปิดดูข้ามอุปกรณ์ Local Storage ใช้เป็นสำเนาแสดงผล</div>
       <section class="paper-summary" aria-label="paper investment summary">
         <div class="metric"><small>รายการทั้งหมด</small><b id="tradeTotal">0</b></div>
         <div class="metric"><small>รอผล</small><b id="tradePending">0</b></div>
@@ -64,10 +64,10 @@
       </div>
     </section>
 
-    <div class="footer">ISOLATED TEST · PAPER UNITS ONLY · D1 LONG-TERM LEDGER</div>
+    <div class="footer">ISOLATED TEST · CONDITION CONTROL · D1 LONG-TERM LEDGER</div>
   </div>
-  <script src="./app.js?v=20260806-paper-investment"></script>
-  <script src="./d1-sync.js?v=20260806-d1-ledger"></script>
+  <script src="./app.js?v=20260806-condition-control"></script>
+  <script src="./d1-sync.js?v=20260806-condition-control"></script>
   <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
