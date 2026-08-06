@@ -35,6 +35,14 @@
     }
   }
 
+  if (document.querySelector('#historyRows') && !document.querySelector('script[data-nomad-history-pagination]')) {
+    const paginationScript = document.createElement('script');
+    paginationScript.src = new URL('test-system/stats/history-pagination.js?v=202608061056', root).href;
+    paginationScript.defer = true;
+    paginationScript.dataset.nomadHistoryPagination = 'true';
+    document.head.appendChild(paginationScript);
+  }
+
   if (document.querySelector('.site-footer')) return;
 
   const termsUrl = new URL('terms/', root).href;
