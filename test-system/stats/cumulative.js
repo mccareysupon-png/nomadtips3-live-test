@@ -1,5 +1,6 @@
-import { loadRecords } from '../shared.js?v=202608051120';
+import { loadRecords } from '../shared.js?v=202608061008';
 import { HISTORICAL_RECORDS } from '../history.js?v=202608051145';
+import { DAY7_RECORDS } from '../history-day7.js?v=202608061008';
 
 export function recordTime(record) {
   const time = new Date(record.kickoffUtc ?? record.pickDate ?? 0).getTime();
@@ -9,6 +10,7 @@ export function recordTime(record) {
 export function loadCumulativeRecords() {
   const merged = new Map();
   HISTORICAL_RECORDS.forEach(record => merged.set(String(record.fixtureId), record));
+  DAY7_RECORDS.forEach(record => merged.set(String(record.fixtureId), record));
   loadRecords().forEach(record => merged.set(String(record.fixtureId), record));
   return [...merged.values()].sort((a, b) => recordTime(a) - recordTime(b));
 }
