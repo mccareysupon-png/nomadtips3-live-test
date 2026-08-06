@@ -22,10 +22,18 @@ function finiteOdds(value) {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
+function resolvedOutcome(value) {
+  const outcome = String(value?.outcome ?? '').trim().toLowerCase();
+  const settlement = String(value?.settlement ?? '').trim().toLowerCase();
+  if (outcome && outcome !== 'pending') return outcome;
+  if (settlement && settlement !== 'pending') return settlement;
+  return outcome || settlement || 'pending';
+}
+
 function scoreText(record) {
-  const home = Number(record.homeScore);
-  const away = Number(record.awayScore);
-  return Number.isFinite(home) && Number.isFinite(away) ? `${home}–${away}` : '—';
+  const hasHome = record.homeScore !== null && record.homeScore !== '' && Number.isFinite(Number(record.homeScore));
+  const hasAway = record.awayScore !== null && record.awayScore !== '' && Number.isFinite(Number(record.awayScore));
+  return hasHome && hasAway ? `${Number(record.homeScore)}–${Number(record.awayScore)}` : '—';
 }
 
 function resultText(outcome) {
@@ -63,7 +71,7 @@ function collectPredictions(records) {
         market: '1X2',
         pick: record.pickLabel || record.pick,
         odds: finiteOdds(record.odds),
-        outcome: String(record.outcome || 'pending').toLowerCase()
+        outcome: resolvedOutcome(record)
       });
     }
 
@@ -80,7 +88,7 @@ function collectPredictions(records) {
         market,
         pick: value.pick,
         odds: finiteOdds(value.odds),
-        outcome: String(value.outcome || value.settlement || 'pending').toLowerCase()
+        outcome: resolvedOutcome(value)
       });
     }
   }
@@ -219,6 +227,9 @@ function render() {
 
   const performancePercent = $('#performancePercent');
   performancePercent.textContent = formatPercent(summary.percentage.value);
+  performancePercent.dataset.calculated = String(summary.percentage.calculated);
+  performancePercent.dataset.missingOdds = String(summary.percentage.missingOdds);
+  performancePercent.dataset.pending = String(summary.percentage.pending);
   performancePercent.style.cssText = signedStyle(summary.percentage.value);
 
   const links = {
@@ -255,4 +266,9 @@ function render() {
 render();
 window.addEventListener('storage', render);
 window.addEventListener('nomad-results-updated', render);
+window.addEventListener('nomad-official-finals-updated', render);
+window.addEventListener('pageshow', render);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) render();
+});
 window.setInterval(render, 3000);
