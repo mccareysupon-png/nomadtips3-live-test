@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#07110d">
+  <title>NOMADTIPS3 — Condition Control</title>
+  <style>
+    :root{--bg:#07110d;--panel:#0d1d16;--panel2:#10271d;--line:#29483b;--text:#eff9f3;--muted:#91aa9e;--green:#00df91;--yellow:#f2c94c;--red:#ff6573}
+    *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 0,#123a29 0,transparent 40%),var(--bg)}
+    .wrap{width:min(920px,calc(100% - 22px));margin:auto;padding:24px 0 46px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.brand{font-size:25px;font-weight:950;letter-spacing:-1px}.brand b{color:var(--yellow)}.tag{margin-top:6px;color:#bdd2c7;font-size:10px;font-weight:850;letter-spacing:.06em}.back{display:inline-flex;align-items:center;gap:7px;border:1px solid #416353;border-radius:10px;padding:8px 11px;background:#10271d;color:#e9f8f0;text-decoration:none;font-size:11px;font-weight:900}
+    .status{margin:16px 0 12px;padding:12px 14px;border:1px solid #3d5f4d;border-radius:13px;background:#0d2118;color:#bdd1c6;font-size:12px;line-height:1.55}.status strong{color:#fff}.panel{border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,var(--panel2),var(--panel));padding:15px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.field{padding:10px;border:1px solid #203d30;border-radius:12px;background:#08170f}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850}.field input,.field select{width:100%;border:1px solid #355646;border-radius:9px;background:#10231a;color:#eff9f3;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus,.field select:focus{border-color:var(--green)}.field input:disabled{opacity:.45}.wide{grid-column:span 2}
+    .summary{margin-top:12px;padding:11px 13px;border:1px solid #365447;border-radius:11px;background:#091912;color:#bcd0c5;font-size:11px;line-height:1.55}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.actions button{border:1px solid #416353;border-radius:10px;padding:9px 15px;background:#10271d;color:#e9f8f0;font:inherit;font-size:11px;font-weight:900;cursor:pointer}.actions button.primary{background:#00a96f;border-color:var(--green);color:#04120c}.actions button:disabled{opacity:.55;cursor:wait}.message{min-height:20px;margin-top:8px;text-align:right;color:var(--muted);font-size:10px}.message.good{color:var(--green)}.message.bad{color:var(--red)}.hint{margin-top:13px;color:#7f9a8d;font-size:10px;line-height:1.55}.footer{margin-top:16px;text-align:center;color:#6f887c;font-size:9px}
+    @media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.top{flex-direction:column}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">OWNER · CONDITION CONTROL · TEST</div></div>
+      <a class="back" href="../">← กลับหน้า Live</a>
+    </header>
+
+    <div class="status"><strong>ค่าที่กำลังรัน:</strong> <span id="activeSummary">กำลังโหลดจาก Worker</span></div>
+
+    <main class="panel">
+      <div class="grid">
+        <div class="field"><label>เลือกทีม</label><select id="side"><option value="HOME">เจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option></select></div>
+        <div class="field"><label>นาทีเริ่ม</label><input id="minuteMin" type="number" min="1" max="119" step="1"></div>
+        <div class="field"><label>นาทีสิ้นสุด</label><input id="minuteMax" type="number" min="2" max="120" step="1"></div>
+
+        <div class="field"><label>ตลาดราคา</label><select id="market"><option value="WIN">ชนะตรง</option><option value="AH">Asian Handicap</option></select></div>
+        <div class="field"><label>Odds ขั้นต่ำ</label><input id="oddsMin" type="number" min="1.01" max="100" step="0.01"></div>
+        <div class="field"><label>Odds สูงสุด</label><input id="oddsMax" type="number" min="1.01" max="100" step="0.01" placeholder="ไม่จำกัด"></div>
+
+        <div class="field"><label>AH Line ขั้นต่ำ</label><input id="ahMin" type="number" min="-5" max="5" step="0.25"></div>
+        <div class="field"><label>AH Line สูงสุด</label><input id="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="ไม่จำกัด"></div>
+        <div class="field"><label>อัตราการบุกขั้นต่ำ (%)</label><input id="momentumMin" type="number" min="1" max="99" step="1"></div>
+
+        <div class="field"><label>ผลต่างสกอร์</label><select id="gapMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
+        <div class="field"><label>ผลต่างไม่เกินกี่ลูก</label><input id="maxGoalGap" type="number" min="0" max="20" step="1"></div>
+        <div class="field"><label>ยืนยันกี่รอบติดกัน</label><input id="confirmationRounds" type="number" min="1" max="10" step="1"></div>
+
+        <div class="field"><label>จำนวนสัญญาณต่อวัน</label><select id="limitMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
+        <div class="field"><label>สูงสุดกี่สัญญาณ</label><input id="maxSignalsPerDay" type="number" min="1" max="100" step="1"></div>
+        <div class="field"><label>สถานะระบบ</label><input id="engineState" value="TEST ENGINE" disabled></div>
+      </div>
+
+      <div class="summary" id="draftSummary">กำลังโหลดค่า</div>
+
+      <div class="actions">
+        <button type="button" id="resetButton">กลับค่าเดิม</button>
+        <button type="button" id="saveButton">เซฟ</button>
+        <button type="button" class="primary" id="runButton">รัน</button>
+      </div>
+      <div class="message" id="message"></div>
+      <div class="hint">เซฟ = เก็บค่าที่กรอกไว้ แต่ยังไม่เปลี่ยนเครื่องยนต์ · รัน = ใช้ค่าใหม่กับระบบ Test และเริ่มเก็บ Momentum รอบใหม่</div>
+    </main>
+
+    <div class="footer">ISOLATED TEST · OWNER CONDITION SETTINGS</div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
+      const ids = ['side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin','gapMode','maxGoalGap','confirmationRounds','limitMode','maxSignalsPerDay'];
+      const $ = id => document.getElementById(id);
+      let serverState = null;
+
+      function sideLabel(value){ return value === 'AWAY' ? 'ทีมเยือน' : 'เจ้าบ้าน'; }
+      function marketLabel(value){ return value === 'AH' ? 'Asian Handicap' : 'ชนะตรง'; }
+      function line(value){ const n = Number(value); return Number.isFinite(n) ? `${n >= 0 ? '+' : ''}${n}` : 'ไม่จำกัด'; }
+      function optional(id){ const text = $(id).value.trim(); return text === '' ? null : Number(text); }
+
+      function configText(config){
+        if (!config) return 'ยังไม่มีข้อมูล';
+        const oddsMax = config.oddsMax === null ? 'ไม่จำกัด' : Number(config.oddsMax).toFixed(2);
+        const ahMax = config.ahMax === null ? 'ไม่จำกัด' : line(config.ahMax);
+        const gap = config.goalGapLimited ? `ผลต่างไม่เกิน ${config.maxGoalGap} ลูก` : 'ทุกสกอร์';
+        const limit = config.signalLimitEnabled ? `สูงสุด ${config.maxSignalsPerDay} สัญญาณ/วัน` : 'สัญญาณไม่จำกัด';
+        return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} · Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${line(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
+      }
+
+      function fill(config){
+        if (!config) return;
+        $('side').value = config.side;
+        $('minuteMin').value = config.minuteMin;
+        $('minuteMax').value = config.minuteMax;
+        $('market').value = config.market;
+        $('oddsMin').value = config.oddsMin;
+        $('oddsMax').value = config.oddsMax ?? '';
+        $('ahMin').value = config.ahMin;
+        $('ahMax').value = config.ahMax ?? '';
+        $('momentumMin').value = config.momentumMin;
+        $('gapMode').value = config.goalGapLimited ? 'LIMITED' : 'UNLIMITED';
+        $('maxGoalGap').value = config.maxGoalGap;
+        $('confirmationRounds').value = config.confirmationRounds;
+        $('limitMode').value = config.signalLimitEnabled ? 'LIMITED' : 'UNLIMITED';
+        $('maxSignalsPerDay').value = config.maxSignalsPerDay;
+        updateDisabled();
+        updateDraftSummary();
+      }
+
+      function updateDisabled(){
+        $('maxGoalGap').disabled = $('gapMode').value !== 'LIMITED';
+        $('maxSignalsPerDay').disabled = $('limitMode').value !== 'LIMITED';
+      }
+
+      function readForm(){
+        const minuteMin = Number($('minuteMin').value);
+        const minuteMax = Number($('minuteMax').value);
+        if (!Number.isFinite(minuteMin) || !Number.isFinite(minuteMax) || minuteMin >= minuteMax) throw new Error('นาทีเริ่มต้องน้อยกว่านาทีสิ้นสุด');
+        const oddsMin = Number($('oddsMin').value);
+        const ahMin = Number($('ahMin').value);
+        const momentumMin = Number($('momentumMin').value);
+        if (!Number.isFinite(oddsMin) || oddsMin < 1.01) throw new Error('กรอก Odds ขั้นต่ำให้ถูกต้อง');
+        if (!Number.isFinite(ahMin)) throw new Error('กรอก AH Line ขั้นต่ำให้ถูกต้อง');
+        if (!Number.isFinite(momentumMin) || momentumMin < 1 || momentumMin > 99) throw new Error('อัตราการบุกต้องอยู่ระหว่าง 1–99%');
+        return {
+          side: $('side').value,
+          minuteMin,
+          minuteMax,
+          market: $('market').value,
+          oddsMin,
+          oddsMax: optional('oddsMax'),
+          ahMin,
+          ahMax: optional('ahMax'),
+          momentumMin,
+          goalGapLimited: $('gapMode').value === 'LIMITED',
+          maxGoalGap: Number($('maxGoalGap').value),
+          confirmationRounds: Number($('confirmationRounds').value),
+          signalLimitEnabled: $('limitMode').value === 'LIMITED',
+          maxSignalsPerDay: Number($('maxSignalsPerDay').value)
+        };
+      }
+
+      function updateDraftSummary(){
+        try { $('draftSummary').textContent = configText(readForm()); }
+        catch (error) { $('draftSummary').textContent = error.message; }
+      }
+
+      function message(text, good){
+        $('message').textContent = text;
+        $('message').className = `message ${good ? 'good' : 'bad'}`;
+      }
+
+      function busy(value){
+        ['resetButton','saveButton','runButton'].forEach(id => $(id).disabled = value);
+      }
+
+      async function request(path, options = {}){
+        const response = await fetch(`${WORKER}${path}`, {
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+          ...options
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload) throw new Error(payload?.error || `HTTP ${response.status}`);
+        return payload;
+      }
+
+      async function load(){
+        try {
+          const payload = await request('/condition-config');
+          serverState = payload;
+          fill(payload.draft || payload.active || payload.defaults);
+          $('activeSummary').textContent = configText(payload.active);
+          message('โหลดค่าจากระบบ Test แล้ว', true);
+        } catch (error) {
+          message(`ยังเชื่อมหน้าตั้งค่ากับ Worker ไม่ได้: ${error.message}`, false);
+        }
+      }
+
+      async function submit(action){
+        try {
+          const config = readForm();
+          busy(true);
+          message(action === 'run' ? 'กำลังส่งค่าเข้าเครื่องยนต์ Test…' : 'กำลังเซฟ…', true);
+          const payload = await request('/condition-config', {
+            method: 'POST',
+            body: JSON.stringify({ action, config })
+          });
+          serverState = payload;
+          fill(payload.draft || config);
+          $('activeSummary').textContent = configText(payload.active);
+          message(action === 'run' ? 'รันค่าใหม่แล้ว ระบบ Test จะใช้ในรอบถัดไป' : 'เซฟแล้ว แต่เครื่องยนต์ยังใช้ค่าเดิม', true);
+        } catch (error) {
+          message(error.message, false);
+        } finally {
+          busy(false);
+        }
+      }
+
+      ids.forEach(id => $(id).addEventListener('input', updateDraftSummary));
+      $('gapMode').addEventListener('change', () => { updateDisabled(); updateDraftSummary(); });
+      $('limitMode').addEventListener('change', () => { updateDisabled(); updateDraftSummary(); });
+      $('resetButton').addEventListener('click', () => {
+        fill(serverState?.defaults || serverState?.active);
+        message('คืนค่าตั้งต้นในช่องแล้ว กดรันเพื่อใช้งาน', true);
+      });
+      $('saveButton').addEventListener('click', () => submit('save'));
+      $('runButton').addEventListener('click', () => submit('run'));
+      load();
+    })();
+  </script>
+</body>
+</html>
