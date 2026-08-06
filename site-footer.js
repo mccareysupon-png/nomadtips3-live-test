@@ -8,7 +8,7 @@
     if (!document.querySelector('link[data-nomad-stats-card-fix]')) {
       const cardFixStyle = document.createElement('link');
       cardFixStyle.rel = 'stylesheet';
-      cardFixStyle.href = new URL('test-system/stats/card-size-fix.css?v=202608061302', root).href;
+      cardFixStyle.href = new URL('test-system/stats/card-size-fix.css?v=202608061320', root).href;
       cardFixStyle.dataset.nomadStatsCardFix = 'true';
       document.head.appendChild(cardFixStyle);
     }
