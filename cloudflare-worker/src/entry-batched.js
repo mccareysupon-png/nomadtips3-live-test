@@ -53,9 +53,18 @@ function sleep(ms) {
 }
 
 function apiErrorDetail(payload) {
-  if (!payload?.errors) return '';
-  if (typeof payload.errors === 'string') return payload.errors;
-  try { return JSON.stringify(payload.errors); } catch { return String(payload.errors); }
+  const errors = payload?.errors;
+  if (!errors) return '';
+  if (typeof errors === 'string') return errors.trim();
+  if (Array.isArray(errors)) {
+    if (errors.length === 0) return '';
+    try { return JSON.stringify(errors); } catch { return String(errors); }
+  }
+  if (typeof errors === 'object') {
+    if (Object.keys(errors).length === 0) return '';
+    try { return JSON.stringify(errors); } catch { return String(errors); }
+  }
+  return String(errors);
 }
 
 function isRateLimit(response, payload) {
