@@ -133,6 +133,8 @@
       homeScore: previous?.homeScore ?? null,
       awayScore: previous?.awayScore ?? null,
       autoAnalysis: source.auto_analysis || source.autoAnalysis || previous?.autoAnalysis || null,
+      selectionOrigin: source.selection_origin || previous?.selectionOrigin || 'CURRENT_ADD_K_RUN',
+      lockedByRerunPolicy: Boolean(source.locked_by_rerun_policy || previous?.lockedByRerunPolicy),
       lockedAt: config.locked_at_utc
     };
   }
@@ -150,8 +152,11 @@
     const intro = document.querySelector('.home-page .hero p:not(.analysis-disclaimer)');
     if (intro) {
       const count = Array.isArray(config.matches) ? config.matches.length : 0;
+      const newCount = Number(config?.addKRunMerge?.newSelectionCount ?? config?.runSelectionCount ?? count);
       const minimum = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
-      intro.textContent = `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${count} qualifying match prediction${count === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher are connected to live results and independent market analysis.`;
+      intro.textContent = config.noPick
+        ? `Add K completed with NO PICK for this run. ${count - newCount} already-started prediction${count - newCount === 1 ? '' : 's'} may remain locked for result tracking.`
+        : `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${newCount} new qualifying match prediction${newCount === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher; already-started matches remain locked and future picks are replaceable on rerun.`;
     }
   }
 
@@ -160,13 +165,13 @@
     busy = true;
     try {
       const config = await fetchConfig();
-      if (!Array.isArray(config.matches) || !config.matches.length) return;
+      if (!Array.isArray(config.matches)) return;
       const raw = localStorage.getItem(STORAGE_KEY);
       const state = raw ? JSON.parse(raw) : {};
       const existing = new Map((state.publishedPicks || []).map(record => [String(record.fixtureId), record]));
-      const remoteDatasetId = `remote:${config.selection_date}:${config.locked_at_utc}`;
+      const remoteDatasetId = `remote:${config.selection_date}:${config.locked_at_utc}:${config.controlVersion || 0}`;
       const records = config.matches.map(source => toRecord(source, config, existing.get(String(source.client_fixture_id || source.fixture_id || source.slug))));
-      const changed = state.remoteDatasetId !== remoteDatasetId || !same(state.publishedPicks, records);
+      const changed = state.remoteDatasetId !== remoteDatasetId || !same(state.publishedPicks, records) || Boolean(state.noPick) !== Boolean(config.noPick);
       updatePageMeta(config);
       if (!changed) return;
 
@@ -187,6 +192,14 @@
         unlimitedSelections: Boolean(config.rules?.unlimited_qualifying_matches)
       }];
       state.publishedPicks = records;
+      state.noPick = Boolean(config.noPick);
+      state.noPickReason = config.noPickReason || null;
+      state.addKTheKingOfSoccer = config.addKTheKingOfSoccer || null;
+      state.addKRunMerge = config.addKRunMerge || null;
+      state.controlVersion = Number(config.controlVersion || 0);
+      state.runStatus = config.runStatus || null;
+      state.runOutcome = config.runOutcome || null;
+      state.runSelectionCount = Number(config.runSelectionCount ?? records.length);
       state.oddsPolicy = config.oddsPolicy || null;
       state.confidencePolicy = config.confidencePolicy || {
         type: 'DYNAMIC_MINIMUM',
@@ -199,9 +212,18 @@
         id: `remote-sync-${Date.now()}`,
         createdAt: now,
         actor: 'github-test-auto-selector',
-        action: 'REMOTE_SET_SYNCED',
+        action: config.noPick ? 'REMOTE_NO_PICK_SYNCED' : 'REMOTE_SET_SYNCED',
         entity: config.selection_date,
-        details: {count: records.length, system: config.system, productionWrite: false, minimumConfidence, independentOverUnder: true}
+        details: {
+          count: records.length,
+          newSelectionCount: Number(config?.addKRunMerge?.newSelectionCount ?? config?.runSelectionCount ?? records.length),
+          preservedStartedCount: Number(config?.addKRunMerge?.preservedStartedCount ?? 0),
+          system: config.system,
+          productionWrite: false,
+          minimumConfidence,
+          independentOverUnder: true,
+          noPick: Boolean(config.noPick)
+        }
       });
       state.updatedAt = now;
       state.oddsSyncedAt = now;
