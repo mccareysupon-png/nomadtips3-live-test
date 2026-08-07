@@ -12,11 +12,12 @@
     .wrap{width:min(1120px,calc(100% - 24px));margin:auto;padding:24px 0 48px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.brand{font-size:26px;font-weight:950;letter-spacing:-1px}.brand b{color:var(--yellow)}.tag{margin-top:5px;color:#c1d2ca;font-size:10px;font-weight:900;letter-spacing:.07em}.back{display:inline-flex;align-items:center;border-radius:10px;padding:9px 12px;background:#2a2d33;color:#edf7f2;text-decoration:none;font-size:11px;font-weight:900}
     .status{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:16px 0 12px;padding:13px 15px;border-radius:14px;background:#1e2126}.status strong{color:#fff}.status p{margin:3px 0 0;color:#a9bbb2;font-size:11px;line-height:1.5}.badge{border-radius:999px;padding:6px 9px;background:#132a21;color:var(--green);font-size:9px;font-weight:950;white-space:nowrap}.badge.off{background:#321a1d;color:#ff9da6}
     .notice{margin-bottom:12px;padding:12px 14px;border-radius:13px;background:#202329;color:#b9c8c1;font-size:11px;line-height:1.6}.notice b{color:var(--yellow)}.notice em{color:var(--cyan);font-style:normal;font-weight:900}
+    .king{margin-bottom:12px;padding:16px;border:1px solid rgba(242,201,76,.24);border-radius:17px;background:radial-gradient(circle at top right,rgba(242,201,76,.12),transparent 35%),linear-gradient(145deg,#211f18,#121619 58%,#0d1012)}.king-top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.king-title{font-size:18px;font-weight:950;letter-spacing:-.35px;color:#fff}.king-title b{color:var(--yellow)}.king-sub{margin-top:5px;color:#aebfb6;font-size:10px;line-height:1.55}.king-lock{border-radius:999px;padding:6px 9px;background:#2b2716;color:var(--yellow);font-size:9px;font-weight:950;white-space:nowrap}.king-rules{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:12px}.king-rule{min-width:0;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.045)}.king-rule span{display:block;color:#7f948a;font-size:8px;font-weight:850}.king-rule b{display:block;margin-top:3px;color:#eef7f2;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.king-actions{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-top:12px}.king-note{max-width:660px;color:#82968c;font-size:9px;line-height:1.5}.king-btn{border:0;border-radius:12px;padding:12px 16px;background:linear-gradient(135deg,#f2c94c,#d9a91d);color:#171306;font:inherit;font-size:11px;font-weight:950;cursor:pointer;box-shadow:0 7px 24px rgba(242,201,76,.12)}.king-btn:hover{filter:brightness(1.05)}.king-btn:disabled{opacity:.55;cursor:wait;filter:none}.king-message{min-height:18px;margin-top:8px;color:#82968c;font-size:9px;text-align:right}.king-message.good{color:var(--green)}.king-message.bad{color:var(--red)}
     .panel{border-radius:17px;background:linear-gradient(180deg,#1b1e23,#121418);padding:15px}.section{margin-bottom:14px}.section:last-child{margin-bottom:0}.section-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:3px 2px 8px}.section-head h2{margin:0;font-size:12px}.section-head span{color:#84988e;font-size:9px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.field{padding:10px;border-radius:12px;background:var(--field)}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850;line-height:1.35}.field input,.field select{width:100%;border:0;border-radius:9px;background:var(--input);color:var(--text);padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus,.field select:focus{box-shadow:0 0 0 2px var(--green)}.field input:disabled{opacity:.55}.field small{display:block;margin-top:5px;color:#75887f;font-size:8px;line-height:1.35}.fixed{background:#28231a}.fixed input{color:var(--yellow);font-weight:900}
     .summary-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:13px}.summary{padding:12px 13px;border-radius:12px;background:#292c32;color:#bfd0c8;font-size:10px;line-height:1.6}.summary b{color:#fff}.summary .old{color:var(--red);font-weight:900}.summary .new{color:var(--green);font-weight:900}
     .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}.actions button{border:0;border-radius:10px;padding:10px 16px;background:#2a2d33;color:#eaf5ef;font:inherit;font-size:11px;font-weight:950;cursor:pointer}.actions button.primary{background:#00ad72;color:#04120c}.actions button.warn{background:#3a3220;color:#f7d76e}.actions button:disabled{opacity:.55;cursor:wait}.message{min-height:22px;margin-top:8px;text-align:right;color:#94a79e;font-size:10px}.message.good{color:var(--green)}.message.bad{color:var(--red)}
     .footer{margin-top:16px;text-align:center;color:#6f8178;font-size:9px}.version{color:#82958b;font-size:9px;margin-top:4px}
-    @media(max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.summary-grid{grid-template-columns:1fr}}@media(max-width:520px){.top{flex-direction:column}.status{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}}
+    @media(max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}.king-rules{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.summary-grid{grid-template-columns:1fr}.king-actions{align-items:stretch;flex-direction:column}.king-btn{width:100%}}@media(max-width:520px){.top{flex-direction:column}.status{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}.king-top{flex-direction:column}.king-rules{grid-template-columns:repeat(2,1fr)}.king-message{text-align:left}}
   </style>
   <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
 </head>
@@ -35,6 +36,29 @@
     <div class="notice">
       ระบบนี้ควบคุม <b>บอลเต็งรายวัน (1X2 Team Win)</b> โดยตรง · Common Opponent แบบเก่า = <b>0%</b> และไม่ถูกนำมาคิดแล้ว · ใช้ <em>Ranked A–B–C + League Standing</em> แทน · <b>เซฟ</b> เก็บร่างโดยไม่เปลี่ยนระบบ · <b>รัน</b> เปิดใช้ค่าใหม่และส่งคำสั่งให้ AUTO สร้างชุดใหม่หนึ่งครั้งเมื่อ Scheduler รับ Version ใหม่
     </div>
+
+    <section class="king" aria-labelledby="addKTitle">
+      <div class="king-top">
+        <div>
+          <div class="king-title" id="addKTitle">Add K <b>The King of Soccer</b></div>
+          <div class="king-sub">Fixed one-click preset · Data Quality First · เงื่อนไขถูกล็อกใน Worker และไม่อิงค่าที่แก้ใน Custom Control ด้านล่าง</div>
+        </div>
+        <span class="king-lock">LOCKED RULES · V1</span>
+      </div>
+      <div class="king-rules" id="addKRuleSummary">
+        <div class="king-rule"><span>CONFIDENCE</span><b>≥ 62%</b></div>
+        <div class="king-rule"><span>MAIN ODDS</span><b>≥ 1.70</b></div>
+        <div class="king-rule"><span>FORM SAMPLE</span><b>Overall 6 · H/A 5</b></div>
+        <div class="king-rule"><span>MIN SAMPLE</span><b>5 matches</b></div>
+        <div class="king-rule"><span>STRENGTH</span><b>≥ 0.62</b></div>
+        <div class="king-rule"><span>DATA QUALITY</span><b>Standings Required</b></div>
+      </div>
+      <div class="king-actions">
+        <div class="king-note">กด 1 ครั้ง = สร้าง Active Version ใหม่และถือเป็นคำสั่งคัดใหม่ 1 รอบ · กดซ้ำได้ไม่จำกัดจำนวนรอบ · ระหว่างรอบที่กำลังส่งคำสั่ง ปุ่มจะล็อกชั่วคราวเพื่อกันดับเบิลคลิก · Custom Draft เดิมไม่ถูกทับ</div>
+        <button type="button" class="king-btn" id="addKRunButton">ใช้เงื่อนไข “Add K The King of Soccer”</button>
+      </div>
+      <div class="king-message" id="addKMessage">พร้อมรัน · ไม่บังคับให้มี Pick ถ้าข้อมูลไม่ผ่าน</div>
+    </section>
 
     <main class="panel">
       <section class="section">
@@ -126,7 +150,21 @@
       function configText(config){
         if (!config) return 'ยังไม่มีข้อมูล';
         const maxSel = Number(config.maximumSelections) === 0 ? 'ไม่จำกัดคู่' : `สูงสุด ${config.maximumSelections} คู่`;
-        return `${config.enabled ? 'AUTO ON' : 'AUTO OFF'} · Confidence ${config.minimumConfidence}–${config.maximumConfidence}% · Odds ≥ ${Number(config.minimumMainOdds).toFixed(2)} · Overall ${config.overallSample} · H/A ${config.venueSample} · Strength ≥ ${Number(config.minimumStrengthScore).toFixed(2)} · Ranked Standing ${pct(config.standingsStrengthWeight)}% · ${maxSel}`;
+        const mode = config.addKTheKingOfSoccer ? 'ADD K THE KING OF SOCCER · LOCKED' : (config.enabled ? 'AUTO ON' : 'AUTO OFF');
+        return `${mode} · Confidence ${config.minimumConfidence}–${config.maximumConfidence}% · Odds ≥ ${Number(config.minimumMainOdds).toFixed(2)} · Overall ${config.overallSample} · H/A ${config.venueSample} · Strength ≥ ${Number(config.minimumStrengthScore).toFixed(2)} · Ranked Standing ${pct(config.standingsStrengthWeight)}% · ${maxSel}`;
+      }
+
+      function renderAddKPreset(config){
+        if (!config) return;
+        const cards = [
+          ['CONFIDENCE', `≥ ${config.minimumConfidence}%`],
+          ['MAIN ODDS', `≥ ${Number(config.minimumMainOdds).toFixed(2)}`],
+          ['FORM SAMPLE', `Overall ${config.overallSample} · H/A ${config.venueSample}`],
+          ['MIN SAMPLE', `${config.minimumSample} matches`],
+          ['STRENGTH', `≥ ${Number(config.minimumStrengthScore).toFixed(2)}`],
+          ['DATA QUALITY', config.requireStandingsContext ? `Standings · ≥ ${config.minimumLeagueTeamCount} teams` : 'Standard']
+        ];
+        $('addKRuleSummary').innerHTML = cards.map(([label, value]) => `<div class="king-rule"><span>${label}</span><b>${value}</b></div>`).join('');
       }
 
       function fill(config){
@@ -216,8 +254,13 @@
         $('message').className = `message ${good ? 'good' : 'bad'}`;
       }
 
+      function addKMessage(text, good){
+        $('addKMessage').textContent = text;
+        $('addKMessage').className = `king-message ${good ? 'good' : 'bad'}`;
+      }
+
       function busy(value){
-        ['defaultButton','saveButton','runButton'].forEach(id => $(id).disabled = value);
+        ['defaultButton','saveButton','runButton','addKRunButton'].forEach(id => $(id).disabled = value);
       }
 
       async function request(path, options = {}){
@@ -235,8 +278,10 @@
         serverState = payload;
         $('activeSummary').textContent = configText(payload.active);
         $('versionText').textContent = payload.version ? `Active Version ${payload.version} · Activated ${payload.activatedAt || '—'}` : '';
-        $('engineBadge').textContent = payload.active?.enabled ? 'AUTO TEST · ON' : 'AUTO TEST · OFF';
+        const addKActive = Boolean(payload.active?.addKTheKingOfSoccer);
+        $('engineBadge').textContent = addKActive ? 'ADD K · KING MODE' : (payload.active?.enabled ? 'AUTO TEST · ON' : 'AUTO TEST · OFF');
         $('engineBadge').className = `badge${payload.active?.enabled ? '' : ' off'}`;
+        renderAddKPreset(payload.presets?.addKTheKingOfSoccer);
       }
 
       async function load(){
@@ -245,8 +290,10 @@
           renderServerState(payload);
           fill(payload.draft || payload.active || payload.defaults);
           message('โหลดค่าบอลเต็งจากระบบ Test แล้ว', true);
+          addKMessage(payload.active?.addKTheKingOfSoccer ? 'Add K The King of Soccer กำลังเป็น Active preset' : 'พร้อมรัน · ไม่บังคับให้มี Pick ถ้าข้อมูลไม่ผ่าน', true);
         } catch (error) {
           message(`หน้า Control ยังเชื่อม Worker ไม่ได้: ${error.message}`, false);
+          addKMessage(`ยังเชื่อม Worker ไม่ได้: ${error.message}`, false);
         }
       }
 
@@ -271,6 +318,24 @@
         }
       }
 
+      async function runAddK(){
+        try {
+          busy(true);
+          addKMessage('กำลังส่งคำสั่ง Add K The King of Soccer และสร้าง Active Version ใหม่…', true);
+          const payload = await request('/ball-teng-config', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'run-add-k' })
+          });
+          renderServerState(payload);
+          addKMessage(`รันแล้ว · Add K LOCKED · Active Version ${payload.version} · Scheduler จะรับเป็นคำสั่งคัดใหม่`, true);
+          message('Custom Draft เดิมยังอยู่ · การรัน Add K ไม่ได้แก้ค่าร่างด้านล่าง', true);
+        } catch (error) {
+          addKMessage(error.message, false);
+        } finally {
+          busy(false);
+        }
+      }
+
       allIds.forEach(id => {
         $(id).addEventListener('input', updateDraftSummary);
         $(id).addEventListener('change', updateDraftSummary);
@@ -281,6 +346,7 @@
       });
       $('saveButton').addEventListener('click', () => submit('save'));
       $('runButton').addEventListener('click', () => submit('run'));
+      $('addKRunButton').addEventListener('click', runAddK);
       load();
     })();
   </script>
