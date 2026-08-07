@@ -23,9 +23,8 @@
       document.getElementById(`officialFinal-${slug.replace(/[^a-z0-9_-]+/gi,'-')}`)?.remove();
     }
     if(fixtureId){
-      host?.querySelectorAll('[data-cloudflare-completed],[data-test-only="true"]').forEach(card=>{
-        const cardFixture=String(card.dataset.cloudflareCompleted||card.dataset.fixtureId||'');
-        if(!cardFixture||cardFixture===fixtureId)card.remove();
+      host?.querySelectorAll('[data-cloudflare-completed]').forEach(card=>{
+        if(String(card.dataset.cloudflareCompleted||'')===fixtureId)card.remove();
       });
     }
   }
