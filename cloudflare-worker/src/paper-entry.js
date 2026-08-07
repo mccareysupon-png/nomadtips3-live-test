@@ -63,7 +63,6 @@ function json(request, data, status = 200) {
 function adaptiveRefreshSeconds(payload) {
   const direct = Number(payload?.refreshSeconds);
   if (Number.isFinite(direct)) {
-    if (direct <= 5) return 5;
     if (direct <= 15) return 15;
     if (direct <= 30) return 30;
     if (direct <= 60) return 60;
@@ -71,7 +70,7 @@ function adaptiveRefreshSeconds(payload) {
   }
 
   const counts = payload?.counts || {};
-  if (Number(counts.completeMarkets || 0) > 0) return 5;
+  if (Number(counts.completeMarkets || 0) > 0) return 15;
   if (Number(counts.completeStats || 0) > 0) return 15;
   if (Number(counts.minuteWindow || 0) > 0) return 30;
   if (Number(counts.allLive || 0) > 0) return 60;
