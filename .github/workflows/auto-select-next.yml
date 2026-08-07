@@ -10,6 +10,7 @@ on:
       - '.github/scripts/apply_confidence_policy.py'
       - '.github/scripts/materialize_add_k_no_pick.py'
       - '.github/scripts/enforce_add_k_data_quality.py'
+      - '.github/scripts/merge_add_k_locked_picks.py'
       - '.github/scripts/finalize_ball_teng_analysis.py'
       - '.github/scripts/enrich_selected_odds.py'
       - '.github/scripts/prepare_ball_teng_control.py'
@@ -41,6 +42,7 @@ jobs:
       FORCE_AUTO_SELECT: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
       FORCE_AUTO_RESELECT: '0'
       BALL_TENG_CONTROL_URL: 'https://nomadtips3-test-api.mccarey-supon.workers.dev/ball-teng-config'
+      ADD_K_PREVIOUS_SELECTED_PATH: '/tmp/nomad-prev-selected.json'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -57,6 +59,10 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
+
+          # Snapshot the previous published set before a forced Add K rerun.
+          # It is used only to preserve already-started matches; future picks remain replaceable.
+          cp selected-live-matches.json "$ADD_K_PREVIOUS_SELECTED_PATH" 2>/dev/null || printf '{"matches":[]}\n' > "$ADD_K_PREVIOUS_SELECTED_PATH"
 
           python3 - <<'PY'
           import json
@@ -127,6 +133,10 @@ jobs:
           else
             echo 'No O/U enrichment required.'
           fi
+
+          # Add K reruns keep matches that have already reached kickoff, replace future picks,
+          # and de-duplicate fixture ids. This is isolated from the live-condition scanner.
+          python3 .github/scripts/merge_add_k_locked_picks.py
 
           # Dashboard settings are runtime configuration; repository defaults remain the fallback.
           git checkout -- config/nomad-auto-rules.json
