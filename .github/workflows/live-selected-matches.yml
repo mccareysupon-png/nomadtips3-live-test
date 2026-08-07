@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/live-selected-matches.yml'
       - '.github/scripts/refresh_live_selected.py'
+      - '.github/scripts/run_refresh_live_selected.py'
       - '.github/scripts/enrich_selected_odds.py'
       - 'selected-live-matches.json'
   schedule:
@@ -61,7 +62,7 @@ jobs:
 
             refreshed=0
             for attempt in 1 2 3; do
-              if python3 .github/scripts/refresh_live_selected.py; then
+              if python3 .github/scripts/run_refresh_live_selected.py; then
                 refreshed=1
                 break
               fi
