@@ -14,7 +14,7 @@ import {
   handleLineWebhook,
   lineStatus,
   notifyPendingLineEvents
-} from './line.js';
+} from './line-side.js';
 
 const ALLOWED_ORIGINS = new Set([
   'https://mccareysupon-png.github.io',
@@ -130,8 +130,6 @@ export default {
 
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
-      // Run in sequence so the side-aware paper ledger always receives the
-      // signals from the scan that just completed before settlement begins.
       try {
         await runAutoMomentumScan(baseWorker, env, ctx);
       } catch (error) {
