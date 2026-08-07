@@ -12,6 +12,7 @@ import {
 import { runHotConditionScan } from './hot-scan.js';
 import { handleConditionConfig } from './condition-config.js';
 import { handleBallTengConfig } from './ball-teng-config.js';
+import { handleMemberConfig } from './member-config.js';
 import {
   handleLineWebhook,
   lineStatus,
@@ -183,6 +184,18 @@ export default {
         return json(request, {
           ok: false,
           error: error?.message || 'Ball-teng configuration failed'
+        }, 500);
+      }
+    }
+
+    if (['/member-profile', '/member-live-config', '/member-ball-teng-config'].includes(url.pathname)) {
+      try {
+        const result = await handleMemberConfig(request, env, url);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Member configuration failed'
         }, 500);
       }
     }
