@@ -42,6 +42,47 @@
     if (label && label.textContent !== scannerText) label.textContent = scannerText;
   }
 
+  function patchMomentumSideColors(card) {
+    if (card.dataset.sideColorPatched === '1') return;
+
+    const selectedAway = [...card.querySelectorAll('.team small')]
+      .some(node => node.textContent.includes('ทีมเยือน') && node.textContent.includes('SELECTED'));
+
+    const momentum = card.querySelector('.momentum');
+    if (!momentum) return;
+
+    const title = momentum.querySelector('.momentum-top small');
+    if (title) title.textContent = 'NOMAD MOMENTUM · SERVER 24/7 · HOME (GREEN) vs AWAY (RED)';
+
+    if (selectedAway) {
+      const greenValue = momentum.querySelector('.momentum-top b em');
+      const redValue = momentum.querySelector('.momentum-top b i');
+      if (greenValue && redValue) {
+        const selectedMomentum = greenValue.textContent;
+        const opponentMomentum = redValue.textContent;
+        greenValue.textContent = opponentMomentum;
+        redValue.textContent = selectedMomentum;
+      }
+
+      const greenBar = momentum.querySelector('.bar .home');
+      const redBar = momentum.querySelector('.bar .away');
+      if (greenBar && redBar) {
+        const selectedWidth = greenBar.style.width;
+        const opponentWidth = redBar.style.width;
+        greenBar.style.width = opponentWidth;
+        redBar.style.width = selectedWidth;
+      }
+
+      const lines = [...momentum.querySelectorAll('.chart polyline')];
+      if (lines.length >= 2) {
+        lines[0].setAttribute('stroke', '#ff6573');
+        lines[1].setAttribute('stroke', '#00df91');
+      }
+    }
+
+    card.dataset.sideColorPatched = '1';
+  }
+
   function patchSideAwareUi() {
     const paperTag = document.querySelector('#paperInvestment .paper-head .tag');
     if (paperTag && paperTag.textContent.includes('HOME LIVE ASIAN HANDICAP')) {
@@ -53,6 +94,8 @@
     });
 
     document.querySelectorAll('.card').forEach(card => {
+      patchMomentumSideColors(card);
+
       const facts = [...card.querySelectorAll('.fact')];
       const paperFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'Paper Investment');
       const ahOddsFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'AH Odds');
