@@ -14,8 +14,8 @@
     const analysis = source?.auto_analysis || source?.autoAnalysis || {};
     const strength = Number(analysis.absoluteStrength ?? Math.abs(Number(analysis.strengthScore)));
     const minimum = Number(config?.rules?.confidence_minimum ?? config?.rules?.confidence_fixed ?? 58);
-    const maximum = Number(config?.rules?.confidence_maximum ?? 85);
-    const scale = Number(config?.confidencePolicy?.formula?.match?.(/×\s*([\d.]+)/)?.[1] ?? 15);
+    const maximum = Number(config?.rules?.confidence_maximum ?? config?.confidencePolicy?.maximum ?? 85);
+    const scale = Number(config?.confidencePolicy?.scale ?? 15);
     if (Number.isFinite(strength)) {
       return Math.max(minimum, Math.min(maximum, Math.round(50 + (strength * scale))));
     }
@@ -113,7 +113,7 @@
 
       const now = new Date().toISOString();
       const minimumConfidence = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
-      const maximumConfidence = Number(config.rules?.confidence_maximum ?? 85);
+      const maximumConfidence = Number(config.rules?.confidence_maximum ?? config.confidencePolicy?.maximum ?? 85);
       state.datasetId = remoteDatasetId;
       state.remoteDatasetId = remoteDatasetId;
       state.mode = config.environment === 'TEST_ONLY' ? 'AUTO_TEST' : 'REMOTE';
@@ -132,7 +132,8 @@
       state.confidencePolicy = config.confidencePolicy || {
         type: 'DYNAMIC_MINIMUM',
         minimum: minimumConfidence,
-        maximum: maximumConfidence
+        maximum: maximumConfidence,
+        scale: 15
       };
       state.auditLog = Array.isArray(state.auditLog) ? state.auditLog.slice(-99) : [];
       state.auditLog.push({
