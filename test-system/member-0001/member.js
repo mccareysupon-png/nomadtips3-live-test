@@ -33,7 +33,7 @@ function renderBallTeng(payload){
   $('#metricPicks').textContent=matches.length;
   $('#metricConfidence').textContent=matches.length?`${avg.toFixed(1)}%`:'—';
   $('#overviewPicksState').textContent=matches.length?`${matches.length} member selection(s) · avg ${avg.toFixed(1)}%`:(payload.engine?.status||'WAITING_FOR_MEMBER_SELECTOR');
-  $('#ballTengMeta').textContent=`Member #${MEMBER_ID} · ${payload.setId||'no set'} · config v${payload.config?.version||payload.config?.activatedAt||'—'}`;
+  $('#ballTengMeta').textContent=`Member #${MEMBER_ID} · ${payload.setId||'no set'} · config v${payload.config?.version||'—'}`;
   if(!matches.length){
     $('#ballTengGrid').innerHTML='<div class="empty">ยังไม่มีชุดบอลเต็งที่สร้างจากเงื่อนไขของ Member #0001 · จะไม่ดึงชุด Owner/System มาแสดงแทน</div>';
     return;
@@ -98,10 +98,28 @@ function setInfraHealth(payload){
 function formObject(form){return Object.fromEntries(new FormData(form).entries())}
 function boolValue(value){return String(value)==='true'}
 function nullableNumber(value){return value===''?null:Number(value)}
-function fillForm(form,config,map={}){for(const element of form.elements){if(!element.name)continue;const source=map[element.name]||element.name;let value=config?.[source];if(element.name.endsWith('Pct'))value=Math.round(Number(value||0)*10000)/100;if(typeof value==='boolean')value=String(value);if(value==null)value='';element.value=value}}
+function fillForm(form,config,map={}){
+  for(const element of form.elements){
+    if(!element.name)continue;
+    const inferred=element.name.endsWith('Pct')?element.name.slice(0,-3):element.name;
+    const source=map[element.name]||inferred;
+    let value=config?.[source];
+    if(element.name.endsWith('Pct'))value=Math.round(Number(value||0)*10000)/100;
+    if(typeof value==='boolean')value=String(value);
+    if(value==null)value='';
+    element.value=value;
+  }
+}
 
 function liveFormConfig(){const raw=formObject($('#liveConfigForm'));return {side:raw.side,market:raw.market,minuteMin:Number(raw.minuteMin),minuteMax:Number(raw.minuteMax),oddsMin:Number(raw.oddsMin),oddsMax:nullableNumber(raw.oddsMax),ahMin:Number(raw.ahMin),ahMax:nullableNumber(raw.ahMax),momentumMin:Number(raw.momentumMin),confirmationRounds:Number(raw.confirmationRounds),goalGapLimited:boolValue(raw.goalGapLimited),maxGoalGap:Number(raw.maxGoalGap),signalLimitEnabled:boolValue(raw.signalLimitEnabled),maxSignalsPerDay:Number(raw.maxSignalsPerDay)}}
-function ballFormConfig(){const raw=formObject($('#ballConfigForm'));return {enabled:boolValue(raw.enabled),cutoffHourLocal:Number(raw.cutoffHourLocal),minimumLeadMinutes:Number(raw.minimumLeadMinutes),minimumMainOdds:Number(raw.minimumMainOdds),minimumConfidence:Number(raw.minimumConfidence),maximumConfidence:Number(raw.maximumConfidence),overallSample:Number(raw.overallSample),venueSample:Number(raw.venueSample),historyFetch:Number(raw.historyFetch),minimumSample:Number(raw.minimumSample),minimumStrengthScore:Number(raw.minimumStrengthScore),minimumOverallPpgEdge:Number(raw.minimumOverallPpgEdge),minimumVenuePpgEdge:Number(raw.minimumVenuePpgEdge),maximumFixturesToAnalyze:Number(raw.maximumFixturesToAnalyze),maximumSelections:Number(raw.maximumSelections),overallPpgWeight:Number(raw.overallPpgWeightPct)/100,venuePpgWeight:Number(raw.venuePpgWeightPct)/100,goalDifferenceWeight:Number(raw.goalDifferenceWeightPct)/100,useStandingsContext:true,standingsStrengthWeight:Number(raw.standingsStrengthWeightPct)/100,standingsAdjustmentCap:Number(raw.standingsStrengthWeightPct)/100,standingsDirectRankMix:Number(raw.standingsDirectRankMixPct)/100,standingsRankedCommonMix:Number(raw.standingsRankedCommonMixPct)/100,confidenceStrengthScale:15}}
+function ballFormConfig(){
+  const raw=formObject($('#ballConfigForm'));
+  const direct=Number(raw.standingsDirectRankMixPct);
+  const ranked=Number(raw.standingsRankedCommonMixPct);
+  if(Math.abs((direct+ranked)-100)>0.01)throw new Error('A/B Rank Mix + Ranked C Mix ต้องรวม 100%');
+  const base={...(ballConfigState?.active||{}),...(ballConfigState?.draft||{})};
+  return {...base,enabled:boolValue(raw.enabled),cutoffHourLocal:Number(raw.cutoffHourLocal),minimumLeadMinutes:Number(raw.minimumLeadMinutes),minimumMainOdds:Number(raw.minimumMainOdds),minimumConfidence:Number(raw.minimumConfidence),maximumConfidence:Number(raw.maximumConfidence),overallSample:Number(raw.overallSample),venueSample:Number(raw.venueSample),historyFetch:Number(raw.historyFetch),minimumSample:Number(raw.minimumSample),minimumStrengthScore:Number(raw.minimumStrengthScore),minimumOverallPpgEdge:Number(raw.minimumOverallPpgEdge),minimumVenuePpgEdge:Number(raw.minimumVenuePpgEdge),maximumFixturesToAnalyze:Number(raw.maximumFixturesToAnalyze),maximumSelections:Number(raw.maximumSelections),overallPpgWeight:Number(raw.overallPpgWeightPct)/100,venuePpgWeight:Number(raw.venuePpgWeightPct)/100,goalDifferenceWeight:Number(raw.goalDifferenceWeightPct)/100,standingsStrengthWeight:Number(raw.standingsStrengthWeightPct)/100,standingsDirectRankMix:direct/100,standingsRankedCommonMix:ranked/100};
+}
 
 function configMessage(id,text,good=true){const node=$(id);node.textContent=text;node.className=`config-message ${good?'good':'bad'}`}
 async function loadConfigs(){
@@ -109,11 +127,27 @@ async function loadConfigs(){
   try{ballConfigState=await requestJson(memberUrl('/member-ball-teng-config'));fillForm($('#ballConfigForm'),ballConfigState.draft);$('#ballConfigVersion').textContent=`v${ballConfigState.version||0}`;configMessage('#ballConfigMessage',`โหลดค่า Member #${MEMBER_ID} แล้ว · Active แยกจาก Owner/System`)}catch(error){configMessage('#ballConfigMessage',error.message,false)}
 }
 async function submitConfig(kind,action){
-  const isLive=kind==='live';const url=memberUrl(isLive?'/member-live-config':'/member-ball-teng-config');const config=isLive?liveFormConfig():ballFormConfig();const messageId=isLive?'#liveConfigMessage':'#ballConfigMessage';
-  try{configMessage(messageId,action==='run'?'กำลังเปิดใช้ค่าของสมาชิก…':'กำลังเซฟ Draft…');const payload=await requestJson(url,{method:'POST',body:JSON.stringify({action,config})});if(isLive){liveConfigState=payload;fillForm($('#liveConfigForm'),payload.draft);$('#liveConfigVersion').textContent=`v${payload.version||0}`}else{ballConfigState=payload;fillForm($('#ballConfigForm'),payload.draft);$('#ballConfigVersion').textContent=`v${payload.version||0}`}configMessage(messageId,payload.message||'บันทึกแล้ว');await loadMemberData()}catch(error){configMessage(messageId,error.message,false)}
+  const isLive=kind==='live';
+  const url=memberUrl(isLive?'/member-live-config':'/member-ball-teng-config');
+  const messageId=isLive?'#liveConfigMessage':'#ballConfigMessage';
+  try{
+    const config=isLive?liveFormConfig():ballFormConfig();
+    configMessage(messageId,action==='run'?'กำลังเปิดใช้ค่าของสมาชิก…':'กำลังเซฟ Draft…');
+    const payload=await requestJson(url,{method:'POST',body:JSON.stringify({action,config})});
+    if(isLive){liveConfigState=payload;fillForm($('#liveConfigForm'),payload.draft);$('#liveConfigVersion').textContent=`v${payload.version||0}`}
+    else{ballConfigState=payload;fillForm($('#ballConfigForm'),payload.draft);$('#ballConfigVersion').textContent=`v${payload.version||0}`}
+    configMessage(messageId,payload.message||'บันทึกแล้ว');
+    await loadMemberData();
+  }catch(error){configMessage(messageId,error.message,false)}
 }
 
-document.querySelectorAll('[data-config-action]').forEach(button=>button.addEventListener('click',()=>{const [kind,action]=button.dataset.configAction.split('-');if(action==='default'){const state=kind==='live'?liveConfigState:ballConfigState;if(state){fillForm($(kind==='live'?'#liveConfigForm':'#ballConfigForm'),state.defaults);configMessage(kind==='live'?'#liveConfigMessage':'#ballConfigMessage','ใส่ค่าดีฟอลท์ในฟอร์มแล้ว · ยังไม่บันทึก')}}else submitConfig(kind,action)}));
+document.querySelectorAll('[data-config-action]').forEach(button=>button.addEventListener('click',()=>{
+  const [kind,action]=button.dataset.configAction.split('-');
+  if(action==='default'){
+    const state=kind==='live'?liveConfigState:ballConfigState;
+    if(state){fillForm($(kind==='live'?'#liveConfigForm':'#ballConfigForm'),state.defaults);configMessage(kind==='live'?'#liveConfigMessage':'#ballConfigMessage','ใส่ค่าดีฟอลท์ในฟอร์มแล้ว · ยังไม่บันทึก')}
+  }else submitConfig(kind,action);
+}));
 
 async function loadMemberData(){
   await Promise.allSettled([
