@@ -213,8 +213,12 @@ function inOptionalRange(value, min, max) {
   return true;
 }
 
-function selectedCandidate(source, markets, config) {
-  const awaySelected = config.side === 'AWAY';
+function selectedSides(config) {
+  return config.side === 'BOTH' ? ['HOME', 'AWAY'] : [config.side];
+}
+
+function selectedCandidate(source, markets, config, selectedSide) {
+  const awaySelected = selectedSide === 'AWAY';
   const stats = awaySelected ? swapStatistics(source.stats) : source.stats;
   const selectedName = awaySelected ? source.match.away : source.match.home;
   const opponentName = awaySelected ? source.match.home : source.match.away;
@@ -236,7 +240,7 @@ function selectedCandidate(source, markets, config) {
     away: opponentName,
     actualHome: source.match.home,
     actualAway: source.match.away,
-    selectedSide: config.side,
+    selectedSide,
     selectedMarket: config.market,
     selectedOdds,
     score: { home: selectedScore, away: opponentScore },
@@ -304,20 +308,27 @@ async function liveConditionScan(request, env) {
       warnings.push(`live odds ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
       return;
     }
+
     const oddsItem = Array.isArray(entry.value?.response) ? entry.value.response[0] : null;
-    const teamName = config.side === 'AWAY' ? source.match.away : source.match.home;
-    const markets = sideMarkets(oddsItem, teamName, config.side);
-    if (markets.win === null && markets.ah === null && markets.ahOdd === null) return;
-    completeMarkets += 1;
+    let fixtureHasMarket = false;
 
-    const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
-    if (!inOptionalRange(selectedOdds, config.oddsMin, config.oddsMax)) return;
-    if (!inOptionalRange(markets.ah, config.ahMin, config.ahMax)) return;
+    for (const selectedSide of selectedSides(config)) {
+      const teamName = selectedSide === 'AWAY' ? source.match.away : source.match.home;
+      const markets = sideMarkets(oddsItem, teamName, selectedSide);
+      if (markets.win === null && markets.ah === null && markets.ahOdd === null) continue;
+      fixtureHasMarket = true;
 
-    const candidate = selectedCandidate(source, markets, config);
-    if (candidate.redCards.home > candidate.redCards.away) return;
-    redSafe += 1;
-    candidates.push(candidate);
+      const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
+      if (!inOptionalRange(selectedOdds, config.oddsMin, config.oddsMax)) continue;
+      if (!inOptionalRange(markets.ah, config.ahMin, config.ahMax)) continue;
+
+      const candidate = selectedCandidate(source, markets, config, selectedSide);
+      if (candidate.redCards.home > candidate.redCards.away) continue;
+      redSafe += 1;
+      candidates.push(candidate);
+    }
+
+    if (fixtureHasMarket) completeMarkets += 1;
   });
 
   return json(request, {
