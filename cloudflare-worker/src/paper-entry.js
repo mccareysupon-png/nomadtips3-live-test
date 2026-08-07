@@ -1,5 +1,9 @@
 import baseWorker from './entry.js';
-import { handlePaperRequest, settlePendingTrades } from './paper-db.js';
+import {
+  handlePaperRequest,
+  settlePendingTrades,
+  syncSignalsToPaperTrades
+} from './paper-db-side.js';
 import {
   getLatestAutoPayload,
   handleAutoRequest,
@@ -126,13 +130,26 @@ export default {
 
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
-      const results = await Promise.allSettled([
-        runAutoMomentumScan(baseWorker, env, ctx),
-        settlePendingTrades(env)
-      ]);
-      for (const result of results) {
-        if (result.status === 'rejected') console.error(result.reason);
+      // Run in sequence so the side-aware paper ledger always receives the
+      // signals from the scan that just completed before settlement begins.
+      try {
+        await runAutoMomentumScan(baseWorker, env, ctx);
+      } catch (error) {
+        console.error(error);
       }
+
+      try {
+        await syncSignalsToPaperTrades(env);
+      } catch (error) {
+        console.error(error);
+      }
+
+      try {
+        await settlePendingTrades(env);
+      } catch (error) {
+        console.error(error);
+      }
+
       try {
         await notifyPendingLineEvents(env);
       } catch (error) {
