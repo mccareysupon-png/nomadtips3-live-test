@@ -53,20 +53,21 @@
     });
 
     document.querySelectorAll('.card').forEach(card => {
-      const selectedAway = [...card.querySelectorAll('.team small')]
-        .some(node => node.textContent.includes('ทีมเยือน') && node.textContent.includes('SELECTED'));
-      if (!selectedAway) return;
-
       const facts = [...card.querySelectorAll('.fact')];
       const paperFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'Paper Investment');
       const ahOddsFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'AH Odds');
       const paperValue = paperFact?.querySelector('b');
       const ahOddsValue = ahOddsFact?.querySelector('b')?.textContent.trim();
-      if (paperValue && ahOddsValue && ahOddsValue !== 'N/A') {
-        if (paperValue.textContent.trim() !== '100 Units') paperValue.textContent = '100 Units';
-        if (paperValue.classList.contains('yellow')) paperValue.classList.remove('yellow');
-        if (!paperValue.classList.contains('green')) paperValue.classList.add('green');
-      }
+      if (!paperValue) return;
+
+      const triggered = card.classList.contains('triggered') ||
+        card.querySelector('.badge')?.textContent.trim() === 'เข้าเงื่อนไข';
+      const hasAhOdds = Boolean(ahOddsValue && ahOddsValue !== 'N/A');
+      const invested = triggered && hasAhOdds;
+
+      paperValue.textContent = invested ? '100 Units' : 'WAIT SIGNAL';
+      paperValue.classList.remove('green', 'yellow');
+      paperValue.classList.add(invested ? 'green' : 'yellow');
     });
   }
 
