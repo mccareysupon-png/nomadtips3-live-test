@@ -14,6 +14,10 @@
         color:var(--stats-red,#ff8e96)!important;
         font-weight:950!important;
       }
+      #statsSummary .metric > span > .summary-negative-result{
+        display:inline!important;
+        margin-top:0!important;
+      }
       #statsSummary .metric[data-negative-result-card="true"] > small,
       #statsSummary .metric[data-negative-result-card="true"] > b{
         color:var(--stats-red,#ff8e96)!important;
