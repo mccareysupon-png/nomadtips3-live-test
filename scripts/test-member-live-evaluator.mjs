@@ -157,6 +157,10 @@ try {
   assert.ok(state);
   assert.equal(state.momentum, null);
   assert.equal(Number(state.triggered), 0);
+  const baselinePayload = JSON.parse(state.payload_json);
+  assert.equal(Number(baselinePayload.stats?.attacks?.home), 50);
+  assert.equal(Number(baselinePayload.stats?.dangerous_attacks?.home), 20);
+  assert.equal(scanNumber, 1);
   console.log('PASS: first independent member scan stores its own baseline state');
 
   await new Promise(resolve => setTimeout(resolve, 5));
@@ -164,6 +168,7 @@ try {
   assert.equal(second.results[0].usage.totalRequests, 3);
   state = await env.DB.prepare('SELECT * FROM member_live_state WHERE member_id = ? AND state_key = ?')
     .bind('0001', '123:HOME').first();
+  console.log(`DEBUG: second scan momentum=${state?.momentum} streak=${state?.streak} triggered=${state?.triggered}`);
   assert.ok(Number(state.momentum) >= 60);
   assert.equal(Number(state.triggered), 1);
   const signal = await env.DB.prepare('SELECT * FROM member_live_signals WHERE member_id = ? AND signal_key = ?')
