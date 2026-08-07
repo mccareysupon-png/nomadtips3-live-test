@@ -33,7 +33,8 @@
   }
 
   function number(value) {
-    const parsed = Number(String(value ?? '').replace(',', '.'));
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(String(value).replace(',', '.'));
     return Number.isFinite(parsed) ? parsed : null;
   }
 
