@@ -31,7 +31,43 @@ export const DEFAULT_BALL_TENG_CONFIG = Object.freeze({
   standingsStrengthWeight: 0.32,
   standingsAdjustmentCap: 0.32,
   standingsDirectRankMix: 0.55,
-  standingsRankedCommonMix: 0.45
+  standingsRankedCommonMix: 0.45,
+  presetKey: null,
+  addKTheKingOfSoccer: false,
+  requireStandingsContext: false,
+  minimumLeagueTeamCount: 0
+});
+
+export const ADD_K_THE_KING_OF_SOCCER_CONFIG = Object.freeze({
+  ...DEFAULT_BALL_TENG_CONFIG,
+  enabled: true,
+  cutoffHourLocal: 8,
+  minimumLeadMinutes: 45,
+  minimumConfidence: 62,
+  maximumConfidence: 85,
+  confidenceStrengthScale: 15,
+  minimumMainOdds: 1.70,
+  overallSample: 6,
+  venueSample: 5,
+  historyFetch: 20,
+  minimumSample: 5,
+  minimumStrengthScore: 0.62,
+  minimumOverallPpgEdge: 0.30,
+  minimumVenuePpgEdge: 0.40,
+  maximumFixturesToAnalyze: 240,
+  maximumSelections: 0,
+  overallPpgWeight: 0.34,
+  venuePpgWeight: 0.36,
+  goalDifferenceWeight: 0.18,
+  useStandingsContext: true,
+  standingsStrengthWeight: 0.32,
+  standingsAdjustmentCap: 0.32,
+  standingsDirectRankMix: 0.55,
+  standingsRankedCommonMix: 0.45,
+  presetKey: 'ADD_K_THE_KING_OF_SOCCER_V1',
+  addKTheKingOfSoccer: true,
+  requireStandingsContext: true,
+  minimumLeagueTeamCount: 8
 });
 
 let schemaReady = false;
@@ -58,6 +94,12 @@ function booleanValue(value, fallback = false) {
   if (value === 'true' || value === 1 || value === '1') return true;
   if (value === 'false' || value === 0 || value === '0') return false;
   return fallback;
+}
+
+function presetKeyValue(value) {
+  if (typeof value !== 'string') return null;
+  const clean = value.trim().slice(0, 80);
+  return clean || null;
 }
 
 export function normalizeBallTengConfig(input = {}) {
@@ -92,7 +134,11 @@ export function normalizeBallTengConfig(input = {}) {
     standingsStrengthWeight: bounded(source.standingsStrengthWeight, 0.32, 0, 1, 0.01),
     standingsAdjustmentCap: bounded(source.standingsAdjustmentCap, 0.32, 0, 1, 0.01),
     standingsDirectRankMix: bounded(source.standingsDirectRankMix, 0.55, 0, 1, 0.01),
-    standingsRankedCommonMix: bounded(source.standingsRankedCommonMix, 0.45, 0, 1, 0.01)
+    standingsRankedCommonMix: bounded(source.standingsRankedCommonMix, 0.45, 0, 1, 0.01),
+    presetKey: presetKeyValue(source.presetKey),
+    addKTheKingOfSoccer: booleanValue(source.addKTheKingOfSoccer, false),
+    requireStandingsContext: booleanValue(source.requireStandingsContext, false),
+    minimumLeagueTeamCount: integer(source.minimumLeagueTeamCount, 0, 0, 100)
   };
 }
 
@@ -127,11 +173,15 @@ export async function getBallTengConfigState(env) {
   const draft = parseStored(row?.draft_json, active);
   return {
     defaults: normalizeBallTengConfig(DEFAULT_BALL_TENG_CONFIG),
+    presets: {
+      addKTheKingOfSoccer: normalizeBallTengConfig(ADD_K_THE_KING_OF_SOCCER_CONFIG)
+    },
     draft,
     active,
     updatedAt: row?.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
     activatedAt: row?.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
     version: Number(row?.activated_at || 0),
+    activePreset: active.presetKey || null,
     policy: {
       legacyUnrankedCommonOpponentWeight: 0,
       rankedAbcOnly: true,
@@ -177,13 +227,18 @@ export async function handleBallTengConfig(request, env) {
   }
 
   const action = String(body.action || 'save').toLowerCase();
-  if (!['save', 'run'].includes(action)) {
-    return { status: 400, data: { ok: false, error: 'Action must be save or run' } };
+  if (!['save', 'run', 'run-add-k'].includes(action)) {
+    return { status: 400, data: { ok: false, error: 'Action must be save, run or run-add-k' } };
   }
 
-  const config = action === 'run'
-    ? await runConfig(env, body.config)
-    : await saveDraft(env, body.config);
+  let config;
+  if (action === 'run-add-k') {
+    config = await runConfig(env, ADD_K_THE_KING_OF_SOCCER_CONFIG);
+  } else if (action === 'run') {
+    config = await runConfig(env, body.config);
+  } else {
+    config = await saveDraft(env, body.config);
+  }
   const state = await getBallTengConfigState(env);
 
   return {
@@ -191,9 +246,11 @@ export async function handleBallTengConfig(request, env) {
     data: {
       ok: true,
       action,
-      message: action === 'run'
-        ? 'Ball-teng configuration activated; the automatic selector will consume this version on its next scheduler check.'
-        : 'Ball-teng draft saved; the active selector is unchanged.',
+      message: action === 'run-add-k'
+        ? 'Add K The King of Soccer activated as a fixed preset; this new version is an explicit reselection command.'
+        : action === 'run'
+          ? 'Ball-teng configuration activated; the automatic selector will consume this version on its next scheduler check.'
+          : 'Ball-teng draft saved; the active selector is unchanged.',
       config,
       ...state
     }
