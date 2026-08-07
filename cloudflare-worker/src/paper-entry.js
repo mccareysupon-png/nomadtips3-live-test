@@ -1,4 +1,4 @@
-import baseWorker from './entry.js';
+import baseWorker from './entry-batched.js';
 import {
   handlePaperRequest,
   settlePendingTrades,
