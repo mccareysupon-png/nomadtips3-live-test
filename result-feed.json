@@ -1,36 +1,36 @@
 {
   "selectionDate": "2026-08-06",
-  "generatedAt": "2026-08-07T02:34:21Z",
+  "generatedAt": "2026-08-07T02:34:53Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 2,
-    "correct": 0,
+    "correct": 1,
     "incorrect": 1,
     "void": 0,
-    "pending": 1,
-    "settled": 1,
-    "allSettled": false,
-    "accuracy": 0.0,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 2,
+    "allSettled": true,
+    "accuracy": 50.0,
+    "finalizedAt": "2026-08-07T02:34:53Z"
   },
   "marketSummary": {
     "btts": {
       "total": 2,
       "correct": 1,
-      "incorrect": 0,
+      "incorrect": 1,
       "void": 0,
-      "pending": 1,
-      "settled": 1,
-      "accuracy": 100.0
+      "pending": 0,
+      "settled": 2,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 2,
-      "correct": 1,
+      "correct": 2,
       "incorrect": 0,
       "void": 0,
-      "pending": 1,
-      "settled": 1,
+      "pending": 0,
+      "settled": 2,
       "accuracy": 100.0
     },
     "asianHandicap": {
@@ -91,7 +91,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T02:34:21Z",
+      "updatedAt": "2026-08-07T02:34:53Z",
       "counted": true
     },
     {
@@ -101,27 +101,27 @@
       "home": "Chicago Fire FC",
       "away": "Club Necaxa",
       "kickoffUtc": "2026-08-07T00:30:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.62,
           "oddsStatus": "LOCKED",
           "confidence": 58,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Chicago or Draw",
           "odds": 1.18,
           "oddsStatus": "LOCKED",
           "confidence": 58,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "N/A",
@@ -131,11 +131,11 @@
           "outcome": "pending"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T02:34:21Z",
+      "updatedAt": "2026-08-07T02:34:53Z",
       "counted": true
     }
   ]
