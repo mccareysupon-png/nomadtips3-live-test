@@ -77,6 +77,30 @@ CREATE TABLE IF NOT EXISTS member_notification_log (
   sent_at INTEGER
 )`;
 
+const SCAN_STATUS_SQL = `
+CREATE TABLE IF NOT EXISTS member_live_scan_status (
+  member_id TEXT PRIMARY KEY,
+  ran_at INTEGER NOT NULL,
+  ok INTEGER NOT NULL DEFAULT 1,
+  config_version INTEGER NOT NULL DEFAULT 0,
+  counts_json TEXT NOT NULL DEFAULT '{}',
+  usage_json TEXT NOT NULL DEFAULT '{}',
+  error TEXT,
+  warnings_json TEXT NOT NULL DEFAULT '[]',
+  updated_at INTEGER NOT NULL
+)`;
+
+const API_USAGE_SQL = `
+CREATE TABLE IF NOT EXISTS member_api_usage (
+  member_id TEXT NOT NULL,
+  usage_day TEXT NOT NULL,
+  endpoint TEXT NOT NULL,
+  calls INTEGER NOT NULL DEFAULT 0,
+  items INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (member_id, usage_day, endpoint)
+)`;
+
 let schemaReady = false;
 
 function memberIdFromUrl(url) {
@@ -94,11 +118,15 @@ async function ensureSchema(env) {
     env.DB.prepare(BALL_TENG_SET_SQL),
     env.DB.prepare(RESULT_SQL),
     env.DB.prepare(NOTIFICATION_LOG_SQL),
+    env.DB.prepare(SCAN_STATUS_SQL),
+    env.DB.prepare(API_USAGE_SQL),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_live_state_updated ON member_live_state(member_id, updated_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_live_signal_created ON member_live_signals(member_id, created_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_ball_teng_generated ON member_ball_teng_sets(member_id, generated_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_result_created ON member_prediction_results(member_id, created_at)'),
-    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_notification_created ON member_notification_log(member_id, created_at)')
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_notification_created ON member_notification_log(member_id, created_at)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_live_scan_updated ON member_live_scan_status(updated_at)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_member_api_usage_updated ON member_api_usage(member_id, updated_at)')
   ]);
   schemaReady = true;
 }
@@ -107,10 +135,19 @@ function parseJson(value, fallback = {}) {
   try { return JSON.parse(value || ''); } catch { return fallback; }
 }
 
+function thaiDayKey(now = Date.now()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date(now));
+  const read = type => parts.find(part => part.type === type)?.value || '00';
+  return `${read('year')}-${read('month')}-${read('day')}`;
+}
+
 async function liveStatus(env, memberId) {
   await ensureSchema(env);
   const config = await getActiveMemberConditionConfig(env, memberId);
-  const [states, signals] = await Promise.all([
+  const day = thaiDayKey();
+  const [states, signals, scanRow, usageRows] = await Promise.all([
     env.DB.prepare(`
       SELECT state_key, fixture_id, selected_side, selected_team, opponent, minute,
              selected_score, opponent_score, momentum, streak, triggered,
@@ -127,8 +164,25 @@ async function liveStatus(env, memberId) {
       WHERE member_id = ?
       ORDER BY created_at DESC
       LIMIT 50
-    `).bind(memberId).all()
+    `).bind(memberId).all(),
+    env.DB.prepare('SELECT * FROM member_live_scan_status WHERE member_id = ?').bind(memberId).first(),
+    env.DB.prepare(`
+      SELECT endpoint, calls, items, updated_at
+      FROM member_api_usage
+      WHERE member_id = ? AND usage_day = ?
+      ORDER BY endpoint
+    `).bind(memberId, day).all()
   ]);
+  const apiRows = usageRows.results || [];
+  const apiRequests = apiRows.reduce((sum, row) => sum + Number(row.calls || 0), 0);
+  const scanCounts = parseJson(scanRow?.counts_json, {});
+  const scanUsage = parseJson(scanRow?.usage_json, {});
+  const scanWarnings = parseJson(scanRow?.warnings_json, []);
+  const status = !scanRow
+    ? 'WAITING_FOR_BACKGROUND_SCAN'
+    : Number(scanRow.ok)
+      ? 'BACKGROUND_ACTIVE'
+      : 'BACKGROUND_ERROR';
   return {
     memberId,
     scope: 'MEMBER_ONLY',
@@ -138,12 +192,28 @@ async function liveStatus(env, memberId) {
     counts: {
       active: (states.results || []).length,
       triggered: (states.results || []).filter(row => Number(row.triggered) === 1).length,
-      signals: (signals.results || []).length
+      signals: (signals.results || []).length,
+      ...scanCounts
+    },
+    usage: {
+      day,
+      apiRequests,
+      breakdown: apiRows.map(row => ({
+        endpoint: row.endpoint,
+        calls: Number(row.calls || 0),
+        items: Number(row.items || 0)
+      })),
+      lastScanRequests: Number(scanUsage?.totalRequests || 0)
     },
     engine: {
       isolatedStorage: true,
-      independentEvaluatorRequired: true,
-      status: 'READY_FOR_MEMBER_EVALUATOR'
+      independentEvaluatorRequired: false,
+      background: true,
+      status,
+      lastScanAt: scanRow?.ran_at ? new Date(Number(scanRow.ran_at)).toISOString() : null,
+      configVersion: Number(scanRow?.config_version || 0),
+      error: scanRow?.error || null,
+      warnings: Array.isArray(scanWarnings) ? scanWarnings : []
     }
   };
 }
