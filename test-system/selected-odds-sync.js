@@ -3,6 +3,7 @@
 
   const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
   const SOURCE_URL = new URL('../selected-live-matches.json', document.currentScript.src).href;
+  const RESULT_FEED_URL = new URL('../result-feed.json', document.currentScript.src).href;
   const POLL_MS = 60 * 1000;
   const RETRY_MS = 5 * 1000;
   let busy = false;
@@ -10,6 +11,10 @@
   const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0;
   const scoreNumber = value => value !== null && value !== '' && Number.isFinite(Number(value));
   const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const parsedTime = value => {
+    const timestamp = Date.parse(value || '');
+    return Number.isFinite(timestamp) ? timestamp : null;
+  };
 
   function confidenceFor(source, config) {
     const analysis = source?.auto_analysis || source?.autoAnalysis || {};
@@ -88,6 +93,43 @@
     return {...market, outcome, settlement: outcome};
   }
 
+  function fixtureKey(source) {
+    return String(source?.client_fixture_id || source?.fixture_id || source?.slug || '');
+  }
+
+  function providerKey(source) {
+    return String(source?.fixture_id || source?.providerFixtureId || '');
+  }
+
+  function providerMap(feed) {
+    const map = new Map();
+    (feed?.results || []).forEach(item => {
+      const providerId = String(item?.providerFixtureId || '');
+      const fixtureId = String(item?.fixtureId || '');
+      if (providerId) map.set(providerId, item);
+      if (fixtureId) map.set(fixtureId, item);
+    });
+    return map;
+  }
+
+  function sourceWithProviderSchedule(source, previous, provider) {
+    const providerKickoff = provider?.kickoffUtc || null;
+    const preservedKickoff = previous?.kickoffUtc || null;
+    return {
+      ...source,
+      kickoff_utc: providerKickoff || preservedKickoff || source.kickoff_utc,
+      provider_schedule_status: provider?.status || provider?.providerStatus || null,
+      provider_schedule_updated_at: provider?.updatedAt || null,
+      provider_schedule_source: providerKickoff ? 'RESULT_FEED' : (preservedKickoff ? 'PRESERVED_RESULT_STATE' : 'SELECTION_SOURCE')
+    };
+  }
+
+  function outsideSelectionWindow(source, config) {
+    const kickoff = parsedTime(source?.kickoff_utc);
+    const windowEnd = parsedTime(config?.window_end_local);
+    return kickoff !== null && windowEnd !== null && kickoff > windowEnd;
+  }
+
   function toRecord(source, config, previous) {
     const side = String(source.pick_side || 'home').toUpperCase();
     const markets = source.markets || {};
@@ -101,13 +143,16 @@
     );
     return {
       ...(previous || {}),
-      fixtureId: String(source.client_fixture_id || source.fixture_id || source.slug),
-      providerFixtureId: source.fixture_id ? String(source.fixture_id) : null,
+      fixtureId: fixtureKey(source),
+      providerFixtureId: source.fixture_id ? String(source.fixture_id) : (previous?.providerFixtureId || null),
       pickDate: config.selection_date,
       league: source.league || 'Unknown competition',
       home: source.home,
       away: source.away,
-      kickoffUtc: source.kickoff_utc,
+      kickoffUtc: source.kickoff_utc || previous?.kickoffUtc || null,
+      kickoffAuthority: source.provider_schedule_source || previous?.kickoffAuthority || 'SELECTION_SOURCE',
+      providerScheduleStatus: source.provider_schedule_status || previous?.providerScheduleStatus || null,
+      providerScheduleUpdatedAt: source.provider_schedule_updated_at || previous?.providerScheduleUpdatedAt || null,
       pick: side,
       pickLabel: source.pick || `${side} WIN`,
       odds: finite(source.odds) ? Number(source.odds) : (finite(previous?.odds) ? Number(previous.odds) : null),
@@ -145,18 +190,32 @@
     return response.json();
   }
 
-  function updatePageMeta(config) {
+  async function fetchProviderFeed() {
+    try {
+      const response = await fetch(`${RESULT_FEED_URL}?t=${Date.now()}`, {cache: 'no-store'});
+      if (!response.ok) throw new Error(`Result feed HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.debug('Provider schedule lookup pending', error);
+      return null;
+    }
+  }
+
+  function updatePageMeta(config, count, excludedCount) {
     const system = config.system || 'NOMAD SYSTEM';
     const eyebrow = document.querySelector('.home-page .hero .eyebrow');
     if (eyebrow) eyebrow.textContent = system;
     const intro = document.querySelector('.home-page .hero p:not(.analysis-disclaimer)');
     if (intro) {
-      const count = Array.isArray(config.matches) ? config.matches.length : 0;
-      const newCount = Number(config?.addKRunMerge?.newSelectionCount ?? config?.runSelectionCount ?? count);
+      const rawNewCount = Number(config?.addKRunMerge?.newSelectionCount ?? config?.runSelectionCount ?? count);
+      const newCount = Math.max(0, Math.min(count, rawNewCount));
       const minimum = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
+      const windowNote = excludedCount
+        ? ` ${excludedCount} rescheduled fixture${excludedCount === 1 ? '' : 's'} moved outside the selection window and ${excludedCount === 1 ? 'was' : 'were'} excluded.`
+        : '';
       intro.textContent = config.noPick
-        ? `Add K completed with NO PICK for this run. ${count - newCount} already-started prediction${count - newCount === 1 ? '' : 's'} may remain locked for result tracking.`
-        : `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${newCount} new qualifying match prediction${newCount === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher; already-started matches remain locked and future picks are replaceable on rerun.`;
+        ? `Add K completed with NO PICK for this run. ${Math.max(0, count - newCount)} already-started prediction${count - newCount === 1 ? '' : 's'} may remain locked for result tracking.${windowNote}`
+        : `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${newCount} new qualifying match prediction${newCount === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher; already-started matches remain locked and future picks are replaceable on rerun.${windowNote}`;
     }
   }
 
@@ -164,15 +223,44 @@
     if (busy || document.hidden) return;
     busy = true;
     try {
-      const config = await fetchConfig();
+      const [config, providerFeed] = await Promise.all([fetchConfig(), fetchProviderFeed()]);
       if (!Array.isArray(config.matches)) return;
+
       const raw = localStorage.getItem(STORAGE_KEY);
       const state = raw ? JSON.parse(raw) : {};
       const existing = new Map((state.publishedPicks || []).map(record => [String(record.fixtureId), record]));
+      const providers = providerMap(providerFeed);
+      const excluded = [];
+
+      const eligibleSources = config.matches.flatMap(source => {
+        const key = fixtureKey(source);
+        const previous = existing.get(key);
+        const provider = providers.get(providerKey(source)) || providers.get(key) || null;
+        const resolved = sourceWithProviderSchedule(source, previous, provider);
+        if (outsideSelectionWindow(resolved, config)) {
+          excluded.push({
+            fixtureId: key,
+            providerFixtureId: providerKey(source) || previous?.providerFixtureId || null,
+            home: source.home || previous?.home || null,
+            away: source.away || previous?.away || null,
+            kickoffUtc: resolved.kickoff_utc || null,
+            windowEndLocal: config.window_end_local || null,
+            authority: resolved.provider_schedule_source
+          });
+          return [];
+        }
+        return [resolved];
+      });
+
       const remoteDatasetId = `remote:${config.selection_date}:${config.locked_at_utc}:${config.controlVersion || 0}`;
-      const records = config.matches.map(source => toRecord(source, config, existing.get(String(source.client_fixture_id || source.fixture_id || source.slug))));
-      const changed = state.remoteDatasetId !== remoteDatasetId || !same(state.publishedPicks, records) || Boolean(state.noPick) !== Boolean(config.noPick);
-      updatePageMeta(config);
+      const records = eligibleSources.map(source => toRecord(source, config, existing.get(fixtureKey(source))));
+      const excludedIds = excluded.map(item => item.fixtureId);
+      const changed = state.remoteDatasetId !== remoteDatasetId
+        || !same(state.publishedPicks, records)
+        || !same(state.windowExcludedFixtureIds, excludedIds)
+        || Boolean(state.noPick) !== Boolean(config.noPick);
+
+      updatePageMeta(config, records.length, excluded.length);
       if (!changed) return;
 
       const now = new Date().toISOString();
@@ -192,6 +280,11 @@
         unlimitedSelections: Boolean(config.rules?.unlimited_qualifying_matches)
       }];
       state.publishedPicks = records;
+      state.selectionWindowEndLocal = config.window_end_local || null;
+      state.windowExcludedFixtureIds = excludedIds;
+      state.windowExcludedFixtures = excluded;
+      state.providerScheduleFeedGeneratedAt = providerFeed?.generatedAt || null;
+      state.providerScheduleFeedSource = providerFeed?.source || null;
       state.noPick = Boolean(config.noPick);
       state.noPickReason = config.noPickReason || null;
       state.addKTheKingOfSoccer = config.addKTheKingOfSoccer || null;
@@ -200,6 +293,7 @@
       state.runStatus = config.runStatus || null;
       state.runOutcome = config.runOutcome || null;
       state.runSelectionCount = Number(config.runSelectionCount ?? records.length);
+      state.effectiveSelectionCount = records.length;
       state.oddsPolicy = config.oddsPolicy || null;
       state.confidencePolicy = config.confidencePolicy || {
         type: 'DYNAMIC_MINIMUM',
@@ -218,6 +312,9 @@
           count: records.length,
           newSelectionCount: Number(config?.addKRunMerge?.newSelectionCount ?? config?.runSelectionCount ?? records.length),
           preservedStartedCount: Number(config?.addKRunMerge?.preservedStartedCount ?? 0),
+          windowExcludedCount: excluded.length,
+          windowExcludedFixtureIds: excludedIds,
+          providerScheduleAuthority: 'RESULT_FEED_THEN_PRESERVED_RESULT_STATE_THEN_SELECTION_SOURCE',
           system: config.system,
           productionWrite: false,
           minimumConfidence,
