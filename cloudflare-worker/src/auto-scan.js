@@ -26,6 +26,27 @@ CREATE TABLE IF NOT EXISTS auto_momentum_state (
   updated_at INTEGER NOT NULL
 )`;
 
+const SIDE_STATE_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS auto_momentum_state_side (
+  state_key TEXT PRIMARY KEY,
+  fixture_id INTEGER NOT NULL,
+  selected_side TEXT NOT NULL,
+  home TEXT NOT NULL,
+  away TEXT NOT NULL,
+  league TEXT NOT NULL DEFAULT '',
+  country TEXT NOT NULL DEFAULT '',
+  last_sample_at INTEGER NOT NULL,
+  last_minute INTEGER NOT NULL,
+  home_score INTEGER NOT NULL,
+  away_score INTEGER NOT NULL,
+  stats_json TEXT NOT NULL,
+  last_home_percent REAL,
+  streak INTEGER NOT NULL DEFAULT 0,
+  triggered INTEGER NOT NULL DEFAULT 0,
+  config_version INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+)`;
+
 const STATUS_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS auto_scan_status (
   id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -101,15 +122,22 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function candidateKey(candidate) {
+  return `${Number(candidate.fixtureId)}:${String(candidate.selectedSide || 'HOME')}`;
+}
+
 async function ensureSchema(env) {
   if (!env.DB) throw new Error('D1 binding DB is not configured');
   if (schemaReady) return;
   await env.DB.batch([
     env.DB.prepare(PAPER_TABLE_SQL),
     env.DB.prepare(STATE_TABLE_SQL),
+    env.DB.prepare(SIDE_STATE_TABLE_SQL),
     env.DB.prepare(STATUS_TABLE_SQL),
     env.DB.prepare(SIGNAL_TABLE_SQL),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_state_updated ON auto_momentum_state(updated_at)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_side_state_updated ON auto_momentum_state_side(updated_at)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_side_state_fixture ON auto_momentum_state_side(fixture_id)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_paper_status ON paper_trades(status)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_condition_signals_created ON condition_signals(created_at)')
   ]);
@@ -130,8 +158,9 @@ function activity(currentStats, previousStats, side) {
   return { weighted, evidence };
 }
 
-function momentum(candidate, previous, now) {
+function momentum(candidate, previous, now, configVersion) {
   if (!previous) return null;
+  if (Number(previous.config_version || 0) !== Number(configVersion || 0)) return null;
   const age = now - Number(previous.last_sample_at || 0);
   const minute = Number(candidate.minute);
   if (age <= 0 || age > 8 * 60_000 || minute < Number(previous.last_minute || 0)) return null;
@@ -155,13 +184,16 @@ function scoreState(candidate) {
   return 'สกอร์เสมอ';
 }
 
-function stateStatement(env, candidate, calculated, streak, triggered, now) {
+function stateStatement(env, candidate, calculated, streak, triggered, now, configVersion) {
   return env.DB.prepare(`
-    INSERT INTO auto_momentum_state (
-      fixture_id, home, away, league, country, last_sample_at, last_minute,
-      home_score, away_score, stats_json, last_home_percent, streak, triggered, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(fixture_id) DO UPDATE SET
+    INSERT INTO auto_momentum_state_side (
+      state_key, fixture_id, selected_side, home, away, league, country,
+      last_sample_at, last_minute, home_score, away_score, stats_json,
+      last_home_percent, streak, triggered, config_version, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(state_key) DO UPDATE SET
+      fixture_id = excluded.fixture_id,
+      selected_side = excluded.selected_side,
       home = excluded.home,
       away = excluded.away,
       league = excluded.league,
@@ -174,17 +206,20 @@ function stateStatement(env, candidate, calculated, streak, triggered, now) {
       last_home_percent = excluded.last_home_percent,
       streak = excluded.streak,
       triggered = excluded.triggered,
+      config_version = excluded.config_version,
       updated_at = excluded.updated_at
   `).bind(
-    Number(candidate.fixtureId), String(candidate.home || 'Selected'), String(candidate.away || 'Opponent'),
+    candidateKey(candidate), Number(candidate.fixtureId), String(candidate.selectedSide || 'HOME'),
+    String(candidate.home || 'Selected'), String(candidate.away || 'Opponent'),
     String(candidate.league || ''), String(candidate.country || ''), now, Number(candidate.minute),
     Number(candidate.score?.home || 0), Number(candidate.score?.away || 0),
-    JSON.stringify(candidate.stats || {}), calculated?.home ?? null, streak, triggered ? 1 : 0, now
+    JSON.stringify(candidate.stats || {}), calculated?.home ?? null, streak, triggered ? 1 : 0,
+    Number(configVersion || 0), now
   );
 }
 
 function signalKey(candidate) {
-  return `${Number(candidate.fixtureId)}:${String(candidate.selectedSide || 'HOME')}`;
+  return candidateKey(candidate);
 }
 
 function signalStatement(env, candidate, calculated, now) {
@@ -240,8 +275,9 @@ function tradeStatement(env, candidate, calculated, now) {
 
 async function rowsByFixture(env, table, ids) {
   const map = new Map();
-  for (let index = 0; index < ids.length; index += 50) {
-    const group = ids.slice(index, index + 50);
+  const uniqueIds = [...new Set(ids.filter(Number.isInteger))];
+  for (let index = 0; index < uniqueIds.length; index += 50) {
+    const group = uniqueIds.slice(index, index + 50);
     if (!group.length) continue;
     const placeholders = group.map(() => '?').join(',');
     const result = await env.DB.prepare(`SELECT * FROM ${table} WHERE fixture_id IN (${placeholders})`)
@@ -251,15 +287,32 @@ async function rowsByFixture(env, table, ids) {
   return map;
 }
 
-async function signalsByFixture(env, candidates) {
-  const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
-  const rows = await rowsByFixture(env, 'condition_signals', ids);
+async function sideStatesByCandidates(env, candidates) {
   const map = new Map();
-  for (const candidate of candidates) {
-    const row = rows.get(Number(candidate.fixtureId));
-    if (row && String(row.selected_side) === String(candidate.selectedSide || 'HOME')) {
-      map.set(Number(candidate.fixtureId), row);
-    }
+  const ids = [...new Set(candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger))];
+  for (let index = 0; index < ids.length; index += 50) {
+    const group = ids.slice(index, index + 50);
+    if (!group.length) continue;
+    const placeholders = group.map(() => '?').join(',');
+    const result = await env.DB.prepare(`
+      SELECT * FROM auto_momentum_state_side WHERE fixture_id IN (${placeholders})
+    `).bind(...group).all();
+    for (const row of result.results || []) map.set(String(row.state_key), row);
+  }
+  return map;
+}
+
+async function signalsByCandidates(env, candidates) {
+  const map = new Map();
+  const ids = [...new Set(candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger))];
+  for (let index = 0; index < ids.length; index += 50) {
+    const group = ids.slice(index, index + 50);
+    if (!group.length) continue;
+    const placeholders = group.map(() => '?').join(',');
+    const result = await env.DB.prepare(`
+      SELECT signal_key FROM condition_signals WHERE fixture_id IN (${placeholders})
+    `).bind(...group).all();
+    for (const row of result.results || []) map.set(String(row.signal_key), row);
   }
   return map;
 }
@@ -307,9 +360,9 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
     const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
     const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
     const [states, existingTrades, existingSignals, todayCountRow] = await Promise.all([
-      rowsByFixture(env, 'auto_momentum_state', ids),
+      sideStatesByCandidates(env, candidates),
       rowsByFixture(env, 'paper_trades', ids),
-      signalsByFixture(env, candidates),
+      signalsByCandidates(env, candidates),
       env.DB.prepare('SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?')
         .bind(startOfThaiDay(now)).first()
     ]);
@@ -325,8 +378,9 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
 
     for (const candidate of candidates) {
       const fixtureId = Number(candidate.fixtureId);
-      const previous = states.get(fixtureId) || null;
-      const calculated = momentum(candidate, previous, now);
+      const key = candidateKey(candidate);
+      const previous = states.get(key) || null;
+      const calculated = momentum(candidate, previous, now, config.version);
       if (calculated) momentumReady += 1;
       const pass = Boolean(
         calculated &&
@@ -338,7 +392,7 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       const previousStreak = previous ? Number(previous.streak || 0) : 0;
       const streak = pass ? previousStreak + 1 : 0;
       let wasTriggered = Boolean(previous && Number(previous.triggered));
-      if (existingSignals.has(fixtureId)) wasTriggered = true;
+      if (existingSignals.has(signalKey(candidate))) wasTriggered = true;
 
       const limitReached = config.signalLimitEnabled && dailySignals >= config.maxSignalsPerDay;
       if (!wasTriggered && streak >= config.confirmationRounds && !limitReached) {
@@ -357,7 +411,7 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       }
 
       if (wasTriggered) triggered += 1;
-      statements.push(stateStatement(env, candidate, calculated, streak, wasTriggered, now));
+      statements.push(stateStatement(env, candidate, calculated, streak, wasTriggered, now, config.version));
       enriched.push({
         ...candidate,
         serverMomentum: calculated,
@@ -370,7 +424,7 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
     for (let index = 0; index < statements.length; index += 80) {
       await env.DB.batch(statements.slice(index, index + 80));
     }
-    await env.DB.prepare('DELETE FROM auto_momentum_state WHERE updated_at < ?')
+    await env.DB.prepare('DELETE FROM auto_momentum_state_side WHERE updated_at < ?')
       .bind(now - 6 * 60 * 60_000).run();
 
     const counts = {
@@ -425,18 +479,19 @@ export async function handleAutoRequest(request, env, url) {
   if (url.pathname !== '/auto-scan-status' || request.method !== 'GET') {
     return { status: 404, data: { ok: false, error: 'Auto scanner endpoint not found' } };
   }
-  const [row, active, config] = await Promise.all([
+
+  const [row, config] = await Promise.all([
     env.DB.prepare('SELECT * FROM auto_scan_status WHERE id = 1').first(),
-    env.DB.prepare(`
-      SELECT fixture_id, home, away, last_minute, home_score, away_score,
-             last_home_percent, streak, triggered, updated_at
-      FROM auto_momentum_state
-      WHERE updated_at >= ?
-      ORDER BY triggered DESC, last_home_percent DESC
-      LIMIT 100
-    `).bind(Date.now() - 15 * 60_000).all(),
     getActiveConditionConfig(env)
   ]);
+  const active = await env.DB.prepare(`
+    SELECT state_key, fixture_id, selected_side, home, away, last_minute, home_score, away_score,
+           last_home_percent, streak, triggered, config_version, updated_at
+    FROM auto_momentum_state_side
+    WHERE updated_at >= ? AND config_version = ?
+    ORDER BY triggered DESC, last_home_percent DESC
+    LIMIT 100
+  `).bind(Date.now() - 15 * 60_000, Number(config.version || 0)).all();
 
   let counts = {};
   let warnings = [];
