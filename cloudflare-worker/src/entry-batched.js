@@ -16,7 +16,10 @@ const REQUIRED_STATS = [
   'corners',
   'possession'
 ];
-const CACHE_SECONDS = 150;
+const LIVE_CACHE_SECONDS = 15;
+const STATS_CACHE_SECONDS = 60;
+const ODDS_CACHE_SECONDS = 5;
+const DEFAULT_CACHE_SECONDS = 60;
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -72,7 +75,15 @@ function isRateLimit(response, payload) {
   return response?.status === 429 || /too many requests|rate.?limit|requests per minute/i.test(detail);
 }
 
-async function apiFetch(path, env, cacheSeconds = CACHE_SECONDS) {
+function cacheSecondsForPath(path) {
+  if (path.startsWith('/odds/live')) return ODDS_CACHE_SECONDS;
+  if (path.startsWith('/fixtures?live=')) return LIVE_CACHE_SECONDS;
+  if (path.startsWith('/fixtures?ids=')) return STATS_CACHE_SECONDS;
+  if (path.startsWith('/fixtures/statistics')) return STATS_CACHE_SECONDS;
+  return DEFAULT_CACHE_SECONDS;
+}
+
+async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
   if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
   const apiUrl = `${API_BASE}${path}`;
   const cache = caches.default;
@@ -305,7 +316,7 @@ async function batchedFixtureStatistics(preliminary, env, warnings) {
     const group = ids.slice(index, index + 20);
     if (!group.length) continue;
     try {
-      const payload = await apiFetch(`/fixtures?ids=${group.join('-')}`, env, CACHE_SECONDS);
+      const payload = await apiFetch(`/fixtures?ids=${group.join('-')}`, env, STATS_CACHE_SECONDS);
       for (const item of Array.isArray(payload?.response) ? payload.response : []) {
         const fixtureId = Number(item?.fixture?.id);
         if (!Number.isInteger(fixtureId)) continue;
@@ -331,10 +342,24 @@ function liveOddsByFixture(payload, fixtureIds) {
   return map;
 }
 
+function adaptiveRefreshSeconds(liveItems, preliminary, completeStats, completeMarkets, config) {
+  if (completeMarkets > 0) return 5;
+  if (completeStats > 0) return 15;
+  if (preliminary.length > 0) return 30;
+
+  const approachStart = Math.max(0, Number(config.minuteMin || 1) - 10);
+  const approaching = liveItems.some(item => {
+    const minute = numeric(item?.fixture?.status?.elapsed);
+    return minute !== null && minute >= approachStart && minute < Number(config.minuteMin || 1);
+  });
+  if (approaching) return 60;
+  return 240;
+}
+
 async function liveConditionScan(request, env) {
   const warnings = [];
   const config = await getActiveConditionConfig(env);
-  const livePayload = await apiFetch('/fixtures?live=all', env, CACHE_SECONDS);
+  const livePayload = await apiFetch('/fixtures?live=all', env, LIVE_CACHE_SECONDS);
   const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
     .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()));
 
@@ -361,7 +386,7 @@ async function liveConditionScan(request, env) {
   let oddsMap = new Map();
   if (statEligible.length) {
     try {
-      const oddsPayload = await apiFetch('/odds/live', env, CACHE_SECONDS);
+      const oddsPayload = await apiFetch('/odds/live', env, ODDS_CACHE_SECONDS);
       oddsMap = liveOddsByFixture(oddsPayload, statEligible.map(({ match }) => match.id));
     } catch (error) {
       warnings.push(`live odds batch: ${error?.message || 'request failed'}`);
@@ -395,12 +420,26 @@ async function liveConditionScan(request, env) {
     if (fixtureHasMarket) completeMarkets += 1;
   }
 
+  const refreshSeconds = adaptiveRefreshSeconds(
+    liveItems,
+    preliminary,
+    completeStats,
+    completeMarkets,
+    config
+  );
+
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
     source: 'cloudflare-worker · api-football · batched',
-    mode: 'PAGE-5-CONDITION-CONTROL',
-    refreshSeconds: 60,
+    mode: 'PAGE-5-CONDITION-CONTROL-ADAPTIVE',
+    refreshSeconds,
+    polling: {
+      sequenceSeconds: [240, 60, 30, 15, 5],
+      liveScoreCacheSeconds: LIVE_CACHE_SECONDS,
+      statisticsCacheSeconds: STATS_CACHE_SECONDS,
+      liveOddsCacheSeconds: ODDS_CACHE_SECONDS
+    },
     config,
     counts: {
       allLive: liveItems.length,
@@ -425,9 +464,15 @@ export default {
     if (url.pathname === '/live') {
       if (request.method !== 'GET') return json(request, { ok: false, error: 'Method not allowed' }, 405);
       try {
-        const payload = await apiFetch('/fixtures?live=all', env, CACHE_SECONDS);
+        const payload = await apiFetch('/fixtures?live=all', env, LIVE_CACHE_SECONDS);
         const results = (Array.isArray(payload?.response) ? payload.response : []).map(fixtureSummary);
-        return json(request, { ok: true, generatedAt: new Date().toISOString(), count: results.length, results });
+        return json(request, {
+          ok: true,
+          generatedAt: new Date().toISOString(),
+          refreshSeconds: LIVE_CACHE_SECONDS,
+          count: results.length,
+          results
+        });
       } catch (error) {
         return json(request, { ok: false, error: error?.message || 'Live fixture request failed' }, 502);
       }
