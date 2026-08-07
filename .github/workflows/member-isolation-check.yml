@@ -11,6 +11,7 @@ on:
       - 'scripts/test-member-config-isolation.mjs'
       - 'scripts/test-member-live-evaluator.mjs'
       - 'scripts/test-member-ball-teng-ingest.mjs'
+      - 'scripts/test-member-ball-teng-run-quota.mjs'
       - '.github/scripts/run_member_ball_teng_selector.py'
       - '.github/workflows/member-ball-teng-selector.yml'
       - 'docs/member-*.md'
@@ -21,6 +22,7 @@ on:
       - 'test/member-0001-config-isolation-20260807'
       - 'feature/member-live-evaluator-20260807'
       - 'feature/member-ball-teng-selector-20260807'
+      - 'feature/member-ball-teng-run-quota-20260807'
     paths:
       - 'cloudflare-worker/src/member-*.js'
       - 'cloudflare-worker/src/paper-entry.js'
@@ -29,6 +31,7 @@ on:
       - 'scripts/test-member-config-isolation.mjs'
       - 'scripts/test-member-live-evaluator.mjs'
       - 'scripts/test-member-ball-teng-ingest.mjs'
+      - 'scripts/test-member-ball-teng-run-quota.mjs'
       - '.github/scripts/run_member_ball_teng_selector.py'
       - '.github/workflows/member-ball-teng-selector.yml'
       - 'docs/member-*.md'
@@ -51,6 +54,7 @@ jobs:
           node --check cloudflare-worker/src/member-data.js
           node --check cloudflare-worker/src/member-live-evaluator.js
           node --check cloudflare-worker/src/member-ball-teng-ingest.js
+          node --check cloudflare-worker/src/member-ball-teng-run.js
           node --check cloudflare-worker/src/paper-entry.js
       - name: Syntax check Member #0001 frontend
         run: node --check test-system/member-0001/member.js
@@ -64,3 +68,5 @@ jobs:
         run: node scripts/test-member-live-evaluator.mjs
       - name: Verify Member #0001 Ball Teng isolated ingest
         run: node scripts/test-member-ball-teng-ingest.mjs
+      - name: Verify Member #0001 Ball Teng three-run quota
+        run: node scripts/test-member-ball-teng-run-quota.mjs
