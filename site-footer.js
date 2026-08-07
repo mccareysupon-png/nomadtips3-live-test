@@ -4,12 +4,6 @@
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
 
-  if (window.location.pathname.includes('/test-system/ball-teng-control/')) {
-    document.title = 'NOMADTIPS3 — แดชบอร์ดคัดบอลเต็ง';
-    const dashboardTag = document.querySelector('.tag');
-    if (dashboardTag) dashboardTag.textContent = 'แดชบอร์ดคัดบอลเต็ง · AUTO TEST';
-  }
-
   if (window.location.pathname.includes('/test-system/stats/')) {
     if (!document.querySelector('link[data-nomad-stats-card-fix]')) {
       const cardFixStyle = document.createElement('link');
