@@ -7,6 +7,11 @@
   "minimum_confidence": 58,
   "maximum_confidence": 85,
   "confidence_strength_scale": 15,
+  "use_standings_context": true,
+  "standings_strength_weight": 0.2,
+  "standings_adjustment_cap": 0.2,
+  "standings_direct_rank_mix": 0.55,
+  "standings_ranked_common_mix": 0.45,
   "minimum_main_odds": 1.7,
   "overall_sample": 6,
   "venue_sample": 5,
@@ -23,7 +28,9 @@
     "use_overall_last_matches": true,
     "use_home_away_splits": true,
     "use_common_opponents": true,
+    "use_league_standings": true,
+    "standings_policy": "Use league rank to support direct A-vs-B strength and rank-weight shared common opponents C; if standings are unavailable, fall back to the original NOMAD model without rejecting the match solely for missing standings",
     "missing_odds_policy": "N/A — never estimate",
-    "confidence_policy": "Calculated per match from the NOMAD weighted strength score; publish only confidence >= 58%; cap at 85%"
+    "confidence_policy": "Calculated per match from NOMAD weighted strength plus standings context when available; publish only confidence >= 58%; cap at 85%"
   }
 }
