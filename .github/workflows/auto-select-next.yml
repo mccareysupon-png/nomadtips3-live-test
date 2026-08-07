@@ -60,8 +60,6 @@ jobs:
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
 
-          # Snapshot the previous published set before a forced Add K rerun.
-          # It is used only to preserve already-started matches; future picks remain replaceable.
           cp selected-live-matches.json "$ADD_K_PREVIOUS_SELECTED_PATH" 2>/dev/null || printf '{"matches":[]}\n' > "$ADD_K_PREVIOUS_SELECTED_PATH"
 
           python3 - <<'PY'
@@ -134,13 +132,39 @@ jobs:
             echo 'No O/U enrichment required.'
           fi
 
-          # Add K reruns keep matches that have already reached kickoff, replace future picks,
-          # and de-duplicate fixture ids. This is isolated from the live-condition scanner.
           python3 .github/scripts/merge_add_k_locked_picks.py
 
-          # Dashboard settings are runtime configuration; repository defaults remain the fallback.
           git checkout -- config/nomad-auto-rules.json
           python3 .github/scripts/consume_ball_teng_control.py
+
+      - name: Mark failed Add K run
+        if: ${{ failure() && env.NOMAD_ADD_K_RUN == '1' }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          version = int(os.environ.get('NOMAD_CONTROL_VERSION') or 0)
+          url = os.environ.get('BALL_TENG_CONTROL_URL')
+          if version <= 0 or not url:
+              raise SystemExit(0)
+          body = json.dumps({
+              'action': 'mark-add-k-failed',
+              'version': version,
+              'outcome': 'FAILED',
+              'selectionCount': 0,
+              'message': 'GitHub selector workflow failed before this Add K run completed.'
+          }).encode('utf-8')
+          request = urllib.request.Request(url, data=body, method='POST', headers={
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'User-Agent': 'nomadtips3-ball-teng-selector/3'
+          })
+          try:
+              with urllib.request.urlopen(request, timeout=12) as response:
+                  print(response.read().decode('utf-8'))
+          except Exception as error:
+              print(f'Unable to mark Add K failed: {error}')
+          PY
 
       - name: Publish selector or control-state changes
         id: publish
