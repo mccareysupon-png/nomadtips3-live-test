@@ -1,4 +1,4 @@
-import { buildSummary, loadRecords, resultText } from '../shared.js?v=202608061015';
+import { buildSummary, loadRecords, resultText } from '../shared.js?v=202608071505';
 
 const $ = selector => document.querySelector(selector);
 const PAGE_SIZE = 4;
@@ -53,8 +53,9 @@ function shareText(records) {
     `${String(index + 1).padStart(2, '0')}. ${record.home} vs ${record.away}`,
     `${record.league} · ${formatLocalKickoff(record.kickoffUtc)}`,
     `MAIN PICK: ${record.pickLabel || record.pick}`,
-    `Odds ${formatOdds(record.odds, record.oddsStatus)} · Confidence ${record.confidence}% · Predicted ${record.predictedScore}`,
+    `Odds ${formatOdds(record.odds, record.oddsStatus)} · Confidence ${record.confidence}%`,
     marketText('BTTS:', record.markets?.btts),
+    marketText('O/U 2.5:', record.markets?.overUnder),
     marketText('Double Chance:', record.markets?.doubleChance),
     marketText('Asian Handicap:', record.markets?.asianHandicap)
   ]);
@@ -132,15 +133,12 @@ function renderPick(record, absoluteIndex) {
             <small>CONFIDENCE</small>
             <b>${Number(record.confidence || 0)}%</b>
           </div>
-          <div class="poster-metric predicted">
-            <small>PREDICTED</small>
-            <b>${escapeHtml(record.predictedScore)}</b>
-          </div>
         </div>
       </div>
 
       <div class="poster-secondary">
         ${marketPill('BTTS', record.markets?.btts)}
+        ${marketPill('O/U 2.5', record.markets?.overUnder)}
         ${marketPill('DOUBLE CHANCE', record.markets?.doubleChance)}
         ${marketPill('ASIAN HANDICAP', record.markets?.asianHandicap)}
       </div>
