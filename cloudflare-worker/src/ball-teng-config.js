@@ -210,6 +210,17 @@ async function runConfig(env, config) {
   return normalized;
 }
 
+async function runFixedPreset(env, config) {
+  const normalized = normalizeBallTengConfig(config);
+  const now = Date.now();
+  await env.DB.prepare(`
+    UPDATE ball_teng_config
+    SET active_json = ?, updated_at = ?, activated_at = ?
+    WHERE id = 1
+  `).bind(JSON.stringify(normalized), now, now).run();
+  return normalized;
+}
+
 export async function handleBallTengConfig(request, env) {
   await ensureSchema(env);
 
@@ -233,7 +244,7 @@ export async function handleBallTengConfig(request, env) {
 
   let config;
   if (action === 'run-add-k') {
-    config = await runConfig(env, ADD_K_THE_KING_OF_SOCCER_CONFIG);
+    config = await runFixedPreset(env, ADD_K_THE_KING_OF_SOCCER_CONFIG);
   } else if (action === 'run') {
     config = await runConfig(env, body.config);
   } else {
@@ -247,7 +258,7 @@ export async function handleBallTengConfig(request, env) {
       ok: true,
       action,
       message: action === 'run-add-k'
-        ? 'Add K The King of Soccer activated as a fixed preset; this new version is an explicit reselection command.'
+        ? 'Add K The King of Soccer activated as a fixed preset; this new version is an explicit reselection command. The custom draft is preserved.'
         : action === 'run'
           ? 'Ball-teng configuration activated; the automatic selector will consume this version on its next scheduler check.'
           : 'Ball-teng draft saved; the active selector is unchanged.',
