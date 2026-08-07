@@ -249,6 +249,25 @@ export async function getActiveMemberBallTengConfig(env, memberId) {
   return { ...state.active, version: state.version, memberId: state.memberId };
 }
 
+export async function listActiveMemberConditionConfigs(env) {
+  await ensureSchema(env);
+  const rows = await env.DB.prepare(`
+    SELECT p.member_id, c.active_json, c.activated_at
+    FROM member_profiles p
+    JOIN member_live_config c ON c.member_id = p.member_id
+    WHERE UPPER(p.status) = 'ACTIVE'
+    ORDER BY p.member_id ASC
+  `).all();
+  return (rows.results || []).map(row => ({
+    memberId: String(row.member_id),
+    config: {
+      ...parseStored(row.active_json, normalizeConditionConfig, DEFAULT_CONDITION_CONFIG),
+      version: Number(row.activated_at || 0),
+      memberId: String(row.member_id)
+    }
+  }));
+}
+
 export async function handleMemberConfig(request, env, url) {
   const memberId = memberIdFromUrl(url);
   if (!memberId) return { status: 400, data: { ok: false, error: 'Valid member id is required' } };
