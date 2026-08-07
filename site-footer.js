@@ -4,6 +4,19 @@
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
 
+  if (window.location.pathname.includes('/live-condition-alert/')) {
+    const hasHomeAwayDisplay = [...document.scripts].some(node =>
+      String(node.src || '').includes('/live-condition-alert/home-away-display.js')
+    );
+    if (!hasHomeAwayDisplay) {
+      const homeAwayDisplay = document.createElement('script');
+      homeAwayDisplay.src = new URL('live-condition-alert/home-away-display.js?v=202608071952', root).href;
+      homeAwayDisplay.defer = true;
+      homeAwayDisplay.dataset.nomadHomeAwayDisplay = 'true';
+      document.head.appendChild(homeAwayDisplay);
+    }
+  }
+
   if (window.location.pathname.includes('/test-system/stats/')) {
     if (!document.querySelector('link[data-nomad-stats-card-fix]')) {
       const cardFixStyle = document.createElement('link');
