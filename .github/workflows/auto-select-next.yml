@@ -8,6 +8,7 @@ on:
       - '.github/scripts/auto_select_next.py'
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/apply_confidence_policy.py'
+      - '.github/scripts/materialize_add_k_no_pick.py'
       - '.github/scripts/enforce_add_k_data_quality.py'
       - '.github/scripts/finalize_ball_teng_analysis.py'
       - '.github/scripts/enrich_selected_odds.py'
@@ -67,15 +68,30 @@ jobs:
           PY
 
           python3 .github/scripts/run_ball_teng_selector.py
+          python3 .github/scripts/materialize_add_k_no_pick.py
 
           selection_regenerated=false
           if git diff --quiet -- selected-live-matches.json; then
             echo 'No new ball-teng set generated; current locked set stays unchanged.'
           else
-            python3 .github/scripts/apply_confidence_policy.py
-            python3 .github/scripts/enforce_add_k_data_quality.py
-            python3 .github/scripts/finalize_ball_teng_analysis.py
             selection_regenerated=true
+            selection_count="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              data = json.loads(Path('selected-live-matches.json').read_text(encoding='utf-8'))
+              print(len(data.get('matches') or []))
+          except Exception:
+              print('0')
+          PY
+          )"
+            if [ "$selection_count" -gt 0 ]; then
+              python3 .github/scripts/apply_confidence_policy.py
+              python3 .github/scripts/enforce_add_k_data_quality.py
+              python3 .github/scripts/finalize_ball_teng_analysis.py
+            else
+              echo 'Explicit Add K NO PICK outcome published; skipping match enrichment.'
+            fi
           fi
 
           needs_ou_enrichment="$(python3 - <<'PY'
@@ -93,11 +109,22 @@ jobs:
           PY
           )"
 
-          if [ "$selection_regenerated" = true ] || [ "$needs_ou_enrichment" = "1" ]; then
+          match_count="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              data = json.loads(Path('selected-live-matches.json').read_text(encoding='utf-8'))
+              print(len(data.get('matches') or []))
+          except Exception:
+              print('0')
+          PY
+          )"
+
+          if [ "$match_count" -gt 0 ] && { [ "$selection_regenerated" = true ] || [ "$needs_ou_enrichment" = "1" ]; }; then
             echo 'Enriching independent O/U 2.5 market and real API odds once for this selected set.'
             python3 .github/scripts/enrich_selected_odds.py
           else
-            echo 'O/U 2.5 already initialized for this selected set; skipping repeated odds enrichment.'
+            echo 'No O/U enrichment required.'
           fi
 
           # Dashboard settings are runtime configuration; repository defaults remain the fallback.
