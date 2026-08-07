@@ -1,15 +1,15 @@
 {
   "selectionDate": "2026-08-07",
-  "generatedAt": "2026-08-07T13:00:18Z",
+  "generatedAt": "2026-08-07T13:01:20Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 27,
     "correct": 0,
-    "incorrect": 1,
+    "incorrect": 3,
     "void": 0,
-    "pending": 26,
-    "settled": 1,
+    "pending": 24,
+    "settled": 3,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -17,32 +17,32 @@
   "marketSummary": {
     "btts": {
       "total": 27,
-      "correct": 0,
-      "incorrect": 1,
+      "correct": 1,
+      "incorrect": 2,
       "void": 0,
-      "pending": 26,
-      "settled": 1,
-      "accuracy": 0.0
+      "pending": 24,
+      "settled": 3,
+      "accuracy": 33.33
     },
     "doubleChance": {
       "total": 27,
       "correct": 1,
-      "incorrect": 0,
+      "incorrect": 2,
       "void": 0,
-      "pending": 26,
-      "settled": 1,
-      "accuracy": 100.0
+      "pending": 24,
+      "settled": 3,
+      "accuracy": 33.33
     },
     "asianHandicap": {
       "win": 0,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
-      "loss": 0,
+      "loss": 2,
       "void": 0,
-      "pending": 26,
+      "pending": 24,
       "total": 27,
-      "decisions": 0,
+      "decisions": 2,
       "weightedRate": 0.0
     }
   },
@@ -91,7 +91,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -101,41 +101,44 @@
       "home": "Melbourne City",
       "away": "Palermo",
       "kickoffUtc": "2026-08-07T11:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 0,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.06,
           "oddsStatus": "LOCKED",
           "confidence": 66,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "1X — Melbourne City or Draw",
           "odds": 2.15,
           "oddsStatus": "LOCKED",
           "confidence": 66,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "Melbourne City -0.5",
           "odds": null,
           "oddsStatus": "PENDING",
           "confidence": 66,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -145,41 +148,44 @@
       "home": "Gyeongnam FC",
       "away": "Daegu FC",
       "kickoffUtc": "2026-08-07T11:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 0,
       "awayScore": 1,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 61,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Gyeongnam FC or Draw",
           "odds": 1.83,
           "oddsStatus": "LOCKED",
           "confidence": 61,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "Gyeongnam FC 0",
           "odds": 3.0,
           "oddsStatus": "LOCKED",
           "confidence": 61,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": 0.0,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -223,7 +229,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -267,7 +273,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -311,7 +317,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -355,7 +361,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -399,7 +405,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -443,7 +449,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -487,7 +493,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -531,7 +537,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -575,7 +581,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -619,7 +625,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -663,7 +669,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -707,7 +713,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -751,7 +757,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -795,7 +801,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -839,7 +845,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -883,7 +889,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -927,7 +933,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -971,7 +977,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1015,7 +1021,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1059,7 +1065,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1103,7 +1109,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1147,7 +1153,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1191,7 +1197,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     },
     {
@@ -1235,7 +1241,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-07T13:00:18Z",
+      "updatedAt": "2026-08-07T13:01:20Z",
       "counted": true
     }
   ]
