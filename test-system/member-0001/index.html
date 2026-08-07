@@ -9,87 +9,20 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#111315">
   <title>NOMADTIPS3 — Member #0001 TEST</title>
-  <style>
-    :root{
-      --bg:#101214;
-      --panel:rgba(73,77,80,.48);
-      --panel-strong:rgba(48,51,54,.78);
-      --line:#222527;
-      --line-soft:#3a3e41;
-      --text:#f5f7f6;
-      --muted:#b7beb9;
-      --muted2:#8e9691;
-      --yellow:#f1c928;
-      --green:#25d58a;
-      --red:#ff747d;
-      --blue:#9bd6ff;
-      --shadow:0 18px 50px rgba(0,0,0,.24);
-    }
-    *{box-sizing:border-box}
-    html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
-    body{margin:0;min-height:100vh;background:
-      radial-gradient(circle at 18% 8%,rgba(255,255,255,.055),transparent 28%),
-      linear-gradient(145deg,#16191b 0%,#101214 55%,#090b0c 100%);background-attachment:fixed}
-    button,a{font:inherit}
-    a{color:inherit}
-    .shell{width:min(1220px,calc(100% - 26px));margin:auto;padding:18px 0 44px}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:5px 2px 16px;border-bottom:1px solid #2a2d2f}
-    .brand{font-size:25px;font-weight:950;letter-spacing:-1.2px;text-decoration:none;color:#fff}.brand b{color:var(--yellow)}
-    .member-chip{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid #303437;border-radius:10px;background:rgba(61,65,68,.38);color:#fff;font-size:10px;font-weight:900;letter-spacing:.04em}
-    .member-chip span{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(37,213,138,.10)}
-    .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:end;padding:24px 2px 17px}
-    .eyebrow{color:#c7cec9;font-size:9px;font-weight:900;letter-spacing:.13em;text-transform:uppercase}
-    h1{margin:7px 0 6px;font-size:clamp(27px,4.8vw,47px);line-height:.98;letter-spacing:-2px}
-    .hero p{margin:0;color:var(--muted);font-size:11px;line-height:1.65;max-width:700px}
-    .member-meta{display:grid;grid-template-columns:repeat(3,auto);gap:7px}
-    .member-meta div{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);min-width:96px}
-    .member-meta small{display:block;color:var(--muted2);font-size:8px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}
-    .member-meta b{display:block;margin-top:3px;color:#fff;font-size:11px}
-    .tabs{display:flex;gap:7px;overflow:auto;padding:4px 0 12px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}
-    .tab{border:1px solid #2d3032;border-radius:10px;padding:9px 13px;background:rgba(47,50,52,.52);color:#bdc4c0;white-space:nowrap;cursor:pointer;font-size:10px;font-weight:850}
-    .tab.active{background:#f2f3f2;color:#141617;border-color:#f2f3f2}
-    .view{display:none}.view.active{display:block}
-    .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-    .metric,.panel,.pick-card,.live-card,.notice-card,.quick-card{border:1px solid var(--line);background:var(--panel);box-shadow:var(--shadow)}
-    .metric{border-radius:13px;padding:13px 14px;min-height:83px}
-    .metric small{display:block;color:var(--muted2);font-size:8px;font-weight:850;text-transform:uppercase;letter-spacing:.06em}.metric b{display:block;margin-top:8px;font-size:23px;letter-spacing:-.7px}.metric span{display:block;margin-top:4px;color:#aab2ad;font-size:8px;line-height:1.45}
-    .section-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:20px 2px 9px}.section-head h2{margin:0;font-size:14px}.section-head span{color:var(--muted2);font-size:9px;text-align:right}
-    .dashboard-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:10px}
-    .panel{border-radius:14px;padding:14px}.panel h3{margin:0 0 5px;font-size:12px}.panel p{margin:0;color:var(--muted);font-size:9px;line-height:1.65}
-    .quick-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:11px}
-    .quick-card{border-radius:11px;padding:12px;text-decoration:none;transition:transform .15s ease,border-color .15s ease}.quick-card:hover{transform:translateY(-1px);border-color:#5c6265}.quick-card small{display:block;color:var(--muted2);font-size:8px}.quick-card strong{display:block;margin-top:4px;font-size:11px}.quick-card span{display:block;margin-top:5px;color:#aeb6b1;font-size:8px;line-height:1.45}
-    .profile-list{display:grid;gap:8px;margin-top:10px}.profile-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:9px}.profile-row:last-child{border-bottom:0}.profile-row span{color:var(--muted2)}.profile-row b{font-weight:850;text-align:right}
-    .status-line{display:flex;align-items:center;gap:7px;margin-top:9px;color:#c8cfcb;font-size:9px}.dot{width:7px;height:7px;border-radius:50%;background:var(--muted2)}.dot.good{background:var(--green)}.dot.bad{background:var(--red)}
-    .pick-grid,.live-grid,.notice-list{display:grid;gap:9px}.pick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.live-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .pick-card,.live-card,.notice-card{border-radius:13px;padding:13px 14px}
-    .card-top{display:flex;justify-content:space-between;gap:10px;align-items:start}.league{color:#aab2ad;font-size:8px;line-height:1.4}.confidence{padding:5px 7px;border:1px solid #454a4d;border-radius:999px;color:#fff;font-size:8px;font-weight:900;white-space:nowrap}
-    .match{margin-top:7px;font-size:13px;font-weight:900;line-height:1.35}.pick{margin-top:7px;color:#fff;font-size:11px;font-weight:850}.pick b{color:var(--yellow)}
-    .details{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}.details div{padding:8px;border:1px solid rgba(31,34,36,.85);border-radius:9px;background:rgba(34,37,39,.45)}.details small{display:block;color:var(--muted2);font-size:7px}.details strong{display:block;margin-top:3px;font-size:9px;overflow-wrap:anywhere}
-    .live-card.triggered{border-color:rgba(37,213,138,.58)}.live-card .momentum{font-size:26px;font-weight:950;letter-spacing:-1px}.live-card .momentum small{font-size:10px;color:var(--muted2);font-weight:700}.live-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.live-meta span{padding:5px 7px;border-radius:7px;background:rgba(24,26,28,.54);color:#c8cfcb;font-size:8px}.signal{color:var(--green)!important;font-weight:900}
-    .stats-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.stat-box{padding:13px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.stat-box small{display:block;color:var(--muted2);font-size:8px}.stat-box b{display:block;margin-top:7px;font-size:21px}.stat-box p{margin:4px 0 0;color:#aab2ad;font-size:8px;line-height:1.4}
-    .history{margin-top:10px;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:rgba(55,59,62,.38)}.history-row{display:grid;grid-template-columns:115px minmax(170px,1.4fr) minmax(145px,1fr) 82px 82px;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.065);font-size:8px}.history-row:last-child{border-bottom:0}.history-row.head{background:rgba(26,28,30,.68);color:#9ea6a1;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.history-row b{font-size:9px}.outcome{font-weight:950}.outcome.correct{color:var(--green)}.outcome.incorrect{color:var(--red)}.outcome.pending{color:#c7ceca}
-    .notice-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start}.notice-mark{width:8px;height:8px;border-radius:50%;background:var(--green);margin-top:4px}.notice-card h3{margin:0;font-size:10px}.notice-card p{margin:4px 0 0;color:var(--muted);font-size:8px;line-height:1.55}.notice-time{color:var(--muted2);font-size:8px;white-space:nowrap}
-    .empty{padding:24px 15px;border:1px dashed #454a4d;border-radius:13px;text-align:center;color:#9ba39e;font-size:9px;line-height:1.6;background:rgba(45,48,50,.26)}
-    .footer-note{margin-top:16px;padding:10px 2px;color:#7f8882;font-size:8px;line-height:1.6;text-align:center}
-    .loading{opacity:.75}
-    .good-text{color:var(--green)}.bad-text{color:var(--red)}
-    @media(max-width:920px){.grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:repeat(3,1fr)}.details{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:700px){.hero{grid-template-columns:1fr}.member-meta{grid-template-columns:repeat(3,1fr)}.member-meta div{min-width:0}.pick-grid,.live-grid{grid-template-columns:1fr}.history{overflow:auto}.history-row{min-width:690px}.stats-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:480px){.shell{width:min(100% - 18px,1220px)}.topbar{align-items:flex-start}.member-chip{font-size:8px}.grid{grid-template-columns:1fr 1fr}.metric{padding:11px}.metric b{font-size:20px}.member-meta{grid-template-columns:1fr 1fr}.quick-list{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}.section-head{align-items:start;flex-direction:column}.section-head span{text-align:left}}
-  </style>
+  <link rel="stylesheet" href="./member.css?v=202608071405">
 </head>
 <body>
   <div class="shell">
     <header class="topbar">
       <a class="brand" href="../">nomad<b>tips3</b></a>
-      <div class="member-chip"><span></span> MEMBER #0001 · TEST ACCESS</div>
+      <div class="member-chip"><i></i> MEMBER #0001 · TEST ACCESS</div>
     </header>
 
     <section class="hero">
       <div>
         <span class="eyebrow">NOMADTIPS3 MEMBER SYSTEM · TEST MEMBER 01</span>
         <h1>Member Dashboard</h1>
-        <p>พื้นที่ทดสอบสมาชิกคนที่ 1 แยกแดชบอร์ดบอลเต็ง, บอลสด, สถิติส่วนตัว และการแจ้งเตือนของสมาชิก โดยใช้ข้อมูลจริงจากชุด TEST ที่มีอยู่แล้ว</p>
+        <p>พื้นที่สมาชิกสำหรับดูบอลเต็ง, บอลสด, สถิติส่วนตัว และการแจ้งเตือน โดยแยกจาก Owner Control และใช้ข้อมูลของชุด TEST</p>
       </div>
       <div class="member-meta">
         <div><small>Member ID</small><b>#0001</b></div>
@@ -107,36 +40,36 @@
     </nav>
 
     <section class="view active" data-view="overview">
-      <div class="grid" aria-label="Member overview metrics">
-        <div class="metric"><small>บอลเต็งชุดปัจจุบัน</small><b id="metricPicks">—</b><span>รายการที่ Member #0001 เห็นในรอบปัจจุบัน</span></div>
+      <div class="metric-grid" aria-label="Member overview metrics">
+        <div class="metric"><small>บอลเต็งชุดปัจจุบัน</small><b id="metricPicks">—</b><span>รายการที่สมาชิกเห็นในรอบปัจจุบัน</span></div>
         <div class="metric"><small>Confidence เฉลี่ย</small><b id="metricConfidence">—</b><span>คำนวณจากบอลเต็งชุดปัจจุบัน</span></div>
         <div class="metric"><small>Live Candidates</small><b id="metricLive">—</b><span>คู่ที่ระบบบอลสดกำลังติดตาม</span></div>
-        <div class="metric"><small>Personal Signals</small><b id="metricSignals">—</b><span>สัญญาณล่าสุดสำหรับ Member #0001</span></div>
+        <div class="metric"><small>Personal Signals</small><b id="metricSignals">—</b><span>สัญญาณล่าสุดของ Member #0001</span></div>
       </div>
 
-      <div class="dashboard-grid">
+      <div class="overview-layout">
         <section class="panel">
-          <h3>Member #0001 — ทางลัด</h3>
-          <p>แดชบอร์ดสมาชิกแยกจาก Owner Control เพื่อให้ทดสอบประสบการณ์เหมือนสมาชิกจริง</p>
-          <div class="quick-list">
-            <a href="#ball-teng" class="quick-card" data-open-tab="ball-teng"><small>01</small><strong>แดชบอร์ดบอลเต็ง</strong><span>ดูคู่ที่ระบบคัด, Pick, Odds และ Confidence</span></a>
-            <a href="#live" class="quick-card" data-open-tab="live"><small>02</small><strong>แดชบอร์ดบอลสด</strong><span>ดู Scanner, Momentum, Streak และ Signal</span></a>
-            <a href="#stats" class="quick-card" data-open-tab="stats"><small>03</small><strong>สถิติของฉัน</strong><span>สถิติของ Member #0001 แยกเป็นโปรไฟล์สมาชิก</span></a>
-            <a href="#notifications" class="quick-card" data-open-tab="notifications"><small>04</small><strong>การแจ้งเตือนของฉัน</strong><span>สถานะช่องแจ้งเตือนและสัญญาณล่าสุดของสมาชิก</span></a>
+          <h3>สถานะการใช้งานของฉัน</h3>
+          <p>หน้า Overview แสดงเฉพาะข้อมูลสรุปและสถานะสำคัญ ส่วนรายละเอียดใช้เมนูหลักด้านบนเพียงชุดเดียว</p>
+          <div class="status-grid">
+            <div class="status-item"><small>บอลเต็ง</small><strong id="overviewPicksState">กำลังโหลด…</strong></div>
+            <div class="status-item"><small>บอลสด</small><strong id="overviewLiveState">กำลังตรวจ Scanner…</strong></div>
+            <div class="status-item"><small>สถิติส่วนตัว</small><strong id="overviewStatsState">กำลังโหลด…</strong></div>
+            <div class="status-item"><small>การแจ้งเตือน</small><strong id="overviewNotifyState">กำลังโหลด…</strong></div>
           </div>
+          <div class="status-line"><span id="overviewWorkerDot" class="dot"></span><span id="overviewWorkerText">กำลังตรวจ Worker…</span></div>
         </section>
 
         <aside class="panel">
-          <h3>บัญชีทดสอบ</h3>
+          <h3>บัญชีสมาชิก</h3>
           <div class="profile-list">
             <div class="profile-row"><span>Member</span><b>#0001</b></div>
             <div class="profile-row"><span>Role</span><b>TEST MEMBER</b></div>
             <div class="profile-row"><span>Member Status</span><b class="good-text">ACTIVE</b></div>
             <div class="profile-row"><span>Statistics Scope</span><b>PERSONAL · 0001</b></div>
             <div class="profile-row"><span>Notification Scope</span><b>PERSONAL · 0001</b></div>
-            <div class="profile-row"><span>Server</span><b>Cloudflare + D1</b></div>
+            <div class="profile-row"><span>Notification Channel</span><b id="overviewChannelState">กำลังตรวจ…</b></div>
           </div>
-          <div class="status-line"><span id="overviewWorkerDot" class="dot"></span><span id="overviewWorkerText">กำลังตรวจ Worker…</span></div>
         </aside>
       </div>
     </section>
@@ -147,7 +80,7 @@
     </section>
 
     <section class="view" data-view="live">
-      <div class="grid">
+      <div class="metric-grid">
         <div class="metric"><small>Scanner</small><b id="liveOnline">—</b><span id="liveGenerated">กำลังตรวจสถานะ</span></div>
         <div class="metric"><small>กำลังติดตาม</small><b id="liveCandidateCount">—</b><span>Candidate states ล่าสุด</span></div>
         <div class="metric"><small>ผ่าน Momentum</small><b id="livePassing">—</b><span>ผ่าน threshold ในรอบล่าสุด</span></div>
@@ -158,7 +91,7 @@
     </section>
 
     <section class="view" data-view="stats">
-      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>Legacy TEST records ที่ยังไม่มี memberId จะถือเป็นข้อมูลของสมาชิกคนแรก</span></div>
+      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>TEST records ที่ยังไม่มี memberId ใช้เป็นข้อมูลเริ่มต้นของสมาชิกคนแรก</span></div>
       <div class="stats-grid">
         <div class="stat-box"><small>Total Records</small><b id="statTotal">—</b><p>ประวัติที่ผูกกับ Member #0001</p></div>
         <div class="stat-box"><small>Confirmed</small><b id="statSettled">—</b><p>ผลที่ยืนยันแล้ว</p></div>
@@ -171,10 +104,10 @@
     </section>
 
     <section class="view" data-view="notifications">
-      <div class="dashboard-grid">
+      <div class="notice-layout">
         <section class="panel">
           <h3>ช่องแจ้งเตือนส่วนตัว · Member #0001</h3>
-          <p>สำหรับสมาชิกคนแรก การแจ้งเตือน TEST จะแสดงเฉพาะสัญญาณของโปรไฟล์ #0001 หน้านี้ก่อน เมื่อมีสมาชิกเพิ่มค่อยแยก recipient/token ใน D1 เป็นรายคน</p>
+          <p>หน้า TEST นี้แสดงสัญญาณของโปรไฟล์ #0001 ก่อน เมื่อเพิ่มสมาชิกใหม่ ระบบจะใช้ Member ID แยกข้อมูลและปลายทางแจ้งเตือนออกจากกัน</p>
           <div class="profile-list">
             <div class="profile-row"><span>Recipient</span><b>MEMBER #0001</b></div>
             <div class="profile-row"><span>Channel</span><b id="lineConfigured">กำลังตรวจ…</b></div>
@@ -183,8 +116,8 @@
           </div>
         </section>
         <aside class="panel">
-          <h3>หลักการสมาชิก</h3>
-          <p>สถิติและการแจ้งเตือนต้องผูกกับ Member ID ไม่แชร์สถานะหน้าจอกัน เมื่อเพิ่ม #0002 เป็นต้นไปจะใช้โครงเดียวกันแต่คนละข้อมูลและคนละปลายทางแจ้งเตือน</p>
+          <h3>ขอบเขตข้อมูลสมาชิก</h3>
+          <p>สถิติและการแจ้งเตือนของสมาชิกใช้ namespace แยกกัน เพื่อไม่ให้สถานะของสมาชิกแต่ละคนปะปนกัน</p>
           <div class="status-line"><span class="dot good"></span><span>Member namespace: <b>0001</b></span></div>
         </aside>
       </div>
@@ -195,221 +128,6 @@
     <div class="footer-note">NOMADTIPS3 · MEMBER SYSTEM TEST · MEMBER #0001 · Sports analysis interface only</div>
   </div>
 
-  <script type="module">
-    import { loadCumulativeRecords } from '../stats/cumulative.js?v=202608061015';
-
-    const MEMBER_ID = '0001';
-    const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-    const $ = selector => document.querySelector(selector);
-    const $$ = selector => [...document.querySelectorAll(selector)];
-    let ballTengData = null;
-    let liveStatus = null;
-
-    function escapeHtml(value){
-      return String(value ?? '—').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
-    }
-
-    function number(value){
-      const n = Number(value);
-      return Number.isFinite(n) ? n : null;
-    }
-
-    function odds(value){
-      const n = number(value);
-      return n && n > 0 ? n.toFixed(2) : 'N/A';
-    }
-
-    function dateTime(value){
-      if (!value) return '—';
-      const d = new Date(value);
-      if (!Number.isFinite(d.getTime())) return '—';
-      return new Intl.DateTimeFormat('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(d);
-    }
-
-    async function getJson(url){
-      const response = await fetch(`${url}${url.includes('?') ? '&' : '?'}_=${Date.now()}`, {cache:'no-store'});
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload) throw new Error(payload?.error || `HTTP ${response.status}`);
-      return payload;
-    }
-
-    function openTab(name){
-      $$('.tab').forEach(button => button.classList.toggle('active', button.dataset.tab === name));
-      $$('.view').forEach(view => view.classList.toggle('active', view.dataset.view === name));
-      if (history.replaceState) history.replaceState(null,'',`#${name}`);
-    }
-
-    $$('.tab').forEach(button => button.addEventListener('click', () => openTab(button.dataset.tab)));
-    $$('[data-open-tab]').forEach(link => link.addEventListener('click', event => {
-      event.preventDefault();
-      openTab(link.dataset.openTab);
-    }));
-
-    const initialTab = location.hash.replace('#','');
-    if (['overview','ball-teng','live','stats','notifications'].includes(initialTab)) openTab(initialTab);
-
-    function renderBallTeng(payload){
-      ballTengData = payload;
-      const matches = Array.isArray(payload?.matches) ? payload.matches : [];
-      const avg = matches.length ? matches.reduce((sum,m) => sum + (number(m.confidence) || 0),0) / matches.length : 0;
-      $('#metricPicks').textContent = matches.length;
-      $('#metricConfidence').textContent = matches.length ? `${avg.toFixed(1)}%` : '—';
-      $('#ballTengMeta').textContent = `${payload?.selection_date || '—'} · ${matches.length} selections · ${payload?.environment || 'TEST'}`;
-      if (!matches.length){
-        $('#ballTengGrid').innerHTML = '<div class="empty">ยังไม่มีบอลเต็งในชุดปัจจุบัน</div>';
-        return;
-      }
-      $('#ballTengGrid').innerHTML = matches.map((m,index) => {
-        const btts = m.markets?.btts || {};
-        const dc = m.markets?.doubleChance || {};
-        const ah = m.markets?.asianHandicap || {};
-        return `
-          <article class="pick-card">
-            <div class="card-top">
-              <div class="league">#${String(index+1).padStart(2,'0')} · ${escapeHtml(m.country)} · ${escapeHtml(m.league)}<br>${escapeHtml(dateTime(m.kickoff_utc))}</div>
-              <div class="confidence">${escapeHtml(m.confidence ?? '—')}%</div>
-            </div>
-            <div class="match">${escapeHtml(m.home)} <span style="color:#89918c">vs</span> ${escapeHtml(m.away)}</div>
-            <div class="pick">Main Pick · <b>${escapeHtml(m.pick)}</b></div>
-            <div class="details">
-              <div><small>1X2 Odds</small><strong>${odds(m.odds)}</strong></div>
-              <div><small>BTTS</small><strong>${escapeHtml(btts.pick || 'N/A')} · ${odds(btts.odds)}</strong></div>
-              <div><small>Double Chance</small><strong>${escapeHtml(dc.code || dc.pick || 'N/A')} · ${odds(dc.odds)}</strong></div>
-              <div><small>Asian Handicap</small><strong>${escapeHtml(ah.pick || 'N/A')} · ${odds(ah.odds)}</strong></div>
-            </div>
-          </article>`;
-      }).join('');
-    }
-
-    function renderLive(payload){
-      liveStatus = payload;
-      const active = Array.isArray(payload?.active) ? payload.active : [];
-      const triggered = active.filter(item => Number(item.triggered) === 1);
-      const counts = payload?.counts || {};
-      $('#metricLive').textContent = number(counts.serverCandidates) ?? active.length;
-      $('#metricSignals').textContent = number(counts.triggered) ?? triggered.length;
-      $('#overviewWorkerDot').className = `dot ${payload.online ? 'good' : 'bad'}`;
-      $('#overviewWorkerText').textContent = payload.online ? `Worker online · ${dateTime(payload.generatedAt)}` : `Worker offline / stale · ${dateTime(payload.generatedAt)}`;
-      $('#liveOnline').textContent = payload.online ? 'ONLINE' : 'OFFLINE';
-      $('#liveOnline').className = payload.online ? 'good-text' : 'bad-text';
-      $('#liveGenerated').textContent = `ล่าสุด ${dateTime(payload.generatedAt)}`;
-      $('#liveCandidateCount').textContent = number(counts.serverCandidates) ?? active.length;
-      $('#livePassing').textContent = number(counts.passing) ?? 0;
-      $('#liveTriggered').textContent = number(counts.triggered) ?? triggered.length;
-      $('#liveMeta').textContent = `Momentum ≥ ${payload.config?.momentumMin ?? '—'}% · Confirm ${payload.config?.confirmationRounds ?? '—'} rounds · Member #0001`;
-      $('#notifyScanner').textContent = payload.online ? 'ONLINE' : 'OFFLINE';
-      $('#notifyScanner').className = payload.online ? 'good-text' : 'bad-text';
-      $('#notifyCount').textContent = triggered.length;
-      $('#notifyMeta').textContent = `${triggered.length} triggered state(s) จากสถานะล่าสุด`;
-
-      if (!active.length){
-        $('#liveGrid').innerHTML = '<div class="empty">ตอนนี้ยังไม่มีคู่ที่อยู่ใน Active Candidate State</div>';
-      } else {
-        $('#liveGrid').innerHTML = active.map(item => {
-          const mom = number(item.last_home_percent);
-          const isTriggered = Number(item.triggered) === 1;
-          return `
-            <article class="live-card ${isTriggered ? 'triggered' : ''}">
-              <div class="card-top">
-                <div class="league">Fixture ${escapeHtml(item.fixture_id)} · ${escapeHtml(item.selected_side || 'SIDE')}<br>Minute ${escapeHtml(item.last_minute ?? '—')}</div>
-                <div class="confidence">Streak ${escapeHtml(item.streak ?? 0)}</div>
-              </div>
-              <div class="match">${escapeHtml(item.home)} <span style="color:#89918c">vs</span> ${escapeHtml(item.away)}</div>
-              <div class="momentum">${mom === null ? '—' : Math.round(mom)}<small>% momentum</small></div>
-              <div class="live-meta">
-                <span>Score ${escapeHtml(item.home_score ?? 0)}–${escapeHtml(item.away_score ?? 0)}</span>
-                <span>Config v${escapeHtml(item.config_version ?? '—')}</span>
-                <span class="${isTriggered ? 'signal' : ''}">${isTriggered ? 'SIGNAL TRIGGERED' : 'MONITORING'}</span>
-              </div>
-            </article>`;
-        }).join('');
-      }
-
-      if (!triggered.length){
-        $('#noticeList').innerHTML = '<div class="empty">ยังไม่มี Signal ที่ Trigger สำหรับ Member #0001 ใน Active State ล่าสุด</div>';
-      } else {
-        $('#noticeList').innerHTML = triggered.map(item => `
-          <article class="notice-card">
-            <div class="notice-mark"></div>
-            <div><h3>Live Signal · ${escapeHtml(item.home)} vs ${escapeHtml(item.away)}</h3><p>Member #0001 · นาที ${escapeHtml(item.last_minute)} · Momentum ${escapeHtml(Math.round(number(item.last_home_percent) || 0))}% · Streak ${escapeHtml(item.streak)} · Score ${escapeHtml(item.home_score)}–${escapeHtml(item.away_score)}</p></div>
-            <div class="notice-time">${escapeHtml(dateTime(item.updated_at))}</div>
-          </article>`).join('');
-      }
-    }
-
-    function outcome(record){
-      return String(record?.outcome || record?.result || 'pending').toLowerCase();
-    }
-
-    function renderStats(){
-      const all = loadCumulativeRecords();
-      const records = all.filter(record => !record.memberId || String(record.memberId).padStart(4,'0') === MEMBER_ID);
-      const settled = records.filter(r => ['correct','incorrect','void'].includes(outcome(r)));
-      const correct = settled.filter(r => outcome(r) === 'correct').length;
-      const incorrect = settled.filter(r => outcome(r) === 'incorrect').length;
-      const decisions = correct + incorrect;
-      const accuracy = decisions ? (correct / decisions) * 100 : 0;
-      $('#statTotal').textContent = records.length;
-      $('#statSettled').textContent = settled.length;
-      $('#statCorrect').textContent = correct;
-      $('#statIncorrect').textContent = incorrect;
-      $('#statAccuracy').textContent = decisions ? `${accuracy.toFixed(2)}%` : '—';
-      $('#statsMeta').textContent = `${records.length} personal record(s) · Member namespace ${MEMBER_ID}`;
-      const recent = [...records].sort((a,b) => new Date(b.kickoffUtc ?? b.pickDate ?? 0) - new Date(a.kickoffUtc ?? a.pickDate ?? 0)).slice(0,12);
-      if (!recent.length){
-        $('#historyTable').innerHTML = '<div class="empty">ยังไม่มีประวัติสำหรับ Member #0001</div>';
-        return;
-      }
-      $('#historyTable').innerHTML = `
-        <div class="history-row head"><span>Date</span><span>Match</span><span>Pick</span><span>Odds</span><span>Result</span></div>
-        ${recent.map(r => {
-          const result = outcome(r);
-          const cls = ['correct','incorrect'].includes(result) ? result : 'pending';
-          const match = `${r.home ?? r.homeTeam ?? '—'} vs ${r.away ?? r.awayTeam ?? '—'}`;
-          return `<div class="history-row"><span>${escapeHtml(dateTime(r.kickoffUtc ?? r.pickDate))}</span><b>${escapeHtml(match)}</b><span>${escapeHtml(r.pickLabel ?? r.pick ?? '—')}</span><span>${odds(r.odds)}</span><span class="outcome ${cls}">${escapeHtml(result.toUpperCase())}</span></div>`;
-        }).join('')}`;
-    }
-
-    async function loadLineStatus(){
-      try{
-        const payload = await getJson(`${WORKER}/line-status`);
-        const configured = Boolean(payload.configured ?? payload.ok);
-        $('#lineConfigured').textContent = configured ? 'LINE · CONNECTED' : 'LINE · NOT CONFIGURED';
-        $('#lineConfigured').className = configured ? 'good-text' : '';
-      }catch(error){
-        $('#lineConfigured').textContent = 'LINE · STATUS UNAVAILABLE';
-      }
-    }
-
-    async function loadAll(){
-      try{
-        const picks = await getJson('../../selected-live-matches.json');
-        renderBallTeng(picks);
-      }catch(error){
-        $('#ballTengGrid').innerHTML = `<div class="empty">โหลดบอลเต็งไม่สำเร็จ · ${escapeHtml(error.message)}</div>`;
-        $('#ballTengMeta').textContent = 'Data unavailable';
-      }
-
-      try{
-        const live = await getJson(`${WORKER}/auto-scan-status`);
-        renderLive(live);
-      }catch(error){
-        $('#liveGrid').innerHTML = `<div class="empty">โหลด Worker ไม่สำเร็จ · ${escapeHtml(error.message)}</div>`;
-        $('#noticeList').innerHTML = '<div class="empty">ยังอ่านสถานะการแจ้งเตือนไม่ได้</div>';
-        $('#overviewWorkerDot').className = 'dot bad';
-        $('#overviewWorkerText').textContent = 'Worker status unavailable';
-      }
-
-      try{ renderStats(); }
-      catch(error){ $('#historyTable').innerHTML = `<div class="empty">โหลดสถิติไม่สำเร็จ · ${escapeHtml(error.message)}</div>`; }
-
-      loadLineStatus();
-    }
-
-    loadAll();
-    window.setInterval(async () => {
-      try{ renderLive(await getJson(`${WORKER}/auto-scan-status`)); }catch{}
-    }, 30000);
-  </script>
+  <script type="module" src="./member.js?v=202608071405"></script>
 </body>
 </html>
