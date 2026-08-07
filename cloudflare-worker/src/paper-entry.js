@@ -15,6 +15,7 @@ import { handleBallTengConfig } from './ball-teng-config.js';
 import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
 import { handleMemberBallTengIngest } from './member-ball-teng-ingest.js';
+import { handleMemberBallTengRun } from './member-ball-teng-run.js';
 import { runMemberLiveBackgroundScans } from './member-live-evaluator.js';
 import {
   handleLineWebhook,
@@ -199,6 +200,18 @@ export default {
         return json(request, {
           ok: false,
           error: error?.message || 'Member configuration failed'
+        }, 500);
+      }
+    }
+
+    if (url.pathname === '/member-ball-teng-run') {
+      try {
+        const result = await handleMemberBallTengRun(request, env, url);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Member Ball Teng run request failed'
         }, 500);
       }
     }
