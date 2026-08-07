@@ -8,6 +8,7 @@
   let busy = false;
 
   const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0;
+  const scoreNumber = value => value !== null && value !== '' && Number.isFinite(Number(value));
   const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
   function confidenceFor(source, config) {
@@ -75,6 +76,18 @@
     };
   }
 
+  function resolveOverUnder(market, previous) {
+    if (!previous?.resultConfirmed || !scoreNumber(previous.homeScore) || !scoreNumber(previous.awayScore)) return market;
+    const pick = String(market?.side || market?.pick || '').trim().toLowerCase();
+    const side = pick.startsWith('over') ? 'over' : pick.startsWith('under') ? 'under' : null;
+    if (!side) return market;
+    const lineValue = Number(market?.line);
+    const line = Number.isFinite(lineValue) ? lineValue : 2.5;
+    const total = Number(previous.homeScore) + Number(previous.awayScore);
+    const outcome = total === line ? 'void' : ((total > line ? 'over' : 'under') === side ? 'correct' : 'incorrect');
+    return {...market, outcome, settlement: outcome};
+  }
+
   function toRecord(source, config, previous) {
     const side = String(source.pick_side || 'home').toUpperCase();
     const markets = source.markets || {};
@@ -82,6 +95,10 @@
     const confidence = confidenceFor(source, config);
     const autoCalculated = Boolean(source.auto_analysis || source.autoAnalysis);
     const overUnderSource = markets.overUnder || markets.over_under || markets.ou || derivedOverUnder(source, confidence);
+    const overUnder = resolveOverUnder(
+      normalizeMarket(overUnderSource, 'N/A', confidence, autoCalculated, previousMarkets.overUnder),
+      previous
+    );
     return {
       ...(previous || {}),
       fixtureId: String(source.client_fixture_id || source.fixture_id || source.slug),
@@ -102,7 +119,7 @@
       predictedScore: source.predicted_score || previous?.predictedScore || '—',
       markets: {
         btts: normalizeMarket(markets.btts, 'N/A', confidence, autoCalculated, previousMarkets.btts),
-        overUnder: normalizeMarket(overUnderSource, 'N/A', confidence, autoCalculated, previousMarkets.overUnder),
+        overUnder,
         doubleChance: normalizeMarket(markets.doubleChance, 'N/A', confidence, autoCalculated, previousMarkets.doubleChance),
         asianHandicap: normalizeMarket(markets.asianHandicap, 'N/A', confidence, autoCalculated, previousMarkets.asianHandicap)
       },
