@@ -6,6 +6,7 @@
   const SYNC_MS = 60_000;
   let syncing = false;
   let internalWrite = false;
+  let patchScheduled = false;
   let scannerText = 'กำลังรอ Worker สแกนอัตโนมัติ';
 
   function readLocal() {
@@ -27,19 +28,18 @@
 
   function setStatus(text, good = true) {
     const status = document.getElementById('settlementStatus');
-    if (status) {
+    if (status && status.textContent !== text) {
       status.textContent = text;
       status.style.color = good ? '#00df91' : '#ff6573';
     }
     const note = document.querySelector('.paper-note');
-    if (note && good) {
-      note.innerHTML = 'ข้อมูลหลักบันทึกใน <b>Cloudflare D1</b> ตัวสแกนและการตรวจผลทำงานบน Worker แม้ปิดเบราว์เซอร์ Local Storage เป็นสำเนาสำรองเท่านั้น';
-    }
+    const noteHtml = 'ข้อมูลหลักบันทึกใน <b>Cloudflare D1</b> ตัวสแกนและการตรวจผลทำงานบน Worker แม้ปิดเบราว์เซอร์ Local Storage เป็นสำเนาสำรองเท่านั้น';
+    if (note && good && note.innerHTML !== noteHtml) note.innerHTML = noteHtml;
   }
 
   function updateScannerLabel() {
     const label = document.getElementById('nextScan');
-    if (label) label.textContent = scannerText;
+    if (label && label.textContent !== scannerText) label.textContent = scannerText;
   }
 
   function patchSideAwareUi() {
@@ -63,10 +63,19 @@
       const paperValue = paperFact?.querySelector('b');
       const ahOddsValue = ahOddsFact?.querySelector('b')?.textContent.trim();
       if (paperValue && ahOddsValue && ahOddsValue !== 'N/A') {
-        paperValue.textContent = '100 Units';
-        paperValue.classList.remove('yellow');
-        paperValue.classList.add('green');
+        if (paperValue.textContent.trim() !== '100 Units') paperValue.textContent = '100 Units';
+        if (paperValue.classList.contains('yellow')) paperValue.classList.remove('yellow');
+        if (!paperValue.classList.contains('green')) paperValue.classList.add('green');
       }
+    });
+  }
+
+  function schedulePatch() {
+    if (patchScheduled) return;
+    patchScheduled = true;
+    requestAnimationFrame(() => {
+      patchScheduled = false;
+      patchSideAwareUi();
     });
   }
 
@@ -134,7 +143,7 @@
       internalWrite = false;
       const autoOnline = await scannerStatus();
       setStatus(`${autoOnline ? 'D1 + AUTO ONLINE' : 'D1 ONLINE'} · ${trades.length} รายการ`, true);
-      patchSideAwareUi();
+      schedulePatch();
 
       if (changed) {
         const signature = trades.map(trade => `${keyOf(trade)}:${trade.status}:${trade.updatedAt || 0}`).join('|');
@@ -150,7 +159,7 @@
     } finally {
       syncing = false;
       updateScannerLabel();
-      patchSideAwareUi();
+      schedulePatch();
     }
   }
 
@@ -164,7 +173,7 @@
     if (event.key === TRADE_KEY) sync();
   });
 
-  const observer = new MutationObserver(patchSideAwareUi);
+  const observer = new MutationObserver(schedulePatch);
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
   setInterval(updateScannerLabel, 1000);
