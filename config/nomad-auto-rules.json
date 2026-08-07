@@ -4,7 +4,9 @@
   "timezone": "Asia/Bangkok",
   "cutoff_hour_local": 8,
   "minimum_lead_minutes": 45,
-  "fixed_confidence": 58,
+  "minimum_confidence": 58,
+  "maximum_confidence": 85,
+  "confidence_strength_scale": 15,
   "minimum_main_odds": 1.7,
   "overall_sample": 6,
   "venue_sample": 5,
@@ -22,6 +24,6 @@
     "use_home_away_splits": true,
     "use_common_opponents": true,
     "missing_odds_policy": "N/A — never estimate",
-    "confidence_policy": "Fixed at 58% for every published market"
+    "confidence_policy": "Calculated per match from the NOMAD weighted strength score; publish only confidence >= 58%; cap at 85%"
   }
 }
