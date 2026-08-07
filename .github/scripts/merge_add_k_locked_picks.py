@@ -73,8 +73,6 @@ def main():
         if not key or key in current_keys or not start:
             continue
         start_utc = start.astimezone(timezone.utc)
-        # Preserve only matches from the current 24-hour NOMAD cycle that have
-        # already reached kickoff. Future picks are intentionally replaceable.
         if not (cycle_start <= start_utc <= now):
             continue
         locked = dict(match)
@@ -87,28 +85,40 @@ def main():
         if isinstance(match, dict):
             match.setdefault('selection_origin', 'CURRENT_ADD_K_RUN')
 
+    new_count = len(current_matches)
+    if new_count == 0:
+        current['noPick'] = True
+        current['noPickReason'] = current.get('noPickReason') or 'No new fixture passed the Add K fixed rules in this rerun.'
+    else:
+        current['noPick'] = False
+        current.pop('noPickReason', None)
+
     merged = preserved + current_matches
     merged.sort(key=lambda match: kickoff(match) or datetime.max.replace(tzinfo=timezone.utc))
     current['matches'] = merged
     current['addKRunMerge'] = {
         'policy': 'LOCK_STARTED_REPLACE_FUTURE_DEDUPLICATE',
         'cycleStartUtc': cycle_start.isoformat().replace('+00:00', 'Z'),
-        'newSelectionCount': len(current_matches),
+        'newSelectionCount': new_count,
         'preservedStartedCount': len(preserved),
         'totalDisplayedCount': len(merged),
-        'noPickForNewRun': bool(current.get('noPick')) or len(current_matches) == 0,
+        'noPickForNewRun': new_count == 0,
     }
     write_json(SELECTED_PATH, current)
 
     if REPORT_PATH.exists():
+        if new_count == 0:
+            report['status'] = 'ADD_K_NO_PICK'
+            report['published'] = 0
         report['addKRunMerge'] = current['addKRunMerge']
         write_json(REPORT_PATH, report)
 
     print(json.dumps({
         'status': 'ADD_K_LOCKED_STARTED_MERGED',
-        'newSelections': len(current_matches),
+        'newSelections': new_count,
         'preservedStarted': len(preserved),
         'totalDisplayed': len(merged),
+        'noPick': new_count == 0,
     }, ensure_ascii=False))
 
 
