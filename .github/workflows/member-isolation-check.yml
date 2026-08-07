@@ -57,6 +57,7 @@ jobs:
           node --check cloudflare-worker/src/member-data.js
           node --check cloudflare-worker/src/member-live-evaluator.js
           node --check cloudflare-worker/src/member-live-shared-evaluator.js
+          node --check cloudflare-worker/src/member-live-settlement.js
           node --check cloudflare-worker/src/shared-api-football.js
           node --check cloudflare-worker/src/member-ball-teng-ingest.js
           node --check cloudflare-worker/src/member-ball-teng-run.js
