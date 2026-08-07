@@ -8,6 +8,7 @@ on:
       - '.github/scripts/auto_select_next.py'
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/apply_confidence_policy.py'
+      - '.github/scripts/enforce_add_k_data_quality.py'
       - '.github/scripts/finalize_ball_teng_analysis.py'
       - '.github/scripts/enrich_selected_odds.py'
       - '.github/scripts/prepare_ball_teng_control.py'
@@ -72,6 +73,7 @@ jobs:
             echo 'No new ball-teng set generated; current locked set stays unchanged.'
           else
             python3 .github/scripts/apply_confidence_policy.py
+            python3 .github/scripts/enforce_add_k_data_quality.py
             python3 .github/scripts/finalize_ball_teng_analysis.py
             selection_regenerated=true
           fi
