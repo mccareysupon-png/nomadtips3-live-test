@@ -32,6 +32,10 @@
       display:none!important;
       content:none!important;
     }
+    .poster-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .poster-secondary{grid-template-columns:repeat(4,minmax(0,1fr))}
+    @media(max-width:720px){.poster-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:430px){.poster-secondary{grid-template-columns:1fr}}
   </style>
 </head>
 <body class="poster-page">
@@ -44,7 +48,7 @@
       <div>
         <span class="eyebrow">SHARE-READY · CLEAR PRIORITY</span>
         <h1>Analysis Poster</h1>
-        <p>Each poster displays up to four official match analyses with the Main Pick, local kickoff time and essential market positions clearly separated.</p>
+        <p>Each poster displays up to four official match analyses with the Main Pick, local kickoff time and essential independent market positions clearly separated.</p>
         <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
       </div>
     </section>
@@ -72,9 +76,9 @@
   </nav>
 
   <script src="../../device-time-sync.js?v=202608041114"></script>
-  <script src="../selected-odds-sync.js?v=202608070951"></script>
-  <script type="module" src="./app.js?v=202608061015"></script>
-  <script src="../../remote-results.js?v=202608061015" defer></script>
+  <script src="../selected-odds-sync.js?v=202608071505"></script>
+  <script type="module" src="./app.js?v=202608071505"></script>
+  <script src="../../remote-results.js?v=202608071505" defer></script>
   <script src="../../terminology.js?v=202608040954" defer></script>
   <script src="../../site-footer.js?v=202608040844"></script>
 </body>
