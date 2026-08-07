@@ -78,6 +78,10 @@
 
     <section class="view" data-view="ball-teng">
       <div class="section-head"><h2>แดชบอร์ดบอลเต็งของฉัน</h2><span id="ballTengMeta">กำลังโหลด member set…</span></div>
+      <div class="isolation-banner">
+        <strong>คัดใหม่ได้ 3 ครั้ง/วัน</strong>
+        <span id="ballRunQuotaView">กำลังโหลดสิทธิ์คัดใหม่…</span>
+      </div>
       <div id="ballTengGrid" class="pick-grid"><div class="empty loading">กำลังโหลดข้อมูลบอลเต็งของ Member #0001…</div></div>
     </section>
 
@@ -187,7 +191,9 @@
             <label><span>A/B Rank Mix %</span><input name="standingsDirectRankMixPct" type="number" min="0" max="100" step="1"></label>
             <label><span>Ranked C Mix %</span><input name="standingsRankedCommonMixPct" type="number" min="0" max="100" step="1"></label>
           </form>
-          <div class="settings-actions"><button data-config-action="ball-default" type="button">ดีฟอลท์</button><button data-config-action="ball-save" type="button">เซฟ Draft</button><button data-config-action="ball-run" class="primary" type="button">เปิดใช้ของฉัน</button></div>
+          <div class="settings-actions"><button data-config-action="ball-default" type="button">ดีฟอลท์</button><button data-config-action="ball-save" type="button">เซฟ Draft</button><button data-config-action="ball-run" class="primary" type="button">เปิดใช้และคัดใหม่</button></div>
+          <div id="ballRunQuota" class="config-message">สิทธิ์คัดใหม่: กำลังโหลด…</div>
+          <div class="config-message">กดคัดใหม่ได้สูงสุด 3 ครั้ง/วัน (นับตามเวลาไทย) · เซฟ Draft ไม่หักสิทธิ์ · รอบคัดอัตโนมัติไม่หักสิทธิ์ · ถ้ามีงานกำลังประมวลผล ต้องรอผลก่อนกดใหม่ · ระบบรับคำสั่งทันทีและผลจะขึ้นเมื่อเครื่องคัดสมาชิกจบรอบประมวลผล ปกติภายในประมาณ 5 นาที</div>
           <div id="ballConfigMessage" class="config-message">กำลังโหลดค่าของสมาชิก…</div>
         </section>
       </div>
@@ -196,6 +202,6 @@
     <div class="footer-note">NOMADTIPS3 · MEMBER SYSTEM TEST · MEMBER #0001 · MEMBER DATA ISOLATION</div>
   </div>
 
-  <script type="module" src="./member.js?v=202608071430"></script>
+  <script type="module" src="./member.js?v=202608071640"></script>
 </body>
 </html>

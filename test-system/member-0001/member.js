@@ -4,13 +4,14 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
 let liveConfigState = null;
 let ballConfigState = null;
+let ballRunQuotaState = null;
 
 function escapeHtml(value){return String(value ?? '—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
 function number(value){const n=Number(value);return Number.isFinite(n)?n:null}
 function odds(value){const n=number(value);return n&&n>0?n.toFixed(2):'N/A'}
 function dateTime(value){if(!value)return '—';const d=new Date(value);if(!Number.isFinite(d.getTime()))return '—';return new Intl.DateTimeFormat('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)}
 function memberUrl(path){return `${WORKER}${path}${path.includes('?')?'&':'?'}member=${encodeURIComponent(MEMBER_ID)}`}
-async function requestJson(url,options={}){const response=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});const payload=await response.json().catch(()=>null);if(!response.ok||!payload?.ok)throw new Error(payload?.error||`HTTP ${response.status}`);return payload}
+async function requestJson(url,options={}){const response=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});const payload=await response.json().catch(()=>null);if(!response.ok||!payload?.ok){const error=new Error(payload?.error||`HTTP ${response.status}`);error.payload=payload;error.status=response.status;throw error}return payload}
 
 function openTab(name){$$('.tab').forEach(button=>button.classList.toggle('active',button.dataset.tab===name));$$('.view').forEach(view=>view.classList.toggle('active',view.dataset.view===name));if(history.replaceState)history.replaceState(null,'',`#${name}`)}
 $$('.tab').forEach(button=>button.addEventListener('click',()=>openTab(button.dataset.tab)));
@@ -42,6 +43,20 @@ function renderBallTeng(payload){
     const btts=m.markets?.btts||{},dc=m.markets?.doubleChance||{},ah=m.markets?.asianHandicap||{};
     return `<article class="pick-card"><div class="card-top"><div class="league">#${String(index+1).padStart(2,'0')} · ${escapeHtml(m.country)} · ${escapeHtml(m.league)}<br>${escapeHtml(dateTime(m.kickoff_utc))}</div><div class="confidence">${escapeHtml(m.confidence??'—')}%</div></div><div class="match">${escapeHtml(m.home)} <span style="color:#89918c">vs</span> ${escapeHtml(m.away)}</div><div class="pick">Main Pick · <b>${escapeHtml(m.pick)}</b></div><div class="details"><div><small>1X2 Odds</small><strong>${odds(m.odds)}</strong></div><div><small>BTTS</small><strong>${escapeHtml(btts.pick||'N/A')} · ${odds(btts.odds)}</strong></div><div><small>Double Chance</small><strong>${escapeHtml(dc.code||dc.pick||'N/A')} · ${odds(dc.odds)}</strong></div><div><small>Asian Handicap</small><strong>${escapeHtml(ah.pick||'N/A')} · ${odds(ah.odds)}</strong></div></div></article>`;
   }).join('');
+}
+
+function renderBallRunQuota(payload){
+  const quota=payload?.quota||payload||{};
+  ballRunQuotaState=quota;
+  const used=Number(quota.used||0),limit=Number(quota.limit||3),remaining=Math.max(0,Number(quota.remaining??(limit-used)));
+  const pending=Boolean(quota.pending);
+  const text=pending
+    ? `กำลังคัดตามเงื่อนไขล่าสุด · ใช้แล้ว ${used}/${limit} ครั้งวันนี้ · รอผลก่อนกดใหม่`
+    : `วันนี้ใช้แล้ว ${used}/${limit} ครั้ง · เหลือ ${remaining} ครั้ง · รีเซ็ต 00:00 น. เวลาไทย`;
+  $('#ballRunQuota').textContent=`สิทธิ์คัดใหม่: ${text}`;
+  $('#ballRunQuotaView').textContent=`${text} · การคัดของสมาชิกแยกจาก Owner/System`;
+  const button=document.querySelector('[data-config-action="ball-run"]');
+  if(button){button.disabled=pending||remaining<=0;button.title=pending?'มีงานคัดกำลังประมวลผล':remaining<=0?'ใช้สิทธิ์ครบ 3 ครั้งวันนี้แล้ว':''}
 }
 
 function renderLive(payload){
@@ -125,20 +140,23 @@ function configMessage(id,text,good=true){const node=$(id);node.textContent=text
 async function loadConfigs(){
   try{liveConfigState=await requestJson(memberUrl('/member-live-config'));fillForm($('#liveConfigForm'),liveConfigState.draft);$('#liveConfigVersion').textContent=`v${liveConfigState.version||0}`;configMessage('#liveConfigMessage',`โหลดค่า Member #${MEMBER_ID} แล้ว · Active แยกจาก Owner/System`)}catch(error){configMessage('#liveConfigMessage',error.message,false)}
   try{ballConfigState=await requestJson(memberUrl('/member-ball-teng-config'));fillForm($('#ballConfigForm'),ballConfigState.draft);$('#ballConfigVersion').textContent=`v${ballConfigState.version||0}`;configMessage('#ballConfigMessage',`โหลดค่า Member #${MEMBER_ID} แล้ว · Active แยกจาก Owner/System`)}catch(error){configMessage('#ballConfigMessage',error.message,false)}
+  try{renderBallRunQuota(await requestJson(memberUrl('/member-ball-teng-run')))}catch(error){configMessage('#ballRunQuota',error.message,false)}
 }
 async function submitConfig(kind,action){
   const isLive=kind==='live';
-  const url=memberUrl(isLive?'/member-live-config':'/member-ball-teng-config');
+  const isBallRun=!isLive&&action==='run';
+  const url=memberUrl(isBallRun?'/member-ball-teng-run':isLive?'/member-live-config':'/member-ball-teng-config');
   const messageId=isLive?'#liveConfigMessage':'#ballConfigMessage';
   try{
     const config=isLive?liveFormConfig():ballFormConfig();
-    configMessage(messageId,action==='run'?'กำลังเปิดใช้ค่าของสมาชิก…':'กำลังเซฟ Draft…');
-    const payload=await requestJson(url,{method:'POST',body:JSON.stringify({action,config})});
+    configMessage(messageId,isBallRun?'กำลังเปิดใช้เงื่อนไขและส่งคำสั่งคัดใหม่…':action==='run'?'กำลังเปิดใช้ค่าของสมาชิก…':'กำลังเซฟ Draft…');
+    const body=isBallRun?{config}:{action,config};
+    const payload=await requestJson(url,{method:'POST',body:JSON.stringify(body)});
     if(isLive){liveConfigState=payload;fillForm($('#liveConfigForm'),payload.draft);$('#liveConfigVersion').textContent=`v${payload.version||0}`}
-    else{ballConfigState=payload;fillForm($('#ballConfigForm'),payload.draft);$('#ballConfigVersion').textContent=`v${payload.version||0}`}
+    else{ballConfigState=payload;fillForm($('#ballConfigForm'),payload.draft);$('#ballConfigVersion').textContent=`v${payload.version||0}`;if(payload.quota)renderBallRunQuota(payload)}
     configMessage(messageId,payload.message||'บันทึกแล้ว');
     await loadMemberData();
-  }catch(error){configMessage(messageId,error.message,false)}
+  }catch(error){if(error.payload?.quota)renderBallRunQuota(error.payload);configMessage(messageId,error.message,false)}
 }
 
 document.querySelectorAll('[data-config-action]').forEach(button=>button.addEventListener('click',()=>{
@@ -153,6 +171,7 @@ async function loadMemberData(){
   await Promise.allSettled([
     requestJson(memberUrl('/member-profile')).then(renderProfile),
     requestJson(memberUrl('/member-ball-teng-results')).then(renderBallTeng),
+    requestJson(memberUrl('/member-ball-teng-run')).then(renderBallRunQuota),
     requestJson(memberUrl('/member-live-status')).then(renderLive),
     requestJson(memberUrl('/member-stats')).then(renderStats),
     requestJson(memberUrl('/member-notifications')).then(renderNotifications),
