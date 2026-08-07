@@ -17,8 +17,12 @@
     }
   }
 
+  function keyOf(trade) {
+    return String(trade?.tradeKey || `${Number(trade?.fixtureId)}:${String(trade?.selectedSide || 'HOME').toUpperCase()}`);
+  }
+
   function stable(value) {
-    return JSON.stringify([...value].sort((a, b) => Number(a.fixtureId) - Number(b.fixtureId)));
+    return JSON.stringify([...value].sort((a, b) => keyOf(a).localeCompare(keyOf(b))));
   }
 
   function setStatus(text, good = true) {
@@ -36,6 +40,34 @@
   function updateScannerLabel() {
     const label = document.getElementById('nextScan');
     if (label) label.textContent = scannerText;
+  }
+
+  function patchSideAwareUi() {
+    const paperTag = document.querySelector('#paperInvestment .paper-head .tag');
+    if (paperTag && paperTag.textContent.includes('HOME LIVE ASIAN HANDICAP')) {
+      paperTag.textContent = paperTag.textContent.replace('HOME LIVE ASIAN HANDICAP', 'SELECTED TEAM LIVE ASIAN HANDICAP');
+    }
+
+    document.querySelectorAll('.trade-meta').forEach(meta => {
+      if (meta.innerHTML.includes('Home AH')) meta.innerHTML = meta.innerHTML.replace(/Home AH/g, 'Selected AH');
+    });
+
+    document.querySelectorAll('.card').forEach(card => {
+      const selectedAway = [...card.querySelectorAll('.team small')]
+        .some(node => node.textContent.includes('ทีมเยือน') && node.textContent.includes('SELECTED'));
+      if (!selectedAway) return;
+
+      const facts = [...card.querySelectorAll('.fact')];
+      const paperFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'Paper Investment');
+      const ahOddsFact = facts.find(fact => fact.querySelector('small')?.textContent.trim() === 'AH Odds');
+      const paperValue = paperFact?.querySelector('b');
+      const ahOddsValue = ahOddsFact?.querySelector('b')?.textContent.trim();
+      if (paperValue && ahOddsValue && ahOddsValue !== 'N/A') {
+        paperValue.textContent = '100 Units';
+        paperValue.classList.remove('yellow');
+        paperValue.classList.add('green');
+      }
+    });
   }
 
   async function request(path, options = {}) {
@@ -74,9 +106,9 @@
       const local = readLocal();
       let remote = await request('/paper-trades?limit=10000');
       const remoteTrades = Array.isArray(remote.trades) ? remote.trades : [];
-      const remoteMap = new Map(remoteTrades.map(trade => [Number(trade.fixtureId), trade]));
+      const remoteMap = new Map(remoteTrades.map(trade => [keyOf(trade), trade]));
       const upload = local.filter(trade => {
-        const stored = remoteMap.get(Number(trade.fixtureId));
+        const stored = remoteMap.get(keyOf(trade));
         return !stored || (stored.status === 'PENDING' && trade.status !== 'PENDING');
       });
 
@@ -102,9 +134,10 @@
       internalWrite = false;
       const autoOnline = await scannerStatus();
       setStatus(`${autoOnline ? 'D1 + AUTO ONLINE' : 'D1 ONLINE'} · ${trades.length} รายการ`, true);
+      patchSideAwareUi();
 
       if (changed) {
-        const signature = trades.map(trade => `${trade.fixtureId}:${trade.status}:${trade.updatedAt || 0}`).join('|');
+        const signature = trades.map(trade => `${keyOf(trade)}:${trade.status}:${trade.updatedAt || 0}`).join('|');
         if (sessionStorage.getItem('nomad-d1-last-reload') !== signature) {
           sessionStorage.setItem('nomad-d1-last-reload', signature);
           location.reload();
@@ -117,6 +150,7 @@
     } finally {
       syncing = false;
       updateScannerLabel();
+      patchSideAwareUi();
     }
   }
 
@@ -129,6 +163,10 @@
   window.addEventListener('storage', event => {
     if (event.key === TRADE_KEY) sync();
   });
+
+  const observer = new MutationObserver(patchSideAwareUi);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
   setInterval(updateScannerLabel, 1000);
   setTimeout(sync, 1200);
   setInterval(sync, SYNC_MS);
