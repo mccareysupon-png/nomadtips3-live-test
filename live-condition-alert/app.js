@@ -6,7 +6,7 @@
   const ALERT_KEY = 'nomadtips3.page5.condition-control.v1.alerts';
   const TRADE_KEY = 'nomadtips3.page5.paper-ah.v1';
   const STAKE = 100;
-  const pointsByFixture = new Map();
+  const pointsByCandidate = new Map();
 
   const DEFAULT_CONFIG = {
     side: 'HOME', minuteMin: 60, minuteMax: 80, market: 'WIN',
@@ -47,7 +47,9 @@
   }
 
   function sideLabel(side) {
-    return side === 'AWAY' ? 'ทีมเยือน' : 'เจ้าบ้าน';
+    if (side === 'AWAY') return 'ทีมเยือน';
+    if (side === 'BOTH') return 'ทั้งสองทีม';
+    return 'ทีมเจ้าบ้าน';
   }
 
   function marketLabel(market) {
@@ -168,12 +170,12 @@
     `).join('');
   }
 
-  function momentumChart(fixtureId, value) {
-    const key = String(fixtureId);
-    const points = pointsByFixture.get(key) || [];
+  function momentumChart(fixtureId, selectedSide, value) {
+    const key = `${fixtureId}:${selectedSide || 'HOME'}`;
+    const points = pointsByCandidate.get(key) || [];
     if (value !== null && (points.length === 0 || points.at(-1) !== value)) points.push(value);
-    pointsByFixture.set(key, points.slice(-15));
-    const data = pointsByFixture.get(key);
+    pointsByCandidate.set(key, points.slice(-15));
+    const data = pointsByCandidate.get(key);
     if (!data.length) return '';
     const x = index => 10 + (data.length === 1 ? 280 : index * 560 / (data.length - 1));
     const y = point => 7 + (100 - point) * 0.64;
@@ -224,7 +226,7 @@
           <div class="momentum">
             <div class="momentum-top"><small>NOMAD MOMENTUM · SERVER 24/7</small><b><em>${ready ? momentum : '—'}</em> – <i>${ready ? opponentMomentum : '—'}</i></b></div>
             <div class="bar"><span class="home" style="width:${ready ? momentum : 50}%"></span><span class="away" style="width:${ready ? opponentMomentum : 50}%"></span></div>
-            <div class="chart">${momentumChart(candidate.fixtureId, momentum)}</div>
+            <div class="chart">${momentumChart(candidate.fixtureId, candidate.selectedSide, momentum)}</div>
           </div>
         </div>
         <div class="facts">
