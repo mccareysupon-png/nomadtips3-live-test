@@ -10,6 +10,7 @@
   <meta name="theme-color" content="#111315">
   <title>NOMADTIPS3 — Member #0001 TEST</title>
   <link rel="stylesheet" href="./member.css?v=202608071405">
+  <link rel="stylesheet" href="./member-settings.css?v=202608071430">
 </head>
 <body>
   <div class="shell">
@@ -22,11 +23,11 @@
       <div>
         <span class="eyebrow">NOMADTIPS3 MEMBER SYSTEM · TEST MEMBER 01</span>
         <h1>Member Dashboard</h1>
-        <p>พื้นที่สมาชิกสำหรับดูบอลเต็ง, บอลสด, สถิติส่วนตัว และการแจ้งเตือน โดยแยกจาก Owner Control และใช้ข้อมูลของชุด TEST</p>
+        <p>พื้นที่สมาชิกแบบแยกข้อมูล: เงื่อนไขของฉัน → ผลของฉัน → สถิติของฉัน → การแจ้งเตือนของฉัน โดยไม่แก้ Owner/System Default</p>
       </div>
       <div class="member-meta">
         <div><small>Member ID</small><b>#0001</b></div>
-        <div><small>Status</small><b class="good-text">ACTIVE</b></div>
+        <div><small>Status</small><b id="memberStatus" class="good-text">ACTIVE</b></div>
         <div><small>Environment</small><b>TEST</b></div>
       </div>
     </section>
@@ -37,35 +38,36 @@
       <button class="tab" type="button" data-tab="live">แดชบอร์ดบอลสด</button>
       <button class="tab" type="button" data-tab="stats">สถิติของฉัน</button>
       <button class="tab" type="button" data-tab="notifications">การแจ้งเตือนของฉัน</button>
+      <button class="tab" type="button" data-tab="settings">ตั้งค่าของฉัน</button>
     </nav>
 
     <section class="view active" data-view="overview">
       <div class="metric-grid" aria-label="Member overview metrics">
-        <div class="metric"><small>บอลเต็งชุดปัจจุบัน</small><b id="metricPicks">—</b><span>รายการที่สมาชิกเห็นในรอบปัจจุบัน</span></div>
-        <div class="metric"><small>Confidence เฉลี่ย</small><b id="metricConfidence">—</b><span>คำนวณจากบอลเต็งชุดปัจจุบัน</span></div>
-        <div class="metric"><small>Live Candidates</small><b id="metricLive">—</b><span>คู่ที่ระบบบอลสดกำลังติดตาม</span></div>
-        <div class="metric"><small>Personal Signals</small><b id="metricSignals">—</b><span>สัญญาณล่าสุดของ Member #0001</span></div>
+        <div class="metric"><small>บอลเต็งของฉัน</small><b id="metricPicks">—</b><span>เฉพาะชุดที่สร้างด้วยเงื่อนไข Member #0001</span></div>
+        <div class="metric"><small>Confidence เฉลี่ย</small><b id="metricConfidence">—</b><span>คำนวณจากชุดบอลเต็งของฉันเท่านั้น</span></div>
+        <div class="metric"><small>Live Candidates ของฉัน</small><b id="metricLive">—</b><span>Candidate namespace ของ Member #0001</span></div>
+        <div class="metric"><small>Personal Signals</small><b id="metricSignals">—</b><span>Signal ที่เป็นของ Member #0001 เท่านั้น</span></div>
       </div>
 
       <div class="overview-layout">
         <section class="panel">
           <h3>สถานะการใช้งานของฉัน</h3>
-          <p>หน้า Overview แสดงเฉพาะข้อมูลสรุปและสถานะสำคัญ ส่วนรายละเอียดใช้เมนูหลักด้านบนเพียงชุดเดียว</p>
+          <p>ข้อมูลในหน้านี้อ่านจาก member namespace เท่านั้น ข้อมูล Owner หรือ TEST ส่วนกลางจะไม่ถูกนับเป็นผลส่วนตัว</p>
           <div class="status-grid">
             <div class="status-item"><small>บอลเต็ง</small><strong id="overviewPicksState">กำลังโหลด…</strong></div>
-            <div class="status-item"><small>บอลสด</small><strong id="overviewLiveState">กำลังตรวจ Scanner…</strong></div>
+            <div class="status-item"><small>บอลสด</small><strong id="overviewLiveState">กำลังโหลด…</strong></div>
             <div class="status-item"><small>สถิติส่วนตัว</small><strong id="overviewStatsState">กำลังโหลด…</strong></div>
             <div class="status-item"><small>การแจ้งเตือน</small><strong id="overviewNotifyState">กำลังโหลด…</strong></div>
           </div>
-          <div class="status-line"><span id="overviewWorkerDot" class="dot"></span><span id="overviewWorkerText">กำลังตรวจ Worker…</span></div>
+          <div class="status-line"><span id="overviewWorkerDot" class="dot"></span><span id="overviewWorkerText">กำลังตรวจโครงสร้าง Worker…</span></div>
         </section>
 
         <aside class="panel">
           <h3>บัญชีสมาชิก</h3>
           <div class="profile-list">
             <div class="profile-row"><span>Member</span><b>#0001</b></div>
-            <div class="profile-row"><span>Role</span><b>TEST MEMBER</b></div>
-            <div class="profile-row"><span>Member Status</span><b class="good-text">ACTIVE</b></div>
+            <div class="profile-row"><span>Role</span><b id="memberRole">MEMBER</b></div>
+            <div class="profile-row"><span>Member Status</span><b id="profileStatus" class="good-text">ACTIVE</b></div>
             <div class="profile-row"><span>Statistics Scope</span><b>PERSONAL · 0001</b></div>
             <div class="profile-row"><span>Notification Scope</span><b>PERSONAL · 0001</b></div>
             <div class="profile-row"><span>Notification Channel</span><b id="overviewChannelState">กำลังตรวจ…</b></div>
@@ -75,29 +77,29 @@
     </section>
 
     <section class="view" data-view="ball-teng">
-      <div class="section-head"><h2>แดชบอร์ดบอลเต็ง</h2><span id="ballTengMeta">กำลังโหลดชุดปัจจุบัน…</span></div>
-      <div id="ballTengGrid" class="pick-grid"><div class="empty loading">กำลังโหลดข้อมูลบอลเต็ง…</div></div>
+      <div class="section-head"><h2>แดชบอร์ดบอลเต็งของฉัน</h2><span id="ballTengMeta">กำลังโหลด member set…</span></div>
+      <div id="ballTengGrid" class="pick-grid"><div class="empty loading">กำลังโหลดข้อมูลบอลเต็งของ Member #0001…</div></div>
     </section>
 
     <section class="view" data-view="live">
       <div class="metric-grid">
-        <div class="metric"><small>Scanner</small><b id="liveOnline">—</b><span id="liveGenerated">กำลังตรวจสถานะ</span></div>
-        <div class="metric"><small>กำลังติดตาม</small><b id="liveCandidateCount">—</b><span>Candidate states ล่าสุด</span></div>
-        <div class="metric"><small>ผ่าน Momentum</small><b id="livePassing">—</b><span>ผ่าน threshold ในรอบล่าสุด</span></div>
-        <div class="metric"><small>Triggered</small><b id="liveTriggered">—</b><span>Signal ที่ยืนยันแล้ว</span></div>
+        <div class="metric"><small>Member Engine</small><b id="liveOnline">—</b><span id="liveGenerated">ตรวจ namespace ส่วนตัว</span></div>
+        <div class="metric"><small>กำลังติดตาม</small><b id="liveCandidateCount">—</b><span>เฉพาะ candidate ของฉัน</span></div>
+        <div class="metric"><small>Triggered State</small><b id="livePassing">—</b><span>สถานะที่ผ่านเงื่อนไขของฉัน</span></div>
+        <div class="metric"><small>Signals</small><b id="liveTriggered">—</b><span>Signal ของ Member #0001</span></div>
       </div>
-      <div class="section-head"><h2>แดชบอร์ดบอลสด</h2><span id="liveMeta">Adaptive Scanner · Member #0001 view</span></div>
-      <div id="liveGrid" class="live-grid"><div class="empty loading">กำลังโหลดสถานะบอลสด…</div></div>
+      <div class="section-head"><h2>แดชบอร์ดบอลสดของฉัน</h2><span id="liveMeta">Member namespace · 0001</span></div>
+      <div id="liveGrid" class="live-grid"><div class="empty loading">กำลังโหลดสถานะบอลสดส่วนตัว…</div></div>
     </section>
 
     <section class="view" data-view="stats">
-      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>TEST records ที่ยังไม่มี memberId ใช้เป็นข้อมูลเริ่มต้นของสมาชิกคนแรก</span></div>
+      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>ไม่รวม record ที่ไม่มี member_id และไม่รวม Owner/System records</span></div>
       <div class="stats-grid">
-        <div class="stat-box"><small>Total Records</small><b id="statTotal">—</b><p>ประวัติที่ผูกกับ Member #0001</p></div>
+        <div class="stat-box"><small>Total Records</small><b id="statTotal">—</b><p>เฉพาะประวัติ Member #0001</p></div>
         <div class="stat-box"><small>Confirmed</small><b id="statSettled">—</b><p>ผลที่ยืนยันแล้ว</p></div>
-        <div class="stat-box"><small>Correct</small><b id="statCorrect">—</b><p>1X2 ถูก</p></div>
-        <div class="stat-box"><small>Incorrect</small><b id="statIncorrect">—</b><p>1X2 ผิด</p></div>
-        <div class="stat-box"><small>Accuracy</small><b id="statAccuracy">—</b><p>Correct / Confirmed decisions</p></div>
+        <div class="stat-box"><small>Correct</small><b id="statCorrect">—</b><p>ผลบวกที่ยืนยันแล้ว</p></div>
+        <div class="stat-box"><small>Incorrect</small><b id="statIncorrect">—</b><p>ผลลบที่ยืนยันแล้ว</p></div>
+        <div class="stat-box"><small>Accuracy</small><b id="statAccuracy">—</b><p>คำนวณจาก decision ของสมาชิกเท่านั้น</p></div>
       </div>
       <div class="section-head"><h2>ประวัติล่าสุด</h2><span id="statsMeta">กำลังโหลด…</span></div>
       <div class="history" id="historyTable"><div class="empty loading">กำลังโหลดสถิติส่วนตัว…</div></div>
@@ -107,27 +109,93 @@
       <div class="notice-layout">
         <section class="panel">
           <h3>ช่องแจ้งเตือนส่วนตัว · Member #0001</h3>
-          <p>หน้า TEST นี้แสดงสัญญาณของโปรไฟล์ #0001 ก่อน เมื่อเพิ่มสมาชิกใหม่ ระบบจะใช้ Member ID แยกข้อมูลและปลายทางแจ้งเตือนออกจากกัน</p>
+          <p>Notification log และ recipient ของสมาชิกแยกตาม Member ID ไม่ใช้สถานะรวมของ Owner/System</p>
           <div class="profile-list">
             <div class="profile-row"><span>Recipient</span><b>MEMBER #0001</b></div>
             <div class="profile-row"><span>Channel</span><b id="lineConfigured">กำลังตรวจ…</b></div>
-            <div class="profile-row"><span>Scanner</span><b id="notifyScanner">กำลังตรวจ…</b></div>
-            <div class="profile-row"><span>Latest Signal Count</span><b id="notifyCount">—</b></div>
+            <div class="profile-row"><span>Member Engine</span><b id="notifyScanner">กำลังตรวจ…</b></div>
+            <div class="profile-row"><span>Notification Log</span><b id="notifyCount">—</b></div>
           </div>
         </section>
         <aside class="panel">
           <h3>ขอบเขตข้อมูลสมาชิก</h3>
-          <p>สถิติและการแจ้งเตือนของสมาชิกใช้ namespace แยกกัน เพื่อไม่ให้สถานะของสมาชิกแต่ละคนปะปนกัน</p>
+          <p>เมื่อมี #0002 หรือ #0003 จะใช้ตารางเดียวกัน แต่ query ทุกครั้งต้องผูก member_id ของ session นั้น</p>
           <div class="status-line"><span class="dot good"></span><span>Member namespace: <b>0001</b></span></div>
         </aside>
       </div>
-      <div class="section-head"><h2>สัญญาณล่าสุดของฉัน</h2><span id="notifyMeta">กำลังโหลด…</span></div>
-      <div id="noticeList" class="notice-list"><div class="empty loading">กำลังโหลดการแจ้งเตือน…</div></div>
+      <div class="section-head"><h2>การแจ้งเตือนล่าสุดของฉัน</h2><span id="notifyMeta">กำลังโหลด…</span></div>
+      <div id="noticeList" class="notice-list"><div class="empty loading">กำลังโหลด notification log…</div></div>
     </section>
 
-    <div class="footer-note">NOMADTIPS3 · MEMBER SYSTEM TEST · MEMBER #0001 · Sports analysis interface only</div>
+    <section class="view" data-view="settings">
+      <div class="isolation-banner">
+        <strong>MEMBER-ONLY CONFIGURATION</strong>
+        <span>ค่าที่แก้ในหน้านี้เขียนลง member_id = 0001 เท่านั้น · ไม่แก้ Owner Config · ไม่ล้าง scanner/state ของชุดหลัก</span>
+      </div>
+
+      <div class="settings-layout">
+        <section class="panel settings-panel">
+          <div class="settings-head">
+            <div><h3>ตั้งค่าเงื่อนไขตรวจจับบอลสดของฉัน</h3><p>ใช้รูปแบบเดียวกับ Condition Control แต่บันทึกเป็น config ส่วนตัวของ Member #0001</p></div>
+            <span id="liveConfigVersion" class="version-chip">v—</span>
+          </div>
+          <form id="liveConfigForm" class="form-grid">
+            <label><span>ทีมที่ตรวจ</span><select name="side"><option value="HOME">เจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option><option value="BOTH">ทั้งสองทีม</option></select></label>
+            <label><span>ตลาดหลัก</span><select name="market"><option value="WIN">Win / 1X2</option><option value="AH">Asian Handicap</option></select></label>
+            <label><span>นาทีเริ่ม</span><input name="minuteMin" type="number" min="1" max="119"></label>
+            <label><span>นาทีสิ้นสุด</span><input name="minuteMax" type="number" min="1" max="120"></label>
+            <label><span>Odds ต่ำสุด</span><input name="oddsMin" type="number" min="1.01" step="0.01"></label>
+            <label><span>Odds สูงสุด</span><input name="oddsMax" type="number" min="1.01" step="0.01" placeholder="ไม่จำกัด"></label>
+            <label><span>AH ต่ำสุด</span><input name="ahMin" type="number" min="-5" max="5" step="0.25"></label>
+            <label><span>AH สูงสุด</span><input name="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="ไม่จำกัด"></label>
+            <label><span>Momentum ขั้นต่ำ %</span><input name="momentumMin" type="number" min="1" max="99"></label>
+            <label><span>Confirm รอบ</span><input name="confirmationRounds" type="number" min="1" max="10"></label>
+            <label><span>จำกัดผลต่างประตู</span><select name="goalGapLimited"><option value="false">ไม่จำกัด</option><option value="true">จำกัด</option></select></label>
+            <label><span>ผลต่างไม่เกิน (ลูก)</span><input name="maxGoalGap" type="number" min="0" max="20"></label>
+            <label><span>จำกัด Signal/วัน</span><select name="signalLimitEnabled"><option value="false">ไม่จำกัด</option><option value="true">จำกัด</option></select></label>
+            <label><span>Signal สูงสุด/วัน</span><input name="maxSignalsPerDay" type="number" min="1" max="100"></label>
+          </form>
+          <div class="settings-actions"><button data-config-action="live-default" type="button">ดีฟอลท์</button><button data-config-action="live-save" type="button">เซฟ Draft</button><button data-config-action="live-run" class="primary" type="button">เปิดใช้ของฉัน</button></div>
+          <div id="liveConfigMessage" class="config-message">กำลังโหลดค่าของสมาชิก…</div>
+        </section>
+
+        <section class="panel settings-panel">
+          <div class="settings-head">
+            <div><h3>ตั้งค่าเงื่อนไขคัดบอลเต็งของฉัน</h3><p>ค่าชุดนี้แยกจาก Owner Ball Teng Control และใช้เป็นเงื่อนไขของสมาชิกเท่านั้น</p></div>
+            <span id="ballConfigVersion" class="version-chip">v—</span>
+          </div>
+          <form id="ballConfigForm" class="form-grid">
+            <label><span>สถานะ</span><select name="enabled"><option value="true">เปิด</option><option value="false">ปิด</option></select></label>
+            <label><span>ตัดรอบเวลาไทย</span><input name="cutoffHourLocal" type="number" min="0" max="23"></label>
+            <label><span>ก่อนแข่งขั้นต่ำ (นาที)</span><input name="minimumLeadMinutes" type="number" min="0" max="720"></label>
+            <label><span>Odds 1X2 ขั้นต่ำ</span><input name="minimumMainOdds" type="number" min="1.01" step="0.01"></label>
+            <label><span>Confidence ต่ำสุด %</span><input name="minimumConfidence" type="number" min="1" max="99"></label>
+            <label><span>Confidence สูงสุด %</span><input name="maximumConfidence" type="number" min="1" max="99"></label>
+            <label><span>Overall ย้อนหลัง</span><input name="overallSample" type="number" min="1" max="20"></label>
+            <label><span>Home/Away ย้อนหลัง</span><input name="venueSample" type="number" min="1" max="20"></label>
+            <label><span>History Fetch</span><input name="historyFetch" type="number" min="1" max="100"></label>
+            <label><span>Sample ขั้นต่ำ</span><input name="minimumSample" type="number" min="1" max="20"></label>
+            <label><span>Strength ขั้นต่ำ</span><input name="minimumStrengthScore" type="number" min="0" max="5" step="0.01"></label>
+            <label><span>Overall PPG Edge</span><input name="minimumOverallPpgEdge" type="number" min="0" max="3" step="0.01"></label>
+            <label><span>Venue PPG Edge</span><input name="minimumVenuePpgEdge" type="number" min="0" max="3" step="0.01"></label>
+            <label><span>Fixtures สูงสุด</span><input name="maximumFixturesToAnalyze" type="number" min="0" max="2000"></label>
+            <label><span>Selections สูงสุด</span><input name="maximumSelections" type="number" min="0" max="500"><small>0 = ไม่จำกัด</small></label>
+            <label><span>Overall Weight %</span><input name="overallPpgWeightPct" type="number" min="0" max="100" step="1"></label>
+            <label><span>Venue Weight %</span><input name="venuePpgWeightPct" type="number" min="0" max="100" step="1"></label>
+            <label><span>Goal Diff Weight %</span><input name="goalDifferenceWeightPct" type="number" min="0" max="100" step="1"></label>
+            <label><span>Standing Weight %</span><input name="standingsStrengthWeightPct" type="number" min="0" max="100" step="1"></label>
+            <label><span>A/B Rank Mix %</span><input name="standingsDirectRankMixPct" type="number" min="0" max="100" step="1"></label>
+            <label><span>Ranked C Mix %</span><input name="standingsRankedCommonMixPct" type="number" min="0" max="100" step="1"></label>
+          </form>
+          <div class="settings-actions"><button data-config-action="ball-default" type="button">ดีฟอลท์</button><button data-config-action="ball-save" type="button">เซฟ Draft</button><button data-config-action="ball-run" class="primary" type="button">เปิดใช้ของฉัน</button></div>
+          <div id="ballConfigMessage" class="config-message">กำลังโหลดค่าของสมาชิก…</div>
+        </section>
+      </div>
+    </section>
+
+    <div class="footer-note">NOMADTIPS3 · MEMBER SYSTEM TEST · MEMBER #0001 · MEMBER DATA ISOLATION</div>
   </div>
 
-  <script type="module" src="./member.js?v=202608071405"></script>
+  <script type="module" src="./member.js?v=202608071430"></script>
 </body>
 </html>
