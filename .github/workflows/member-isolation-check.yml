@@ -1,0 +1,42 @@
+name: Member Isolation Check
+
+on:
+  pull_request:
+    paths:
+      - 'cloudflare-worker/src/member-*.js'
+      - 'cloudflare-worker/src/paper-entry.js'
+      - 'test-system/member-0001/**'
+      - 'scripts/check-member-isolation.mjs'
+      - 'docs/member-*.md'
+      - '.github/workflows/member-isolation-check.yml'
+  push:
+    branches:
+      - 'feature/member-0001-rollout-20260807'
+    paths:
+      - 'cloudflare-worker/src/member-*.js'
+      - 'cloudflare-worker/src/paper-entry.js'
+      - 'test-system/member-0001/**'
+      - 'scripts/check-member-isolation.mjs'
+      - 'docs/member-*.md'
+      - '.github/workflows/member-isolation-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  member-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check Worker member modules
+        run: |
+          node --check cloudflare-worker/src/member-config.js
+          node --check cloudflare-worker/src/member-data.js
+          node --check cloudflare-worker/src/paper-entry.js
+      - name: Syntax check Member #0001 frontend
+        run: node --check test-system/member-0001/member.js
+      - name: Verify isolation contract
+        run: node scripts/check-member-isolation.mjs
