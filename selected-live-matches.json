@@ -7,14 +7,17 @@
   "rules": {
     "market": "1X2 team win",
     "odds_min": 1.7,
-    "confidence_fixed": 58,
     "manual_analysis_only": false,
     "automatic_selection": true,
     "unlimited_qualifying_matches": true,
     "overall_sample": 6,
     "venue_sample": 5,
     "common_opponents": true,
-    "separate_market_statistics": true
+    "separate_market_statistics": true,
+    "confidence_minimum": 58,
+    "confidence_maximum": 85,
+    "confidence_dynamic": true,
+    "confidence_policy": "Calculated per match from NOMAD weighted strength; only confidence >= 58% is published; maximum displayed confidence 85%"
   },
   "matches": [
     {
@@ -39,13 +42,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 62,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.25,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -57,7 +60,7 @@
         "doubleChance": {
           "pick": "X2 — Kidderpore or Draw",
           "odds": 1.6,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -70,7 +73,7 @@
         "asianHandicap": {
           "pick": "Kidderpore 0",
           "odds": 2.13,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -124,7 +127,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 3,
-        "commonOpponentEdge": -0.4444
+        "commonOpponentEdge": -0.4444,
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -152,13 +157,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 66,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.06,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -170,7 +175,7 @@
         "doubleChance": {
           "pick": "1X — Melbourne City or Draw",
           "odds": 2.15,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -183,7 +188,7 @@
         "asianHandicap": {
           "pick": "Melbourne City -0.5",
           "odds": null,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "N/A",
           "oddsStatus": "N/A",
           "oddsSource": "NOT FOUND",
@@ -234,7 +239,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 66,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -262,13 +269,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 61,
       "predicted_score": "3–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.67,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -280,7 +287,7 @@
         "doubleChance": {
           "pick": "1X — Gyeongnam FC or Draw",
           "odds": 1.83,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -293,7 +300,7 @@
         "asianHandicap": {
           "pick": "Gyeongnam FC 0",
           "odds": 3.0,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -347,7 +354,9 @@
           "btts_rate": 1.0
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 61,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -375,13 +384,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 66,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.72,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -393,7 +402,7 @@
         "doubleChance": {
           "pick": "X2 — Arsenal or Draw",
           "odds": 1.33,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -406,7 +415,7 @@
         "asianHandicap": {
           "pick": "Arsenal -0.5",
           "odds": 1.35,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Pinnacle",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -460,7 +469,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": -0.6667
+        "commonOpponentEdge": -0.6667,
+        "confidenceScore": 66,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:40:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -488,13 +499,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 78,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.85,
-          "confidence": 58,
+          "confidence": 78,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -506,7 +517,7 @@
         "doubleChance": {
           "pick": "X2 — Gloria Bistriţa or Draw",
           "odds": 1.55,
-          "confidence": 58,
+          "confidence": 78,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -519,7 +530,7 @@
         "asianHandicap": {
           "pick": "Gloria Bistriţa -0.5",
           "odds": 1.6,
-          "confidence": 58,
+          "confidence": 78,
           "bookmaker": "Pinnacle",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -573,7 +584,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 78,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -601,13 +614,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 66,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.45,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Unibet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -619,7 +632,7 @@
         "doubleChance": {
           "pick": "X2 — Wigry Suwałki or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -632,7 +645,7 @@
         "asianHandicap": {
           "pick": "Wigry Suwałki -0.5",
           "odds": 1.23,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Superbet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -686,7 +699,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": -0.6667
+        "commonOpponentEdge": -0.6667,
+        "confidenceScore": 66,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -714,13 +729,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 64,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.73,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -732,7 +747,7 @@
         "doubleChance": {
           "pick": "X2 — Sardarapat or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -745,7 +760,7 @@
         "asianHandicap": {
           "pick": "Sardarapat 0",
           "odds": 2.05,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -799,7 +814,9 @@
           "btts_rate": 0.8
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -827,13 +844,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 69,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -845,7 +862,7 @@
         "doubleChance": {
           "pick": "1X — Mławianka Mława or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -858,7 +875,7 @@
         "asianHandicap": {
           "pick": "Mławianka Mława -0.5",
           "odds": 2.0,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -912,7 +929,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": -1.0
+        "commonOpponentEdge": -1.0,
+        "confidenceScore": 69,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:32:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -940,13 +959,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 70,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.83,
-          "confidence": 58,
+          "confidence": 70,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -958,7 +977,7 @@
         "doubleChance": {
           "pick": "1X — Vysočina Jihlava or Draw",
           "odds": 1.25,
-          "confidence": 58,
+          "confidence": 70,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -971,7 +990,7 @@
         "asianHandicap": {
           "pick": "Vysočina Jihlava -0.5",
           "odds": 2.0,
-          "confidence": 58,
+          "confidence": 70,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1025,7 +1044,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 70,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -1053,13 +1074,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 73,
       "predicted_score": "4–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.22,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1071,7 +1092,7 @@
         "doubleChance": {
           "pick": "1X — Atlantis or Draw",
           "odds": 1.28,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1084,7 +1105,7 @@
         "asianHandicap": {
           "pick": "Atlantis -0.5",
           "odds": 1.85,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1138,7 +1159,9 @@
           "btts_rate": 0.8
         },
         "commonOpponentCount": 4,
-        "commonOpponentEdge": 0.3333
+        "commonOpponentEdge": 0.3333,
+        "confidenceScore": 73,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1166,13 +1189,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 67,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.46,
-          "confidence": 58,
+          "confidence": 67,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1184,7 +1207,7 @@
         "doubleChance": {
           "pick": "1X — Stal Brzeg or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1197,7 +1220,7 @@
         "asianHandicap": {
           "pick": "Stal Brzeg -0.5",
           "odds": 1.98,
-          "confidence": 58,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1251,7 +1274,9 @@
           "btts_rate": 1.0
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 67,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1279,13 +1304,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 63,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1297,7 +1322,7 @@
         "doubleChance": {
           "pick": "X2 — HPS or Draw",
           "odds": 1.7,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1310,7 +1335,7 @@
         "asianHandicap": {
           "pick": "HPS 0",
           "odds": 2.35,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1364,7 +1389,9 @@
           "btts_rate": 0.2
         },
         "commonOpponentCount": 4,
-        "commonOpponentEdge": -0.25
+        "commonOpponentEdge": -0.25,
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1392,13 +1419,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 73,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1410,7 +1437,7 @@
         "doubleChance": {
           "pick": "1X — FC Liefering or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1423,7 +1450,7 @@
         "asianHandicap": {
           "pick": "FC Liefering -0.5",
           "odds": 1.95,
-          "confidence": 58,
+          "confidence": 73,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1477,7 +1504,9 @@
           "btts_rate": 0.8
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 73,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:31:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -1505,13 +1534,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 66,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.6,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1523,7 +1552,7 @@
         "doubleChance": {
           "pick": "1X — Albacete or Draw",
           "odds": 1.3,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1536,7 +1565,7 @@
         "asianHandicap": {
           "pick": "Albacete 0",
           "odds": 1.58,
-          "confidence": 58,
+          "confidence": 66,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1590,7 +1619,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 66,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -1618,13 +1649,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 64,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.84,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1636,7 +1667,7 @@
         "doubleChance": {
           "pick": "1X — Torpedo Moskva or Draw",
           "odds": 1.37,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1649,7 +1680,7 @@
         "asianHandicap": {
           "pick": "Torpedo Moskva 0",
           "odds": 1.74,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Pinnacle",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1703,7 +1734,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": -0.5
+        "commonOpponentEdge": -0.5,
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-06T21:19:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -1731,13 +1764,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 62,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.57,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1749,7 +1782,7 @@
         "doubleChance": {
           "pick": "X2 — Angelholms FF or Draw",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1762,7 +1795,7 @@
         "asianHandicap": {
           "pick": "Angelholms FF 0",
           "odds": 2.02,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1816,7 +1849,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1844,13 +1879,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 61,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1862,7 +1897,7 @@
         "doubleChance": {
           "pick": "X2 — Qviding FIF or Draw",
           "odds": 1.4,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1875,7 +1910,7 @@
         "asianHandicap": {
           "pick": "Qviding FIF 0",
           "odds": 1.72,
-          "confidence": 58,
+          "confidence": 61,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1929,7 +1964,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": -0.3333
+        "commonOpponentEdge": -0.3333,
+        "confidenceScore": 61,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-06T16:15:39+00:00",
       "oddsMarketName": "Match Winner",
@@ -1957,13 +1994,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 63,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.4,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1975,7 +2012,7 @@
         "doubleChance": {
           "pick": "1X — Favoritner AC or Draw",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1988,7 +2025,7 @@
         "asianHandicap": {
           "pick": "Favoritner AC 0",
           "odds": 1.98,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2042,7 +2079,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -2070,13 +2109,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 64,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2088,7 +2127,7 @@
         "doubleChance": {
           "pick": "X2 — Lindome or Draw",
           "odds": 1.8,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2101,7 +2140,7 @@
         "asianHandicap": {
           "pick": "Lindome 0",
           "odds": 2.38,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2155,7 +2194,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 1,
-        "commonOpponentEdge": 0.6667
+        "commonOpponentEdge": 0.6667,
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -2183,13 +2224,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 62,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.5,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2201,7 +2242,7 @@
         "doubleChance": {
           "pick": "X2 — Karlberg or Draw",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2214,7 +2255,7 @@
         "asianHandicap": {
           "pick": "Karlberg 0",
           "odds": 1.95,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2268,7 +2309,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": -0.3333
+        "commonOpponentEdge": -0.3333,
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:17:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -2296,13 +2339,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 62,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2314,7 +2357,7 @@
         "doubleChance": {
           "pick": "1X — SC Kriens or Draw",
           "odds": 1.8,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2327,7 +2370,7 @@
         "asianHandicap": {
           "pick": "SC Kriens 0",
           "odds": 2.68,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2381,7 +2424,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": 0.3333
+        "commonOpponentEdge": 0.3333,
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-06T21:05:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -2409,13 +2454,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 62,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.53,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2427,7 +2472,7 @@
         "doubleChance": {
           "pick": "X2 — FC WIL 1900 or Draw",
           "odds": 1.8,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2440,7 +2485,7 @@
         "asianHandicap": {
           "pick": "FC WIL 1900 0",
           "odds": 2.75,
-          "confidence": 58,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2494,7 +2539,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": -0.3333
+        "commonOpponentEdge": -0.3333,
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:12:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -2522,13 +2569,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 69,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2540,7 +2587,7 @@
         "doubleChance": {
           "pick": "X2 — Excelsior or Draw",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2553,7 +2600,7 @@
         "asianHandicap": {
           "pick": "Excelsior -0.5",
           "odds": 1.52,
-          "confidence": 58,
+          "confidence": 69,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2607,7 +2654,9 @@
           "btts_rate": 0.8
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 69,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:32+00:00",
       "oddsMarketName": "Match Winner",
@@ -2635,13 +2684,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 65,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.0,
-          "confidence": 58,
+          "confidence": 65,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2653,7 +2702,7 @@
         "doubleChance": {
           "pick": "X2 — Oeste U20 or Draw",
           "odds": 1.4,
-          "confidence": 58,
+          "confidence": 65,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2666,7 +2715,7 @@
         "asianHandicap": {
           "pick": "Oeste U20 0",
           "odds": 1.78,
-          "confidence": 58,
+          "confidence": 65,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2720,7 +2769,9 @@
           "btts_rate": 0.6
         },
         "commonOpponentCount": 3,
-        "commonOpponentEdge": -0.3333
+        "commonOpponentEdge": -0.3333,
+        "confidenceScore": 65,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-06T20:53:16+00:00",
       "oddsMarketName": "Match Winner",
@@ -2748,13 +2799,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 64,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.0,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2766,7 +2817,7 @@
         "doubleChance": {
           "pick": "X2 — Flamengo SP U20 or Draw",
           "odds": 1.18,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2779,7 +2830,7 @@
         "asianHandicap": {
           "pick": "Flamengo SP U20 0",
           "odds": 1.31,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2833,7 +2884,9 @@
           "btts_rate": 0.8
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": -0.6667
+        "commonOpponentEdge": -0.6667,
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:01:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -2861,13 +2914,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 64,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.57,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2879,7 +2932,7 @@
         "doubleChance": {
           "pick": "X2 — Deportivo Español or Draw",
           "odds": 1.5,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2892,7 +2945,7 @@
         "asianHandicap": {
           "pick": "Deportivo Español 0",
           "odds": 2.2,
-          "confidence": 58,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2946,7 +2999,9 @@
           "btts_rate": 0.4
         },
         "commonOpponentCount": 0,
-        "commonOpponentEdge": 0.0
+        "commonOpponentEdge": 0.0,
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:13:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -2974,13 +3029,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 58,
+      "confidence": 63,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.06,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Unibet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2992,7 +3047,7 @@
         "doubleChance": {
           "pick": "1X — XV de Piracicaba U20 or Draw",
           "odds": 1.2,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -3005,7 +3060,7 @@
         "asianHandicap": {
           "pick": "XV de Piracicaba U20 0",
           "odds": 1.38,
-          "confidence": 58,
+          "confidence": 63,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -3059,7 +3114,9 @@
           "btts_rate": 0.2
         },
         "commonOpponentCount": 2,
-        "commonOpponentEdge": 0.3333
+        "commonOpponentEdge": 0.3333,
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:01:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -3082,5 +3139,20 @@
     "windowEndLocal": "2026-08-08T08:00:00+07:00",
     "generatedAt": "2026-08-07T02:35:09Z",
     "report": "auto-selection-report.json"
+  },
+  "confidencePolicy": {
+    "type": "DYNAMIC_MINIMUM",
+    "minimum": 58,
+    "maximum": 85,
+    "scale": 15.0,
+    "formula": "round(50 + absoluteStrength × 15), capped at 85",
+    "inputs": [
+      "overall PPG",
+      "home/away PPG",
+      "goal-difference rate",
+      "common-opponent edge"
+    ],
+    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
+    "rejectedBelowMinimum": 0
   }
 }
