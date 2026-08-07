@@ -2,7 +2,7 @@ const API_BASE = 'https://v3.football.api-sports.io';
 
 export const SHARED_LIVE_CACHE_SECONDS = 15;
 export const SHARED_STATS_CACHE_SECONDS = 60;
-export const SHARED_ODDS_CACHE_SECONDS = 5;
+export const SHARED_ODDS_CACHE_SECONDS = 15;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
