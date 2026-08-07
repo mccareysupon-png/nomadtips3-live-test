@@ -9,6 +9,7 @@ on:
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/apply_confidence_policy.py'
       - '.github/scripts/finalize_ball_teng_analysis.py'
+      - '.github/scripts/enrich_selected_odds.py'
       - '.github/scripts/prepare_ball_teng_control.py'
       - '.github/scripts/consume_ball_teng_control.py'
       - 'config/nomad-auto-rules.json'
@@ -66,11 +67,35 @@ jobs:
 
           python3 .github/scripts/run_ball_teng_selector.py
 
+          selection_regenerated=false
           if git diff --quiet -- selected-live-matches.json; then
             echo 'No new ball-teng set generated; current locked set stays unchanged.'
           else
             python3 .github/scripts/apply_confidence_policy.py
             python3 .github/scripts/finalize_ball_teng_analysis.py
+            selection_regenerated=true
+          fi
+
+          needs_ou_enrichment="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('selected-live-matches.json')
+          try:
+              data = json.loads(path.read_text(encoding='utf-8'))
+          except Exception:
+              print('0')
+              raise SystemExit
+          matches = data.get('matches') or []
+          missing = any('overUnder' not in (match.get('markets') or {}) for match in matches)
+          print('1' if missing else '0')
+          PY
+          )"
+
+          if [ "$selection_regenerated" = true ] || [ "$needs_ou_enrichment" = "1" ]; then
+            echo 'Enriching independent O/U 2.5 market and real API odds once for this selected set.'
+            python3 .github/scripts/enrich_selected_odds.py
+          else
+            echo 'O/U 2.5 already initialized for this selected set; skipping repeated odds enrichment.'
           fi
 
           # Dashboard settings are runtime configuration; repository defaults remain the fallback.
