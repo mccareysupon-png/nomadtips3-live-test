@@ -66,7 +66,7 @@ def fetch_control():
         CONTROL_URL,
         headers={
             'Accept': 'application/json',
-            'User-Agent': 'nomadtips3-ball-teng-selector/2',
+            'User-Agent': 'nomadtips3-ball-teng-selector/3',
         },
     )
     with urllib.request.urlopen(request, timeout=12) as response:
@@ -74,6 +74,25 @@ def fetch_control():
     if not payload.get('ok') or not isinstance(payload.get('active'), dict):
         raise RuntimeError(payload.get('error') or 'invalid ball-teng control payload')
     return payload
+
+
+def post_control(action, version, **extra):
+    payload = {'action': action, 'version': int(version), **extra}
+    request = urllib.request.Request(
+        CONTROL_URL,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'nomadtips3-ball-teng-selector/3',
+        },
+        method='POST',
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        result = json.load(response)
+    if not result.get('ok'):
+        raise RuntimeError(result.get('error') or f'{action} failed')
+    return result
 
 
 def main():
@@ -84,6 +103,7 @@ def main():
     append_env('NOMAD_CONTROL_VERSION', '0')
     append_env('NOMAD_CONTROL_CHANGED', '0')
     append_env('NOMAD_CONTROL_FORCE', '0')
+    append_env('NOMAD_ADD_K_RUN', '0')
 
     try:
         payload = fetch_control()
@@ -108,7 +128,8 @@ def main():
         'Use direct A-vs-B league rank and rank-weighted shared opponent C. '
         'The legacy unranked common-opponent term is retired.'
     )
-    if rules.get('add_k_the_king_of_soccer'):
+    add_k = bool(rules.get('add_k_the_king_of_soccer'))
+    if add_k:
         nested['preset'] = 'Add K The King of Soccer'
         nested['data_quality_policy'] = (
             'Strict preset: require adequate recent samples and covered league standings; '
@@ -118,17 +139,31 @@ def main():
 
     previous = int(state.get('lastControlVersion') or 0)
     changed = version > 0 and version != previous
-    # The first connection establishes a baseline without unexpectedly replacing
-    # a locked set. Every later activated version is an explicit owner Run.
     force = version > 0 and previous > 0 and version > previous
 
     append_env('NOMAD_CONTROL_AVAILABLE', '1')
     append_env('NOMAD_CONTROL_VERSION', str(version))
     append_env('NOMAD_CONTROL_CHANGED', '1' if changed else '0')
     append_env('NOMAD_CONTROL_FORCE', '1' if force else '0')
+    append_env('NOMAD_ADD_K_RUN', '1' if add_k and force else '0')
     if force:
         append_env('FORCE_AUTO_SELECT', '1')
         append_env('FORCE_AUTO_RESELECT', '1')
+
+    run_state_update = None
+    if add_k and force:
+        try:
+            run_state_update = post_control(
+                'mark-add-k-analyzing',
+                version,
+                message='Scheduler accepted this Add K run and started analysis.'
+            ).get('addKRun')
+        except Exception as error:
+            print(json.dumps({
+                'status': 'ADD_K_RUN_STATE_WARNING',
+                'version': version,
+                'error': str(error),
+            }, ensure_ascii=False))
 
     print(json.dumps({
         'status': 'CONTROL_APPLIED_TO_RUNTIME',
@@ -138,7 +173,8 @@ def main():
         'forceReselect': force,
         'source': CONTROL_URL,
         'presetKey': rules.get('preset_key'),
-        'addKTheKingOfSoccer': bool(rules.get('add_k_the_king_of_soccer')),
+        'addKTheKingOfSoccer': add_k,
+        'addKRunState': run_state_update,
         'minimumConfidence': rules.get('minimum_confidence'),
         'minimumMainOdds': rules.get('minimum_main_odds'),
         'minimumSample': rules.get('minimum_sample'),
