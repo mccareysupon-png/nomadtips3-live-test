@@ -45,12 +45,17 @@ CREATE TABLE IF NOT EXISTS member_notification_settings (
   updated_at INTEGER NOT NULL
 )`;
 
+const TEST_BOOTSTRAP_MEMBER_ID = '0001';
 let schemaReady = false;
 
-function memberIdFromUrl(url) {
-  const raw = String(url.searchParams.get('member') || '').trim();
+export function normalizeMemberId(value) {
+  const raw = String(value || '').trim();
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(raw)) return null;
   return raw.padStart(4, '0');
+}
+
+function memberIdFromUrl(url) {
+  return normalizeMemberId(url.searchParams.get('member'));
 }
 
 function parseStored(value, normalizer, fallback) {
@@ -73,23 +78,48 @@ async function ensureSchema(env) {
   schemaReady = true;
 }
 
-async function ensureMember(env, memberId) {
+async function seedLiveConfig(env) {
+  let seed = normalizeConditionConfig(DEFAULT_CONDITION_CONFIG);
+  try {
+    const system = await getConditionConfigState(env);
+    seed = normalizeConditionConfig(system.active || seed);
+  } catch {}
+  return seed;
+}
+
+async function seedBallTengConfig(env) {
+  let seed = normalizeBallTengConfig(DEFAULT_BALL_TENG_CONFIG);
+  try {
+    const system = await getBallTengConfigState(env);
+    seed = normalizeBallTengConfig(system.active || seed);
+  } catch {}
+  return seed;
+}
+
+export async function provisionMember(env, rawMemberId, options = {}) {
   await ensureSchema(env);
+  const memberId = normalizeMemberId(rawMemberId);
+  if (!memberId) throw new Error('Valid member id is required');
+
   const now = Date.now();
-  await env.DB.prepare(`
-    INSERT OR IGNORE INTO member_profiles (member_id, role, status, created_at, updated_at)
-    VALUES (?, 'MEMBER', 'ACTIVE', ?, ?)
-  `).bind(memberId, now, now).run();
+  const role = String(options.role || 'MEMBER').toUpperCase() === 'MEMBER' ? 'MEMBER' : 'MEMBER';
+  const status = ['ACTIVE', 'PENDING', 'SUSPENDED', 'EXPIRED'].includes(String(options.status || 'ACTIVE').toUpperCase())
+    ? String(options.status || 'ACTIVE').toUpperCase()
+    : 'ACTIVE';
+
+  const existing = await env.DB.prepare('SELECT member_id FROM member_profiles WHERE member_id = ?')
+    .bind(memberId).first();
+  if (!existing) {
+    await env.DB.prepare(`
+      INSERT INTO member_profiles (member_id, role, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(memberId, role, status, now, now).run();
+  }
 
   const liveRow = await env.DB.prepare('SELECT member_id FROM member_live_config WHERE member_id = ?')
     .bind(memberId).first();
   if (!liveRow) {
-    let seed = normalizeConditionConfig(DEFAULT_CONDITION_CONFIG);
-    try {
-      const system = await getConditionConfigState(env);
-      seed = normalizeConditionConfig(system.active || seed);
-    } catch {}
-    const json = JSON.stringify(seed);
+    const json = JSON.stringify(await seedLiveConfig(env));
     await env.DB.prepare(`
       INSERT INTO member_live_config (member_id, draft_json, active_json, updated_at, activated_at)
       VALUES (?, ?, ?, ?, ?)
@@ -99,12 +129,7 @@ async function ensureMember(env, memberId) {
   const ballRow = await env.DB.prepare('SELECT member_id FROM member_ball_teng_config WHERE member_id = ?')
     .bind(memberId).first();
   if (!ballRow) {
-    let seed = normalizeBallTengConfig(DEFAULT_BALL_TENG_CONFIG);
-    try {
-      const system = await getBallTengConfigState(env);
-      seed = normalizeBallTengConfig(system.active || seed);
-    } catch {}
-    const json = JSON.stringify(seed);
+    const json = JSON.stringify(await seedBallTengConfig(env));
     await env.DB.prepare(`
       INSERT INTO member_ball_teng_config (member_id, draft_json, active_json, updated_at, activated_at)
       VALUES (?, ?, ?, ?, ?)
@@ -115,18 +140,37 @@ async function ensureMember(env, memberId) {
     INSERT OR IGNORE INTO member_notification_settings (member_id, enabled, channel, recipient_ref, updated_at)
     VALUES (?, 1, 'LINE', NULL, ?)
   `).bind(memberId, now).run();
+
+  return memberId;
+}
+
+async function requireMember(env, rawMemberId) {
+  await ensureSchema(env);
+  const memberId = normalizeMemberId(rawMemberId);
+  if (!memberId) return null;
+
+  let profile = await env.DB.prepare('SELECT * FROM member_profiles WHERE member_id = ?')
+    .bind(memberId).first();
+
+  // TEST-only bootstrap for the first member. Future signups must call provisionMember explicitly.
+  if (!profile && memberId === TEST_BOOTSTRAP_MEMBER_ID) {
+    await provisionMember(env, memberId, { status: 'ACTIVE' });
+    profile = await env.DB.prepare('SELECT * FROM member_profiles WHERE member_id = ?')
+      .bind(memberId).first();
+  }
+
+  return profile || null;
 }
 
 async function profileState(env, memberId) {
-  await ensureMember(env, memberId);
-  const [profile, notification] = await Promise.all([
-    env.DB.prepare('SELECT * FROM member_profiles WHERE member_id = ?').bind(memberId).first(),
-    env.DB.prepare('SELECT * FROM member_notification_settings WHERE member_id = ?').bind(memberId).first()
-  ]);
+  const profile = await requireMember(env, memberId);
+  if (!profile) return null;
+  const notification = await env.DB.prepare('SELECT * FROM member_notification_settings WHERE member_id = ?')
+    .bind(memberId).first();
   return {
     memberId,
-    role: profile?.role || 'MEMBER',
-    status: profile?.status || 'ACTIVE',
+    role: profile.role || 'MEMBER',
+    status: profile.status || 'ACTIVE',
     notification: {
       enabled: Boolean(Number(notification?.enabled ?? 1)),
       channel: notification?.channel || 'LINE',
@@ -136,38 +180,46 @@ async function profileState(env, memberId) {
 }
 
 async function liveState(env, memberId) {
-  await ensureMember(env, memberId);
+  const profile = await requireMember(env, memberId);
+  if (!profile) return null;
   const row = await env.DB.prepare('SELECT * FROM member_live_config WHERE member_id = ?').bind(memberId).first();
-  const active = parseStored(row?.active_json, normalizeConditionConfig, DEFAULT_CONDITION_CONFIG);
-  const draft = parseStored(row?.draft_json, normalizeConditionConfig, active);
+  if (!row) throw new Error(`Member ${memberId} live config is missing`);
+  const active = parseStored(row.active_json, normalizeConditionConfig, DEFAULT_CONDITION_CONFIG);
+  const draft = parseStored(row.draft_json, normalizeConditionConfig, active);
   return {
     memberId,
     defaults: normalizeConditionConfig(DEFAULT_CONDITION_CONFIG),
     draft,
     active,
-    updatedAt: row?.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
-    activatedAt: row?.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
-    version: Number(row?.activated_at || 0)
+    updatedAt: row.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
+    activatedAt: row.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
+    version: Number(row.activated_at || 0)
   };
 }
 
 async function ballTengState(env, memberId) {
-  await ensureMember(env, memberId);
+  const profile = await requireMember(env, memberId);
+  if (!profile) return null;
   const row = await env.DB.prepare('SELECT * FROM member_ball_teng_config WHERE member_id = ?').bind(memberId).first();
-  const active = parseStored(row?.active_json, normalizeBallTengConfig, DEFAULT_BALL_TENG_CONFIG);
-  const draft = parseStored(row?.draft_json, normalizeBallTengConfig, active);
+  if (!row) throw new Error(`Member ${memberId} Ball Teng config is missing`);
+  const active = parseStored(row.active_json, normalizeBallTengConfig, DEFAULT_BALL_TENG_CONFIG);
+  const draft = parseStored(row.draft_json, normalizeBallTengConfig, active);
   return {
     memberId,
     defaults: normalizeBallTengConfig(DEFAULT_BALL_TENG_CONFIG),
     draft,
     active,
-    updatedAt: row?.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
-    activatedAt: row?.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
-    version: Number(row?.activated_at || 0)
+    updatedAt: row.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
+    activatedAt: row.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
+    version: Number(row.activated_at || 0)
   };
 }
 
 async function writeConfig(env, memberId, kind, action, config) {
+  const profile = await requireMember(env, memberId);
+  if (!profile) throw new Error('Member not provisioned');
+  if (String(profile.status).toUpperCase() !== 'ACTIVE') throw new Error(`Member ${memberId} is not ACTIVE`);
+
   const now = Date.now();
   const isLive = kind === 'live';
   const table = isLive ? 'member_live_config' : 'member_ball_teng_config';
@@ -187,18 +239,24 @@ async function writeConfig(env, memberId, kind, action, config) {
 
 export async function getActiveMemberConditionConfig(env, memberId) {
   const state = await liveState(env, memberId);
-  return { ...state.active, version: state.version, memberId };
+  if (!state) throw new Error('Member not provisioned');
+  return { ...state.active, version: state.version, memberId: state.memberId };
 }
 
 export async function getActiveMemberBallTengConfig(env, memberId) {
   const state = await ballTengState(env, memberId);
-  return { ...state.active, version: state.version, memberId };
+  if (!state) throw new Error('Member not provisioned');
+  return { ...state.active, version: state.version, memberId: state.memberId };
 }
 
 export async function handleMemberConfig(request, env, url) {
   const memberId = memberIdFromUrl(url);
   if (!memberId) return { status: 400, data: { ok: false, error: 'Valid member id is required' } };
-  await ensureMember(env, memberId);
+
+  const profile = await requireMember(env, memberId);
+  if (!profile) {
+    return { status: 404, data: { ok: false, error: 'Member is not provisioned' } };
+  }
 
   if (url.pathname === '/member-profile') {
     if (request.method !== 'GET') return { status: 405, data: { ok: false, error: 'Method not allowed' } };
