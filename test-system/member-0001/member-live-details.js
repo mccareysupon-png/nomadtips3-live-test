@@ -1,6 +1,7 @@
 const MEMBER_ID = '0001';
 const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
 const $ = selector => document.querySelector(selector);
+const LIVE_FRESH_MS = 3 * 60_000;
 let latestLivePayload = null;
 
 const STAT_ROWS = [
@@ -48,6 +49,29 @@ function fmtOdds(value) {
   return n !== null && n > 0 ? n.toFixed(2) : 'N/A';
 }
 
+function formatTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (!Number.isFinite(d.getTime())) return '—';
+  return new Intl.DateTimeFormat('th-TH', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    timeZone: 'Asia/Bangkok'
+  }).format(d);
+}
+
+function timeAge(value, now = Date.now()) {
+  if (!value) return null;
+  const n = typeof value === 'number' ? value : new Date(value).getTime();
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, now - n);
+}
+
+function ageText(ms) {
+  if (ms === null) return 'ไม่ทราบอายุข้อมูล';
+  if (ms < 60_000) return `${Math.max(0, Math.round(ms / 1000))} วินาทีที่แล้ว`;
+  return `${Math.max(1, Math.round(ms / 60_000))} นาทีที่แล้ว`;
+}
+
 async function requestJson(path) {
   const url = `${WORKER}${path}?member=${encodeURIComponent(MEMBER_ID)}&_=${Date.now()}`;
   const response = await fetch(url, { cache: 'no-store' });
@@ -72,6 +96,18 @@ function ensurePerformanceSummary() {
   engineGrid.insertAdjacentElement('afterend', grid);
 }
 
+function ensureFreshnessBanner() {
+  const liveView = $('.view[data-view="live"]');
+  if (!liveView || $('#memberLiveFreshness')) return;
+  const engineGrid = liveView.querySelector('.metric-grid');
+  if (!engineGrid) return;
+  const banner = document.createElement('div');
+  banner.id = 'memberLiveFreshness';
+  banner.className = 'member-live-freshness waiting';
+  banner.innerHTML = '<strong>กำลังตรวจสอบความสดของข้อมูล…</strong><span>ยังไม่ยืนยันว่าเป็นข้อมูลสดล่าสุด</span>';
+  engineGrid.insertAdjacentElement('afterend', banner);
+}
+
 function updatePerformanceSummary(payload) {
   ensurePerformanceSummary();
   const records = Array.isArray(payload?.records) ? payload.records : [];
@@ -88,6 +124,103 @@ function updatePerformanceSummary(payload) {
   $('#memberLiveLosses').textContent = losses.length;
   $('#memberLiveAvgOdds').textContent = avgOdds === null ? '—' : avgOdds.toFixed(2);
   $('#memberLiveWinRate').textContent = winRate === null ? '—' : `${winRate.toFixed(2)}%`;
+}
+
+function overallFreshness(payload) {
+  const status = String(payload?.engine?.status || '').toUpperCase();
+  const lastScanAt = payload?.engine?.lastScanAt || null;
+  const age = timeAge(lastScanAt);
+  if (status === 'BACKGROUND_ERROR') {
+    return { kind: 'error', label: 'BACKGROUND ERROR', live: false, age, lastScanAt, detail: payload?.engine?.error || 'รอบสแกนล่าสุดทำงานผิดพลาด' };
+  }
+  if (!lastScanAt || status === 'WAITING_FOR_BACKGROUND_SCAN') {
+    return { kind: 'waiting', label: 'WAITING', live: false, age, lastScanAt, detail: 'ยังไม่มีรอบสแกนที่ยืนยันความสดของข้อมูล' };
+  }
+  if (status !== 'BACKGROUND_ACTIVE' || age === null || age > LIVE_FRESH_MS) {
+    return { kind: 'stale', label: 'STALE DATA', live: false, age, lastScanAt, detail: 'ข้อมูลเกินช่วงความสด 3 นาที จึงไม่แสดงเป็น Live' };
+  }
+  return { kind: 'live', label: 'LIVE', live: true, age, lastScanAt, detail: 'Member Live Engine อัปเดตอยู่ในช่วงความสดที่กำหนด' };
+}
+
+function rowFreshness(row, overall) {
+  const age = timeAge(numeric(row?.updated_at));
+  if (!overall.live) return { ...overall, rowAge: age };
+  if (age === null || age > LIVE_FRESH_MS) {
+    return { kind: 'stale', label: 'STALE DATA', live: false, rowAge: age, detail: 'ข้อมูลของคู่นี้ไม่ได้รับการอัปเดตภายใน 3 นาที' };
+  }
+  return { kind: 'live', label: 'LIVE DATA', live: true, rowAge: age, detail: 'ข้อมูลคู่นี้อัปเดตล่าสุดภายใน 3 นาที' };
+}
+
+function updateFreshnessBanner(payload) {
+  ensureFreshnessBanner();
+  const state = overallFreshness(payload);
+  const banner = $('#memberLiveFreshness');
+  if (banner) {
+    banner.className = `member-live-freshness ${state.kind}`;
+    const scanText = state.lastScanAt ? `Last scan ${formatTime(state.lastScanAt)} · ${ageText(state.age)}` : 'ยังไม่มี Last scan';
+    banner.innerHTML = `<strong>${escapeHtml(state.label)}</strong><span>${escapeHtml(scanText)} · ${escapeHtml(state.detail)}</span>`;
+  }
+  const online = $('#liveOnline');
+  const generated = $('#liveGenerated');
+  if (online) {
+    online.textContent = state.label;
+    online.className = state.live ? 'good-text' : state.kind === 'error' ? 'bad-text' : '';
+  }
+  if (generated) generated.textContent = state.lastScanAt ? `Last update ${formatTime(state.lastScanAt)} · ${ageText(state.age)}` : 'ยังไม่มีข้อมูลสแกนสด';
+  return state;
+}
+
+function markLiveCardsFreshness(payload) {
+  const rows = Array.isArray(payload?.active) ? payload.active : [];
+  const overall = overallFreshness(payload);
+  const cards = [...document.querySelectorAll('#liveGrid .live-card')];
+  cards.forEach((card, index) => {
+    const row = rows[index];
+    if (!row) return;
+    const state = rowFreshness(row, overall);
+    card.classList.toggle('data-live', state.live);
+    card.classList.toggle('data-stale', !state.live);
+    card.classList.toggle('data-error', state.kind === 'error');
+    let chip = card.querySelector('.member-live-fresh-chip');
+    if (!chip) {
+      chip = document.createElement('span');
+      chip.className = 'member-live-fresh-chip';
+      const meta = card.querySelector('.live-meta');
+      if (meta) meta.appendChild(chip);
+    }
+    if (chip) {
+      chip.className = `member-live-fresh-chip ${state.kind}`;
+      chip.textContent = `${state.label} · ${ageText(state.rowAge ?? overall.age)}`;
+      chip.title = state.detail || '';
+    }
+    const primaryState = card.querySelector('.live-meta span:not(.member-live-fresh-chip):last-of-type');
+    if (primaryState && Number(row.triggered) !== 1) {
+      primaryState.textContent = state.live ? 'MONITORING' : state.kind === 'error' ? 'BACKGROUND ERROR' : 'STALE DATA';
+      primaryState.classList.toggle('signal', state.live);
+    }
+  });
+}
+
+function setUnavailable(error) {
+  ensureFreshnessBanner();
+  const banner = $('#memberLiveFreshness');
+  if (banner) {
+    banner.className = 'member-live-freshness error';
+    banner.innerHTML = `<strong>LIVE STATUS UNAVAILABLE</strong><span>${escapeHtml(error?.message || 'ไม่สามารถตรวจสอบสถานะสดได้')} · การ์ดเดิมจะถูกถือเป็นข้อมูลเก่า</span>`;
+  }
+  const online = $('#liveOnline');
+  if (online) { online.textContent = 'ERROR'; online.className = 'bad-text'; }
+  document.querySelectorAll('#liveGrid .live-card').forEach(card => {
+    card.classList.remove('data-live');
+    card.classList.add('data-stale', 'data-error');
+    let chip = card.querySelector('.member-live-fresh-chip');
+    if (!chip) {
+      chip = document.createElement('span');
+      chip.className = 'member-live-fresh-chip error';
+      card.querySelector('.live-meta')?.appendChild(chip);
+    }
+    if (chip) { chip.className = 'member-live-fresh-chip error'; chip.textContent = 'STALE · STATUS ERROR'; }
+  });
 }
 
 function readStat(stats, key, side) {
@@ -178,7 +311,7 @@ function buildDetails(row) {
       <div class="member-live-stat-title"><span>LIVE STATISTICS</span><div><b>${escapeHtml(selectedTeam)}</b><i>vs</i><em>${escapeHtml(opponentTeam)}</em></div></div>
       ${statRows}
     </div>
-    <p class="member-live-source-note">ใช้สถิติชุดเดียวกับ Member Live Engine · ไม่เรียก API-FOOTBALL เพิ่มเพื่อวาดส่วนนี้</p>
+    <p class="member-live-source-note">ใช้สถิติชุดเดียวกับ Member Live Engine · สถานะ LIVE จะยืนยันเฉพาะข้อมูลที่อัปเดตภายใน 3 นาทีและ Background Scan ต้องปกติ</p>
   </section>`;
 }
 
@@ -194,6 +327,8 @@ function enhanceLiveCards(payload, force = false) {
     if (existing) existing.remove();
     card.insertAdjacentHTML('beforeend', buildDetails(row));
   });
+  updateFreshnessBanner(payload);
+  markLiveCardsFreshness(payload);
 }
 
 function watchLiveGrid() {
@@ -211,10 +346,12 @@ async function refreshMemberLiveDetails() {
     requestJson('/member-stats')
   ]);
   if (liveResult.status === 'fulfilled') enhanceLiveCards(liveResult.value, true);
+  else setUnavailable(liveResult.reason);
   if (statsResult.status === 'fulfilled') updatePerformanceSummary(statsResult.value);
 }
 
 ensurePerformanceSummary();
+ensureFreshnessBanner();
 watchLiveGrid();
 window.setTimeout(refreshMemberLiveDetails, 250);
 window.setInterval(refreshMemberLiveDetails, 30000);
