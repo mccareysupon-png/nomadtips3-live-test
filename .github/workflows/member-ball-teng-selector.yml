@@ -1,0 +1,57 @@
+name: NOMADTIPS3 Member Ball Teng Selector — Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      member:
+        description: 'Test member id'
+        required: false
+        default: '0001'
+      force:
+        description: 'Force a fresh member selection even when current config/window is already stored'
+        required: false
+        default: 'false'
+  schedule:
+    - cron: '*/5 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/member-ball-teng-selector.yml'
+      - '.github/scripts/run_member_ball_teng_selector.py'
+      - '.github/scripts/run_ball_teng_selector.py'
+      - '.github/scripts/auto_select_next.py'
+      - '.github/scripts/apply_confidence_policy.py'
+      - '.github/scripts/finalize_ball_teng_analysis.py'
+      - '.github/scripts/enrich_selected_odds.py'
+      - 'cloudflare-worker/src/member-ball-teng-ingest.js'
+      - 'cloudflare-worker/src/member-config.js'
+      - 'cloudflare-worker/src/member-data.js'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nomadtips3-member-ball-teng-selector-test
+  cancel-in-progress: false
+
+jobs:
+  member-select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+      MEMBER_ID: ${{ github.event.inputs.member || '0001' }}
+      MEMBER_SELECTOR_FORCE: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
+      MEMBER_WORKER_BASE: 'https://nomadtips3-test-api.mccarey-supon.workers.dev'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate isolated member selector runner
+        run: python3 -m py_compile .github/scripts/run_member_ball_teng_selector.py
+
+      - name: Run copied Ball Teng engine in Member room
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${API_FOOTBALL_KEY:-}"
+          python3 .github/scripts/run_member_ball_teng_selector.py
