@@ -7,9 +7,12 @@
   "minimum_confidence": 58,
   "maximum_confidence": 85,
   "confidence_strength_scale": 15,
+  "overall_ppg_weight": 0.34,
+  "venue_ppg_weight": 0.36,
+  "goal_difference_weight": 0.18,
   "use_standings_context": true,
-  "standings_strength_weight": 0.2,
-  "standings_adjustment_cap": 0.2,
+  "standings_strength_weight": 0.32,
+  "standings_adjustment_cap": 0.32,
   "standings_direct_rank_mix": 0.55,
   "standings_ranked_common_mix": 0.45,
   "minimum_main_odds": 1.7,
@@ -27,10 +30,10 @@
     "scan_all_competitions": true,
     "use_overall_last_matches": true,
     "use_home_away_splits": true,
-    "use_common_opponents": true,
     "use_league_standings": true,
-    "standings_policy": "Use league rank to support direct A-vs-B strength and rank-weight shared common opponents C; if standings are unavailable, fall back to the original NOMAD model without rejecting the match solely for missing standings",
+    "legacy_unranked_common_opponent": false,
+    "standings_policy": "Use league rank to support direct A-vs-B strength and rank-weight shared common opponents C. The legacy unranked common-opponent 12% term is retired and its weight is transferred to the ranked standings context, increasing that adjustment layer from 20% to 32%. If standings are unavailable, fall back to the core form model without rejecting the match solely for missing standings.",
     "missing_odds_policy": "N/A — never estimate",
-    "confidence_policy": "Calculated per match from NOMAD weighted strength plus standings context when available; publish only confidence >= 58%; cap at 85%"
+    "confidence_policy": "Calculated per match from core NOMAD strength plus ranked standings A-B-C context when available; publish only confidence >= 58%; cap at 85%"
   }
 }
