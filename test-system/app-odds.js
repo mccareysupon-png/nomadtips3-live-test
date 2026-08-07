@@ -7,7 +7,7 @@ import {
   resultText,
   scoreText,
   STORAGE_KEY
-} from './shared.js?v=202608061008';
+} from './shared.js?v=202608071505';
 
 const $ = selector => document.querySelector(selector);
 const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
@@ -118,10 +118,10 @@ function render() {
         <div class="prediction-primary"><small>Main Pick · 1X2</small><b>${escapeHtml(mainPickText(record))}</b></div>
         <div><small>Odds Status</small><b class="odds-status-value" style="font-size:8px!important;line-height:1.25!important;font-weight:800!important;letter-spacing:.02em">${Number(record.odds) > 0 ? 'LOCKED' : 'PENDING'}</b><small>Source: ${escapeHtml(record.bookmaker || '—')}</small></div>
         <div><small>Confidence</small><b>${record.confidence}%</b></div>
-        <div><small>Predicted Score</small><b>${escapeHtml(record.predictedScore)}</b></div>
       </div>
-      <div class="market-grid" aria-label="Additional market analysis">
+      <div class="market-grid" aria-label="Independent market analysis">
         ${renderMarket('BTTS', record.markets?.btts)}
+        ${renderMarket('O/U 2.5', record.markets?.overUnder)}
         ${renderMarket('Double Chance', record.markets?.doubleChance)}
         ${renderMarket('Asian Handicap', record.markets?.asianHandicap)}
       </div>
