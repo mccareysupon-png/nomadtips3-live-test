@@ -9,18 +9,21 @@ on:
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
       - 'scripts/test-member-config-isolation.mjs'
+      - 'scripts/test-member-live-evaluator.mjs'
       - 'docs/member-*.md'
       - '.github/workflows/member-isolation-check.yml'
   push:
     branches:
       - 'feature/member-0001-rollout-20260807'
       - 'test/member-0001-config-isolation-20260807'
+      - 'feature/member-live-evaluator-20260807'
     paths:
       - 'cloudflare-worker/src/member-*.js'
       - 'cloudflare-worker/src/paper-entry.js'
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
       - 'scripts/test-member-config-isolation.mjs'
+      - 'scripts/test-member-live-evaluator.mjs'
       - 'docs/member-*.md'
       - '.github/workflows/member-isolation-check.yml'
 
@@ -39,6 +42,7 @@ jobs:
         run: |
           node --check cloudflare-worker/src/member-config.js
           node --check cloudflare-worker/src/member-data.js
+          node --check cloudflare-worker/src/member-live-evaluator.js
           node --check cloudflare-worker/src/paper-entry.js
       - name: Syntax check Member #0001 frontend
         run: node --check test-system/member-0001/member.js
@@ -46,3 +50,5 @@ jobs:
         run: node scripts/check-member-isolation.mjs
       - name: Verify dynamic Member #0001 config isolation
         run: node scripts/test-member-config-isolation.mjs
+      - name: Verify Member #0001 live background evaluator
+        run: node scripts/test-member-live-evaluator.mjs
