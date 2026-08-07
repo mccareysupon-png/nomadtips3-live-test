@@ -26,7 +26,7 @@ def pct(value):
 
 def ranked_abc_text(context):
     if not context or not context.get('available'):
-        return 'LIMITED — league standings unavailable; form model fallback used'
+        return 'LIMITED — league standings unavailable; core form model fallback used'
     selected_rank = context.get('selectedRank')
     opponent_rank = context.get('opponentRank')
     count = int(context.get('rankedCommonOpponentCount') or 0)
@@ -74,7 +74,10 @@ def main():
     policy = selected.get('confidencePolicy') or {}
     policy['inputs'] = policy_inputs()
     policy['legacyCommonOpponentWeight'] = 0
-    policy['standings']['strengthWeight'] = float(rules.get('standings_strength_weight', 0.32)) if isinstance(policy.get('standings'), dict) else float(rules.get('standings_strength_weight', 0.32))
+    standings = policy.get('standings') if isinstance(policy.get('standings'), dict) else {}
+    standings['strengthWeight'] = float(rules.get('standings_strength_weight', 0.32))
+    standings['adjustmentCap'] = float(rules.get('standings_adjustment_cap', 0.32))
+    policy['standings'] = standings
     selected['confidencePolicy'] = policy
 
     for match in selected.get('matches') or []:
