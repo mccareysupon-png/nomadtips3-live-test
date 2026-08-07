@@ -13,6 +13,7 @@ const STAT_ROWS = [
   ['corners', 'Corners'],
   ['red_cards', 'Red Cards']
 ];
+
 const ATTACK_WEIGHTS = {
   attacks: 0.16,
   dangerous_attacks: 0.52,
@@ -47,6 +48,22 @@ function fmtStat(key, value) {
 function fmtOdds(value) {
   const n = numeric(value);
   return n !== null && n > 0 ? n.toFixed(2) : 'N/A';
+}
+
+function fmtSigned(value) {
+  const n = numeric(value);
+  if (n === null) return 'N/A';
+  if (Math.abs(n) < 0.0001) return '0';
+  return `${n > 0 ? '+' : ''}${Number.isInteger(n) ? n : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}`;
+}
+
+function fmtRange(min, max, suffix = '') {
+  const low = numeric(min);
+  const high = numeric(max);
+  if (low === null && high === null) return 'ไม่จำกัด';
+  if (low !== null && high === null) return `≥ ${low}${suffix}`;
+  if (low === null) return `≤ ${high}${suffix}`;
+  return `${low}${suffix} – ${high}${suffix}`;
 }
 
 function formatTime(value) {
@@ -185,8 +202,7 @@ function markLiveCardsFreshness(payload) {
     if (!chip) {
       chip = document.createElement('span');
       chip.className = 'member-live-fresh-chip';
-      const meta = card.querySelector('.live-meta');
-      if (meta) meta.appendChild(chip);
+      card.querySelector('.live-meta')?.appendChild(chip);
     }
     if (chip) {
       chip.className = `member-live-fresh-chip ${state.kind}`;
@@ -213,13 +229,6 @@ function setUnavailable(error) {
   document.querySelectorAll('#liveGrid .live-card').forEach(card => {
     card.classList.remove('data-live');
     card.classList.add('data-stale', 'data-error');
-    let chip = card.querySelector('.member-live-fresh-chip');
-    if (!chip) {
-      chip = document.createElement('span');
-      chip.className = 'member-live-fresh-chip error';
-      card.querySelector('.live-meta')?.appendChild(chip);
-    }
-    if (chip) { chip.className = 'member-live-fresh-chip error'; chip.textContent = 'STALE · STATUS ERROR'; }
   });
 }
 
@@ -288,7 +297,101 @@ function balanceHtml(label, value, selectedTeam, opponentTeam, note) {
   </div>`;
 }
 
-function buildDetails(row) {
+function conditionChip(label, current, requirement, state) {
+  return `<div class="member-condition-chip ${state}"><small>${escapeHtml(label)}</small><b>${escapeHtml(current)}</b><span>${escapeHtml(requirement)}</span></div>`;
+}
+
+function decisionState(row, config, payload, summaryCounts) {
+  if (Number(row?.triggered) === 1) {
+    return { kind: 'triggered', label: 'SIGNAL TRIGGERED', text: 'ผ่านเงื่อนไขครบและออก Signal แล้ว' };
+  }
+  const dailySignals = Number(summaryCounts?.dailySignals || 0);
+  const limit = Number(config?.maxSignalsPerDay || 0);
+  if (config?.signalLimitEnabled && limit > 0 && dailySignals >= limit) {
+    return { kind: 'limit', label: 'QUOTA REACHED', text: `ครบโควต้า Signal วันนี้ ${dailySignals}/${limit}` };
+  }
+  const momentum = numeric(row?.momentum);
+  const momentumMin = numeric(config?.momentumMin);
+  const evidence = numeric(payload?.evidence) || 0;
+  if (momentum === null) {
+    return { kind: 'waiting', label: 'WAIT MOMENTUM', text: 'กำลังรอข้อมูลรอบก่อนหน้าเพื่อคำนวณ Momentum' };
+  }
+  if (momentumMin !== null && momentum < momentumMin) {
+    return { kind: 'waiting', label: 'WAIT MOMENTUM', text: `Momentum ${Math.round(momentum)}% ยังต่ำกว่า ${Math.round(momentumMin)}%` };
+  }
+  if (evidence < 1) {
+    return { kind: 'waiting', label: 'WAIT ATTACK EVIDENCE', text: 'Momentum ผ่าน แต่ยังรอหลักฐานการบุกเพิ่มในรอบล่าสุด' };
+  }
+  const streak = Number(row?.streak || 0);
+  const rounds = Math.max(1, Number(config?.confirmationRounds || 1));
+  if (streak < rounds) {
+    return { kind: 'confirming', label: `CONFIRMING ${streak}/${rounds}`, text: 'ผ่านรอบนี้แล้ว กำลังรอยืนยันต่อเนื่องตามจำนวนรอบที่ตั้งไว้' };
+  }
+  return { kind: 'ready', label: 'READY', text: 'เงื่อนไขพร้อมออก Signal ในรอบประมวลผล' };
+}
+
+function buildDecisionPanel(row, config, summaryCounts) {
+  const payload = row?.payload || {};
+  const markets = payload?.markets || {};
+  const stats = payload?.stats || {};
+  const selectedTeam = row?.selected_team || 'Selected team';
+  const opponentTeam = row?.opponent || 'Opponent';
+  const selectedSide = String(row?.selected_side || '—').toUpperCase();
+  const actualHome = payload?.actualHome || (selectedSide === 'HOME' ? selectedTeam : opponentTeam);
+  const actualAway = payload?.actualAway || (selectedSide === 'AWAY' ? selectedTeam : opponentTeam);
+  const actualScore = payload?.actualScore || null;
+  const market = String(payload?.selectedMarket || config?.market || 'LIVE').toUpperCase();
+  const marketName = market === 'AH' ? 'Asian Handicap' : market === 'WIN' ? 'Match Winner' : market;
+  const selectedOdds = numeric(markets?.selectedOdds);
+  const ahLine = numeric(markets?.homeAh);
+  const minute = numeric(row?.minute);
+  const momentum = numeric(row?.momentum);
+  const evidence = numeric(payload?.evidence) || 0;
+  const selectedRed = readStat(stats, 'red_cards', 'home') || 0;
+  const opponentRed = readStat(stats, 'red_cards', 'away') || 0;
+  const scoreGap = Math.abs(Number(row?.selected_score || 0) - Number(row?.opponent_score || 0));
+  const minutePass = minute !== null && minute >= Number(config?.minuteMin || 0) && minute <= Number(config?.minuteMax || 120);
+  const oddsPass = selectedOdds !== null && selectedOdds >= Number(config?.oddsMin || 0) && (config?.oddsMax == null || selectedOdds <= Number(config.oddsMax));
+  const ahPass = ahLine !== null && ahLine >= Number(config?.ahMin ?? -5) && (config?.ahMax == null || ahLine <= Number(config.ahMax));
+  const gapPass = !config?.goalGapLimited || scoreGap <= Number(config?.maxGoalGap || 0);
+  const redPass = selectedRed <= opponentRed;
+  const momentumPass = momentum !== null && momentum >= Number(config?.momentumMin || 0) && evidence >= 1;
+  const rounds = Math.max(1, Number(config?.confirmationRounds || 1));
+  const streak = Number(row?.streak || 0);
+  const streakPass = streak >= rounds;
+  const state = decisionState(row, config || {}, payload, summaryCounts || {});
+  const marketTicket = market === 'AH'
+    ? `${marketName} ${fmtSigned(ahLine)} @ ${fmtOdds(selectedOdds)}`
+    : `${marketName} @ ${fmtOdds(selectedOdds)}`;
+  const actualScoreText = actualScore && numeric(actualScore.home) !== null && numeric(actualScore.away) !== null
+    ? `${actualScore.home}–${actualScore.away}`
+    : '—';
+
+  return `<section class="member-signal-decision ${state.kind}">
+    <div class="member-signal-title">
+      <div><small>SIGNAL DECISION</small><strong>${escapeHtml(selectedTeam)}</strong><span class="member-side-badge">${escapeHtml(selectedSide)}</span></div>
+      <div class="member-signal-status"><b>${escapeHtml(state.label)}</b><span>${escapeHtml(state.text)}</span></div>
+    </div>
+    <div class="member-ticket-grid">
+      <div><small>ทีมที่ระบบเลือก</small><b>${escapeHtml(selectedTeam)}</b><span>${escapeHtml(selectedSide)} · คู่แข่ง ${escapeHtml(opponentTeam)}</span></div>
+      <div><small>คู่แข่งขันจริง</small><b>${escapeHtml(actualHome)} vs ${escapeHtml(actualAway)}</b><span>สกอร์จริง ${escapeHtml(actualScoreText)}</span></div>
+      <div class="price"><small>ตลาด / ราคา</small><b>${escapeHtml(marketTicket)}</b><span>ราคาสดที่ใช้ตรวจเงื่อนไข</span></div>
+      <div><small>สกอร์มุมมองทีมที่เลือก</small><b>${escapeHtml(row?.selected_score)}–${escapeHtml(row?.opponent_score)}</b><span>ผลต่าง ${escapeHtml(scoreGap)} ประตู</span></div>
+    </div>
+    <div class="member-condition-grid">
+      ${conditionChip('นาที', minute === null ? 'N/A' : `${Math.round(minute)}′`, `ต้อง ${config?.minuteMin ?? '—'}–${config?.minuteMax ?? '—'}′`, minutePass ? 'pass' : 'fail')}
+      ${conditionChip('Odds', fmtOdds(selectedOdds), `ต้อง ${fmtRange(config?.oddsMin, config?.oddsMax)}`, oddsPass ? 'pass' : 'fail')}
+      ${conditionChip('AH Line', fmtSigned(ahLine), `ต้อง ${fmtRange(config?.ahMin, config?.ahMax)}`, ahPass ? 'pass' : 'fail')}
+      ${conditionChip('Momentum', momentum === null ? 'รอข้อมูล' : `${Math.round(momentum)}%`, `ต้อง ≥ ${config?.momentumMin ?? '—'}% · evidence ${evidence.toFixed(0)}`, momentumPass ? 'pass' : 'wait')}
+      ${conditionChip('Score Gap', `${scoreGap} ลูก`, config?.goalGapLimited ? `ต้อง ≤ ${config?.maxGoalGap ?? '—'}` : 'ไม่จำกัด', gapPass ? 'pass' : 'fail')}
+      ${conditionChip('Red Card', `${selectedRed} : ${opponentRed}`, 'ทีมที่เลือกต้องไม่มากกว่าคู่แข่ง', redPass ? 'pass' : 'fail')}
+      ${conditionChip('Confirmation', `${streak}/${rounds}`, `ต้องครบ ${rounds} รอบ`, streakPass ? 'pass' : 'wait')}
+      ${conditionChip('Base Candidate', 'ผ่าน', 'นาที + สถิติ + ตลาด + ราคา + เงื่อนไขพื้นฐาน', 'pass')}
+    </div>
+  </section>`;
+}
+
+function buildDetails(row, config, summaryCounts) {
   const payload = row?.payload || {};
   const stats = payload.stats || {};
   const selectedTeam = row.selected_team || 'Selected team';
@@ -297,8 +400,8 @@ function buildDetails(row) {
   const attack = attackBalance(stats, row.momentum);
   const defense = defensiveBalance(stats);
   const statRows = STAT_ROWS.map(([key, label]) => statRowHtml(key, label, stats)).join('');
-  const market = payload?.selectedMarket || payload?.market || 'LIVE';
-  return `<section class="member-live-details">
+  const market = payload?.selectedMarket || payload?.market || config?.market || 'LIVE';
+  return `${buildDecisionPanel(row, config || {}, summaryCounts || {})}<section class="member-live-details">
     <div class="member-live-detail-head">
       <div><small>SELECTED TEAM · LIVE DATA</small><strong>${escapeHtml(selectedTeam)}</strong></div>
       <div class="member-live-price"><small>${escapeHtml(market)} ODDS</small><b>${escapeHtml(fmtOdds(selectedOdds))}</b></div>
@@ -311,21 +414,25 @@ function buildDetails(row) {
       <div class="member-live-stat-title"><span>LIVE STATISTICS</span><div><b>${escapeHtml(selectedTeam)}</b><i>vs</i><em>${escapeHtml(opponentTeam)}</em></div></div>
       ${statRows}
     </div>
-    <p class="member-live-source-note">ใช้สถิติชุดเดียวกับ Member Live Engine · สถานะ LIVE จะยืนยันเฉพาะข้อมูลที่อัปเดตภายใน 3 นาทีและ Background Scan ต้องปกติ</p>
+    <p class="member-live-source-note">Base Candidate = ผ่านเงื่อนไขขั้นต้นแล้ว · Signal จะออกเมื่อ Momentum / attack evidence / confirmation rounds และโควต้าผ่านครบ · ใช้ข้อมูลชุดเดียวกับ Member Live Engine</p>
   </section>`;
 }
 
 function enhanceLiveCards(payload, force = false) {
   latestLivePayload = payload;
   const rows = Array.isArray(payload?.active) ? payload.active : [];
+  const config = payload?.config || {};
+  const summaryCounts = payload?.counts || {};
   const cards = [...document.querySelectorAll('#liveGrid .live-card')];
   cards.forEach((card, index) => {
     const row = rows[index];
     if (!row) return;
-    const existing = card.querySelector('.member-live-details');
-    if (existing && !force) return;
-    if (existing) existing.remove();
-    card.insertAdjacentHTML('beforeend', buildDetails(row));
+    const existingDecision = card.querySelector('.member-signal-decision');
+    const existingDetails = card.querySelector('.member-live-details');
+    if ((existingDecision || existingDetails) && !force) return;
+    existingDecision?.remove();
+    existingDetails?.remove();
+    card.insertAdjacentHTML('beforeend', buildDetails(row, config, summaryCounts));
   });
   updateFreshnessBanner(payload);
   markLiveCardsFreshness(payload);
