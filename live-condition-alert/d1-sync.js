@@ -42,6 +42,43 @@
     if (label && label.textContent !== scannerText) label.textContent = scannerText;
   }
 
+  function selectedSideLabel(side) {
+    return String(side || 'HOME').toUpperCase() === 'AWAY'
+      ? 'ทีมเยือน (AWAY)'
+      : 'ทีมเจ้าบ้าน (HOME)';
+  }
+
+  function patchTradeSelectedTeams() {
+    const trades = readLocal();
+    const cards = [...document.querySelectorAll('#tradeList .trade')];
+
+    cards.forEach((card, index) => {
+      if (card.dataset.selectedTeamPatched === '1') return;
+      const trade = trades[index];
+      const meta = card.querySelector('.trade-meta');
+      if (!trade || !meta) return;
+
+      const selectedTeam = String(trade.selectedTeam || trade.home || '').trim();
+      if (!selectedTeam) return;
+
+      const line = document.createElement('div');
+      line.className = 'trade-selected-team';
+      line.style.marginBottom = '3px';
+
+      const prefix = document.createElement('strong');
+      prefix.textContent = 'ทีมที่เลือก: ';
+      prefix.style.color = '#eff9f3';
+
+      const team = document.createElement('strong');
+      team.textContent = selectedTeam;
+      team.style.color = '#00df91';
+
+      line.append(prefix, team, document.createTextNode(` · ${selectedSideLabel(trade.selectedSide)}`));
+      meta.prepend(line);
+      card.dataset.selectedTeamPatched = '1';
+    });
+  }
+
   function patchMomentumSideColors(card) {
     if (card.dataset.sideColorPatched === '1') return;
 
@@ -92,6 +129,7 @@
     document.querySelectorAll('.trade-meta').forEach(meta => {
       if (meta.innerHTML.includes('Home AH')) meta.innerHTML = meta.innerHTML.replace(/Home AH/g, 'Selected AH');
     });
+    patchTradeSelectedTeams();
 
     document.querySelectorAll('.card').forEach(card => {
       patchMomentumSideColors(card);
