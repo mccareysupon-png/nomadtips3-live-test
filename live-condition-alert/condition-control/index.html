@@ -42,7 +42,7 @@
 
     <main class="panel">
       <div class="grid">
-        <div class="field"><label>เลือกทีม</label><select id="side"><option value="HOME">เจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option></select></div>
+        <div class="field"><label>เลือกทีม</label><select id="side"><option value="HOME">ทีมเจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option><option value="BOTH">ทั้งสองทีม</option></select></div>
         <div class="field"><label>นาทีเริ่ม</label><input id="minuteMin" type="number" min="1" max="119" step="1"></div>
         <div class="field"><label>นาทีสิ้นสุด</label><input id="minuteMax" type="number" min="2" max="120" step="1"></div>
 
@@ -85,7 +85,11 @@
       const $ = id => document.getElementById(id);
       let serverState = null;
 
-      function sideLabel(value){ return value === 'AWAY' ? 'ทีมเยือน' : 'เจ้าบ้าน'; }
+      function sideLabel(value){
+        if (value === 'AWAY') return 'ทีมเยือน';
+        if (value === 'BOTH') return 'ทั้งสองทีม';
+        return 'ทีมเจ้าบ้าน';
+      }
       function marketLabel(value){ return value === 'AH' ? 'Asian Handicap' : 'ชนะตรง'; }
       function line(value){ const n = Number(value); return Number.isFinite(n) ? `${n >= 0 ? '+' : ''}${n}` : 'ไม่จำกัด'; }
       function optional(id){ const text = $(id).value.trim(); return text === '' ? null : Number(text); }
