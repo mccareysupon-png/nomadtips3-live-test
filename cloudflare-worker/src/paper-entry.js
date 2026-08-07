@@ -14,6 +14,7 @@ import { handleConditionConfig } from './condition-config.js';
 import { handleBallTengConfig } from './ball-teng-config.js';
 import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
+import { handleMemberBallTengIngest } from './member-ball-teng-ingest.js';
 import { runMemberLiveBackgroundScans } from './member-live-evaluator.js';
 import {
   handleLineWebhook,
@@ -41,7 +42,7 @@ function corsHeaders(request) {
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-NOMAD-ENGINE-KEY',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
@@ -198,6 +199,18 @@ export default {
         return json(request, {
           ok: false,
           error: error?.message || 'Member configuration failed'
+        }, 500);
+      }
+    }
+
+    if (url.pathname === '/member-ball-teng-ingest') {
+      try {
+        const result = await handleMemberBallTengIngest(request, env);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Member Ball Teng ingest failed'
         }, 500);
       }
     }
