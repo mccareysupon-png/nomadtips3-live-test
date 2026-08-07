@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-07T01:03:49Z",
+  "fetched_at_utc": "2026-08-07T01:04:21Z",
   "http_status": 200,
   "selection_date": "2026-08-06",
   "locked_at_utc": "2026-08-06T03:08:00Z",
@@ -117,12 +117,12 @@
         "away": 2
       },
       "corners": {
-        "home": null,
-        "away": null
+        "home": 0,
+        "away": 1
       },
       "fouls": {
         "home": 3,
-        "away": 1
+        "away": 2
       },
       "offsides": {
         "home": 1,
@@ -153,6 +153,16 @@
         "away": null
       }
     },
-    "events": []
+    "events": [
+      {
+        "minute": 23,
+        "extra": null,
+        "team": "Necaxa",
+        "player": null,
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
+      }
+    ]
   }
 }
