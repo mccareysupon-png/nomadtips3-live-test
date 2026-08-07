@@ -26,6 +26,17 @@
     return JSON.stringify([...value].sort((a, b) => keyOf(a).localeCompare(keyOf(b))));
   }
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+  }
+
+  function number(value) {
+    const parsed = Number(String(value ?? '').replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
   function setStatus(text, good = true) {
     const status = document.getElementById('settlementStatus');
     if (status && status.textContent !== text) {
@@ -76,6 +87,115 @@
       line.append(prefix, team, document.createTextNode(` · ${selectedSideLabel(trade.selectedSide)}`));
       meta.prepend(line);
       card.dataset.selectedTeamPatched = '1';
+    });
+  }
+
+  function cardFixtureKey(card) {
+    if (card.dataset.fixtureKey) return card.dataset.fixtureKey;
+    const head = card.querySelector('.card-head span')?.textContent || '';
+    const match = head.match(/·\s*(\d+)\s*$/);
+    if (!match) return '';
+    const selectedAway = [...card.querySelectorAll('.team small')]
+      .some(node => node.textContent.includes('ทีมเยือน') && node.textContent.includes('SELECTED'));
+    const key = `${Number(match[1])}:${selectedAway ? 'AWAY' : 'HOME'}`;
+    card.dataset.fixtureKey = key;
+    return key;
+  }
+
+  function retainedScore(trade) {
+    const side = String(trade.selectedSide || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+    const actualHomeScore = number(trade.entryActualHomeScore) ?? (side === 'AWAY' ? number(trade.entryAwayScore) : number(trade.entryHomeScore)) ?? 0;
+    const actualAwayScore = number(trade.entryActualAwayScore) ?? (side === 'AWAY' ? number(trade.entryHomeScore) : number(trade.entryAwayScore)) ?? 0;
+    const selectedScore = side === 'AWAY' ? actualAwayScore : actualHomeScore;
+    const opponentScore = side === 'AWAY' ? actualHomeScore : actualAwayScore;
+    const difference = selectedScore - opponentScore;
+    return {
+      actualHomeScore,
+      actualAwayScore,
+      label: difference > 0
+        ? `ทีมที่เลือกนำ ${difference} ลูก`
+        : difference < 0
+          ? `ทีมที่เลือกตาม ${Math.abs(difference)} ลูก`
+          : 'สกอร์เสมอ',
+      css: difference > 0 ? 'leading' : difference < 0 ? 'trailing' : 'tied'
+    };
+  }
+
+  function retainedCardHtml(trade) {
+    const side = String(trade.selectedSide || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+    const selectedTeam = String(trade.selectedTeam || trade.home || 'Selected');
+    const opponent = String(trade.opponent || trade.away || 'Opponent');
+    const actualHome = String(trade.actualHome || (side === 'AWAY' ? opponent : selectedTeam));
+    const actualAway = String(trade.actualAway || (side === 'AWAY' ? selectedTeam : opponent));
+    const score = retainedScore(trade);
+    const selectedMomentum = number(trade.momentum);
+    const opponentMomentum = selectedMomentum === null ? null : Math.max(0, 100 - selectedMomentum);
+    const homeMomentum = side === 'AWAY' ? opponentMomentum : selectedMomentum;
+    const awayMomentum = side === 'AWAY' ? selectedMomentum : opponentMomentum;
+    const ahLine = number(trade.ahLine);
+    const ahOdds = number(trade.ahOdds);
+    const selectedOdds = number(trade.selectedWinOdds ?? trade.homeWinOdds);
+    const lineText = ahLine === null ? 'N/A' : `${ahLine >= 0 ? '+' : ''}${ahLine}`;
+    const fixtureId = Number(trade.fixtureId) || 0;
+    const entryMinute = Number(trade.entryMinute || 0);
+    const homeSelected = side === 'HOME';
+    const awaySelected = side === 'AWAY';
+
+    return `<article class="card triggered" data-retained-trade="1" data-fixture-key="${fixtureId}:${side}" style="animation:none">
+      <div class="card-head"><span>${escapeHtml(trade.country || '')} · ${escapeHtml(trade.league || '')} · ${fixtureId}</span><b class="badge ok">เลือกแล้ว · กำลังลุ้น</b></div>
+      <div class="card-body">
+        <div>
+          <div class="match">
+            <div class="team"><strong>${escapeHtml(actualHome)}</strong><small>ทีมเจ้าบ้าน${homeSelected ? ' · SELECTED' : ''}</small></div>
+            <div class="score"><span>ล็อกที่ ${entryMinute}′</span><b>${score.actualHomeScore} : ${score.actualAwayScore}</b><em class="${score.css}">${escapeHtml(score.label)}</em></div>
+            <div class="team"><strong>${escapeHtml(actualAway)}</strong><small>ทีมเยือน${awaySelected ? ' · SELECTED' : ''}</small></div>
+          </div>
+          <div class="momentum">
+            <div class="momentum-top"><small>NOMAD MOMENTUM ตอนเข้าเงื่อนไข · HOME (GREEN) vs AWAY (RED)</small><b><em>${homeMomentum ?? '—'}</em> – <i>${awayMomentum ?? '—'}</i></b></div>
+            <div class="bar"><span class="home" style="width:${homeMomentum ?? 50}%"></span><span class="away" style="width:${awayMomentum ?? 50}%"></span></div>
+          </div>
+        </div>
+        <div class="facts">
+          <div class="fact"><small>ทีมที่เลือก</small><b class="green">${escapeHtml(selectedTeam)}</b></div>
+          <div class="fact"><small>สถานะ</small><b class="green">กำลังลุ้นจนจบเกม</b></div>
+          <div class="fact"><small>Selected Odds</small><b class="${selectedOdds ? 'green' : 'yellow'}">${selectedOdds?.toFixed(2) ?? 'N/A'}</b></div>
+          <div class="fact"><small>Asian Handicap</small><b class="${ahLine !== null ? 'green' : 'yellow'}">${lineText}</b></div>
+          <div class="fact"><small>AH Odds</small><b class="${ahOdds ? 'green' : 'yellow'}">${ahOdds?.toFixed(3) ?? 'N/A'}</b></div>
+          <div class="fact"><small>Paper Investment</small><b class="green">${number(trade.stakeUnits) ?? 100} Units</b></div>
+          <div class="fact"><small>Momentum ตอนเลือก</small><b class="green">${selectedMomentum ?? 'N/A'}%</b></div>
+          <div class="fact"><small>ล็อกการ์ด</small><b class="yellow">จนกว่าจะตรวจผลจบ</b></div>
+        </div>
+        <div class="analysis"><b>การ์ดถูกล็อกไว้แล้ว:</b> หลังระบบเลือกทีม การ์ดนี้จะไม่หายเพราะพ้นช่วงนาทีหรือราคาเปลี่ยน ระบบเดิมจะตรวจสกอร์สุดท้ายเมื่อการแข่งขันจบ</div>
+        <div class="alert"><strong>เลือกแล้ว · คงการ์ดไว้จนจบเกม</strong><p>เมื่อ Worker ตรวจพบผลจบและตัดสินรายการแล้ว การ์ดนี้จะถูกนำออกอัตโนมัติ</p></div>
+      </div>
+    </article>`;
+  }
+
+  function ensureRetainedSelectedCards() {
+    const box = document.getElementById('cards');
+    if (!box) return;
+
+    const pending = readLocal().filter(trade => String(trade?.status || '').toUpperCase() === 'PENDING');
+    const pendingKeys = new Set(pending.map(keyOf));
+
+    box.querySelectorAll('.card[data-retained-trade="1"]').forEach(card => {
+      const key = card.dataset.fixtureKey || '';
+      if (!pendingKeys.has(key)) card.remove();
+    });
+
+    box.querySelectorAll('.card:not([data-retained-trade="1"])').forEach(cardFixtureKey);
+    const existing = new Set([...box.querySelectorAll('.card[data-fixture-key]')].map(card => card.dataset.fixtureKey));
+    const missing = pending.filter(trade => !existing.has(keyOf(trade)));
+    if (!missing.length) return;
+
+    box.querySelectorAll(':scope > .empty').forEach(node => node.remove());
+    missing.sort((a, b) => Number(a.createdAt || 0) - Number(b.createdAt || 0)).forEach(trade => {
+      const template = document.createElement('template');
+      template.innerHTML = retainedCardHtml(trade).trim();
+      const card = template.content.firstElementChild;
+      if (!card) return;
+      card.dataset.sideColorPatched = '1';
+      box.appendChild(card);
     });
   }
 
@@ -130,8 +250,10 @@
       if (meta.innerHTML.includes('Home AH')) meta.innerHTML = meta.innerHTML.replace(/Home AH/g, 'Selected AH');
     });
     patchTradeSelectedTeams();
+    ensureRetainedSelectedCards();
 
     document.querySelectorAll('.card').forEach(card => {
+      cardFixtureKey(card);
       patchMomentumSideColors(card);
 
       const facts = [...card.querySelectorAll('.fact')];
