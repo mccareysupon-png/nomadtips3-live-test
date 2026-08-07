@@ -1,3 +1,5 @@
+import './member-ball-teng-results.js?v=202608080650';
+
 const MEMBER_ID = '0001';
 const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
 const $ = selector => document.querySelector(selector);
