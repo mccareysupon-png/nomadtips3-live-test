@@ -24,6 +24,7 @@ EXCLUDED_MARKET_WORDS = {
     "booking", "goalscorer", "shots", "period",
 }
 HEADERS = {"x-apisports-key": KEY}
+TERMINAL_ODDS_STATUSES = {"N/A", "LOCKED", "BACKFILLED"}
 
 
 def api(path: str, params=None, tries: int = 3):
@@ -255,6 +256,10 @@ def has_odds(value):
     return safe_float(value) is not None
 
 
+def terminal_odds_status(value):
+    return str(value or "").strip().upper() in TERMINAL_ODDS_STATUSES
+
+
 def total_goals_index(selected):
     analysis = selected.get("auto_analysis") or selected.get("autoAnalysis") or {}
     totals = []
@@ -296,11 +301,16 @@ def ensure_over_under_market(selected):
 
 def requested_kinds(selected):
     kinds = []
-    if not has_odds(selected.get("odds")):
+    if not has_odds(selected.get("odds")) and not terminal_odds_status(selected.get("oddsStatus")):
         kinds.append("main")
     markets = selected.get("markets") or {}
     for kind in ("btts", "overUnder", "doubleChance", "asianHandicap"):
-        if isinstance(markets.get(kind), dict) and not has_odds(markets[kind].get("odds")):
+        market = markets.get(kind)
+        if (
+            isinstance(market, dict)
+            and not has_odds(market.get("odds"))
+            and not terminal_odds_status(market.get("oddsStatus"))
+        ):
             kinds.append(kind)
     return kinds
 
@@ -379,7 +389,7 @@ def main():
     if changed:
         config["oddsPolicy"] = {
             "markets": ["1X2", "BTTS", "Over/Under 2.5", "Double Chance", "Asian Handicap"],
-            "lockRule": "first real API price is preserved; missing prices are never estimated",
+            "lockRule": "first real API price is preserved; missing prices become terminal N/A after kickoff and are not queried again",
             "source": "API-FOOTBALL",
         }
         CONFIG_PATH.write_text(
