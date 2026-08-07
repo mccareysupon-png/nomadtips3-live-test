@@ -48,9 +48,8 @@ function booleanValue(value, fallback = false) {
 
 export function normalizeConditionConfig(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
-  const side = String(source.side || DEFAULT_CONDITION_CONFIG.side).toUpperCase() === 'AWAY'
-    ? 'AWAY'
-    : 'HOME';
+  const rawSide = String(source.side || DEFAULT_CONDITION_CONFIG.side).toUpperCase();
+  const side = ['HOME', 'AWAY', 'BOTH'].includes(rawSide) ? rawSide : 'HOME';
   const market = String(source.market || DEFAULT_CONDITION_CONFIG.market).toUpperCase() === 'WIN'
     ? 'WIN'
     : 'AH';
