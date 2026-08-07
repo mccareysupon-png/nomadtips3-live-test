@@ -14,6 +14,7 @@ import { handleConditionConfig } from './condition-config.js';
 import { handleBallTengConfig } from './ball-teng-config.js';
 import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
+import { runMemberLiveBackgroundScans } from './member-live-evaluator.js';
 import {
   handleLineWebhook,
   lineStatus,
@@ -281,6 +282,12 @@ export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
       await runAdaptiveScanner(env, ctx);
+
+      try {
+        await runMemberLiveBackgroundScans(env);
+      } catch (error) {
+        console.error(error);
+      }
 
       try {
         await syncSignalsToPaperTrades(env);
