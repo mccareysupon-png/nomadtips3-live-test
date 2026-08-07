@@ -86,7 +86,8 @@ function patch(payload) {
       else card.appendChild(line);
     }
     line.className = `member-result-line ${cls}`;
-    line.innerHTML = `<small>ผลการแข่งขัน</small><strong>${score ? `${score} · ` : ''}${outcome}</strong>`;
+    const html = `<small>ผลการแข่งขัน</small><strong>${score ? `${score} · ` : ''}${outcome}</strong>`;
+    if (line.innerHTML !== html) line.innerHTML = html;
   });
 
   const summary = payload.resultSummary || {};
@@ -98,13 +99,15 @@ function patch(payload) {
   const accuracy = number(summary.accuracy);
   const node = ensureSummary();
   if (node) {
-    node.innerHTML = total
+    const html = total
       ? `<b>ผลชุดบอลเต็งนี้</b> · ยืนยันแล้ว ${settled}/${total} · Correct ${correct} · Incorrect ${incorrect} · Waiting ${pending}${accuracy === null ? '' : ` · Accuracy ${accuracy.toFixed(2)}%`}`
       : '<b>ผลชุดบอลเต็งนี้</b> · ยังไม่มีรายการให้ตรวจผล';
+    if (node.innerHTML !== html) node.innerHTML = html;
   }
   if (META && payload.setId) {
     const suffix = total ? ` · Result ${settled}/${total}` : '';
-    META.textContent = `Member #${MEMBER_ID} · ${payload.setId} · config v${payload.config?.version || '—'}${suffix}`;
+    const text = `Member #${MEMBER_ID} · ${payload.setId} · config v${payload.config?.version || '—'}${suffix}`;
+    if (META.textContent !== text) META.textContent = text;
   }
 }
 
@@ -130,7 +133,7 @@ if (GRID) {
   const observer = new MutationObserver(() => {
     if (latestPayload) queueMicrotask(() => patch(latestPayload));
   });
-  observer.observe(GRID, { childList: true, subtree: true });
+  observer.observe(GRID, { childList: true });
 }
 
 window.setTimeout(refresh, 800);
