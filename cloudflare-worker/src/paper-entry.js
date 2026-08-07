@@ -9,6 +9,7 @@ import {
   handleAutoRequest,
   runAutoMomentumScan
 } from './auto-scan.js';
+import { runHotConditionScan } from './hot-scan.js';
 import { handleConditionConfig } from './condition-config.js';
 import {
   handleLineWebhook,
@@ -21,6 +22,12 @@ const ALLOWED_ORIGINS = new Set([
   'https://nomadtips3.com',
   'https://www.nomadtips3.com'
 ]);
+const HOT_BURST_LIMIT_MS = 52_000;
+const HOT_BURST_MAX_RUNS = 10;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -47,6 +54,38 @@ function json(request, data, status = 200) {
   });
 }
 
+function adaptiveRefreshSeconds(payload) {
+  const direct = Number(payload?.refreshSeconds);
+  if (Number.isFinite(direct)) {
+    if (direct <= 5) return 5;
+    if (direct <= 15) return 15;
+    if (direct <= 30) return 30;
+    if (direct <= 60) return 60;
+    return 240;
+  }
+
+  const counts = payload?.counts || {};
+  if (Number(counts.completeMarkets || 0) > 0) return 5;
+  if (Number(counts.completeStats || 0) > 0) return 15;
+  if (Number(counts.minuteWindow || 0) > 0) return 30;
+  if (Number(counts.allLive || 0) > 0) return 60;
+  return 240;
+}
+
+function generatedAtMs(payload) {
+  const value = Date.parse(payload?.generatedAt || '');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function fullScanIsDue(latest, now) {
+  if (!latest) return true;
+  const last = generatedAtMs(latest);
+  if (!last) return true;
+  const refresh = adaptiveRefreshSeconds(latest);
+  const fullRefresh = Math.max(60, refresh);
+  return now - last >= Math.max(55_000, fullRefresh * 1000 - 5_000);
+}
+
 async function scannerRecoveryPayload(request, env) {
   const statusUrl = new URL('https://internal.nomadtips3/auto-scan-status');
   const result = await handleAutoRequest(request, env, statusUrl);
@@ -65,6 +104,55 @@ async function scannerRecoveryPayload(request, env) {
     candidates: [],
     warnings: status.error ? [status.error] : (status.warnings || [])
   };
+}
+
+async function flushSignalSideEffects(env) {
+  try {
+    await syncSignalsToPaperTrades(env);
+  } catch (error) {
+    console.error(error);
+  }
+  try {
+    await notifyPendingLineEvents(env);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function runAdaptiveScanner(env, ctx) {
+  const startedAt = Date.now();
+  let latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => null);
+
+  if (fullScanIsDue(latest, startedAt)) {
+    try {
+      const result = await runAutoMomentumScan(baseWorker, env, ctx);
+      if (Number(result?.counts?.newSignals || 0) > 0) await flushSignalSideEffects(env);
+    } catch (error) {
+      console.error(error);
+    }
+    latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => latest);
+  }
+
+  let refreshSeconds = adaptiveRefreshSeconds(latest);
+  let hotRuns = 0;
+
+  while (refreshSeconds < 60 && hotRuns < HOT_BURST_MAX_RUNS) {
+    const waitMs = refreshSeconds * 1000;
+    if (Date.now() - startedAt + waitMs > HOT_BURST_LIMIT_MS) break;
+    await sleep(waitMs);
+
+    try {
+      const result = await runHotConditionScan(baseWorker, env, ctx);
+      hotRuns += 1;
+      if (Number(result?.newSignals || 0) > 0) await flushSignalSideEffects(env);
+      refreshSeconds = adaptiveRefreshSeconds(result);
+    } catch (error) {
+      console.error(error);
+      break;
+    }
+  }
+
+  return { refreshSeconds, hotRuns };
 }
 
 export default {
@@ -153,11 +241,7 @@ export default {
 
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
-      try {
-        await runAutoMomentumScan(baseWorker, env, ctx);
-      } catch (error) {
-        console.error(error);
-      }
+      await runAdaptiveScanner(env, ctx);
 
       try {
         await syncSignalsToPaperTrades(env);
