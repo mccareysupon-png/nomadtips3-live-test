@@ -1,22 +1,26 @@
 name: Member Isolation Check
 
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'cloudflare-worker/src/member-*.js'
       - 'cloudflare-worker/src/paper-entry.js'
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
+      - 'scripts/test-member-config-isolation.mjs'
       - 'docs/member-*.md'
       - '.github/workflows/member-isolation-check.yml'
   push:
     branches:
       - 'feature/member-0001-rollout-20260807'
+      - 'test/member-0001-config-isolation-20260807'
     paths:
       - 'cloudflare-worker/src/member-*.js'
       - 'cloudflare-worker/src/paper-entry.js'
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
+      - 'scripts/test-member-config-isolation.mjs'
       - 'docs/member-*.md'
       - '.github/workflows/member-isolation-check.yml'
 
@@ -40,3 +44,5 @@ jobs:
         run: node --check test-system/member-0001/member.js
       - name: Verify isolation contract
         run: node scripts/check-member-isolation.mjs
+      - name: Verify dynamic Member #0001 config isolation
+        run: node scripts/test-member-config-isolation.mjs
