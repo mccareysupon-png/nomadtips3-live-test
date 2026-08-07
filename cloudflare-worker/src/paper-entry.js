@@ -47,6 +47,26 @@ function json(request, data, status = 200) {
   });
 }
 
+async function scannerRecoveryPayload(request, env) {
+  const statusUrl = new URL('https://internal.nomadtips3/auto-scan-status');
+  const result = await handleAutoRequest(request, env, statusUrl);
+  const status = result?.data || {};
+  if (!status.generatedAt && !status.error) return null;
+  return {
+    ok: true,
+    generatedAt: status.generatedAt || new Date().toISOString(),
+    source: 'cloudflare-worker · stored auto-scan status',
+    mode: 'PAGE-5-WORKER-RECOVERY',
+    refreshSeconds: 60,
+    serverOnline: false,
+    scannerError: status.error || null,
+    config: status.config || {},
+    counts: status.counts || {},
+    candidates: [],
+    warnings: status.error ? [status.error] : (status.warnings || [])
+  };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -120,8 +140,11 @@ export default {
       try {
         const latest = await getLatestAutoPayload(env);
         if (latest) return json(request, latest, 200);
+
+        const recovery = await scannerRecoveryPayload(request, env);
+        if (recovery) return json(request, recovery, 200);
       } catch {
-        // Fall back to a direct scan until the first scheduled run is stored.
+        // First startup only: fall through to one direct scan if no stored state exists yet.
       }
     }
 
