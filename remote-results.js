@@ -255,6 +255,7 @@
         const previousAutoVoid=Boolean(pick.resultAutoVoid);
         const incomingMarkets=result.markets||{};
         const nextMarkets={
+          ...(pick.markets||{}),
           btts:mergeMarket(pick.markets?.btts,incomingMarkets.btts),
           doubleChance:mergeMarket(pick.markets?.doubleChance,incomingMarkets.doubleChance),
           asianHandicap:mergeMarket(pick.markets?.asianHandicap,incomingMarkets.asianHandicap)
