@@ -55,6 +55,7 @@ jobs:
         run: |
           node --check cloudflare-worker/src/member-config.js
           node --check cloudflare-worker/src/member-data.js
+          node --check cloudflare-worker/src/member-stats-pagination.js
           node --check cloudflare-worker/src/member-live-evaluator.js
           node --check cloudflare-worker/src/member-live-shared-evaluator.js
           node --check cloudflare-worker/src/member-live-settlement.js
@@ -63,7 +64,9 @@ jobs:
           node --check cloudflare-worker/src/member-ball-teng-run.js
           node --check cloudflare-worker/src/paper-entry.js
       - name: Syntax check Member #0001 frontend
-        run: node --check test-system/member-0001/member.js
+        run: |
+          node --check test-system/member-0001/member.js
+          node --check test-system/member-0001/member-stats-pagination.js
       - name: Syntax check Member Ball Teng selector runner
         run: python3 -m py_compile .github/scripts/run_member_ball_teng_selector.py
       - name: Verify isolation contract
