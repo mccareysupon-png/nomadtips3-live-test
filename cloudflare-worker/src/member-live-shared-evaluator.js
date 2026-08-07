@@ -1,4 +1,5 @@
 import { listActiveMemberConditionConfigs } from './member-config.js';
+import { settleMemberLiveSignals } from './member-live-settlement.js';
 import {
   sharedApiFetch,
   sharedFixtureDetails,
@@ -503,8 +504,11 @@ function signalStatement(env, memberId, candidate, calculated, now) {
     score: candidate.score,
     momentum: calculated?.home ?? null,
     selectedOdds: numeric(candidate?.markets?.selectedOdds),
+    selectedMarket: candidate.selectedMarket,
     ahLine: numeric(candidate?.markets?.homeAh),
     ahOdds: numeric(candidate?.markets?.homeAhOdds),
+    actualHome: candidate.actualHome,
+    actualAway: candidate.actualAway,
     createdAt: now,
     feed: 'SHARED_LIVE_FEED'
   };
@@ -576,9 +580,13 @@ async function runMemberFromFeed(env, member, feed) {
 
   let momentumReady = 0;
   let passing = 0;
-  let triggered = 0;
   let newSignals = 0;
   let dailySignals = Number(dailyCountRow?.total || 0);
+  const triggeredKeys = new Set(
+    [...states.entries()]
+      .filter(([, row]) => Number(row?.triggered) === 1 && now - Number(row?.updated_at || 0) <= 3 * 60_000)
+      .map(([key]) => String(key))
+  );
   const statements = [];
 
   for (const candidate of candidates) {
@@ -599,22 +607,26 @@ async function runMemberFromFeed(env, member, feed) {
       dailySignals += 1;
       newSignals += 1;
     }
-    if (wasTriggered) triggered += 1;
+    if (wasTriggered) triggeredKeys.add(key);
     statements.push(stateStatement(env, memberId, candidate, calculated, streak, wasTriggered, now, config.version));
   }
 
   for (let index = 0; index < statements.length; index += 80) {
     await env.DB.batch(statements.slice(index, index + 80));
   }
-  await env.DB.prepare('DELETE FROM member_live_state WHERE member_id = ? AND updated_at < ?')
-    .bind(memberId, now - 6 * 60 * 60_000).run();
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM member_live_state WHERE member_id = ? AND triggered = 0 AND updated_at < ?')
+      .bind(memberId, now - 3 * 60_000),
+    env.DB.prepare('DELETE FROM member_live_state WHERE member_id = ? AND updated_at < ?')
+      .bind(memberId, now - 6 * 60 * 60_000)
+  ]);
 
   const counts = {
     ...sourceCounts,
     candidates: candidates.length,
     momentumReady,
     passing,
-    triggered,
+    triggered: triggeredKeys.size,
     newSignals,
     dailySignals,
     sharedFeed: true
@@ -661,6 +673,24 @@ export async function runMemberLiveBackgroundScans(env) {
     return { ok: false, generatedAt: new Date(now).toISOString(), members: members.length, sharedFeed: true, results };
   }
 
+  let settlement = null;
+  try {
+    settlement = await settleMemberLiveSignals(
+      env,
+      members.map(member => String(member.memberId)),
+      feed.liveItems
+    );
+    feed.usage = {
+      ...feed.usage,
+      settlementUpstreamRequests: Number(settlement?.upstreamRequests || 0),
+      settlementCacheHits: Number(settlement?.cacheHits || 0),
+      settledLiveSignals: Number(settlement?.settled || 0)
+    };
+  } catch (error) {
+    console.error(error);
+    feed.usage = { ...feed.usage, settlementError: error?.message || 'Live settlement failed' };
+  }
+
   const results = [];
   for (const member of members) {
     try {
@@ -686,6 +716,7 @@ export async function runMemberLiveBackgroundScans(env) {
     generatedAt: new Date().toISOString(),
     members: results.length,
     sharedFeed: true,
+    settlement,
     feedUsage: feed.usage,
     results
   };
