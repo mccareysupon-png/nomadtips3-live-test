@@ -61,14 +61,62 @@ function handicap(value) {
   return `${number >= 0 ? '+' : ''}${number}`;
 }
 
+function selectedSide(trade) {
+  return String(trade?.selected_side || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+}
+
+function actualTeams(trade) {
+  const side = selectedSide(trade);
+  const selectedTeam = String(trade?.selected_team || 'Selected');
+  const opponent = String(trade?.opponent || 'Opponent');
+  return {
+    side,
+    selectedTeam,
+    home: String(trade?.actual_home || (side === 'AWAY' ? opponent : selectedTeam)),
+    away: String(trade?.actual_away || (side === 'AWAY' ? selectedTeam : opponent))
+  };
+}
+
+function entryActualScore(trade) {
+  const side = selectedSide(trade);
+  const selected = Number(trade?.entry_selected_score || 0);
+  const opponent = Number(trade?.entry_opponent_score || 0);
+  return {
+    home: trade?.entry_actual_home_score ?? (side === 'AWAY' ? opponent : selected),
+    away: trade?.entry_actual_away_score ?? (side === 'AWAY' ? selected : opponent)
+  };
+}
+
+function finalActualScore(trade) {
+  if (trade?.final_actual_home_score !== null && trade?.final_actual_home_score !== undefined &&
+      trade?.final_actual_away_score !== null && trade?.final_actual_away_score !== undefined) {
+    return { home: trade.final_actual_home_score, away: trade.final_actual_away_score };
+  }
+  if (trade?.final_selected_score === null || trade?.final_selected_score === undefined) return null;
+  const side = selectedSide(trade);
+  return side === 'AWAY'
+    ? { home: trade.final_opponent_score, away: trade.final_selected_score }
+    : { home: trade.final_selected_score, away: trade.final_opponent_score };
+}
+
+function postAlertActualScore(trade) {
+  if (trade?.post_entry_selected_goals === null || trade?.post_entry_selected_goals === undefined ||
+      trade?.post_entry_opponent_goals === null || trade?.post_entry_opponent_goals === undefined) return null;
+  const side = selectedSide(trade);
+  return side === 'AWAY'
+    ? { home: trade.post_entry_opponent_goals, away: trade.post_entry_selected_goals }
+    : { home: trade.post_entry_selected_goals, away: trade.post_entry_opponent_goals };
+}
+
 function signalText(trade) {
-  const side = String(trade.selected_side || 'HOME').toUpperCase();
+  const teams = actualTeams(trade);
+  const entry = entryActualScore(trade);
   return [
     '🚨 NOMAD LIVE SIGNAL',
     '',
-    `${trade.selected_team} vs ${trade.opponent}`,
-    `Selected side: ${side}`,
-    `นาที ${trade.entry_minute}′ | สกอร์ ${trade.entry_selected_score}-${trade.entry_opponent_score}`,
+    `${teams.home} (HOME) vs ${teams.away} (AWAY)`,
+    `ทีมที่เลือก: ${teams.selectedTeam} (${teams.side})`,
+    `นาที ${trade.entry_minute}′ | สกอร์ HOME–AWAY ${entry.home}-${entry.away}`,
     `Momentum ${Math.round(Number(trade.momentum || 0))}%`,
     '',
     `Selected AH ${handicap(trade.ah_line)} @ ${Number(trade.ah_odds).toFixed(2)}`,
@@ -93,18 +141,17 @@ async function resultSummary(env) {
 async function resultText(env, trade) {
   const summary = await resultSummary(env);
   const icon = trade.result === 'CORRECT' ? '✅' : trade.result === 'INCORRECT' ? '❌' : '➖';
-  const finalScore = trade.final_selected_score === null
-    ? 'VOID'
-    : `${trade.final_selected_score}-${trade.final_opponent_score}`;
-  const postScore = trade.post_entry_selected_goals === null
-    ? '—'
-    : `${trade.post_entry_selected_goals}-${trade.post_entry_opponent_goals}`;
+  const teams = actualTeams(trade);
+  const finalScore = finalActualScore(trade);
+  const postScore = postAlertActualScore(trade);
+  const finalText = finalScore ? `${finalScore.home}-${finalScore.away}` : 'VOID';
+  const postText = postScore ? `${postScore.home}-${postScore.away}` : '—';
   return [
     `${icon} NOMAD RESULT — ${trade.settlement}`,
     '',
-    `${trade.selected_team} vs ${trade.opponent}`,
-    `Selected side: ${String(trade.selected_side || 'HOME').toUpperCase()}`,
-    `Final selected-opponent: ${finalScore} | หลัง Alert: ${postScore}`,
+    `${teams.home} (HOME) vs ${teams.away} (AWAY)`,
+    `ทีมที่เลือก: ${teams.selectedTeam} (${teams.side})`,
+    `Final HOME–AWAY: ${finalText} | หลัง Alert HOME–AWAY: ${postText}`,
     `ผล: ${trade.result}`,
     '',
     `กำไร/ขาดทุน: ${signed(trade.profit_units)} Units`,
