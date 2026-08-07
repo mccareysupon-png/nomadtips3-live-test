@@ -35,6 +35,10 @@ FIELD_MAP = {
     'standingsAdjustmentCap': 'standings_adjustment_cap',
     'standingsDirectRankMix': 'standings_direct_rank_mix',
     'standingsRankedCommonMix': 'standings_ranked_common_mix',
+    'presetKey': 'preset_key',
+    'addKTheKingOfSoccer': 'add_k_the_king_of_soccer',
+    'requireStandingsContext': 'require_standings_context',
+    'minimumLeagueTeamCount': 'minimum_league_team_count',
 }
 
 
@@ -104,6 +108,12 @@ def main():
         'Use direct A-vs-B league rank and rank-weighted shared opponent C. '
         'The legacy unranked common-opponent term is retired.'
     )
+    if rules.get('add_k_the_king_of_soccer'):
+        nested['preset'] = 'Add K The King of Soccer'
+        nested['data_quality_policy'] = (
+            'Strict preset: require adequate recent samples and covered league standings; '
+            'never fabricate unavailable odds or unsupported data.'
+        )
     write_json(RULES_PATH, rules)
 
     previous = int(state.get('lastControlVersion') or 0)
@@ -127,8 +137,12 @@ def main():
         'changed': changed,
         'forceReselect': force,
         'source': CONTROL_URL,
+        'presetKey': rules.get('preset_key'),
+        'addKTheKingOfSoccer': bool(rules.get('add_k_the_king_of_soccer')),
         'minimumConfidence': rules.get('minimum_confidence'),
         'minimumMainOdds': rules.get('minimum_main_odds'),
+        'minimumSample': rules.get('minimum_sample'),
+        'requireStandingsContext': bool(rules.get('require_standings_context')),
         'standingsStrengthWeight': rules.get('standings_strength_weight'),
         'legacyCommonOpponentWeight': 0,
     }, ensure_ascii=False))
