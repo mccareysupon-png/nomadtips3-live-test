@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/auto-select-next.yml'
       - '.github/scripts/auto_select_next.py'
+      - '.github/scripts/apply_confidence_policy.py'
       - 'config/nomad-auto-rules.json'
   workflow_dispatch:
     inputs:
@@ -42,6 +43,7 @@ jobs:
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
           python3 .github/scripts/auto_select_next.py
+          python3 .github/scripts/apply_confidence_policy.py
 
       - name: Publish a new automatic test set only when selections changed
         id: publish
