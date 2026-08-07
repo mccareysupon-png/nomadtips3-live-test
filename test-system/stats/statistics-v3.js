@@ -4,7 +4,7 @@ import {
   marketResultText,
   resultText,
   scoreText
-} from '../shared.js?v=202608061015';
+} from '../shared.js?v=202608071505';
 import {
   adaptiveChartWidth,
   dateLabel,
@@ -20,11 +20,12 @@ const ASIAN_SETTLED = new Set(['win', 'half-win', 'push', 'half-loss', 'loss', '
 const POSITIVE = new Set(['correct', 'win', 'half-win']);
 const NEGATIVE = new Set(['incorrect', 'loss', 'half-loss']);
 const NEUTRAL = new Set(['push', 'void']);
-const MARKET_KEYS = ['oneXTwo', 'btts', 'doubleChance', 'asianHandicap'];
+const MARKET_KEYS = ['oneXTwo', 'btts', 'overUnder', 'doubleChance', 'asianHandicap'];
 const MARKET_LABELS = {
   overview: 'Overview',
   oneXTwo: '1X2',
   btts: 'BTTS',
+  overUnder: 'O/U 2.5',
   doubleChance: 'Double Chance',
   asianHandicap: 'Asian Handicap'
 };
@@ -67,6 +68,11 @@ function predictionFor(record, key) {
   };
 }
 
+function predictionAvailable(prediction) {
+  const pick = String(prediction?.pick || '').trim().toUpperCase();
+  return Boolean(pick && !['—', 'N/A', 'NA', 'UNAVAILABLE'].includes(pick));
+}
+
 function isSettled(prediction, key) {
   return (key === 'asianHandicap' ? ASIAN_SETTLED : STANDARD_SETTLED).has(prediction.outcome);
 }
@@ -87,6 +93,24 @@ function marketStatistics(records, key) {
       neutral: summary.voids,
       pending: summary.pending,
       accuracy: summary.accuracy,
+      positiveLabel: 'Correct',
+      negativeLabel: 'Incorrect'
+    };
+  }
+  if (key === 'overUnder') {
+    const values = records.map(record => predictionFor(record, key)).filter(predictionAvailable);
+    const correct = values.filter(item => item.outcome === 'correct').length;
+    const incorrect = values.filter(item => item.outcome === 'incorrect').length;
+    const voids = values.filter(item => item.outcome === 'void').length;
+    const settled = correct + incorrect + voids;
+    return {
+      total: values.length,
+      settled,
+      positive: correct,
+      negative: incorrect,
+      neutral: voids,
+      pending: Math.max(0, values.length - settled),
+      accuracy: correct + incorrect ? Number(((correct / (correct + incorrect)) * 100).toFixed(2)) : 0,
       positiveLabel: 'Correct',
       negativeLabel: 'Incorrect'
     };
@@ -123,7 +147,7 @@ function marketStatistics(records, key) {
 function averageOdds(records, key) {
   const settled = records
     .map(record => predictionFor(record, key))
-    .filter(prediction => isSettled(prediction, key));
+    .filter(prediction => predictionAvailable(prediction) && isSettled(prediction, key));
   const values = settled
     .map(prediction => prediction.odds)
     .filter(value => value !== null);
@@ -137,7 +161,7 @@ function averageOdds(records, key) {
 }
 
 function outcomeReturnFor(prediction, key) {
-  if (!prediction || !isSettled(prediction, key) || prediction.odds === null) return null;
+  if (!prediction || !predictionAvailable(prediction) || !isSettled(prediction, key) || prediction.odds === null) return null;
   const { outcome, odds } = prediction;
   if (outcome === 'correct' || outcome === 'win') return odds;
   if (outcome === 'half-win') return 1 + ((odds - 1) * 0.5);
@@ -153,7 +177,7 @@ function profitPercent(records, key) {
   let returned = 0;
   records.forEach(record => {
     const prediction = predictionFor(record, key);
-    if (!isSettled(prediction, key)) return;
+    if (!predictionAvailable(prediction) || !isSettled(prediction, key)) return;
     if (prediction.odds === null) {
       missing += 1;
       return;
@@ -183,6 +207,7 @@ function overallFinancials(records) {
   records.forEach(record => {
     MARKET_KEYS.forEach(key => {
       const prediction = predictionFor(record, key);
+      if (!predictionAvailable(prediction)) return;
       if (!isSettled(prediction, key)) {
         pending += 1;
         return;
@@ -236,7 +261,7 @@ function renderSummary(records) {
     const cards = [
       { label: 'Overall Profit', value: overall.calculated ? formatPercent(overall.profit) : 'PENDING', note: `${overall.calculated} settled predictions with real odds`, className: overall.calculated ? (overall.profit >= 0 ? 'positive' : 'negative') : '' },
       { label: 'Overall Average Odds', value: overall.average === null ? '—' : overall.average.toFixed(2), note: `${overall.averageCount} settled predictions included` },
-      { label: 'Settled Predictions', value: overall.settled, note: 'Across 1X2, BTTS, Double Chance and Asian Handicap' },
+      { label: 'Settled Predictions', value: overall.settled, note: 'Across 1X2, BTTS, O/U 2.5, Double Chance and Asian Handicap' },
       { label: 'Odds Included', value: overall.calculated, note: 'Only predictions with a real locked odds value' },
       { label: 'Missing Odds Skipped', value: overall.missing, note: 'Excluded from profit and average-odds calculations' },
       { label: 'Pending Predictions', value: overall.pending, note: 'Not included until the outcome is confirmed' }
@@ -290,7 +315,7 @@ function renderMarketCards(records) {
         <span class="market-card-note">${escapeHtml(financial)}</span>
       </article>`;
   }).join('');
-  $('#marketPanelMeta').textContent = `${records.length} matches · four independent markets`;
+  $('#marketPanelMeta').textContent = `${records.length} matches · five independent markets`;
 }
 
 function chartOutcome(prediction, key) {
@@ -306,7 +331,7 @@ function renderChart(records) {
   const host = $('#performanceChart');
   const settledRecords = records
     .map(record => ({ record, prediction: predictionFor(record, key) }))
-    .filter(item => isSettled(item.prediction, key))
+    .filter(item => predictionAvailable(item.prediction) && isSettled(item.prediction, key))
     .sort((a, b) => recordTime(a.record) - recordTime(b.record));
   const signature = `${key}|${chartRange}|${settledRecords.map(item => `${item.record.fixtureId}:${item.prediction.outcome}:${item.record.homeScore}:${item.record.awayScore}`).join('|')}`;
   if (signature === lastSignature) return;
@@ -325,7 +350,7 @@ function renderChart(records) {
 
   $('#chartTitle').textContent = `${MARKET_LABELS[key]} Result Performance`;
   $('#chartSubtitle').textContent = activeMarket === 'overview'
-    ? 'Overview uses the 1X2 cumulative result chart; financial cards above combine all four markets'
+    ? 'Overview uses the 1X2 cumulative result chart; financial cards above combine all five markets'
     : key === 'asianHandicap'
       ? 'Cumulative positive and negative decisions; pushes remain neutral'
       : 'Cumulative confirmed outcomes in chronological order';
@@ -393,7 +418,7 @@ function renderRecent(records) {
   const key = effectiveMarket();
   const settled = records
     .map(record => ({ record, prediction: predictionFor(record, key) }))
-    .filter(item => isSettled(item.prediction, key))
+    .filter(item => predictionAvailable(item.prediction) && isSettled(item.prediction, key))
     .sort((a, b) => recordTime(b.record) - recordTime(a.record));
   const recent = settled.slice(0, 5);
   $('#recentTitle').textContent = `Recent ${MARKET_LABELS[key]} Form`;
@@ -429,6 +454,7 @@ function resultClass(outcome) {
 
 function marketCell(record, key) {
   const market = predictionFor(record, key);
+  if (!predictionAvailable(market)) return '<b>N/A</b><small>No historical prediction</small>';
   return `<b>${escapeHtml(market.pick)}</b><small>Odds ${formatOdds(market.odds)} · ${market.confidence}%</small><span class="market-result ${resultClass(market.outcome)}">${escapeHtml(key === 'oneXTwo' ? resultText(record) : marketResultText(record.markets?.[key]))}</span>`;
 }
 
@@ -440,6 +466,7 @@ function renderHistory(records) {
       <td><b>${escapeHtml(record.home)}</b> vs ${escapeHtml(record.away)}</td>
       <td data-market-cell="oneXTwo">${marketCell(record, 'oneXTwo')}</td>
       <td data-market-cell="btts">${marketCell(record, 'btts')}</td>
+      <td data-market-cell="overUnder">${marketCell(record, 'overUnder')}</td>
       <td data-market-cell="doubleChance">${marketCell(record, 'doubleChance')}</td>
       <td data-market-cell="asianHandicap">${marketCell(record, 'asianHandicap')}</td>
       <td><b>${escapeHtml(scoreText(record))}</b></td>
