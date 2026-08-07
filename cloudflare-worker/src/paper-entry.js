@@ -11,6 +11,7 @@ import {
 } from './auto-scan.js';
 import { runHotConditionScan } from './hot-scan.js';
 import { handleConditionConfig } from './condition-config.js';
+import { handleBallTengConfig } from './ball-teng-config.js';
 import {
   handleLineWebhook,
   lineStatus,
@@ -170,6 +171,18 @@ export default {
         return json(request, {
           ok: false,
           error: error?.message || 'Condition configuration failed'
+        }, 500);
+      }
+    }
+
+    if (url.pathname === '/ball-teng-config') {
+      try {
+        const result = await handleBallTengConfig(request, env);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Ball-teng configuration failed'
         }, 500);
       }
     }
