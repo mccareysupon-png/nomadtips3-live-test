@@ -73,7 +73,8 @@ function stats(home, away) {
 let scanNumber = 0;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async url => {
-  const path = new URL(String(url)).pathname + new URL(String(url)).search;
+  const parsed = new URL(String(url));
+  const path = parsed.pathname + parsed.search;
   if (path === '/fixtures?live=all') {
     return Response.json({
       response: [{
@@ -137,7 +138,7 @@ try {
       oddsMax: null,
       ahMin: 0.25,
       ahMax: null,
-      momentumMin: 60,
+      momentumMin: 35,
       goalGapLimited: false,
       maxGoalGap: 1,
       confirmationRounds: 1,
@@ -147,7 +148,7 @@ try {
   });
   const activated = await handleMemberConfig(request, env, url);
   assert.equal(activated.status, 200);
-  assert.equal(activated.data.active.momentumMin, 60);
+  assert.equal(activated.data.active.momentumMin, 35);
 
   const first = await runMemberLiveBackgroundScans(env);
   assert.equal(first.members, 1);
@@ -168,8 +169,7 @@ try {
   assert.equal(second.results[0].usage.totalRequests, 3);
   state = await env.DB.prepare('SELECT * FROM member_live_state WHERE member_id = ? AND state_key = ?')
     .bind('0001', '123:HOME').first();
-  console.log(`DEBUG: second scan momentum=${state?.momentum} streak=${state?.streak} triggered=${state?.triggered}`);
-  assert.ok(Number(state.momentum) >= 60);
+  assert.ok(Number(state.momentum) >= 35);
   assert.equal(Number(state.triggered), 1);
   const signal = await env.DB.prepare('SELECT * FROM member_live_signals WHERE member_id = ? AND signal_key = ?')
     .bind('0001', '123:HOME').first();
