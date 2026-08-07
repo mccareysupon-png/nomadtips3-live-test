@@ -143,6 +143,23 @@ function thaiDayKey(now = Date.now()) {
   return `${read('year')}-${read('month')}-${read('day')}`;
 }
 
+function resultSummary(records) {
+  const settled = records.filter(row => !['PENDING', 'WAITING', ''].includes(String(row.outcome || '').toUpperCase()));
+  const correct = settled.filter(row => ['CORRECT', 'WIN', 'HALF-WIN'].includes(String(row.outcome || '').toUpperCase())).length;
+  const incorrect = settled.filter(row => ['INCORRECT', 'LOSS', 'HALF-LOSS'].includes(String(row.outcome || '').toUpperCase())).length;
+  const voids = settled.filter(row => ['VOID', 'PUSH'].includes(String(row.outcome || '').toUpperCase())).length;
+  const decisions = correct + incorrect;
+  return {
+    total: records.length,
+    settled: settled.length,
+    correct,
+    incorrect,
+    void: voids,
+    pending: Math.max(0, records.length - settled.length),
+    accuracy: decisions ? (correct / decisions) * 100 : null
+  };
+}
+
 async function liveStatus(env, memberId) {
   await ensureSchema(env);
   const config = await getActiveMemberConditionConfig(env, memberId);
@@ -231,6 +248,21 @@ async function ballTengResults(env, memberId) {
   const storedVersion = Number(row?.config_version || 0);
   const activeVersion = Number(config?.version || 0);
   const current = Boolean(row && storedVersion === activeVersion);
+  let results = [];
+  if (row?.set_id) {
+    const resultRows = await env.DB.prepare(`
+      SELECT result_key, fixture_id, market, pick, odds, outcome,
+             payload_json, created_at, settled_at
+      FROM member_prediction_results
+      WHERE member_id = ? AND source_type = 'BALL_TENG' AND result_key LIKE ?
+      ORDER BY created_at ASC, fixture_id ASC
+      LIMIT 500
+    `).bind(memberId, `BALL_TENG:${row.set_id}:%`).all();
+    results = (resultRows.results || []).map(item => ({
+      ...item,
+      payload: parseJson(item.payload_json, {})
+    }));
+  }
   return {
     memberId,
     scope: 'MEMBER_ONLY',
@@ -241,9 +273,12 @@ async function ballTengResults(env, memberId) {
     current,
     generatedAt: row?.generated_at ? new Date(Number(row.generated_at)).toISOString() : null,
     payload: row?.payload_json ? parseJson(row.payload_json, null) : null,
+    results,
+    resultSummary: resultSummary(results),
     engine: {
       isolatedStorage: true,
       independentSelectorRequired: false,
+      resultSettlement: true,
       background: true,
       schedule: 'CHECK_EVERY_5_MINUTES',
       status: !row
@@ -266,21 +301,10 @@ async function stats(env, memberId) {
     LIMIT 500
   `).bind(memberId).all();
   const records = (rows.results || []).map(row => ({ ...row, payload: parseJson(row.payload_json) }));
-  const settled = records.filter(row => !['PENDING', 'WAITING', ''].includes(String(row.outcome || '').toUpperCase()));
-  const correct = settled.filter(row => ['CORRECT', 'WIN', 'HALF-WIN'].includes(String(row.outcome || '').toUpperCase())).length;
-  const incorrect = settled.filter(row => ['INCORRECT', 'LOSS', 'HALF-LOSS'].includes(String(row.outcome || '').toUpperCase())).length;
-  const decisions = correct + incorrect;
   return {
     memberId,
     scope: 'MEMBER_ONLY',
-    summary: {
-      total: records.length,
-      settled: settled.length,
-      correct,
-      incorrect,
-      pending: records.length - settled.length,
-      accuracy: decisions ? (correct / decisions) * 100 : null
-    },
+    summary: resultSummary(records),
     records
   };
 }
