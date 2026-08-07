@@ -16,7 +16,7 @@ import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
 import { handleMemberBallTengIngest } from './member-ball-teng-ingest.js';
 import { handleMemberBallTengRun } from './member-ball-teng-run.js';
-import { runMemberLiveBackgroundScans } from './member-live-evaluator.js';
+import { runMemberLiveBackgroundScans } from './member-live-shared-evaluator.js';
 import {
   handleLineWebhook,
   lineStatus,
