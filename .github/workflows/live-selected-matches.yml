@@ -12,6 +12,12 @@ on:
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
+    inputs:
+      chain:
+        description: 'Internal chained live refresh; skips repeated odds enrichment'
+        required: false
+        default: 'false'
+        type: string
 
 permissions:
   contents: write
@@ -24,7 +30,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 7
     env:
       API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
     steps:
@@ -40,21 +46,28 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
-          odds_refreshed=0
-          for attempt in 1 2 3; do
-            if python3 .github/scripts/enrich_selected_odds.py; then
-              odds_refreshed=1
-              break
+          chain_refresh='${{ inputs.chain }}'
+          if [ "$chain_refresh" = 'true' ]; then
+            echo 'Chained live refresh: reusing previously locked odds and skipping duplicate odds API calls.'
+          else
+            odds_refreshed=0
+            for attempt in 1 2 3; do
+              if python3 .github/scripts/enrich_selected_odds.py; then
+                odds_refreshed=1
+                break
+              fi
+              echo "Odds refresh attempt ${attempt} failed; retrying automatically."
+              sleep $((attempt * 5))
+            done
+            if [ "$odds_refreshed" -ne 1 ]; then
+              echo 'Odds refresh unavailable; continuing with score refresh so live and final results do not stop.'
             fi
-            echo "Odds refresh attempt ${attempt} failed; retrying automatically."
-            sleep $((attempt * 5))
-          done
-          if [ "$odds_refreshed" -ne 1 ]; then
-            echo 'Odds refresh unavailable; continuing with score refresh so live and final results do not stop.'
           fi
 
-          for cycle in $(seq 0 7); do
-            if (( cycle % 4 == 0 )); then
+          # One score snapshot per minute. Heavy statistics/events refresh only once
+          # per ~4-minute chain. Member/condition engines use the Worker shared feed.
+          for cycle in $(seq 0 4); do
+            if [ "$cycle" -eq 0 ]; then
               export DETAIL_REFRESH=1
             else
               export DETAIL_REFRESH=0
@@ -100,8 +113,8 @@ jobs:
               break
             fi
 
-            if [ "$cycle" -lt 7 ]; then
-              sleep 30
+            if [ "$cycle" -lt 4 ]; then
+              sleep 60
             fi
           done
 
@@ -136,7 +149,7 @@ jobs:
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/live-selected-matches.yml/dispatches" \
-            -d '{"ref":"main"}'
+            -d '{"ref":"main","inputs":{"chain":"true"}}'
 
       - name: Start automatic next-set selection when all matches settle
         if: always()
