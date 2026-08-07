@@ -121,8 +121,10 @@
   function notifySignal(candidate, momentum) {
     if (!notificationReady()) return;
     try {
+      const actualHome = candidate.actualHome || (candidate.selectedSide === 'AWAY' ? candidate.away : candidate.home);
+      const actualAway = candidate.actualAway || (candidate.selectedSide === 'AWAY' ? candidate.home : candidate.away);
       new Notification('NOMADTIPS3 · เข้าเงื่อนไข', {
-        body: `${candidate.home} vs ${candidate.away} · ${candidate.minute}′ · Momentum ${momentum}% · ${marketLabel(candidate.selectedMarket)} ${candidate.markets?.selectedOdds ?? 'N/A'}`,
+        body: `${actualHome} vs ${actualAway} · ${candidate.minute}′ · Momentum ${momentum}% · ${marketLabel(candidate.selectedMarket)} ${candidate.markets?.selectedOdds ?? 'N/A'}`,
         tag: `nomad-${candidate.fixtureId}-${candidate.selectedSide || 'HOME'}`,
         renotify: false
       });
@@ -135,13 +137,17 @@
     if (state.alerts.some(alert => alert.key === key)) return;
     const score = scoreView(candidate);
     const momentum = num(candidate.serverMomentum?.home);
+    const actualHome = candidate.actualHome || (candidate.selectedSide === 'AWAY' ? candidate.away : candidate.home);
+    const actualAway = candidate.actualAway || (candidate.selectedSide === 'AWAY' ? candidate.home : candidate.away);
+    const actualHomeScore = candidate.actualScore?.home ?? (candidate.selectedSide === 'AWAY' ? candidate.score?.away : candidate.score?.home);
+    const actualAwayScore = candidate.actualScore?.away ?? (candidate.selectedSide === 'AWAY' ? candidate.score?.home : candidate.score?.away);
     state.alerts.unshift({
       key,
       at: Date.now(),
       fixtureId: Number(candidate.fixtureId),
-      match: `${candidate.home} vs ${candidate.away}`,
+      match: `${actualHome} vs ${actualAway}`,
       minute: candidate.minute,
-      score: `${candidate.score.home}-${candidate.score.away}`,
+      score: `${actualHomeScore}-${actualAwayScore}`,
       scoreState: score.label,
       momentum,
       selectedSide: candidate.selectedSide || 'HOME',
@@ -211,6 +217,12 @@
     const selectedOdds = num(candidate.markets?.selectedOdds);
     const ah = num(candidate.markets?.homeAh);
     const ahOdds = num(candidate.markets?.homeAhOdds);
+    const actualHome = candidate.actualHome || (candidate.selectedSide === 'AWAY' ? candidate.away : candidate.home);
+    const actualAway = candidate.actualAway || (candidate.selectedSide === 'AWAY' ? candidate.home : candidate.away);
+    const actualHomeScore = candidate.actualScore?.home ?? (candidate.selectedSide === 'AWAY' ? candidate.score?.away : candidate.score?.home);
+    const actualAwayScore = candidate.actualScore?.away ?? (candidate.selectedSide === 'AWAY' ? candidate.score?.home : candidate.score?.away);
+    const homeSelected = candidate.selectedSide === 'HOME';
+    const awaySelected = candidate.selectedSide === 'AWAY';
 
     if (triggered) recordServerAlert(candidate);
 
@@ -219,12 +231,12 @@
       <div class="card-body">
         <div>
           <div class="match">
-            <div class="team"><strong>${escapeHtml(candidate.home)}</strong><small>${sideLabel(candidate.selectedSide)} · SELECTED</small></div>
-            <div class="score"><span>${candidate.minute}′</span><b>${candidate.score.home} : ${candidate.score.away}</b><em class="${score.css}">${score.label}</em></div>
-            <div class="team"><strong>${escapeHtml(candidate.away)}</strong><small>OPPONENT</small></div>
+            <div class="team"><strong>${escapeHtml(actualHome)}</strong><small>ทีมเจ้าบ้าน${homeSelected ? ' · SELECTED' : ''}</small></div>
+            <div class="score"><span>${candidate.minute}′</span><b>${actualHomeScore} : ${actualAwayScore}</b><em class="${score.css}">${score.label}</em></div>
+            <div class="team"><strong>${escapeHtml(actualAway)}</strong><small>ทีมเยือน${awaySelected ? ' · SELECTED' : ''}</small></div>
           </div>
           <div class="momentum">
-            <div class="momentum-top"><small>NOMAD MOMENTUM · SERVER 24/7</small><b><em>${ready ? momentum : '—'}</em> – <i>${ready ? opponentMomentum : '—'}</i></b></div>
+            <div class="momentum-top"><small>NOMAD MOMENTUM · SERVER 24/7 · SELECTED vs OPPONENT</small><b><em>${ready ? momentum : '—'}</em> – <i>${ready ? opponentMomentum : '—'}</i></b></div>
             <div class="bar"><span class="home" style="width:${ready ? momentum : 50}%"></span><span class="away" style="width:${ready ? opponentMomentum : 50}%"></span></div>
             <div class="chart">${momentumChart(candidate.fixtureId, candidate.selectedSide, momentum)}</div>
           </div>
