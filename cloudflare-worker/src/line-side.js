@@ -114,10 +114,13 @@ async function resultText(env, trade) {
   ].join('\n');
 }
 
-async function deliveryExists(env, key) {
+async function deliveryExists(env, keys) {
+  const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
+  if (!list.length) return false;
+  const placeholders = list.map(() => '?').join(',');
   const row = await env.DB.prepare(
-    "SELECT status FROM line_deliveries WHERE delivery_key = ? AND status = 'SENT'"
-  ).bind(key).first();
+    `SELECT status FROM line_deliveries WHERE delivery_key IN (${placeholders}) AND status = 'SENT' LIMIT 1`
+  ).bind(...list).first();
   return Boolean(row);
 }
 
@@ -142,7 +145,10 @@ async function saveDelivery(env, key, userId, fixtureId, eventType, status, erro
 
 async function sendEvent(env, subscriber, trade, eventType, text) {
   const key = `${eventType}:${trade.trade_key}:${subscriber.user_id}`;
-  if (await deliveryExists(env, key)) return false;
+  const legacyKey = String(trade.selected_side || 'HOME').toUpperCase() === 'HOME'
+    ? `${eventType}:${trade.fixture_id}:${subscriber.user_id}`
+    : null;
+  if (await deliveryExists(env, [key, legacyKey])) return false;
   try {
     await pushText(env, subscriber.user_id, text);
     await saveDelivery(env, key, subscriber.user_id, trade.fixture_id, eventType, 'SENT');
