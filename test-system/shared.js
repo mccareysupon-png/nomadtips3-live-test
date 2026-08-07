@@ -107,7 +107,12 @@ function normalizeMarket(value, fallbackPick = '—') {
 }
 
 function normalize(record) {
-  const legacyMarkets = {btts:record.btts,doubleChance:record.doubleChance ?? record.double_chance,asianHandicap:record.asianHandicap ?? record.asian_handicap};
+  const legacyMarkets = {
+    btts:record.btts,
+    overUnder:record.overUnder ?? record.over_under ?? record.ou,
+    doubleChance:record.doubleChance ?? record.double_chance,
+    asianHandicap:record.asianHandicap ?? record.asian_handicap
+  };
   const markets = record.markets ?? legacyMarkets;
   return {
     ...record,
@@ -126,6 +131,7 @@ function normalize(record) {
     predictedScore: record.predictedScore ?? record.predicted_score ?? '—',
     markets: {
       btts: normalizeMarket(markets?.btts, '—'),
+      overUnder: normalizeMarket(markets?.overUnder ?? markets?.over_under ?? markets?.ou, '—'),
       doubleChance: normalizeMarket(markets?.doubleChance, '—'),
       asianHandicap: normalizeMarket(markets?.asianHandicap, '—')
     },
@@ -223,7 +229,15 @@ function asianMarketStats(records) {
   return {total:values.length,...counts,decisions,weightedRate};
 }
 
-export function buildMarketSummary(records) { return {oneXTwo:buildSummary(records),btts:standardMarketStats(records,'btts'),doubleChance:standardMarketStats(records,'doubleChance'),asianHandicap:asianMarketStats(records)}; }
+export function buildMarketSummary(records) {
+  return {
+    oneXTwo:buildSummary(records),
+    btts:standardMarketStats(records,'btts'),
+    overUnder:standardMarketStats(records,'overUnder'),
+    doubleChance:standardMarketStats(records,'doubleChance'),
+    asianHandicap:asianMarketStats(records)
+  };
+}
 export function formatKickoff(iso) { try{return new Intl.DateTimeFormat(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));}catch{return'—';} }
 export function resultText(record) { if(record.outcome==='correct')return'CORRECT';if(record.outcome==='incorrect')return'INCORRECT';if(record.outcome==='void')return'VOID';if(record.status==='MANUAL_RESULT_REQUIRED')return'MANUAL REQUIRED';return'WAITING'; }
 export function marketResultText(market) { const o=String(market?.outcome??'pending');return({correct:'CORRECT',incorrect:'INCORRECT',void:'VOID',win:'WIN','half-win':'HALF WIN',push:'PUSH','half-loss':'HALF LOSS',loss:'LOSS',pending:'WAITING'})[o]??o.toUpperCase(); }
