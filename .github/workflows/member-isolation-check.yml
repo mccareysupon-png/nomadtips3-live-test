@@ -5,6 +5,7 @@ on:
   pull_request:
     paths:
       - 'cloudflare-worker/src/member-*.js'
+      - 'cloudflare-worker/src/shared-api-football.js'
       - 'cloudflare-worker/src/paper-entry.js'
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
@@ -18,6 +19,7 @@ on:
       - '.github/workflows/member-isolation-check.yml'
   push:
     branches:
+      - 'main'
       - 'feature/member-0001-rollout-20260807'
       - 'test/member-0001-config-isolation-20260807'
       - 'feature/member-live-evaluator-20260807'
@@ -25,6 +27,7 @@ on:
       - 'feature/member-ball-teng-run-quota-20260807'
     paths:
       - 'cloudflare-worker/src/member-*.js'
+      - 'cloudflare-worker/src/shared-api-football.js'
       - 'cloudflare-worker/src/paper-entry.js'
       - 'test-system/member-0001/**'
       - 'scripts/check-member-isolation.mjs'
@@ -53,6 +56,8 @@ jobs:
           node --check cloudflare-worker/src/member-config.js
           node --check cloudflare-worker/src/member-data.js
           node --check cloudflare-worker/src/member-live-evaluator.js
+          node --check cloudflare-worker/src/member-live-shared-evaluator.js
+          node --check cloudflare-worker/src/shared-api-football.js
           node --check cloudflare-worker/src/member-ball-teng-ingest.js
           node --check cloudflare-worker/src/member-ball-teng-run.js
           node --check cloudflare-worker/src/paper-entry.js
