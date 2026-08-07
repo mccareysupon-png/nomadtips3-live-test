@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#090a0c">
+  <title>NOMADTIPS3 — Ball Teng Control</title>
+  <style>
+    :root{--bg:#090a0c;--panel:#17191e;--panel2:#22252b;--field:#24272d;--input:#15171b;--text:#eef7f2;--muted:#94a79e;--green:#00df91;--yellow:#f2c94c;--red:#ff6573;--cyan:#65d7ff}
+    *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#2a2c31 0%,#17191d 42%,#090a0c 100%);background-attachment:fixed}
+    .wrap{width:min(1120px,calc(100% - 24px));margin:auto;padding:24px 0 48px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.brand{font-size:26px;font-weight:950;letter-spacing:-1px}.brand b{color:var(--yellow)}.tag{margin-top:5px;color:#c1d2ca;font-size:10px;font-weight:900;letter-spacing:.07em}.back{display:inline-flex;align-items:center;border-radius:10px;padding:9px 12px;background:#2a2d33;color:#edf7f2;text-decoration:none;font-size:11px;font-weight:900}
+    .status{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:16px 0 12px;padding:13px 15px;border-radius:14px;background:#1e2126}.status strong{color:#fff}.status p{margin:3px 0 0;color:#a9bbb2;font-size:11px;line-height:1.5}.badge{border-radius:999px;padding:6px 9px;background:#132a21;color:var(--green);font-size:9px;font-weight:950;white-space:nowrap}.badge.off{background:#321a1d;color:#ff9da6}
+    .notice{margin-bottom:12px;padding:12px 14px;border-radius:13px;background:#202329;color:#b9c8c1;font-size:11px;line-height:1.6}.notice b{color:var(--yellow)}.notice em{color:var(--cyan);font-style:normal;font-weight:900}
+    .panel{border-radius:17px;background:linear-gradient(180deg,#1b1e23,#121418);padding:15px}.section{margin-bottom:14px}.section:last-child{margin-bottom:0}.section-head{display:flex;justify-content:space-between;gap:12px;align-items:end;margin:3px 2px 8px}.section-head h2{margin:0;font-size:12px}.section-head span{color:#84988e;font-size:9px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px}.field{padding:10px;border-radius:12px;background:var(--field)}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850;line-height:1.35}.field input,.field select{width:100%;border:0;border-radius:9px;background:var(--input);color:var(--text);padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus,.field select:focus{box-shadow:0 0 0 2px var(--green)}.field input:disabled{opacity:.55}.field small{display:block;margin-top:5px;color:#75887f;font-size:8px;line-height:1.35}.fixed{background:#28231a}.fixed input{color:var(--yellow);font-weight:900}
+    .summary-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:10px;margin-top:13px}.summary{padding:12px 13px;border-radius:12px;background:#292c32;color:#bfd0c8;font-size:10px;line-height:1.6}.summary b{color:#fff}.summary .old{color:var(--red);font-weight:900}.summary .new{color:var(--green);font-weight:900}
+    .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}.actions button{border:0;border-radius:10px;padding:10px 16px;background:#2a2d33;color:#eaf5ef;font:inherit;font-size:11px;font-weight:950;cursor:pointer}.actions button.primary{background:#00ad72;color:#04120c}.actions button.warn{background:#3a3220;color:#f7d76e}.actions button:disabled{opacity:.55;cursor:wait}.message{min-height:22px;margin-top:8px;text-align:right;color:#94a79e;font-size:10px}.message.good{color:var(--green)}.message.bad{color:var(--red)}
+    .footer{margin-top:16px;text-align:center;color:#6f8178;font-size:9px}.version{color:#82958b;font-size:9px;margin-top:4px}
+    @media(max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.grid{grid-template-columns:repeat(2,1fr)}.summary-grid{grid-template-columns:1fr}}@media(max-width:520px){.top{flex-direction:column}.status{grid-template-columns:1fr}.grid{grid-template-columns:1fr}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}}
+  </style>
+  <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">OWNER · BALL TENG CONTROL · AUTO TEST</div></div>
+      <a class="back" href="../">← กลับหน้า Match Predictions</a>
+    </header>
+
+    <div class="status">
+      <div><strong>ค่าที่กำลังรัน</strong><p id="activeSummary">กำลังโหลดจาก Worker…</p><div class="version" id="versionText"></div></div>
+      <span class="badge" id="engineBadge">AUTO TEST</span>
+    </div>
+
+    <div class="notice">
+      ระบบนี้ควบคุม <b>บอลเต็งรายวัน (1X2 Team Win)</b> โดยตรง · Common Opponent แบบเก่า = <b>0%</b> และไม่ถูกนำมาคิดแล้ว · ใช้ <em>Ranked A–B–C + League Standing</em> แทน · <b>เซฟ</b> เก็บร่างโดยไม่เปลี่ยนระบบ · <b>รัน</b> เปิดใช้ค่าใหม่และส่งคำสั่งให้ AUTO สร้างชุดใหม่หนึ่งครั้งเมื่อ Scheduler รับ Version ใหม่
+    </div>
+
+    <main class="panel">
+      <section class="section">
+        <div class="section-head"><h2>การทำงานหลัก</h2><span>ช่วงเวลา · Odds · Confidence · จำนวนคู่</span></div>
+        <div class="grid">
+          <div class="field"><label>สถานะระบบ</label><select id="enabled"><option value="true">เปิด AUTO</option><option value="false">ปิด AUTO</option></select></div>
+          <div class="field"><label>ตัดรอบเวลาไทย</label><input id="cutoffHourLocal" type="number" min="0" max="23" step="1"><small>ชั่วโมง 0–23</small></div>
+          <div class="field"><label>เวลาขั้นต่ำก่อนแข่ง (นาที)</label><input id="minimumLeadMinutes" type="number" min="0" max="720" step="1"></div>
+          <div class="field"><label>Odds บอลเต็งขั้นต่ำ</label><input id="minimumMainOdds" type="number" min="1.01" max="100" step="0.01"></div>
+
+          <div class="field"><label>Confidence ขั้นต่ำ (%)</label><input id="minimumConfidence" type="number" min="1" max="99" step="1"></div>
+          <div class="field"><label>Confidence สูงสุด (%)</label><input id="maximumConfidence" type="number" min="1" max="99" step="1"></div>
+          <div class="field"><label>Confidence Strength Scale</label><input id="confidenceStrengthScale" type="number" min="1" max="50" step="0.1"></div>
+          <div class="field"><label>จำนวนคู่สูงสุด</label><input id="maximumSelections" type="number" min="0" max="500" step="1"><small>0 = ไม่จำกัด</small></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><h2>ข้อมูลฟอร์มที่ใช้คัด</h2><span>Sample และเกณฑ์ผ่านรอบแรก</span></div>
+        <div class="grid">
+          <div class="field"><label>Overall ย้อนหลัง (นัด)</label><input id="overallSample" type="number" min="1" max="20" step="1"></div>
+          <div class="field"><label>Home / Away ย้อนหลัง (นัด)</label><input id="venueSample" type="number" min="1" max="20" step="1"></div>
+          <div class="field"><label>ดึงประวัติสูงสุด (นัด)</label><input id="historyFetch" type="number" min="1" max="100" step="1"></div>
+          <div class="field"><label>Sample ขั้นต่ำ</label><input id="minimumSample" type="number" min="1" max="20" step="1"></div>
+
+          <div class="field"><label>Strength ขั้นต่ำ</label><input id="minimumStrengthScore" type="number" min="0" max="5" step="0.01"></div>
+          <div class="field"><label>Overall PPG Edge ขั้นต่ำ</label><input id="minimumOverallPpgEdge" type="number" min="0" max="3" step="0.01"></div>
+          <div class="field"><label>Home/Away PPG Edge ขั้นต่ำ</label><input id="minimumVenuePpgEdge" type="number" min="0" max="3" step="0.01"></div>
+          <div class="field"><label>วิเคราะห์ Fixtures สูงสุด</label><input id="maximumFixturesToAnalyze" type="number" min="0" max="2000" step="1"><small>0 = ไม่จำกัด</small></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><h2>น้ำหนัก Strength หลัก</h2><span>Common Opponent เดิมถูกยกเลิก</span></div>
+        <div class="grid">
+          <div class="field"><label>Overall PPG (%)</label><input id="overallPpgWeightPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label>Home / Away PPG (%)</label><input id="venuePpgWeightPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label>Goal Difference (%)</label><input id="goalDifferenceWeightPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field fixed"><label>Common Opponent แบบเก่า (%)</label><input value="0" disabled><small>เลิกใช้ถาวรใน Ball Teng v2</small></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head"><h2>Ranked A–B–C / League Standing</h2><span>ชั้นปรับ Strength ใหม่</span></div>
+        <div class="grid">
+          <div class="field"><label>ใช้ตารางคะแนน</label><select id="useStandingsContext"><option value="true">ใช้</option><option value="false">ไม่ใช้</option></select></div>
+          <div class="field"><label>Standing Context Weight (%)</label><input id="standingsStrengthWeightPct" type="number" min="0" max="100" step="1"><small>Default ใหม่ = 32%</small></div>
+          <div class="field"><label>ปรับ Strength สูงสุด ± (%)</label><input id="standingsAdjustmentCapPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label>A vs B Rank (%)</label><input id="standingsDirectRankMixPct" type="number" min="0" max="100" step="1"></div>
+          <div class="field"><label>Ranked Shared Opponent C (%)</label><input id="standingsRankedCommonMixPct" type="number" min="0" max="100" step="1"></div>
+        </div>
+      </section>
+
+      <div class="summary-grid">
+        <div class="summary" id="draftSummary">กำลังโหลดค่าร่าง…</div>
+        <div class="summary"><b>โครงสร้างปัจจุบัน</b><br>Core: Overall + Home/Away + GD = <span id="coreTotal">88%</span><br><span class="old">Old Common = 0%</span><br><span class="new">Ranked Standing Context = <span id="standingTotal">32%</span></span><br>ภายใน Standing: A/B Rank + Ranked C ต้องรวม 100%</div>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="warn" id="defaultButton">ดีฟอลท์</button>
+        <button type="button" id="saveButton">เซฟ</button>
+        <button type="button" class="primary" id="runButton">รัน</button>
+      </div>
+      <div class="message" id="message"></div>
+    </main>
+
+    <div class="footer">TEST ONLY · OWNER BALL TENG SETTINGS · RUN IS AN EXPLICIT RESELECTION COMMAND</div>
+  </div>
+
+  <script>
+    (() => {
+      'use strict';
+      const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
+      const $ = id => document.getElementById(id);
+      let serverState = null;
+
+      const numericIds = [
+        'cutoffHourLocal','minimumLeadMinutes','minimumConfidence','maximumConfidence','confidenceStrengthScale','minimumMainOdds',
+        'overallSample','venueSample','historyFetch','minimumSample','minimumStrengthScore','minimumOverallPpgEdge','minimumVenuePpgEdge',
+        'maximumFixturesToAnalyze','maximumSelections','overallPpgWeightPct','venuePpgWeightPct','goalDifferenceWeightPct',
+        'standingsStrengthWeightPct','standingsAdjustmentCapPct','standingsDirectRankMixPct','standingsRankedCommonMixPct'
+      ];
+      const allIds = ['enabled','useStandingsContext',...numericIds];
+      const pct = value => Math.round(Number(value || 0) * 10000) / 100;
+      const ratio = id => Number($(id).value) / 100;
+      const bool = id => $(id).value === 'true';
+      const num = id => Number($(id).value);
+
+      function configText(config){
+        if (!config) return 'ยังไม่มีข้อมูล';
+        const maxSel = Number(config.maximumSelections) === 0 ? 'ไม่จำกัดคู่' : `สูงสุด ${config.maximumSelections} คู่`;
+        return `${config.enabled ? 'AUTO ON' : 'AUTO OFF'} · Confidence ${config.minimumConfidence}–${config.maximumConfidence}% · Odds ≥ ${Number(config.minimumMainOdds).toFixed(2)} · Overall ${config.overallSample} · H/A ${config.venueSample} · Strength ≥ ${Number(config.minimumStrengthScore).toFixed(2)} · Ranked Standing ${pct(config.standingsStrengthWeight)}% · ${maxSel}`;
+      }
+
+      function fill(config){
+        if (!config) return;
+        $('enabled').value = String(Boolean(config.enabled));
+        $('cutoffHourLocal').value = config.cutoffHourLocal;
+        $('minimumLeadMinutes').value = config.minimumLeadMinutes;
+        $('minimumConfidence').value = config.minimumConfidence;
+        $('maximumConfidence').value = config.maximumConfidence;
+        $('confidenceStrengthScale').value = config.confidenceStrengthScale;
+        $('minimumMainOdds').value = config.minimumMainOdds;
+        $('overallSample').value = config.overallSample;
+        $('venueSample').value = config.venueSample;
+        $('historyFetch').value = config.historyFetch;
+        $('minimumSample').value = config.minimumSample;
+        $('minimumStrengthScore').value = config.minimumStrengthScore;
+        $('minimumOverallPpgEdge').value = config.minimumOverallPpgEdge;
+        $('minimumVenuePpgEdge').value = config.minimumVenuePpgEdge;
+        $('maximumFixturesToAnalyze').value = config.maximumFixturesToAnalyze;
+        $('maximumSelections').value = config.maximumSelections;
+        $('overallPpgWeightPct').value = pct(config.overallPpgWeight);
+        $('venuePpgWeightPct').value = pct(config.venuePpgWeight);
+        $('goalDifferenceWeightPct').value = pct(config.goalDifferenceWeight);
+        $('useStandingsContext').value = String(Boolean(config.useStandingsContext));
+        $('standingsStrengthWeightPct').value = pct(config.standingsStrengthWeight);
+        $('standingsAdjustmentCapPct').value = pct(config.standingsAdjustmentCap);
+        $('standingsDirectRankMixPct').value = pct(config.standingsDirectRankMix);
+        $('standingsRankedCommonMixPct').value = pct(config.standingsRankedCommonMix);
+        updateDraftSummary();
+      }
+
+      function readForm(){
+        const minimumConfidence = num('minimumConfidence');
+        const maximumConfidence = num('maximumConfidence');
+        const overallSample = num('overallSample');
+        const venueSample = num('venueSample');
+        const minimumSample = num('minimumSample');
+        const historyFetch = num('historyFetch');
+        const direct = num('standingsDirectRankMixPct');
+        const rankedC = num('standingsRankedCommonMixPct');
+        if (!Number.isFinite(minimumConfidence) || !Number.isFinite(maximumConfidence) || maximumConfidence < minimumConfidence) throw new Error('Confidence สูงสุดต้องไม่น้อยกว่าค่าขั้นต่ำ');
+        if (minimumSample > overallSample || minimumSample > venueSample) throw new Error('Sample ขั้นต่ำต้องไม่เกิน Overall และ Home/Away sample');
+        if (historyFetch < Math.max(overallSample, venueSample)) throw new Error('History Fetch ต้องไม่น้อยกว่า sample ที่ใช้');
+        if (Math.abs((direct + rankedC) - 100) > 0.01) throw new Error('A/B Rank + Ranked C ต้องรวมกัน 100%');
+        return {
+          enabled: bool('enabled'),
+          cutoffHourLocal: num('cutoffHourLocal'),
+          minimumLeadMinutes: num('minimumLeadMinutes'),
+          minimumConfidence,
+          maximumConfidence,
+          confidenceStrengthScale: num('confidenceStrengthScale'),
+          minimumMainOdds: num('minimumMainOdds'),
+          overallSample,
+          venueSample,
+          historyFetch,
+          minimumSample,
+          minimumStrengthScore: num('minimumStrengthScore'),
+          minimumOverallPpgEdge: num('minimumOverallPpgEdge'),
+          minimumVenuePpgEdge: num('minimumVenuePpgEdge'),
+          maximumFixturesToAnalyze: num('maximumFixturesToAnalyze'),
+          maximumSelections: num('maximumSelections'),
+          overallPpgWeight: ratio('overallPpgWeightPct'),
+          venuePpgWeight: ratio('venuePpgWeightPct'),
+          goalDifferenceWeight: ratio('goalDifferenceWeightPct'),
+          useStandingsContext: bool('useStandingsContext'),
+          standingsStrengthWeight: ratio('standingsStrengthWeightPct'),
+          standingsAdjustmentCap: ratio('standingsAdjustmentCapPct'),
+          standingsDirectRankMix: ratio('standingsDirectRankMixPct'),
+          standingsRankedCommonMix: ratio('standingsRankedCommonMixPct')
+        };
+      }
+
+      function updateDraftSummary(){
+        try {
+          const config = readForm();
+          const core = pct(config.overallPpgWeight + config.venuePpgWeight + config.goalDifferenceWeight);
+          $('coreTotal').textContent = `${core}%`;
+          $('standingTotal').textContent = `${pct(config.standingsStrengthWeight)}%`;
+          $('draftSummary').innerHTML = `<b>ค่าร่าง</b><br>${configText(config)}<br>Core Weight ${core}% · Old Common 0% · Ranked Standing ${pct(config.standingsStrengthWeight)}% · A/B ${pct(config.standingsDirectRankMix)}% / C ${pct(config.standingsRankedCommonMix)}%`;
+        } catch (error) {
+          $('draftSummary').textContent = error.message;
+        }
+      }
+
+      function message(text, good){
+        $('message').textContent = text;
+        $('message').className = `message ${good ? 'good' : 'bad'}`;
+      }
+
+      function busy(value){
+        ['defaultButton','saveButton','runButton'].forEach(id => $(id).disabled = value);
+      }
+
+      async function request(path, options = {}){
+        const response = await fetch(`${WORKER}${path}`, {
+          cache: 'no-store',
+          headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+          ...options
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+        return payload;
+      }
+
+      function renderServerState(payload){
+        serverState = payload;
+        $('activeSummary').textContent = configText(payload.active);
+        $('versionText').textContent = payload.version ? `Active Version ${payload.version} · Activated ${payload.activatedAt || '—'}` : '';
+        $('engineBadge').textContent = payload.active?.enabled ? 'AUTO TEST · ON' : 'AUTO TEST · OFF';
+        $('engineBadge').className = `badge${payload.active?.enabled ? '' : ' off'}`;
+      }
+
+      async function load(){
+        try {
+          const payload = await request('/ball-teng-config');
+          renderServerState(payload);
+          fill(payload.draft || payload.active || payload.defaults);
+          message('โหลดค่าบอลเต็งจากระบบ Test แล้ว', true);
+        } catch (error) {
+          message(`หน้า Control ยังเชื่อม Worker ไม่ได้: ${error.message}`, false);
+        }
+      }
+
+      async function submit(action){
+        try {
+          const config = readForm();
+          busy(true);
+          message(action === 'run' ? 'กำลังเปิดใช้ค่าใหม่และส่ง Version ให้ AUTO…' : 'กำลังเซฟค่าร่าง…', true);
+          const payload = await request('/ball-teng-config', {
+            method: 'POST',
+            body: JSON.stringify({ action, config })
+          });
+          renderServerState(payload);
+          fill(payload.draft || config);
+          message(action === 'run'
+            ? 'รันแล้ว · ค่าใหม่ Active และ AUTO จะรับคำสั่ง Version นี้ในรอบ Scheduler ถัดไป'
+            : 'เซฟแล้ว · เก็บเป็น Draft เท่านั้น ระบบยังใช้ค่า Active เดิม', true);
+        } catch (error) {
+          message(error.message, false);
+        } finally {
+          busy(false);
+        }
+      }
+
+      allIds.forEach(id => {
+        $(id).addEventListener('input', updateDraftSummary);
+        $(id).addEventListener('change', updateDraftSummary);
+      });
+      $('defaultButton').addEventListener('click', () => {
+        fill(serverState?.defaults || serverState?.active);
+        message('ใส่ค่าดีฟอลท์ลงในช่องแล้ว · ยังไม่เปลี่ยนระบบจนกว่าจะกด เซฟ หรือ รัน', true);
+      });
+      $('saveButton').addEventListener('click', () => submit('save'));
+      $('runButton').addEventListener('click', () => submit('run'));
+      load();
+    })();
+  </script>
+  <script src="../../site-footer.js?v=202608040844"></script>
+</body>
+</html>
