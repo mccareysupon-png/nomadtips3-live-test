@@ -9,6 +9,8 @@ const app = read('test-system/member-0001/member.js');
 const entry = read('cloudflare-worker/src/paper-entry.js');
 const memberConfig = read('cloudflare-worker/src/member-config.js');
 const memberData = read('cloudflare-worker/src/member-data.js');
+const memberEvaluator = read('cloudflare-worker/src/member-live-evaluator.js');
+const memberModules = `${memberConfig}\n${memberData}\n${memberEvaluator}`;
 
 for (const tab of ['overview','ball-teng','live','stats','notifications','settings']) {
   if (!index.includes(`data-tab="${tab}"`) || !index.includes(`data-view="${tab}"`)) fail(`missing member tab/view ${tab}`);
@@ -27,15 +29,16 @@ if (!process.exitCode) pass('member frontend avoids Owner/global result fallback
 
 for (const table of [
   'member_profiles','member_live_config','member_ball_teng_config','member_notification_settings',
-  'member_live_state','member_live_signals','member_ball_teng_sets','member_prediction_results','member_notification_log'
+  'member_live_state','member_live_signals','member_ball_teng_sets','member_prediction_results','member_notification_log',
+  'member_live_scan_status','member_api_usage'
 ]) {
-  if (!(memberConfig.includes(table) || memberData.includes(table))) fail(`missing member table ${table}`);
+  if (!memberModules.includes(table)) fail(`missing member table ${table}`);
   else pass(`member table ${table}`);
 }
 
 for (const ownerTable of ['condition_config','ball_teng_config']) {
   const updateRegex = new RegExp(`UPDATE\\s+${ownerTable}`, 'i');
-  if (updateRegex.test(memberConfig) || updateRegex.test(memberData)) fail(`member modules write Owner table ${ownerTable}`);
+  if (updateRegex.test(memberModules)) fail(`member modules write Owner table ${ownerTable}`);
   else pass(`member modules do not update Owner table ${ownerTable}`);
 }
 
@@ -44,9 +47,9 @@ for (const destructive of [
   'DELETE FROM auto_momentum_state_side',
   'DELETE FROM auto_scan_status'
 ]) {
-  if (memberConfig.includes(destructive) || memberData.includes(destructive)) fail(`member modules contain destructive Owner scanner action: ${destructive}`);
+  if (memberModules.includes(destructive)) fail(`member modules contain destructive Owner scanner action: ${destructive}`);
 }
-if (!process.exitCode) pass('member Activate does not clear Owner scanner state');
+if (!process.exitCode) pass('member modules do not clear Owner scanner state');
 
 for (const route of [
   '/member-profile','/member-live-config','/member-ball-teng-config',
@@ -61,6 +64,9 @@ for (const systemRoute of ['/condition-config','/ball-teng-config','/auto-scan-s
   else pass(`existing Owner/System route preserved: ${systemRoute}`);
 }
 
+if (!entry.includes('runMemberLiveBackgroundScans(env)')) fail('scheduled Worker does not run member live background scans');
+else pass('scheduled Worker runs member live background scans');
+
 if (!memberConfig.includes("scope: 'MEMBER_ONLY'") || !memberData.includes("scope: 'MEMBER_ONLY'")) {
   fail('member endpoints do not declare MEMBER_ONLY scope');
 } else pass('member endpoints declare MEMBER_ONLY scope');
@@ -70,6 +76,14 @@ else pass('member data queries are scoped by member_id');
 
 if (!memberConfig.includes('WHERE member_id = ?')) fail('member config writes/reads are not visibly scoped by member_id');
 else pass('member config operations are scoped by member_id');
+
+if (!memberEvaluator.includes('memberId') || !memberEvaluator.includes('member_live_state') || !memberEvaluator.includes('member_live_signals')) {
+  fail('member evaluator does not visibly write member-scoped live state/signals');
+} else pass('member evaluator targets member-scoped live state/signals');
+
+if (!memberEvaluator.includes('member_api_usage') || !memberEvaluator.includes('apiFetchDirect')) {
+  fail('member evaluator does not track direct TEST API usage');
+} else pass('member evaluator tracks direct TEST API usage');
 
 if (process.exitCode) {
   console.error('\nMember isolation contract check FAILED.');
