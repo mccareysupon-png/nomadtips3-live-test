@@ -10,7 +10,10 @@ const entry = read('cloudflare-worker/src/paper-entry.js');
 const memberConfig = read('cloudflare-worker/src/member-config.js');
 const memberData = read('cloudflare-worker/src/member-data.js');
 const memberEvaluator = read('cloudflare-worker/src/member-live-evaluator.js');
-const memberModules = `${memberConfig}\n${memberData}\n${memberEvaluator}`;
+const memberBallIngest = read('cloudflare-worker/src/member-ball-teng-ingest.js');
+const memberBallRunner = read('.github/scripts/run_member_ball_teng_selector.py');
+const memberBallWorkflow = read('.github/workflows/member-ball-teng-selector.yml');
+const memberModules = `${memberConfig}\n${memberData}\n${memberEvaluator}\n${memberBallIngest}`;
 
 for (const tab of ['overview','ball-teng','live','stats','notifications','settings']) {
   if (!index.includes(`data-tab="${tab}"`) || !index.includes(`data-view="${tab}"`)) fail(`missing member tab/view ${tab}`);
@@ -53,7 +56,8 @@ if (!process.exitCode) pass('member modules do not clear Owner scanner state');
 
 for (const route of [
   '/member-profile','/member-live-config','/member-ball-teng-config',
-  '/member-live-status','/member-ball-teng-results','/member-stats','/member-notifications'
+  '/member-live-status','/member-ball-teng-results','/member-stats','/member-notifications',
+  '/member-ball-teng-ingest'
 ]) {
   if (!entry.includes(route)) fail(`paper-entry missing member route ${route}`);
   else pass(`paper-entry route ${route}`);
@@ -67,7 +71,7 @@ for (const systemRoute of ['/condition-config','/ball-teng-config','/auto-scan-s
 if (!entry.includes('runMemberLiveBackgroundScans(env)')) fail('scheduled Worker does not run member live background scans');
 else pass('scheduled Worker runs member live background scans');
 
-if (!memberConfig.includes("scope: 'MEMBER_ONLY'") || !memberData.includes("scope: 'MEMBER_ONLY'")) {
+if (!memberConfig.includes("scope: 'MEMBER_ONLY'") || !memberData.includes("scope: 'MEMBER_ONLY'") || !memberBallIngest.includes("scope: 'MEMBER_ONLY'")) {
   fail('member endpoints do not declare MEMBER_ONLY scope');
 } else pass('member endpoints declare MEMBER_ONLY scope');
 
@@ -84,6 +88,32 @@ if (!memberEvaluator.includes('memberId') || !memberEvaluator.includes('member_l
 if (!memberEvaluator.includes('member_api_usage') || !memberEvaluator.includes('apiFetchDirect')) {
   fail('member evaluator does not track direct TEST API usage');
 } else pass('member evaluator tracks direct TEST API usage');
+
+if (!memberBallIngest.includes('X-NOMAD-ENGINE-KEY') || !memberBallIngest.includes('member_ball_teng_sets')) {
+  fail('member Ball Teng ingest is not protected and member-scoped');
+} else pass('member Ball Teng ingest is protected and writes member-scoped sets');
+
+for (const source of [
+  'run_ball_teng_selector.py',
+  'auto_select_next.py',
+  'apply_confidence_policy.py',
+  'finalize_ball_teng_analysis.py',
+  'enrich_selected_odds.py'
+]) {
+  if (!memberBallRunner.includes(source)) fail(`member Ball Teng runner does not reuse copied main engine component ${source}`);
+  else pass(`member Ball Teng runner copies main engine component ${source}`);
+}
+
+if (!memberBallRunner.includes('TemporaryDirectory') || !memberBallRunner.includes("'memberId': MEMBER_ID") || !memberBallRunner.includes("'/member-ball-teng-ingest'")) {
+  fail('member Ball Teng runner is not visibly isolated in a temporary member room');
+} else pass('member Ball Teng runner uses an isolated temporary room and member-only ingest');
+
+if (memberBallWorkflow.includes('contents: write')) fail('member Ball Teng workflow must not write Owner repository selection files');
+else pass('member Ball Teng workflow has read-only repository permissions');
+
+if (!memberBallWorkflow.includes("cron: '*/5 * * * *'") || !memberBallWorkflow.includes('run_member_ball_teng_selector.py')) {
+  fail('member Ball Teng workflow is not checking for member config changes every five minutes');
+} else pass('member Ball Teng workflow checks active member config every five minutes');
 
 if (process.exitCode) {
   console.error('\nMember isolation contract check FAILED.');

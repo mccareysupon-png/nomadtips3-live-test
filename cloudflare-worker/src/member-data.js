@@ -228,17 +228,29 @@ async function ballTengResults(env, memberId) {
     ORDER BY generated_at DESC
     LIMIT 1
   `).bind(memberId).first();
+  const storedVersion = Number(row?.config_version || 0);
+  const activeVersion = Number(config?.version || 0);
+  const current = Boolean(row && storedVersion === activeVersion);
   return {
     memberId,
     scope: 'MEMBER_ONLY',
     config,
     setId: row?.set_id || null,
+    configVersion: storedVersion,
+    activeConfigVersion: activeVersion,
+    current,
     generatedAt: row?.generated_at ? new Date(Number(row.generated_at)).toISOString() : null,
     payload: row?.payload_json ? parseJson(row.payload_json, null) : null,
     engine: {
       isolatedStorage: true,
-      independentSelectorRequired: true,
-      status: row ? 'HAS_MEMBER_SET' : 'WAITING_FOR_MEMBER_SELECTOR'
+      independentSelectorRequired: false,
+      background: true,
+      schedule: 'CHECK_EVERY_5_MINUTES',
+      status: !row
+        ? 'WAITING_FOR_MEMBER_SELECTOR'
+        : current
+          ? 'MEMBER_SELECTOR_ACTIVE'
+          : 'WAITING_FOR_ACTIVE_CONFIG_SELECTION'
     }
   };
 }
