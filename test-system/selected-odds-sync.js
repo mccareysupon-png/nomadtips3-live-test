@@ -23,24 +23,65 @@
     return Number.isFinite(direct) && direct > 0 ? direct : minimum;
   }
 
-  function normalizeMarket(value, fallbackPick = 'N/A', confidence = 0, forceConfidence = false) {
+  function normalizeMarket(value, fallbackPick = 'N/A', confidence = 0, forceConfidence = false, previous = {}) {
     const market = value && typeof value === 'object' ? value : {};
+    const prior = previous && typeof previous === 'object' ? previous : {};
     const marketConfidence = Number(market.confidence);
+    const previousConfidence = Number(prior.confidence);
+    const odds = finite(market.odds) ? Number(market.odds) : (finite(prior.odds) ? Number(prior.odds) : null);
     return {
+      ...prior,
       ...market,
-      pick: market.pick || fallbackPick,
-      odds: finite(market.odds) ? Number(market.odds) : null,
-      oddsStatus: market.oddsStatus || (finite(market.odds) ? 'LOCKED' : 'N/A'),
-      confidence: forceConfidence || !Number.isFinite(marketConfidence) || marketConfidence <= 0 ? confidence : marketConfidence,
-      outcome: market.outcome || 'pending'
+      pick: market.pick || prior.pick || fallbackPick,
+      odds,
+      oddsStatus: market.oddsStatus || prior.oddsStatus || (finite(odds) ? 'LOCKED' : 'N/A'),
+      confidence: forceConfidence
+        ? confidence
+        : (Number.isFinite(marketConfidence) && marketConfidence > 0
+            ? marketConfidence
+            : (Number.isFinite(previousConfidence) && previousConfidence > 0 ? previousConfidence : confidence)),
+      outcome: market.outcome || prior.outcome || 'pending',
+      settlement: market.settlement ?? prior.settlement ?? null
+    };
+  }
+
+  function totalGoalsIndex(source) {
+    const analysis = source?.auto_analysis || source?.autoAnalysis || {};
+    const summaries = [analysis.homeOverall, analysis.awayOverall, analysis.homeVenue, analysis.awayVenue];
+    const totals = summaries.map(summary => {
+      const gf = Number(summary?.gfpg);
+      const ga = Number(summary?.gapg);
+      return Number.isFinite(gf) && Number.isFinite(ga) ? gf + ga : null;
+    }).filter(Number.isFinite);
+    if (!totals.length) return null;
+    return totals.reduce((sum, value) => sum + value, 0) / totals.length;
+  }
+
+  function derivedOverUnder(source, confidence) {
+    const index = totalGoalsIndex(source);
+    if (!Number.isFinite(index)) return {pick: 'N/A', odds: null, confidence, oddsStatus: 'N/A', outcome: 'pending', line: 2.5};
+    const side = index >= 2.5 ? 'over' : 'under';
+    return {
+      pick: `${side === 'over' ? 'Over' : 'Under'} 2.5`,
+      odds: null,
+      confidence,
+      oddsStatus: 'PENDING',
+      oddsSource: 'NOT FOUND',
+      outcome: 'pending',
+      line: 2.5,
+      side,
+      model: 'INDEPENDENT_TOTAL_GOALS_INDEX_V1',
+      totalGoalsIndex: Number(index.toFixed(4))
     };
   }
 
   function toRecord(source, config, previous) {
     const side = String(source.pick_side || 'home').toUpperCase();
     const markets = source.markets || {};
+    const previousMarkets = previous?.markets || {};
     const confidence = confidenceFor(source, config);
     const autoCalculated = Boolean(source.auto_analysis || source.autoAnalysis);
+    const overUnderSource = markets.overUnder || markets.over_under || markets.ou || derivedOverUnder(source, confidence);
     return {
       ...(previous || {}),
       fixtureId: String(source.client_fixture_id || source.fixture_id || source.slug),
@@ -52,20 +93,21 @@
       kickoffUtc: source.kickoff_utc,
       pick: side,
       pickLabel: source.pick || `${side} WIN`,
-      odds: finite(source.odds) ? Number(source.odds) : null,
-      bookmaker: source.bookmaker || 'N/A',
-      oddsStatus: source.oddsStatus || (finite(source.odds) ? 'LOCKED' : 'N/A'),
-      oddsSource: source.oddsSource || null,
-      oddsLockedAt: source.oddsLockedAt || config.locked_at_utc,
+      odds: finite(source.odds) ? Number(source.odds) : (finite(previous?.odds) ? Number(previous.odds) : null),
+      bookmaker: source.bookmaker || previous?.bookmaker || 'N/A',
+      oddsStatus: source.oddsStatus || previous?.oddsStatus || (finite(source.odds) || finite(previous?.odds) ? 'LOCKED' : 'N/A'),
+      oddsSource: source.oddsSource || previous?.oddsSource || null,
+      oddsLockedAt: source.oddsLockedAt || previous?.oddsLockedAt || config.locked_at_utc,
       confidence,
-      predictedScore: source.predicted_score || '—',
+      predictedScore: source.predicted_score || previous?.predictedScore || '—',
       markets: {
-        btts: normalizeMarket(markets.btts, 'N/A', confidence, autoCalculated),
-        doubleChance: normalizeMarket(markets.doubleChance, 'N/A', confidence, autoCalculated),
-        asianHandicap: normalizeMarket(markets.asianHandicap, 'N/A', confidence, autoCalculated)
+        btts: normalizeMarket(markets.btts, 'N/A', confidence, autoCalculated, previousMarkets.btts),
+        overUnder: normalizeMarket(overUnderSource, 'N/A', confidence, autoCalculated, previousMarkets.overUnder),
+        doubleChance: normalizeMarket(markets.doubleChance, 'N/A', confidence, autoCalculated, previousMarkets.doubleChance),
+        asianHandicap: normalizeMarket(markets.asianHandicap, 'N/A', confidence, autoCalculated, previousMarkets.asianHandicap)
       },
-      reason: source.reason || 'Automatic NOMAD SYSTEM analysis.',
-      abcResult: source.abc_result || source.abcResult || 'LIMITED — no reliable common-opponent sample',
+      reason: source.reason || previous?.reason || 'Automatic NOMAD SYSTEM analysis.',
+      abcResult: source.abc_result || source.abcResult || previous?.abcResult || 'LIMITED — no reliable common-opponent sample',
       source: config.system || 'NOMAD SYSTEM',
       status: previous?.status || 'WAITING_FOR_RESULT',
       resultSource: previous?.resultSource || null,
@@ -73,7 +115,7 @@
       outcome: previous?.outcome || 'pending',
       homeScore: previous?.homeScore ?? null,
       awayScore: previous?.awayScore ?? null,
-      autoAnalysis: source.auto_analysis || null,
+      autoAnalysis: source.auto_analysis || source.autoAnalysis || previous?.autoAnalysis || null,
       lockedAt: config.locked_at_utc
     };
   }
@@ -92,7 +134,7 @@
     if (intro) {
       const count = Array.isArray(config.matches) ? config.matches.length : 0;
       const minimum = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
-      intro.textContent = `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${count} qualifying match prediction${count === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher are connected to live results and separate market statistics.`;
+      intro.textContent = `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${count} qualifying match prediction${count === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher are connected to live results and independent market analysis.`;
     }
   }
 
@@ -142,7 +184,7 @@
         actor: 'github-test-auto-selector',
         action: 'REMOTE_SET_SYNCED',
         entity: config.selection_date,
-        details: {count: records.length, system: config.system, productionWrite: false, minimumConfidence}
+        details: {count: records.length, system: config.system, productionWrite: false, minimumConfidence, independentOverUnder: true}
       });
       state.updatedAt = now;
       state.oddsSyncedAt = now;
