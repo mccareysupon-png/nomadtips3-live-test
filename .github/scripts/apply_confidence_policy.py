@@ -67,7 +67,7 @@ def main():
 
         analysis = match.setdefault("auto_analysis", {})
         analysis["confidenceScore"] = confidence
-        analysis["confidenceMethod"] = "50 + (15 × absolute weighted strength), capped by policy"
+        analysis["confidenceMethod"] = f"50 + ({scale:g} × absolute weighted strength), capped by policy"
         published.append(match)
 
     selected["matches"] = published
@@ -84,6 +84,7 @@ def main():
         "type": "DYNAMIC_MINIMUM",
         "minimum": minimum,
         "maximum": maximum,
+        "scale": scale,
         "formula": f"round(50 + absoluteStrength × {scale:g}), capped at {maximum}",
         "inputs": ["overall PPG", "home/away PPG", "goal-difference rate", "common-opponent edge"],
         "note": "NOMAD model confidence score; not a guaranteed outcome probability",
