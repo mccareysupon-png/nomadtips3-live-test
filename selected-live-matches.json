@@ -17,7 +17,9 @@
     "confidence_minimum": 58,
     "confidence_maximum": 85,
     "confidence_dynamic": true,
-    "confidence_policy": "Calculated per match from NOMAD weighted strength; only confidence >= 58% is published; maximum displayed confidence 85%"
+    "confidence_policy": "Calculated per match from NOMAD weighted strength plus standings context when available; only confidence >= 58% is published; maximum displayed confidence 85%",
+    "standings_context": true,
+    "standings_missing_policy": "Fallback to original NOMAD weighted strength; never reject solely because standings are unavailable"
   },
   "matches": [
     {
@@ -42,13 +44,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 62,
+      "confidence": 63,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.25,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -60,7 +62,7 @@
         "doubleChance": {
           "pick": "X2 — Kidderpore or Draw",
           "odds": 1.6,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -73,7 +75,7 @@
         "asianHandicap": {
           "pick": "Kidderpore 0",
           "odds": 2.13,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -128,8 +130,58 @@
         },
         "commonOpponentCount": 3,
         "commonOpponentEdge": -0.4444,
-        "confidenceScore": 62,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.7933,
+        "adjustedStrength": 0.8533,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 1020,
+          "season": 2026,
+          "teamCount": 24,
+          "selectedTeamId": 21606,
+          "selectedRank": 6,
+          "opponentTeamId": 26118,
+          "opponentRank": 11,
+          "directRankEdge": 0.2174,
+          "rankedCommonOpponentCount": 3,
+          "rankedCommonOpponentEdge": 0.4012,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 3467,
+              "team": "Mohun Bagan",
+              "rank": 4,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.9022
+            },
+            {
+              "teamId": 15749,
+              "team": "Bhawanipore",
+              "rank": 2,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.9674
+            },
+            {
+              "teamId": 21605,
+              "team": "Kalighat",
+              "rank": 17,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4783
+            }
+          ],
+          "contextScore": 0.3001,
+          "strengthAdjustment": 0.06,
+          "adjustedStrength": 0.8533,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -241,7 +293,18 @@
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 66,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.0927,
+        "adjustedStrength": 1.0927,
+        "standingsContext": {
+          "version": 1,
+          "available": false,
+          "source": "API-FOOTBALL standings",
+          "policy": "Fallback to original NOMAD strength when standings are unavailable",
+          "strengthAdjustment": 0.0,
+          "adjustedStrength": 1.0927,
+          "reason": "standings unavailable for one or both teams"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -356,7 +419,39 @@
         "commonOpponentCount": 1,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 61,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.74,
+        "adjustedStrength": 0.7194,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 293,
+          "season": 2026,
+          "teamCount": 17,
+          "selectedTeamId": 2751,
+          "selectedRank": 9,
+          "opponentTeamId": 2747,
+          "opponentRank": 6,
+          "directRankEdge": -0.1875,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 7078,
+              "team": "Gimpo Citizen",
+              "rank": 8,
+              "selectedPoints": 1.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.6719
+            }
+          ],
+          "contextScore": -0.1031,
+          "strengthAdjustment": -0.0206,
+          "adjustedStrength": 0.7194,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -384,13 +479,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 66,
+      "confidence": 68,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.72,
-          "confidence": 66,
+          "confidence": 68,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -402,7 +497,7 @@
         "doubleChance": {
           "pick": "X2 — Arsenal or Draw",
           "odds": 1.33,
-          "confidence": 66,
+          "confidence": 68,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -415,7 +510,7 @@
         "asianHandicap": {
           "pick": "Arsenal -0.5",
           "odds": 1.35,
-          "confidence": 66,
+          "confidence": 68,
           "bookmaker": "Pinnacle",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -470,8 +565,40 @@
         },
         "commonOpponentCount": 1,
         "commonOpponentEdge": -0.6667,
-        "confidenceScore": 66,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 68,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.062,
+        "adjustedStrength": 1.1733,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 116,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 9419,
+          "selectedRank": 9,
+          "opponentTeamId": 750,
+          "opponentRank": 16,
+          "directRankEdge": 0.4667,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 384,
+              "team": "FC Dnepr Mogilev",
+              "rank": 13,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4
+            }
+          ],
+          "contextScore": 0.5567,
+          "strengthAdjustment": 0.1113,
+          "adjustedStrength": 1.1733,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:40:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -499,13 +626,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 78,
+      "confidence": 79,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.85,
-          "confidence": 78,
+          "confidence": 79,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -517,7 +644,7 @@
         "doubleChance": {
           "pick": "X2 — Gloria Bistriţa or Draw",
           "odds": 1.55,
-          "confidence": 78,
+          "confidence": 79,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -530,7 +657,7 @@
         "asianHandicap": {
           "pick": "Gloria Bistriţa -0.5",
           "odds": 1.6,
-          "confidence": 78,
+          "confidence": 79,
           "bookmaker": "Pinnacle",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -585,8 +712,30 @@
         },
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
-        "confidenceScore": 78,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 79,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.8767,
+        "adjustedStrength": 1.9029,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 284,
+          "season": 2026,
+          "teamCount": 22,
+          "selectedTeamId": 22824,
+          "selectedRank": 6,
+          "opponentTeamId": 6916,
+          "opponentRank": 11,
+          "directRankEdge": 0.2381,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.131,
+          "strengthAdjustment": 0.0262,
+          "adjustedStrength": 1.9029,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -701,7 +850,29 @@
         "commonOpponentCount": 1,
         "commonOpponentEdge": -0.6667,
         "confidenceScore": 66,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.0927,
+        "adjustedStrength": 1.0992,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 780,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 3497,
+          "selectedRank": 3,
+          "opponentTeamId": 16236,
+          "opponentRank": 4,
+          "directRankEdge": 0.0588,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.0324,
+          "strengthAdjustment": 0.0065,
+          "adjustedStrength": 1.0992,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -729,13 +900,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 64,
+      "confidence": 67,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.73,
-          "confidence": 64,
+          "confidence": 67,
           "bookmaker": "Betfair",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -747,7 +918,7 @@
         "doubleChance": {
           "pick": "X2 — Sardarapat or Draw",
           "odds": 1.3,
-          "confidence": 64,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -760,7 +931,7 @@
         "asianHandicap": {
           "pick": "Sardarapat 0",
           "odds": 2.05,
-          "confidence": 64,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -815,8 +986,40 @@
         },
         "commonOpponentCount": 2,
         "commonOpponentEdge": 0.0,
-        "confidenceScore": 64,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 67,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.946,
+        "adjustedStrength": 1.106,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 342,
+          "season": 2026,
+          "teamCount": 12,
+          "selectedTeamId": 26198,
+          "selectedRank": 1,
+          "opponentTeamId": 3682,
+          "opponentRank": 11,
+          "directRankEdge": 0.9091,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 6286,
+              "team": "Van",
+              "rank": 10,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.3864
+            }
+          ],
+          "contextScore": 0.8,
+          "strengthAdjustment": 0.16,
+          "adjustedStrength": 1.106,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -844,13 +1047,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 69,
+      "confidence": 67,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 69,
+          "confidence": 67,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -862,7 +1065,7 @@
         "doubleChance": {
           "pick": "1X — Mławianka Mława or Draw",
           "odds": 1.3,
-          "confidence": 69,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -875,7 +1078,7 @@
         "asianHandicap": {
           "pick": "Mławianka Mława -0.5",
           "odds": 2.0,
-          "confidence": 69,
+          "confidence": 67,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -930,8 +1133,40 @@
         },
         "commonOpponentCount": 1,
         "commonOpponentEdge": -1.0,
-        "confidenceScore": 69,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 67,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.24,
+        "adjustedStrength": 1.1435,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 780,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 19618,
+          "selectedRank": 6,
+          "opponentTeamId": 12829,
+          "opponentRank": 5,
+          "directRankEdge": -0.0588,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": -1.0,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 21656,
+              "team": "Łomża",
+              "rank": 11,
+              "selectedPoints": 0.0,
+              "opponentPoints": 3.0,
+              "pointEdge": -1.0,
+              "qualityWeight": 0.5588
+            }
+          ],
+          "contextScore": -0.4824,
+          "strengthAdjustment": -0.0965,
+          "adjustedStrength": 1.1435,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:32:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -1046,7 +1281,18 @@
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 70,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.3033,
+        "adjustedStrength": 1.3033,
+        "standingsContext": {
+          "version": 1,
+          "available": false,
+          "source": "API-FOOTBALL standings",
+          "policy": "Fallback to original NOMAD strength when standings are unavailable",
+          "strengthAdjustment": 0.0,
+          "adjustedStrength": 1.3033,
+          "reason": "standings unavailable for one or both teams"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -1074,13 +1320,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 73,
+      "confidence": 74,
       "predicted_score": "4–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.22,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1092,7 +1338,7 @@
         "doubleChance": {
           "pick": "1X — Atlantis or Draw",
           "odds": 1.28,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1105,7 +1351,7 @@
         "asianHandicap": {
           "pick": "Atlantis -0.5",
           "odds": 1.85,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1160,8 +1406,67 @@
         },
         "commonOpponentCount": 4,
         "commonOpponentEdge": 0.3333,
-        "confidenceScore": 73,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 74,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.544,
+        "adjustedStrength": 1.5882,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 247,
+          "season": 2026,
+          "teamCount": 10,
+          "selectedTeamId": 10667,
+          "selectedRank": 5,
+          "opponentTeamId": 9179,
+          "opponentRank": 6,
+          "directRankEdge": 0.1111,
+          "rankedCommonOpponentCount": 4,
+          "rankedCommonOpponentEdge": 0.3556,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 2243,
+              "team": "MyPa",
+              "rank": 9,
+              "selectedPoints": 3.0,
+              "opponentPoints": 3.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.3333
+            },
+            {
+              "teamId": 9174,
+              "team": "Kiffen",
+              "rank": 1,
+              "selectedPoints": 0.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 1.0
+            },
+            {
+              "teamId": 13517,
+              "team": "HPS",
+              "rank": 4,
+              "selectedPoints": 3.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 1.0,
+              "qualityWeight": 0.75
+            },
+            {
+              "teamId": 18596,
+              "team": "PuiU Helsinki",
+              "rank": 8,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.4167
+            }
+          ],
+          "contextScore": 0.2211,
+          "strengthAdjustment": 0.0442,
+          "adjustedStrength": 1.5882,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1189,13 +1494,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 67,
+      "confidence": 68,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.46,
-          "confidence": 67,
+          "confidence": 68,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1207,7 +1512,7 @@
         "doubleChance": {
           "pick": "1X — Stal Brzeg or Draw",
           "odds": 1.3,
-          "confidence": 67,
+          "confidence": 68,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1220,7 +1525,7 @@
         "asianHandicap": {
           "pick": "Stal Brzeg -0.5",
           "odds": 1.98,
-          "confidence": 67,
+          "confidence": 68,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1275,8 +1580,30 @@
         },
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
-        "confidenceScore": 67,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 68,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.162,
+        "adjustedStrength": 1.2008,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 782,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 6956,
+          "selectedRank": 9,
+          "opponentTeamId": 12901,
+          "opponentRank": 15,
+          "directRankEdge": 0.3529,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.1941,
+          "strengthAdjustment": 0.0388,
+          "adjustedStrength": 1.2008,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1304,13 +1631,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 63,
+      "confidence": 64,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1322,7 +1649,7 @@
         "doubleChance": {
           "pick": "X2 — HPS or Draw",
           "odds": 1.7,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1335,7 +1662,7 @@
         "asianHandicap": {
           "pick": "HPS 0",
           "odds": 2.35,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1390,8 +1717,67 @@
         },
         "commonOpponentCount": 4,
         "commonOpponentEdge": -0.25,
-        "confidenceScore": 63,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.868,
+        "adjustedStrength": 0.9092,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 247,
+          "season": 2026,
+          "teamCount": 10,
+          "selectedTeamId": 13517,
+          "selectedRank": 4,
+          "opponentTeamId": 13508,
+          "opponentRank": 7,
+          "directRankEdge": 0.3333,
+          "rankedCommonOpponentCount": 4,
+          "rankedCommonOpponentEdge": 0.0505,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 1172,
+              "team": "HIFK Helsinki",
+              "rank": 3,
+              "selectedPoints": 1.0,
+              "opponentPoints": 3.0,
+              "pointEdge": -0.6667,
+              "qualityWeight": 0.8333
+            },
+            {
+              "teamId": 9178,
+              "team": "PEPO",
+              "rank": 2,
+              "selectedPoints": 0.0,
+              "opponentPoints": 1.0,
+              "pointEdge": -0.3333,
+              "qualityWeight": 0.9167
+            },
+            {
+              "teamId": 9179,
+              "team": "Reipas",
+              "rank": 6,
+              "selectedPoints": 3.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 1.0,
+              "qualityWeight": 0.5833
+            },
+            {
+              "teamId": 18596,
+              "team": "PuiU Helsinki",
+              "rank": 8,
+              "selectedPoints": 3.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 1.0,
+              "qualityWeight": 0.4167
+            }
+          ],
+          "contextScore": 0.2061,
+          "strengthAdjustment": 0.0412,
+          "adjustedStrength": 0.9092,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1419,13 +1805,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 73,
+      "confidence": 74,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1437,7 +1823,7 @@
         "doubleChance": {
           "pick": "1X — FC Liefering or Draw",
           "odds": 1.3,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1450,7 +1836,7 @@
         "asianHandicap": {
           "pick": "FC Liefering -0.5",
           "odds": 1.95,
-          "confidence": 73,
+          "confidence": 74,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1505,8 +1891,30 @@
         },
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
-        "confidenceScore": 73,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 74,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.548,
+        "adjustedStrength": 1.6213,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 219,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 1400,
+          "selectedRank": 2,
+          "opponentTeamId": 22213,
+          "opponentRank": 12,
+          "directRankEdge": 0.6667,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.3667,
+          "strengthAdjustment": 0.0733,
+          "adjustedStrength": 1.6213,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:31:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -1621,7 +2029,18 @@
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 66,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.0427,
+        "adjustedStrength": 1.0427,
+        "standingsContext": {
+          "version": 1,
+          "available": false,
+          "source": "API-FOOTBALL standings",
+          "policy": "Fallback to original NOMAD strength when standings are unavailable",
+          "strengthAdjustment": 0.0,
+          "adjustedStrength": 1.0427,
+          "reason": "standings unavailable for one or both teams"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -1736,7 +2155,48 @@
         "commonOpponentCount": 2,
         "commonOpponentEdge": -0.5,
         "confidenceScore": 64,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.964,
+        "adjustedStrength": 0.9624,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 236,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 3985,
+          "selectedRank": 6,
+          "opponentTeamId": 2012,
+          "opponentRank": 13,
+          "directRankEdge": 0.4118,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": -0.5205,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 1077,
+              "team": "Arsenal Tula",
+              "rank": 11,
+              "selectedPoints": 0.0,
+              "opponentPoints": 3.0,
+              "pointEdge": -1.0,
+              "qualityWeight": 0.5588
+            },
+            {
+              "teamId": 1998,
+              "team": "Shinnik Yaroslavl",
+              "rank": 12,
+              "selectedPoints": 1.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.5147
+            }
+          ],
+          "contextScore": -0.0078,
+          "strengthAdjustment": -0.0016,
+          "adjustedStrength": 0.9624,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-06T21:19:13+00:00",
       "oddsMarketName": "Match Winner",
@@ -1851,7 +2311,39 @@
         "commonOpponentCount": 1,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 62,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.8113,
+        "adjustedStrength": 0.8333,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 564,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 2168,
+          "selectedRank": 11,
+          "opponentTeamId": 11675,
+          "opponentRank": 14,
+          "directRankEdge": 0.2,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 6702,
+              "team": "Trollhättan",
+              "rank": 12,
+              "selectedPoints": 1.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.45
+            }
+          ],
+          "contextScore": 0.11,
+          "strengthAdjustment": 0.022,
+          "adjustedStrength": 0.8333,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -1879,13 +2371,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 61,
+      "confidence": 62,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
-          "confidence": 61,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1897,7 +2389,7 @@
         "doubleChance": {
           "pick": "X2 — Qviding FIF or Draw",
           "odds": 1.4,
-          "confidence": 61,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1910,7 +2402,7 @@
         "asianHandicap": {
           "pick": "Qviding FIF 0",
           "odds": 1.72,
-          "confidence": 61,
+          "confidence": 62,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -1965,8 +2457,40 @@
         },
         "commonOpponentCount": 1,
         "commonOpponentEdge": -0.3333,
-        "confidenceScore": 61,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 62,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.728,
+        "adjustedStrength": 0.8003,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 596,
+          "season": 2026,
+          "teamCount": 14,
+          "selectedTeamId": 6693,
+          "selectedRank": 8,
+          "opponentTeamId": 27309,
+          "opponentRank": 13,
+          "directRankEdge": 0.3846,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.3333,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 21359,
+              "team": "Jonsered",
+              "rank": 2,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.9423
+            }
+          ],
+          "contextScore": 0.3615,
+          "strengthAdjustment": 0.0723,
+          "adjustedStrength": 0.8003,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-06T16:15:39+00:00",
       "oddsMarketName": "Match Winner",
@@ -2081,7 +2605,29 @@
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 63,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.8687,
+        "adjustedStrength": 0.8614,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 221,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 8367,
+          "selectedRank": 14,
+          "opponentTeamId": 4966,
+          "opponentRank": 13,
+          "directRankEdge": -0.0667,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": -0.0367,
+          "strengthAdjustment": -0.0073,
+          "adjustedStrength": 0.8614,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:34+00:00",
       "oddsMarketName": "Match Winner",
@@ -2196,7 +2742,39 @@
         "commonOpponentCount": 1,
         "commonOpponentEdge": 0.6667,
         "confidenceScore": 64,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.9627,
+        "adjustedStrength": 0.9365,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 596,
+          "season": 2026,
+          "teamCount": 14,
+          "selectedTeamId": 6686,
+          "selectedRank": 7,
+          "opponentTeamId": 14543,
+          "opponentRank": 11,
+          "directRankEdge": 0.3077,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": -0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 22935,
+              "team": "Kongahälla",
+              "rank": 12,
+              "selectedPoints": 1.0,
+              "opponentPoints": 3.0,
+              "pointEdge": -0.6667,
+              "qualityWeight": 0.3654
+            }
+          ],
+          "contextScore": -0.1308,
+          "strengthAdjustment": -0.0262,
+          "adjustedStrength": 0.9365,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:33+00:00",
       "oddsMarketName": "Match Winner",
@@ -2224,13 +2802,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 62,
+      "confidence": 63,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.5,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2242,7 +2820,7 @@
         "doubleChance": {
           "pick": "X2 — Karlberg or Draw",
           "odds": 1.5,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2255,7 +2833,7 @@
         "asianHandicap": {
           "pick": "Karlberg 0",
           "odds": 1.95,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2310,8 +2888,49 @@
         },
         "commonOpponentCount": 2,
         "commonOpponentEdge": -0.3333,
-        "confidenceScore": 62,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.8333,
+        "adjustedStrength": 0.8473,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 563,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 6682,
+          "selectedRank": 8,
+          "opponentTeamId": 12578,
+          "opponentRank": 5,
+          "directRankEdge": -0.2,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": 0.4,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 6708,
+              "team": "Vasalund",
+              "rank": 12,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.45
+            },
+            {
+              "teamId": 11671,
+              "team": "Piteå",
+              "rank": 15,
+              "selectedPoints": 3.0,
+              "opponentPoints": 3.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.3
+            }
+          ],
+          "contextScore": 0.07,
+          "strengthAdjustment": 0.014,
+          "adjustedStrength": 0.8473,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:17:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -2339,13 +2958,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 62,
+      "confidence": 63,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2357,7 +2976,7 @@
         "doubleChance": {
           "pick": "1X — SC Kriens or Draw",
           "odds": 1.8,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2370,7 +2989,7 @@
         "asianHandicap": {
           "pick": "SC Kriens 0",
           "odds": 2.68,
-          "confidence": 62,
+          "confidence": 63,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2425,8 +3044,40 @@
         },
         "commonOpponentCount": 2,
         "commonOpponentEdge": 0.3333,
-        "confidenceScore": 62,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 63,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.7913,
+        "adjustedStrength": 0.888,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 208,
+          "season": 2026,
+          "teamCount": 10,
+          "selectedTeamId": 2186,
+          "selectedRank": 4,
+          "opponentTeamId": 6653,
+          "opponentRank": 7,
+          "directRankEdge": 0.3333,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 2180,
+              "team": "FC Winterthur",
+              "rank": 8,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4167
+            }
+          ],
+          "contextScore": 0.4833,
+          "strengthAdjustment": 0.0967,
+          "adjustedStrength": 0.888,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-06T21:05:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -2541,7 +3192,29 @@
         "commonOpponentCount": 2,
         "commonOpponentEdge": -0.3333,
         "confidenceScore": 62,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.7853,
+        "adjustedStrength": 0.822,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 208,
+          "season": 2026,
+          "teamCount": 10,
+          "selectedTeamId": 2179,
+          "selectedRank": 5,
+          "opponentTeamId": 2180,
+          "opponentRank": 8,
+          "directRankEdge": 0.3333,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.1833,
+          "strengthAdjustment": 0.0367,
+          "adjustedStrength": 0.822,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:12:15+00:00",
       "oddsMarketName": "Match Winner",
@@ -2569,13 +3242,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 69,
+      "confidence": 68,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.5,
-          "confidence": 69,
+          "confidence": 68,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2587,7 +3260,7 @@
         "doubleChance": {
           "pick": "X2 — Excelsior or Draw",
           "odds": 1.5,
-          "confidence": 69,
+          "confidence": 68,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2600,7 +3273,7 @@
         "asianHandicap": {
           "pick": "Excelsior -0.5",
           "odds": 1.52,
-          "confidence": 69,
+          "confidence": 68,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2655,8 +3328,30 @@
         },
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
-        "confidenceScore": 69,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 68,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.26,
+        "adjustedStrength": 1.1694,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 88,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 196,
+          "selectedRank": 15,
+          "opponentTeamId": 420,
+          "opponentRank": 1,
+          "directRankEdge": -0.8235,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": -0.4529,
+          "strengthAdjustment": -0.0906,
+          "adjustedStrength": 1.1694,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:00:32+00:00",
       "oddsMarketName": "Match Winner",
@@ -2684,13 +3379,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 65,
+      "confidence": 66,
       "predicted_score": "1–2",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.0,
-          "confidence": 65,
+          "confidence": 66,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2702,7 +3397,7 @@
         "doubleChance": {
           "pick": "X2 — Oeste U20 or Draw",
           "odds": 1.4,
-          "confidence": 65,
+          "confidence": 66,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2715,7 +3410,7 @@
         "asianHandicap": {
           "pick": "Oeste U20 0",
           "odds": 1.78,
-          "confidence": 65,
+          "confidence": 66,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2770,8 +3465,58 @@
         },
         "commonOpponentCount": 3,
         "commonOpponentEdge": -0.3333,
-        "confidenceScore": 65,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 66,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 1.01,
+        "adjustedStrength": 1.0558,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 1086,
+          "season": 2026,
+          "teamCount": 43,
+          "selectedTeamId": 13034,
+          "selectedRank": 2,
+          "opponentTeamId": 13005,
+          "opponentRank": 9,
+          "directRankEdge": 0.1667,
+          "rankedCommonOpponentCount": 3,
+          "rankedCommonOpponentEdge": 0.3046,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 12973,
+              "team": "São Paulo U20",
+              "rank": 5,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.9286
+            },
+            {
+              "teamId": 13054,
+              "team": "Santo André U20",
+              "rank": 14,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.7679
+            },
+            {
+              "teamId": 18336,
+              "team": "Ibrachina U20",
+              "rank": 1,
+              "selectedPoints": 0.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 1.0
+            }
+          ],
+          "contextScore": 0.2288,
+          "strengthAdjustment": 0.0458,
+          "adjustedStrength": 1.0558,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-06T20:53:16+00:00",
       "oddsMarketName": "Match Winner",
@@ -2799,13 +3544,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 64,
+      "confidence": 65,
       "predicted_score": "2–3",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.0,
-          "confidence": 64,
+          "confidence": 65,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2817,7 +3562,7 @@
         "doubleChance": {
           "pick": "X2 — Flamengo SP U20 or Draw",
           "odds": 1.18,
-          "confidence": 64,
+          "confidence": 65,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2830,7 +3575,7 @@
         "asianHandicap": {
           "pick": "Flamengo SP U20 0",
           "odds": 1.31,
-          "confidence": 64,
+          "confidence": 65,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -2885,8 +3630,49 @@
         },
         "commonOpponentCount": 2,
         "commonOpponentEdge": -0.6667,
-        "confidenceScore": 64,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 65,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.9407,
+        "adjustedStrength": 1.0178,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 1086,
+          "season": 2026,
+          "teamCount": 43,
+          "selectedTeamId": 13007,
+          "selectedRank": 7,
+          "opponentTeamId": 23483,
+          "opponentRank": 13,
+          "directRankEdge": 0.1429,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": 0.6822,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 12968,
+              "team": "Palmeiras U20",
+              "rank": 6,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.9107
+            },
+            {
+              "teamId": 13078,
+              "team": "Água Santa U20",
+              "rank": 1,
+              "selectedPoints": 3.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 1.0,
+              "qualityWeight": 1.0
+            }
+          ],
+          "contextScore": 0.3856,
+          "strengthAdjustment": 0.0771,
+          "adjustedStrength": 1.0178,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:01:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -3001,7 +3787,29 @@
         "commonOpponentCount": 0,
         "commonOpponentEdge": 0.0,
         "confidenceScore": 64,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.9393,
+        "adjustedStrength": 0.9515,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 132,
+          "season": 2026,
+          "teamCount": 28,
+          "selectedTeamId": 8381,
+          "selectedRank": 3,
+          "opponentTeamId": 1955,
+          "opponentRank": 6,
+          "directRankEdge": 0.1111,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.0611,
+          "strengthAdjustment": 0.0122,
+          "adjustedStrength": 0.9515,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T00:13:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -3029,13 +3837,13 @@
       "oddsStatus": "LOCKED",
       "oddsSource": "API-FOOTBALL",
       "oddsLockedAt": "2026-08-07T02:35:09Z",
-      "confidence": 63,
+      "confidence": 64,
       "predicted_score": "2–1",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.06,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "Unibet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -3047,7 +3855,7 @@
         "doubleChance": {
           "pick": "1X — XV de Piracicaba U20 or Draw",
           "odds": 1.2,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "Bet365",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -3060,7 +3868,7 @@
         "asianHandicap": {
           "pick": "XV de Piracicaba U20 0",
           "odds": 1.38,
-          "confidence": 63,
+          "confidence": 64,
           "bookmaker": "1xBet",
           "oddsStatus": "LOCKED",
           "oddsSource": "API-FOOTBALL",
@@ -3115,8 +3923,49 @@
         },
         "commonOpponentCount": 2,
         "commonOpponentEdge": 0.3333,
-        "confidenceScore": 63,
-        "confidenceMethod": "50 + (15 × absolute weighted strength), capped by policy"
+        "confidenceScore": 64,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "baseAbsoluteStrength": 0.87,
+        "adjustedStrength": 0.9125,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 1086,
+          "season": 2026,
+          "teamCount": 43,
+          "selectedTeamId": 13077,
+          "selectedRank": 7,
+          "opponentTeamId": 13069,
+          "opponentRank": 13,
+          "directRankEdge": 0.1429,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": 0.2979,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 12973,
+              "team": "São Paulo U20",
+              "rank": 5,
+              "selectedPoints": 1.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.9286
+            },
+            {
+              "teamId": 23465,
+              "team": "Aguai U20",
+              "rank": 15,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.75
+            }
+          ],
+          "contextScore": 0.2126,
+          "strengthAdjustment": 0.0425,
+          "adjustedStrength": 0.9125,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        }
       },
       "oddsProviderUpdatedAt": "2026-08-07T01:01:14+00:00",
       "oddsMarketName": "Match Winner",
@@ -3141,17 +3990,27 @@
     "report": "auto-selection-report.json"
   },
   "confidencePolicy": {
-    "type": "DYNAMIC_MINIMUM",
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
     "maximum": 85,
     "scale": 15.0,
-    "formula": "round(50 + absoluteStrength × 15), capped at 85",
+    "formula": "round(50 + adjustedStrength × 15), capped at 85",
     "inputs": [
       "overall PPG",
       "home/away PPG",
       "goal-difference rate",
-      "common-opponent edge"
+      "common-opponent edge",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
     ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.2,
+      "adjustmentCap": 0.2,
+      "availableMatches": 24,
+      "fallbackMatches": 3,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
     "rejectedBelowMinimum": 0
   }

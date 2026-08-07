@@ -1,31 +1,45 @@
 {
-  "generatedAt": "2026-08-07T03:03:04Z",
+  "generatedAt": "2026-08-07T05:32:36Z",
   "environment": "TEST_ONLY",
-  "windowStartLocal": "2026-08-07T10:48:04.573446+07:00",
+  "windowStartLocal": "2026-08-07T13:17:36.678181+07:00",
   "windowEndLocal": "2026-08-08T08:00:00+07:00",
   "windowKey": "2026-08-08T08:00:00+07:00",
-  "status": "ALREADY_SELECTED_FOR_WINDOW",
+  "status": "WAITING_FOR_CURRENT_SET_TO_SETTLE",
   "apiCalls": 0,
   "fixturesScanned": 0,
   "fixturesAnalyzed": 0,
   "prequalified": 0,
-  "published": 27,
+  "published": 0,
   "rejections": {},
   "confidencePolicy": {
-    "type": "DYNAMIC_MINIMUM",
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
     "maximum": 85,
     "scale": 15.0,
-    "formula": "round(50 + absoluteStrength × 15), capped at 85",
+    "formula": "round(50 + adjustedStrength × 15), capped at 85",
     "inputs": [
       "overall PPG",
       "home/away PPG",
       "goal-difference rate",
-      "common-opponent edge"
+      "common-opponent edge",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
     ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.2,
+      "adjustmentCap": 0.2,
+      "availableMatches": 24,
+      "fallbackMatches": 3,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
     "rejectedBelowMinimum": 0
   },
   "confidenceRejected": 0,
-  "publishedAfterConfidence": 27
+  "publishedAfterConfidence": 27,
+  "standingsContext": {
+    "available": 24,
+    "fallback": 3
+  }
 }
