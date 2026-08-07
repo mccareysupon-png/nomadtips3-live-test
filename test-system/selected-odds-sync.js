@@ -10,14 +10,28 @@
   const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) > 0;
   const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
-  function normalizeMarket(value, fallbackPick = 'N/A') {
+  function confidenceFor(source, config) {
+    const analysis = source?.auto_analysis || source?.autoAnalysis || {};
+    const strength = Number(analysis.absoluteStrength ?? Math.abs(Number(analysis.strengthScore)));
+    const minimum = Number(config?.rules?.confidence_minimum ?? config?.rules?.confidence_fixed ?? 58);
+    const maximum = Number(config?.rules?.confidence_maximum ?? 85);
+    const scale = Number(config?.confidencePolicy?.formula?.match?.(/×\s*([\d.]+)/)?.[1] ?? 15);
+    if (Number.isFinite(strength)) {
+      return Math.max(minimum, Math.min(maximum, Math.round(50 + (strength * scale))));
+    }
+    const direct = Number(source?.confidence);
+    return Number.isFinite(direct) && direct > 0 ? direct : minimum;
+  }
+
+  function normalizeMarket(value, fallbackPick = 'N/A', confidence = 0, forceConfidence = false) {
     const market = value && typeof value === 'object' ? value : {};
+    const marketConfidence = Number(market.confidence);
     return {
       ...market,
       pick: market.pick || fallbackPick,
       odds: finite(market.odds) ? Number(market.odds) : null,
       oddsStatus: market.oddsStatus || (finite(market.odds) ? 'LOCKED' : 'N/A'),
-      confidence: Number(market.confidence || 58),
+      confidence: forceConfidence || !Number.isFinite(marketConfidence) || marketConfidence <= 0 ? confidence : marketConfidence,
       outcome: market.outcome || 'pending'
     };
   }
@@ -25,6 +39,8 @@
   function toRecord(source, config, previous) {
     const side = String(source.pick_side || 'home').toUpperCase();
     const markets = source.markets || {};
+    const confidence = confidenceFor(source, config);
+    const autoCalculated = Boolean(source.auto_analysis || source.autoAnalysis);
     return {
       ...(previous || {}),
       fixtureId: String(source.client_fixture_id || source.fixture_id || source.slug),
@@ -41,12 +57,12 @@
       oddsStatus: source.oddsStatus || (finite(source.odds) ? 'LOCKED' : 'N/A'),
       oddsSource: source.oddsSource || null,
       oddsLockedAt: source.oddsLockedAt || config.locked_at_utc,
-      confidence: Number(source.confidence || 58),
+      confidence,
       predictedScore: source.predicted_score || '—',
       markets: {
-        btts: normalizeMarket(markets.btts),
-        doubleChance: normalizeMarket(markets.doubleChance),
-        asianHandicap: normalizeMarket(markets.asianHandicap)
+        btts: normalizeMarket(markets.btts, 'N/A', confidence, autoCalculated),
+        doubleChance: normalizeMarket(markets.doubleChance, 'N/A', confidence, autoCalculated),
+        asianHandicap: normalizeMarket(markets.asianHandicap, 'N/A', confidence, autoCalculated)
       },
       reason: source.reason || 'Automatic NOMAD SYSTEM analysis.',
       abcResult: source.abc_result || source.abcResult || 'LIMITED — no reliable common-opponent sample',
@@ -75,7 +91,8 @@
     const intro = document.querySelector('.home-page .hero p:not(.analysis-disclaimer)');
     if (intro) {
       const count = Array.isArray(config.matches) ? config.matches.length : 0;
-      intro.textContent = `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${count} qualifying match prediction${count === 1 ? '' : 's'} are connected to live results and separate market statistics.`;
+      const minimum = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
+      intro.textContent = `Automatic sports analysis for ${config.selection_date || 'the current selection window'}. ${count} qualifying match prediction${count === 1 ? '' : 's'} with NOMAD Confidence ${minimum}% or higher are connected to live results and separate market statistics.`;
     }
   }
 
@@ -95,6 +112,8 @@
       if (!changed) return;
 
       const now = new Date().toISOString();
+      const minimumConfidence = Number(config.rules?.confidence_minimum ?? config.rules?.confidence_fixed ?? 58);
+      const maximumConfidence = Number(config.rules?.confidence_maximum ?? 85);
       state.datasetId = remoteDatasetId;
       state.remoteDatasetId = remoteDatasetId;
       state.mode = config.environment === 'TEST_ONLY' ? 'AUTO_TEST' : 'REMOTE';
@@ -103,12 +122,18 @@
         name: config.system || 'NOMAD SYSTEM',
         createdAt: config.locked_at_utc || now,
         minimumOdds: Number(config.rules?.odds_min || 0),
-        minimumConfidence: Number(config.rules?.confidence_fixed || 58),
-        fixedConfidence: Number(config.rules?.confidence_fixed || 58),
+        minimumConfidence,
+        maximumConfidence,
+        confidenceMode: config.rules?.confidence_dynamic || config.confidencePolicy ? 'DYNAMIC_MINIMUM' : 'LEGACY',
         unlimitedSelections: Boolean(config.rules?.unlimited_qualifying_matches)
       }];
       state.publishedPicks = records;
       state.oddsPolicy = config.oddsPolicy || null;
+      state.confidencePolicy = config.confidencePolicy || {
+        type: 'DYNAMIC_MINIMUM',
+        minimum: minimumConfidence,
+        maximum: maximumConfidence
+      };
       state.auditLog = Array.isArray(state.auditLog) ? state.auditLog.slice(-99) : [];
       state.auditLog.push({
         id: `remote-sync-${Date.now()}`,
@@ -116,7 +141,7 @@
         actor: 'github-test-auto-selector',
         action: 'REMOTE_SET_SYNCED',
         entity: config.selection_date,
-        details: {count: records.length, system: config.system, productionWrite: false}
+        details: {count: records.length, system: config.system, productionWrite: false, minimumConfidence}
       });
       state.updatedAt = now;
       state.oddsSyncedAt = now;
