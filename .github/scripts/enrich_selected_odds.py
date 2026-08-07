@@ -118,6 +118,8 @@ def market_kind(name):
         or compact == "btts"
     ):
         return "btts"
+    if compact in {"goalsoverunder", "totalgoalsoverunder", "overunder"}:
+        return "overUnder"
     if compact in {"matchwinner", "1x2", "winner", "fulltimewinner", "matchresult"}:
         return "main"
     return None
@@ -139,6 +141,26 @@ def btts_matches(value, market):
     wanted = "yes" if pick.startswith("y") else "no" if pick.startswith("n") else ""
     actual = normalize_name(value)
     return bool(wanted and (actual == wanted or actual.startswith(wanted)))
+
+
+def over_under_matches(value, bet_name, market):
+    wanted_side = str(market.get("side") or market.get("pick") or "").strip().lower()
+    if wanted_side.startswith("over"):
+        wanted_side = "over"
+    elif wanted_side.startswith("under"):
+        wanted_side = "under"
+    else:
+        return False
+    try:
+        wanted_line = float(market.get("line", 2.5))
+    except (TypeError, ValueError):
+        return False
+    value_compact = normalize_name(value)
+    actual_side = "over" if value_compact.startswith("over") else "under" if value_compact.startswith("under") else None
+    if actual_side != wanted_side:
+        return False
+    combined = f"{value} {bet_name}"
+    return any(abs(line - wanted_line) < 1e-6 for line in number_tokens(combined))
 
 
 def double_chance_code(value):
@@ -179,6 +201,8 @@ def candidate_matches(kind, value, bet_name, selected):
     market = (selected.get("markets") or {}).get(kind) or {}
     if kind == "btts":
         return btts_matches(value, market)
+    if kind == "overUnder":
+        return over_under_matches(value, bet_name, market)
     if kind == "doubleChance":
         return double_chance_matches(value, market)
     if kind == "asianHandicap":
@@ -202,7 +226,7 @@ def candidate_rank(candidate, locked_at):
 
 
 def extract_candidates(rows, selected):
-    candidates = {"main": [], "btts": [], "doubleChance": [], "asianHandicap": []}
+    candidates = {"main": [], "btts": [], "overUnder": [], "doubleChance": [], "asianHandicap": []}
     for row in rows:
         provider_updated = row.get("update") or row.get("updated")
         for bookmaker in row.get("bookmakers") or []:
@@ -231,12 +255,51 @@ def has_odds(value):
     return safe_float(value) is not None
 
 
+def total_goals_index(selected):
+    analysis = selected.get("auto_analysis") or selected.get("autoAnalysis") or {}
+    totals = []
+    for key in ("homeOverall", "awayOverall", "homeVenue", "awayVenue"):
+        summary = analysis.get(key) or {}
+        try:
+            gf = float(summary.get("gfpg"))
+            ga = float(summary.get("gapg"))
+        except (TypeError, ValueError):
+            continue
+        totals.append(gf + ga)
+    return sum(totals) / len(totals) if totals else None
+
+
+def ensure_over_under_market(selected):
+    markets = selected.setdefault("markets", {})
+    existing = markets.get("overUnder")
+    if isinstance(existing, dict) and existing.get("pick"):
+        return False
+    index = total_goals_index(selected)
+    if index is None:
+        return False
+    side = "over" if index >= 2.5 else "under"
+    confidence = int(selected.get("confidence") or 0)
+    markets["overUnder"] = {
+        "pick": f"{'Over' if side == 'over' else 'Under'} 2.5",
+        "odds": None,
+        "confidence": confidence,
+        "bookmaker": "N/A",
+        "oddsStatus": "PENDING",
+        "oddsSource": "NOT FOUND",
+        "line": 2.5,
+        "side": side,
+        "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+        "totalGoalsIndex": round(index, 4),
+    }
+    return True
+
+
 def requested_kinds(selected):
     kinds = []
     if not has_odds(selected.get("odds")):
         kinds.append("main")
     markets = selected.get("markets") or {}
-    for kind in ("btts", "doubleChance", "asianHandicap"):
+    for kind in ("btts", "overUnder", "doubleChance", "asianHandicap"):
         if isinstance(markets.get(kind), dict) and not has_odds(markets[kind].get("odds")):
             kinds.append(kind)
     return kinds
@@ -281,6 +344,7 @@ def main():
     errors = []
 
     for selected in matches:
+        changed = ensure_over_under_market(selected) or changed
         kinds = requested_kinds(selected)
         fixture_id = selected.get("fixture_id")
         if not kinds or not fixture_id:
@@ -314,7 +378,7 @@ def main():
 
     if changed:
         config["oddsPolicy"] = {
-            "markets": ["1X2", "BTTS", "Double Chance", "Asian Handicap"],
+            "markets": ["1X2", "BTTS", "Over/Under 2.5", "Double Chance", "Asian Handicap"],
             "lockRule": "first real API price is preserved; missing prices are never estimated",
             "source": "API-FOOTBALL",
         }
