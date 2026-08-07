@@ -14,6 +14,7 @@ import { handleConditionConfig } from './condition-config.js';
 import { handleBallTengConfig } from './ball-teng-config.js';
 import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
+import { handleMemberStatsPagination } from './member-stats-pagination.js';
 import { handleMemberBallTengIngest } from './member-ball-teng-ingest.js';
 import { handleMemberBallTengRun } from './member-ball-teng-run.js';
 import { runMemberLiveBackgroundScans } from './member-live-shared-evaluator.js';
@@ -223,6 +224,18 @@ export default {
         return json(request, {
           ok: false,
           error: error?.message || 'Member Ball Teng ingest failed'
+        }, 500);
+      }
+    }
+
+    if (['/member-stats-summary', '/member-stats-page'].includes(url.pathname)) {
+      try {
+        const result = await handleMemberStatsPagination(request, env, url);
+        return json(request, result.data, result.status);
+      } catch (error) {
+        return json(request, {
+          ok: false,
+          error: error?.message || 'Member paginated statistics request failed'
         }, 500);
       }
     }
