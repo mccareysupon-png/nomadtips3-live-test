@@ -88,6 +88,7 @@ jobs:
             if [ "$selection_count" -gt 0 ]; then
               python3 .github/scripts/apply_confidence_policy.py
               python3 .github/scripts/enforce_add_k_data_quality.py
+              python3 .github/scripts/materialize_add_k_no_pick.py
               python3 .github/scripts/finalize_ball_teng_analysis.py
             else
               echo 'Explicit Add K NO PICK outcome published; skipping match enrichment.'
