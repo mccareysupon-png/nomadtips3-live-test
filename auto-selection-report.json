@@ -1,22 +1,88 @@
 {
-  "generatedAt": "2026-08-07T23:53:44Z",
+  "generatedAt": "2026-08-08T04:16:25Z",
   "environment": "TEST_ONLY",
-  "windowStartLocal": "2026-08-08T07:38:44.863191+07:00",
+  "windowStartLocal": "2026-08-08T12:01:25.416389+07:00",
   "windowEndLocal": "2026-08-09T08:00:00+07:00",
   "windowKey": "2026-08-09T08:00:00+07:00",
-  "status": "WAITING_FOR_CURRENT_SET_TO_SETTLE",
-  "apiCalls": 0,
-  "fixturesScanned": 0,
-  "fixturesAnalyzed": 0,
-  "prequalified": 0,
-  "published": 0,
-  "rejections": {},
-  "addKRunMerge": {
-    "policy": "LOCK_STARTED_REPLACE_FUTURE_DEDUPLICATE",
-    "cycleStartUtc": "2026-08-07T01:00:00Z",
-    "newSelectionCount": 27,
+  "status": "PUBLISHED",
+  "apiCalls": 587,
+  "fixturesScanned": 1123,
+  "fixturesAnalyzed": 240,
+  "prequalified": 109,
+  "published": 43,
+  "rejections": {
+    "strength score below threshold": 95,
+    "main 1X2 odds unavailable": 46,
+    "home/away split edge below threshold": 16,
+    "main odds below minimum": 20,
+    "insufficient recent or venue-specific sample": 16,
+    "overall form edge below threshold": 4
+  },
+  "rolloverPolicy": "IGNORE_OUT_OF_WINDOW_PENDING_FROM_PREVIOUS_SET",
+  "ignoredOutOfWindowPending": [
+    {
+      "fixtureId": "1577473",
+      "home": "Torpedo Moskva",
+      "away": "FC Sochi",
+      "kickoffUtc": "2026-08-08T15:00:00+00:00",
+      "status": "NS"
+    }
+  ],
+  "truncatedTo": 240,
+  "historyErrors": {
+    "4315": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
+    "27804": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
+    "27806": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
+    "24102": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}"
+  },
+  "archivedPreviousSet": "archive/auto-selections/2026-08-07-20260808T041625Z.json",
+  "confidencePolicy": {
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
+    "minimum": 58,
+    "maximum": 85,
+    "scale": 15.0,
+    "formula": "round(50 + adjustedStrength × 15), capped at 85",
+    "inputs": [
+      "overall PPG",
+      "home/away PPG",
+      "goal-difference rate",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
+    ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.32,
+      "adjustmentCap": 0.32,
+      "availableMatches": 30,
+      "fallbackMatches": 13,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
+    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
+    "rejectedBelowMinimum": 0,
+    "legacyCommonOpponentWeight": 0
+  },
+  "confidenceRejected": 0,
+  "publishedAfterConfidence": 43,
+  "standingsContext": {
+    "available": 30,
+    "fallback": 13
+  },
+  "ballTengPolicy": {
+    "legacyCommonOpponentWeight": 0,
+    "overallPpgWeight": 34.0,
+    "homeAwayPpgWeight": 36.0,
+    "goalDifferenceWeight": 18.0,
+    "rankedStandingsContextWeight": 32.0,
+    "directRankMix": 55.0,
+    "rankedCommonMix": 45.0
+  },
+  "selectionMerge": {
+    "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
+    "cycleStartUtc": "2026-08-08T01:00:00Z",
+    "runType": "AUTO",
+    "newSelectionCount": 43,
     "preservedStartedCount": 0,
-    "totalDisplayedCount": 27,
-    "noPickForNewRun": false
+    "duplicatesRemoved": 0,
+    "totalDisplayedCount": 43
   }
 }
