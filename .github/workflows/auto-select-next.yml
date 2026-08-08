@@ -1,4 +1,4 @@
-name: NOMADTIPS3 Ball Teng Auto Selector — Test
+name: NOMADTIPS3 Add K Production Auto — Top 10
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/auto-select-next.yml'
       - '.github/scripts/auto_select_next.py'
+      - '.github/scripts/publish_add_k_top10.py'
+      - '.github/member-api-guard/sitecustomize.py'
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/apply_confidence_policy.py'
       - '.github/scripts/materialize_add_k_no_pick.py'
@@ -30,7 +32,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: nomadtips3-ball-teng-auto-selector-test
+  group: nomadtips3-add-k-production-auto-top10
   cancel-in-progress: false
 
 jobs:
@@ -43,10 +45,20 @@ jobs:
       FORCE_AUTO_RESELECT: '0'
       BALL_TENG_CONTROL_URL: 'https://nomadtips3-test-api.mccarey-supon.workers.dev/ball-teng-config'
       ADD_K_PREVIOUS_SELECTED_PATH: '/tmp/nomad-prev-selected.json'
+      PYTHONPATH: '${{ github.workspace }}/.github/member-api-guard'
+      MEMBER_API_DEFAULT_LIMIT_PER_MINUTE: '240'
+      MEMBER_API_RATE_SAFETY: '1.08'
+      MEMBER_API_429_PAUSE_SECONDS: '65'
+      NOMAD_PRODUCTION_AUTO: '1'
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Validate production selector, Top 10 publisher, and API guard
+        run: |
+          python3 -m py_compile .github/scripts/publish_add_k_top10.py
+          python3 -m py_compile .github/member-api-guard/sitecustomize.py
 
       - name: Load active owner ball-teng settings
         shell: bash
@@ -93,6 +105,7 @@ jobs:
               python3 .github/scripts/apply_confidence_policy.py
               python3 .github/scripts/enforce_add_k_data_quality.py
               python3 .github/scripts/materialize_add_k_no_pick.py
+              python3 .github/scripts/publish_add_k_top10.py
               python3 .github/scripts/finalize_ball_teng_analysis.py
             else
               echo 'Explicit Add K NO PICK outcome published; skipping match enrichment.'
@@ -189,7 +202,7 @@ jobs:
 
           git add auto-selection-state.json
           if [ "$selection_changed" = true ]; then
-            git add selected-live-matches.json auto-selection-report.json archive/auto-selections 2>/dev/null || true
+            git add selected-live-matches.json auto-selection-report.json owner-candidate-pool.json archive/auto-selections 2>/dev/null || true
           fi
 
           git commit -m "Update NOMAD ball-teng auto state $(date -u +%Y-%m-%dT%H:%M:%SZ)"
