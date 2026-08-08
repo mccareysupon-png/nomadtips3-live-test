@@ -6,7 +6,7 @@ let liveConfigState = null;
 let ballConfigState = null;
 let ballRunQuotaState = null;
 
-function escapeHtml(value){return String(value ?? '—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c])}
+function escapeHtml(value){return String(value ?? '—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
 function number(value){const n=Number(value);return Number.isFinite(n)?n:null}
 function odds(value){const n=number(value);return n&&n>0?n.toFixed(2):'N/A'}
 function dateTime(value){if(!value)return '—';const d=new Date(value);if(!Number.isFinite(d.getTime()))return '—';return new Intl.DateTimeFormat('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)}
