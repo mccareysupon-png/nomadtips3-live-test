@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#090b0d">
+  <title>NOMADTIPS3 — Car 1 Owner Control</title>
+  <link rel="stylesheet" href="./styles.css?v=20260808-car1">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <div class="brand">nomad<span>tips3</span></div>
+        <p>CAR 1 · PRODUCTION LIVE · OWNER CONTROL</p>
+      </div>
+      <a href="https://www.nomadtips3.com/live" rel="noopener">เปิดหน้า Live ↗</a>
+    </header>
+
+    <section id="loginPanel" class="login panel">
+      <div><b>Owner verification</b><span>กุญแจจะเก็บเฉพาะในแท็บนี้และลบเมื่อปิดแท็บ</span></div>
+      <form id="loginForm">
+        <input id="ownerKey" type="password" autocomplete="current-password" placeholder="Owner Control Key" required>
+        <button type="submit">เชื่อมต่อ</button>
+      </form>
+    </section>
+
+    <main id="dashboard" hidden>
+      <section class="status-grid">
+        <article class="metric"><span>รถคันที่ 1</span><b id="engineBadge">—</b><small>Production Live Engine</small></article>
+        <article class="metric"><span>Active version</span><b id="version">—</b><small id="activatedAt">ยังไม่มีข้อมูล</small></article>
+        <article class="metric"><span>รอบรีเฟรช</span><b id="refreshMetric">—</b><small>ใช้เฉพาะหน้า /live</small></article>
+        <article class="metric"><span>Fixtures สูงสุด</span><b id="fixturesMetric">—</b><small>ไม่เกี่ยวกับรถคันที่ 2</small></article>
+      </section>
+
+      <section class="panel active-strip">
+        <div><small>ค่าที่รถคันที่ 1 กำลังใช้</small><p id="activeSummary">กำลังโหลด</p></div>
+        <button id="reloadButton" class="ghost" type="button">โหลดใหม่</button>
+      </section>
+
+      <section class="panel editor">
+        <div class="section-title"><div><small>CAR 1 SETTINGS</small><h1>ตั้งค่าหน้า Live</h1></div><span class="isolated">แยกจากรถคันที่ 2</span></div>
+        <div class="grid">
+          <label class="field switch-field"><span>สถานะเครื่องยนต์</span><select id="engineEnabled"><option value="true">RUNNING</option><option value="false">PAUSED</option></select></label>
+          <label class="field"><span>รีเฟรชทุกกี่วินาที</span><input id="refreshSeconds" type="number" min="15" max="300" step="1"></label>
+          <label class="field"><span>Fixtures สูงสุด</span><input id="fixturesMax" type="number" min="1" max="500" step="1"></label>
+          <label class="field"><span>นาทีเริ่มแสดง</span><input id="minuteMin" type="number" min="0" max="119" step="1"></label>
+          <label class="field"><span>นาทีสิ้นสุด</span><input id="minuteMax" type="number" min="1" max="120" step="1"></label>
+          <label class="field"><span>จำนวนประตูรวมขั้นต่ำ</span><input id="minimumTotalGoals" type="number" min="0" max="30" step="1"></label>
+          <label class="field"><span>จำกัดผลต่างสกอร์</span><select id="goalGapLimited"><option value="false">ไม่จำกัด</option><option value="true">จำกัด</option></select></label>
+          <label class="field"><span>ผลต่างไม่เกินกี่ลูก</span><input id="maxGoalGap" type="number" min="0" max="30" step="1"></label>
+          <label class="field"><span>เรียงลำดับคู่</span><select id="sortMode"><option value="MINUTE_DESC">นาทีมากไปน้อย</option><option value="MINUTE_ASC">นาทีน้อยไปมาก</option><option value="LEAGUE">ตามชื่อลีก</option></select></label>
+          <label class="field"><span>กรองประเทศ</span><input id="countryFilter" maxlength="80" placeholder="ว่าง = ทุกประเทศ"></label>
+          <label class="field"><span>กรองลีก</span><input id="leagueFilter" maxlength="80" placeholder="ว่าง = ทุกลีก"></label>
+          <label class="field"><span>กรองชื่อทีม</span><input id="teamFilter" maxlength="80" placeholder="ว่าง = ทุกทีม"></label>
+        </div>
+        <div id="draftSummary" class="summary">—</div>
+        <div class="actions">
+          <button id="defaultsButton" class="ghost" type="button">ค่าตั้งต้น</button>
+          <button id="saveButton" class="ghost" type="button">เซฟร่าง</button>
+          <button id="activateButton" class="primary" type="button">ยืนยันใช้กับรถคันที่ 1</button>
+        </div>
+        <p id="message" class="message" aria-live="polite"></p>
+        <p class="hint">เซฟร่างยังไม่กระทบหน้า Live · ปุ่มยืนยันจะเปลี่ยนเฉพาะรถคันที่ 1 และเก็บเป็น Active version ใหม่</p>
+      </section>
+    </main>
+    <footer>PRIVATE OWNER CONTROL · CAR 1 PRODUCTION SCOPE</footer>
+  </div>
+  <script src="./app.js?v=20260808-car1"></script>
+</body>
+</html>
