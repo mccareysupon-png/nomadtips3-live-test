@@ -1,25 +1,197 @@
 {
-  "generatedAt": "2026-08-08T13:57:20Z",
+  "generatedAt": "2026-08-08T13:57:57Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-08T21:42:20.549396+07:00",
+  "windowStartLocal": "2026-08-08T21:42:57.776888+07:00",
   "windowEndLocal": "2026-08-09T08:00:00+07:00",
   "windowKey": "2026-08-09T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 0,
-  "fixturesScanned": 0,
-  "fixturesAnalyzed": 0,
-  "prequalified": 0,
+  "apiCalls": 1164,
+  "fixturesScanned": 504,
+  "fixturesAnalyzed": 500,
+  "prequalified": 165,
   "published": 10,
-  "rejections": {},
-  "settlementGate": {
-    "currentSelectionCount": 43,
-    "recordedResultCount": 43,
-    "allSettled": false,
-    "statisticsFinalizedAt": null
+  "rejections": {
+    "main odds below minimum": 35,
+    "strength score below threshold": 279,
+    "home/away split edge below threshold": 24,
+    "insufficient recent or venue-specific sample": 21,
+    "main 1X2 odds unavailable": 53,
+    "overall form edge below threshold": 11
   },
-  "qualified": 43,
-  "discardedAfterTop10": 33,
+  "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
+  "truncatedTo": 500,
+  "historyErrors": {},
+  "archivedPreviousSet": "archive/auto-selections/2026-08-08-20260808T135757Z.json",
+  "confidencePolicy": {
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
+    "minimum": 58,
+    "maximum": 100,
+    "scale": 15.0,
+    "formula": "round(50 + adjustedStrength × 15), capped at 100",
+    "inputs": [
+      "overall PPG",
+      "home/away PPG",
+      "goal-difference rate",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
+    ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.32,
+      "adjustmentCap": 0.32,
+      "availableMatches": 61,
+      "fallbackMatches": 16,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
+    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
+    "rejectedBelowMinimum": 0,
+    "legacyCommonOpponentWeight": 0
+  },
+  "confidenceRejected": 0,
+  "publishedAfterConfidence": 77,
+  "standingsContext": {
+    "available": 61,
+    "fallback": 16
+  },
+  "addKTheKingOfSoccer": {
+    "active": true,
+    "presetKey": "ADD_K_THE_KING_OF_SOCCER_V1",
+    "version": 1,
+    "fixedRules": true,
+    "editable": false,
+    "qualityGate": "STRICT",
+    "minimumConfidence": 58,
+    "minimumMainOdds": 1.7,
+    "minimumSample": 5,
+    "requireStandingsContext": true,
+    "minimumLeagueTeamCount": 8,
+    "passed": 57,
+    "rejected": 20,
+    "rejections": [
+      {
+        "fixture_id": 1562589,
+        "match": "Jiskra Domažlice vs Sparta Praha II",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562713,
+        "match": "Velké Hamry vs Slovan Liberec II",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1585063,
+        "match": "FC Schalke 04 vs Atalanta",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562226,
+        "match": "Hořovicko vs Hluboka nad Vltavou",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562470,
+        "match": "Trutnov vs Spartak Police n/Metují",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1548950,
+        "match": "Rennes vs Brentford",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1548948,
+        "match": "Angers vs Lorient",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607284,
+        "match": "Virtus Entella vs Carrarese",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1612441,
+        "match": "Austria Wien W vs Farul Constanţa W",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1612442,
+        "match": "St. Pölten W vs Sporting CP W",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1585697,
+        "match": "Ümraniyespor vs Mardin 1969",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1585070,
+        "match": "Stade Brestois 29 vs Venezia",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607287,
+        "match": "Antequera vs Granada CF",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1564793,
+        "match": "Vicenza Virtus vs Catania",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1576784,
+        "match": "Uberabinha U20 vs Inter de Minas U20",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1552425,
+        "match": "Dunkerque vs Grenoble",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1585052,
+        "match": "Genoa vs Deportivo La Coruna",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1612448,
+        "match": "Juventus W vs Hammarby W",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1606266,
+        "match": "Grêmio Anápolis vs Trindade",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1492321,
+        "match": "Botafogo vs Fluminense",
+        "reason": "adjusted strength below 0.62"
+      }
+    ],
+    "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
+  },
+  "qualified": 20,
+  "discardedAfterTop10": 10,
   "publicationPolicy": "CONFIDENCE_DESCENDING_TOP_10",
-  "qualifiedBeforeTop10": 43,
-  "top10Policy": "Publish up to 10; fewer or zero picks are valid"
+  "qualifiedBeforeTop10": 20,
+  "top10Policy": "Publish up to 10; fewer or zero picks are valid",
+  "ballTengPolicy": {
+    "legacyCommonOpponentWeight": 0,
+    "overallPpgWeight": 34.0,
+    "homeAwayPpgWeight": 36.0,
+    "goalDifferenceWeight": 18.0,
+    "rankedStandingsContextWeight": 32.0,
+    "directRankMix": 55.0,
+    "rankedCommonMix": 45.0
+  },
+  "selectionMerge": {
+    "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
+    "cycleStartUtc": "2026-08-08T01:00:00Z",
+    "runType": "AUTO",
+    "newSelectionCount": 10,
+    "preservedStartedCount": 10,
+    "duplicatesRemoved": 0,
+    "totalDisplayedCount": 20
+  }
 }
