@@ -29,14 +29,8 @@ def rank_key(match):
     analysis = match.get("auto_analysis") or {}
     confidence = number(match.get("confidence"))
     strength = number(analysis.get("adjustedStrength"), number(analysis.get("absoluteStrength")))
-    standing = 1 if analysis.get("standingsAvailable") or analysis.get("standingContextAvailable") else 0
-    samples = [
-        number((analysis.get(name) or {}).get("sample"))
-        for name in ("homeOverall", "awayOverall", "homeVenue", "awayVenue")
-    ]
-    sample_floor = min(samples) if samples else 0
     kickoff = str(match.get("kickoff_utc") or match.get("kickoffUtc") or "")
-    return (-confidence, -standing, -strength, -sample_floor, kickoff, str(match.get("fixture_id") or ""))
+    return (-confidence, -strength, kickoff, str(match.get("fixture_id") or ""))
 
 
 def normalize_match(match):
@@ -117,51 +111,49 @@ def main():
     selected = read_json(SELECTED_PATH)
     report = read_json(REPORT_PATH)
     previous_pool = read_json(POOL_PATH)
-    matches = restore_qualified_matches(selected, previous_pool)
+    matches = list(selected.get("matches") or [])
     ranked = sorted(matches, key=rank_key)
-    published = [normalize_match(match) for match in ranked]
+    published = [normalize_match(match) for match in ranked[:10]]
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     pool = {
         "generatedAt": generated_at,
-        "mode": "ADD_K_PRODUCTION_ALL_QUALIFIED",
-        "visibility": "PUBLIC_LAUNCH_PROMOTION",
+        "mode": "ADD_K_PRODUCTION_TOP_10",
+        "visibility": "PUBLIC_TOP_10",
         "ranking": [
             "confidence descending",
-            "standings data availability",
             "adjusted strength descending",
-            "minimum form sample descending",
             "kickoff ascending",
         ],
         "qualified": len(ranked),
         "published": len(published),
-        "reserveCount": 0,
+        "discardedAfterTop10": max(0, len(ranked) - len(published)),
         "candidates": [
             public_row(match, index + 1)
             for index, match in enumerate(published)
         ],
     }
     selected["matches"] = published
-    selected["system"] = "ADD K THE KING OF SOCCER / ALL QUALIFIED PICKS PUBLIC"
+    selected["system"] = "ADD K THE KING OF SOCCER V1 / CONFIDENCE TOP 10"
     selected["environment"] = "PRODUCTION"
-    selected.setdefault("rules", {})["maximum_published_selections"] = 0
-    selected["rules"]["all_qualified_picks_public"] = True
+    selected.setdefault("rules", {})["maximum_published_selections"] = 10
+    selected["rules"]["all_qualified_picks_public"] = False
     selected["rules"]["qualified_reserves_owner_only"] = 0
     selected["candidatePool"] = {
         "qualified": len(ranked),
         "published": len(published),
-        "reserveCount": 0,
+        "discardedAfterTop10": max(0, len(ranked) - len(published)),
         "ownerPath": "owner-candidate-pool.json",
     }
 
     report["environment"] = "PRODUCTION"
     report["qualified"] = len(ranked)
     report["published"] = len(published)
-    report["reserveCount"] = 0
-    report["publicationPolicy"] = "ALL_QUALIFIED_PUBLIC_LAUNCH_PROMOTION"
-    report.pop("qualifiedBeforeTop10", None)
-    report.pop("top10Policy", None)
-    report["status"] = "PUBLISHED_ALL_QUALIFIED" if published else report.get("status", "NO_QUALIFYING_SELECTIONS")
+    report["discardedAfterTop10"] = max(0, len(ranked) - len(published))
+    report["publicationPolicy"] = "CONFIDENCE_DESCENDING_TOP_10"
+    report["qualifiedBeforeTop10"] = len(ranked)
+    report["top10Policy"] = "Publish up to 10; fewer or zero picks are valid"
+    report["status"] = "PUBLISHED_TOP_10" if published else report.get("status", "NO_QUALIFYING_SELECTIONS")
 
     write_json(SELECTED_PATH, selected)
     write_json(REPORT_PATH, report)
@@ -170,7 +162,7 @@ def main():
         "status": report["status"],
         "qualified": len(ranked),
         "published": len(published),
-        "reserves": 0,
+        "discardedAfterTop10": max(0, len(ranked) - len(published)),
     }, ensure_ascii=False))
 
 
