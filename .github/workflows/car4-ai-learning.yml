@@ -32,6 +32,8 @@ jobs:
         with:
           node-version: '20'
 
+      # Car 4 reads the repository's existing prediction/result feeds only.
+      # This workflow makes no Football API request.
       - name: Run isolated Car 4 learner
         run: node ai/auto-learn.mjs
 
