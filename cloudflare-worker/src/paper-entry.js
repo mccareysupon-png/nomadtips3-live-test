@@ -22,8 +22,6 @@ import { handleMemberData } from './member-data.js';
 import { handleMemberStatsPagination } from './member-stats-pagination.js';
 import { handleMemberBallTengIngest } from './member-ball-teng-ingest.js';
 import { handleMemberBallTengRun } from './member-ball-teng-run.js';
-import { settlePendingMemberBallTengResults } from './member-ball-teng-settlement.js';
-import { runMemberLiveBackgroundScans } from './member-live-shared-evaluator.js';
 import {
   handleLineWebhook,
   lineStatus,
@@ -358,18 +356,6 @@ export default {
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
       await runAdaptiveScanner(env, ctx);
-
-      try {
-        await runMemberLiveBackgroundScans(env);
-      } catch (error) {
-        console.error(error);
-      }
-
-      try {
-        await settlePendingMemberBallTengResults(env);
-      } catch (error) {
-        console.error(error);
-      }
 
       try {
         await syncSignalsToPaperTrades(env);
