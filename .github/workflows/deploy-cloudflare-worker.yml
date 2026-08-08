@@ -1,0 +1,35 @@
+name: Deploy Cloudflare Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/deploy-cloudflare-worker.yml
+      - cloudflare-worker/src/**
+      - cloudflare-worker/package.json
+      - cloudflare-worker/wrangler.jsonc
+
+concurrency:
+  group: deploy-nomadtips3-test-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run 429 shield regression test
+        run: node scripts/test-api-football-rate-guard.mjs
+
+      - name: Deploy nomadtips3-test-api
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: cloudflare-worker
+          command: deploy
