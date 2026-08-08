@@ -52,6 +52,23 @@ export default {
       return car3Scanner.fetch(internalRequest, env, ctx);
     }
 
+    // Running a new condition config resets the Car 3 scan state. Prime the
+    // first fresh sample immediately instead of leaving the page dependent on
+    // the next cron tick. The normal one-minute scheduler remains the single
+    // recurring owner; this is only a one-shot wake-up after an explicit run.
+    if (url.pathname === '/condition-config' && request.method === 'POST') {
+      const body = await request.clone().json().catch(() => null);
+      const response = await paperEntry.fetch(request, env, ctx);
+      if (response.ok && String(body?.action || '').toLowerCase() === 'run') {
+        ctx.waitUntil(
+          runAutoMomentumScan(car3Scanner, env, ctx).catch(error => {
+            console.error('Car 3 post-config wake-up failed', error);
+          })
+        );
+      }
+      return response;
+    }
+
     return paperEntry.fetch(request, env, ctx);
   },
 
