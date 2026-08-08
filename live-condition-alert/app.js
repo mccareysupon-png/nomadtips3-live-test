@@ -11,7 +11,8 @@
   const DEFAULT_CONFIG = {
     side: 'HOME', minuteMin: 60, minuteMax: 80, market: 'WIN',
     oddsMin: 1.70, oddsMax: null, ahMin: 0.25, ahMax: null,
-    momentumMin: 60, goalGapLimited: false, maxGoalGap: 1,
+    momentumMin: 60, attackEvidenceEnabled: true,
+    goalGapLimited: false, maxGoalGap: 1,
     confirmationRounds: 2, signalLimitEnabled: false, maxSignalsPerDay: 3
   };
 
@@ -65,9 +66,10 @@
   function configSummary(config = state.config) {
     const oddsMax = config.oddsMax === null ? 'ไม่จำกัด' : Number(config.oddsMax).toFixed(2);
     const ahMax = config.ahMax === null ? 'ไม่จำกัด' : formatLine(config.ahMax);
+    const evidence = config.attackEvidenceEnabled === false ? 'Evidence ปิด' : 'Evidence เปิด';
     const gap = config.goalGapLimited ? `ผลต่าง ≤ ${config.maxGoalGap}` : 'ทุกสกอร์';
     const limit = config.signalLimitEnabled ? `สูงสุด ${config.maxSignalsPerDay} สัญญาณ/วัน` : 'สัญญาณไม่จำกัด';
-    return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${formatLine(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
+    return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${formatLine(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${evidence} · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
   }
 
   function scoreView(candidate) {
@@ -202,7 +204,7 @@
     const streak = Number(candidate.serverStreak || 0);
     const ready = momentum !== null;
     const momentumPass = ready && momentum >= config.momentumMin;
-    const evidencePass = ready && (evidence || 0) >= 1;
+    const evidencePass = !config.attackEvidenceEnabled || (ready && (evidence || 0) >= 1);
     const triggered = Boolean(candidate.serverTriggered);
     const status = triggered
       ? 'เข้าเงื่อนไข'
@@ -249,12 +251,12 @@
           <div class="fact"><small>AH Odds</small><b class="${ahOdds ? 'green' : 'yellow'}">${ahOdds?.toFixed(2) ?? 'N/A'}</b></div>
           <div class="fact"><small>Paper Investment</small><b class="${candidate.selectedSide === 'HOME' && ahOdds ? 'green' : 'yellow'}">${candidate.selectedSide === 'HOME' && ahOdds ? '100 Units' : 'ALERT ONLY'}</b></div>
           <div class="fact"><small>Red cards Selected–Opponent</small><b class="green">${candidate.redCards.home}–${candidate.redCards.away}</b></div>
-          <div class="fact"><small>Attack evidence</small><b class="${evidencePass ? 'green' : 'yellow'}">${ready ? evidence : 'WAIT'}</b></div>
+          <div class="fact"><small>Attack evidence</small><b class="${evidencePass ? 'green' : 'yellow'}">${config.attackEvidenceEnabled ? (ready ? evidence : 'WAIT') : 'OFF'}</b></div>
         </div>
         <div class="analysis"><b>วิเคราะห์ตามสกอร์:</b> ${score.risk}</div>
         <div class="alert"><strong>${status}</strong><p>${triggered
           ? `${escapeHtml(candidate.home)} · ${score.label} · Momentum ${momentum}% · ${marketLabel(candidate.selectedMarket)} ${selectedOdds?.toFixed(2) ?? 'N/A'} · AH ${formatLine(ah)} @ ${ahOdds?.toFixed(2) ?? 'N/A'}`
-          : `ต้องผ่านอัตราการบุก ${config.momentumMin}% และยืนยัน ${config.confirmationRounds} รอบตามค่าที่กำลังรัน`}</p></div>
+          : `ต้องผ่านอัตราการบุก ${config.momentumMin}%${config.attackEvidenceEnabled ? ' + Attack evidence' : ''} และยืนยัน ${config.confirmationRounds} รอบตามค่าที่กำลังรัน`}</p></div>
       </div>
     </article>`;
   }
