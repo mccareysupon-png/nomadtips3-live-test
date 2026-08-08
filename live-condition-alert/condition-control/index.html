@@ -54,12 +54,14 @@
         <div class="field"><label>AH Line สูงสุด</label><input id="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="ไม่จำกัด"></div>
         <div class="field"><label>อัตราการบุกขั้นต่ำ (%)</label><input id="momentumMin" type="number" min="1" max="99" step="1"></div>
 
+        <div class="field"><label>Attack evidence</label><select id="attackEvidenceMode"><option value="ON">เปิด · ต้องมีหลักฐานการบุกเพิ่ม</option><option value="OFF">ปิด · ใช้ Momentum ตามที่ตั้ง</option></select></div>
         <div class="field"><label>ผลต่างสกอร์</label><select id="gapMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
         <div class="field"><label>ผลต่างไม่เกินกี่ลูก</label><input id="maxGoalGap" type="number" min="0" max="20" step="1"></div>
-        <div class="field"><label>ยืนยันกี่รอบติดกัน</label><input id="confirmationRounds" type="number" min="1" max="10" step="1"></div>
 
+        <div class="field"><label>ยืนยันกี่รอบติดกัน</label><input id="confirmationRounds" type="number" min="1" max="10" step="1"></div>
         <div class="field"><label>จำนวนสัญญาณต่อวัน</label><select id="limitMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
         <div class="field"><label>สูงสุดกี่สัญญาณ</label><input id="maxSignalsPerDay" type="number" min="1" max="100" step="1"></div>
+
         <div class="field"><label>สถานะระบบ</label><input id="engineState" value="TEST ENGINE" disabled></div>
       </div>
 
@@ -71,7 +73,7 @@
         <button type="button" class="primary" id="runButton">รัน</button>
       </div>
       <div class="message" id="message"></div>
-      <div class="hint">เซฟ = เก็บค่าที่กรอกไว้ แต่ยังไม่เปลี่ยนเครื่องยนต์ · รัน = ใช้ค่าใหม่กับระบบ Test และเริ่มเก็บ Momentum รอบใหม่</div>
+      <div class="hint">Attack evidence เปิด = ต้องมี Dangerous Attacks / Shots / Shots on target / Corners เพิ่มจากรอบก่อนอย่างน้อย 1 ครั้ง · ปิด = ไม่ใช้ตัวล็อกนี้ และยึด Momentum + เงื่อนไขอื่นตามที่ตั้ง · เซฟ = เก็บค่าไว้ · รัน = ใช้ค่าใหม่กับระบบ Test</div>
     </main>
 
     <div class="footer">ISOLATED TEST · OWNER CONDITION SETTINGS</div>
@@ -81,7 +83,7 @@
     (() => {
       'use strict';
       const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-      const ids = ['side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin','gapMode','maxGoalGap','confirmationRounds','limitMode','maxSignalsPerDay'];
+      const ids = ['side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin','attackEvidenceMode','gapMode','maxGoalGap','confirmationRounds','limitMode','maxSignalsPerDay'];
       const $ = id => document.getElementById(id);
       let serverState = null;
 
@@ -98,9 +100,10 @@
         if (!config) return 'ยังไม่มีข้อมูล';
         const oddsMax = config.oddsMax === null ? 'ไม่จำกัด' : Number(config.oddsMax).toFixed(2);
         const ahMax = config.ahMax === null ? 'ไม่จำกัด' : line(config.ahMax);
+        const evidence = config.attackEvidenceEnabled === false ? 'Evidence ปิด' : 'Evidence เปิด';
         const gap = config.goalGapLimited ? `ผลต่างไม่เกิน ${config.maxGoalGap} ลูก` : 'ทุกสกอร์';
         const limit = config.signalLimitEnabled ? `สูงสุด ${config.maxSignalsPerDay} สัญญาณ/วัน` : 'สัญญาณไม่จำกัด';
-        return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} · Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${line(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
+        return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} · Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${line(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${evidence} · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
       }
 
       function fill(config){
@@ -114,6 +117,7 @@
         $('ahMin').value = config.ahMin;
         $('ahMax').value = config.ahMax ?? '';
         $('momentumMin').value = config.momentumMin;
+        $('attackEvidenceMode').value = config.attackEvidenceEnabled === false ? 'OFF' : 'ON';
         $('gapMode').value = config.goalGapLimited ? 'LIMITED' : 'UNLIMITED';
         $('maxGoalGap').value = config.maxGoalGap;
         $('confirmationRounds').value = config.confirmationRounds;
@@ -148,6 +152,7 @@
           ahMin,
           ahMax: optional('ahMax'),
           momentumMin,
+          attackEvidenceEnabled: $('attackEvidenceMode').value === 'ON',
           goalGapLimited: $('gapMode').value === 'LIMITED',
           maxGoalGap: Number($('maxGoalGap').value),
           confirmationRounds: Number($('confirmationRounds').value),
