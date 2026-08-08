@@ -135,6 +135,23 @@ def decorate_runtime_rules(rules, add_k):
         nested.pop('data_quality_policy', None)
 
 
+def apply_add_k_v1_tuning(rules):
+    rules.update({
+        'minimum_confidence': 58,
+        'maximum_confidence': 100,
+        'minimum_sample': 5,
+        'minimum_strength_score': 0.62,
+        'minimum_overall_ppg_edge': 0.30,
+        'minimum_venue_ppg_edge': 0.40,
+        'maximum_fixtures_to_analyze': 500,
+        'maximum_selections': 10,
+        'preset_key': 'ADD_K_THE_KING_OF_SOCCER_V1',
+        'add_k_the_king_of_soccer': True,
+        'require_standings_context': True,
+        'minimum_league_team_count': 8,
+    })
+
+
 def main():
     rules = read_json(RULES_PATH)
     state = read_json(STATE_PATH)
@@ -171,8 +188,7 @@ def main():
     if manual_add_k:
         runtime_config = add_k_preset or active
         apply_config(rules, runtime_config)
-        rules['add_k_the_king_of_soccer'] = True
-        rules['preset_key'] = 'ADD_K_THE_KING_OF_SOCCER_V1'
+        apply_add_k_v1_tuning(rules)
         decorate_runtime_rules(rules, True)
         write_json(RULES_PATH, rules)
 
@@ -215,51 +231,35 @@ def main():
         }, ensure_ascii=False))
         return
 
-    active_is_add_k = bool(active.get('addKTheKingOfSoccer')) or str(active.get('presetKey') or '') == 'ADD_K_THE_KING_OF_SOCCER_V1'
-    if active_is_add_k:
-        rules['add_k_the_king_of_soccer'] = False
-        rules['preset_key'] = None
-        decorate_runtime_rules(rules, False)
-        write_json(RULES_PATH, rules)
-        print(json.dumps({
-            'status': 'AUTO_REPO_RULES_PRESERVED_AFTER_ADD_K',
-            'mode': 'AUTO_SCHEDULE',
-            'addKRunStatus': run_status,
-            'lastAddKVersion': last_add_k_version,
-            'autoSchedulePreserved': True,
-            'minimumConfidence': rules.get('minimum_confidence'),
-            'minimumMainOdds': rules.get('minimum_main_odds'),
-        }, ensure_ascii=False))
-        return
-
+    # Production AUTO is now permanently tuned to the fixed Add K V1 preset.
+    # Owner Custom Draft remains preserved in the Worker but cannot silently
+    # replace the automatic production engine.
     version = int(payload.get('version') or 0)
-    apply_config(rules, active)
-    rules['add_k_the_king_of_soccer'] = False
-    decorate_runtime_rules(rules, False)
+    apply_config(rules, add_k_preset)
+    apply_add_k_v1_tuning(rules)
+    decorate_runtime_rules(rules, True)
     write_json(RULES_PATH, rules)
 
     previous = int(state.get('lastControlVersion') or 0)
-    changed = version > 0 and version != previous
-    force = version > 0 and previous > 0 and version > previous
+    changed = False
+    force = False
 
     append_env('NOMAD_CONTROL_AVAILABLE', '1')
     append_env('NOMAD_CONTROL_VERSION', str(version))
     append_env('NOMAD_CONTROL_CHANGED', '1' if changed else '0')
     append_env('NOMAD_CONTROL_FORCE', '1' if force else '0')
-    append_env('NOMAD_SELECTOR_MODE', 'AUTO_CUSTOM' if changed else 'AUTO_SCHEDULE')
-    if force:
-        append_env('FORCE_AUTO_SELECT', '1')
-        append_env('FORCE_AUTO_RESELECT', '1')
+    append_env('NOMAD_SELECTOR_MODE', 'AUTO_ADD_K_V1')
 
     print(json.dumps({
-        'status': 'AUTO_CONTROL_APPLIED_TO_RUNTIME',
-        'mode': 'AUTO_CUSTOM' if changed else 'AUTO_SCHEDULE',
+        'status': 'AUTO_ADD_K_V1_APPLIED_TO_RUNTIME',
+        'mode': 'AUTO_ADD_K_V1',
         'version': version,
         'previousVersion': previous,
         'changed': changed,
         'forceReselect': force,
         'source': CONTROL_URL,
         'autoSchedulePreserved': True,
+        'customDraftPreserved': True,
         'minimumConfidence': rules.get('minimum_confidence'),
         'minimumMainOdds': rules.get('minimum_main_odds'),
         'minimumSample': rules.get('minimum_sample'),
