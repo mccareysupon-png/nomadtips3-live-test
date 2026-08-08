@@ -16,8 +16,8 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Dedicated Car 3 status route. The retired public live-analysis routes
-    // remain disabled inside paper-entry.js.
+    // Dedicated Car 3 status route. The retired public live-analysis page
+    // remains independent from this Worker-side detector.
     if (url.pathname === '/car3/auto-scan-status') {
       if (request.method !== 'GET') {
         return json({ ok: false, error: 'Method not allowed' }, 405);
@@ -35,8 +35,8 @@ export default {
       }
     }
 
-    // Diagnostic route for Car 3 only. It uses entry-batched.js, which is
-    // intentionally independent from the retired public live-analysis route.
+    // Diagnostic route for Car 3 only. It uses entry-batched.js and does not
+    // require the retired browser Live Analysis page.
     if (url.pathname === '/car3/live-condition-scan') {
       if (request.method !== 'GET') {
         return json({ ok: false, error: 'Method not allowed' }, 405);
@@ -52,16 +52,20 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
-    // Car 3 gets its own minute cron while the retired public scanner stays off.
+    // Single scheduler owner: paper-entry already runs the adaptive Car 3
+    // scanner against entry-batched.js and then performs signal/trade side
+    // effects. Running runAutoMomentumScan here as well would duplicate the
+    // same API workload every minute and can push the shared API guard into
+    // cooldown/429 protection.
+    if (typeof paperEntry.scheduled === 'function') {
+      return paperEntry.scheduled(controller, env, ctx);
+    }
+
+    // Defensive fallback only if paper-entry ever loses its scheduler.
     ctx.waitUntil(
       runAutoMomentumScan(car3Scanner, env, ctx).catch(error => {
         console.error('Car 3 scheduled scan failed', error);
       })
     );
-
-    // Preserve all other scheduled jobs already owned by paper-entry.js.
-    if (typeof paperEntry.scheduled === 'function') {
-      return paperEntry.scheduled(controller, env, ctx);
-    }
   }
 };
