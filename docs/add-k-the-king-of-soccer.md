@@ -28,8 +28,8 @@ A run is allowed to return zero selections. The engine must never keep an older 
 | Rule | V1 |
 | --- | ---: |
 | Main market | 1X2 Team Win |
-| Minimum confidence | 62% |
-| Maximum confidence | 85% |
+| Minimum confidence | 58% |
+| Maximum confidence | No artificial cap (natural percentage ceiling 100%) |
 | Minimum main odds | 1.70 |
 | Overall sample | 6 matches |
 | Home/Away sample | 5 matches |
@@ -37,8 +37,8 @@ A run is allowed to return zero selections. The engine must never keep an older 
 | Minimum strength | 0.62 |
 | Minimum Overall PPG edge | 0.30 |
 | Minimum Home/Away PPG edge | 0.40 |
-| Maximum fixtures to analyze | 240 |
-| Maximum selections | 0 = unlimited qualifying selections |
+| Maximum fixtures to analyze | 500 |
+| Maximum selections | 10, ranked by confidence descending |
 | League standings | Required |
 | Minimum league-table size | 8 teams |
 
@@ -67,10 +67,16 @@ Reject a candidate when any required condition fails, including:
 - league standings unavailable;
 - league table smaller than 8 teams;
 - adjusted strength below the V1 threshold;
-- confidence below 62%;
+- confidence below 58%;
 - real 1X2 odds unavailable or below 1.70.
 
 The engine may publish `NO PICK` when no fixture survives screening or when later confidence/data-quality checks remove all candidates.
+
+If more than 10 fixtures survive screening, V1 ranks them by confidence from highest to lowest and publishes only the first 10. If fewer than 10 survive, it publishes only those fixtures.
+
+## Automatic rollover gate
+
+The scheduler may wake every five minutes, but it must not select the next set until every fixture in the current set is settled and the result feed has recorded its final statistics. Postponed, cancelled, or abandoned fixtures must be explicitly settled/voided; they cannot be silently ignored merely because they sit outside an earlier selection window. A completed-set key prevents the same finalized result set from triggering duplicate selections.
 
 ## V1 scope and transparency
 
