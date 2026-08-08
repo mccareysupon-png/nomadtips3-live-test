@@ -1,4 +1,4 @@
-name: NOMADTIPS3 Add K Production Auto — Top 10
+name: NOMADTIPS3 Add K Production Auto — All Qualified
 
 on:
   push:
@@ -32,7 +32,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: nomadtips3-add-k-production-auto-top10
+  group: nomadtips3-add-k-production-all-qualified
   cancel-in-progress: false
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate production selector, Top 10 publisher, and API guard
+      - name: Validate production selector, all-qualified publisher, and API guard
         run: |
           python3 -m py_compile .github/scripts/publish_add_k_top10.py
           python3 -m py_compile .github/member-api-guard/sitecustomize.py
@@ -146,6 +146,19 @@ jobs:
           fi
 
           python3 .github/scripts/merge_add_k_locked_picks.py
+
+          current_count="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          try:
+              print(len(json.loads(Path('selected-live-matches.json').read_text(encoding='utf-8')).get('matches') or []))
+          except Exception:
+              print('0')
+          PY
+          )"
+          if [ "$current_count" -gt 0 ]; then
+            python3 .github/scripts/publish_add_k_top10.py
+          fi
 
           git checkout -- config/nomad-auto-rules.json
           python3 .github/scripts/consume_ball_teng_control.py
