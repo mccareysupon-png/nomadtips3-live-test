@@ -174,20 +174,6 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(request) });
     }
 
-    if ([
-      '/live',
-      '/live-condition-scan',
-      '/production-live-condition-scan',
-      '/production-live-config',
-      '/auto-scan-status'
-    ].includes(url.pathname)) {
-      return json(request, {
-        ok: false,
-        stopped: true,
-        error: 'The retired public live-analysis engine has been removed.'
-      }, 410);
-    }
-
     if (url.pathname === '/condition-config') {
       try {
         const result = await handleConditionConfig(request, env);
@@ -371,6 +357,8 @@ export default {
 
   async scheduled(controller, env, ctx) {
     ctx.waitUntil((async () => {
+      await runAdaptiveScanner(env, ctx);
+
       try {
         await runMemberLiveBackgroundScans(env);
       } catch (error) {
