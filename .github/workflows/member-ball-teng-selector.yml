@@ -11,23 +11,8 @@ on:
         description: 'Force a fresh member selection even when current config/window is already stored'
         required: false
         default: 'false'
-  schedule:
-    - cron: '*/5 * * * *'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/member-ball-teng-selector.yml'
-      - '.github/member-api-guard/sitecustomize.py'
-      - '.github/scripts/run_member_ball_teng_selector.py'
-      - '.github/scripts/run_ball_teng_selector.py'
-      - '.github/scripts/auto_select_next.py'
-      - '.github/scripts/apply_confidence_policy.py'
-      - '.github/scripts/finalize_ball_teng_analysis.py'
-      - '.github/scripts/enrich_selected_odds.py'
-      - 'cloudflare-worker/src/member-ball-teng-ingest.js'
-      - 'cloudflare-worker/src/member-ball-teng-run.js'
-      - 'cloudflare-worker/src/member-config.js'
-      - 'cloudflare-worker/src/member-data.js'
+  # Member Test is parked. Keep manual dispatch available for a future
+  # owner-approved test, but do not run it on a timer or repository push.
 
 permissions:
   contents: read
