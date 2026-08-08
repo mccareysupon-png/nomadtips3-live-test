@@ -1,6 +1,6 @@
 import { listActiveMemberConditionConfigs } from './member-config.js';
+import { sharedApiFetch } from './shared-api-football.js';
 
-const API_BASE = 'https://v3.football.api-sports.io';
 const LIVE_STATUSES = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE']);
 const REQUIRED_STATS = ['attacks', 'dangerous_attacks', 'shots', 'shots_on_target', 'corners', 'possession'];
 const WEIGHTS = {
@@ -163,31 +163,9 @@ function sleep(ms) {
 }
 
 async function apiFetchDirect(path, env, usage, endpoint, items = 0) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
-  let lastError = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    recordUsage(usage, endpoint, items);
-    const response = await fetch(`${API_BASE}${path}`, {
-      headers: {
-        'x-apisports-key': env.API_FOOTBALL_KEY,
-        'Accept': 'application/json'
-      }
-    });
-    const payload = await response.json().catch(() => null);
-    const detail = apiErrorDetail(payload);
-    if (isRateLimit(response, payload)) {
-      lastError = new Error(detail || payload?.message || `API HTTP ${response.status}`);
-      if (attempt === 0) {
-        await sleep(1800);
-        continue;
-      }
-      throw lastError;
-    }
-    if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-    if (detail) throw new Error(detail);
-    return payload;
-  }
-  throw lastError || new Error('API request failed');
+  const result = await sharedApiFetch(path, env);
+  if (Number(result.upstreamRequests || 0) > 0) recordUsage(usage, endpoint, items);
+  return result.payload;
 }
 
 function normalizeStatKey(type) {
