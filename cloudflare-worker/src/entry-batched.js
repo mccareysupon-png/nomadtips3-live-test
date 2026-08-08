@@ -1,5 +1,6 @@
 import baseWorker from './index.js';
 import { getActiveConditionConfig } from './condition-config.js';
+import { sharedApiFetch } from './shared-api-football.js';
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const ALLOWED_ORIGINS = new Set([
@@ -84,46 +85,8 @@ function cacheSecondsForPath(path) {
 }
 
 async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
-  const apiUrl = `${API_BASE}${path}`;
-  const cache = caches.default;
-  const key = new Request(apiUrl, { method: 'GET' });
-  const cached = await cache.match(key);
-  if (cached) return cached.json();
-
-  let lastError = null;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const response = await fetch(apiUrl, {
-      headers: {
-        'x-apisports-key': env.API_FOOTBALL_KEY,
-        'Accept': 'application/json'
-      }
-    });
-    const payload = await response.json().catch(() => null);
-    const detail = apiErrorDetail(payload);
-
-    if (isRateLimit(response, payload)) {
-      lastError = new Error(detail || payload?.message || `API HTTP ${response.status}`);
-      if (attempt === 0) {
-        await sleep(1800);
-        continue;
-      }
-      throw lastError;
-    }
-
-    if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-    if (detail) throw new Error(detail);
-
-    await cache.put(key, new Response(JSON.stringify(payload), {
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': `public, max-age=${cacheSeconds}`
-      }
-    }));
-    return payload;
-  }
-
-  throw lastError || new Error('API request failed');
+  const result = await sharedApiFetch(path, env, cacheSeconds);
+  return result.payload;
 }
 
 function normalizeStatKey(type) {
