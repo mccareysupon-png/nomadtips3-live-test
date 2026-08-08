@@ -32,7 +32,7 @@ def post_control(action, version, **extra):
         headers={
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'User-Agent': 'nomadtips3-ball-teng-selector/3',
+            'User-Agent': 'nomadtips3-ball-teng-selector/5',
         },
         method='POST',
     )
@@ -77,9 +77,9 @@ def stamp_add_k_completion(version):
     write_json(REPORT_PATH, report)
 
     message = (
-        f'Add K completed: {new_count} new pick(s), {preserved_count} already-started pick(s) preserved.'
+        f'Add K completed: {new_count} new pick(s), {preserved_count} already-started pick(s) preserved. AUTO schedule unchanged.'
         if new_count > 0
-        else f'Add K completed with NO PICK; {preserved_count} already-started pick(s) preserved.'
+        else f'Add K completed with NO PICK; {preserved_count} already-started pick(s) preserved. AUTO schedule unchanged.'
     )
     try:
         response = post_control(
@@ -119,23 +119,39 @@ def main():
         return
 
     state = read_json(STATE_PATH)
-    previous = int(state.get('lastControlVersion') or 0)
     add_k_run = os.environ.get('NOMAD_ADD_K_RUN') == '1'
     force = os.environ.get('NOMAD_CONTROL_FORCE') == '1'
+    now_text = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    completion = None
-    if add_k_run and force:
-        completion = stamp_add_k_completion(version)
+    if add_k_run:
+        previous = int(state.get('lastAddKVersion') or 0)
+        completion = stamp_add_k_completion(version) if force else None
+        if previous != version:
+            state['lastAddKVersion'] = version
+            state['lastAddKConsumedAt'] = now_text
+            state['lastAddKAction'] = 'MANUAL_RESELECT'
+            if completion:
+                state['lastAddKRun'] = {
+                    'version': version,
+                    **completion,
+                }
+            write_json(STATE_PATH, state)
 
+        print(json.dumps({
+            'status': 'ADD_K_VERSION_RECORDED' if previous != version else 'ADD_K_VERSION_ALREADY_RECORDED',
+            'previousAddKVersion': previous,
+            'version': version,
+            'action': 'MANUAL_RESELECT',
+            'autoSchedulePreserved': True,
+            'addKCompletion': completion,
+        }, ensure_ascii=False))
+        return
+
+    previous = int(state.get('lastControlVersion') or 0)
     if previous != version:
         state['lastControlVersion'] = version
-        state['lastControlConsumedAt'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        state['lastControlConsumedAt'] = now_text
         state['lastControlAction'] = 'RUN_RESELECT' if force else 'BASELINE_SYNC'
-        if completion:
-            state['lastAddKRun'] = {
-                'version': version,
-                **completion,
-            }
         write_json(STATE_PATH, state)
 
     print(json.dumps({
@@ -143,7 +159,7 @@ def main():
         'previousVersion': previous,
         'version': version,
         'action': 'RUN_RESELECT' if force else 'BASELINE_SYNC',
-        'addKCompletion': completion,
+        'autoSchedulePreserved': True,
     }, ensure_ascii=False))
 
 
