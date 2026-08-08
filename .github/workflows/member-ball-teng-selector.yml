@@ -17,6 +17,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/member-ball-teng-selector.yml'
+      - '.github/member-api-guard/sitecustomize.py'
       - '.github/scripts/run_member_ball_teng_selector.py'
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/auto_select_next.py'
@@ -44,11 +45,17 @@ jobs:
       MEMBER_ID: ${{ github.event.inputs.member || '0001' }}
       MEMBER_SELECTOR_FORCE: ${{ github.event.inputs.force == 'true' && '1' || '0' }}
       MEMBER_WORKER_BASE: 'https://nomadtips3-test-api.mccarey-supon.workers.dev'
+      PYTHONPATH: '${{ github.workspace }}/.github/member-api-guard'
+      MEMBER_API_DEFAULT_LIMIT_PER_MINUTE: '10'
+      MEMBER_API_RATE_SAFETY: '1.10'
+      MEMBER_API_429_PAUSE_SECONDS: '65'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate isolated member selector runner
-        run: python3 -m py_compile .github/scripts/run_member_ball_teng_selector.py
+      - name: Validate isolated member selector runner and rate guard
+        run: |
+          python3 -m py_compile .github/scripts/run_member_ball_teng_selector.py
+          python3 -m py_compile .github/member-api-guard/sitecustomize.py
 
       - name: Run copied Ball Teng engine in Member room
         shell: bash
