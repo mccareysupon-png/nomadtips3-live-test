@@ -1,16 +1,5 @@
 (()=>{
   'use strict';
-
-  const refreshScores=()=>{
-    if(document.hidden)return;
-    if(typeof window.refreshAll==='function')window.refreshAll();
-  };
-
-  const refreshManifest=()=>{
-    if(document.hidden)return;
-    if(typeof window.syncManifest==='function')window.syncManifest();
-  };
-
-  setInterval(refreshScores,15000);
-  setInterval(refreshManifest,30000);
+  // Retired with the legacy root Live Analysis page on 2026-08-08.
+  // Harmless stub prevents stale references from restarting polling.
 })();
