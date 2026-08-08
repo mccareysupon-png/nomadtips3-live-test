@@ -6,7 +6,7 @@ let liveConfigState = null;
 let ballConfigState = null;
 let ballRunQuotaState = null;
 
-function escapeHtml(value){return String(value ?? '—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c])}
+function escapeHtml(value){return String(value ?? '—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[c])}
 function number(value){const n=Number(value);return Number.isFinite(n)?n:null}
 function odds(value){const n=number(value);return n&&n>0?n.toFixed(2):'N/A'}
 function dateTime(value){if(!value)return '—';const d=new Date(value);if(!Number.isFinite(d.getTime()))return '—';return new Intl.DateTimeFormat('th-TH',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}).format(d)}
@@ -50,13 +50,17 @@ function renderBallRunQuota(payload){
   ballRunQuotaState=quota;
   const used=Number(quota.used||0),limit=Number(quota.limit||3),remaining=Math.max(0,Number(quota.remaining??(limit-used)));
   const pending=Boolean(quota.pending);
+  const stalePending=Boolean(quota.stalePending);
+  const staleAfter=Number(quota.staleAfterMinutes||20);
   const text=pending
     ? `กำลังคัดตามเงื่อนไขล่าสุด · ใช้แล้ว ${used}/${limit} ครั้งวันนี้ · รอผลก่อนกดใหม่`
-    : `วันนี้ใช้แล้ว ${used}/${limit} ครั้ง · เหลือ ${remaining} ครั้ง · รีเซ็ต 00:00 น. เวลาไทย`;
+    : stalePending
+      ? `รอบก่อนหน้าค้างเกิน ${staleAfter} นาที · ปลดล็อกให้ลองคัดใหม่ได้ · เหลือ ${remaining} ครั้ง`
+      : `วันนี้ใช้แล้ว ${used}/${limit} ครั้ง · เหลือ ${remaining} ครั้ง · รีเซ็ต 00:00 น. เวลาไทย`;
   $('#ballRunQuota').textContent=`สิทธิ์คัดใหม่: ${text}`;
   $('#ballRunQuotaView').textContent=`${text} · การคัดของสมาชิกแยกจาก Owner/System`;
   const button=document.querySelector('[data-config-action="ball-run"]');
-  if(button){button.disabled=pending||remaining<=0;button.title=pending?'มีงานคัดกำลังประมวลผล':remaining<=0?'ใช้สิทธิ์ครบ 3 ครั้งวันนี้แล้ว':''}
+  if(button){button.disabled=pending||remaining<=0;button.title=pending?'มีงานคัดกำลังประมวลผล':remaining<=0?'ใช้สิทธิ์ครบ 3 ครั้งวันนี้แล้ว':stalePending?'รอบเดิมค้างเกินเวลา ระบบอนุญาตให้ลองใหม่':''}
 }
 
 function renderLive(payload){
@@ -83,16 +87,6 @@ function renderLive(payload){
 
   if(!active.length){$('#liveGrid').innerHTML='<div class="empty">ยังไม่มี live state ของ Member #0001 · ระบบจะไม่ใช้ state ของ Owner/System มาปน</div>'}
   else $('#liveGrid').innerHTML=active.map(row=>`<article class="live-card ${Number(row.triggered)===1?'triggered':''}"><div class="card-top"><div class="league">Fixture ${escapeHtml(row.fixture_id)} · ${escapeHtml(row.selected_side)}<br>Minute ${escapeHtml(row.minute)}</div><div class="confidence">Streak ${escapeHtml(row.streak||0)}</div></div><div class="match">${escapeHtml(row.selected_team)} <span style="color:#89918c">vs</span> ${escapeHtml(row.opponent)}</div><div class="momentum">${row.momentum==null?'—':Math.round(Number(row.momentum))}<small>% momentum</small></div><div class="live-meta"><span>Score ${escapeHtml(row.selected_score)}–${escapeHtml(row.opponent_score)}</span><span>Config v${escapeHtml(row.config_version)}</span><span class="${Number(row.triggered)===1?'signal':''}">${Number(row.triggered)===1?'SIGNAL TRIGGERED':'MONITORING'}</span></div></article>`).join('');
-}
-
-function renderStats(payload){
-  const summary=payload.summary||{};
-  const records=Array.isArray(payload.records)?payload.records:[];
-  $('#statTotal').textContent=summary.total??0;$('#statSettled').textContent=summary.settled??0;$('#statCorrect').textContent=summary.correct??0;$('#statIncorrect').textContent=summary.incorrect??0;$('#statAccuracy').textContent=summary.accuracy==null?'—':`${Number(summary.accuracy).toFixed(2)}%`;
-  $('#statsMeta').textContent=`${records.length} record(s) · scope MEMBER_ONLY · ${MEMBER_ID}`;
-  $('#overviewStatsState').textContent=summary.accuracy==null?`${records.length} personal record(s)`:`${Number(summary.accuracy).toFixed(2)}% · ${summary.settled||0} settled`;
-  if(!records.length){$('#historyTable').innerHTML='<div class="empty">ยังไม่มีสถิติ Member #0001 · record ของ Owner/System ที่ไม่มี member_id จะไม่ถูกนำมานับ</div>';return}
-  $('#historyTable').innerHTML=`<div class="history-row head"><span>Date</span><span>Type / Fixture</span><span>Pick</span><span>Odds</span><span>Result</span></div>${records.slice(0,20).map(r=>{const result=String(r.outcome||'PENDING').toLowerCase(),cls=['correct','win','half-win'].includes(result)?'correct':['incorrect','loss','half-loss'].includes(result)?'incorrect':'pending';return `<div class="history-row"><span>${escapeHtml(dateTime(r.created_at))}</span><b>${escapeHtml(r.source_type||'—')} · ${escapeHtml(r.fixture_id||'—')}</b><span>${escapeHtml(r.pick||'—')}</span><span>${odds(r.odds)}</span><span class="outcome ${cls}">${escapeHtml(String(r.outcome||'PENDING').toUpperCase())}</span></div>`}).join('')}`;
 }
 
 function renderNotifications(payload){
@@ -173,7 +167,6 @@ async function loadMemberData(){
     requestJson(memberUrl('/member-ball-teng-results')).then(renderBallTeng),
     requestJson(memberUrl('/member-ball-teng-run')).then(renderBallRunQuota),
     requestJson(memberUrl('/member-live-status')).then(renderLive),
-    requestJson(memberUrl('/member-stats')).then(renderStats),
     requestJson(memberUrl('/member-notifications')).then(renderNotifications),
     requestJson(`${WORKER}/auto-scan-status`).then(setInfraHealth)
   ]);
