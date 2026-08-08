@@ -99,13 +99,13 @@
     </section>
 
     <section class="view" data-view="stats">
-      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>ไม่รวม record ที่ไม่มี member_id และไม่รวม Owner/System records</span></div>
+      <div class="section-head"><h2>สถิติของ Member #0001</h2><span>บอลเต็งและบอลสดแยก source ออกจากกัน · ไม่รวม Owner/System records</span></div>
       <div class="stats-grid">
-        <div class="stat-box"><small>Total Records</small><b id="statTotal">—</b><p>เฉพาะประวัติ Member #0001</p></div>
+        <div class="stat-box"><small>Total Records</small><b id="statTotal">—</b><p>เฉพาะสถิติของระบบที่เลือก</p></div>
         <div class="stat-box"><small>Confirmed</small><b id="statSettled">—</b><p>ผลที่ยืนยันแล้ว</p></div>
         <div class="stat-box"><small>Correct</small><b id="statCorrect">—</b><p>ผลบวกที่ยืนยันแล้ว</p></div>
         <div class="stat-box"><small>Incorrect</small><b id="statIncorrect">—</b><p>ผลลบที่ยืนยันแล้ว</p></div>
-        <div class="stat-box"><small>Accuracy</small><b id="statAccuracy">—</b><p>คำนวณจาก decision ของสมาชิกเท่านั้น</p></div>
+        <div class="stat-box"><small>Accuracy</small><b id="statAccuracy">—</b><p>คำนวณเฉพาะ source ที่กำลังดู</p></div>
       </div>
       <div class="section-head"><h2>ประวัติล่าสุด</h2><span id="statsMeta">กำลังโหลด…</span></div>
       <div class="history" id="historyTable"><div class="empty loading">กำลังโหลดสถิติส่วนตัว…</div></div>
@@ -195,7 +195,7 @@
           </form>
           <div class="settings-actions"><button data-config-action="ball-default" type="button">ดีฟอลท์</button><button data-config-action="ball-save" type="button">เซฟ Draft</button><button data-config-action="ball-run" class="primary" type="button">เปิดใช้และคัดใหม่</button></div>
           <div id="ballRunQuota" class="config-message">สิทธิ์คัดใหม่: กำลังโหลด…</div>
-          <div class="config-message">กดคัดใหม่ได้สูงสุด 3 ครั้ง/วัน (นับตามเวลาไทย) · เซฟ Draft ไม่หักสิทธิ์ · รอบคัดอัตโนมัติไม่หักสิทธิ์ · ถ้ามีงานกำลังประมวลผล ต้องรอผลก่อนกดใหม่ · ระบบรับคำสั่งทันทีและผลจะขึ้นเมื่อเครื่องคัดสมาชิกจบรอบประมวลผล ปกติภายในประมาณ 5 นาที</div>
+          <div class="config-message">กดคัดใหม่ได้สูงสุด 3 ครั้ง/วัน (นับตามเวลาไทย) · เซฟ Draft ไม่หักสิทธิ์ · รอบคัดอัตโนมัติไม่หักสิทธิ์ · ถ้ามีงานกำลังประมวลผลให้รอผลก่อน · ถ้างานค้างเกิน 20 นาที ระบบจะปลดล็อกให้ลองใหม่ได้อัตโนมัติ</div>
           <div id="ballConfigMessage" class="config-message">กำลังโหลดค่าของสมาชิก…</div>
         </section>
       </div>
@@ -204,10 +204,11 @@
     <div class="footer-note">NOMADTIPS3 · MEMBER SYSTEM TEST · MEMBER #0001 · MEMBER DATA ISOLATION</div>
   </div>
 
-  <script type="module" src="./member.js?v=202608071640"></script>
+  <script type="module" src="./member.js?v=202608080955"></script>
   <script type="module" src="./member-live-details.js?v=202608071915"></script>
   <script type="module" src="./member-live-focus.js?v=202608080650"></script>
-  <script type="module" src="./member-stats-pagination.js?v=202608072050"></script>
+  <script type="module" src="./member-stats-pagination.js?v=202608080955"></script>
+  <script type="module" src="./member-stats-scope.js?v=202608080955"></script>
   <script src="../../site-footer.js?v=202608040844"></script>
 </body>
 </html>
