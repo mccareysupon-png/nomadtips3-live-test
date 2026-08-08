@@ -372,6 +372,26 @@ export async function scanLiveConditions(request, env, config) {
   }
 
   const oddsByFixture = indexLiveOdds(liveOdds.items);
+  const missingOddsSources = statEligible.filter(source => !oddsByFixture.has(source.match.id));
+  const perFixtureOddsSettled = await Promise.allSettled(
+    missingOddsSources.map(({ match }) => apiFetch(`/odds/live?fixture=${match.id}`, env, 20))
+  );
+  let perFixtureOddsErrors = 0;
+  let perFixtureOddsRateLimited = 0;
+
+  perFixtureOddsSettled.forEach((entry, index) => {
+    const source = missingOddsSources[index];
+    if (!source) return;
+    if (entry.status !== 'fulfilled') {
+      perFixtureOddsErrors += 1;
+      if (isRateLimitError(entry.reason)) perFixtureOddsRateLimited += 1;
+      warnings.push(`live odds full-power ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
+      return;
+    }
+    const items = Array.isArray(entry.value?.response) ? entry.value.response : [];
+    if (items.length) oddsByFixture.set(source.match.id, items);
+  });
+
   const candidates = [];
   let completeMarkets = 0;
   let oddsFixtureMatched = 0;
@@ -428,6 +448,9 @@ export async function scanLiveConditions(request, env, config) {
       liveOddsRateLimited: liveOdds.rateLimited ? 1 : 0,
       liveOddsStaleFallback: liveOdds.stale ? 1 : 0,
       liveOddsSource: liveOdds.source,
+      oddsFullPowerRequests: missingOddsSources.length,
+      oddsFullPowerErrors: perFixtureOddsErrors,
+      oddsFullPowerRateLimited: perFixtureOddsRateLimited,
       redSafe,
       baseCandidates: candidates.length
     },
