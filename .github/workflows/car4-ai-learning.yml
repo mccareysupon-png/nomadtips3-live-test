@@ -1,0 +1,63 @@
+name: Car 4 AI Learning 24H
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ai/auto-learn.mjs'
+      - '.github/workflows/car4-ai-learning.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: car4-ai-learning-24h
+  cancel-in-progress: false
+
+jobs:
+  learn:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run isolated Car 4 learner
+        run: node ai/auto-learn.mjs
+
+      - name: Commit Car 4 state only
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- ai/ai-learning-state.json; then
+            echo 'Car 4 state unchanged; nothing to commit.'
+            exit 0
+          fi
+
+          git config user.name 'nomadtips3-car4-ai'
+          git config user.email 'actions@users.noreply.github.com'
+          git add ai/ai-learning-state.json
+          git commit -m "Car 4 AI auto-learning state $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          for attempt in 1 2 3 4; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              echo 'Car 4 state published.'
+              exit 0
+            fi
+            echo "Push collision with live-feed updates; retry ${attempt}/4"
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 5))
+          done
+
+          echo 'Unable to publish Car 4 state after retries.' >&2
+          exit 1
