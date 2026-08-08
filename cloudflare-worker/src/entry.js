@@ -16,6 +16,8 @@ const REQUIRED_STATS = [
   'corners',
   'possession'
 ];
+const LIVE_ODDS_LAST_GOOD_URL = 'https://nomadtips3.internal/cache/live-odds-last-good-v1';
+const LIVE_ODDS_MAX_STALE_MS = 5 * 60 * 1000;
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -75,6 +77,66 @@ async function apiFetch(path, env, cacheSeconds = 55) {
     }
   }));
   return payload;
+}
+
+function liveOddsFixtureId(item) {
+  const value = item?.fixture?.id ?? item?.fixture_id ?? item?.fixtureId;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function indexLiveOdds(items) {
+  const byFixture = new Map();
+  for (const item of Array.isArray(items) ? items : []) {
+    const fixtureId = liveOddsFixtureId(item);
+    if (!fixtureId) continue;
+    const current = byFixture.get(fixtureId) || [];
+    current.push(item);
+    byFixture.set(fixtureId, current);
+  }
+  return byFixture;
+}
+
+function isRateLimitError(error) {
+  return /(?:\b429\b|too many|rate.?limit|requests? limit)/i.test(String(error?.message || error || ''));
+}
+
+async function fetchLiveOddsSnapshot(env) {
+  const cache = caches.default;
+  const lastGoodKey = new Request(LIVE_ODDS_LAST_GOOD_URL);
+
+  try {
+    const payload = await apiFetch('/odds/live', env, 45);
+    const items = Array.isArray(payload?.response) ? payload.response : [];
+    await cache.put(lastGoodKey, new Response(JSON.stringify({
+      storedAt: Date.now(),
+      items
+    }), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'public, max-age=300'
+      }
+    }));
+    return { items, source: 'live', stale: false, requestError: null, rateLimited: false };
+  } catch (error) {
+    const cached = await cache.match(lastGoodKey);
+    const snapshot = cached ? await cached.json().catch(() => null) : null;
+    const ageMs = Date.now() - Number(snapshot?.storedAt || 0);
+    const usable = Array.isArray(snapshot?.items)
+      && ageMs >= 0
+      && ageMs <= LIVE_ODDS_MAX_STALE_MS;
+
+    if (usable) {
+      return {
+        items: snapshot.items,
+        source: 'last-good',
+        stale: true,
+        requestError: error?.message || 'live odds request failed',
+        rateLimited: isRateLimitError(error)
+      };
+    }
+    throw error;
+  }
 }
 
 function normalizeStatKey(type) {
@@ -293,22 +355,37 @@ export async function scanLiveConditions(request, env, config) {
     statEligible.push({ ...source, stats });
   });
 
-  const oddsSettled = await Promise.allSettled(
-    statEligible.map(({ match }) => apiFetch(`/odds/live?fixture=${match.id}`, env, 55))
-  );
+  let liveOdds = {
+    items: [],
+    source: 'unavailable',
+    stale: false,
+    requestError: null,
+    rateLimited: false
+  };
+  try {
+    liveOdds = await fetchLiveOddsSnapshot(env);
+    if (liveOdds.requestError) warnings.push(`live odds aggregate: ${liveOdds.requestError}`);
+  } catch (error) {
+    liveOdds.requestError = error?.message || 'live odds request failed';
+    liveOdds.rateLimited = isRateLimitError(error);
+    warnings.push(`live odds aggregate: ${liveOdds.requestError}`);
+  }
+
+  const oddsByFixture = indexLiveOdds(liveOdds.items);
   const candidates = [];
   let completeMarkets = 0;
+  let oddsFixtureMatched = 0;
+  let noOddsCoverage = 0;
+  let marketParseMisses = 0;
   let redSafe = 0;
 
-  oddsSettled.forEach((entry, index) => {
-    const source = statEligible[index];
-    if (!source) return;
-    if (entry.status !== 'fulfilled') {
-      warnings.push(`live odds ${source.match.id}: ${entry.reason?.message || 'request failed'}`);
+  statEligible.forEach(source => {
+    const oddsItem = oddsByFixture.get(source.match.id) || null;
+    if (!oddsItem) {
+      noOddsCoverage += 1;
       return;
     }
-
-    const oddsItem = Array.isArray(entry.value?.response) ? entry.value.response[0] : null;
+    oddsFixtureMatched += 1;
     let fixtureHasMarket = false;
 
     for (const selectedSide of selectedSides(config)) {
@@ -328,6 +405,7 @@ export async function scanLiveConditions(request, env, config) {
     }
 
     if (fixtureHasMarket) completeMarkets += 1;
+    else marketParseMisses += 1;
   });
 
   return json(request, {
@@ -342,6 +420,14 @@ export async function scanLiveConditions(request, env, config) {
       minuteWindow: preliminary.length,
       completeStats,
       completeMarkets,
+      oddsEndpointRows: liveOdds.items.length,
+      oddsFixtureMatched,
+      noOddsCoverage,
+      marketParseMisses,
+      liveOddsRequestErrors: liveOdds.requestError ? 1 : 0,
+      liveOddsRateLimited: liveOdds.rateLimited ? 1 : 0,
+      liveOddsStaleFallback: liveOdds.stale ? 1 : 0,
+      liveOddsSource: liveOdds.source,
       redSafe,
       baseCandidates: candidates.length
     },
