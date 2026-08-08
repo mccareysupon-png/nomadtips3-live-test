@@ -90,7 +90,9 @@ function ageText(ms) {
 }
 
 async function requestJson(path) {
-  const url = `${WORKER}${path}?member=${encodeURIComponent(MEMBER_ID)}&_=${Date.now()}`;
+  const url = new URL(`${WORKER}${path}`);
+  url.searchParams.set('member', MEMBER_ID);
+  url.searchParams.set('_', String(Date.now()));
   const response = await fetch(url, { cache: 'no-store' });
   const payload = await response.json().catch(() => null);
   if (!response.ok || !payload?.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
@@ -106,10 +108,10 @@ function ensurePerformanceSummary() {
   grid.className = 'metric-grid member-live-performance';
   grid.setAttribute('aria-label', 'Member live performance summary');
   grid.innerHTML = `
-    <div class="metric"><small>WIN</small><b id="memberLiveWins">—</b><span>ผลบวกที่ตัดสินแล้วของสมาชิก</span></div>
-    <div class="metric"><small>LOSS</small><b id="memberLiveLosses">—</b><span>ผลลบที่ตัดสินแล้วของสมาชิก</span></div>
-    <div class="metric"><small>AVG ODDS</small><b id="memberLiveAvgOdds">—</b><span>ราคาเฉลี่ยเฉพาะรายการที่มีผลตัดสิน</span></div>
-    <div class="metric"><small>WIN RATE</small><b id="memberLiveWinRate">—</b><span>Win ÷ (Win + Loss) · ไม่รวม Pending/Push</span></div>`;
+    <div class="metric"><small>WIN</small><b id="memberLiveWins">—</b><span>ผลบวกเฉพาะสัญญาณบอลสดที่ตัดสินแล้ว</span></div>
+    <div class="metric"><small>LOSS</small><b id="memberLiveLosses">—</b><span>ผลลบเฉพาะสัญญาณบอลสดที่ตัดสินแล้ว</span></div>
+    <div class="metric"><small>AVG ODDS</small><b id="memberLiveAvgOdds">—</b><span>ราคาเฉลี่ยเฉพาะ LIVE_SIGNAL ที่มีผลตัดสิน</span></div>
+    <div class="metric"><small>WIN RATE</small><b id="memberLiveWinRate">—</b><span>บอลสดเท่านั้น · ไม่รวมบอลเต็ง / Pending / Push</span></div>`;
   engineGrid.insertAdjacentElement('afterend', grid);
 }
 
@@ -127,18 +129,13 @@ function ensureFreshnessBanner() {
 
 function updatePerformanceSummary(payload) {
   ensurePerformanceSummary();
-  const records = Array.isArray(payload?.records) ? payload.records : [];
-  const winOutcomes = new Set(['CORRECT', 'WIN', 'HALF-WIN']);
-  const lossOutcomes = new Set(['INCORRECT', 'LOSS', 'HALF-LOSS']);
-  const wins = records.filter(row => winOutcomes.has(String(row.outcome || '').toUpperCase()));
-  const losses = records.filter(row => lossOutcomes.has(String(row.outcome || '').toUpperCase()));
-  const decisions = [...wins, ...losses];
-  const priced = decisions.map(row => numeric(row.odds)).filter(value => value !== null && value > 0);
-  const avgOdds = priced.length ? priced.reduce((sum, value) => sum + value, 0) / priced.length : null;
-  const decisionCount = wins.length + losses.length;
-  const winRate = decisionCount ? wins.length / decisionCount * 100 : null;
-  $('#memberLiveWins').textContent = wins.length;
-  $('#memberLiveLosses').textContent = losses.length;
+  const summary = payload?.summary || {};
+  const wins = Number(summary.correct || 0);
+  const losses = Number(summary.incorrect || 0);
+  const avgOdds = summary.avgOdds == null ? null : numeric(summary.avgOdds);
+  const winRate = summary.accuracy == null ? null : numeric(summary.accuracy);
+  $('#memberLiveWins').textContent = wins;
+  $('#memberLiveLosses').textContent = losses;
   $('#memberLiveAvgOdds').textContent = avgOdds === null ? '—' : avgOdds.toFixed(2);
   $('#memberLiveWinRate').textContent = winRate === null ? '—' : `${winRate.toFixed(2)}%`;
 }
@@ -450,7 +447,7 @@ function watchLiveGrid() {
 async function refreshMemberLiveDetails() {
   const [liveResult, statsResult] = await Promise.allSettled([
     requestJson('/member-live-status'),
-    requestJson('/member-stats')
+    requestJson('/member-stats-summary?source=LIVE_SIGNAL')
   ]);
   if (liveResult.status === 'fulfilled') enhanceLiveCards(liveResult.value, true);
   else setUnavailable(liveResult.reason);
