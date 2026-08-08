@@ -10,8 +10,7 @@ const REQUIRED = [
   'home',
   'away',
   'market',
-  'selection',
-  'target_odds'
+  'selection'
 ];
 
 function fail(message) {
@@ -38,8 +37,11 @@ function validate(signal) {
   const missing = REQUIRED.filter(key => signal?.[key] === undefined || signal?.[key] === null || signal?.[key] === '');
   if (missing.length) fail(`Missing required fields: ${missing.join(', ')}`);
 
-  const targetOdds = Number(signal.target_odds);
-  if (!Number.isFinite(targetOdds) || targetOdds <= 1) fail('target_odds must be a decimal price greater than 1.00');
+  let targetOdds = null;
+  if (signal.target_odds !== undefined && signal.target_odds !== null && signal.target_odds !== '') {
+    targetOdds = Number(signal.target_odds);
+    if (!Number.isFinite(targetOdds) || targetOdds <= 1) fail('target_odds must be a decimal price greater than 1.00 when supplied');
+  }
 
   const createdAt = Date.parse(signal.created_at);
   if (!Number.isFinite(createdAt)) fail('created_at must be a valid ISO date/time');
@@ -53,6 +55,7 @@ function validate(signal) {
 
 function buildPaperOrder(signal) {
   const now = new Date().toISOString();
+  const hasPrice = Number.isFinite(signal.target_odds) && signal.target_odds > 1;
   return {
     schema: 'nomadtips3.car3.paper-order.v1',
     order_id: `PAPER-${signal.signal_id}`,
@@ -74,7 +77,8 @@ function buildPaperOrder(signal) {
     command: {
       market: signal.market,
       selection: signal.selection,
-      target_odds: signal.target_odds
+      target_odds: hasPrice ? signal.target_odds : null,
+      price_status: hasPrice ? 'CAPTURED' : 'NOT_CAPTURED'
     },
     model_context: {
       confidence: signal.confidence ?? null,
