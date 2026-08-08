@@ -59,8 +59,8 @@ export const ADD_K_THE_KING_OF_SOCCER_CONFIG = Object.freeze({
   enabled: true,
   cutoffHourLocal: 8,
   minimumLeadMinutes: 45,
-  minimumConfidence: 62,
-  maximumConfidence: 85,
+  minimumConfidence: 58,
+  maximumConfidence: 100,
   confidenceStrengthScale: 15,
   minimumMainOdds: 1.70,
   overallSample: 6,
@@ -70,8 +70,8 @@ export const ADD_K_THE_KING_OF_SOCCER_CONFIG = Object.freeze({
   minimumStrengthScore: 0.62,
   minimumOverallPpgEdge: 0.30,
   minimumVenuePpgEdge: 0.40,
-  maximumFixturesToAnalyze: 240,
-  maximumSelections: 0,
+  maximumFixturesToAnalyze: 500,
+  maximumSelections: 10,
   overallPpgWeight: 0.34,
   venuePpgWeight: 0.36,
   goalDifferenceWeight: 0.18,
@@ -126,8 +126,8 @@ function safeText(value, fallback = null, max = 160) {
 
 export function normalizeBallTengConfig(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
-  const minimumConfidence = integer(source.minimumConfidence, 58, 1, 99);
-  const maximumConfidence = integer(source.maximumConfidence, 85, minimumConfidence, 99);
+  const minimumConfidence = integer(source.minimumConfidence, 58, 1, 100);
+  const maximumConfidence = integer(source.maximumConfidence, 100, minimumConfidence, 100);
   const overallSample = integer(source.overallSample, 6, 1, 20);
   const venueSample = integer(source.venueSample, 5, 1, 20);
   const minimumSample = integer(source.minimumSample, 3, 1, Math.min(overallSample, venueSample));
