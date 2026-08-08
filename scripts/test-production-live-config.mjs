@@ -1,16 +1,15 @@
 import assert from 'node:assert/strict';
-import { applyProductionLiveConfig, normalizeProductionLiveConfig } from '../cloudflare-worker/src/production-live-config.js';
+import { normalizeConditionConfig } from '../cloudflare-worker/src/condition-config.js';
 
-const config = normalizeProductionLiveConfig({ minuteMin: 20, minuteMax: 80, fixturesMax: 2, teamFilter: 'nomad', sortMode: 'MINUTE_DESC' });
-assert.equal(config.refreshSeconds, 60);
-assert.equal(config.minuteMin, 20);
-assert.equal(config.minuteMax, 80);
-
-const matches = [
-  { id: 1, minute: 25, home: 'NOMAD A', away: 'B', homeScore: 0, awayScore: 0 },
-  { id: 2, minute: 75, home: 'C', away: 'NOMAD B', homeScore: 1, awayScore: 1 },
-  { id: 3, minute: 90, home: 'NOMAD C', away: 'D', homeScore: 2, awayScore: 1 }
-];
-assert.deepEqual(applyProductionLiveConfig(matches, config).map(item => item.id), [2, 1]);
-assert.deepEqual(applyProductionLiveConfig(matches, { ...config, engineEnabled: false }), []);
-console.log('PASS: Car 1 production live configuration is normalized and isolated.');
+const production = normalizeConditionConfig({
+  side: 'BOTH', minuteMin: 60, minuteMax: 89, market: 'AH',
+  oddsMin: 1.10, oddsMax: null, ahMin: 1, ahMax: null,
+  momentumMin: 39, confirmationRounds: 1,
+  goalGapLimited: false, signalLimitEnabled: false
+});
+assert.equal(production.side, 'BOTH');
+assert.equal(production.minuteMax, 89);
+assert.equal(production.market, 'AH');
+assert.equal(production.momentumMin, 39);
+assert.equal(production.confirmationRounds, 1);
+console.log('PASS: Car 1 production condition settings normalize independently.');
