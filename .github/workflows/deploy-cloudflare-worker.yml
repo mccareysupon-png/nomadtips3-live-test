@@ -34,29 +34,42 @@ jobs:
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
 
-      - name: Verify Car 3 deployed status route
+      - name: Verify Car 3 deployed status and config routes
         run: |
           node --input-type=module <<'NODE'
-          const url = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
+          const statusUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
+          const configUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/condition-config';
           let lastError = null;
           for (let attempt = 1; attempt <= 6; attempt += 1) {
             try {
-              const response = await fetch(`${url}?deploy_check=${Date.now()}`, {
+              const statusResponse = await fetch(`${statusUrl}?deploy_check=${Date.now()}`, {
                 headers: { 'Accept': 'application/json' }
               });
-              const payload = await response.json().catch(() => null);
-              if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              if (!payload?.apiGuard) throw new Error('apiGuard diagnostics missing');
-              if (Number(payload.apiGuard.minGapMs) !== 9000) {
-                throw new Error(`unexpected guard gap ${payload.apiGuard.minGapMs}`);
+              const statusPayload = await statusResponse.json().catch(() => null);
+              if (!statusResponse.ok) throw new Error(`status HTTP ${statusResponse.status}`);
+              if (!statusPayload?.apiGuard) throw new Error('apiGuard diagnostics missing');
+              if (Number(statusPayload.apiGuard.minGapMs) !== 9000) {
+                throw new Error(`unexpected guard gap ${statusPayload.apiGuard.minGapMs}`);
               }
+
+              const configResponse = await fetch(`${configUrl}?deploy_check=${Date.now()}`, {
+                headers: { 'Accept': 'application/json' }
+              });
+              const configPayload = await configResponse.json().catch(() => null);
+              if (!configResponse.ok) throw new Error(`config HTTP ${configResponse.status}`);
+              if (typeof configPayload?.defaults?.attackEvidenceEnabled !== 'boolean') {
+                throw new Error('Attack evidence toggle is not live in Worker config');
+              }
+
               console.log(JSON.stringify({
                 route: 'car3/auto-scan-status',
                 deployed: true,
-                scannerOnline: Boolean(payload.online),
-                generatedAt: payload.generatedAt || null,
-                scannerError: payload.error || null,
-                apiGuard: payload.apiGuard
+                scannerOnline: Boolean(statusPayload.online),
+                generatedAt: statusPayload.generatedAt || null,
+                scannerError: statusPayload.error || null,
+                apiGuard: statusPayload.apiGuard,
+                attackEvidenceToggleLive: true,
+                attackEvidenceActive: configPayload.active?.attackEvidenceEnabled
               }, null, 2));
               process.exit(0);
             } catch (error) {
