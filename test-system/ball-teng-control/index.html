@@ -24,17 +24,17 @@
 <body>
   <div class="wrap">
     <header class="top">
-      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">OWNER · แดชบอร์ดคัดบอลเต็ง · AUTO TEST</div></div>
+      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">OWNER · ADD K PRODUCTION AUTO · WORK CONTROLLED</div></div>
       <a class="back" href="../">← กลับหน้า Match Predictions</a>
     </header>
 
     <div class="status">
       <div><strong>ค่าที่กำลังรัน</strong><p id="activeSummary">กำลังโหลดจาก Worker…</p><div class="version" id="versionText"></div></div>
-      <span class="badge" id="engineBadge">AUTO TEST</span>
+      <span class="badge" id="engineBadge">PRODUCTION AUTO</span>
     </div>
 
     <div class="notice">
-      ระบบนี้ควบคุม <b>บอลเต็งรายวัน (1X2 Team Win)</b> โดยตรง · Common Opponent แบบเก่า = <b>0%</b> และไม่ถูกนำมาคิดแล้ว · ใช้ <em>Ranked A–B–C + League Standing</em> แทน · <b>เซฟ</b> เก็บร่างโดยไม่เปลี่ยนระบบ · <b>รัน</b> เปิดใช้ค่าใหม่และส่งคำสั่งให้ AUTO สร้างชุดใหม่หนึ่งครั้งเมื่อ Scheduler รับ Version ใหม่
+      ระบบ Production ควบคุมผ่าน <b>แอด K ในหน้า Work เท่านั้น</b> · หน้าเว็บนี้ใช้ตรวจสุขภาพและดู Candidate Pool · Common Opponent แบบเก่า = <b>0%</b> และไม่ถูกนำมาคิดแล้ว · ใช้ <em>Ranked A–B–C + League Standing</em> แทน · <b>เซฟ</b> เก็บร่างโดยไม่เปลี่ยนระบบ · <b>รัน</b> เปิดใช้ค่าใหม่และส่งคำสั่งให้ AUTO สร้างชุดใหม่หนึ่งครั้งเมื่อ Scheduler รับ Version ใหม่
     </div>
 
     <section class="king" aria-labelledby="addKTitle">
@@ -55,9 +55,14 @@
       </div>
       <div class="king-actions">
         <div class="king-note">กด 1 ครั้ง = 1 รอบจริง · ระหว่าง QUEUED / ANALYZING จะกดซ้ำไม่ได้ · เมื่อ COMPLETE แล้วกดรอบใหม่ได้ทันทีและไม่จำกัดจำนวนรอบ · คู่ที่เริ่มแล้วถูก LOCK, คู่อนาคตถูกแทนได้, fixture เดิมไม่สร้างซ้ำ และ NO PICK คือผลลัพธ์จริง · Custom Draft เดิมไม่ถูกทับ</div>
-        <button type="button" class="king-btn" id="addKRunButton">ใช้เงื่อนไข “Add K The King of Soccer”</button>
+        <button type="button" class="king-btn" id="addKRunButton" disabled title="Production is controlled through Add K in Work">ใช้เงื่อนไข “Add K The King of Soccer”</button>
       </div>
       <div class="king-message" id="addKMessage">READY · พร้อมรัน · ไม่บังคับให้มี Pick ถ้าข้อมูลไม่ผ่าน</div>
+    </section>
+
+    <section class="panel" aria-labelledby="poolTitle" style="margin-bottom:14px">
+      <div class="section-head"><h2 id="poolTitle">ADD K CANDIDATE POOL</h2><span id="poolSummary">กำลังโหลด Top 10 และรายการสำรอง…</span></div>
+      <div id="candidatePool" class="summary">กำลังโหลด owner-candidate-pool.json…</div>
     </section>
 
     <main class="panel">
@@ -118,14 +123,14 @@
       </div>
 
       <div class="actions">
-        <button type="button" class="warn" id="defaultButton">RESTORE DEFAULTS</button>
-        <button type="button" id="saveButton">SAVE DRAFT</button>
-        <button type="button" class="primary" id="runButton">APPLY &amp; RUN</button>
+        <button type="button" class="warn" id="defaultButton" disabled>RESTORE DEFAULTS</button>
+        <button type="button" id="saveButton" disabled>SAVE DRAFT</button>
+        <button type="button" class="primary" id="runButton" disabled>APPLY &amp; RUN</button>
       </div>
       <div class="message" id="message"></div>
     </main>
 
-    <div class="footer">TEST ONLY · OWNER BALL TENG SETTINGS · RUN IS AN EXPLICIT RESELECTION COMMAND</div>
+    <div class="footer">PRODUCTION AUTO · TOP 10 · WORK CONTROLLED · READ-ONLY OWNER VIEW</div>
   </div>
 
   <script>
@@ -382,9 +387,28 @@
       $('saveButton').addEventListener('click', () => submit('save'));
       $('runButton').addEventListener('click', () => submit('run'));
       $('addKRunButton').addEventListener('click', runAddK);
+      async function loadCandidatePool(){
+        try {
+          const response = await fetch('../../owner-candidate-pool.json?ts=' + Date.now(), {cache:'no-store'});
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          const pool = await response.json();
+          const rows = Array.isArray(pool.candidates) ? pool.candidates : [];
+          $('poolSummary').textContent = `ผ่าน ${pool.qualified || 0} · เผยแพร่ Top ${pool.published || 0} · สำรอง ${pool.reserveCount || 0}`;
+          $('candidatePool').innerHTML = rows.length ? rows.map(row => {
+            const state = row.published ? '<span class="new">PUBLISHED</span>' : '<span style="color:#f2c94c;font-weight:900">RESERVE</span>';
+            const odds = Number(row.odds) > 0 ? Number(row.odds).toFixed(2) : 'N/A';
+            return `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><b>#${row.rank} · ${row.home || '—'} vs ${row.away || '—'}</b> · ${state}<br>Pick ${row.pick || '—'} · Confidence ${row.confidence || 0}% · Odds ${odds} · Strength ${row.strength || 0}</div>`;
+          }).join('') : 'รอบปัจจุบันยังไม่มี Candidate';
+        } catch (error) {
+          $('poolSummary').textContent = 'Candidate Pool ยังไม่พร้อม';
+          $('candidatePool').textContent = error.message;
+        }
+      }
+
       load();
+      loadCandidatePool();
       window.setInterval(refreshRunState, 5000);
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshRunState(); });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) { refreshRunState(); loadCandidatePool(); } });
     })();
   </script>
   <script src="../../site-footer.js?v=202608040844"></script>
