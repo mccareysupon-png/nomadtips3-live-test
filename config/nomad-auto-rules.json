@@ -5,7 +5,7 @@
   "cutoff_hour_local": 8,
   "minimum_lead_minutes": 45,
   "minimum_confidence": 58,
-  "maximum_confidence": 85,
+  "maximum_confidence": 100,
   "confidence_strength_scale": 15,
   "overall_ppg_weight": 0.34,
   "venue_ppg_weight": 0.36,
@@ -19,12 +19,16 @@
   "overall_sample": 6,
   "venue_sample": 5,
   "history_fetch": 20,
-  "minimum_sample": 3,
-  "minimum_strength_score": 0.55,
-  "minimum_overall_ppg_edge": 0.25,
-  "minimum_venue_ppg_edge": 0.35,
-  "maximum_fixtures_to_analyze": 240,
-  "maximum_selections": 0,
+  "minimum_sample": 5,
+  "minimum_strength_score": 0.62,
+  "minimum_overall_ppg_edge": 0.30,
+  "minimum_venue_ppg_edge": 0.40,
+  "maximum_fixtures_to_analyze": 500,
+  "maximum_selections": 10,
+  "preset_key": "ADD_K_THE_KING_OF_SOCCER_V1",
+  "add_k_the_king_of_soccer": true,
+  "require_standings_context": true,
+  "minimum_league_team_count": 8,
   "rules": {
     "main_market": "1X2 team win",
     "scan_all_competitions": true,
@@ -34,6 +38,8 @@
     "legacy_unranked_common_opponent": false,
     "standings_policy": "Use league rank to support direct A-vs-B strength and rank-weight shared common opponents C. The legacy unranked common-opponent 12% term is retired and its weight is transferred to the ranked standings context, increasing that adjustment layer from 20% to 32%. If standings are unavailable, fall back to the core form model without rejecting the match solely for missing standings.",
     "missing_odds_policy": "N/A — never estimate",
-    "confidence_policy": "Calculated per match from core NOMAD strength plus ranked standings A-B-C context when available; publish only confidence >= 58%; cap at 85%"
+    "confidence_policy": "Calculated per match from core NOMAD strength plus ranked standings A-B-C context; publish only confidence >= 58%; no artificial cap below the natural 100% percentage ceiling",
+    "publication_policy": "Rank confidence high-to-low and publish at most 10 qualifying picks; fewer or zero picks are valid",
+    "rollover_policy": "Start the next automatic selection only after every pick in the current set is settled and final statistics are recorded"
   }
 }
