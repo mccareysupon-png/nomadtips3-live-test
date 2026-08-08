@@ -39,17 +39,35 @@ def rank_key(match):
     return (-confidence, -standing, -strength, -sample_floor, kickoff, str(match.get("fixture_id") or ""))
 
 
+def normalize_match(match):
+    fixture_id = match.get("fixture_id") or match.get("providerFixtureId") or match.get("fixtureId")
+    home = str(match.get("home") or "")
+    away = str(match.get("away") or "")
+    pick = str(match.get("pick") or "")
+    normalized = dict(match)
+    normalized["fixture_id"] = fixture_id
+    normalized.setdefault("client_fixture_id", f"AUTO-{fixture_id}")
+    normalized.setdefault("slug", f"auto-{fixture_id}")
+    normalized.setdefault("home_aliases", [home] if home else [])
+    normalized.setdefault("away_aliases", [away] if away else [])
+    normalized.setdefault("pick_side", "home" if home and pick.startswith(home) else "away" if away and pick.startswith(away) else None)
+    return normalized
+
+
 def public_row(match, rank):
     analysis = match.get("auto_analysis") or {}
     return {
         "rank": rank,
         "published": True,
         "fixtureId": match.get("fixture_id") or match.get("providerFixtureId"),
+        "slug": match.get("slug"),
+        "country": match.get("country"),
         "home": match.get("home"),
         "away": match.get("away"),
         "league": match.get("league"),
         "kickoffUtc": match.get("kickoff_utc") or match.get("kickoffUtc"),
         "pick": match.get("pick"),
+        "pickSide": match.get("pick_side"),
         "odds": match.get("odds"),
         "confidence": match.get("confidence"),
         "strength": round(number(analysis.get("adjustedStrength"), number(analysis.get("absoluteStrength"))), 4),
@@ -100,7 +118,7 @@ def main():
     previous_pool = read_json(POOL_PATH)
     matches = restore_qualified_matches(selected, previous_pool)
     ranked = sorted(matches, key=rank_key)
-    published = ranked
+    published = [normalize_match(match) for match in ranked]
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     pool = {
