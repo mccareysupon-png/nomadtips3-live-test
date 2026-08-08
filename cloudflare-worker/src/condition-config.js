@@ -149,6 +149,7 @@ async function runConfig(env, config) {
       WHERE id = 1
     `).bind(JSON.stringify(normalized), JSON.stringify(normalized), now, now),
     env.DB.prepare('DELETE FROM auto_momentum_state'),
+    env.DB.prepare('DELETE FROM auto_momentum_state_side'),
     env.DB.prepare('DELETE FROM auto_scan_status')
   ]);
   return normalized;
