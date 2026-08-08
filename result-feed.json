@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-08",
-  "generatedAt": "2026-08-08T12:13:50Z",
+  "generatedAt": "2026-08-08T12:14:51Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 43,
     "correct": 10,
-    "incorrect": 10,
+    "incorrect": 11,
     "void": 0,
-    "pending": 23,
-    "settled": 20,
+    "pending": 22,
+    "settled": 21,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 47.62,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 43,
-      "correct": 3,
+      "correct": 4,
       "incorrect": 17,
       "void": 0,
-      "pending": 23,
-      "settled": 20,
-      "accuracy": 15.0
+      "pending": 22,
+      "settled": 21,
+      "accuracy": 19.05
     },
     "doubleChance": {
       "total": 43,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 15,
       "void": 0,
-      "pending": 23,
-      "settled": 20,
-      "accuracy": 25.0
+      "pending": 22,
+      "settled": 21,
+      "accuracy": 28.57
     },
     "asianHandicap": {
       "win": 3,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 3,
+      "loss": 4,
       "void": 0,
-      "pending": 37,
+      "pending": 36,
       "total": 43,
-      "decisions": 6,
-      "weightedRate": 50.0
+      "decisions": 7,
+      "weightedRate": 42.86
     }
   },
   "results": [
@@ -57,7 +57,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 52,
+      "elapsed": 53,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -88,7 +88,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -135,7 +135,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -148,7 +148,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 82,
+      "elapsed": 83,
       "homeScore": 2,
       "awayScore": 1,
       "outcome": "pending",
@@ -179,7 +179,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -226,7 +226,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -273,7 +273,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -283,41 +283,44 @@
       "home": "Western Sydney Wanderers",
       "away": "Melbourne Victory",
       "kickoffUtc": "2026-08-08T09:30:00+00:00",
-      "status": "P",
-      "providerStatus": "P",
-      "statusLong": "Penalty in progress",
-      "elapsed": null,
-      "homeScore": 1,
-      "awayScore": 1,
-      "outcome": "pending",
+      "status": "PEN",
+      "providerStatus": "PEN",
+      "statusLong": "Match Finished",
+      "elapsed": 120,
+      "homeScore": 0,
+      "awayScore": 0,
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.38,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "X2 — Melbourne Victory or Draw",
           "odds": 1.4,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Melbourne Victory -0.5",
           "odds": 1.42,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -364,7 +367,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -377,7 +380,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 59,
+      "elapsed": 60,
       "homeScore": 2,
       "awayScore": 1,
       "outcome": "pending",
@@ -408,7 +411,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -455,7 +458,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -502,7 +505,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -546,7 +549,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -559,7 +562,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 57,
+      "elapsed": 58,
       "homeScore": 1,
       "awayScore": 3,
       "outcome": "pending",
@@ -590,7 +593,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -634,7 +637,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -647,7 +650,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 52,
+      "elapsed": 54,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -678,7 +681,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -691,7 +694,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 42,
+      "elapsed": 43,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -722,7 +725,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -735,7 +738,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 54,
+      "elapsed": 55,
       "homeScore": 1,
       "awayScore": 1,
       "outcome": "pending",
@@ -766,7 +769,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -810,7 +813,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -854,7 +857,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -867,7 +870,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 14,
+      "elapsed": 15,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -898,7 +901,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -942,7 +945,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -955,7 +958,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 54,
+      "elapsed": 55,
       "homeScore": 2,
       "awayScore": 2,
       "outcome": "pending",
@@ -986,7 +989,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -999,7 +1002,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 12,
+      "elapsed": 13,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -1030,7 +1033,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1043,9 +1046,9 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 54,
+      "elapsed": 55,
       "homeScore": 1,
-      "awayScore": 1,
+      "awayScore": 2,
       "outcome": "pending",
       "markets": {
         "btts": {
@@ -1074,7 +1077,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1118,7 +1121,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1162,7 +1165,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1206,7 +1209,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1219,7 +1222,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 55,
+      "elapsed": 56,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -1250,7 +1253,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1263,7 +1266,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 58,
+      "elapsed": 59,
       "homeScore": 2,
       "awayScore": 0,
       "outcome": "pending",
@@ -1294,7 +1297,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1338,7 +1341,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1351,7 +1354,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 57,
+      "elapsed": 58,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -1382,7 +1385,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1426,7 +1429,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1439,7 +1442,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 56,
+      "elapsed": 57,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -1470,7 +1473,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1483,7 +1486,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 57,
+      "elapsed": 58,
       "homeScore": 3,
       "awayScore": 0,
       "outcome": "pending",
@@ -1514,7 +1517,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1527,7 +1530,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 56,
+      "elapsed": 57,
       "homeScore": 2,
       "awayScore": 3,
       "outcome": "pending",
@@ -1558,7 +1561,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1602,7 +1605,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1646,7 +1649,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1659,7 +1662,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 57,
+      "elapsed": 58,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -1690,7 +1693,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1734,7 +1737,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1778,7 +1781,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1791,7 +1794,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 47,
+      "elapsed": 48,
       "homeScore": 0,
       "awayScore": 4,
       "outcome": "pending",
@@ -1822,7 +1825,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1866,7 +1869,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1879,7 +1882,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 55,
+      "elapsed": 56,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -1910,7 +1913,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     },
     {
@@ -1923,7 +1926,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 39,
+      "elapsed": 40,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -1954,7 +1957,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-08T12:13:50Z",
+      "updatedAt": "2026-08-08T12:14:51Z",
       "counted": true
     }
   ]
