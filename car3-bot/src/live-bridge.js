@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const STATUS_URL = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
 const POLL_MS = 10000;
+const ONLINE_GRACE_MS = 5 * 60 * 1000;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const projectDir = path.resolve(here, '..');
@@ -56,6 +57,31 @@ function toSignal(row, payload) {
 
 const seen = loadSeen();
 let busy = false;
+let lastHealthyAt = 0;
+
+function withinGrace(now = Date.now()) {
+  return lastHealthyAt > 0 && now - lastHealthyAt <= ONLINE_GRACE_MS;
+}
+
+async function processTriggered(payload) {
+  const active = Array.isArray(payload?.active) ? payload.active : [];
+  const triggered = active.filter(row => Number(row.triggered) === 1);
+
+  for (const row of triggered) {
+    const key = `${row.fixture_id}:${row.selected_side || 'HOME'}:${row.config_version || 0}`;
+    if (seen.has(key)) continue;
+
+    const signal = toSignal(row, payload);
+    const fileName = `${safeName(signal.signal_id)}.json`;
+    const target = path.join(inboxDir, fileName);
+    fs.writeFileSync(target, JSON.stringify(signal, null, 2), 'utf8');
+    seen.add(key);
+    saveSeen(seen);
+    console.log(`[${new Date().toISOString()}] REAL DETECTOR SIGNAL -> ${fileName}`);
+  }
+
+  return triggered.length;
+}
 
 async function poll() {
   if (busy) return;
@@ -64,32 +90,34 @@ async function poll() {
     const response = await fetch(STATUS_URL, { headers: { Accept: 'application/json' } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const payload = await response.json();
-    if (!payload?.ok || !payload?.online) {
+    const now = Date.now();
+    const healthy = Boolean(payload?.ok && payload?.online);
+
+    if (healthy) lastHealthyAt = now;
+
+    if (!healthy && !withinGrace(now)) {
       console.log(`[${new Date().toISOString()}] DETECTOR WAITING · online=${Boolean(payload?.online)}`);
       return;
     }
 
-    const active = Array.isArray(payload.active) ? payload.active : [];
-    const triggered = active.filter(row => Number(row.triggered) === 1);
+    const triggeredCount = await processTriggered(payload);
 
-    for (const row of triggered) {
-      const key = `${row.fixture_id}:${row.selected_side || 'HOME'}:${row.config_version || 0}`;
-      if (seen.has(key)) continue;
-
-      const signal = toSignal(row, payload);
-      const fileName = `${safeName(signal.signal_id)}.json`;
-      const target = path.join(inboxDir, fileName);
-      fs.writeFileSync(target, JSON.stringify(signal, null, 2), 'utf8');
-      seen.add(key);
-      saveSeen(seen);
-      console.log(`[${new Date().toISOString()}] REAL DETECTOR SIGNAL -> ${fileName}`);
+    if (!healthy) {
+      const ageSeconds = Math.max(0, Math.round((now - lastHealthyAt) / 1000));
+      console.log(`[${new Date().toISOString()}] detector degraded · grace=${ageSeconds}s · triggered=${triggeredCount}`);
+      return;
     }
 
-    if (!triggered.length) {
+    if (!triggeredCount) {
       console.log(`[${new Date().toISOString()}] detector online · no triggered signal`);
     }
   } catch (error) {
-    console.error(`[${new Date().toISOString()}] bridge error: ${error.message}`);
+    if (withinGrace()) {
+      const ageSeconds = Math.max(0, Math.round((Date.now() - lastHealthyAt) / 1000));
+      console.log(`[${new Date().toISOString()}] bridge transient error · grace=${ageSeconds}s · ${error.message}`);
+    } else {
+      console.error(`[${new Date().toISOString()}] bridge error: ${error.message}`);
+    }
   } finally {
     busy = false;
   }
@@ -99,6 +127,7 @@ console.log('========================================');
 console.log('NOMAD TIPS 3 — CAR 3 LIVE DETECTOR BRIDGE');
 console.log('SOURCE: DEDICATED CAR 3 AUTO-SCAN STATUS');
 console.log('API-FOOTBALL EXTRA CALLS FROM BRIDGE: 0');
+console.log('TRANSIENT FAILURE GRACE: 5 MINUTES');
 console.log('DESTINATION: PAPER BOT INBOX');
 console.log('REAL TRANSACTION: DISABLED');
 console.log('Press Ctrl+C to stop.');
