@@ -249,15 +249,15 @@ async function ballTengResults(env, memberId) {
   const activeVersion = Number(config?.version || 0);
   const current = Boolean(row && storedVersion === activeVersion);
   let results = [];
-  if (row?.set_id) {
+  if (row?.generated_at) {
     const resultRows = await env.DB.prepare(`
       SELECT result_key, fixture_id, market, pick, odds, outcome,
              payload_json, created_at, settled_at
       FROM member_prediction_results
-      WHERE member_id = ? AND source_type = 'BALL_TENG' AND result_key LIKE ?
+      WHERE member_id = ? AND source_type = 'BALL_TENG' AND created_at = ?
       ORDER BY created_at ASC, fixture_id ASC
       LIMIT 500
-    `).bind(memberId, `BALL_TENG:${row.set_id}:%`).all();
+    `).bind(memberId, Number(row.generated_at)).all();
     results = (resultRows.results || []).map(item => ({
       ...item,
       payload: parseJson(item.payload_json, {})
