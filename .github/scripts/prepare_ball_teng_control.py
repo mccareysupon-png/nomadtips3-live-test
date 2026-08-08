@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import urllib.request
 from pathlib import Path
 
@@ -62,18 +63,30 @@ def append_env(name, value):
 
 
 def fetch_control():
-    request = urllib.request.Request(
-        CONTROL_URL,
-        headers={
-            'Accept': 'application/json',
-            'User-Agent': 'nomadtips3-ball-teng-selector/3',
-        },
-    )
-    with urllib.request.urlopen(request, timeout=12) as response:
-        payload = json.load(response)
-    if not payload.get('ok') or not isinstance(payload.get('active'), dict):
-        raise RuntimeError(payload.get('error') or 'invalid ball-teng control payload')
-    return payload
+    last_error = None
+    for attempt in range(3):
+        separator = '&' if '?' in CONTROL_URL else '?'
+        url = f'{CONTROL_URL}{separator}ts={time.time_ns()}'
+        request = urllib.request.Request(
+            url,
+            headers={
+                'Accept': 'application/json',
+                'Cache-Control': 'no-cache, no-store, max-age=0',
+                'Pragma': 'no-cache',
+                'User-Agent': 'nomadtips3-ball-teng-selector/4',
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=12) as response:
+                payload = json.load(response)
+            if not payload.get('ok') or not isinstance(payload.get('active'), dict):
+                raise RuntimeError(payload.get('error') or 'invalid ball-teng control payload')
+            return payload
+        except Exception as error:
+            last_error = error
+            if attempt < 2:
+                time.sleep(attempt + 1)
+    raise last_error or RuntimeError('ball-teng control fetch failed')
 
 
 def post_control(action, version, **extra):
@@ -84,7 +97,7 @@ def post_control(action, version, **extra):
         headers={
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'User-Agent': 'nomadtips3-ball-teng-selector/3',
+            'User-Agent': 'nomadtips3-ball-teng-selector/4',
         },
         method='POST',
     )
@@ -117,6 +130,10 @@ def main():
 
     version = int(payload.get('version') or 0)
     active = payload.get('active') or {}
+    run_state = payload.get('addKRun') if isinstance(payload.get('addKRun'), dict) else {}
+    run_status = str(run_state.get('status') or 'READY').upper()
+    run_pending = run_status in {'QUEUED', 'ANALYZING'}
+
     for source_key, target_key in FIELD_MAP.items():
         if source_key in active:
             rules[target_key] = active[source_key]
@@ -139,19 +156,20 @@ def main():
 
     previous = int(state.get('lastControlVersion') or 0)
     changed = version > 0 and version != previous
-    force = version > 0 and previous > 0 and version > previous
+    version_advanced = version > 0 and previous > 0 and version > previous
+    force = version_advanced and (not add_k or run_pending)
 
     append_env('NOMAD_CONTROL_AVAILABLE', '1')
     append_env('NOMAD_CONTROL_VERSION', str(version))
     append_env('NOMAD_CONTROL_CHANGED', '1' if changed else '0')
     append_env('NOMAD_CONTROL_FORCE', '1' if force else '0')
-    append_env('NOMAD_ADD_K_RUN', '1' if add_k and force else '0')
+    append_env('NOMAD_ADD_K_RUN', '1' if add_k and run_pending and force else '0')
     if force:
         append_env('FORCE_AUTO_SELECT', '1')
         append_env('FORCE_AUTO_RESELECT', '1')
 
     run_state_update = None
-    if add_k and force:
+    if add_k and run_pending and force:
         try:
             run_state_update = post_control(
                 'mark-add-k-analyzing',
@@ -174,6 +192,8 @@ def main():
         'source': CONTROL_URL,
         'presetKey': rules.get('preset_key'),
         'addKTheKingOfSoccer': add_k,
+        'addKRunStatus': run_status,
+        'addKRunPending': run_pending,
         'addKRunState': run_state_update,
         'minimumConfidence': rules.get('minimum_confidence'),
         'minimumMainOdds': rules.get('minimum_main_odds'),
