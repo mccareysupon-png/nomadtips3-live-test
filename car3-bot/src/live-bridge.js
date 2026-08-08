@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const STATUS_URL = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/auto-scan-status';
+const STATUS_URL = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
 const POLL_MS = 10000;
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -48,8 +48,8 @@ function toSignal(row, payload) {
       away: Number(row.away_score ?? 0)
     },
     confidence: row.last_home_percent == null ? null : Number(row.last_home_percent),
-    reason: `Triggered by NOMAD live detector · streak ${Number(row.streak || 0)}`,
-    source: 'NOMAD LIVE DETECTOR / AUTO-SCAN-STATUS',
+    reason: `Triggered by NOMAD Car 3 live detector · streak ${Number(row.streak || 0)}`,
+    source: 'NOMAD CAR 3 LIVE DETECTOR',
     target_odds: null
   };
 }
@@ -97,8 +97,8 @@ async function poll() {
 
 console.log('========================================');
 console.log('NOMAD TIPS 3 — CAR 3 LIVE DETECTOR BRIDGE');
-console.log('SOURCE: EXISTING AUTO-SCAN STATUS');
-console.log('API-FOOTBALL EXTRA CALLS: 0');
+console.log('SOURCE: DEDICATED CAR 3 AUTO-SCAN STATUS');
+console.log('API-FOOTBALL EXTRA CALLS FROM BRIDGE: 0');
 console.log('DESTINATION: PAPER BOT INBOX');
 console.log('REAL TRANSACTION: DISABLED');
 console.log('Press Ctrl+C to stop.');
