@@ -23,11 +23,17 @@ NEW_SCORE = '''    # BALL TENG v2: the legacy unranked common-opponent 12% term 
 
 OLD_SETTLEMENT_GUARD = '''    if os.environ.get("FORCE_AUTO_SELECT") != "1" and not (result_feed.get("summary") or {}).get("allSettled", False):\n        report["status"] = "WAITING_FOR_CURRENT_SET_TO_SETTLE"\n        write_json(REPORT_PATH, report)\n        return\n'''
 
-NEW_SETTLEMENT_GUARD = '''    if os.environ.get("FORCE_AUTO_SELECT") != "1" and not (result_feed.get("summary") or {}).get("allSettled", False):\n        current_set = read_json(SELECTED_PATH)\n        previous_window_end = parse_iso(\n            (current_set.get("autoSelection") or {}).get("windowEndLocal")\n            or current_set.get("window_end_local")\n        )\n        blockers = []\n        ignored_out_of_window = []\n        for item in result_feed.get("results") or []:\n            if item.get("resultConfirmed") or item.get("autoVoid"):\n                continue\n            kickoff = parse_iso(item.get("kickoffUtc"))\n            pending_info = {\n                "fixtureId": item.get("providerFixtureId") or item.get("fixtureId"),\n                "home": item.get("home"),\n                "away": item.get("away"),\n                "kickoffUtc": item.get("kickoffUtc"),\n                "status": item.get("status"),\n            }\n            if previous_window_end and kickoff and kickoff > previous_window_end:\n                ignored_out_of_window.append(pending_info)\n            else:\n                blockers.append(pending_info)\n        if blockers:\n            report["status"] = "WAITING_FOR_CURRENT_SET_TO_SETTLE"\n            report["pendingBlockers"] = blockers[:20]\n            report["ignoredOutOfWindowPending"] = ignored_out_of_window[:20]\n            write_json(REPORT_PATH, report)\n            return\n        report["rolloverPolicy"] = "IGNORE_OUT_OF_WINDOW_PENDING_FROM_PREVIOUS_SET"\n        report["ignoredOutOfWindowPending"] = ignored_out_of_window[:20]\n'''
+NEW_SETTLEMENT_GUARD = '''    completed_set_key = None\n    if os.environ.get("FORCE_AUTO_SELECT") != "1":\n        current_set = read_json(SELECTED_PATH)\n        current_ids = {str(item.get("fixture_id") or item.get("providerFixtureId") or item.get("fixtureId")) for item in current_set.get("matches") or [] if item.get("fixture_id") or item.get("providerFixtureId") or item.get("fixtureId")}\n        summary = result_feed.get("summary") or {}\n        results = result_feed.get("results") or []\n        result_ids = {str(item.get("providerFixtureId") or item.get("fixtureId")) for item in results if item.get("providerFixtureId") or item.get("fixtureId")}\n        every_result_recorded = bool(current_ids) and current_ids.issubset(result_ids)\n        every_result_settled = all(item.get("resultConfirmed") or item.get("autoVoid") for item in results if str(item.get("providerFixtureId") or item.get("fixtureId")) in current_ids)\n        statistics_finalized = bool(summary.get("allSettled")) and bool(summary.get("finalizedAt"))\n        if not (every_result_recorded and every_result_settled and statistics_finalized):\n            report["status"] = "WAITING_FOR_LAST_MATCH_AND_FINAL_STATISTICS"\n            report["settlementGate"] = {"currentSelectionCount": len(current_ids), "recordedResultCount": len(current_ids & result_ids), "allSettled": bool(summary.get("allSettled")), "statisticsFinalizedAt": summary.get("finalizedAt")}\n            write_json(REPORT_PATH, report)\n            return\n        completed_set_key = str(summary.get("finalizedAt")) + ":" + ",".join(sorted(current_ids))\n        report["rolloverPolicy"] = "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED"\n'''
 
 OLD_WINDOW_GUARD = '''    if state.get("lastSuccessfulWindowKey") == window_key:\n        report["status"] = "ALREADY_SELECTED_FOR_WINDOW"\n'''
 
-NEW_WINDOW_GUARD = '''    if os.environ.get("FORCE_AUTO_RESELECT") != "1" and state.get("lastSuccessfulWindowKey") == window_key:\n        report["status"] = "ALREADY_SELECTED_FOR_WINDOW"\n'''
+NEW_WINDOW_GUARD = '''    if os.environ.get("FORCE_AUTO_RESELECT") != "1" and completed_set_key and state.get("lastCompletedSetKey") == completed_set_key:\n        report["status"] = "COMPLETED_SET_ALREADY_CONSUMED"\n'''
+
+OLD_NO_PICK_STATE = '''        state.update({"lastAttemptAt": now_text, "lastAttemptWindowKey": window_key, "lastAttemptStatus": report["status"], "lastPublishedCount": 0})\n'''
+NEW_NO_PICK_STATE = '''        state.update({"lastAttemptAt": now_text, "lastAttemptWindowKey": window_key, "lastAttemptStatus": report["status"], "lastPublishedCount": 0, "lastCompletedSetKey": completed_set_key})\n'''
+
+OLD_SUCCESS_STATE = '''        "lastSelectionDate": selection_date,\n    })\n'''
+NEW_SUCCESS_STATE = '''        "lastSelectionDate": selection_date,\n        "lastCompletedSetKey": completed_set_key,\n    })\n'''
 
 
 def read_json(path, fallback=None):
@@ -60,17 +66,23 @@ if OLD_SETTLEMENT_GUARD not in source:
     raise RuntimeError('BALL TENG settlement gate patch target not found; inspect auto_select_next.py before running.')
 if OLD_WINDOW_GUARD not in source:
     raise RuntimeError('BALL TENG selector window guard patch target not found; inspect auto_select_next.py before running.')
+if OLD_NO_PICK_STATE not in source:
+    raise RuntimeError('BALL TENG no-pick state patch target not found; inspect auto_select_next.py before running.')
+if OLD_SUCCESS_STATE not in source:
+    raise RuntimeError('BALL TENG success state patch target not found; inspect auto_select_next.py before running.')
 
 patched = source.replace(OLD_SCORE, NEW_SCORE, 1)
 patched = patched.replace(OLD_SETTLEMENT_GUARD, NEW_SETTLEMENT_GUARD, 1)
 patched = patched.replace(OLD_WINDOW_GUARD, NEW_WINDOW_GUARD, 1)
+patched = patched.replace(OLD_NO_PICK_STATE, NEW_NO_PICK_STATE, 1)
+patched = patched.replace(OLD_SUCCESS_STATE, NEW_SUCCESS_STATE, 1)
 
 manual_add_k = os.environ.get('NOMAD_ADD_K_RUN') == '1'
 before_state = read_json(STATE_PATH)
 before_auto_clock = snapshot_auto_clock(before_state) if manual_add_k else {}
 
 print('NOMAD BALL TENG: legacy unranked common-opponent 12% term disabled; ranked standings context will replace it.')
-print('NOMAD BALL TENG: pending fixtures outside the previous selection window cannot block AUTO rollover.')
+print('NOMAD BALL TENG: next AUTO set waits for the last current pick and finalized statistics.')
 if manual_add_k:
     print('NOMAD BALL TENG: manual Add K run is isolated from the AUTO schedule clock.')
 elif os.environ.get('FORCE_AUTO_RESELECT') == '1':
