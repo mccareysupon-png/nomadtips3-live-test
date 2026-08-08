@@ -80,6 +80,10 @@ jobs:
           path = Path('config/nomad-auto-rules.json')
           rules = json.loads(path.read_text(encoding='utf-8'))
           rules['fixed_confidence'] = int(rules.get('minimum_confidence', 58))
+          # Keep every qualifying candidate until standings/confidence are finalized.
+          # The publisher performs the confidence-descending Top 10 cut afterward.
+          rules['publication_maximum_selections'] = 10
+          rules['maximum_selections'] = 0
           path.write_text(json.dumps(rules, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
           PY
 
