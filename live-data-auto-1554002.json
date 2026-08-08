@@ -1,6 +1,6 @@
 {
   "source": "api-football",
-  "fetched_at_utc": "2026-08-08T10:47:53Z",
+  "fetched_at_utc": "2026-08-08T10:48:03Z",
   "http_status": 200,
   "selection_date": "2026-08-08",
   "locked_at_utc": "2026-08-08T04:16:25Z",
@@ -86,11 +86,11 @@
         "away": 1
       },
       "corners": {
-        "home": 0,
+        "home": 1,
         "away": 1
       },
       "fouls": {
-        "home": 5,
+        "home": 6,
         "away": 3
       },
       "offsides": {
@@ -102,15 +102,15 @@
         "away": 2
       },
       "total_passes": {
-        "home": 142,
-        "away": 181
+        "home": 144,
+        "away": 183
       },
       "accurate_passes": {
-        "home": 113,
-        "away": 153
+        "home": 114,
+        "away": 155
       },
       "pass_accuracy": {
-        "home": "80%",
+        "home": "79%",
         "away": "85%"
       },
       "yellow_cards": {
@@ -118,8 +118,8 @@
         "away": null
       },
       "red_cards": {
-        "home": null,
-        "away": null
+        "home": 1,
+        "away": 0
       }
     },
     "events": [
@@ -140,6 +140,24 @@
         "assist": "Y. Nakayama",
         "type": "Goal",
         "detail": "Normal Goal"
+      },
+      {
+        "minute": 38,
+        "extra": null,
+        "team": "FC Tokyo",
+        "player": "K. Hashimoto",
+        "assist": null,
+        "type": "Card",
+        "detail": "Red Card"
+      },
+      {
+        "minute": 42,
+        "extra": null,
+        "team": "Machida Zelvia",
+        "player": "D. Okamura",
+        "assist": null,
+        "type": "Card",
+        "detail": "Yellow Card"
       }
     ]
   }
