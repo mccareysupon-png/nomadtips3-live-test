@@ -21,6 +21,10 @@ OLD_SCORE = '''    common_edge, common_count = common_opponent_edge(home_overall
 
 NEW_SCORE = '''    # BALL TENG v2: the legacy unranked common-opponent 12% term is retired.\n    # Ranked A-B-C / league-standing context is applied after prequalification by\n    # apply_confidence_policy.py, using the dedicated standings weight from config.\n    score = (\n        (home_overall["ppg"] - away_overall["ppg"]) * float(rules.get("overall_ppg_weight", 0.34))\n        + (home_venue["ppg"] - away_venue["ppg"]) * float(rules.get("venue_ppg_weight", 0.36))\n        + (home_overall["gdpg"] - away_overall["gdpg"]) * float(rules.get("goal_difference_weight", 0.18))\n    )\n    common_edge, common_count = 0.0, 0\n'''
 
+OLD_SETTLEMENT_GUARD = '''    if os.environ.get("FORCE_AUTO_SELECT") != "1" and not (result_feed.get("summary") or {}).get("allSettled", False):\n        report["status"] = "WAITING_FOR_CURRENT_SET_TO_SETTLE"\n        write_json(REPORT_PATH, report)\n        return\n'''
+
+NEW_SETTLEMENT_GUARD = '''    if os.environ.get("FORCE_AUTO_SELECT") != "1" and not (result_feed.get("summary") or {}).get("allSettled", False):\n        current_set = read_json(SELECTED_PATH)\n        previous_window_end = parse_iso(\n            (current_set.get("autoSelection") or {}).get("windowEndLocal")\n            or current_set.get("window_end_local")\n        )\n        blockers = []\n        ignored_out_of_window = []\n        for item in result_feed.get("results") or []:\n            if item.get("resultConfirmed") or item.get("autoVoid"):\n                continue\n            kickoff = parse_iso(item.get("kickoffUtc"))\n            pending_info = {\n                "fixtureId": item.get("providerFixtureId") or item.get("fixtureId"),\n                "home": item.get("home"),\n                "away": item.get("away"),\n                "kickoffUtc": item.get("kickoffUtc"),\n                "status": item.get("status"),\n            }\n            if previous_window_end and kickoff and kickoff > previous_window_end:\n                ignored_out_of_window.append(pending_info)\n            else:\n                blockers.append(pending_info)\n        if blockers:\n            report["status"] = "WAITING_FOR_CURRENT_SET_TO_SETTLE"\n            report["pendingBlockers"] = blockers[:20]\n            report["ignoredOutOfWindowPending"] = ignored_out_of_window[:20]\n            write_json(REPORT_PATH, report)\n            return\n        report["rolloverPolicy"] = "IGNORE_OUT_OF_WINDOW_PENDING_FROM_PREVIOUS_SET"\n        report["ignoredOutOfWindowPending"] = ignored_out_of_window[:20]\n'''
+
 OLD_WINDOW_GUARD = '''    if state.get("lastSuccessfulWindowKey") == window_key:\n        report["status"] = "ALREADY_SELECTED_FOR_WINDOW"\n'''
 
 NEW_WINDOW_GUARD = '''    if os.environ.get("FORCE_AUTO_RESELECT") != "1" and state.get("lastSuccessfulWindowKey") == window_key:\n        report["status"] = "ALREADY_SELECTED_FOR_WINDOW"\n'''
@@ -52,10 +56,13 @@ def restore_auto_clock(after, before):
 source = SOURCE.read_text(encoding='utf-8')
 if OLD_SCORE not in source:
     raise RuntimeError('BALL TENG selector score patch target not found; inspect auto_select_next.py before running.')
+if OLD_SETTLEMENT_GUARD not in source:
+    raise RuntimeError('BALL TENG settlement gate patch target not found; inspect auto_select_next.py before running.')
 if OLD_WINDOW_GUARD not in source:
     raise RuntimeError('BALL TENG selector window guard patch target not found; inspect auto_select_next.py before running.')
 
 patched = source.replace(OLD_SCORE, NEW_SCORE, 1)
+patched = patched.replace(OLD_SETTLEMENT_GUARD, NEW_SETTLEMENT_GUARD, 1)
 patched = patched.replace(OLD_WINDOW_GUARD, NEW_WINDOW_GUARD, 1)
 
 manual_add_k = os.environ.get('NOMAD_ADD_K_RUN') == '1'
@@ -63,6 +70,7 @@ before_state = read_json(STATE_PATH)
 before_auto_clock = snapshot_auto_clock(before_state) if manual_add_k else {}
 
 print('NOMAD BALL TENG: legacy unranked common-opponent 12% term disabled; ranked standings context will replace it.')
+print('NOMAD BALL TENG: pending fixtures outside the previous selection window cannot block AUTO rollover.')
 if manual_add_k:
     print('NOMAD BALL TENG: manual Add K run is isolated from the AUTO schedule clock.')
 elif os.environ.get('FORCE_AUTO_RESELECT') == '1':
