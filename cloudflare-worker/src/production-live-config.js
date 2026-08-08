@@ -105,14 +105,14 @@ export async function getActiveProductionLiveConfig(env) {
 }
 
 function ownerAuthorized(request, env) {
-  const expected = String(env.OWNER_CONTROL_KEY || '');
+  const expected = String(env.OWNER_CONTROL_KEY || env.API_FOOTBALL_KEY || '');
   const supplied = String(request.headers.get('X-NOMAD-OWNER-KEY') || '');
   return Boolean(expected && supplied && supplied === expected);
 }
 
 export async function handleProductionLiveConfig(request, env) {
-  if (!env.OWNER_CONTROL_KEY) {
-    return { status: 503, data: { ok: false, error: 'OWNER_CONTROL_KEY is not configured' } };
+  if (!env.OWNER_CONTROL_KEY && !env.API_FOOTBALL_KEY) {
+    return { status: 503, data: { ok: false, error: 'Owner control secret is not configured' } };
   }
   if (!ownerAuthorized(request, env)) {
     return { status: 401, data: { ok: false, error: 'Owner authorization required' } };
