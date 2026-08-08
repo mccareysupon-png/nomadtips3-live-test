@@ -259,9 +259,8 @@ function selectedCandidate(source, markets, config, selectedSide) {
   };
 }
 
-async function liveConditionScan(request, env) {
+export async function scanLiveConditions(request, env, config) {
   const warnings = [];
-  const config = await getActiveConditionConfig(env);
   const livePayload = await apiFetch('/fixtures?live=all', env, 55);
   const liveItems = (Array.isArray(livePayload?.response) ? livePayload.response : [])
     .filter(item => LIVE_STATUSES.has(String(item?.fixture?.status?.short || '').toUpperCase()));
@@ -349,6 +348,10 @@ async function liveConditionScan(request, env) {
     candidates,
     warnings: warnings.slice(0, 20)
   });
+}
+
+async function liveConditionScan(request, env) {
+  return scanLiveConditions(request, env, await getActiveConditionConfig(env));
 }
 
 export default {
