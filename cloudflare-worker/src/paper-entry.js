@@ -12,11 +12,10 @@ import {
 import { runHotConditionScan } from './hot-scan.js';
 import { handleConditionConfig } from './condition-config.js';
 import {
-  applyProductionLiveConfig,
   getActiveProductionLiveConfig,
-  getProductionLiveConfigState,
   handleProductionLiveConfig
 } from './production-live-config.js';
+import { scanLiveConditions } from './entry.js';
 import { handleBallTengConfig } from './ball-teng-config.js';
 import { handleMemberConfig } from './member-config.js';
 import { handleMemberData } from './member-data.js';
@@ -199,28 +198,23 @@ export default {
       }
     }
 
-    if (url.pathname === '/live' && request.method === 'GET') {
+    if (url.pathname === '/production-live-condition-scan' && request.method === 'GET') {
       try {
-        const response = await baseWorker.fetch(request, env, ctx);
-        const payload = await response.json().catch(() => null);
-        if (!response.ok || !payload?.ok) return json(request, payload || { ok: false, error: 'Live feed failed' }, response.status);
         const config = await getActiveProductionLiveConfig(env);
-        const allResults = Array.isArray(payload.results) ? payload.results : [];
-        const results = applyProductionLiveConfig(allResults, config);
-        return json(request, {
-          ...payload,
-          count: results.length,
-          sourceCount: allResults.length,
-          results,
-          refreshSeconds: config.refreshSeconds,
-          productionConfig: {
-            version: (await getProductionLiveConfigState(env)).version,
-            engineEnabled: config.engineEnabled,
-            scope: 'CAR_1_PRODUCTION_ONLY'
-          }
-        }, 200);
+        return await scanLiveConditions(request, env, config);
       } catch (error) {
-        return json(request, { ok: false, error: error?.message || 'Production live feed failed' }, 500);
+        return json(request, { ok: false, error: error?.message || 'Production live condition scan failed' }, 500);
+      }
+    }
+
+    if (url.pathname === '/live-condition-scan' && request.method === 'GET') {
+      const origin = request.headers.get('Origin') || '';
+      if (origin === 'https://nomadtips3.com' || origin === 'https://www.nomadtips3.com') {
+        try {
+          return await scanLiveConditions(request, env, await getActiveProductionLiveConfig(env));
+        } catch (error) {
+          return json(request, { ok: false, error: error?.message || 'Production live condition scan failed' }, 500);
+        }
       }
     }
 
