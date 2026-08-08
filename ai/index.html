@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#071d17">
+  <title>Add K AI Learning Lab — Car 4</title>
+  <link rel="stylesheet" href="./ai.css?v=202608081516">
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <a class="brand" href="./" aria-label="Add K AI Learning Lab">nomad<b>tips3</b></a>
+        <div class="subbrand">ADD K AI LEARNING LAB</div>
+      </div>
+      <div class="top-badges" aria-label="Safety status">
+        <span class="badge car">CAR 4</span>
+        <span class="badge shadow">SHADOW MODE</span>
+        <span class="badge safe">READ ONLY SOURCE</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero panel">
+        <div class="hero-copy">
+          <span class="eyebrow">AI BALL-TENG · LEARNING ENGINE V0.1</span>
+          <h1>Learn where the market leaves a gap.</h1>
+          <p class="lead">Car 4 observes prediction records, A–B–C common-opponent evidence, league-table context, odds zones and final results. It learns in its own storage and never writes back to Cars 1–3.</p>
+          <div class="guardrail">
+            <strong>Key rule</strong>
+            <span>Production/Test data is a read-only source. AI weights, snapshots and learning logs are stored under a separate Car 4 key.</span>
+          </div>
+        </div>
+        <div class="hero-actions">
+          <button id="refreshBtn" class="button primary" type="button">Refresh Shadow Data</button>
+          <button id="resetBtn" class="button ghost" type="button">Reset Car 4 Learning</button>
+          <span id="lastSync" class="sync-note">Waiting for first shadow scan…</span>
+        </div>
+      </section>
+
+      <section class="metric-grid" aria-label="AI learning status">
+        <article class="metric panel"><small>Observed Matches</small><b id="observedCount">0</b><span>shadow snapshots</span></article>
+        <article class="metric panel"><small>Settled Samples</small><b id="settledCount">0</b><span>eligible for learning</span></article>
+        <article class="metric panel"><small>Model State</small><b id="modelState">COLD</b><span id="modelStateNote">waiting for results</span></article>
+        <article class="metric panel"><small>Average Value Gap</small><b id="avgGap">—</b><span>model − market</span></article>
+      </section>
+
+      <section class="status-strip panel" aria-label="Car isolation">
+        <div><small>SOURCE KEY</small><code>nomadtips3.nomad-control.draft.v2</code></div>
+        <div><small>CAR 4 KEY</small><code>nomadtips3.ai-learning-lab.v1</code></div>
+        <div><small>NETWORK MODE</small><strong>NO FOOTBALL API CALLS</strong></div>
+      </section>
+
+      <section class="two-col">
+        <article class="panel section-card">
+          <div class="section-head">
+            <div><span class="eyebrow">ODDS ZONE ENGINE</span><h2>Favorite vs Value</h2></div>
+            <span class="mini-tag">AUTO CLASSIFY</span>
+          </div>
+          <div class="zone-grid">
+            <div class="zone favorite"><small>1.20–1.80</small><b>Favorite Validation</b><p>A–B–C and standings confirm whether the short price is deserved or overvalued.</p></div>
+            <div class="zone bridge"><small>1.81–1.99</small><b>Bridge Zone</b><p>Neutral zone. Require stronger evidence before an AI flag is raised.</p></div>
+            <div class="zone value"><small>2.00+</small><b>Value / Reversal Search</b><p>Look for teams priced below their real strength using A–B–C, table context and learned calibration.</p></div>
+          </div>
+        </article>
+
+        <article class="panel section-card">
+          <div class="section-head">
+            <div><span class="eyebrow">LEARNING CORE</span><h2>What Car 4 Learns</h2></div>
+            <span id="weightBadge" class="mini-tag">0 SAMPLES</span>
+          </div>
+          <div class="feature-list">
+            <div><span>A–B–C</span><b>Common-opponent evidence</b></div>
+            <div><span>TABLE</span><b>Rank / points / goal difference</b></div>
+            <div><span>ODDS</span><b>Market implied probability</b></div>
+            <div><span>FORM</span><b>Home / away and recent-form edge</b></div>
+            <div><span>RESULT</span><b>Correct / incorrect feedback loop</b></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="panel section-card">
+        <div class="section-head">
+          <div><span class="eyebrow">SHADOW PREDICTIONS</span><h2>Current AI Watchlist</h2></div>
+          <span id="sourceStatus" class="mini-tag warn">SOURCE NOT FOUND</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Match</th>
+                <th>Odds</th>
+                <th>Zone</th>
+                <th>Market</th>
+                <th>AI</th>
+                <th>Gap</th>
+                <th>A–B–C</th>
+                <th>Table</th>
+                <th>Flag</th>
+              </tr>
+            </thead>
+            <tbody id="watchlistBody">
+              <tr><td colspan="9" class="empty">Open the Test prediction page on this same device/browser first, then refresh Car 4.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="two-col lower-grid">
+        <article class="panel section-card">
+          <div class="section-head">
+            <div><span class="eyebrow">BACKTEST VIEW</span><h2>Performance by Odds Zone</h2></div>
+            <span class="mini-tag">SETTLED ONLY</span>
+          </div>
+          <div id="zonePerformance" class="performance-grid"></div>
+          <p class="footnote">Simulation metrics use a flat 1-unit reference only to compare model calibration between odds zones. They do not place bets or send orders.</p>
+        </article>
+
+        <article class="panel section-card">
+          <div class="section-head">
+            <div><span class="eyebrow">TABLE CONTEXT</span><h2>League Rank Snapshot</h2></div>
+            <span class="mini-tag">OPTIONAL SOURCE FIELDS</span>
+          </div>
+          <div id="standingsList" class="standings-list"></div>
+        </article>
+      </section>
+
+      <section class="panel section-card">
+        <div class="section-head">
+          <div><span class="eyebrow">LEARNING LOG</span><h2>What the AI changed after results</h2></div>
+          <span class="mini-tag">CAR 4 ONLY</span>
+        </div>
+        <div id="learningLog" class="learning-log"></div>
+      </section>
+
+      <section class="panel architecture">
+        <span class="eyebrow">KEY SEPARATION</span>
+        <h2>Four cars. Four keys.</h2>
+        <div class="car-grid">
+          <div><small>CAR 1</small><b>Website</b><span>Production</span></div>
+          <div><small>CAR 2</small><b>Test</b><span>Development</span></div>
+          <div><small>CAR 3</small><b>Bot Program</b><span>Future automation</span></div>
+          <div class="active-car"><small>CAR 4</small><b>Add K AI</b><span>Learning Lab</span></div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>Add K AI Learning Lab · Shadow sports-analysis research only</span>
+      <span id="localClock">LOCAL TIME</span>
+    </footer>
+  </div>
+
+  <script src="./ai-app.js?v=202608081516" defer></script>
+</body>
+</html>
