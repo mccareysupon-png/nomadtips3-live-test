@@ -1,5 +1,6 @@
 import baseWorker from './index.js';
 import { getActiveConditionConfig } from './condition-config.js';
+import { sharedApiFetch } from './shared-api-football.js';
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const ALLOWED_ORIGINS = new Set([
@@ -245,42 +246,8 @@ async function storeCar3Payload(cache, keys, payload, ttlSeconds) {
 }
 
 async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
-  const apiUrl = `${API_BASE}${path}`;
-  const cache = globalThis.caches?.default || null;
-  const keys = car3CacheKeys(apiUrl);
-
-  const fresh = await cachedJson(cache, keys.fresh);
-  if (fresh) return fresh;
-
-  const slot = await acquireCar3Slot(env);
-  if (slot.blocked) {
-    const stale = await cachedJson(cache, keys.stale);
-    if (stale) return stale;
-    throw new Error(`CAR3_COOLDOWN_ACTIVE until ${new Date(slot.cooldownUntil).toISOString()}`);
-  }
-
-  const response = await fetch(apiUrl, {
-    headers: {
-      'x-apisports-key': env.API_FOOTBALL_KEY,
-      'Accept': 'application/json'
-    }
-  });
-  const payload = await response.json().catch(() => null);
-  const detail = apiErrorDetail(payload);
-
-  if (isRateLimit(response, payload)) {
-    const cooldownUntil = await recordCar3RateLimit(env, response);
-    const stale = await cachedJson(cache, keys.stale);
-    if (stale) return stale;
-    throw new Error(detail || `CAR3_RATE_LIMIT until ${new Date(cooldownUntil).toISOString()}`);
-  }
-  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-  if (detail) throw new Error(detail);
-
-  await recordCar3Success(env);
-  await storeCar3Payload(cache, keys, payload, cacheSeconds);
-  return payload;
+  const result = await sharedApiFetch(path, env, cacheSeconds);
+  return result.payload;
 }
 
 function normalizeStatKey(type) {
@@ -588,7 +555,7 @@ async function liveConditionScan(request, env) {
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
-    source: 'cloudflare-worker · api-football · batched · car3-guarded',
+    source: 'cloudflare-worker · api-football · batched · car3-shared-guard',
     mode: 'PAGE-5-CONDITION-CONTROL-ADAPTIVE',
     refreshSeconds,
     polling: {
@@ -596,8 +563,7 @@ async function liveConditionScan(request, env) {
       liveScoreCacheSeconds: LIVE_CACHE_SECONDS,
       statisticsCacheSeconds: STATS_CACHE_SECONDS,
       liveOddsCacheSeconds: ODDS_CACHE_SECONDS,
-      apiRateGuard: 'CAR3_ONLY_7S_GAP_90S_COOLDOWN',
-      staleFallbackSeconds: CAR3_STALE_CACHE_SECONDS
+      apiRateGuard: 'SHARED_API_FOOTBALL_GUARD'
     },
     config,
     counts: {
