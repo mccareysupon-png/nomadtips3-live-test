@@ -9,6 +9,7 @@
   <title>Add K AI Learning Lab — Car 4</title>
   <link rel="stylesheet" href="./ai.css?v=202608081516">
   <link rel="stylesheet" href="./responsive.css?v=202608081527">
+  <link rel="stylesheet" href="./owner-summary.css?v=202608081558">
 </head>
 <body>
   <div class="shell">
@@ -39,6 +40,20 @@
         </div>
         <div class="hero-actions">
           <span id="lastSync" class="sync-note">Loading automatic 24H learning state…</span>
+        </div>
+      </section>
+
+      <section class="panel owner-summary" aria-label="Owner summary">
+        <div class="owner-summary-head">
+          <div><span class="eyebrow">OWNER SUMMARY · ภาษาคน</span><h2>สรุปให้ผมอ่าน</h2></div>
+          <span class="mini-tag">AUTO UPDATE</span>
+        </div>
+        <p id="ownerSummaryLine" class="owner-summary-line">กำลังอ่านสถานะ AI ล่าสุด…</p>
+        <div class="owner-summary-grid">
+          <div id="ownerLearnBox" class="owner-summary-item neutral"><small>เรียนรอบล่าสุด</small><b id="ownerLearn">—</b><span id="ownerLearnDetail">กำลังโหลด</span></div>
+          <div id="ownerValueBox" class="owner-summary-item neutral"><small>ODDS 2.00+</small><b id="ownerValue">—</b><span id="ownerValueDetail">กำลังโหลด</span></div>
+          <div id="ownerAbcBox" class="owner-summary-item neutral"><small>A–B–C</small><b id="ownerAbc">—</b><span id="ownerAbcDetail">กำลังโหลด</span></div>
+          <div id="ownerSystemBox" class="owner-summary-item neutral"><small>สถานะระบบ</small><b id="ownerSystem">—</b><span id="ownerSystemDetail">กำลังโหลด</span></div>
         </div>
       </section>
 
@@ -156,6 +171,7 @@
   </div>
 
   <script src="./remote-state-sync.js?v=202608081545"></script>
+  <script src="./owner-summary.js?v=202608081558"></script>
   <script src="./ai-app.js?v=202608081516" defer></script>
 </body>
 </html>
