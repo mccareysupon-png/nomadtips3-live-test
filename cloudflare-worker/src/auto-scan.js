@@ -455,13 +455,35 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
     });
     return { ok: true, generatedAt: serverPayload.generatedAt, counts };
   } catch (error) {
-    await saveStatus(env, {
-      ranAt: now,
-      ok: false,
-      counts: {},
-      error: error?.message || 'Automatic scan failed',
-      warnings: []
-    });
+    const message = error?.message || 'Automatic scan failed';
+    const previous = await env.DB.prepare('SELECT * FROM auto_scan_status WHERE id = 1').first().catch(() => null);
+
+    if (previous && Number(previous.ok) && previous.payload_json) {
+      let counts = {};
+      let payload = null;
+      let warnings = [];
+      try { counts = previous.counts_json ? JSON.parse(previous.counts_json) : {}; } catch {}
+      try { payload = previous.payload_json ? JSON.parse(previous.payload_json) : null; } catch {}
+      try { warnings = previous.warnings_json ? JSON.parse(previous.warnings_json) : []; } catch {}
+      warnings = [...warnings.filter(Boolean), message].slice(-20);
+
+      await saveStatus(env, {
+        ranAt: Number(previous.ran_at || now),
+        ok: true,
+        counts,
+        payload,
+        error: message,
+        warnings
+      });
+    } else {
+      await saveStatus(env, {
+        ranAt: now,
+        ok: false,
+        counts: {},
+        error: message,
+        warnings: []
+      });
+    }
     throw error;
   }
 }
