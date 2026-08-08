@@ -382,10 +382,11 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       const previous = states.get(key) || null;
       const calculated = momentum(candidate, previous, now, config.version);
       if (calculated) momentumReady += 1;
+      const evidencePass = !config.attackEvidenceEnabled || Number(calculated?.evidence || 0) >= 1;
       const pass = Boolean(
         calculated &&
         calculated.home >= config.momentumMin &&
-        calculated.evidence >= 1
+        evidencePass
       );
       if (pass) passing += 1;
 
