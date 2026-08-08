@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 const REQUIRED = [
   'signal_id',
@@ -90,7 +91,8 @@ function buildPaperOrder(signal) {
 }
 
 function appendAudit(order) {
-  const projectDir = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+  const currentFile = fileURLToPath(import.meta.url);
+  const projectDir = path.resolve(path.dirname(currentFile), '..');
   const logsDir = path.join(projectDir, 'logs');
   fs.mkdirSync(logsDir, { recursive: true });
   const target = path.join(logsDir, 'paper-orders.jsonl');
