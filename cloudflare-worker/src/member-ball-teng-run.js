@@ -1,6 +1,7 @@
 import { handleMemberConfig, normalizeMemberId } from './member-config.js';
 
 const DAILY_RUN_LIMIT = 3;
+const PENDING_STALE_MS = 20 * 60_000;
 const RUN_QUOTA_SQL = `
 CREATE TABLE IF NOT EXISTS member_ball_teng_run_quota (
   member_id TEXT NOT NULL,
@@ -79,7 +80,13 @@ async function quotaState(env, memberId, now = Date.now()) {
   const latest = await latestRequest(env, memberId);
   const storedVersion = await latestStoredConfigVersion(env, memberId);
   const requestedVersion = Number(latest?.last_requested_version || 0);
-  const pending = requestedVersion > 0 && storedVersion < requestedVersion;
+  const lastRequestedAtMs = Number(latest?.last_requested_at || 0);
+  const versionBehind = requestedVersion > 0 && storedVersion < requestedVersion;
+  const pendingAgeMs = versionBehind && lastRequestedAtMs > 0
+    ? Math.max(0, now - lastRequestedAtMs)
+    : null;
+  const pending = versionBehind && pendingAgeMs !== null && pendingAgeMs <= PENDING_STALE_MS;
+  const stalePending = versionBehind && !pending;
   const used = Math.max(0, Number(row?.run_count || 0));
   return {
     day: day.key,
@@ -88,8 +95,11 @@ async function quotaState(env, memberId, now = Date.now()) {
     remaining: Math.max(0, DAILY_RUN_LIMIT - used),
     resetAt: day.resetAt,
     pending,
-    pendingConfigVersion: pending ? requestedVersion : null,
-    lastRequestedAt: latest?.last_requested_at ? new Date(Number(latest.last_requested_at)).toISOString() : null
+    stalePending,
+    pendingConfigVersion: versionBehind ? requestedVersion : null,
+    pendingAgeMinutes: pendingAgeMs === null ? null : Math.round(pendingAgeMs / 60_000),
+    staleAfterMinutes: PENDING_STALE_MS / 60_000,
+    lastRequestedAt: lastRequestedAtMs > 0 ? new Date(lastRequestedAtMs).toISOString() : null
   };
 }
 
@@ -180,8 +190,11 @@ export async function handleMemberBallTengRun(request, env, url) {
       scope: 'MEMBER_ONLY',
       memberId,
       selectionQueued: true,
+      recoveredStalePending: Boolean(before.stalePending),
       quota: after,
-      message: `เปิดใช้เงื่อนไขของ Member ${memberId} แล้ว และส่งคำสั่งคัดใหม่ (${after.used}/${after.limit} ครั้งวันนี้) เครื่องคัดสมาชิกจะรับงานในรอบถัดไป โดยไม่กระทบ Owner/System.`
+      message: before.stalePending
+        ? `รอบก่อนหน้าค้างเกิน ${before.staleAfterMinutes} นาที จึงปลดล็อกและส่งคำสั่งคัดใหม่ให้ Member ${memberId} แล้ว (${after.used}/${after.limit} ครั้งวันนี้)`
+        : `เปิดใช้เงื่อนไขของ Member ${memberId} แล้ว และส่งคำสั่งคัดใหม่ (${after.used}/${after.limit} ครั้งวันนี้) เครื่องคัดสมาชิกจะรับงานในรอบถัดไป โดยไม่กระทบ Owner/System.`
     }
   };
 }
