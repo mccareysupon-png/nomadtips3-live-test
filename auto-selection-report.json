@@ -1,15 +1,15 @@
 {
   "generatedAt": "2026-08-08T04:16:25Z",
-  "environment": "TEST_ONLY",
+  "environment": "PRODUCTION",
   "windowStartLocal": "2026-08-08T12:01:25.416389+07:00",
   "windowEndLocal": "2026-08-09T08:00:00+07:00",
   "windowKey": "2026-08-09T08:00:00+07:00",
-  "status": "PUBLISHED",
+  "status": "PUBLISHED_TOP_10",
   "apiCalls": 587,
   "fixturesScanned": 1123,
   "fixturesAnalyzed": 240,
   "prequalified": 109,
-  "published": 43,
+  "published": 10,
   "rejections": {
     "strength score below threshold": 95,
     "main 1X2 odds unavailable": 46,
@@ -31,16 +31,16 @@
   "truncatedTo": 240,
   "historyErrors": {
     "4315": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
+    "24102": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
     "27804": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
-    "27806": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}",
-    "24102": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}"
+    "27806": "{'rateLimit': 'Too many requests. You have exceeded the limit of requests per minute of your subscription.'}"
   },
   "archivedPreviousSet": "archive/auto-selections/2026-08-07-20260808T041625Z.json",
   "confidencePolicy": {
     "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
     "maximum": 85,
-    "scale": 15.0,
+    "scale": 15,
     "formula": "round(50 + adjustedStrength × 15), capped at 85",
     "inputs": [
       "overall PPG",
@@ -69,12 +69,12 @@
   },
   "ballTengPolicy": {
     "legacyCommonOpponentWeight": 0,
-    "overallPpgWeight": 34.0,
-    "homeAwayPpgWeight": 36.0,
-    "goalDifferenceWeight": 18.0,
-    "rankedStandingsContextWeight": 32.0,
-    "directRankMix": 55.0,
-    "rankedCommonMix": 45.0
+    "overallPpgWeight": 34,
+    "homeAwayPpgWeight": 36,
+    "goalDifferenceWeight": 18,
+    "rankedStandingsContextWeight": 32,
+    "directRankMix": 55,
+    "rankedCommonMix": 45
   },
   "selectionMerge": {
     "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
@@ -84,5 +84,8 @@
     "preservedStartedCount": 0,
     "duplicatesRemoved": 0,
     "totalDisplayedCount": 43
-  }
+  },
+  "qualifiedBeforeTop10": 43,
+  "reserveCount": 33,
+  "top10Policy": "CONFIDENCE_STANDINGS_STRENGTH_SAMPLE_KICKOFF"
 }
