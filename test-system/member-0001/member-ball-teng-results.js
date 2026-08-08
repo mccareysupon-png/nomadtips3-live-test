@@ -62,6 +62,18 @@ function ensureSummary() {
   return summary;
 }
 
+function summaryHtml(summary, label = 'ผลชุดบอลเต็งนี้') {
+  const total = Number(summary?.total || 0);
+  const settled = Number(summary?.settled || 0);
+  const correct = Number(summary?.correct || 0);
+  const incorrect = Number(summary?.incorrect || 0);
+  const pending = Number(summary?.pending ?? Math.max(0, total - settled));
+  const accuracy = number(summary?.accuracy);
+  return total
+    ? `<b>${label}</b> · ยืนยันแล้ว ${settled}/${total} · Correct ${correct} · Incorrect ${incorrect} · Waiting ${pending}${accuracy === null ? '' : ` · Accuracy ${accuracy.toFixed(2)}%`}`
+    : `<b>${label}</b> · ยังไม่มีรายการให้ตรวจผล`;
+}
+
 function patch(payload) {
   if (!GRID || !payload) return;
   ensureStyles();
@@ -91,24 +103,29 @@ function patch(payload) {
   });
 
   const summary = payload.resultSummary || {};
-  const total = Number(summary.total || results.length || matches.length || 0);
-  const settled = Number(summary.settled || 0);
-  const correct = Number(summary.correct || 0);
-  const incorrect = Number(summary.incorrect || 0);
-  const pending = Number(summary.pending ?? Math.max(0, total - settled));
-  const accuracy = number(summary.accuracy);
   const node = ensureSummary();
   if (node) {
-    const html = total
-      ? `<b>ผลชุดบอลเต็งนี้</b> · ยืนยันแล้ว ${settled}/${total} · Correct ${correct} · Incorrect ${incorrect} · Waiting ${pending}${accuracy === null ? '' : ` · Accuracy ${accuracy.toFixed(2)}%`}`
-      : '<b>ผลชุดบอลเต็งนี้</b> · ยังไม่มีรายการให้ตรวจผล';
+    const html = summaryHtml(summary);
     if (node.innerHTML !== html) node.innerHTML = html;
   }
   if (META && payload.setId) {
+    const total = Number(summary.total || results.length || matches.length || 0);
+    const settled = Number(summary.settled || 0);
     const suffix = total ? ` · Result ${settled}/${total}` : '';
     const text = `Member #${MEMBER_ID} · ${payload.setId} · config v${payload.config?.version || '—'}${suffix}`;
     if (META.textContent !== text) META.textContent = text;
   }
+}
+
+async function fallbackBallTengSummary() {
+  const url = new URL(`${WORKER}/member-stats-summary`);
+  url.searchParams.set('member', MEMBER_ID);
+  url.searchParams.set('source', 'BALL_TENG');
+  url.searchParams.set('_', String(Date.now()));
+  const response = await fetch(url, { cache: 'no-store' });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
+  return payload.summary || {};
 }
 
 async function refresh() {
@@ -123,7 +140,14 @@ async function refresh() {
     patch(payload);
   } catch (error) {
     const node = ensureSummary();
-    if (node) node.textContent = `ผลบอลเต็ง: ${error.message || error}`;
+    try {
+      const summary = await fallbackBallTengSummary();
+      if (node) node.innerHTML = summaryHtml(summary, 'สถิติบอลเต็งของสมาชิก');
+      console.warn('Member Ball Teng result detail fallback:', error?.message || error);
+    } catch (fallbackError) {
+      if (node) node.innerHTML = '<b>สถิติบอลเต็งของสมาชิก</b> · ข้อมูลผลการแข่งขันกำลังปรับปรุง กรุณารีเฟรชอีกครั้ง';
+      console.warn('Member Ball Teng statistics unavailable:', fallbackError?.message || fallbackError);
+    }
   } finally {
     loading = false;
   }
