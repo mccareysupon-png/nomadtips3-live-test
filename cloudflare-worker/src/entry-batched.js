@@ -1,6 +1,5 @@
 import baseWorker from './index.js';
 import { getActiveConditionConfig } from './condition-config.js';
-import { sharedApiFetch } from './shared-api-football.js';
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const ALLOWED_ORIGINS = new Set([
@@ -85,8 +84,40 @@ function cacheSecondsForPath(path) {
 }
 
 async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
-  const result = await sharedApiFetch(path, env, cacheSeconds);
-  return result.payload;
+  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
+  const apiUrl = `${API_BASE}${path}`;
+  const cache = globalThis.caches?.default || null;
+  const key = new Request(apiUrl, { method: 'GET' });
+
+  if (cache) {
+    const cached = await cache.match(key);
+    if (cached) return cached.json();
+  }
+
+  const response = await fetch(apiUrl, {
+    headers: {
+      'x-apisports-key': env.API_FOOTBALL_KEY,
+      'Accept': 'application/json'
+    }
+  });
+  const payload = await response.json().catch(() => null);
+  const detail = apiErrorDetail(payload);
+
+  if (isRateLimit(response, payload)) {
+    throw new Error(detail || `API HTTP ${response.status} rate limited`);
+  }
+  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
+  if (detail) throw new Error(detail);
+
+  if (cache) {
+    await cache.put(key, new Response(JSON.stringify(payload), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': `public, max-age=${cacheSeconds}`
+      }
+    }));
+  }
+  return payload;
 }
 
 function normalizeStatKey(type) {
@@ -394,14 +425,15 @@ async function liveConditionScan(request, env) {
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
-    source: 'cloudflare-worker · api-football · batched',
+    source: 'cloudflare-worker · api-football · batched · car3-unguarded',
     mode: 'PAGE-5-CONDITION-CONTROL-ADAPTIVE',
     refreshSeconds,
     polling: {
       sequenceSeconds: [240, 60, 30, 15, 5],
       liveScoreCacheSeconds: LIVE_CACHE_SECONDS,
       statisticsCacheSeconds: STATS_CACHE_SECONDS,
-      liveOddsCacheSeconds: ODDS_CACHE_SECONDS
+      liveOddsCacheSeconds: ODDS_CACHE_SECONDS,
+      apiRateGuard: 'OFF_CAR3_ONLY'
     },
     config,
     counts: {
