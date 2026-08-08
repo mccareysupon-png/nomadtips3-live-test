@@ -64,14 +64,13 @@ jobs:
             fi
           fi
 
-          # One score snapshot per minute. Heavy statistics/events refresh only once
-          # per ~4-minute chain. Member/condition engines use the Worker shared feed.
+          # Keep one batched score snapshot per minute. Detailed statistics/events
+          # are intentionally disabled in this GitHub-side refresher because Car 3
+          # and the condition engines obtain live detail through the guarded Worker.
+          # This prevents two independent systems from competing for the same
+          # API-Football per-minute allowance while preserving scores/results here.
           for cycle in $(seq 0 4); do
-            if [ "$cycle" -eq 0 ]; then
-              export DETAIL_REFRESH=1
-            else
-              export DETAIL_REFRESH=0
-            fi
+            export DETAIL_REFRESH=0
 
             refreshed=0
             for attempt in 1 2 3; do
