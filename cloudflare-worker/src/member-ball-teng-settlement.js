@@ -1,4 +1,4 @@
-const API_BASE = 'https://v3.football.api-sports.io';
+import { sharedApiFetch } from './shared-api-football.js';
 const FINISHED = new Set(['FT', 'AET', 'PEN', 'AWD', 'WO']);
 const VOID = new Set(['CANC', 'ABD']);
 const LIVE = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'INT', 'LIVE']);
@@ -106,21 +106,8 @@ function dueForCheck(row, payload, now) {
 }
 
 async function fetchFixtures(env, ids) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
-  const response = await fetch(`${API_BASE}/fixtures?ids=${ids.join('-')}`, {
-    headers: {
-      'x-apisports-key': env.API_FOOTBALL_KEY,
-      'Accept': 'application/json'
-    }
-  });
-  const payload = await response.json().catch(() => null);
-  if (response.status === 429) throw new Error('Member Ball Teng settlement rate limited');
-  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-  const errors = payload?.errors;
-  if (errors && ((typeof errors === 'string' && errors) || (Array.isArray(errors) && errors.length) || (typeof errors === 'object' && Object.keys(errors).length))) {
-    throw new Error(typeof errors === 'string' ? errors : JSON.stringify(errors));
-  }
-  return Array.isArray(payload?.response) ? payload.response : [];
+  const result = await sharedApiFetch(`/fixtures?ids=${ids.join('-')}`, env, 60);
+  return Array.isArray(result.payload?.response) ? result.payload.response : [];
 }
 
 function fixtureId(item) {
