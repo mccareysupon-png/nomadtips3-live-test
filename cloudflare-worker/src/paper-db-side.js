@@ -1,4 +1,4 @@
-const API_BASE = 'https://v3.football.api-sports.io';
+import { sharedApiFetch } from './shared-api-football.js';
 const TERMINAL = new Set(['FT', 'AET', 'PEN', 'WO', 'AWD', 'CANC', 'ABD', 'PST']);
 const VOID_STATUS = new Set(['CANC', 'ABD', 'PST', 'WO', 'AWD']);
 const STAKE_DEFAULT = 100;
@@ -364,16 +364,8 @@ async function listTrades(env, limit = 5000) {
 }
 
 async function apiFetch(path, env) {
-  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: { 'x-apisports-key': env.API_FOOTBALL_KEY, 'Accept': 'application/json' }
-  });
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
-  if (payload?.errors && Object.keys(payload.errors).length) {
-    throw new Error(typeof payload.errors === 'string' ? payload.errors : JSON.stringify(payload.errors));
-  }
-  return payload;
+  const result = await sharedApiFetch(path, env, 60);
+  return result.payload;
 }
 
 function splitHandicap(line) {
