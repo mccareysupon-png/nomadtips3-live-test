@@ -20,6 +20,12 @@ const LIVE_CACHE_SECONDS = 15;
 const STATS_CACHE_SECONDS = 60;
 const ODDS_CACHE_SECONDS = 5;
 const DEFAULT_CACHE_SECONDS = 60;
+const CAR3_MIN_GAP_MS = 7000;
+const CAR3_MAX_SLOT_WAIT_MS = 12_000;
+const CAR3_COOLDOWN_MS = 90_000;
+const CAR3_MAX_COOLDOWN_MS = 5 * 60_000;
+const CAR3_STALE_CACHE_SECONDS = 30 * 60;
+let car3GuardReady = false;
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -55,6 +61,12 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function jitter(max = 250) {
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return values[0] % Math.max(1, max);
+}
+
 function apiErrorDetail(payload) {
   const errors = payload?.errors;
   if (!errors) return '';
@@ -83,15 +95,169 @@ function cacheSecondsForPath(path) {
   return DEFAULT_CACHE_SECONDS;
 }
 
+function retryAfterMs(response) {
+  const raw = response?.headers?.get('Retry-After');
+  if (!raw) return null;
+  const seconds = Number(raw);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const at = Date.parse(raw);
+  return Number.isFinite(at) ? Math.max(0, at - Date.now()) : null;
+}
+
+async function ensureCar3Guard(env) {
+  if (!env.DB) return false;
+  if (car3GuardReady) return true;
+  await env.DB.batch([
+    env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS car3_api_rate_guard (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_started_at INTEGER NOT NULL DEFAULT 0,
+        cooldown_until INTEGER NOT NULL DEFAULT 0,
+        consecutive_429 INTEGER NOT NULL DEFAULT 0,
+        last_429_at INTEGER,
+        updated_at INTEGER NOT NULL
+      )
+    `),
+    env.DB.prepare(`
+      INSERT OR IGNORE INTO car3_api_rate_guard (
+        id, last_started_at, cooldown_until, consecutive_429, updated_at
+      ) VALUES (1, 0, 0, 0, ?)
+    `).bind(Date.now())
+  ]);
+  car3GuardReady = true;
+  return true;
+}
+
+async function car3GuardState(env) {
+  if (!env.DB) return null;
+  return env.DB.prepare(`
+    SELECT last_started_at, cooldown_until, consecutive_429
+    FROM car3_api_rate_guard WHERE id = 1
+  `).first();
+}
+
+async function acquireCar3Slot(env) {
+  if (!(await ensureCar3Guard(env))) {
+    await sleep(jitter(250));
+    return { protected: false, blocked: false };
+  }
+
+  const started = Date.now();
+  while (Date.now() - started < CAR3_MAX_SLOT_WAIT_MS) {
+    const now = Date.now();
+    const state = await car3GuardState(env);
+    const cooldownUntil = Number(state?.cooldown_until || 0);
+    if (cooldownUntil > now) {
+      return { protected: true, blocked: true, cooldownUntil };
+    }
+
+    const lastStarted = Number(state?.last_started_at || 0);
+    const eligibleAt = lastStarted + CAR3_MIN_GAP_MS;
+    if (eligibleAt > now) {
+      await sleep(Math.min(eligibleAt - now + jitter(180), 1600));
+      continue;
+    }
+
+    const claim = await env.DB.prepare(`
+      UPDATE car3_api_rate_guard
+      SET last_started_at = ?, updated_at = ?
+      WHERE id = 1 AND last_started_at = ? AND cooldown_until <= ?
+    `).bind(now, now, lastStarted, now).run();
+    if (Number(claim?.meta?.changes || 0) === 1) {
+      return { protected: true, blocked: false };
+    }
+    await sleep(100 + jitter(150));
+  }
+
+  return {
+    protected: true,
+    blocked: true,
+    cooldownUntil: Date.now() + 5000
+  };
+}
+
+async function recordCar3Success(env) {
+  if (!env.DB) return;
+  await env.DB.prepare(`
+    UPDATE car3_api_rate_guard
+    SET cooldown_until = 0, consecutive_429 = 0, updated_at = ?
+    WHERE id = 1
+  `).bind(Date.now()).run();
+}
+
+async function recordCar3RateLimit(env, response) {
+  const now = Date.now();
+  let strikes = 1;
+  if (env.DB) {
+    const state = await car3GuardState(env).catch(() => null);
+    strikes = Math.min(3, Number(state?.consecutive_429 || 0) + 1);
+  }
+  const providerWait = retryAfterMs(response);
+  const exponential = CAR3_COOLDOWN_MS * (2 ** (strikes - 1));
+  const waitMs = Math.min(
+    CAR3_MAX_COOLDOWN_MS,
+    Math.max(CAR3_COOLDOWN_MS, providerWait || exponential)
+  ) + jitter(1200);
+  const cooldownUntil = now + waitMs;
+
+  if (env.DB) {
+    await env.DB.prepare(`
+      UPDATE car3_api_rate_guard
+      SET cooldown_until = ?, consecutive_429 = ?, last_429_at = ?, updated_at = ?
+      WHERE id = 1
+    `).bind(cooldownUntil, strikes, now, now).run();
+  }
+  console.warn(JSON.stringify({ event: 'car3_api_football_429', cooldownUntil, strikes }));
+  return cooldownUntil;
+}
+
+function car3CacheKeys(apiUrl) {
+  const token = encodeURIComponent(apiUrl);
+  return {
+    fresh: new Request(`https://car3-cache.nomadtips3.internal/fresh?u=${token}`),
+    stale: new Request(`https://car3-cache.nomadtips3.internal/stale?u=${token}`)
+  };
+}
+
+async function cachedJson(cache, key) {
+  if (!cache) return null;
+  const response = await cache.match(key);
+  return response ? response.json() : null;
+}
+
+async function storeCar3Payload(cache, keys, payload, ttlSeconds) {
+  if (!cache) return;
+  const body = JSON.stringify(payload);
+  await Promise.all([
+    cache.put(keys.fresh, new Response(body, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': `public, max-age=${ttlSeconds}`
+      }
+    })),
+    cache.put(keys.stale, new Response(body, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': `public, max-age=${CAR3_STALE_CACHE_SECONDS}`
+      }
+    }))
+  ]);
+}
+
 async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
   if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
   const apiUrl = `${API_BASE}${path}`;
   const cache = globalThis.caches?.default || null;
-  const key = new Request(apiUrl, { method: 'GET' });
+  const keys = car3CacheKeys(apiUrl);
 
-  if (cache) {
-    const cached = await cache.match(key);
-    if (cached) return cached.json();
+  const fresh = await cachedJson(cache, keys.fresh);
+  if (fresh) return fresh;
+
+  const slot = await acquireCar3Slot(env);
+  if (slot.blocked) {
+    const stale = await cachedJson(cache, keys.stale);
+    if (stale) return stale;
+    throw new Error(`CAR3_COOLDOWN_ACTIVE until ${new Date(slot.cooldownUntil).toISOString()}`);
   }
 
   const response = await fetch(apiUrl, {
@@ -104,19 +270,16 @@ async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
   const detail = apiErrorDetail(payload);
 
   if (isRateLimit(response, payload)) {
-    throw new Error(detail || `API HTTP ${response.status} rate limited`);
+    const cooldownUntil = await recordCar3RateLimit(env, response);
+    const stale = await cachedJson(cache, keys.stale);
+    if (stale) return stale;
+    throw new Error(detail || `CAR3_RATE_LIMIT until ${new Date(cooldownUntil).toISOString()}`);
   }
   if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
   if (detail) throw new Error(detail);
 
-  if (cache) {
-    await cache.put(key, new Response(JSON.stringify(payload), {
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': `public, max-age=${cacheSeconds}`
-      }
-    }));
-  }
+  await recordCar3Success(env);
+  await storeCar3Payload(cache, keys, payload, cacheSeconds);
   return payload;
 }
 
@@ -425,7 +588,7 @@ async function liveConditionScan(request, env) {
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
-    source: 'cloudflare-worker · api-football · batched · car3-unguarded',
+    source: 'cloudflare-worker · api-football · batched · car3-guarded',
     mode: 'PAGE-5-CONDITION-CONTROL-ADAPTIVE',
     refreshSeconds,
     polling: {
@@ -433,7 +596,8 @@ async function liveConditionScan(request, env) {
       liveScoreCacheSeconds: LIVE_CACHE_SECONDS,
       statisticsCacheSeconds: STATS_CACHE_SECONDS,
       liveOddsCacheSeconds: ODDS_CACHE_SECONDS,
-      apiRateGuard: 'OFF_CAR3_ONLY'
+      apiRateGuard: 'CAR3_ONLY_7S_GAP_90S_COOLDOWN',
+      staleFallbackSeconds: CAR3_STALE_CACHE_SECONDS
     },
     config,
     counts: {
