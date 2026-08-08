@@ -45,11 +45,26 @@ def kickoff(match):
     return parse_iso(match.get('kickoff_utc') or match.get('kickoffUtc'))
 
 
+def deduplicate(matches):
+    unique = []
+    seen = set()
+    duplicate_count = 0
+    for match in matches:
+        if not isinstance(match, dict):
+            continue
+        key = match_key(match)
+        if key and key in seen:
+            duplicate_count += 1
+            continue
+        if key:
+            seen.add(key)
+        unique.append(match)
+    return unique, duplicate_count
+
+
 def main():
     rules = read_json(RULES_PATH)
-    if not bool(rules.get('add_k_the_king_of_soccer', False)):
-        print(json.dumps({'status': 'SKIPPED_NOT_ADD_K'}))
-        return
+    manual_add_k = bool(rules.get('add_k_the_king_of_soccer', False)) and os.environ.get('NOMAD_ADD_K_RUN') == '1'
 
     current = read_json(SELECTED_PATH)
     previous = read_json(PREVIOUS_PATH)
@@ -57,11 +72,20 @@ def main():
     current_matches = current.get('matches') if isinstance(current.get('matches'), list) else []
     previous_matches = previous.get('matches') if isinstance(previous.get('matches'), list) else []
 
+    current_matches, current_duplicates = deduplicate(current_matches)
+    previous_matches, _ = deduplicate(previous_matches)
+
+    if current == previous and current_duplicates == 0:
+        print(json.dumps({'status': 'NO_SELECTION_CHANGE_TO_MERGE'}))
+        return
+
     now = datetime.now(timezone.utc)
     window_end = parse_iso(
         (current.get('autoSelection') or {}).get('windowEndLocal')
         or current.get('window_end_local')
         or report.get('windowEndLocal')
+        or (previous.get('autoSelection') or {}).get('windowEndLocal')
+        or previous.get('window_end_local')
     )
     cycle_start = (window_end - timedelta(days=1)).astimezone(timezone.utc) if window_end else now - timedelta(days=1)
 
@@ -81,44 +105,59 @@ def main():
         preserved.append(locked)
         current_keys.add(key)
 
+    current_origin = 'CURRENT_ADD_K_RUN' if manual_add_k else 'CURRENT_AUTO_RUN'
     for match in current_matches:
-        if isinstance(match, dict):
-            match.setdefault('selection_origin', 'CURRENT_ADD_K_RUN')
+        match['selection_origin'] = current_origin
+        match.pop('locked_by_rerun_policy', None)
 
     new_count = len(current_matches)
-    if new_count == 0:
-        current['noPick'] = True
-        current['noPickReason'] = current.get('noPickReason') or 'No new fixture passed the Add K fixed rules in this rerun.'
-    else:
-        current['noPick'] = False
-        current.pop('noPickReason', None)
-
     merged = preserved + current_matches
+    merged, merged_duplicates = deduplicate(merged)
     merged.sort(key=lambda match: kickoff(match) or datetime.max.replace(tzinfo=timezone.utc))
     current['matches'] = merged
-    current['addKRunMerge'] = {
-        'policy': 'LOCK_STARTED_REPLACE_FUTURE_DEDUPLICATE',
+
+    merge_meta = {
+        'policy': 'LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID',
         'cycleStartUtc': cycle_start.isoformat().replace('+00:00', 'Z'),
+        'runType': 'MANUAL_ADD_K' if manual_add_k else 'AUTO',
         'newSelectionCount': new_count,
         'preservedStartedCount': len(preserved),
+        'duplicatesRemoved': current_duplicates + merged_duplicates,
         'totalDisplayedCount': len(merged),
-        'noPickForNewRun': new_count == 0,
     }
+    current['selectionMerge'] = merge_meta
+
+    if manual_add_k:
+        if new_count == 0:
+            current['noPick'] = True
+            current['noPickReason'] = current.get('noPickReason') or 'No new fixture passed the Add K fixed rules in this rerun.'
+        else:
+            current['noPick'] = False
+            current.pop('noPickReason', None)
+        current['addKRunMerge'] = {
+            **merge_meta,
+            'noPickForNewRun': new_count == 0,
+        }
+
     write_json(SELECTED_PATH, current)
 
     if REPORT_PATH.exists():
-        if new_count == 0:
-            report['status'] = 'ADD_K_NO_PICK'
-            report['published'] = 0
-        report['addKRunMerge'] = current['addKRunMerge']
+        report['selectionMerge'] = merge_meta
+        if manual_add_k:
+            if new_count == 0:
+                report['status'] = 'ADD_K_NO_PICK'
+                report['published'] = 0
+            report['addKRunMerge'] = current['addKRunMerge']
         write_json(REPORT_PATH, report)
 
     print(json.dumps({
-        'status': 'ADD_K_LOCKED_STARTED_MERGED',
+        'status': 'SELECTIONS_MERGED',
+        'runType': merge_meta['runType'],
         'newSelections': new_count,
         'preservedStarted': len(preserved),
+        'duplicatesRemoved': merge_meta['duplicatesRemoved'],
         'totalDisplayed': len(merged),
-        'noPick': new_count == 0,
+        'noPick': bool(current.get('noPick')) if manual_add_k else False,
     }, ensure_ascii=False))
 
 
