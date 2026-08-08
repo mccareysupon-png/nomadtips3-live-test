@@ -51,6 +51,7 @@ def normalize_match(match):
     normalized.setdefault("home_aliases", [home] if home else [])
     normalized.setdefault("away_aliases", [away] if away else [])
     normalized.setdefault("pick_side", "home" if home and pick.startswith(home) else "away" if away and pick.startswith(away) else None)
+    normalized.setdefault("predicted_score", "N/A")
     return normalized
 
 
