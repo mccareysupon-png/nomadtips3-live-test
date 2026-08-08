@@ -17,6 +17,7 @@ export const DEFAULT_CONDITION_CONFIG = Object.freeze({
   ahMin: 0.25,
   ahMax: null,
   momentumMin: 60,
+  attackEvidenceEnabled: true,
   goalGapLimited: false,
   maxGoalGap: 1,
   confirmationRounds: 2,
@@ -63,6 +64,7 @@ export function normalizeConditionConfig(input = {}) {
   const rawAhMax = numberOrNull(source.ahMax);
   const ahMax = rawAhMax === null ? null : bounded(rawAhMax, ahMin, ahMin, 5, 0.25);
   const momentumMin = Math.round(bounded(source.momentumMin, 60, 1, 99));
+  const attackEvidenceEnabled = booleanValue(source.attackEvidenceEnabled, true);
   const goalGapLimited = booleanValue(source.goalGapLimited, false);
   const maxGoalGap = Math.round(bounded(source.maxGoalGap, 1, 0, 20));
   const confirmationRounds = Math.round(bounded(source.confirmationRounds, 2, 1, 10));
@@ -79,6 +81,7 @@ export function normalizeConditionConfig(input = {}) {
     ahMin,
     ahMax,
     momentumMin,
+    attackEvidenceEnabled,
     goalGapLimited,
     maxGoalGap,
     confirmationRounds,
