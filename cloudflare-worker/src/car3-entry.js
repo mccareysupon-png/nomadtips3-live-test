@@ -1,6 +1,7 @@
 import paperEntry from './paper-entry.js';
 import car3Scanner from './entry-batched.js';
 import { handleAutoRequest, runAutoMomentumScan } from './auto-scan.js';
+import { getSharedApiGuardStatus } from './shared-api-football.js';
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -25,8 +26,11 @@ export default {
       try {
         const internalUrl = new URL(request.url);
         internalUrl.pathname = '/auto-scan-status';
-        const result = await handleAutoRequest(request, env, internalUrl);
-        return json(result.data, result.status);
+        const [result, apiGuard] = await Promise.all([
+          handleAutoRequest(request, env, internalUrl),
+          getSharedApiGuardStatus(env)
+        ]);
+        return json({ ...result.data, apiGuard }, result.status);
       } catch (error) {
         return json({
           ok: false,
