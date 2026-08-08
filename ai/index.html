@@ -20,6 +20,7 @@
       <div class="top-badges" aria-label="Safety status">
         <span class="badge car">CAR 4</span>
         <span class="badge shadow">SHADOW MODE</span>
+        <span class="badge safe">AUTO 24H</span>
         <span class="badge safe">READ ONLY SOURCE</span>
       </div>
     </header>
@@ -27,18 +28,18 @@
     <main>
       <section class="hero panel">
         <div class="hero-copy">
-          <span class="eyebrow">AI BALL-TENG · LEARNING ENGINE V0.1</span>
+          <span class="eyebrow">AI BALL-TENG · LEARNING ENGINE V0.2 · AUTO 24H</span>
           <h1>Learn where the market leaves a gap.</h1>
-          <p class="lead">Car 4 observes prediction records, A–B–C common-opponent evidence, league-table context, odds zones and final results. It learns in its own storage and never writes back to Cars 1–3.</p>
+          <p class="lead">Car 4 observes prediction records, A–B–C common-opponent evidence, league-table context, odds zones and final results. Background learning runs from existing repository feeds even when this page is closed, and it never writes back to Cars 1–3.</p>
           <div class="guardrail">
             <strong>Key rule</strong>
-            <span>Production/Test data is a read-only source. AI weights, snapshots and learning logs are stored under a separate Car 4 key.</span>
+            <span>Production/Test data is a read-only source. AI weights, snapshots and learning logs are stored under a separate Car 4 key and a separate 24H state file.</span>
           </div>
         </div>
         <div class="hero-actions">
           <button id="refreshBtn" class="button primary" type="button">Refresh Shadow Data</button>
-          <button id="resetBtn" class="button ghost" type="button">Reset Car 4 Learning</button>
-          <span id="lastSync" class="sync-note">Waiting for first shadow scan…</span>
+          <button id="resetBtn" class="button ghost" type="button">Reset Local Car 4 View</button>
+          <span id="lastSync" class="sync-note">Loading local + 24H learning state…</span>
         </div>
       </section>
 
@@ -52,7 +53,7 @@
       <section class="status-strip panel" aria-label="Car isolation">
         <div><small>SOURCE KEY</small><code>nomadtips3.nomad-control.draft.v2</code></div>
         <div><small>CAR 4 KEY</small><code>nomadtips3.ai-learning-lab.v1</code></div>
-        <div><small>NETWORK MODE</small><strong>NO FOOTBALL API CALLS</strong></div>
+        <div><small>NETWORK MODE</small><strong>AUTO 24H · NO CAR 4 FOOTBALL API CALLS</strong></div>
       </section>
 
       <section class="two-col">
@@ -104,7 +105,7 @@
               </tr>
             </thead>
             <tbody id="watchlistBody">
-              <tr><td colspan="9" class="empty">Open the Test prediction page on this same device/browser first, then refresh Car 4.</td></tr>
+              <tr><td colspan="9" class="empty">Loading Car 4 local and 24H snapshots…</td></tr>
             </tbody>
           </table>
         </div>
@@ -144,17 +145,18 @@
           <div><small>CAR 1</small><b>Website</b><span>Production</span></div>
           <div><small>CAR 2</small><b>Test</b><span>Development</span></div>
           <div><small>CAR 3</small><b>Bot Program</b><span>Future automation</span></div>
-          <div class="active-car"><small>CAR 4</small><b>Add K AI</b><span>Learning Lab</span></div>
+          <div class="active-car"><small>CAR 4</small><b>Add K AI</b><span>Auto 24H Learning Lab</span></div>
         </div>
       </section>
     </main>
 
     <footer>
-      <span>Add K AI Learning Lab · Shadow sports-analysis research only</span>
+      <span>Add K AI Learning Lab · Auto 24H shadow sports-analysis research only</span>
       <span id="localClock">LOCAL TIME</span>
     </footer>
   </div>
 
+  <script src="./remote-state-sync.js?v=202608081545"></script>
   <script src="./ai-app.js?v=202608081516" defer></script>
 </body>
 </html>
