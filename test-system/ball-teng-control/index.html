@@ -250,8 +250,7 @@
       }
 
       function setButtonStates(){
-        ['defaultButton','saveButton','runButton'].forEach(id => $(id).disabled = actionBusy);
-        $('addKRunButton').disabled = actionBusy || Boolean(serverState?.addKRun?.inProgress);
+        ['defaultButton','saveButton','runButton','addKRunButton'].forEach(id => $(id).disabled = true);
       }
 
       function busy(value){
@@ -295,7 +294,7 @@
         } else if (status === 'FAILED') {
           addKMessage(`FAILED · ${state.message || 'รอบก่อนประมวลผลไม่สำเร็จ'} · กดรอบใหม่ได้`, false);
         } else {
-          addKMessage('READY · พร้อมรัน · ไม่บังคับให้มี Pick ถ้าข้อมูลไม่ผ่าน', true);
+          addKMessage('PRODUCTION AUTO · ควบคุมผ่านแอด K ในหน้า Work · หน้าเว็บเป็น Read-only', true);
         }
         setButtonStates();
       }
