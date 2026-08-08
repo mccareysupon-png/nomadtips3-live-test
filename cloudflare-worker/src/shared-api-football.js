@@ -5,9 +5,9 @@ export const SHARED_STATS_CACHE_SECONDS = 60;
 export const SHARED_ODDS_CACHE_SECONDS = 15;
 
 const GUARD_KEY = 'api-football';
-const MIN_GAP_MS = 1250;
+const MIN_GAP_MS = 7000;
 const MAX_SLOT_WAIT_MS = 12_000;
-const DEFAULT_COOLDOWN_MS = 60_000;
+const DEFAULT_COOLDOWN_MS = 75_000;
 const MAX_COOLDOWN_MS = 5 * 60_000;
 const STALE_CACHE_SECONDS = 30 * 60;
 
