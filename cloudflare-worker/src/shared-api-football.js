@@ -5,11 +5,21 @@ export const SHARED_STATS_CACHE_SECONDS = 60;
 export const SHARED_ODDS_CACHE_SECONDS = 15;
 
 const GUARD_KEY = 'api-football';
-const MIN_GAP_MS = 7000;
-const MAX_SLOT_WAIT_MS = 12_000;
-const DEFAULT_COOLDOWN_MS = 75_000;
+// Leave deliberate headroom for the separate GitHub score refresher and any
+// other API-Football consumers that cannot participate in this D1 guard.
+const MIN_GAP_MS = 9000;
+// A busy live window can need several batched requests. Waiting for the shared
+// slot is safer than immediately falling back to stale Momentum inputs.
+const MAX_SLOT_WAIT_MS = 30_000;
+const DEFAULT_COOLDOWN_MS = 90_000;
 const MAX_COOLDOWN_MS = 5 * 60_000;
-const STALE_CACHE_SECONDS = 30 * 60;
+
+// Momentum must not be fed very old live data. Keep stale fallback short for
+// live fixtures/odds and only slightly longer for batched match statistics.
+const STALE_LIVE_SECONDS = 90;
+const STALE_STATS_SECONDS = 180;
+const STALE_ODDS_SECONDS = 90;
+const STALE_DEFAULT_SECONDS = 300;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -40,6 +50,13 @@ function ttlForPath(path) {
   if (path.startsWith('/fixtures?ids=')) return SHARED_STATS_CACHE_SECONDS;
   if (path.startsWith('/odds/live')) return SHARED_ODDS_CACHE_SECONDS;
   return 60;
+}
+
+function staleTtlForPath(path) {
+  if (path.startsWith('/fixtures?live=')) return STALE_LIVE_SECONDS;
+  if (path.startsWith('/fixtures?ids=')) return STALE_STATS_SECONDS;
+  if (path.startsWith('/odds/live')) return STALE_ODDS_SECONDS;
+  return STALE_DEFAULT_SECONDS;
 }
 
 function retryAfterMs(response) {
@@ -76,7 +93,7 @@ async function ensureGuard(env) {
 async function guardState(env) {
   if (!env.DB) return null;
   return env.DB.prepare(`
-    SELECT last_started_at, cooldown_until, consecutive_429
+    SELECT last_started_at, cooldown_until, consecutive_429, last_429_at, updated_at
     FROM api_rate_guard WHERE guard_key = ?
   `).bind(GUARD_KEY).first();
 }
@@ -99,7 +116,7 @@ async function acquireSlot(env) {
     const lastStarted = Number(state?.last_started_at || 0);
     const eligibleAt = lastStarted + MIN_GAP_MS;
     if (eligibleAt > now) {
-      await sleep(Math.min(eligibleAt - now + jitter(220), 1600));
+      await sleep(Math.min(eligibleAt - now + jitter(220), 1800));
       continue;
     }
 
@@ -120,11 +137,16 @@ async function acquireSlot(env) {
 
 async function recordSuccess(env) {
   if (!env.DB) return;
+  const now = Date.now();
+  // Do not erase a newer cooldown written by another concurrent request that
+  // just received 429. Only clear a cooldown that has already expired.
   await env.DB.prepare(`
     UPDATE api_rate_guard
-    SET cooldown_until = 0, consecutive_429 = 0, updated_at = ?
+    SET cooldown_until = CASE WHEN cooldown_until <= ? THEN 0 ELSE cooldown_until END,
+        consecutive_429 = CASE WHEN cooldown_until <= ? THEN 0 ELSE consecutive_429 END,
+        updated_at = ?
     WHERE guard_key = ?
-  `).bind(Date.now(), GUARD_KEY).run();
+  `).bind(now, now, now, GUARD_KEY).run();
 }
 
 async function recordRateLimit(env, response) {
@@ -156,7 +178,7 @@ async function cachedJson(cache, key) {
   return response ? response.json() : null;
 }
 
-async function storePayload(cache, freshKey, staleKey, payload, ttlSeconds) {
+async function storePayload(cache, freshKey, staleKey, payload, ttlSeconds, staleSeconds) {
   if (!cache) return;
   const body = JSON.stringify(payload);
   await Promise.all([
@@ -164,9 +186,41 @@ async function storePayload(cache, freshKey, staleKey, payload, ttlSeconds) {
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${ttlSeconds}` }
     })),
     cache.put(staleKey, new Response(body, {
-      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${STALE_CACHE_SECONDS}` }
+      headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${staleSeconds}` }
     }))
   ]);
+}
+
+export async function getSharedApiGuardStatus(env) {
+  const now = Date.now();
+  if (!(await ensureGuard(env))) {
+    return {
+      protected: false,
+      minGapMs: MIN_GAP_MS,
+      maxSlotWaitMs: MAX_SLOT_WAIT_MS,
+      cooldownActive: false,
+      cooldownUntil: null,
+      cooldownRemainingMs: 0,
+      consecutive429: 0,
+      last429At: null
+    };
+  }
+  const state = await guardState(env);
+  const cooldownUntil = Number(state?.cooldown_until || 0);
+  const last429At = Number(state?.last_429_at || 0);
+  return {
+    protected: true,
+    minGapMs: MIN_GAP_MS,
+    maxSlotWaitMs: MAX_SLOT_WAIT_MS,
+    cooldownActive: cooldownUntil > now,
+    cooldownUntil: cooldownUntil ? new Date(cooldownUntil).toISOString() : null,
+    cooldownRemainingMs: Math.max(0, cooldownUntil - now),
+    consecutive429: Number(state?.consecutive_429 || 0),
+    last429At: last429At ? new Date(last429At).toISOString() : null,
+    lastStartedAt: Number(state?.last_started_at || 0)
+      ? new Date(Number(state.last_started_at)).toISOString()
+      : null
+  };
 }
 
 export async function sharedApiFetch(path, env, ttlSeconds = ttlForPath(path)) {
@@ -177,6 +231,7 @@ export async function sharedApiFetch(path, env, ttlSeconds = ttlForPath(path)) {
   const staleUrl = new URL(apiUrl);
   staleUrl.searchParams.set('__nomad_stale', '1');
   const staleKey = new Request(staleUrl.toString(), { method: 'GET' });
+  const staleSeconds = staleTtlForPath(path);
 
   const fresh = await cachedJson(cache, freshKey);
   if (fresh) return { payload: fresh, cacheHit: true, stale: false, upstreamRequests: 0 };
@@ -185,7 +240,14 @@ export async function sharedApiFetch(path, env, ttlSeconds = ttlForPath(path)) {
   if (slot.blocked) {
     const stale = await cachedJson(cache, staleKey);
     if (stale) {
-      return { payload: stale, cacheHit: true, stale: true, cooldownUntil: slot.cooldownUntil, upstreamRequests: 0 };
+      return {
+        payload: stale,
+        cacheHit: true,
+        stale: true,
+        staleTtlSeconds: staleSeconds,
+        cooldownUntil: slot.cooldownUntil,
+        upstreamRequests: 0
+      };
     }
     throw new Error(`API-Football cooldown active until ${new Date(slot.cooldownUntil).toISOString()}`);
   }
@@ -200,7 +262,14 @@ export async function sharedApiFetch(path, env, ttlSeconds = ttlForPath(path)) {
     const cooldownUntil = await recordRateLimit(env, response);
     const stale = await cachedJson(cache, staleKey);
     if (stale) {
-      return { payload: stale, cacheHit: true, stale: true, cooldownUntil, upstreamRequests: 1 };
+      return {
+        payload: stale,
+        cacheHit: true,
+        stale: true,
+        staleTtlSeconds: staleSeconds,
+        cooldownUntil,
+        upstreamRequests: 1
+      };
     }
     throw new Error(detail || `API-Football rate limited until ${new Date(cooldownUntil).toISOString()}`);
   }
@@ -208,7 +277,7 @@ export async function sharedApiFetch(path, env, ttlSeconds = ttlForPath(path)) {
   if (detail) throw new Error(detail);
 
   await recordSuccess(env);
-  await storePayload(cache, freshKey, staleKey, payload, ttlSeconds);
+  await storePayload(cache, freshKey, staleKey, payload, ttlSeconds, staleSeconds);
   return { payload, cacheHit: false, stale: false, upstreamRequests: 1 };
 }
 
