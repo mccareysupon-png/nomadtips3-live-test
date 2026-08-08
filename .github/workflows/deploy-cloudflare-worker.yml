@@ -33,3 +33,37 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
+
+      - name: Verify Car 3 deployed status route
+        run: |
+          node --input-type=module <<'NODE'
+          const url = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
+          let lastError = null;
+          for (let attempt = 1; attempt <= 6; attempt += 1) {
+            try {
+              const response = await fetch(`${url}?deploy_check=${Date.now()}`, {
+                headers: { 'Accept': 'application/json' }
+              });
+              const payload = await response.json().catch(() => null);
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              if (!payload?.apiGuard) throw new Error('apiGuard diagnostics missing');
+              if (Number(payload.apiGuard.minGapMs) !== 9000) {
+                throw new Error(`unexpected guard gap ${payload.apiGuard.minGapMs}`);
+              }
+              console.log(JSON.stringify({
+                route: 'car3/auto-scan-status',
+                deployed: true,
+                scannerOnline: Boolean(payload.online),
+                generatedAt: payload.generatedAt || null,
+                scannerError: payload.error || null,
+                apiGuard: payload.apiGuard
+              }, null, 2));
+              process.exit(0);
+            } catch (error) {
+              lastError = error;
+              console.log(`Car 3 deploy check attempt ${attempt} failed: ${error.message}`);
+              if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+          }
+          throw lastError || new Error('Car 3 deploy verification failed');
+          NODE
