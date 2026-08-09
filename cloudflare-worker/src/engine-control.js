@@ -36,6 +36,7 @@ export const WATCHDOG_INTERVAL_MS = 15 * 60_000;
 export const STALL_AFTER_MS = 7 * 60_000;
 export const NEEDS_ADD_K_FAILURES = 6;
 export const WATCHDOG_VERSION = 2;
+const UNKNOWN_GRACE_FAILURES = 3;
 
 let schemaReady = false;
 
@@ -133,9 +134,10 @@ export async function recordEngineSuccess(env, at = Date.now()) {
   await env.DB.prepare(`
     UPDATE engine_health
     SET last_success_at = ?, last_error = NULL, last_error_code = NULL,
-        consecutive_failures = 0, repair_attempts = 0, last_verify_at = ?, updated_at = ?
+        consecutive_failures = 0, repair_attempts = 0, last_verify_at = ?,
+        watchdog_action = 'NONE', watchdog_action_since = ?, updated_at = ?
     WHERE id = 1
-  `).bind(at, at, at).run();
+  `).bind(at, at, at, at).run();
 }
 
 export async function recordEngineFailure(env, error, at = Date.now()) {
@@ -245,7 +247,8 @@ export function healthState(control, health, now = Date.now()) {
   const attemptAge = health?.lastAttemptMs ? now - health.lastAttemptMs : Infinity;
   const successAge = health?.lastSuccessMs ? now - health.lastSuccessMs : Infinity;
   const failures = Number(health?.consecutiveFailures || 0);
-  if (health?.lastErrorCode === 'UNKNOWN' || failures >= NEEDS_ADD_K_FAILURES) return 'NEEDS_ADD_K';
+  if (failures >= NEEDS_ADD_K_FAILURES) return 'NEEDS_ADD_K';
+  if (health?.lastErrorCode === 'UNKNOWN' && failures >= UNKNOWN_GRACE_FAILURES) return 'NEEDS_ADD_K';
   if (attemptAge > STALL_AFTER_MS) return 'STALLED';
   if (failures > 0 || successAge > STALL_AFTER_MS) return 'DEGRADED';
   return 'RUNNING';
@@ -264,14 +267,17 @@ export function watchdogPlan(control, health, apiGuard = {}, now = Date.now()) {
   if (control?.mode !== 'RUNNING') {
     return { state, action: 'NONE', reason: `Owner mode ${control?.mode || 'UNKNOWN'}` };
   }
-  if (state === 'NEEDS_ADD_K') {
-    return { state, action: 'NEEDS_ADD_K', reason: errorCode === 'UNKNOWN' ? 'Unknown failure; automatic guessing is disabled' : 'Repeated failures require Add K inspection' };
-  }
-  if (apiGuard?.circuitOpen || apiGuard?.cooldownActive || ['API_429', 'API_COOLDOWN'].includes(errorCode)) {
+  if (apiGuard?.circuitOpen || apiGuard?.cooldownActive) {
     return { state: 'DEGRADED', action: 'WAITING_API', reason: 'Provider protection active; no forced retry' };
+  }
+  if (state === 'NEEDS_ADD_K') {
+    return { state, action: 'NEEDS_ADD_K', reason: errorCode === 'UNKNOWN' ? 'Unknown failure repeated; Add K inspection required' : 'Repeated failures require Add K inspection' };
   }
   if (Number(apiGuard?.derateLevel || 0) > 0) {
     return { state, action: 'DERATING', reason: `Adaptive throttle level ${apiGuard.derateLevel}` };
+  }
+  if (['API_429', 'API_COOLDOWN'].includes(errorCode)) {
+    return { state: 'DEGRADED', action: 'RECOVERING', reason: 'Provider protection cleared; verify on the next normal cycle' };
   }
   if (attemptAge > STALL_AFTER_MS) {
     return { state: 'STALLED', action: 'REPAIRING', reason: 'No recent scheduler heartbeat; clear stale internal guard state and use next normal cycle' };
