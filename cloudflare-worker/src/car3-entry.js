@@ -103,6 +103,9 @@ async function engineHealthPayload(env) {
   try { warnings = autoRow?.warnings_json ? JSON.parse(autoRow.warnings_json) : []; } catch {}
 
   const plan = watchdogPlan(control, health, apiGuard, now);
+  const currentAction = plan.action !== 'NONE'
+    ? plan.action
+    : (health.watchdogAction || 'NONE');
   let state = healthState(control, health, now);
   if (state === 'RUNNING' && ['WAITING_API', 'DERATING', 'RECOVERING', 'VERIFYING', 'REPAIRING'].includes(plan.action)) {
     state = 'DEGRADED';
@@ -143,7 +146,7 @@ async function engineHealthPayload(env) {
     watchdog: {
       version: WATCHDOG_VERSION,
       intervalMinutes: WATCHDOG_INTERVAL_MS / 60_000,
-      currentAction: health.watchdogAction || plan.action,
+      currentAction,
       actionSince: health.watchdogActionSince,
       plannedAction: plan.action,
       reason: plan.reason,
