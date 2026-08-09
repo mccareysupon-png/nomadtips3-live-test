@@ -118,7 +118,9 @@
 
   function render(payload) {
     const state = payload.state || payload.control?.mode || 'UNKNOWN';
-    const action = payload.watchdog?.currentAction || payload.watchdog?.plannedAction || 'NONE';
+    const plannedAction = payload.watchdog?.plannedAction || 'NONE';
+    const storedAction = payload.watchdog?.currentAction || 'NONE';
+    const action = plannedAction !== 'NONE' ? plannedAction : storedAction;
     const stateEl = $('engineMonitorState');
     stateEl.textContent = `${state.replaceAll('_', ' ')} · V${payload.mechanicVersion || '?'}`;
     stateEl.className = `engine-state ${stateClass(state)}`;
