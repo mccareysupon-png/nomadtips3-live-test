@@ -63,11 +63,13 @@ async function flushSignalSideEffects(env) {
 export async function runManagedCycle(env, ctx) {
   const startedAt = Date.now();
   let latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => null);
+  let fullScanAttempted = false;
   let scanOk = true;
   let scanError = null;
   let hotError = null;
 
   if (fullScanIsDue(latest, startedAt)) {
+    fullScanAttempted = true;
     try {
       const result = await runAutoMomentumScan(baseWorker, env, ctx);
       if (Number(result?.counts?.newSignals || 0) > 0) await flushSignalSideEffects(env);
@@ -119,6 +121,7 @@ export async function runManagedCycle(env, ctx) {
   }
 
   return {
+    fullScanAttempted,
     scanOk,
     scanError,
     hotError,
