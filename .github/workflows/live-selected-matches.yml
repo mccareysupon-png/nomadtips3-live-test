@@ -36,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Scheduled and chained refreshes can wait behind another run. Always
+          # refresh the latest Production selection instead of their dispatch SHA.
+          ref: main
           fetch-depth: 0
 
       - name: Refresh selected scores and lock available odds
