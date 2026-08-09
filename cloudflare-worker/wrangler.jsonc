@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-test-api",
-  "main": "src/car3-v2-entry.js",
+  "main": "src/page5-nonblocking-entry.js",
   "compatibility_date": "2026-08-05",
   "workers_dev": true,
   "observability": {
@@ -14,6 +14,7 @@
       "database_id": "7f2f1bb8-c40c-477d-b82a-ea284291f239"
     }
   ],
+  // Reliability package redeploy marker: Engine Monitor + 15-minute Watchdog + Condition Audit.
   "triggers": {
     "crons": [
       "* * * * *"
