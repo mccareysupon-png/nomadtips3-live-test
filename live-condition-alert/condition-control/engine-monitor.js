@@ -33,6 +33,7 @@
     <div class="engine-monitor-grid">
       <div class="engine-health-cell"><small>Worker</small><b id="monWorker">—</b></div>
       <div class="engine-health-cell"><small>Live Scan</small><b id="monScan">—</b></div>
+      <div class="engine-health-cell"><small>Price Gate Diagnosis</small><b id="monPriceGate">—</b></div>
       <div class="engine-health-cell"><small>Auto Mechanic Action</small><b id="monAction">—</b></div>
       <div class="engine-health-cell"><small>Football API Guard</small><b id="monApi">—</b></div>
       <div class="engine-health-cell"><small>API Remaining / Limit</small><b id="monQuota">—</b></div>
@@ -128,6 +129,19 @@
     const mode = payload.control?.mode || 'UNKNOWN';
     set('monWorker', payload.worker?.ok ? 'ONLINE' : 'ERROR', payload.worker?.ok ? 'ok' : 'bad');
     set('monScan', payload.liveScan?.usingLastGoodData ? 'DEGRADED · LAST GOOD DATA' : state, state === 'RUNNING' ? 'ok' : ['DEGRADED','MAINTENANCE'].includes(state) ? 'warn' : 'bad');
+
+    const scanCounts = payload.liveScan?.counts || {};
+    const priceGate = String(scanCounts.priceGateDiagnosis || 'WAITING_FOR_SCAN');
+    const priceGateClass = priceGate === 'MARKET_OK'
+      ? 'ok'
+      : ['NO_LIVE_ODDS_COVERAGE', 'WAITING_FOR_COMPLETE_STATS', 'NO_ELIGIBLE_LIVE_ODDS'].includes(priceGate)
+        ? 'warn'
+        : ['ODDS_PROVIDER_PROTECTION', 'ODDS_REQUEST_FAILED', 'TARGET_MARKET_NOT_FOUND'].includes(priceGate)
+          ? 'bad'
+          : '';
+    const priceGateDetail = `${priceGate.replaceAll('_', ' ')} · stats ${scanCounts.completeStats ?? '?'} · market ${scanCounts.completeMarkets ?? '?'} · matched ${scanCounts.oddsFixtureMatched ?? '?'}`;
+    set('monPriceGate', priceGateDetail, priceGateClass);
+
     set('monAction', action.replaceAll('_',' '), actionClass(action));
 
     const cooldown = Boolean(payload.api?.cooldownActive);
@@ -158,7 +172,7 @@
     set('monStale', payload.liveScan?.usingLastGoodData ? 'YES · DEGRADED' : 'NO', payload.liveScan?.usingLastGoodData ? 'warn' : 'ok');
     set('monMode', mode, mode === 'RUNNING' ? 'ok' : mode === 'MAINTENANCE' ? 'warn' : 'bad');
 
-    $('monError').innerHTML = `<strong>Last Error:</strong> ${payload.liveScan?.lastError ? `${payload.liveScan.lastErrorCode || 'ERROR'} · ${payload.liveScan.lastError}` : '—'}<br><strong>Mechanic reason:</strong> ${payload.watchdog?.reason || '—'}`;
+    $('monError').innerHTML = `<strong>Last Error:</strong> ${payload.liveScan?.lastError ? `${payload.liveScan.lastErrorCode || 'ERROR'} · ${payload.liveScan.lastError}` : '—'}<br><strong>Mechanic reason:</strong> ${payload.watchdog?.reason || '—'}<br><strong>Price gate:</strong> ${priceGate.replaceAll('_', ' ')} · source ${scanCounts.liveOddsSource || '—'} · no coverage ${scanCounts.noOddsCoverage ?? '—'} · parse miss ${scanCounts.marketParseMisses ?? '—'}`;
     renderBlackBox(payload.blackBox);
 
     const engineState = $('engineState');
