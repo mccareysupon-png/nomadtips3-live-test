@@ -2,6 +2,7 @@ import paperEntry from './paper-entry.js';
 import car3Scanner from './entry-batched.js';
 import { handleAutoRequest, runAutoMomentumScan } from './auto-scan.js';
 import { getSharedApiGuardStatus } from './shared-api-football.js';
+import { runManagedCycle } from './managed-cycle.js';
 import {
   WATCHDOG_INTERVAL_MS,
   getEngineControl,
@@ -218,7 +219,6 @@ export default {
       return json(request, pausedPayload(control), 200);
     }
 
-    // Dedicated Car 3 status route with API guard and owner engine state.
     if (url.pathname === '/car3/auto-scan-status') {
       if (request.method !== 'GET') {
         return json(request, { ok: false, error: 'Method not allowed' }, 405);
@@ -240,8 +240,6 @@ export default {
       }
     }
 
-    // Diagnostic route for Car 3 only. Respect owner stop/maintenance so this
-    // route cannot accidentally wake the old detector during bot development.
     if (url.pathname === '/car3/live-condition-scan') {
       if (request.method !== 'GET') {
         return json(request, { ok: false, error: 'Method not allowed' }, 405);
@@ -254,8 +252,6 @@ export default {
       return car3Scanner.fetch(internalRequest, env, ctx);
     }
 
-    // Running a new condition config resets the Car 3 scan state. Prime one
-    // fresh sample only while the owner engine mode is RUNNING.
     if (url.pathname === '/condition-config' && request.method === 'POST') {
       const body = await request.clone().json().catch(() => null);
       const response = await paperEntry.fetch(request, env, ctx);
@@ -284,29 +280,19 @@ export default {
         }
       }
 
-      // Owner STOP/MAINTENANCE is intentional. Do not scan, do not hit the
-      // football API, and do not let the watchdog start it again.
       if (control.mode !== 'RUNNING') return;
 
       await recordEngineAttempt(env, now);
 
       try {
-        if (typeof paperEntry.scheduled === 'function') {
-          const result = await paperEntry.scheduled(controller, env, ctx);
-          if (result?.scanOk === false) {
-            const classified = await recordEngineFailure(env, result.scanError || 'Automatic scan failed', Date.now());
-            if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
-            return;
-          }
-          await recordEngineSuccess(env, Date.now());
-          if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · scheduler healthy', Date.now());
+        const result = await runManagedCycle(env, ctx);
+        if (result?.scanOk === false) {
+          const classified = await recordEngineFailure(env, result.scanError || 'Automatic scan failed', Date.now());
+          if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
           return;
         }
-
-        const fallback = await runAutoMomentumScan(car3Scanner, env, ctx);
         await recordEngineSuccess(env, Date.now());
-        if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · fallback scan healthy', Date.now());
-        return fallback;
+        if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · scheduler healthy', Date.now());
       } catch (error) {
         const classified = await recordEngineFailure(env, error, Date.now());
         if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
