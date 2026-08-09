@@ -1,12 +1,17 @@
 import car3Entry from './car3-entry.js';
+import baseWorker from './entry-batched.js';
+import { runAutoMomentumScan } from './auto-scan.js';
 import { getActiveConditionConfig } from './condition-config.js';
+import { getSharedApiGuardStatus } from './shared-api-football.js';
 import {
+  getEngineHealthRow,
   recordWatchdogEvent,
   setWatchdogAction
 } from './engine-control.js';
 
 const AUDIT_STALE_MS = 2 * 60_000;
 const ACTIVE_STATE_MS = 15 * 60_000;
+const MAX_AUTO_REPAIR_ATTEMPTS = 2;
 
 const AUDIT_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS condition_audit_status (
@@ -19,6 +24,11 @@ CREATE TABLE IF NOT EXISTS condition_audit_status (
   daily_signals INTEGER NOT NULL DEFAULT 0,
   signal_limit_reached INTEGER NOT NULL DEFAULT 0,
   mismatches_json TEXT NOT NULL DEFAULT '[]',
+  repair_state TEXT NOT NULL DEFAULT 'NONE',
+  repair_attempts INTEGER NOT NULL DEFAULT 0,
+  last_repair_at INTEGER,
+  last_repair_result TEXT,
+  mismatch_signature TEXT,
   updated_at INTEGER NOT NULL
 )`;
 
@@ -34,10 +44,21 @@ function iso(value) {
   return number > 0 ? new Date(number).toISOString() : null;
 }
 
+async function addColumn(env, sql) {
+  try { await env.DB.prepare(sql).run(); } catch (error) {
+    if (!/duplicate column|already exists/i.test(String(error?.message || error))) throw error;
+  }
+}
+
 async function ensureAuditSchema(env) {
   if (!env.DB) throw new Error('D1 binding DB is not configured');
   if (auditSchemaReady) return;
   await env.DB.prepare(AUDIT_TABLE_SQL).run();
+  await addColumn(env, `ALTER TABLE condition_audit_status ADD COLUMN repair_state TEXT NOT NULL DEFAULT 'NONE'`);
+  await addColumn(env, `ALTER TABLE condition_audit_status ADD COLUMN repair_attempts INTEGER NOT NULL DEFAULT 0`);
+  await addColumn(env, `ALTER TABLE condition_audit_status ADD COLUMN last_repair_at INTEGER`);
+  await addColumn(env, `ALTER TABLE condition_audit_status ADD COLUMN last_repair_result TEXT`);
+  await addColumn(env, `ALTER TABLE condition_audit_status ADD COLUMN mismatch_signature TEXT`);
   auditSchemaReady = true;
 }
 
@@ -50,12 +71,19 @@ function parseMismatches(value) {
   }
 }
 
+function normalizedRepairState(row) {
+  if (Number(row?.ok)) return 'NONE';
+  const state = String(row?.repair_state || '').toUpperCase();
+  return state && state !== 'NONE' ? state : 'REPAIR_PENDING';
+}
+
 function rowToAudit(row) {
   if (!row) return null;
   const mismatches = parseMismatches(row.mismatches_json);
+  const repairState = normalizedRepairState(row);
   return {
     ok: Boolean(Number(row.ok)),
-    status: Number(row.ok) ? 'OK' : 'NEEDS_ADD_K',
+    status: Number(row.ok) ? 'OK' : repairState,
     checkedAt: iso(row.checked_at),
     checkedAtMs: Number(row.checked_at || 0),
     configVersion: Number(row.config_version || 0),
@@ -65,7 +93,14 @@ function rowToAudit(row) {
     signalLimitReached: Boolean(Number(row.signal_limit_reached)),
     mismatchCount: mismatches.length,
     mismatches,
-    mode: 'NO_EXTRA_FOOTBALL_API'
+    mismatchSignature: String(row.mismatch_signature || ''),
+    repairState,
+    repairAttempts: Number(row.repair_attempts || 0),
+    lastRepairAt: iso(row.last_repair_at),
+    lastRepairResult: row.last_repair_result || null,
+    autoRepairEnabled: true,
+    maxAutoRepairAttempts: MAX_AUTO_REPAIR_ATTEMPTS,
+    mode: 'LOCAL_AUDIT_PLUS_SAFE_RESCAN_ON_MISMATCH'
   };
 }
 
@@ -93,18 +128,13 @@ async function signalKeysForStates(env, states) {
 function mismatchSignature(items) {
   return JSON.stringify((items || []).map(item => [
     item.code,
+    String(item.stateKey || ''),
     Number(item.fixtureId || 0),
     String(item.selectedSide || '')
   ]));
 }
 
-async function runConditionAudit(env) {
-  await ensureAuditSchema(env);
-  const now = Date.now();
-  const config = await getActiveConditionConfig(env);
-  const previousRow = await env.DB.prepare('SELECT * FROM condition_audit_status WHERE id = 1').first().catch(() => null);
-  const previous = rowToAudit(previousRow);
-
+async function evaluateConditionAudit(env, config, now = Date.now()) {
   const stateResult = await env.DB.prepare(`
     SELECT state_key, fixture_id, selected_side, home, away, last_minute,
            last_home_percent, streak, triggered, config_version, updated_at
@@ -140,6 +170,7 @@ async function runConditionAudit(env) {
     if (passConfirmed) expectedTriggers += 1;
 
     const base = {
+      stateKey: key,
       fixtureId: Number(row.fixture_id),
       selectedSide: String(row.selected_side || 'HOME'),
       selectedTeam: String(row.home || ''),
@@ -160,12 +191,29 @@ async function runConditionAudit(env) {
     }
   }
 
-  const ok = mismatches.length === 0;
+  return {
+    ok: mismatches.length === 0,
+    checkedAtMs: now,
+    configVersion: Number(config.version || 0),
+    scannedStates: states.length,
+    expectedTriggers,
+    dailySignals,
+    signalLimitReached,
+    mismatches: mismatches.slice(0, 20),
+    mismatchSignature: mismatchSignature(mismatches)
+  };
+}
+
+async function saveAudit(env, snapshot, repairState, repairAttempts, lastRepairResult = null, lastRepairAt = null) {
+  const now = Number(snapshot.checkedAtMs || Date.now());
+  const ok = snapshot.ok && repairState === 'NONE';
   await env.DB.prepare(`
     INSERT INTO condition_audit_status (
       id, checked_at, ok, config_version, scanned_states, expected_triggers,
-      daily_signals, signal_limit_reached, mismatches_json, updated_at
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      daily_signals, signal_limit_reached, mismatches_json,
+      repair_state, repair_attempts, last_repair_at, last_repair_result,
+      mismatch_signature, updated_at
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       checked_at = excluded.checked_at,
       ok = excluded.ok,
@@ -175,56 +223,219 @@ async function runConditionAudit(env) {
       daily_signals = excluded.daily_signals,
       signal_limit_reached = excluded.signal_limit_reached,
       mismatches_json = excluded.mismatches_json,
+      repair_state = excluded.repair_state,
+      repair_attempts = excluded.repair_attempts,
+      last_repair_at = excluded.last_repair_at,
+      last_repair_result = excluded.last_repair_result,
+      mismatch_signature = excluded.mismatch_signature,
       updated_at = excluded.updated_at
   `).bind(
     now,
     ok ? 1 : 0,
-    Number(config.version || 0),
-    states.length,
-    expectedTriggers,
-    dailySignals,
-    signalLimitReached ? 1 : 0,
-    JSON.stringify(mismatches.slice(0, 20)),
-    now
+    Number(snapshot.configVersion || 0),
+    Number(snapshot.scannedStates || 0),
+    Number(snapshot.expectedTriggers || 0),
+    Number(snapshot.dailySignals || 0),
+    snapshot.signalLimitReached ? 1 : 0,
+    JSON.stringify(snapshot.mismatches || []),
+    String(repairState || 'NONE'),
+    Number(repairAttempts || 0),
+    lastRepairAt ? Number(lastRepairAt) : null,
+    lastRepairResult ? String(lastRepairResult) : null,
+    String(snapshot.mismatchSignature || ''),
+    Date.now()
   ).run();
-
-  const previousSignature = mismatchSignature(previous?.mismatches || []);
-  const currentSignature = mismatchSignature(mismatches);
-  if (!ok && (!previous || previous.ok || previousSignature !== currentSignature)) {
-    const detail = `Condition Audit found ${mismatches.length} mismatch(es): ${mismatches.slice(0, 3).map(item => `${item.code} fixture ${item.fixtureId}/${item.selectedSide}`).join(', ')}`;
-    await setWatchdogAction(env, 'NEEDS_ADD_K', detail, now);
-    await recordWatchdogEvent(env, 'CONDITION_AUDIT_NEEDS_ADD_K', 'NEEDS_ADD_K', 'CONDITION_AUDIT', detail, now);
-  } else if (ok && previous && !previous.ok) {
-    await recordWatchdogEvent(env, 'CONDITION_AUDIT_RECOVERED', 'RUNNING', null, 'Condition trigger/state/signal consistency recovered', now);
-  }
-
-  return {
-    ok,
-    status: ok ? 'OK' : 'NEEDS_ADD_K',
-    checkedAt: new Date(now).toISOString(),
-    checkedAtMs: now,
-    configVersion: Number(config.version || 0),
-    scannedStates: states.length,
-    expectedTriggers,
-    dailySignals,
-    signalLimitReached,
-    mismatchCount: mismatches.length,
-    mismatches: mismatches.slice(0, 20),
-    mode: 'NO_EXTRA_FOOTBALL_API'
-  };
+  return getAuditStatus(env);
 }
 
-async function currentAudit(env) {
+async function reconcileLocalState(env, mismatches) {
+  const statements = [];
+  const changes = [];
+  for (const item of mismatches || []) {
+    const key = String(item.stateKey || '');
+    if (!key) continue;
+    if (item.code === 'SIGNAL_WITHOUT_STATE') {
+      statements.push(env.DB.prepare(`
+        UPDATE auto_momentum_state_side
+        SET triggered = 1
+        WHERE state_key = ? AND triggered = 0
+          AND EXISTS (SELECT 1 FROM condition_signals WHERE signal_key = ?)
+      `).bind(key, key));
+      changes.push(`STATE_TRIGGER_ON:${key}`);
+    } else if (item.code === 'TRIGGERED_WITHOUT_SIGNAL') {
+      statements.push(env.DB.prepare(`
+        UPDATE auto_momentum_state_side
+        SET triggered = 0
+        WHERE state_key = ? AND triggered = 1
+          AND NOT EXISTS (SELECT 1 FROM condition_signals WHERE signal_key = ?)
+      `).bind(key, key));
+      changes.push(`STALE_TRIGGER_OFF:${key}`);
+    }
+  }
+  if (statements.length) await env.DB.batch(statements);
+  return changes;
+}
+
+function requiresFreshScan(mismatches) {
+  return (mismatches || []).some(item =>
+    ['MISSED_TRIGGER_STATE', 'TRIGGERED_WITHOUT_SIGNAL'].includes(String(item.code || ''))
+  );
+}
+
+function providerProtectionActive(guard) {
+  return Boolean(guard?.cooldownActive || guard?.circuitOpen);
+}
+
+async function clearAuditEscalationIfSafe(env, previous) {
+  if (previous?.status !== 'NEEDS_ADD_K') return;
+  const health = await getEngineHealthRow(env).catch(() => null);
+  if (!health || Number(health.consecutiveFailures || 0) > 0 || health.lastErrorCode) return;
+  await setWatchdogAction(env, 'NONE', 'Condition Audit recovered; no engine failure remains').catch(() => null);
+}
+
+async function markRecovered(env, previous, result) {
+  if (previous && !previous.ok) {
+    await recordWatchdogEvent(
+      env,
+      'CONDITION_AUDIT_RECOVERED',
+      'RUNNING',
+      null,
+      result || 'Condition trigger/state/signal consistency recovered'
+    );
+    await clearAuditEscalationIfSafe(env, previous);
+  }
+}
+
+async function markNeedsAddK(env, audit, previous, detail, now = Date.now()) {
+  const sameEscalation = previous?.status === 'NEEDS_ADD_K' &&
+    previous?.mismatchSignature === audit?.mismatchSignature;
+  if (!sameEscalation) {
+    await setWatchdogAction(env, 'NEEDS_ADD_K', detail, now);
+    await recordWatchdogEvent(env, 'CONDITION_AUDIT_NEEDS_ADD_K', 'NEEDS_ADD_K', 'CONDITION_AUDIT', detail, now);
+  }
+}
+
+async function runConditionAudit(env, ctx, { allowRepair = true } = {}) {
+  await ensureAuditSchema(env);
+  const config = await getActiveConditionConfig(env);
+  const previous = await getAuditStatus(env).catch(() => null);
+  let snapshot = await evaluateConditionAudit(env, config);
+
+  if (snapshot.ok) {
+    const result = previous && !previous.ok ? 'RECOVERED · audit clean' : previous?.lastRepairResult;
+    const saved = await saveAudit(env, snapshot, 'NONE', 0, result, previous?.lastRepairAt ? Date.parse(previous.lastRepairAt) : null);
+    await markRecovered(env, previous, 'Condition trigger/state/signal consistency recovered');
+    return saved;
+  }
+
+  const sameSignature = previous?.mismatchSignature === snapshot.mismatchSignature;
+  let attempts = sameSignature ? Number(previous?.repairAttempts || 0) : 0;
+  const guardBefore = await getSharedApiGuardStatus(env).catch(() => null);
+
+  if (!allowRepair) {
+    const state = providerProtectionActive(guardBefore)
+      ? 'WAITING_API'
+      : (sameSignature && previous?.status === 'NEEDS_ADD_K' ? 'NEEDS_ADD_K' : 'REPAIR_PENDING');
+    return saveAudit(
+      env,
+      snapshot,
+      state,
+      attempts,
+      previous?.lastRepairResult || 'Waiting for scheduled Auto Mechanic repair cycle',
+      previous?.lastRepairAt ? Date.parse(previous.lastRepairAt) : null
+    );
+  }
+
+  if (sameSignature && attempts >= MAX_AUTO_REPAIR_ATTEMPTS) {
+    const detail = `Condition Audit auto-repair exhausted after ${attempts} attempt(s): ${snapshot.mismatches.slice(0, 3).map(item => `${item.code} fixture ${item.fixtureId}/${item.selectedSide}`).join(', ')}`;
+    const saved = await saveAudit(env, snapshot, 'NEEDS_ADD_K', attempts, detail, Date.now());
+    await markNeedsAddK(env, saved, previous, detail);
+    return saved;
+  }
+
+  await recordWatchdogEvent(
+    env,
+    'CONDITION_AUDIT_REPAIRING',
+    'DEGRADED',
+    'CONDITION_AUDIT',
+    `Safe repair starting for ${snapshot.mismatches.length} mismatch(es); attempt ${attempts + 1}/${MAX_AUTO_REPAIR_ATTEMPTS}`
+  );
+
+  const localChanges = await reconcileLocalState(env, snapshot.mismatches);
+  if (localChanges.length) {
+    snapshot = await evaluateConditionAudit(env, config);
+    if (snapshot.ok) {
+      const result = `RECOVERED_LOCAL · ${localChanges.join(', ')}`;
+      const saved = await saveAudit(env, snapshot, 'NONE', 0, result, Date.now());
+      await markRecovered(env, previous, result);
+      return saved;
+    }
+  }
+
+  if (!requiresFreshScan(snapshot.mismatches)) {
+    attempts += 1;
+    const detail = `Local reconciliation incomplete: ${snapshot.mismatches.slice(0, 3).map(item => item.code).join(', ')}`;
+    const state = attempts >= MAX_AUTO_REPAIR_ATTEMPTS ? 'NEEDS_ADD_K' : 'REPAIRING';
+    const saved = await saveAudit(env, snapshot, state, attempts, detail, Date.now());
+    if (state === 'NEEDS_ADD_K') await markNeedsAddK(env, saved, previous, detail);
+    return saved;
+  }
+
+  const guard = await getSharedApiGuardStatus(env).catch(() => guardBefore);
+  if (providerProtectionActive(guard)) {
+    const detail = `Condition repair waiting for Football API guard: ${guard?.circuitOpen ? 'CIRCUIT_OPEN' : 'COOLDOWN'}`;
+    if (previous?.status !== 'WAITING_API' || !sameSignature) {
+      await recordWatchdogEvent(env, 'CONDITION_AUDIT_WAITING_API', 'DEGRADED', 'CONDITION_AUDIT', detail);
+    }
+    return saveAudit(env, snapshot, 'WAITING_API', attempts, detail, previous?.lastRepairAt ? Date.parse(previous.lastRepairAt) : null);
+  }
+
+  attempts += 1;
+  let scanError = null;
+  try {
+    await runAutoMomentumScan(baseWorker, env, ctx);
+  } catch (error) {
+    scanError = error?.message || String(error);
+    await recordWatchdogEvent(env, 'CONDITION_AUDIT_RESCAN_FAILED', 'DEGRADED', 'CONDITION_AUDIT', scanError);
+  }
+
+  snapshot = await evaluateConditionAudit(env, config);
+  if (snapshot.ok) {
+    const result = `RECOVERED_RESCAN · attempt ${attempts}${localChanges.length ? ` · ${localChanges.join(', ')}` : ''}`;
+    const saved = await saveAudit(env, snapshot, 'NONE', 0, result, Date.now());
+    await markRecovered(env, previous, result);
+    return saved;
+  }
+
+  const guardAfter = await getSharedApiGuardStatus(env).catch(() => null);
+  if (scanError && providerProtectionActive(guardAfter)) {
+    const detail = `Rescan deferred by provider protection: ${scanError}`;
+    return saveAudit(env, snapshot, 'WAITING_API', attempts, detail, Date.now());
+  }
+
+  const detail = scanError
+    ? `Auto-repair rescan failed: ${scanError}`
+    : `Auto-repair rescan still has ${snapshot.mismatches.length} mismatch(es)`;
+  const state = attempts >= MAX_AUTO_REPAIR_ATTEMPTS ? 'NEEDS_ADD_K' : 'REPAIRING';
+  const saved = await saveAudit(env, snapshot, state, attempts, detail, Date.now());
+  if (state === 'NEEDS_ADD_K') await markNeedsAddK(env, saved, previous, detail);
+  return saved;
+}
+
+async function currentAudit(env, ctx) {
   const audit = await getAuditStatus(env).catch(() => null);
   if (!audit || Date.now() - Number(audit.checkedAtMs || 0) > AUDIT_STALE_MS) {
-    return runConditionAudit(env).catch(error => ({
+    return runConditionAudit(env, ctx, { allowRepair: false }).catch(error => ({
       ok: false,
       status: 'AUDIT_ERROR',
       checkedAt: new Date().toISOString(),
       mismatchCount: 0,
       mismatches: [],
+      repairAttempts: 0,
+      autoRepairEnabled: true,
+      maxAutoRepairAttempts: MAX_AUTO_REPAIR_ATTEMPTS,
       error: error?.message || String(error),
-      mode: 'NO_EXTRA_FOOTBALL_API'
+      mode: 'LOCAL_AUDIT_PLUS_SAFE_RESCAN_ON_MISMATCH'
     }));
   }
   return audit;
@@ -232,10 +443,17 @@ async function currentAudit(env) {
 
 function responseWithAudit(response, payload, audit) {
   const data = payload && typeof payload === 'object' ? { ...payload, conditionAudit: audit } : payload;
+  if (data?.watchdog && typeof data.watchdog === 'object') {
+    data.watchdog = {
+      ...data.watchdog,
+      conditionAuditStatus: audit?.status || 'UNKNOWN',
+      conditionAuditRepairAttempts: Number(audit?.repairAttempts || 0)
+    };
+  }
   if (data && audit?.status === 'NEEDS_ADD_K') {
     data.state = 'NEEDS_ADD_K';
     if (data.watchdog && typeof data.watchdog === 'object') {
-      const reason = `Condition Audit: ${audit.mismatchCount} mismatch(es) · ${audit.mismatches?.[0]?.code || 'CHECK REQUIRED'}`;
+      const reason = `Condition Audit: ${audit.mismatchCount} mismatch(es) after ${audit.repairAttempts} repair attempt(s) · ${audit.mismatches?.[0]?.code || 'CHECK REQUIRED'}`;
       data.watchdog = {
         ...data.watchdog,
         currentAction: 'NEEDS_ADD_K',
@@ -261,7 +479,7 @@ function makeAuditContext(env, ctx) {
       if (firstWait) {
         firstWait = false;
         ctx.waitUntil(Promise.resolve(promise)
-          .then(() => runConditionAudit(env))
+          .then(() => runConditionAudit(env, ctx, { allowRepair: true }))
           .catch(async error => {
             await recordWatchdogEvent(
               env,
@@ -289,7 +507,7 @@ export default {
     if (!['/engine-health', '/car3/auto-scan-status'].includes(url.pathname)) return response;
     const payload = await response.clone().json().catch(() => null);
     if (!payload || typeof payload !== 'object') return response;
-    const audit = await currentAudit(env);
+    const audit = await currentAudit(env, ctx);
     return responseWithAudit(response, payload, audit);
   },
 
