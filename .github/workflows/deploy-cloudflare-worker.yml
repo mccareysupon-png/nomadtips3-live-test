@@ -34,7 +34,7 @@ jobs:
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
 
-      - name: Verify Car 3, Auto Mechanic V2, and Condition Audit
+      - name: Verify Car 3, Auto Mechanic V2, and Condition Audit auto-repair
         run: |
           node --input-type=module <<'NODE'
           const statusUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
@@ -50,6 +50,12 @@ jobs:
               if (!statusResponse.ok) throw new Error(`status HTTP ${statusResponse.status}`);
               if (!statusPayload?.apiGuard) throw new Error('apiGuard diagnostics missing');
               if (!statusPayload?.conditionAudit?.status) throw new Error('Condition Audit diagnostics missing from status route');
+              if (statusPayload.conditionAudit.autoRepairEnabled !== true) {
+                throw new Error('Condition Audit auto-repair is not enabled on status route');
+              }
+              if (Number(statusPayload.conditionAudit.maxAutoRepairAttempts) !== 2) {
+                throw new Error(`unexpected Condition Audit repair limit ${statusPayload.conditionAudit.maxAutoRepairAttempts}`);
+              }
               if (Number(statusPayload.apiGuard.minGapMs) !== 9000) {
                 throw new Error(`unexpected base guard gap ${statusPayload.apiGuard.minGapMs}`);
               }
@@ -86,6 +92,12 @@ jobs:
               if (!healthPayload?.conditionAudit?.status) {
                 throw new Error('Condition Audit diagnostics missing from engine health');
               }
+              if (healthPayload.conditionAudit.autoRepairEnabled !== true) {
+                throw new Error('Condition Audit auto-repair is not enabled in engine health');
+              }
+              if (Number(healthPayload.conditionAudit.maxAutoRepairAttempts) !== 2) {
+                throw new Error(`unexpected engine health repair limit ${healthPayload.conditionAudit.maxAutoRepairAttempts}`);
+              }
 
               console.log(JSON.stringify({
                 route: 'car3/auto-scan-status',
@@ -112,5 +124,5 @@ jobs:
               if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 5000));
             }
           }
-          throw lastError || new Error('Auto Mechanic V2 / Condition Audit deploy verification failed');
+          throw lastError || new Error('Auto Mechanic V2 / Condition Audit auto-repair deploy verification failed');
           NODE
