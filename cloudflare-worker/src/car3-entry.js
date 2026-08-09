@@ -1,19 +1,27 @@
 import paperEntry from './paper-entry.js';
 import car3Scanner from './entry-batched.js';
 import { handleAutoRequest, runAutoMomentumScan } from './auto-scan.js';
-import { getSharedApiGuardStatus } from './shared-api-football.js';
+import {
+  getSharedApiGuardStatus,
+  repairSharedApiGuard
+} from './shared-api-football.js';
 import { runManagedCycle } from './managed-cycle.js';
 import {
   WATCHDOG_INTERVAL_MS,
+  WATCHDOG_VERSION,
   getEngineControl,
   getEngineHealthRow,
+  getWatchdogEvents,
   healthState,
+  incrementRepairAttempt,
   recordEngineAttempt,
   recordEngineFailure,
   recordEngineSuccess,
   recordRecovery,
   recordWatchdogCheck,
+  recordWatchdogEvent,
   setEngineMode,
+  setWatchdogAction,
   watchdogDue,
   watchdogPlan
 } from './engine-control.js';
@@ -53,6 +61,10 @@ async function autoStatusRow(env) {
   return env.DB.prepare('SELECT * FROM auto_scan_status WHERE id = 1').first().catch(() => null);
 }
 
+function scanAdvanced(before, after) {
+  return Number(after?.ran_at || 0) > Number(before?.ran_at || 0);
+}
+
 async function paperHealth(env) {
   try {
     const row = await env.DB.prepare(`
@@ -76,12 +88,13 @@ async function paperHealth(env) {
 
 async function engineHealthPayload(env) {
   const now = Date.now();
-  const [control, health, apiGuard, autoRow, paper] = await Promise.all([
+  const [control, health, apiGuard, autoRow, paper, blackBox] = await Promise.all([
     getEngineControl(env),
     getEngineHealthRow(env),
     getSharedApiGuardStatus(env).catch(error => ({ ok: false, error: error?.message || 'API guard status failed' })),
     autoStatusRow(env),
-    paperHealth(env)
+    paperHealth(env),
+    getWatchdogEvents(env, 20).catch(() => [])
   ]);
 
   let counts = {};
@@ -89,14 +102,18 @@ async function engineHealthPayload(env) {
   try { counts = autoRow?.counts_json ? JSON.parse(autoRow.counts_json) : {}; } catch {}
   try { warnings = autoRow?.warnings_json ? JSON.parse(autoRow.warnings_json) : []; } catch {}
 
-  const state = healthState(control, health, now);
-  const plan = watchdogPlan(control, health, now);
+  const plan = watchdogPlan(control, health, apiGuard, now);
+  let state = healthState(control, health, now);
+  if (state === 'RUNNING' && ['WAITING_API', 'DERATING', 'RECOVERING', 'VERIFYING', 'REPAIRING'].includes(plan.action)) {
+    state = 'DEGRADED';
+  }
   const nextWatchdogMs = health.lastWatchdogMs
     ? health.lastWatchdogMs + WATCHDOG_INTERVAL_MS
     : now;
 
   return {
     ok: true,
+    mechanicVersion: WATCHDOG_VERSION,
     generatedAt: new Date(now).toISOString(),
     state,
     control,
@@ -124,14 +141,20 @@ async function engineHealthPayload(env) {
       paper
     },
     watchdog: {
+      version: WATCHDOG_VERSION,
       intervalMinutes: WATCHDOG_INTERVAL_MS / 60_000,
+      currentAction: health.watchdogAction || plan.action,
+      actionSince: health.watchdogActionSince,
+      plannedAction: plan.action,
+      reason: plan.reason,
+      repairAttempts: health.repairAttempts,
       lastCheckAt: health.lastWatchdogAt,
       nextCheckAt: new Date(Math.max(now, nextWatchdogMs)).toISOString(),
-      action: plan.action,
-      reason: plan.reason,
       lastRecoveryAt: health.lastRecoveryAt,
-      lastRecoveryResult: health.lastRecoveryResult
-    }
+      lastRecoveryResult: health.lastRecoveryResult,
+      lastVerifyAt: health.lastVerifyAt
+    },
+    blackBox
   };
 }
 
@@ -160,16 +183,30 @@ function pausedPayload(control) {
 async function runOneShotWake(env, ctx, reason) {
   const control = await getEngineControl(env);
   if (control.mode !== 'RUNNING') return { skipped: true, mode: control.mode };
+  const beforeScan = await autoStatusRow(env);
   const started = Date.now();
   await recordEngineAttempt(env, started);
+  await setWatchdogAction(env, 'RECOVERING', `${reason}: fresh scan requested`, started);
   try {
     const result = await runAutoMomentumScan(car3Scanner, env, ctx);
+    await setWatchdogAction(env, 'VERIFYING', `${reason}: verifying fresh scan advancement`);
+    const afterScan = await autoStatusRow(env);
+    if (!scanAdvanced(beforeScan, afterScan)) {
+      throw new Error('Fresh scan did not advance during recovery verification');
+    }
     await recordEngineSuccess(env, Date.now());
     await recordRecovery(env, `${reason}: RECOVERED`, Date.now());
+    await setWatchdogAction(env, 'RECOVERED', `${reason}: fresh scan verified`);
+    await recordWatchdogEvent(env, 'RECOVERED', 'RUNNING', null, `${reason}: auto_scan_status advanced`);
     return { skipped: false, ok: true, result };
   } catch (error) {
     const classified = await recordEngineFailure(env, error, Date.now());
+    const apiGuard = await getSharedApiGuardStatus(env).catch(() => ({}));
+    const health = await getEngineHealthRow(env);
+    const plan = watchdogPlan(control, health, apiGuard, Date.now());
+    await setWatchdogAction(env, plan.action, `${reason}: ${classified.code} · ${classified.message}`);
     await recordRecovery(env, `${reason}: FAILED · ${classified.code}`, Date.now());
+    await recordWatchdogEvent(env, plan.action, 'DEGRADED', classified.code, classified.message);
     console.warn(JSON.stringify({ event: 'car3_one_shot_failed', reason, code: classified.code, error: classified.message }));
     return { skipped: false, ok: false, error: classified.message };
   }
@@ -202,13 +239,15 @@ export default {
         const control = await setEngineMode(env, body?.mode, 'OWNER');
         if (control.mode === 'RUNNING') {
           ctx.waitUntil(runOneShotWake(env, ctx, 'OWNER START'));
+        } else {
+          await setWatchdogAction(env, 'NONE', `Owner mode ${control.mode}; automatic restart disabled`);
         }
         return json(request, {
           ok: true,
           ...control,
           message: control.mode === 'RUNNING'
-            ? 'Engine start requested; health check and fresh scan are running'
-            : `Engine changed to ${control.mode}; watchdog will not restart it`
+            ? 'Engine start requested; Auto Mechanic is verifying a fresh scan'
+            : `Engine changed to ${control.mode}; Auto Mechanic will not restart it`
         }, 200);
       } catch (error) {
         return json(request, { ok: false, error: error?.message || 'Engine control failed' }, 400);
@@ -232,12 +271,13 @@ export default {
           handleAutoRequest(request, env, internalUrl),
           getSharedApiGuardStatus(env)
         ]);
-        return json(request, { ...result.data, apiGuard, engine: control }, result.status);
+        return json(request, { ...result.data, apiGuard, engine: control, mechanicVersion: WATCHDOG_VERSION }, result.status);
       } catch (error) {
         return json(request, {
           ok: false,
           error: error?.message || 'Car 3 status failed',
-          engine: control
+          engine: control,
+          mechanicVersion: WATCHDOG_VERSION
         }, 500);
       }
     }
@@ -270,15 +310,21 @@ export default {
     ctx.waitUntil((async () => {
       const now = Date.now();
       const control = await getEngineControl(env);
-      const before = await getEngineHealthRow(env);
-      let recoveryPlanned = false;
+      const beforeHealth = await getEngineHealthRow(env);
+      const apiBefore = await getSharedApiGuardStatus(env).catch(() => ({}));
+      const beforeScan = await autoStatusRow(env);
 
-      if (watchdogDue(before, now)) {
-        const plan = watchdogPlan(control, before, now);
+      if (watchdogDue(beforeHealth, now)) {
+        const plan = watchdogPlan(control, beforeHealth, apiBefore, now);
         await recordWatchdogCheck(env, now);
-        if (plan.action === 'RECOVER_ON_NEXT_CYCLE') {
-          recoveryPlanned = true;
-          await recordRecovery(env, `WATCHDOG: ${plan.reason} · normal cron cycle restarted`, now);
+        await setWatchdogAction(env, plan.action, `15m check: ${plan.reason}`, now);
+        await recordWatchdogEvent(env, plan.action, plan.state, beforeHealth.lastErrorCode, plan.reason, now);
+
+        if (plan.action === 'REPAIRING') {
+          await incrementRepairAttempt(env, now);
+          const repair = await repairSharedApiGuard(env).catch(error => ({ repaired: false, error: error?.message || String(error) }));
+          await recordWatchdogEvent(env, 'REPAIR_GUARD', plan.state, beforeHealth.lastErrorCode, JSON.stringify(repair), now);
+          if (repair?.repaired) await recordRecovery(env, `AUTO REPAIR · ${(repair.changes || []).join(', ')}`, now);
         }
       }
 
@@ -290,19 +336,49 @@ export default {
         const result = await runManagedCycle(env, ctx);
         if (result?.scanOk === false) {
           const classified = await recordEngineFailure(env, result.scanError || 'Automatic scan failed', Date.now());
-          if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
+          const apiAfterFailure = await getSharedApiGuardStatus(env).catch(() => ({}));
+          const afterFailureHealth = await getEngineHealthRow(env);
+          const plan = watchdogPlan(control, afterFailureHealth, apiAfterFailure, Date.now());
+          await setWatchdogAction(env, plan.action, `${classified.code}: ${classified.message}`);
+          await recordWatchdogEvent(env, plan.action, plan.state, classified.code, classified.message);
           return;
         }
+
         if (result?.fullScanAttempted) {
-          await recordEngineSuccess(env, Date.now());
-          if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · scheduler healthy', Date.now());
+          const recovering = Number(beforeHealth.consecutiveFailures || 0) > 0 ||
+            ['WAITING_API', 'DERATING', 'RECOVERING', 'VERIFYING', 'REPAIRING'].includes(String(beforeHealth.watchdogAction || ''));
+
+          if (recovering) {
+            await setWatchdogAction(env, 'VERIFYING', 'Fresh scan completed; verifying auto_scan_status advancement');
+            const afterScan = await autoStatusRow(env);
+            if (!scanAdvanced(beforeScan, afterScan)) {
+              const classified = await recordEngineFailure(env, 'Fresh scan did not advance during recovery verification', Date.now());
+              await setWatchdogAction(env, 'RECOVERING', classified.message);
+              await recordWatchdogEvent(env, 'VERIFY_FAILED', 'DEGRADED', classified.code, classified.message);
+              return;
+            }
+            await recordEngineSuccess(env, Date.now());
+            await recordRecovery(env, 'WATCHDOG RECOVERED · fresh scan verified', Date.now());
+            await setWatchdogAction(env, 'RECOVERED', 'Fresh scan advanced after recovery');
+            await recordWatchdogEvent(env, 'RECOVERED', 'RUNNING', null, 'Fresh auto_scan_status timestamp advanced');
+          } else {
+            await recordEngineSuccess(env, Date.now());
+            if (beforeHealth.watchdogAction === 'RECOVERED') {
+              await setWatchdogAction(env, 'NONE', 'Healthy follow-up cycle completed');
+            }
+          }
         }
       } catch (error) {
         const classified = await recordEngineFailure(env, error, Date.now());
-        if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
+        const apiAfterFailure = await getSharedApiGuardStatus(env).catch(() => ({}));
+        const afterFailureHealth = await getEngineHealthRow(env);
+        const plan = watchdogPlan(control, afterFailureHealth, apiAfterFailure, Date.now());
+        await setWatchdogAction(env, plan.action, `${classified.code}: ${classified.message}`);
+        await recordWatchdogEvent(env, plan.action, plan.state, classified.code, classified.message);
         console.warn(JSON.stringify({
           event: 'car3_scheduled_degraded',
           code: classified.code,
+          action: plan.action,
           error: classified.message
         }));
       }
