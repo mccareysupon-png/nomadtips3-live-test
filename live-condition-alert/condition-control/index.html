@@ -79,6 +79,7 @@
     <div class="footer">ISOLATED TEST · OWNER CONDITION SETTINGS</div>
   </div>
 
+  <script src="../worker-fetch-guard.js?v=20260809-health-v1"></script>
   <script>
     (() => {
       'use strict';
@@ -210,7 +211,7 @@
           serverState = payload;
           fill(payload.draft || config);
           $('activeSummary').textContent = configText(payload.active);
-          message(action === 'run' ? 'รันค่าใหม่แล้ว ระบบ Test จะใช้ในรอบถัดไป' : 'เซฟแล้ว แต่เครื่องยนต์ยังใช้ค่าเดิม', true);
+          message(action === 'run' ? 'รันค่าใหม่แล้ว ระบบ Test จะใช้ในรอบถัดไปเมื่อ Engine = RUNNING' : 'เซฟแล้ว แต่เครื่องยนต์ยังใช้ค่าเดิม', true);
         } catch (error) {
           message(error.message, false);
         } finally {
@@ -230,6 +231,7 @@
       load();
     })();
   </script>
+  <script src="./engine-monitor.js?v=20260809-health-v1"></script>
   <script src="../../site-footer.js?v=202608040844"></script>
 </body>
 </html>
