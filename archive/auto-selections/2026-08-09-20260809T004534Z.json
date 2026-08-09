@@ -1,0 +1,46 @@
+{
+  "selection_date": "2026-08-09",
+  "locked_at_utc": "2026-08-09T00:40:00Z",
+  "window_end_local": "2026-08-10T08:00:00+07:00",
+  "system": "ADD K THE KING OF SOCCER V1 / AUTOMATIC RECOVERY",
+  "environment": "PRODUCTION",
+  "recoveryRequired": true,
+  "recoveryReason": "A Manual Set 2 payload bypassed the fixed Production AUTO rules and was quarantined.",
+  "quarantinedSet": "archive/rejected-production/20260809T000445Z-manual-set-2-3-picks.json",
+  "rules": {
+    "market": "1X2 team win",
+    "odds_min": 1.7,
+    "confidence_minimum": 58,
+    "confidence_maximum": 100,
+    "automatic_selection": true,
+    "manual_analysis_only": false,
+    "overall_sample": 6,
+    "venue_sample": 5,
+    "standings_context": true
+  },
+  "matches": [],
+  "noPick": true,
+  "noPickReason": "Invalid Manual payload removed. Machine 1 automatic reselection is pending.",
+  "addKTheKingOfSoccer": {
+    "active": true,
+    "presetKey": "ADD_K_THE_KING_OF_SOCCER_V1",
+    "version": 1,
+    "fixedRules": true,
+    "editable": false,
+    "qualityGate": "STRICT",
+    "minimumConfidence": 58,
+    "minimumMainOdds": 1.7,
+    "minimumSample": 5,
+    "requireStandingsContext": true,
+    "minimumLeagueTeamCount": 8,
+    "noPick": true,
+    "reason": "Automatic recovery pending."
+  },
+  "productionGuard": {
+    "version": 1,
+    "minimumMainOdds": 1.7,
+    "minimumConfidence": 58,
+    "manualSelectionsAllowed": false,
+    "machine": "CAR_1_PRODUCTION_ONLY"
+  }
+}

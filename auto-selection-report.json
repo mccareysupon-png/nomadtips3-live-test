@@ -1,25 +1,142 @@
 {
-  "generatedAt": "2026-08-08T15:15:22Z",
+  "generatedAt": "2026-08-09T00:45:34Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-08T23:00:22.221698+07:00",
-  "windowEndLocal": "2026-08-09T08:00:00+07:00",
-  "windowKey": "2026-08-09T08:00:00+07:00",
+  "windowStartLocal": "2026-08-09T08:30:34.533781+07:00",
+  "windowEndLocal": "2026-08-10T08:00:00+07:00",
+  "windowKey": "2026-08-10T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 0,
-  "fixturesScanned": 0,
-  "fixturesAnalyzed": 0,
-  "prequalified": 0,
+  "apiCalls": 1178,
+  "fixturesScanned": 568,
+  "fixturesAnalyzed": 500,
+  "prequalified": 176,
   "published": 10,
-  "rejections": {},
-  "settlementGate": {
-    "currentSelectionCount": 10,
-    "recordedResultCount": 10,
-    "allSettled": false,
-    "statisticsFinalizedAt": null
+  "rejections": {
+    "home/away split edge below threshold": 25,
+    "strength score below threshold": 264,
+    "insufficient recent or venue-specific sample": 27,
+    "main odds below minimum": 48,
+    "overall form edge below threshold": 8,
+    "main 1X2 odds unavailable": 65,
+    "confidence below minimum after standings context": 1
+  },
+  "truncatedTo": 500,
+  "historyErrors": {},
+  "archivedPreviousSet": "archive/auto-selections/2026-08-09-20260809T004534Z.json",
+  "confidencePolicy": {
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
+    "minimum": 58,
+    "maximum": 100,
+    "scale": 15.0,
+    "formula": "round(50 + adjustedStrength × 15), capped at 100",
+    "inputs": [
+      "overall PPG",
+      "home/away PPG",
+      "goal-difference rate",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
+    ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.32,
+      "adjustmentCap": 0.32,
+      "availableMatches": 54,
+      "fallbackMatches": 9,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
+    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
+    "rejectedBelowMinimum": 1,
+    "legacyCommonOpponentWeight": 0
+  },
+  "confidenceRejected": 1,
+  "publishedAfterConfidence": 62,
+  "standingsContext": {
+    "available": 54,
+    "fallback": 9
+  },
+  "addKTheKingOfSoccer": {
+    "active": true,
+    "presetKey": "ADD_K_THE_KING_OF_SOCCER_V1",
+    "version": 1,
+    "fixedRules": true,
+    "editable": false,
+    "qualityGate": "STRICT",
+    "minimumConfidence": 58,
+    "minimumMainOdds": 1.7,
+    "minimumSample": 5,
+    "requireStandingsContext": true,
+    "minimumLeagueTeamCount": 8,
+    "passed": 53,
+    "rejected": 9,
+    "rejections": [
+      {
+        "fixture_id": 1532855,
+        "match": "Changchun Xidu vs Xi'an Ronghai",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1589321,
+        "match": "Manchester City vs Atletico Madrid",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1559740,
+        "match": "Baník Ostrava II vs Táborsko",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1546093,
+        "match": "EC São Bernardo vs São Caetano",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562708,
+        "match": "Sokol Brozany vs Čáslav",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562588,
+        "match": "České Budějovice vs Admira Praha",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1604785,
+        "match": "Marseille vs Athletic Club",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1557949,
+        "match": "Maccabi Petah Tikva vs Hapoel Ramat Gan",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1530133,
+        "match": "Seattle Sounders vs Club Queretaro",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      }
+    ],
+    "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
   },
   "qualified": 10,
   "discardedAfterTop10": 0,
   "publicationPolicy": "CONFIDENCE_DESCENDING_TOP_10",
   "qualifiedBeforeTop10": 10,
-  "top10Policy": "Publish up to 10; fewer or zero picks are valid"
+  "top10Policy": "Publish up to 10; fewer or zero picks are valid",
+  "ballTengPolicy": {
+    "legacyCommonOpponentWeight": 0,
+    "overallPpgWeight": 34.0,
+    "homeAwayPpgWeight": 36.0,
+    "goalDifferenceWeight": 18.0,
+    "rankedStandingsContextWeight": 32.0,
+    "directRankMix": 55.0,
+    "rankedCommonMix": 45.0
+  },
+  "selectionMerge": {
+    "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
+    "cycleStartUtc": "2026-08-09T01:00:00Z",
+    "runType": "AUTO",
+    "newSelectionCount": 10,
+    "preservedStartedCount": 0,
+    "duplicatesRemoved": 0,
+    "totalDisplayedCount": 10
+  }
 }
