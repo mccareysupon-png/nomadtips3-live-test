@@ -55,6 +55,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # A queued workflow_dispatch keeps the SHA from dispatch time. Always
+          # evaluate the latest Production payload so an older recovery request
+          # cannot overwrite a newer successful AUTO selection.
+          ref: main
           fetch-depth: 0
 
       - name: Validate production selector, all-qualified publisher, and API guard
