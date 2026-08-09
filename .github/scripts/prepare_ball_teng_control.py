@@ -137,8 +137,11 @@ def decorate_runtime_rules(rules, add_k):
 
 def apply_add_k_v1_tuning(rules):
     rules.update({
+        'minimum_main_odds': 1.70,
         'minimum_confidence': 58,
         'maximum_confidence': 100,
+        'overall_sample': 6,
+        'venue_sample': 5,
         'minimum_sample': 5,
         'minimum_strength_score': 0.62,
         'minimum_overall_ppg_edge': 0.30,

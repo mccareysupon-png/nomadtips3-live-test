@@ -2,8 +2,9 @@
   'use strict';
 
   const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
-  const SOURCE_URL = new URL('../selected-live-matches.json', document.currentScript.src).href;
-  const RESULT_FEED_URL = new URL('../result-feed.json', document.currentScript.src).href;
+  const SOURCE_URL = new URL('./data/selected-live-matches.json', document.currentScript.src).href;
+  const RESULT_FEED_URL = new URL('./data/result-feed.json', document.currentScript.src).href;
+  const EXPECTED_ENVIRONMENT = 'TEST_ONLY';
   const POLL_MS = 60 * 1000;
   const RETRY_MS = 5 * 1000;
   let busy = false;
@@ -187,7 +188,11 @@
   async function fetchConfig() {
     const response = await fetch(`${SOURCE_URL}?t=${Date.now()}`, {cache: 'no-store'});
     if (!response.ok) throw new Error(`Selected set HTTP ${response.status}`);
-    return response.json();
+    const config = await response.json();
+    if (config?.environment !== EXPECTED_ENVIRONMENT) {
+      throw new Error(`Machine 2 rejected ${config?.environment || 'UNKNOWN'} selection payload`);
+    }
+    return config;
   }
 
   async function fetchProviderFeed() {

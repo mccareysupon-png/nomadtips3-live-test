@@ -7,6 +7,7 @@ on:
       - '.github/workflows/auto-select-next.yml'
       - '.github/scripts/auto_select_next.py'
       - '.github/scripts/publish_add_k_top10.py'
+      - '.github/scripts/validate_production_selection.py'
       - '.github/member-api-guard/sitecustomize.py'
       - '.github/scripts/run_ball_teng_selector.py'
       - '.github/scripts/apply_confidence_policy.py'
@@ -18,6 +19,7 @@ on:
       - '.github/scripts/prepare_ball_teng_control.py'
       - '.github/scripts/consume_ball_teng_control.py'
       - 'config/nomad-auto-rules.json'
+      - 'selected-live-matches.json'
   workflow_dispatch:
     inputs:
       force:
@@ -58,7 +60,9 @@ jobs:
       - name: Validate production selector, all-qualified publisher, and API guard
         run: |
           python3 -m py_compile .github/scripts/publish_add_k_top10.py
+          python3 -m py_compile .github/scripts/validate_production_selection.py
           python3 -m py_compile .github/member-api-guard/sitecustomize.py
+          node scripts/test-car1-car2-isolation.mjs
 
       - name: Load active owner ball-teng settings
         shell: bash
@@ -66,13 +70,23 @@ jobs:
           set -euo pipefail
           python3 .github/scripts/prepare_ball_teng_control.py
 
+      - name: Detect invalid Production payload and prepare isolated recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/validate_production_selection.py --prepare-recovery
+
       - name: Run NOMAD ball-teng automatic selection engine
         shell: bash
         run: |
           set -euo pipefail
           test -n "${API_FOOTBALL_KEY:-}"
 
-          cp selected-live-matches.json "$ADD_K_PREVIOUS_SELECTED_PATH" 2>/dev/null || printf '{"matches":[]}\n' > "$ADD_K_PREVIOUS_SELECTED_PATH"
+          if [ "${NOMAD_PRODUCTION_RECOVERY:-0}" = "1" ]; then
+            printf '{"matches":[]}\n' > "$ADD_K_PREVIOUS_SELECTED_PATH"
+          else
+            cp selected-live-matches.json "$ADD_K_PREVIOUS_SELECTED_PATH" 2>/dev/null || printf '{"matches":[]}\n' > "$ADD_K_PREVIOUS_SELECTED_PATH"
+          fi
 
           python3 - <<'PY'
           import json
@@ -166,6 +180,7 @@ jobs:
 
           git checkout -- config/nomad-auto-rules.json
           python3 .github/scripts/consume_ball_teng_control.py
+          python3 .github/scripts/validate_production_selection.py
 
       - name: Mark failed Add K run
         if: ${{ failure() && env.NOMAD_ADD_K_RUN == '1' }}
@@ -207,6 +222,7 @@ jobs:
           selection_changed=false
           control_changed=false
           if ! git diff --quiet -- selected-live-matches.json; then selection_changed=true; fi
+          if [ "${NOMAD_PRODUCTION_RECOVERY:-0}" = "1" ]; then selection_changed=true; fi
           if ! git diff --quiet -- auto-selection-state.json; then control_changed=true; fi
 
           echo "selection_changed=${selection_changed}" >> "$GITHUB_OUTPUT"
@@ -219,7 +235,7 @@ jobs:
 
           git add auto-selection-state.json
           if [ "$selection_changed" = true ]; then
-            git add selected-live-matches.json auto-selection-report.json owner-candidate-pool.json archive/auto-selections 2>/dev/null || true
+            git add selected-live-matches.json auto-selection-report.json owner-candidate-pool.json archive/auto-selections archive/rejected-production 2>/dev/null || true
           fi
 
           git commit -m "Update NOMAD ball-teng auto state $(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 RULES_PATH = Path('config/nomad-auto-rules.json')
@@ -89,6 +90,23 @@ def main():
     selected['noPick'] = True
     selected['noPickReason'] = reason
     selected['addKTheKingOfSoccer'] = meta
+    if os.environ.get('NOMAD_PRODUCTION_AUTO') == '1':
+        selected['system'] = 'ADD K THE KING OF SOCCER V1 / CONFIDENCE TOP 10'
+        selected['environment'] = 'PRODUCTION'
+        selected.setdefault('rules', {}).update({
+            'market': '1X2 team win',
+            'odds_min': 1.70,
+            'confidence_minimum': 58,
+            'automatic_selection': True,
+            'manual_analysis_only': False,
+        })
+        selected['productionGuard'] = {
+            'version': 1,
+            'minimumMainOdds': 1.70,
+            'minimumConfidence': 58,
+            'manualSelectionsAllowed': False,
+            'machine': 'CAR_1_PRODUCTION_ONLY',
+        }
     write_json(SELECTED_PATH, selected)
 
     report['status'] = 'ADD_K_NO_PICK'

@@ -1,0 +1,25 @@
+{
+  "selection_date": "2026-08-09",
+  "locked_at_utc": "2026-08-09T00:40:00Z",
+  "window_end_local": "2026-08-10T08:00:00+07:00",
+  "system": "NOMAD SYSTEM / AUTO TEST v.1 · ISOLATED",
+  "environment": "TEST_ONLY",
+  "rules": {
+    "market": "1X2 team win",
+    "odds_min": 1.7,
+    "confidence_minimum": 58,
+    "confidence_maximum": 100,
+    "automatic_selection": true,
+    "manual_analysis_only": false,
+    "overall_sample": 6,
+    "venue_sample": 5
+  },
+  "matches": [],
+  "noPick": true,
+  "noPickReason": "Machine 2 is isolated from Production. Run its Test selector independently when a new Test set is required.",
+  "isolation": {
+    "machine": "CAR_2_TEST_ONLY",
+    "productionRead": false,
+    "productionWrite": false
+  }
+}

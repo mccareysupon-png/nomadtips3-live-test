@@ -5,6 +5,8 @@ from pathlib import Path
 SELECTED_PATH = Path("selected-live-matches.json")
 REPORT_PATH = Path("auto-selection-report.json")
 POOL_PATH = Path("owner-candidate-pool.json")
+MINIMUM_MAIN_ODDS = 1.70
+MINIMUM_CONFIDENCE = 58
 
 
 def read_json(path, fallback=None):
@@ -23,6 +25,29 @@ def number(value, default=0.0):
         return float(value)
     except (TypeError, ValueError):
         return default
+
+
+def validate_automatic_candidates(selected, matches):
+    rules = selected.get("rules") or {}
+    errors = []
+    if rules.get("automatic_selection") is not True:
+        errors.append("automatic_selection must be true")
+    if rules.get("manual_analysis_only") is True:
+        errors.append("manual_analysis_only must be false")
+    for match in matches:
+        fixture_id = match.get("fixture_id") or match.get("providerFixtureId") or match.get("fixtureId")
+        origin = str(match.get("selection_origin") or "").upper()
+        client_id = str(match.get("client_fixture_id") or "").upper()
+        odds = number(match.get("odds"), 0.0)
+        confidence = number(match.get("confidence"), 0.0)
+        if origin.startswith("MANUAL") or client_id.startswith("MANUAL-"):
+            errors.append(f"fixture {fixture_id}: manual selection cannot enter Production AUTO")
+        if odds < MINIMUM_MAIN_ODDS:
+            errors.append(f"fixture {fixture_id}: main odds {odds:g} below {MINIMUM_MAIN_ODDS:.2f}")
+        if confidence < MINIMUM_CONFIDENCE:
+            errors.append(f"fixture {fixture_id}: confidence {confidence:g} below {MINIMUM_CONFIDENCE}%")
+    if errors:
+        raise RuntimeError("Production publication guard rejected selection: " + "; ".join(errors))
 
 
 def rank_key(match):
@@ -112,6 +137,7 @@ def main():
     report = read_json(REPORT_PATH)
     previous_pool = read_json(POOL_PATH)
     matches = list(selected.get("matches") or [])
+    validate_automatic_candidates(selected, matches)
     ranked = sorted(matches, key=rank_key)
     published = [normalize_match(match) for match in ranked[:10]]
     generated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -136,9 +162,22 @@ def main():
     selected["matches"] = published
     selected["system"] = "ADD K THE KING OF SOCCER V1 / CONFIDENCE TOP 10"
     selected["environment"] = "PRODUCTION"
-    selected.setdefault("rules", {})["maximum_published_selections"] = 10
-    selected["rules"]["all_qualified_picks_public"] = False
-    selected["rules"]["qualified_reserves_owner_only"] = 0
+    selected.setdefault("rules", {}).update({
+        "odds_min": MINIMUM_MAIN_ODDS,
+        "confidence_minimum": MINIMUM_CONFIDENCE,
+        "automatic_selection": True,
+        "manual_analysis_only": False,
+        "maximum_published_selections": 10,
+        "all_qualified_picks_public": False,
+        "qualified_reserves_owner_only": 0,
+    })
+    selected["productionGuard"] = {
+        "version": 1,
+        "minimumMainOdds": MINIMUM_MAIN_ODDS,
+        "minimumConfidence": MINIMUM_CONFIDENCE,
+        "manualSelectionsAllowed": False,
+        "machine": "CAR_1_PRODUCTION_ONLY",
+    }
     selected["candidatePool"] = {
         "qualified": len(ranked),
         "published": len(published),

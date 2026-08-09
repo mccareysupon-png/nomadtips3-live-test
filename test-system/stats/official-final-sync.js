@@ -5,7 +5,8 @@
   window.__NOMAD_OFFICIAL_FINAL_SYNC__ = true;
 
   const STORAGE_KEY = 'nomadtips3.nomad-control.draft.v2';
-  const SOURCE_URL = new URL('../../result-feed.json', document.currentScript.src).href;
+  const SOURCE_URL = new URL('../data/result-feed.json', document.currentScript.src).href;
+  const EXPECTED_ENVIRONMENT = 'TEST_ONLY';
   const POLL_MS = 5000;
   let busy = false;
   let queued = false;
@@ -35,7 +36,11 @@
   async function fetchOfficialFeed() {
     const response = await fetch(`${SOURCE_URL}?t=${Date.now()}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`Official result feed HTTP ${response.status}`);
-    return response.json();
+    const feed = await response.json();
+    if (feed?.environment !== EXPECTED_ENVIRONMENT) {
+      throw new Error(`Machine 2 rejected ${feed?.environment || 'UNKNOWN'} result payload`);
+    }
+    return feed;
   }
 
   async function syncOfficialFinals() {

@@ -48,7 +48,7 @@ jobs:
           if not slug:
               raise SystemExit('live-test-request.json has no match slug')
 
-          config_path=Path('selected-live-matches.json')
+          config_path=Path('test-system/data/selected-live-matches.json')
           config=json.loads(config_path.read_text(encoding='utf-8'))
           existing=next((m for m in config.get('matches',[]) if m.get('slug')==slug),None)
           if request.get('status')=='resolved' and existing and existing.get('fixture_id'):
@@ -196,10 +196,10 @@ jobs:
               'stats':stats,'events':events
             }
           }
-          data_path=Path(f'live-data-{slug}.json')
+          data_path=Path(f'test-system/data/live-data-{slug}.json')
           data_path.write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
-          manifest_path=Path('live-matches.json')
+          manifest_path=Path('test-system/data/live-matches.json')
           manifest=json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {'files':[]}
           files=[name for name in manifest.get('files',[]) if name!=data_path.name]
           if status.upper() not in TERMINAL:
@@ -218,7 +218,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add selected-live-matches.json live-test-request.json live-data-xelaju-aurora.json live-matches.json
+          git add test-system/data/selected-live-matches.json live-test-request.json test-system/data/live-data-xelaju-aurora.json test-system/data/live-matches.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Resolve Xelaju Aurora live score test'
           git pull --rebase origin main
