@@ -104,7 +104,9 @@ async function engineHealthPayload(env) {
     liveScan: {
       status: state,
       lastAttemptAt: health.lastAttemptAt,
-      lastSuccessfulScanAt: health.lastSuccessAt || (autoRow?.ran_at ? new Date(Number(autoRow.ran_at)).toISOString() : null),
+      lastSuccessfulScanAt: autoRow?.ran_at
+        ? new Date(Number(autoRow.ran_at)).toISOString()
+        : health.lastSuccessAt,
       lastErrorAt: health.lastErrorAt,
       lastError: health.lastError || autoRow?.error || null,
       lastErrorCode: health.lastErrorCode,
@@ -291,8 +293,10 @@ export default {
           if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
           return;
         }
-        await recordEngineSuccess(env, Date.now());
-        if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · scheduler healthy', Date.now());
+        if (result?.fullScanAttempted) {
+          await recordEngineSuccess(env, Date.now());
+          if (recoveryPlanned) await recordRecovery(env, 'WATCHDOG RECOVERED · scheduler healthy', Date.now());
+        }
       } catch (error) {
         const classified = await recordEngineFailure(env, error, Date.now());
         if (recoveryPlanned) await recordRecovery(env, `WATCHDOG RECOVERY FAILED · ${classified.code}`, Date.now());
