@@ -34,7 +34,7 @@ jobs:
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
 
-      - name: Verify Car 3 and Auto Mechanic V2
+      - name: Verify Car 3, Auto Mechanic V2, and Condition Audit
         run: |
           node --input-type=module <<'NODE'
           const statusUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
@@ -49,6 +49,7 @@ jobs:
               const statusPayload = await statusResponse.json().catch(() => null);
               if (!statusResponse.ok) throw new Error(`status HTTP ${statusResponse.status}`);
               if (!statusPayload?.apiGuard) throw new Error('apiGuard diagnostics missing');
+              if (!statusPayload?.conditionAudit?.status) throw new Error('Condition Audit diagnostics missing from status route');
               if (Number(statusPayload.apiGuard.minGapMs) !== 9000) {
                 throw new Error(`unexpected base guard gap ${statusPayload.apiGuard.minGapMs}`);
               }
@@ -82,6 +83,9 @@ jobs:
               if (!Array.isArray(healthPayload?.blackBox)) {
                 throw new Error('watchdog black box missing');
               }
+              if (!healthPayload?.conditionAudit?.status) {
+                throw new Error('Condition Audit diagnostics missing from engine health');
+              }
 
               console.log(JSON.stringify({
                 route: 'car3/auto-scan-status',
@@ -97,6 +101,7 @@ jobs:
                 engineMode: healthPayload.control.mode,
                 mechanicAction: healthPayload.watchdog?.currentAction,
                 watchdogMinutes: healthPayload.watchdog.intervalMinutes,
+                conditionAudit: healthPayload.conditionAudit,
                 lastSuccessfulScanAt: healthPayload.liveScan?.lastSuccessfulScanAt || null,
                 blackBoxEvents: healthPayload.blackBox.length
               }, null, 2));
@@ -107,5 +112,5 @@ jobs:
               if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 5000));
             }
           }
-          throw lastError || new Error('Auto Mechanic V2 deploy verification failed');
+          throw lastError || new Error('Auto Mechanic V2 / Condition Audit deploy verification failed');
           NODE
