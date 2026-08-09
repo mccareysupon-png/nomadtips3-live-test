@@ -1,7 +1,7 @@
 import baseWorker from './index.js';
 import { getActiveConditionConfig } from './condition-config.js';
-import { sharedApiFetch } from './shared-api-football.js';
 
+const API_BASE = 'https://v3.football.api-sports.io';
 const ALLOWED_ORIGINS = new Set([
   'https://mccareysupon-png.github.io',
   'https://nomadtips3.com',
@@ -18,9 +18,8 @@ const REQUIRED_STATS = [
 ];
 const LIVE_CACHE_SECONDS = 15;
 const STATS_CACHE_SECONDS = 60;
-const ODDS_CACHE_SECONDS = 15;
+const ODDS_CACHE_SECONDS = 5;
 const DEFAULT_CACHE_SECONDS = 60;
-const LIVE_MARKET_BET_IDS = Object.freeze({ AH: 33, WIN: 59 });
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -56,6 +55,26 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function apiErrorDetail(payload) {
+  const errors = payload?.errors;
+  if (!errors) return '';
+  if (typeof errors === 'string') return errors.trim();
+  if (Array.isArray(errors)) {
+    if (errors.length === 0) return '';
+    try { return JSON.stringify(errors); } catch { return String(errors); }
+  }
+  if (typeof errors === 'object') {
+    if (Object.keys(errors).length === 0) return '';
+    try { return JSON.stringify(errors); } catch { return String(errors); }
+  }
+  return String(errors);
+}
+
+function isRateLimit(response, payload) {
+  const detail = `${response?.status || ''} ${payload?.message || ''} ${apiErrorDetail(payload)}`;
+  return response?.status === 429 || /too many requests|rate.?limit|requests per minute/i.test(detail);
+}
+
 function cacheSecondsForPath(path) {
   if (path.startsWith('/odds/live')) return ODDS_CACHE_SECONDS;
   if (path.startsWith('/fixtures?live=')) return LIVE_CACHE_SECONDS;
@@ -65,8 +84,40 @@ function cacheSecondsForPath(path) {
 }
 
 async function apiFetch(path, env, cacheSeconds = cacheSecondsForPath(path)) {
-  const result = await sharedApiFetch(path, env, cacheSeconds);
-  return result.payload;
+  if (!env.API_FOOTBALL_KEY) throw new Error('API_FOOTBALL_KEY is not configured');
+  const apiUrl = `${API_BASE}${path}`;
+  const cache = globalThis.caches?.default || null;
+  const key = new Request(apiUrl, { method: 'GET' });
+
+  if (cache) {
+    const cached = await cache.match(key);
+    if (cached) return cached.json();
+  }
+
+  const response = await fetch(apiUrl, {
+    headers: {
+      'x-apisports-key': env.API_FOOTBALL_KEY,
+      'Accept': 'application/json'
+    }
+  });
+  const payload = await response.json().catch(() => null);
+  const detail = apiErrorDetail(payload);
+
+  if (isRateLimit(response, payload)) {
+    throw new Error(detail || `API HTTP ${response.status} rate limited`);
+  }
+  if (!response.ok) throw new Error(payload?.message || `API HTTP ${response.status}`);
+  if (detail) throw new Error(detail);
+
+  if (cache) {
+    await cache.put(key, new Response(JSON.stringify(payload), {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': `public, max-age=${cacheSeconds}`
+      }
+    }));
+  }
+  return payload;
 }
 
 function normalizeStatKey(type) {
@@ -154,35 +205,20 @@ function handicapNumber(value) {
 function flattenBetContainers(root) {
   const results = [];
   const seen = new Set();
-
   function walk(value, context = '') {
     if (!value || typeof value !== 'object' || seen.has(value)) return;
     seen.add(value);
     if (Array.isArray(value)) {
-      value.slice(0, 600).forEach((child, index) => walk(child, `${context} ${index}`));
+      value.slice(0, 500).forEach((child, index) => walk(child, `${context} ${index}`));
       return;
     }
-
     const name = value.name || value.bet?.name || value.label || '';
-    const id = Number(value.id ?? value.bet?.id ?? value.betId ?? value.bet_id) || null;
     const values = value.values || value.outcomes || value.selections;
-    if (Array.isArray(values)) {
-      results.push({ name: String(name), id, values, context, blocked: Boolean(value.blocked) });
-    }
-    Object.entries(value).slice(0, 600).forEach(([key, child]) => {
-      walk(child, `${context} ${key} ${name}`);
-    });
+    if (Array.isArray(values)) results.push({ name: String(name), values, context });
+    Object.entries(value).slice(0, 500).forEach(([key, child]) => walk(child, `${context} ${key} ${name}`));
   }
-
   walk(root);
   return results;
-}
-
-function blockedSelection(value) {
-  const suspended = value?.suspended;
-  const blocked = value?.blocked;
-  return suspended === true || suspended === 1 || suspended === '1' || suspended === 'true' ||
-    blocked === true || blocked === 1 || blocked === '1' || blocked === 'true';
 }
 
 function sideMarkets(oddsItem, teamName, side) {
@@ -192,23 +228,17 @@ function sideMarkets(oddsItem, teamName, side) {
   const containers = flattenBetContainers(oddsItem?.odds || oddsItem);
 
   for (const container of containers) {
-    if (container.blocked) continue;
     const betName = `${container.name} ${container.context}`.toLowerCase();
-    const isWinner = container.id === LIVE_MARKET_BET_IDS.WIN ||
-      /(match winner|1x2|fulltime result|full time result|moneyline|winner)/.test(betName);
-    const isAh = container.id === LIVE_MARKET_BET_IDS.AH ||
-      /(asian handicap|asian line|\bah\b)/.test(betName);
+    const isWinner = /(match winner|1x2|fulltime result|moneyline|winner)/.test(betName);
+    const isAh = /(asian handicap|asian line|\bah\b)/.test(betName);
     if (!isWinner && !isAh) continue;
 
     const ordered = [...container.values]
       .sort((a, b) => Number(Boolean(b?.main)) - Number(Boolean(a?.main)));
-
     for (const value of ordered) {
-      if (blockedSelection(value)) continue;
       const sideValue = value?.value ?? value?.name ?? value?.label ?? value?.team;
       if (!isSideValue(sideValue, teamName, side)) continue;
       const odd = numeric(value?.odd ?? value?.odds ?? value?.price ?? value?.decimal);
-
       if (isWinner && win === null && odd !== null) win = odd;
       if (isAh && ah === null) {
         ah = handicapNumber(value?.handicap ?? value?.line ?? value?.hdp ?? sideValue);
@@ -216,7 +246,6 @@ function sideMarkets(oddsItem, teamName, side) {
       }
     }
   }
-
   return { win, ah, ahOdd };
 }
 
@@ -273,9 +302,9 @@ function selectedCandidate(source, markets, config, selectedSide) {
   };
 }
 
-async function batchedFixtureStatistics(sources, env, warnings) {
+async function batchedFixtureStatistics(preliminary, env, warnings) {
   const map = new Map();
-  const ids = sources.map(({ match }) => Number(match.id)).filter(Number.isInteger);
+  const ids = preliminary.map(({ match }) => Number(match.id)).filter(Number.isInteger);
 
   for (let index = 0; index < ids.length; index += 20) {
     const group = ids.slice(index, index + 20);
@@ -296,57 +325,19 @@ async function batchedFixtureStatistics(sources, env, warnings) {
   return map;
 }
 
-function liveOddsRows(payload) {
-  return Array.isArray(payload?.response) ? payload.response : [];
-}
-
-function liveOddsFixtureId(item) {
-  const fixtureId = Number(item?.fixture?.id ?? item?.fixture_id ?? item?.fixtureId ?? item?.id);
-  return Number.isInteger(fixtureId) && fixtureId > 0 ? fixtureId : null;
-}
-
 function liveOddsByFixture(payload, fixtureIds) {
   const wanted = new Set(fixtureIds.map(Number));
   const map = new Map();
-
-  for (const item of liveOddsRows(payload)) {
-    const fixtureId = liveOddsFixtureId(item);
-    if (!fixtureId || !wanted.has(fixtureId)) continue;
-    const rows = map.get(fixtureId) || [];
-    rows.push(item);
-    map.set(fixtureId, rows);
+  for (const item of Array.isArray(payload?.response) ? payload.response : []) {
+    const fixtureId = Number(item?.fixture?.id ?? item?.fixtureId ?? item?.id);
+    if (!Number.isInteger(fixtureId) || !wanted.has(fixtureId)) continue;
+    map.set(fixtureId, item);
   }
-
   return map;
 }
 
-function providerProtectionError(error) {
-  return /(?:\b429\b|too many|rate.?limit|cooldown|circuit[_ ]?open|waiting[_ ]?api|slot[_ ]?timeout)/i
-    .test(String(error?.message || error || ''));
-}
-
-function priceGateDiagnosis({
-  minuteWindow,
-  completeStats,
-  completeMarkets,
-  priceEligibleFixtures,
-  oddsFixtureMatched,
-  marketParseMisses,
-  liveOddsRequestErrors,
-  liveOddsRateLimited
-}) {
-  if (minuteWindow <= 0) return 'WAITING_FOR_MINUTE_WINDOW';
-  if (liveOddsRateLimited > 0) return 'ODDS_PROVIDER_PROTECTION';
-  if (liveOddsRequestErrors > 0 && oddsFixtureMatched <= 0) return 'ODDS_REQUEST_FAILED';
-  if (oddsFixtureMatched <= 0) return 'NO_LIVE_ODDS_COVERAGE';
-  if (completeMarkets <= 0 && marketParseMisses > 0) return 'TARGET_MARKET_NOT_FOUND';
-  if (priceEligibleFixtures <= 0) return 'NO_ELIGIBLE_LIVE_ODDS';
-  if (completeStats <= 0) return 'WAITING_FOR_COMPLETE_STATS';
-  return 'MARKET_OK';
-}
-
 function adaptiveRefreshSeconds(liveItems, preliminary, completeStats, completeMarkets, config) {
-  if (completeMarkets > 0) return 15;
+  if (completeMarkets > 0) return 5;
   if (completeStats > 0) return 15;
   if (preliminary.length > 0) return 30;
 
@@ -375,108 +366,52 @@ async function liveConditionScan(request, env) {
       return true;
     });
 
-  let oddsMap = new Map();
-  let oddsEndpointRows = 0;
-  let oddsFixtureMatched = 0;
-  let noOddsCoverage = 0;
-  let marketParseMisses = 0;
-  let liveOddsRequestErrors = 0;
-  let liveOddsRateLimited = 0;
-  let liveOddsSource = 'not-requested';
-  let completeMarkets = 0;
-
-  if (preliminary.length) {
-    const fixtureIds = preliminary.map(({ match }) => match.id);
-    try {
-      const oddsPayload = await apiFetch('/odds/live', env, ODDS_CACHE_SECONDS);
-      oddsEndpointRows = liveOddsRows(oddsPayload).length;
-      oddsMap = liveOddsByFixture(oddsPayload, fixtureIds);
-      liveOddsSource = '/odds/live:odds-first';
-    } catch (error) {
-      liveOddsRequestErrors += 1;
-      if (providerProtectionError(error)) liveOddsRateLimited += 1;
-      warnings.push(`live odds first: ${error?.message || 'request failed'}`);
-    }
-  }
-
-  const priceEligible = [];
-  for (const source of preliminary) {
-    const oddsItem = oddsMap.get(Number(source.match.id)) || null;
-    if (!oddsItem) {
-      noOddsCoverage += 1;
-      continue;
-    }
-
-    oddsFixtureMatched += 1;
-    let fixtureHasMarket = false;
-    const marketsBySide = {};
-
-    for (const selectedSide of selectedSides(config)) {
-      const teamName = selectedSide === 'AWAY' ? source.match.away : source.match.home;
-      const markets = sideMarkets(oddsItem, teamName, selectedSide);
-      const targetMarketAvailable = config.market === 'AH'
-        ? markets.ah !== null && markets.ahOdd !== null
-        : markets.win !== null;
-      if (!targetMarketAvailable) continue;
-      fixtureHasMarket = true;
-
-      const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
-      if (!inOptionalRange(selectedOdds, config.oddsMin, config.oddsMax)) continue;
-      if (!inOptionalRange(markets.ah, config.ahMin, config.ahMax)) continue;
-      marketsBySide[selectedSide] = markets;
-    }
-
-    if (fixtureHasMarket) completeMarkets += 1;
-    else marketParseMisses += 1;
-
-    if (Object.keys(marketsBySide).length) {
-      priceEligible.push({ ...source, marketsBySide });
-    }
-  }
-
-  const statsMap = priceEligible.length
-    ? await batchedFixtureStatistics(priceEligible, env, warnings)
-    : new Map();
+  const statsMap = await batchedFixtureStatistics(preliminary, env, warnings);
   const statEligible = [];
   let completeStats = 0;
 
-  for (const source of priceEligible) {
+  for (const source of preliminary) {
     const stats = statsMap.get(Number(source.match.id)) || {};
     if (!completeStatistics(stats).ok) continue;
     completeStats += 1;
     statEligible.push({ ...source, stats });
   }
 
+  let oddsMap = new Map();
+  if (statEligible.length) {
+    try {
+      const oddsPayload = await apiFetch('/odds/live', env, ODDS_CACHE_SECONDS);
+      oddsMap = liveOddsByFixture(oddsPayload, statEligible.map(({ match }) => match.id));
+    } catch (error) {
+      warnings.push(`live odds batch: ${error?.message || 'request failed'}`);
+    }
+  }
+
   const candidates = [];
+  let completeMarkets = 0;
   let redSafe = 0;
 
   for (const source of statEligible) {
+    const oddsItem = oddsMap.get(Number(source.match.id)) || null;
+    let fixtureHasMarket = false;
+
     for (const selectedSide of selectedSides(config)) {
-      const markets = source.marketsBySide?.[selectedSide];
-      if (!markets) continue;
+      const teamName = selectedSide === 'AWAY' ? source.match.away : source.match.home;
+      const markets = sideMarkets(oddsItem, teamName, selectedSide);
+      if (markets.win === null && markets.ah === null && markets.ahOdd === null) continue;
+      fixtureHasMarket = true;
+
+      const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
+      if (!inOptionalRange(selectedOdds, config.oddsMin, config.oddsMax)) continue;
+      if (!inOptionalRange(markets.ah, config.ahMin, config.ahMax)) continue;
 
       const candidate = selectedCandidate(source, markets, config, selectedSide);
       if (candidate.redCards.home > candidate.redCards.away) continue;
       redSafe += 1;
       candidates.push(candidate);
     }
-  }
 
-  const priceGate = priceGateDiagnosis({
-    minuteWindow: preliminary.length,
-    completeStats,
-    completeMarkets,
-    priceEligibleFixtures: priceEligible.length,
-    oddsFixtureMatched,
-    marketParseMisses,
-    liveOddsRequestErrors,
-    liveOddsRateLimited
-  });
-
-  if (preliminary.length > 0 && priceGate !== 'MARKET_OK') {
-    warnings.unshift(
-      `PRICE_GATE ${priceGate} · minute=${preliminary.length} · oddsMatched=${oddsFixtureMatched} · market=${completeMarkets} · priceEligible=${priceEligible.length} · stats=${completeStats}`
-    );
+    if (fixtureHasMarket) completeMarkets += 1;
   }
 
   const refreshSeconds = adaptiveRefreshSeconds(
@@ -490,16 +425,15 @@ async function liveConditionScan(request, env) {
   return json(request, {
     ok: true,
     generatedAt: new Date().toISOString(),
-    source: 'cloudflare-worker · api-football · odds-first · car3-shared-guard',
+    source: 'cloudflare-worker · api-football · batched · car3-unguarded',
     mode: 'PAGE-5-CONDITION-CONTROL-ADAPTIVE',
     refreshSeconds,
     polling: {
-      sequenceSeconds: [240, 60, 30, 15],
+      sequenceSeconds: [240, 60, 30, 15, 5],
       liveScoreCacheSeconds: LIVE_CACHE_SECONDS,
       statisticsCacheSeconds: STATS_CACHE_SECONDS,
       liveOddsCacheSeconds: ODDS_CACHE_SECONDS,
-      apiRateGuard: 'SHARED_API_FOOTBALL_GUARD',
-      pricePipeline: 'ODDS_FIRST_THEN_STATS'
+      apiRateGuard: 'OFF_CAR3_ONLY'
     },
     config,
     counts: {
@@ -507,16 +441,6 @@ async function liveConditionScan(request, env) {
       minuteWindow: preliminary.length,
       completeStats,
       completeMarkets,
-      priceEligibleFixtures: priceEligible.length,
-      statsRequestedFixtures: priceEligible.length,
-      oddsEndpointRows,
-      oddsFixtureMatched,
-      noOddsCoverage,
-      marketParseMisses,
-      liveOddsRequestErrors,
-      liveOddsRateLimited,
-      liveOddsSource,
-      priceGateDiagnosis: priceGate,
       redSafe,
       baseCandidates: candidates.length
     },
