@@ -34,11 +34,12 @@ jobs:
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
 
-      - name: Verify Car 3 deployed status and config routes
+      - name: Verify Car 3 deployed status, config, and engine health routes
         run: |
           node --input-type=module <<'NODE'
           const statusUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/car3/auto-scan-status';
           const configUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/condition-config';
+          const healthUrl = 'https://nomadtips3-test-api.mccarey-supon.workers.dev/engine-health';
           let lastError = null;
           for (let attempt = 1; attempt <= 6; attempt += 1) {
             try {
@@ -61,6 +62,18 @@ jobs:
                 throw new Error('Attack evidence toggle is not live in Worker config');
               }
 
+              const healthResponse = await fetch(`${healthUrl}?deploy_check=${Date.now()}`, {
+                headers: { 'Accept': 'application/json' }
+              });
+              const healthPayload = await healthResponse.json().catch(() => null);
+              if (!healthResponse.ok) throw new Error(`engine health HTTP ${healthResponse.status}`);
+              if (!healthPayload?.ok || !healthPayload?.control?.mode) {
+                throw new Error('engine health/control diagnostics missing');
+              }
+              if (Number(healthPayload?.watchdog?.intervalMinutes) !== 15) {
+                throw new Error(`unexpected watchdog interval ${healthPayload?.watchdog?.intervalMinutes}`);
+              }
+
               console.log(JSON.stringify({
                 route: 'car3/auto-scan-status',
                 deployed: true,
@@ -69,7 +82,11 @@ jobs:
                 scannerError: statusPayload.error || null,
                 apiGuard: statusPayload.apiGuard,
                 attackEvidenceToggleLive: true,
-                attackEvidenceActive: configPayload.active?.attackEvidenceEnabled
+                attackEvidenceActive: configPayload.active?.attackEvidenceEnabled,
+                engineState: healthPayload.state,
+                engineMode: healthPayload.control.mode,
+                watchdogMinutes: healthPayload.watchdog.intervalMinutes,
+                lastSuccessfulScanAt: healthPayload.liveScan?.lastSuccessfulScanAt || null
               }, null, 2));
               process.exit(0);
             } catch (error) {
