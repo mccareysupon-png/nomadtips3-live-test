@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { sharedApiFetch } from '../cloudflare-worker/src/shared-api-football.js';
+import {
+  getSharedApiGuardStatus,
+  sharedApiFetch
+} from '../cloudflare-worker/src/shared-api-football.js';
 
 class Statement {
   constructor(db, sql, bindings = []) { this.db = db; this.sql = sql; this.bindings = bindings; }
@@ -45,10 +48,15 @@ let upstreamCalls = 0;
 globalThis.caches = { default: cache };
 globalThis.fetch = async () => {
   upstreamCalls += 1;
-  if (upstreamCalls === 1) return Response.json({ response: [{ ok: true }] });
+  if (upstreamCalls === 1) {
+    return Response.json(
+      { response: [{ ok: true }] },
+      { headers: { 'X-RateLimit-Limit': '10', 'X-RateLimit-Remaining': '9' } }
+    );
+  }
   return Response.json(
     { errors: { rateLimit: 'Too many requests. You have exceeded the limit of requests per minute.' } },
-    { status: 429, headers: { 'Retry-After': '120' } }
+    { status: 429, headers: { 'Retry-After': '120', 'X-RateLimit-Limit': '10', 'X-RateLimit-Remaining': '0' } }
   );
 };
 
@@ -58,20 +66,49 @@ try {
   assert.equal(first.stale, false);
   assert.equal(upstreamCalls, 1);
 
+  let status = await getSharedApiGuardStatus(env);
+  assert.equal(status.rateLimitLimit, 10);
+  assert.equal(status.rateLimitRemaining, 9);
+  assert.equal(status.derateLevel, 0);
+
+  await env.DB.prepare(`UPDATE api_rate_guard SET last_started_at = 0 WHERE guard_key = ?`)
+    .bind('api-football').run();
   cache.delete('https://v3.football.api-sports.io/status');
+
   const limited = await sharedApiFetch('/status', env, 1);
   assert.equal(limited.stale, true);
   assert.equal(upstreamCalls, 2);
+  status = await getSharedApiGuardStatus(env);
+  assert.equal(status.consecutive429, 1);
+  assert.ok(status.derateLevel >= 1);
+  assert.equal(status.rateLimitRemaining, 0);
 
   const protectedRead = await sharedApiFetch('/status', env, 1);
   assert.equal(protectedRead.stale, true);
   assert.equal(upstreamCalls, 2, 'cooldown must prevent another upstream request');
 
+  // Simulate provider cooldown expiry so the next 429 becomes strike two.
+  await env.DB.prepare(`
+    UPDATE api_rate_guard
+    SET cooldown_until = 0, circuit_open_until = 0, last_started_at = 0
+    WHERE guard_key = ?
+  `).bind('api-football').run();
+  cache.delete('https://v3.football.api-sports.io/status');
+  const limitedAgain = await sharedApiFetch('/status', env, 1);
+  assert.equal(limitedAgain.stale, true);
+  assert.equal(upstreamCalls, 3);
+
+  status = await getSharedApiGuardStatus(env);
+  assert.equal(status.consecutive429, 2);
+  assert.equal(status.circuitOpen, true);
+  assert.ok(status.derateLevel >= 2);
+  assert.ok(Number(status.effectiveGapMs) >= 18_000);
+
   const guard = await env.DB.prepare('SELECT * FROM api_rate_guard WHERE guard_key = ?')
     .bind('api-football').first();
   assert.ok(Number(guard.cooldown_until) >= Date.now() + 115_000);
-  assert.equal(Number(guard.consecutive_429), 1);
-  console.log('PASS: 429 starts a shared cooldown and serves stale data without re-knocking upstream');
+  assert.ok(Number(guard.circuit_open_until) >= Date.now() + 115_000);
+  console.log('PASS: V2 tracks provider quota, derates after 429, opens circuit on repeat, and serves stale data without re-knocking upstream');
 } finally {
   globalThis.fetch = originalFetch;
   globalThis.caches = originalCaches;
