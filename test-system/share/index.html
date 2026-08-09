@@ -4,81 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Analysis Poster</title>
+  <meta name="theme-color" content="#090a0c">
+  <title>NOMADTIPS3 Test Share — Machine 2 Parked</title>
   <link rel="stylesheet" href="../styles.css?v=202608051001">
-  <link rel="stylesheet" href="../../brand.css?v=202608041153">
-  <link rel="stylesheet" href="../../content-scale.css?v=202608041015">
-  <link rel="stylesheet" href="../../draft-responsive.css?v=202608041140">
-  <link rel="stylesheet" href="../../heading-scale.css?v=202608041200">
-  <link rel="stylesheet" href="../../terminology.css?v=202608041231">
-  <link rel="stylesheet" href="../../site-footer.css?v=202608040844">
-  <link rel="stylesheet" href="../../navigation-polish.css?v=202608041251">
-  <link rel="stylesheet" href="./poster.css?v=202608051332">
   <style>
-    body.poster-page > .main-nav,
-    body.poster-page > .main-nav::before,
-    body.poster-page > .main-nav::after{
-      border:0!important;
-      border-top:0!important;
-      outline:0!important;
-      box-shadow:none!important;
-      -webkit-box-shadow:none!important;
-      background-image:none!important;
-      filter:none!important;
-    }
-    body.poster-page > .main-nav::before,
-    body.poster-page > .main-nav::after{
-      display:none!important;
-      content:none!important;
-    }
-    .poster-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-    .poster-secondary{grid-template-columns:repeat(4,minmax(0,1fr))}
-    @media(max-width:720px){.poster-secondary{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media(max-width:430px){.poster-secondary{grid-template-columns:1fr}}
+    body{min-height:100vh;background:#090a0c;color:#eef7f2}
+    .parked{max-width:760px;margin:13vh auto;padding:28px;border:1px solid rgba(242,201,76,.25);border-radius:18px;background:#17191e}
+    .parked small{color:#f2c94c;font-weight:900;letter-spacing:.12em}.parked h1{margin:10px 0 8px;font-size:clamp(28px,6vw,52px)}
+    .parked p{color:#9db0a7;line-height:1.7}.parked strong{color:#fff}.parked code{color:#f2c94c}
   </style>
 </head>
-<body class="poster-page">
-  <header class="topbar">
-    <a class="brand" href="../" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
-    <span class="environment">TEST SYSTEM</span>
-  </header>
-  <main class="page">
-    <section class="hero">
-      <div>
-        <span class="eyebrow">SHARE-READY · CLEAR PRIORITY</span>
-        <h1>Analysis Poster</h1>
-        <p>Each poster displays up to four official match analyses with the Main Pick, local kickoff time and essential independent market positions clearly separated.</p>
-        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
-      </div>
-    </section>
-
-    <div class="share-actions">
-      <button id="copyButton" class="button primary">Copy Analysis Text</button>
-      <button id="shareButton" class="button yellow">Open Share Sheet</button>
-      <button id="printButton" class="button">Print / Save PDF</button>
-    </div>
-
-    <div id="posterStage" class="poster-stage" aria-live="polite"></div>
-
-    <div class="poster-pagination" aria-label="Poster pages">
-      <button id="previousPoster" class="button poster-nav-button" type="button">← Previous Poster</button>
-      <span id="posterPageStatus">Poster 1 of 1</span>
-      <button id="nextPoster" class="button poster-nav-button" type="button">Next Poster →</button>
-    </div>
+<body>
+  <main class="parked">
+    <small>CAR 2 · SHARE · PARKED</small>
+    <h1>Share engine is offline</h1>
+    <p><strong>No selection sync, result polling or poster-generation runtime is active.</strong> Machine 2 remains stored only for future reference.</p>
+    <p>Status: <code>ENGINE_DISABLED</code></p>
   </main>
-
-  <nav class="main-nav" aria-label="Test system navigation">
-    <a href="../">Match Predictions</a>
-    <a href="../stats/">Statistics</a>
-    <a class="active" href="./">Analysis Poster</a>
-  </nav>
-
-  <script src="../../device-time-sync.js?v=202608041114"></script>
-  <script src="../selected-odds-sync.js?v=202608080629"></script>
-  <script type="module" src="./app.js?v=202608071505"></script>
-  <script src="../../remote-results.js?v=202608071505" defer></script>
-  <script src="../../terminology.js?v=202608040954" defer></script>
-  <script src="../../site-footer.js?v=202608040844"></script>
 </body>
 </html>
