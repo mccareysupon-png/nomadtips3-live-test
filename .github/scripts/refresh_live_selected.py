@@ -8,6 +8,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from live_result_guard import reconcile_match_state
+
 KEY = os.environ["API_FOOTBALL_KEY"]
 BASE = "https://v3.football.api-sports.io"
 TERMINAL = {"FT", "AET", "PEN", "CANC", "ABD", "AWD", "WO", "PST"}
@@ -382,7 +384,16 @@ for selected in selected_matches:
         score = row.get("score") or {}
         home = teams.get("home") or {}
         away = teams.get("away") or {}
-        current_status = str((fixture.get("status") or {}).get("short") or old_status or "NS").upper()
+        match_state = reconcile_match_state(
+            old_match,
+            fixture.get("status") or {},
+            goals,
+            score,
+            terminal_statuses=TERMINAL,
+        )
+        current_status = match_state["status"]
+        if match_state["terminal_regression_blocked"]:
+            print(f"Terminal rollback blocked for fixture {fixture_id}: keeping {old_status}")
 
         stats_rows = []
         events_rows = []
@@ -445,11 +456,11 @@ for selected in selected_matches:
                 "away": {"name": away.get("name") or selected["away"], "short_name": away.get("name") or selected["away"]},
                 "kickoff_utc": fixture.get("date") or selected.get("kickoff_utc"),
                 "status": current_status,
-                "status_long": (fixture.get("status") or {}).get("long") or old_match.get("status_long"),
-                "elapsed": (fixture.get("status") or {}).get("elapsed"),
-                "score": {"home": goals.get("home"), "away": goals.get("away")},
-                "halftime_score": score.get("halftime") or old_match.get("halftime_score") or {"home": None, "away": None},
-                "fulltime_score": score.get("fulltime") or old_match.get("fulltime_score") or {"home": None, "away": None},
+                "status_long": match_state["status_long"],
+                "elapsed": match_state["elapsed"],
+                "score": match_state["score"],
+                "halftime_score": match_state["halftime_score"],
+                "fulltime_score": match_state["fulltime_score"],
                 "pick": selected["pick"],
                 "pick_side": selected["pick_side"],
                 "odds": selected["odds"],
