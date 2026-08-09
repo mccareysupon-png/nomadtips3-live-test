@@ -1,8 +1,9 @@
 import baseEntry from './car3-audit-entry.js';
 import { getLatestAutoPayload, handleAutoRequest } from './auto-scan.js';
 
+const PAGE5_ORIGIN = 'https://mccareysupon-png.github.io';
 const ALLOWED_ORIGINS = new Set([
-  'https://mccareysupon-png.github.io',
+  PAGE5_ORIGIN,
   'https://nomadtips3.com',
   'https://www.nomadtips3.com'
 ]);
@@ -13,7 +14,7 @@ function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
   const allowOrigin = ALLOWED_ORIGINS.has(origin)
     ? origin
-    : 'https://mccareysupon-png.github.io';
+    : PAGE5_ORIGIN;
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -82,10 +83,15 @@ async function storedPage5Payload(request, env) {
   };
 }
 
+function isPage5ReadRequest(request, url) {
+  if (url.pathname === '/page5-latest') return true;
+  return url.pathname === '/live-condition-scan' && request.headers.get('Origin') === PAGE5_ORIGIN;
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === '/page5-latest') {
+    if (isPage5ReadRequest(request, url)) {
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers: corsHeaders(request) });
       }
