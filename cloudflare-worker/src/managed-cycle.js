@@ -9,6 +9,7 @@ import {
   syncSignalsToPaperTrades
 } from './paper-db-side.js';
 import { notifyPendingLineEvents } from './line-side.js';
+import { getSharedApiGuardStatus } from './shared-api-football.js';
 
 const HOT_BURST_LIMIT_MS = 52_000;
 const HOT_BURST_MAX_RUNS = 10;
@@ -47,6 +48,14 @@ function fullScanIsDue(latest, now) {
   return now - last >= Math.max(55_000, fullRefresh * 1000 - 5_000);
 }
 
+function applyGuardCadence(refreshSeconds, guard) {
+  if (guard?.circuitOpen || guard?.cooldownActive) return 60;
+  const level = Number(guard?.derateLevel || 0);
+  if (level >= 2) return Math.max(60, refreshSeconds);
+  if (level === 1) return Math.max(30, refreshSeconds);
+  return refreshSeconds;
+}
+
 async function flushSignalSideEffects(env) {
   try {
     await syncSignalsToPaperTrades(env);
@@ -76,13 +85,14 @@ export async function runManagedCycle(env, ctx) {
     } catch (error) {
       scanOk = false;
       scanError = error?.message || 'Automatic scan failed';
-      // Recoverable scan failures are health events, not unhandled Worker errors.
       console.warn(JSON.stringify({ event: 'auto_scan_degraded', error: scanError }));
     }
     latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => latest);
   }
 
   let refreshSeconds = adaptiveRefreshSeconds(latest);
+  let guard = await getSharedApiGuardStatus(env).catch(() => null);
+  refreshSeconds = applyGuardCadence(refreshSeconds, guard);
   let hotRuns = 0;
 
   while (refreshSeconds < 60 && hotRuns < HOT_BURST_MAX_RUNS) {
@@ -90,11 +100,15 @@ export async function runManagedCycle(env, ctx) {
     if (Date.now() - startedAt + waitMs > HOT_BURST_LIMIT_MS) break;
     await sleep(waitMs);
 
+    guard = await getSharedApiGuardStatus(env).catch(() => guard);
+    refreshSeconds = applyGuardCadence(refreshSeconds, guard);
+    if (refreshSeconds >= 60) break;
+
     try {
       const result = await runHotConditionScan(baseWorker, env, ctx);
       hotRuns += 1;
       if (Number(result?.newSignals || 0) > 0) await flushSignalSideEffects(env);
-      refreshSeconds = adaptiveRefreshSeconds(result);
+      refreshSeconds = applyGuardCadence(adaptiveRefreshSeconds(result), await getSharedApiGuardStatus(env).catch(() => guard));
     } catch (error) {
       hotError = error?.message || 'Hot condition scan failed';
       console.warn(JSON.stringify({ event: 'hot_scan_degraded', error: hotError }));
@@ -127,6 +141,8 @@ export async function runManagedCycle(env, ctx) {
     hotError,
     refreshSeconds,
     hotRuns,
+    guardAction: guard?.action || 'UNKNOWN',
+    derateLevel: Number(guard?.derateLevel || 0),
     completedAt: new Date().toISOString()
   };
 }
