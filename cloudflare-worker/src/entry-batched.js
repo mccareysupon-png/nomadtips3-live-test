@@ -20,6 +20,9 @@ const REQUIRED_STATS = [
 const LIVE_CACHE_SECONDS = 15;
 const STATS_CACHE_SECONDS = 60;
 const ODDS_CACHE_SECONDS = 5;
+// API-Football live-bet IDs are a separate namespace from pre-match bet IDs.
+// 33 = Asian Handicap, 59 = Fulltime Result (1X2) in /odds/live/bets.
+const LIVE_MARKET_BET_IDS = Object.freeze({ AH: 33, WIN: 59 });
 const DEFAULT_CACHE_SECONDS = 60;
 const CAR3_MIN_GAP_MS = 7000;
 const CAR3_MAX_SLOT_WAIT_MS = 12_000;
@@ -366,6 +369,7 @@ function sideMarkets(oddsItem, teamName, side) {
     const ordered = [...container.values]
       .sort((a, b) => Number(Boolean(b?.main)) - Number(Boolean(a?.main)));
     for (const value of ordered) {
+      if (value?.suspended === true) continue;
       const sideValue = value?.value ?? value?.name ?? value?.label ?? value?.team;
       if (!isSideValue(sideValue, teamName, side)) continue;
       const odd = numeric(value?.odd ?? value?.odds ?? value?.price ?? value?.decimal);
@@ -455,15 +459,57 @@ async function batchedFixtureStatistics(preliminary, env, warnings) {
   return map;
 }
 
+function liveOddsRows(payload) {
+  return Array.isArray(payload?.response) ? payload.response : [];
+}
+
+function liveOddsFixtureId(item) {
+  const fixtureId = Number(item?.fixture?.id ?? item?.fixture_id ?? item?.fixtureId ?? item?.id);
+  return Number.isInteger(fixtureId) && fixtureId > 0 ? fixtureId : null;
+}
+
 function liveOddsByFixture(payload, fixtureIds) {
   const wanted = new Set(fixtureIds.map(Number));
   const map = new Map();
-  for (const item of Array.isArray(payload?.response) ? payload.response : []) {
-    const fixtureId = Number(item?.fixture?.id ?? item?.fixtureId ?? item?.id);
-    if (!Number.isInteger(fixtureId) || !wanted.has(fixtureId)) continue;
-    map.set(fixtureId, item);
+
+  // Keep every returned row for a fixture. Some provider responses can contain
+  // more than one odds container for the same fixture; dropping all but the
+  // last row can make a valid AH/1X2 market look absent.
+  for (const item of liveOddsRows(payload)) {
+    const fixtureId = liveOddsFixtureId(item);
+    if (!fixtureId || !wanted.has(fixtureId)) continue;
+    const rows = map.get(fixtureId) || [];
+    rows.push(item);
+    map.set(fixtureId, rows);
   }
   return map;
+}
+
+function marketOddsPath(config) {
+  const betId = LIVE_MARKET_BET_IDS[String(config?.market || '').toUpperCase()];
+  return betId ? `/odds/live?bet=${betId}` : '/odds/live';
+}
+
+function providerProtectionError(error) {
+  return /(?:\b429\b|too many|rate.?limit|cooldown|circuit[_ ]?open|waiting[_ ]?api|slot[_ ]?timeout)/i
+    .test(String(error?.message || error || ''));
+}
+
+function priceGateDiagnosis({
+  completeStats,
+  completeMarkets,
+  oddsFixtureMatched,
+  marketParseMisses,
+  liveOddsRequestErrors,
+  liveOddsRateLimited
+}) {
+  if (completeStats <= 0) return 'WAITING_FOR_COMPLETE_STATS';
+  if (completeMarkets > 0) return 'MARKET_OK';
+  if (liveOddsRateLimited > 0) return 'ODDS_PROVIDER_PROTECTION';
+  if (liveOddsRequestErrors > 0 && oddsFixtureMatched <= 0) return 'ODDS_REQUEST_FAILED';
+  if (oddsFixtureMatched <= 0) return 'NO_LIVE_ODDS_COVERAGE';
+  if (marketParseMisses > 0) return 'TARGET_MARKET_NOT_FOUND';
+  return 'NO_ELIGIBLE_LIVE_ODDS';
 }
 
 function adaptiveRefreshSeconds(liveItems, preliminary, completeStats, completeMarkets, config) {
@@ -508,12 +554,46 @@ async function liveConditionScan(request, env) {
   }
 
   let oddsMap = new Map();
+  let oddsEndpointRows = 0;
+  let oddsFixtureMatched = 0;
+  let noOddsCoverage = 0;
+  let marketParseMisses = 0;
+  let liveOddsRequestErrors = 0;
+  let liveOddsRateLimited = 0;
+  let liveOddsSource = 'not-requested';
+
   if (statEligible.length) {
+    const fixtureIds = statEligible.map(({ match }) => match.id);
+    const targetPath = marketOddsPath(config);
+
     try {
-      const oddsPayload = await apiFetch('/odds/live', env, ODDS_CACHE_SECONDS);
-      oddsMap = liveOddsByFixture(oddsPayload, statEligible.map(({ match }) => match.id));
+      // Ask API-Football only for the market that is active right now.
+      // This avoids a large unfiltered live-odds payload and uses the provider's
+      // dedicated in-play bet namespace (AH=33, Fulltime Result=59).
+      const oddsPayload = await apiFetch(targetPath, env, ODDS_CACHE_SECONDS);
+      oddsEndpointRows = liveOddsRows(oddsPayload).length;
+      oddsMap = liveOddsByFixture(oddsPayload, fixtureIds);
+      liveOddsSource = targetPath;
     } catch (error) {
-      warnings.push(`live odds batch: ${error?.message || 'request failed'}`);
+      liveOddsRequestErrors += 1;
+      if (providerProtectionError(error)) liveOddsRateLimited += 1;
+      warnings.push(`live odds target ${targetPath}: ${error?.message || 'request failed'}`);
+
+      // Only use the broad endpoint as a compatibility fallback for a genuine
+      // target-endpoint failure. Never force a retry while the API guard is
+      // protecting the provider.
+      if (!providerProtectionError(error)) {
+        try {
+          const oddsPayload = await apiFetch('/odds/live', env, ODDS_CACHE_SECONDS);
+          oddsEndpointRows = liveOddsRows(oddsPayload).length;
+          oddsMap = liveOddsByFixture(oddsPayload, fixtureIds);
+          liveOddsSource = '/odds/live:fallback';
+        } catch (fallbackError) {
+          liveOddsRequestErrors += 1;
+          if (providerProtectionError(fallbackError)) liveOddsRateLimited += 1;
+          warnings.push(`live odds fallback: ${fallbackError?.message || 'request failed'}`);
+        }
+      }
     }
   }
 
@@ -523,12 +603,20 @@ async function liveConditionScan(request, env) {
 
   for (const source of statEligible) {
     const oddsItem = oddsMap.get(Number(source.match.id)) || null;
+    if (!oddsItem) {
+      noOddsCoverage += 1;
+      continue;
+    }
+    oddsFixtureMatched += 1;
     let fixtureHasMarket = false;
 
     for (const selectedSide of selectedSides(config)) {
       const teamName = selectedSide === 'AWAY' ? source.match.away : source.match.home;
       const markets = sideMarkets(oddsItem, teamName, selectedSide);
-      if (markets.win === null && markets.ah === null && markets.ahOdd === null) continue;
+      const targetMarketAvailable = config.market === 'AH'
+        ? markets.ah !== null && markets.ahOdd !== null
+        : markets.win !== null;
+      if (!targetMarketAvailable) continue;
       fixtureHasMarket = true;
 
       const selectedOdds = config.market === 'AH' ? markets.ahOdd : markets.win;
@@ -542,6 +630,21 @@ async function liveConditionScan(request, env) {
     }
 
     if (fixtureHasMarket) completeMarkets += 1;
+    else marketParseMisses += 1;
+  }
+
+  const priceGate = priceGateDiagnosis({
+    completeStats,
+    completeMarkets,
+    oddsFixtureMatched,
+    marketParseMisses,
+    liveOddsRequestErrors,
+    liveOddsRateLimited
+  });
+  if (completeStats > 0 && completeMarkets === 0) {
+    warnings.unshift(
+      `PRICE_GATE ${priceGate} · stats=${completeStats} · oddsMatched=${oddsFixtureMatched} · parseMiss=${marketParseMisses}`
+    );
   }
 
   const refreshSeconds = adaptiveRefreshSeconds(
@@ -571,6 +674,14 @@ async function liveConditionScan(request, env) {
       minuteWindow: preliminary.length,
       completeStats,
       completeMarkets,
+      oddsEndpointRows,
+      oddsFixtureMatched,
+      noOddsCoverage,
+      marketParseMisses,
+      liveOddsRequestErrors,
+      liveOddsRateLimited,
+      liveOddsSource,
+      priceGateDiagnosis: priceGate,
       redSafe,
       baseCandidates: candidates.length
     },
