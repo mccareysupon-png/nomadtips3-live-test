@@ -3,95 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#07543c">
-  <title>NOMADTIPS3 Test System — Today’s Match Predictions</title>
+  <meta name="theme-color" content="#090a0c">
+  <title>NOMADTIPS3 Test System — Machine 2 Parked</title>
   <link rel="stylesheet" href="./styles.css?v=202608051001">
   <link rel="stylesheet" href="../brand.css?v=202608041153">
-  <link rel="stylesheet" href="../content-scale.css?v=202608041015">
-  <link rel="stylesheet" href="../draft-responsive.css?v=202608041140">
-  <link rel="stylesheet" href="../heading-scale.css?v=202608041200">
-  <link rel="stylesheet" href="../terminology.css?v=202608041231">
-  <link rel="stylesheet" href="../site-footer.css?v=202608040844">
-  <link rel="stylesheet" href="../navigation-polish.css?v=202608041251">
-  <link rel="stylesheet" href="./pick-order.css?v=202608041350">
-  <link rel="stylesheet" href="./homepage-layout.css?v=202608052329">
   <style>
-    .nomad-local-time{margin-top:2px;color:#7d8782;font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;font-size:8px;font-weight:600;line-height:1.4;letter-spacing:.08em;opacity:.72;overflow-wrap:anywhere}
-    @media (min-width:431px){
-      .pick-data{grid-template-columns:1.5fr 1fr 1fr}
-      .market-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-    }
+    body{min-height:100vh;background:#090a0c;color:#eef7f2}
+    .parked{max-width:760px;margin:13vh auto;padding:28px;border:1px solid rgba(242,201,76,.25);border-radius:18px;background:#17191e}
+    .parked small{color:#f2c94c;font-weight:900;letter-spacing:.12em}
+    .parked h1{margin:10px 0 8px;font-size:clamp(28px,6vw,52px)}
+    .parked p{color:#9db0a7;line-height:1.7}
+    .parked strong{color:#fff}
+    .parked code{color:#f2c94c}
   </style>
 </head>
-<body class="home-page">
-  <header class="topbar">
-    <a class="brand" href="./" aria-label="NOMADTIPS3 Test System">nomad<b>tips3</b></a>
-    <span class="environment">TEST SYSTEM</span>
-  </header>
-
-  <main class="page">
-    <section class="hero">
-      <div>
-        <span class="eyebrow">NOMAD SYSTEM · MANUAL TEST V.2 · DAY 8</span>
-        <h1>Today’s Match Predictions</h1>
-        <p>Manual sports analysis for 6 August 2026. Main 1X2 selections and additional markets use separate locked records and separate statistics.</p>
-        <p class="analysis-disclaimer">Sports analysis and match-result forecasting only. No gambling services, betting links, stakes or financial incentives.</p>
-      </div>
-    </section>
-
-    <div id="integrityNote" class="integrity-note" role="note"></div>
-
-    <section class="summary" aria-label="Daily prediction summary">
-      <div class="metric"><small>Total Predictions</small><b id="total">2</b></div>
-      <div class="metric"><small>Correct</small><b id="correct">0</b></div>
-      <div class="metric"><small>Incorrect</small><b id="incorrect">0</b></div>
-      <div class="metric"><small>Void</small><b id="voids">0</b></div>
-      <div class="metric"><small>Waiting</small><b id="pending">2</b></div>
-      <div class="metric"><small>Accuracy</small><b id="accuracy">0.00%</b></div>
-    </section>
-
-    <div class="section-head">
-      <h2>NOMAD SYSTEM — Finalized Match Predictions</h2>
-      <span id="sourceNote">Loading finalized analysis…</span>
-    </div>
-    <section id="pickGrid" class="pick-grid"></section>
+<body>
+  <main class="parked">
+    <small>CAR 2 · TEST ONLY · PARKED</small>
+    <h1>Machine 2 is offline</h1>
+    <p><strong>All Machine 2 engines are stopped.</strong> Automatic selection, live-result polling, odds refresh and API-Football activity are disabled.</p>
+    <p>This page is preserved only as an archived Test System entry point. No background engine is running from this page.</p>
+    <p>Status: <code>ENGINE_DISABLED</code></p>
   </main>
-
-  <nav class="main-nav" aria-label="Test system navigation">
-    <a class="active" href="./">Match Predictions</a>
-    <a href="./stats/">Statistics</a>
-    <a href="./share/">Analysis Poster</a>
-  </nav>
-
-  <script src="../device-time-sync.js?v=202608041114"></script>
-  <script src="./odds-summary.js?v=202608041933"></script>
-  <script src="./selected-odds-sync.js?v=202608090740"></script>
-  <script type="module" src="./app-odds.js?v=202608071505"></script>
-  <script src="../remote-results.js?v=202608071548" defer></script>
-  <script src="../terminology.js?v=202608040954" defer></script>
-  <script src="../site-footer.js?v=202608040844"></script>
-  <script>
-  (() => {
-    'use strict';
-    const email = document.querySelector('.site-footer__email');
-    if (!email || document.querySelector('.nomad-local-time')) return;
-    const localTime = document.createElement('div');
-    localTime.className = 'nomad-local-time';
-    localTime.setAttribute('aria-label', 'Local device time');
-    email.insertAdjacentElement('afterend', localTime);
-    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'LOCAL';
-    const formatter = new Intl.DateTimeFormat('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
-    const renderLocalTime = () => {
-      const formattedTime = formatter.format(new Date()).replace(',', '');
-      localTime.textContent = `NOMAD LOCAL TIME · ${timeZone.toUpperCase()} · ${formattedTime}`;
-    };
-    renderLocalTime();
-    window.setInterval(renderLocalTime, 1000);
-  })();
-  </script>
 </body>
 </html>
