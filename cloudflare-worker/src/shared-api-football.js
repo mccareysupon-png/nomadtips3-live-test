@@ -29,6 +29,12 @@ function jitter(max = 300) {
   return values[0] % Math.max(1, max);
 }
 
+function nullableNumber(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function apiErrorDetail(payload) {
   const errors = payload?.errors;
   if (!errors) return '';
@@ -101,10 +107,11 @@ function strikeLevel(strikes) {
 }
 
 function effectiveDerate(state) {
+  const storedLevel = Math.max(0, Math.min(3, Number(state?.derate_level || 0)));
+  const remaining = nullableNumber(state?.rate_limit_remaining);
   return Math.max(
-    0,
-    Math.min(3, Number(state?.derate_level || 0)),
-    quotaLevel(Number(state?.rate_limit_remaining)),
+    storedLevel,
+    quotaLevel(remaining),
     strikeLevel(Number(state?.consecutive_429 || 0))
   );
 }
@@ -154,9 +161,8 @@ async function ensureGuard(env) {
 
 async function guardState(env) {
   if (!env.DB) return null;
-  return env.DB.prepare(`
-    SELECT * FROM api_rate_guard WHERE guard_key = ?
-  `).bind(GUARD_KEY).first();
+  return env.DB.prepare(`SELECT * FROM api_rate_guard WHERE guard_key = ?`)
+    .bind(GUARD_KEY).first();
 }
 
 async function acquireSlot(env) {
@@ -241,8 +247,9 @@ async function recordSuccess(env, response) {
   const now = Date.now();
   const state = await guardState(env).catch(() => null);
   const meta = rateMeta(response);
-  const currentLevel = effectiveDerate(state);
-  const safeQuota = !Number.isFinite(meta.remaining) || meta.remaining >= 5;
+  const storedLevel = Math.max(0, Math.min(3, Number(state?.derate_level || 0)));
+  const currentLevel = Math.max(storedLevel, strikeLevel(Number(state?.consecutive_429 || 0)));
+  const safeQuota = meta.remaining === null || meta.remaining >= 5;
   let streak = Number(state?.success_streak || 0) + 1;
   let nextLevel = currentLevel;
   let strikes = Number(state?.consecutive_429 || 0);
@@ -261,7 +268,9 @@ async function recordSuccess(env, response) {
   await env.DB.prepare(`
     UPDATE api_rate_guard
     SET cooldown_until = ?, circuit_open_until = ?, consecutive_429 = ?,
-        derate_level = ?, success_streak = ?, last_action = ?, updated_at = ?
+        derate_level = ?, success_streak = ?,
+        rate_limit_limit = COALESCE(?, rate_limit_limit), rate_limit_remaining = ?,
+        last_action = ?, updated_at = ?
     WHERE guard_key = ?
   `).bind(
     cooldownUntil,
@@ -269,6 +278,8 @@ async function recordSuccess(env, response) {
     strikes,
     nextLevel,
     streak,
+    meta.limit,
+    meta.remaining,
     nextLevel > 0 ? 'DERATING' : 'NORMAL',
     now,
     GUARD_KEY
@@ -394,6 +405,8 @@ export async function getSharedApiGuardStatus(env) {
   const last429At = Number(state?.last_429_at || 0);
   const lastResponseAt = Number(state?.last_response_at || 0);
   const derateLevel = effectiveDerate(state);
+  const limit = nullableNumber(state?.rate_limit_limit);
+  const remaining = nullableNumber(state?.rate_limit_remaining);
   return {
     protected: true,
     minGapMs: BASE_MIN_GAP_MS,
@@ -408,8 +421,8 @@ export async function getSharedApiGuardStatus(env) {
     consecutive429: Number(state?.consecutive_429 || 0),
     derateLevel,
     successStreak: Number(state?.success_streak || 0),
-    rateLimitLimit: Number.isFinite(Number(state?.rate_limit_limit)) ? Number(state.rate_limit_limit) : null,
-    rateLimitRemaining: Number.isFinite(Number(state?.rate_limit_remaining)) ? Number(state.rate_limit_remaining) : null,
+    rateLimitLimit: limit,
+    rateLimitRemaining: remaining,
     retryAfterMs: Number(state?.retry_after_ms || 0) || null,
     lastStatus: Number(state?.last_status || 0) || null,
     lastResponseAt: lastResponseAt ? new Date(lastResponseAt).toISOString() : null,
