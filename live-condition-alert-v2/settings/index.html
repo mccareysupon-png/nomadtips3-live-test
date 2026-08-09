@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#0b0d10">
+  <title>NOMADTIPS3 — Car 3 Settings V2</title>
+  <style>
+    :root{--bg:#0b0d10;--panel:#171b20;--field:#232930;--text:#f3f6f4;--muted:#8d9792;--green:#00d68f;--yellow:#e8c349;--red:#ff6675}
+    *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;background:linear-gradient(145deg,#20242a 0,#111418 42%,#0b0d10 100%)}.wrap{width:min(960px,calc(100% - 22px));margin:auto;padding:22px 0 44px}.top{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.brand{font-size:22px;font-weight:950;letter-spacing:-.8px}.brand b{color:var(--green)}.tag{margin-top:4px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.06em}.back{border:0;border-radius:9px;padding:8px 11px;background:#2a3037;color:#eef3f0;text-decoration:none;font-size:10px;font-weight:900}.active{margin:16px 0 10px;padding:12px 13px;border-radius:11px;background:#171b20;color:#b9c3be;font-size:11px;line-height:1.6}.active strong{color:#fff}.panel{padding:14px;border-radius:14px;background:#15191e}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.field{padding:10px;border-radius:10px;background:#21272d}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850}.field input,.field select{width:100%;border:0;border-radius:8px;background:#111418;color:#f4f7f5;padding:9px 10px;font:inherit;font-size:12px;outline:none}.field input:focus,.field select:focus{box-shadow:0 0 0 2px var(--green)}.field input:disabled{opacity:.45}.summary{margin-top:10px;padding:11px 12px;border-radius:10px;background:#242a31;color:#c2cbc6;font-size:10px;line-height:1.6}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:11px}.actions button{border:0;border-radius:9px;padding:9px 14px;background:#2a3037;color:#eef3f0;font:inherit;font-size:10px;font-weight:900;cursor:pointer}.actions .run{background:var(--green);color:#03110b}.actions button:disabled{opacity:.5;cursor:wait}.message{margin-top:8px;min-height:18px;text-align:right;color:var(--muted);font-size:10px}.message.good{color:var(--green)}.message.bad{color:var(--red)}.note{margin-top:12px;color:#7f8984;font-size:9px;line-height:1.6}@media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.top{flex-direction:column}.grid{grid-template-columns:1fr}.actions{display:grid;grid-template-columns:1fr 1fr}.actions button{width:100%}.message{text-align:left}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div><div class="brand">nomad<b>tips3</b></div><div class="tag">CAR 3 · SETTINGS V2 · SAME CONDITION CONFIG</div></div>
+      <a class="back" href="../">← PAGE 5 V2</a>
+    </header>
+
+    <div class="active"><strong>Active condition:</strong> <span id="activeSummary">กำลังโหลดจาก D1</span><br><span id="activeMeta"></span></div>
+
+    <main class="panel">
+      <div class="grid">
+        <div class="field"><label>เลือกทีม</label><select id="side"><option value="HOME">ทีมเจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option><option value="BOTH">ทั้งสองทีม</option></select></div>
+        <div class="field"><label>นาทีเริ่ม</label><input id="minuteMin" type="number" min="1" max="119" step="1"></div>
+        <div class="field"><label>นาทีสิ้นสุด</label><input id="minuteMax" type="number" min="2" max="120" step="1"></div>
+
+        <div class="field"><label>ตลาดราคา</label><select id="market"><option value="WIN">ชนะตรง</option><option value="AH">Asian Handicap</option></select></div>
+        <div class="field"><label>Odds ขั้นต่ำ</label><input id="oddsMin" type="number" min="1.01" max="100" step="0.01"></div>
+        <div class="field"><label>Odds สูงสุด</label><input id="oddsMax" type="number" min="1.01" max="100" step="0.01" placeholder="ไม่จำกัด"></div>
+
+        <div class="field"><label>AH Line ขั้นต่ำ</label><input id="ahMin" type="number" min="-5" max="5" step="0.25"></div>
+        <div class="field"><label>AH Line สูงสุด</label><input id="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="ไม่จำกัด"></div>
+        <div class="field"><label>Momentum ขั้นต่ำ (%)</label><input id="momentumMin" type="number" min="1" max="99" step="1"></div>
+
+        <div class="field"><label>Attack evidence</label><select id="attackEvidenceMode"><option value="ON">เปิด</option><option value="OFF">ปิด</option></select></div>
+        <div class="field"><label>ผลต่างสกอร์</label><select id="gapMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
+        <div class="field"><label>ผลต่างไม่เกินกี่ลูก</label><input id="maxGoalGap" type="number" min="0" max="20" step="1"></div>
+
+        <div class="field"><label>ยืนยันกี่รอบติดกัน</label><input id="confirmationRounds" type="number" min="1" max="10" step="1"></div>
+        <div class="field"><label>จำนวนสัญญาณต่อวัน</label><select id="limitMode"><option value="UNLIMITED">ไม่จำกัด</option><option value="LIMITED">จำกัด</option></select></div>
+        <div class="field"><label>สูงสุดกี่สัญญาณ</label><input id="maxSignalsPerDay" type="number" min="1" max="100" step="1"></div>
+      </div>
+
+      <div class="summary" id="draftSummary">กำลังโหลด Active Condition เดิม</div>
+      <div class="actions"><button id="reloadButton" type="button">โหลด Active ใหม่</button><button id="saveButton" type="button">SAVE DRAFT</button><button id="runButton" class="run" type="button">RUN</button></div>
+      <div id="message" class="message"></div>
+      <div class="note">V2 ใช้ตาราง Condition Config เดิมใน Cloudflare D1 · การเปิดหน้านี้ไม่เปลี่ยนค่าใด ๆ · SAVE DRAFT เก็บร่างเท่านั้น · RUN จึงจะเปิดใช้ค่าที่อยู่ในช่องและเริ่ม Momentum รอบใหม่ตามระบบเดิม</div>
+    </main>
+  </div>
+  <script src="./app.js?v=20260809-v2"></script>
+</body>
+</html>
