@@ -1,15 +1,15 @@
 {
   "selectionDate": "2026-08-10",
-  "generatedAt": "2026-08-10T17:36:25Z",
+  "generatedAt": "2026-08-10T17:37:27Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 10,
     "correct": 0,
-    "incorrect": 0,
+    "incorrect": 1,
     "void": 0,
-    "pending": 10,
-    "settled": 0,
+    "pending": 9,
+    "settled": 1,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -18,19 +18,19 @@
     "btts": {
       "total": 10,
       "correct": 0,
-      "incorrect": 0,
+      "incorrect": 1,
       "void": 0,
-      "pending": 10,
-      "settled": 0,
+      "pending": 9,
+      "settled": 1,
       "accuracy": 0.0
     },
     "doubleChance": {
       "total": 10,
       "correct": 0,
-      "incorrect": 0,
+      "incorrect": 1,
       "void": 0,
-      "pending": 10,
-      "settled": 0,
+      "pending": 9,
+      "settled": 1,
       "accuracy": 0.0
     },
     "asianHandicap": {
@@ -38,11 +38,11 @@
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 0,
+      "loss": 1,
       "void": 0,
-      "pending": 10,
+      "pending": 9,
       "total": 10,
-      "decisions": 0,
+      "decisions": 1,
       "weightedRate": 0.0
     }
   },
@@ -88,7 +88,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -132,7 +132,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -176,7 +176,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -186,41 +186,44 @@
       "home": "TransINVEST Vilnius",
       "away": "Panevėžys",
       "kickoffUtc": "2026-08-10T15:45:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 0,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 67,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — TransINVEST Vilnius or Draw",
           "odds": 1.17,
           "oddsStatus": "LOCKED",
           "confidence": 67,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "TransINVEST Vilnius 0",
           "odds": 1.32,
           "oddsStatus": "LOCKED",
           "confidence": 67,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": 0.0,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -264,7 +267,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -308,7 +311,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -321,7 +324,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 36,
+      "elapsed": 37,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -352,7 +355,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -396,7 +399,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -440,7 +443,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     },
     {
@@ -484,7 +487,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T17:36:25Z",
+      "updatedAt": "2026-08-10T17:37:27Z",
       "counted": true
     }
   ]
