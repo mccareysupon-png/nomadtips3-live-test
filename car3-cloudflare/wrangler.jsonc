@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-car3-paper-v6",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-10",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "vars": {
+    "MIN_MINUTE": "50",
+    "MAX_MINUTE": "95",
+    "LIVE_BET_ID": "59",
+    "MIN_ODDS": "1.50",
+    "MIN_SHOTS_ON_GOAL": "3",
+    "MIN_TOTAL_SHOTS": "8",
+    "MIN_CORNERS": "4",
+    "MIN_POSSESSION": "55"
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "STATE", "class_name": "Car3State" }
+    ]
+  },
+  "exports": {
+    "Car3State": { "type": "durable-object", "storage": "sqlite" }
+  }
+}
