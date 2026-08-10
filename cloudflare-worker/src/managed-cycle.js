@@ -124,12 +124,30 @@ async function flushSignalSideEffects(env) {
   }
 }
 
+async function settleSignalSideEffects(env) {
+  try {
+    await syncSignalsToPaperTrades(env);
+  } catch (error) {
+    console.warn(JSON.stringify({ event: 'paper_signal_sync_degraded', error: error?.message || String(error) }));
+  }
+  try {
+    await settlePendingTrades(env);
+  } catch (error) {
+    console.warn(JSON.stringify({ event: 'paper_settlement_degraded', error: error?.message || String(error) }));
+  }
+  try {
+    await notifyPendingLineEvents(env);
+  } catch (error) {
+    console.warn(JSON.stringify({ event: 'line_delivery_degraded', error: error?.message || String(error) }));
+  }
+}
+
 export async function runManagedCycle(env, ctx) {
   const startedAt = Date.now();
   const capBefore = await dailyTenStatus(env, startedAt);
   if (capBefore.sleeping) {
     await recordEngineSuccess(env, startedAt).catch(() => null);
-    await flushSignalSideEffects(env);
+    await settleSignalSideEffects(env);
     return dailySleepResult(capBefore, startedAt, false);
   }
 
@@ -153,6 +171,7 @@ export async function runManagedCycle(env, ctx) {
 
     const capAfterScan = await dailyTenStatus(env);
     if (capAfterScan.sleeping) {
+      await settleSignalSideEffects(env);
       return dailySleepResult(capAfterScan, Date.now(), true);
     }
   }
@@ -185,26 +204,11 @@ export async function runManagedCycle(env, ctx) {
 
   const capAfterHot = await dailyTenStatus(env);
   if (capAfterHot.sleeping) {
+    await settleSignalSideEffects(env);
     return dailySleepResult(capAfterHot, Date.now(), fullScanAttempted);
   }
 
-  try {
-    await syncSignalsToPaperTrades(env);
-  } catch (error) {
-    console.warn(JSON.stringify({ event: 'paper_signal_sync_degraded', error: error?.message || String(error) }));
-  }
-
-  try {
-    await settlePendingTrades(env);
-  } catch (error) {
-    console.warn(JSON.stringify({ event: 'paper_settlement_degraded', error: error?.message || String(error) }));
-  }
-
-  try {
-    await notifyPendingLineEvents(env);
-  } catch (error) {
-    console.warn(JSON.stringify({ event: 'line_delivery_degraded', error: error?.message || String(error) }));
-  }
+  await settleSignalSideEffects(env);
 
   return {
     fullScanAttempted,
