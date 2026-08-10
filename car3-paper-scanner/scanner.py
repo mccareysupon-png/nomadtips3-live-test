@@ -27,7 +27,7 @@ class Config:
     CONCURRENCY_LIMIT = 5
 
     TRUSTED_BOOKMAKERS = {1, 8, 11}
-    TARGET_LIVE_MARKET_NAME = "Match Winner"
+    TARGET_LIVE_MARKET_NAME = "1x2"
 
 
 class FilterCriteria:
