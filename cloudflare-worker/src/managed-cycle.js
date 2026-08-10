@@ -16,28 +16,32 @@ import { recordEngineSuccess } from './engine-control.js';
 const HOT_BURST_LIMIT_MS = 52_000;
 const HOT_BURST_MAX_RUNS = 10;
 const THAI_OFFSET_MS = 7 * 60 * 60_000;
+const DAILY_RESET_HOUR = 12;
+const DAILY_RESET_MS = DAILY_RESET_HOUR * 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function startOfThaiDay(now) {
-  return Math.floor((now + THAI_OFFSET_MS) / DAY_MS) * DAY_MS - THAI_OFFSET_MS;
+function startOfThaiCycle(now) {
+  return Math.floor((now + THAI_OFFSET_MS - DAILY_RESET_MS) / DAY_MS) * DAY_MS
+    - THAI_OFFSET_MS
+    + DAILY_RESET_MS;
 }
 
 async function dailyTenStatus(env, now = Date.now()) {
   const config = await getActiveConditionConfig(env);
   const enabled = Boolean(config.dailyTenSystem && config.signalLimitEnabled);
   const limit = Math.max(1, Number(config.dailyTenLimit || config.maxSignalsPerDay || 10));
-  const dayStart = startOfThaiDay(now);
+  const cycleStart = startOfThaiCycle(now);
   let count = 0;
 
   if (enabled) {
     try {
       const row = await env.DB.prepare(
         'SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?'
-      ).bind(dayStart).first();
+      ).bind(cycleStart).first();
       count = Number(row?.total || 0);
     } catch {
       count = 0;
@@ -50,8 +54,10 @@ async function dailyTenStatus(env, now = Date.now()) {
     count,
     remaining: Math.max(0, limit - count),
     sleeping: enabled && count >= limit,
-    dayStartAt: new Date(dayStart).toISOString(),
-    nextResetAt: new Date(dayStart + DAY_MS).toISOString(),
+    resetHour: DAILY_RESET_HOUR,
+    cycleStartAt: new Date(cycleStart).toISOString(),
+    dayStartAt: new Date(cycleStart).toISOString(),
+    nextResetAt: new Date(cycleStart + DAY_MS).toISOString(),
     timezone: 'Asia/Bangkok'
   };
 }
