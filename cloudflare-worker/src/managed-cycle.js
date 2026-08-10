@@ -10,12 +10,67 @@ import {
 } from './paper-db-side.js';
 import { notifyPendingLineEvents } from './line-side.js';
 import { getSharedApiGuardStatus } from './shared-api-football.js';
+import { getActiveConditionConfig } from './condition-config.js';
+import { recordEngineSuccess } from './engine-control.js';
 
 const HOT_BURST_LIMIT_MS = 52_000;
 const HOT_BURST_MAX_RUNS = 10;
+const THAI_OFFSET_MS = 7 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function startOfThaiDay(now) {
+  return Math.floor((now + THAI_OFFSET_MS) / DAY_MS) * DAY_MS - THAI_OFFSET_MS;
+}
+
+async function dailyTenStatus(env, now = Date.now()) {
+  const config = await getActiveConditionConfig(env);
+  const enabled = Boolean(config.dailyTenSystem && config.signalLimitEnabled);
+  const limit = Math.max(1, Number(config.dailyTenLimit || config.maxSignalsPerDay || 10));
+  const dayStart = startOfThaiDay(now);
+  let count = 0;
+
+  if (enabled) {
+    try {
+      const row = await env.DB.prepare(
+        'SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?'
+      ).bind(dayStart).first();
+      count = Number(row?.total || 0);
+    } catch {
+      count = 0;
+    }
+  }
+
+  return {
+    enabled,
+    limit,
+    count,
+    remaining: Math.max(0, limit - count),
+    sleeping: enabled && count >= limit,
+    dayStartAt: new Date(dayStart).toISOString(),
+    nextResetAt: new Date(dayStart + DAY_MS).toISOString(),
+    timezone: 'Asia/Bangkok'
+  };
+}
+
+function dailySleepResult(status, startedAt, fullScanAttempted = false) {
+  return {
+    fullScanAttempted,
+    scanOk: true,
+    scanError: null,
+    hotError: null,
+    refreshSeconds: 60,
+    hotRuns: 0,
+    guardAction: 'DAILY_SLEEP',
+    derateLevel: 0,
+    dailySleep: true,
+    dailyTen: status,
+    footballApiPaused: true,
+    completedAt: new Date(startedAt).toISOString()
+  };
 }
 
 function adaptiveRefreshSeconds(payload) {
@@ -71,6 +126,13 @@ async function flushSignalSideEffects(env) {
 
 export async function runManagedCycle(env, ctx) {
   const startedAt = Date.now();
+  const capBefore = await dailyTenStatus(env, startedAt);
+  if (capBefore.sleeping) {
+    await recordEngineSuccess(env, startedAt).catch(() => null);
+    await flushSignalSideEffects(env);
+    return dailySleepResult(capBefore, startedAt, false);
+  }
+
   let latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => null);
   let fullScanAttempted = false;
   let scanOk = true;
@@ -88,6 +150,11 @@ export async function runManagedCycle(env, ctx) {
       console.warn(JSON.stringify({ event: 'auto_scan_degraded', error: scanError }));
     }
     latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => latest);
+
+    const capAfterScan = await dailyTenStatus(env);
+    if (capAfterScan.sleeping) {
+      return dailySleepResult(capAfterScan, Date.now(), true);
+    }
   }
 
   let refreshSeconds = adaptiveRefreshSeconds(latest);
@@ -114,6 +181,11 @@ export async function runManagedCycle(env, ctx) {
       console.warn(JSON.stringify({ event: 'hot_scan_degraded', error: hotError }));
       break;
     }
+  }
+
+  const capAfterHot = await dailyTenStatus(env);
+  if (capAfterHot.sleeping) {
+    return dailySleepResult(capAfterHot, Date.now(), fullScanAttempted);
   }
 
   try {
@@ -143,6 +215,9 @@ export async function runManagedCycle(env, ctx) {
     hotRuns,
     guardAction: guard?.action || 'UNKNOWN',
     derateLevel: Number(guard?.derateLevel || 0),
+    dailySleep: false,
+    dailyTen: capAfterHot,
+    footballApiPaused: false,
     completedAt: new Date().toISOString()
   };
 }
