@@ -12,6 +12,8 @@ permissions:
   contents: write
 
 env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
   LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN || secrets.LINE_ACCESS_TOKEN }}
   LINE_TARGET_ID: ${{ secrets.LINE_TARGET_ID || secrets.LINE_USER_ID }}
@@ -36,8 +38,8 @@ jobs:
         id: validate
         shell: bash
         run: |
-          test -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
-          test -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
           test -n "$API_FOOTBALL_KEY" || { echo "::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY"; exit 1; }
           test -n "$LINE_CHANNEL_ACCESS_TOKEN" || { echo "::error::Missing LINE_CHANNEL_ACCESS_TOKEN/LINE_ACCESS_TOKEN"; exit 1; }
           test -n "$LINE_TARGET_ID" || { echo "::error::Missing LINE_TARGET_ID/LINE_USER_ID"; exit 1; }
@@ -46,8 +48,8 @@ jobs:
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
           workingDirectory: car3-cloudflare
           wranglerVersion: "4"
           command: deploy
@@ -94,6 +96,13 @@ jobs:
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           HEALTH_OUTCOME: ${{ steps.health.outcome }}
         run: |
+          MISSING=()
+          [ -n "$CF_API_TOKEN" ] || MISSING+=("CLOUDFLARE_API_TOKEN")
+          [ -n "$CF_ACCOUNT_ID" ] || MISSING+=("CLOUDFLARE_ACCOUNT_ID")
+          [ -n "$API_FOOTBALL_KEY" ] || MISSING+=("API_FOOTBALL_KEY")
+          [ -n "$LINE_CHANNEL_ACCESS_TOKEN" ] || MISSING+=("LINE_CHANNEL_ACCESS_TOKEN")
+          [ -n "$LINE_TARGET_ID" ] || MISSING+=("LINE_TARGET_ID")
+          if [ ${#MISSING[@]} -eq 0 ]; then MISSING_TEXT="none"; else MISSING_TEXT=$(IFS=', '; echo "${MISSING[*]}"); fi
           HEALTH='not-run'
           if [ -f /tmp/car3-health.json ]; then HEALTH=$(cat /tmp/car3-health.json); fi
           cat > car3-cloudflare/DEPLOY_STATUS.md <<EOF
@@ -103,12 +112,13 @@ jobs:
           - UTC: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
           - Offline tests: ${TESTS_OUTCOME:-unknown}
           - Secret validation: ${VALIDATE_OUTCOME:-unknown}
+          - Missing secret names: ${MISSING_TEXT}
           - Cloudflare deploy: ${DEPLOY_OUTCOME:-unknown}
           - Health check step: ${HEALTH_OUTCOME:-unknown}
           - Deployment URL: ${DEPLOYMENT_URL:-unavailable}
 
           Health payload:
-          
+
           \`\`\`json
           $HEALTH
           \`\`\`
