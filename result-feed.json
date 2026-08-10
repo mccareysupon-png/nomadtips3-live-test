@@ -1,15 +1,15 @@
 {
   "selectionDate": "2026-08-10",
-  "generatedAt": "2026-08-10T18:54:06Z",
+  "generatedAt": "2026-08-10T18:55:08Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 10,
     "correct": 0,
-    "incorrect": 1,
+    "incorrect": 2,
     "void": 0,
-    "pending": 9,
-    "settled": 1,
+    "pending": 8,
+    "settled": 2,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -17,20 +17,20 @@
   "marketSummary": {
     "btts": {
       "total": 10,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 1,
       "void": 0,
-      "pending": 9,
-      "settled": 1,
-      "accuracy": 0.0
+      "pending": 8,
+      "settled": 2,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 10,
       "correct": 0,
-      "incorrect": 1,
+      "incorrect": 2,
       "void": 0,
-      "pending": 9,
-      "settled": 1,
+      "pending": 8,
+      "settled": 2,
       "accuracy": 0.0
     },
     "asianHandicap": {
@@ -38,11 +38,11 @@
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 1,
+      "loss": 2,
       "void": 0,
-      "pending": 9,
+      "pending": 8,
       "total": 10,
-      "decisions": 1,
+      "decisions": 2,
       "weightedRate": 0.0
     }
   },
@@ -88,7 +88,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -132,7 +132,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -176,7 +176,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -223,7 +223,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -267,7 +267,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -280,7 +280,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 7,
+      "elapsed": 8,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -311,7 +311,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -321,41 +321,44 @@
       "home": "Vasteras SK FK",
       "away": "Djurgardens IF",
       "kickoffUtc": "2026-08-10T17:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 1,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.38,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "X2 — Djurgardens IF or Draw",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "Djurgardens IF 0",
           "odds": 1.35,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": 0.0,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -368,7 +371,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 22,
+      "elapsed": 23,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -399,7 +402,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -443,7 +446,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     },
     {
@@ -487,7 +490,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T18:54:06Z",
+      "updatedAt": "2026-08-10T18:55:08Z",
       "counted": true
     }
   ]
