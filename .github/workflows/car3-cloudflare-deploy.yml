@@ -1,0 +1,65 @@
+name: Deploy CAR 3 Cloudflare V6
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "car3-cloudflare/**"
+      - ".github/workflows/car3-cloudflare-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
+  LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN || secrets.LINE_ACCESS_TOKEN }}
+  LINE_TARGET_ID: ${{ secrets.LINE_TARGET_ID || secrets.LINE_USER_ID }}
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Offline logic tests
+        working-directory: car3-cloudflare
+        run: node --test
+
+      - name: Validate required runtime secrets
+        shell: bash
+        run: |
+          test -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo "::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY"; exit 1; }
+          test -n "$LINE_CHANNEL_ACCESS_TOKEN" || { echo "::error::Missing LINE_CHANNEL_ACCESS_TOKEN/LINE_ACCESS_TOKEN"; exit 1; }
+          test -n "$LINE_TARGET_ID" || { echo "::error::Missing LINE_TARGET_ID/LINE_USER_ID"; exit 1; }
+
+      - name: Deploy Worker, Cron, Durable Object, and encrypted secrets
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-cloudflare
+          wranglerVersion: "4"
+          command: deploy
+          secrets: |
+            API_FOOTBALL_KEY
+            LINE_CHANNEL_ACCESS_TOKEN
+            LINE_TARGET_ID
+        env:
+          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ env.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_TARGET_ID: ${{ env.LINE_TARGET_ID }}
+
+      - name: Report deployment URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          echo "CAR 3 V6 deployment: ${DEPLOYMENT_URL:-workers.dev URL is available in Cloudflare dashboard}"
