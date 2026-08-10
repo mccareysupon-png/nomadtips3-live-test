@@ -11,7 +11,7 @@ export const DAILY_TEN_SYSTEM = Object.freeze({
   enabled: true,
   limit: 10,
   resetTimezone: 'Asia/Bangkok',
-  resetHour: 0
+  resetHour: 12
 });
 
 export const DEFAULT_CONDITION_CONFIG = Object.freeze({
