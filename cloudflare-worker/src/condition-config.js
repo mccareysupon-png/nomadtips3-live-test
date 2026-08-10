@@ -7,6 +7,13 @@ CREATE TABLE IF NOT EXISTS condition_config (
   activated_at INTEGER NOT NULL
 )`;
 
+export const DAILY_TEN_SYSTEM = Object.freeze({
+  enabled: true,
+  limit: 10,
+  resetTimezone: 'Asia/Bangkok',
+  resetHour: 0
+});
+
 export const DEFAULT_CONDITION_CONFIG = Object.freeze({
   side: 'HOME',
   minuteMin: 60,
@@ -90,6 +97,19 @@ export function normalizeConditionConfig(input = {}) {
   };
 }
 
+function applyDailyTenSystem(config) {
+  if (!DAILY_TEN_SYSTEM.enabled) return { ...config };
+  return {
+    ...config,
+    signalLimitEnabled: true,
+    maxSignalsPerDay: DAILY_TEN_SYSTEM.limit,
+    dailyTenSystem: true,
+    dailyTenLimit: DAILY_TEN_SYSTEM.limit,
+    dailyTenResetTimezone: DAILY_TEN_SYSTEM.resetTimezone,
+    dailyTenResetHour: DAILY_TEN_SYSTEM.resetHour
+  };
+}
+
 async function ensureSchema(env) {
   if (!env.DB) throw new Error('D1 binding DB is not configured');
   if (schemaReady) return;
@@ -127,7 +147,7 @@ export async function getConditionConfigState(env) {
 
 export async function getActiveConditionConfig(env) {
   const state = await getConditionConfigState(env);
-  return { ...state.active, version: state.version };
+  return { ...applyDailyTenSystem(state.active), version: state.version };
 }
 
 async function saveDraft(env, config) {
