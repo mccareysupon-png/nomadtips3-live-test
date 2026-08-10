@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-10",
-  "generatedAt": "2026-08-10T21:11:21Z",
+  "generatedAt": "2026-08-10T21:12:24Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 10,
     "correct": 2,
-    "incorrect": 4,
+    "incorrect": 5,
     "void": 1,
-    "pending": 3,
-    "settled": 6,
+    "pending": 2,
+    "settled": 7,
     "allSettled": false,
-    "accuracy": 33.33,
+    "accuracy": 28.57,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 10,
       "correct": 3,
-      "incorrect": 3,
+      "incorrect": 4,
       "void": 1,
-      "pending": 3,
-      "settled": 6,
-      "accuracy": 50.0
+      "pending": 2,
+      "settled": 7,
+      "accuracy": 42.86
     },
     "doubleChance": {
       "total": 10,
-      "correct": 3,
+      "correct": 4,
       "incorrect": 3,
       "void": 1,
-      "pending": 3,
-      "settled": 6,
-      "accuracy": 50.0
+      "pending": 2,
+      "settled": 7,
+      "accuracy": 57.14
     },
     "asianHandicap": {
       "win": 2,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
-      "loss": 3,
+      "loss": 4,
       "void": 1,
-      "pending": 3,
+      "pending": 2,
       "total": 10,
-      "decisions": 5,
-      "weightedRate": 40.0
+      "decisions": 6,
+      "weightedRate": 33.33
     }
   },
   "results": [
@@ -91,7 +91,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -138,7 +138,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -148,41 +148,44 @@
       "home": "Santa Clara",
       "away": "Nacional",
       "kickoffUtc": "2026-08-10T19:15:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.8,
           "oddsStatus": "LOCKED",
           "confidence": 70,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Santa Clara or Draw",
           "odds": 1.18,
           "oddsStatus": "LOCKED",
           "confidence": 70,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Santa Clara -0.5",
           "odds": 1.88,
           "oddsStatus": "LOCKED",
           "confidence": 70,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -229,7 +232,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -273,7 +276,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -320,7 +323,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -367,7 +370,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -414,7 +417,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -459,7 +462,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     },
     {
@@ -503,7 +506,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T21:11:21Z",
+      "updatedAt": "2026-08-10T21:12:24Z",
       "counted": true
     }
   ]
