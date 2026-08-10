@@ -8,6 +8,9 @@ const WEIGHTS = {
   corners: 1.25
 };
 
+const THAI_OFFSET_MS = 7 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
+
 const STATE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS auto_momentum_state (
   fixture_id INTEGER PRIMARY KEY,
@@ -228,9 +231,12 @@ function signalStatement(env, candidate, calculated, now) {
     selectedSide: candidate.selectedSide || 'HOME',
     selectedTeam: candidate.home,
     opponent: candidate.away,
+    league: candidate.league || '',
+    country: candidate.country || '',
     minute: Number(candidate.minute),
     score: candidate.score,
     momentum: calculated?.home ?? null,
+    selectedMarket: candidate.selectedMarket || null,
     selectedOdds: numeric(candidate?.markets?.selectedOdds),
     ahLine: numeric(candidate?.markets?.homeAh),
     ahOdds: numeric(candidate?.markets?.homeAhOdds),
@@ -317,9 +323,11 @@ async function signalsByCandidates(env, candidates) {
   return map;
 }
 
-function startOfThaiDay(now) {
-  const offset = 7 * 60 * 60_000;
-  return Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset;
+function startOfThaiDay(now, resetHour = 12) {
+  const resetMs = Number(resetHour || 0) * 60 * 60_000;
+  return Math.floor((now + THAI_OFFSET_MS - resetMs) / DAY_MS) * DAY_MS
+    - THAI_OFFSET_MS
+    + resetMs;
 }
 
 async function saveStatus(env, status) {
@@ -359,12 +367,13 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
     ]);
     const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
     const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
+    const cycleStart = startOfThaiDay(now, Number(config.dailyTenResetHour ?? 12));
     const [states, existingTrades, existingSignals, todayCountRow] = await Promise.all([
       sideStatesByCandidates(env, candidates),
       rowsByFixture(env, 'paper_trades', ids),
       signalsByCandidates(env, candidates),
       env.DB.prepare('SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?')
-        .bind(startOfThaiDay(now)).first()
+        .bind(cycleStart).first()
     ]);
 
     const statements = [];
@@ -444,6 +453,12 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       mode: 'PAGE-5-WORKER-CONDITION-CONTROL',
       serverOnline: true,
       config,
+      dailyCycle: {
+        resetHour: Number(config.dailyTenResetHour ?? 12),
+        timezone: config.dailyTenResetTimezone || 'Asia/Bangkok',
+        cycleStartAt: new Date(cycleStart).toISOString(),
+        nextResetAt: new Date(cycleStart + DAY_MS).toISOString()
+      },
       candidates: enriched,
       counts
     };
