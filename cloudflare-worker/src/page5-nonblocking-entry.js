@@ -9,6 +9,9 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 const MAX_LAST_GOOD_MS = 15 * 60_000;
 const FRESH_MS = 2 * 60_000;
+const THAI_OFFSET_MS = 7 * 60 * 60_000;
+const DAILY_RESET_MS = 12 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -40,13 +43,112 @@ function generatedAtMs(payload) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function startOfThaiCycle(now) {
+  return Math.floor((now + THAI_OFFSET_MS - DAILY_RESET_MS) / DAY_MS) * DAY_MS
+    - THAI_OFFSET_MS
+    + DAILY_RESET_MS;
+}
+
+function parseJson(value) {
+  try { return value ? JSON.parse(value) : {}; } catch { return {}; }
+}
+
+function signalCandidate(row, config = {}) {
+  const side = String(row.selected_side || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+  const selectedTeam = String(row.selected_team || 'Selected');
+  const opponent = String(row.opponent || 'Opponent');
+  const selectedScore = Number(row.selected_score || 0);
+  const opponentScore = Number(row.opponent_score || 0);
+  const payload = parseJson(row.payload_json);
+  const actualHome = side === 'AWAY' ? opponent : selectedTeam;
+  const actualAway = side === 'AWAY' ? selectedTeam : opponent;
+  const actualHomeScore = side === 'AWAY' ? opponentScore : selectedScore;
+  const actualAwayScore = side === 'AWAY' ? selectedScore : opponentScore;
+  const difference = selectedScore - opponentScore;
+  const scoreState = difference > 0 ? 'HOME_LEADING' : difference < 0 ? 'HOME_TRAILING' : 'TIED';
+  const momentum = Number.isFinite(Number(row.momentum)) ? Number(row.momentum) : null;
+  const selectedMarket = String(payload.selectedMarket || config.market || 'WIN').toUpperCase() === 'AH' ? 'AH' : 'WIN';
+
+  return {
+    fixtureId: Number(row.fixture_id),
+    selectedSide: side,
+    home: selectedTeam,
+    away: opponent,
+    actualHome,
+    actualAway,
+    league: String(payload.league || ''),
+    country: String(payload.country || ''),
+    minute: Number(row.minute || 0),
+    score: { home: selectedScore, away: opponentScore },
+    actualScore: { home: actualHomeScore, away: actualAwayScore },
+    scoreState,
+    goalDifference: difference,
+    stats: {},
+    redCards: { home: 0, away: 0 },
+    selectedMarket,
+    markets: {
+      selectedOdds: row.selected_odds ?? payload.selectedOdds ?? null,
+      homeAh: row.ah_line ?? payload.ahLine ?? null,
+      homeAhOdds: row.ah_odds ?? payload.ahOdds ?? null
+    },
+    serverMomentum: {
+      home: momentum,
+      away: momentum === null ? null : 100 - momentum,
+      evidence: null
+    },
+    serverStreak: Number(config.confirmationRounds || 1),
+    serverTriggered: true,
+    serverHistory: true,
+    signalCreatedAt: Number(row.created_at || payload.createdAt || 0)
+  };
+}
+
+async function currentCycleSignalCandidates(env, config, now) {
+  if (!env.DB) return [];
+  const cycleStart = startOfThaiCycle(now);
+  try {
+    const result = await env.DB.prepare(`
+      SELECT signal_key, fixture_id, selected_side, selected_team, opponent, minute,
+             selected_score, opponent_score, momentum, selected_odds, ah_line, ah_odds,
+             payload_json, created_at
+      FROM condition_signals
+      WHERE created_at >= ?
+      ORDER BY created_at DESC
+      LIMIT 20
+    `).bind(cycleStart).all();
+    return (result.results || []).map(row => signalCandidate(row, config));
+  } catch {
+    return [];
+  }
+}
+
+async function withCurrentSignalHistory(env, payload, now) {
+  const history = await currentCycleSignalCandidates(env, payload?.config || {}, now);
+  if (!history.length) return payload;
+  const current = Array.isArray(payload?.candidates) ? payload.candidates : [];
+  const seen = new Set(current.map(candidate => `${Number(candidate.fixtureId)}:${candidate.selectedSide || 'HOME'}`));
+  const missing = history.filter(candidate => !seen.has(`${Number(candidate.fixtureId)}:${candidate.selectedSide || 'HOME'}`));
+  return {
+    ...payload,
+    candidates: [...current, ...missing],
+    signalHistorySynced: true,
+    signalHistoryCount: history.length,
+    dailyCycle: {
+      resetHour: 12,
+      timezone: 'Asia/Bangkok',
+      cycleStartAt: new Date(startOfThaiCycle(now)).toISOString(),
+      nextResetAt: new Date(startOfThaiCycle(now) + DAY_MS).toISOString()
+    }
+  };
+}
+
 async function storedPage5Payload(request, env) {
   const now = Date.now();
   const latest = await getLatestAutoPayload(env, MAX_LAST_GOOD_MS).catch(() => null);
   if (latest) {
     const generated = generatedAtMs(latest);
     const ageMs = generated ? Math.max(0, now - generated) : MAX_LAST_GOOD_MS;
-    return {
+    const payload = {
       ...latest,
       ok: true,
       page5ReadMode: 'STORED_ONLY',
@@ -55,12 +157,13 @@ async function storedPage5Payload(request, env) {
       staleAgeSeconds: Math.round(ageMs / 1000),
       source: latest.source || 'cloudflare-worker · stored auto scan'
     };
+    return withCurrentSignalHistory(env, payload, now);
   }
 
   const statusUrl = new URL('https://internal.nomadtips3/auto-scan-status');
   const result = await handleAutoRequest(request, env, statusUrl);
   const status = result?.data || {};
-  return {
+  const payload = {
     ok: true,
     generatedAt: status.generatedAt || new Date(now).toISOString(),
     source: 'cloudflare-worker · stored status only',
@@ -81,6 +184,7 @@ async function storedPage5Payload(request, env) {
       'Page 5 is display-only and will not trigger a full live scan.'
     ].slice(-20)
   };
+  return withCurrentSignalHistory(env, payload, now);
 }
 
 function isPage5ReadRequest(request, url) {
