@@ -56,7 +56,39 @@ async function dailyTenStatus(env, now = Date.now()) {
   };
 }
 
-function dailySleepResult(status, startedAt, fullScanAttempted = false) {
+async function pendingSettlementStatus(env) {
+  try {
+    const row = await env.DB.prepare(`
+      SELECT
+        COUNT(*) AS pending,
+        MIN(created_at) AS oldest_created_at,
+        MAX(updated_at) AS last_updated_at
+      FROM paper_trades_side
+      WHERE status = 'PENDING'
+    `).first();
+    const pending = Number(row?.pending || 0);
+    return {
+      pending,
+      oldestPendingAt: Number(row?.oldest_created_at || 0)
+        ? new Date(Number(row.oldest_created_at)).toISOString()
+        : null,
+      lastUpdatedAt: Number(row?.last_updated_at || 0)
+        ? new Date(Number(row.last_updated_at)).toISOString()
+        : null
+    };
+  } catch (error) {
+    return {
+      pending: 0,
+      oldestPendingAt: null,
+      lastUpdatedAt: null,
+      error: error?.message || 'Pending settlement query failed'
+    };
+  }
+}
+
+function dailyCapResult(status, settlement, startedAt, fullScanAttempted = false) {
+  const pendingResults = Number(settlement?.pending || 0);
+  const settlementDrain = pendingResults > 0 || Boolean(settlement?.error);
   return {
     fullScanAttempted,
     scanOk: true,
@@ -64,11 +96,19 @@ function dailySleepResult(status, startedAt, fullScanAttempted = false) {
     hotError: null,
     refreshSeconds: 60,
     hotRuns: 0,
-    guardAction: 'DAILY_SLEEP',
+    guardAction: settlementDrain ? 'SETTLING_PENDING_RESULTS' : 'DAILY_SLEEP',
     derateLevel: 0,
-    dailySleep: true,
-    dailyTen: status,
-    footballApiPaused: true,
+    dailySleep: !settlementDrain,
+    signalCapturePaused: true,
+    settlementDrain,
+    pendingResults,
+    settlement,
+    dailyTen: {
+      ...status,
+      capReached: true,
+      waitingForResults: settlementDrain
+    },
+    footballApiPaused: !settlementDrain,
     completedAt: new Date(startedAt).toISOString()
   };
 }
@@ -140,6 +180,12 @@ async function settleSignalSideEffects(env) {
   } catch (error) {
     console.warn(JSON.stringify({ event: 'line_delivery_degraded', error: error?.message || String(error) }));
   }
+  return pendingSettlementStatus(env);
+}
+
+async function drainBeforeSleep(env) {
+  const settlement = await settleSignalSideEffects(env);
+  return settlement;
 }
 
 export async function runManagedCycle(env, ctx) {
@@ -147,8 +193,8 @@ export async function runManagedCycle(env, ctx) {
   const capBefore = await dailyTenStatus(env, startedAt);
   if (capBefore.sleeping) {
     await recordEngineSuccess(env, startedAt).catch(() => null);
-    await settleSignalSideEffects(env);
-    return dailySleepResult(capBefore, startedAt, false);
+    const settlement = await drainBeforeSleep(env);
+    return dailyCapResult(capBefore, settlement, startedAt, false);
   }
 
   let latest = await getLatestAutoPayload(env, 10 * 60_000).catch(() => null);
@@ -171,8 +217,8 @@ export async function runManagedCycle(env, ctx) {
 
     const capAfterScan = await dailyTenStatus(env);
     if (capAfterScan.sleeping) {
-      await settleSignalSideEffects(env);
-      return dailySleepResult(capAfterScan, Date.now(), true);
+      const settlement = await drainBeforeSleep(env);
+      return dailyCapResult(capAfterScan, settlement, Date.now(), true);
     }
   }
 
@@ -204,11 +250,11 @@ export async function runManagedCycle(env, ctx) {
 
   const capAfterHot = await dailyTenStatus(env);
   if (capAfterHot.sleeping) {
-    await settleSignalSideEffects(env);
-    return dailySleepResult(capAfterHot, Date.now(), fullScanAttempted);
+    const settlement = await drainBeforeSleep(env);
+    return dailyCapResult(capAfterHot, settlement, Date.now(), fullScanAttempted);
   }
 
-  await settleSignalSideEffects(env);
+  const settlement = await settleSignalSideEffects(env);
 
   return {
     fullScanAttempted,
@@ -220,6 +266,10 @@ export async function runManagedCycle(env, ctx) {
     guardAction: guard?.action || 'UNKNOWN',
     derateLevel: Number(guard?.derateLevel || 0),
     dailySleep: false,
+    signalCapturePaused: false,
+    settlementDrain: Number(settlement?.pending || 0) > 0,
+    pendingResults: Number(settlement?.pending || 0),
+    settlement,
     dailyTen: capAfterHot,
     footballApiPaused: false,
     completedAt: new Date().toISOString()
