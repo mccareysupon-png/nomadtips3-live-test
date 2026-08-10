@@ -1,14 +1,14 @@
 {
   "selectionDate": "2026-08-10",
-  "generatedAt": "2026-08-10T19:07:11Z",
+  "generatedAt": "2026-08-10T19:08:13Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 10,
     "correct": 0,
     "incorrect": 2,
-    "void": 0,
-    "pending": 8,
+    "void": 1,
+    "pending": 7,
     "settled": 2,
     "allSettled": false,
     "accuracy": 0.0,
@@ -19,8 +19,8 @@
       "total": 10,
       "correct": 1,
       "incorrect": 1,
-      "void": 0,
-      "pending": 8,
+      "void": 1,
+      "pending": 7,
       "settled": 2,
       "accuracy": 50.0
     },
@@ -28,8 +28,8 @@
       "total": 10,
       "correct": 0,
       "incorrect": 2,
-      "void": 0,
-      "pending": 8,
+      "void": 1,
+      "pending": 7,
       "settled": 2,
       "accuracy": 0.0
     },
@@ -39,8 +39,8 @@
       "push": 0,
       "half-loss": 0,
       "loss": 2,
-      "void": 0,
-      "pending": 8,
+      "void": 1,
+      "pending": 7,
       "total": 10,
       "decisions": 2,
       "weightedRate": 0.0
@@ -57,7 +57,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 49,
+      "elapsed": 50,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -88,7 +88,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -132,7 +132,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -176,7 +176,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -223,7 +223,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -267,7 +267,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -280,7 +280,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 20,
+      "elapsed": 21,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -311,7 +311,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -358,7 +358,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -371,7 +371,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 35,
+      "elapsed": 36,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -402,7 +402,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -412,41 +412,42 @@
       "home": "Tigres FC",
       "away": "Envigado",
       "kickoffUtc": "2026-08-10T19:00:00+00:00",
-      "status": "NS",
-      "providerStatus": "NS",
-      "statusLong": "Not Started",
+      "status": "PST",
+      "providerStatus": "PST",
+      "statusLong": "Match Postponed",
       "elapsed": null,
       "homeScore": null,
       "awayScore": null,
-      "outcome": "pending",
+      "outcome": "void",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "void"
         },
         "doubleChance": {
           "pick": "X2 — Envigado or Draw",
           "odds": 1.28,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "void"
         },
         "asianHandicap": {
           "pick": "Envigado 0",
           "odds": 1.68,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "void",
+          "settlement": "void"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     },
     {
@@ -490,7 +491,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-10T19:07:11Z",
+      "updatedAt": "2026-08-10T19:08:13Z",
       "counted": true
     }
   ]
