@@ -47,6 +47,10 @@
     try { localStorage.setItem(ALERT_KEY, JSON.stringify(state.alerts.slice(0, 100))); } catch {}
   }
 
+  function saveTrades() {
+    try { localStorage.setItem(TRADE_KEY, JSON.stringify(state.trades.slice(0, 5000))); } catch {}
+  }
+
   function sideLabel(side) {
     if (side === 'AWAY') return 'ทีมเยือน';
     if (side === 'BOTH') return 'ทั้งสองทีม';
@@ -163,6 +167,30 @@
     notifySignal(candidate, momentum);
   }
 
+  function tradeForAlert(alert) {
+    const key = String(alert.key || `${Number(alert.fixtureId)}:${alert.selectedSide || 'HOME'}`);
+    return state.trades.find(trade => String(trade.tradeKey || `${Number(trade.fixtureId)}:${trade.selectedSide || 'HOME'}`) === key) || null;
+  }
+
+  function alertOutcome(alert) {
+    const trade = tradeForAlert(alert);
+    if (!trade || trade.status === 'PENDING') return { label: 'PENDING', css: 'pending', trade };
+    if (trade.status === 'VOID' || trade.settlement === 'VOID') return { label: 'VOID', css: 'neutral', trade };
+
+    if (String(alert.market || '').toUpperCase() === 'WIN') {
+      const selected = num(trade.finalHomeScore);
+      const opponent = num(trade.finalAwayScore);
+      if (selected === null || opponent === null) return { label: 'PENDING', css: 'pending', trade };
+      return selected > opponent
+        ? { label: 'CORRECT', css: 'win', trade }
+        : { label: 'INCORRECT', css: 'loss', trade };
+    }
+
+    if (trade.result === 'CORRECT') return { label: 'CORRECT', css: 'win', trade };
+    if (trade.result === 'INCORRECT') return { label: 'INCORRECT', css: 'loss', trade };
+    return { label: 'NEUTRAL', css: 'neutral', trade };
+  }
+
   function renderAlertLog() {
     const box = $('alertLog');
     if (!box) return;
@@ -170,12 +198,19 @@
       box.innerHTML = '<div>ยังไม่มี Alert</div>';
       return;
     }
-    box.innerHTML = state.alerts.map(alert => `
+    box.innerHTML = state.alerts.map(alert => {
+      const outcome = alertOutcome(alert);
+      const trade = outcome.trade;
+      const finalHome = num(trade?.finalActualHomeScore);
+      const finalAway = num(trade?.finalActualAwayScore);
+      const finalText = finalHome !== null && finalAway !== null ? ` · Final ${finalHome}-${finalAway}` : '';
+      return `
       <div>
         <b>${escapeHtml(alert.match)}</b> · ${escapeHtml(alert.score)} · ${escapeHtml(alert.scoreState)}<br>
-        ${alert.minute}′ · Momentum ${alert.momentum ?? 'N/A'}% · ${marketLabel(alert.market)} ${alert.odds ?? 'N/A'} · AH ${formatLine(alert.ah)}${alert.ahOdds ? ` @ ${alert.ahOdds}` : ''} · ${new Date(alert.at).toLocaleString()}
-      </div>
-    `).join('');
+        ${alert.minute}′ · Momentum ${alert.momentum ?? 'N/A'}% · ${marketLabel(alert.market)} ${alert.odds ?? 'N/A'} · AH ${formatLine(alert.ah)}${alert.ahOdds ? ` @ ${alert.ahOdds}` : ''} · ${new Date(alert.at).toLocaleString()}<br>
+        <b class="${outcome.css}">RESULT ${outcome.label}${finalText}</b>
+      </div>`;
+    }).join('');
   }
 
   function momentumChart(fixtureId, selectedSide, value) {
@@ -249,7 +284,7 @@
           <div class="fact"><small>${marketLabel(candidate.selectedMarket)}</small><b class="${selectedOdds ? 'green' : 'yellow'}">${selectedOdds?.toFixed(2) ?? 'N/A'}</b></div>
           <div class="fact"><small>Asian Handicap</small><b class="${ah !== null ? 'green' : 'yellow'}">${formatLine(ah)}</b></div>
           <div class="fact"><small>AH Odds</small><b class="${ahOdds ? 'green' : 'yellow'}">${ahOdds?.toFixed(2) ?? 'N/A'}</b></div>
-          <div class="fact"><small>Paper Investment</small><b class="${candidate.selectedSide === 'HOME' && ahOdds ? 'green' : 'yellow'}">${candidate.selectedSide === 'HOME' && ahOdds ? '100 Units' : 'ALERT ONLY'}</b></div>
+          <div class="fact"><small>Paper Investment</small><b class="${ahOdds ? 'green' : 'yellow'}">${ahOdds ? '100 Units' : 'ALERT ONLY'}</b></div>
           <div class="fact"><small>Red cards Selected–Opponent</small><b class="green">${candidate.redCards.home}–${candidate.redCards.away}</b></div>
           <div class="fact"><small>Attack evidence</small><b class="${evidencePass ? 'green' : 'yellow'}">${config.attackEvidenceEnabled ? (ready ? evidence : 'WAIT') : 'OFF'}</b></div>
         </div>
@@ -338,14 +373,13 @@
           : `Final ${trade.finalHomeScore}-${trade.finalAwayScore} · หลัง Alert ${trade.postEntryHomeGoals}-${trade.postEntryAwayGoals}`;
       return `<article class="trade">
         <div class="trade-top"><b>${escapeHtml(trade.home)} vs ${escapeHtml(trade.away)}</b><span class="trade-status ${trade.status === 'PENDING' ? 'pending' : trade.result === 'CORRECT' ? 'win' : trade.result === 'INCORRECT' ? 'loss' : 'neutral'}">${trade.settlement}</span></div>
-        <div class="trade-meta">Alert ${trade.entryMinute}′ · Entry ${trade.entryHomeScore}-${trade.entryAwayScore} · ${escapeHtml(trade.scoreState)} · Momentum ${trade.momentum}%<br>Home AH ${line} @ ${trade.ahOdds} · Investment ${trade.stakeUnits} Units<br>${finalText}</div>
+        <div class="trade-meta">Alert ${trade.entryMinute}′ · Entry ${trade.entryHomeScore}-${trade.entryAwayScore} · ${escapeHtml(trade.scoreState)} · Momentum ${trade.momentum}%<br>Selected AH ${line} @ ${trade.ahOdds} · Investment ${trade.stakeUnits} Units<br>${finalText}</div>
         <div class="trade-profit ${profit > 0 ? 'green' : profit < 0 ? 'red' : 'yellow'}">${trade.status === 'PENDING' ? 'PENDING' : `ผล ${trade.result === 'CORRECT' ? 'ถูก' : trade.result === 'INCORRECT' ? 'ผิด' : 'กลาง'} · ${profit >= 0 ? '+' : ''}${profit} Units · Return ${trade.returnedUnits} Units`}</div>
       </article>`;
     }).join('');
   }
 
   function renderPaper() {
-    state.trades = readArray(TRADE_KEY);
     const metrics = paperMetrics();
     $('tradeTotal').textContent = metrics.total;
     $('tradePending').textContent = metrics.pending;
@@ -363,6 +397,20 @@
     }
     renderEquity(metrics.decided);
     renderTrades();
+  }
+
+  async function loadPaperTrades() {
+    try {
+      const response = await fetch(`${WORKER}/paper-trades?limit=5000&t=${Date.now()}`, { cache: 'no-store' });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !Array.isArray(payload.trades)) return;
+      state.trades = payload.trades;
+      saveTrades();
+      renderPaper();
+      renderAlertLog();
+    } catch {
+      // Keep the most recent local copy if the Worker is temporarily unavailable.
+    }
   }
 
   function processPayload(payload) {
@@ -400,6 +448,7 @@
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.ok) throw new Error(payload?.error || `HTTP ${response.status}`);
       processPayload(payload);
+      await loadPaperTrades();
     } catch (error) {
       $('cards').innerHTML = `<div class="empty"><b>Worker กำลัง Deploy หรือเชื่อมต่อไม่สำเร็จ</b><br>${escapeHtml(error.message)}<br>จะลองใหม่ใน 60 วินาที</div>`;
     } finally {
@@ -414,11 +463,16 @@
 
   $('notifyButton')?.addEventListener('click', enableNotifications);
   window.addEventListener('storage', event => {
-    if (event.key === TRADE_KEY) renderPaper();
+    if (event.key === TRADE_KEY) {
+      state.trades = readArray(TRADE_KEY);
+      renderPaper();
+      renderAlertLog();
+    }
   });
   updateNotifyButton();
   renderAlertLog();
   renderPaper();
+  loadPaperTrades();
   setInterval(updateCountdown, 1_000);
   scan();
 })();
