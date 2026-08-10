@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
@@ -19,7 +19,7 @@ env:
 jobs:
   test-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
 
@@ -28,10 +28,12 @@ jobs:
           node-version: "22"
 
       - name: Offline logic tests
+        id: tests
         working-directory: car3-cloudflare
         run: node --test
 
       - name: Validate required runtime secrets
+        id: validate
         shell: bash
         run: |
           test -n "${{ secrets.CLOUDFLARE_API_TOKEN }}" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
@@ -58,8 +60,61 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ env.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TARGET_ID: ${{ env.LINE_TARGET_ID }}
 
-      - name: Report deployment URL
+      - name: Wait for first Cron cycle and read health
+        id: health
+        if: ${{ success() }}
+        shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
-          echo "CAR 3 V6 deployment: ${DEPLOYMENT_URL:-workers.dev URL is available in Cloudflare dashboard}"
+          : > /tmp/car3-health.json
+          if [ -z "$DEPLOYMENT_URL" ]; then
+            echo '{"error":"deployment_url_unavailable"}' > /tmp/car3-health.json
+            exit 0
+          fi
+          for i in $(seq 1 22); do
+            BODY=$(curl -fsS "$DEPLOYMENT_URL/health" || true)
+            if [ -n "$BODY" ]; then
+              printf '%s' "$BODY" > /tmp/car3-health.json
+              if ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
+                exit 0
+              fi
+            fi
+            sleep 30
+          done
+          exit 0
+
+      - name: Record deployment status back to repository
+        if: ${{ always() }}
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          VALIDATE_OUTCOME: ${{ steps.validate.outcome }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          HEALTH_OUTCOME: ${{ steps.health.outcome }}
+        run: |
+          HEALTH='not-run'
+          if [ -f /tmp/car3-health.json ]; then HEALTH=$(cat /tmp/car3-health.json); fi
+          cat > car3-cloudflare/DEPLOY_STATUS.md <<EOF
+          # CAR 3 Cloudflare V6 — Last Deploy Status
+
+          - Commit: $GITHUB_SHA
+          - UTC: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          - Offline tests: ${TESTS_OUTCOME:-unknown}
+          - Secret validation: ${VALIDATE_OUTCOME:-unknown}
+          - Cloudflare deploy: ${DEPLOY_OUTCOME:-unknown}
+          - Health check step: ${HEALTH_OUTCOME:-unknown}
+          - Deployment URL: ${DEPLOYMENT_URL:-unavailable}
+
+          Health payload:
+          
+          \`\`\`json
+          $HEALTH
+          \`\`\`
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add car3-cloudflare/DEPLOY_STATUS.md
+          git commit -m "Record CAR 3 Cloudflare deployment status [skip ci]" || exit 0
+          git push
