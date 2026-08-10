@@ -6,37 +6,28 @@ import random
 import sqlite3
 import sys
 import time
-import unittest
 from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import AsyncMock, patch
 
 
 class Config:
     API_KEY = os.getenv("API_FOOTBALL_KEY", "")
     BASE_URL = "https://v3.football.api-sports.io"
-
     MAX_REQ_PER_SEC = 6
     MAX_REQ_PER_MIN = 360
-
     POLL_NORMAL = 25
     POLL_NEAR_CONDITION = 15
     POLL_DEGRADED = 60
-
     STATS_CACHE_FRESH_TTL = 60
     STATS_CACHE_STALE_TTL = 120
     CONCURRENCY_LIMIT = 5
-
     TRUSTED_BOOKMAKERS = {1, 8, 11}
-    TARGET_LIVE_MARKET_NAME = "1x2"
 
 
 class FilterCriteria:
     MIN_MINUTE = 60
     MAX_MINUTE = 80
     MIN_ODDS_1X2 = 1.50
-
     RULE_A_MIN_DANGEROUS_ATTACKS = 50
-
     RULE_B_MIN_SHOTS_ON_GOAL = 3
     RULE_B_MIN_TOTAL_SHOTS = 8
     RULE_B_MIN_CORNERS = 4
@@ -59,7 +50,6 @@ class CircuitBreaker:
         async with self.lock:
             if self.state == self.CLOSED:
                 return True
-
             if self.state == self.OPEN:
                 if time.monotonic() - self.last_failure_time >= self.recovery_timeout:
                     self.state = self.HALF_OPEN
@@ -67,13 +57,9 @@ class CircuitBreaker:
                     logging.info("Circuit Breaker: HALF_OPEN probe")
                     return True
                 return False
-
-            if self.state == self.HALF_OPEN:
-                if not self.probe_in_flight:
-                    self.probe_in_flight = True
-                    return True
-                return False
-
+            if self.state == self.HALF_OPEN and not self.probe_in_flight:
+                self.probe_in_flight = True
+                return True
             return False
 
     async def record_failure(self) -> None:
@@ -112,20 +98,17 @@ class RateGuard:
         async with self.lock:
             self._prune()
             now = time.monotonic()
-
             if len(self.calls_sec) >= Config.MAX_REQ_PER_SEC:
-                sleep_for = 1.0 - (now - self.calls_sec[0])
-                if sleep_for > 0:
-                    await asyncio.sleep(sleep_for)
+                delay = 1.0 - (now - self.calls_sec[0])
+                if delay > 0:
+                    await asyncio.sleep(delay)
                 self._prune()
-
             now = time.monotonic()
             if len(self.calls_min) >= Config.MAX_REQ_PER_MIN:
-                sleep_for = 60.0 - (now - self.calls_min[0])
-                if sleep_for > 0:
-                    await asyncio.sleep(sleep_for)
+                delay = 60.0 - (now - self.calls_min[0])
+                if delay > 0:
+                    await asyncio.sleep(delay)
                 self._prune()
-
             now = time.monotonic()
             self.calls_sec.append(now)
             self.calls_min.append(now)
@@ -139,7 +122,7 @@ class RateGuard:
             if minute is not None:
                 self.minute_remaining = int(minute)
         except (TypeError, ValueError):
-            logging.warning("Invalid rate-limit headers received")
+            pass
 
 
 class APIClient:
@@ -156,82 +139,63 @@ class APIClient:
         self.cycle_429 = 0
 
     async def start(self) -> None:
-        if self.session is None or self.session.closed:
-            self.session = aiohttp.ClientSession(headers=self.headers)
+        self.session = aiohttp.ClientSession(headers=self.headers)
 
     async def close(self) -> None:
         if self.session and not self.session.closed:
             await self.session.close()
 
     async def get(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Any]:
-        if self.fatal_error:
+        if self.fatal_error or self.session is None:
             return None
-        if self.session is None:
-            raise RuntimeError("APIClient.start() must be called first")
-
-        url = f"{Config.BASE_URL}{endpoint}"
         backoff = 2.0
-
         for _ in range(3):
             if not await self.breaker.can_execute():
                 return None
-
             await self.guard.wait()
             self.cycle_requests += 1
-
             try:
-                async with self.session.get(url, params=params, timeout=10) as response:
+                async with self.session.get(f"{Config.BASE_URL}{endpoint}", params=params, timeout=10) as response:
                     self.guard.update_from_headers(response.headers)
-
                     if response.status in {401, 403}:
                         self.fatal_error = True
                         logging.error("Fatal API authentication/configuration error: %s", response.status)
                         return None
-
                     if response.status in self.NON_RETRYABLE:
-                        logging.error("HTTP %s on %s; not retrying", response.status, endpoint)
+                        logging.error("HTTP %s on %s", response.status, endpoint)
                         return None
-
                     if response.status == 204:
                         await self.breaker.record_success()
                         return []
-
                     if response.status == 429:
                         self.cycle_429 += 1
                         await self.breaker.record_failure()
                         retry_after = response.headers.get("Retry-After")
                         try:
-                            delay = float(retry_after) if retry_after is not None else backoff
+                            delay = float(retry_after) if retry_after else backoff
                         except (TypeError, ValueError):
                             delay = backoff
                         await asyncio.sleep(delay + random.uniform(0.1, 0.5))
                         backoff *= 1.5
                         continue
-
                     if response.status in self.RETRYABLE:
                         await self.breaker.record_failure()
                         await asyncio.sleep(backoff)
-                        backoff *= 2.0
+                        backoff *= 2
                         continue
-
                     if response.status == 200:
                         data = await response.json()
                         if data.get("errors"):
                             logging.error("API returned errors: %s", data.get("errors"))
-                            await self.breaker.record_failure()
                             return None
                         await self.breaker.record_success()
                         return data.get("response", [])
-
-                    logging.error("Unhandled HTTP status %s on %s", response.status, endpoint)
                     return None
-
             except (asyncio.TimeoutError, aiohttp.ClientError) as exc:
                 logging.warning("API transport error on %s: %s", endpoint, exc)
                 await self.breaker.record_failure()
                 await asyncio.sleep(backoff)
-                backoff *= 2.0
-
+                backoff *= 2
         return None
 
 
@@ -241,10 +205,8 @@ class ScannerState:
         self.db = sqlite3.connect(":memory:")
         self.cursor = self.db.cursor()
         self.cycle_cache_hits = 0
-        self.cursor.execute(
-            "CREATE TABLE IF NOT EXISTS sent_alerts "
-            "(fixture_id INTEGER PRIMARY KEY, alert_time TIMESTAMP)"
-        )
+        self.seen_market_ids = set()
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS sent_alerts (fixture_id INTEGER PRIMARY KEY, alert_time TIMESTAMP)")
         self.db.commit()
 
     def has_alerted(self, fixture_id: int) -> bool:
@@ -253,10 +215,7 @@ class ScannerState:
 
     def mark_alerted(self, fixture_id: int) -> None:
         try:
-            self.cursor.execute(
-                "INSERT INTO sent_alerts (fixture_id, alert_time) VALUES (?, datetime('now'))",
-                (fixture_id,),
-            )
+            self.cursor.execute("INSERT INTO sent_alerts VALUES (?, datetime('now'))", (fixture_id,))
             self.db.commit()
         except sqlite3.IntegrityError:
             pass
@@ -265,7 +224,6 @@ class ScannerState:
         item = self.stats_cache.get(fixture_id)
         if item is None:
             return None, "NONE"
-
         age = time.monotonic() - item["time"]
         if age < Config.STATS_CACHE_FRESH_TTL:
             self.cycle_cache_hits += 1
@@ -279,10 +237,8 @@ class ScannerState:
             self.stats_cache[fixture_id] = {"time": time.monotonic(), "data": data}
 
     def close(self) -> None:
-        try:
-            self.cursor.close()
-        finally:
-            self.db.close()
+        self.cursor.close()
+        self.db.close()
 
 
 class PipelineFilters:
@@ -290,11 +246,8 @@ class PipelineFilters:
     def identify_targets(fixture: Dict) -> List[Dict]:
         status = fixture.get("fixture", {}).get("status", {}).get("short")
         elapsed = fixture.get("fixture", {}).get("status", {}).get("elapsed")
-        if status != "2H" or not isinstance(elapsed, int):
+        if status != "2H" or not isinstance(elapsed, int) or not (FilterCriteria.MIN_MINUTE <= elapsed <= FilterCriteria.MAX_MINUTE):
             return []
-        if not (FilterCriteria.MIN_MINUTE <= elapsed <= FilterCriteria.MAX_MINUTE):
-            return []
-
         teams = fixture.get("teams", {})
         try:
             return [
@@ -305,51 +258,60 @@ class PipelineFilters:
             return []
 
     @staticmethod
-    def odds_filter(candidate: Dict, odds_map: Dict, live_bet_id: Optional[int]) -> bool:
-        if live_bet_id is None:
-            return False
+    def _market_side_map(values: List[Dict]) -> Dict[str, str]:
+        labels = {str(v.get("value", "")).strip().lower() for v in values}
+        if {"home", "draw", "away"}.issubset(labels):
+            return {"Home": "home", "Away": "away"}
+        if {"1", "x", "2"}.issubset(labels):
+            return {"Home": "1", "Away": "2"}
+        return {}
 
+    @staticmethod
+    def odds_filter(candidate: Dict, odds_map: Dict, state: ScannerState) -> bool:
         fixture_id = candidate["fixture"]["fixture"]["id"]
         odds_data = odds_map.get(fixture_id)
         if not odds_data:
             return False
-
-        target_side = candidate["target_side"]
-        for bookmaker in odds_data.get("bookmakers", []):
-            if Config.TRUSTED_BOOKMAKERS and bookmaker.get("id") not in Config.TRUSTED_BOOKMAKERS:
-                continue
-            for bet in bookmaker.get("bets", []):
-                if bet.get("id") != live_bet_id:
-                    continue
-                for value in bet.get("values", []):
-                    if value.get("value") != target_side:
+        bookmakers = odds_data.get("bookmakers", [])
+        preferred = [b for b in bookmakers if b.get("id") in Config.TRUSTED_BOOKMAKERS]
+        groups = [preferred, bookmakers] if preferred else [bookmakers]
+        for group in groups:
+            found_1x2 = False
+            for bookmaker in group:
+                for bet in bookmaker.get("bets", []):
+                    values = bet.get("values", [])
+                    side_map = PipelineFilters._market_side_map(values)
+                    if not side_map:
                         continue
-                    try:
-                        return float(value.get("odd")) >= FilterCriteria.MIN_ODDS_1X2
-                    except (TypeError, ValueError):
-                        continue
+                    found_1x2 = True
+                    bet_id = bet.get("id")
+                    if bet_id not in state.seen_market_ids:
+                        state.seen_market_ids.add(bet_id)
+                        logging.info("AUTO 1X2 market detected: bet_id=%s name=%s", bet_id, bet.get("name", "unknown"))
+                    wanted = side_map[candidate["target_side"]]
+                    for value in values:
+                        if str(value.get("value", "")).strip().lower() == wanted:
+                            try:
+                                return float(value.get("odd")) >= FilterCriteria.MIN_ODDS_1X2
+                            except (TypeError, ValueError):
+                                return False
+            if group is preferred and found_1x2:
+                return False
         return False
 
     @staticmethod
     def final_condition(candidate: Dict, stats: List[Dict]) -> bool:
         target_id = candidate["target_team_id"]
-        team_stats = next((row for row in stats if row.get("team", {}).get("id") == target_id), None)
-        if not team_stats:
+        row = next((x for x in stats if x.get("team", {}).get("id") == target_id), None)
+        if not row:
             return False
-
-        metrics = {
-            item.get("type"): item.get("value")
-            for item in team_stats.get("statistics", [])
-            if item.get("type") and item.get("value") is not None
-        }
-
+        metrics = {x.get("type"): x.get("value") for x in row.get("statistics", []) if x.get("type") and x.get("value") is not None}
         dangerous = metrics.get("Dangerous Attacks")
         if dangerous is not None:
             try:
                 return int(dangerous) >= FilterCriteria.RULE_A_MIN_DANGEROUS_ATTACKS
             except (TypeError, ValueError):
                 return False
-
         required = {
             "Shots on Goal": metrics.get("Shots on Goal"),
             "Total Shots": metrics.get("Total Shots"),
@@ -358,7 +320,6 @@ class PipelineFilters:
         }
         if any(v is None for v in required.values()):
             return False
-
         try:
             possession = int(str(required["Ball Possession"]).replace("%", ""))
             return (
@@ -376,47 +337,27 @@ class ScannerEngine:
         self.api = APIClient()
         self.state = ScannerState()
         self.semaphore = asyncio.Semaphore(Config.CONCURRENCY_LIMIT)
-        self.live_bet_id: Optional[int] = None
         self.polling_interval = Config.POLL_NORMAL
 
-    async def bootstrap_odds_mapping(self) -> None:
-        logging.info("Bootstrapping Live Bet ID...")
-        bets = await self.api.get("/odds/live/bets")
-        if bets:
-            for bet in bets:
-                if str(bet.get("name", "")).strip().lower() == Config.TARGET_LIVE_MARKET_NAME.lower():
-                    self.live_bet_id = bet.get("id")
-                    logging.info("Found Live Bet ID: %s", self.live_bet_id)
-                    return
-        logging.warning("Live Bet ID not found; odds evaluation will PASS safely")
-
-    def adjust_polling_interval(self, candidates_count: int) -> None:
-        if (
-            self.api.guard.minute_remaining < 50
-            or self.api.guard.daily_remaining < 500
-            or self.api.breaker.state == CircuitBreaker.OPEN
-            or self.api.cycle_429 > 0
-        ):
+    def adjust_polling_interval(self, candidate_count: int) -> None:
+        if self.api.guard.minute_remaining < 50 or self.api.guard.daily_remaining < 500 or self.api.breaker.state == CircuitBreaker.OPEN or self.api.cycle_429 > 0:
             self.polling_interval = Config.POLL_DEGRADED
-        elif candidates_count > 0:
+        elif candidate_count > 0:
             self.polling_interval = Config.POLL_NEAR_CONDITION
         else:
             self.polling_interval = Config.POLL_NORMAL
 
     async def run(self) -> None:
         await self.api.start()
-        await self.bootstrap_odds_mapping()
+        logging.info("Live 1X2 market mode: AUTO-DETECT from Home/Draw/Away values")
         try:
             while not self.api.fatal_error:
                 started = time.monotonic()
                 self.api.cycle_requests = 0
                 self.api.cycle_429 = 0
                 self.state.cycle_cache_hits = 0
-
                 await self.scan_cycle()
-
-                elapsed = time.monotonic() - started
-                await asyncio.sleep(max(0.0, self.polling_interval - elapsed))
+                await asyncio.sleep(max(0.0, self.polling_interval - (time.monotonic() - started)))
         finally:
             await self.api.close()
             self.state.close()
@@ -428,44 +369,31 @@ class ScannerEngine:
             self.adjust_polling_interval(0)
             self.print_telemetry(0, 0, 0, 0)
             return
-
         candidates: List[Dict] = []
         for fixture in live_fixtures:
             fixture_id = fixture.get("fixture", {}).get("id")
             if fixture_id is None or self.state.has_alerted(fixture_id):
                 continue
             candidates.extend(PipelineFilters.identify_targets(fixture))
-
         if not candidates:
             self.adjust_polling_interval(0)
             self.print_telemetry(len(live_fixtures), 0, 0, 0)
             return
-
         live_odds = await self.api.get("/odds/live")
-        odds_map = {
-            item.get("fixture", {}).get("id"): item
-            for item in (live_odds or [])
-            if item.get("fixture", {}).get("id") is not None
-        }
-        odds_passed = [
-            c for c in candidates if PipelineFilters.odds_filter(c, odds_map, self.live_bet_id)
-        ]
+        odds_map = {x.get("fixture", {}).get("id"): x for x in (live_odds or []) if x.get("fixture", {}).get("id") is not None}
+        odds_passed = [c for c in candidates if PipelineFilters.odds_filter(c, odds_map, self.state)]
         self.adjust_polling_interval(len(odds_passed))
-
         if not odds_passed:
             self.print_telemetry(len(live_fixtures), len(candidates), 0, 0)
             return
-
         grouped: Dict[int, List[Dict]] = {}
         for candidate in odds_passed:
-            fixture_id = candidate["fixture"]["fixture"]["id"]
-            grouped.setdefault(fixture_id, []).append(candidate)
+            grouped.setdefault(candidate["fixture"]["fixture"]["id"], []).append(candidate)
 
         async def fetch_and_evaluate(fixture_id: int, group: List[Dict]) -> None:
             nonlocal stats_calls
             cached, status = self.state.check_stats_cache(fixture_id)
             stats_to_use: Optional[List] = None
-
             if status == "FRESH":
                 stats_to_use = cached
             else:
@@ -477,128 +405,34 @@ class ScannerEngine:
                     stats_to_use = fresh
                 elif status == "STALE":
                     stats_to_use = cached
-
             if not stats_to_use:
                 return
-
             for candidate in group:
                 if PipelineFilters.final_condition(candidate, stats_to_use):
-                    logging.info(
-                        "PAPER ALERT fixture=%s target=%s",
-                        fixture_id,
-                        candidate["target_side"],
-                    )
+                    logging.info("PAPER ALERT fixture=%s target=%s", fixture_id, candidate["target_side"])
                     self.state.mark_alerted(fixture_id)
                     break
 
-        await asyncio.gather(
-            *(fetch_and_evaluate(fixture_id, group) for fixture_id, group in grouped.items())
-        )
+        await asyncio.gather(*(fetch_and_evaluate(fid, group) for fid, group in grouped.items()))
         self.print_telemetry(len(live_fixtures), len(candidates), len(odds_passed), stats_calls)
 
     def print_telemetry(self, live: int, candidates: int, odds_passed: int, stats_calls: int) -> None:
         self.api.guard._prune()
-        states = {
-            CircuitBreaker.CLOSED: "CLOSED",
-            CircuitBreaker.OPEN: "OPEN",
-            CircuitBreaker.HALF_OPEN: "HALF_OPEN",
-        }
+        states = {CircuitBreaker.CLOSED: "CLOSED", CircuitBreaker.OPEN: "OPEN", CircuitBreaker.HALF_OPEN: "HALF_OPEN"}
         logging.info(
-            "TELEMETRY Gap=%ss Live=%s T1_Cand=%s T1.5_Odds=%s Stats_Calls=%s "
-            "CacheHits=%s Req_Cycle=%s Req/S=%s Req/M=%s Rem/M=%s Rem/D=%s 429s=%s Circuit=%s",
-            self.polling_interval,
-            live,
-            candidates,
-            odds_passed,
-            stats_calls,
-            self.state.cycle_cache_hits,
-            self.api.cycle_requests,
-            len(self.api.guard.calls_sec),
-            len(self.api.guard.calls_min),
-            self.api.guard.minute_remaining,
-            self.api.guard.daily_remaining,
-            self.api.cycle_429,
-            states[self.api.breaker.state],
+            "TELEMETRY Gap=%ss Live=%s T1_Cand=%s T1.5_Odds=%s Stats_Calls=%s CacheHits=%s Req_Cycle=%s Req/S=%s Req/M=%s Rem/M=%s Rem/D=%s 429s=%s Circuit=%s",
+            self.polling_interval, live, candidates, odds_passed, stats_calls, self.state.cycle_cache_hits,
+            self.api.cycle_requests, len(self.api.guard.calls_sec), len(self.api.guard.calls_min),
+            self.api.guard.minute_remaining, self.api.guard.daily_remaining, self.api.cycle_429, states[self.api.breaker.state]
         )
-
-
-class TestScannerLogic(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self):
-        self.engine = ScannerEngine()
-        await self.engine.api.start()
-
-    async def asyncTearDown(self):
-        await self.engine.api.close()
-        self.engine.state.close()
-
-    @patch("aiohttp.ClientSession.get")
-    async def test_http_204_zero_retry(self, mock_get):
-        response = AsyncMock()
-        response.status = 204
-        response.headers = {}
-        mock_get.return_value.__aenter__.return_value = response
-
-        result = await self.engine.api.get("/test")
-        self.assertEqual(result, [])
-        self.assertEqual(mock_get.call_count, 1)
-
-    @patch.object(APIClient, "get", new_callable=AsyncMock)
-    async def test_missing_live_bet_id_passes_safely(self, mock_get):
-        mock_get.side_effect = [
-            [],
-            [{"fixture": {"id": 1, "status": {"short": "2H", "elapsed": 70}}, "teams": {"home": {"id": 10}, "away": {"id": 20}}}],
-            [{"fixture": {"id": 1}, "bookmakers": []}],
-        ]
-        await self.engine.bootstrap_odds_mapping()
-        await self.engine.scan_cycle()
-        self.assertFalse(self.engine.state.has_alerted(1))
-
-    @patch.object(APIClient, "get", new_callable=AsyncMock)
-    async def test_grouped_stats_one_call_and_one_alert(self, mock_get):
-        self.engine.live_bet_id = 99
-        fixtures = [{"fixture": {"id": 2, "status": {"short": "2H", "elapsed": 75}}, "teams": {"home": {"id": 10}, "away": {"id": 20}}}]
-        odds = [{"fixture": {"id": 2}, "bookmakers": [{"id": 1, "bets": [{"id": 99, "values": [{"value": "Home", "odd": "2.0"}, {"value": "Away", "odd": "2.0"}]}]}]}]
-        stats = [
-            {"team": {"id": 10}, "statistics": [{"type": "Dangerous Attacks", "value": 60}]},
-            {"team": {"id": 20}, "statistics": [{"type": "Dangerous Attacks", "value": 70}]},
-        ]
-        mock_get.side_effect = [fixtures, odds, stats]
-        await self.engine.scan_cycle()
-        stat_calls = [c for c in mock_get.mock_calls if c.args and c.args[0] == "/fixtures/statistics"]
-        self.assertEqual(len(stat_calls), 1)
-        self.assertTrue(self.engine.state.has_alerted(2))
-
-    @patch.object(APIClient, "get", new_callable=AsyncMock)
-    async def test_stale_fallback_and_expired_pass(self, mock_get):
-        self.engine.live_bet_id = 99
-        fixture = [{"fixture": {"id": 3, "status": {"short": "2H", "elapsed": 70}}, "teams": {"home": {"id": 10}, "away": {"id": 20}}}]
-        odds = [{"fixture": {"id": 3}, "bookmakers": [{"id": 1, "bets": [{"id": 99, "values": [{"value": "Home", "odd": "2.0"}]}]}]}]
-        old_stats = [{"team": {"id": 10}, "statistics": [{"type": "Dangerous Attacks", "value": 60}]}]
-
-        self.engine.state.stats_cache[3] = {"time": time.monotonic() - 70, "data": old_stats}
-        mock_get.side_effect = [fixture, odds, None]
-        await self.engine.scan_cycle()
-        self.assertTrue(self.engine.state.has_alerted(3))
-
-        self.engine.state.cursor.execute("DELETE FROM sent_alerts")
-        self.engine.state.db.commit()
-        self.engine.state.stats_cache[3] = {"time": time.monotonic() - 130, "data": old_stats}
-        mock_get.side_effect = [fixture, odds, None]
-        await self.engine.scan_cycle()
-        self.assertFalse(self.engine.state.has_alerted(3))
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-    if "--test" in sys.argv:
-        sys.argv.remove("--test")
-        unittest.main()
-    else:
-        if not Config.API_KEY:
-            logging.error("Missing API_FOOTBALL_KEY environment variable. Scanner not started.")
-            sys.exit(2)
-        try:
-            asyncio.run(ScannerEngine().run())
-        except KeyboardInterrupt:
-            logging.info("PAPER scanner stopped by user")
+    if not Config.API_KEY:
+        logging.error("Missing API_FOOTBALL_KEY environment variable. Scanner not started.")
+        sys.exit(2)
+    try:
+        asyncio.run(ScannerEngine().run())
+    except KeyboardInterrupt:
+        logging.info("PAPER scanner stopped by user")
