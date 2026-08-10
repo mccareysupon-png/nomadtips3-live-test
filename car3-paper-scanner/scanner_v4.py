@@ -20,7 +20,7 @@ class Config:
 
     # CAR 3 V4: second-half focused bulk collector.
     SCAN_SECONDS = int(os.getenv("CAR3_SCAN_SECONDS", "600"))
-    MIN_MINUTE = int(os.getenv("CAR3_MIN_MINUTE", "60"))
+    MIN_MINUTE = int(os.getenv("CAR3_MIN_MINUTE", "50"))
     MAX_MINUTE = int(os.getenv("CAR3_MAX_MINUTE", "90"))
 
     # API-Football in-play namespace: Fulltime Result.
