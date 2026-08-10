@@ -1,0 +1,13 @@
+{
+  "name": "nomadtips3-car3-v2-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/api.js && node --check src/football.js && node --check src/db.js && node --check src/engine.js && node --check src/index.js",
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.120.0"
+  }
+}
