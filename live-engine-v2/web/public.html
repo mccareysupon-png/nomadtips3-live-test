@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#151718">
+  <title>NOMADTIPS3 — Live Engine</title>
+  <link rel="stylesheet" href="./v2.css">
+</head>
+<body data-api-base="">
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">NOMAD<span>TIPS3</span></div>
+      <div class="mode">Live Engine V2 · Read Only</div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="hero">
+      <div>
+        <h1>Live Conditions</h1>
+        <div class="sub">Shared live state · refreshing this page does not call the football provider</div>
+      </div>
+      <div class="pill"><span id="onlineDot" class="dot"></span><span id="onlineText">Waiting</span></div>
+    </div>
+
+    <section class="metrics">
+      <div class="metric"><div class="metric-label">Live</div><div id="liveCount" class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">Candidates</div><div id="candidateCount" class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">Stats Ready</div><div id="statsCount" class="metric-value">—</div></div>
+      <div class="metric"><div class="metric-label">Last Update</div><div id="lastUpdate" class="metric-value small">—</div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="section-title">Current Candidates</div>
+        <div id="freshness" class="section-note">Waiting for state</div>
+      </div>
+      <div id="candidateRows" class="rows"><div class="empty">No live state yet.</div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="section-title">Live Fixtures</div>
+        <div id="fixtureNote" class="section-note"></div>
+      </div>
+      <div id="fixtureRows" class="rows"><div class="empty">No fixtures to display.</div></div>
+    </section>
+  </main>
+
+  <script src="./public.js" defer></script>
+</body>
+</html>
