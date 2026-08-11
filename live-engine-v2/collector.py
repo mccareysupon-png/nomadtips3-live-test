@@ -9,6 +9,8 @@ import httpx
 from dotenv import load_dotenv
 
 from candidate_filter import filter_preliminary, load_condition_config
+from detail_fetcher import DetailFetcher
+from detail_normalizer import compact_fixture_details, compact_live_odds
 
 API_BASE = "https://v3.football.api-sports.io"
 LIVE_PATH = "/fixtures?live=all"
@@ -104,17 +106,21 @@ class Collector:
             headers={
                 "x-apisports-key": self.api_key,
                 "Accept": "application/json",
-                "User-Agent": "nomadtips3-live-engine-v2/0.2",
+                "User-Agent": "nomadtips3-live-engine-v2/0.3",
             },
             timeout=self.timeout,
         )
+        self.detail_fetcher = DetailFetcher(self.client, self._count_request)
+
+    def _count_request(self):
+        self.request_count += 1
 
     async def close(self):
         await self.client.aclose()
 
     async def fetch_live(self):
         response = await self.client.get(LIVE_PATH)
-        self.request_count += 1
+        self._count_request()
         meta = rate_headers(response)
 
         if response.status_code == 204:
@@ -134,6 +140,43 @@ class Collector:
     def current_condition(self):
         return load_condition_config(self.condition_config_path)
 
+    async def enrich_shortlist(self, candidates, condition):
+        compact_stats = {}
+        compact_odds = {}
+        telemetry = {
+            "statistics_enabled": bool(condition.get("statistics_enabled")),
+            "live_odds_enabled": bool(condition.get("live_odds_enabled")),
+            "statistics_batch_count": 0,
+            "statistics_cache_hits": 0,
+            "live_odds_cache_hit": False,
+            "origin_requests_cycle": 0,
+        }
+
+        if not candidates:
+            return compact_stats, compact_odds, telemetry
+
+        before = self.detail_fetcher.origin_requests
+
+        if condition.get("statistics_enabled"):
+            result = await self.detail_fetcher.fixture_details(
+                candidates,
+                ttl_seconds=condition.get("statistics_ttl_seconds", 60),
+            )
+            compact_stats = compact_fixture_details(result["by_fixture"])
+            telemetry["statistics_batch_count"] = result["batch_count"]
+            telemetry["statistics_cache_hits"] = result["cache_hits"]
+
+        if condition.get("live_odds_enabled"):
+            result = await self.detail_fetcher.live_odds(
+                candidates,
+                ttl_seconds=condition.get("live_odds_ttl_seconds", 10),
+            )
+            compact_odds = compact_live_odds(result["by_fixture"])
+            telemetry["live_odds_cache_hit"] = result["cache_hit"]
+
+        telemetry["origin_requests_cycle"] = self.detail_fetcher.origin_requests - before
+        return compact_stats, compact_odds, telemetry
+
     async def run(self):
         print("NOMADTIPS3 Live Engine V2 collector started")
         failure_streak = 0
@@ -145,6 +188,10 @@ class Collector:
                 fixtures = [fixture_summary(item) for item in raw]
                 condition = self.current_condition()
                 preliminary = filter_preliminary(fixtures, condition)
+                candidates = preliminary["candidates"]
+                statistics, live_odds, detail_telemetry = await self.enrich_shortlist(
+                    candidates, condition
+                )
                 self.last_success_at = utc_now()
                 failure_streak = 0
 
@@ -152,22 +199,28 @@ class Collector:
                     "schema": "nomadtips3.live.v2.fixture-snapshot",
                     "generated_at": self.last_success_at,
                     "request_started_at": started,
-                    "source": "api-football:/fixtures?live=all",
+                    "source": "api-football single-collector",
                     "http_status": status,
                     "live_count": len(fixtures),
                     "preliminary_candidate_count": preliminary["candidate_count"],
+                    "statistics_fixture_count": len(statistics),
+                    "live_odds_fixture_count": len(live_odds),
                     "request_count_process": self.request_count,
                     "rate_limit": rate,
                     "condition": condition,
                     "rejected": preliminary["rejected"],
+                    "detail_telemetry": detail_telemetry,
                     "fixtures": fixtures,
-                    "preliminary_candidates": preliminary["candidates"],
+                    "preliminary_candidates": candidates,
+                    "statistics": statistics,
+                    "live_odds": live_odds,
                 }
                 atomic_write_json(self.snapshot_path, snapshot)
 
                 print(
                     f"[{self.last_success_at}] live={len(fixtures)} "
                     f"candidates={preliminary['candidate_count']} "
+                    f"detail_calls={detail_telemetry['origin_requests_cycle']} "
                     f"remaining={rate.get('minute_remaining')} "
                     f"limit={rate.get('minute_limit')}"
                 )
