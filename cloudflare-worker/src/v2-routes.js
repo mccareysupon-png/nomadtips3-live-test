@@ -12,6 +12,7 @@ const ALLOWED_ORIGINS = new Set([
   'https://mccareysupon-png.github.io'
 ]);
 const MAX_INGEST_BYTES = 1_500_000;
+const DEFAULT_OWNER_HOST = 'bot-owner.nomadtips3.com';
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin') || '';
@@ -48,13 +49,28 @@ function authorized(request, secret) {
   return bearer(request) === String(secret);
 }
 
+function hasAccessSession(request) {
+  const cookie = request.headers.get('Cookie') || '';
+  return /(?:^|;\s*)CF_Authorization=[^;]+/i.test(cookie);
+}
+
 function ownerAuthorized(request, env) {
+  const url = new URL(request.url);
+  const ownerHost = String(env.V2_OWNER_HOST || DEFAULT_OWNER_HOST).trim().toLowerCase();
+  const requestHost = url.hostname.trim().toLowerCase();
+
+  // The owner hostname is protected by Cloudflare Access. Access blocks requests
+  // before they reach this Worker and issues CF_Authorization to authenticated users.
+  if (requestHost === ownerHost && hasAccessSession(request)) return true;
+
+  // Keep the identity-header check for Access setups that inject email headers.
   const allowedEmail = String(env.V2_OWNER_EMAIL || '').trim().toLowerCase();
   const accessEmail = String(
     request.headers.get('Cf-Access-Authenticated-User-Email') || ''
   ).trim().toLowerCase();
-
   if (allowedEmail && accessEmail && accessEmail === allowedEmail) return true;
+
+  // Optional trusted internal fallback. Never expose this secret in browser code.
   return authorized(request, env.V2_OWNER_SECRET);
 }
 
