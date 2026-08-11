@@ -11,6 +11,10 @@ DEFAULT_CONFIG = {
     "goal_gap_enabled": False,
     "max_goal_gap": 99,
     "score_states": ["ANY"],
+    "statistics_enabled": False,
+    "live_odds_enabled": False,
+    "statistics_ttl_seconds": 60,
+    "live_odds_ttl_seconds": 10,
 }
 
 
@@ -37,6 +41,10 @@ def normalize_config(config):
     result["goal_gap_enabled"] = bool(result.get("goal_gap_enabled", False))
     result["max_goal_gap"] = max(0, int(result.get("max_goal_gap", 99)))
     result["score_states"] = [str(value).upper() for value in result.get("score_states") or ["ANY"]]
+    result["statistics_enabled"] = bool(result.get("statistics_enabled", False))
+    result["live_odds_enabled"] = bool(result.get("live_odds_enabled", False))
+    result["statistics_ttl_seconds"] = max(30, int(result.get("statistics_ttl_seconds", 60)))
+    result["live_odds_ttl_seconds"] = max(5, int(result.get("live_odds_ttl_seconds", 10)))
     return result
 
 
