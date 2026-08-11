@@ -53,6 +53,38 @@ function parseJson(value) {
   try { return value ? JSON.parse(value) : {}; } catch { return {}; }
 }
 
+function candidateKey(candidate) {
+  return `${Number(candidate?.fixtureId)}:${String(candidate?.selectedSide || 'HOME').toUpperCase()}`;
+}
+
+async function terminalTradeKeys(env, candidates) {
+  if (!env.DB) return new Set();
+  const keys = [...new Set((candidates || []).map(candidateKey).filter(key => !key.startsWith('NaN:')))];
+  if (!keys.length) return new Set();
+  const terminal = new Set();
+
+  try {
+    for (let index = 0; index < keys.length; index += 50) {
+      const group = keys.slice(index, index + 50);
+      const placeholders = group.map(() => '?').join(',');
+      const result = await env.DB.prepare(`
+        SELECT trade_key, status
+        FROM paper_trades_side
+        WHERE trade_key IN (${placeholders})
+      `).bind(...group).all();
+      for (const row of result.results || []) {
+        if (String(row.status || '').toUpperCase() !== 'PENDING') {
+          terminal.add(String(row.trade_key));
+        }
+      }
+    }
+  } catch {
+    // If the side-aware paper table is temporarily unavailable, keep the live view readable.
+  }
+
+  return terminal;
+}
+
 function signalCandidate(row, config = {}) {
   const side = String(row.selected_side || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
   const selectedTeam = String(row.selected_team || 'Selected');
@@ -108,12 +140,14 @@ async function currentCycleSignalCandidates(env, config, now) {
   const cycleStart = startOfThaiCycle(now);
   try {
     const result = await env.DB.prepare(`
-      SELECT signal_key, fixture_id, selected_side, selected_team, opponent, minute,
-             selected_score, opponent_score, momentum, selected_odds, ah_line, ah_odds,
-             payload_json, created_at
-      FROM condition_signals
-      WHERE created_at >= ?
-      ORDER BY created_at DESC
+      SELECT s.signal_key, s.fixture_id, s.selected_side, s.selected_team, s.opponent, s.minute,
+             s.selected_score, s.opponent_score, s.momentum, s.selected_odds, s.ah_line, s.ah_odds,
+             s.payload_json, s.created_at
+      FROM condition_signals s
+      LEFT JOIN paper_trades_side p ON p.trade_key = s.signal_key
+      WHERE s.created_at >= ?
+        AND (p.trade_key IS NULL OR p.status = 'PENDING')
+      ORDER BY s.created_at DESC
       LIMIT 20
     `).bind(cycleStart).all();
     return (result.results || []).map(row => signalCandidate(row, config));
@@ -124,15 +158,21 @@ async function currentCycleSignalCandidates(env, config, now) {
 
 async function withCurrentSignalHistory(env, payload, now) {
   const history = await currentCycleSignalCandidates(env, payload?.config || {}, now);
-  if (!history.length) return payload;
   const current = Array.isArray(payload?.candidates) ? payload.candidates : [];
-  const seen = new Set(current.map(candidate => `${Number(candidate.fixtureId)}:${candidate.selectedSide || 'HOME'}`));
-  const missing = history.filter(candidate => !seen.has(`${Number(candidate.fixtureId)}:${candidate.selectedSide || 'HOME'}`));
+  const seen = new Set(current.map(candidateKey));
+  const missing = history.filter(candidate => !seen.has(candidateKey(candidate)));
+  const merged = [...current, ...missing];
+  const terminal = await terminalTradeKeys(env, merged);
+  const candidates = merged.filter(candidate => !terminal.has(candidateKey(candidate)));
+  const removed = merged.length - candidates.length;
+
   return {
     ...payload,
-    candidates: [...current, ...missing],
+    candidates,
     signalHistorySynced: true,
     signalHistoryCount: history.length,
+    finishedCardsRemoved: removed,
+    finishedCardGuard: 'AUTO · PAPER TERMINAL STATUS FILTER',
     dailyCycle: {
       resetHour: 12,
       timezone: 'Asia/Bangkok',
