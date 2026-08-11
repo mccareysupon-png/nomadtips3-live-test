@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#151718">
+  <title>NOMADTIPS3 — Owner Settings</title>
+  <link rel="stylesheet" href="./v2.css">
+</head>
+<body data-api-base="">
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <div class="brand">NOMAD<span>TIPS3</span></div>
+      <div class="mode">Live Engine V2 · Owner</div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="hero">
+      <div>
+        <h1>Owner Settings</h1>
+        <div class="sub">Private scanner configuration · server-side authorization required</div>
+      </div>
+      <div class="pill"><span id="ownerDot" class="dot"></span><span id="ownerStatus">Locked</span></div>
+    </div>
+
+    <section class="section">
+      <div class="section-head"><div class="section-title">Owner Access</div></div>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="ownerSecret">Owner secret</label>
+          <input id="ownerSecret" type="password" autocomplete="current-password" placeholder="Enter for this session only">
+        </div>
+      </div>
+      <div class="actions">
+        <button id="loadBtn" class="btn primary">Unlock & Load</button>
+        <span id="authFeedback" class="feedback">Secret is not stored in localStorage.</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div class="section-title">Scanner Configuration</div>
+        <div id="versionText" class="section-note">Version —</div>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label for="enabled">Scanner</label><select id="enabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+        <div class="field"><label for="scoreState">Score state</label><select id="scoreState"><option>ANY</option><option>TIED</option><option>HOME_LEADING</option><option>AWAY_LEADING</option></select></div>
+        <div class="field"><label for="minuteMin">Minute min</label><input id="minuteMin" type="number" min="0" max="120" value="1"></div>
+        <div class="field"><label for="minuteMax">Minute max</label><input id="minuteMax" type="number" min="1" max="140" value="120"></div>
+        <div class="field"><label for="goalGapEnabled">Goal-gap rule</label><select id="goalGapEnabled"><option value="false">Off</option><option value="true">On</option></select></div>
+        <div class="field"><label for="maxGoalGap">Max goal gap</label><input id="maxGoalGap" type="number" min="0" max="20" value="99"></div>
+        <div class="field"><label for="statisticsEnabled">Statistics detail</label><select id="statisticsEnabled"><option value="false">Off</option><option value="true">On</option></select></div>
+        <div class="field"><label for="liveOddsEnabled">Live odds detail</label><select id="liveOddsEnabled"><option value="false">Off</option><option value="true">On</option></select></div>
+        <div class="field"><label for="statisticsTtl">Statistics TTL (sec)</label><input id="statisticsTtl" type="number" min="30" max="600" value="60"></div>
+        <div class="field"><label for="oddsTtl">Live odds TTL (sec)</label><input id="oddsTtl" type="number" min="5" max="60" value="10"></div>
+      </div>
+      <div class="actions">
+        <button id="saveBtn" class="btn primary" disabled>Save Configuration</button>
+        <span id="saveFeedback" class="feedback">Unlock first.</span>
+      </div>
+    </section>
+  </main>
+
+  <script src="./owner.js" defer></script>
+</body>
+</html>
