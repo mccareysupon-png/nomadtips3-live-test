@@ -19,24 +19,10 @@
     <div class="hero">
       <div>
         <h1>Owner Settings</h1>
-        <div class="sub">Private scanner configuration · server-side authorization required</div>
+        <div class="sub">Private scanner configuration · protected by server-side owner access</div>
       </div>
-      <div class="pill"><span id="ownerDot" class="dot"></span><span id="ownerStatus">Locked</span></div>
+      <div class="pill"><span id="ownerDot" class="dot"></span><span id="ownerStatus">Checking</span></div>
     </div>
-
-    <section class="section">
-      <div class="section-head"><div class="section-title">Owner Access</div></div>
-      <div class="form-grid">
-        <div class="field full">
-          <label for="ownerSecret">Owner secret</label>
-          <input id="ownerSecret" type="password" autocomplete="current-password" placeholder="Enter for this session only">
-        </div>
-      </div>
-      <div class="actions">
-        <button id="loadBtn" class="btn primary">Unlock & Load</button>
-        <span id="authFeedback" class="feedback">Secret is not stored in localStorage.</span>
-      </div>
-    </section>
 
     <section class="section">
       <div class="section-head">
@@ -56,8 +42,9 @@
         <div class="field"><label for="oddsTtl">Live odds TTL (sec)</label><input id="oddsTtl" type="number" min="5" max="60" value="10"></div>
       </div>
       <div class="actions">
+        <button id="reloadBtn" class="btn">Reload</button>
         <button id="saveBtn" class="btn primary" disabled>Save Configuration</button>
-        <span id="saveFeedback" class="feedback">Unlock first.</span>
+        <span id="saveFeedback" class="feedback">Checking owner access…</span>
       </div>
     </section>
   </main>
