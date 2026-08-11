@@ -21,6 +21,7 @@ function corsHeaders(request) {
       : 'https://www.nomadtips3.com',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Max-Age': '86400',
     'Vary': 'Origin'
   };
@@ -45,6 +46,18 @@ function bearer(request) {
 function authorized(request, secret) {
   if (!secret) return false;
   return bearer(request) === String(secret);
+}
+
+function ownerAuthorized(request, env) {
+  const allowedEmail = String(env.V2_OWNER_EMAIL || '').trim().toLowerCase();
+  const accessEmail = String(
+    request.headers.get('Cf-Access-Authenticated-User-Email') || ''
+  ).trim().toLowerCase();
+
+  if (allowedEmail && accessEmail && accessEmail === allowedEmail) return true;
+
+  // Optional non-browser fallback for trusted internal tools only.
+  return authorized(request, env.V2_OWNER_SECRET);
 }
 
 async function readJson(request, maxBytes = MAX_INGEST_BYTES) {
@@ -129,7 +142,7 @@ export async function handleV2Route(request, env) {
   }
 
   if (url.pathname === '/v2/owner/config') {
-    if (!authorized(request, env.V2_OWNER_SECRET)) return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
+    if (!ownerAuthorized(request, env)) return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
 
     if (request.method === 'GET') {
       return reply(request, { ok: true, ownerConfig: await readOwnerConfig(env) });
