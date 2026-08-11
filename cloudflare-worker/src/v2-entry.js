@@ -1,0 +1,14 @@
+import baseEntry from './page5-nonblocking-entry.js';
+import { handleV2Route } from './v2-routes.js';
+
+export default {
+  async fetch(request, env, ctx) {
+    const v2Response = await handleV2Route(request, env);
+    if (v2Response) return v2Response;
+    return baseEntry.fetch(request, env, ctx);
+  },
+
+  async scheduled(controller, env, ctx) {
+    return baseEntry.scheduled(controller, env, ctx);
+  }
+};
