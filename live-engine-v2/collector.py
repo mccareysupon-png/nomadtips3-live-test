@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from candidate_filter import filter_preliminary, load_condition_config
 from detail_fetcher import DetailFetcher
 from detail_normalizer import compact_fixture_details, compact_live_odds
+from state_publisher import StatePublisher
 
 API_BASE = "https://v3.football.api-sports.io"
 LIVE_PATH = "/fixtures?live=all"
@@ -26,6 +27,11 @@ def env_int(name, default, minimum=1):
     except ValueError:
         value = default
     return max(minimum, value)
+
+
+def env_bool(name, default=False):
+    raw = str(os.getenv(name, str(default))).strip().lower()
+    return raw in {"1", "true", "yes", "on"}
 
 
 def atomic_write_json(path, payload):
@@ -106,17 +112,28 @@ class Collector:
             headers={
                 "x-apisports-key": self.api_key,
                 "Accept": "application/json",
-                "User-Agent": "nomadtips3-live-engine-v2/0.3",
+                "User-Agent": "nomadtips3-live-engine-v2/0.4",
             },
             timeout=self.timeout,
         )
         self.detail_fetcher = DetailFetcher(self.client, self._count_request)
+
+        publish_enabled = env_bool("V2_PUBLISH_ENABLED", False)
+        publish_url = os.getenv("V2_INGEST_URL", "") if publish_enabled else ""
+        publish_secret = os.getenv("V2_INGEST_SECRET", "") if publish_enabled else ""
+        self.publisher = StatePublisher(
+            publish_url,
+            publish_secret,
+            collector_id=os.getenv("COLLECTOR_ID", "vps-primary"),
+            heartbeat_seconds=env_int("PUBLISH_HEARTBEAT_SECONDS", 60, 15),
+        )
 
     def _count_request(self):
         self.request_count += 1
 
     async def close(self):
         await self.client.aclose()
+        await self.publisher.close()
 
     async def fetch_live(self):
         response = await self.client.get(LIVE_PATH)
@@ -177,6 +194,16 @@ class Collector:
         telemetry["origin_requests_cycle"] = self.detail_fetcher.origin_requests - before
         return compact_stats, compact_odds, telemetry
 
+    async def publish_snapshot(self, snapshot):
+        try:
+            return await self.publisher.publish(snapshot)
+        except Exception as error:
+            return {
+                "published": False,
+                "reason": "PUBLISH_ERROR",
+                "error": str(error),
+            }
+
     async def run(self):
         print("NOMADTIPS3 Live Engine V2 collector started")
         failure_streak = 0
@@ -216,11 +243,13 @@ class Collector:
                     "live_odds": live_odds,
                 }
                 atomic_write_json(self.snapshot_path, snapshot)
+                publish_result = await self.publish_snapshot(snapshot)
 
                 print(
                     f"[{self.last_success_at}] live={len(fixtures)} "
                     f"candidates={preliminary['candidate_count']} "
                     f"detail_calls={detail_telemetry['origin_requests_cycle']} "
+                    f"published={publish_result.get('published', False)} "
                     f"remaining={rate.get('minute_remaining')} "
                     f"limit={rate.get('minute_limit')}"
                 )
