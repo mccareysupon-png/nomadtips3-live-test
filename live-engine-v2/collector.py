@@ -8,9 +8,10 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
-from candidate_filter import filter_preliminary, load_condition_config
+from candidate_filter import filter_preliminary, load_condition_config, normalize_config
 from detail_fetcher import DetailFetcher
 from detail_normalizer import compact_fixture_details, compact_live_odds
+from remote_config import RemoteConfigClient
 from state_publisher import StatePublisher
 
 API_BASE = "https://v3.football.api-sports.io"
@@ -112,7 +113,7 @@ class Collector:
             headers={
                 "x-apisports-key": self.api_key,
                 "Accept": "application/json",
-                "User-Agent": "nomadtips3-live-engine-v2/0.4",
+                "User-Agent": "nomadtips3-live-engine-v2/0.5",
             },
             timeout=self.timeout,
         )
@@ -120,12 +121,22 @@ class Collector:
 
         publish_enabled = env_bool("V2_PUBLISH_ENABLED", False)
         publish_url = os.getenv("V2_INGEST_URL", "") if publish_enabled else ""
-        publish_secret = os.getenv("V2_INGEST_SECRET", "") if publish_enabled else ""
+        shared_secret = os.getenv("V2_INGEST_SECRET", "")
+        publish_secret = shared_secret if publish_enabled else ""
         self.publisher = StatePublisher(
             publish_url,
             publish_secret,
             collector_id=os.getenv("COLLECTOR_ID", "vps-primary"),
             heartbeat_seconds=env_int("PUBLISH_HEARTBEAT_SECONDS", 60, 15),
+        )
+
+        remote_enabled = env_bool("V2_REMOTE_CONFIG_ENABLED", False)
+        remote_url = os.getenv("V2_CONFIG_URL", "") if remote_enabled else ""
+        remote_secret = shared_secret if remote_enabled else ""
+        self.remote_config = RemoteConfigClient(
+            remote_url,
+            remote_secret,
+            refresh_seconds=env_int("V2_CONFIG_REFRESH_SECONDS", 15, 5),
         )
 
     def _count_request(self):
@@ -134,6 +145,7 @@ class Collector:
     async def close(self):
         await self.client.aclose()
         await self.publisher.close()
+        await self.remote_config.close()
 
     async def fetch_live(self):
         response = await self.client.get(LIVE_PATH)
@@ -154,8 +166,20 @@ class Collector:
             raise RuntimeError(f"API returned errors: {errors}")
         return payload.get("response") or [], meta, response.status_code
 
-    def current_condition(self):
-        return load_condition_config(self.condition_config_path)
+    async def current_condition(self):
+        local = load_condition_config(self.condition_config_path)
+        remote = await self.remote_config.get()
+        if remote and isinstance(remote.get("config"), dict):
+            return normalize_config(remote["config"]), {
+                "source": "D1_OWNER_CONFIG",
+                "version": int(remote.get("version") or 0),
+                "remote_error": self.remote_config.last_error,
+            }
+        return local, {
+            "source": "LOCAL_FALLBACK",
+            "version": 0,
+            "remote_error": self.remote_config.last_error,
+        }
 
     async def enrich_shortlist(self, candidates, condition):
         compact_stats = {}
@@ -213,7 +237,7 @@ class Collector:
             try:
                 raw, rate, status = await self.fetch_live()
                 fixtures = [fixture_summary(item) for item in raw]
-                condition = self.current_condition()
+                condition, condition_meta = await self.current_condition()
                 preliminary = filter_preliminary(fixtures, condition)
                 candidates = preliminary["candidates"]
                 statistics, live_odds, detail_telemetry = await self.enrich_shortlist(
@@ -235,6 +259,7 @@ class Collector:
                     "request_count_process": self.request_count,
                     "rate_limit": rate,
                     "condition": condition,
+                    "condition_meta": condition_meta,
                     "rejected": preliminary["rejected"],
                     "detail_telemetry": detail_telemetry,
                     "fixtures": fixtures,
@@ -248,6 +273,7 @@ class Collector:
                 print(
                     f"[{self.last_success_at}] live={len(fixtures)} "
                     f"candidates={preliminary['candidate_count']} "
+                    f"config={condition_meta['source']} "
                     f"detail_calls={detail_telemetry['origin_requests_cycle']} "
                     f"published={publish_result.get('published', False)} "
                     f"remaining={rate.get('minute_remaining')} "
