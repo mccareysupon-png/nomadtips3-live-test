@@ -55,8 +55,6 @@ function ownerAuthorized(request, env) {
   ).trim().toLowerCase();
 
   if (allowedEmail && accessEmail && accessEmail === allowedEmail) return true;
-
-  // Optional non-browser fallback for trusted internal tools only.
   return authorized(request, env.V2_OWNER_SECRET);
 }
 
@@ -133,6 +131,14 @@ export async function handleV2Route(request, env) {
       const message = error?.message || 'INGEST_FAILED';
       return reply(request, { ok: false, error: message }, message === 'PAYLOAD_TOO_LARGE' ? 413 : 400);
     }
+  }
+
+  if (url.pathname === '/v2/collector/config') {
+    if (request.method !== 'GET') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
+    if (!authorized(request, env.V2_INGEST_SECRET)) {
+      return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
+    }
+    return reply(request, { ok: true, ownerConfig: await readOwnerConfig(env) });
   }
 
   if (url.pathname === '/v2/state') {
