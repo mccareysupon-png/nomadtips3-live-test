@@ -1,0 +1,46 @@
+name: Live Engine V2 CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'live-engine-v2/**'
+      - 'cloudflare-worker/src/v2-*.js'
+      - 'cloudflare-worker/wrangler.jsonc'
+      - '.github/workflows/live-engine-v2-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install V2 dependencies
+        run: pip install -r live-engine-v2/requirements.txt
+      - name: Run V2 unit tests
+        working-directory: live-engine-v2
+        run: python -m unittest discover -v
+
+  worker-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: cloudflare-worker/package-lock.json
+      - name: Install Worker dependencies
+        working-directory: cloudflare-worker
+        run: npm ci
+      - name: Wrangler bundle dry-run
+        working-directory: cloudflare-worker
+        run: npx wrangler deploy --dry-run
