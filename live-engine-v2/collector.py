@@ -8,6 +8,8 @@ from pathlib import Path
 import httpx
 from dotenv import load_dotenv
 
+from candidate_filter import filter_preliminary, load_condition_config
+
 API_BASE = "https://v3.football.api-sports.io"
 LIVE_PATH = "/fixtures?live=all"
 
@@ -93,6 +95,7 @@ class Collector:
         self.idle_poll = env_int("IDLE_POLL_SECONDS", 60, 15)
         self.timeout = env_int("REQUEST_TIMEOUT_SECONDS", 15, 5)
         self.snapshot_path = os.getenv("SNAPSHOT_PATH", "snapshot.json")
+        self.condition_config_path = os.getenv("CONDITION_CONFIG_PATH", "condition.json")
         self.request_count = 0
         self.last_success_at = None
 
@@ -101,7 +104,7 @@ class Collector:
             headers={
                 "x-apisports-key": self.api_key,
                 "Accept": "application/json",
-                "User-Agent": "nomadtips3-live-engine-v2/0.1",
+                "User-Agent": "nomadtips3-live-engine-v2/0.2",
             },
             timeout=self.timeout,
         )
@@ -128,6 +131,9 @@ class Collector:
             raise RuntimeError(f"API returned errors: {errors}")
         return payload.get("response") or [], meta, response.status_code
 
+    def current_condition(self):
+        return load_condition_config(self.condition_config_path)
+
     async def run(self):
         print("NOMADTIPS3 Live Engine V2 collector started")
         failure_streak = 0
@@ -137,6 +143,8 @@ class Collector:
             try:
                 raw, rate, status = await self.fetch_live()
                 fixtures = [fixture_summary(item) for item in raw]
+                condition = self.current_condition()
+                preliminary = filter_preliminary(fixtures, condition)
                 self.last_success_at = utc_now()
                 failure_streak = 0
 
@@ -147,14 +155,19 @@ class Collector:
                     "source": "api-football:/fixtures?live=all",
                     "http_status": status,
                     "live_count": len(fixtures),
+                    "preliminary_candidate_count": preliminary["candidate_count"],
                     "request_count_process": self.request_count,
                     "rate_limit": rate,
+                    "condition": condition,
+                    "rejected": preliminary["rejected"],
                     "fixtures": fixtures,
+                    "preliminary_candidates": preliminary["candidates"],
                 }
                 atomic_write_json(self.snapshot_path, snapshot)
 
                 print(
                     f"[{self.last_success_at}] live={len(fixtures)} "
+                    f"candidates={preliminary['candidate_count']} "
                     f"remaining={rate.get('minute_remaining')} "
                     f"limit={rate.get('minute_limit')}"
                 )
