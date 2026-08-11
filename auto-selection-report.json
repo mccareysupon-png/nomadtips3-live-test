@@ -1,24 +1,25 @@
 {
-  "generatedAt": "2026-08-10T03:24:32Z",
+  "generatedAt": "2026-08-11T00:23:52Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-10T11:09:32.219072+07:00",
-  "windowEndLocal": "2026-08-11T08:00:00+07:00",
-  "windowKey": "2026-08-11T08:00:00+07:00",
+  "windowStartLocal": "2026-08-11T08:08:52.653851+07:00",
+  "windowEndLocal": "2026-08-12T08:00:00+07:00",
+  "windowKey": "2026-08-12T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 257,
-  "fixturesScanned": 106,
-  "fixturesAnalyzed": 106,
-  "prequalified": 43,
+  "apiCalls": 514,
+  "fixturesScanned": 213,
+  "fixturesAnalyzed": 213,
+  "prequalified": 86,
   "published": 10,
   "rejections": {
-    "main odds below minimum": 10,
-    "strength score below threshold": 61,
-    "main 1X2 odds unavailable": 17,
-    "home/away split edge below threshold": 2
+    "strength score below threshold": 102,
+    "main odds below minimum": 18,
+    "main 1X2 odds unavailable": 31,
+    "home/away split edge below threshold": 7,
+    "insufficient recent or venue-specific sample": 18
   },
   "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
   "historyErrors": {},
-  "archivedPreviousSet": "archive/auto-selections/2026-08-09-20260810T032432Z.json",
+  "archivedPreviousSet": "archive/auto-selections/2026-08-10-20260811T002352Z.json",
   "confidencePolicy": {
     "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
@@ -36,8 +37,8 @@
       "enabled": true,
       "strengthWeight": 0.32,
       "adjustmentCap": 0.32,
-      "availableMatches": 16,
-      "fallbackMatches": 0,
+      "availableMatches": 23,
+      "fallbackMatches": 14,
       "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
     },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
@@ -45,10 +46,10 @@
     "legacyCommonOpponentWeight": 0
   },
   "confidenceRejected": 0,
-  "publishedAfterConfidence": 16,
+  "publishedAfterConfidence": 37,
   "standingsContext": {
-    "available": 16,
-    "fallback": 0
+    "available": 23,
+    "fallback": 14
   },
   "addKTheKingOfSoccer": {
     "active": true,
@@ -62,9 +63,85 @@
     "minimumSample": 5,
     "requireStandingsContext": true,
     "minimumLeagueTeamCount": 8,
-    "passed": 16,
-    "rejected": 0,
-    "rejections": [],
+    "passed": 22,
+    "rejected": 15,
+    "rejections": [
+      {
+        "fixture_id": 1582817,
+        "match": "Central Stallions vs Tainan City",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1619466,
+        "match": "Hartlepool vs Middlesbrough U21",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1560914,
+        "match": "Nart Cherkessk vs Dinamo Stavropol",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1618913,
+        "match": "Gimnástica Torrelavega vs Sestao River",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607601,
+        "match": "Apollon Limassol vs Brann",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1598829,
+        "match": "NEC Nijmegen vs Olympiakos Piraeus",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607173,
+        "match": "Slovan Bratislava vs Mjallby AIF",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1593545,
+        "match": "Montrose vs Fraserburgh",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1593543,
+        "match": "Gala Fairydean Rovers vs Rangers U21",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1593532,
+        "match": "Bonnyrigg Rose Athletic vs Annan Athletic",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1593537,
+        "match": "East Fife vs Spartans",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1593531,
+        "match": "Berwick Rangers vs Hearts U21",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1596815,
+        "match": "Alvechurch vs Worcester City",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1530142,
+        "match": "Charlotte vs CF Pachuca",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607649,
+        "match": "Bolívar vs Sao Paulo",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      }
+    ],
     "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
   },
   "qualified": 10,
@@ -83,7 +160,7 @@
   },
   "selectionMerge": {
     "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
-    "cycleStartUtc": "2026-08-10T01:00:00Z",
+    "cycleStartUtc": "2026-08-11T01:00:00Z",
     "runType": "AUTO",
     "newSelectionCount": 10,
     "preservedStartedCount": 0,
