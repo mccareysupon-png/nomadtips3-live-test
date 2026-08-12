@@ -1,0 +1,59 @@
+name: Check Paid LINE Membership Readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-worker/src/membership*.js"
+      - ".github/workflows/membership-readiness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check membership health and checkout gate
+        run: |
+          node --input-type=module <<'NODE'
+          const base = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
+          const healthResponse = await fetch(`${base}/membership/health?check=${Date.now()}`, {
+            headers: { accept: 'application/json' }
+          });
+          const health = await healthResponse.json().catch(() => null);
+          if (!healthResponse.ok || !health?.ok) {
+            throw new Error(`membership health HTTP ${healthResponse.status}: ${JSON.stringify(health)}`);
+          }
+
+          const startResponse = await fetch(`${base}/membership/start?check=${Date.now()}`, {
+            redirect: 'manual',
+            headers: { accept: 'text/html' }
+          });
+
+          const ready = Boolean(
+            health.stripeWebhookConfigured &&
+            health.lineConfigured &&
+            health.lineAddFriendConfigured &&
+            health.paymentLinkConfigured &&
+            startResponse.status === 302
+          );
+
+          console.log(JSON.stringify({
+            service: health.service,
+            readyForPaidCustomers: ready,
+            stripeWebhookConfigured: Boolean(health.stripeWebhookConfigured),
+            lineConfigured: Boolean(health.lineConfigured),
+            lineAddFriendConfigured: Boolean(health.lineAddFriendConfigured),
+            paymentLinkConfigured: Boolean(health.paymentLinkConfigured),
+            checkoutGateStatus: startResponse.status,
+            memberships: health.memberships,
+            generatedAt: health.generatedAt
+          }, null, 2));
+
+          if (!ready) {
+            console.log('::warning::Paid LINE membership remains fail-closed. No customer can enter Checkout until all server-side verification bindings are ready.');
+          }
+          NODE
