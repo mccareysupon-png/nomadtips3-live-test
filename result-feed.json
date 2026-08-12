@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-12",
-  "generatedAt": "2026-08-12T20:39:17Z",
+  "generatedAt": "2026-08-12T20:40:19Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 27,
-    "correct": 12,
+    "correct": 13,
     "incorrect": 10,
     "void": 1,
-    "pending": 4,
-    "settled": 22,
+    "pending": 3,
+    "settled": 23,
     "allSettled": false,
-    "accuracy": 54.55,
+    "accuracy": 56.52,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 27,
       "correct": 10,
-      "incorrect": 12,
+      "incorrect": 13,
       "void": 1,
-      "pending": 4,
-      "settled": 22,
-      "accuracy": 45.45
+      "pending": 3,
+      "settled": 23,
+      "accuracy": 43.48
     },
     "doubleChance": {
       "total": 27,
-      "correct": 17,
+      "correct": 18,
       "incorrect": 5,
       "void": 1,
-      "pending": 4,
-      "settled": 22,
-      "accuracy": 77.27
+      "pending": 3,
+      "settled": 23,
+      "accuracy": 78.26
     },
     "asianHandicap": {
-      "win": 12,
+      "win": 13,
       "half-win": 0,
       "push": 2,
       "half-loss": 0,
       "loss": 8,
       "void": 1,
-      "pending": 4,
+      "pending": 3,
       "total": 27,
-      "decisions": 20,
-      "weightedRate": 60.0
+      "decisions": 21,
+      "weightedRate": 61.9
     }
   },
   "results": [
@@ -1029,7 +1029,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1076,7 +1076,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1123,7 +1123,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1133,41 +1133,44 @@
       "home": "Gosport Borough",
       "away": "Hanworth Villa",
       "kickoffUtc": "2026-08-12T18:45:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 0,
       "awayScore": 1,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.57,
           "oddsStatus": "LOCKED",
           "confidence": 78,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "X2 — Hanworth Villa or Draw",
           "odds": 1.44,
           "oddsStatus": "LOCKED",
           "confidence": 78,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Hanworth Villa -0.5",
           "odds": 1.37,
           "oddsStatus": "LOCKED",
           "confidence": 78,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1211,7 +1214,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1255,7 +1258,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     },
     {
@@ -1299,50 +1302,50 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:39:17Z",
+      "updatedAt": "2026-08-12T20:40:19Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 7,
-    "correct": 2,
+    "correct": 3,
     "incorrect": 1,
     "void": 0,
-    "pending": 4,
-    "settled": 3,
+    "pending": 3,
+    "settled": 4,
     "allSettled": false,
-    "accuracy": 66.67,
+    "accuracy": 75.0,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 7,
       "correct": 2,
-      "incorrect": 1,
+      "incorrect": 2,
       "void": 0,
-      "pending": 4,
-      "settled": 3,
-      "accuracy": 66.67
+      "pending": 3,
+      "settled": 4,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 7,
-      "correct": 3,
+      "correct": 4,
       "incorrect": 0,
       "void": 0,
-      "pending": 4,
-      "settled": 3,
+      "pending": 3,
+      "settled": 4,
       "accuracy": 100.0
     },
     "asianHandicap": {
-      "win": 2,
+      "win": 3,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 4,
+      "pending": 3,
       "total": 7,
-      "decisions": 2,
+      "decisions": 3,
       "weightedRate": 100.0
     }
   },
