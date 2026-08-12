@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import { normalizeV2OwnerConfig } from '../cloudflare-worker/src/v2-storage.js';
 import { handleOwnerPage } from '../cloudflare-worker/src/v2-owner-page.js';
 
@@ -29,5 +30,11 @@ const html = await page.text();
 assert.match(html, /UNLIMITED/);
 assert.match(html, /PAPER_ONLY/);
 assert.match(html, /\/v2\/owner\/status/);
+const scriptStart = html.indexOf('<script>') + '<script>'.length;
+const scriptEnd = html.indexOf('</script>', scriptStart);
+assert.ok(scriptStart >= '<script>'.length && scriptEnd > scriptStart);
+assert.doesNotThrow(() => new vm.Script(html.slice(scriptStart, scriptEnd), {
+  filename: 'v2-owner-inline.js'
+}));
 
 console.log('V2 owner configuration and dashboard tests passed.');
