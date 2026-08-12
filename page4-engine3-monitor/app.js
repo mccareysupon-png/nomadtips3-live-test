@@ -3,12 +3,14 @@
 
   const body = document.body;
   const STATE_URL = String(body.dataset.stateUrl || '').trim();
+  const HEALTH_URL = String(body.dataset.healthUrl || '').trim();
   const ANALYTICS_URL = String(body.dataset.analyticsUrl || '').trim();
   const REFRESH_MS = Math.max(5000, Number(body.dataset.refreshMs) || 10000);
   const ANALYTICS_REFRESH_MS = 60000;
-  const FRESH_MS = 120000;
-  const STALE_MS = 15 * 60 * 1000;
-  let lastGoodState = null;
+  const DAY_MS = 86400000;
+  const HISTORY_DAYS = 30;
+  let lastGoodMonitor = null;
+  let latestTrades = [];
 
   const $ = id => document.getElementById(id);
   const first = (...values) => values.find(value => value !== undefined && value !== null && value !== '');
@@ -55,8 +57,7 @@
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.round(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.round(minutes / 60);
-    return `${hours}h ago`;
+    return `${Math.round(minutes / 60)}h ago`;
   }
 
   function formatOdds(value) {
@@ -75,68 +76,14 @@
     return `${parsed > 0 ? '+' : ''}${parsed.toFixed(2)}u`;
   }
 
-  function normalizeFixture(item = {}) {
-    const fixture = item.fixture || {};
-    const teams = item.teams || {};
-    const goals = item.goals || item.score || {};
-    const homeObj = teams.home || item.home || {};
-    const awayObj = teams.away || item.away || {};
-    return {
-      id: first(item.fixture_id, item.fixtureId, fixture.id, item.id),
-      league: first(item.league_name, item.league?.name, typeof item.league === 'string' ? item.league : null, item.country, 'Live Football'),
-      home: typeof homeObj === 'string' ? homeObj : first(item.home_name, item.homeName, homeObj.name, 'Home'),
-      away: typeof awayObj === 'string' ? awayObj : first(item.away_name, item.awayName, awayObj.name, 'Away'),
-      minute: number(first(item.minute, item.elapsed, fixture.status?.elapsed, item.status?.elapsed)),
-      status: first(item.status_short, fixture.status?.short, typeof item.status === 'string' ? item.status : null, 'LIVE'),
-      homeScore: first(item.home_score, item.homeScore, goals.home, item.score?.home, '—'),
-      awayScore: first(item.away_score, item.awayScore, goals.away, item.score?.away, '—')
-    };
-  }
-
-  function normalizeCandidate(item = {}) {
-    const fixture = normalizeFixture(item);
-    const side = first(item.selected_side, item.selectedSide, item.side, item.selection_side);
-    return {
-      ...fixture,
-      market: first(item.market, item.market_name, item.bet_name, item.bet, '—'),
-      selection: first(item.selected_team, item.team_name, item.teamName, item.selection,
-        side === 'HOME' ? fixture.home : side === 'AWAY' ? fixture.away : side, '—'),
-      odds: first(item.target_odds, item.odds, item.odd, item.price, '—'),
-      confidence: first(item.confidence, item.momentum, item.momentum_score, '—'),
-      matched: false,
-    };
-  }
-
-  function normalizeSignal(item = {}) {
-    const outcome = String(first(item.outcome, item.result, item.status, 'PENDING')).toUpperCase();
-    return {
-      id: first(item.signalId, item.signal_id, `${item.fixtureId || item.fixture_id || 'signal'}:${item.createdAt || item.created_at || ''}`),
-      fixtureId: first(item.fixtureId, item.fixture_id),
-      home: first(item.home, item.home_name),
-      away: first(item.away, item.away_name),
-      selectedTeam: first(item.selectedTeam, item.selected_team, item.selection, item.selectedSide, item.selected_side, '—'),
-      opponent: first(item.opponent, '—'),
-      market: first(item.market, '—'),
-      minute: number(first(item.entryMinute, item.entry_minute, item.minute)),
-      score: first(item.entryScore, item.entry_score, item.score, '—'),
-      odds: first(item.targetOdds, item.target_odds, item.odds, item.odd),
-      confidence: first(item.confidence, item.momentum),
-      outcome: ['WIN','LOSS','PUSH','VOID','PENDING'].includes(outcome) ? outcome : 'PENDING',
-      finalScore: first(item.finalScore, item.final_score, '—'),
-      profitUnits: number(first(item.profitUnits, item.profit_units, 0)) || 0,
-      createdAt: first(item.createdAt, item.created_at),
-      settledAt: first(item.settledAt, item.settled_at),
-    };
-  }
-
-  function healthFor(timestamp, runtime = {}) {
-    const ms = parseTime(timestamp);
-    if (!Number.isFinite(ms)) return { level: 'offline', label: 'UNAVAILABLE' };
-    const age = Date.now() - ms;
-    if (runtime?.ok === false && age <= STALE_MS) return { level: 'stale', label: 'DEGRADED' };
-    if (age <= FRESH_MS) return { level: 'online', label: 'ONLINE' };
-    if (age <= STALE_MS) return { level: 'stale', label: 'STALE' };
-    return { level: 'offline', label: 'OFFLINE' };
+  function bangkokDateKey(value) {
+    const ms = parseTime(value);
+    if (!Number.isFinite(ms)) return null;
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date(ms));
+    const map = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${map.year}-${map.month}-${map.day}`;
   }
 
   function setDot(id, level) {
@@ -153,12 +100,79 @@
     node.classList.add(level === 'online' ? 'good' : level === 'stale' ? 'warn' : 'bad');
   }
 
-  function currentSignal(signals) {
-    const now = Date.now();
-    return signals.find(signal => {
-      const created = parseTime(signal.createdAt);
-      return Number.isFinite(created) && now - created <= 45 * 60 * 1000;
-    }) || null;
+  function engineHealthView(health) {
+    const controlMode = String(health?.control?.mode || 'RUNNING').toUpperCase();
+    const state = String(health?.state || health?.liveScan?.status || '').toUpperCase();
+    const workerOnline = health?.worker?.ok === true || String(health?.worker?.status || '').toUpperCase() === 'ONLINE';
+    if (!health?.ok || !workerOnline) return { level: 'offline', label: 'UNAVAILABLE', scan: 'NO STATUS' };
+    if (controlMode !== 'RUNNING') return { level: 'stale', label: controlMode, scan: controlMode };
+    if (['DEGRADED','WAITING_API','DERATING','RECOVERING','VERIFYING','REPAIRING'].includes(state)) {
+      return { level: 'stale', label: 'DEGRADED', scan: first(health?.watchdog?.currentAction, state, 'DEGRADED') };
+    }
+    return { level: 'online', label: 'ONLINE', scan: 'RUNNING' };
+  }
+
+  function normalizeCandidate(item = {}, config = {}) {
+    const side = String(first(item.selectedSide, item.selected_side, 'HOME')).toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+    const selectedTeam = first(item.selectedTeam, item.selected_team, item.home, 'Selected');
+    const opponent = first(item.opponent, item.away, 'Opponent');
+    const actualHome = first(item.actualHome, side === 'AWAY' ? opponent : selectedTeam);
+    const actualAway = first(item.actualAway, side === 'AWAY' ? selectedTeam : opponent);
+    const selectedScore = first(item.score?.home, item.selected_score, 0);
+    const opponentScore = first(item.score?.away, item.opponent_score, 0);
+    const actualHomeScore = first(item.actualScore?.home, side === 'AWAY' ? opponentScore : selectedScore, '—');
+    const actualAwayScore = first(item.actualScore?.away, side === 'AWAY' ? selectedScore : opponentScore, '—');
+    const market = String(first(item.selectedMarket, item.market, config.market, 'AH')).toUpperCase();
+    const odds = first(item.markets?.selectedOdds, item.markets?.homeAhOdds, item.ah_odds, item.odds, item.selected_odds);
+    const confidence = first(item.serverMomentum?.home, item.momentum, item.last_home_percent);
+    return {
+      id: first(item.fixtureId, item.fixture_id),
+      league: first(item.league, item.country, 'Live Football'),
+      home: actualHome,
+      away: actualAway,
+      minute: number(first(item.minute, item.last_minute)),
+      status: item.serverTriggered ? 'TRIGGERED' : 'WATCH',
+      homeScore: actualHomeScore,
+      awayScore: actualAwayScore,
+      selection: selectedTeam,
+      selectedSide: side,
+      market,
+      odds,
+      confidence,
+      matched: Boolean(first(item.serverTriggered, item.triggered, false)),
+      streak: number(first(item.serverStreak, item.streak, 0)) || 0,
+    };
+  }
+
+  function normalizeTrade(item = {}) {
+    const result = String(item.result || '').toUpperCase();
+    const status = String(item.status || '').toUpperCase();
+    const settlement = String(item.settlement || '').toUpperCase();
+    let outcome = 'PENDING';
+    if (result === 'CORRECT') outcome = 'WIN';
+    else if (result === 'INCORRECT') outcome = 'LOSS';
+    else if (status === 'VOID' || settlement === 'VOID') outcome = 'VOID';
+    else if (settlement === 'PUSH') outcome = 'PUSH';
+    else if (status === 'SETTLED' && result === 'NEUTRAL') outcome = 'PUSH';
+    const entrySelected = first(item.entryHomeScore, item.entrySelectedScore);
+    const entryOpponent = first(item.entryAwayScore, item.entryOpponentScore);
+    const score = entrySelected != null && entryOpponent != null ? `${entrySelected}–${entryOpponent}` : '—';
+    const line = number(item.ahLine);
+    return {
+      id: first(item.tradeKey, item.id, `${item.fixtureId || 'trade'}:${item.createdAt || ''}`),
+      fixtureId: item.fixtureId,
+      selectedTeam: first(item.selectedTeam, item.home, '—'),
+      opponent: first(item.opponent, item.away, '—'),
+      market: line === null ? 'AH' : `AH ${line >= 0 ? '+' : ''}${line}`,
+      minute: number(item.entryMinute),
+      score,
+      odds: first(item.ahOdds, item.selectedWinOdds, item.homeWinOdds),
+      confidence: item.momentum,
+      outcome,
+      profitUnits: number(item.profitUnits) || 0,
+      createdAt: item.createdAt,
+      settledAt: item.settledAt,
+    };
   }
 
   function matchCard(candidate, compact = false) {
@@ -169,14 +183,14 @@
         <div><div class="match-name">${escapeHtml(candidate.home)} <span class="match-status">vs</span> ${escapeHtml(candidate.away)}</div><div class="match-meta">${escapeHtml(candidate.league)}</div></div>
         <div class="match-value"><small>MIN</small><b>${escapeHtml(minute)}</b></div>
         <div class="match-value"><small>SCORE</small><b>${escapeHtml(score)}</b></div>
-        <div class="match-value"><small>STATUS</small><b class="match-status">${escapeHtml(candidate.status || 'LIVE')}</b></div>
+        <div class="match-value"><small>STATE</small><b class="${candidate.matched ? 'good' : 'match-status'}">${escapeHtml(candidate.status)}</b></div>
       </article>`;
     }
     return `<article class="match-card">
       <div><div class="match-name">${escapeHtml(candidate.home)} <span class="match-status">vs</span> ${escapeHtml(candidate.away)}</div><div class="match-meta">${escapeHtml(candidate.league)} · ${escapeHtml(minute)} · ${escapeHtml(score)}</div></div>
       <div class="match-value"><small>SELECTION</small><b>${escapeHtml(candidate.selection)}</b></div>
       <div class="match-value"><small>ODDS</small><b>${escapeHtml(formatOdds(candidate.odds))}</b></div>
-      <div class="match-value"><small>CONFIDENCE</small><b class="${candidate.matched ? 'good' : ''}">${escapeHtml(formatPercent(candidate.confidence))}</b></div>
+      <div class="match-value"><small>MOMENTUM</small><b class="${candidate.matched ? 'good' : ''}">${escapeHtml(formatPercent(candidate.confidence))}</b></div>
     </article>`;
   }
 
@@ -191,130 +205,118 @@
     return String(value);
   }
 
-  function renderRules(condition = {}) {
+  function renderRules(config = {}) {
     const node = $('ruleRows');
     if (!node) return;
-    const entries = Object.entries(condition).filter(([, value]) =>
-      value === null || ['string','number','boolean'].includes(typeof value) || Array.isArray(value));
+    const entries = Object.entries(config).filter(([key, value]) =>
+      !/secret|token|key|password|credential/i.test(key) &&
+      (value === null || ['string','number','boolean'].includes(typeof value) || Array.isArray(value)));
     node.innerHTML = entries.length
       ? entries.map(([key, value]) => `<div class="status-row"><span>${escapeHtml(prettyRule(key))}</span><b>${escapeHtml(ruleValue(value))}</b></div>`).join('')
       : '<div class="status-row"><span>Rule details</span><b>NOT PUBLISHED</b></div>';
   }
 
-  function renderMonitor(state) {
-    const payload = state?.payload || {};
-    const runtime = payload.runtime || {};
-    const timestamp = first(state.generatedAt, payload.generated_at, state.ingestedAt);
-    const health = healthFor(timestamp, runtime);
-    const fixtures = (Array.isArray(payload.fixtures) ? payload.fixtures : []).map(normalizeFixture);
-    const recentSignals = (Array.isArray(payload.engine?.recent_signals) ? payload.engine.recent_signals : []).map(normalizeSignal);
-    const activeSignal = currentSignal(recentSignals);
-    const matchedIds = new Set(recentSignals.filter(signal => {
-      const created = parseTime(signal.createdAt);
-      return Number.isFinite(created) && Date.now() - created <= 45 * 60 * 1000;
-    }).map(signal => String(signal.fixtureId)));
-    const candidates = (Array.isArray(payload.preliminary_candidates) ? payload.preliminary_candidates : [])
-      .map(normalizeCandidate)
-      .map(candidate => ({ ...candidate, matched: matchedIds.has(String(candidate.id)) }));
-    const condition = payload.condition || {};
-    const minuteMin = number(condition.minute_min) ?? 50;
-    const minuteMax = number(condition.minute_max) ?? 95;
-    const minuteWindow = fixtures.filter(item => item.minute != null && item.minute >= minuteMin && item.minute <= minuteMax).length;
-    const engineCounts = payload.engine?.counts || {};
-    const currentMatched = first(engineCounts.new_signals, engineCounts.matched, activeSignal ? 1 : 0, 0);
+  function renderMonitor(state = {}, health = {}) {
+    const view = engineHealthView(health);
+    const config = state.config || {};
+    const counts = state.counts || health?.liveScan?.counts || {};
+    const candidates = (Array.isArray(state.candidates) ? state.candidates : []).map(item => normalizeCandidate(item, config));
+    const active = candidates.filter(item => item.minute != null || item.matched);
+    const triggered = candidates.filter(item => item.matched);
+    const lastScan = first(health?.liveScan?.lastSuccessfulScanAt, state.generatedAt);
+    const feedStale = Boolean(state.stale);
 
-    lastGoodState = state;
-    text('liveFixtures', first(state.liveCount, payload.live_count, fixtures.length, 0));
-    text('minuteWindow', minuteWindow);
-    text('baseCandidates', first(state.candidateCount, payload.preliminary_candidate_count, candidates.length, 0));
-    text('matchedSignals', currentMatched);
-    text('runtimeEngine', health.label);
-    text('runtimeScan', health.level === 'online' ? 'RUNNING' : health.level === 'stale' ? 'LAST GOOD DATA' : 'NO FRESH DATA');
-    text('runtimeUpdate', formatClock(timestamp));
-    text('headerStatus', health.label);
-    text('engineStatus', health.label);
-    text('sysSharedState', health.level === 'online' ? 'CONNECTED' : health.label);
-    text('sysEngineData', runtime.ok === false ? 'DEGRADED' : health.label);
-    text('sysLastGood', timestamp ? `${formatDateTime(timestamp)} · ${ageLabel(timestamp)}` : '—');
+    lastGoodMonitor = { state, health };
+    text('liveFixtures', first(counts.allLive, counts.live, counts.liveFixtures, 0));
+    text('minuteWindow', first(counts.minuteWindow, counts.inMinuteWindow, active.length, 0));
+    text('baseCandidates', first(counts.baseCandidates, counts.serverCandidates, candidates.length, 0));
+    text('matchedSignals', first(counts.triggered, triggered.length, 0));
+    text('runtimeEngine', view.label);
+    text('runtimeScan', view.scan);
+    text('runtimeUpdate', formatClock(lastScan));
+    text('headerStatus', view.label);
+    text('engineStatus', view.label);
+    text('sysSharedState', state.ok === false ? 'UNAVAILABLE' : feedStale ? 'STORED · STALE' : 'STORED · READY');
+    text('sysEngineData', first(health?.state, view.label));
+    text('sysLastGood', lastScan ? `${formatDateTime(lastScan)} · ${ageLabel(lastScan)}` : '—');
     text('sysRefresh', `${Math.round(REFRESH_MS / 1000)} sec`);
-    text('sysSettlementPending', first(payload.settlement_telemetry?.pending, '—'));
-    setDot('headerDot', health.level);
-    setDot('engineDot', health.level);
-    setValueClass('runtimeEngine', health.level);
-    setValueClass('runtimeScan', health.level);
-    setValueClass('sysSharedState', health.level);
-    setValueClass('sysEngineData', runtime.ok === false ? 'stale' : health.level);
+    text('sysSettlementPending', first(health?.d1?.paper?.pending, '—'));
+    setDot('headerDot', view.level);
+    setDot('engineDot', view.level);
+    setValueClass('runtimeEngine', view.level);
+    setValueClass('runtimeScan', view.level);
+    setValueClass('sysSharedState', state.ok === false ? 'offline' : feedStale ? 'stale' : 'online');
+    setValueClass('sysEngineData', view.level);
 
     const freshness = $('freshnessLabel');
     if (freshness) {
       freshness.classList.remove('fresh', 'stale', 'offline');
-      freshness.classList.add(health.level === 'online' ? 'fresh' : health.level);
-      freshness.textContent = timestamp ? `${health.label} · ${ageLabel(timestamp)}` : 'State timestamp unavailable';
+      freshness.classList.add(view.level === 'online' && !feedStale ? 'fresh' : feedStale ? 'stale' : view.level);
+      freshness.textContent = lastScan
+        ? `${view.label} · LAST SCAN ${ageLabel(lastScan)}${feedStale ? ' · STORED DATA' : ''}`
+        : `${view.label} · WAITING FOR SCAN`;
     }
 
     const signalHero = $('signalHero');
-    if (activeSignal) {
+    const lead = triggered[0] || null;
+    if (lead) {
       signalHero?.classList.add('matched');
       signalHero?.classList.remove('empty-state');
-      const teams = activeSignal.home && activeSignal.away
-        ? `${activeSignal.home} vs ${activeSignal.away}`
-        : `${activeSignal.selectedTeam}${activeSignal.opponent !== '—' ? ` vs ${activeSignal.opponent}` : ''}`;
-      text('signalHeadline', teams || 'Engine 3 signal detected');
+      text('signalHeadline', `${lead.home} ${lead.homeScore}–${lead.awayScore} ${lead.away}`);
       text('signalSubline', [
-        activeSignal.minute == null ? null : `${activeSignal.minute}'`,
-        activeSignal.score !== '—' ? activeSignal.score : null,
-        activeSignal.market !== '—' ? activeSignal.market : null,
-        activeSignal.selectedTeam !== '—' ? activeSignal.selectedTeam : null,
-        activeSignal.odds != null ? `Odds ${formatOdds(activeSignal.odds)}` : null,
+        lead.minute == null ? null : `${lead.minute}'`, lead.market, lead.selection,
+        lead.odds != null ? `Odds ${formatOdds(lead.odds)}` : null,
+        lead.confidence != null ? `Momentum ${formatPercent(lead.confidence)}` : null,
+        lead.streak ? `Confirm ${lead.streak}` : null
       ].filter(Boolean).join(' · '));
     } else {
       signalHero?.classList.remove('matched');
       signalHero?.classList.add('empty-state');
-      text('signalHeadline', health.level === 'offline'
-        ? 'No fresh Engine 3 state is currently available.'
-        : 'No new Engine 3 signal is active in the current window.');
+      text('signalHeadline', view.level === 'offline'
+        ? 'Engine 3 status is currently unavailable.'
+        : 'No triggered Engine 3 signal is active right now.');
       text('signalSubline', candidates.length
-        ? `${candidates.length} preliminary candidate${candidates.length === 1 ? '' : 's'} currently under observation.`
-        : 'No preliminary candidate is published in this snapshot.');
+        ? `${candidates.length} candidate${candidates.length === 1 ? '' : 's'} currently stored in the Engine 3 monitor.`
+        : 'Engine 3 is online; there is no current candidate in the stored scanner view.');
     }
 
     const candidateList = $('candidateList');
     if (candidateList) candidateList.innerHTML = candidates.length
       ? candidates.slice(0, 20).map(item => matchCard(item, false)).join('')
-      : '<div class="list-empty">No current preliminary candidates.</div>';
+      : '<div class="list-empty">No current Engine 3 candidates.</div>';
     text('candidateNote', `${candidates.length} candidate${candidates.length === 1 ? '' : 's'}`);
 
     const fixtureList = $('fixtureList');
-    if (fixtureList) fixtureList.innerHTML = fixtures.length
-      ? fixtures.slice(0, 30).map(item => matchCard(item, true)).join('')
-      : '<div class="list-empty">No live fixtures currently published.</div>';
-    text('fixtureNote', `${fixtures.length} fixture${fixtures.length === 1 ? '' : 's'}`);
-    renderRules(condition);
+    if (fixtureList) fixtureList.innerHTML = active.length
+      ? active.slice(0, 30).map(item => matchCard(item, true)).join('')
+      : '<div class="list-empty">No active Engine 3 states in the stored view.</div>';
+    text('fixtureNote', `${active.length} active state${active.length === 1 ? '' : 's'}`);
+    renderRules(config);
   }
 
   function renderUnavailable(message) {
     text('headerStatus', 'UNAVAILABLE');
     text('engineStatus', 'UNAVAILABLE');
     text('runtimeEngine', 'UNAVAILABLE');
-    text('runtimeScan', lastGoodState ? 'LAST GOOD DATA' : 'WAITING');
+    text('runtimeScan', lastGoodMonitor ? 'LAST GOOD DATA' : 'WAITING');
     text('sysSharedState', 'UNAVAILABLE');
-    text('sysEngineData', lastGoodState ? 'LAST GOOD DATA' : 'UNAVAILABLE');
+    text('sysEngineData', lastGoodMonitor ? 'LAST GOOD DATA' : 'UNAVAILABLE');
     setDot('headerDot', 'offline');
     setDot('engineDot', 'offline');
     setValueClass('runtimeEngine', 'offline');
-    setValueClass('runtimeScan', lastGoodState ? 'stale' : 'offline');
+    setValueClass('runtimeScan', lastGoodMonitor ? 'stale' : 'offline');
     const freshness = $('freshnessLabel');
     if (freshness) {
       freshness.classList.remove('fresh', 'stale');
       freshness.classList.add('offline');
-      freshness.textContent = message || 'Shared state unavailable';
+      freshness.textContent = message || 'Engine 3 monitor unavailable';
     }
   }
 
   function historyMatch(signal) {
-    if (signal.home && signal.away) return `${signal.home} vs ${signal.away}`;
-    if (signal.selectedTeam && signal.opponent !== '—') return `${signal.selectedTeam} vs ${signal.opponent}`;
-    return signal.selectedTeam || `Fixture ${signal.fixtureId || '—'}`;
+    return signal.selectedTeam && signal.opponent !== '—'
+      ? `${signal.selectedTeam} vs ${signal.opponent}`
+      : signal.selectedTeam || `Fixture ${signal.fixtureId || '—'}`;
   }
 
   function outcomeClass(outcome) {
@@ -330,6 +332,31 @@
       <div class="history-odds">${escapeHtml(formatOdds(signal.odds))}</div>
       <div class="outcome ${outcomeClass(signal.outcome)}">${escapeHtml(signal.outcome || 'PENDING')}</div>
     </article>`;
+  }
+
+  function buildDaily(signals) {
+    const today = bangkokDateKey(Date.now());
+    const todayMs = Date.parse(`${today}T00:00:00Z`);
+    const rows = [];
+    const map = new Map();
+    for (let index = HISTORY_DAYS - 1; index >= 0; index -= 1) {
+      const date = new Date(todayMs - index * DAY_MS).toISOString().slice(0, 10);
+      const row = { date, netUnits: 0, cumulativeUnits: 0 };
+      rows.push(row);
+      map.set(date, row);
+    }
+    for (const signal of signals) {
+      const key = bangkokDateKey(signal.createdAt);
+      const row = map.get(key);
+      if (row) row.netUnits += number(signal.profitUnits) || 0;
+    }
+    let cumulative = 0;
+    for (const row of rows) {
+      row.netUnits = Math.round(row.netUnits * 100) / 100;
+      cumulative = Math.round((cumulative + row.netUnits) * 100) / 100;
+      row.cumulativeUnits = cumulative;
+    }
+    return rows;
   }
 
   function chartSvg(daily) {
@@ -362,35 +389,41 @@
     </svg>`;
   }
 
-  function renderAnalytics(analytics = {}) {
-    const summary = analytics.summary || {};
-    const daily = Array.isArray(analytics.daily) ? analytics.daily : [];
-    const signals = (Array.isArray(analytics.signals) ? analytics.signals : []).map(normalizeSignal);
-    const validOdds = signals.map(signal => number(signal.odds)).filter(value => value !== null && value > 0);
+  function renderAnalytics(payload = {}) {
+    const allSignals = (Array.isArray(payload.trades) ? payload.trades : []).map(normalizeTrade);
+    latestTrades = allSignals;
+    const cutoff = Date.now() - HISTORY_DAYS * DAY_MS;
+    const signals = allSignals.filter(signal => (parseTime(signal.createdAt) || 0) >= cutoff);
+    const win = signals.filter(signal => signal.outcome === 'WIN').length;
+    const loss = signals.filter(signal => signal.outcome === 'LOSS').length;
+    const pending = signals.filter(signal => signal.outcome === 'PENDING').length;
+    const validOdds = signals.map(signal => number(signal.odds)).filter(value => value !== null && value > 1);
     const avgOdds = validOdds.length ? validOdds.reduce((sum, value) => sum + value, 0) / validOdds.length : null;
+    const netUnits = signals.reduce((sum, signal) => sum + (number(signal.profitUnits) || 0), 0);
+    const accuracy = win + loss ? win / (win + loss) * 100 : 0;
+    const daily = buildDaily(signals);
 
-    text('histTotal', first(summary.total, signals.length, 0));
-    text('histWin', first(summary.win, 0));
-    text('histLoss', first(summary.loss, 0));
-    text('histPending', first(summary.pending, 0));
-    text('histAccuracy', formatPercent(first(summary.accuracyPercent, 0)));
+    text('histTotal', signals.length);
+    text('histWin', win);
+    text('histLoss', loss);
+    text('histPending', pending);
+    text('histAccuracy', formatPercent(accuracy));
     text('histAvgOdds', avgOdds === null ? '—' : avgOdds.toFixed(2));
-    text('histNetUnits', `NET ${formatUnits(first(summary.netUnits, 0))}`);
-    text('historyNote', `${signals.length} recent signal${signals.length === 1 ? '' : 's'}`);
+    text('histNetUnits', `NET ${formatUnits(netUnits)}`);
+    text('historyNote', `${signals.length} signal${signals.length === 1 ? '' : 's'} · 30 days`);
 
     const chart = $('performanceChart');
     if (chart) chart.innerHTML = chartSvg(daily);
     const list = $('historyList');
     if (list) list.innerHTML = signals.length
       ? signals.slice(0, 25).map(historyRow).join('')
-      : '<div class="list-empty">No Engine 3 signal history recorded yet.</div>';
+      : '<div class="list-empty">No Engine 3 signal history recorded in the last 30 days.</div>';
 
     const freshness = $('historyFreshness');
     if (freshness) {
-      const generated = analytics.generatedAt;
       freshness.classList.remove('stale','offline');
       freshness.classList.add('fresh');
-      freshness.textContent = generated ? `D1 HISTORY · ${ageLabel(generated)}` : 'D1 HISTORY';
+      freshness.textContent = payload.generatedAt ? `D1 HISTORY · ${ageLabel(payload.generatedAt)}` : 'D1 HISTORY · READY';
     }
   }
 
@@ -408,13 +441,12 @@
   }
 
   async function refreshMonitor() {
-    if (!STATE_URL) return renderUnavailable('Monitor endpoint is not configured');
+    if (!STATE_URL || !HEALTH_URL) return renderUnavailable('Engine 3 endpoints are not configured');
     try {
-      const data = await fetchJson(STATE_URL);
-      if (!data.state) return renderUnavailable('No Engine 3 shared state stored yet');
-      renderMonitor(data.state);
+      const [state, health] = await Promise.all([fetchJson(STATE_URL), fetchJson(HEALTH_URL)]);
+      renderMonitor(state, health);
     } catch (error) {
-      renderUnavailable(error?.name === 'AbortError' ? 'Monitor request timed out' : (error?.message || 'Monitor unavailable'));
+      renderUnavailable(error?.name === 'AbortError' ? 'Engine 3 monitor request timed out' : (error?.message || 'Engine 3 monitor unavailable'));
     }
   }
 
@@ -422,13 +454,13 @@
     if (!ANALYTICS_URL) return;
     try {
       const data = await fetchJson(ANALYTICS_URL, 10000);
-      renderAnalytics(data.analytics || {});
+      renderAnalytics(data);
     } catch (error) {
       const freshness = $('historyFreshness');
       if (freshness) {
         freshness.classList.remove('fresh','stale');
         freshness.classList.add('offline');
-        freshness.textContent = 'HISTORY UNAVAILABLE';
+        freshness.textContent = 'D1 HISTORY UNAVAILABLE';
       }
     }
   }
