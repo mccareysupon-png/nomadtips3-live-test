@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#07150f">
+  <meta name="theme-color" content="#050606">
   <meta name="description" content="NOMADTIPS3 Engine 3 public read-only live monitor">
   <title>NOMADTIPS3 — Live Engine 3</title>
-  <link rel="stylesheet" href="./styles.css?v=202608121406">
+  <link rel="stylesheet" href="./styles.css?v=202608121424">
 </head>
 <body
-  data-state-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/v2/state"
+  data-state-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/v2/public/monitor"
+  data-analytics-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/v2/public/analytics?days=30"
   data-refresh-ms="10000"
 >
   <header class="topbar">
@@ -25,15 +26,11 @@
       <div class="hero-copy">
         <span class="eyebrow">ENGINE 3 · PUBLIC READ-ONLY MONITOR</span>
         <h1>Live Match Analysis</h1>
-        <p>Shared Engine 3 state displayed as a public monitor. This page only reads the latest published state and never starts, stops or changes the engine.</p>
-        <p class="analysis-disclaimer">Football research and system-observation display only. No owner controls, credentials or execution controls are exposed.</p>
+        <p>Real Engine 3 shared state · display only · no browser calls to the football provider.</p>
       </div>
       <div class="hero-live" aria-label="Engine status">
         <span id="engineDot" class="hero-dot"></span>
-        <div>
-          <small>ENGINE STATUS</small>
-          <strong id="engineStatus">WAITING</strong>
-        </div>
+        <div><small>ENGINE STATUS</small><strong id="engineStatus">WAITING</strong></div>
       </div>
     </section>
 
@@ -45,34 +42,15 @@
     </section>
 
     <section class="summary" aria-label="Live Engine 3 counters">
-      <article class="metric">
-        <small>LIVE FIXTURES</small>
-        <b id="liveFixtures">—</b>
-        <span>currently in shared state</span>
-      </article>
-      <article class="metric">
-        <small>IN MINUTE WINDOW</small>
-        <b id="minuteWindow">—</b>
-        <span>derived from live fixtures</span>
-      </article>
-      <article class="metric">
-        <small>BASE CANDIDATES</small>
-        <b id="baseCandidates">—</b>
-        <span>preliminary candidates</span>
-      </article>
-      <article class="metric signal">
-        <small>MATCHED SIGNALS</small>
-        <b id="matchedSignals">—</b>
-        <span>publicly identifiable matches</span>
-      </article>
+      <article class="metric"><small>LIVE FIXTURES</small><b id="liveFixtures">—</b><span>shared state</span></article>
+      <article class="metric"><small>IN MINUTE WINDOW</small><b id="minuteWindow">—</b><span>active window</span></article>
+      <article class="metric"><small>BASE CANDIDATES</small><b id="baseCandidates">—</b><span>under observation</span></article>
+      <article class="metric signal"><small>MATCHED SIGNALS</small><b id="matchedSignals">—</b><span>current / recent</span></article>
     </section>
 
     <section class="monitor-card">
       <div class="section-head">
-        <div>
-          <span class="section-kicker">ENGINE 3</span>
-          <h2>Live Monitor</h2>
-        </div>
+        <div><span class="section-kicker">ENGINE 3</span><h2>Live Monitor</h2></div>
         <div id="freshnessLabel" class="freshness">Waiting for shared state</div>
       </div>
 
@@ -85,67 +63,62 @@
       <div id="panel-live" class="tab-panel active" role="tabpanel">
         <div id="signalHero" class="signal-hero empty-state">
           <div class="radar" aria-hidden="true"><i></i><i></i><i></i><span></span></div>
-          <div>
-            <small>CURRENT ENGINE VIEW</small>
-            <h3 id="signalHeadline">Connecting to Engine 3 shared state…</h3>
-            <p id="signalSubline">The screen will update automatically when fresh state is available.</p>
-          </div>
+          <div><small>CURRENT ENGINE VIEW</small><h3 id="signalHeadline">Connecting to Engine 3 shared state…</h3><p id="signalSubline">The screen updates automatically.</p></div>
         </div>
 
-        <div class="list-head">
-          <h3>Current Candidates</h3>
-          <span id="candidateNote">—</span>
-        </div>
-        <div id="candidateList" class="match-list">
-          <div class="list-empty">Waiting for data.</div>
-        </div>
+        <div class="list-head"><h3>Current Candidates</h3><span id="candidateNote">—</span></div>
+        <div id="candidateList" class="match-list"><div class="list-empty">Waiting for data.</div></div>
 
-        <div class="list-head fixtures-head">
-          <h3>Live Fixtures</h3>
-          <span id="fixtureNote">—</span>
-        </div>
-        <div id="fixtureList" class="match-list compact">
-          <div class="list-empty">Waiting for data.</div>
-        </div>
+        <div class="list-head fixtures-head"><h3>Live Fixtures</h3><span id="fixtureNote">—</span></div>
+        <div id="fixtureList" class="match-list compact"><div class="list-empty">Waiting for data.</div></div>
       </div>
 
       <div id="panel-rules" class="tab-panel" role="tabpanel" hidden>
-        <div class="info-grid" id="rulesGrid">
-          <article><small>RULE SOURCE</small><b>PUBLIC FEED</b><p>Only rule fields published by the Engine 3 feed are shown here.</p></article>
-          <article><small>EDITING</small><b class="good">DISABLED</b><p>This public page cannot modify engine thresholds or selections.</p></article>
-        </div>
-        <div id="ruleRows" class="status-table">
-          <div class="status-row"><span>Rule details</span><b>WAITING FOR FEED</b></div>
-        </div>
+        <div id="ruleRows" class="status-table"><div class="status-row"><span>Rule details</span><b>WAITING FOR FEED</b></div></div>
       </div>
 
       <div id="panel-system" class="tab-panel" role="tabpanel" hidden>
         <div class="status-table">
           <div class="status-row"><span>Shared State</span><b id="sysSharedState">WAITING</b></div>
-          <div class="status-row"><span>Engine Data</span><b id="sysEngineData">WAITING</b></div>
+          <div class="status-row"><span>Engine Runtime</span><b id="sysEngineData">WAITING</b></div>
           <div class="status-row"><span>Browser → Football API Calls</span><b class="good">0</b></div>
           <div class="status-row"><span>Screen Refresh</span><b id="sysRefresh">10 sec</b></div>
           <div class="status-row"><span>Last Good State</span><b id="sysLastGood">—</b></div>
-          <div class="status-row"><span>Feed Endpoint</span><b>SHARED STATE ONLY</b></div>
+          <div class="status-row"><span>Settlement Pending</span><b id="sysSettlementPending">—</b></div>
         </div>
-        <p class="system-note">Public-safe status only. API keys, secrets, owner settings, raw logs and engine controls are intentionally excluded.</p>
       </div>
     </section>
 
+    <section class="performance-card">
+      <div class="section-head">
+        <div><span class="section-kicker">ENGINE 3 HISTORY</span><h2>Performance · Last 30 Days</h2></div>
+        <div id="historyFreshness" class="freshness">Waiting for analytics</div>
+      </div>
+
+      <div class="history-summary" aria-label="Engine 3 historical statistics">
+        <div><small>TOTAL</small><b id="histTotal">—</b></div>
+        <div class="win"><small>WIN</small><b id="histWin">—</b></div>
+        <div class="loss"><small>LOSS</small><b id="histLoss">—</b></div>
+        <div><small>PENDING</small><b id="histPending">—</b></div>
+        <div><small>ACCURACY</small><b id="histAccuracy">—</b></div>
+        <div><small>AVG ODDS</small><b id="histAvgOdds">—</b></div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head"><span>CUMULATIVE PERFORMANCE</span><b id="histNetUnits">—</b></div>
+        <div id="performanceChart" class="chart-shell"><div class="list-empty">Waiting for performance history.</div></div>
+      </div>
+
+      <div class="list-head history-head"><h3>Recent Signal History</h3><span id="historyNote">—</span></div>
+      <div id="historyList" class="history-list"><div class="list-empty">Waiting for history.</div></div>
+    </section>
+
     <section class="footnote-card">
-      <b>PUBLIC RESEARCH ACCESS</b>
-      <span id="pageClock">—</span>
-      <p>Displayed values come from the latest Engine 3 shared-state snapshot. Stale or unavailable data is labelled as such; the page never fabricates an ONLINE state.</p>
+      <b>PUBLIC RESEARCH ACCESS</b><span id="pageClock">—</span>
+      <p>Display data comes from stored Engine 3 shared state and D1 history. Stale or unavailable data is labelled clearly; this page has no engine controls.</p>
     </section>
   </main>
 
-  <nav class="main-nav" aria-label="NOMADTIPS3 navigation">
-    <a href="https://www.nomadtips3.com/">Match Predictions</a>
-    <a href="https://www.nomadtips3.com/stats">Statistics</a>
-    <a href="https://www.nomadtips3.com/share">Analysis Poster</a>
-    <a class="active" href="./" aria-current="page">Live Monitor</a>
-  </nav>
-
-  <script src="./app.js?v=202608121406" defer></script>
+  <script src="./app.js?v=202608121424" defer></script>
 </body>
 </html>
