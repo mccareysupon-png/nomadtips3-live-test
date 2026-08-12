@@ -79,6 +79,11 @@ def reconcile(root: Path, now: str | None = None) -> dict[str, Any]:
     result_date = str(result_feed.get("selectionDate") or "")
     state_path = root / "production-daily-cycle-state.json"
     previous_state = read_json(state_path, {})
+    previous_verification = {
+        key: previous_state[key]
+        for key in ("statisticsVerifiedForDate", "statisticsVerifiedAt")
+        if key in previous_state
+    }
     history_path = root / "production-history.json"
     history = read_json(history_path, {"version": 1, "updatedAt": None, "sets": []})
     if not isinstance(history.get("sets"), list):
@@ -95,6 +100,7 @@ def reconcile(root: Path, now: str | None = None) -> dict[str, Any]:
             "selectionRecordCount": 0,
             "storedRecordCount": 0,
             "pendingRecordCount": 0,
+            **previous_verification,
         }
         save_state(state_path, state, now)
         return state
@@ -140,6 +146,7 @@ def reconcile(root: Path, now: str | None = None) -> dict[str, Any]:
             "selectionRecordCount": len(picks),
             "storedRecordCount": 0,
             "pendingRecordCount": len(pending_keys),
+            **previous_verification,
         }
         save_state(state_path, state, now)
         return state
@@ -226,6 +233,7 @@ def reconcile(root: Path, now: str | None = None) -> dict[str, Any]:
         "storedRecordCount": len(stored_records),
         "pendingRecordCount": 0,
         "historyTotalRecords": sum(len(day.get("records") or []) for day in sets),
+        **previous_verification,
     }
     save_state(state_path, state, now)
     return state
