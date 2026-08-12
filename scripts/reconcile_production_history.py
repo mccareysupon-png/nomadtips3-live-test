@@ -235,20 +235,37 @@ def mark_statistics_verified(root: Path, result_date: str, now: str | None = Non
     now = now or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     state_path = root / "production-daily-cycle-state.json"
     state = read_json(state_path, {})
+    history = read_json(root / "production-history.json", {"sets": []})
+    verified_set = next(
+        (
+            day
+            for day in (history.get("sets") or [])
+            if day.get("selectionDate") == result_date
+        ),
+        None,
+    )
+    verified_records = (verified_set or {}).get("records") or []
     if (
-        not state.get("historyComplete")
-        or state.get("resultSelectionDate") != result_date
-        or state.get("pendingRecordCount") != 0
+        not verified_set
+        or verified_set.get("allSettled") is not True
+        or int(verified_set.get("recordCount") or 0) <= 0
+        or len(verified_records) != int(verified_set.get("recordCount") or 0)
     ):
         raise RuntimeError(f"Cannot verify Statistics before history is complete for {result_date}")
+    verifies_active_cycle = (
+        state.get("historyComplete") is True
+        and state.get("resultSelectionDate") == result_date
+        and int(state.get("pendingRecordCount") or 0) == 0
+    )
     state.update(
         {
-            "phase": "STATISTICS_VERIFIED",
             "statisticsVerifiedForDate": result_date,
             "statisticsVerifiedAt": now,
-            "nextSelectionAllowed": True,
+            "nextSelectionAllowed": verifies_active_cycle,
         }
     )
+    if verifies_active_cycle:
+        state["phase"] = "STATISTICS_VERIFIED"
     write_json_if_changed(state_path, {**state, "updatedAt": now})
     return state
 
