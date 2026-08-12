@@ -1,0 +1,151 @@
+name: NOMADTIPS3 Production Daily Cycle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'result-feed.json'
+      - 'selected-live-matches.json'
+      - 'archive/auto-selections/**'
+      - 'scripts/reconcile_production_history.py'
+      - '.github/workflows/production-daily-cycle.yml'
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: write
+  actions: write
+  id-token: write
+
+concurrency:
+  group: nomadtips3-production-daily-cycle
+  cancel-in-progress: false
+
+jobs:
+  reconcile-publish-select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Reconcile settled Production history
+        id: reconcile
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/reconcile_production_history.py
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          state = json.load(open('production-daily-cycle-state.json', encoding='utf-8'))
+          print(f"result_date={state.get('resultSelectionDate', '')}")
+          print(f"history_complete={str(bool(state.get('historyComplete'))).lower()}")
+          print(f"all_settled={str(bool(state.get('allSettled'))).lower()}")
+          print(f"stored_records={int(state.get('storedRecordCount') or 0)}")
+          print(f"expected_records={int(state.get('selectionRecordCount') or 0)}")
+          PY
+
+      - name: Publish append-only history snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add production-history.json production-daily-cycle-state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo 'Production history already current.'
+            exit 0
+          fi
+          git commit -m "Reconcile Production history $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
+
+      - name: Stop until every result is settled and archived
+        if: steps.reconcile.outputs.history_complete != 'true'
+        run: |
+          echo 'Current Production set is not ready; watchdog will retry in fifteen minutes.'
+
+      - name: Append history into Production Statistics and verify records
+        if: steps.reconcile.outputs.history_complete == 'true'
+        id: statistics
+        shell: bash
+        env:
+          RESULT_DATE: ${{ steps.reconcile.outputs.result_date }}
+          EXPECTED_RECORDS: ${{ steps.reconcile.outputs.expected_records }}
+        run: |
+          set -euo pipefail
+          token="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=nomadtips3.com" | jq -r '.value')"
+          test -n "$token"
+          jq -c '{productionHistory:.}' production-history.json > /tmp/production-history-request.json
+          curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer ${token}" \
+            -H 'Content-Type: application/json' \
+            --data-binary @/tmp/production-history-request.json \
+            'https://www.nomadtips3.com/api/internal/rolling-scheduler' \
+            > /tmp/production-history-response.json
+          jq '.' /tmp/production-history-response.json
+          jq -e --arg date "$RESULT_DATE" --argjson expected "$EXPECTED_RECORDS" '
+            .ok == true
+            and .historySync.historyComplete == true
+            and .historySync.latestDate == $date
+            and .historySync.expectedLatest == $expected
+            and .historySync.storedLatest == $expected
+            and .historySync.latestPending == 0
+          ' /tmp/production-history-response.json >/dev/null
+
+      - name: Mark Statistics verified
+        if: steps.reconcile.outputs.history_complete == 'true' && steps.statistics.outcome == 'success'
+        shell: bash
+        env:
+          RESULT_DATE: ${{ steps.reconcile.outputs.result_date }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          python3 scripts/reconcile_production_history.py
+          python3 scripts/reconcile_production_history.py --mark-statistics-verified "$RESULT_DATE"
+          git add production-daily-cycle-state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Verify Production Statistics ${RESULT_DATE}"
+            for attempt in 1 2 3; do
+              if git pull --rebase origin main && git push origin main; then break; fi
+              git rebase --abort 2>/dev/null || true
+              test "$attempt" -lt 3
+              sleep $((attempt * 3))
+            done
+          fi
+
+      - name: Select next set only after Statistics verification
+        if: steps.reconcile.outputs.history_complete == 'true' && steps.statistics.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT_DATE: ${{ steps.reconcile.outputs.result_date }}
+        run: |
+          set -euo pipefail
+          git pull --rebase origin main
+          selected_date="$(jq -r '.selection_date // ""' selected-live-matches.json)"
+          allowed="$(jq -r '.nextSelectionAllowed // false' production-daily-cycle-state.json)"
+          verified_date="$(jq -r '.statisticsVerifiedForDate // ""' production-daily-cycle-state.json)"
+          if [ "$allowed" != 'true' ] || [ "$verified_date" != "$RESULT_DATE" ]; then
+            echo 'Statistics gate is not verified; selection remains unchanged.'
+            exit 1
+          fi
+          if [[ "$selected_date" > "$RESULT_DATE" ]]; then
+            echo 'A newer Production selection already exists; daily cycle is complete.'
+            exit 0
+          fi
+          curl --fail-with-body -L -X POST \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/auto-select-next.yml/dispatches" \
+            -d '{"ref":"main"}'

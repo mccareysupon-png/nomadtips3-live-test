@@ -28,7 +28,7 @@ on:
         required: false
         default: 'false'
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '*/15 * * * *'
 
 permissions:
   contents: write
@@ -62,7 +62,45 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Require settled History and verified Production Statistics
+        id: daily_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          def load(path):
+              try:
+                  return json.loads(Path(path).read_text(encoding='utf-8'))
+              except Exception:
+                  return {}
+
+          state = load('production-daily-cycle-state.json')
+          results = load('result-feed.json')
+          selected = load('selected-live-matches.json')
+          result_date = str(results.get('selectionDate') or '')
+          selected_date = str(selected.get('selection_date') or '')
+          allowed = (
+              state.get('nextSelectionAllowed') is True
+              and state.get('statisticsVerifiedForDate') == result_date
+              and state.get('historyComplete') is True
+              and int(state.get('pendingRecordCount') or 0) == 0
+              and bool(result_date)
+              and selected_date <= result_date
+          )
+          print(f"allowed={str(allowed).lower()}")
+          print(f"result_date={result_date}")
+          print(f"selected_date={selected_date}")
+          PY
+
+      - name: Wait for the Production Daily Cycle gate
+        if: steps.daily_gate.outputs.allowed != 'true'
+        run: echo 'History/Statistics gate is not ready or a newer selection already exists; no-op.'
+
       - name: Validate production selector, all-qualified publisher, and API guard
+        if: steps.daily_gate.outputs.allowed == 'true'
         run: |
           python3 -m py_compile .github/scripts/publish_add_k_top10.py
           python3 -m py_compile .github/scripts/validate_production_selection.py
@@ -70,18 +108,21 @@ jobs:
           node scripts/test-car1-car2-isolation.mjs
 
       - name: Load active owner ball-teng settings
+        if: steps.daily_gate.outputs.allowed == 'true'
         shell: bash
         run: |
           set -euo pipefail
           python3 .github/scripts/prepare_ball_teng_control.py
 
       - name: Detect invalid Production payload and prepare isolated recovery
+        if: steps.daily_gate.outputs.allowed == 'true'
         shell: bash
         run: |
           set -euo pipefail
           python3 .github/scripts/validate_production_selection.py --prepare-recovery
 
       - name: Run NOMAD ball-teng automatic selection engine
+        if: steps.daily_gate.outputs.allowed == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -188,7 +229,7 @@ jobs:
           python3 .github/scripts/validate_production_selection.py
 
       - name: Mark failed Add K run
-        if: ${{ failure() && env.NOMAD_ADD_K_RUN == '1' }}
+        if: ${{ steps.daily_gate.outputs.allowed == 'true' && failure() && env.NOMAD_ADD_K_RUN == '1' }}
         shell: bash
         run: |
           python3 - <<'PY'
@@ -217,6 +258,7 @@ jobs:
           PY
 
       - name: Publish selector or control-state changes
+        if: steps.daily_gate.outputs.allowed == 'true'
         id: publish
         shell: bash
         run: |
