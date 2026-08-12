@@ -1,6 +1,7 @@
 import {
   ensureV2Schema,
   readLatestState,
+  readOwnerAnalytics,
   readOwnerConfig,
   writeLatestState,
   writeOwnerConfig
@@ -221,6 +222,15 @@ export async function handleV2Route(request, env) {
       state: await readLatestState(env),
       ownerConfig: await readOwnerConfig(env),
       generatedAt: new Date().toISOString()
+    });
+  }
+
+  if (url.pathname === '/v2/owner/analytics') {
+    if (!ownerAuthorized(request, env)) return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
+    if (request.method !== 'GET') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
+    return reply(request, {
+      ok: true,
+      analytics: await readOwnerAnalytics(env, url.searchParams.get('days') || 30),
     });
   }
 

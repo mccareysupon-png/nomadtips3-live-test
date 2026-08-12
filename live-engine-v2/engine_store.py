@@ -25,7 +25,13 @@ CREATE TABLE IF NOT EXISTS engine_signals (
   fixture_id INTEGER NOT NULL,
   selected_side TEXT NOT NULL,
   payload_json TEXT NOT NULL,
-  created_at INTEGER NOT NULL
+  status TEXT NOT NULL DEFAULT 'PENDING',
+  result TEXT NOT NULL DEFAULT 'PENDING',
+  settlement TEXT NOT NULL DEFAULT 'PENDING',
+  outcome TEXT NOT NULL DEFAULT 'PENDING',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT 0,
+  last_checked_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_engine_signals_created ON engine_signals(created_at DESC);
 """
@@ -40,7 +46,27 @@ class EngineStore:
         self.connection.execute("PRAGMA journal_mode=WAL")
         self.connection.execute("PRAGMA synchronous=NORMAL")
         self.connection.executescript(SCHEMA)
+        self._ensure_signal_columns()
         self.connection.commit()
+
+    def _ensure_signal_columns(self):
+        existing = {
+            row["name"]
+            for row in self.connection.execute("PRAGMA table_info(engine_signals)").fetchall()
+        }
+        migrations = {
+            "status": "TEXT NOT NULL DEFAULT 'PENDING'",
+            "result": "TEXT NOT NULL DEFAULT 'PENDING'",
+            "settlement": "TEXT NOT NULL DEFAULT 'PENDING'",
+            "outcome": "TEXT NOT NULL DEFAULT 'PENDING'",
+            "updated_at": "INTEGER NOT NULL DEFAULT 0",
+            "last_checked_at": "INTEGER NOT NULL DEFAULT 0",
+        }
+        for column, definition in migrations.items():
+            if column not in existing:
+                self.connection.execute(
+                    f"ALTER TABLE engine_signals ADD COLUMN {column} {definition}"
+                )
 
     def close(self):
         self.connection.close()
@@ -112,18 +138,116 @@ class EngineStore:
         self.connection.commit()
 
     def insert_signal(self, key, fixture_id, selected_side, payload, created_at):
+        record = {
+            **payload,
+            "status": "PENDING",
+            "result": "PENDING",
+            "settlement": "PENDING",
+            "outcome": "PENDING",
+            "stake_units": 1.0,
+            "profit_units": 0.0,
+            "returned_units": 0.0,
+            "final_status": None,
+            "final_score": None,
+            "settled_at": None,
+        }
         cursor = self.connection.execute(
             """
             INSERT OR IGNORE INTO engine_signals (
-              signal_key, fixture_id, selected_side, payload_json, created_at
-            ) VALUES (?, ?, ?, ?, ?)
+              signal_key, fixture_id, selected_side, payload_json,
+              status, result, settlement, outcome,
+              created_at, updated_at, last_checked_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
             """,
             (
                 key,
                 int(fixture_id),
                 selected_side,
-                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                json.dumps(record, ensure_ascii=False, separators=(",", ":")),
+                record["status"],
+                record["result"],
+                record["settlement"],
+                record["outcome"],
                 int(created_at),
+                int(created_at),
+            ),
+        )
+        self.connection.commit()
+        return cursor.rowcount == 1
+
+    def pending_signals(
+        self,
+        now_ms,
+        *,
+        min_age_ms=120_000,
+        retry_after_ms=300_000,
+        limit=100,
+    ):
+        rows = self.connection.execute(
+            """
+            SELECT signal_key, payload_json
+            FROM engine_signals
+            WHERE status = 'PENDING'
+              AND created_at <= ?
+              AND last_checked_at <= ?
+            ORDER BY created_at ASC
+            LIMIT ?
+            """,
+            (
+                int(now_ms) - max(0, int(min_age_ms)),
+                int(now_ms) - max(1, int(retry_after_ms)),
+                max(1, min(500, int(limit))),
+            ),
+        ).fetchall()
+        output = []
+        for row in rows:
+            try:
+                payload = json.loads(row["payload_json"])
+            except json.JSONDecodeError:
+                continue
+            payload["_signal_key"] = row["signal_key"]
+            output.append(payload)
+        return output
+
+    def mark_signal_checked(self, key, checked_at):
+        self.connection.execute(
+            """
+            UPDATE engine_signals
+            SET last_checked_at = ?, updated_at = ?
+            WHERE signal_key = ? AND status = 'PENDING'
+            """,
+            (int(checked_at), int(checked_at), key),
+        )
+        self.connection.commit()
+
+    def settle_signal(self, key, updates, settled_at):
+        row = self.connection.execute(
+            "SELECT payload_json FROM engine_signals WHERE signal_key = ?",
+            (key,),
+        ).fetchone()
+        if not row:
+            return False
+        try:
+            payload = json.loads(row["payload_json"])
+        except json.JSONDecodeError:
+            return False
+        payload.update(updates)
+        cursor = self.connection.execute(
+            """
+            UPDATE engine_signals
+            SET payload_json = ?, status = ?, result = ?, settlement = ?, outcome = ?,
+                updated_at = ?, last_checked_at = ?
+            WHERE signal_key = ? AND status = 'PENDING'
+            """,
+            (
+                json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                str(payload.get("status") or "PENDING"),
+                str(payload.get("result") or "PENDING"),
+                str(payload.get("settlement") or "PENDING"),
+                str(payload.get("outcome") or "PENDING"),
+                int(settled_at),
+                int(settled_at),
+                key,
             ),
         )
         self.connection.commit()

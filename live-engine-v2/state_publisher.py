@@ -19,6 +19,7 @@ HASH_FIELDS = (
     "statistics",
     "live_odds",
     "engine",
+    "settlement_telemetry",
     "runtime",
 )
 

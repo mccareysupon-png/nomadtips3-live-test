@@ -31,6 +31,13 @@ Frontend pages never call API-Football directly.
 - Back off automatically on API-Football 429 responses and resume without a
   manual restart.
 - Run continuously under systemd.
+- Preserve candidate history in D1 with first/last seen time, minute range,
+  peak momentum, streak, decision state and the entry statistics snapshot.
+- Recheck pending PAPER signals through the same VPS API collector every five
+  minutes and settle them as WIN, LOSS, PUSH or VOID without enabling any real
+  transaction connector.
+- Expose 7/30/90-day PAPER analytics on the Access-protected owner page,
+  including net units, ROI, accuracy, daily signal volume and cumulative units.
 
 ## Signal policy
 

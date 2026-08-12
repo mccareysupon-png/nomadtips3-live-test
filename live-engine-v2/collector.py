@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from detail_normalizer import compact_fixture_details, compact_live_odds
 from engine_store import EngineStore
 from provider_errors import ProviderRateLimitError
 from remote_config import RemoteConfigClient
+from settlement import settlement_for_signal
 from state_publisher import StatePublisher
 
 API_BASE = "https://v3.football.api-sports.io"
@@ -115,6 +117,9 @@ class Collector:
         self.request_count = 0
         self.last_success_at = None
         self.last_snapshot = None
+        self.settlement_poll_seconds = env_int("SETTLEMENT_POLL_SECONDS", 300, 60)
+        self.settlement_min_age_seconds = env_int("SETTLEMENT_MIN_AGE_SECONDS", 120, 60)
+        self.last_settlement_poll = 0.0
 
         self.client = httpx.AsyncClient(
             base_url=API_BASE,
@@ -245,6 +250,69 @@ class Collector:
                 "error": str(error),
             }
 
+    async def settle_pending_signals(self):
+        now_monotonic = time.monotonic()
+        if now_monotonic - self.last_settlement_poll < self.settlement_poll_seconds:
+            return {"due": False, "pending": None, "checked": 0, "settled": 0}
+
+        self.last_settlement_poll = now_monotonic
+        now_ms = int(time.time() * 1000)
+        pending = self.store.pending_signals(
+            now_ms,
+            min_age_ms=self.settlement_min_age_seconds * 1000,
+            retry_after_ms=self.settlement_poll_seconds * 1000,
+            limit=200,
+        )
+        if not pending:
+            return {"due": True, "pending": 0, "checked": 0, "settled": 0}
+
+        fixture_refs = [
+            {"fixture_id": signal.get("fixture_id")}
+            for signal in pending
+        ]
+        try:
+            result = await self.detail_fetcher.fixture_details(
+                fixture_refs,
+                ttl_seconds=self.settlement_poll_seconds,
+            )
+        except ProviderRateLimitError:
+            raise
+        except Exception as error:
+            return {
+                "due": True,
+                "pending": len(pending),
+                "checked": 0,
+                "settled": 0,
+                "error": str(error)[:300],
+            }
+        details = result["by_fixture"]
+        checked = 0
+        settled_count = 0
+        for signal in pending:
+            key = signal.pop("_signal_key", signal.get("signal_key"))
+            try:
+                fixture_id = int(signal.get("fixture_id"))
+            except (TypeError, ValueError):
+                self.store.mark_signal_checked(key, now_ms)
+                checked += 1
+                continue
+            fixture = details.get(fixture_id)
+            self.store.mark_signal_checked(key, now_ms)
+            checked += 1
+            if not fixture:
+                continue
+            settled = settlement_for_signal(signal, fixture, now_ms)
+            if settled and self.store.settle_signal(key, settled, now_ms):
+                settled_count += 1
+
+        return {
+            "due": True,
+            "pending": len(pending),
+            "checked": checked,
+            "settled": settled_count,
+            "fixture_batches": result["batch_count"],
+        }
+
     def retry_wait(self, error, failure_streak):
         if isinstance(error, ProviderRateLimitError):
             provider_wait = error.retry_after or 0
@@ -288,6 +356,8 @@ class Collector:
                     condition,
                     condition_meta,
                 )
+                settlement_telemetry = await self.settle_pending_signals()
+                engine["recent_signals"] = self.store.recent_signals(200)
                 self.last_success_at = utc_now()
                 failure_streak = 0
 
@@ -307,6 +377,7 @@ class Collector:
                     "condition_meta": condition_meta,
                     "rejected": preliminary["rejected"],
                     "detail_telemetry": detail_telemetry,
+                    "settlement_telemetry": settlement_telemetry,
                     "fixtures": fixtures,
                     "preliminary_candidates": candidates,
                     "statistics": statistics,

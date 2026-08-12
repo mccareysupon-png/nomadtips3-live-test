@@ -91,6 +91,148 @@ function json(value) {
   return JSON.stringify(value ?? null);
 }
 
+function timestamp(value, fallback = Date.now()) {
+  if (Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+  const parsed = Date.parse(String(value || ''));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function rounded(value) {
+  const parsed = numberOrNull(value);
+  return parsed === null ? 0 : Math.round((parsed + Number.EPSILON) * 100) / 100;
+}
+
+function outcomeFor(signal) {
+  const explicit = String(signal?.outcome || '').toUpperCase();
+  if (['WIN', 'LOSS', 'PUSH', 'VOID', 'PENDING'].includes(explicit)) return explicit;
+  const settlement = String(signal?.settlement || '').toUpperCase();
+  if (settlement.includes('WIN')) return 'WIN';
+  if (settlement.includes('LOSS')) return 'LOSS';
+  if (settlement === 'PUSH') return 'PUSH';
+  if (settlement === 'VOID') return 'VOID';
+  return 'PENDING';
+}
+
+export function normalizeCandidateHistory(candidate, generatedAt = Date.now()) {
+  const source = candidate && typeof candidate === 'object' ? candidate : {};
+  const fixtureId = Math.round(numberOrNull(source.fixture_id) || 0);
+  const side = String(source.side || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME';
+  const seenAt = timestamp(generatedAt);
+  return {
+    candidateKey: String(source.candidate_key || `${fixtureId}:${side}`),
+    fixtureId,
+    selectedSide: side,
+    selectedTeam: String(source.selected_team || ''),
+    opponent: String(source.opponent || ''),
+    market: String(source.market || 'AH').toUpperCase(),
+    minute: Math.round(numberOrNull(source.minute) || 0),
+    score: String(source.score || ''),
+    momentum: numberOrNull(source.momentum),
+    streak: Math.max(0, Math.round(numberOrNull(source.streak) || 0)),
+    triggered: Boolean(source.triggered),
+    state: String(source.state || (source.triggered ? 'TRIGGERED' : 'WARMING')).toUpperCase(),
+    seenAt,
+    payload: source,
+  };
+}
+
+export function normalizeSignalAnalytics(signal, fallbackTime = Date.now()) {
+  const source = signal && typeof signal === 'object' ? signal : {};
+  const createdAt = timestamp(source.created_at, fallbackTime);
+  const settledAt = source.settled_at ? timestamp(source.settled_at, fallbackTime) : null;
+  const outcome = outcomeFor(source);
+  return {
+    signalId: String(source.signal_id || ''),
+    signalKey: String(source.signal_key || `${source.fixture_id || 0}:${source.selection || 'HOME'}`),
+    fixtureId: Math.round(numberOrNull(source.fixture_id) || 0),
+    selectedSide: String(source.selection || 'HOME').toUpperCase() === 'AWAY' ? 'AWAY' : 'HOME',
+    selectedTeam: String(source.selected_team || source.selection || ''),
+    opponent: String(source.opponent || ''),
+    market: String(source.market || 'AH').toUpperCase(),
+    entryMinute: Math.round(numberOrNull(source.minute) || 0),
+    entryScore: source.score || null,
+    targetOdds: numberOrNull(source.target_odds),
+    ahLine: numberOrNull(source.ah_line),
+    status: String(source.status || (outcome === 'PENDING' ? 'PENDING' : 'SETTLED')).toUpperCase(),
+    outcome,
+    result: String(source.result || (outcome === 'PENDING' ? 'PENDING' : 'NEUTRAL')).toUpperCase(),
+    settlement: String(source.settlement || 'PENDING').toUpperCase(),
+    finalStatus: source.final_status ? String(source.final_status).toUpperCase() : null,
+    finalScore: source.final_score || null,
+    stakeUnits: rounded(source.stake_units || 1),
+    profitUnits: rounded(source.profit_units || 0),
+    returnedUnits: rounded(source.returned_units || 0),
+    createdAt,
+    settledAt,
+    payload: source,
+  };
+}
+
+export function summarizeSignalAnalytics(signals = []) {
+  const normalized = signals.map(signal => normalizeSignalAnalytics(signal));
+  const summary = {
+    total: normalized.length,
+    pending: 0,
+    win: 0,
+    loss: 0,
+    push: 0,
+    void: 0,
+    settled: 0,
+    stakeUnits: 0,
+    netUnits: 0,
+    roiPercent: 0,
+    accuracyPercent: 0,
+  };
+  for (const signal of normalized) {
+    const key = signal.outcome.toLowerCase();
+    if (Object.hasOwn(summary, key)) summary[key] += 1;
+    if (signal.outcome !== 'PENDING') summary.settled += 1;
+    if (['WIN', 'LOSS', 'PUSH'].includes(signal.outcome)) {
+      summary.stakeUnits += signal.stakeUnits;
+      summary.netUnits += signal.profitUnits;
+    }
+  }
+  summary.stakeUnits = rounded(summary.stakeUnits);
+  summary.netUnits = rounded(summary.netUnits);
+  summary.roiPercent = summary.stakeUnits ? rounded(summary.netUnits / summary.stakeUnits * 100) : 0;
+  summary.accuracyPercent = summary.win + summary.loss
+    ? rounded(summary.win / (summary.win + summary.loss) * 100)
+    : 0;
+  return summary;
+}
+
+function thaiDateKey(value) {
+  return new Date(timestamp(value) + 7 * 60 * 60_000).toISOString().slice(0, 10);
+}
+
+export function dailySignalAnalytics(signals = [], days = 30, now = Date.now()) {
+  const safeDays = Math.max(1, Math.min(90, Math.round(numberOrNull(days) || 30)));
+  const todayStart = Date.parse(`${thaiDateKey(now)}T00:00:00.000Z`);
+  const buckets = [];
+  const byDate = new Map();
+  for (let index = safeDays - 1; index >= 0; index -= 1) {
+    const date = new Date(todayStart - index * 86_400_000).toISOString().slice(0, 10);
+    const bucket = { date, signals: 0, win: 0, loss: 0, push: 0, pending: 0, void: 0, netUnits: 0, cumulativeUnits: 0 };
+    buckets.push(bucket);
+    byDate.set(date, bucket);
+  }
+  for (const raw of signals) {
+    const signal = normalizeSignalAnalytics(raw, now);
+    const bucket = byDate.get(thaiDateKey(signal.createdAt));
+    if (!bucket) continue;
+    bucket.signals += 1;
+    const key = signal.outcome.toLowerCase();
+    if (Object.hasOwn(bucket, key)) bucket[key] += 1;
+    bucket.netUnits = rounded(bucket.netUnits + signal.profitUnits);
+  }
+  let cumulative = 0;
+  for (const bucket of buckets) {
+    cumulative = rounded(cumulative + bucket.netUnits);
+    bucket.cumulativeUnits = cumulative;
+  }
+  return buckets;
+}
+
 export async function ensureV2Schema(env) {
   const now = Date.now();
   await env.DB.batch([
@@ -136,6 +278,58 @@ export async function ensureV2Schema(env) {
       )
     `),
     env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS v2_candidate_history (
+        candidate_key TEXT PRIMARY KEY,
+        fixture_id INTEGER NOT NULL,
+        selected_side TEXT NOT NULL,
+        selected_team TEXT,
+        opponent TEXT,
+        market TEXT,
+        entry_minute INTEGER,
+        last_minute INTEGER,
+        entry_score TEXT,
+        last_score TEXT,
+        peak_momentum REAL,
+        last_momentum REAL,
+        max_streak INTEGER NOT NULL DEFAULT 0,
+        triggered INTEGER NOT NULL DEFAULT 0,
+        state TEXT NOT NULL DEFAULT 'WARMING',
+        sample_count INTEGER NOT NULL DEFAULT 1,
+        payload_json TEXT NOT NULL,
+        first_seen_at INTEGER NOT NULL,
+        last_seen_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `),
+    env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS v2_signal_analytics (
+        signal_id TEXT PRIMARY KEY,
+        signal_key TEXT NOT NULL,
+        fixture_id INTEGER NOT NULL,
+        selected_side TEXT NOT NULL,
+        selected_team TEXT,
+        opponent TEXT,
+        market TEXT,
+        entry_minute INTEGER,
+        entry_score TEXT,
+        target_odds REAL,
+        ah_line REAL,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        outcome TEXT NOT NULL DEFAULT 'PENDING',
+        result TEXT NOT NULL DEFAULT 'PENDING',
+        settlement TEXT NOT NULL DEFAULT 'PENDING',
+        final_status TEXT,
+        final_score TEXT,
+        stake_units REAL NOT NULL DEFAULT 1,
+        profit_units REAL NOT NULL DEFAULT 0,
+        returned_units REAL NOT NULL DEFAULT 0,
+        payload_json TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        settled_at INTEGER,
+        updated_at INTEGER NOT NULL
+      )
+    `),
+    env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS v2_auth_nonce (
         nonce TEXT PRIMARY KEY,
         expires_at INTEGER NOT NULL,
@@ -145,6 +339,10 @@ export async function ensureV2Schema(env) {
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_auth_nonce_expiry ON v2_auth_nonce(expires_at)`),
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_signal_created ON v2_signal_history(created_at DESC)`),
     env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_signal_fixture ON v2_signal_history(fixture_id, created_at DESC)`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_candidate_last_seen ON v2_candidate_history(last_seen_at DESC)`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_candidate_fixture ON v2_candidate_history(fixture_id, selected_side)`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_analytics_created ON v2_signal_analytics(created_at DESC)`),
+    env.DB.prepare(`CREATE INDEX IF NOT EXISTS idx_v2_analytics_outcome ON v2_signal_analytics(outcome, created_at DESC)`),
     env.DB.prepare(`
       INSERT OR IGNORE INTO v2_owner_config (
         id, version, config_json, updated_at, updated_by
@@ -153,11 +351,119 @@ export async function ensureV2Schema(env) {
   ]);
 }
 
+function candidateHistoryStatement(env, candidate, generatedAt, now) {
+  const row = normalizeCandidateHistory(candidate, generatedAt);
+  return env.DB.prepare(`
+    INSERT INTO v2_candidate_history (
+      candidate_key, fixture_id, selected_side, selected_team, opponent, market,
+      entry_minute, last_minute, entry_score, last_score,
+      peak_momentum, last_momentum, max_streak, triggered, state,
+      sample_count, payload_json, first_seen_at, last_seen_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+    ON CONFLICT(candidate_key) DO UPDATE SET
+      selected_team = excluded.selected_team,
+      opponent = excluded.opponent,
+      market = excluded.market,
+      last_minute = excluded.last_minute,
+      last_score = excluded.last_score,
+      peak_momentum = CASE
+        WHEN excluded.peak_momentum IS NULL THEN v2_candidate_history.peak_momentum
+        WHEN v2_candidate_history.peak_momentum IS NULL THEN excluded.peak_momentum
+        ELSE MAX(v2_candidate_history.peak_momentum, excluded.peak_momentum)
+      END,
+      last_momentum = excluded.last_momentum,
+      max_streak = MAX(v2_candidate_history.max_streak, excluded.max_streak),
+      triggered = MAX(v2_candidate_history.triggered, excluded.triggered),
+      state = excluded.state,
+      sample_count = v2_candidate_history.sample_count + 1,
+      payload_json = excluded.payload_json,
+      last_seen_at = MAX(v2_candidate_history.last_seen_at, excluded.last_seen_at),
+      updated_at = excluded.updated_at
+  `).bind(
+    row.candidateKey,
+    row.fixtureId,
+    row.selectedSide,
+    row.selectedTeam,
+    row.opponent,
+    row.market,
+    row.minute,
+    row.minute,
+    row.score,
+    row.score,
+    row.momentum,
+    row.momentum,
+    row.streak,
+    row.triggered ? 1 : 0,
+    row.state,
+    json(row.payload),
+    row.seenAt,
+    row.seenAt,
+    now,
+  );
+}
+
+function signalAnalyticsStatement(env, signal, generatedAt, now) {
+  const row = normalizeSignalAnalytics(signal, generatedAt);
+  if (!row.signalId || !row.fixtureId) return null;
+  return env.DB.prepare(`
+    INSERT INTO v2_signal_analytics (
+      signal_id, signal_key, fixture_id, selected_side, selected_team, opponent,
+      market, entry_minute, entry_score, target_odds, ah_line,
+      status, outcome, result, settlement, final_status, final_score,
+      stake_units, profit_units, returned_units, payload_json,
+      created_at, settled_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(signal_id) DO UPDATE SET
+      status = excluded.status,
+      outcome = excluded.outcome,
+      result = excluded.result,
+      settlement = excluded.settlement,
+      final_status = excluded.final_status,
+      final_score = excluded.final_score,
+      profit_units = excluded.profit_units,
+      returned_units = excluded.returned_units,
+      payload_json = excluded.payload_json,
+      settled_at = excluded.settled_at,
+      updated_at = excluded.updated_at
+  `).bind(
+    row.signalId,
+    row.signalKey,
+    row.fixtureId,
+    row.selectedSide,
+    row.selectedTeam,
+    row.opponent,
+    row.market,
+    row.entryMinute,
+    json(row.entryScore),
+    row.targetOdds,
+    row.ahLine,
+    row.status,
+    row.outcome,
+    row.result,
+    row.settlement,
+    row.finalStatus,
+    json(row.finalScore),
+    row.stakeUnits,
+    row.profitUnits,
+    row.returnedUnits,
+    json(row.payload),
+    row.createdAt,
+    row.settledAt,
+    now,
+  );
+}
+
+async function runStatementBatches(env, statements, batchSize = 75) {
+  for (let index = 0; index < statements.length; index += batchSize) {
+    await env.DB.batch(statements.slice(index, index + batchSize));
+  }
+}
+
 export async function writeLatestState(env, envelope) {
   const now = Date.now();
   const payload = envelope?.payload || {};
   const rate = payload?.rate_limit || {};
-  await env.DB.prepare(`
+  const statements = [env.DB.prepare(`
     INSERT INTO v2_latest_state (
       id, schema_name, generated_at, ingested_at, collector_id, state_hash,
       live_count, candidate_count, statistics_fixture_count,
@@ -193,7 +499,22 @@ export async function writeLatestState(env, envelope) {
     Number.isFinite(Number(rate.minute_remaining)) ? Number(rate.minute_remaining) : null,
     Number.isFinite(Number(rate.minute_limit)) ? Number(rate.minute_limit) : null,
     json(payload)
-  ).run();
+  )];
+
+  const generatedAt = timestamp(payload.generated_at, now);
+  const candidates = Array.isArray(payload?.engine?.active_candidates)
+    ? payload.engine.active_candidates.slice(0, 100)
+    : [];
+  const signals = Array.isArray(payload?.engine?.recent_signals)
+    ? payload.engine.recent_signals.slice(0, 200)
+    : [];
+  statements.push(...candidates.map(candidate => candidateHistoryStatement(env, candidate, generatedAt, now)));
+  statements.push(...signals.map(signal => signalAnalyticsStatement(env, signal, generatedAt, now)).filter(Boolean));
+  statements.push(
+    env.DB.prepare('DELETE FROM v2_candidate_history WHERE last_seen_at < ?')
+      .bind(now - 90 * 86_400_000)
+  );
+  await runStatementBatches(env, statements);
 }
 
 export async function readLatestState(env) {
@@ -215,6 +536,74 @@ export async function readLatestState(env) {
     rateLimitRemaining: row.rate_limit_remaining === null ? null : Number(row.rate_limit_remaining),
     rateLimitLimit: row.rate_limit_limit === null ? null : Number(row.rate_limit_limit),
     payload
+  };
+}
+
+function parsePayload(value, fallback = {}) {
+  try {
+    const parsed = JSON.parse(value || 'null');
+    return parsed && typeof parsed === 'object' ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function readOwnerAnalytics(env, days = 30, now = Date.now()) {
+  const rangeDays = Math.max(1, Math.min(90, Math.round(numberOrNull(days) || 30)));
+  const cutoff = now - rangeDays * 86_400_000;
+  const [signalQuery, candidateQuery] = await Promise.all([
+    env.DB.prepare(`
+      SELECT payload_json
+      FROM v2_signal_analytics
+      WHERE created_at >= ?
+      ORDER BY created_at DESC
+      LIMIT 5000
+    `).bind(cutoff).all(),
+    env.DB.prepare(`
+      SELECT candidate_key, fixture_id, selected_side, selected_team, opponent,
+             market, entry_minute, last_minute, entry_score, last_score,
+             peak_momentum, last_momentum, max_streak, triggered, state,
+             sample_count, payload_json, first_seen_at, last_seen_at
+      FROM v2_candidate_history
+      WHERE last_seen_at >= ?
+      ORDER BY last_seen_at DESC
+      LIMIT 500
+    `).bind(cutoff).all(),
+  ]);
+
+  const signals = (signalQuery.results || [])
+    .map(row => parsePayload(row.payload_json, null))
+    .filter(Boolean);
+  const candidates = (candidateQuery.results || []).map(row => ({
+    ...parsePayload(row.payload_json),
+    candidate_key: row.candidate_key,
+    fixture_id: Number(row.fixture_id || 0),
+    side: row.selected_side,
+    selected_team: row.selected_team,
+    opponent: row.opponent,
+    market: row.market,
+    entry_minute: Number(row.entry_minute || 0),
+    last_minute: Number(row.last_minute || 0),
+    entry_score: row.entry_score,
+    last_score: row.last_score,
+    peak_momentum: row.peak_momentum === null ? null : Number(row.peak_momentum),
+    last_momentum: row.last_momentum === null ? null : Number(row.last_momentum),
+    max_streak: Number(row.max_streak || 0),
+    triggered: Boolean(Number(row.triggered || 0)),
+    state: String(row.state || 'WARMING'),
+    sample_count: Number(row.sample_count || 0),
+    first_seen_at: Number(row.first_seen_at || 0),
+    last_seen_at: Number(row.last_seen_at || 0),
+    active: now - Number(row.last_seen_at || 0) < 3 * 60_000,
+  }));
+
+  return {
+    rangeDays,
+    summary: summarizeSignalAnalytics(signals),
+    daily: dailySignalAnalytics(signals, rangeDays, now),
+    candidates,
+    signals: signals.slice(0, 500),
+    generatedAt: new Date(now).toISOString(),
   };
 }
 
