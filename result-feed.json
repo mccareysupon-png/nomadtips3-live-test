@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-12",
-  "generatedAt": "2026-08-12T20:29:35Z",
+  "generatedAt": "2026-08-12T20:30:37Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 27,
-    "correct": 11,
+    "correct": 12,
     "incorrect": 10,
     "void": 1,
-    "pending": 5,
-    "settled": 21,
+    "pending": 4,
+    "settled": 22,
     "allSettled": false,
-    "accuracy": 52.38,
+    "accuracy": 54.55,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 27,
       "correct": 10,
-      "incorrect": 11,
+      "incorrect": 12,
       "void": 1,
-      "pending": 5,
-      "settled": 21,
-      "accuracy": 47.62
+      "pending": 4,
+      "settled": 22,
+      "accuracy": 45.45
     },
     "doubleChance": {
       "total": 27,
-      "correct": 16,
+      "correct": 17,
       "incorrect": 5,
       "void": 1,
-      "pending": 5,
-      "settled": 21,
-      "accuracy": 76.19
+      "pending": 4,
+      "settled": 22,
+      "accuracy": 77.27
     },
     "asianHandicap": {
-      "win": 11,
+      "win": 12,
       "half-win": 0,
       "push": 2,
       "half-loss": 0,
       "loss": 8,
       "void": 1,
-      "pending": 5,
+      "pending": 4,
       "total": 27,
-      "decisions": 19,
-      "weightedRate": 57.89
+      "decisions": 20,
+      "weightedRate": 60.0
     }
   },
   "results": [
@@ -1029,7 +1029,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1039,41 +1039,44 @@
       "home": "Defensores de Vilelas",
       "away": "Tucuman Central",
       "kickoffUtc": "2026-08-12T18:30:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 4,
       "awayScore": 3,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 76,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Defensores de Vilelas or Draw",
           "odds": 1.18,
           "oddsStatus": "LOCKED",
           "confidence": 76,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Defensores de Vilelas -0.5",
           "odds": 1.9,
           "oddsStatus": "LOCKED",
           "confidence": 76,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1120,7 +1123,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1133,7 +1136,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 85,
+      "elapsed": 87,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -1164,7 +1167,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1208,7 +1211,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1252,7 +1255,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     },
     {
@@ -1296,50 +1299,50 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T20:29:35Z",
+      "updatedAt": "2026-08-12T20:30:37Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 7,
-    "correct": 1,
+    "correct": 2,
     "incorrect": 1,
     "void": 0,
-    "pending": 5,
-    "settled": 2,
+    "pending": 4,
+    "settled": 3,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 66.67,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 7,
       "correct": 2,
-      "incorrect": 0,
+      "incorrect": 1,
       "void": 0,
-      "pending": 5,
-      "settled": 2,
-      "accuracy": 100.0
+      "pending": 4,
+      "settled": 3,
+      "accuracy": 66.67
     },
     "doubleChance": {
       "total": 7,
-      "correct": 2,
+      "correct": 3,
       "incorrect": 0,
       "void": 0,
-      "pending": 5,
-      "settled": 2,
+      "pending": 4,
+      "settled": 3,
       "accuracy": 100.0
     },
     "asianHandicap": {
-      "win": 1,
+      "win": 2,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 5,
+      "pending": 4,
       "total": 7,
-      "decisions": 1,
+      "decisions": 2,
       "weightedRate": 100.0
     }
   },
