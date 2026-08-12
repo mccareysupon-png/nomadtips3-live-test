@@ -1,5 +1,5 @@
 import baseEntry from './page5-nonblocking-entry.js';
-import { handleMembershipRoute } from './membership.js';
+import { handleMembershipRoute } from './membership-configured.js';
 import { handlePublicV2Route } from './v2-public-routes.js';
 import { handleV2Route } from './v2-routes.js';
 import { handleOwnerPage } from './v2-owner-page.js';
