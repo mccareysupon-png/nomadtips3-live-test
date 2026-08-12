@@ -1,6 +1,6 @@
 # NOMADTIPS3 Live Engine V2
 
-Status: FOUNDATION / PAPER DATA PIPELINE
+Status: VPS CAR 3 ENGINE / PAPER ONLY
 
 ## Goal
 
@@ -14,29 +14,32 @@ Only the Collector owns `API_FOOTBALL_KEY`.
 
 Frontend pages never call API-Football directly.
 
-## Phase 1 behaviour
+## Runtime behaviour
 
 - Fetch `/fixtures?live=all` as the live heartbeat.
 - Poll live fixtures every 15 seconds while matches are live.
 - Slow down when no matches are live.
 - Record the provider rate-limit headers from every response.
 - Write an atomic local `snapshot.json` for downstream consumers.
-- No odds or statistics fan-out yet.
+- Apply local preliminary filtering before statistics and odds requests.
+- Fetch statistics in groups of 20 and one shared live-odds snapshot.
+- Reuse the original Car 3 weights, momentum smoothing, market parser,
+  red-card safety and confirmation-round rules.
+- Persist state and signal history in local SQLite using WAL mode.
+- Write normalized signals to the existing Car 3 PAPER bot inbox.
+- Publish stored state to Cloudflare D1 for the Access-protected owner page.
+- Back off automatically on API-Football 429 responses and resume without a
+  manual restart.
+- Run continuously under systemd.
 
-## Planned Phase 2
+## Signal policy
 
-- Apply local preliminary filtering first: status, minute, score and owner rules.
-- Fetch statistics only for shortlisted fixtures.
-- Refresh fixture statistics no faster than the upstream update cadence.
-- Fetch in-play odds only when the active condition requires odds and candidates exist.
-- Add D1 ingest and stored state for web display.
+The VPS engine is intentionally `UNLIMITED`: there is no daily ten-signal gate.
+It still deduplicates each `fixture_id:selected_side` so a match cannot emit the
+same side twice.
 
-## Planned Phase 3
-
-- Public read-only viewer.
-- Owner-only settings page.
-- Condition evaluation from cached snapshots.
-- PAPER signal integration.
+Execution remains `PAPER_ONLY` / `WOULD_EXECUTE`; no real transaction connector
+is enabled.
 
 ## Isolation
 
@@ -44,6 +47,11 @@ Frontend pages never call API-Football directly.
 - Do not make browser traffic increase upstream API-Football calls.
 - Keep real-money execution disabled.
 - Keep the previous live engine available for rollback until V2 is verified, but do not run both upstream collectors at the same time during live testing.
+
+## Required secrets
+
+Only the VPS environment file contains `API_FOOTBALL_KEY` and
+`V2_INGEST_SECRET`. Neither value belongs in Git or browser code.
 
 ## Local run
 

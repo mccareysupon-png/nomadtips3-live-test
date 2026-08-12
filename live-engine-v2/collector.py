@@ -9,8 +9,11 @@ import httpx
 from dotenv import load_dotenv
 
 from candidate_filter import filter_preliminary, load_condition_config, normalize_config
+from condition_engine import ConditionEngine
 from detail_fetcher import DetailFetcher
 from detail_normalizer import compact_fixture_details, compact_live_odds
+from engine_store import EngineStore
+from provider_errors import ProviderRateLimitError
 from remote_config import RemoteConfigClient
 from state_publisher import StatePublisher
 
@@ -105,8 +108,13 @@ class Collector:
         self.timeout = env_int("REQUEST_TIMEOUT_SECONDS", 15, 5)
         self.snapshot_path = os.getenv("SNAPSHOT_PATH", "snapshot.json")
         self.condition_config_path = os.getenv("CONDITION_CONFIG_PATH", "condition.json")
+        self.database_path = os.getenv("ENGINE_DB_PATH", "state/car3-engine.sqlite3")
+        self.signal_inbox_dir = os.getenv(
+            "SIGNAL_INBOX_DIR", "../car3-bot/signals/inbox"
+        )
         self.request_count = 0
         self.last_success_at = None
+        self.last_snapshot = None
 
         self.client = httpx.AsyncClient(
             base_url=API_BASE,
@@ -118,14 +126,20 @@ class Collector:
             timeout=self.timeout,
         )
         self.detail_fetcher = DetailFetcher(self.client, self._count_request)
+        self.store = EngineStore(self.database_path)
+        self.engine = ConditionEngine(self.store, self.signal_inbox_dir)
 
         publish_enabled = env_bool("V2_PUBLISH_ENABLED", False)
         publish_url = os.getenv("V2_INGEST_URL", "") if publish_enabled else ""
         shared_secret = os.getenv("V2_INGEST_SECRET", "")
+        auth_mode = os.getenv("V2_AUTH_MODE", "bearer")
+        signing_key = os.getenv("V2_SIGNING_PRIVATE_KEY_B64", "")
         publish_secret = shared_secret if publish_enabled else ""
         self.publisher = StatePublisher(
             publish_url,
             publish_secret,
+            auth_mode=auth_mode,
+            signing_private_key_b64=signing_key,
             collector_id=os.getenv("COLLECTOR_ID", "vps-primary"),
             heartbeat_seconds=env_int("PUBLISH_HEARTBEAT_SECONDS", 60, 15),
         )
@@ -136,6 +150,8 @@ class Collector:
         self.remote_config = RemoteConfigClient(
             remote_url,
             remote_secret,
+            auth_mode=auth_mode,
+            signing_private_key_b64=signing_key,
             refresh_seconds=env_int("V2_CONFIG_REFRESH_SECONDS", 15, 5),
         )
 
@@ -146,6 +162,7 @@ class Collector:
         await self.client.aclose()
         await self.publisher.close()
         await self.remote_config.close()
+        self.store.close()
 
     async def fetch_live(self):
         response = await self.client.get(LIVE_PATH)
@@ -157,7 +174,7 @@ class Collector:
 
         if response.status_code == 429:
             retry_after = meta.get("retry_after")
-            raise RuntimeError(f"API rate limited (429), retry-after={retry_after}")
+            raise ProviderRateLimitError(retry_after)
 
         response.raise_for_status()
         payload = response.json()
@@ -228,6 +245,27 @@ class Collector:
                 "error": str(error),
             }
 
+    def retry_wait(self, error, failure_streak):
+        if isinstance(error, ProviderRateLimitError):
+            provider_wait = error.retry_after or 0
+            return max(provider_wait, min(900, 15 * (2 ** min(6, failure_streak - 1))))
+        return min(300, max(self.idle_poll, 5 * failure_streak))
+
+    async def publish_failure(self, error, failure_streak, wait_seconds):
+        if not self.last_snapshot:
+            return {"published": False, "reason": "NO_LAST_SNAPSHOT"}
+        snapshot = dict(self.last_snapshot)
+        snapshot["runtime"] = {
+            "ok": False,
+            "last_success_at": self.last_success_at,
+            "last_error_at": utc_now(),
+            "last_error": str(error),
+            "error_code": "API_429" if isinstance(error, ProviderRateLimitError) else "COLLECTOR_ERROR",
+            "consecutive_failures": failure_streak,
+            "retry_in_seconds": wait_seconds,
+        }
+        return await self.publish_snapshot(snapshot)
+
     async def run(self):
         print("NOMADTIPS3 Live Engine V2 collector started")
         failure_streak = 0
@@ -243,6 +281,13 @@ class Collector:
                 statistics, live_odds, detail_telemetry = await self.enrich_shortlist(
                     candidates, condition
                 )
+                engine = self.engine.evaluate(
+                    candidates,
+                    statistics,
+                    live_odds,
+                    condition,
+                    condition_meta,
+                )
                 self.last_success_at = utc_now()
                 failure_streak = 0
 
@@ -250,7 +295,7 @@ class Collector:
                     "schema": "nomadtips3.live.v2.fixture-snapshot",
                     "generated_at": self.last_success_at,
                     "request_started_at": started,
-                    "source": "api-football single-collector",
+                    "source": "api-football single-collector + car3 condition engine",
                     "http_status": status,
                     "live_count": len(fixtures),
                     "preliminary_candidate_count": preliminary["candidate_count"],
@@ -266,8 +311,19 @@ class Collector:
                     "preliminary_candidates": candidates,
                     "statistics": statistics,
                     "live_odds": live_odds,
+                    "engine": engine,
+                    "runtime": {
+                        "ok": True,
+                        "last_success_at": self.last_success_at,
+                        "last_error_at": None,
+                        "last_error": None,
+                        "error_code": None,
+                        "consecutive_failures": 0,
+                        "retry_in_seconds": 0,
+                    },
                 }
                 atomic_write_json(self.snapshot_path, snapshot)
+                self.last_snapshot = snapshot
                 publish_result = await self.publish_snapshot(snapshot)
 
                 print(
@@ -275,6 +331,7 @@ class Collector:
                     f"candidates={preliminary['candidate_count']} "
                     f"config={condition_meta['source']} "
                     f"detail_calls={detail_telemetry['origin_requests_cycle']} "
+                    f"signals={engine['counts']['new_signals']} "
                     f"published={publish_result.get('published', False)} "
                     f"remaining={rate.get('minute_remaining')} "
                     f"limit={rate.get('minute_limit')}"
@@ -283,7 +340,8 @@ class Collector:
 
             except Exception as error:
                 failure_streak += 1
-                wait_seconds = min(120, max(self.idle_poll, 5 * failure_streak))
+                wait_seconds = self.retry_wait(error, failure_streak)
+                await self.publish_failure(error, failure_streak, wait_seconds)
                 print(f"[{utc_now()}] collector error: {error}; retry in {wait_seconds}s")
 
             await asyncio.sleep(wait_seconds)
