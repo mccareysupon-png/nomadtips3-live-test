@@ -1,0 +1,26 @@
+[Unit]
+Description=NOMADTIPS3 Car 3 VPS Live Engine (PAPER ONLY)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nomadtips3
+Group=nomadtips3
+WorkingDirectory=/opt/nomadtips3-live-test/live-engine-v2
+EnvironmentFile=/etc/nomadtips3/car3-vps.env
+ExecStart=/opt/nomadtips3-live-test/live-engine-v2/.venv/bin/python collector.py
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+KillSignal=SIGINT
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/opt/nomadtips3-live-test/live-engine-v2/state
+ReadWritePaths=/opt/nomadtips3-live-test/car3-bot/signals
+
+[Install]
+WantedBy=multi-user.target

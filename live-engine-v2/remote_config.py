@@ -2,17 +2,23 @@ import time
 
 import httpx
 
+from request_signing import RequestSigner
+
 
 class RemoteConfigClient:
     def __init__(
         self,
         url,
         secret,
+        auth_mode="bearer",
+        signing_private_key_b64="",
         refresh_seconds=15,
         client=None,
     ):
         self.url = str(url or "").strip()
         self.secret = str(secret or "").strip()
+        self.auth_mode = str(auth_mode or "bearer").strip().lower()
+        self.signer = RequestSigner(signing_private_key_b64)
         self.refresh_seconds = max(5, int(refresh_seconds))
         self._owns_client = client is None
         self.client = client or httpx.AsyncClient(timeout=10)
@@ -22,7 +28,8 @@ class RemoteConfigClient:
 
     @property
     def configured(self):
-        return bool(self.url and self.secret)
+        has_auth = self.secret or (self.auth_mode == "signed" and self.signer.configured)
+        return bool(self.url and has_auth)
 
     async def close(self):
         if self._owns_client:
@@ -41,14 +48,15 @@ class RemoteConfigClient:
 
         self.last_checked_monotonic = time.monotonic()
         try:
-            response = await self.client.get(
-                self.url,
-                headers={
-                    "Authorization": f"Bearer {self.secret}",
-                    "Accept": "application/json",
-                    "User-Agent": "nomadtips3-live-engine-v2/0.5",
-                },
-            )
+            headers = {
+                "Accept": "application/json",
+                "User-Agent": "nomadtips3-live-engine-v2/1.0",
+            }
+            if self.secret:
+                headers["Authorization"] = f"Bearer {self.secret}"
+            if self.auth_mode == "signed":
+                headers.update(self.signer.headers("GET", self.url))
+            response = await self.client.get(self.url, headers=headers)
             response.raise_for_status()
             data = response.json()
             if not data.get("ok"):

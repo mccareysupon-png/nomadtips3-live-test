@@ -4,6 +4,8 @@ import time
 
 import httpx
 
+from request_signing import RequestSigner
+
 
 HASH_FIELDS = (
     "live_count",
@@ -16,6 +18,8 @@ HASH_FIELDS = (
     "preliminary_candidates",
     "statistics",
     "live_odds",
+    "engine",
+    "runtime",
 )
 
 
@@ -35,12 +39,16 @@ class StatePublisher:
         self,
         url,
         secret,
+        auth_mode="bearer",
+        signing_private_key_b64="",
         collector_id="vps-primary",
         heartbeat_seconds=60,
         client=None,
     ):
         self.url = str(url or "").strip()
         self.secret = str(secret or "").strip()
+        self.auth_mode = str(auth_mode or "bearer").strip().lower()
+        self.signer = RequestSigner(signing_private_key_b64)
         self.collector_id = str(collector_id or "vps-primary")
         self.heartbeat_seconds = max(15, int(heartbeat_seconds))
         self._owns_client = client is None
@@ -50,7 +58,8 @@ class StatePublisher:
 
     @property
     def configured(self):
-        return bool(self.url and self.secret)
+        has_auth = self.secret or (self.auth_mode == "signed" and self.signer.configured)
+        return bool(self.url and has_auth)
 
     async def close(self):
         if self._owns_client:
@@ -72,20 +81,26 @@ class StatePublisher:
                 "state_hash": digest,
             }
 
-        response = await self.client.post(
-            self.url,
-            headers={
-                "Authorization": f"Bearer {self.secret}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "User-Agent": "nomadtips3-live-engine-v2/0.4",
-            },
-            json={
-                "collector_id": self.collector_id,
-                "state_hash": digest,
-                "payload": payload,
-            },
-        )
+        envelope = {
+            "collector_id": self.collector_id,
+            "state_hash": digest,
+            "payload": payload,
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "nomadtips3-live-engine-v2/1.0",
+        }
+        if self.secret:
+            headers["Authorization"] = f"Bearer {self.secret}"
+        if self.auth_mode == "signed":
+            body = json.dumps(
+                envelope, ensure_ascii=False, separators=(",", ":")
+            ).encode("utf-8")
+            headers.update(self.signer.headers("POST", self.url, body))
+            response = await self.client.post(self.url, headers=headers, content=body)
+        else:
+            response = await self.client.post(self.url, headers=headers, json=envelope)
         response.raise_for_status()
         self.last_hash = digest
         self.last_publish_monotonic = time.monotonic()

@@ -49,6 +49,56 @@ function authorized(request, secret) {
   return bearer(request) === String(secret);
 }
 
+function decodeBase64(value) {
+  try {
+    const binary = atob(String(value || ''));
+    return Uint8Array.from(binary, character => character.charCodeAt(0));
+  } catch {
+    return null;
+  }
+}
+
+async function sha256Hex(bytes) {
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  return [...digest].map(value => value.toString(16).padStart(2, '0')).join('');
+}
+
+export async function signedCollectorAuthorized(request, env, now = Date.now()) {
+  const publicKeyBytes = decodeBase64(env.V2_COLLECTOR_PUBLIC_KEY_B64);
+  const signature = decodeBase64(request.headers.get('X-Nomad-Signature'));
+  const timestampText = request.headers.get('X-Nomad-Timestamp') || '';
+  const nonce = request.headers.get('X-Nomad-Nonce') || '';
+  const timestamp = Number(timestampText);
+  if (!publicKeyBytes || publicKeyBytes.length !== 32 || !signature || signature.length !== 64) return false;
+  if (!/^[a-f0-9]{32}$/i.test(nonce) || !Number.isInteger(timestamp)) return false;
+  if (Math.abs(Math.floor(now / 1000) - timestamp) > 180) return false;
+
+  const body = await request.clone().arrayBuffer();
+  const path = new URL(request.url).pathname || '/';
+  const canonical = `${request.method.toUpperCase()}\n${path}\n${timestampText}\n${nonce}\n${await sha256Hex(body)}`;
+  const key = await crypto.subtle.importKey(
+    'raw', publicKeyBytes, { name: 'Ed25519' }, false, ['verify']
+  );
+  const valid = await crypto.subtle.verify(
+    { name: 'Ed25519' }, key, signature, new TextEncoder().encode(canonical)
+  );
+  if (!valid) return false;
+
+  const inserted = await env.DB.prepare(`
+    INSERT OR IGNORE INTO v2_auth_nonce (nonce, expires_at, created_at)
+    VALUES (?, ?, ?)
+  `).bind(nonce, now + 5 * 60_000, now).run();
+  if (Number(inserted?.meta?.changes || 0) !== 1) return false;
+  await env.DB.prepare('DELETE FROM v2_auth_nonce WHERE expires_at < ?')
+    .bind(now).run().catch(() => null);
+  return true;
+}
+
+async function collectorAuthorized(request, env) {
+  if (authorized(request, env.V2_INGEST_SECRET)) return true;
+  try { return await signedCollectorAuthorized(request, env); } catch { return false; }
+}
+
 function hasAccessSession(request) {
   const cookie = request.headers.get('Cookie') || '';
   return /(?:^|;\s*)CF_Authorization=[^;]+/i.test(cookie);
@@ -129,7 +179,7 @@ export async function handleV2Route(request, env) {
 
   if (url.pathname === '/v2/ingest') {
     if (request.method !== 'POST') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
-    if (!authorized(request, env.V2_INGEST_SECRET)) {
+    if (!(await collectorAuthorized(request, env))) {
       return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
     }
     try {
@@ -151,7 +201,7 @@ export async function handleV2Route(request, env) {
 
   if (url.pathname === '/v2/collector/config') {
     if (request.method !== 'GET') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
-    if (!authorized(request, env.V2_INGEST_SECRET)) {
+    if (!(await collectorAuthorized(request, env))) {
       return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
     }
     return reply(request, { ok: true, ownerConfig: await readOwnerConfig(env) });
@@ -161,6 +211,17 @@ export async function handleV2Route(request, env) {
     if (request.method !== 'GET') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
     const latest = await readLatestState(env);
     return reply(request, { ok: true, state: latest ? publicPayload(latest) : null });
+  }
+
+  if (url.pathname === '/v2/owner/status') {
+    if (!ownerAuthorized(request, env)) return reply(request, { ok: false, error: 'UNAUTHORIZED' }, 401);
+    if (request.method !== 'GET') return reply(request, { ok: false, error: 'METHOD_NOT_ALLOWED' }, 405);
+    return reply(request, {
+      ok: true,
+      state: await readLatestState(env),
+      ownerConfig: await readOwnerConfig(env),
+      generatedAt: new Date().toISOString()
+    });
   }
 
   if (url.pathname === '/v2/owner/config') {

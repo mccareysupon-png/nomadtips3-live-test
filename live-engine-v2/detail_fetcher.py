@@ -2,6 +2,8 @@ import asyncio
 import time
 from dataclasses import dataclass
 
+from provider_errors import ProviderRateLimitError
+
 
 @dataclass
 class CacheEntry:
@@ -107,7 +109,7 @@ class DetailFetcher:
 
             if response.status_code == 429:
                 retry_after = response.headers.get("retry-after")
-                raise RuntimeError(f"API rate limited (429), retry-after={retry_after}")
+                raise ProviderRateLimitError(retry_after)
             if response.status_code == 204:
                 payload = {"response": []}
             else:

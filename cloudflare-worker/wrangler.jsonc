@@ -2,10 +2,13 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-test-api",
   "main": "src/v2-entry.js",
-  "compatibility_date": "2026-08-05",
+  "compatibility_date": "2026-08-11",
   "workers_dev": true,
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "V2_COLLECTOR_PUBLIC_KEY_B64": "iw+vAL7PworXClFD1coKWdX5juDwgRj3SBHttvuelX4="
   },
   "d1_databases": [
     {

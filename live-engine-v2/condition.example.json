@@ -1,13 +1,23 @@
 {
   "enabled": true,
   "statuses": ["1H", "HT", "2H", "ET", "BT", "P", "INT", "LIVE"],
-  "minute_min": 1,
-  "minute_max": 120,
+  "side": "BOTH",
+  "minute_min": 50,
+  "minute_max": 89,
+  "market": "AH",
+  "odds_min": 1.2,
+  "odds_max": null,
+  "ah_min": 0.75,
+  "ah_max": null,
+  "momentum_min": 10,
+  "attack_evidence_enabled": false,
+  "confirmation_rounds": 1,
   "goal_gap_enabled": false,
   "max_goal_gap": 99,
   "score_states": ["ANY"],
-  "statistics_enabled": false,
-  "live_odds_enabled": false,
+  "statistics_enabled": true,
+  "live_odds_enabled": true,
   "statistics_ttl_seconds": 60,
-  "live_odds_ttl_seconds": 10
+  "live_odds_ttl_seconds": 15,
+  "signal_limit_enabled": false
 }

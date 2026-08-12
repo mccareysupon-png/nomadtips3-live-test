@@ -12,6 +12,8 @@ import {
 const AUDIT_STALE_MS = 2 * 60_000;
 const ACTIVE_STATE_MS = 15 * 60_000;
 const MAX_AUTO_REPAIR_ATTEMPTS = 2;
+const THAI_OFFSET_MS = 7 * 60 * 60_000;
+const DAY_MS = 24 * 60 * 60_000;
 
 const AUDIT_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS condition_audit_status (
@@ -34,9 +36,11 @@ CREATE TABLE IF NOT EXISTS condition_audit_status (
 
 let auditSchemaReady = false;
 
-function startOfThaiDay(now) {
-  const offset = 7 * 60 * 60_000;
-  return Math.floor((now + offset) / 86_400_000) * 86_400_000 - offset;
+export function startOfThaiCycle(now, resetHour = 12) {
+  const resetMs = Number(resetHour || 0) * 60 * 60_000;
+  return Math.floor((now + THAI_OFFSET_MS - resetMs) / DAY_MS) * DAY_MS
+    - THAI_OFFSET_MS
+    + resetMs;
 }
 
 function iso(value) {
@@ -147,7 +151,7 @@ async function evaluateConditionAudit(env, config, now = Date.now()) {
   const [signalKeys, dailyCountRow] = await Promise.all([
     signalKeysForStates(env, states),
     env.DB.prepare('SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?')
-      .bind(startOfThaiDay(now)).first()
+      .bind(startOfThaiCycle(now, Number(config.dailyTenResetHour ?? 12))).first()
   ]);
 
   const dailySignals = Number(dailyCountRow?.total || 0);
