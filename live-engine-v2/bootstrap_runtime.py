@@ -12,6 +12,8 @@ DEFAULTS = {
     "LIVE_POLL_SECONDS": "15",
     "IDLE_POLL_SECONDS": "60",
     "REQUEST_TIMEOUT_SECONDS": "15",
+    "SETTLEMENT_POLL_SECONDS": "300",
+    "SETTLEMENT_MIN_AGE_SECONDS": "120",
     "SNAPSHOT_PATH": "/opt/nomadtips3-live-test/live-engine-v2/state/snapshot.json",
     "CONDITION_CONFIG_PATH": "/opt/nomadtips3-live-test/live-engine-v2/condition.json",
     "ENGINE_DB_PATH": "/opt/nomadtips3-live-test/live-engine-v2/state/car3-engine.sqlite3",

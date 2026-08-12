@@ -123,6 +123,10 @@ class ConditionEngineTests(unittest.TestCase):
             self.assertIsNone(result["signal_limit"])
             self.assertEqual(result["counts"]["new_signals"], 12)
             self.assertEqual(len(list((root / "inbox").glob("*.json"))), 12)
+            self.assertEqual(result["active_candidates"][0]["state"], "TRIGGERED")
+            self.assertTrue(result["active_candidates"][0]["passed"])
+            self.assertIn("dangerous_attacks", result["active_candidates"][0]["statistics"])
+            self.assertEqual(result["recent_signals"][0]["outcome"], "PENDING")
             store.close()
 
 

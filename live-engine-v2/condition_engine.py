@@ -47,6 +47,25 @@ def swap_stats(stats):
     }
 
 
+def candidate_statistics(stats):
+    keys = (
+        "attacks",
+        "dangerous_attacks",
+        "shots",
+        "shots_on_target",
+        "corners",
+        "possession",
+        "red_cards",
+    )
+    return {
+        key: {
+            "selected": number((stats.get(key) or {}).get("home")),
+            "opponent": number((stats.get(key) or {}).get("away")),
+        }
+        for key in keys
+    }
+
+
 def selected_sides(config):
     side = str(config.get("side") or "HOME").upper()
     if side == "BOTH":
@@ -331,14 +350,45 @@ class ConditionEngine:
                     last_sample_at=now_ms,
                     config_version=version,
                 )
+                reasons = []
+                if calculated is None:
+                    reasons.append("MOMENTUM_WARMING")
+                else:
+                    if calculated["selected"] < condition["momentum_min"]:
+                        reasons.append("MOMENTUM")
+                    if (
+                        condition["attack_evidence_enabled"]
+                        and calculated["evidence"] < 1
+                    ):
+                        reasons.append("ATTACK_EVIDENCE")
+                if passed and streak < condition["confirmation_rounds"]:
+                    reasons.append("CONFIRMATION")
+                if triggered:
+                    candidate_state = "TRIGGERED"
+                elif passed and streak >= condition["confirmation_rounds"]:
+                    candidate_state = "QUALIFIED"
+                elif passed:
+                    candidate_state = "CONFIRMING"
+                elif calculated is None:
+                    candidate_state = "WARMING"
+                else:
+                    candidate_state = "BELOW_THRESHOLD"
+
                 samples.append(
                     {
+                        "candidate_key": key,
                         "fixture_id": fixture_id,
                         "side": side,
+                        "home": fixture["home"],
+                        "away": fixture["away"],
                         "selected_team": selected_team,
                         "opponent": opponent,
                         "minute": int(fixture["minute"]),
                         "score": f"{selected_score}-{opponent_score}",
+                        "actual_score": {
+                            "home": int(fixture["home_score"]),
+                            "away": int(fixture["away_score"]),
+                        },
                         "momentum": calculated["selected"] if calculated else None,
                         "evidence": calculated["evidence"] if calculated else None,
                         "streak": streak,
@@ -346,6 +396,10 @@ class ConditionEngine:
                         "selected_odds": selected_odds,
                         "ah_line": markets["ah"],
                         "ah_odds": markets["ah_odds"],
+                        "statistics": candidate_statistics(selected_stats),
+                        "passed": passed,
+                        "state": candidate_state,
+                        "rejection_reasons": reasons,
                         "triggered": triggered,
                     }
                 )
