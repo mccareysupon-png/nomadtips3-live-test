@@ -1,5 +1,4 @@
-const LATEST_ID = 1;
-const CONFIG_ID = 1;
+const LATEST_ID = 1;\nconst CONFIG_ID = 1;
 
 export const DEFAULT_V2_OWNER_CONFIG = Object.freeze({
   enabled: true,
@@ -86,8 +85,7 @@ export function normalizeV2OwnerConfig(input = {}) {
     signal_limit_policy: 'UNLIMITED'
   };
 }
-
-function json(value) {
+\nfunction json(value) {
   return JSON.stringify(value ?? null);
 }
 
@@ -232,50 +230,12 @@ export function dailySignalAnalytics(signals = [], days = 30, now = Date.now()) 
   }
   return buckets;
 }
-
-export async function ensureV2Schema(env) {
+\nexport async function ensureV2Schema(env) {
   const now = Date.now();
   await env.DB.batch([
-    env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS v2_latest_state (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        schema_name TEXT NOT NULL,
-        generated_at TEXT NOT NULL,
-        ingested_at INTEGER NOT NULL,
-        collector_id TEXT NOT NULL,
-        state_hash TEXT NOT NULL,
-        live_count INTEGER NOT NULL DEFAULT 0,
-        candidate_count INTEGER NOT NULL DEFAULT 0,
-        statistics_fixture_count INTEGER NOT NULL DEFAULT 0,
-        live_odds_fixture_count INTEGER NOT NULL DEFAULT 0,
-        request_count_process INTEGER NOT NULL DEFAULT 0,
-        rate_limit_remaining INTEGER,
-        rate_limit_limit INTEGER,
-        payload_json TEXT NOT NULL
-      )
-    `),
-    env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS v2_owner_config (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
-        version INTEGER NOT NULL DEFAULT 1,
-        config_json TEXT NOT NULL,
-        updated_at INTEGER NOT NULL,
-        updated_by TEXT NOT NULL DEFAULT 'owner'
-      )
-    `),
-    env.DB.prepare(`
+    env.DB.prepare(`\n      CREATE TABLE IF NOT EXISTS v2_latest_state (\n        id INTEGER PRIMARY KEY CHECK (id = 1),\n        schema_name TEXT NOT NULL,\n        generated_at TEXT NOT NULL,\n        ingested_at INTEGER NOT NULL,\n        collector_id TEXT NOT NULL,\n        state_hash TEXT NOT NULL,\n        live_count INTEGER NOT NULL DEFAULT 0,\n        candidate_count INTEGER NOT NULL DEFAULT 0,\n        statistics_fixture_count INTEGER NOT NULL DEFAULT 0,\n        live_odds_fixture_count INTEGER NOT NULL DEFAULT 0,\n        request_count_process INTEGER NOT NULL DEFAULT 0,\n        rate_limit_remaining INTEGER,\n        rate_limit_limit INTEGER,\n        payload_json TEXT NOT NULL\n      )\n    `),\n    env.DB.prepare(`\n      CREATE TABLE IF NOT EXISTS v2_owner_config (\n        id INTEGER PRIMARY KEY CHECK (id = 1),\n        version INTEGER NOT NULL DEFAULT 1,\n        config_json TEXT NOT NULL,\n        updated_at INTEGER NOT NULL,\n        updated_by TEXT NOT NULL DEFAULT 'owner'\n      )\n    `),\n    env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS v2_signal_history (
-        signal_id TEXT PRIMARY KEY,
-        fixture_id INTEGER NOT NULL,
-        selected_side TEXT,
-        selected_team TEXT,
-        opponent TEXT,
-        minute INTEGER,
-        state TEXT NOT NULL,
-        payload_json TEXT NOT NULL,
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
-      )
+        signal_id TEXT PRIMARY KEY,\n        fixture_id INTEGER NOT NULL,\n        selected_side TEXT,\n        selected_team TEXT,\n        opponent TEXT,\n        minute INTEGER,\n        state TEXT NOT NULL,\n        payload_json TEXT NOT NULL,\n        created_at INTEGER NOT NULL,\n        updated_at INTEGER NOT NULL\n      )
     `),
     env.DB.prepare(`
       CREATE TABLE IF NOT EXISTS v2_candidate_history (
@@ -460,45 +420,10 @@ async function runStatementBatches(env, statements, batchSize = 75) {
 }
 
 export async function writeLatestState(env, envelope) {
-  const now = Date.now();
-  const payload = envelope?.payload || {};
-  const rate = payload?.rate_limit || {};
-  const statements = [env.DB.prepare(`
+  const now = Date.now();\n  const payload = envelope?.payload || {};\n  const rate = payload?.rate_limit || {};\n  const statements = [env.DB.prepare(`
     INSERT INTO v2_latest_state (
-      id, schema_name, generated_at, ingested_at, collector_id, state_hash,
-      live_count, candidate_count, statistics_fixture_count,
-      live_odds_fixture_count, request_count_process,
-      rate_limit_remaining, rate_limit_limit, payload_json
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      schema_name = excluded.schema_name,
-      generated_at = excluded.generated_at,
-      ingested_at = excluded.ingested_at,
-      collector_id = excluded.collector_id,
-      state_hash = excluded.state_hash,
-      live_count = excluded.live_count,
-      candidate_count = excluded.candidate_count,
-      statistics_fixture_count = excluded.statistics_fixture_count,
-      live_odds_fixture_count = excluded.live_odds_fixture_count,
-      request_count_process = excluded.request_count_process,
-      rate_limit_remaining = excluded.rate_limit_remaining,
-      rate_limit_limit = excluded.rate_limit_limit,
-      payload_json = excluded.payload_json
-  `).bind(
-    LATEST_ID,
-    String(payload.schema || 'nomadtips3.live.v2.fixture-snapshot'),
-    String(payload.generated_at || new Date(now).toISOString()),
-    now,
-    String(envelope.collector_id || 'unknown'),
-    String(envelope.state_hash || ''),
-    Number(payload.live_count || 0),
-    Number(payload.preliminary_candidate_count || 0),
-    Number(payload.statistics_fixture_count || 0),
-    Number(payload.live_odds_fixture_count || 0),
-    Number(payload.request_count_process || 0),
-    Number.isFinite(Number(rate.minute_remaining)) ? Number(rate.minute_remaining) : null,
-    Number.isFinite(Number(rate.minute_limit)) ? Number(rate.minute_limit) : null,
-    json(payload)
+      id, schema_name, generated_at, ingested_at, collector_id, state_hash,\n      live_count, candidate_count, statistics_fixture_count,\n      live_odds_fixture_count, request_count_process,\n      rate_limit_remaining, rate_limit_limit, payload_json\n    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(id) DO UPDATE SET\n      schema_name = excluded.schema_name,\n      generated_at = excluded.generated_at,\n      ingested_at = excluded.ingested_at,\n      collector_id = excluded.collector_id,\n      state_hash = excluded.state_hash,\n      live_count = excluded.live_count,\n      candidate_count = excluded.candidate_count,\n      statistics_fixture_count = excluded.statistics_fixture_count,\n      live_odds_fixture_count = excluded.live_odds_fixture_count,\n      request_count_process = excluded.request_count_process,\n      rate_limit_remaining = excluded.rate_limit_remaining,\n      rate_limit_limit = excluded.rate_limit_limit,\n      payload_json = excluded.payload_json\n  `).bind(
+    LATEST_ID,\n    String(payload.schema || 'nomadtips3.live.v2.fixture-snapshot'),\n    String(payload.generated_at || new Date(now).toISOString()),\n    now,\n    String(envelope.collector_id || 'unknown'),\n    String(envelope.state_hash || ''),\n    Number(payload.live_count || 0),\n    Number(payload.preliminary_candidate_count || 0),\n    Number(payload.statistics_fixture_count || 0),\n    Number(payload.live_odds_fixture_count || 0),\n    Number(payload.request_count_process || 0),\n    Number.isFinite(Number(rate.minute_remaining)) ? Number(rate.minute_remaining) : null,\n    Number.isFinite(Number(rate.minute_limit)) ? Number(rate.minute_limit) : null,\n    json(payload)
   )];
 
   const generatedAt = timestamp(payload.generated_at, now);
@@ -516,27 +441,8 @@ export async function writeLatestState(env, envelope) {
   );
   await runStatementBatches(env, statements);
 }
-
-export async function readLatestState(env) {
-  const row = await env.DB.prepare(`SELECT * FROM v2_latest_state WHERE id = ? LIMIT 1`).bind(LATEST_ID).first();
-  if (!row) return null;
-  let payload = null;
-  try { payload = JSON.parse(row.payload_json || 'null'); } catch {}
-  return {
-    schemaName: row.schema_name,
-    generatedAt: row.generated_at,
-    ingestedAt: Number(row.ingested_at || 0),
-    collectorId: row.collector_id,
-    stateHash: row.state_hash,
-    liveCount: Number(row.live_count || 0),
-    candidateCount: Number(row.candidate_count || 0),
-    statisticsFixtureCount: Number(row.statistics_fixture_count || 0),
-    liveOddsFixtureCount: Number(row.live_odds_fixture_count || 0),
-    requestCountProcess: Number(row.request_count_process || 0),
-    rateLimitRemaining: row.rate_limit_remaining === null ? null : Number(row.rate_limit_remaining),
-    rateLimitLimit: row.rate_limit_limit === null ? null : Number(row.rate_limit_limit),
-    payload
-  };
+\nexport async function readLatestState(env) {
+  const row = await env.DB.prepare(`SELECT * FROM v2_latest_state WHERE id = ? LIMIT 1`).bind(LATEST_ID).first();\n  if (!row) return null;\n  let payload = null;\n  try { payload = JSON.parse(row.payload_json || 'null'); } catch {}\n  return {\n    schemaName: row.schema_name,\n    generatedAt: row.generated_at,\n    ingestedAt: Number(row.ingested_at || 0),\n    collectorId: row.collector_id,\n    stateHash: row.state_hash,\n    liveCount: Number(row.live_count || 0),\n    candidateCount: Number(row.candidate_count || 0),\n    statisticsFixtureCount: Number(row.statistics_fixture_count || 0),\n    liveOddsFixtureCount: Number(row.live_odds_fixture_count || 0),\n    requestCountProcess: Number(row.request_count_process || 0),\n    rateLimitRemaining: row.rate_limit_remaining === null ? null : Number(row.rate_limit_remaining),\n    rateLimitLimit: row.rate_limit_limit === null ? null : Number(row.rate_limit_limit),\n    payload\n  };
 }
 
 function parsePayload(value, fallback = {}) {
@@ -608,46 +514,12 @@ export async function readOwnerAnalytics(env, days = 30, now = Date.now()) {
 }
 
 export async function readOwnerConfig(env) {
-  const row = await env.DB.prepare(`
-    SELECT version, config_json, updated_at, updated_by
-    FROM v2_owner_config WHERE id = ? LIMIT 1
-  `).bind(CONFIG_ID).first();
-  if (!row) return null;
-  let config = {};
-  try { config = normalizeV2OwnerConfig(JSON.parse(row.config_json || '{}')); } catch {
+  const row = await env.DB.prepare(`\n    SELECT version, config_json, updated_at, updated_by\n    FROM v2_owner_config WHERE id = ? LIMIT 1\n  `).bind(CONFIG_ID).first();\n  if (!row) return null;\n  let config = {};\n  try { config = normalizeV2OwnerConfig(JSON.parse(row.config_json || '{}')); } catch {
     config = normalizeV2OwnerConfig(DEFAULT_V2_OWNER_CONFIG);
   }
-  return {
-    version: Number(row.version || 1),
-    config,
-    updatedAt: Number(row.updated_at || 0),
-    updatedBy: row.updated_by || 'owner'
-  };
-}
-
-export async function writeOwnerConfig(env, config, expectedVersion = null, updatedBy = 'owner') {
-  const current = await readOwnerConfig(env);
-  if (expectedVersion !== null && current && Number(expectedVersion) !== current.version) {
-    return { ok: false, conflict: true, current };
-  }
-  const normalized = normalizeV2OwnerConfig(config);
+  return {\n    version: Number(row.version || 1),\n    config,\n    updatedAt: Number(row.updated_at || 0),\n    updatedBy: row.updated_by || 'owner'\n  };\n}\n\nexport async function writeOwnerConfig(env, config, expectedVersion = null, updatedBy = 'owner') {
+  const current = await readOwnerConfig(env);\n  if (expectedVersion !== null && current && Number(expectedVersion) !== current.version) {\n    return { ok: false, conflict: true, current };\n  }\n  const normalized = normalizeV2OwnerConfig(config);
   const nextVersion = current ? current.version + 1 : 1;
-  const now = Date.now();
-  await env.DB.prepare(`
-    INSERT INTO v2_owner_config (id, version, config_json, updated_at, updated_by)
-    VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      version = excluded.version,
-      config_json = excluded.config_json,
-      updated_at = excluded.updated_at,
-      updated_by = excluded.updated_by
-  `).bind(CONFIG_ID, nextVersion, json(normalized), now, String(updatedBy || 'owner')).run();
-  return {
-    ok: true,
-    conflict: false,
-    version: nextVersion,
-    config: normalized,
-    updatedAt: now,
-    updatedBy: String(updatedBy || 'owner')
-  };
-}
+  const now = Date.now();\n  await env.DB.prepare(`\n    INSERT INTO v2_owner_config (id, version, config_json, updated_at, updated_by)\n    VALUES (?, ?, ?, ?, ?)\n    ON CONFLICT(id) DO UPDATE SET\n      version = excluded.version,\n      config_json = excluded.config_json,\n      updated_at = excluded.updated_at,\n      updated_by = excluded.updated_by\n  `).bind(CONFIG_ID, nextVersion, json(normalized), now, String(updatedBy || 'owner')).run();
+  return {\n    ok: true,\n    conflict: false,\n    version: nextVersion,\n    config: normalized,
+    updatedAt: now,\n    updatedBy: String(updatedBy || 'owner')\n  };\n}\n

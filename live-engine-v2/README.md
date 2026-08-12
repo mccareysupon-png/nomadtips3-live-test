@@ -1,27 +1,6 @@
-# NOMADTIPS3 Live Engine V2
-
-Status: VPS CAR 3 ENGINE / PAPER ONLY
-
-## Goal
-
-Build a single-source live football data pipeline that can later serve the public viewer, owner settings, notifications and PAPER execution lab without letting every page or subsystem call API-Football independently.
-
-## Architecture
-
-API-Football -> Single Collector -> Local Snapshot/Cache -> Condition Engine -> Cloudflare D1 -> Public Viewer / Owner Settings / PAPER Lab
-
-Only the Collector owns `API_FOOTBALL_KEY`.
-
-Frontend pages never call API-Football directly.
-
-## Runtime behaviour
-
-- Fetch `/fixtures?live=all` as the live heartbeat.
-- Poll live fixtures every 15 seconds while matches are live.
-- Slow down when no matches are live.
-- Record the provider rate-limit headers from every response.
-- Write an atomic local `snapshot.json` for downstream consumers.
-- Apply local preliminary filtering before statistics and odds requests.
+# NOMADTIPS3 Live Engine V2\n\nStatus: VPS CAR 3 ENGINE / PAPER ONLY
+\n## Goal\n\nBuild a single-source live football data pipeline that can later serve the public viewer, owner settings, notifications and PAPER execution lab without letting every page or subsystem call API-Football independently.\n\n## Architecture\n\nAPI-Football -> Single Collector -> Local Snapshot/Cache -> Condition Engine -> Cloudflare D1 -> Public Viewer / Owner Settings / PAPER Lab\n\nOnly the Collector owns `API_FOOTBALL_KEY`.\n\nFrontend pages never call API-Football directly.\n\n## Runtime behaviour
+\n- Fetch `/fixtures?live=all` as the live heartbeat.\n- Poll live fixtures every 15 seconds while matches are live.\n- Slow down when no matches are live.\n- Record the provider rate-limit headers from every response.\n- Write an atomic local `snapshot.json` for downstream consumers.\n- Apply local preliminary filtering before statistics and odds requests.
 - Fetch statistics in groups of 20 and one shared live-odds snapshot.
 - Reuse the original Car 3 weights, momentum smoothing, market parser,
   red-card safety and confirmation-round rules.
@@ -47,35 +26,10 @@ same side twice.
 
 Execution remains `PAPER_ONLY` / `WOULD_EXECUTE`; no real transaction connector
 is enabled.
-
-## Isolation
-
-- Do not modify Production Car 1 selection files.
-- Do not make browser traffic increase upstream API-Football calls.
-- Keep real-money execution disabled.
-- Keep the previous live engine available for rollback until V2 is verified, but do not run both upstream collectors at the same time during live testing.
-
-## Required secrets
+\n## Isolation\n\n- Do not modify Production Car 1 selection files.\n- Do not make browser traffic increase upstream API-Football calls.\n- Keep real-money execution disabled.\n- Keep the previous live engine available for rollback until V2 is verified, but do not run both upstream collectors at the same time during live testing.\n\n## Required secrets
 
 Only the VPS environment file contains `API_FOOTBALL_KEY` and
 `V2_INGEST_SECRET`. Neither value belongs in Git or browser code.
 
 ## Local run
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-python collector.py
-```
-
-Linux/VPS:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-python collector.py
-```
+\n```bash\npython -m venv .venv\n.venv\Scripts\activate\npip install -r requirements.txt\ncopy .env.example .env\npython collector.py\n```\n\nLinux/VPS:\n\n```bash\npython3 -m venv .venv\nsource .venv/bin/activate\npip install -r requirements.txt\ncp .env.example .env\npython collector.py\n```\n
