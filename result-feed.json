@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-13",
-  "generatedAt": "2026-08-13T19:53:13Z",
+  "generatedAt": "2026-08-13T19:54:16Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 35,
-    "correct": 15,
+    "correct": 16,
     "incorrect": 12,
     "void": 1,
-    "pending": 7,
-    "settled": 27,
+    "pending": 6,
+    "settled": 28,
     "allSettled": false,
-    "accuracy": 55.56,
+    "accuracy": 57.14,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 35,
-      "correct": 12,
+      "correct": 13,
       "incorrect": 15,
       "void": 1,
-      "pending": 7,
-      "settled": 27,
-      "accuracy": 44.44
+      "pending": 6,
+      "settled": 28,
+      "accuracy": 46.43
     },
     "doubleChance": {
       "total": 35,
-      "correct": 22,
+      "correct": 23,
       "incorrect": 5,
       "void": 1,
-      "pending": 7,
-      "settled": 27,
-      "accuracy": 81.48
+      "pending": 6,
+      "settled": 28,
+      "accuracy": 82.14
     },
     "asianHandicap": {
-      "win": 15,
+      "win": 16,
       "half-win": 0,
       "push": 3,
       "half-loss": 0,
       "loss": 9,
       "void": 1,
-      "pending": 7,
+      "pending": 6,
       "total": 35,
-      "decisions": 24,
-      "weightedRate": 62.5
+      "decisions": 25,
+      "weightedRate": 64.0
     }
   },
   "results": [
@@ -1355,7 +1355,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1402,7 +1402,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1412,41 +1412,44 @@
       "home": "San Lorenzo Res.",
       "away": "Barracas Central Res.",
       "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 1,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.72,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "1X — San Lorenzo Res. or Draw",
           "odds": 1.12,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "San Lorenzo Res. 0",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": 0.0,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1490,7 +1493,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1534,7 +1537,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1578,7 +1581,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1622,7 +1625,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     },
     {
@@ -1666,17 +1669,17 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:53:13Z",
+      "updatedAt": "2026-08-13T19:54:16Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 8,
-    "correct": 1,
+    "correct": 2,
     "incorrect": 0,
     "void": 0,
-    "pending": 7,
-    "settled": 1,
+    "pending": 6,
+    "settled": 2,
     "allSettled": false,
     "accuracy": 100.0,
     "finalizedAt": null
@@ -1684,32 +1687,32 @@
   "currentBatchMarketSummary": {
     "btts": {
       "total": 8,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 1,
       "void": 0,
-      "pending": 7,
-      "settled": 1,
-      "accuracy": 0.0
+      "pending": 6,
+      "settled": 2,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 8,
-      "correct": 1,
+      "correct": 2,
       "incorrect": 0,
       "void": 0,
-      "pending": 7,
-      "settled": 1,
+      "pending": 6,
+      "settled": 2,
       "accuracy": 100.0
     },
     "asianHandicap": {
-      "win": 1,
+      "win": 2,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 7,
+      "pending": 6,
       "total": 8,
-      "decisions": 1,
+      "decisions": 2,
       "weightedRate": 100.0
     }
   },
