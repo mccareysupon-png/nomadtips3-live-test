@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-08-12T00:58:46Z",
+  "generatedAt": "2026-08-13T02:40:11Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-12T08:43:46.494038+07:00",
-  "windowEndLocal": "2026-08-13T08:00:00+07:00",
-  "windowKey": "2026-08-13T08:00:00+07:00",
+  "windowStartLocal": "2026-08-13T10:25:11.283435+07:00",
+  "windowEndLocal": "2026-08-14T08:00:00+07:00",
+  "windowKey": "2026-08-14T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 643,
-  "fixturesScanned": 272,
-  "fixturesAnalyzed": 272,
-  "prequalified": 97,
-  "published": 7,
+  "apiCalls": 249,
+  "fixturesScanned": 107,
+  "fixturesAnalyzed": 107,
+  "prequalified": 33,
+  "published": 8,
   "rejections": {
-    "main odds below minimum": 19,
-    "main 1X2 odds unavailable": 61,
-    "insufficient recent or venue-specific sample": 32,
-    "strength score below threshold": 126,
-    "home/away split edge below threshold": 13,
-    "overall form edge below threshold": 4
+    "strength score below threshold": 58,
+    "insufficient recent or venue-specific sample": 5,
+    "main 1X2 odds unavailable": 11,
+    "home/away split edge below threshold": 7,
+    "overall form edge below threshold": 4,
+    "main odds below minimum": 12
   },
   "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
   "historyErrors": {},
-  "archivedPreviousSet": "archive/auto-selections/2026-08-11-20260812T005846Z.json",
+  "archivedPreviousSet": "archive/auto-selections/2026-08-12-20260813T024011Z.json",
   "confidencePolicy": {
     "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
@@ -39,7 +39,7 @@
       "strengthWeight": 0.32,
       "adjustmentCap": 0.32,
       "availableMatches": 8,
-      "fallbackMatches": 9,
+      "fallbackMatches": 2,
       "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
     },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
@@ -47,10 +47,10 @@
     "legacyCommonOpponentWeight": 0
   },
   "confidenceRejected": 0,
-  "publishedAfterConfidence": 17,
+  "publishedAfterConfidence": 10,
   "standingsContext": {
     "available": 8,
-    "fallback": 9
+    "fallback": 2
   },
   "addKTheKingOfSoccer": {
     "active": true,
@@ -64,66 +64,26 @@
     "minimumSample": 5,
     "requireStandingsContext": true,
     "minimumLeagueTeamCount": 8,
-    "passed": 7,
-    "rejected": 10,
+    "passed": 8,
+    "rejected": 2,
     "rejections": [
       {
-        "fixture_id": 1607630,
-        "match": "APIA Leichhardt Tigers vs Sydney United",
+        "fixture_id": 1598831,
+        "match": "Rangers vs Jagiellonia",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       },
       {
-        "fixture_id": 1560918,
-        "match": "Volna Nizhegorodskaya vs Tyumen",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1560906,
-        "match": "Angust Nazran vs Druzhba",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1612548,
-        "match": "Timişul Şag vs CSM Reşiţa",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1612530,
-        "match": "Agricola Borcea vs Unirea Slobozia",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1560913,
-        "match": "Murom vs Metallurg Lipetsk",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1618922,
-        "match": "Nea Salamis vs Anorthosis",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1600310,
-        "match": "Durban City vs Golden Arrows",
-        "reason": "adjusted strength below 0.62"
-      },
-      {
-        "fixture_id": 1598635,
-        "match": "Estoril U23 vs Gil Vicente U23",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1548355,
-        "match": "CD Motagua vs CS Cartagines",
+        "fixture_id": 1607566,
+        "match": "Anderlecht vs PAOK",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       }
     ],
     "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
   },
-  "qualified": 7,
+  "qualified": 8,
   "discardedAfterTop10": 0,
   "publicationPolicy": "CONFIDENCE_DESCENDING_TOP_10",
-  "qualifiedBeforeTop10": 7,
+  "qualifiedBeforeTop10": 8,
   "top10Policy": "Publish up to 10; fewer or zero picks are valid",
   "ballTengPolicy": {
     "legacyCommonOpponentWeight": 0,
@@ -136,11 +96,11 @@
   },
   "selectionMerge": {
     "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
-    "cycleStartUtc": "2026-08-12T01:00:00Z",
+    "cycleStartUtc": "2026-08-13T01:00:00Z",
     "runType": "AUTO",
-    "newSelectionCount": 7,
+    "newSelectionCount": 8,
     "preservedStartedCount": 0,
     "duplicatesRemoved": 0,
-    "totalDisplayedCount": 7
+    "totalDisplayedCount": 8
   }
 }
