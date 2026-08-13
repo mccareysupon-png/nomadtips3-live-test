@@ -3,7 +3,7 @@
 
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
-  const liveSignalsUrl = 'https://mccareysupon-png.github.io/nomadtips3-live-test/page4-engine3-monitor/';
+  const liveSignalsUrl = 'https://www.nomadtips3.com/livesignal';
 
   const ensureLiveSignalsNav = () => {
     const nav = document.querySelector('.main-nav');
@@ -13,6 +13,7 @@
     const existing = links.find(link =>
       link.dataset.nomadLiveSignals === 'true' ||
       /LIVE\s*SIGNALS/i.test(String(link.textContent || '')) ||
+      String(link.href || '').includes('/livesignal') ||
       String(link.href || '').includes('/page4-engine3-monitor/')
     );
 
@@ -23,6 +24,8 @@
       link.dataset.nomadLiveSignals = 'true';
       link.setAttribute('aria-label', 'LIVE SIGNALS');
       nav.appendChild(link);
+    } else if (!existing.classList.contains('active')) {
+      existing.href = liveSignalsUrl;
     }
 
     document.body.classList.add('has-live-signals-nav');
@@ -96,7 +99,6 @@
   const privacyUrl = new URL('privacy/', root).href;
   const aboutUrl = new URL('about/', root).href;
 
-  // Replace these two URLs with the official NOMADTIPS3 profile links when ready.
   const socialUrls = {
     facebook: 'https://www.facebook.com/',
     x: 'https://x.com/'
