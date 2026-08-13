@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-13",
-  "generatedAt": "2026-08-13T19:52:11Z",
+  "generatedAt": "2026-08-13T19:53:13Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 35,
-    "correct": 14,
+    "correct": 15,
     "incorrect": 12,
     "void": 1,
-    "pending": 8,
-    "settled": 26,
+    "pending": 7,
+    "settled": 27,
     "allSettled": false,
-    "accuracy": 53.85,
+    "accuracy": 55.56,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 35,
       "correct": 12,
-      "incorrect": 14,
+      "incorrect": 15,
       "void": 1,
-      "pending": 8,
-      "settled": 26,
-      "accuracy": 46.15
+      "pending": 7,
+      "settled": 27,
+      "accuracy": 44.44
     },
     "doubleChance": {
       "total": 35,
-      "correct": 21,
+      "correct": 22,
       "incorrect": 5,
       "void": 1,
-      "pending": 8,
-      "settled": 26,
-      "accuracy": 80.77
+      "pending": 7,
+      "settled": 27,
+      "accuracy": 81.48
     },
     "asianHandicap": {
-      "win": 14,
+      "win": 15,
       "half-win": 0,
       "push": 3,
       "half-loss": 0,
       "loss": 9,
       "void": 1,
-      "pending": 8,
+      "pending": 7,
       "total": 35,
-      "decisions": 23,
-      "weightedRate": 60.87
+      "decisions": 24,
+      "weightedRate": 62.5
     }
   },
   "results": [
@@ -1324,7 +1324,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 89,
+      "elapsed": 90,
       "homeScore": 0,
       "awayScore": 1,
       "outcome": "pending",
@@ -1355,7 +1355,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1365,41 +1365,44 @@
       "home": "Ægir",
       "away": "Völsungur",
       "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 0,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.36,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "X2 — Völsungur or Draw",
           "odds": 1.53,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Völsungur 0",
           "odds": 1.98,
           "oddsStatus": "LOCKED",
           "confidence": 64,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": 0.0,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1443,7 +1446,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1487,7 +1490,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1531,7 +1534,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1575,7 +1578,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1619,7 +1622,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     },
     {
@@ -1663,51 +1666,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T19:52:11Z",
+      "updatedAt": "2026-08-13T19:53:13Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 8,
-    "correct": 0,
+    "correct": 1,
     "incorrect": 0,
     "void": 0,
-    "pending": 8,
-    "settled": 0,
+    "pending": 7,
+    "settled": 1,
     "allSettled": false,
-    "accuracy": 0.0,
+    "accuracy": 100.0,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 8,
       "correct": 0,
-      "incorrect": 0,
+      "incorrect": 1,
       "void": 0,
-      "pending": 8,
-      "settled": 0,
+      "pending": 7,
+      "settled": 1,
       "accuracy": 0.0
     },
     "doubleChance": {
       "total": 8,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 0,
       "void": 0,
-      "pending": 8,
-      "settled": 0,
-      "accuracy": 0.0
+      "pending": 7,
+      "settled": 1,
+      "accuracy": 100.0
     },
     "asianHandicap": {
-      "win": 0,
+      "win": 1,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
       "loss": 0,
       "void": 0,
-      "pending": 8,
+      "pending": 7,
       "total": 8,
-      "decisions": 0,
-      "weightedRate": 0.0
+      "decisions": 1,
+      "weightedRate": 100.0
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
