@@ -3,6 +3,32 @@
 
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
+  const liveSignalsUrl = 'https://mccareysupon-png.github.io/nomadtips3-live-test/page4-engine3-monitor/';
+
+  const ensureLiveSignalsNav = () => {
+    const nav = document.querySelector('.main-nav');
+    if (!nav) return;
+
+    const links = [...nav.querySelectorAll('a')];
+    const existing = links.find(link =>
+      link.dataset.nomadLiveSignals === 'true' ||
+      /LIVE\s*SIGNALS/i.test(String(link.textContent || '')) ||
+      String(link.href || '').includes('/page4-engine3-monitor/')
+    );
+
+    if (!existing) {
+      const link = document.createElement('a');
+      link.href = liveSignalsUrl;
+      link.textContent = 'LIVE SIGNALS';
+      link.dataset.nomadLiveSignals = 'true';
+      link.setAttribute('aria-label', 'LIVE SIGNALS');
+      nav.appendChild(link);
+    }
+
+    document.body.classList.add('has-live-signals-nav');
+  };
+
+  ensureLiveSignalsNav();
 
   if (window.location.pathname.includes('/live-condition-alert/')) {
     const hasHomeAwayDisplay = [...document.scripts].some(node =>
