@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-14",
-  "generatedAt": "2026-08-14T18:51:54Z",
+  "generatedAt": "2026-08-14T18:52:57Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 45,
     "correct": 19,
-    "incorrect": 17,
+    "incorrect": 18,
     "void": 1,
-    "pending": 8,
-    "settled": 36,
+    "pending": 7,
+    "settled": 37,
     "allSettled": false,
-    "accuracy": 52.78,
+    "accuracy": 51.35,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 45,
       "correct": 17,
-      "incorrect": 19,
+      "incorrect": 20,
       "void": 1,
-      "pending": 8,
-      "settled": 36,
-      "accuracy": 47.22
+      "pending": 7,
+      "settled": 37,
+      "accuracy": 45.95
     },
     "doubleChance": {
       "total": 45,
-      "correct": 28,
+      "correct": 29,
       "incorrect": 8,
       "void": 1,
-      "pending": 8,
-      "settled": 36,
-      "accuracy": 77.78
+      "pending": 7,
+      "settled": 37,
+      "accuracy": 78.38
     },
     "asianHandicap": {
       "win": 19,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
-      "loss": 13,
+      "loss": 14,
       "void": 1,
-      "pending": 8,
+      "pending": 7,
       "total": 45,
-      "decisions": 32,
-      "weightedRate": 59.38
+      "decisions": 33,
+      "weightedRate": 57.58
     }
   },
   "results": [
@@ -1734,7 +1734,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1781,7 +1781,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1791,41 +1791,44 @@
       "home": "Liptovský Mikuláš",
       "away": "Lokomotíva Zvolen",
       "kickoffUtc": "2026-08-14T17:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.95,
           "oddsStatus": "LOCKED",
           "confidence": 77,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Liptovský Mikuláš or Draw",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 77,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Liptovský Mikuláš -0.5",
           "odds": 1.8,
           "oddsStatus": "LOCKED",
           "confidence": 77,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1838,7 +1841,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 88,
+      "elapsed": 89,
       "homeScore": 1,
       "awayScore": 1,
       "outcome": "pending",
@@ -1869,7 +1872,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1913,7 +1916,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1957,7 +1960,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -1967,9 +1970,9 @@
       "home": "Sporting Hasselt",
       "away": "Dender",
       "kickoffUtc": "2026-08-14T18:00:00+00:00",
-      "status": "1H",
-      "providerStatus": "1H",
-      "statusLong": "First Half",
+      "status": "HT",
+      "providerStatus": "HT",
+      "statusLong": "Halftime",
       "elapsed": 45,
       "homeScore": 1,
       "awayScore": 0,
@@ -2001,7 +2004,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -2014,7 +2017,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 7,
+      "elapsed": 8,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -2045,7 +2048,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -2089,7 +2092,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     },
     {
@@ -2133,51 +2136,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T18:51:54Z",
+      "updatedAt": "2026-08-14T18:52:57Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
     "correct": 1,
-    "incorrect": 1,
+    "incorrect": 2,
     "void": 0,
-    "pending": 8,
-    "settled": 2,
+    "pending": 7,
+    "settled": 3,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 33.33,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
       "correct": 1,
-      "incorrect": 1,
+      "incorrect": 2,
       "void": 0,
-      "pending": 8,
-      "settled": 2,
-      "accuracy": 50.0
+      "pending": 7,
+      "settled": 3,
+      "accuracy": 33.33
     },
     "doubleChance": {
       "total": 10,
-      "correct": 1,
+      "correct": 2,
       "incorrect": 1,
       "void": 0,
-      "pending": 8,
-      "settled": 2,
-      "accuracy": 50.0
+      "pending": 7,
+      "settled": 3,
+      "accuracy": 66.67
     },
     "asianHandicap": {
       "win": 1,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 1,
+      "loss": 2,
       "void": 0,
-      "pending": 8,
+      "pending": 7,
       "total": 10,
-      "decisions": 2,
-      "weightedRate": 50.0
+      "decisions": 3,
+      "weightedRate": 33.33
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
