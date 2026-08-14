@@ -19,8 +19,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    env:
-      JENG_LINE_USER_ID: ${{ secrets.LINE_TARGET_ID || secrets.LINE_USER_ID }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -35,10 +33,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
-          secrets: |
-            JENG_LINE_USER_ID
-        env:
-          JENG_LINE_USER_ID: ${{ env.JENG_LINE_USER_ID }}
 
       - name: Verify Car 3, Auto Mechanic V2, and Condition Audit auto-repair
         run: |
