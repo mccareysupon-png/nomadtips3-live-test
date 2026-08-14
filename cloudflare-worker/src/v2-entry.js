@@ -3,11 +3,22 @@ import { handleMembershipRoute } from './membership-configured.js';
 import { handlePublicV2Route } from './v2-public-routes.js';
 import { handleV2Route } from './v2-routes.js';
 import { handleOwnerPage } from './v2-owner-page.js';
+import {
+  handleJengMoneyPage,
+  handleJengMoneyRoute
+} from './jeng-money.js';
+import { runJengMoneyRouting } from './jeng-money-routing.js';
 
 export default {
   async fetch(request, env, ctx) {
+    const jengMoneyPageResponse = handleJengMoneyPage(request);
+    if (jengMoneyPageResponse) return jengMoneyPageResponse;
+
     const ownerPageResponse = handleOwnerPage(request);
     if (ownerPageResponse) return ownerPageResponse;
+
+    const jengMoneyRouteResponse = await handleJengMoneyRoute(request, env);
+    if (jengMoneyRouteResponse) return jengMoneyRouteResponse;
 
     const membershipResponse = await handleMembershipRoute(request, env);
     if (membershipResponse) return membershipResponse;
@@ -22,6 +33,15 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
-    return baseEntry.scheduled(controller, env, ctx);
+    const result = baseEntry.scheduled(controller, env, ctx);
+    ctx.waitUntil(
+      runJengMoneyRouting(env).catch(error => {
+        console.warn(JSON.stringify({
+          event: 'jeng_money_line_degraded',
+          error: error?.message || String(error)
+        }));
+      })
+    );
+    return result;
   }
 };
