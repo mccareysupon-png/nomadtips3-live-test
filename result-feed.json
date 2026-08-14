@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-13",
-  "generatedAt": "2026-08-14T00:02:36Z",
+  "generatedAt": "2026-08-14T00:03:38Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 35,
     "correct": 17,
-    "incorrect": 14,
+    "incorrect": 15,
     "void": 1,
-    "pending": 3,
-    "settled": 31,
+    "pending": 2,
+    "settled": 32,
     "allSettled": false,
-    "accuracy": 54.84,
+    "accuracy": 53.12,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 35,
-      "correct": 14,
+      "correct": 15,
       "incorrect": 17,
       "void": 1,
-      "pending": 3,
-      "settled": 31,
-      "accuracy": 45.16
+      "pending": 2,
+      "settled": 32,
+      "accuracy": 46.88
     },
     "doubleChance": {
       "total": 35,
       "correct": 25,
-      "incorrect": 6,
+      "incorrect": 7,
       "void": 1,
-      "pending": 3,
-      "settled": 31,
-      "accuracy": 80.65
+      "pending": 2,
+      "settled": 32,
+      "accuracy": 78.12
     },
     "asianHandicap": {
       "win": 17,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
-      "loss": 10,
+      "loss": 11,
       "void": 1,
-      "pending": 3,
+      "pending": 2,
       "total": 35,
-      "decisions": 27,
-      "weightedRate": 62.96
+      "decisions": 28,
+      "weightedRate": 60.71
     }
   },
   "results": [
@@ -1358,7 +1358,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1405,7 +1405,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1452,7 +1452,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1499,7 +1499,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1543,7 +1543,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1590,7 +1590,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1600,41 +1600,44 @@
       "home": "Santos",
       "away": "Macara",
       "kickoffUtc": "2026-08-13T22:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 1,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 2.0,
           "oddsStatus": "LOCKED",
           "confidence": 60,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "X2 — Macara or Draw",
           "odds": 2.75,
           "oddsStatus": "LOCKED",
           "confidence": 60,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "Macara 0",
           "odds": 5.75,
           "oddsStatus": "LOCKED",
           "confidence": 60,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": 0.0,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     },
     {
@@ -1678,51 +1681,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T00:02:36Z",
+      "updatedAt": "2026-08-14T00:03:38Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 8,
     "correct": 3,
-    "incorrect": 2,
+    "incorrect": 3,
     "void": 0,
-    "pending": 3,
-    "settled": 5,
+    "pending": 2,
+    "settled": 6,
     "allSettled": false,
-    "accuracy": 60.0,
+    "accuracy": 50.0,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 8,
-      "correct": 2,
+      "correct": 3,
       "incorrect": 3,
       "void": 0,
-      "pending": 3,
-      "settled": 5,
-      "accuracy": 40.0
+      "pending": 2,
+      "settled": 6,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 8,
       "correct": 4,
-      "incorrect": 1,
+      "incorrect": 2,
       "void": 0,
-      "pending": 3,
-      "settled": 5,
-      "accuracy": 80.0
+      "pending": 2,
+      "settled": 6,
+      "accuracy": 66.67
     },
     "asianHandicap": {
       "win": 3,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
-      "loss": 1,
+      "loss": 2,
       "void": 0,
-      "pending": 3,
+      "pending": 2,
       "total": 8,
-      "decisions": 4,
-      "weightedRate": 75.0
+      "decisions": 5,
+      "weightedRate": 60.0
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
