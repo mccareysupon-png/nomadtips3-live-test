@@ -8,6 +8,7 @@ import {
   handleJengMoneyRoute
 } from './jeng-money.js';
 import { runJengMoneyRouting } from './jeng-money-routing.js';
+import { withJengMoneyRecipient } from './jeng-money-recipient.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -17,7 +18,11 @@ export default {
     const ownerPageResponse = handleOwnerPage(request);
     if (ownerPageResponse) return ownerPageResponse;
 
-    const jengMoneyRouteResponse = await handleJengMoneyRoute(request, env);
+    const url = new URL(request.url);
+    const jengEnv = url.hostname.toLowerCase() === 'bot-owner.nomadtips3.com' && url.pathname === '/jeng-money/data'
+      ? await withJengMoneyRecipient(env).catch(() => env)
+      : env;
+    const jengMoneyRouteResponse = await handleJengMoneyRoute(request, jengEnv);
     if (jengMoneyRouteResponse) return jengMoneyRouteResponse;
 
     const membershipResponse = await handleMembershipRoute(request, env);
