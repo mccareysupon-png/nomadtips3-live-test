@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-13",
-  "generatedAt": "2026-08-14T02:28:19Z",
+  "generatedAt": "2026-08-14T02:29:21Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 35,
-    "correct": 17,
+    "correct": 18,
     "incorrect": 16,
     "void": 1,
-    "pending": 1,
-    "settled": 33,
-    "allSettled": false,
-    "accuracy": 51.52,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 34,
+    "allSettled": true,
+    "accuracy": 52.94,
+    "finalizedAt": "2026-08-14T02:29:21Z"
   },
   "marketSummary": {
     "btts": {
       "total": 35,
       "correct": 16,
-      "incorrect": 17,
+      "incorrect": 18,
       "void": 1,
-      "pending": 1,
-      "settled": 33,
-      "accuracy": 48.48
+      "pending": 0,
+      "settled": 34,
+      "accuracy": 47.06
     },
     "doubleChance": {
       "total": 35,
-      "correct": 26,
+      "correct": 27,
       "incorrect": 7,
       "void": 1,
-      "pending": 1,
-      "settled": 33,
-      "accuracy": 78.79
+      "pending": 0,
+      "settled": 34,
+      "accuracy": 79.41
     },
     "asianHandicap": {
-      "win": 17,
+      "win": 18,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
       "loss": 12,
       "void": 1,
-      "pending": 1,
+      "pending": 0,
       "total": 35,
-      "decisions": 29,
-      "weightedRate": 58.62
+      "decisions": 30,
+      "weightedRate": 60.0
     }
   },
   "results": [
@@ -1358,7 +1358,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1405,7 +1405,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1452,7 +1452,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1499,7 +1499,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1546,7 +1546,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1593,7 +1593,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1640,7 +1640,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     },
     {
@@ -1650,85 +1650,88 @@
       "home": "Deportes Iquique",
       "away": "Deportes Copiapo",
       "kickoffUtc": "2026-08-14T00:30:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 4,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.67,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Deportes Iquique or Draw",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Deportes Iquique 0",
           "odds": 1.36,
           "oddsStatus": "LOCKED",
           "confidence": 63,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": 0.0,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:28:19Z",
+      "updatedAt": "2026-08-14T02:29:21Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 8,
-    "correct": 3,
+    "correct": 4,
     "incorrect": 4,
     "void": 0,
-    "pending": 1,
-    "settled": 7,
-    "allSettled": false,
-    "accuracy": 42.86,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 8,
+    "allSettled": true,
+    "accuracy": 50.0,
+    "finalizedAt": "2026-08-14T02:29:21Z"
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 8,
       "correct": 4,
-      "incorrect": 3,
+      "incorrect": 4,
       "void": 0,
-      "pending": 1,
-      "settled": 7,
-      "accuracy": 57.14
+      "pending": 0,
+      "settled": 8,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 8,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 2,
       "void": 0,
-      "pending": 1,
-      "settled": 7,
-      "accuracy": 71.43
+      "pending": 0,
+      "settled": 8,
+      "accuracy": 75.0
     },
     "asianHandicap": {
-      "win": 3,
+      "win": 4,
       "half-win": 0,
       "push": 1,
       "half-loss": 0,
       "loss": 3,
       "void": 0,
-      "pending": 1,
+      "pending": 0,
       "total": 8,
-      "decisions": 6,
-      "weightedRate": 50.0
+      "decisions": 7,
+      "weightedRate": 57.14
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
