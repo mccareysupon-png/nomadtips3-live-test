@@ -5,9 +5,9 @@ import { handleV2Route } from './v2-routes.js';
 import { handleOwnerPage } from './v2-owner-page.js';
 import {
   handleJengMoneyPage,
-  handleJengMoneyRoute,
-  notifyJengMoneyLineEvents
+  handleJengMoneyRoute
 } from './jeng-money.js';
+import { runJengMoneyRouting } from './jeng-money-routing.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -35,7 +35,7 @@ export default {
   async scheduled(controller, env, ctx) {
     const result = baseEntry.scheduled(controller, env, ctx);
     ctx.waitUntil(
-      notifyJengMoneyLineEvents(env).catch(error => {
+      runJengMoneyRouting(env).catch(error => {
         console.warn(JSON.stringify({
           event: 'jeng_money_line_degraded',
           error: error?.message || String(error)
