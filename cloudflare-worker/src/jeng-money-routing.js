@@ -1,16 +1,18 @@
 import { notifyJengMoneyLineEvents } from './jeng-money.js';
+import { getJengMoneyRecipient } from './jeng-money-recipient.js';
 
 export async function runJengMoneyRouting(env) {
-  const userId = String(
-    env.JENG_LINE_USER_ID || env.LINE_TARGET_ID || env.LINE_USER_ID || ''
-  ).trim();
+  if (!env.DB) return { configured: false, sent: 0, reason: 'D1_NOT_CONFIGURED' };
 
-  if (!userId || !env.DB) {
-    return { configured: false, sent: 0, reason: 'JENG_LINE_USER_ID_NOT_CONFIGURED' };
+  const recipient = await getJengMoneyRecipient(env).catch(() => null);
+  const userId = String(recipient?.userId || '').trim();
+  if (!userId) {
+    return { configured: false, sent: 0, reason: 'JENG_LINE_RECIPIENT_NOT_REGISTERED' };
   }
 
-  // The personal JENG recipient must not also receive the generic all-signal stream.
-  // Keep the same LINE Official Account, but route this user through JENG only.
+  // Keep the same LINE Official Account, but route this owner through JENG only.
+  // This prevents the owner from receiving both the generic all-signal stream and
+  // the personal five-signal window at the same time.
   await env.DB.prepare(`
     UPDATE line_subscribers
     SET active = 0, updated_at = ?
