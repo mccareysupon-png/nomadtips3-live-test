@@ -1,836 +1,86 @@
 {
   "selectionDate": "2026-08-14",
-  "generatedAt": "2026-08-14T22:48:48Z",
+  "generatedAt": "2026-08-14T22:53:01Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
-    "total": 45,
-    "correct": 21,
-    "incorrect": 21,
-    "void": 1,
+    "total": 10,
+    "correct": 3,
+    "incorrect": 5,
+    "void": 0,
     "pending": 2,
-    "settled": 42,
+    "settled": 8,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 37.5,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
-      "total": 45,
-      "correct": 21,
-      "incorrect": 21,
-      "void": 1,
+      "total": 10,
+      "correct": 5,
+      "incorrect": 3,
+      "void": 0,
       "pending": 2,
-      "settled": 42,
-      "accuracy": 50.0
+      "settled": 8,
+      "accuracy": 62.5
     },
     "doubleChance": {
-      "total": 45,
-      "correct": 33,
-      "incorrect": 9,
-      "void": 1,
+      "total": 10,
+      "correct": 6,
+      "incorrect": 2,
+      "void": 0,
       "pending": 2,
-      "settled": 42,
-      "accuracy": 78.57
+      "settled": 8,
+      "accuracy": 75.0
     },
     "asianHandicap": {
-      "win": 21,
+      "win": 3,
       "half-win": 0,
-      "push": 4,
+      "push": 0,
       "half-loss": 0,
-      "loss": 17,
-      "void": 1,
+      "loss": 5,
+      "void": 0,
       "pending": 2,
-      "total": 45,
-      "decisions": 38,
-      "weightedRate": 55.26
+      "total": 10,
+      "decisions": 8,
+      "weightedRate": 37.5
     }
   },
   "results": [
     {
-      "fixtureId": "AUTO-1547607",
-      "providerFixtureId": "1547607",
-      "slug": "auto-1547607",
-      "home": "TransINVEST Vilnius",
-      "away": "Panevėžys",
-      "kickoffUtc": "2026-08-10T15:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 2,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 67,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — TransINVEST Vilnius or Draw",
-          "odds": 1.17,
-          "oddsStatus": "LOCKED",
-          "confidence": 67,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "TransINVEST Vilnius 0",
-          "odds": 1.32,
-          "oddsStatus": "LOCKED",
-          "confidence": 67,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1494240",
-      "providerFixtureId": "1494240",
-      "slug": "auto-1494240",
-      "home": "Vasteras SK FK",
-      "away": "Djurgardens IF",
-      "kickoffUtc": "2026-08-10T17:00:00+00:00",
+      "fixtureId": "AUTO-1574059",
+      "providerFixtureId": "1574059",
+      "slug": "auto-1574059",
+      "home": "Krems / Rehberg",
+      "away": "Parndorf",
+      "kickoffUtc": "2026-08-14T17:30:00+00:00",
       "status": "FT",
       "providerStatus": "FT",
       "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 1,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.38,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Djurgardens IF or Draw",
-          "odds": 1.22,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Djurgardens IF 0",
-          "odds": 1.35,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1551745",
-      "providerFixtureId": "1551745",
-      "slug": "auto-1551745",
-      "home": "Jong AZ",
-      "away": "FC Eindhoven",
-      "kickoffUtc": "2026-08-10T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
       "awayScore": 1,
       "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
-          "odds": 1.4,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Jong AZ or Draw",
-          "odds": 1.36,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Jong AZ -0.5",
-          "odds": 2.08,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1500044",
-      "providerFixtureId": "1500044",
-      "slug": "auto-1500044",
-      "home": "Sportivo Barracas",
-      "away": "Claypole",
-      "kickoffUtc": "2026-08-10T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 2.25,
-          "oddsStatus": "LOCKED",
-          "confidence": 74,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Sportivo Barracas or Draw",
-          "odds": 1.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 74,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Sportivo Barracas -0.5",
-          "odds": 2.5,
-          "oddsStatus": "LOCKED",
-          "confidence": 74,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1565212",
-      "providerFixtureId": "1565212",
-      "slug": "auto-1565212",
-      "home": "Sepsi OSK Sfantu Gheorghe",
-      "away": "FCSB",
-      "kickoffUtc": "2026-08-10T18:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.91,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Sepsi OSK Sfantu Gheorghe or Draw",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Sepsi OSK Sfantu Gheorghe 0",
-          "odds": 2.68,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "push",
-          "settlement": "push",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1595902",
-      "providerFixtureId": "1595902",
-      "slug": "auto-1595902",
-      "home": "Carshalton Athletic",
-      "away": "Wingate & Finchley",
-      "kickoffUtc": "2026-08-10T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.36,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Carshalton Athletic or Draw",
-          "odds": 1.22,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Carshalton Athletic 0",
-          "odds": 1.39,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1549594",
-      "providerFixtureId": "1549594",
-      "slug": "auto-1549594",
-      "home": "Tigres FC",
-      "away": "Envigado",
-      "kickoffUtc": "2026-08-10T19:00:00+00:00",
-      "status": "PST",
-      "providerStatus": "PST",
-      "statusLong": "Match Postponed",
-      "elapsed": null,
-      "homeScore": null,
-      "awayScore": null,
-      "outcome": "void",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "void"
-        },
-        "doubleChance": {
-          "pick": "X2 — Envigado or Draw",
-          "odds": 1.28,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "void"
-        },
-        "asianHandicap": {
-          "pick": "Envigado 0",
-          "odds": 1.68,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "void",
-          "settlement": "void"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1575453",
-      "providerFixtureId": "1575453",
-      "slug": "auto-1575453",
-      "home": "Santa Clara",
-      "away": "Nacional",
-      "kickoffUtc": "2026-08-10T19:15:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 2,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Santa Clara or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Santa Clara -0.5",
-          "odds": 1.88,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1610935",
-      "providerFixtureId": "1610935",
-      "slug": "auto-1610935",
-      "home": "Libertad Asuncion",
-      "away": "Sportivo Trinidense",
-      "kickoffUtc": "2026-08-10T21:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Sportivo Trinidense or Draw",
-          "odds": 1.57,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Sportivo Trinidense 0",
-          "odds": 2.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 66,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1612527",
-      "providerFixtureId": "1612527",
-      "slug": "auto-1612527",
-      "home": "Caracas FC",
-      "away": "Deportivo La Guaira",
-      "kickoffUtc": "2026-08-10T22:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Deportivo La Guaira or Draw",
-          "odds": 1.33,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Deportivo La Guaira 0",
-          "odds": 1.65,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-11T00:23:38Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1571503",
-      "providerFixtureId": "1571503",
-      "slug": "auto-1571503",
-      "home": "CSKA Sofia II",
-      "away": "Hebar 1918",
-      "kickoffUtc": "2026-08-11T15:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 4,
-      "awayScore": 3,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.75,
-          "oddsStatus": "LOCKED",
-          "confidence": 77,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — CSKA Sofia II or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 77,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "CSKA Sofia II -0.5",
-          "odds": 1.85,
-          "oddsStatus": "LOCKED",
-          "confidence": 77,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1517240",
-      "providerFixtureId": "1517240",
-      "slug": "auto-1517240",
-      "home": "JJK",
-      "away": "Tampere United",
-      "kickoffUtc": "2026-08-11T15:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.4,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Tampere United or Draw",
-          "odds": 1.36,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Tampere United -0.5",
-          "odds": 1.38,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1577745",
-      "providerFixtureId": "1577745",
-      "slug": "auto-1577745",
-      "home": "Ishøj",
-      "away": "ASA Aarhus",
-      "kickoffUtc": "2026-08-11T16:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 1,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.6,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — ASA Aarhus or Draw",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "ASA Aarhus -0.5",
-          "odds": 1.82,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1596354",
-      "providerFixtureId": "1596354",
-      "slug": "auto-1596354",
-      "home": "Bamber Bridge",
-      "away": "Avro",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 6,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.2,
+          "odds": 1.46,
           "oddsStatus": "LOCKED",
           "confidence": 79,
-          "outcome": "incorrect"
+          "outcome": "correct"
         },
         "doubleChance": {
-          "pick": "X2 — Avro or Draw",
-          "odds": 1.5,
+          "pick": "X2 — Parndorf or Draw",
+          "odds": 1.55,
           "oddsStatus": "LOCKED",
           "confidence": 79,
           "outcome": "correct"
         },
         "asianHandicap": {
-          "pick": "Avro -0.5",
-          "odds": null,
-          "oddsStatus": "PENDING",
+          "pick": "Parndorf -0.5",
+          "odds": 1.46,
+          "oddsStatus": "LOCKED",
           "confidence": 79,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1597284",
-      "providerFixtureId": "1597284",
-      "slug": "auto-1597284",
-      "home": "Havant & Wville",
-      "away": "Uxbridge",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.5,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Uxbridge or Draw",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Uxbridge -0.5",
-          "odds": 1.9,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1596823",
-      "providerFixtureId": "1596823",
-      "slug": "auto-1596823",
-      "home": "Peterborough Sports",
-      "away": "Real Bedford",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.57,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Real Bedford or Draw",
-          "odds": 1.4,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Real Bedford -0.5",
-          "odds": 1.39,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1597278",
-      "providerFixtureId": "1597278",
-      "slug": "auto-1597278",
-      "home": "Bath City",
-      "away": "Plymouth Parkway",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.25,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Plymouth Parkway or Draw",
-          "odds": 2.1,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Plymouth Parkway -0.5",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
           "outcome": "loss",
           "settlement": "loss",
           "line": -0.5,
@@ -841,947 +91,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1596355",
-      "providerFixtureId": "1596355",
-      "slug": "auto-1596355",
-      "home": "Bury",
-      "away": "Curzon Ashton",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 3,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.2,
-          "oddsStatus": "LOCKED",
-          "confidence": 69,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Bury or Draw",
-          "odds": 1.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 69,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Bury -0.5",
-          "odds": null,
-          "oddsStatus": "PENDING",
-          "confidence": 69,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1596822",
-      "providerFixtureId": "1596822",
-      "slug": "auto-1596822",
-      "home": "Leiston",
-      "away": "Bishop's Stortford",
-      "kickoffUtc": "2026-08-11T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 3,
-      "awayScore": 1,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.57,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Leiston or Draw",
-          "odds": 1.25,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Leiston -0.5",
-          "odds": 1.95,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1511644",
-      "providerFixtureId": "1511644",
-      "slug": "auto-1511644",
-      "home": "D. Puerto Montt",
-      "away": "Union Espanola",
-      "kickoffUtc": "2026-08-11T23:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — D. Puerto Montt or Draw",
-          "odds": 1.33,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "D. Puerto Montt -0.5",
-          "odds": 2.11,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-12T00:58:29Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606449",
-      "providerFixtureId": "1606449",
-      "slug": "auto-1606449",
-      "home": "Fundacion Amigos",
-      "away": "Costa Brava",
-      "kickoffUtc": "2026-08-12T14:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.5,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Fundacion Amigos or Draw",
-          "odds": 1.28,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Fundacion Amigos 0",
-          "odds": 1.65,
-          "oddsStatus": "LOCKED",
-          "confidence": 62,
-          "outcome": "push",
-          "settlement": "push",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606446",
-      "providerFixtureId": "1606446",
-      "slug": "auto-1606446",
-      "home": "Defensores de Vilelas",
-      "away": "Tucuman Central",
-      "kickoffUtc": "2026-08-12T18:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 4,
-      "awayScore": 3,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 76,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Defensores de Vilelas or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 76,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Defensores de Vilelas -0.5",
-          "odds": 1.9,
-          "oddsStatus": "LOCKED",
-          "confidence": 76,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606374",
-      "providerFixtureId": "1606374",
-      "slug": "auto-1606374",
-      "home": "Cipolletti",
-      "away": "Argentino Monte Maíz",
-      "kickoffUtc": "2026-08-12T18:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.57,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Cipolletti or Draw",
-          "odds": 1.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Cipolletti -0.5",
-          "odds": 2.38,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1597287",
-      "providerFixtureId": "1597287",
-      "slug": "auto-1597287",
-      "home": "Gosport Borough",
-      "away": "Hanworth Villa",
-      "kickoffUtc": "2026-08-12T18:45:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 1,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.57,
-          "oddsStatus": "LOCKED",
-          "confidence": 78,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Hanworth Villa or Draw",
-          "odds": 1.44,
-          "oddsStatus": "LOCKED",
-          "confidence": 78,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Hanworth Villa -0.5",
-          "odds": 1.37,
-          "oddsStatus": "LOCKED",
-          "confidence": 78,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606448",
-      "providerFixtureId": "1606448",
-      "slug": "auto-1606448",
-      "home": "El Linqueño",
-      "away": "Gimnasia Concepción",
-      "kickoffUtc": "2026-08-12T23:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.53,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — El Linqueño or Draw",
-          "odds": 1.21,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "El Linqueño 0",
-          "odds": 1.52,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "push",
-          "settlement": "push",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1511641",
-      "providerFixtureId": "1511641",
-      "slug": "auto-1511641",
-      "home": "Antofagasta",
-      "away": "Santiago Wanderers",
-      "kickoffUtc": "2026-08-13T00:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.2,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Antofagasta or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Antofagasta -0.5",
-          "odds": 1.88,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1589399",
-      "providerFixtureId": "1589399",
-      "slug": "auto-1589399",
-      "home": "San Antonio",
-      "away": "Miami FC",
-      "kickoffUtc": "2026-08-13T00:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 1,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — San Antonio or Draw",
-          "odds": 1.17,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "San Antonio 0",
-          "odds": 1.31,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-13T02:39:37Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1602973",
-      "providerFixtureId": "1602973",
-      "slug": "auto-1602973",
-      "home": "Al Diriyah",
-      "away": "Al-Ahli Jeddah",
-      "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.73,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Al Diriyah or Draw",
-          "odds": 3.25,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Al Diriyah -0.5",
-          "odds": 7.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 68,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1514255",
-      "providerFixtureId": "1514255",
-      "slug": "auto-1514255",
-      "home": "Ægir",
-      "away": "Völsungur",
-      "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.36,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Völsungur or Draw",
-          "odds": 1.53,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Völsungur 0",
-          "odds": 1.98,
-          "oddsStatus": "LOCKED",
-          "confidence": 64,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1611944",
-      "providerFixtureId": "1611944",
-      "slug": "auto-1611944",
-      "home": "San Lorenzo Res.",
-      "away": "Barracas Central Res.",
-      "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.72,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — San Lorenzo Res. or Draw",
-          "odds": 1.12,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "San Lorenzo Res. 0",
-          "odds": 1.22,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1611945",
-      "providerFixtureId": "1611945",
-      "slug": "auto-1611945",
-      "home": "Tigre Res.",
-      "away": "Talleres Córdoba Res.",
-      "kickoffUtc": "2026-08-13T18:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 1,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.91,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "X2 — Talleres Córdoba Res. or Draw",
-          "odds": 1.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Talleres Córdoba Res. 0",
-          "odds": 1.9,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1511647",
-      "providerFixtureId": "1511647",
-      "slug": "auto-1511647",
-      "home": "San Luis",
-      "away": "Deportes Temuco",
-      "kickoffUtc": "2026-08-13T22:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — San Luis or Draw",
-          "odds": 1.22,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "San Luis -0.5",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 70,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1607199",
-      "providerFixtureId": "1607199",
-      "slug": "auto-1607199",
-      "home": "Vasco DA Gama",
-      "away": "Olimpia",
-      "kickoffUtc": "2026-08-13T22:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 0,
-      "awayScore": 0,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.83,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "1X — Vasco DA Gama or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Vasco DA Gama 0",
-          "odds": 1.3,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "push",
-          "settlement": "push",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606076",
-      "providerFixtureId": "1606076",
-      "slug": "auto-1606076",
-      "home": "Santos",
-      "away": "Macara",
-      "kickoffUtc": "2026-08-13T22:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 2,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 2.0,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Macara or Draw",
-          "odds": 2.75,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Macara 0",
-          "odds": 5.75,
-          "oddsStatus": "LOCKED",
-          "confidence": 60,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": 0.0,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1511643",
-      "providerFixtureId": "1511643",
-      "slug": "auto-1511643",
-      "home": "Deportes Iquique",
-      "away": "Deportes Copiapo",
-      "kickoffUtc": "2026-08-14T00:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 4,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Deportes Iquique or Draw",
-          "odds": 1.22,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Deportes Iquique 0",
-          "odds": 1.36,
-          "oddsStatus": "LOCKED",
-          "confidence": 63,
-          "outcome": "win",
-          "settlement": "win",
-          "line": 0.0,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T02:29:21Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1606522",
-      "providerFixtureId": "1606522",
-      "slug": "auto-1606522",
-      "home": "Feronikeli",
-      "away": "Gjilani",
-      "kickoffUtc": "2026-08-14T14:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 3,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Feronikeli or Draw",
-          "odds": 1.5,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "incorrect"
-        },
-        "asianHandicap": {
-          "pick": "Feronikeli -0.5",
-          "odds": null,
-          "oddsStatus": "PENDING",
-          "confidence": 72,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1567880",
-      "providerFixtureId": "1567880",
-      "slug": "auto-1567880",
-      "home": "WSPG Wels",
-      "away": "Rapid Wien II",
-      "kickoffUtc": "2026-08-14T16:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 2,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.53,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Rapid Wien II or Draw",
-          "odds": 1.67,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Rapid Wien II -0.5",
-          "odds": 1.68,
-          "oddsStatus": "LOCKED",
-          "confidence": 72,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     },
     {
@@ -1828,7 +138,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
+      "counted": true
+    },
+    {
+      "fixtureId": "AUTO-1508503",
+      "providerFixtureId": "1508503",
+      "slug": "auto-1508503",
+      "home": "NJ/NY Gotham FC W",
+      "away": "Kansas City W",
+      "kickoffUtc": "2026-08-15T00:00:00+00:00",
+      "status": "NS",
+      "providerStatus": "NS",
+      "statusLong": "Not Started",
+      "elapsed": null,
+      "homeScore": null,
+      "awayScore": null,
+      "outcome": "pending",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.8,
+          "oddsStatus": "LOCKED",
+          "confidence": 75,
+          "outcome": "pending"
+        },
+        "doubleChance": {
+          "pick": "1X — NJ/NY Gotham FC W or Draw",
+          "odds": 1.18,
+          "oddsStatus": "LOCKED",
+          "confidence": 75,
+          "outcome": "pending"
+        },
+        "asianHandicap": {
+          "pick": "NJ/NY Gotham FC W -0.5",
+          "odds": 1.85,
+          "oddsStatus": "LOCKED",
+          "confidence": 75,
+          "outcome": "pending"
+        }
+      },
+      "resultConfirmed": false,
+      "autoVoid": false,
+      "voidReason": null,
+      "resultSource": "API-FOOTBALL",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     },
     {
@@ -1875,101 +229,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1583963",
-      "providerFixtureId": "1583963",
-      "slug": "auto-1583963",
-      "home": "Würzburger Kickers",
-      "away": "SV Wehen",
-      "kickoffUtc": "2026-08-14T17:00:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 4,
-      "awayScore": 0,
-      "outcome": "correct",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.53,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "incorrect"
-        },
-        "doubleChance": {
-          "pick": "1X — Würzburger Kickers or Draw",
-          "odds": 1.4,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Würzburger Kickers -0.5",
-          "odds": 2.42,
-          "oddsStatus": "LOCKED",
-          "confidence": 73,
-          "outcome": "win",
-          "settlement": "win",
-          "line": -0.5,
-          "side": "home"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1574059",
-      "providerFixtureId": "1574059",
-      "slug": "auto-1574059",
-      "home": "Krems / Rehberg",
-      "away": "Parndorf",
-      "kickoffUtc": "2026-08-14T17:30:00+00:00",
-      "status": "FT",
-      "providerStatus": "FT",
-      "statusLong": "Match Finished",
-      "elapsed": 90,
-      "homeScore": 1,
-      "awayScore": 1,
-      "outcome": "incorrect",
-      "markets": {
-        "btts": {
-          "pick": "Yes",
-          "odds": 1.46,
-          "oddsStatus": "LOCKED",
-          "confidence": 79,
-          "outcome": "correct"
-        },
-        "doubleChance": {
-          "pick": "X2 — Parndorf or Draw",
-          "odds": 1.55,
-          "oddsStatus": "LOCKED",
-          "confidence": 79,
-          "outcome": "correct"
-        },
-        "asianHandicap": {
-          "pick": "Parndorf -0.5",
-          "odds": 1.46,
-          "oddsStatus": "LOCKED",
-          "confidence": 79,
-          "outcome": "loss",
-          "settlement": "loss",
-          "line": -0.5,
-          "side": "away"
-        }
-      },
-      "resultConfirmed": true,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     },
     {
@@ -2016,7 +276,54 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
+      "counted": true
+    },
+    {
+      "fixtureId": "AUTO-1583963",
+      "providerFixtureId": "1583963",
+      "slug": "auto-1583963",
+      "home": "Würzburger Kickers",
+      "away": "SV Wehen",
+      "kickoffUtc": "2026-08-14T17:00:00+00:00",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 4,
+      "awayScore": 0,
+      "outcome": "correct",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.53,
+          "oddsStatus": "LOCKED",
+          "confidence": 73,
+          "outcome": "incorrect"
+        },
+        "doubleChance": {
+          "pick": "1X — Würzburger Kickers or Draw",
+          "odds": 1.4,
+          "oddsStatus": "LOCKED",
+          "confidence": 73,
+          "outcome": "correct"
+        },
+        "asianHandicap": {
+          "pick": "Würzburger Kickers -0.5",
+          "odds": 2.42,
+          "oddsStatus": "LOCKED",
+          "confidence": 73,
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "home"
+        }
+      },
+      "resultConfirmed": true,
+      "autoVoid": false,
+      "voidReason": null,
+      "resultSource": "API-FOOTBALL",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     },
     {
@@ -2063,51 +370,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
-      "counted": true
-    },
-    {
-      "fixtureId": "AUTO-1508503",
-      "providerFixtureId": "1508503",
-      "slug": "auto-1508503",
-      "home": "NJ/NY Gotham FC W",
-      "away": "Kansas City W",
-      "kickoffUtc": "2026-08-15T00:00:00+00:00",
-      "status": "NS",
-      "providerStatus": "NS",
-      "statusLong": "Not Started",
-      "elapsed": null,
-      "homeScore": null,
-      "awayScore": null,
-      "outcome": "pending",
-      "markets": {
-        "btts": {
-          "pick": "No",
-          "odds": 1.8,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "pending"
-        },
-        "doubleChance": {
-          "pick": "1X — NJ/NY Gotham FC W or Draw",
-          "odds": 1.18,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "pending"
-        },
-        "asianHandicap": {
-          "pick": "NJ/NY Gotham FC W -0.5",
-          "odds": 1.85,
-          "oddsStatus": "LOCKED",
-          "confidence": 75,
-          "outcome": "pending"
-        }
-      },
-      "resultConfirmed": false,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     },
     {
@@ -2151,53 +414,102 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-14T22:48:48Z",
+      "updatedAt": "2026-08-14T22:53:01Z",
+      "counted": true
+    },
+    {
+      "fixtureId": "AUTO-1606522",
+      "providerFixtureId": "1606522",
+      "slug": "auto-1606522",
+      "home": "Feronikeli",
+      "away": "Gjilani",
+      "kickoffUtc": "2026-08-14T14:30:00+00:00",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 1,
+      "awayScore": 3,
+      "outcome": "incorrect",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.8,
+          "oddsStatus": "LOCKED",
+          "confidence": 72,
+          "outcome": "incorrect"
+        },
+        "doubleChance": {
+          "pick": "1X — Feronikeli or Draw",
+          "odds": 1.5,
+          "oddsStatus": "LOCKED",
+          "confidence": 72,
+          "outcome": "incorrect"
+        },
+        "asianHandicap": {
+          "pick": "Feronikeli -0.5",
+          "odds": null,
+          "oddsStatus": "PENDING",
+          "confidence": 72,
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "home"
+        }
+      },
+      "resultConfirmed": true,
+      "autoVoid": false,
+      "voidReason": null,
+      "resultSource": "API-FOOTBALL",
+      "updatedAt": "2026-08-14T22:53:01Z",
+      "counted": true
+    },
+    {
+      "fixtureId": "AUTO-1567880",
+      "providerFixtureId": "1567880",
+      "slug": "auto-1567880",
+      "home": "WSPG Wels",
+      "away": "Rapid Wien II",
+      "kickoffUtc": "2026-08-14T16:30:00+00:00",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 1,
+      "awayScore": 2,
+      "outcome": "correct",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.53,
+          "oddsStatus": "LOCKED",
+          "confidence": 72,
+          "outcome": "correct"
+        },
+        "doubleChance": {
+          "pick": "X2 — Rapid Wien II or Draw",
+          "odds": 1.67,
+          "oddsStatus": "LOCKED",
+          "confidence": 72,
+          "outcome": "correct"
+        },
+        "asianHandicap": {
+          "pick": "Rapid Wien II -0.5",
+          "odds": 1.68,
+          "oddsStatus": "LOCKED",
+          "confidence": 72,
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "away"
+        }
+      },
+      "resultConfirmed": true,
+      "autoVoid": false,
+      "voidReason": null,
+      "resultSource": "API-FOOTBALL",
+      "updatedAt": "2026-08-14T22:53:01Z",
       "counted": true
     }
-  ],
-  "currentBatchSummary": {
-    "total": 10,
-    "correct": 3,
-    "incorrect": 5,
-    "void": 0,
-    "pending": 2,
-    "settled": 8,
-    "allSettled": false,
-    "accuracy": 37.5,
-    "finalizedAt": null
-  },
-  "currentBatchMarketSummary": {
-    "btts": {
-      "total": 10,
-      "correct": 5,
-      "incorrect": 3,
-      "void": 0,
-      "pending": 2,
-      "settled": 8,
-      "accuracy": 62.5
-    },
-    "doubleChance": {
-      "total": 10,
-      "correct": 6,
-      "incorrect": 2,
-      "void": 0,
-      "pending": 2,
-      "settled": 8,
-      "accuracy": 75.0
-    },
-    "asianHandicap": {
-      "win": 3,
-      "half-win": 0,
-      "push": 0,
-      "half-loss": 0,
-      "loss": 5,
-      "void": 0,
-      "pending": 2,
-      "total": 10,
-      "decisions": 8,
-      "weightedRate": 37.5
-    }
-  },
-  "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
-  "historyCount": 35
+  ]
 }
