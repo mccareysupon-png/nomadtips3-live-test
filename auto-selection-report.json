@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-08-13T02:40:11Z",
+  "generatedAt": "2026-08-14T02:29:53Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-13T10:25:11.283435+07:00",
-  "windowEndLocal": "2026-08-14T08:00:00+07:00",
-  "windowKey": "2026-08-14T08:00:00+07:00",
+  "windowStartLocal": "2026-08-14T10:14:53.837612+07:00",
+  "windowEndLocal": "2026-08-15T08:00:00+07:00",
+  "windowKey": "2026-08-15T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 249,
-  "fixturesScanned": 107,
-  "fixturesAnalyzed": 107,
-  "prequalified": 33,
-  "published": 8,
+  "apiCalls": 912,
+  "fixturesScanned": 386,
+  "fixturesAnalyzed": 386,
+  "prequalified": 138,
+  "published": 10,
   "rejections": {
-    "strength score below threshold": 58,
-    "insufficient recent or venue-specific sample": 5,
-    "main 1X2 odds unavailable": 11,
-    "home/away split edge below threshold": 7,
-    "overall form edge below threshold": 4,
-    "main odds below minimum": 12
+    "strength score below threshold": 207,
+    "main 1X2 odds unavailable": 47,
+    "insufficient recent or venue-specific sample": 16,
+    "main odds below minimum": 29,
+    "home/away split edge below threshold": 22,
+    "overall form edge below threshold": 3
   },
   "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
   "historyErrors": {},
-  "archivedPreviousSet": "archive/auto-selections/2026-08-12-20260813T024011Z.json",
+  "archivedPreviousSet": "archive/auto-selections/2026-08-13-20260814T022953Z.json",
   "confidencePolicy": {
     "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
@@ -38,8 +38,8 @@
       "enabled": true,
       "strengthWeight": 0.32,
       "adjustmentCap": 0.32,
-      "availableMatches": 8,
-      "fallbackMatches": 2,
+      "availableMatches": 53,
+      "fallbackMatches": 9,
       "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
     },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
@@ -47,10 +47,10 @@
     "legacyCommonOpponentWeight": 0
   },
   "confidenceRejected": 0,
-  "publishedAfterConfidence": 10,
+  "publishedAfterConfidence": 62,
   "standingsContext": {
-    "available": 8,
-    "fallback": 2
+    "available": 53,
+    "fallback": 9
   },
   "addKTheKingOfSoccer": {
     "active": true,
@@ -64,26 +64,66 @@
     "minimumSample": 5,
     "requireStandingsContext": true,
     "minimumLeagueTeamCount": 8,
-    "passed": 8,
-    "rejected": 2,
+    "passed": 52,
+    "rejected": 10,
     "rejections": [
       {
-        "fixture_id": 1598831,
-        "match": "Rangers vs Jagiellonia",
+        "fixture_id": 1607289,
+        "match": "Karlovac 1919 vs Trnje",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       },
       {
-        "fixture_id": 1607566,
-        "match": "Anderlecht vs PAOK",
+        "fixture_id": 1533761,
+        "match": "Seoul W vs Gyeongju W",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1604789,
+        "match": "Marseille vs Atletico Madrid",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1559749,
+        "match": "Kladno vs Vlašim",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562234,
+        "match": "Hluboka nad Vltavou vs Petřín Plzeň",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607291,
+        "match": "UD Logroñés vs Zaragoza",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1554118,
+        "match": "FK Spartak Zdrepceva KRV vs Teleoptik",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1598608,
+        "match": "Coventry vs Monaco",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1598609,
+        "match": "Atalanta vs Athletic Club",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1611296,
+        "match": "Vado vs Inter U23",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       }
     ],
     "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
   },
-  "qualified": 8,
+  "qualified": 10,
   "discardedAfterTop10": 0,
   "publicationPolicy": "CONFIDENCE_DESCENDING_TOP_10",
-  "qualifiedBeforeTop10": 8,
+  "qualifiedBeforeTop10": 10,
   "top10Policy": "Publish up to 10; fewer or zero picks are valid",
   "ballTengPolicy": {
     "legacyCommonOpponentWeight": 0,
@@ -96,11 +136,11 @@
   },
   "selectionMerge": {
     "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
-    "cycleStartUtc": "2026-08-13T01:00:00Z",
+    "cycleStartUtc": "2026-08-14T01:00:00Z",
     "runType": "AUTO",
-    "newSelectionCount": 8,
+    "newSelectionCount": 10,
     "preservedStartedCount": 0,
     "duplicatesRemoved": 0,
-    "totalDisplayedCount": 8
+    "totalDisplayedCount": 10
   }
 }
