@@ -1,4 +1,4 @@
-name: One-shot CAR 3 Full-Match AH Settlement Hotfix
+name: Verify CAR 3 Full-Match AH Settlement
 
 on:
   push:
@@ -7,12 +7,12 @@ on:
       - ".github/workflows/car3-settlement-fullmatch-hotfix.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  hotfix-test-deploy-verify:
+  verify-live:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -22,37 +22,10 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Patch Engine 3 settlement only
-        run: python scripts/car3-settlement-fullmatch-hotfix.py
-
-      - name: Run CAR 3 settlement regression tests
+      - name: Run permanent settlement regression tests
         run: |
           node scripts/test-car3-full-match-settlement.mjs
           node scripts/test-api-football-rate-guard.mjs
 
-      - name: Commit Engine 3 fix before deploy
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cloudflare-worker/src/paper-db-side.js scripts/test-car3-full-match-settlement.mjs .github/workflows/deploy-cloudflare-worker.yml
-          git commit -m "Fix CAR 3 settlement to full-match Asian handicap"
-          git push
-
-      - name: Deploy corrected Engine 3 Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: 4.120.0
-          command: deploy --config cloudflare-worker/wrangler.jsonc
-
       - name: Reconcile ledger and verify Engine 3 wheel
         run: node scripts/car3-settlement-live-verify.mjs
-
-      - name: Remove temporary hotfix files
-        if: ${{ success() }}
-        run: |
-          git pull --rebase
-          git rm .github/workflows/car3-settlement-fullmatch-hotfix.yml scripts/car3-settlement-fullmatch-hotfix.py scripts/car3-settlement-live-verify.mjs
-          git commit -m "Remove completed CAR 3 settlement hotfix tooling"
-          git push
