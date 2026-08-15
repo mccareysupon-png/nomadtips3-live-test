@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -49,56 +49,39 @@ jobs:
           wranglerVersion: "4"
           command: deploy
 
-      - name: Start first wheel immediately
-        id: first_scan
+      - name: Wait for first scheduled wheel and verify health
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           echo "Worker: $DEPLOYMENT_URL"
-          curl -fsS -X POST "$DEPLOYMENT_URL/scan" -o /tmp/car31-first-scan.json || true
-          cat /tmp/car31-first-scan.json || true
-          sleep 5
-          curl -fsS "$DEPLOYMENT_URL/health" -o /tmp/car31-health.json
-          cat /tmp/car31-health.json
+          : > /tmp/car31-health.json
+          for i in $(seq 1 8); do
+            curl -fsS "$DEPLOYMENT_URL/health" -o /tmp/car31-health.json
+            cat /tmp/car31-health.json
+            if ! grep -q '"lastCycle": null' /tmp/car31-health.json && ! grep -q '"lastCycle":null' /tmp/car31-health.json; then
+              echo "CAR 3.1 wheel has completed at least one cycle."
+              exit 0
+            fi
+            echo "Waiting for Cron wheel... attempt $i/8"
+            sleep 15
+          done
+          echo "::error::CAR 3.1 deployed, but no completed Cron cycle was observed within 120 seconds"
+          exit 1
 
-      - name: Publish browser runtime endpoint and deploy status
+      - name: Show live collector state
+        if: ${{ always() }}
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
-          NOW=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          url = os.environ['DEPLOYMENT_URL'].rstrip('/')
-          now = os.popen("date -u '+%Y-%m-%dT%H:%M:%SZ'").read().strip()
-          runtime = {
-            'engine':'CAR 3.1',
-            'mode':'SHADOW',
-            'source':'GOALOO_ONLY',
-            'workerUrl':url,
-            'liveUrl':url + '/live',
-            'healthUrl':url + '/health',
-            'updatedAt':now
-          }
-          Path('car3-1-hybrid-live-engine/web/runtime.json').write_text(json.dumps(runtime, indent=2) + '\n', encoding='utf-8')
-          health = Path('/tmp/car31-health.json').read_text(encoding='utf-8') if Path('/tmp/car31-health.json').exists() else '{}'
-          first = Path('/tmp/car31-first-scan.json').read_text(encoding='utf-8') if Path('/tmp/car31-first-scan.json').exists() else '{}'
-          Path('car3-1-hybrid-live-engine/DEPLOY_STATUS.md').write_text(
-            '# CAR 3.1 — Last Deploy Status\n\n'
-            f'- Commit: {os.environ.get("GITHUB_SHA", "unknown")}\n'
-            f'- UTC: {now}\n'
-            f'- Worker: {url}\n'
-            '- Source mode: GOALOO ONLY\n'
-            '- API-Football: OFF\n'
-            '- Cron: every minute\n\n'
-            '## Health\n```json\n' + health + '\n```\n\n'
-            '## First scan\n```json\n' + first[:12000] + '\n```\n', encoding='utf-8')
-          PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add car3-1-hybrid-live-engine/web/runtime.json car3-1-hybrid-live-engine/DEPLOY_STATUS.md
-          git commit -m "Publish CAR 3.1 live runtime endpoint" || exit 0
-          git push
+          echo "CAR 3.1 Worker: ${DEPLOYMENT_URL:-unavailable}"
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            echo "--- HEALTH ---"
+            curl -fsS "$DEPLOYMENT_URL/health" || true
+            echo
+            echo "--- LIVE ---"
+            curl -fsS "$DEPLOYMENT_URL/live" | head -c 12000 || true
+            echo
+          fi
