@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-15",
-  "generatedAt": "2026-08-15T14:17:09Z",
+  "generatedAt": "2026-08-15T14:18:11Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 55,
-    "correct": 25,
+    "correct": 26,
     "incorrect": 25,
-    "void": 2,
+    "void": 1,
     "pending": 3,
-    "settled": 50,
+    "settled": 51,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 50.98,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 55,
       "correct": 24,
-      "incorrect": 26,
-      "void": 2,
+      "incorrect": 27,
+      "void": 1,
       "pending": 3,
-      "settled": 50,
-      "accuracy": 48.0
+      "settled": 51,
+      "accuracy": 47.06
     },
     "doubleChance": {
       "total": 55,
-      "correct": 39,
+      "correct": 40,
       "incorrect": 11,
-      "void": 2,
+      "void": 1,
       "pending": 3,
-      "settled": 50,
-      "accuracy": 78.0
+      "settled": 51,
+      "accuracy": 78.43
     },
     "asianHandicap": {
-      "win": 25,
+      "win": 26,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
       "loss": 21,
-      "void": 2,
+      "void": 1,
       "pending": 3,
       "total": 55,
-      "decisions": 46,
-      "weightedRate": 54.35
+      "decisions": 47,
+      "weightedRate": 55.32
     }
   },
   "results": [
@@ -2167,42 +2167,44 @@
       "home": "Macarthur Rams",
       "away": "Blacktown Spartans",
       "kickoffUtc": "2026-08-15T06:30:00+00:00",
-      "status": "NOT_CONFIRMED",
-      "providerStatus": "NS",
-      "statusLong": "Match not confirmed after scheduled kickoff",
-      "elapsed": null,
-      "homeScore": null,
-      "awayScore": null,
-      "outcome": "void",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 0,
+      "awayScore": 2,
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.45,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "void"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "X2 — Blacktown Spartans or Draw",
           "odds": 1.36,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "void"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Blacktown Spartans -0.5",
           "odds": 1.37,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "void",
-          "settlement": "void"
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "away"
         }
       },
       "resultConfirmed": true,
-      "autoVoid": true,
-      "voidReason": "Fixture remained not started for three hours after kickoff",
-      "resultSource": "API-FOOTBALL / NOMAD VALIDATION",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "autoVoid": false,
+      "voidReason": null,
+      "resultSource": "API-FOOTBALL",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2249,7 +2251,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2296,7 +2298,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2343,7 +2345,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2390,7 +2392,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2437,7 +2439,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2484,7 +2486,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2497,7 +2499,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 57,
+      "elapsed": 59,
       "homeScore": 2,
       "awayScore": 3,
       "outcome": "pending",
@@ -2528,7 +2530,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2538,9 +2540,9 @@
       "home": "Buckley Town",
       "away": "Porthmadog",
       "kickoffUtc": "2026-08-15T13:30:00+00:00",
-      "status": "1H",
-      "providerStatus": "1H",
-      "statusLong": "First Half",
+      "status": "HT",
+      "providerStatus": "HT",
+      "statusLong": "Halftime",
       "elapsed": 45,
       "homeScore": 0,
       "awayScore": 1,
@@ -2572,7 +2574,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     },
     {
@@ -2585,7 +2587,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 16,
+      "elapsed": 18,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -2616,51 +2618,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T14:17:09Z",
+      "updatedAt": "2026-08-15T14:18:11Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
-    "correct": 3,
+    "correct": 4,
     "incorrect": 3,
-    "void": 1,
+    "void": 0,
     "pending": 3,
-    "settled": 6,
+    "settled": 7,
     "allSettled": false,
-    "accuracy": 50.0,
+    "accuracy": 57.14,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
       "correct": 2,
-      "incorrect": 4,
-      "void": 1,
+      "incorrect": 5,
+      "void": 0,
       "pending": 3,
-      "settled": 6,
-      "accuracy": 33.33
+      "settled": 7,
+      "accuracy": 28.57
     },
     "doubleChance": {
       "total": 10,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 1,
-      "void": 1,
+      "void": 0,
       "pending": 3,
-      "settled": 6,
-      "accuracy": 83.33
+      "settled": 7,
+      "accuracy": 85.71
     },
     "asianHandicap": {
-      "win": 3,
+      "win": 4,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
       "loss": 3,
-      "void": 1,
+      "void": 0,
       "pending": 3,
       "total": 10,
-      "decisions": 6,
-      "weightedRate": 50.0
+      "decisions": 7,
+      "weightedRate": 57.14
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
