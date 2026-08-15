@@ -1,14 +1,14 @@
 {
   "selectionDate": "2026-08-15",
-  "generatedAt": "2026-08-15T09:29:42Z",
+  "generatedAt": "2026-08-15T09:30:44Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 55,
     "correct": 22,
     "incorrect": 23,
-    "void": 1,
-    "pending": 9,
+    "void": 2,
+    "pending": 8,
     "settled": 45,
     "allSettled": false,
     "accuracy": 48.89,
@@ -19,8 +19,8 @@
       "total": 55,
       "correct": 22,
       "incorrect": 23,
-      "void": 1,
-      "pending": 9,
+      "void": 2,
+      "pending": 8,
       "settled": 45,
       "accuracy": 48.89
     },
@@ -28,8 +28,8 @@
       "total": 55,
       "correct": 34,
       "incorrect": 11,
-      "void": 1,
-      "pending": 9,
+      "void": 2,
+      "pending": 8,
       "settled": 45,
       "accuracy": 75.56
     },
@@ -39,8 +39,8 @@
       "push": 4,
       "half-loss": 0,
       "loss": 19,
-      "void": 1,
-      "pending": 9,
+      "void": 2,
+      "pending": 8,
       "total": 55,
       "decisions": 41,
       "weightedRate": 53.66
@@ -2167,41 +2167,42 @@
       "home": "Macarthur Rams",
       "away": "Blacktown Spartans",
       "kickoffUtc": "2026-08-15T06:30:00+00:00",
-      "status": "NS",
+      "status": "NOT_CONFIRMED",
       "providerStatus": "NS",
-      "statusLong": "Not Started",
+      "statusLong": "Match not confirmed after scheduled kickoff",
       "elapsed": null,
       "homeScore": null,
       "awayScore": null,
-      "outcome": "pending",
+      "outcome": "void",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.45,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "void"
         },
         "doubleChance": {
           "pick": "X2 — Blacktown Spartans or Draw",
           "odds": 1.36,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "void"
         },
         "asianHandicap": {
           "pick": "Blacktown Spartans -0.5",
           "odds": 1.37,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "void",
+          "settlement": "void"
         }
       },
-      "resultConfirmed": false,
-      "autoVoid": false,
-      "voidReason": null,
-      "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "resultConfirmed": true,
+      "autoVoid": true,
+      "voidReason": "Fixture remained not started for three hours after kickoff",
+      "resultSource": "API-FOOTBALL / NOMAD VALIDATION",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2248,7 +2249,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2261,7 +2262,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 26,
+      "elapsed": 27,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -2292,7 +2293,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2305,7 +2306,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 27,
+      "elapsed": 28,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -2336,7 +2337,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2349,7 +2350,7 @@
       "status": "1H",
       "providerStatus": "1H",
       "statusLong": "First Half",
-      "elapsed": 30,
+      "elapsed": 31,
       "homeScore": 0,
       "awayScore": 0,
       "outcome": "pending",
@@ -2380,7 +2381,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2424,7 +2425,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2468,7 +2469,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2512,7 +2513,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2556,7 +2557,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     },
     {
@@ -2600,7 +2601,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T09:29:42Z",
+      "updatedAt": "2026-08-15T09:30:44Z",
       "counted": true
     }
   ],
@@ -2608,8 +2609,8 @@
     "total": 10,
     "correct": 0,
     "incorrect": 1,
-    "void": 0,
-    "pending": 9,
+    "void": 1,
+    "pending": 8,
     "settled": 1,
     "allSettled": false,
     "accuracy": 0.0,
@@ -2620,8 +2621,8 @@
       "total": 10,
       "correct": 0,
       "incorrect": 1,
-      "void": 0,
-      "pending": 9,
+      "void": 1,
+      "pending": 8,
       "settled": 1,
       "accuracy": 0.0
     },
@@ -2629,8 +2630,8 @@
       "total": 10,
       "correct": 0,
       "incorrect": 1,
-      "void": 0,
-      "pending": 9,
+      "void": 1,
+      "pending": 8,
       "settled": 1,
       "accuracy": 0.0
     },
@@ -2640,8 +2641,8 @@
       "push": 0,
       "half-loss": 0,
       "loss": 1,
-      "void": 0,
-      "pending": 9,
+      "void": 1,
+      "pending": 8,
       "total": 10,
       "decisions": 1,
       "weightedRate": 0.0
