@@ -1,4 +1,4 @@
-name: Apply and Verify CAR 3 Full-Match AH Settlement
+name: Diagnose CAR 3 Fixture Identity
 
 on:
   push:
@@ -7,47 +7,30 @@ on:
       - ".github/workflows/car3-settlement-fullmatch-hotfix.yml"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  apply-deploy-verify:
+  diagnose:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Patch stored-FT reconciliation path
-        run: python scripts/car3-settlement-fullmatch-hotfix.py
-
-      - name: Run settlement and API guard regression tests
-        run: |
-          node scripts/test-car3-full-match-settlement.mjs
-          node scripts/test-api-football-rate-guard.mjs
-
-      - name: Commit Engine 3 source fix
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cloudflare-worker/src/paper-db-side.js scripts/test-car3-full-match-settlement.mjs
-          git commit -m "Reuse stored FT for CAR 3 settlement reconciliation"
-          git pull --rebase origin main
-          git push origin HEAD:main
-
-      - name: Deploy corrected Engine 3 Worker
+      - name: Query fixture 1569049 across Engine 3 D1 tables
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: 4.120.0
-          command: deploy --config cloudflare-worker/wrangler.jsonc
+          command: >-
+            d1 execute nomadtips3-paper-db --remote --config cloudflare-worker/wrangler.jsonc --command "SELECT signal_key,fixture_id,selected_side,selected_team,opponent,minute,selected_score,opponent_score,momentum,selected_odds,ah_line,ah_odds,datetime(created_at/1000,'unixepoch') AS created_utc,payload_json FROM condition_signals WHERE fixture_id=1569049; SELECT state_key,fixture_id,selected_side,home,away,league,country,last_minute,home_score,away_score,datetime(last_sample_at/1000,'unixepoch') AS sample_utc,datetime(updated_at/1000,'unixepoch') AS updated_utc FROM auto_momentum_state_side WHERE fixture_id=1569049; SELECT trade_key,fixture_id,selected_side,selected_team,opponent,actual_home,actual_away,entry_minute,entry_selected_score,entry_opponent_score,entry_actual_home_score,entry_actual_away_score,league,country,ah_line,ah_odds,status,result,settlement,final_status,final_selected_score,final_opponent_score,final_actual_home_score,final_actual_away_score,datetime(created_at/1000,'unixepoch') AS created_utc,datetime(settled_at/1000,'unixepoch') AS settled_utc,note FROM paper_trades_side WHERE fixture_id=1569049; SELECT fixture_id,trade_id,home,away,entry_minute,entry_home_score,entry_away_score,final_status,final_home_score,final_away_score,status,result,settlement,datetime(created_at/1000,'unixepoch') AS created_utc,note FROM paper_trades WHERE fixture_id=1569049;"
 
-      - name: Reconcile ledger and verify Engine 3 wheel
-        run: node scripts/car3-settlement-live-verify.mjs
+      - name: Query nearby signal IDs and times for collision pattern
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: 4.120.0
+          command: >-
+            d1 execute nomadtips3-paper-db --remote --config cloudflare-worker/wrangler.jsonc --command "SELECT fixture_id,selected_side,selected_team,opponent,minute,selected_score,opponent_score,ah_line,ah_odds,datetime(created_at/1000,'unixepoch') AS created_utc FROM condition_signals WHERE fixture_id BETWEEN 1569035 AND 1569065 ORDER BY fixture_id,selected_side;"
