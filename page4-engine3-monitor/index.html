@@ -6,15 +6,16 @@
   <meta name="theme-color" content="#07150f">
   <meta name="description" content="NOMADTIPS3 LIVE SIGNALS — public read-only live football condition monitor and LINE alerts">
   <title>NOMADTIPS3 — LIVE SIGNALS</title>
-  <link rel="stylesheet" href="./styles.css?v=202608121537">
-  <link rel="stylesheet" href="./presentation-overrides.css?v=202608131553">
+  <link rel="stylesheet" href="./styles.css?v=202608150945">
+  <link rel="stylesheet" href="./presentation-overrides.css?v=202608150945">
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
 <body
   data-state-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/page5-latest"
   data-health-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/engine-health"
   data-analytics-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/paper-trades?limit=5000"
-  data-refresh-ms="10000"
+  data-refresh-ms="12000"
+  data-stale-ms="120000"
 >
   <header class="topbar">
     <a class="brand" href="https://www.nomadtips3.com/" aria-label="NOMADTIPS3 home">nomad<b>tips3</b></a>
@@ -57,7 +58,7 @@
     <section class="runtime-strip" aria-label="Engine runtime summary">
       <div><small>ENGINE</small><b id="runtimeEngine">WAITING</b></div>
       <div><small>SCAN</small><b id="runtimeScan">WAITING</b></div>
-      <div><small>LAST UPDATE</small><b id="runtimeUpdate">—</b></div>
+      <div><small>LAST UPDATED</small><b id="runtimeUpdate">—</b></div>
       <div><small>PUBLIC MODE</small><b class="good">READ ONLY</b></div>
     </section>
 
@@ -111,7 +112,7 @@
 
     <section class="performance-card">
       <div class="section-head">
-        <div><span class="section-kicker">ENGINE 3 HISTORY</span><h2>Performance · Last 30 Days</h2></div>
+        <div><span class="section-kicker">ENGINE 3 HISTORY</span><h2>Settlement Ledger</h2></div>
         <div id="historyFreshness" class="freshness">Waiting for D1 history</div>
       </div>
 
@@ -122,10 +123,13 @@
         <div><small>PENDING</small><b id="histPending">—</b></div>
         <div><small>ACCURACY</small><b id="histAccuracy">—</b></div>
         <div><small>AVG ODDS</small><b id="histAvgOdds">—</b></div>
+        <div><small>NET PROFIT</small><b id="histNetProfit">—</b></div>
+        <div><small>RETURN</small><b id="histReturn">—</b></div>
+        <div><small>ROI</small><b id="histRoi">—</b></div>
       </div>
 
       <div class="chart-card">
-        <div class="chart-head"><span>CUMULATIVE PERFORMANCE</span><b id="histNetUnits">—</b></div>
+        <div class="chart-head"><span>30-DAY CUMULATIVE PROFIT · LEDGER VALUES</span><b id="histNetUnits">—</b></div>
         <div id="performanceChart" class="chart-shell"><div class="list-empty">Waiting for performance history.</div></div>
       </div>
 
@@ -147,8 +151,7 @@
     <a class="active" href="./" aria-current="page">LIVE SIGNALS</a>
   </nav>
 
-  <script src="./app.js?v=202608121438" defer></script>
-  <script src="./history-pagination.js?v=202608131553" defer></script>
+  <script src="./app.js?v=202608150945" defer></script>
   <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
