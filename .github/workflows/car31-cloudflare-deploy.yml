@@ -49,36 +49,42 @@ jobs:
           wranglerVersion: "4"
           command: deploy
 
-      - name: Inspect Goaloo dynamic live feeds
+      - name: Inspect Goaloo odds and detail feed construction
         shell: bash
         run: |
           python - <<'PY'
           import re, urllib.request
-          urls = {
-            'bf_us': 'https://live10.goaloo28.com/gf/data/bf_us.js',
-            'bf_us1': 'https://live10.goaloo28.com/gf/data/bf_us1.js',
-            'liveScore': 'https://live10.goaloo28.com/scripts/liveScore?v=l3DOxOCERrCvTal5BZfuZkIbuUDlQZVJB5ATblxZJI81',
-            'freeSoccer': 'https://free.goaloo188.com/scripts/freesoccer?v=rirfjjjnd2u14HR04tN77b7HUbpXoevRI3VPnhWwIgE1'
-          }
           headers={'User-Agent':'NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)','Accept':'*/*'}
-          for name,url in urls.items():
-            print(f'=== {name} {url} ===')
+          scripts={
+            'liveScore':'https://live10.goaloo28.com/scripts/liveScore?v=l3DOxOCERrCvTal5BZfuZkIbuUDlQZVJB5ATblxZJI81',
+            'freeSoccer':'https://free.goaloo188.com/scripts/freesoccer?v=rirfjjjnd2u14HR04tN77b7HUbpXoevRI3VPnhWwIgE1'
+          }
+          needles=['runOddsData_','ch_runOddsData_','SoccerAjax?type=2','SoccerAjax?type=3','detail.js','sbCorner.js','change_en.xml']
+          def get(url):
+            req=urllib.request.Request(url,headers=headers)
+            with urllib.request.urlopen(req,timeout=20) as r:return r.read().decode('utf-8','replace')
+          for name,url in scripts.items():
+            print(f'=== {name} ===')
+            try:text=get(url)
+            except Exception as exc: print('FETCH_ERROR',repr(exc));continue
+            for needle in needles:
+              starts=[m.start() for m in re.finditer(re.escape(needle),text,re.I)]
+              print(f'--- {needle}: {len(starts)} occurrence(s) ---')
+              for pos in starts[:5]:print(text[max(0,pos-1400):min(len(text),pos+2200)])
+          # Test public Ajax/detail endpoints against a currently observed match ID.
+          match_id='3061002'
+          candidates=[
+            f'https://live10.goaloo28.com/Ajax/SoccerAjax?type=2&id={match_id}',
+            f'https://live10.goaloo28.com/Ajax/SoccerAjax?type=3&id={match_id}',
+            'https://live10.goaloo28.com/gf/data/detail.js',
+            'https://live10.goaloo28.com/gf/data/sbCorner.js',
+            'https://live10.goaloo28.com/gf/data/change_en.xml'
+          ]
+          for url in candidates:
+            print('=== FETCH',url,'===')
             try:
-              req=urllib.request.Request(url,headers=headers)
-              with urllib.request.urlopen(req,timeout=20) as r: raw=r.read()
-            except Exception as exc:
-              print('FETCH_ERROR',repr(exc)); continue
-            text=raw.decode('utf-8','replace')
-            print('bytes=',len(raw),'lines=',len(text.splitlines()))
-            print('--- first 7000 chars ---')
-            print(text[:7000])
-            print('--- likely match arrays/records ---')
-            for pat in [r'\b(?:A|B|C|D|E)\s*=\s*new Array\([\s\S]{0,3000}', r'\b(?:A|B|C|D|E)\s*=\s*\[[\s\S]{0,3000}', r'\b\w+\[\d+\]\s*=\s*["\'][^"\']{0,2000}']:
-              m=re.search(pat,text,re.I)
-              if m: print(m.group(0)[:3000])
-            print('--- URL/endpoint tokens ---')
-            tokens=sorted(set(re.findall(r'https?://[^\"\'\s]+|/[A-Za-z0-9_./?=&%+-]{3,}',text)))
-            for token in [t for t in tokens if re.search(r'live|score|match|detail|tech|stat|odds|data|ajax|api|\.js',t,re.I)][:140]: print(token[:300])
+              text=get(url);print('bytes=',len(text));print(text[:8000])
+            except Exception as exc:print('FETCH_ERROR',repr(exc))
           PY
 
       - name: Wait for scheduled wheel and verify health
@@ -88,17 +94,15 @@ jobs:
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           echo "Worker: $DEPLOYMENT_URL"
-          : > /tmp/car31-health.json
           for i in $(seq 1 8); do
-            curl -fsS "$DEPLOYMENT_URL/health" -o /tmp/car31-health.json
-            cat /tmp/car31-health.json
-            if ! grep -q '"lastCycle": null' /tmp/car31-health.json && ! grep -q '"lastCycle":null' /tmp/car31-health.json; then
-              echo "CAR 3.1 wheel has completed at least one cycle."
+            BODY=$(curl -fsS "$DEPLOYMENT_URL/health")
+            echo "$BODY"
+            if ! printf '%s' "$BODY" | grep -q '"lastCycle": null' && ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
               exit 0
             fi
             sleep 15
           done
-          echo "::error::CAR 3.1 deployed, but no completed Cron cycle was observed within 120 seconds"
+          echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
           exit 1
 
       - name: Show live collector state
@@ -112,7 +116,7 @@ jobs:
             echo "--- HEALTH ---"
             curl -fsS "$DEPLOYMENT_URL/health" || true
             echo
-            echo "--- LIVE ---"
-            curl -fsS "$DEPLOYMENT_URL/live" | head -c 12000 || true
+            echo "--- LIVE SAMPLE ---"
+            curl -fsS "$DEPLOYMENT_URL/live" | head -c 8000 || true
             echo
           fi
