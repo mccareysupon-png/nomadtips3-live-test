@@ -26,18 +26,31 @@ export const ENGINE3_BASE_DEFAULTS = Object.freeze({
   maxSignalsPerDay: 10
 });
 
+// Current owner decision: CAR 3.1 runs Goaloo-only in Shadow mode.
+// API-Football / backup adapters are not deleted; they stay dormant for a future
+// architecture change, but normalizeCar31Config pins them OFF so old browser
+// settings cannot silently reactivate upstream API usage.
+export const CAR31_SOURCE_MODE = Object.freeze({
+  locked: true,
+  primary: 'GOALOO',
+  fallback: 'OFF',
+  backup: 'OFF',
+  apiVerifyPolicy: 'OFF',
+  dataConflictPolicy: 'PASS'
+});
+
 export const CAR31_DEFAULT_CONFIG = Object.freeze({
   ...ENGINE3_BASE_DEFAULTS,
   engineMode: 'SHADOW',
-  sourcePrimary: 'GOALOO',
-  sourceFallback: 'API_FOOTBALL',
-  sourceBackup: 'ALERTS_BET',
+  sourcePrimary: CAR31_SOURCE_MODE.primary,
+  sourceFallback: CAR31_SOURCE_MODE.fallback,
+  sourceBackup: CAR31_SOURCE_MODE.backup,
   sourceRefreshSeconds: 30,
   sourceFreshnessMaxSeconds: 90,
   matchConfidenceMin: 85,
   requireCoreStats: true,
-  apiVerifyPolicy: 'CANDIDATE_ONLY',
-  dataConflictPolicy: 'PASS',
+  apiVerifyPolicy: CAR31_SOURCE_MODE.apiVerifyPolicy,
+  dataConflictPolicy: CAR31_SOURCE_MODE.dataConflictPolicy,
   market: 'WIN',
   ouDirection: 'OVER',
   ouLine: 2.5,
@@ -113,6 +126,22 @@ export function normalizeCar31Config(input = {}) {
   const ahMax = optionalBounded(source.ahMax, ahMin, 5, 0.25);
   const attackEvidenceRequirement = enumValue(source.attackEvidenceRequirement, ['1', '2', '3', 'ALL'], '1');
 
+  const sourcePrimary = CAR31_SOURCE_MODE.locked
+    ? CAR31_SOURCE_MODE.primary
+    : enumValue(source.sourcePrimary, ['GOALOO', 'API_FOOTBALL', 'ALERTS_BET'], CAR31_DEFAULT_CONFIG.sourcePrimary);
+  const sourceFallback = CAR31_SOURCE_MODE.locked
+    ? CAR31_SOURCE_MODE.fallback
+    : enumValue(source.sourceFallback, ['API_FOOTBALL', 'GOALOO', 'ALERTS_BET', 'OFF'], CAR31_DEFAULT_CONFIG.sourceFallback);
+  const sourceBackup = CAR31_SOURCE_MODE.locked
+    ? CAR31_SOURCE_MODE.backup
+    : enumValue(source.sourceBackup, ['ALERTS_BET', 'API_FOOTBALL', 'GOALOO', 'OFF'], CAR31_DEFAULT_CONFIG.sourceBackup);
+  const apiVerifyPolicy = CAR31_SOURCE_MODE.locked
+    ? CAR31_SOURCE_MODE.apiVerifyPolicy
+    : enumValue(source.apiVerifyPolicy, ['ALWAYS', 'CANDIDATE_ONLY', 'SIGNAL_ONLY', 'OFF'], CAR31_DEFAULT_CONFIG.apiVerifyPolicy);
+  const dataConflictPolicy = CAR31_SOURCE_MODE.locked
+    ? CAR31_SOURCE_MODE.dataConflictPolicy
+    : enumValue(source.dataConflictPolicy, ['PASS', 'USE_PRIMARY', 'USE_API'], CAR31_DEFAULT_CONFIG.dataConflictPolicy);
+
   return {
     engineMode: 'SHADOW',
     side: enumValue(source.side, ['HOME', 'AWAY', 'BOTH'], CAR31_DEFAULT_CONFIG.side),
@@ -143,15 +172,15 @@ export function normalizeCar31Config(input = {}) {
     confirmationRounds: integer(source.confirmationRounds, CAR31_DEFAULT_CONFIG.confirmationRounds, 1, 10),
     signalLimitEnabled: booleanValue(source.signalLimitEnabled, CAR31_DEFAULT_CONFIG.signalLimitEnabled),
     maxSignalsPerDay: integer(source.maxSignalsPerDay, CAR31_DEFAULT_CONFIG.maxSignalsPerDay, 1, 100),
-    sourcePrimary: enumValue(source.sourcePrimary, ['GOALOO', 'API_FOOTBALL', 'ALERTS_BET'], CAR31_DEFAULT_CONFIG.sourcePrimary),
-    sourceFallback: enumValue(source.sourceFallback, ['API_FOOTBALL', 'GOALOO', 'ALERTS_BET', 'OFF'], CAR31_DEFAULT_CONFIG.sourceFallback),
-    sourceBackup: enumValue(source.sourceBackup, ['ALERTS_BET', 'API_FOOTBALL', 'GOALOO', 'OFF'], CAR31_DEFAULT_CONFIG.sourceBackup),
+    sourcePrimary,
+    sourceFallback,
+    sourceBackup,
     sourceRefreshSeconds: integer(source.sourceRefreshSeconds, CAR31_DEFAULT_CONFIG.sourceRefreshSeconds, 10, 300),
     sourceFreshnessMaxSeconds: integer(source.sourceFreshnessMaxSeconds, CAR31_DEFAULT_CONFIG.sourceFreshnessMaxSeconds, 15, 600),
     matchConfidenceMin: integer(source.matchConfidenceMin, CAR31_DEFAULT_CONFIG.matchConfidenceMin, 50, 100),
     requireCoreStats: booleanValue(source.requireCoreStats, CAR31_DEFAULT_CONFIG.requireCoreStats),
-    apiVerifyPolicy: enumValue(source.apiVerifyPolicy, ['ALWAYS', 'CANDIDATE_ONLY', 'SIGNAL_ONLY', 'OFF'], CAR31_DEFAULT_CONFIG.apiVerifyPolicy),
-    dataConflictPolicy: enumValue(source.dataConflictPolicy, ['PASS', 'USE_PRIMARY', 'USE_API'], CAR31_DEFAULT_CONFIG.dataConflictPolicy),
+    apiVerifyPolicy,
+    dataConflictPolicy,
     trendWindowMinutes: integer(source.trendWindowMinutes, CAR31_DEFAULT_CONFIG.trendWindowMinutes, 3, 60),
     chartHistoryMinutes: integer(source.chartHistoryMinutes, CAR31_DEFAULT_CONFIG.chartHistoryMinutes, 5, 120),
     pressureSpikeEnabled: booleanValue(source.pressureSpikeEnabled, CAR31_DEFAULT_CONFIG.pressureSpikeEnabled),
@@ -186,7 +215,7 @@ export function validateCar31Config(input = {}) {
       errors.push(`Evidence ต้องผ่าน ${required} เงื่อนไข แต่เปิดอยู่เพียง ${enabledEvidence.length} เงื่อนไข`);
     }
   }
-  if (config.sourcePrimary === config.sourceFallback && config.sourceFallback !== 'OFF') {
+  if (!CAR31_SOURCE_MODE.locked && config.sourcePrimary === config.sourceFallback && config.sourceFallback !== 'OFF') {
     warnings.push('Primary Source และ Fallback Source เป็นแหล่งเดียวกัน');
   }
   if (config.sourceRefreshSeconds < 20) {
