@@ -1,0 +1,1865 @@
+{
+  "selection_date": "2026-08-14",
+  "locked_at_utc": "2026-08-14T02:29:53Z",
+  "window_end_local": "2026-08-15T08:00:00+07:00",
+  "system": "ADD K THE KING OF SOCCER V1 / CONFIDENCE TOP 10",
+  "environment": "PRODUCTION",
+  "rules": {
+    "market": "1X2 team win",
+    "odds_min": 1.7,
+    "manual_analysis_only": false,
+    "automatic_selection": true,
+    "unlimited_qualifying_matches": true,
+    "overall_sample": 6,
+    "venue_sample": 5,
+    "separate_market_statistics": true,
+    "confidence_minimum": 58,
+    "confidence_maximum": 100,
+    "confidence_dynamic": true,
+    "standings_context": true,
+    "standings_missing_policy": "Fallback to original NOMAD weighted strength; never reject solely because standings are unavailable",
+    "confidence_policy": "Calculated per match from NOMAD weighted strength plus standings context when available; only confidence >= 58% is published; maximum displayed confidence 100%",
+    "maximum_published_selections": 10,
+    "all_qualified_picks_public": false,
+    "qualified_reserves_owner_only": 0,
+    "ranked_standings_abc": true,
+    "legacy_unranked_common_opponent": false,
+    "model_weights": {
+      "overallPpg": 34.0,
+      "homeAwayPpg": 36.0,
+      "goalDifference": 18.0,
+      "rankedStandingsContext": 32.0,
+      "standingDirectRankMix": 55.0,
+      "standingRankedCommonMix": 45.0,
+      "note": "Ranked standings context is an adjustment layer; percentages are not summed as one flat 100% score."
+    }
+  },
+  "matches": [
+    {
+      "client_fixture_id": "AUTO-1574059",
+      "fixture_id": 1574059,
+      "slug": "auto-1574059",
+      "league": "Regionalliga - Ost",
+      "country": "Austria",
+      "home": "Krems / Rehberg",
+      "home_aliases": [
+        "Krems / Rehberg"
+      ],
+      "away": "Parndorf",
+      "away_aliases": [
+        "Parndorf"
+      ],
+      "kickoff_utc": "2026-08-14T17:30:00Z",
+      "pick": "Parndorf Win",
+      "pick_side": "away",
+      "odds": 2.55,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 79,
+      "predicted_score": "2–3",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.46,
+          "confidence": 79,
+          "bookmaker": "1xBet",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:54+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
+        },
+        "doubleChance": {
+          "pick": "X2 — Parndorf or Draw",
+          "odds": 1.55,
+          "confidence": 79,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "X2",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:54+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Draw/Away"
+        },
+        "asianHandicap": {
+          "pick": "Parndorf -0.5",
+          "odds": 1.46,
+          "confidence": 79,
+          "bookmaker": "BetVictor",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "away",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:54+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Away -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.57,
+          "confidence": 79,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.8333,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:54+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.17 vs 0.17; venue PPG 2.60 vs 1.20; goal-difference rate 1.33 vs -1.67.",
+      "abc_result": "Ranked A-B-C · selected rank 4 vs opponent rank 12 · 1 ranked shared opponent(s) · edge +0.67",
+      "auto_analysis": {
+        "strengthScore": -1.724,
+        "absoluteStrength": 1.724,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 0.1667,
+          "gfpg": 0.6667,
+          "gapg": 2.3333,
+          "gdpg": -1.6667,
+          "win_rate": 0.0,
+          "btts_rate": 0.5
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2.1667,
+          "gfpg": 2.8333,
+          "gapg": 1.5,
+          "gdpg": 1.3333,
+          "win_rate": 0.6667,
+          "btts_rate": 0.6667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 1.2,
+          "gfpg": 2.0,
+          "gapg": 1.4,
+          "gdpg": 0.6,
+          "win_rate": 0.4,
+          "btts_rate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 3.6,
+          "gapg": 1.0,
+          "gdpg": 2.6,
+          "win_rate": 0.8,
+          "btts_rate": 0.8
+        },
+        "baseAbsoluteStrength": 1.724,
+        "adjustedStrength": 1.9139,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 221,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 4955,
+          "selectedRank": 4,
+          "opponentTeamId": 25119,
+          "opponentRank": 12,
+          "directRankEdge": 0.5333,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 8365,
+              "team": "Donau",
+              "rank": 13,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4
+            }
+          ],
+          "contextScore": 0.5933,
+          "strengthAdjustment": 0.1899,
+          "adjustedStrength": 1.9139,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 79,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:00:54+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Away",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1561094",
+      "fixture_id": 1561094,
+      "slug": "auto-1561094",
+      "league": "2. liga",
+      "country": "Slovakia",
+      "home": "Liptovský Mikuláš",
+      "home_aliases": [
+        "Liptovský Mikuláš"
+      ],
+      "away": "Lokomotíva Zvolen",
+      "away_aliases": [
+        "Lokomotíva Zvolen"
+      ],
+      "kickoff_utc": "2026-08-14T17:00:00Z",
+      "pick": "Liptovský Mikuláš Win",
+      "pick_side": "home",
+      "odds": 1.73,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 77,
+      "predicted_score": "2–1",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.95,
+          "confidence": 77,
+          "bookmaker": "Betfair",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "1X — Liptovský Mikuláš or Draw",
+          "odds": 1.22,
+          "confidence": 77,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Liptovský Mikuláš -0.5",
+          "odds": 1.8,
+          "confidence": 77,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.8,
+          "confidence": 77,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 2.575,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.17 vs 0.50; venue PPG 2.20 vs 0.60; goal-difference rate 1.83 vs -0.67.",
+      "abc_result": "Ranked A-B-C · selected rank 3 vs opponent rank 13 · 2 ranked shared opponent(s) · edge +0.43",
+      "auto_analysis": {
+        "strengthScore": 1.5927,
+        "absoluteStrength": 1.5927,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.1667,
+          "gfpg": 2.6667,
+          "gapg": 0.8333,
+          "gdpg": 1.8333,
+          "win_rate": 0.6667,
+          "btts_rate": 0.5
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 0.5,
+          "gfpg": 0.6667,
+          "gapg": 1.3333,
+          "gdpg": -0.6667,
+          "win_rate": 0.0,
+          "btts_rate": 0.3333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.2,
+          "gfpg": 2.0,
+          "gapg": 0.6,
+          "gdpg": 1.4,
+          "win_rate": 0.6,
+          "btts_rate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.6,
+          "gfpg": 0.8,
+          "gapg": 1.4,
+          "gdpg": -0.6,
+          "win_rate": 0.0,
+          "btts_rate": 0.4
+        },
+        "baseAbsoluteStrength": 1.5927,
+        "adjustedStrength": 1.772,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 506,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 10536,
+          "selectedRank": 3,
+          "opponentTeamId": 10552,
+          "opponentRank": 13,
+          "directRankEdge": 0.6667,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": 0.4306,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 10550,
+              "team": "Tatran Prešov",
+              "rank": 4,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.85
+            },
+            {
+              "teamId": 14054,
+              "team": "Galanta",
+              "rank": 14,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.35
+            }
+          ],
+          "contextScore": 0.5604,
+          "strengthAdjustment": 0.1793,
+          "adjustedStrength": 1.772,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 77,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1508503",
+      "fixture_id": 1508503,
+      "slug": "auto-1508503",
+      "league": "NWSL Women",
+      "country": "USA",
+      "home": "NJ/NY Gotham FC W",
+      "home_aliases": [
+        "NJ/NY Gotham FC W"
+      ],
+      "away": "Kansas City W",
+      "away_aliases": [
+        "Kansas City W"
+      ],
+      "kickoff_utc": "2026-08-15T00:00:00Z",
+      "pick": "NJ/NY Gotham FC W Win",
+      "pick_side": "home",
+      "odds": 1.8,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 75,
+      "predicted_score": "2–1",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.8,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-13T12:31:03+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "1X — NJ/NY Gotham FC W or Draw",
+          "odds": 1.18,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-13T12:31:03+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "NJ/NY Gotham FC W -0.5",
+          "odds": 1.85,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-13T12:31:03+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Under 2.5",
+          "odds": 1.85,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "under",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 2.3417,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-13T12:31:03+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Under 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.67 vs 1.00; venue PPG 3.00 vs 0.80; goal-difference rate 0.83 vs 0.00.",
+      "abc_result": "Ranked A-B-C · selected rank 1 vs opponent rank 7 · 2 ranked shared opponent(s) · edge +0.67",
+      "auto_analysis": {
+        "strengthScore": 1.5087,
+        "absoluteStrength": 1.5087,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.6667,
+          "gfpg": 1.5,
+          "gapg": 0.6667,
+          "gdpg": 0.8333,
+          "win_rate": 0.8333,
+          "btts_rate": 0.3333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.0,
+          "gfpg": 1.5,
+          "gapg": 1.5,
+          "gdpg": 0.0,
+          "win_rate": 0.1667,
+          "btts_rate": 0.6667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 3.0,
+          "gfpg": 1.6,
+          "gapg": 0.4,
+          "gdpg": 1.2,
+          "win_rate": 1.0,
+          "btts_rate": 0.2
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 0.8,
+          "gapg": 1.4,
+          "gdpg": -0.6,
+          "win_rate": 0.2,
+          "btts_rate": 0.2
+        },
+        "baseAbsoluteStrength": 1.5087,
+        "adjustedStrength": 1.6751,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 254,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 3003,
+          "selectedRank": 1,
+          "opponentTeamId": 16487,
+          "opponentRank": 7,
+          "directRankEdge": 0.4,
+          "rankedCommonOpponentCount": 2,
+          "rankedCommonOpponentEdge": 0.6667,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 2998,
+              "team": "Houston Dash W",
+              "rank": 13,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4
+            },
+            {
+              "teamId": 18451,
+              "team": "San Diego Wave W",
+              "rank": 4,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.85
+            }
+          ],
+          "contextScore": 0.52,
+          "strengthAdjustment": 0.1664,
+          "adjustedStrength": 1.6751,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 75,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-13T12:31:03+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1574689",
+      "fixture_id": 1574689,
+      "slug": "auto-1574689",
+      "league": "Ligue 3",
+      "country": "France",
+      "home": "Cannes",
+      "home_aliases": [
+        "Cannes"
+      ],
+      "away": "Fleury 91",
+      "away_aliases": [
+        "Fleury 91"
+      ],
+      "kickoff_utc": "2026-08-14T17:00:00Z",
+      "pick": "Cannes Win",
+      "pick_side": "home",
+      "odds": 2.0,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 75,
+      "predicted_score": "2–1",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.83,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
+        },
+        "doubleChance": {
+          "pick": "1X — Cannes or Draw",
+          "odds": 1.25,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Cannes -0.5",
+          "odds": 1.9,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.95,
+          "confidence": 75,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.2083,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 1.83 vs 0.17; venue PPG 2.60 vs 0.80; goal-difference rate 0.33 vs -1.83.",
+      "abc_result": "Ranked A-B-C · selected rank 9 vs opponent rank 11 · 1 ranked shared opponent(s) · edge +0.33",
+      "auto_analysis": {
+        "strengthScore": 1.6047,
+        "absoluteStrength": 1.6047,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 1.8333,
+          "gfpg": 2.1667,
+          "gapg": 1.8333,
+          "gdpg": 0.3333,
+          "win_rate": 0.5,
+          "btts_rate": 0.6667
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 0.1667,
+          "gfpg": 0.5,
+          "gapg": 2.3333,
+          "gdpg": -1.8333,
+          "win_rate": 0.0,
+          "btts_rate": 0.5
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 2.2,
+          "gapg": 0.8,
+          "gdpg": 1.4,
+          "win_rate": 0.8,
+          "btts_rate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 1.2,
+          "gapg": 1.8,
+          "gdpg": -0.6,
+          "win_rate": 0.2,
+          "btts_rate": 0.6
+        },
+        "baseAbsoluteStrength": 1.6047,
+        "adjustedStrength": 1.6734,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 63,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 9932,
+          "selectedRank": 9,
+          "opponentTeamId": 3179,
+          "opponentRank": 11,
+          "directRankEdge": 0.1176,
+          "rankedCommonOpponentCount": 1,
+          "rankedCommonOpponentEdge": 0.3333,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 3221,
+              "team": "Rouen",
+              "rank": 10,
+              "selectedPoints": 1.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 0.3333,
+              "qualityWeight": 0.6029
+            }
+          ],
+          "contextScore": 0.2147,
+          "strengthAdjustment": 0.0687,
+          "adjustedStrength": 1.6734,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 75,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1559127",
+      "fixture_id": 1559127,
+      "slug": "auto-1559127",
+      "league": "Challenger Pro League",
+      "country": "Belgium",
+      "home": "Sporting Hasselt",
+      "home_aliases": [
+        "Sporting Hasselt"
+      ],
+      "away": "Dender",
+      "away_aliases": [
+        "Dender"
+      ],
+      "kickoff_utc": "2026-08-14T18:00:00Z",
+      "pick": "Sporting Hasselt Win",
+      "pick_side": "home",
+      "odds": 2.55,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 74,
+      "predicted_score": "2–1",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 2.5,
+          "confidence": 74,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:52+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "1X — Sporting Hasselt or Draw",
+          "odds": 1.5,
+          "confidence": 74,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:52+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Sporting Hasselt -0.5",
+          "odds": 2.6,
+          "confidence": 74,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:52+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.6,
+          "confidence": 74,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.475,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:52+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 1.67 vs 0.67; venue PPG 1.80 vs 0.00; goal-difference rate 2.33 vs -1.50.",
+      "abc_result": "Standings context · selected rank 6 vs opponent rank 1 · no ranked shared-opponent sample",
+      "auto_analysis": {
+        "strengthScore": 1.678,
+        "absoluteStrength": 1.678,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 1.6667,
+          "gfpg": 3.3333,
+          "gapg": 1.0,
+          "gdpg": 2.3333,
+          "win_rate": 0.5,
+          "btts_rate": 0.5
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 0.6667,
+          "gfpg": 0.8333,
+          "gapg": 2.3333,
+          "gdpg": -1.5,
+          "win_rate": 0.1667,
+          "btts_rate": 0.5
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 1.8,
+          "gfpg": 1.6,
+          "gapg": 1.0,
+          "gdpg": 0.6,
+          "win_rate": 0.6,
+          "btts_rate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.0,
+          "gfpg": 0.8,
+          "gapg": 3.0,
+          "gdpg": -2.2,
+          "win_rate": 0.0,
+          "btts_rate": 0.6
+        },
+        "baseAbsoluteStrength": 1.678,
+        "adjustedStrength": 1.6151,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 145,
+          "season": 2026,
+          "teamCount": 15,
+          "selectedTeamId": 5931,
+          "selectedRank": 6,
+          "opponentTeamId": 6215,
+          "opponentRank": 1,
+          "directRankEdge": -0.3571,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": -0.1964,
+          "strengthAdjustment": -0.0629,
+          "adjustedStrength": 1.6151,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 74,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:00:52+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1583963",
+      "fixture_id": 1583963,
+      "slug": "auto-1583963",
+      "league": "3. Liga",
+      "country": "Germany",
+      "home": "Würzburger Kickers",
+      "home_aliases": [
+        "Würzburger Kickers"
+      ],
+      "away": "SV Wehen",
+      "away_aliases": [
+        "SV Wehen"
+      ],
+      "kickoff_utc": "2026-08-14T17:00:00Z",
+      "pick": "Würzburger Kickers Win",
+      "pick_side": "home",
+      "odds": 2.4,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 73,
+      "predicted_score": "3–1",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.53,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
+        },
+        "doubleChance": {
+          "pick": "1X — Würzburger Kickers or Draw",
+          "odds": 1.4,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Würzburger Kickers -0.5",
+          "odds": 2.42,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.67,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.15,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.17 vs 1.50; venue PPG 3.00 vs 0.20; goal-difference rate 1.00 vs -0.33.",
+      "abc_result": "Standings context · selected rank 11 vs opponent rank 16 · no ranked shared-opponent sample",
+      "auto_analysis": {
+        "strengthScore": 1.4747,
+        "absoluteStrength": 1.4747,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.1667,
+          "gfpg": 2.3333,
+          "gapg": 1.3333,
+          "gdpg": 1.0,
+          "win_rate": 0.6667,
+          "btts_rate": 0.8333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.5,
+          "gfpg": 1.0,
+          "gapg": 1.3333,
+          "gdpg": -0.3333,
+          "win_rate": 0.5,
+          "btts_rate": 0.3333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 3.0,
+          "gfpg": 3.0,
+          "gapg": 0.6,
+          "gdpg": 2.4,
+          "win_rate": 1.0,
+          "btts_rate": 0.6
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.2,
+          "gfpg": 0.8,
+          "gapg": 2.2,
+          "gdpg": -1.4,
+          "win_rate": 0.0,
+          "btts_rate": 0.6
+        },
+        "baseAbsoluteStrength": 1.4747,
+        "adjustedStrength": 1.521,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 80,
+          "season": 2026,
+          "teamCount": 20,
+          "selectedTeamId": 784,
+          "selectedRank": 11,
+          "opponentTeamId": 1319,
+          "opponentRank": 16,
+          "directRankEdge": 0.2632,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.1447,
+          "strengthAdjustment": 0.0463,
+          "adjustedStrength": 1.521,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 73,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:00:53+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1552433",
+      "fixture_id": 1552433,
+      "slug": "auto-1552433",
+      "league": "Ligue 2",
+      "country": "France",
+      "home": "Dijon",
+      "home_aliases": [
+        "Dijon"
+      ],
+      "away": "PAU",
+      "away_aliases": [
+        "PAU"
+      ],
+      "kickoff_utc": "2026-08-14T18:45:00Z",
+      "pick": "Dijon Win",
+      "pick_side": "home",
+      "odds": 2.2,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 73,
+      "predicted_score": "3–1",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.83,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:13:14+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "1X — Dijon or Draw",
+          "odds": 1.36,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:13:14+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Dijon -0.5",
+          "odds": 2.2,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:13:14+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Home -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 2.15,
+          "confidence": 73,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.8167,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:13:14+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.33 vs 1.00; venue PPG 2.00 vs 0.60; goal-difference rate 1.67 vs -1.00.",
+      "abc_result": "Standings context · selected rank 7 vs opponent rank 15 · no ranked shared-opponent sample",
+      "auto_analysis": {
+        "strengthScore": 1.4373,
+        "absoluteStrength": 1.4373,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.3333,
+          "gfpg": 2.8333,
+          "gapg": 1.1667,
+          "gdpg": 1.6667,
+          "win_rate": 0.6667,
+          "btts_rate": 0.8333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.0,
+          "gfpg": 0.8333,
+          "gapg": 1.8333,
+          "gdpg": -1.0,
+          "win_rate": 0.3333,
+          "btts_rate": 0.1667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.0,
+          "gfpg": 2.6,
+          "gapg": 1.4,
+          "gdpg": 1.2,
+          "win_rate": 0.6,
+          "btts_rate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.6,
+          "gfpg": 1.0,
+          "gapg": 3.6,
+          "gdpg": -2.6,
+          "win_rate": 0.2,
+          "btts_rate": 0.4
+        },
+        "baseAbsoluteStrength": 1.4373,
+        "adjustedStrength": 1.5201,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 62,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 89,
+          "selectedRank": 7,
+          "opponentTeamId": 1297,
+          "opponentRank": 15,
+          "directRankEdge": 0.4706,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.2588,
+          "strengthAdjustment": 0.0828,
+          "adjustedStrength": 1.5201,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 73,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T01:13:14+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1522437",
+      "fixture_id": 1522437,
+      "slug": "auto-1522437",
+      "league": "Brasileiro Women",
+      "country": "Brazil",
+      "home": "Atlético Mineiro W",
+      "home_aliases": [
+        "Atlético Mineiro W"
+      ],
+      "away": "Gremio W",
+      "away_aliases": [
+        "Gremio W"
+      ],
+      "kickoff_utc": "2026-08-15T00:00:00Z",
+      "pick": "Gremio W Win",
+      "pick_side": "away",
+      "odds": 1.95,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 72,
+      "predicted_score": "1–2",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.8,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:33:13+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "X2 — Gremio W or Draw",
+          "odds": 1.22,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "X2",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:33:13+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Draw/Away"
+        },
+        "asianHandicap": {
+          "pick": "Gremio W -0.5",
+          "odds": 1.27,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "away",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:33:13+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Away -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 2.1,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 2.8333,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T00:33:13+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.33 vs 0.67; venue PPG 1.60 vs 0.80; goal-difference rate 1.50 vs -1.17.",
+      "abc_result": "Ranked A-B-C · selected rank 6 vs opponent rank 13 · 3 ranked shared opponent(s) · edge +0.64",
+      "auto_analysis": {
+        "strengthScore": -1.3347,
+        "absoluteStrength": 1.3347,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 0.6667,
+          "gfpg": 0.8333,
+          "gapg": 2.0,
+          "gdpg": -1.1667,
+          "win_rate": 0.1667,
+          "btts_rate": 0.3333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2.3333,
+          "gfpg": 2.0,
+          "gapg": 0.5,
+          "gdpg": 1.5,
+          "win_rate": 0.6667,
+          "btts_rate": 0.3333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 1.2,
+          "gapg": 1.8,
+          "gdpg": -0.6,
+          "win_rate": 0.2,
+          "btts_rate": 0.6
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.6,
+          "gfpg": 1.8,
+          "gapg": 1.2,
+          "gdpg": 0.6,
+          "win_rate": 0.4,
+          "btts_rate": 0.6
+        },
+        "baseAbsoluteStrength": 1.3347,
+        "adjustedStrength": 1.4989,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 74,
+          "season": 2026,
+          "teamCount": 18,
+          "selectedTeamId": 1817,
+          "selectedRank": 6,
+          "opponentTeamId": 18727,
+          "opponentRank": 13,
+          "directRankEdge": 0.4118,
+          "rankedCommonOpponentCount": 3,
+          "rankedCommonOpponentEdge": 0.637,
+          "rankedCommonOpponents": [
+            {
+              "teamId": 1802,
+              "team": "America Mineiro W",
+              "rank": 16,
+              "selectedPoints": 3.0,
+              "opponentPoints": 3.0,
+              "pointEdge": 0.0,
+              "qualityWeight": 0.3382
+            },
+            {
+              "teamId": 18728,
+              "team": "RB Bragantino W",
+              "rank": 11,
+              "selectedPoints": 3.0,
+              "opponentPoints": 0.0,
+              "pointEdge": 1.0,
+              "qualityWeight": 0.5588
+            },
+            {
+              "teamId": 27652,
+              "team": "Mixto W",
+              "rank": 14,
+              "selectedPoints": 3.0,
+              "opponentPoints": 1.0,
+              "pointEdge": 0.6667,
+              "qualityWeight": 0.4265
+            }
+          ],
+          "contextScore": 0.5131,
+          "strengthAdjustment": 0.1642,
+          "adjustedStrength": 1.4989,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 72,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T00:33:13+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Away",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1606522",
+      "fixture_id": 1606522,
+      "slug": "auto-1606522",
+      "league": "Superliga",
+      "country": "Kosovo",
+      "home": "Feronikeli",
+      "home_aliases": [
+        "Feronikeli"
+      ],
+      "away": "Gjilani",
+      "away_aliases": [
+        "Gjilani"
+      ],
+      "kickoff_utc": "2026-08-14T14:30:00Z",
+      "pick": "Feronikeli Win",
+      "pick_side": "home",
+      "odds": 2.35,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 72,
+      "predicted_score": "2–1",
+      "markets": {
+        "btts": {
+          "pick": "No",
+          "odds": 1.8,
+          "confidence": 72,
+          "bookmaker": "Betfair",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-13T22:05:14+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "No"
+        },
+        "doubleChance": {
+          "pick": "1X — Feronikeli or Draw",
+          "odds": 1.5,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "1X",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-13T22:05:14+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Home/Draw"
+        },
+        "asianHandicap": {
+          "pick": "Feronikeli -0.5",
+          "odds": null,
+          "confidence": 72,
+          "bookmaker": "N/A",
+          "oddsStatus": "N/A",
+          "oddsSource": "NOT FOUND",
+          "side": "home",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 2.05,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 2.9083,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-13T22:05:14+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.67 vs 1.17; venue PPG 2.20 vs 0.80; goal-difference rate 2.17 vs 0.00.",
+      "abc_result": "Standings context · selected rank 3 vs opponent rank 6 · no ranked shared-opponent sample",
+      "auto_analysis": {
+        "strengthScore": 1.404,
+        "absoluteStrength": 1.404,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.6667,
+          "gfpg": 2.6667,
+          "gapg": 0.5,
+          "gdpg": 2.1667,
+          "win_rate": 0.8333,
+          "btts_rate": 0.3333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.1667,
+          "gfpg": 1.3333,
+          "gapg": 1.3333,
+          "gdpg": 0.0,
+          "win_rate": 0.3333,
+          "btts_rate": 0.6667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.2,
+          "gfpg": 2.4,
+          "gapg": 1.0,
+          "gdpg": 1.4,
+          "win_rate": 0.6,
+          "btts_rate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 1.0,
+          "gapg": 1.4,
+          "gdpg": -0.4,
+          "win_rate": 0.2,
+          "btts_rate": 0.6
+        },
+        "baseAbsoluteStrength": 1.404,
+        "adjustedStrength": 1.4627,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 664,
+          "season": 2026,
+          "teamCount": 10,
+          "selectedTeamId": 4132,
+          "selectedRank": 3,
+          "opponentTeamId": 12772,
+          "opponentRank": 6,
+          "directRankEdge": 0.3333,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": 0.1833,
+          "strengthAdjustment": 0.0587,
+          "adjustedStrength": 1.4627,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 72,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-13T22:05:14+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Home",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    },
+    {
+      "client_fixture_id": "AUTO-1567880",
+      "fixture_id": 1567880,
+      "slug": "auto-1567880",
+      "league": "2. Liga",
+      "country": "Austria",
+      "home": "WSPG Wels",
+      "home_aliases": [
+        "WSPG Wels"
+      ],
+      "away": "Rapid Wien II",
+      "away_aliases": [
+        "Rapid Wien II"
+      ],
+      "kickoff_utc": "2026-08-14T16:30:00Z",
+      "pick": "Rapid Wien II Win",
+      "pick_side": "away",
+      "odds": 3.0,
+      "bookmaker": "Bet365",
+      "oddsStatus": "LOCKED",
+      "oddsSource": "API-FOOTBALL",
+      "oddsLockedAt": "2026-08-14T02:29:53Z",
+      "confidence": 72,
+      "predicted_score": "1–2",
+      "markets": {
+        "btts": {
+          "pick": "Yes",
+          "odds": 1.53,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:35:14+00:00",
+          "oddsMarketName": "Both Teams Score",
+          "oddsMarketValue": "Yes"
+        },
+        "doubleChance": {
+          "pick": "X2 — Rapid Wien II or Draw",
+          "odds": 1.67,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "code": "X2",
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:35:14+00:00",
+          "oddsMarketName": "Double Chance",
+          "oddsMarketValue": "Draw/Away"
+        },
+        "asianHandicap": {
+          "pick": "Rapid Wien II -0.5",
+          "odds": 1.68,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "side": "away",
+          "line": -0.5,
+          "oddsLockedAt": "2026-08-14T02:29:53Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:35:14+00:00",
+          "oddsMarketName": "Asian Handicap",
+          "oddsMarketValue": "Away -0.5"
+        },
+        "overUnder": {
+          "pick": "Over 2.5",
+          "odds": 1.62,
+          "confidence": 72,
+          "bookmaker": "Bet365",
+          "oddsStatus": "LOCKED",
+          "oddsSource": "API-FOOTBALL",
+          "line": 2.5,
+          "side": "over",
+          "model": "INDEPENDENT_TOTAL_GOALS_INDEX_V1",
+          "totalGoalsIndex": 3.5667,
+          "oddsLockedAt": "2026-08-14T02:36:11Z",
+          "oddsProviderUpdatedAt": "2026-08-14T01:35:14+00:00",
+          "oddsMarketName": "Goals Over/Under",
+          "oddsMarketValue": "Over 2.5"
+        }
+      },
+      "reason": "Automatic NOMAD screening: overall PPG 2.17 vs 1.00; venue PPG 2.60 vs 0.80; goal-difference rate 1.83 vs -0.50.",
+      "abc_result": "Standings context · selected rank 9 vs opponent rank 7 · no ranked shared-opponent sample",
+      "auto_analysis": {
+        "strengthScore": -1.4647,
+        "absoluteStrength": 1.4647,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 1.0,
+          "gfpg": 1.3333,
+          "gapg": 1.8333,
+          "gdpg": -0.5,
+          "win_rate": 0.3333,
+          "btts_rate": 0.8333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2.1667,
+          "gfpg": 3.1667,
+          "gapg": 1.3333,
+          "gdpg": 1.8333,
+          "win_rate": 0.6667,
+          "btts_rate": 0.8333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 0.8,
+          "gapg": 2.0,
+          "gdpg": -1.2,
+          "win_rate": 0.2,
+          "btts_rate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 2.8,
+          "gapg": 1.0,
+          "gdpg": 1.8,
+          "win_rate": 0.8,
+          "btts_rate": 0.8
+        },
+        "baseAbsoluteStrength": 1.4647,
+        "adjustedStrength": 1.4412,
+        "standingsContext": {
+          "version": 1,
+          "available": true,
+          "source": "API-FOOTBALL standings",
+          "leagueId": 219,
+          "season": 2026,
+          "teamCount": 16,
+          "selectedTeamId": 8247,
+          "selectedRank": 9,
+          "opponentTeamId": 22213,
+          "opponentRank": 7,
+          "directRankEdge": -0.1333,
+          "rankedCommonOpponentCount": 0,
+          "rankedCommonOpponentEdge": 0.0,
+          "rankedCommonOpponents": [],
+          "contextScore": -0.0733,
+          "strengthAdjustment": -0.0235,
+          "adjustedStrength": 1.4412,
+          "policy": "League rank supports A-B-C/common-opponent analysis; missing standings fall back to the original NOMAD model"
+        },
+        "confidenceScore": 72,
+        "confidenceMethod": "50 + (15 × standings-adjusted NOMAD strength), capped by policy; league rank and ranked common-opponent context are used when available",
+        "addKDataQuality": {
+          "passed": true,
+          "preset": "Add K The King of Soccer",
+          "version": 1,
+          "requiresStandings": true,
+          "minimumLeagueTeamCount": 8,
+          "minimumSample": 5,
+          "note": "Uses only signals currently supported by the selector. Missing or unsupported data are never invented."
+        }
+      },
+      "oddsProviderUpdatedAt": "2026-08-14T01:35:14+00:00",
+      "oddsMarketName": "Match Winner",
+      "oddsMarketValue": "Away",
+      "selection_origin": "CURRENT_AUTO_RUN"
+    }
+  ],
+  "oddsPolicy": {
+    "markets": [
+      "1X2",
+      "BTTS",
+      "Over/Under 2.5",
+      "Double Chance",
+      "Asian Handicap"
+    ],
+    "lockRule": "first real API price is preserved; missing prices become terminal N/A after kickoff and are not queried again",
+    "source": "API-FOOTBALL"
+  },
+  "autoSelection": {
+    "windowKey": "2026-08-15T08:00:00+07:00",
+    "windowStartLocal": "2026-08-14T10:14:53.837612+07:00",
+    "windowEndLocal": "2026-08-15T08:00:00+07:00",
+    "generatedAt": "2026-08-14T02:29:53Z",
+    "report": "auto-selection-report.json"
+  },
+  "confidencePolicy": {
+    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
+    "minimum": 58,
+    "maximum": 100,
+    "scale": 15.0,
+    "formula": "round(50 + adjustedStrength × 15), capped at 100",
+    "inputs": [
+      "overall PPG",
+      "home/away PPG",
+      "goal-difference rate",
+      "league standing rank",
+      "rank-weighted common-opponent A-B-C context"
+    ],
+    "standings": {
+      "enabled": true,
+      "strengthWeight": 0.32,
+      "adjustmentCap": 0.32,
+      "availableMatches": 53,
+      "fallbackMatches": 9,
+      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
+    },
+    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
+    "rejectedBelowMinimum": 0,
+    "legacyCommonOpponentWeight": 0
+  },
+  "addKTheKingOfSoccer": {
+    "active": true,
+    "presetKey": "ADD_K_THE_KING_OF_SOCCER_V1",
+    "version": 1,
+    "fixedRules": true,
+    "editable": false,
+    "qualityGate": "STRICT",
+    "minimumConfidence": 58,
+    "minimumMainOdds": 1.7,
+    "minimumSample": 5,
+    "requireStandingsContext": true,
+    "minimumLeagueTeamCount": 8,
+    "passed": 52,
+    "rejected": 10,
+    "rejections": [
+      {
+        "fixture_id": 1607289,
+        "match": "Karlovac 1919 vs Trnje",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1533761,
+        "match": "Seoul W vs Gyeongju W",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1604789,
+        "match": "Marseille vs Atletico Madrid",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1559749,
+        "match": "Kladno vs Vlašim",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1562234,
+        "match": "Hluboka nad Vltavou vs Petřín Plzeň",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1607291,
+        "match": "UD Logroñés vs Zaragoza",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1554118,
+        "match": "FK Spartak Zdrepceva KRV vs Teleoptik",
+        "reason": "adjusted strength below 0.62"
+      },
+      {
+        "fixture_id": 1598608,
+        "match": "Coventry vs Monaco",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1598609,
+        "match": "Atalanta vs Athletic Club",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1611296,
+        "match": "Vado vs Inter U23",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      }
+    ],
+    "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
+  },
+  "productionGuard": {
+    "version": 1,
+    "minimumMainOdds": 1.7,
+    "minimumConfidence": 58,
+    "manualSelectionsAllowed": false,
+    "machine": "CAR_1_PRODUCTION_ONLY"
+  },
+  "candidatePool": {
+    "qualified": 10,
+    "published": 10,
+    "discardedAfterTop10": 0,
+    "ownerPath": "owner-candidate-pool.json"
+  },
+  "selectionMerge": {
+    "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
+    "cycleStartUtc": "2026-08-14T01:00:00Z",
+    "runType": "AUTO",
+    "newSelectionCount": 10,
+    "preservedStartedCount": 0,
+    "duplicatesRemoved": 0,
+    "totalDisplayedCount": 10
+  }
+}

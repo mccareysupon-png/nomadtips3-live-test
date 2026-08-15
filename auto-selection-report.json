@@ -1,26 +1,27 @@
 {
-  "generatedAt": "2026-08-14T02:29:53Z",
+  "generatedAt": "2026-08-15T04:23:09Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-14T10:14:53.837612+07:00",
-  "windowEndLocal": "2026-08-15T08:00:00+07:00",
-  "windowKey": "2026-08-15T08:00:00+07:00",
+  "windowStartLocal": "2026-08-15T12:08:09.139643+07:00",
+  "windowEndLocal": "2026-08-16T08:00:00+07:00",
+  "windowKey": "2026-08-16T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 912,
-  "fixturesScanned": 386,
-  "fixturesAnalyzed": 386,
-  "prequalified": 138,
+  "apiCalls": 1174,
+  "fixturesScanned": 1190,
+  "fixturesAnalyzed": 500,
+  "prequalified": 172,
   "published": 10,
   "rejections": {
-    "strength score below threshold": 207,
-    "main 1X2 odds unavailable": 47,
-    "insufficient recent or venue-specific sample": 16,
-    "main odds below minimum": 29,
-    "home/away split edge below threshold": 22,
-    "overall form edge below threshold": 3
+    "strength score below threshold": 258,
+    "main odds below minimum": 37,
+    "overall form edge below threshold": 10,
+    "main 1X2 odds unavailable": 88,
+    "home/away split edge below threshold": 34,
+    "insufficient recent or venue-specific sample": 26
   },
   "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
+  "truncatedTo": 500,
   "historyErrors": {},
-  "archivedPreviousSet": "archive/auto-selections/2026-08-13-20260814T022953Z.json",
+  "archivedPreviousSet": "archive/auto-selections/2026-08-14-20260815T042309Z.json",
   "confidencePolicy": {
     "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
     "minimum": 58,
@@ -38,8 +39,8 @@
       "enabled": true,
       "strengthWeight": 0.32,
       "adjustmentCap": 0.32,
-      "availableMatches": 53,
-      "fallbackMatches": 9,
+      "availableMatches": 42,
+      "fallbackMatches": 5,
       "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
     },
     "note": "NOMAD model confidence score; not a guaranteed outcome probability",
@@ -47,10 +48,10 @@
     "legacyCommonOpponentWeight": 0
   },
   "confidenceRejected": 0,
-  "publishedAfterConfidence": 62,
+  "publishedAfterConfidence": 47,
   "standingsContext": {
-    "available": 53,
-    "fallback": 9
+    "available": 42,
+    "fallback": 5
   },
   "addKTheKingOfSoccer": {
     "active": true,
@@ -64,58 +65,43 @@
     "minimumSample": 5,
     "requireStandingsContext": true,
     "minimumLeagueTeamCount": 8,
-    "passed": 52,
-    "rejected": 10,
+    "passed": 40,
+    "rejected": 7,
     "rejections": [
       {
-        "fixture_id": 1607289,
-        "match": "Karlovac 1919 vs Trnje",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1533761,
-        "match": "Seoul W vs Gyeongju W",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1604789,
-        "match": "Marseille vs Atletico Madrid",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1559749,
-        "match": "Kladno vs Vlašim",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1562234,
-        "match": "Hluboka nad Vltavou vs Petřín Plzeň",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1607291,
-        "match": "UD Logroñés vs Zaragoza",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1554118,
-        "match": "FK Spartak Zdrepceva KRV vs Teleoptik",
+        "fixture_id": 1527351,
+        "match": "Cumberland United vs Modbury Jets",
         "reason": "adjusted strength below 0.62"
       },
       {
-        "fixture_id": 1598608,
-        "match": "Coventry vs Monaco",
+        "fixture_id": 1532872,
+        "match": "Shanghai Second vs Nantong Haimen Codion",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       },
       {
-        "fixture_id": 1598609,
-        "match": "Atalanta vs Athletic Club",
+        "fixture_id": 1562716,
+        "match": "Chrudim vs Varnsdorf",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
       },
       {
-        "fixture_id": 1611296,
-        "match": "Vado vs Inter U23",
+        "fixture_id": 1562717,
+        "match": "Horní Ředice vs Mladá Boleslav II",
         "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1582220,
+        "match": "Bavois vs Servette FC",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1550628,
+        "match": "Borussia Mönchengladbach vs Aston Villa",
+        "reason": "league standings unavailable: standings unavailable for one or both teams"
+      },
+      {
+        "fixture_id": 1504502,
+        "match": "Laholm vs Jonkopings Sodra",
+        "reason": "adjusted strength below 0.62"
       }
     ],
     "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
@@ -136,7 +122,7 @@
   },
   "selectionMerge": {
     "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
-    "cycleStartUtc": "2026-08-14T01:00:00Z",
+    "cycleStartUtc": "2026-08-15T01:00:00Z",
     "runType": "AUTO",
     "newSelectionCount": 10,
     "preservedStartedCount": 0,
