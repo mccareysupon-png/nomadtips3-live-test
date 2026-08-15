@@ -9,10 +9,6 @@ on:
 permissions:
   contents: write
 
-env:
-  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
 jobs:
   hotfix-test-deploy-verify:
     runs-on: ubuntu-latest
@@ -27,141 +23,7 @@ jobs:
           node-version: "22"
 
       - name: Patch Engine 3 settlement only
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path('cloudflare-worker/src/paper-db-side.js')
-          text = path.read_text(encoding='utf-8')
-
-          def replace_once(old, new, label):
-              global text
-              if old not in text:
-                  raise SystemExit(f'Patch anchor missing: {label}')
-              text = text.replace(old, new, 1)
-
-          replace_once(
-              "const STAKE_DEFAULT = 100;\n",
-              "const STAKE_DEFAULT = 100;\nconst SETTLEMENT_RULESET = 'FULL_MATCH_AH_V1';\n",
-              'ruleset marker'
-          )
-          replace_once(
-              "function settleAsian(postGoalDifference, line, odds, stake) {",
-              "export function settleAsian(goalDifference, line, odds, stake) {",
-              'settleAsian export/argument'
-          )
-          replace_once(
-              "    const adjusted = postGoalDifference + part;",
-              "    const adjusted = goalDifference + part;",
-              'full-match goal difference variable'
-          )
-          replace_once(
-              "  const settled = settleAsian(postSelected - postOpponent, number(trade.ah_line), number(trade.ah_odds), stake);",
-              "  const settled = settleAsian(finalSelected - finalOpponent, number(trade.ah_line), number(trade.ah_odds), stake);",
-              'FT settlement basis'
-          )
-          replace_once(
-              "    splitLines: settled.splitLines, settledAt: Date.now(), note: 'Settled automatically by selected-team perspective'",
-              "    splitLines: settled.splitLines, settledAt: Date.now(), note: `Settled automatically · ${SETTLEMENT_RULESET} · FT ${score.home}-${score.away}`",
-              'settlement audit note'
-          )
-          replace_once(
-              "      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = ?, note = ?, updated_at = ?",
-              "      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = COALESCE(settled_at, ?), note = ?, updated_at = ?",
-              'preserve original settlement timestamp during reconcile'
-          )
-          replace_once(
-              "    WHERE trade_key = ? AND status = 'PENDING'",
-              "    WHERE trade_key = ?",
-              'allow one-time correction of legacy settled rows'
-          )
-          replace_once(
-              """  const pendingQuery = await env.DB.prepare(`
-    SELECT * FROM paper_trades_side WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT 500
-  `).all();
-  const pending = pendingQuery.results || [];
-  if (!pending.length) return { pending: 0, settled: 0, checked: 0, warnings: [] };
-""",
-              """  const candidateQuery = await env.DB.prepare(`
-    SELECT * FROM paper_trades_side
-    WHERE status = 'PENDING'
-       OR (status = 'SETTLED' AND note NOT LIKE ?)
-    ORDER BY CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END, created_at ASC
-    LIMIT 500
-  `).bind(`%${SETTLEMENT_RULESET}%`).all();
-  const candidates = candidateQuery.results || [];
-  if (!candidates.length) return { pending: 0, reconciled: 0, settled: 0, checked: 0, warnings: [] };
-  const pendingCount = candidates.filter(trade => String(trade.status || '').toUpperCase() === 'PENDING').length;
-  const reconciledCount = candidates.length - pendingCount;
-""",
-              'pending plus legacy reconcile query'
-          )
-          replace_once(
-              "  const ids = [...new Set(pending.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];",
-              "  const ids = [...new Set(candidates.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];",
-              'candidate fixture ids'
-          )
-          replace_once(
-              "  for (const trade of pending) {",
-              "  for (const trade of candidates) {",
-              'candidate settlement loop'
-          )
-          replace_once(
-              "  return { pending: pending.length, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };",
-              "  return { pending: pendingCount, reconciled: reconciledCount, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };",
-              'settlement result counters'
-          )
-
-          path.write_text(text, encoding='utf-8')
-
-          test_path = Path('scripts/test-car3-full-match-settlement.mjs')
-          test_path.write_text(r'''import assert from 'node:assert/strict';
-import { settleAsian } from '../cloudflare-worker/src/paper-db-side.js';
-
-function check(name, difference, line, odds, stake, expectedSettlement, expectedProfit) {
-  const result = settleAsian(difference, line, odds, stake);
-  assert.equal(result.settlement, expectedSettlement, name);
-  assert.equal(result.profitUnits, expectedProfit, `${name} profit`);
-  return result;
-}
-
-const target = check(
-  'FT 6-2, selected AWAY +3.25 must be FULL LOSS',
-  2 - 6,
-  3.25,
-  2.025,
-  100,
-  'FULL LOSS',
-  -100
-);
-assert.deepEqual(target.splitLines, [3, 3.5]);
-assert.equal(target.result, 'INCORRECT');
-assert.equal(target.returnedUnits, 0);
-
-check('lose by 3 at +3.25 = HALF WIN', -3, 3.25, 2.0, 100, 'HALF WIN', 50);
-check('lose by 3 at +3.0 = PUSH', -3, 3.0, 2.0, 100, 'PUSH', 0);
-check('draw at -0.25 = HALF LOSS', 0, -0.25, 2.0, 100, 'HALF LOSS', -50);
-check('lose by 1 at +0.75 = HALF LOSS', -1, 0.75, 2.0, 100, 'HALF LOSS', -50);
-check('win by 1 at 0 = FULL WIN', 1, 0, 2.0, 100, 'FULL WIN', 100);
-
-// This is the old post-entry interpretation for the reported example.
-// It intentionally demonstrates why post-entry goals must never be the settlement basis.
-assert.equal(settleAsian(-1, 3.25, 2.025, 100).settlement, 'FULL WIN');
-
-console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');
-''', encoding='utf-8')
-
-          workflow = Path('.github/workflows/deploy-cloudflare-worker.yml')
-          wf = workflow.read_text(encoding='utf-8')
-          anchor = "      - name: Deploy nomadtips3-test-api\n"
-          test_step = "      - name: Run CAR 3 full-match AH settlement regression test\n        run: node scripts/test-car3-full-match-settlement.mjs\n\n"
-          if test_step not in wf:
-              if anchor not in wf:
-                  raise SystemExit('Deploy workflow anchor missing')
-              wf = wf.replace(anchor, test_step + anchor, 1)
-              workflow.write_text(wf, encoding='utf-8')
-          PY
+        run: python scripts/car3-settlement-fullmatch-hotfix.py
 
       - name: Run CAR 3 settlement regression tests
         run: |
@@ -169,7 +31,6 @@ console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');
           node scripts/test-api-football-rate-guard.mjs
 
       - name: Commit Engine 3 fix before deploy
-        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -178,147 +39,20 @@ console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');
           git push
 
       - name: Deploy corrected Engine 3 Worker
-        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ env.CF_API_TOKEN }}
-          accountId: ${{ env.CF_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: 4.120.0
           command: deploy --config cloudflare-worker/wrangler.jsonc
 
-      - name: Reconcile legacy Engine 3 results
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          const base = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-          for (let attempt = 1; attempt <= 10; attempt += 1) {
-            const before = await fetch(`${base}/paper-trades?limit=5000`, { cache: 'no-store' }).then(r => r.json());
-            if (!before?.ok) throw new Error(`paper-trades unavailable: ${JSON.stringify(before)}`);
-            const legacy = (before.trades || []).filter(t => t.status === 'SETTLED' && !String(t.note || '').includes('FULL_MATCH_AH_V1'));
-            console.log(`Reconcile attempt ${attempt}: legacy settled rows=${legacy.length}`);
-            if (legacy.length === 0) break;
-            const response = await fetch(`${base}/paper-settle`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-            const payload = await response.json().catch(() => null);
-            console.log(JSON.stringify(payload));
-            if (!response.ok || !payload?.ok) throw new Error(`paper-settle failed: HTTP ${response.status}`);
-            await sleep(10000);
-            if (attempt === 10) throw new Error('Legacy settlement reconciliation did not drain within 10 attempts');
-          }
-          NODE
+      - name: Reconcile ledger and verify Engine 3 wheel
+        run: node scripts/car3-settlement-live-verify.mjs
 
-      - name: Verify corrected ledger and reported match class
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          const base = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-          const data = await fetch(`${base}/paper-trades?limit=5000`, { cache: 'no-store' }).then(r => r.json());
-          if (!data?.ok) throw new Error('paper-trades verification failed');
-
-          function splitHandicap(line) {
-            const rounded = Math.round(Number(line) * 4) / 4;
-            const quarterIndex = Math.round(Math.abs(rounded) * 4);
-            if (quarterIndex % 2 === 1) {
-              const lower = Math.floor(rounded * 2) / 2;
-              return [lower, lower + 0.5];
-            }
-            return [rounded];
-          }
-          function expectedSettlement(goalDifference, line) {
-            const outcomes = splitHandicap(line).map(part => {
-              const adjusted = goalDifference + part;
-              return adjusted > 0.00001 ? 'WIN' : adjusted < -0.00001 ? 'LOSS' : 'PUSH';
-            });
-            if (outcomes.every(x => x === 'WIN')) return 'FULL WIN';
-            if (outcomes.every(x => x === 'LOSS')) return 'FULL LOSS';
-            if (outcomes.includes('WIN') && outcomes.includes('PUSH')) return 'HALF WIN';
-            if (outcomes.includes('LOSS') && outcomes.includes('PUSH')) return 'HALF LOSS';
-            if (outcomes.every(x => x === 'PUSH')) return 'PUSH';
-            return 'SPLIT';
-          }
-
-          const mismatches = [];
-          let checked = 0;
-          for (const trade of data.trades || []) {
-            if (trade.status !== 'SETTLED') continue;
-            if (trade.finalHomeScore == null || trade.finalAwayScore == null) continue;
-            checked += 1;
-            const expected = expectedSettlement(Number(trade.finalHomeScore) - Number(trade.finalAwayScore), Number(trade.ahLine));
-            if (expected !== trade.settlement) {
-              mismatches.push({ fixtureId: trade.fixtureId, teams: `${trade.selectedTeam} vs ${trade.opponent}`, expected, actual: trade.settlement, ft: `${trade.finalActualHomeScore}-${trade.finalActualAwayScore}`, line: trade.ahLine });
-            }
-          }
-          console.log(JSON.stringify({ summary: data.summary, checked, mismatches }, null, 2));
-          if (mismatches.length) throw new Error(`Full-match settlement audit found ${mismatches.length} mismatch(es)`);
-
-          const target = (data.trades || []).find(t => /Lechia/i.test(`${t.selectedTeam} ${t.opponent} ${t.actualHome} ${t.actualAway}`) && /omza|omża/i.test(`${t.selectedTeam} ${t.opponent} ${t.actualHome} ${t.actualAway}`));
-          if (target) {
-            console.log('Reported fixture audit:', JSON.stringify({
-              fixtureId: target.fixtureId,
-              selectedSide: target.selectedSide,
-              entry: `${target.entryActualHomeScore}-${target.entryActualAwayScore}`,
-              ft: `${target.finalActualHomeScore}-${target.finalActualAwayScore}`,
-              line: target.ahLine,
-              settlement: target.settlement,
-              result: target.result,
-              note: target.note
-            }, null, 2));
-            if (Number(target.finalActualHomeScore) === 6 && Number(target.finalActualAwayScore) === 2 && Number(target.ahLine) > 0 && target.selectedSide === 'AWAY' && target.settlement !== 'FULL LOSS') {
-              throw new Error('Reported 6-2 AWAY handicap fixture is not FULL LOSS after fix');
-            }
-          } else {
-            console.log('Reported Lechia/Lomza row not found by display name; global ledger audit still passed.');
-          }
-          NODE
-
-      - name: Verify Engine 3 wheel advances
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          const base = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-          const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-          const readHealth = async () => {
-            const response = await fetch(`${base}/engine-health?wheel_check=${Date.now()}`, { cache: 'no-store' });
-            const payload = await response.json().catch(() => null);
-            if (!response.ok || !payload?.ok) throw new Error(`engine-health HTTP ${response.status}`);
-            return payload;
-          };
-
-          const first = await readHealth();
-          if (String(first?.control?.mode || '').toUpperCase() !== 'RUNNING') {
-            throw new Error(`Engine 3 is not RUNNING: ${first?.control?.mode}`);
-          }
-          const before = Date.parse(first?.liveScan?.lastAttemptAt || '') || 0;
-          console.log(`Engine 3 RUNNING; lastAttemptAt before=${first?.liveScan?.lastAttemptAt}`);
-
-          let advanced = false;
-          let latest = first;
-          for (let i = 0; i < 10; i += 1) {
-            await sleep(15000);
-            latest = await readHealth();
-            const after = Date.parse(latest?.liveScan?.lastAttemptAt || '') || 0;
-            if (after > before) {
-              advanced = true;
-              break;
-            }
-          }
-          console.log(JSON.stringify({
-            advanced,
-            state: latest.state,
-            mode: latest.control?.mode,
-            lastAttemptAt: latest.liveScan?.lastAttemptAt,
-            lastSuccessfulScanAt: latest.liveScan?.lastSuccessfulScanAt,
-            pending: latest.d1?.paper?.pending,
-            watchdogAction: latest.watchdog?.currentAction
-          }, null, 2));
-          if (!advanced) throw new Error('Engine 3 cron wheel did not advance lastAttemptAt within 150 seconds');
-          NODE
-
-      - name: Remove one-shot workflow after successful verification
+      - name: Remove temporary hotfix files
         if: ${{ success() }}
-        shell: bash
         run: |
           git pull --rebase
-          git rm .github/workflows/car3-settlement-fullmatch-hotfix.yml
-          git commit -m "Remove completed CAR 3 settlement hotfix workflow"
+          git rm .github/workflows/car3-settlement-fullmatch-hotfix.yml scripts/car3-settlement-fullmatch-hotfix.py scripts/car3-settlement-live-verify.mjs
+          git commit -m "Remove completed CAR 3 settlement hotfix tooling"
           git push
