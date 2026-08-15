@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CAR31_DEFAULT_CONFIG,
+  CAR31_SOURCE_MODE,
   ENGINE3_BASE_DEFAULTS,
   configSummary,
   normalizeCar31Config,
@@ -17,17 +18,32 @@ test('CAR 3.1 keeps Engine 3 core defaults as its baseline', () => {
   }
 });
 
-test('normalizer supports expanded CAR 3.1 source and OU options', () => {
+test('normalizer supports expanded CAR 3.1 OU options', () => {
   const config = normalizeCar31Config({
-    market: 'ou', ouDirection: 'under', ouLine: '3.25', sourcePrimary: 'goaloo',
+    market: 'ou', ouDirection: 'under', ouLine: '3.25',
     sourceRefreshSeconds: 5, matchConfidenceMin: 101
   });
   assert.equal(config.market, 'OU');
   assert.equal(config.ouDirection, 'UNDER');
   assert.equal(config.ouLine, 3.25);
-  assert.equal(config.sourcePrimary, 'GOALOO');
   assert.equal(config.sourceRefreshSeconds, 10);
   assert.equal(config.matchConfidenceMin, 100);
+});
+
+test('Goaloo-only mode pins API and backup paths off even for legacy stored config', () => {
+  assert.equal(CAR31_SOURCE_MODE.locked, true);
+  const config = normalizeCar31Config({
+    sourcePrimary: 'API_FOOTBALL',
+    sourceFallback: 'API_FOOTBALL',
+    sourceBackup: 'ALERTS_BET',
+    apiVerifyPolicy: 'ALWAYS',
+    dataConflictPolicy: 'USE_API'
+  });
+  assert.equal(config.sourcePrimary, 'GOALOO');
+  assert.equal(config.sourceFallback, 'OFF');
+  assert.equal(config.sourceBackup, 'OFF');
+  assert.equal(config.apiVerifyPolicy, 'OFF');
+  assert.equal(config.dataConflictPolicy, 'PASS');
 });
 
 test('strict evidence validation rejects impossible requirement', () => {
