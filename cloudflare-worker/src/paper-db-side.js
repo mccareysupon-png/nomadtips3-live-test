@@ -2,6 +2,7 @@ import { sharedApiFetch } from './shared-api-football.js';
 const TERMINAL = new Set(['FT', 'AET', 'PEN', 'WO', 'AWD', 'CANC', 'ABD', 'PST']);
 const VOID_STATUS = new Set(['CANC', 'ABD', 'PST', 'WO', 'AWD']);
 const STAKE_DEFAULT = 100;
+const SETTLEMENT_RULESET = 'FULL_MATCH_AH_V1';
 
 const CREATE_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS paper_trades_side (
@@ -378,13 +379,13 @@ function splitHandicap(line) {
   return [rounded];
 }
 
-function settleAsian(postGoalDifference, line, odds, stake) {
+export function settleAsian(goalDifference, line, odds, stake) {
   const parts = splitHandicap(line);
   const stakePart = stake / parts.length;
   const outcomes = [];
   let profit = 0;
   for (const part of parts) {
-    const adjusted = postGoalDifference + part;
+    const adjusted = goalDifference + part;
     if (adjusted > 0.00001) {
       outcomes.push('WIN');
       profit += stakePart * (odds - 1);
@@ -463,14 +464,14 @@ function settlementForTrade(trade, fixture) {
   const postOpponent = awaySelected ? postActualHome : postActualAway;
   const finalSelected = awaySelected ? score.away : score.home;
   const finalOpponent = awaySelected ? score.home : score.away;
-  const settled = settleAsian(postSelected - postOpponent, number(trade.ah_line), number(trade.ah_odds), stake);
+  const settled = settleAsian(finalSelected - finalOpponent, number(trade.ah_line), number(trade.ah_odds), stake);
 
   return {
     status: 'SETTLED', result: settled.result, settlement: settled.settlement,
     finalStatus: fixture.status, finalSelectedScore: finalSelected, finalOpponentScore: finalOpponent,
     finalActualHomeScore: score.home, finalActualAwayScore: score.away,
     postSelected, postOpponent, profitUnits: settled.profitUnits, returnedUnits: settled.returnedUnits,
-    splitLines: settled.splitLines, settledAt: Date.now(), note: 'Settled automatically by selected-team perspective'
+    splitLines: settled.splitLines, settledAt: Date.now(), note: `Settled automatically · ${SETTLEMENT_RULESET} · FT ${score.home}-${score.away}`
   };
 }
 
@@ -481,8 +482,8 @@ function updateSettlementStatement(env, key, settled) {
       final_selected_score = ?, final_opponent_score = ?,
       final_actual_home_score = ?, final_actual_away_score = ?,
       post_entry_selected_goals = ?, post_entry_opponent_goals = ?,
-      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = ?, note = ?, updated_at = ?
-    WHERE trade_key = ? AND status = 'PENDING'
+      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = COALESCE(settled_at, ?), note = ?, updated_at = ?
+    WHERE trade_key = ?
   `).bind(
     settled.status, settled.result, settled.settlement, settled.finalStatus,
     settled.finalSelectedScore, settled.finalOpponentScore,
@@ -496,15 +497,21 @@ function updateSettlementStatement(env, key, settled) {
 
 export async function settlePendingTrades(env) {
   await ensureDatabase(env);
-  const pendingQuery = await env.DB.prepare(`
-    SELECT * FROM paper_trades_side WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT 500
-  `).all();
-  const pending = pendingQuery.results || [];
-  if (!pending.length) return { pending: 0, settled: 0, checked: 0, warnings: [] };
+  const candidateQuery = await env.DB.prepare(`
+    SELECT * FROM paper_trades_side
+    WHERE status = 'PENDING'
+       OR (status = 'SETTLED' AND note NOT LIKE ?)
+    ORDER BY CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END, created_at ASC
+    LIMIT 500
+  `).bind(`%${SETTLEMENT_RULESET}%`).all();
+  const candidates = candidateQuery.results || [];
+  if (!candidates.length) return { pending: 0, reconciled: 0, settled: 0, checked: 0, warnings: [] };
+  const pendingCount = candidates.filter(trade => String(trade.status || '').toUpperCase() === 'PENDING').length;
+  const reconciledCount = candidates.length - pendingCount;
 
   const fixtureMap = new Map();
   const warnings = [];
-  const ids = [...new Set(pending.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];
+  const ids = [...new Set(candidates.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];
   for (let index = 0; index < ids.length; index += 20) {
     const group = ids.slice(index, index + 20);
     try {
@@ -519,7 +526,7 @@ export async function settlePendingTrades(env) {
   }
 
   const updates = [];
-  for (const trade of pending) {
+  for (const trade of candidates) {
     const fixture = fixtureMap.get(integer(trade.fixture_id));
     if (!fixture) continue;
     const settled = settlementForTrade(trade, fixture);
@@ -528,7 +535,7 @@ export async function settlePendingTrades(env) {
   for (let index = 0; index < updates.length; index += 100) {
     await env.DB.batch(updates.slice(index, index + 100));
   }
-  return { pending: pending.length, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };
+  return { pending: pendingCount, reconciled: reconciledCount, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };
 }
 
 export async function handlePaperRequest(request, env, url) {
