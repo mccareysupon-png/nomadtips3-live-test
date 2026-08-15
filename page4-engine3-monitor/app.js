@@ -6,15 +6,20 @@
   const HEALTH_URL = String(body.dataset.healthUrl || '').trim();
   const ANALYTICS_URL = String(body.dataset.analyticsUrl || '').trim();
   const REFRESH_MS = Math.max(5000, Number(body.dataset.refreshMs) || 10000);
-  const ANALYTICS_REFRESH_MS = 60000;
+  const STALE_MS = Math.max(30000, Number(body.dataset.staleMs) || 120000);
   const DAY_MS = 86400000;
   const HISTORY_DAYS = 30;
+  const HISTORY_PAGE_SIZE = 25;
   let lastGoodMonitor = null;
   let latestTrades = [];
+  let historyPage = 1;
+  let monitorRefreshing = false;
+  let analyticsRefreshing = false;
 
   const $ = id => document.getElementById(id);
   const first = (...values) => values.find(value => value !== undefined && value !== null && value !== '');
   const number = value => {
+    if (value === undefined || value === null || value === '') return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   };
@@ -62,7 +67,11 @@
 
   function formatOdds(value) {
     const parsed = number(value);
-    return parsed === null ? '—' : parsed.toFixed(2);
+    return parsed === null ? '—' : new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 3,
+      useGrouping: false,
+    }).format(parsed);
   }
 
   function formatPercent(value) {
@@ -70,10 +79,12 @@
     return parsed === null ? '—' : `${parsed.toFixed(parsed % 1 ? 1 : 0)}%`;
   }
 
-  function formatUnits(value) {
+  function formatUnits(value, suffix = 'u') {
     const parsed = number(value);
     if (parsed === null) return '—';
-    return `${parsed > 0 ? '+' : ''}${parsed.toFixed(2)}u`;
+    const absolute = Math.abs(parsed).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const sign = parsed < 0 ? '−' : parsed > 0 ? '+' : '';
+    return `${sign}${absolute}${suffix ? ` ${suffix}` : ''}`;
   }
 
   function bangkokDateKey(value) {
@@ -109,7 +120,7 @@
     if (['DEGRADED','WAITING_API','DERATING','RECOVERING','VERIFYING','REPAIRING'].includes(state)) {
       return { level: 'stale', label: 'DEGRADED', scan: first(health?.watchdog?.currentAction, state, 'DEGRADED') };
     }
-    return { level: 'online', label: 'ONLINE', scan: 'RUNNING' };
+    return { level: 'online', label: 'ENGINE ONLINE', scan: 'RUNNING' };
   }
 
   function normalizeCandidate(item = {}, config = {}) {
@@ -145,31 +156,58 @@
   }
 
   function normalizeTrade(item = {}) {
-    const result = String(item.result || '').toUpperCase();
     const status = String(item.status || '').toUpperCase();
-    const settlement = String(item.settlement || '').toUpperCase();
-    let outcome = 'PENDING';
-    if (result === 'CORRECT') outcome = 'WIN';
-    else if (result === 'INCORRECT') outcome = 'LOSS';
-    else if (status === 'VOID' || settlement === 'VOID') outcome = 'VOID';
-    else if (settlement === 'PUSH') outcome = 'PUSH';
-    else if (status === 'SETTLED' && result === 'NEUTRAL') outcome = 'PUSH';
+    const sourceSettlement = String(item.settlement || '').toUpperCase();
+    const outcome = status === 'PENDING'
+      ? 'PENDING'
+      : status === 'VOID'
+        ? 'VOID'
+        : sourceSettlement || 'UNAVAILABLE';
+    const selectedSide = String(first(item.selectedSide, item.selected_side, 'HOME')).toUpperCase() === 'AWAY'
+      ? 'AWAY'
+      : 'HOME';
+    const selectedTeam = first(item.selectedTeam, item.selected_team, '—');
+    const opponent = first(item.opponent, '—');
+    const home = first(item.actualHome, selectedSide === 'AWAY' ? opponent : selectedTeam, '—');
+    const away = first(item.actualAway, selectedSide === 'AWAY' ? selectedTeam : opponent, '—');
     const entrySelected = first(item.entryHomeScore, item.entrySelectedScore);
     const entryOpponent = first(item.entryAwayScore, item.entryOpponentScore);
-    const score = entrySelected != null && entryOpponent != null ? `${entrySelected}–${entryOpponent}` : '—';
+    const entryHome = first(
+      item.entryActualHomeScore,
+      selectedSide === 'AWAY' ? entryOpponent : entrySelected,
+    );
+    const entryAway = first(
+      item.entryActualAwayScore,
+      selectedSide === 'AWAY' ? entrySelected : entryOpponent,
+    );
+    const postSelected = first(item.postEntryHomeGoals, item.postEntrySelectedGoals);
+    const postOpponent = first(item.postEntryAwayGoals, item.postEntryOpponentGoals);
+    const postHome = selectedSide === 'AWAY' ? postOpponent : postSelected;
+    const postAway = selectedSide === 'AWAY' ? postSelected : postOpponent;
     const line = number(item.ahLine);
     return {
       id: first(item.tradeKey, item.id, `${item.fixtureId || 'trade'}:${item.createdAt || ''}`),
       fixtureId: item.fixtureId,
-      selectedTeam: first(item.selectedTeam, item.home, '—'),
-      opponent: first(item.opponent, item.away, '—'),
-      market: line === null ? 'AH' : `AH ${line >= 0 ? '+' : ''}${line}`,
+      selectedSide,
+      selectedTeam,
+      opponent,
+      home,
+      away,
+      entryHomeScore: number(entryHome),
+      entryAwayScore: number(entryAway),
+      finalHomeScore: number(item.finalActualHomeScore),
+      finalAwayScore: number(item.finalActualAwayScore),
+      postHomeGoals: number(postHome),
+      postAwayGoals: number(postAway),
+      line,
       minute: number(item.entryMinute),
-      score,
       odds: first(item.ahOdds, item.selectedWinOdds, item.homeWinOdds),
       confidence: item.momentum,
       outcome,
-      profitUnits: number(item.profitUnits) || 0,
+      status,
+      profitUnits: number(item.profitUnits),
+      returnedUnits: number(item.returnedUnits),
+      stakeUnits: number(item.stakeUnits),
       createdAt: item.createdAt,
       settledAt: item.settledAt,
     };
@@ -223,8 +261,10 @@
     const candidates = (Array.isArray(state.candidates) ? state.candidates : []).map(item => normalizeCandidate(item, config));
     const active = candidates.filter(item => item.minute != null || item.matched);
     const triggered = candidates.filter(item => item.matched);
-    const lastScan = first(health?.liveScan?.lastSuccessfulScanAt, state.generatedAt);
-    const feedStale = Boolean(state.stale);
+    const lastScan = first(state.generatedAt, health?.liveScan?.lastSuccessfulScanAt);
+    const lastScanMs = parseTime(lastScan);
+    const feedStale = Boolean(state.stale) || !Number.isFinite(lastScanMs) || Date.now() - lastScanMs > STALE_MS;
+    const combinedStatus = view.level === 'online' ? `${view.label} / ${view.scan}` : view.label;
 
     lastGoodMonitor = { state, health };
     text('liveFixtures', first(counts.allLive, counts.live, counts.liveFixtures, 0));
@@ -234,8 +274,8 @@
     text('runtimeEngine', view.label);
     text('runtimeScan', view.scan);
     text('runtimeUpdate', formatClock(lastScan));
-    text('headerStatus', view.label);
-    text('engineStatus', view.label);
+    text('headerStatus', combinedStatus);
+    text('engineStatus', view.level === 'online' ? 'ONLINE / RUNNING' : view.label);
     text('sysSharedState', state.ok === false ? 'UNAVAILABLE' : feedStale ? 'STORED · STALE' : 'STORED · READY');
     text('sysEngineData', first(health?.state, view.label));
     text('sysLastGood', lastScan ? `${formatDateTime(lastScan)} · ${ageLabel(lastScan)}` : '—');
@@ -253,8 +293,8 @@
       freshness.classList.remove('fresh', 'stale', 'offline');
       freshness.classList.add(view.level === 'online' && !feedStale ? 'fresh' : feedStale ? 'stale' : view.level);
       freshness.textContent = lastScan
-        ? `${view.label} · LAST SCAN ${ageLabel(lastScan)}${feedStale ? ' · STORED DATA' : ''}`
-        : `${view.label} · WAITING FOR SCAN`;
+        ? `${feedStale ? 'STALE DATA' : combinedStatus} · LAST UPDATED ${formatDateTime(lastScan)} · ${ageLabel(lastScan)}`
+        : `${view.label} · WAITING FOR DATA`;
     }
 
     const signalHero = $('signalHero');
@@ -320,17 +360,41 @@
   }
 
   function outcomeClass(outcome) {
-    const value = String(outcome || 'PENDING').toLowerCase();
-    return ['win','loss','push','void','pending'].includes(value) ? value : 'pending';
+    const value = String(outcome || 'PENDING').toUpperCase();
+    if (value.includes('WIN')) return 'win';
+    if (value.includes('LOSS')) return 'loss';
+    if (value === 'PUSH') return 'push';
+    if (value === 'VOID') return 'void';
+    return 'pending';
   }
 
   function historyRow(signal) {
+    const entryScore = signal.entryHomeScore === null || signal.entryAwayScore === null
+      ? '—'
+      : `${signal.entryHomeScore}–${signal.entryAwayScore}`;
+    const finalScore = signal.finalHomeScore === null || signal.finalAwayScore === null
+      ? '—'
+      : `${signal.finalHomeScore}–${signal.finalAwayScore}`;
+    const postEntry = signal.postHomeGoals === null || signal.postAwayGoals === null
+      ? ''
+      : `<span class="post-entry">POST-ENTRY · ${escapeHtml(`${signal.postHomeGoals}–${signal.postAwayGoals}`)}</span>`;
+    const line = signal.line === null ? 'AH' : `${signal.line >= 0 ? '+' : ''}${signal.line}`;
+    const pick = `${signal.selectedSide} ${line} @ ${formatOdds(signal.odds)}`;
     return `<article class="history-row">
-      <div class="history-time">${escapeHtml(formatDateTime(signal.createdAt))}</div>
-      <div class="history-match"><b>${escapeHtml(historyMatch(signal))}</b><span>${escapeHtml(signal.score || '—')} · ${signal.minute == null ? '—' : `${signal.minute}'`}</span></div>
-      <div class="history-pick"><b>${escapeHtml(signal.selectedTeam || '—')}</b><span>${escapeHtml(signal.market || '—')}</span></div>
-      <div class="history-odds">${escapeHtml(formatOdds(signal.odds))}</div>
-      <div class="outcome ${outcomeClass(signal.outcome)}">${escapeHtml(signal.outcome || 'PENDING')}</div>
+      <div class="history-card-head">
+        <div class="history-match"><b>${escapeHtml(`${signal.home} vs ${signal.away}`)}</b><span>${escapeHtml(formatDateTime(signal.createdAt))}</span></div>
+        <div class="outcome ${outcomeClass(signal.outcome)}">${escapeHtml(signal.outcome)}</div>
+      </div>
+      <div class="history-scores">
+        <span>ENTRY · <b>${escapeHtml(entryScore)}</b> · ${signal.minute == null ? '—' : `${signal.minute}'`}</span>
+        <strong>FT · ${escapeHtml(finalScore)}</strong>
+        ${postEntry}
+      </div>
+      <div class="history-pick"><b>${escapeHtml(pick)}</b><span>${escapeHtml(signal.selectedTeam)}</span></div>
+      <div class="history-ledger">
+        <span>Profit <b>${escapeHtml(formatUnits(signal.profitUnits, 'Units'))}</b></span>
+        <span>Return <b>${escapeHtml(formatUnits(signal.returnedUnits, 'Units'))}</b></span>
+      </div>
     </article>`;
   }
 
@@ -389,41 +453,73 @@
     </svg>`;
   }
 
-  function renderAnalytics(payload = {}) {
-    const allSignals = (Array.isArray(payload.trades) ? payload.trades : []).map(normalizeTrade);
-    latestTrades = allSignals;
-    const cutoff = Date.now() - HISTORY_DAYS * DAY_MS;
-    const signals = allSignals.filter(signal => (parseTime(signal.createdAt) || 0) >= cutoff);
-    const win = signals.filter(signal => signal.outcome === 'WIN').length;
-    const loss = signals.filter(signal => signal.outcome === 'LOSS').length;
-    const pending = signals.filter(signal => signal.outcome === 'PENDING').length;
-    const validOdds = signals.map(signal => number(signal.odds)).filter(value => value !== null && value > 1);
-    const avgOdds = validOdds.length ? validOdds.reduce((sum, value) => sum + value, 0) / validOdds.length : null;
-    const netUnits = signals.reduce((sum, signal) => sum + (number(signal.profitUnits) || 0), 0);
-    const accuracy = win + loss ? win / (win + loss) * 100 : 0;
-    const daily = buildDaily(signals);
+  function historyPageButtons(totalPages) {
+    const pages = [];
+    const start = Math.max(1, Math.min(historyPage - 2, Math.max(1, totalPages - 4)));
+    const end = Math.min(totalPages, Math.max(5, historyPage + 2));
+    for (let page = start; page <= end; page += 1) pages.push(page);
+    return pages.map(page => `<button type="button" class="history-page${page === historyPage ? ' active' : ''}" data-history-page="${page}" aria-current="${page === historyPage ? 'page' : 'false'}">${page}</button>`).join('');
+  }
 
-    text('histTotal', signals.length);
-    text('histWin', win);
-    text('histLoss', loss);
-    text('histPending', pending);
-    text('histAccuracy', formatPercent(accuracy));
-    text('histAvgOdds', avgOdds === null ? '—' : avgOdds.toFixed(2));
-    text('histNetUnits', `NET ${formatUnits(netUnits)}`);
-    text('historyNote', `${signals.length} signal${signals.length === 1 ? '' : 's'} · 30 days`);
+  function renderHistoryPage() {
+    const list = $('historyList');
+    const nav = $('historyPagination');
+    if (!list || !nav) return;
+    if (!latestTrades.length) {
+      list.innerHTML = '<div class="list-empty">No Engine 3 signal history is recorded in the source ledger.</div>';
+      nav.hidden = true;
+      nav.innerHTML = '';
+      return;
+    }
+    const totalPages = Math.max(1, Math.ceil(latestTrades.length / HISTORY_PAGE_SIZE));
+    historyPage = Math.min(Math.max(1, historyPage), totalPages);
+    const start = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    list.innerHTML = latestTrades.slice(start, start + HISTORY_PAGE_SIZE).map(historyRow).join('');
+    nav.hidden = totalPages <= 1;
+    nav.innerHTML = totalPages <= 1 ? '' : [
+      `<button type="button" class="history-page nav" data-history-page="${historyPage - 1}" ${historyPage === 1 ? 'disabled' : ''}>Prev</button>`,
+      historyPageButtons(totalPages),
+      `<button type="button" class="history-page nav" data-history-page="${historyPage + 1}" ${historyPage === totalPages ? 'disabled' : ''}>Next</button>`,
+    ].join('');
+  }
+
+  function renderAnalytics(payload = {}) {
+    const sourceSummary = payload.summary || {};
+    latestTrades = (Array.isArray(payload.trades) ? payload.trades : [])
+      .map(normalizeTrade)
+      .sort((a, b) => (parseTime(b.createdAt) || 0) - (parseTime(a.createdAt) || 0));
+    const cutoff = Date.now() - HISTORY_DAYS * DAY_MS;
+    const recentSignals = latestTrades.filter(signal => (parseTime(signal.createdAt) || 0) >= cutoff);
+    const validOdds = latestTrades.map(signal => number(signal.odds)).filter(value => value !== null && value > 1);
+    const avgOdds = validOdds.length ? validOdds.reduce((sum, value) => sum + value, 0) / validOdds.length : null;
+    const sourceNetUnits = number(sourceSummary.netUnits);
+
+    text('histTotal', first(sourceSummary.total, latestTrades.length));
+    text('histWin', first(sourceSummary.correct, sourceSummary.win, '—'));
+    text('histLoss', first(sourceSummary.incorrect, sourceSummary.loss, '—'));
+    text('histPending', first(sourceSummary.pending, '—'));
+    text('histAccuracy', formatPercent(sourceSummary.accuracyPercent));
+    text('histAvgOdds', avgOdds === null ? '—' : formatOdds(avgOdds));
+    text('histNetProfit', formatUnits(sourceNetUnits, 'Units'));
+    text('histReturn', formatUnits(sourceSummary.returnedUnits, 'Units'));
+    text('histRoi', formatPercent(sourceSummary.roiPercent));
+    text('histNetUnits', `NET ${formatUnits(sourceNetUnits, 'Units')}`);
+    text('historyNote', `${latestTrades.length} source record${latestTrades.length === 1 ? '' : 's'}`);
 
     const chart = $('performanceChart');
-    if (chart) chart.innerHTML = chartSvg(daily);
-    const list = $('historyList');
-    if (list) list.innerHTML = signals.length
-      ? signals.slice(0, 25).map(historyRow).join('')
-      : '<div class="list-empty">No Engine 3 signal history recorded in the last 30 days.</div>';
+    if (chart) chart.innerHTML = chartSvg(buildDaily(recentSignals));
+    renderHistoryPage();
 
     const freshness = $('historyFreshness');
     if (freshness) {
-      freshness.classList.remove('stale','offline');
-      freshness.classList.add('fresh');
-      freshness.textContent = payload.generatedAt ? `D1 HISTORY · ${ageLabel(payload.generatedAt)}` : 'D1 HISTORY · READY';
+      const generatedAt = payload.generatedAt;
+      const generatedMs = parseTime(generatedAt);
+      const stale = !Number.isFinite(generatedMs) || Date.now() - generatedMs > STALE_MS;
+      freshness.classList.remove('fresh','stale','offline');
+      freshness.classList.add(stale ? 'stale' : 'fresh');
+      freshness.textContent = generatedAt
+        ? `${stale ? 'STALE DATA' : 'D1 LEDGER READY'} · LAST UPDATED ${formatDateTime(generatedAt)}`
+        : 'D1 LEDGER · UPDATE TIME UNAVAILABLE';
     }
   }
 
@@ -442,16 +538,22 @@
 
   async function refreshMonitor() {
     if (!STATE_URL || !HEALTH_URL) return renderUnavailable('Engine 3 endpoints are not configured');
+    if (monitorRefreshing) return;
+    monitorRefreshing = true;
     try {
       const [state, health] = await Promise.all([fetchJson(STATE_URL), fetchJson(HEALTH_URL)]);
       renderMonitor(state, health);
     } catch (error) {
       renderUnavailable(error?.name === 'AbortError' ? 'Engine 3 monitor request timed out' : (error?.message || 'Engine 3 monitor unavailable'));
+    } finally {
+      monitorRefreshing = false;
     }
   }
 
   async function refreshAnalytics() {
     if (!ANALYTICS_URL) return;
+    if (analyticsRefreshing) return;
+    analyticsRefreshing = true;
     try {
       const data = await fetchJson(ANALYTICS_URL, 10000);
       renderAnalytics(data);
@@ -462,7 +564,14 @@
         freshness.classList.add('offline');
         freshness.textContent = 'D1 HISTORY UNAVAILABLE';
       }
+    } finally {
+      analyticsRefreshing = false;
     }
+  }
+
+  function refreshAll() {
+    refreshMonitor();
+    refreshAnalytics();
   }
 
   function setupTabs() {
@@ -481,6 +590,18 @@
     }));
   }
 
+  function setupHistoryPagination() {
+    $('historyPagination')?.addEventListener('click', event => {
+      const button = event.target.closest('[data-history-page]');
+      if (!button || button.disabled) return;
+      const page = Number(button.dataset.historyPage);
+      if (!Number.isFinite(page)) return;
+      historyPage = page;
+      renderHistoryPage();
+      document.querySelector('.history-head')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   function tickClock() {
     text('pageClock', new Intl.DateTimeFormat('en-GB', {
       timeZone: 'Asia/Bangkok', day: '2-digit', month: 'short', year: 'numeric',
@@ -489,10 +610,14 @@
   }
 
   setupTabs();
+  setupHistoryPagination();
   tickClock();
   setInterval(tickClock, 1000);
-  refreshMonitor();
-  refreshAnalytics();
-  setInterval(refreshMonitor, REFRESH_MS);
-  setInterval(refreshAnalytics, ANALYTICS_REFRESH_MS);
+  refreshAll();
+  setInterval(refreshAll, REFRESH_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshAll();
+  });
+  window.addEventListener('pageshow', refreshAll);
+  window.addEventListener('online', refreshAll);
 })();
