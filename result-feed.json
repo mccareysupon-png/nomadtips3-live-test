@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-14",
-  "generatedAt": "2026-08-15T04:21:34Z",
+  "generatedAt": "2026-08-15T04:22:36Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 45,
     "correct": 22,
-    "incorrect": 21,
+    "incorrect": 22,
     "void": 1,
-    "pending": 1,
-    "settled": 43,
-    "allSettled": false,
-    "accuracy": 51.16,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 44,
+    "allSettled": true,
+    "accuracy": 50.0,
+    "finalizedAt": "2026-08-15T04:22:36Z"
   },
   "marketSummary": {
     "btts": {
       "total": 45,
-      "correct": 21,
+      "correct": 22,
       "incorrect": 22,
       "void": 1,
-      "pending": 1,
-      "settled": 43,
-      "accuracy": 48.84
+      "pending": 0,
+      "settled": 44,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 45,
       "correct": 34,
-      "incorrect": 9,
+      "incorrect": 10,
       "void": 1,
-      "pending": 1,
-      "settled": 43,
-      "accuracy": 79.07
+      "pending": 0,
+      "settled": 44,
+      "accuracy": 77.27
     },
     "asianHandicap": {
       "win": 22,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
-      "loss": 17,
+      "loss": 18,
       "void": 1,
-      "pending": 1,
+      "pending": 0,
       "total": 45,
-      "decisions": 39,
-      "weightedRate": 56.41
+      "decisions": 40,
+      "weightedRate": 55.0
     }
   },
   "results": [
@@ -1734,7 +1734,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -1781,7 +1781,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -1828,7 +1828,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -1875,7 +1875,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -1922,7 +1922,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -1969,7 +1969,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -2016,7 +2016,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -2063,7 +2063,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -2110,7 +2110,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     },
     {
@@ -2120,85 +2120,88 @@
       "home": "Atlético Mineiro W",
       "away": "Gremio W",
       "kickoffUtc": "2026-08-15T00:00:00+00:00",
-      "status": "1H",
-      "providerStatus": "1H",
-      "statusLong": "First Half",
-      "elapsed": null,
-      "homeScore": 0,
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
+      "elapsed": 90,
+      "homeScore": 2,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.8,
           "oddsStatus": "LOCKED",
           "confidence": 72,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "X2 — Gremio W or Draw",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 72,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "asianHandicap": {
           "pick": "Gremio W -0.5",
           "odds": 1.27,
           "oddsStatus": "LOCKED",
           "confidence": 72,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "away"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T04:21:34Z",
+      "updatedAt": "2026-08-15T04:22:36Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
     "correct": 4,
-    "incorrect": 5,
+    "incorrect": 6,
     "void": 0,
-    "pending": 1,
-    "settled": 9,
-    "allSettled": false,
-    "accuracy": 44.44,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 10,
+    "allSettled": true,
+    "accuracy": 40.0,
+    "finalizedAt": "2026-08-15T04:22:36Z"
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 4,
       "void": 0,
-      "pending": 1,
-      "settled": 9,
-      "accuracy": 55.56
+      "pending": 0,
+      "settled": 10,
+      "accuracy": 60.0
     },
     "doubleChance": {
       "total": 10,
       "correct": 7,
-      "incorrect": 2,
+      "incorrect": 3,
       "void": 0,
-      "pending": 1,
-      "settled": 9,
-      "accuracy": 77.78
+      "pending": 0,
+      "settled": 10,
+      "accuracy": 70.0
     },
     "asianHandicap": {
       "win": 4,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 5,
+      "loss": 6,
       "void": 0,
-      "pending": 1,
+      "pending": 0,
       "total": 10,
-      "decisions": 9,
-      "weightedRate": 44.44
+      "decisions": 10,
+      "weightedRate": 40.0
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
