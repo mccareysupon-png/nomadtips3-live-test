@@ -108,14 +108,4 @@ console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');
     encoding='utf-8',
 )
 
-workflow = Path('.github/workflows/deploy-cloudflare-worker.yml')
-wf = workflow.read_text(encoding='utf-8')
-anchor = "      - name: Deploy nomadtips3-test-api\n"
-test_step = "      - name: Run CAR 3 full-match AH settlement regression test\n        run: node scripts/test-car3-full-match-settlement.mjs\n\n"
-if test_step not in wf:
-    if anchor not in wf:
-        raise SystemExit('Deploy workflow anchor missing')
-    wf = wf.replace(anchor, test_step + anchor, 1)
-    workflow.write_text(wf, encoding='utf-8')
-
 print('CAR 3 settlement source patch prepared successfully')
