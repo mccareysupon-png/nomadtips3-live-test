@@ -10,9 +10,10 @@
     :root{--bg:#07110d;--panel:#0d1d16;--panel2:#10271d;--line:#29483b;--text:#eff9f3;--muted:#91aa9e;--green:#00df91;--yellow:#f2c94c;--red:#ff6573}
     *{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;background:radial-gradient(circle at 90% 0,#123a29 0,transparent 40%),var(--bg)}
     .wrap{width:min(920px,calc(100% - 22px));margin:auto;padding:24px 0 46px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start}.brand{font-size:25px;font-weight:950;letter-spacing:-1px}.brand b{color:var(--yellow)}.tag{margin-top:6px;color:#bdd2c7;font-size:10px;font-weight:850;letter-spacing:.06em}.back{display:inline-flex;align-items:center;gap:7px;border:1px solid #416353;border-radius:10px;padding:8px 11px;background:#10271d;color:#e9f8f0;text-decoration:none;font-size:11px;font-weight:900}
-    .status{margin:16px 0 12px;padding:12px 14px;border:1px solid #3d5f4d;border-radius:13px;background:#0d2118;color:#bdd1c6;font-size:12px;line-height:1.55}.status strong{color:#fff}.panel{border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,var(--panel2),var(--panel));padding:15px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.field{padding:10px;border:1px solid #203d30;border-radius:12px;background:#08170f}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850}.field input,.field select{width:100%;border:1px solid #355646;border-radius:9px;background:#10231a;color:#eff9f3;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus,.field select:focus{border-color:var(--green)}.field input:disabled{opacity:.45}.wide{grid-column:span 2}
+    .status{margin:16px 0 12px;padding:12px 14px;border:1px solid #3d5f4d;border-radius:13px;background:#0d2118;color:#bdd1c6;font-size:12px;line-height:1.55}.status strong{color:#fff}.panel{border:1px solid var(--line);border-radius:17px;background:linear-gradient(180deg,var(--panel2),var(--panel));padding:15px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.field{padding:10px;border:1px solid #203d30;border-radius:12px;background:#08170f}.field label{display:block;margin-bottom:6px;color:var(--muted);font-size:9px;font-weight:850}.field input,.field select{width:100%;border:1px solid #355646;border-radius:9px;background:#10231a;color:#eff9f3;padding:9px 10px;font:inherit;font-size:13px;outline:none}.field input:focus,.field select:focus{border-color:var(--green)}.field input:disabled,.field select:disabled{opacity:.45}.wide{grid-column:span 2}
+    .advanced{margin-top:14px;padding:13px;border-radius:14px;background:#101318}.advanced-head{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-bottom:10px}.advanced-title{font-size:12px;font-weight:950;letter-spacing:.04em}.advanced-note{color:var(--muted);font-size:9px;line-height:1.5;text-align:right}.evidence-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.evidence-item{padding:10px;border-radius:11px;background:#24272d}.evidence-item label{display:block;color:var(--muted);font-size:9px;font-weight:850;margin-bottom:7px}.evidence-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px}.evidence-item input,.evidence-item select{width:100%;border:0;border-radius:9px;background:#15171b;color:#eff9f3;padding:9px 10px;font:inherit;font-size:12px;outline:none}.evidence-item input:focus,.evidence-item select:focus{box-shadow:0 0 0 2px var(--green)}.evidence-item input:disabled,.evidence-item select:disabled{opacity:.45}.evidence-requirement{margin-top:9px;max-width:430px}.evidence-requirement .evidence-controls{grid-template-columns:1fr}
     .summary{margin-top:12px;padding:11px 13px;border:1px solid #365447;border-radius:11px;background:#091912;color:#bcd0c5;font-size:11px;line-height:1.55}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.actions button{border:1px solid #416353;border-radius:10px;padding:9px 15px;background:#10271d;color:#e9f8f0;font:inherit;font-size:11px;font-weight:900;cursor:pointer}.actions button.primary{background:#00a96f;border-color:var(--green);color:#04120c}.actions button:disabled{opacity:.55;cursor:wait}.message{min-height:20px;margin-top:8px;text-align:right;color:var(--muted);font-size:10px}.message.good{color:var(--green)}.message.bad{color:var(--red)}.hint{margin-top:13px;color:#7f9a8d;font-size:10px;line-height:1.55}.footer{margin-top:16px;text-align:center;color:#6f887c;font-size:9px}
-    @media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:520px){.top{flex-direction:column}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}}
+    @media(max-width:760px){.grid{grid-template-columns:repeat(2,1fr)}.evidence-grid{grid-template-columns:1fr}}@media(max-width:520px){.top{flex-direction:column}.grid{grid-template-columns:1fr}.wide{grid-column:auto}.advanced-head{display:block}.advanced-note{text-align:left;margin-top:5px}.actions{display:grid;grid-template-columns:repeat(3,1fr)}.actions button{padding:10px 5px}.message{text-align:left}}
 
     /* Dark graphite theme: separate sections by shade, not border lines. */
     :root{--bg:#090a0c;--panel:#17191e;--panel2:#22252b;--line:transparent}
@@ -65,6 +66,35 @@
         <div class="field"><label>สถานะระบบ</label><input id="engineState" value="TEST ENGINE" disabled></div>
       </div>
 
+      <section class="advanced" id="attackEvidenceAdvanced">
+        <div class="advanced-head">
+          <div class="advanced-title">ATTACK EVIDENCE · ADVANCED</div>
+          <div class="advanced-note">นับเฉพาะค่าที่เพิ่มขึ้นจาก Snapshot แรกที่ระบบตรวจพบภายในช่วง “นาทีเริ่ม–นาทีสิ้นสุด” ที่ตั้งไว้</div>
+        </div>
+        <div class="evidence-grid">
+          <div class="evidence-item">
+            <label>Dangerous Attacks · เพิ่มขั้นต่ำ (≥)</label>
+            <div class="evidence-controls"><select id="evidenceDangerousAttacksMode"><option value="ON">เปิด</option><option value="OFF">ปิด</option></select><input id="evidenceDangerousAttacksMin" type="number" min="1" max="999" step="1" aria-label="Dangerous Attacks ขั้นต่ำ"></div>
+          </div>
+          <div class="evidence-item">
+            <label>Shots · เพิ่มขั้นต่ำ (≥)</label>
+            <div class="evidence-controls"><select id="evidenceShotsMode"><option value="ON">เปิด</option><option value="OFF">ปิด</option></select><input id="evidenceShotsMin" type="number" min="1" max="999" step="1" aria-label="Shots ขั้นต่ำ"></div>
+          </div>
+          <div class="evidence-item">
+            <label>Shots on Target · เพิ่มขั้นต่ำ (≥)</label>
+            <div class="evidence-controls"><select id="evidenceShotsOnTargetMode"><option value="ON">เปิด</option><option value="OFF">ปิด</option></select><input id="evidenceShotsOnTargetMin" type="number" min="1" max="999" step="1" aria-label="Shots on Target ขั้นต่ำ"></div>
+          </div>
+          <div class="evidence-item">
+            <label>Corners · เพิ่มขั้นต่ำ (≥)</label>
+            <div class="evidence-controls"><select id="evidenceCornersMode"><option value="ON">เปิด</option><option value="OFF">ปิด</option></select><input id="evidenceCornersMin" type="number" min="1" max="999" step="1" aria-label="Corners ขั้นต่ำ"></div>
+          </div>
+        </div>
+        <div class="evidence-item evidence-requirement">
+          <label>จำนวนเงื่อนไขที่ต้องผ่าน</label>
+          <div class="evidence-controls"><select id="evidenceRequirement"><option value="1">อย่างน้อย 1 เงื่อนไข</option><option value="2">อย่างน้อย 2 เงื่อนไข</option><option value="3">อย่างน้อย 3 เงื่อนไข</option><option value="ALL">ต้องผ่านทั้งหมดที่เปิด</option></select></div>
+        </div>
+      </section>
+
       <div class="summary" id="draftSummary">กำลังโหลดค่า</div>
 
       <div class="actions">
@@ -73,7 +103,7 @@
         <button type="button" class="primary" id="runButton">รัน</button>
       </div>
       <div class="message" id="message"></div>
-      <div class="hint">Attack evidence เปิด = ต้องมี Dangerous Attacks / Shots / Shots on target / Corners เพิ่มจากรอบก่อนอย่างน้อย 1 ครั้ง · ปิด = ไม่ใช้ตัวล็อกนี้ และยึด Momentum + เงื่อนไขอื่นตามที่ตั้ง · เซฟ = เก็บค่าไว้ · รัน = ใช้ค่าใหม่กับระบบ Test</div>
+      <div class="hint">Attack evidence เดิมยังเป็นสวิตช์หลัก · Advanced ใช้เกณฑ์ ≥ ตามค่าที่เพิ่มขึ้นจาก Snapshot แรกที่ตรวจพบในช่วงนาทีที่ตั้ง · การตั้งค่าเดิมอื่นยังทำงานร่วมกันตามเดิม · เซฟ = เก็บค่าไว้ · รัน = ใช้ค่าใหม่กับระบบ Test</div>
     </main>
 
     <div class="footer">ISOLATED TEST · OWNER CONDITION SETTINGS</div>
@@ -84,7 +114,12 @@
     (() => {
       'use strict';
       const WORKER = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
-      const ids = ['side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin','attackEvidenceMode','gapMode','maxGoalGap','confirmationRounds','limitMode','maxSignalsPerDay'];
+      const ids = [
+        'side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin',
+        'attackEvidenceMode','gapMode','maxGoalGap','confirmationRounds','limitMode','maxSignalsPerDay',
+        'evidenceDangerousAttacksMode','evidenceDangerousAttacksMin','evidenceShotsMode','evidenceShotsMin',
+        'evidenceShotsOnTargetMode','evidenceShotsOnTargetMin','evidenceCornersMode','evidenceCornersMin','evidenceRequirement'
+      ];
       const $ = id => document.getElementById(id);
       let serverState = null;
 
@@ -96,19 +131,40 @@
       function marketLabel(value){ return value === 'AH' ? 'Asian Handicap' : 'ชนะตรง'; }
       function line(value){ const n = Number(value); return Number.isFinite(n) ? `${n >= 0 ? '+' : ''}${n}` : 'ไม่จำกัด'; }
       function optional(id){ const text = $(id).value.trim(); return text === '' ? null : Number(text); }
+      function on(id){ return $(id).value === 'ON'; }
 
-      function configText(config){
-        if (!config) return 'ยังไม่มีข้อมูล';
+      function displayConfig(config){
+        if (!config) return config;
+        if (config.dailySignalLimitConfigured) return config;
+        return { ...config, signalLimitEnabled: true, maxSignalsPerDay: 10 };
+      }
+
+      function evidenceText(config){
+        if (config.attackEvidenceEnabled === false) return 'Evidence ปิด';
+        if (!config.attackEvidenceDetailedConfigured) return 'Evidence เดิม';
+        const parts = [];
+        if (config.attackEvidenceDangerousAttacksEnabled) parts.push(`Dangerous ≥ ${config.attackEvidenceDangerousAttacksMin}`);
+        if (config.attackEvidenceShotsEnabled) parts.push(`Shots ≥ ${config.attackEvidenceShotsMin}`);
+        if (config.attackEvidenceShotsOnTargetEnabled) parts.push(`On target ≥ ${config.attackEvidenceShotsOnTargetMin}`);
+        if (config.attackEvidenceCornersEnabled) parts.push(`Corners ≥ ${config.attackEvidenceCornersMin}`);
+        const requirement = config.attackEvidenceRequirement === 'ALL' ? 'ครบทั้งหมดที่เปิด' : `ผ่าน ≥ ${config.attackEvidenceRequirement} เงื่อนไข`;
+        return `Evidence Advanced (${parts.join(', ') || 'ไม่เปิดตัวกรองย่อย'} · ${requirement})`;
+      }
+
+      function configText(rawConfig){
+        if (!rawConfig) return 'ยังไม่มีข้อมูล';
+        const config = displayConfig(rawConfig);
         const oddsMax = config.oddsMax === null ? 'ไม่จำกัด' : Number(config.oddsMax).toFixed(2);
         const ahMax = config.ahMax === null ? 'ไม่จำกัด' : line(config.ahMax);
-        const evidence = config.attackEvidenceEnabled === false ? 'Evidence ปิด' : 'Evidence เปิด';
+        const evidence = evidenceText(config);
         const gap = config.goalGapLimited ? `ผลต่างไม่เกิน ${config.maxGoalGap} ลูก` : 'ทุกสกอร์';
         const limit = config.signalLimitEnabled ? `สูงสุด ${config.maxSignalsPerDay} สัญญาณ/วัน` : 'สัญญาณไม่จำกัด';
         return `${sideLabel(config.side)} · นาที ${config.minuteMin}–${config.minuteMax} · ${marketLabel(config.market)} · Odds ${Number(config.oddsMin).toFixed(2)}–${oddsMax} · AH ${line(config.ahMin)}–${ahMax} · บุก ≥ ${config.momentumMin}% · ${evidence} · ${gap} · ยืนยัน ${config.confirmationRounds} รอบ · ${limit}`;
       }
 
-      function fill(config){
-        if (!config) return;
+      function fill(rawConfig){
+        if (!rawConfig) return;
+        const config = displayConfig(rawConfig);
         $('side').value = config.side;
         $('minuteMin').value = config.minuteMin;
         $('minuteMax').value = config.minuteMax;
@@ -124,6 +180,17 @@
         $('confirmationRounds').value = config.confirmationRounds;
         $('limitMode').value = config.signalLimitEnabled ? 'LIMITED' : 'UNLIMITED';
         $('maxSignalsPerDay').value = config.maxSignalsPerDay;
+        $('evidenceDangerousAttacksMode').value = config.attackEvidenceDangerousAttacksEnabled === false ? 'OFF' : 'ON';
+        $('evidenceDangerousAttacksMin').value = config.attackEvidenceDangerousAttacksMin ?? 1;
+        $('evidenceShotsMode').value = config.attackEvidenceShotsEnabled === false ? 'OFF' : 'ON';
+        $('evidenceShotsMin').value = config.attackEvidenceShotsMin ?? 1;
+        $('evidenceShotsOnTargetMode').value = config.attackEvidenceShotsOnTargetEnabled === false ? 'OFF' : 'ON';
+        $('evidenceShotsOnTargetMin').value = config.attackEvidenceShotsOnTargetMin ?? 1;
+        $('evidenceCornersMode').value = config.attackEvidenceCornersEnabled === false ? 'OFF' : 'ON';
+        $('evidenceCornersMin').value = config.attackEvidenceCornersMin ?? 1;
+        $('evidenceRequirement').value = ['1','2','3','ALL'].includes(String(config.attackEvidenceRequirement || '1').toUpperCase())
+          ? String(config.attackEvidenceRequirement || '1').toUpperCase()
+          : '1';
         updateDisabled();
         updateDraftSummary();
       }
@@ -131,6 +198,19 @@
       function updateDisabled(){
         $('maxGoalGap').disabled = $('gapMode').value !== 'LIMITED';
         $('maxSignalsPerDay').disabled = $('limitMode').value !== 'LIMITED';
+        const evidenceOff = $('attackEvidenceMode').value !== 'ON';
+        ['evidenceDangerousAttacksMode','evidenceShotsMode','evidenceShotsOnTargetMode','evidenceCornersMode','evidenceRequirement']
+          .forEach(id => { $(id).disabled = evidenceOff; });
+        $('evidenceDangerousAttacksMin').disabled = evidenceOff || !on('evidenceDangerousAttacksMode');
+        $('evidenceShotsMin').disabled = evidenceOff || !on('evidenceShotsMode');
+        $('evidenceShotsOnTargetMin').disabled = evidenceOff || !on('evidenceShotsOnTargetMode');
+        $('evidenceCornersMin').disabled = evidenceOff || !on('evidenceCornersMode');
+      }
+
+      function positiveInteger(id, label){
+        const value = Number($(id).value);
+        if (!Number.isInteger(value) || value < 1 || value > 999) throw new Error(`${label} ต้องอยู่ระหว่าง 1–999`);
+        return value;
       }
 
       function readForm(){
@@ -143,6 +223,8 @@
         if (!Number.isFinite(oddsMin) || oddsMin < 1.01) throw new Error('กรอก Odds ขั้นต่ำให้ถูกต้อง');
         if (!Number.isFinite(ahMin)) throw new Error('กรอก AH Line ขั้นต่ำให้ถูกต้อง');
         if (!Number.isFinite(momentumMin) || momentumMin < 1 || momentumMin > 99) throw new Error('อัตราการบุกต้องอยู่ระหว่าง 1–99%');
+        const maxSignalsPerDay = Number($('maxSignalsPerDay').value);
+        if (!Number.isInteger(maxSignalsPerDay) || maxSignalsPerDay < 1 || maxSignalsPerDay > 100) throw new Error('จำนวนสัญญาณต่อวันต้องอยู่ระหว่าง 1–100');
         return {
           side: $('side').value,
           minuteMin,
@@ -154,11 +236,22 @@
           ahMax: optional('ahMax'),
           momentumMin,
           attackEvidenceEnabled: $('attackEvidenceMode').value === 'ON',
+          attackEvidenceDetailedConfigured: true,
+          attackEvidenceDangerousAttacksEnabled: on('evidenceDangerousAttacksMode'),
+          attackEvidenceDangerousAttacksMin: positiveInteger('evidenceDangerousAttacksMin', 'Dangerous Attacks ขั้นต่ำ'),
+          attackEvidenceShotsEnabled: on('evidenceShotsMode'),
+          attackEvidenceShotsMin: positiveInteger('evidenceShotsMin', 'Shots ขั้นต่ำ'),
+          attackEvidenceShotsOnTargetEnabled: on('evidenceShotsOnTargetMode'),
+          attackEvidenceShotsOnTargetMin: positiveInteger('evidenceShotsOnTargetMin', 'Shots on Target ขั้นต่ำ'),
+          attackEvidenceCornersEnabled: on('evidenceCornersMode'),
+          attackEvidenceCornersMin: positiveInteger('evidenceCornersMin', 'Corners ขั้นต่ำ'),
+          attackEvidenceRequirement: $('evidenceRequirement').value,
           goalGapLimited: $('gapMode').value === 'LIMITED',
           maxGoalGap: Number($('maxGoalGap').value),
           confirmationRounds: Number($('confirmationRounds').value),
           signalLimitEnabled: $('limitMode').value === 'LIMITED',
-          maxSignalsPerDay: Number($('maxSignalsPerDay').value)
+          maxSignalsPerDay,
+          dailySignalLimitConfigured: true
         };
       }
 
@@ -192,7 +285,7 @@
           const payload = await request('/condition-config');
           serverState = payload;
           fill(payload.draft || payload.active || payload.defaults);
-          $('activeSummary').textContent = configText(payload.active);
+          $('activeSummary').textContent = configText(payload.effectiveActive || payload.active);
           message('โหลดค่าจากระบบ Test แล้ว', true);
         } catch (error) {
           message(`ยังเชื่อมหน้าตั้งค่ากับ Worker ไม่ได้: ${error.message}`, false);
@@ -210,7 +303,7 @@
           });
           serverState = payload;
           fill(payload.draft || config);
-          $('activeSummary').textContent = configText(payload.active);
+          $('activeSummary').textContent = configText(payload.effectiveActive || payload.active);
           message(action === 'run' ? 'รันค่าใหม่แล้ว ระบบ Test จะใช้ในรอบถัดไปเมื่อ Engine = RUNNING' : 'เซฟแล้ว แต่เครื่องยนต์ยังใช้ค่าเดิม', true);
         } catch (error) {
           message(error.message, false);
@@ -220,8 +313,8 @@
       }
 
       ids.forEach(id => $(id).addEventListener('input', updateDraftSummary));
-      $('gapMode').addEventListener('change', () => { updateDisabled(); updateDraftSummary(); });
-      $('limitMode').addEventListener('change', () => { updateDisabled(); updateDraftSummary(); });
+      ['gapMode','limitMode','attackEvidenceMode','evidenceDangerousAttacksMode','evidenceShotsMode','evidenceShotsOnTargetMode','evidenceCornersMode']
+        .forEach(id => $(id).addEventListener('change', () => { updateDisabled(); updateDraftSummary(); }));
       $('resetButton').addEventListener('click', () => {
         fill(serverState?.defaults || serverState?.active);
         message('คืนค่าตั้งต้นในช่องแล้ว กดรันเพื่อใช้งาน', true);
