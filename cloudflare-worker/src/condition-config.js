@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS condition_config (
   activated_at INTEGER NOT NULL
 )`;
 
+// Legacy guard remains the safe fallback for stored configs created before owner-controlled limits.
 export const DAILY_TEN_SYSTEM = Object.freeze({
   enabled: true,
   limit: 10,
@@ -25,11 +26,22 @@ export const DEFAULT_CONDITION_CONFIG = Object.freeze({
   ahMax: null,
   momentumMin: 60,
   attackEvidenceEnabled: true,
+  attackEvidenceDetailedConfigured: false,
+  attackEvidenceDangerousAttacksEnabled: true,
+  attackEvidenceDangerousAttacksMin: 1,
+  attackEvidenceShotsEnabled: true,
+  attackEvidenceShotsMin: 1,
+  attackEvidenceShotsOnTargetEnabled: true,
+  attackEvidenceShotsOnTargetMin: 1,
+  attackEvidenceCornersEnabled: true,
+  attackEvidenceCornersMin: 1,
+  attackEvidenceRequirement: '1',
   goalGapLimited: false,
   maxGoalGap: 1,
   confirmationRounds: 2,
   signalLimitEnabled: false,
-  maxSignalsPerDay: 3
+  maxSignalsPerDay: 3,
+  dailySignalLimitConfigured: false
 });
 
 let schemaReady = false;
@@ -54,6 +66,11 @@ function booleanValue(value, fallback = false) {
   return fallback;
 }
 
+function evidenceRequirement(value) {
+  const normalized = String(value ?? '1').toUpperCase();
+  return ['1', '2', '3', 'ALL'].includes(normalized) ? normalized : '1';
+}
+
 export function normalizeConditionConfig(input = {}) {
   const source = input && typeof input === 'object' ? input : {};
   const rawSide = String(source.side || DEFAULT_CONDITION_CONFIG.side).toUpperCase();
@@ -72,11 +89,22 @@ export function normalizeConditionConfig(input = {}) {
   const ahMax = rawAhMax === null ? null : bounded(rawAhMax, ahMin, ahMin, 5, 0.25);
   const momentumMin = Math.round(bounded(source.momentumMin, 60, 1, 99));
   const attackEvidenceEnabled = booleanValue(source.attackEvidenceEnabled, true);
+  const attackEvidenceDetailedConfigured = booleanValue(source.attackEvidenceDetailedConfigured, false);
+  const attackEvidenceDangerousAttacksEnabled = booleanValue(source.attackEvidenceDangerousAttacksEnabled, true);
+  const attackEvidenceDangerousAttacksMin = Math.round(bounded(source.attackEvidenceDangerousAttacksMin, 1, 1, 999));
+  const attackEvidenceShotsEnabled = booleanValue(source.attackEvidenceShotsEnabled, true);
+  const attackEvidenceShotsMin = Math.round(bounded(source.attackEvidenceShotsMin, 1, 1, 999));
+  const attackEvidenceShotsOnTargetEnabled = booleanValue(source.attackEvidenceShotsOnTargetEnabled, true);
+  const attackEvidenceShotsOnTargetMin = Math.round(bounded(source.attackEvidenceShotsOnTargetMin, 1, 1, 999));
+  const attackEvidenceCornersEnabled = booleanValue(source.attackEvidenceCornersEnabled, true);
+  const attackEvidenceCornersMin = Math.round(bounded(source.attackEvidenceCornersMin, 1, 1, 999));
+  const attackEvidenceRequirement = evidenceRequirement(source.attackEvidenceRequirement);
   const goalGapLimited = booleanValue(source.goalGapLimited, false);
   const maxGoalGap = Math.round(bounded(source.maxGoalGap, 1, 0, 20));
   const confirmationRounds = Math.round(bounded(source.confirmationRounds, 2, 1, 10));
   const signalLimitEnabled = booleanValue(source.signalLimitEnabled, false);
   const maxSignalsPerDay = Math.round(bounded(source.maxSignalsPerDay, 3, 1, 100));
+  const dailySignalLimitConfigured = booleanValue(source.dailySignalLimitConfigured, false);
 
   return {
     side,
@@ -89,22 +117,38 @@ export function normalizeConditionConfig(input = {}) {
     ahMax,
     momentumMin,
     attackEvidenceEnabled,
+    attackEvidenceDetailedConfigured,
+    attackEvidenceDangerousAttacksEnabled,
+    attackEvidenceDangerousAttacksMin,
+    attackEvidenceShotsEnabled,
+    attackEvidenceShotsMin,
+    attackEvidenceShotsOnTargetEnabled,
+    attackEvidenceShotsOnTargetMin,
+    attackEvidenceCornersEnabled,
+    attackEvidenceCornersMin,
+    attackEvidenceRequirement,
     goalGapLimited,
     maxGoalGap,
     confirmationRounds,
     signalLimitEnabled,
-    maxSignalsPerDay
+    maxSignalsPerDay,
+    dailySignalLimitConfigured
   };
 }
 
 function applyDailyTenSystem(config) {
   if (!DAILY_TEN_SYSTEM.enabled) return { ...config };
+  const ownerConfigured = Boolean(config.dailySignalLimitConfigured);
+  const signalLimitEnabled = ownerConfigured ? Boolean(config.signalLimitEnabled) : true;
+  const limit = ownerConfigured
+    ? Math.max(1, Math.min(100, Number(config.maxSignalsPerDay || DAILY_TEN_SYSTEM.limit)))
+    : DAILY_TEN_SYSTEM.limit;
   return {
     ...config,
-    signalLimitEnabled: true,
-    maxSignalsPerDay: DAILY_TEN_SYSTEM.limit,
+    signalLimitEnabled,
+    maxSignalsPerDay: limit,
     dailyTenSystem: true,
-    dailyTenLimit: DAILY_TEN_SYSTEM.limit,
+    dailyTenLimit: limit,
     dailyTenResetTimezone: DAILY_TEN_SYSTEM.resetTimezone,
     dailyTenResetHour: DAILY_TEN_SYSTEM.resetHour
   };
@@ -139,6 +183,7 @@ export async function getConditionConfigState(env) {
     defaults: normalizeConditionConfig(DEFAULT_CONDITION_CONFIG),
     draft,
     active,
+    effectiveActive: applyDailyTenSystem(active),
     updatedAt: row?.updated_at ? new Date(Number(row.updated_at)).toISOString() : null,
     activatedAt: row?.activated_at ? new Date(Number(row.activated_at)).toISOString() : null,
     version: Number(row?.activated_at || 0)
