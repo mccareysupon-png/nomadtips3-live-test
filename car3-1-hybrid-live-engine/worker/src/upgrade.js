@@ -1,4 +1,5 @@
 import baseWorker from './index.js';
+export { Car31State } from './index.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'};
 const SOURCE_ODDS='https://live10.goaloo28.com/gf/data/odds/en/runOddsData_8.txt';
