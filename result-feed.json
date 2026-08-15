@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-15",
-  "generatedAt": "2026-08-15T10:54:36Z",
+  "generatedAt": "2026-08-15T10:55:38Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 55,
     "correct": 22,
-    "incorrect": 23,
+    "incorrect": 24,
     "void": 2,
-    "pending": 8,
-    "settled": 45,
+    "pending": 7,
+    "settled": 46,
     "allSettled": false,
-    "accuracy": 48.89,
+    "accuracy": 47.83,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 55,
-      "correct": 22,
+      "correct": 23,
       "incorrect": 23,
       "void": 2,
-      "pending": 8,
-      "settled": 45,
-      "accuracy": 48.89
+      "pending": 7,
+      "settled": 46,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 55,
-      "correct": 34,
+      "correct": 35,
       "incorrect": 11,
       "void": 2,
-      "pending": 8,
-      "settled": 45,
-      "accuracy": 75.56
+      "pending": 7,
+      "settled": 46,
+      "accuracy": 76.09
     },
     "asianHandicap": {
       "win": 22,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
-      "loss": 19,
+      "loss": 20,
       "void": 2,
-      "pending": 8,
+      "pending": 7,
       "total": 55,
-      "decisions": 41,
-      "weightedRate": 53.66
+      "decisions": 42,
+      "weightedRate": 52.38
     }
   },
   "results": [
@@ -2202,7 +2202,7 @@
       "autoVoid": true,
       "voidReason": "Fixture remained not started for three hours after kickoff",
       "resultSource": "API-FOOTBALL / NOMAD VALIDATION",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2249,7 +2249,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2293,7 +2293,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2337,7 +2337,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2347,41 +2347,44 @@
       "home": "Enisey",
       "away": "KAMAZ",
       "kickoffUtc": "2026-08-15T09:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 2,
-      "outcome": "pending",
+      "outcome": "incorrect",
       "markets": {
         "btts": {
           "pick": "Yes",
           "odds": 1.95,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "1X — Enisey or Draw",
           "odds": 1.17,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Enisey -0.5",
           "odds": 1.81,
           "oddsStatus": "LOCKED",
           "confidence": 69,
-          "outcome": "pending"
+          "outcome": "loss",
+          "settlement": "loss",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2425,7 +2428,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2469,7 +2472,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2513,7 +2516,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2557,7 +2560,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     },
     {
@@ -2601,17 +2604,17 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T10:54:36Z",
+      "updatedAt": "2026-08-15T10:55:38Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
     "correct": 0,
-    "incorrect": 1,
+    "incorrect": 2,
     "void": 1,
-    "pending": 8,
-    "settled": 1,
+    "pending": 7,
+    "settled": 2,
     "allSettled": false,
     "accuracy": 0.0,
     "finalizedAt": null
@@ -2619,32 +2622,32 @@
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 1,
       "void": 1,
-      "pending": 8,
-      "settled": 1,
-      "accuracy": 0.0
+      "pending": 7,
+      "settled": 2,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 10,
-      "correct": 0,
+      "correct": 1,
       "incorrect": 1,
       "void": 1,
-      "pending": 8,
-      "settled": 1,
-      "accuracy": 0.0
+      "pending": 7,
+      "settled": 2,
+      "accuracy": 50.0
     },
     "asianHandicap": {
       "win": 0,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
-      "loss": 1,
+      "loss": 2,
       "void": 1,
-      "pending": 8,
+      "pending": 7,
       "total": 10,
-      "decisions": 1,
+      "decisions": 2,
       "weightedRate": 0.0
     }
   },
