@@ -49,47 +49,36 @@ jobs:
           wranglerVersion: "4"
           command: deploy
 
-      - name: Inspect Goaloo public discovery pages
+      - name: Inspect Goaloo dynamic live feeds
         shell: bash
         run: |
           python - <<'PY'
-          import re
-          import urllib.request
-
-          sources = {
-              'live2': 'https://live2.goaloo28.com/?half=0',
-              'free': 'https://free.goaloo188.com/free/freesoccer?f=ft1',
+          import re, urllib.request
+          urls = {
+            'bf_us': 'https://live10.goaloo28.com/gf/data/bf_us.js',
+            'bf_us1': 'https://live10.goaloo28.com/gf/data/bf_us1.js',
+            'liveScore': 'https://live10.goaloo28.com/scripts/liveScore?v=l3DOxOCERrCvTal5BZfuZkIbuUDlQZVJB5ATblxZJI81',
+            'freeSoccer': 'https://free.goaloo188.com/scripts/freesoccer?v=rirfjjjnd2u14HR04tN77b7HUbpXoevRI3VPnhWwIgE1'
           }
-          headers = {
-              'User-Agent': 'NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)',
-              'Accept': 'text/html,application/xhtml+xml',
-          }
-          for name, url in sources.items():
-              print(f'=== SOURCE {name}: {url} ===')
-              try:
-                  req = urllib.request.Request(url, headers=headers)
-                  with urllib.request.urlopen(req, timeout=20) as response:
-                      raw = response.read()
-                  html = raw.decode('utf-8', 'replace')
-              except Exception as exc:
-                  print('FETCH_ERROR', repr(exc))
-                  continue
-              print('bytes=', len(raw))
-              links = re.findall(r'(?:src|href)=[\"\']([^\"\']+)[\"\']', html, flags=re.I)
-              interesting = []
-              for link in links:
-                  if re.search(r'live|score|soccer|football|match|data|ajax|api|\.js', link, re.I):
-                      if link not in interesting:
-                          interesting.append(link)
-              print('-- links/scripts --')
-              for link in interesting[:100]:
-                  print(link)
-              ids = sorted(set(re.findall(r'(?<!\d)\d{6,}(?!\d)', html)))
-              print('-- numeric ids --', ids[:100])
-              endpoints = sorted(set(re.findall(r'[A-Za-z0-9_./:?=&%+-]{3,}(?:live|score|soccer|football|match|data|ajax|api)[A-Za-z0-9_./:?=&%+-]{0,120}', html, flags=re.I)))
-              print('-- endpoint tokens --')
-              for token in endpoints[:140]:
-                  print(token)
+          headers={'User-Agent':'NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)','Accept':'*/*'}
+          for name,url in urls.items():
+            print(f'=== {name} {url} ===')
+            try:
+              req=urllib.request.Request(url,headers=headers)
+              with urllib.request.urlopen(req,timeout=20) as r: raw=r.read()
+            except Exception as exc:
+              print('FETCH_ERROR',repr(exc)); continue
+            text=raw.decode('utf-8','replace')
+            print('bytes=',len(raw),'lines=',len(text.splitlines()))
+            print('--- first 7000 chars ---')
+            print(text[:7000])
+            print('--- likely match arrays/records ---')
+            for pat in [r'\b(?:A|B|C|D|E)\s*=\s*new Array\([\s\S]{0,3000}', r'\b(?:A|B|C|D|E)\s*=\s*\[[\s\S]{0,3000}', r'\b\w+\[\d+\]\s*=\s*["\'][^"\']{0,2000}']:
+              m=re.search(pat,text,re.I)
+              if m: print(m.group(0)[:3000])
+            print('--- URL/endpoint tokens ---')
+            tokens=sorted(set(re.findall(r'https?://[^\"\'\s]+|/[A-Za-z0-9_./?=&%+-]{3,}',text)))
+            for token in [t for t in tokens if re.search(r'live|score|match|detail|tech|stat|odds|data|ajax|api|\.js',t,re.I)][:140]: print(token[:300])
           PY
 
       - name: Wait for scheduled wheel and verify health
@@ -107,7 +96,6 @@ jobs:
               echo "CAR 3.1 wheel has completed at least one cycle."
               exit 0
             fi
-            echo "Waiting for Cron wheel... attempt $i/8"
             sleep 15
           done
           echo "::error::CAR 3.1 deployed, but no completed Cron cycle was observed within 120 seconds"
