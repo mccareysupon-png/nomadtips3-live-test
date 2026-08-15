@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-15",
-  "generatedAt": "2026-08-15T11:03:21Z",
+  "generatedAt": "2026-08-15T11:04:23Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 55,
-    "correct": 22,
+    "correct": 23,
     "incorrect": 25,
     "void": 2,
-    "pending": 6,
-    "settled": 47,
+    "pending": 5,
+    "settled": 48,
     "allSettled": false,
-    "accuracy": 46.81,
+    "accuracy": 47.92,
     "finalizedAt": null
   },
   "marketSummary": {
     "btts": {
       "total": 55,
       "correct": 23,
-      "incorrect": 24,
+      "incorrect": 25,
       "void": 2,
-      "pending": 6,
-      "settled": 47,
-      "accuracy": 48.94
+      "pending": 5,
+      "settled": 48,
+      "accuracy": 47.92
     },
     "doubleChance": {
       "total": 55,
-      "correct": 36,
+      "correct": 37,
       "incorrect": 11,
       "void": 2,
-      "pending": 6,
-      "settled": 47,
-      "accuracy": 76.6
+      "pending": 5,
+      "settled": 48,
+      "accuracy": 77.08
     },
     "asianHandicap": {
-      "win": 22,
+      "win": 23,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
       "loss": 21,
       "void": 2,
-      "pending": 6,
+      "pending": 5,
       "total": 55,
-      "decisions": 43,
-      "weightedRate": 51.16
+      "decisions": 44,
+      "weightedRate": 52.27
     }
   },
   "results": [
@@ -2202,7 +2202,7 @@
       "autoVoid": true,
       "voidReason": "Fixture remained not started for three hours after kickoff",
       "resultSource": "API-FOOTBALL / NOMAD VALIDATION",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2249,7 +2249,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2259,41 +2259,44 @@
       "home": "Kashima",
       "away": "Nagoya Grampus",
       "kickoffUtc": "2026-08-15T09:00:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 2,
       "awayScore": 1,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 1.91,
           "oddsStatus": "LOCKED",
           "confidence": 86,
-          "outcome": "pending"
+          "outcome": "incorrect"
         },
         "doubleChance": {
           "pick": "1X — Kashima or Draw",
           "odds": 1.22,
           "oddsStatus": "LOCKED",
           "confidence": 86,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Kashima -0.5",
           "odds": 1.8,
           "oddsStatus": "LOCKED",
           "confidence": 86,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2340,7 +2343,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2387,7 +2390,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2431,7 +2434,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2444,7 +2447,7 @@
       "status": "2H",
       "providerStatus": "2H",
       "statusLong": "Second Half",
-      "elapsed": 46,
+      "elapsed": 47,
       "homeScore": 1,
       "awayScore": 0,
       "outcome": "pending",
@@ -2475,7 +2478,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2519,7 +2522,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2563,7 +2566,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     },
     {
@@ -2607,51 +2610,51 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-15T11:03:21Z",
+      "updatedAt": "2026-08-15T11:04:23Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
-    "correct": 0,
+    "correct": 1,
     "incorrect": 3,
     "void": 1,
-    "pending": 6,
-    "settled": 3,
+    "pending": 5,
+    "settled": 4,
     "allSettled": false,
-    "accuracy": 0.0,
+    "accuracy": 25.0,
     "finalizedAt": null
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
       "correct": 1,
-      "incorrect": 2,
+      "incorrect": 3,
       "void": 1,
-      "pending": 6,
-      "settled": 3,
-      "accuracy": 33.33
+      "pending": 5,
+      "settled": 4,
+      "accuracy": 25.0
     },
     "doubleChance": {
       "total": 10,
-      "correct": 2,
+      "correct": 3,
       "incorrect": 1,
       "void": 1,
-      "pending": 6,
-      "settled": 3,
-      "accuracy": 66.67
+      "pending": 5,
+      "settled": 4,
+      "accuracy": 75.0
     },
     "asianHandicap": {
-      "win": 0,
+      "win": 1,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
       "loss": 3,
       "void": 1,
-      "pending": 6,
+      "pending": 5,
       "total": 10,
-      "decisions": 3,
-      "weightedRate": 0.0
+      "decisions": 4,
+      "weightedRate": 25.0
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
