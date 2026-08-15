@@ -8,7 +8,7 @@ document.querySelector('#apiPolicy').textContent = config.apiVerifyPolicy.replac
 
 const matches = [
   {
-    id:'G-31001',league:'Demo Premier Division',minute:72,home:'North Harbor FC',away:'City Athletic',score:[0,1],state:'SIGNAL',momentum:74,
+    id:'G-31001',matchConfidence:96,league:'Demo Premier Division',minute:72,home:'North Harbor FC',away:'City Athletic',score:[0,1],state:'SIGNAL',momentum:74,
     stats:{possession:[58,42],attacks:[96,72],dangerous:[54,31],shots:[14,8],sot:[6,3],corners:[7,3],red:[0,0]},
     baseline:{dangerous:39,shots:9,sot:3,corners:5},
     odds:{win:[2.05,3.25,3.60],ah:['+0.25',1.91],ou:['Over 2.5',1.98]},
@@ -19,7 +19,7 @@ const matches = [
     trace:'Primary web snapshot supplies score/minute/stats. API verification is marked candidate-only. No source mismatch in this demo row.'
   },
   {
-    id:'G-31002',league:'Demo National League',minute:67,home:'Greenfield United',away:'Royal Town',score:[1,1],state:'NEAR',momentum:63,
+    id:'G-31002',matchConfidence:91,league:'Demo National League',minute:67,home:'Greenfield United',away:'Royal Town',score:[1,1],state:'NEAR',momentum:63,
     stats:{possession:[51,49],attacks:[81,79],dangerous:[39,36],shots:[10,9],sot:[4,4],corners:[5,6],red:[0,0]},
     baseline:{dangerous:34,shots:8,sot:3,corners:4},odds:{win:[2.32,3.00,2.95],ah:['0',1.84],ou:['Over 2.5',2.08]},
     sources:[['GOALOO','stats · 13s'],['API-FOOTBALL','waiting'],['MATCH','91%']],
@@ -27,7 +27,7 @@ const matches = [
     events:[[26,'⚽','Home goal'],[44,'⚽','Away goal'],[60,'◉','Window start']],trace:'Primary data is fresh. Candidate has not completed confirmation rounds in this demo.'
   },
   {
-    id:'G-31003',league:'Demo Super League',minute:76,home:'Metro Stars',away:'Seaside FC',score:[2,1],state:'WATCH',momentum:57,
+    id:'G-31003',matchConfidence:98,league:'Demo Super League',minute:76,home:'Metro Stars',away:'Seaside FC',score:[2,1],state:'WATCH',momentum:57,
     stats:{possession:[55,45],attacks:[102,83],dangerous:[48,40],shots:[16,11],sot:[7,5],corners:[8,4],red:[0,0]},
     baseline:{dangerous:43,shots:13,sot:6,corners:7},odds:{win:[1.52,3.80,6.80],ah:['-0.75',1.88],ou:['Over 3.5',1.92]},
     sources:[['GOALOO','stats · 7s'],['API-FOOTBALL','not required'],['MATCH','98%']],
@@ -69,7 +69,11 @@ function dangerChart(svg,points){
 }
 
 function decisionFor(m){
-  const selectedOdds=m.odds.win[0]; const goalGap=Math.abs(m.score[0]-m.score[1]);
+  const selectedOdds=config.market==='AH'?Number(m.odds.ah[1]):config.market==='OU'?Number(m.odds.ou[1]):Number(m.odds.win[0]);
+  const ahLine=Number(String(m.odds.ah[0]).replace('+',''));
+  const ouLine=Number((String(m.odds.ou[0]).match(/([0-9]+(?:\.[0-9]+)?)/)||[])[1]);
+  const marketPass=config.market==='WIN' || (config.market==='AH' && Number.isFinite(ahLine) && ahLine>=config.ahMin && (config.ahMax===null || ahLine<=config.ahMax)) || (config.market==='OU' && Number.isFinite(ouLine) && Math.abs(ouLine-config.ouLine)<0.001);
+  const goalGap=Math.abs(m.score[0]-m.score[1]);
   const evidence={dangerous:m.stats.dangerous[0]-m.baseline.dangerous,shots:m.stats.shots[0]-m.baseline.shots,sot:m.stats.sot[0]-m.baseline.sot,corners:m.stats.corners[0]-m.baseline.corners};
   const evidenceRules=[
     ['DA',config.attackEvidenceDangerousAttacksEnabled,evidence.dangerous,config.attackEvidenceDangerousAttacksMin],
@@ -80,11 +84,12 @@ function decisionFor(m){
   const passed=evidenceRules.filter(r=>r[2]>=r[3]).length; const required=config.attackEvidenceRequirement==='ALL'?evidenceRules.length:Number(config.attackEvidenceRequirement);
   const gates=[
     ['MINUTE',m.minute>=config.minuteMin&&m.minute<=config.minuteMax,`${config.minuteMin}-${config.minuteMax}'`],
+    ['MARKET',marketPass,config.market==='AH'?`AH ${m.odds.ah[0]} / ${config.ahMin}${config.ahMax===null?'+':` to ${config.ahMax}`}`:config.market==='OU'?`${m.odds.ou[0]} / ${config.ouDirection} ${config.ouLine}`:'1X2 WIN'],
     ['ODDS',selectedOdds>=config.oddsMin&&(config.oddsMax===null||selectedOdds<=config.oddsMax),`${selectedOdds.toFixed(2)} / ≥${config.oddsMin.toFixed(2)}`],
     ['MOMENTUM',m.momentum>=config.momentumMin,`${m.momentum}% / ≥${config.momentumMin}%`],
     ['EVIDENCE',!config.attackEvidenceEnabled||passed>=Math.min(required,evidenceRules.length),`${passed}/${evidenceRules.length} · need ${config.attackEvidenceRequirement}`],
     ['GOAL GAP',!config.goalGapLimited||goalGap<=config.maxGoalGap,`${goalGap} / max ${config.maxGoalGap}`],
-    ['SOURCE',96>=config.matchConfidenceMin,`match confidence ≥${config.matchConfidenceMin}%`]
+    ['SOURCE',m.matchConfidence>=config.matchConfidenceMin,`${m.matchConfidence}% / ≥${config.matchConfidenceMin}%`]
   ];
   const all=gates.every(g=>g[1]);
   return {gates,decision:all?'SHADOW SIGNAL':m.momentum>=Math.max(1,config.momentumMin-7)?'NEAR':'WATCH',reason:all?`confirmation ${config.confirmationRounds} rounds required before real activation`:'one or more gates not ready',evidence};
