@@ -1,38 +1,38 @@
-import { CAR31_DEFAULT_CONFIG, normalizeCar31Config } from '../src/config.js';
+import { CAR31_DEFAULT_CONFIG, CAR31_SOURCE_MODE, normalizeCar31Config } from '../src/config.js';
 
 const STORAGE_KEY = 'nomadtips3-car31-active-config';
 const config = normalizeCar31Config(JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || CAR31_DEFAULT_CONFIG);
 
 document.querySelector('#primarySource').textContent = config.sourcePrimary;
-document.querySelector('#apiPolicy').textContent = config.apiVerifyPolicy.replaceAll('_', ' ');
+document.querySelector('#apiPolicy').textContent = CAR31_SOURCE_MODE.locked ? 'OFF · GOALOO ONLY' : config.apiVerifyPolicy.replaceAll('_', ' ');
 
 const matches = [
   {
-    id:'G-31001',matchConfidence:96,league:'Demo Premier Division',minute:72,home:'North Harbor FC',away:'City Athletic',score:[0,1],state:'SIGNAL',momentum:74,
+    id:'G-31001',matchConfidence:100,league:'Demo Premier Division',minute:72,home:'North Harbor FC',away:'City Athletic',score:[0,1],state:'SIGNAL',momentum:74,
     stats:{possession:[58,42],attacks:[96,72],dangerous:[54,31],shots:[14,8],sot:[6,3],corners:[7,3],red:[0,0]},
     baseline:{dangerous:39,shots:9,sot:3,corners:5},
     odds:{win:[2.05,3.25,3.60],ah:['+0.25',1.91],ou:['Over 2.5',1.98]},
-    sources:[['GOALOO','stats · 9s'],['API-FOOTBALL','fixture verified'],['MATCH','96%']],
+    sources:[['GOALOO','stats + odds · 9s'],['FALLBACK','OFF'],['SOURCE ID','G-31001']],
     pressure:[[58,52,48],[60,55,45],[62,59,41],[64,61,39],[66,65,35],[68,69,31],[70,72,28],[72,74,26]],
     danger:[[58,40,28],[60,42,29],[62,44,29],[64,46,30],[66,49,30],[68,51,31],[70,53,31],[72,54,31]],
     events:[[12,'🟨','Away card'],[37,'⚽','Away goal'],[60,'◉','Window start'],[68,'↗','Momentum pass'],[72,'✓','Evidence pass']],
-    trace:'Primary web snapshot supplies score/minute/stats. API verification is marked candidate-only. No source mismatch in this demo row.'
+    trace:'GOALOO ONLY demo. One Goaloo match record supplies score, minute, statistics and odds. API-Football, fallback and backup are OFF.'
   },
   {
-    id:'G-31002',matchConfidence:91,league:'Demo National League',minute:67,home:'Greenfield United',away:'Royal Town',score:[1,1],state:'NEAR',momentum:63,
+    id:'G-31002',matchConfidence:100,league:'Demo National League',minute:67,home:'Greenfield United',away:'Royal Town',score:[1,1],state:'NEAR',momentum:63,
     stats:{possession:[51,49],attacks:[81,79],dangerous:[39,36],shots:[10,9],sot:[4,4],corners:[5,6],red:[0,0]},
     baseline:{dangerous:34,shots:8,sot:3,corners:4},odds:{win:[2.32,3.00,2.95],ah:['0',1.84],ou:['Over 2.5',2.08]},
-    sources:[['GOALOO','stats · 13s'],['API-FOOTBALL','waiting'],['MATCH','91%']],
+    sources:[['GOALOO','stats + odds · 13s'],['FALLBACK','OFF'],['SOURCE ID','G-31002']],
     pressure:[[55,49,51],[58,52,48],[61,55,45],[64,59,41],[67,63,37]],danger:[[55,34,32],[58,35,33],[61,36,34],[64,38,35],[67,39,36]],
-    events:[[26,'⚽','Home goal'],[44,'⚽','Away goal'],[60,'◉','Window start']],trace:'Primary data is fresh. Candidate has not completed confirmation rounds in this demo.'
+    events:[[26,'⚽','Home goal'],[44,'⚽','Away goal'],[60,'◉','Window start']],trace:'GOALOO ONLY demo. Core data is fresh; the candidate has not completed confirmation rounds.'
   },
   {
-    id:'G-31003',matchConfidence:98,league:'Demo Super League',minute:76,home:'Metro Stars',away:'Seaside FC',score:[2,1],state:'WATCH',momentum:57,
+    id:'G-31003',matchConfidence:100,league:'Demo Super League',minute:76,home:'Metro Stars',away:'Seaside FC',score:[2,1],state:'WATCH',momentum:57,
     stats:{possession:[55,45],attacks:[102,83],dangerous:[48,40],shots:[16,11],sot:[7,5],corners:[8,4],red:[0,0]},
     baseline:{dangerous:43,shots:13,sot:6,corners:7},odds:{win:[1.52,3.80,6.80],ah:['-0.75',1.88],ou:['Over 3.5',1.92]},
-    sources:[['GOALOO','stats · 7s'],['API-FOOTBALL','not required'],['MATCH','98%']],
+    sources:[['GOALOO','stats + odds · 7s'],['FALLBACK','OFF'],['SOURCE ID','G-31003']],
     pressure:[[62,62,38],[65,61,39],[68,59,41],[71,58,42],[74,56,44],[76,57,43]],danger:[[62,43,34],[65,44,35],[68,45,37],[71,46,38],[74,47,39],[76,48,40]],
-    events:[[8,'⚽','Home goal'],[33,'⚽','Away goal'],[52,'⚽','Home goal'],[60,'◉','Window start']],trace:'Good data coverage, but momentum is below the configured threshold in this demo.'
+    events:[[8,'⚽','Home goal'],[33,'⚽','Away goal'],[52,'⚽','Home goal'],[60,'◉','Window start']],trace:'GOALOO ONLY demo. Data coverage is complete, but momentum is below the configured threshold.'
   }
 ];
 
@@ -89,7 +89,7 @@ function decisionFor(m){
     ['MOMENTUM',m.momentum>=config.momentumMin,`${m.momentum}% / ≥${config.momentumMin}%`],
     ['EVIDENCE',!config.attackEvidenceEnabled||passed>=Math.min(required,evidenceRules.length),`${passed}/${evidenceRules.length} · need ${config.attackEvidenceRequirement}`],
     ['GOAL GAP',!config.goalGapLimited||goalGap<=config.maxGoalGap,`${goalGap} / max ${config.maxGoalGap}`],
-    ['SOURCE',m.matchConfidence>=config.matchConfidenceMin,`${m.matchConfidence}% / ≥${config.matchConfidenceMin}%`]
+    ['SOURCE',m.matchConfidence>=config.matchConfidenceMin,`Goaloo source ID ${m.id} · ${m.matchConfidence}%`]
   ];
   const all=gates.every(g=>g[1]);
   return {gates,decision:all?'SHADOW SIGNAL':m.momentum>=Math.max(1,config.momentumMin-7)?'NEAR':'WATCH',reason:all?`confirmation ${config.confirmationRounds} rounds required before real activation`:'one or more gates not ready',evidence};
