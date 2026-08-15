@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { settleAsian } from '../cloudflare-worker/src/paper-db-side.js';
+import { settleAsian, storedFixtureFromTrade } from '../cloudflare-worker/src/paper-db-side.js';
 
 function check(name, difference, line, odds, stake, expectedSettlement, expectedProfit) {
   const result = settleAsian(difference, line, odds, stake);
@@ -29,5 +29,21 @@ check('win by 1 at 0 = FULL WIN', 1, 0, 2.0, 100, 'FULL WIN', 100);
 
 // Old post-entry interpretation for the reported example would incorrectly be FULL WIN.
 assert.equal(settleAsian(-1, 3.25, 2.025, 100).settlement, 'FULL WIN');
+
+const stored = storedFixtureFromTrade({
+  fixture_id: 987654,
+  final_status: 'FT',
+  final_actual_home_score: 6,
+  final_actual_away_score: 2
+});
+assert.deepEqual(stored, {
+  fixtureId: 987654,
+  status: 'FT',
+  homeScore: 6,
+  awayScore: 2,
+  fulltimeHome: 6,
+  fulltimeAway: 2
+});
+assert.equal(storedFixtureFromTrade({ fixture_id: 987654, final_status: 'FT' }), null);
 
 console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');

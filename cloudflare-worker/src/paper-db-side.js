@@ -426,6 +426,22 @@ function normalizeFixture(item) {
   };
 }
 
+export function storedFixtureFromTrade(trade) {
+  const fixtureId = integer(trade?.fixture_id);
+  const status = String(trade?.final_status || '').toUpperCase();
+  const homeScore = integer(trade?.final_actual_home_score);
+  const awayScore = integer(trade?.final_actual_away_score);
+  if (!fixtureId || !TERMINAL.has(status) || homeScore === null || awayScore === null) return null;
+  return {
+    fixtureId,
+    status,
+    homeScore,
+    awayScore,
+    fulltimeHome: homeScore,
+    fulltimeAway: awayScore
+  };
+}
+
 function finalScore(result) {
   if (['AET', 'PEN'].includes(result.status) && result.fulltimeHome !== null && result.fulltimeAway !== null) {
     return { home: result.fulltimeHome, away: result.fulltimeAway };
@@ -511,7 +527,18 @@ export async function settlePendingTrades(env) {
 
   const fixtureMap = new Map();
   const warnings = [];
-  const ids = [...new Set(candidates.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];
+  const idsToFetch = [];
+  for (const trade of candidates) {
+    const storedFixture = storedFixtureFromTrade(trade);
+    if (storedFixture) {
+      fixtureMap.set(storedFixture.fixtureId, storedFixture);
+      continue;
+    }
+    const fixtureId = integer(trade.fixture_id);
+    if (fixtureId) idsToFetch.push(fixtureId);
+  }
+
+  const ids = [...new Set(idsToFetch)];
   for (let index = 0; index < ids.length; index += 20) {
     const group = ids.slice(index, index + 20);
     try {
