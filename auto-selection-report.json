@@ -1,131 +1,25 @@
 {
-  "generatedAt": "2026-08-15T15:58:44Z",
+  "generatedAt": "2026-08-15T16:04:19Z",
   "environment": "PRODUCTION",
-  "windowStartLocal": "2026-08-15T23:43:44.463942+07:00",
+  "windowStartLocal": "2026-08-15T23:49:19.914467+07:00",
   "windowEndLocal": "2026-08-16T08:00:00+07:00",
   "windowKey": "2026-08-16T08:00:00+07:00",
   "status": "PUBLISHED_TOP_10",
-  "apiCalls": 573,
-  "fixturesScanned": 241,
-  "fixturesAnalyzed": 241,
-  "prequalified": 89,
+  "apiCalls": 0,
+  "fixturesScanned": 0,
+  "fixturesAnalyzed": 0,
+  "prequalified": 0,
   "published": 10,
-  "rejections": {
-    "home/away split edge below threshold": 9,
-    "strength score below threshold": 132,
-    "main odds below minimum": 28,
-    "main 1X2 odds unavailable": 22,
-    "overall form edge below threshold": 6,
-    "insufficient recent or venue-specific sample": 5
+  "rejections": {},
+  "settlementGate": {
+    "currentSelectionCount": 10,
+    "recordedResultCount": 6,
+    "allSettled": true,
+    "statisticsFinalizedAt": "2026-08-15T16:00:57Z"
   },
-  "rolloverPolicy": "ALL_CURRENT_PICKS_SETTLED_AND_STATISTICS_FINALIZED",
-  "historyErrors": {},
-  "archivedPreviousSet": "archive/auto-selections/2026-08-15-20260815T155844Z.json",
-  "confidencePolicy": {
-    "type": "DYNAMIC_MINIMUM_WITH_STANDINGS",
-    "minimum": 58,
-    "maximum": 100,
-    "scale": 15.0,
-    "formula": "round(50 + adjustedStrength × 15), capped at 100",
-    "inputs": [
-      "overall PPG",
-      "home/away PPG",
-      "goal-difference rate",
-      "league standing rank",
-      "rank-weighted common-opponent A-B-C context"
-    ],
-    "standings": {
-      "enabled": true,
-      "strengthWeight": 0.32,
-      "adjustmentCap": 0.32,
-      "availableMatches": 33,
-      "fallbackMatches": 6,
-      "missingPolicy": "Use original NOMAD strength when standings do not exist or are not covered"
-    },
-    "note": "NOMAD model confidence score; not a guaranteed outcome probability",
-    "rejectedBelowMinimum": 0,
-    "legacyCommonOpponentWeight": 0
-  },
-  "confidenceRejected": 0,
-  "publishedAfterConfidence": 39,
-  "standingsContext": {
-    "available": 33,
-    "fallback": 6
-  },
-  "addKTheKingOfSoccer": {
-    "active": true,
-    "presetKey": "ADD_K_THE_KING_OF_SOCCER_V1",
-    "version": 1,
-    "fixedRules": true,
-    "editable": false,
-    "qualityGate": "STRICT",
-    "minimumConfidence": 58,
-    "minimumMainOdds": 1.7,
-    "minimumSample": 5,
-    "requireStandingsContext": true,
-    "minimumLeagueTeamCount": 8,
-    "passed": 32,
-    "rejected": 7,
-    "rejections": [
-      {
-        "fixture_id": 1607293,
-        "match": "Villarreal II vs Zaragoza",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1618941,
-        "match": "Águilas vs Lorca Deportiva",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1599427,
-        "match": "Sligo Rovers vs Kerry",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1611302,
-        "match": "Livorno vs Reggiana",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1611303,
-        "match": "Perugia vs Vis Pesaro",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1559610,
-        "match": "Guastatoya vs Municipal",
-        "reason": "league standings unavailable: standings unavailable for one or both teams"
-      },
-      {
-        "fixture_id": 1493629,
-        "match": "Hartford Athletic vs Miami FC",
-        "reason": "adjusted strength below 0.62"
-      }
-    ],
-    "policy": "Data Quality First -> Analysis -> Pick. No forced selections; zero picks is valid."
-  },
-  "qualified": 20,
-  "discardedAfterTop10": 10,
+  "qualified": 10,
+  "discardedAfterTop10": 0,
   "publicationPolicy": "CONFIDENCE_DESCENDING_TOP_10",
-  "qualifiedBeforeTop10": 20,
-  "top10Policy": "Publish up to 10; fewer or zero picks are valid",
-  "ballTengPolicy": {
-    "legacyCommonOpponentWeight": 0,
-    "overallPpgWeight": 34.0,
-    "homeAwayPpgWeight": 36.0,
-    "goalDifferenceWeight": 18.0,
-    "rankedStandingsContextWeight": 32.0,
-    "directRankMix": 55.0,
-    "rankedCommonMix": 45.0
-  },
-  "selectionMerge": {
-    "policy": "LOCK_STARTED_LATEST_FUTURE_WINS_DEDUPLICATE_BY_FIXTURE_ID",
-    "cycleStartUtc": "2026-08-15T01:00:00Z",
-    "runType": "AUTO",
-    "newSelectionCount": 10,
-    "preservedStartedCount": 10,
-    "duplicatesRemoved": 0,
-    "totalDisplayedCount": 20
-  }
+  "qualifiedBeforeTop10": 10,
+  "top10Policy": "Publish up to 10; fewer or zero picks are valid"
 }
