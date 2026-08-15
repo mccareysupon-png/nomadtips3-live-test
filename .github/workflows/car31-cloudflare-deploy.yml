@@ -52,23 +52,45 @@ jobs:
       - name: Inspect Goaloo public discovery pages
         shell: bash
         run: |
-          UA='NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)'
-          for SPEC in \
-            'live2|https://live2.goaloo28.com/?half=0' \
-            'free|https://free.goaloo188.com/free/freesoccer?f=ft1'; do
-            NAME="${SPEC%%|*}"
-            URL="${SPEC#*|}"
-            FILE="/tmp/goaloo-${NAME}.html"
-            echo "=== SOURCE $NAME : $URL ==="
-            curl -L --max-time 20 -A "$UA" -sS "$URL" -o "$FILE" || true
-            echo "bytes=$(wc -c < "$FILE" 2>/dev/null || echo 0)"
-            echo '-- script/src/href candidates --'
-            grep -Eoi '(src|href)=["'"'][^"'"']+["'"']' "$FILE" 2>/dev/null | sed -E 's/^(src|href)=["'"']|["'"']$//g' | grep -Ei 'live|score|soccer|football|match|data|ajax|api|js' | head -80 || true
-            echo '-- numeric ids >= 6 digits --'
-            grep -Eo '[0-9]{6,}' "$FILE" 2>/dev/null | sort -u | head -80 || true
-            echo '-- endpoint-like tokens --'
-            grep -Eoi '[A-Za-z0-9_./:?=&%-]{3,}(live|score|soccer|football|match|data|ajax|api)[A-Za-z0-9_./:?=&%-]{0,120}' "$FILE" 2>/dev/null | sort -u | head -120 || true
-          done
+          python - <<'PY'
+          import re
+          import urllib.request
+
+          sources = {
+              'live2': 'https://live2.goaloo28.com/?half=0',
+              'free': 'https://free.goaloo188.com/free/freesoccer?f=ft1',
+          }
+          headers = {
+              'User-Agent': 'NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)',
+              'Accept': 'text/html,application/xhtml+xml',
+          }
+          for name, url in sources.items():
+              print(f'=== SOURCE {name}: {url} ===')
+              try:
+                  req = urllib.request.Request(url, headers=headers)
+                  with urllib.request.urlopen(req, timeout=20) as response:
+                      raw = response.read()
+                  html = raw.decode('utf-8', 'replace')
+              except Exception as exc:
+                  print('FETCH_ERROR', repr(exc))
+                  continue
+              print('bytes=', len(raw))
+              links = re.findall(r'(?:src|href)=[\"\']([^\"\']+)[\"\']', html, flags=re.I)
+              interesting = []
+              for link in links:
+                  if re.search(r'live|score|soccer|football|match|data|ajax|api|\.js', link, re.I):
+                      if link not in interesting:
+                          interesting.append(link)
+              print('-- links/scripts --')
+              for link in interesting[:100]:
+                  print(link)
+              ids = sorted(set(re.findall(r'(?<!\d)\d{6,}(?!\d)', html)))
+              print('-- numeric ids --', ids[:100])
+              endpoints = sorted(set(re.findall(r'[A-Za-z0-9_./:?=&%+-]{3,}(?:live|score|soccer|football|match|data|ajax|api)[A-Za-z0-9_./:?=&%+-]{0,120}', html, flags=re.I)))
+              print('-- endpoint tokens --')
+              for token in endpoints[:140]:
+                  print(token)
+          PY
 
       - name: Wait for scheduled wheel and verify health
         shell: bash
