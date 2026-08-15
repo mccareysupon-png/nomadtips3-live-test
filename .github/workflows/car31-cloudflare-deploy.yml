@@ -49,7 +49,28 @@ jobs:
           wranglerVersion: "4"
           command: deploy
 
-      - name: Wait for first scheduled wheel and verify health
+      - name: Inspect Goaloo public discovery pages
+        shell: bash
+        run: |
+          UA='NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)'
+          for SPEC in \
+            'live2|https://live2.goaloo28.com/?half=0' \
+            'free|https://free.goaloo188.com/free/freesoccer?f=ft1'; do
+            NAME="${SPEC%%|*}"
+            URL="${SPEC#*|}"
+            FILE="/tmp/goaloo-${NAME}.html"
+            echo "=== SOURCE $NAME : $URL ==="
+            curl -L --max-time 20 -A "$UA" -sS "$URL" -o "$FILE" || true
+            echo "bytes=$(wc -c < "$FILE" 2>/dev/null || echo 0)"
+            echo '-- script/src/href candidates --'
+            grep -Eoi '(src|href)=["'"'][^"'"']+["'"']' "$FILE" 2>/dev/null | sed -E 's/^(src|href)=["'"']|["'"']$//g' | grep -Ei 'live|score|soccer|football|match|data|ajax|api|js' | head -80 || true
+            echo '-- numeric ids >= 6 digits --'
+            grep -Eo '[0-9]{6,}' "$FILE" 2>/dev/null | sort -u | head -80 || true
+            echo '-- endpoint-like tokens --'
+            grep -Eoi '[A-Za-z0-9_./:?=&%-]{3,}(live|score|soccer|football|match|data|ajax|api)[A-Za-z0-9_./:?=&%-]{0,120}' "$FILE" 2>/dev/null | sort -u | head -120 || true
+          done
+
+      - name: Wait for scheduled wheel and verify health
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
