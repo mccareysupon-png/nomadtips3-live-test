@@ -1,7 +1,7 @@
 from pathlib import Path
 
-path = Path('cloudflare-worker/src/paper-db-side.js')
-text = path.read_text(encoding='utf-8')
+source = Path('cloudflare-worker/src/paper-db-side.js')
+text = source.read_text(encoding='utf-8')
 
 
 def replace_once(old, new, label):
@@ -11,68 +11,109 @@ def replace_once(old, new, label):
     text = text.replace(old, new, 1)
 
 
-replace_once(
-    "const STAKE_DEFAULT = 100;\n",
-    "const STAKE_DEFAULT = 100;\nconst SETTLEMENT_RULESET = 'FULL_MATCH_AH_V1';\n",
-    'ruleset marker',
-)
-replace_once(
-    "function settleAsian(postGoalDifference, line, odds, stake) {",
-    "export function settleAsian(goalDifference, line, odds, stake) {",
-    'settleAsian export/argument',
-)
-replace_once(
-    "    const adjusted = postGoalDifference + part;",
-    "    const adjusted = goalDifference + part;",
-    'full-match goal difference variable',
-)
-replace_once(
-    "  const settled = settleAsian(postSelected - postOpponent, number(trade.ah_line), number(trade.ah_odds), stake);",
-    "  const settled = settleAsian(finalSelected - finalOpponent, number(trade.ah_line), number(trade.ah_odds), stake);",
-    'FT settlement basis',
-)
-replace_once(
-    "    splitLines: settled.splitLines, settledAt: Date.now(), note: 'Settled automatically by selected-team perspective'",
-    "    splitLines: settled.splitLines, settledAt: Date.now(), note: `Settled automatically · ${SETTLEMENT_RULESET} · FT ${score.home}-${score.away}`",
-    'settlement audit note',
-)
-replace_once(
-    "      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = ?, note = ?, updated_at = ?",
-    "      profit_units = ?, returned_units = ?, split_lines = ?, settled_at = COALESCE(settled_at, ?), note = ?, updated_at = ?",
-    'preserve original settlement timestamp during reconcile',
-)
-replace_once(
-    "    WHERE trade_key = ? AND status = 'PENDING'",
-    "    WHERE trade_key = ?",
-    'allow one-time correction of legacy settled rows',
-)
-replace_once(
-    "  const pendingQuery = await env.DB.prepare(`\n    SELECT * FROM paper_trades_side WHERE status = 'PENDING' ORDER BY created_at ASC LIMIT 500\n  `).all();\n  const pending = pendingQuery.results || [];\n  if (!pending.length) return { pending: 0, settled: 0, checked: 0, warnings: [] };\n",
-    "  const candidateQuery = await env.DB.prepare(`\n    SELECT * FROM paper_trades_side\n    WHERE status = 'PENDING'\n       OR (status = 'SETTLED' AND note NOT LIKE ?)\n    ORDER BY CASE WHEN status = 'PENDING' THEN 0 ELSE 1 END, created_at ASC\n    LIMIT 500\n  `).bind(`%${SETTLEMENT_RULESET}%`).all();\n  const candidates = candidateQuery.results || [];\n  if (!candidates.length) return { pending: 0, reconciled: 0, settled: 0, checked: 0, warnings: [] };\n  const pendingCount = candidates.filter(trade => String(trade.status || '').toUpperCase() === 'PENDING').length;\n  const reconciledCount = candidates.length - pendingCount;\n",
-    'pending plus legacy reconcile query',
-)
-replace_once(
-    "  const ids = [...new Set(pending.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];",
-    "  const ids = [...new Set(candidates.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];",
-    'candidate fixture ids',
-)
-replace_once(
-    "  for (const trade of pending) {",
-    "  for (const trade of candidates) {",
-    'candidate settlement loop',
-)
-replace_once(
-    "  return { pending: pending.length, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };",
-    "  return { pending: pendingCount, reconciled: reconciledCount, settled: updates.length, checked: fixtureMap.size, warnings: warnings.slice(0, 20) };",
-    'settlement result counters',
-)
+if "export function storedFixtureFromTrade" not in text:
+    normalize_anchor = """function normalizeFixture(item) {
+  const fixture = item?.fixture || {};
+  const goals = item?.goals || {};
+  const score = item?.score || {};
+  return {
+    fixtureId: integer(fixture.id),
+    status: String(fixture?.status?.short || '').toUpperCase(),
+    homeScore: integer(goals.home),
+    awayScore: integer(goals.away),
+    fulltimeHome: integer(score?.fulltime?.home),
+    fulltimeAway: integer(score?.fulltime?.away)
+  };
+}
 
-path.write_text(text, encoding='utf-8')
+function finalScore(result) {
+"""
+    normalize_replacement = """function normalizeFixture(item) {
+  const fixture = item?.fixture || {};
+  const goals = item?.goals || {};
+  const score = item?.score || {};
+  return {
+    fixtureId: integer(fixture.id),
+    status: String(fixture?.status?.short || '').toUpperCase(),
+    homeScore: integer(goals.home),
+    awayScore: integer(goals.away),
+    fulltimeHome: integer(score?.fulltime?.home),
+    fulltimeAway: integer(score?.fulltime?.away)
+  };
+}
 
+export function storedFixtureFromTrade(trade) {
+  const fixtureId = integer(trade?.fixture_id);
+  const status = String(trade?.final_status || '').toUpperCase();
+  const homeScore = integer(trade?.final_actual_home_score);
+  const awayScore = integer(trade?.final_actual_away_score);
+  if (!fixtureId || !TERMINAL.has(status) || homeScore === null || awayScore === null) return null;
+  return {
+    fixtureId,
+    status,
+    homeScore,
+    awayScore,
+    fulltimeHome: homeScore,
+    fulltimeAway: awayScore
+  };
+}
+
+function finalScore(result) {
+"""
+    replace_once(normalize_anchor, normalize_replacement, 'stored FT helper')
+
+    fetch_anchor = """  const fixtureMap = new Map();
+  const warnings = [];
+  const ids = [...new Set(candidates.map(trade => integer(trade.fixture_id)).filter(Number.isInteger))];
+  for (let index = 0; index < ids.length; index += 20) {
+    const group = ids.slice(index, index + 20);
+    try {
+      const payload = await apiFetch(`/fixtures?ids=${group.join('-')}`, env);
+      for (const item of Array.isArray(payload?.response) ? payload.response : []) {
+        const fixture = normalizeFixture(item);
+        if (fixture.fixtureId) fixtureMap.set(fixture.fixtureId, fixture);
+      }
+    } catch (error) {
+      warnings.push(error?.message || 'Fixture result request failed');
+    }
+  }
+"""
+    fetch_replacement = """  const fixtureMap = new Map();
+  const warnings = [];
+  const idsToFetch = [];
+  for (const trade of candidates) {
+    const storedFixture = storedFixtureFromTrade(trade);
+    if (storedFixture) {
+      fixtureMap.set(storedFixture.fixtureId, storedFixture);
+      continue;
+    }
+    const fixtureId = integer(trade.fixture_id);
+    if (fixtureId) idsToFetch.push(fixtureId);
+  }
+
+  const ids = [...new Set(idsToFetch)];
+  for (let index = 0; index < ids.length; index += 20) {
+    const group = ids.slice(index, index + 20);
+    try {
+      const payload = await apiFetch(`/fixtures?ids=${group.join('-')}`, env);
+      for (const item of Array.isArray(payload?.response) ? payload.response : []) {
+        const fixture = normalizeFixture(item);
+        if (fixture.fixtureId) fixtureMap.set(fixture.fixtureId, fixture);
+      }
+    } catch (error) {
+      warnings.push(error?.message || 'Fixture result request failed');
+    }
+  }
+"""
+    replace_once(fetch_anchor, fetch_replacement, 'stored FT reconciliation path')
+
+    source.write_text(text, encoding='utf-8')
+
+# Keep a permanent regression test for both the AH math and stored-FT reconciliation path.
 test_path = Path('scripts/test-car3-full-match-settlement.mjs')
 test_path.write_text(
     """import assert from 'node:assert/strict';
-import { settleAsian } from '../cloudflare-worker/src/paper-db-side.js';
+import { settleAsian, storedFixtureFromTrade } from '../cloudflare-worker/src/paper-db-side.js';
 
 function check(name, difference, line, odds, stake, expectedSettlement, expectedProfit) {
   const result = settleAsian(difference, line, odds, stake);
@@ -103,9 +144,25 @@ check('win by 1 at 0 = FULL WIN', 1, 0, 2.0, 100, 'FULL WIN', 100);
 // Old post-entry interpretation for the reported example would incorrectly be FULL WIN.
 assert.equal(settleAsian(-1, 3.25, 2.025, 100).settlement, 'FULL WIN');
 
+const stored = storedFixtureFromTrade({
+  fixture_id: 987654,
+  final_status: 'FT',
+  final_actual_home_score: 6,
+  final_actual_away_score: 2
+});
+assert.deepEqual(stored, {
+  fixtureId: 987654,
+  status: 'FT',
+  homeScore: 6,
+  awayScore: 2,
+  fulltimeHome: 6,
+  fulltimeAway: 2
+});
+assert.equal(storedFixtureFromTrade({ fixture_id: 987654, final_status: 'FT' }), null);
+
 console.log('CAR 3 FULL_MATCH_AH_V1 regression tests passed');
 """,
     encoding='utf-8',
 )
 
-print('CAR 3 settlement source patch prepared successfully')
+print('CAR 3 stored-FT settlement reconciliation patch prepared successfully')
