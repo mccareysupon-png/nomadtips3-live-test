@@ -1,66 +1,16 @@
-import { CAR31_DEFAULT_CONFIG, CAR31_SOURCE_MODE, configSummary, normalizeCar31Config, validateCar31Config } from '../src/config.js';
-
+import { CAR31_DEFAULT_CONFIG,CAR31_SOURCE_MODE,configSummary,normalizeCar31Config,validateCar31Config } from '../src/config.js';
 const STORAGE_KEY='nomadtips3-car31-active-config';
-const fields=[
-  'side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','ouDirection','ouLine','momentumMin','goalGapLimited','maxGoalGap','confirmationRounds','signalLimitEnabled','maxSignalsPerDay',
-  'attackEvidenceEnabled','attackEvidenceRequirement','attackEvidenceDangerousAttacksEnabled','attackEvidenceDangerousAttacksMin','attackEvidenceShotsEnabled','attackEvidenceShotsMin','attackEvidenceShotsOnTargetEnabled','attackEvidenceShotsOnTargetMin','attackEvidenceCornersEnabled','attackEvidenceCornersMin',
-  'sourcePrimary','sourceFallback','sourceBackup','sourceRefreshSeconds','sourceFreshnessMaxSeconds','matchConfidenceMin','requireCoreStats','apiVerifyPolicy','dataConflictPolicy','maxSourceMismatchPercent','redCardPolicy',
-  'trendWindowMinutes','chartHistoryMinutes','pressureSpikeEnabled','pressureSpikeMin'
-];
+const fields=['side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','ouDirection','ouLine','momentumMin','goalGapLimited','maxGoalGap','confirmationRounds','signalLimitEnabled','maxSignalsPerDay','attackEvidenceEnabled','attackEvidenceRequirement','attackEvidenceDangerousAttacksEnabled','attackEvidenceDangerousAttacksMin','attackEvidenceShotsEnabled','attackEvidenceShotsMin','attackEvidenceShotsOnTargetEnabled','attackEvidenceShotsOnTargetMin','attackEvidenceCornersEnabled','attackEvidenceCornersMin','sourcePrimary','sourceFallback','sourceBackup','sourceRefreshSeconds','sourceFreshnessMaxSeconds','matchConfidenceMin','requireCoreStats','apiVerifyPolicy','dataConflictPolicy','maxSourceMismatchPercent','redCardPolicy','trendWindowMinutes','chartHistoryMinutes','pressureSpikeEnabled','pressureSpikeMin'];
 const weightIds=['attacks','dangerous_attacks','shots','shots_on_target','corners','possession'];
-const lockedSourceIds=['sourcePrimary','sourceFallback','sourceBackup','apiVerifyPolicy','dataConflictPolicy'];
-
-function parseValue(el){
-  if(!el) return undefined;
-  if(el.tagName==='SELECT' && ['true','false'].includes(el.value)) return el.value==='true';
-  if(el.type==='number') return el.value===''?null:Number(el.value);
-  return el.value;
-}
-function readForm(){
-  const raw={}; fields.forEach(id=>raw[id]=parseValue(document.getElementById(id)));
-  raw.momentumWeights={}; weightIds.forEach(key=>raw.momentumWeights[key]=Number(document.getElementById(`w_${key}`).value));
-  return raw;
-}
-function lockGoalooOnlyUi(){
-  if(!CAR31_SOURCE_MODE.locked) return;
-  for(const id of lockedSourceIds){
-    const el=document.getElementById(id);
-    if(!el) continue;
-    el.disabled=true;
-    el.title='CAR 3.1 is currently locked to GOALOO only; fallback/API modules are dormant, not deleted.';
-  }
-}
-function fill(configInput){
-  const config=normalizeCar31Config(configInput);
-  fields.forEach(id=>{const el=document.getElementById(id);if(!el)return;const value=config[id];el.value=value===null?'':String(value);});
-  weightIds.forEach(key=>document.getElementById(`w_${key}`).value=config.momentumWeights[key]);
-  lockGoalooOnlyUi();
-  refresh();
-}
-function refresh(){
-  const result=validateCar31Config(readForm());
-  const sourceText=CAR31_SOURCE_MODE.locked
-    ? 'GOALOO ONLY · FALLBACK OFF · BACKUP OFF · API VERIFY OFF'
-    : `${result.config.sourcePrimary} → ${result.config.sourceFallback} · Verify ${result.config.apiVerifyPolicy}`;
-  document.getElementById('summary').textContent=`SHADOW ACTIVE PREVIEW · ${configSummary(result.config)} · ${sourceText}`;
-  const box=document.getElementById('validation');
-  if(result.errors.length){box.className='validation bad';box.textContent='BLOCKED · '+result.errors.join(' · ');}
-  else if(result.warnings.length){box.className='validation warn';box.textContent='WARNING · '+result.warnings.join(' · ');}
-  else{box.className='validation good';box.textContent=CAR31_SOURCE_MODE.locked?'CONFIG VALID · GOALOO-ONLY MODE LOCKED · API-Football will not be called':'CONFIG VALID · พร้อมใช้กับ Shadow Preview';}
-  return result;
-}
-
-document.getElementById('settingsForm').addEventListener('input',refresh);
-document.getElementById('saveBtn').addEventListener('click',()=>{
-  const result=refresh(); if(!result.ok) return; localStorage.setItem(STORAGE_KEY,JSON.stringify(result.config));
-  const box=document.getElementById('validation');box.className='validation good';box.textContent='SAVED · เก็บค่า CAR 3.1 Shadow แล้ว · GOALOO ONLY ยังคงถูกล็อก';
-});
-document.getElementById('runBtn').addEventListener('click',()=>{
-  const result=refresh(); if(!result.ok) return; localStorage.setItem(STORAGE_KEY,JSON.stringify(result.config)); location.href='./index.html';
-});
-document.getElementById('resetBtn').addEventListener('click',()=>{localStorage.removeItem(STORAGE_KEY);fill(CAR31_DEFAULT_CONFIG);});
-
-let stored=null;try{stored=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}catch{}
-const migrated=normalizeCar31Config(stored||CAR31_DEFAULT_CONFIG);
-localStorage.setItem(STORAGE_KEY,JSON.stringify(migrated));
-fill(migrated);
+const locked=['sourcePrimary','sourceFallback','sourceBackup','apiVerifyPolicy','dataConflictPolicy'];
+let runtime={};
+const el=id=>document.getElementById(id);
+function parseValue(node){if(!node)return undefined;if(node.tagName==='SELECT'&&['true','false'].includes(node.value))return node.value==='true';if(node.type==='number')return node.value===''?null:Number(node.value);return node.value;}
+function readForm(){const raw={};for(const id of fields)raw[id]=parseValue(el(id));raw.momentumWeights={};for(const key of weightIds)raw.momentumWeights[key]=Number(el(`w_${key}`).value);return raw;}
+function lockUi(){if(!CAR31_SOURCE_MODE.locked)return;for(const id of locked){const node=el(id);if(node){node.disabled=true;node.title='CAR 3.1 uses NOMADTIPS3 branded live data; API and fallbacks are OFF.';}}}
+function fill(input){const c=normalizeCar31Config(input);for(const id of fields){const node=el(id);if(node)node.value=c[id]===null?'':String(c[id]);}for(const key of weightIds)el(`w_${key}`).value=c.momentumWeights[key];lockUi();refresh();}
+function refresh(){const r=validateCar31Config(readForm());el('summary').textContent=`SERVER CONFIG · ${configSummary(r.config)} · NOMADTIPS3 ONLY · API OFF`;const box=el('validation');if(r.errors.length){box.className='validation bad';box.textContent='BLOCKED · '+r.errors.join(' · ');}else if(r.warnings.length){box.className='validation warn';box.textContent='WARNING · '+r.warnings.join(' · ');}else{box.className='validation good';box.textContent='CONFIG VALID · พร้อมบันทึกเข้า CAR 3.1 Worker 24/7';}return r;}
+async function workerConfig(method='GET',body=null){if(!runtime.workerUrl)throw new Error('Worker endpoint unavailable');const response=await fetch(`${runtime.workerUrl}/config?t=${Date.now()}`,{method,cache:'no-store',headers:body?{'content-type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});const data=await response.json().catch(()=>null);if(!response.ok||!data?.ok)throw new Error(data?.error||`HTTP ${response.status}`);return data;}
+async function save(go=false){const r=refresh();if(!r.ok)return;const box=el('validation');box.className='validation warn';box.textContent='SAVING TO SERVER…';try{const data=await workerConfig('POST',r.config);localStorage.setItem(STORAGE_KEY,JSON.stringify(data.config));box.className='validation good';box.textContent=`SAVED SERVER · ${new Date(data.updatedAt).toLocaleString()} · เครื่องจะใช้ค่านี้ต่อเนื่อง`;if(go)location.href='./index.html';}catch(error){box.className='validation bad';box.textContent='SAVE FAILED · '+error.message;}}
+el('settingsForm').addEventListener('input',refresh);el('saveBtn').addEventListener('click',()=>save(false));el('runBtn').addEventListener('click',()=>save(true));el('resetBtn').addEventListener('click',()=>fill(CAR31_DEFAULT_CONFIG));
+(async()=>{try{runtime=await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());let local=null;try{local=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null');}catch{}const remote=await workerConfig('GET').catch(()=>null);const config=normalizeCar31Config(remote?.config||local||CAR31_DEFAULT_CONFIG);localStorage.setItem(STORAGE_KEY,JSON.stringify(config));fill(config);if(remote?.updatedAt)el('validation').textContent=`SERVER CONFIG LOADED · ${new Date(remote.updatedAt).toLocaleString()}`;}catch{fill(CAR31_DEFAULT_CONFIG);}})();
