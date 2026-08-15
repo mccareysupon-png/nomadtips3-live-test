@@ -1,4 +1,4 @@
-name: Diagnose CAR 3 Fixture Identity
+name: Inspect CAR 3 Public Ledger Identity
 
 on:
   push:
@@ -10,27 +10,44 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Query fixture 1569049 across Engine 3 D1 tables
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: 4.120.0
-          command: >-
-            d1 execute nomadtips3-paper-db --remote --config cloudflare-worker/wrangler.jsonc --command "SELECT signal_key,fixture_id,selected_side,selected_team,opponent,minute,selected_score,opponent_score,momentum,selected_odds,ah_line,ah_odds,datetime(created_at/1000,'unixepoch') AS created_utc,payload_json FROM condition_signals WHERE fixture_id=1569049; SELECT state_key,fixture_id,selected_side,home,away,league,country,last_minute,home_score,away_score,datetime(last_sample_at/1000,'unixepoch') AS sample_utc,datetime(updated_at/1000,'unixepoch') AS updated_utc FROM auto_momentum_state_side WHERE fixture_id=1569049; SELECT trade_key,fixture_id,selected_side,selected_team,opponent,actual_home,actual_away,entry_minute,entry_selected_score,entry_opponent_score,entry_actual_home_score,entry_actual_away_score,league,country,ah_line,ah_odds,status,result,settlement,final_status,final_selected_score,final_opponent_score,final_actual_home_score,final_actual_away_score,datetime(created_at/1000,'unixepoch') AS created_utc,datetime(settled_at/1000,'unixepoch') AS settled_utc,note FROM paper_trades_side WHERE fixture_id=1569049; SELECT fixture_id,trade_id,home,away,entry_minute,entry_home_score,entry_away_score,final_status,final_home_score,final_away_score,status,result,settlement,datetime(created_at/1000,'unixepoch') AS created_utc,note FROM paper_trades WHERE fixture_id=1569049;"
-
-      - name: Query nearby signal IDs and times for collision pattern
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: 4.120.0
-          command: >-
-            d1 execute nomadtips3-paper-db --remote --config cloudflare-worker/wrangler.jsonc --command "SELECT fixture_id,selected_side,selected_team,opponent,minute,selected_score,opponent_score,ah_line,ah_odds,datetime(created_at/1000,'unixepoch') AS created_utc FROM condition_signals WHERE fixture_id BETWEEN 1569035 AND 1569065 ORDER BY fixture_id,selected_side;"
+      - name: Inspect fixture 1569049 from live Worker ledger
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base = 'https://nomadtips3-test-api.mccarey-supon.workers.dev';
+          const response = await fetch(`${base}/paper-trades?limit=5000&identity=${Date.now()}`, { cache: 'no-store' });
+          const data = await response.json();
+          if (!response.ok || !data?.ok) throw new Error(`ledger unavailable HTTP ${response.status}`);
+          const target = (data.trades || []).find(t => Number(t.fixtureId) === 1569049);
+          if (!target) throw new Error('fixture 1569049 not found');
+          const view = {
+            fixtureId: target.fixtureId,
+            tradeKey: target.tradeKey,
+            selectedSide: target.selectedSide,
+            selectedTeam: target.selectedTeam,
+            opponent: target.opponent,
+            actualHome: target.actualHome,
+            actualAway: target.actualAway,
+            league: target.league,
+            country: target.country,
+            createdAt: target.createdAt,
+            createdIso: new Date(Number(target.createdAt)).toISOString(),
+            entryMinute: target.entryMinute,
+            entrySelected: `${target.entryHomeScore}-${target.entryAwayScore}`,
+            entryActual: `${target.entryActualHomeScore}-${target.entryActualAwayScore}`,
+            ahLine: target.ahLine,
+            ahOdds: target.ahOdds,
+            finalStatus: target.finalStatus,
+            finalSelected: `${target.finalHomeScore}-${target.finalAwayScore}`,
+            finalActual: `${target.finalActualHomeScore}-${target.finalActualAwayScore}`,
+            status: target.status,
+            result: target.result,
+            settlement: target.settlement,
+            note: target.note
+          };
+          console.log(JSON.stringify(view, null, 2));
+          NODE
