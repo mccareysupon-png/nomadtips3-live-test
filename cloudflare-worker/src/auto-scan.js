@@ -8,6 +8,13 @@ const WEIGHTS = {
   corners: 1.25
 };
 
+const EVIDENCE_RULES = [
+  { key: 'dangerous_attacks', enabled: 'attackEvidenceDangerousAttacksEnabled', minimum: 'attackEvidenceDangerousAttacksMin' },
+  { key: 'shots', enabled: 'attackEvidenceShotsEnabled', minimum: 'attackEvidenceShotsMin' },
+  { key: 'shots_on_target', enabled: 'attackEvidenceShotsOnTargetEnabled', minimum: 'attackEvidenceShotsOnTargetMin' },
+  { key: 'corners', enabled: 'attackEvidenceCornersEnabled', minimum: 'attackEvidenceCornersMin' }
+];
+
 const THAI_OFFSET_MS = 7 * 60 * 60_000;
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -47,6 +54,18 @@ CREATE TABLE IF NOT EXISTS auto_momentum_state_side (
   streak INTEGER NOT NULL DEFAULT 0,
   triggered INTEGER NOT NULL DEFAULT 0,
   config_version INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL
+)`;
+
+const EVIDENCE_BASELINE_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS auto_evidence_baseline (
+  state_key TEXT PRIMARY KEY,
+  fixture_id INTEGER NOT NULL,
+  selected_side TEXT NOT NULL,
+  baseline_minute INTEGER NOT NULL,
+  stats_json TEXT NOT NULL,
+  config_version INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )`;
 
@@ -136,11 +155,14 @@ async function ensureSchema(env) {
     env.DB.prepare(PAPER_TABLE_SQL),
     env.DB.prepare(STATE_TABLE_SQL),
     env.DB.prepare(SIDE_STATE_TABLE_SQL),
+    env.DB.prepare(EVIDENCE_BASELINE_TABLE_SQL),
     env.DB.prepare(STATUS_TABLE_SQL),
     env.DB.prepare(SIGNAL_TABLE_SQL),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_state_updated ON auto_momentum_state(updated_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_side_state_updated ON auto_momentum_state_side(updated_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_side_state_fixture ON auto_momentum_state_side(fixture_id)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_evidence_fixture ON auto_evidence_baseline(fixture_id)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_evidence_updated ON auto_evidence_baseline(updated_at)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_auto_paper_status ON paper_trades(status)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_condition_signals_created ON condition_signals(created_at)')
   ]);
@@ -178,6 +200,68 @@ function momentum(candidate, previous, now, configVersion) {
   if (lastPercent !== null) selectedPercent = lastPercent * 0.55 + selectedPercent * 0.45;
   selectedPercent = Math.round(clamp(selectedPercent, 0, 100));
   return { home: selectedPercent, away: 100 - selectedPercent, evidence: selected.evidence };
+}
+
+function parseStats(value) {
+  try { return JSON.parse(value || '{}'); } catch { return {}; }
+}
+
+function detailedEvidence(candidate, baseline, config) {
+  const baselineStats = baseline ? parseStats(baseline.stats_json) : {};
+  const details = {};
+  const enabled = [];
+  let passed = 0;
+
+  for (const rule of EVIDENCE_RULES) {
+    const isEnabled = Boolean(config[rule.enabled]);
+    const minimum = Math.max(1, Number(config[rule.minimum] || 1));
+    const current = numeric(candidate.stats?.[rule.key]?.home);
+    const start = numeric(baselineStats?.[rule.key]?.home);
+    const delta = baseline && current !== null && start !== null ? Math.max(0, current - start) : 0;
+    const rulePass = Boolean(baseline && isEnabled && delta >= minimum);
+    details[rule.key] = { enabled: isEnabled, minimum, delta, pass: rulePass };
+    if (isEnabled) {
+      enabled.push(rule.key);
+      if (rulePass) passed += 1;
+    }
+  }
+
+  const requirement = String(config.attackEvidenceRequirement || '1').toUpperCase();
+  const required = enabled.length === 0
+    ? 0
+    : requirement === 'ALL'
+      ? enabled.length
+      : Math.min(enabled.length, Math.max(1, Number(requirement) || 1));
+  return {
+    pass: Boolean(baseline && (required === 0 || passed >= required)),
+    baselineReady: Boolean(baseline),
+    baselineMinute: baseline ? Number(baseline.baseline_minute) : null,
+    enabledCount: enabled.length,
+    passedCount: passed,
+    requiredCount: required,
+    requirement,
+    details
+  };
+}
+
+function evidenceBaselineStatement(env, candidate, now, configVersion) {
+  return env.DB.prepare(`
+    INSERT INTO auto_evidence_baseline (
+      state_key, fixture_id, selected_side, baseline_minute, stats_json,
+      config_version, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(state_key) DO UPDATE SET
+      fixture_id = excluded.fixture_id,
+      selected_side = excluded.selected_side,
+      baseline_minute = excluded.baseline_minute,
+      stats_json = excluded.stats_json,
+      config_version = excluded.config_version,
+      created_at = excluded.created_at,
+      updated_at = excluded.updated_at
+  `).bind(
+    candidateKey(candidate), Number(candidate.fixtureId), String(candidate.selectedSide || 'HOME'),
+    Number(candidate.minute), JSON.stringify(candidate.stats || {}), Number(configVersion || 0), now, now
+  );
 }
 
 function scoreState(candidate) {
@@ -308,6 +392,21 @@ async function sideStatesByCandidates(env, candidates) {
   return map;
 }
 
+async function evidenceBaselinesByCandidates(env, candidates) {
+  const map = new Map();
+  const ids = [...new Set(candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger))];
+  for (let index = 0; index < ids.length; index += 50) {
+    const group = ids.slice(index, index + 50);
+    if (!group.length) continue;
+    const placeholders = group.map(() => '?').join(',');
+    const result = await env.DB.prepare(`
+      SELECT * FROM auto_evidence_baseline WHERE fixture_id IN (${placeholders})
+    `).bind(...group).all();
+    for (const row of result.results || []) map.set(String(row.state_key), row);
+  }
+  return map;
+}
+
 async function signalsByCandidates(env, candidates) {
   const map = new Map();
   const ids = [...new Set(candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger))];
@@ -368,8 +467,9 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
     const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
     const ids = candidates.map(item => Number(item.fixtureId)).filter(Number.isInteger);
     const cycleStart = startOfThaiDay(now, Number(config.dailyTenResetHour ?? 12));
-    const [states, existingTrades, existingSignals, todayCountRow] = await Promise.all([
+    const [states, baselines, existingTrades, existingSignals, todayCountRow] = await Promise.all([
       sideStatesByCandidates(env, candidates),
+      evidenceBaselinesByCandidates(env, candidates),
       rowsByFixture(env, 'paper_trades', ids),
       signalsByCandidates(env, candidates),
       env.DB.prepare('SELECT COUNT(*) AS total FROM condition_signals WHERE created_at >= ?')
@@ -391,7 +491,22 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       const previous = states.get(key) || null;
       const calculated = momentum(candidate, previous, now, config.version);
       if (calculated) momentumReady += 1;
-      const evidencePass = !config.attackEvidenceEnabled || Number(calculated?.evidence || 0) >= 1;
+
+      const storedBaseline = baselines.get(key) || null;
+      const baseline = storedBaseline && Number(storedBaseline.config_version || 0) === Number(config.version || 0)
+        ? storedBaseline
+        : null;
+      let evidenceDetail = null;
+      if (config.attackEvidenceDetailedConfigured) {
+        if (!baseline) statements.push(evidenceBaselineStatement(env, candidate, now, config.version));
+        evidenceDetail = detailedEvidence(candidate, baseline, config);
+      }
+
+      const evidencePass = !config.attackEvidenceEnabled || (
+        config.attackEvidenceDetailedConfigured
+          ? Boolean(evidenceDetail?.pass)
+          : Number(calculated?.evidence || 0) >= 1
+      );
       const pass = Boolean(
         calculated &&
         calculated.home >= config.momentumMin &&
@@ -425,6 +540,9 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       enriched.push({
         ...candidate,
         serverMomentum: calculated,
+        serverAttackEvidence: config.attackEvidenceDetailedConfigured
+          ? evidenceDetail
+          : { mode: 'LEGACY_PREVIOUS_SCAN', pass: evidencePass, delta: Number(calculated?.evidence || 0) },
         serverStreak: streak,
         serverTriggered: wasTriggered,
         signalLimitReached: Boolean(limitReached && !wasTriggered)
@@ -435,6 +553,8 @@ export async function runAutoMomentumScan(baseWorker, env, ctx) {
       await env.DB.batch(statements.slice(index, index + 80));
     }
     await env.DB.prepare('DELETE FROM auto_momentum_state_side WHERE updated_at < ?')
+      .bind(now - 6 * 60 * 60_000).run();
+    await env.DB.prepare('DELETE FROM auto_evidence_baseline WHERE updated_at < ?')
       .bind(now - 6 * 60 * 60_000).run();
 
     const counts = {
