@@ -1,0 +1,33 @@
+/* CAR 3.3 top navigation: black, quiet and aligned to the main content grid. */
+.topbar{
+  height:58px!important;
+  padding-left:max(12px,calc((100vw - 1500px)/2 + 12px))!important;
+  padding-right:max(12px,calc((100vw - 1500px)/2 + 12px))!important;
+  background:#000!important;
+  border-bottom:1px solid rgba(255,255,255,.045)!important;
+  box-shadow:none!important;
+}
+.brand{
+  color:#f1f3f4!important;
+  font-family:"Segoe UI Variable Display","Avenir Next","Segoe UI",Arial,sans-serif!important;
+  font-size:20px!important;
+  font-weight:650!important;
+  line-height:1!important;
+  letter-spacing:-.045em!important;
+  text-transform:none!important;
+  white-space:nowrap!important;
+}
+.brand span{color:#f5cb4f!important;font-weight:720!important}
+.nav{align-items:center!important}
+.nav a{
+  color:#aeb5ba!important;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  border-radius:7px!important;
+}
+.nav a:hover{color:#f4f6f7!important;background:#111315!important}
+.nav a.active{color:#fff!important;background:#15181a!important;border-color:#272c30!important}
+@media(max-width:650px){
+  .topbar{height:auto!important;min-height:58px!important;padding:10px 10px 8px!important;gap:8px!important}
+  .brand{font-size:19px!important}
+}
