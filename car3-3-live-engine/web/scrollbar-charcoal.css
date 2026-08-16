@@ -1,0 +1,22 @@
+html{
+  scrollbar-color:#3b4146 #171a1d;
+  scrollbar-width:thin;
+}
+body::-webkit-scrollbar{
+  width:12px;
+  height:12px;
+}
+body::-webkit-scrollbar-track{
+  background:#171a1d;
+}
+body::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,#454b50 0%,#383e43 48%,#2d3236 100%);
+  border:2px solid #171a1d;
+  border-radius:10px;
+}
+body::-webkit-scrollbar-thumb:hover{
+  background:linear-gradient(180deg,#50575d 0%,#42494e 48%,#353b40 100%);
+}
+body::-webkit-scrollbar-corner{
+  background:#171a1d;
+}
