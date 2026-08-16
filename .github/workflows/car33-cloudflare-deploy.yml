@@ -50,29 +50,6 @@ jobs:
           wranglerVersion: "4"
           command: deploy
 
-      - name: Activate AH market for this migration
-        if: contains(github.event.head_commit.message, 'activate AH default')
-        shell: bash
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-        run: |
-          curl -fsS "$DEPLOYMENT_URL/config" > /tmp/car33-config.json
-          python - <<'PY'
-          import json
-          p=json.load(open('/tmp/car33-config.json'))
-          c=p.get('config') or {}
-          c['market']='AH'
-          json.dump(c,open('/tmp/car33-config-ah.json','w'))
-          PY
-          curl -fsS -X POST "$DEPLOYMENT_URL/config" -H 'content-type: application/json' --data-binary @/tmp/car33-config-ah.json | tee /tmp/car33-config-saved.json
-          curl -fsS "$DEPLOYMENT_URL/scan" > /tmp/car33-scan-ah.json
-          python - <<'PY'
-          import json
-          p=json.load(open('/tmp/car33-config-saved.json'))
-          assert p.get('config',{}).get('market')=='AH', p
-          print('CAR 3.3 active market AH PASS')
-          PY
-
       - name: Start and verify live cycle
         shell: bash
         env:
@@ -80,11 +57,15 @@ jobs:
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           echo "Worker: $DEPLOYMENT_URL"
-          curl -fsS "$DEPLOYMENT_URL/scan" | tee /tmp/car33-scan.json
+          code=$(curl -sS -o /tmp/car33-scan.json -w '%{http_code}' "$DEPLOYMENT_URL/scan")
+          cat /tmp/car33-scan.json
+          test "$code" = "200" || { echo "::error::CAR 3.3 scan HTTP $code"; exit 1; }
           curl -fsS "$DEPLOYMENT_URL/health" | tee /tmp/car33-health.json
           python - <<'PY'
           import json
+          scan=json.load(open('/tmp/car33-scan.json'))
           health=json.load(open('/tmp/car33-health.json'))
+          assert scan.get('ok') is True, scan
           assert health.get('engine')=='CAR 3.3', health
           assert health.get('ok') is True, health
           print('CAR 3.3 health PASS')
