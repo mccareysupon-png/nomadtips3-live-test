@@ -45,19 +45,22 @@ function liveClockText(row){
   if(status==='HT'||status.includes('HALF'))return'HT';
   const minute=Number(row?.minute);
   if(!Number.isFinite(minute))return status==='LIVE'?'LIVE':'—';
+
+  // CAR 3.1 source minute is authoritative. The client only animates seconds
+  // inside that source minute and must never drift into the next minute by itself.
   const key=String(row.sourceMatchId||row.id||'active'),now=Date.now(),sourceSeconds=Math.max(0,Math.round(minute*60));
   let state=clockState.get(key);
-  if(!state){
-    state={sourceMinute:minute,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
+  if(!state||minute!==state.sourceMinute||status!==state.status){
+    state={sourceMinute:minute,status,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
     clockState.set(key,state);
-  }else if(minute>state.sourceMinute){
-    const projected=state.anchorSeconds+Math.max(0,Math.floor((now-state.anchorAt)/1000));
-    const next=Math.max(sourceSeconds,projected,state.lastSeconds||0);
-    state.sourceMinute=minute;state.anchorSeconds=next;state.anchorAt=now;state.lastSeconds=next;
   }
-  const projected=state.anchorSeconds+Math.max(0,Math.floor((now-state.anchorAt)/1000));
-  const seconds=Math.max(sourceSeconds,state.lastSeconds||0,projected);
+
+  const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
+  const projected=state.anchorSeconds+elapsed;
+  const sourceMinuteCeiling=sourceSeconds+59;
+  const seconds=Math.max(sourceSeconds,Math.min(projected,sourceMinuteCeiling));
   state.lastSeconds=seconds;
+
   const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
   return `${mins}:${String(secs).padStart(2,'0')}`;
 }
