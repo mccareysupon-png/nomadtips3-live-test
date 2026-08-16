@@ -51,6 +51,11 @@ export class Car31State extends SettlementCar31State{
   }
 }
 
+function car34State(env){
+  const id=env.CAR31_STATE.idFromName('car31-global-shadow');
+  return env.CAR31_STATE.get(id);
+}
+
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
@@ -58,12 +63,10 @@ export default{
       return handleAnimationRequest(request,env,settlementWorker);
     }
     if(request.method==='GET'&&url.pathname.startsWith('/bootstrap/odds-api-key/')){
-      const id=env.CAR31_STATE.idFromName('car31-production');
-      return env.CAR31_STATE.get(id).fetch(request);
+      return car34State(env).fetch(request);
     }
     if(request.method==='GET'&&url.pathname==='/debug/key-status'){
-      const id=env.CAR31_STATE.idFromName('car31-production');
-      return env.CAR31_STATE.get(id).fetch(request);
+      return car34State(env).fetch(request);
     }
     if(request.method==='GET'&&url.pathname==='/live'){
       const response=await settlementWorker.fetch(request,env,ctx);
