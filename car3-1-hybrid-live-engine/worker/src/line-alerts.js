@@ -2,10 +2,28 @@ const LINE_PUSH_URL='https://api.line.me/v2/bot/message/push';
 const DAY_MS=24*60*60*1000;
 const RETRY_WINDOW_MS=30*DAY_MS;
 
+const MEMBERSHIP_SQL=`
+CREATE TABLE IF NOT EXISTS paid_memberships (
+  activation_id TEXT PRIMARY KEY,
+  activation_code TEXT UNIQUE NOT NULL,
+  status TEXT NOT NULL DEFAULT 'INITIATED',
+  stripe_checkout_session_id TEXT UNIQUE,
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  stripe_payment_status TEXT,
+  line_user_id TEXT UNIQUE,
+  current_period_end INTEGER,
+  cancel_at_period_end INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  paid_at INTEGER,
+  activated_at INTEGER,
+  updated_at INTEGER NOT NULL
+)`;
+
 const SUBSCRIBERS_SQL=`
 CREATE TABLE IF NOT EXISTS line_subscribers (
   user_id TEXT PRIMARY KEY,
-  active INTEGER NOT NULL DEFAULT 1,
+  active INTEGER NOT NULL DEFAULT 0,
   subscribed_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 )`;
@@ -88,6 +106,7 @@ async function ensureSchema(env){
   if(!env?.DB)throw new Error('CAR 3.1 LINE requires DB binding');
   if(schemaReady)return;
   await env.DB.batch([
+    env.DB.prepare(MEMBERSHIP_SQL),
     env.DB.prepare(SUBSCRIBERS_SQL),
     env.DB.prepare(DELIVERIES_SQL)
   ]);
