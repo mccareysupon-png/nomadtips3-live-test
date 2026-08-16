@@ -29,6 +29,8 @@ jobs:
           const d=JSON.parse(fs.readFileSync('data/prematch-current.json','utf8'));
           const ms=d.matches||[];
           if(!ms.length) throw new Error('no published selections');
+          if(Number(d.scan?.published)!==ms.length) throw new Error(`published ${d.scan?.published} != matches ${ms.length}`);
+          if(d.rules?.selectionPolicy==='ALL_QUALIFIED' && Number(d.scan?.qualified)!==Number(d.scan?.published)) throw new Error(`qualified ${d.scan?.qualified} != published ${d.scan?.published}`);
           const context=ms.filter(m=>m.context).length;
           const momentum=ms.filter(m=>Number.isFinite(Number(m.context?.momentum?.score))).length;
           const prediction=ms.filter(m=>m.context?.prediction).length;
@@ -41,7 +43,7 @@ jobs:
           if(prediction!==ms.length) throw new Error(`prediction ${prediction}/${ms.length}`);
           if(marketSets!==ms.length) throw new Error(`multi-market ${marketSets}/${ms.length}`);
           if(btts!==ms.length||dc!==ms.length||oe!==ms.length) throw new Error('derived markets missing');
-          console.log(`PASS data selections=${ms.length} multiMarket=${marketSets}/${ms.length}`);
+          console.log(`PASS data selections=${ms.length} qualified=${d.scan?.qualified} published=${d.scan?.published}`);
           NODE
 
       - name: Syntax check inline JavaScript
@@ -60,28 +62,47 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Responsive interaction and timezone smoke
+      - name: Verify Picks Stats Share linkage responsive and local time
         run: |
           python3 -m http.server 8000 >/tmp/http.log 2>&1 &
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
           const current=JSON.parse(fs.readFileSync('data/prematch-current.json','utf8'));
+          const expectedCount=current.matches.length;
           const firstIso=current.matches[0].kickoffUtc;
+          const firstTeams=[current.matches[0].home,current.matches[0].away];
           const sizes=[['desktop',1920,1080],['laptop',1366,768],['tablet-landscape',1024,768],['tablet-portrait',768,1024],['mobile',390,844],['mobile-landscape',844,390]];
           const browser=await chromium.launch({headless:true});
           for(const [name,width,height] of sizes){
             const page=await browser.newPage({viewport:{width,height}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});await page.waitForTimeout(250);
+            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});await page.waitForTimeout(350);
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);if(overflow>2)throw new Error(`${name}: overflow ${overflow}px`);
             if(await page.locator('.nav button').count()!==3)throw new Error(`${name}: nav mismatch`);
-            const first=page.locator('.card').first();if(!(await first.count()))throw new Error(`${name}: no cards`);
+            const cardCount=await page.locator('.card').count();if(cardCount!==expectedCount)throw new Error(`${name}: cards ${cardCount} != data ${expectedCount}`);
+            const todayText=(await page.locator('#today').textContent())?.trim();if(Number(todayText)!==expectedCount)throw new Error(`${name}: qualified display ${todayText} != ${expectedCount}`);
+            const first=page.locator('.card').first();
             const rings=await first.locator('.ring b').allTextContents();if(rings.length<3||rings.every(v=>v==='—'))throw new Error(`${name}: rings empty`);
             if(await first.locator('.market-chip').count()<4)throw new Error(`${name}: market chips missing`);
             const tab=first.locator('.subtab[data-tab="prediction"]');await tab.click();if(!(await first.locator('[data-detail]').evaluate(el=>el.classList.contains('open'))))throw new Error(`${name}: prediction tab failed`);
-            await page.locator('.nav button[data-view="stats"]').click();if(!(await page.locator('#stats').evaluate(el=>el.classList.contains('active'))))throw new Error(`${name}: stats view failed`);
+
+            await page.locator('.nav button[data-view="stats"]').click();
+            if(!(await page.locator('#stats').evaluate(el=>el.classList.contains('active'))))throw new Error(`${name}: stats view failed`);
             if(await page.locator('.filter').count()<7)throw new Error(`${name}: market filters missing`);
-            if(errors.length)throw new Error(`${name}: ${errors.join(' | ')}`);console.log(`PASS ${name}`);await page.close();
+            const statsText=await page.locator('#stats').innerText();
+            if(!firstTeams.some(t=>statsText.includes(t)))throw new Error(`${name}: stats are not linked to current selection data`);
+
+            await page.locator('.nav button[data-view="share"]').click();
+            if(!(await page.locator('#share').evaluate(el=>el.classList.contains('active'))))throw new Error(`${name}: share view failed`);
+            const canvases=page.locator('#share canvas');if(await canvases.count()<2)throw new Error(`${name}: expected two share posters`);
+            const nonBlank=await canvases.first().evaluate(c=>{
+              if(!c.width||!c.height)return false;
+              const d=c.getContext('2d').getImageData(0,0,Math.min(c.width,160),Math.min(c.height,160)).data;
+              return d.some(v=>v!==0);
+            });
+            if(!nonBlank)throw new Error(`${name}: share poster canvas blank`);
+            if(errors.length)throw new Error(`${name}: ${errors.join(' | ')}`);
+            console.log(`PASS ${name} cards=${cardCount} stats=linked share=rendered`);await page.close();
           }
           const zones=['Asia/Bangkok','Asia/Tokyo','Europe/London','America/New_York','America/Los_Angeles','Australia/Sydney'];
           for(const zone of zones){
