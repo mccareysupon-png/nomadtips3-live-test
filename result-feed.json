@@ -1,49 +1,49 @@
 {
   "selectionDate": "2026-08-15",
-  "generatedAt": "2026-08-16T02:47:25Z",
+  "generatedAt": "2026-08-16T02:48:28Z",
   "source": "API-FOOTBALL",
   "staleNotStartedMinutes": 180,
   "summary": {
     "total": 59,
-    "correct": 28,
+    "correct": 29,
     "incorrect": 29,
     "void": 1,
-    "pending": 1,
-    "settled": 57,
-    "allSettled": false,
-    "accuracy": 49.12,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 58,
+    "allSettled": true,
+    "accuracy": 50.0,
+    "finalizedAt": "2026-08-16T02:48:28Z"
   },
   "marketSummary": {
     "btts": {
       "total": 59,
-      "correct": 28,
+      "correct": 29,
       "incorrect": 29,
       "void": 1,
-      "pending": 1,
-      "settled": 57,
-      "accuracy": 49.12
+      "pending": 0,
+      "settled": 58,
+      "accuracy": 50.0
     },
     "doubleChance": {
       "total": 59,
-      "correct": 43,
+      "correct": 44,
       "incorrect": 14,
       "void": 1,
-      "pending": 1,
-      "settled": 57,
-      "accuracy": 75.44
+      "pending": 0,
+      "settled": 58,
+      "accuracy": 75.86
     },
     "asianHandicap": {
-      "win": 28,
+      "win": 29,
       "half-win": 0,
       "push": 4,
       "half-loss": 0,
       "loss": 25,
       "void": 1,
-      "pending": 1,
+      "pending": 0,
       "total": 59,
-      "decisions": 53,
-      "weightedRate": 52.83
+      "decisions": 54,
+      "weightedRate": 53.7
     }
   },
   "results": [
@@ -2251,7 +2251,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2345,7 +2345,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2392,7 +2392,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2486,7 +2486,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2533,7 +2533,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2580,7 +2580,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2674,7 +2674,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2721,7 +2721,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2768,7 +2768,7 @@
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     },
     {
@@ -2778,85 +2778,88 @@
       "home": "Houston Dynamo",
       "away": "Los Angeles Galaxy",
       "kickoffUtc": "2026-08-16T00:30:00+00:00",
-      "status": "2H",
-      "providerStatus": "2H",
-      "statusLong": "Second Half",
+      "status": "FT",
+      "providerStatus": "FT",
+      "statusLong": "Match Finished",
       "elapsed": 90,
       "homeScore": 1,
       "awayScore": 0,
-      "outcome": "pending",
+      "outcome": "correct",
       "markets": {
         "btts": {
           "pick": "No",
           "odds": 2.1,
           "oddsStatus": "LOCKED",
           "confidence": 75,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "doubleChance": {
           "pick": "1X — Houston Dynamo or Draw",
           "odds": 1.2,
           "oddsStatus": "LOCKED",
           "confidence": 75,
-          "outcome": "pending"
+          "outcome": "correct"
         },
         "asianHandicap": {
           "pick": "Houston Dynamo -0.5",
           "odds": 1.72,
           "oddsStatus": "LOCKED",
           "confidence": 75,
-          "outcome": "pending"
+          "outcome": "win",
+          "settlement": "win",
+          "line": -0.5,
+          "side": "home"
         }
       },
-      "resultConfirmed": false,
+      "resultConfirmed": true,
       "autoVoid": false,
       "voidReason": null,
       "resultSource": "API-FOOTBALL",
-      "updatedAt": "2026-08-16T02:47:25Z",
+      "updatedAt": "2026-08-16T02:48:28Z",
       "counted": true
     }
   ],
   "currentBatchSummary": {
     "total": 10,
-    "correct": 3,
+    "correct": 4,
     "incorrect": 6,
     "void": 0,
-    "pending": 1,
-    "settled": 9,
-    "allSettled": false,
-    "accuracy": 33.33,
-    "finalizedAt": null
+    "pending": 0,
+    "settled": 10,
+    "allSettled": true,
+    "accuracy": 40.0,
+    "finalizedAt": "2026-08-16T02:48:28Z"
   },
   "currentBatchMarketSummary": {
     "btts": {
       "total": 10,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 4,
       "void": 0,
-      "pending": 1,
-      "settled": 9,
-      "accuracy": 55.56
+      "pending": 0,
+      "settled": 10,
+      "accuracy": 60.0
     },
     "doubleChance": {
       "total": 10,
-      "correct": 5,
+      "correct": 6,
       "incorrect": 4,
       "void": 0,
-      "pending": 1,
-      "settled": 9,
-      "accuracy": 55.56
+      "pending": 0,
+      "settled": 10,
+      "accuracy": 60.0
     },
     "asianHandicap": {
-      "win": 3,
+      "win": 4,
       "half-win": 0,
       "push": 0,
       "half-loss": 0,
       "loss": 6,
       "void": 0,
-      "pending": 1,
+      "pending": 0,
       "total": 10,
-      "decisions": 9,
-      "weightedRate": 33.33
+      "decisions": 10,
+      "weightedRate": 40.0
     }
   },
   "historyMode": "CUMULATIVE_CONFIRMED_PLUS_CURRENT",
