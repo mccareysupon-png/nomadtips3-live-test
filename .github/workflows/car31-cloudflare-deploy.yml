@@ -15,6 +15,7 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CAR31_WORKER_URL: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
 
 jobs:
   deploy-and-start:
@@ -49,6 +50,15 @@ jobs:
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Capture pre-deploy wheel timestamp
+        id: baseline
+        shell: bash
+        run: |
+          BODY=$(curl -fsS "$CAR31_WORKER_URL/health" || true)
+          LAST=$(printf '%s' "$BODY" | python -c "import json,sys; d=json.load(sys.stdin) if sys.stdin.readable() else {}; print(d.get('lastCycle') or '')" 2>/dev/null || true)
+          echo "Pre-deploy lastCycle: ${LAST:-none}"
+          echo "last_cycle=$LAST" >> "$GITHUB_OUTPUT"
 
       - name: Deploy CAR 3.1 worker and every-minute Cron
         id: deploy
@@ -97,24 +107,28 @@ jobs:
             except Exception as exc:print('FETCH_ERROR',repr(exc))
           PY
 
-      - name: Wait for scheduled wheel and verify health
+      - name: Wait for a fresh scheduled wheel and verify health
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          BEFORE_LAST_CYCLE: ${{ steps.baseline.outputs.last_cycle }}
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           echo "Worker: $DEPLOYMENT_URL"
-          for i in $(seq 1 8); do
+          echo "Before deploy lastCycle: ${BEFORE_LAST_CYCLE:-none}"
+          for i in $(seq 1 10); do
             BODY=$(curl -fsS "$DEPLOYMENT_URL/health")
-            echo "$BODY"
-            if ! printf '%s' "$BODY" | grep -q '"lastCycle": null' && ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
+            CURRENT=$(printf '%s' "$BODY" | python -c "import json,sys; d=json.load(sys.stdin); print(d.get('lastCycle') or '')")
+            echo "Observed lastCycle: ${CURRENT:-none}"
+            if [ -n "$CURRENT" ] && [ "$CURRENT" != "$BEFORE_LAST_CYCLE" ]; then
               printf '%s' "$BODY" | grep -q '"lastError": null\|"lastError":null' || { echo "::error::Worker lastError is not null"; exit 1; }
               printf '%s' "$BODY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::BET365_V4 settlement contract missing"; exit 1; }
+              echo "$BODY"
               exit 0
             fi
             sleep 15
           done
-          echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
+          echo "::error::No fresh post-deploy Cron cycle was observed"
           exit 1
 
       - name: Smoke-test Statistics history endpoint
@@ -130,6 +144,14 @@ jobs:
           printf '%s' "$HISTORY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::History API settlement contract mismatch"; exit 1; }
           printf '%s' "$HISTORY" | grep -q '"records"' || { echo "::error::History API records field missing"; exit 1; }
           printf '%s' "$HISTORY" | grep -q '"summary"' || { echo "::error::History API summary field missing"; exit 1; }
+
+      - name: Inspect live confirmation state
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          LIVE=$(curl -fsS "$DEPLOYMENT_URL/live")
+          printf '%s' "$LIVE" | python -c "import json,sys; d=json.load(sys.stdin); rows=[]; [rows.append({'id':m.get('sourceMatchId'),'home':m.get('home'),'away':m.get('away'),'minute':m.get('minute'),'decision':(m.get('engine') or {}).get('decision'),'streak':(m.get('engine') or {}).get('streak'),'odds':(m.get('engine') or {}).get('odds'),'momentum':(m.get('engine') or {}).get('momentum')}) for m in d.get('matches',[]) if (m.get('engine') or {}).get('decision')=='SHADOW SIGNAL' or ((m.get('engine') or {}).get('streak') or 0)>0]; print(json.dumps({'generatedAt':d.get('generatedAt'),'qualifiedOrConfirming':rows},indent=2))"
 
       - name: Smoke-test isolated animation endpoint
         shell: bash
