@@ -1,0 +1,33 @@
+name: CAR 3.1 Goaloo Clock Live Verify
+
+on:
+  push:
+    branches:
+      - fix/car31-goaloo-source-clock-20260816
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compare Goaloo source clock with current CAR 3.1 live minute
+        run: |
+          curl -fsSL -A 'NOMADTIPS3-CAR3.1-Live/3.0' "https://live10.goaloo28.com/gf/data/bf_us.js?verify=$(date +%s)" -o /tmp/bf_us.js
+          curl -fsSL "https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev/live?verify=$(date +%s)" -o /tmp/live.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {parseGoalooClockSource,attachGoalooClock} from './car3-1-hybrid-live-engine/worker/src/goaloo-clock.js';
+          const source=fs.readFileSync('/tmp/bf_us.js','utf8');
+          const live=JSON.parse(fs.readFileSync('/tmp/live.json','utf8'));
+          const clocks=parseGoalooClockSource(source);
+          const matches=Array.isArray(live.matches)?live.matches:[];
+          const overlap=matches.filter(m=>clocks.has(String(m.sourceMatchId)));
+          const enriched=overlap.map(m=>attachGoalooClock(m,clocks.get(String(m.sourceMatchId))));
+          const verified=enriched.filter(m=>m.goalooClock?.verified);
+          console.log(JSON.stringify({liveMatches:matches.length,goalooRows:clocks.size,overlap:overlap.length,verified:verified.length,samples:verified.slice(0,5).map(m=>({id:m.sourceMatchId,minute:m.minute,elapsed:m.goalooElapsedSeconds,clock:m.goalooClock?.sourceClock}))},null,2));
+          if(matches.length>0&&overlap.length===0)throw new Error('No Goaloo clock rows overlap current CAR 3.1 live matches');
+          if(overlap.length>0&&verified.length===0)throw new Error('Goaloo detailed clock does not agree with CAR 3.1 minute');
+          NODE
