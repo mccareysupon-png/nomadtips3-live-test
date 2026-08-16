@@ -1,5 +1,4 @@
 let runtime=null,liveRows=[],historyRecords=[];
-const clockState=new Map();
 let lastAutoFocusedSignalKey=null;
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
@@ -39,65 +38,41 @@ function ensureConfirmedBanner(){
   return banner;
 }
 
-function sourceMinuteText(row){
+function formatElapsed(seconds){
+  const value=Number(seconds);
+  if(!Number.isFinite(value)||value<0)return null;
+  const whole=Math.round(value),mins=Math.floor(whole/60),secs=whole%60;
+  return `${mins}:${String(secs).padStart(2,'0')}`;
+}
+
+function sourceClockText(row){
   const status=String(row?.status||'LIVE').toUpperCase();
   if(status==='FT'||status.includes('FINISH'))return'FT';
   if(status==='HT'||status.includes('HALF'))return'HT';
+  if(row?.goalooClock?.verified===true){
+    const exact=formatElapsed(row.goalooElapsedSeconds);
+    if(exact)return exact;
+  }
   const minute=Number(row?.minute);
-  return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:'LIVE';
+  return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:status==='LIVE'?'LIVE':'—';
+}
+
+function sourceMinuteText(row){
+  return sourceClockText(row);
 }
 
 function updateCandidateMinutes(cards){
   cards.forEach(card=>{
     const index=Number(card.dataset.index||0),row=liveRows[index],minuteEl=card.querySelector('.candidate-minute');
     if(!row||!minuteEl)return;
-    const next=sourceMinuteText(row);
+    const next=sourceClockText(row);
     if(minuteEl.textContent!==next)minuteEl.textContent=next;
     if(minuteEl.hidden)minuteEl.hidden=false;
   });
 }
 
 function liveClockText(row){
-  const status=String(row?.status||'LIVE').toUpperCase();
-  const minute=Number(row?.minute);
-  const key=String(row?.sourceMatchId||row?.id||'active'),now=Date.now();
-
-  if(status==='FT'||status.includes('FINISH')){
-    clockState.delete(key);
-    return'FT';
-  }
-  if(status==='HT'||status.includes('HALF')){
-    clockState.delete(key);
-    return'HT';
-  }
-  if(!Number.isFinite(minute))return status==='LIVE'?'LIVE':'—';
-
-  // One persistent clock per sourceMatchId. CAR 3.1 /live supplies the source minute.
-  // Clicking another candidate never creates or resets this state. The browser only
-  // interpolates seconds between source updates and always syncs forward, never backward.
-  const sourceSeconds=Math.max(0,Math.round(minute*60));
-  let state=clockState.get(key);
-  if(!state){
-    state={sourceMinute:minute,status,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
-    clockState.set(key,state);
-  }else{
-    const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
-    const projected=Math.max(state.lastSeconds||0,state.anchorSeconds+elapsed);
-    if(minute!==state.sourceMinute||status!==state.status){
-      const synced=Math.max(sourceSeconds,projected);
-      state={sourceMinute:minute,status,anchorSeconds:synced,anchorAt:now,lastSeconds:synced};
-      clockState.set(key,state);
-    }else{
-      state.lastSeconds=Math.max(sourceSeconds,projected);
-    }
-  }
-
-  const current=clockState.get(key);
-  const elapsed=Math.max(0,Math.floor((now-current.anchorAt)/1000));
-  const seconds=Math.max(current.lastSeconds||0,current.anchorSeconds+elapsed,sourceSeconds);
-  current.lastSeconds=seconds;
-  const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
-  return `${mins}:${String(secs).padStart(2,'0')}`;
+  return sourceClockText(row);
 }
 
 function updateSignalClock(row,record){
@@ -133,10 +108,6 @@ function promoteConfirmedCards(cards){
 }
 
 function apply(){
-  // Advance every live match clock, not only the card currently being viewed.
-  // This keeps match A moving while the user is looking at match B.
-  liveRows.forEach(row=>liveClockText(row));
-
   let cards=[...document.querySelectorAll('.candidate')];
   updateCandidateMinutes(cards);
   cards.forEach(card=>{
@@ -199,12 +170,9 @@ async function refresh(){
     fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}))
   ]);
   liveRows=live.matches||[];historyRecords=history.records||[];
-  // Sync every match to its latest CAR 3.1 source minute before rendering.
-  liveRows.forEach(row=>liveClockText(row));
   apply();
 }
 
 document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});
 refresh().catch(()=>{});
-setInterval(apply,1000);
 setInterval(()=>refresh().catch(()=>{}),5000);
