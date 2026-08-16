@@ -26,10 +26,10 @@ jobs:
       - name: Prepare actual settlement guard
         run: |
           git fetch origin agent/car11-goaloo-launch-20260816
-          mkdir -p /tmp/rollover
-          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/market_helpers.mjs > /tmp/rollover/market_helpers.mjs
-          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/settle_guard.mjs > /tmp/rollover/settle_guard.mjs
-          git show origin/agent/car11-goaloo-launch-20260816:car1-1/data/public-selections.json > /tmp/rollover/latest.json
+          mkdir -p .rollover-test
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/market_helpers.mjs > .rollover-test/market_helpers.mjs
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/settle_guard.mjs > .rollover-test/settle_guard.mjs
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/data/public-selections.json > .rollover-test/latest.json
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0 >/dev/null
 
@@ -37,7 +37,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const d=JSON.parse(fs.readFileSync('/tmp/rollover/latest.json','utf8'));
+          const d=JSON.parse(fs.readFileSync('.rollover-test/latest.json','utf8'));
           if(d.rules?.selectionPolicy!=='ALL_QUALIFIED') throw new Error('selectionPolicy is not ALL_QUALIFIED');
           if(d.rules?.maximumSelections!==null) throw new Error('maximumSelections must be null');
           if(Number(d.scan?.qualified)!==Number(d.scan?.published)) throw new Error(`qualified ${d.scan?.qualified} != published ${d.scan?.published}`);
@@ -46,7 +46,7 @@ jobs:
 
       - name: Simulate final match already settled
         run: |
-          cat > /tmp/rollover/current.json <<'JSON'
+          cat > .rollover-test/current.json <<'JSON'
           {
             "selectionDate":"2099-01-01",
             "generatedAtUtc":"2099-01-01T00:00:00.000Z",
@@ -56,11 +56,11 @@ jobs:
             ]
           }
           JSON
-          CURRENT_PATH=/tmp/rollover/current.json HISTORY_PATH=/tmp/rollover/history.json ACTION_PATH=/tmp/rollover/action.txt node /tmp/rollover/settle_guard.mjs
-          test "$(tr -d '\r\n' < /tmp/rollover/action.txt)" = "SELECT"
+          CURRENT_PATH=.rollover-test/current.json HISTORY_PATH=.rollover-test/history.json ACTION_PATH=.rollover-test/action.txt node .rollover-test/settle_guard.mjs
+          test "$(tr -d '\r\n' < .rollover-test/action.txt)" = "SELECT"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const h=JSON.parse(fs.readFileSync('/tmp/rollover/history.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('.rollover-test/history.json','utf8'));
           if(h.length!==1) throw new Error(`expected one archived batch, got ${h.length}`);
           if(h[0].selectionDate!=='2099-01-01') throw new Error('wrong archived batch');
           console.log('PASS all settled -> archive -> SELECT');
@@ -68,10 +68,10 @@ jobs:
 
       - name: Verify no duplicate history on repeated check
         run: |
-          CURRENT_PATH=/tmp/rollover/current.json HISTORY_PATH=/tmp/rollover/history.json ACTION_PATH=/tmp/rollover/action.txt node /tmp/rollover/settle_guard.mjs
+          CURRENT_PATH=.rollover-test/current.json HISTORY_PATH=.rollover-test/history.json ACTION_PATH=.rollover-test/action.txt node .rollover-test/settle_guard.mjs
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const h=JSON.parse(fs.readFileSync('/tmp/rollover/history.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('.rollover-test/history.json','utf8'));
           if(h.length!==1) throw new Error(`duplicate history detected: ${h.length}`);
           console.log('PASS duplicate guard');
           NODE
