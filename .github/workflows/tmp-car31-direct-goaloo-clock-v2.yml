@@ -1,0 +1,60 @@
+name: Temporary CAR 3.1 direct Goaloo clock display v2
+
+on:
+  push:
+    branches:
+      - fix/car31-display-goaloo-clock-v2-20260816
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/car31-display-goaloo-clock-v2-20260816
+          fetch-depth: 0
+      - name: Make app.js display Goaloo clock directly
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          app=Path('car3-1-hybrid-live-engine/web/app.js')
+          text=app.read_text()
+
+          anchor="const $=s=>document.querySelector(s),n=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f,pair=v=>[n(v?.home),n(v?.away)],swap=(a,side)=>side===1?[a[1],a[0]]:a,esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',\"'\":'&#39;'}[c]));"
+          helper="""\nfunction goalooClockText(m){const status=String(m?.status||'LIVE').toUpperCase();if(status==='FT'||status.includes('FINISH'))return'FT';if(status==='HT'||status.includes('HALF'))return'HT';if(m?.goalooClock?.verified===true){const raw=Number(m.goalooElapsedSeconds);if(Number.isFinite(raw)&&raw>=0){const total=Math.round(raw),mins=Math.floor(total/60),secs=total%60;return `${mins}:${String(secs).padStart(2,'0')}`;}}const minute=Number(m?.minute);return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:'LIVE';}\n"""
+          if 'function goalooClockText(' not in text:
+            if anchor not in text: raise SystemExit('helper anchor not found')
+            text=text.replace(anchor,anchor+helper,1)
+
+          old="minute:n(row.minute),score,"
+          new="minute:n(row.minute),status:String(row.status||'LIVE'),goalooElapsedSeconds:row.goalooElapsedSeconds,goalooClock:row.goalooClock||null,score,"
+          if old not in text: raise SystemExit('adapt minute field not found')
+          text=text.replace(old,new,1)
+
+          old='<span class="candidate-minute">${m.minute?`${m.minute}\'`:\'LIVE\'}</span>'
+          new='<span class="candidate-minute">${goalooClockText(m)}</span>'
+          if old not in text: raise SystemExit('candidate minute renderer not found')
+          text=text.replace(old,new,1)
+
+          old="$('#matchMinute').textContent=m.minute?`${m.minute}' LIVE`:'LIVE';"
+          new="const matchClock=goalooClockText(m);$('#matchMinute').textContent=(matchClock==='HT'||matchClock==='FT')?matchClock:`${matchClock} LIVE`;"
+          if old not in text: raise SystemExit('detail minute renderer not found')
+          text=text.replace(old,new,1)
+          app.write_text(text)
+
+          for path in [Path('car3-1-hybrid-live-engine/web/index.html'),Path('car3-1-hybrid-live-engine/monitor/index.html')]:
+            html=path.read_text()
+            old='app.js?v=20260816-stale-detail-v2'
+            new='app.js?v=20260816-direct-goaloo-clock-v2'
+            if old not in html: raise SystemExit(f'app cache key not found in {path}')
+            path.write_text(html.replace(old,new,1))
+          PY
+          node --check car3-1-hybrid-live-engine/web/app.js
+          git config user.name 'nomadtips3-clock-fix'
+          git config user.email 'actions@users.noreply.github.com'
+          git add car3-1-hybrid-live-engine/web/app.js car3-1-hybrid-live-engine/web/index.html car3-1-hybrid-live-engine/monitor/index.html
+          git commit -m 'CAR 3.1: display Goaloo clock directly in app'
+          git push origin HEAD:fix/car31-display-goaloo-clock-v2-20260816
