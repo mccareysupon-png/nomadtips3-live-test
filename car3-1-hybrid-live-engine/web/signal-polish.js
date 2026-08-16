@@ -1,5 +1,6 @@
 let runtime=null,liveRows=[],historyRecords=[];
 let lastAutoFocusedSignalKey=null;
+const LIVE_STALE_MS=90000;
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function confirmedRecord(row){
@@ -8,6 +9,28 @@ function confirmedRecord(row){
 
 function signalKey(record,row){
   return String(record?.id??row?.sourceMatchId??row?.id??'');
+}
+
+function statusText(row){
+  return String(row?.status||'LIVE').toUpperCase();
+}
+
+function isDisplayLive(row){
+  if(!row)return false;
+  const status=statusText(row);
+  return status!=='FT'&&!status.includes('FINISH')&&status!=='SCHEDULED'&&status!=='NS';
+}
+
+function clearLiveDetail(){
+  const banner=$('#confirmedSignalBanner');
+  if(banner)banner.hidden=true;
+  $('.scoreboard')?.classList.remove('confirmed-signal-active');
+  const values={homeTeam:'—',awayTeam:'—',matchMinute:'—',scoreText:'—',leagueText:'—',signalMinute:'—',liveClock:'—',finalDecision:'MONITORING',finalReason:'—'};
+  for(const [id,value] of Object.entries(values)){const el=$(`#${id}`);if(el)el.textContent=value;}
+  const clock=$('#signalClockRow');if(clock)clock.hidden=true;
+  for(const id of ['sourceRow','statsGrid','pitchStats','evidenceGrid','oddsGrid','events','sourceTrace','gateList']){const el=$(`#${id}`);if(el)el.innerHTML='';}
+  const pressure=$('#pressureChart'),danger=$('#dangerChart');if(pressure)pressure.innerHTML='';if(danger)danger.innerHTML='';
+  const tag=$('#possessionTag');if(tag)tag.textContent='WAITING FOR LIVE MATCH';
 }
 
 function ensureSignalClock(){
@@ -109,6 +132,9 @@ function promoteConfirmedCards(cards){
 
 function apply(){
   let cards=[...document.querySelectorAll('.candidate')];
+  cards.forEach(card=>{const index=Number(card.dataset.index||0),row=liveRows[index];if(!isDisplayLive(row))card.remove();});
+  cards=[...document.querySelectorAll('.candidate')];
+  if(!cards.length){clearLiveDetail();return;}
   updateCandidateMinutes(cards);
   cards.forEach(card=>{
     const index=Number(card.dataset.index||0),row=liveRows[index],record=confirmedRecord(row),teams=card.querySelector('.teams');
@@ -138,7 +164,10 @@ function apply(){
     }
   }
 
-  const active=$('.candidate.active'),index=Number(active?.dataset.index||0),row=liveRows[index],record=confirmedRecord(row);
+  let active=$('.candidate.active');
+  if(!active&&cards[0]){cards[0].click();return;}
+  const index=Number(active?.dataset.index),row=Number.isFinite(index)?liveRows[index]:null,record=confirmedRecord(row);
+  if(!isDisplayLive(row)){clearLiveDetail();return;}
   const selectedName=$('#homeTeam'),opponentName=$('#awayTeam');
   const scoreboard=$('.scoreboard'),banner=ensureConfirmedBanner();
   const confirmed=Boolean(record);
@@ -169,7 +198,9 @@ async function refresh(){
     fetch(`${runtime.workerUrl}/live?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({matches:[]})),
     fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}))
   ]);
-  liveRows=live.matches||[];historyRecords=history.records||[];
+  const generatedAt=Date.parse(live?.generatedAt||'');
+  const fresh=Boolean(live?.ok)&&Number.isFinite(generatedAt)&&Date.now()-generatedAt<=LIVE_STALE_MS;
+  liveRows=fresh?(live.matches||[]):[];historyRecords=history.records||[];
   apply();
 }
 
