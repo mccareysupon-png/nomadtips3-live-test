@@ -1,0 +1,95 @@
+name: CAR 3.1 detailIn post-deploy verify
+
+on:
+  push:
+    branches:
+      - verify/car31-detailin-postdeploy-20260816
+    paths:
+      - .github/workflows/car31-detailin-postdeploy-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
+      DEPLOY_FINISHED_AT: 2026-08-16T07:35:19Z
+    steps:
+      - name: Wait for fresh Cron after deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            curl -fsS "$WORKER/health" -o /tmp/health.json
+            if python - <<'PY'
+          import json, os, sys
+          from datetime import datetime
+          h=json.load(open('/tmp/health.json',encoding='utf-8'))
+          last=h.get('lastCycle')
+          fresh=False
+          if last:
+              fresh=datetime.fromisoformat(last.replace('Z','+00:00')) > datetime.fromisoformat(os.environ['DEPLOY_FINISHED_AT'].replace('Z','+00:00'))
+          print('HEALTH',json.dumps({'lastCycle':last,'lastSuccess':h.get('lastSuccess'),'lastError':h.get('lastError'),'coreStatsPipe':h.get('coreStatsPipe'),'freshAfterDeploy':fresh},ensure_ascii=False))
+          sys.exit(0 if fresh and (h.get('coreStatsPipe') or {}).get('status')=='DIRECT' else 1)
+          PY
+            then break; fi
+            if [ "$i" = 10 ]; then echo '::error::No fresh DIRECT Core Stats cycle after deploy'; exit 1; fi
+            sleep 15
+          done
+
+      - name: Compare worker Core Stats against raw Goaloo detailIn
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$WORKER/live" -o /tmp/live.json
+          curl -fsS "https://live10.goaloo28.com/gf/data/detailIn.js?t=$(date +%s)" -o /tmp/detailIn.js
+          python - <<'PY'
+          import json,re,sys
+          live=json.load(open('/tmp/live.json',encoding='utf-8'))
+          src=open('/tmp/detailIn.js',encoding='utf-8',errors='replace').read()
+          core={0:'corners',4:'shots',5:'shots_on_target',6:'attacks',7:'dangerous_attacks',11:'possession'}
+          raw={}
+          for m in re.finditer(r'tT_f\[(\d+)\]\s*=\s*(\[[\s\S]*?\])\s*;',src):
+              mid=m.group(1); stats={}
+              for row in re.finditer(r"\[\s*(\d+)\s*,\s*['\"]([^'\"]*)['\"]\s*,\s*['\"]([^'\"]*)['\"]",m.group(2)):
+                  code=int(row.group(1))
+                  if code not in core: continue
+                  def num(v):
+                      try:return float(v.replace('%','').strip())
+                      except:return None
+                  h,a=num(row.group(2)),num(row.group(3))
+                  if h is not None and a is not None: stats[core[code]]={'home':h,'away':a}
+              if stats: raw[mid]=stats
+          compared=0; structured=0; mismatches=[]; samples=[]
+          for m in live.get('matches') or []:
+              mid=str(m.get('sourceMatchId'))
+              rs=raw.get(mid)
+              if not rs: continue
+              ws=m.get('stats') or {}
+              provenance=m.get('coreStatsProvenance')
+              source=(m.get('enrichment') or {}).get('coreStats')
+              applied=0
+              for key,pair in rs.items():
+                  w=ws.get(key) or {}
+                  wh,wa=w.get('home'),w.get('away')
+                  if isinstance(wh,(int,float)) and isinstance(wa,(int,float)):
+                      applied+=1; compared+=1
+                      if abs(float(wh)-pair['home'])>1e-9 or abs(float(wa)-pair['away'])>1e-9:
+                          mismatches.append({'id':mid,'key':key,'worker':{'home':wh,'away':wa},'raw':pair,'provenance':provenance,'source':source})
+              if provenance in ('DETAIL_IN_STRUCTURED','DETAIL_IN_PARTIAL') or source=='DETAIL_IN': structured+=1
+              if len(samples)<8:
+                  samples.append({'id':mid,'home':m.get('home'),'away':m.get('away'),'provenance':provenance,'source':source,'workerPossession':ws.get('possession'),'rawPossession':rs.get('possession'),'rawPairs':len(rs),'comparedPairs':applied})
+          print('VERIFY_SUMMARY',json.dumps({'liveMatches':len(live.get('matches') or []),'rawMatchedMatches':len(samples) if len(samples)<8 else '8+','structuredMatchesObserved':structured,'pairsCompared':compared,'mismatchCount':len(mismatches),'coreStatsPipe':live.get('coreStatsPipe')},ensure_ascii=False))
+          print('SAMPLES')
+          for x in samples: print(json.dumps(x,ensure_ascii=False))
+          if mismatches:
+              print('MISMATCHES')
+              for x in mismatches[:20]: print(json.dumps(x,ensure_ascii=False))
+              raise SystemExit('Worker Core Stats still differ from raw detailIn')
+          if compared==0 or structured==0:
+              raise SystemExit('No structured live Core Stats were available to verify')
+          print('PASS: worker structured Core Stats match raw Goaloo detailIn for all compared pairs')
+          PY
