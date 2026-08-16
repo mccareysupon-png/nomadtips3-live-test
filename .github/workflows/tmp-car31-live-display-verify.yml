@@ -1,0 +1,44 @@
+name: TEMP CAR 3.1 Live Display Verify
+
+on:
+  push:
+    branches:
+      - fix/car31-live-display-source-truth-reset-20260816
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check display script
+        run: node --check car3-1-hybrid-live-engine/web/signal-polish.js
+      - name: Guard against synthetic browser clock
+        run: |
+          ! grep -q "clockState" car3-1-hybrid-live-engine/web/signal-polish.js
+          ! grep -q "sourceFreshnessSeconds" car3-1-hybrid-live-engine/web/signal-polish.js
+      - name: Inspect current CAR 3.1 live source
+        run: |
+          curl -fsS --retry 3 --retry-delay 2 "https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev/live?t=$(date +%s)" -o /tmp/live.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('/tmp/live.json').read_text())
+          print('ok=',data.get('ok'),'generatedAt=',data.get('generatedAt'))
+          rows=data.get('matches') or []
+          print('matches=',len(rows))
+          ended=[]
+          for r in rows:
+              status=str(r.get('status') or '').upper()
+              print(r.get('sourceMatchId'), status, r.get('minute'), r.get('home'), 'vs', r.get('away'))
+              if status=='FT' or 'FINISH' in status:
+                  ended.append(r.get('sourceMatchId'))
+          print('ended_in_live=',ended)
+          if ended:
+              raise SystemExit('FT/FINISHED match leaked into /live')
+          PY
