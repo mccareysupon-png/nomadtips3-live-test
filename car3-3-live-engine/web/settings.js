@@ -37,7 +37,7 @@ function fill(c){
   for(const key of [...NUMBERS,'side','market','ouDirection','attackEvidenceRequirement','redCardPolicy'])setValue(key,cfg[key]);
   for(const key of BOOLS)setValue(key,cfg[key]);
   for(const [field,key] of Object.entries(WEIGHTS))setValue(field,cfg.momentumWeights[key]);
-  updateUI();summary();setValidation('SERVER CONFIG LOADED','ok');
+  updateUI();summary();setValidation('Settings loaded','ok');
 }
 function currentBody(){
   const body={...cfg,momentumWeights:{...cfg.momentumWeights}};
@@ -54,17 +54,17 @@ function currentBody(){
 function validate(body){
   const errors=[];
   if(body.minuteMin===null||body.minuteMax===null||body.minuteMin>body.minuteMax)errors.push('Minute range is invalid.');
-  if(body.oddsMin===null||body.oddsMin<1.01)errors.push('Odds Min must be at least 1.01.');
-  if(body.oddsMax!==null&&body.oddsMax<body.oddsMin)errors.push('Odds Max cannot be lower than Odds Min.');
-  if(body.market==='AH'&&body.ahMax!==null&&body.ahMax<body.ahMin)errors.push('AH Line Max cannot be lower than AH Line Min.');
-  if(body.confirmationRounds===null||body.confirmationRounds<1)errors.push('Confirmation Rounds must be at least 1.');
-  if(body.goalGapLimited&&(body.maxGoalGap===null||body.maxGoalGap<0))errors.push('Max Goal Gap is required when Goal Gap Limit is ON.');
-  if(body.signalLimitEnabled&&(body.maxSignalsPerDay===null||body.maxSignalsPerDay<1))errors.push('Max Signals / Day is required when Daily Signal Limit is ON.');
+  if(body.oddsMin===null||body.oddsMin<1.01)errors.push('Odds min must be at least 1.01.');
+  if(body.oddsMax!==null&&body.oddsMax<body.oddsMin)errors.push('Odds max cannot be lower than odds min.');
+  if(body.market==='AH'&&body.ahMax!==null&&body.ahMax<body.ahMin)errors.push('AH line max cannot be lower than AH line min.');
+  if(body.confirmationRounds===null||body.confirmationRounds<1)errors.push('Confirmation rounds must be at least 1.');
+  if(body.goalGapLimited&&(body.maxGoalGap===null||body.maxGoalGap<0))errors.push('Max goal gap is required when Goal gap limit is ON.');
+  if(body.signalLimitEnabled&&(body.maxSignalsPerDay===null||body.maxSignalsPerDay<1))errors.push('Max signals / day is required when Daily signal limit is ON.');
   if(body.attackEvidenceEnabled){
     const enabled=['attackEvidenceDangerousAttacksEnabled','attackEvidenceShotsEnabled','attackEvidenceShotsOnTargetEnabled','attackEvidenceCornersEnabled'].filter(k=>body[k]).length;
-    if(enabled===0)errors.push('Attack Evidence is ON but every evidence source is OFF.');
+    if(enabled===0)errors.push('Attack evidence is ON but every evidence source is OFF.');
     const req=body.attackEvidenceRequirement==='ALL'?enabled:Number(body.attackEvidenceRequirement);
-    if(req>enabled)errors.push(`Evidence Requirement needs ${req} rules but only ${enabled} are enabled.`);
+    if(req>enabled)errors.push(`Evidence requirement needs ${req} rules but only ${enabled} are enabled.`);
   }
   return errors;
 }
@@ -83,40 +83,40 @@ function summary(){
   if(b.goalGapLimited)extra.push(`Gap ≤${b.maxGoalGap}`);
   if(b.signalLimitEnabled)extra.push(`Daily ≤${b.maxSignalsPerDay}`);
   if(b.attackEvidenceEnabled)extra.push(`Evidence ${b.attackEvidenceRequirement}`);else extra.push('Evidence OFF');
-  $('#rule').innerHTML=`<small>ACTIVE SIGNAL RULE PREVIEW</small><b><span class="rule-accent">${b.side}</span> · ${b.minuteMin}'–${b.minuteMax}' · ${market} · Odds ≥${b.oddsMin??'—'} · Momentum ≥${b.momentumMin??'—'}% · Confirm ${b.confirmationRounds??'—'} rounds${extra.length?` · ${extra.join(' · ')}`:''}</b>`;
+  $('#rule').innerHTML=`<small>Active signal rule</small><b><span class="rule-accent">${b.side}</span> · ${b.minuteMin}'–${b.minuteMax}' · ${market} · Odds ≥${b.oddsMin??'—'} · Momentum ≥${b.momentumMin??'—'}% · Confirm ${b.confirmationRounds??'—'} rounds${extra.length?` · ${extra.join(' · ')}`:''}</b>`;
 }
 async function refreshHealth(){
   const el=$('#engineState');
   try{
     const h=await fetch(`${WORKER}/health?t=${Date.now()}`,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();});
-    const cycle=h.lastCycle||{};el.className='engine-state online';el.textContent=`SERVER ONLINE · ${h.signals??0} SIGNALS · LAST SCAN ${cycle.liveMatches??'—'} LIVE`;
-  }catch(e){el.className='engine-state error';el.textContent='SERVER STATUS UNAVAILABLE';}
+    const cycle=h.lastCycle||{};el.className='engine-state online';el.textContent=`Online · ${h.signals??0} signals · ${cycle.liveMatches??'—'} live`;
+  }catch(e){el.className='engine-state error';el.textContent='Status unavailable';}
 }
 async function load(){
-  if(busy)return;busy=true;setStatus('LOADING SERVER…');
+  if(busy)return;busy=true;setStatus('Loading…');
   try{
     const r=await fetch(`${WORKER}/config?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`CONFIG HTTP ${r.status}`);
-    const d=await r.json();fill(d.config||DEFAULT);setStatus('READY','ok');await refreshHealth();
-  }catch(e){fill(DEFAULT);setValidation(`SERVER LOAD ERROR · ${e.message}`,'error');setStatus('USING LOCAL DEFAULTS','error');await refreshHealth();}
+    const d=await r.json();fill(d.config||DEFAULT);setStatus('Ready','ok');await refreshHealth();
+  }catch(e){fill(DEFAULT);setValidation('Saved settings could not be loaded.','error');setStatus('Using defaults','error');await refreshHealth();}
   finally{busy=false;}
 }
 async function saveConfig(runNow){
   if(busy)return;const body=currentBody(),errors=validate(body);
-  if(errors.length){setValidation(errors.join(' '),'error');setStatus('NOT SAVED','error');return;}
-  busy=true;setValidation('VALID CONFIG','ok');setStatus(runNow?'SAVING & RUNNING…':'SAVING…');
+  if(errors.length){setValidation(errors.join(' '),'error');setStatus('Not saved','error');return;}
+  busy=true;setValidation('Settings valid','ok');setStatus(runNow?'Saving & running…':'Saving…');
   try{
     const r=await fetch(`${WORKER}/config`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(`SAVE HTTP ${r.status}`);
     const d=await r.json();if(!d?.config)throw new Error('Invalid save response');cfg=d.config;
-    if(runNow){const scan=await fetch(`${WORKER}/scan?t=${Date.now()}`,{cache:'no-store'});const payload=await scan.json().catch(()=>({}));if(!scan.ok||payload.ok!==true)throw new Error(`SCAN ${scan.status}${payload.error?` · ${payload.error}`:''}`);setStatus(`SAVED & RUN · ${payload.liveMatches??0} LIVE · ${payload.candidates??0} CANDIDATES · ${payload.signals??0} SIGNALS`,'ok');}
-    else setStatus('SAVED TO SERVER · NEXT SERVER CYCLE WILL USE THESE RULES','ok');
+    if(runNow){const scan=await fetch(`${WORKER}/scan?t=${Date.now()}`,{cache:'no-store'});const payload=await scan.json().catch(()=>({}));if(!scan.ok||payload.ok!==true)throw new Error(`SCAN ${scan.status}${payload.error?` · ${payload.error}`:''}`);setStatus(`Saved & run · ${payload.liveMatches??0} live · ${payload.candidates??0} candidates · ${payload.signals??0} signals`,'ok');}
+    else setStatus('Saved · next automatic cycle will use these rules','ok');
     fill(d.config);await refreshHealth();
-  }catch(e){setStatus(`SAVE ERROR · ${e.message}`,'error');setValidation('Server did not confirm the requested operation.','error');}
+  }catch(e){setStatus('Save failed','error');setValidation('Changes were not confirmed.','error');}
   finally{busy=false;}
 }
 
-form.addEventListener('input',()=>{updateUI();summary();const errors=validate(currentBody());setValidation(errors.length?errors.join(' '):'CONFIG LOOKS VALID',errors.length?'error':'ok');});
+form.addEventListener('input',()=>{updateUI();summary();const errors=validate(currentBody());setValidation(errors.length?errors.join(' '):'Settings valid',errors.length?'error':'ok');});
 form.onsubmit=e=>{e.preventDefault();saveConfig(true);};
 $('#save').onclick=()=>saveConfig(false);
 $('#reload').onclick=()=>load();
-$('#reset').onclick=()=>{fill(DEFAULT);setStatus('DEFAULTS LOADED LOCALLY · PRESS SAVE TO APPLY');};
+$('#reset').onclick=()=>{fill(DEFAULT);setStatus('Defaults loaded · save to apply');};
 load();
