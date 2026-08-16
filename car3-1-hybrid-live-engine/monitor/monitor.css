@@ -8,7 +8,13 @@
 .monitor-subscribe-action:hover,.monitor-subscribe-action:focus-visible{transform:translateY(-1px);filter:brightness(1.04);box-shadow:0 0 0 1px rgba(57,208,111,.34),0 0 18px rgba(57,208,111,.22),0 10px 24px rgba(0,0,0,.3);outline:none}
 .monitor-subscribe-action span{white-space:nowrap}
 #sourceRow,[data-tab="source"],#tab-source,#gateList,#finalReason{display:none!important}
-.decision{grid-template-columns:1fr!important}
+.public-hidden{display:none!important}
+.metrics .metric:has(#metricWatch),.metrics .metric:has(#metricNear){display:none!important}
+.candidate .state{display:none!important}
+.candidate.confirmed-signal .state.public-state-visible{display:inline-flex!important}
+.section-title:has(+ .decision),.decision{display:none!important}
+.section-title.public-confirmed-visible{display:flex!important}
+.decision.public-confirmed-visible{display:grid!important;grid-template-columns:1fr!important}
 .decision-final{min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 #finalDecision{letter-spacing:.04em}
 @media(max-width:680px){.monitor-subscribe-card{align-items:stretch;flex-direction:column;padding:14px;margin-top:12px}.monitor-subscribe-action{width:100%}.monitor-subscribe-copy strong{font-size:15px}}
