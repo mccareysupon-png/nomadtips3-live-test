@@ -26,13 +26,14 @@ function cleanScoreboardClock(){
   const divider=row.querySelector(':scope > i');
   if(spans[0]){
     const label=spans[0].querySelector('small');
-    if(label)label.textContent='SIGNAL LOCK';
+    if(label&&label.textContent!=='SIGNAL LOCK')label.textContent='SIGNAL LOCK';
   }
-  if(divider)divider.hidden=true;
-  if(spans[1])spans[1].hidden=true;
+  if(divider&&!divider.hidden)divider.hidden=true;
+  if(spans[1]&&!spans[1].hidden)spans[1].hidden=true;
   const signal=document.querySelector('#signalMinute');
   const signalText=String(signal?.textContent||'').trim();
-  row.hidden=!signalText||signalText==='—';
+  const shouldHide=!signalText||signalText==='—';
+  if(row.hidden!==shouldHide)row.hidden=shouldHide;
 }
 
 function applyMatchTimeCards(){
