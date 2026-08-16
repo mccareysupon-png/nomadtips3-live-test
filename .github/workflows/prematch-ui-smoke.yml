@@ -1,0 +1,65 @@
+name: Prematch UI Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/prematch-current.json'
+      - '.github/workflows/prematch-ui-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check inline JavaScript
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          js=s.split('<script>',1)[1].split('</script>',1)[0]
+          Path('/tmp/prematch-ui.js').write_text(js)
+          PY
+          node --check /tmp/prematch-ui.js
+      - name: Install browser
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Responsive and interaction smoke
+        run: |
+          python3 -m http.server 8000 >/tmp/http.log 2>&1 &
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const sizes=[
+            ['desktop',1920,1080],['laptop',1366,768],['tablet-landscape',1024,768],
+            ['tablet-portrait',768,1024],['mobile',390,844],['mobile-landscape',844,390]
+          ];
+          const browser=await chromium.launch({headless:true});
+          for(const [name,width,height] of sizes){
+            const page=await browser.newPage({viewport:{width,height}});
+            const errors=[];page.on('pageerror',e=>errors.push(e.message));
+            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});
+            await page.waitForTimeout(300);
+            const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+            if(overflow>2)throw new Error(`${name}: horizontal overflow ${overflow}px`);
+            const nav=await page.locator('.nav button').count();if(nav!==3)throw new Error(`${name}: expected 3 nav buttons, got ${nav}`);
+            const first=page.locator('.pick').first();if(await first.count()){
+              const tab=first.locator('.subtab[data-tab="prediction"]');
+              await tab.click();
+              if(!(await first.locator('[data-detail]').evaluate(el=>el.classList.contains('open'))))throw new Error(`${name}: prediction detail did not open`);
+            }
+            if(errors.length)throw new Error(`${name}: page error ${errors.join(' | ')}`);
+            console.log(`PASS ${name}`);await page.close();
+          }
+          await browser.close();
+          NODE
