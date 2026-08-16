@@ -121,7 +121,7 @@ export function buildMarketPredictions(match){
 
   let dcProb=null;
   if(oneX2Prob)dcProb=side==='home'?oneX2Prob.home+oneX2Prob.draw:oneX2Prob.away+oneX2Prob.draw;
-  else dcProb=grid.reduce((s,r)=>s+(side==='home'?(r.h>=r.a):(r.a>=r.h)?r.p:0),0);
+  else dcProb=grid.reduce((s,r)=>s+((side==='home'?(r.h>=r.a):(r.a>=r.h))?r.p:0),0);
   const dcSel=side==='home'?'1X':'X2';
   out.doubleChance={key:'DC',name:'Win or Draw',selection:dcSel,label:side==='home'?`${match.home} or Draw`:`${match.away} or Draw`,odds:fairOdds(dcProb),oddsType:'MODEL FAIR',confidence:confidence(dcProb),status:'PENDING'};
 
