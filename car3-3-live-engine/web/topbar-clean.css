@@ -1,19 +1,19 @@
-/* CAR 3.3 top navigation: exact same background treatment as the page, no card effect. */
+/* CAR 3.3 navigation: dark charcoal menu bar with larger clean lowercase logo. */
 .topbar{
   height:58px!important;
   padding-left:max(12px,calc((100vw - 1500px)/2 + 12px))!important;
   padding-right:max(12px,calc((100vw - 1500px)/2 + 12px))!important;
-  background:radial-gradient(circle at 12% -8%,rgba(54,220,255,.055),transparent 28%),radial-gradient(circle at 88% 3%,rgba(154,115,255,.045),transparent 30%),#030405!important;
+  background:linear-gradient(180deg,#1d2124 0%,#171a1d 55%,#141719 100%)!important;
   border:0!important;
-  border-bottom:0!important;
-  box-shadow:none!important;
+  border-bottom:1px solid #2a3034!important;
+  box-shadow:0 6px 18px rgba(0,0,0,.34)!important;
   backdrop-filter:none!important;
 }
 .topbar::before,.topbar::after{display:none!important}
 .brand{
   color:#f1f3f4!important;
   font-family:"Segoe UI Variable Display","Avenir Next","Segoe UI",Arial,sans-serif!important;
-  font-size:20px!important;
+  font-size:26px!important;
   font-weight:650!important;
   line-height:1!important;
   letter-spacing:-.045em!important;
@@ -30,9 +30,9 @@
   border-radius:7px!important;
   box-shadow:none!important;
 }
-.nav a:hover{color:#f4f6f7!important;background:#0d0f10!important}
-.nav a.active{color:#fff!important;background:#111315!important;border-color:#22272a!important}
+.nav a:hover{color:#f4f6f7!important;background:#22272b!important}
+.nav a.active{color:#fff!important;background:#282e32!important;border-color:#394147!important}
 @media(max-width:650px){
   .topbar{height:auto!important;min-height:58px!important;padding:10px 10px 8px!important;gap:8px!important}
-  .brand{font-size:19px!important}
+  .brand{font-size:25px!important}
 }
