@@ -18,7 +18,7 @@ test('Goaloo detailIn maps confirmed core statistic IDs from real public payload
   });
 });
 
-test('core stats fallback fills only missing values and preserves real zero/base values',()=>{
+test('core stats fallback fills missing pairs and preserves complete real zero/base pairs',()=>{
   const detail={corners:{home:3,away:5},shots:{home:8,away:13},shots_on_target:{home:5,away:3},attacks:{home:111,away:125},dangerous_attacks:{home:47,away:73},possession:{home:51,away:49}};
   const match={
     stats:{
@@ -43,6 +43,27 @@ test('core stats fallback fills only missing values and preserves real zero/base
   assert.deepEqual(match.warnings,['KEEP_ME']);
   assert.ok(merged.filled.includes('attacks.home'));
   assert.equal(merged.filled.includes('shots.home'),false);
+});
+
+test('incomplete base pair is replaced atomically instead of mixing two sources',()=>{
+  const match={
+    stats:{
+      possession:{home:59,away:null},
+      attacks:{home:10,away:9},
+      dangerous_attacks:{home:8,away:7},
+      shots:{home:3,away:2},
+      shots_on_target:{home:1,away:1},
+      corners:{home:2,away:1}
+    },
+    coreStatsComplete:false,
+    warnings:['CORE_STATS_INCOMPLETE']
+  };
+  const merged=mergeCoreStats(match,{possession:{home:39.3,away:60.7}});
+  assert.equal(merged.complete,true);
+  assert.deepEqual(match.stats.possession,{home:39.3,away:60.7});
+  assert.equal(match.stats.possession.home+match.stats.possession.away,100);
+  assert.ok(merged.filled.includes('possession.home'));
+  assert.ok(merged.filled.includes('possession.away'));
 });
 
 test('partial detailIn data cannot falsely mark core stats complete',()=>{
