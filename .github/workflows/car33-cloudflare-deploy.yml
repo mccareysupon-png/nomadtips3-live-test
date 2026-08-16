@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "car3-3-live-engine/worker/**"
+      - "car3-3-live-engine/web/**"
       - ".github/workflows/car33-cloudflare-deploy.yml"
   workflow_dispatch:
 
@@ -30,6 +31,9 @@ jobs:
         run: |
           node --check src/index.js
           node --test
+          node --check ../web/app.js
+          node --check ../web/settings.js
+          node --check ../web/history.js
 
       - name: Validate Cloudflare credentials
         run: |
@@ -45,6 +49,29 @@ jobs:
           workingDirectory: car3-3-live-engine/worker
           wranglerVersion: "4"
           command: deploy
+
+      - name: Activate AH market for this migration
+        if: contains(github.event.head_commit.message, 'activate AH default')
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsS "$DEPLOYMENT_URL/config" > /tmp/car33-config.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-config.json'))
+          c=p.get('config') or {}
+          c['market']='AH'
+          json.dump(c,open('/tmp/car33-config-ah.json','w'))
+          PY
+          curl -fsS -X POST "$DEPLOYMENT_URL/config" -H 'content-type: application/json' --data-binary @/tmp/car33-config-ah.json | tee /tmp/car33-config-saved.json
+          curl -fsS "$DEPLOYMENT_URL/scan" > /tmp/car33-scan-ah.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-config-saved.json'))
+          assert p.get('config',{}).get('market')=='AH', p
+          print('CAR 3.3 active market AH PASS')
+          PY
 
       - name: Start and verify live cycle
         shell: bash
@@ -69,15 +96,18 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
           curl -fsS "$DEPLOYMENT_URL/live" > /tmp/car33-live.json
+          curl -fsS "$DEPLOYMENT_URL/config" > /tmp/car33-config-final.json
           python - <<'PY'
           import json
           p=json.load(open('/tmp/car33-live.json'))
+          c=json.load(open('/tmp/car33-config-final.json'))
           assert p.get('engine')=='CAR 3.3', p
           assert isinstance(p.get('matches'),list), p
           assert isinstance(p.get('activeSignals'),list), p
+          assert c.get('config',{}).get('market') in ('WIN','AH','OU'), c
           for m in p['matches'][:25]:
               assert 'sourceClock' in m
               assert 'elapsedSeconds' in m
               assert 'score' in m
-          print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']))
+          print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']),'market=',c.get('config',{}).get('market'))
           PY
