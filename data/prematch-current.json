@@ -3,18 +3,1292 @@
   "generatedAtUtc": "2026-08-16T03:32:49.785Z",
   "windowEndUtc": "2026-08-17T01:00:00.000Z",
   "status": "ONLINE",
-  "scan": {"feedMatches":776,"eligibleUpcoming":500,"qualified":33,"published":10},
-  "rules": {"market":"1X2","minimumOdds":1.7,"minimumConfidence":58,"minimumLeadMinutes":45,"minimumStrengthScore":0.62,"minimumOverallPpgEdge":0.3,"minimumVenuePpgEdge":0.4,"maximumSelections":10,"overallSample":6,"venueSample":5,"minimumSample":5},
+  "scan": {
+    "feedMatches": 776,
+    "eligibleUpcoming": 500,
+    "qualified": 33,
+    "published": 10
+  },
+  "rules": {
+    "market": "1X2",
+    "minimumOdds": 1.7,
+    "minimumConfidence": 58,
+    "minimumLeadMinutes": 45,
+    "minimumStrengthScore": 0.62,
+    "minimumOverallPpgEdge": 0.3,
+    "minimumVenuePpgEdge": 0.4,
+    "maximumSelections": 10,
+    "overallSample": 6,
+    "venueSample": 5,
+    "minimumSample": 5
+  },
   "matches": [
-    {"fixtureId":"3043169","league":"Czech Republic Ceska Fotbalova Liga","home":"Unicov","away":"Brno B","kickoffUtc":"2026-08-16T08:15:00.000Z","pick":"Unicov Win","pickSide":"home","odds":1.75,"confidence":75,"predictedScore":"3-1","analysis":{"homeForm":"W W W D W W","awayForm":"D L W L L L","absoluteStrength":1.694,"overallPpgEdge":2,"venuePpgEdge":1.4},"status":"PENDING"},
-    {"fixtureId":"3000032","league":"J2 League","home":"Yokohama FC","away":"Jubilo Iwata","kickoffUtc":"2026-08-16T09:00:00.000Z","pick":"Yokohama FC Win","pickSide":"home","odds":1.91,"confidence":71,"predictedScore":"3-2","analysis":{"homeForm":"W W W W W W","awayForm":"D D D W L L","absoluteStrength":1.4,"overallPpgEdge":2,"venuePpgEdge":1},"status":"PENDING"},
-    {"fixtureId":"2913497","league":"Norway 2.Liga","home":"Follo","away":"Rana FK","kickoffUtc":"2026-08-16T11:00:00.000Z","pick":"Rana FK Win","pickSide":"away","odds":2.2,"confidence":71,"predictedScore":"2-3","analysis":{"homeForm":"L L D L L L","awayForm":"W L L W D W","absoluteStrength":1.374,"overallPpgEdge":1.5,"venuePpgEdge":1.4},"status":"PENDING"},
-    {"fixtureId":"3049135","league":"Scotland League Cup","home":"Glasgow Rangers","away":"Saint Mirren","kickoffUtc":"2026-08-16T15:00:00.000Z","pick":"Saint Mirren Win","pickSide":"away","odds":6,"confidence":71,"predictedScore":"1-2","analysis":{"homeForm":"D L L D D W","awayForm":"W W L W W W","absoluteStrength":1.374,"overallPpgEdge":1.5,"venuePpgEdge":1.4},"status":"PENDING"},
-    {"fixtureId":"3061199","league":"Portugal Campeonato Nacional","home":"Brito SC","away":"GD Braganca","kickoffUtc":"2026-08-16T16:00:00.000Z","pick":"Brito SC Win","pickSide":"home","odds":2.3,"confidence":70,"predictedScore":"2-1","analysis":{"homeForm":"W W L W W W","awayForm":"W L L W D D","absoluteStrength":1.3267,"overallPpgEdge":1.1667,"venuePpgEdge":2},"status":"PENDING"},
-    {"fixtureId":"3064486","league":"International Club Friendly","home":"Newcastle United","away":"Strasbourg","kickoffUtc":"2026-08-16T15:00:00.000Z","pick":"Newcastle United Win","pickSide":"home","odds":1.7,"confidence":70,"predictedScore":"3-1","analysis":{"homeForm":"L L W L D W","awayForm":"L L L L L L","absoluteStrength":1.3147,"overallPpgEdge":1.1667,"venuePpgEdge":1.8},"status":"PENDING"},
-    {"fixtureId":"3008162","league":"England Championship","home":"Burnley","away":"West Ham United","kickoffUtc":"2026-08-16T15:00:00.000Z","pick":"West Ham United Win","pickSide":"away","odds":2.2,"confidence":69,"predictedScore":"1-2","analysis":{"homeForm":"D L D L L D","awayForm":"W D D W W D","absoluteStrength":1.26,"overallPpgEdge":1.5,"venuePpgEdge":1},"status":"PENDING"},
-    {"fixtureId":"3023362","league":"POL WD1","home":"AZS UJ Krakow (W)","away":"Pogon Szczecin (W)","kickoffUtc":"2026-08-16T10:00:00.000Z","pick":"AZS UJ Krakow (W) Win","pickSide":"home","odds":4.5,"confidence":68,"predictedScore":"3-1","analysis":{"homeForm":"W W W W W W","awayForm":"L W L W W W","absoluteStrength":1.228,"overallPpgEdge":1,"venuePpgEdge":0.8},"status":"PENDING"},
-    {"fixtureId":"3005931","league":"Slovenia 2.Liga","home":"Dravinja","away":"NK Bilje","kickoffUtc":"2026-08-16T15:30:00.000Z","pick":"Dravinja Win","pickSide":"home","odds":2,"confidence":68,"predictedScore":"2-1","analysis":{"homeForm":"L W W D W W","awayForm":"W L W L L L","absoluteStrength":1.2247,"overallPpgEdge":1.1667,"venuePpgEdge":1.8},"status":"PENDING"},
-    {"fixtureId":"2913319","league":"Norway 2.Liga","home":"Sandvikens","away":"Jerv","kickoffUtc":"2026-08-16T12:00:00.000Z","pick":"Jerv Win","pickSide":"away","odds":1.7,"confidence":68,"predictedScore":"1-2","analysis":{"homeForm":"L L W L L L","awayForm":"W L L W W W","absoluteStrength":1.188,"overallPpgEdge":1.5,"venuePpgEdge":0.8},"status":"PENDING"}
-  ]
+    {
+      "fixtureId": "3043169",
+      "league": "Czech Republic Ceska Fotbalova Liga",
+      "home": "Unicov",
+      "away": "Brno B",
+      "kickoffUtc": "2026-08-16T08:15:00.000Z",
+      "pick": "Unicov Win",
+      "pickSide": "home",
+      "odds": 1.75,
+      "confidence": 75,
+      "predictedScore": "3-1",
+      "analysis": {
+        "strengthScore": 1.694,
+        "absoluteStrength": 1.694,
+        "overallPpgEdge": 2,
+        "venuePpgEdge": 1.4,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.6667,
+          "gfpg": 1.6667,
+          "gapg": 0.8333,
+          "gdpg": 0.8333,
+          "winRate": 0.8333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 0.6667,
+          "gfpg": 1.5,
+          "gapg": 3.5,
+          "gdpg": -2,
+          "winRate": 0.1667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 2.4,
+          "gapg": 1,
+          "gdpg": 1.4,
+          "winRate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.2,
+          "gfpg": 1.6,
+          "gapg": 2.8,
+          "gdpg": -1.2,
+          "winRate": 0.4
+        },
+        "homeForm": "W W W D W W",
+        "awayForm": "D L W L L L",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 62,
+          "away": 38
+        },
+        "h2h": {
+          "home": {
+            "win": 3,
+            "draw": 2,
+            "loss": 1
+          },
+          "away": {
+            "win": 1,
+            "draw": 2,
+            "loss": 3
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 1.62,
+              "draw": 4,
+              "away": 4
+            },
+            "totals": {
+              "over": 2,
+              "line": "3",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 1.8,
+              "line": "0.5/1",
+              "away": 2
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 1.75,
+              "draw": 3.9,
+              "away": 3.5
+            },
+            "totals": {
+              "over": 2,
+              "line": "3",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 1.8,
+              "line": "0.5",
+              "away": 2
+            }
+          }
+        },
+        "momentum": {
+          "score": 69,
+          "level": "GOOD",
+          "components": {
+            "form": 89,
+            "venue": 87,
+            "h2h": 61,
+            "market": 10
+          },
+          "marketMovementPct": -8.0247,
+          "externalLean": "home",
+          "alignment": "ALIGNED",
+          "goalsLean": "UNDER"
+        },
+        "prediction": {
+          "oneX2Lean": "home",
+          "score": "3-1",
+          "asianLine": "0.5",
+          "goalsLine": "3",
+          "goalsLean": "UNDER",
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Unicov has the stronger weighted profile against Brno B."
+    },
+    {
+      "fixtureId": "3000032",
+      "league": "J2 League",
+      "home": "Yokohama FC",
+      "away": "Jubilo Iwata",
+      "kickoffUtc": "2026-08-16T09:00:00.000Z",
+      "pick": "Yokohama FC Win",
+      "pickSide": "home",
+      "odds": 1.91,
+      "confidence": 71,
+      "predictedScore": "3-2",
+      "analysis": {
+        "strengthScore": 1.4,
+        "absoluteStrength": 1.4,
+        "overallPpgEdge": 2,
+        "venuePpgEdge": 1,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 3,
+          "gfpg": 2,
+          "gapg": 0.6667,
+          "gdpg": 1.3333,
+          "winRate": 1
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1,
+          "gfpg": 1.1667,
+          "gapg": 1.8333,
+          "gdpg": -0.6667,
+          "winRate": 0.1667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 2.2,
+          "gapg": 1.4,
+          "gdpg": 0.8,
+          "winRate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.6,
+          "gfpg": 1.6,
+          "gapg": 1.6,
+          "gdpg": 0,
+          "winRate": 0.4
+        },
+        "homeForm": "W W W W W W",
+        "awayForm": "D D D W L L",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 50,
+          "away": 50
+        },
+        "h2h": {
+          "home": {
+            "win": 1,
+            "draw": 2,
+            "loss": 3
+          },
+          "away": {
+            "win": 3,
+            "draw": 2,
+            "loss": 1
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 1.71,
+              "draw": 3.6,
+              "away": 4.5
+            },
+            "totals": {
+              "over": 1.85,
+              "line": "2/2.5",
+              "under": 1.95
+            },
+            "asian": {
+              "home": 2,
+              "line": "0.5/1",
+              "away": 1.8
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 1.9,
+              "draw": 3.5,
+              "away": 3.9
+            },
+            "totals": {
+              "over": 1.83,
+              "line": "2/2.5",
+              "under": 1.98
+            },
+            "asian": {
+              "home": 1.9,
+              "line": "0.5",
+              "away": 1.9
+            }
+          }
+        },
+        "momentum": {
+          "score": 66,
+          "level": "GOOD",
+          "components": {
+            "form": 100,
+            "venue": 87,
+            "h2h": 28,
+            "market": 0
+          },
+          "marketMovementPct": -11.1111,
+          "externalLean": "neutral",
+          "alignment": "MIXED",
+          "goalsLean": "OVER"
+        },
+        "prediction": {
+          "oneX2Lean": "neutral",
+          "score": "3-2",
+          "asianLine": "0.5",
+          "goalsLine": "2/2.5",
+          "goalsLean": "OVER",
+          "bttsLean": null,
+          "alignment": "MIXED"
+        }
+      },
+      "reason": "Recent form: Yokohama FC has the stronger weighted profile against Jubilo Iwata."
+    },
+    {
+      "fixtureId": "2913497",
+      "league": "Norway 2.Liga",
+      "home": "Follo",
+      "away": "Rana FK",
+      "kickoffUtc": "2026-08-16T11:00:00.000Z",
+      "pick": "Rana FK Win",
+      "pickSide": "away",
+      "odds": 2.2,
+      "confidence": 71,
+      "predictedScore": "2-3",
+      "analysis": {
+        "strengthScore": -1.374,
+        "absoluteStrength": 1.374,
+        "overallPpgEdge": 1.5,
+        "venuePpgEdge": 1.4,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 0.1667,
+          "gfpg": 0.6667,
+          "gapg": 2.3333,
+          "gdpg": -1.6667,
+          "winRate": 0
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.6667,
+          "gfpg": 2.5,
+          "gapg": 2.1667,
+          "gdpg": 0.3333,
+          "winRate": 0.5
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 0,
+          "gfpg": 0.6,
+          "gapg": 2.2,
+          "gdpg": -1.6,
+          "winRate": 0
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.4,
+          "gfpg": 2.2,
+          "gapg": 2.6,
+          "gdpg": -0.4,
+          "winRate": 0.4
+        },
+        "homeForm": "L L D L L L",
+        "awayForm": "W L L W D W",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 43,
+          "away": 57
+        },
+        "h2h": {
+          "home": {
+            "win": 1,
+            "draw": 0,
+            "loss": 1
+          },
+          "away": {
+            "win": 1,
+            "draw": 0,
+            "loss": 1
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 2.75,
+              "draw": 4,
+              "away": 2
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 2.5,
+              "draw": 3.9,
+              "away": 2.2
+            }
+          }
+        },
+        "momentum": {
+          "score": 42,
+          "level": "NEUTRAL",
+          "components": {
+            "form": 56,
+            "venue": 47,
+            "h2h": 50,
+            "market": 0
+          },
+          "marketMovementPct": -10,
+          "externalLean": "away",
+          "alignment": "ALIGNED",
+          "goalsLean": null
+        },
+        "prediction": {
+          "oneX2Lean": "away",
+          "score": "2-3",
+          "asianLine": null,
+          "goalsLine": null,
+          "goalsLean": null,
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Rana FK has the stronger weighted profile against Follo."
+    },
+    {
+      "fixtureId": "3049135",
+      "league": "Scotland League Cup",
+      "home": "Glasgow Rangers",
+      "away": "Saint Mirren",
+      "kickoffUtc": "2026-08-16T15:00:00.000Z",
+      "pick": "Saint Mirren Win",
+      "pickSide": "away",
+      "odds": 6,
+      "confidence": 71,
+      "predictedScore": "1-2",
+      "analysis": {
+        "strengthScore": -1.374,
+        "absoluteStrength": 1.374,
+        "overallPpgEdge": 1.5,
+        "venuePpgEdge": 1.4,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 1,
+          "gfpg": 1,
+          "gapg": 1.1667,
+          "gdpg": -0.1667,
+          "winRate": 0.1667
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2.5,
+          "gfpg": 2.5,
+          "gapg": 0.6667,
+          "gdpg": 1.8333,
+          "winRate": 0.8333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 1.2,
+          "gfpg": 1,
+          "gapg": 1,
+          "gdpg": 0,
+          "winRate": 0.2
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 3,
+          "gapg": 0.6,
+          "gdpg": 2.4,
+          "winRate": 0.8
+        },
+        "homeForm": "D L L D D W",
+        "awayForm": "W W L W W W",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 49,
+          "away": 51
+        },
+        "h2h": {
+          "home": {
+            "win": 2,
+            "draw": 2,
+            "loss": 2
+          },
+          "away": {
+            "win": 2,
+            "draw": 2,
+            "loss": 2
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 1.29,
+              "draw": 5.5,
+              "away": 7.5
+            },
+            "totals": {
+              "over": 1.9,
+              "line": "3",
+              "under": 1.9
+            },
+            "asian": {
+              "home": 1.83,
+              "line": "1.5",
+              "away": 1.98
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 1.42,
+              "draw": 4.75,
+              "away": 6
+            },
+            "totals": {
+              "over": 1.93,
+              "line": "3",
+              "under": 1.88
+            },
+            "asian": {
+              "home": 1.88,
+              "line": "1/1.5",
+              "away": 1.93
+            }
+          }
+        },
+        "momentum": {
+          "score": 82,
+          "level": "STRONG",
+          "components": {
+            "form": 83,
+            "venue": 87,
+            "h2h": 44,
+            "market": 100
+          },
+          "marketMovementPct": 20,
+          "externalLean": "away",
+          "alignment": "ALIGNED",
+          "goalsLean": "UNDER"
+        },
+        "prediction": {
+          "oneX2Lean": "away",
+          "score": "1-2",
+          "asianLine": "1/1.5",
+          "goalsLine": "3",
+          "goalsLean": "UNDER",
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Saint Mirren has the stronger weighted profile against Glasgow Rangers."
+    },
+    {
+      "fixtureId": "3061199",
+      "league": "Portugal Campeonato Nacional",
+      "home": "Brito SC",
+      "away": "GD Braganca",
+      "kickoffUtc": "2026-08-16T16:00:00.000Z",
+      "pick": "Brito SC Win",
+      "pickSide": "home",
+      "odds": 2.3,
+      "confidence": 70,
+      "predictedScore": "2-1",
+      "analysis": {
+        "strengthScore": 1.3267,
+        "absoluteStrength": 1.3267,
+        "overallPpgEdge": 1.1667,
+        "venuePpgEdge": 2,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.5,
+          "gfpg": 2,
+          "gapg": 0.8333,
+          "gdpg": 1.1667,
+          "winRate": 0.8333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1.3333,
+          "gfpg": 1.1667,
+          "gapg": 1.1667,
+          "gdpg": 0,
+          "winRate": 0.3333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.4,
+          "gfpg": 1.8,
+          "gapg": 0.8,
+          "gdpg": 1,
+          "winRate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.4,
+          "gfpg": 0.8,
+          "gapg": 1.6,
+          "gdpg": -0.8,
+          "winRate": 0
+        },
+        "homeForm": "W W L W W W",
+        "awayForm": "W L L W D D",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 57,
+          "away": 43
+        },
+        "h2h": {
+          "home": {
+            "win": 2,
+            "draw": 1,
+            "loss": 3
+          },
+          "away": {
+            "win": 3,
+            "draw": 1,
+            "loss": 2
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 2.3,
+              "draw": 3.2,
+              "away": 2.75
+            },
+            "totals": {
+              "over": 2,
+              "line": "2.5",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 2.05,
+              "line": "0/0.5",
+              "away": 1.75
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 2.3,
+              "draw": 3.2,
+              "away": 2.75
+            },
+            "totals": {
+              "over": 2,
+              "line": "2.5",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 2.05,
+              "line": "0/0.5",
+              "away": 1.75
+            }
+          }
+        },
+        "momentum": {
+          "score": 69,
+          "level": "GOOD",
+          "components": {
+            "form": 83,
+            "venue": 80,
+            "h2h": 39,
+            "market": 50
+          },
+          "marketMovementPct": 0,
+          "externalLean": "home",
+          "alignment": "ALIGNED",
+          "goalsLean": "UNDER"
+        },
+        "prediction": {
+          "oneX2Lean": "home",
+          "score": "2-1",
+          "asianLine": "0/0.5",
+          "goalsLine": "2.5",
+          "goalsLean": "UNDER",
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Brito SC has the stronger weighted profile against GD Braganca."
+    },
+    {
+      "fixtureId": "3064486",
+      "league": "International Club Friendly",
+      "home": "Newcastle United",
+      "away": "Strasbourg",
+      "kickoffUtc": "2026-08-16T15:00:00.000Z",
+      "pick": "Newcastle United Win",
+      "pickSide": "home",
+      "odds": 1.7,
+      "confidence": 70,
+      "predictedScore": "3-1",
+      "analysis": {
+        "strengthScore": 1.3147,
+        "absoluteStrength": 1.3147,
+        "overallPpgEdge": 1.1667,
+        "venuePpgEdge": 1.8,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 1.1667,
+          "gfpg": 1.5,
+          "gapg": 1.8333,
+          "gdpg": -0.3333,
+          "winRate": 0.3333
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 0,
+          "gfpg": 1.1667,
+          "gapg": 3,
+          "gdpg": -1.8333,
+          "winRate": 0
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 1.8,
+          "gfpg": 2.2,
+          "gapg": 1.4,
+          "gdpg": 0.8,
+          "winRate": 0.6
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0,
+          "gfpg": 1,
+          "gapg": 3.6,
+          "gdpg": -2.6,
+          "winRate": 0
+        },
+        "homeForm": "L L W L D W",
+        "awayForm": "L L L L L L",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": null,
+        "h2h": null,
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 1.55,
+              "draw": 4,
+              "away": 4.5
+            },
+            "totals": {
+              "over": 1.91,
+              "line": "3.5",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 1.95,
+              "line": "1",
+              "away": 1.85
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 1.73,
+              "draw": 3.6,
+              "away": 3.9
+            },
+            "totals": {
+              "over": 1.8,
+              "line": "3",
+              "under": 2
+            },
+            "asian": {
+              "home": 1.93,
+              "line": "0.5/1",
+              "away": 1.88
+            }
+          }
+        },
+        "momentum": {
+          "score": 36,
+          "level": "WEAK",
+          "components": {
+            "form": 39,
+            "venue": 60,
+            "h2h": null,
+            "market": 0
+          },
+          "marketMovementPct": -11.6129,
+          "externalLean": null,
+          "alignment": "MIXED",
+          "goalsLean": "OVER"
+        },
+        "prediction": {
+          "oneX2Lean": null,
+          "score": "3-1",
+          "asianLine": "0.5/1",
+          "goalsLine": "3",
+          "goalsLean": "OVER",
+          "bttsLean": null,
+          "alignment": "MIXED"
+        }
+      },
+      "reason": "Recent form: Newcastle United has the stronger weighted profile against Strasbourg."
+    },
+    {
+      "fixtureId": "3008162",
+      "league": "England Championship",
+      "home": "Burnley",
+      "away": "West Ham United",
+      "kickoffUtc": "2026-08-16T15:00:00.000Z",
+      "pick": "West Ham United Win",
+      "pickSide": "away",
+      "odds": 2.2,
+      "confidence": 69,
+      "predictedScore": "1-2",
+      "analysis": {
+        "strengthScore": -1.26,
+        "absoluteStrength": 1.26,
+        "overallPpgEdge": 1.5,
+        "venuePpgEdge": 1,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 0.5,
+          "gfpg": 1,
+          "gapg": 1.8333,
+          "gdpg": -0.8333,
+          "winRate": 0
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2,
+          "gfpg": 2,
+          "gapg": 0.6667,
+          "gdpg": 1.3333,
+          "winRate": 0.5
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 1.2,
+          "gapg": 1.4,
+          "gdpg": -0.2,
+          "winRate": 0
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.8,
+          "gfpg": 1.8,
+          "gapg": 0.6,
+          "gdpg": 1.2,
+          "winRate": 0.4
+        },
+        "homeForm": "D L D L L D",
+        "awayForm": "W D D W W D",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 40,
+          "away": 60
+        },
+        "h2h": {
+          "home": {
+            "win": 0,
+            "draw": 3,
+            "loss": 3
+          },
+          "away": {
+            "win": 3,
+            "draw": 3,
+            "loss": 0
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 2.8,
+              "draw": 3.4,
+              "away": 2.25
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 3.1,
+              "draw": 3.5,
+              "away": 2.2
+            }
+          }
+        },
+        "momentum": {
+          "score": 64,
+          "level": "GOOD",
+          "components": {
+            "form": 67,
+            "venue": 60,
+            "h2h": 67,
+            "market": 61
+          },
+          "marketMovementPct": 2.2222,
+          "externalLean": "away",
+          "alignment": "ALIGNED",
+          "goalsLean": null
+        },
+        "prediction": {
+          "oneX2Lean": "away",
+          "score": "1-2",
+          "asianLine": null,
+          "goalsLine": null,
+          "goalsLean": null,
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: West Ham United has the stronger weighted profile against Burnley."
+    },
+    {
+      "fixtureId": "3023362",
+      "league": "POL WD1",
+      "home": "AZS UJ Krakow (W)",
+      "away": "Pogon Szczecin (W)",
+      "kickoffUtc": "2026-08-16T10:00:00.000Z",
+      "pick": "AZS UJ Krakow (W) Win",
+      "pickSide": "home",
+      "odds": 4.5,
+      "confidence": 68,
+      "predictedScore": "3-1",
+      "analysis": {
+        "strengthScore": 1.228,
+        "absoluteStrength": 1.228,
+        "overallPpgEdge": 1,
+        "venuePpgEdge": 0.8,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 3,
+          "gfpg": 3.1667,
+          "gapg": 0.3333,
+          "gdpg": 2.8333,
+          "winRate": 1
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2,
+          "gfpg": 1.6667,
+          "gapg": 2.1667,
+          "gdpg": -0.5,
+          "winRate": 0.6667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 3.6,
+          "gapg": 0.6,
+          "gdpg": 3,
+          "winRate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 1.8,
+          "gfpg": 2,
+          "gapg": 2.8,
+          "gdpg": -0.8,
+          "winRate": 0.6
+        },
+        "homeForm": "W W W W W W",
+        "awayForm": "L W L W W W",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 40,
+          "away": 60
+        },
+        "h2h": {
+          "home": {
+            "win": 1,
+            "draw": 1,
+            "loss": 4
+          },
+          "away": {
+            "win": 4,
+            "draw": 1,
+            "loss": 1
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 9,
+              "draw": 6,
+              "away": 1.2
+            },
+            "totals": {
+              "over": 2.03,
+              "line": "3/3.5",
+              "under": 1.78
+            },
+            "asian": {
+              "home": 1.98,
+              "line": "-1/1.5",
+              "away": 1.83
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 4.5,
+              "draw": 4,
+              "away": 1.55
+            },
+            "totals": {
+              "over": 2,
+              "line": "3",
+              "under": 1.8
+            },
+            "asian": {
+              "home": 1.8,
+              "line": "-1",
+              "away": 2
+            }
+          }
+        },
+        "momentum": {
+          "score": 85,
+          "level": "STRONG",
+          "components": {
+            "form": 100,
+            "venue": 87,
+            "h2h": 22,
+            "market": 100
+          },
+          "marketMovementPct": 50,
+          "externalLean": "away",
+          "alignment": "CONFLICT",
+          "goalsLean": "UNDER"
+        },
+        "prediction": {
+          "oneX2Lean": "away",
+          "score": "3-1",
+          "asianLine": "-1",
+          "goalsLine": "3",
+          "goalsLean": "UNDER",
+          "bttsLean": null,
+          "alignment": "CONFLICT"
+        }
+      },
+      "reason": "Recent form: AZS UJ Krakow (W) has the stronger weighted profile against Pogon Szczecin (W)."
+    },
+    {
+      "fixtureId": "3005931",
+      "league": "Slovenia 2.Liga",
+      "home": "Dravinja",
+      "away": "NK Bilje",
+      "kickoffUtc": "2026-08-16T15:30:00.000Z",
+      "pick": "Dravinja Win",
+      "pickSide": "home",
+      "odds": 2,
+      "confidence": 68,
+      "predictedScore": "2-1",
+      "analysis": {
+        "strengthScore": 1.2247,
+        "absoluteStrength": 1.2247,
+        "overallPpgEdge": 1.1667,
+        "venuePpgEdge": 1.8,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 2.1667,
+          "gfpg": 1.1667,
+          "gapg": 0.6667,
+          "gdpg": 0.5,
+          "winRate": 0.6667
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 1,
+          "gfpg": 0.8333,
+          "gapg": 1.3333,
+          "gdpg": -0.5,
+          "winRate": 0.3333
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 2.6,
+          "gfpg": 1.6,
+          "gapg": 0.8,
+          "gdpg": 0.8,
+          "winRate": 0.8
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 0.8,
+          "gfpg": 1,
+          "gapg": 1.6,
+          "gdpg": -0.6,
+          "winRate": 0.2
+        },
+        "homeForm": "L W W D W W",
+        "awayForm": "W L W L L L",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 61,
+          "away": 39
+        },
+        "h2h": {
+          "home": {
+            "win": 3,
+            "draw": 1,
+            "loss": 2
+          },
+          "away": {
+            "win": 2,
+            "draw": 1,
+            "loss": 3
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 2,
+              "draw": 3.25,
+              "away": 3.2
+            },
+            "totals": {
+              "over": 1.85,
+              "line": "2/2.5",
+              "under": 1.95
+            },
+            "asian": {
+              "home": 1.8,
+              "line": "0/0.5",
+              "away": 2
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 2,
+              "draw": 3.25,
+              "away": 3.2
+            },
+            "totals": {
+              "over": 1.85,
+              "line": "2/2.5",
+              "under": 1.95
+            },
+            "asian": {
+              "home": 1.8,
+              "line": "0/0.5",
+              "away": 2
+            }
+          }
+        },
+        "momentum": {
+          "score": 69,
+          "level": "GOOD",
+          "components": {
+            "form": 72,
+            "venue": 87,
+            "h2h": 56,
+            "market": 50
+          },
+          "marketMovementPct": 0,
+          "externalLean": "home",
+          "alignment": "ALIGNED",
+          "goalsLean": "OVER"
+        },
+        "prediction": {
+          "oneX2Lean": "home",
+          "score": "2-1",
+          "asianLine": "0/0.5",
+          "goalsLine": "2/2.5",
+          "goalsLean": "OVER",
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Dravinja has the stronger weighted profile against NK Bilje."
+    },
+    {
+      "fixtureId": "2913319",
+      "league": "Norway 2.Liga",
+      "home": "Sandvikens",
+      "away": "Jerv",
+      "kickoffUtc": "2026-08-16T12:00:00.000Z",
+      "pick": "Jerv Win",
+      "pickSide": "away",
+      "odds": 1.7,
+      "confidence": 68,
+      "predictedScore": "1-2",
+      "analysis": {
+        "strengthScore": -1.188,
+        "absoluteStrength": 1.188,
+        "overallPpgEdge": 1.5,
+        "venuePpgEdge": 0.8,
+        "homeOverall": {
+          "sample": 6,
+          "ppg": 0.5,
+          "gfpg": 2.1667,
+          "gapg": 3.3333,
+          "gdpg": -1.1667,
+          "winRate": 0.1667
+        },
+        "awayOverall": {
+          "sample": 6,
+          "ppg": 2,
+          "gfpg": 2.3333,
+          "gapg": 1.3333,
+          "gdpg": 1,
+          "winRate": 0.6667
+        },
+        "homeVenue": {
+          "sample": 5,
+          "ppg": 1.2,
+          "gfpg": 2.2,
+          "gapg": 2.8,
+          "gdpg": -0.6,
+          "winRate": 0.4
+        },
+        "awayVenue": {
+          "sample": 5,
+          "ppg": 2,
+          "gfpg": 1.8,
+          "gapg": 1.2,
+          "gdpg": 0.6,
+          "winRate": 0.6
+        },
+        "homeForm": "L L W L L L",
+        "awayForm": "W L L W W W",
+        "standingsApplied": false
+      },
+      "status": "PENDING",
+      "context": {
+        "strengthComparison": {
+          "home": 48,
+          "away": 52
+        },
+        "h2h": {
+          "home": {
+            "win": 2,
+            "draw": 0,
+            "loss": 1
+          },
+          "away": {
+            "win": 1,
+            "draw": 0,
+            "loss": 2
+          }
+        },
+        "market": {
+          "opening": {
+            "oneX2": {
+              "home": 4.1,
+              "draw": 3.5,
+              "away": 1.7
+            },
+            "totals": {
+              "over": 1.98,
+              "line": "3/3.5",
+              "under": 1.83
+            },
+            "asian": {
+              "home": 1.9,
+              "line": "-0.5/1",
+              "away": 1.9
+            }
+          },
+          "current": {
+            "oneX2": {
+              "home": 4.1,
+              "draw": 3.5,
+              "away": 1.7
+            },
+            "totals": {
+              "over": 1.98,
+              "line": "3/3.5",
+              "under": 1.83
+            },
+            "asian": {
+              "home": 1.9,
+              "line": "-0.5/1",
+              "away": 1.9
+            }
+          }
+        },
+        "momentum": {
+          "score": 59,
+          "level": "NEUTRAL",
+          "components": {
+            "form": 67,
+            "venue": 67,
+            "h2h": 33,
+            "market": 50
+          },
+          "marketMovementPct": 0,
+          "externalLean": "away",
+          "alignment": "ALIGNED",
+          "goalsLean": "UNDER"
+        },
+        "prediction": {
+          "oneX2Lean": "away",
+          "score": "2-3",
+          "asianLine": "-0.5/1",
+          "goalsLine": "3/3.5",
+          "goalsLean": "UNDER",
+          "bttsLean": null,
+          "alignment": "ALIGNED"
+        }
+      },
+      "reason": "Recent form: Jerv has the stronger weighted profile against Sandvikens."
+    }
+  ],
+  "contextSchema": 1
 }
