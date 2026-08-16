@@ -81,9 +81,15 @@ export function mergeCoreStats(match,detailStats){
     const fallback=detailStats?.[key];
     if(!fallback)continue;
     const current={...(stats[key]||{})};
-    if(number(current.home)===null&&number(fallback.home)!==null){current.home=number(fallback.home);filled.push(`${key}.home`);}
-    if(number(current.away)===null&&number(fallback.away)!==null){current.away=number(fallback.away);filled.push(`${key}.away`);}
-    stats[key]=current;
+    const currentHome=number(current.home),currentAway=number(current.away),fallbackHome=number(fallback.home),fallbackAway=number(fallback.away);
+    // Treat each home/away statistic as one atomic source pair. Mixing one side
+    // from the page parser with the other side from detailIn can create impossible
+    // combinations (for example possession totals above 100%). Keep a complete
+    // base pair untouched; otherwise replace the pair only when detailIn has both.
+    if(currentHome!==null&&currentAway!==null)continue;
+    if(fallbackHome===null||fallbackAway===null)continue;
+    stats[key]={home:fallbackHome,away:fallbackAway};
+    filled.push(`${key}.home`,`${key}.away`);
   }
   match.stats=stats;
   match.coreStatsComplete=coreStatsCompleteLocal(stats);
