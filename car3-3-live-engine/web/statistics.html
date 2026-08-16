@@ -1,1 +1,92 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NOMADTIPS3 Statistics 3.3</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./rgb-dark-v2.css?v=20260816-source-xy"><link rel="stylesheet" href="./statistics.css?v=20260816-complete-menu-v3"></head><body><header class="topbar"><div class="brand">nomad<span>tips3</span></div><nav class="nav"><a href="./index.html">LIVE DETECTION</a><a class="active" href="./statistics.html">STATISTICS</a><a href="./settings.html">SETTINGS</a></nav></header><div class="shell stats-shell"><section class="stats-hero"><h1>STATISTICS</h1><p>All confirmed signals, including PENDING records, from the same immutable detection history.</p></section><div id="summary" class="stats-summary"></div><section class="stats-panels"><div class="stats-panel"><div class="stats-panel-head"><div><small>RESULT DISTRIBUTION</small><b>ALL RECORDED SIGNALS</b></div><span id="distLabel" class="count">—</span></div><div id="distribution" class="distribution"></div></div><div class="stats-panel"><div class="stats-panel-head"><div><small>RECENT PERFORMANCE</small><b>CUMULATIVE RESULT SCORE</b></div><span class="count">WIN +1 · LOSS −1 · DRAW 0</span></div><div id="curve" class="curve-wrap"></div></div></section><div id="message"></div><div class="table-wrap stats-table-wrap"><table class="stats-table"><thead><tr><th>STATUS</th><th>SIGNAL</th><th>MATCH</th><th>ENTRY</th><th>MARKET</th><th>MOMENTUM / EVIDENCE</th><th>FINAL</th><th>DETECTED</th><th>SETTLED</th></tr></thead><tbody id="rows"></tbody></table></div><div class="pager stats-pager"><button id="prev" class="secondary-btn">PREV</button><span id="page" class="count"></span><button id="next" class="secondary-btn">NEXT</button></div><div class="foot-note">Average odds and win rate use settled records only. PENDING remains visible until settlement.</div></div><script type="module" src="./statistics.js?v=20260816-complete"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NOMADTIPS3 Statistics 3.3</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./rgb-dark-v2.css?v=20260816-source-xy">
+  <link rel="stylesheet" href="./statistics.css?v=20260816-performance-v4">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">nomad<span>tips3</span></div>
+  <nav class="nav">
+    <a href="./index.html">LIVE DETECTION</a>
+    <a class="active" href="./statistics.html">STATISTICS</a>
+    <a href="./settings.html">SETTINGS</a>
+  </nav>
+</header>
+
+<div class="shell stats-shell">
+  <section class="stats-hero">
+    <h1>STATISTICS</h1>
+    <p>Confirmed signal performance from the same immutable engine history.</p>
+  </section>
+
+  <div id="summary" class="stats-summary"></div>
+
+  <section class="performance-panel">
+    <div class="performance-head">
+      <div>
+        <small>PERFORMANCE HISTORY</small>
+        <b>WIN / LOSS / DRAW</b>
+      </div>
+      <div class="performance-tools">
+        <div class="performance-legend" aria-label="Chart legend">
+          <span class="legend-win"><i></i>WIN</span>
+          <span class="legend-loss"><i></i>LOSS</span>
+          <span class="legend-draw"><i></i>DRAW</span>
+        </div>
+        <div id="rangeButtons" class="range-buttons" aria-label="Performance range">
+          <button type="button" data-days="30">30D</button>
+          <button type="button" data-days="90">90D</button>
+          <button type="button" data-days="365" class="active">1Y</button>
+          <button type="button" data-days="730">2Y</button>
+          <button type="button" data-days="0">ALL</button>
+        </div>
+      </div>
+    </div>
+    <div id="chartMeta" class="chart-meta">LOADING PERFORMANCE…</div>
+    <div id="curve" class="curve-wrap"></div>
+  </section>
+
+  <div id="message"></div>
+
+  <section class="history-section">
+    <div class="history-head">
+      <div>
+        <small>SIGNAL HISTORY</small>
+        <b>25 RECORDS PER PAGE</b>
+      </div>
+      <span id="historyMeta" class="count">—</span>
+    </div>
+    <div class="table-wrap stats-table-wrap">
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>STATUS</th>
+            <th>SIGNAL</th>
+            <th>MATCH</th>
+            <th>ENTRY</th>
+            <th>MOMENTUM</th>
+            <th>FINAL</th>
+            <th>DETECTED</th>
+            <th>SETTLED</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div class="pager stats-pager">
+      <button id="prev" class="secondary-btn" type="button">PREV</button>
+      <div id="pages" class="page-buttons" aria-label="History pages"></div>
+      <button id="next" class="secondary-btn" type="button">NEXT</button>
+    </div>
+    <div class="foot-note">WIN rate and average odds use settled records only. PENDING remains visible until full-time settlement.</div>
+  </section>
+</div>
+
+<script type="module" src="./statistics.js?v=20260816-performance-v4"></script>
+</body>
+</html>
