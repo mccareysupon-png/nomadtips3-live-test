@@ -65,21 +65,8 @@ jobs:
             printf '%s' "$ODDS_API_KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-car34-real-market-audit
             echo "Odds API secret configured."
           else
-            echo "::warning::ODDS_API_KEY is not configured. Durable Object bootstrap will be used when already provisioned."
+            echo "::warning::ODDS_API_KEY repository secret is not configured. CAR 3.4 may use its stored Durable Object key."
           fi
-
-      - name: One-time bootstrap Odds API key into CAR 3.4 Durable Object
-        env:
-          TEMP_ODDS_API_KEY: 0e6ee951b97668104d5ef259b6c3e72e4f91eed4f7dcc0696997f2b36f7628e6
-        run: |
-          PROOF=$(printf 'car34-bootstrap:%s' "$TEMP_ODDS_API_KEY" | sha256sum | awk '{print $1}')
-          curl -fsS --get --data-urlencode "key=$TEMP_ODDS_API_KEY" "$CAR34_WORKER_URL/bootstrap/odds-api-key/$PROOF" -o /tmp/car34-bootstrap.json
-          python - <<'PY'
-          import json
-          p=json.load(open('/tmp/car34-bootstrap.json'))
-          assert p.get('ok') is True and p.get('keyConfigured') is True, p
-          print(json.dumps({k:v for k,v in p.items() if k!='key'},indent=2))
-          PY
 
       - name: Copy CAR 3.1 conditions into CAR 3.4 and lock AH
         shell: bash
