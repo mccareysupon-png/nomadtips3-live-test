@@ -1,7 +1,7 @@
-const INTERNAL_PATTERNS=[/CAR\s*3\.1/gi,/BET365[_\s-]*V4/gi,/\bSHADOW\b/gi,/\bWORKER\b/gi,/SERVER-SIDE/gi,/\bGOALOO\b/gi];
 let scheduled=false;
 const $=s=>document.querySelector(s);
 const setText=(el,text)=>{if(el&&el.textContent!==text)el.textContent=text;};
+const setHidden=(el,value)=>{if(el&&el.hidden!==value)el.hidden=value;};
 
 function confirmedActive(){return Boolean($('.candidate.active.confirmed-signal'));}
 
@@ -20,24 +20,25 @@ function cleanPublicText(text){
 }
 
 function hideInternalPanels(){
-  const sourceRow=$('#sourceRow'); if(sourceRow)sourceRow.hidden=true;
-  const sourceTab=document.querySelector('.tab[data-tab="source"]'); if(sourceTab)sourceTab.hidden=true;
-  const sourcePanel=$('#tab-source'); if(sourcePanel)sourcePanel.hidden=true;
-  const gates=$('#gateList'); if(gates)gates.hidden=true;
-  const reason=$('#finalReason'); if(reason)reason.hidden=true;
+  setHidden($('#sourceRow'),true);
+  setHidden(document.querySelector('.tab[data-tab="source"]'),true);
+  setHidden($('#tab-source'),true);
+  setHidden($('#gateList'),true);
+  setHidden($('#finalReason'),true);
 }
 
 function publicMetrics(){
   const labels={metricLive:'LIVE MATCHES',metricStats:'DATA READY',metricWindow:'ACTIVE WINDOW',metricWatch:'MONITORING',metricSignal:'CONFIRMED'};
   for(const [id,label] of Object.entries(labels))setText(document.getElementById(id)?.closest('.metric')?.querySelector('small'),label);
-  const near=document.getElementById('metricNear')?.closest('.metric'); if(near)near.hidden=true;
+  setHidden(document.getElementById('metricNear')?.closest('.metric'),true);
 }
 
 function publicCandidates(){
   document.querySelectorAll('.candidate').forEach(card=>{
     const state=card.querySelector('.state');
     const confirmed=card.classList.contains('confirmed-signal');
-    if(state){state.hidden=!confirmed;if(confirmed)setText(state,'CONFIRMED');}
+    setHidden(state,!confirmed);
+    if(confirmed)setText(state,'CONFIRMED');
   });
   document.querySelectorAll('.candidate-list .footer-note').forEach(el=>{
     const raw=String(el.textContent||'');
