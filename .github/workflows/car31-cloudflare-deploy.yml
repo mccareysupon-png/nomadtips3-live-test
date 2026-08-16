@@ -31,8 +31,12 @@ jobs:
         run: |
           node --test
           node --check worker/src/index.js
+          node --check worker/src/upgrade.js
+          node --check worker/src/settlement-v2.js
           node --check web/app.js
           node --check web/settings.js
+          node --check web/history.js
+          node --check web/signal-polish.js
 
       - name: Validate Cloudflare credentials
         run: |
@@ -71,7 +75,6 @@ jobs:
               starts=[m.start() for m in re.finditer(re.escape(needle),text,re.I)]
               print(f'--- {needle}: {len(starts)} occurrence(s) ---')
               for pos in starts[:5]:print(text[max(0,pos-1400):min(len(text),pos+2200)])
-          # Test public Ajax/detail endpoints against a currently observed match ID.
           match_id='3061002'
           candidates=[
             f'https://live10.goaloo28.com/Ajax/SoccerAjax?type=2&id={match_id}',
