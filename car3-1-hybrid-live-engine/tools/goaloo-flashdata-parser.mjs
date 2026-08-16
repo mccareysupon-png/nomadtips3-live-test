@@ -22,7 +22,8 @@ const num = v => {
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 };
-const records = (value) => clean(value).split(GOALOO_FLASH_DELIMS.record).filter(Boolean);
+const fields = value => clean(value).split(GOALOO_FLASH_DELIMS.record);
+const records = value => fields(value).filter(Boolean);
 
 export function parseGoalooFlashGraphEvent(row) {
   const c = clean(row).split(GOALOO_FLASH_DELIMS.column);
@@ -73,8 +74,9 @@ export function parseGoalooFlashPoint(row) {
 }
 
 export function parseGoalooFlashChangeSchedule(row) {
-  const t = records(row);
-  if (!t.length) return null;
+  // Empty ^ fields are significant in Goaloo's schedule schema; never filter them.
+  const t = fields(row);
+  if (!clean(t[0])) return null;
   return {
     matchId: clean(t[0]),
     homeScore: num(t[1]),
@@ -96,8 +98,9 @@ export function parseGoalooFlashChangeSchedule(row) {
 }
 
 export function parseGoalooFlashFullSchedule(row) {
-  const t = records(row);
-  if (!t.length) return null;
+  // Empty ^ fields are significant in Goaloo's schedule schema; never filter them.
+  const t = fields(row);
+  if (!clean(t[0])) return null;
   return {
     matchId: clean(t[0]),
     weather: clean(t[1]),
