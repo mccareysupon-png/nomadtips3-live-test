@@ -1,0 +1,52 @@
+name: Verify CAR 3.1 LINE Gateway
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/verify-car31-line-gateway.yml"
+      - "cloudflare-worker/src/car31-line-gateway.js"
+      - "cloudflare-worker/src/v2-entry.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify CAR 3.1 Signal Hub ownership and dependencies
+        run: |
+          node --input-type=module <<'NODE'
+          const url='https://nomadtips3-test-api.mccarey-supon.workers.dev/car31-line-status';
+          let last=null;
+          for(let attempt=1;attempt<=15;attempt++){
+            try{
+              const response=await fetch(`${url}?verify=${Date.now()}`,{headers:{accept:'application/json'}});
+              const payload=await response.json().catch(()=>null);
+              last=payload;
+              const g=payload?.gateway;
+              console.log(JSON.stringify({attempt,http:response.status,gateway:g},null,2));
+              const ready=response.ok
+                && g?.ok===true
+                && g?.source==='CAR3.1_HISTORY'
+                && g?.sender==='SIGNAL_HUB'
+                && g?.entitlement==='PAID_ACTIVE'
+                && g?.dbConfigured===true
+                && g?.tokenConfigured===true
+                && g?.car31FetchOk===true
+                && typeof g?.lastRunAt==='string';
+              if(ready){
+                console.log('PASS: CAR 3.1 History -> paid Signal Hub -> LINE dependencies are live.');
+                process.exit(0);
+              }
+            }catch(error){
+              console.log(`Attempt ${attempt} failed: ${error.message}`);
+            }
+            if(attempt<15)await new Promise(resolve=>setTimeout(resolve,10000));
+          }
+          console.error('Last gateway payload:',JSON.stringify(last,null,2));
+          throw new Error('CAR 3.1 LINE Gateway did not become ready within verification window');
+          NODE
