@@ -3,30 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NOMADTIPS3 Settings 3.3</title>
+  <title>NOMADTIPS3 · Settings</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./rgb-dark-v2.css?v=20260816-source-xy">
   <link rel="stylesheet" href="./settings-v2.css?v=20260816-full-controls">
   <link rel="stylesheet" href="./topbar-clean.css?v=20260816-borderless-v4">
   <link rel="stylesheet" href="./rgb-lines-v1.css?v=20260816-field-lines-v1">
+  <link rel="stylesheet" href="./responsive-brand-v1.css?v=20260816-sentence-responsive-v1">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">nomad<span>tips3</span></div>
   <nav class="nav">
-    <a href="./index.html">LIVE DETECTION</a>
-    <a href="./statistics.html">STATISTICS</a>
-    <a class="active" href="./settings.html">SETTINGS</a>
+    <a href="./index.html">Live detection</a>
+    <a href="./statistics.html">Statistics</a>
+    <a class="active" href="./settings.html">Settings</a>
   </nav>
 </header>
 
 <div class="shell settings-shell-v2">
   <section class="hero settings-hero">
     <div>
-      <h1>SETTINGS</h1>
-      <p>Every control below is connected to the CAR 3.3 Worker. Disabled controls are hidden from decision logic, not decorative.</p>
+      <h1>Settings</h1>
+      <p>Signal condition controls</p>
     </div>
-    <div id="engineState" class="engine-state">CHECKING SERVER…</div>
+    <div id="engineState" class="engine-state">Checking…</div>
   </section>
 
   <section id="rule" class="rule-summary rule-summary-v2"></section>
@@ -34,101 +35,101 @@
   <form id="form" autocomplete="off">
     <section class="settings-block">
       <div class="settings-block-head">
-        <div><small>01</small><h2>CORE SIGNAL CONDITIONS</h2></div>
-        <p>Team side, live-minute window, market, price, momentum and confirmation.</p>
+        <div><small>01</small><h2>Core signal conditions</h2></div>
+        <p>Side, live minute, market, price, momentum and confirmation.</p>
       </div>
       <div class="settings-grid-v2">
-        <label class="setting-field"><span>SIDE</span><select name="side"><option>HOME</option><option>AWAY</option><option>BOTH</option></select><small>HOME, AWAY or strongest side when BOTH.</small></label>
-        <label class="setting-field"><span>MINUTE FROM</span><input name="minuteMin" type="number" min="1" max="119"><small>Earliest live minute allowed.</small></label>
-        <label class="setting-field"><span>MINUTE TO</span><input name="minuteMax" type="number" min="2" max="120"><small>Latest live minute allowed.</small></label>
-        <label class="setting-field"><span>MARKET</span><select name="market"><option value="WIN">1X2 WIN</option><option value="AH">ASIAN HANDICAP</option><option value="OU">OVER / UNDER</option></select><small>Settlement follows the locked market at signal time.</small></label>
-        <label class="setting-field"><span>ODDS MIN</span><input name="oddsMin" type="number" min="1.01" max="100" step="0.01"><small>Minimum accepted locked odds.</small></label>
-        <label class="setting-field"><span>ODDS MAX</span><input name="oddsMax" type="number" min="1.01" max="100" step="0.01" placeholder="NO LIMIT"><small>Leave blank for no upper limit.</small></label>
-        <label class="setting-field"><span>MOMENTUM MIN %</span><input name="momentumMin" type="number" min="1" max="99"><small>Selected-side pressure threshold.</small></label>
-        <label class="setting-field"><span>CONFIRMATION ROUNDS</span><input name="confirmationRounds" type="number" min="1" max="10"><small>Consecutive passing scans before a signal.</small></label>
+        <label class="setting-field"><span>Side</span><select name="side"><option>HOME</option><option>AWAY</option><option>BOTH</option></select><small>HOME, AWAY or strongest side when BOTH.</small></label>
+        <label class="setting-field"><span>Minute from</span><input name="minuteMin" type="number" min="1" max="119"><small>Earliest live minute allowed.</small></label>
+        <label class="setting-field"><span>Minute to</span><input name="minuteMax" type="number" min="2" max="120"><small>Latest live minute allowed.</small></label>
+        <label class="setting-field"><span>Market</span><select name="market"><option value="WIN">1X2 WIN</option><option value="AH">ASIAN HANDICAP</option><option value="OU">OVER / UNDER</option></select><small>Market is locked at signal time.</small></label>
+        <label class="setting-field"><span>Odds min</span><input name="oddsMin" type="number" min="1.01" max="100" step="0.01"><small>Minimum accepted locked odds.</small></label>
+        <label class="setting-field"><span>Odds max</span><input name="oddsMax" type="number" min="1.01" max="100" step="0.01" placeholder="NO LIMIT"><small>Leave blank for no upper limit.</small></label>
+        <label class="setting-field"><span>Momentum min %</span><input name="momentumMin" type="number" min="1" max="99"><small>Selected-side pressure threshold.</small></label>
+        <label class="setting-field"><span>Confirmation rounds</span><input name="confirmationRounds" type="number" min="1" max="10"><small>Consecutive passing scans before a signal.</small></label>
       </div>
     </section>
 
     <section class="settings-block" id="marketBlock">
       <div class="settings-block-head">
-        <div><small>02</small><h2>MARKET PARAMETERS</h2></div>
+        <div><small>02</small><h2>Market parameters</h2></div>
         <p>Only controls for the selected market are active.</p>
       </div>
       <div class="settings-grid-v2">
-        <label class="setting-field market-ah"><span>AH LINE MIN</span><input name="ahMin" type="number" min="-5" max="5" step="0.25"><small>Selected-team perspective.</small></label>
-        <label class="setting-field market-ah"><span>AH LINE MAX</span><input name="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="NO LIMIT"><small>Leave blank for no upper limit.</small></label>
-        <label class="setting-field market-ou"><span>O/U DIRECTION</span><select name="ouDirection"><option>OVER</option><option>UNDER</option></select><small>Direction locked at detection.</small></label>
-        <label class="setting-field market-ou"><span>O/U LINE</span><input name="ouLine" type="number" min="0.5" max="8.5" step="0.25"><small>Used when O/U source line needs the configured line.</small></label>
+        <label class="setting-field market-ah"><span>AH line min</span><input name="ahMin" type="number" min="-5" max="5" step="0.25"><small>Selected-team perspective.</small></label>
+        <label class="setting-field market-ah"><span>AH line max</span><input name="ahMax" type="number" min="-5" max="5" step="0.25" placeholder="NO LIMIT"><small>Leave blank for no upper limit.</small></label>
+        <label class="setting-field market-ou"><span>O/U direction</span><select name="ouDirection"><option>OVER</option><option>UNDER</option></select><small>Direction locked at detection.</small></label>
+        <label class="setting-field market-ou"><span>O/U line</span><input name="ouLine" type="number" min="0.5" max="8.5" step="0.25"><small>Configured O/U reference line.</small></label>
       </div>
     </section>
 
     <section class="settings-block">
       <div class="settings-block-head">
-        <div><small>03</small><h2>SAFETY & LIMITERS</h2></div>
+        <div><small>03</small><h2>Safety & limiters</h2></div>
         <p>Optional gates that can reject otherwise qualified matches.</p>
       </div>
       <div class="switch-grid">
-        <label class="switch-card"><div><b>GOAL GAP LIMIT</b><small>Reject matches outside the allowed current score gap.</small></div><input name="goalGapLimited" type="checkbox"><i></i></label>
-        <label class="setting-field dependent-gap"><span>MAX GOAL GAP</span><input name="maxGoalGap" type="number" min="0" max="20"><small>Active only when Goal Gap Limit is ON.</small></label>
-        <label class="switch-card"><div><b>DAILY SIGNAL LIMIT</b><small>Cap confirmed signals per Bangkok calendar day.</small></div><input name="signalLimitEnabled" type="checkbox"><i></i></label>
-        <label class="setting-field dependent-limit"><span>MAX SIGNALS / DAY</span><input name="maxSignalsPerDay" type="number" min="1" max="100"><small>Active only when Daily Signal Limit is ON.</small></label>
-        <label class="switch-card"><div><b>REQUIRE CORE STATS</b><small>Require possession, attacks, dangerous attacks, shots, SOT and corners.</small></div><input name="requireCoreStats" type="checkbox"><i></i></label>
-        <label class="setting-field"><span>RED CARD POLICY</span><select name="redCardPolicy"><option value="ALLOW">ALLOW</option><option value="REJECT_SELECTED">REJECT SELECTED TEAM</option><option value="REJECT_ANY">REJECT ANY RED CARD</option></select><small>Applied before confirmation.</small></label>
+        <label class="switch-card"><div><b>Goal gap limit</b><small>Reject matches outside the allowed current score gap.</small></div><input name="goalGapLimited" type="checkbox"><i></i></label>
+        <label class="setting-field dependent-gap"><span>Max goal gap</span><input name="maxGoalGap" type="number" min="0" max="20"><small>Active only when Goal gap limit is ON.</small></label>
+        <label class="switch-card"><div><b>Daily signal limit</b><small>Cap confirmed signals per Bangkok calendar day.</small></div><input name="signalLimitEnabled" type="checkbox"><i></i></label>
+        <label class="setting-field dependent-limit"><span>Max signals / day</span><input name="maxSignalsPerDay" type="number" min="1" max="100"><small>Active only when Daily signal limit is ON.</small></label>
+        <label class="switch-card"><div><b>Require core stats</b><small>Require possession, attacks, dangerous attacks, shots, SOT and corners.</small></div><input name="requireCoreStats" type="checkbox"><i></i></label>
+        <label class="setting-field"><span>Red card policy</span><select name="redCardPolicy"><option value="ALLOW">ALLOW</option><option value="REJECT_SELECTED">REJECT SELECTED TEAM</option><option value="REJECT_ANY">REJECT ANY RED CARD</option></select><small>Applied before confirmation.</small></label>
       </div>
     </section>
 
     <section class="settings-block">
       <div class="settings-block-head">
-        <div><small>04</small><h2>ATTACK EVIDENCE</h2></div>
-        <p>Delta evidence measured from the candidate baseline until confirmation.</p>
+        <div><small>04</small><h2>Attack evidence</h2></div>
+        <p>Change in attacking activity measured before confirmation.</p>
       </div>
       <div class="switch-grid evidence-master-row">
-        <label class="switch-card master"><div><b>ATTACK EVIDENCE</b><small>Master gate for all evidence rules below.</small></div><input name="attackEvidenceEnabled" type="checkbox"><i></i></label>
-        <label class="setting-field evidence-dependent"><span>REQUIREMENT</span><select name="attackEvidenceRequirement"><option value="1">AT LEAST 1</option><option value="2">AT LEAST 2</option><option value="3">AT LEAST 3</option><option value="ALL">ALL ENABLED</option></select><small>How many enabled evidence rules must pass.</small></label>
+        <label class="switch-card master"><div><b>Attack evidence</b><small>Master gate for the evidence rules below.</small></div><input name="attackEvidenceEnabled" type="checkbox"><i></i></label>
+        <label class="setting-field evidence-dependent"><span>Requirement</span><select name="attackEvidenceRequirement"><option value="1">AT LEAST 1</option><option value="2">AT LEAST 2</option><option value="3">AT LEAST 3</option><option value="ALL">ALL ENABLED</option></select><small>How many enabled evidence rules must pass.</small></label>
       </div>
       <div class="evidence-grid evidence-dependent">
-        <div class="evidence-card"><label class="mini-switch"><span>DANGEROUS ATTACKS</span><input name="attackEvidenceDangerousAttacksEnabled" type="checkbox"><i></i></label><label><small>MIN DELTA</small><input name="attackEvidenceDangerousAttacksMin" type="number" min="1" max="999"></label></div>
-        <div class="evidence-card"><label class="mini-switch"><span>SHOTS</span><input name="attackEvidenceShotsEnabled" type="checkbox"><i></i></label><label><small>MIN DELTA</small><input name="attackEvidenceShotsMin" type="number" min="1" max="999"></label></div>
-        <div class="evidence-card"><label class="mini-switch"><span>SHOTS ON TARGET</span><input name="attackEvidenceShotsOnTargetEnabled" type="checkbox"><i></i></label><label><small>MIN DELTA</small><input name="attackEvidenceShotsOnTargetMin" type="number" min="1" max="999"></label></div>
-        <div class="evidence-card"><label class="mini-switch"><span>CORNERS</span><input name="attackEvidenceCornersEnabled" type="checkbox"><i></i></label><label><small>MIN DELTA</small><input name="attackEvidenceCornersMin" type="number" min="1" max="999"></label></div>
+        <div class="evidence-card"><label class="mini-switch"><span>Dangerous attacks</span><input name="attackEvidenceDangerousAttacksEnabled" type="checkbox"><i></i></label><label><small>Min delta</small><input name="attackEvidenceDangerousAttacksMin" type="number" min="1" max="999"></label></div>
+        <div class="evidence-card"><label class="mini-switch"><span>Shots</span><input name="attackEvidenceShotsEnabled" type="checkbox"><i></i></label><label><small>Min delta</small><input name="attackEvidenceShotsMin" type="number" min="1" max="999"></label></div>
+        <div class="evidence-card"><label class="mini-switch"><span>Shots on target</span><input name="attackEvidenceShotsOnTargetEnabled" type="checkbox"><i></i></label><label><small>Min delta</small><input name="attackEvidenceShotsOnTargetMin" type="number" min="1" max="999"></label></div>
+        <div class="evidence-card"><label class="mini-switch"><span>Corners</span><input name="attackEvidenceCornersEnabled" type="checkbox"><i></i></label><label><small>Min delta</small><input name="attackEvidenceCornersMin" type="number" min="1" max="999"></label></div>
       </div>
     </section>
 
     <details class="settings-block advanced-block">
-      <summary><span><small>05</small><b>MOMENTUM WEIGHTS</b></span><em>ADVANCED</em></summary>
-      <p>These weights directly change the HOME/AWAY pressure score. Defaults match the current CAR 3.3 engine.</p>
+      <summary><span><small>05</small><b>Momentum weights</b></span><em>Advanced</em></summary>
+      <p>Adjust how each live statistic contributes to the pressure score.</p>
       <div class="settings-grid-v2 weights-grid">
-        <label class="setting-field"><span>ATTACKS</span><input name="w_attacks" type="number" min="0" max="20" step="0.01"></label>
-        <label class="setting-field"><span>DANGEROUS ATTACKS</span><input name="w_dangerous_attacks" type="number" min="0" max="20" step="0.01"></label>
-        <label class="setting-field"><span>SHOTS</span><input name="w_shots" type="number" min="0" max="20" step="0.01"></label>
-        <label class="setting-field"><span>SHOTS ON TARGET</span><input name="w_shots_on_target" type="number" min="0" max="20" step="0.01"></label>
-        <label class="setting-field"><span>CORNERS</span><input name="w_corners" type="number" min="0" max="20" step="0.01"></label>
-        <label class="setting-field"><span>POSSESSION</span><input name="w_possession" type="number" min="0" max="2" step="0.01"></label>
+        <label class="setting-field"><span>Attacks</span><input name="w_attacks" type="number" min="0" max="20" step="0.01"></label>
+        <label class="setting-field"><span>Dangerous attacks</span><input name="w_dangerous_attacks" type="number" min="0" max="20" step="0.01"></label>
+        <label class="setting-field"><span>Shots</span><input name="w_shots" type="number" min="0" max="20" step="0.01"></label>
+        <label class="setting-field"><span>Shots on target</span><input name="w_shots_on_target" type="number" min="0" max="20" step="0.01"></label>
+        <label class="setting-field"><span>Corners</span><input name="w_corners" type="number" min="0" max="20" step="0.01"></label>
+        <label class="setting-field"><span>Possession</span><input name="w_possession" type="number" min="0" max="2" step="0.01"></label>
       </div>
     </details>
 
     <section class="settings-block settlement-block">
       <div class="settings-block-head">
-        <div><small>06</small><h2>SETTLEMENT</h2></div>
-        <p>Read-only engine behavior.</p>
+        <div><small>06</small><h2>Settlement</h2></div>
+        <p>Automatic result handling after full time.</p>
       </div>
       <div class="settlement-grid">
-        <div><small>RESULT TRIGGER</small><b>GOALOO FT</b><span>Final result is written when the source marks the match finished.</span></div>
-        <div><small>LIVE AH BASIS</small><b>ENTRY SCORE = 0–0</b><span>Only score changes after the locked signal are used for live AH settlement.</span></div>
-        <div><small>STATISTICS</small><b>AUTO UPDATE</b><span>PENDING moves to settled result and Statistics updates from the same stored record.</span></div>
+        <div><small>Result trigger</small><b>Full time</b><span>The result is written when the match source marks the match finished.</span></div>
+        <div><small>Live AH basis</small><b>Entry score = 0–0</b><span>Only score changes after the locked signal are used for live AH settlement.</span></div>
+        <div><small>Statistics</small><b>Automatic</b><span>PENDING moves to its settled result from the same saved signal record.</span></div>
       </div>
     </section>
 
     <div id="validation" class="settings-validation"></div>
     <div class="settings-actions">
-      <button id="reload" class="secondary-btn" type="button">RELOAD SERVER</button>
-      <button id="reset" class="secondary-btn" type="button">LOAD DEFAULTS</button>
-      <button id="save" class="secondary-btn save-only" type="button">SAVE ONLY</button>
-      <button class="primary-btn" type="submit">SAVE & RUN</button>
+      <button id="reload" class="secondary-btn" type="button">Reload</button>
+      <button id="reset" class="secondary-btn" type="button">Load defaults</button>
+      <button id="save" class="secondary-btn save-only" type="button">Save only</button>
+      <button class="primary-btn" type="submit">Save & run</button>
     </div>
     <div id="status" class="save-status"></div>
   </form>
 </div>
-<script type="module" src="./settings.js?v=20260816-full-controls"></script>
+<script type="module" src="./settings.js?v=20260816-clean-ui-v2"></script>
 </body>
 </html>
