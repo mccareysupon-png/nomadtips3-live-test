@@ -8,6 +8,7 @@ const CORE_STATS_KEYS=['possession','attacks','dangerous_attacks','shots','shots
 const DETAIL_IN_CORE_MAP={0:'corners',4:'shots',5:'shots_on_target',6:'attacks',7:'dangerous_attacks',11:'possession'};
 const REAL_BOOKMAKER_DEFAULT='1xbet';
 const REAL_MARKET_MAX_EVENTS=10;
+const MARKET_ONLY_GATES=new Set(['REAL MARKET','REAL PRICE AGE','MARKET / ODDS']);
 
 const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').trim());return Number.isFinite(n)?n:null;};
 const json=(data,status=200,cache='no-store')=>new Response(JSON.stringify(data,null,2),{status,headers:{...JSON_HEADERS,'cache-control':cache}});
@@ -26,6 +27,7 @@ export function parseRunOdds(source){
   }
   return out;
 }
+
 const DETAIL_TYPE={1:'GOAL',11:'SUBSTITUTION'};
 export function parseDetailEvents(source,allowedIds=null){
   const out=new Map(),re=/rq\[\d+\]\s*=\s*["']([^"']*)["']\s*;?/g;
@@ -36,6 +38,7 @@ export function parseDetailEvents(source,allowedIds=null){
   }
   for(const events of out.values())events.sort((a,b)=>(a.minute??999)-(b.minute??999));return out;
 }
+
 export function parseDetailInStats(source,allowedIds=null){
   const out=new Map(),assignment=/tT_f\[(\d+)\]\s*=\s*(\[[\s\S]*?\])\s*;/g;
   for(const m of String(source||'').matchAll(assignment)){
@@ -45,6 +48,7 @@ export function parseDetailInStats(source,allowedIds=null){
   }
   return out;
 }
+
 function coreStatsCompleteLocal(stats){return CORE_STATS_KEYS.every(k=>number(stats?.[k]?.home)!==null&&number(stats?.[k]?.away)!==null);}
 export function mergeCoreStats(match,detailStats){
   if(!match||typeof match!=='object')return{match,filled:[],applied:[],structuredPairs:0,structuredComplete:false,complete:false};
@@ -55,6 +59,7 @@ export function mergeCoreStats(match,detailStats){
   const filled=applied.flatMap(key=>[`${key}.home`,`${key}.away`]);return{match,filled,applied,structuredPairs:applied.length,structuredComplete:applied.length===CORE_STATS_KEYS.length,complete:match.coreStatsComplete};
 }
 export function isStructuredCoreBaseline(match){return Boolean(match&&match.coreStatsProvenance==='DETAIL_IN_STRUCTURED'&&coreStatsCompleteLocal(match.stats));}
+
 const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0});
 const delta=(cur,prev,key)=>{const c=pair(cur.stats,key),p=pair(prev?.stats,key);return{home:c.home-p.home,away:c.away-p.away};};
 const sideOf=d=>d.home>d.away?'HOME':d.away>d.home?'AWAY':null;
@@ -65,6 +70,7 @@ export function deriveActivity(current,previous){
   for(const [type,d] of checks){const team=sideOf(d);if(team)return{type,team,strength:Math.max(d.home,d.away)};}
   const hp=number(current.stats?.possession?.home)||0,ap=number(current.stats?.possession?.away)||0;return{type:'POSSESSION',team:hp>=ap?'HOME':'AWAY',strength:Math.abs(hp-ap)};
 }
+
 async function sourceText(url,seconds){
   const bucket=Math.floor(Date.now()/(seconds*1000));const response=await fetch(`${url}?t=${bucket}`,{headers:{'user-agent':'NOMADTIPS3-CAR3.4-RealMarketAudit/1.0','accept':'*/*','accept-language':'en-US,en;q=0.8'},cf:{cacheTtl:seconds,cacheEverything:true}});if(!response.ok)throw new Error(`HTTP ${response.status}`);return response.text();
 }
@@ -75,6 +81,7 @@ function baselineFor(matchId,side,snapshots,config,current){
   for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!isStructuredCoreBaseline(f))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}
   return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};
 }
+
 function evaluateWithRealAh(match,config,snapshots){
   const p=pressure(match.stats,config.momentumWeights),side=selectedSide(match,config,p),selMomentum=side==='AWAY'?p.away:p.home;
   const base=baselineFor(match.sourceMatchId,side,snapshots,config,match.stats),cur={dangerous:engineSidePair(match.stats.dangerous_attacks,side).selected,shots:engineSidePair(match.stats.shots,side).selected,sot:engineSidePair(match.stats.shots_on_target,side).selected,corners:engineSidePair(match.stats.corners,side).selected};
@@ -87,9 +94,19 @@ function evaluateWithRealAh(match,config,snapshots){
   const gates=[['MINUTE',match.minute>=config.minuteMin&&match.minute<=config.minuteMax,`${config.minuteMin}-${config.minuteMax}'`],['CORE STATS',!config.requireCoreStats||match.coreStatsComplete,match.coreStatsComplete?'complete':'partial'],['REAL MARKET',marketState==='MATCH',marketState],['REAL PRICE AGE',ageOk,marketAge===null?'n/a':`${marketAge}s / ≤${config.realMarketMaxAgeSeconds}s`],['MARKET / ODDS',oddsOk&&ahOk,odds===null?'waiting 1xBet AH':`AH ${selectedLine>=0?'+':''}${selectedLine} @ ${odds}`],['MOMENTUM',selMomentum>=config.momentumMin,`${selMomentum}% / ≥${config.momentumMin}%`],['EVIDENCE',!config.attackEvidenceEnabled||passed>=required,`${passed}/${evRules.length} · need ${config.attackEvidenceRequirement}`],['GOAL GAP',!config.goalGapLimited||goalGap<=config.maxGoalGap,`${goalGap} / max ${config.maxGoalGap}`],['RED CARD',redOk,`${red.selected}-${red.opponent}`],['SOURCE',match.coreStatsComplete?100>=config.matchConfidenceMin:70>=config.matchConfidenceMin,match.coreStatsComplete?'100%':'70%']];
   const pass=gates.every(g=>g[1]);return{decision:pass?'SHADOW SIGNAL':selMomentum>=Math.max(1,config.momentumMin-7)?'NEAR':'WATCH',reason:pass?`confirmation ${config.confirmationRounds} rounds required`:'one or more gates not ready',side,momentum:selMomentum,evidence,gates,line:selectedLine,rawLine:rawHomeLine,selectedLine,odds,entryScore:{home:match.score.home,away:match.score.away}};
 }
+
 function bangkokDate(iso){try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));}catch{return String(iso).slice(0,10)}}
 export function advanceConfirmationStreak(streaks,key,passed){const next=passed?(Number(streaks[key])||0)+1:0;streaks[key]=next;return next;}
-function marketCandidate(match,config){return Number(match?.minute)>=Number(config.minuteMin)&&Number(match?.minute)<=Number(config.minuteMax)&&(!config.requireCoreStats||match.coreStatsComplete);}
+
+// Price/API calls are expensive. Reuse the exact final evaluator with a synthetic
+// valid market, then ignore the three market-only gates. This keeps the Goaloo-side
+// logic identical while calling 1xBet only when every non-price condition is ready.
+function marketCandidate(match,config,snapshots){
+  const dummyLine=number(config.ahMin)??1,dummyOdds=Math.max(1.01,number(config.oddsMin)??1.7);
+  const probe={...match,odds:{...(match.odds||{}),asianHandicap:{line:dummyLine,home:dummyOdds,away:dummyOdds}},realMarket:{source:'PRECHECK',status:'MATCH',marketAgeSeconds:0}};
+  const evaluation=evaluateWithRealAh(probe,config,snapshots);
+  return evaluation.gates.filter(([name])=>!MARKET_ONLY_GATES.has(name)).every(([,ok])=>Boolean(ok));
+}
 
 export class Car31State extends BaseCar31State{
   async scan(trigger='cron'){
@@ -103,8 +120,16 @@ export class Car31State extends BaseCar31State{
       let detailMatched=0,detailAppliedMatches=0,structuredCompleteMatches=0;
       for(const match of latest.matches||[]){const detailStats=detailStatsMap.get(String(match.sourceMatchId));if(detailStats)detailMatched++;const merged=mergeCoreStats(match,detailStats);if(merged.applied.length)detailAppliedMatches++;if(merged.structuredComplete)structuredCompleteMatches++;match.odds={...(match.odds||{}),asianHandicap:null};match.realMarket={source:bookmaker,status:'WAITING',checkedAt:at};}
 
+      // CAR 3.1 parity: persist the enriched current snapshot so future Evidence
+      // deltas use a real structured baseline instead of falling back to current stats.
+      const currentSnapshot=snapshots.at(-1);
+      if(currentSnapshot&&String(currentSnapshot.at||'')===String(at)){
+        for(const snapMatch of currentSnapshot.matches||[])mergeCoreStats(snapMatch,detailStatsMap.get(String(snapMatch.id)));
+        await this.state.storage.put('snapshots',snapshots);
+      }
+
       let realStatus=config.engineEnabled?'OK':'PAUSED',realError=null,events=[],oddsPayloads=[],mappedCount=0,ahMatched=0;
-      const eligible=config.engineEnabled?(latest.matches||[]).filter(m=>marketCandidate(m,config)):[];
+      const eligible=config.engineEnabled?(latest.matches||[]).filter(m=>marketCandidate(m,config,snapshots)):[];
       if(!config.engineEnabled){realError=null;}
       else if(!this.env.ODDS_API_KEY){realStatus='KEY_MISSING';realError='ODDS_API_KEY_MISSING';}
       else if(eligible.length){
@@ -114,12 +139,12 @@ export class Car31State extends BaseCar31State{
           mappedCount=selected.length;oddsPayloads=await fetchMultiOdds(this.env.ODDS_API_KEY,eventIds,bookmaker);
           const oddsById=new Map(oddsPayloads.map(x=>[String(x?.id),x])),selectedByMatch=new Map(selected.map(x=>[String(x.match.sourceMatchId),x]));
           for(const match of latest.matches||[]){
-            const mappedItem=selectedByMatch.get(String(match.sourceMatchId));if(!mappedItem){if(marketCandidate(match,config))match.realMarket={source:bookmaker,status:'NOT_FOUND',checkedAt:at};continue;}
+            const mappedItem=selectedByMatch.get(String(match.sourceMatchId));if(!mappedItem){if(marketCandidate(match,config,snapshots))match.realMarket={source:bookmaker,status:'NOT_FOUND',checkedAt:at};continue;}
             const payload=oddsById.get(String(mappedItem.event.id)),ah=parseAsianHandicap(payload,bookmaker),age=marketAgeSeconds(ah);
             match.realMarket={source:bookmaker,status:ah?'MATCH':'NO_AH',checkedAt:at,eventId:mappedItem.event.id,eventHome:mappedItem.event.home,eventAway:mappedItem.event.away,mappingConfidence:mappedItem.matchConfidence,mapping:mappedItem.matchBreakdown,oddsUpdatedAt:ah?.updatedAt||null,marketAgeSeconds:age};
             if(ah){match.odds.asianHandicap={line:ah.line,home:ah.home,away:ah.away,updatedAt:ah.updatedAt,provider:bookmaker};ahMatched++;}
           }
-        }catch(error){realStatus='ERROR';realError=String(error?.message||error);for(const match of latest.matches||[])if(marketCandidate(match,config))match.realMarket={source:bookmaker,status:'ERROR',error:realError,checkedAt:at};}
+        }catch(error){realStatus='ERROR';realError=String(error?.message||error);for(const match of latest.matches||[])if(marketCandidate(match,config,snapshots))match.realMarket={source:bookmaker,status:'ERROR',error:realError,checkedAt:at};}
       }
 
       const today=bangkokDate(at),todayCount=history.filter(r=>r.selectionDate===today).length;let newCount=0;
@@ -150,9 +175,7 @@ export class Car31State extends BaseCar31State{
   }
 }
 
-function forceAhConfigRequest(request){
-  return request.clone().json().then(body=>new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify({...body,market:'AH'})}));
-}
+function forceAhConfigRequest(request){return request.clone().json().then(body=>new Request(request.url,{method:'POST',headers:request.headers,body:JSON.stringify({...body,market:'AH'})}));}
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
