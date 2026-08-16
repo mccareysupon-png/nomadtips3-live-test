@@ -9,6 +9,7 @@ on:
       - car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs
       - car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs
       - car3-1-hybrid-live-engine/tools/goaloo-flashdata-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs
       - .github/workflows/car31-goaloo-animation-probe.yml
   workflow_dispatch:
 
@@ -36,6 +37,9 @@ jobs:
       - name: Probe public Goaloo flashdata feed and live animation matches
         run: |
           node car3-1-hybrid-live-engine/tools/goaloo-flashdata-probe.mjs 2930884 | tee /tmp/goaloo-flashdata-report.json
+      - name: Save public Goaloo flash parser for field mapping
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs 2930884 | tee /tmp/goaloo-flash-parser-meta.json
       - name: Upload redacted research reports
         uses: actions/upload-artifact@v4
         with:
@@ -45,4 +49,6 @@ jobs:
             /tmp/goaloo-animation-deep-report.json
             /tmp/goaloo-protocol-report.json
             /tmp/goaloo-flashdata-report.json
+            /tmp/goaloo-flash-parser-meta.json
+            /tmp/goaloo-flashlive.js
           retention-days: 1
