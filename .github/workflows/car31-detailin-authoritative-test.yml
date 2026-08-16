@@ -1,0 +1,38 @@
+name: CAR 3.1 detailIn authoritative test
+
+on:
+  push:
+    branches:
+      - fix/car31-detailin-authoritative-core-20260816
+    paths:
+      - "car3-1-hybrid-live-engine/**"
+      - ".github/workflows/car31-detailin-authoritative-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Run CAR 3.1 tests and syntax checks
+        working-directory: car3-1-hybrid-live-engine
+        run: |
+          set -euo pipefail
+          node --test
+          node --check worker/src/index.js
+          node --check worker/src/upgrade.js
+          node --check worker/src/settlement-v2.js
+          node --check worker/src/animation-v3-source.js
+          node --check worker/src/main-v3.js
+          node --check web/app.js
+          node --check web/settings.js
+          node --check web/history.js
+          node --check web/signal-polish.js
+          node --check web/animation-v2.js
+          node --check web/animation-v3.js
