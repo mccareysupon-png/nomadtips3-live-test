@@ -1,0 +1,41 @@
+name: CAR 1.1 Operational Cycle
+
+on:
+  push:
+    branches: [agent/car11-goaloo-launch-20260816]
+    paths:
+      - 'car1-1/scripts/run_cycle.mjs'
+      - '.github/workflows/car11-cycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/car11-goaloo-launch-20260816
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run selection cycle
+        env:
+          MAX_ANALYSIS: '80'
+        run: node car1-1/scripts/run_cycle.mjs
+      - name: Commit public output
+        run: |
+          git config user.name 'nomadtips3-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add car1-1/data/public-selections.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'car1.1: update public selections'
+          git push origin HEAD:agent/car11-goaloo-launch-20260816
