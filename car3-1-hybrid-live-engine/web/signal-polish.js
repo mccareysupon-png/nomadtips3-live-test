@@ -12,14 +12,22 @@ function signalKey(record,row){
 
 function ensureSignalClock(){
   let clock=$('#signalClockRow');
-  if(clock)return clock;
+  if(clock){
+    // Remove the old non-real-time LIVE TIME segment if stale HTML is cached.
+    const spans=clock.querySelectorAll(':scope > span');
+    clock.querySelector(':scope > i')?.remove();
+    if(spans[1])spans[1].remove();
+    const label=spans[0]?.querySelector('small');
+    if(label)label.textContent='SIGNAL';
+    return clock;
+  }
   const score=$('.score');
   if(!score)return null;
   clock=document.createElement('div');
   clock.id='signalClockRow';
   clock.className='signal-clock-row';
   clock.hidden=false;
-  clock.innerHTML='<span><small>SIGNAL</small><b id="signalMinute">—</b></span><i aria-hidden="true"></i><span><small>LIVE TIME</small><b id="liveClock">—</b></span>';
+  clock.innerHTML='<span><small>SIGNAL</small><b id="signalMinute">—</b></span>';
   score.appendChild(clock);
   return clock;
 }
@@ -75,10 +83,6 @@ function updateCandidateMinutes(cards){
   });
 }
 
-function liveClockText(row){
-  return sourceMinuteText(row);
-}
-
 function updateSignalClock(row,record){
   const clock=ensureSignalClock();
   if(!clock)return;
@@ -86,12 +90,8 @@ function updateSignalClock(row,record){
   clock.hidden=false;
   const entry=Number(record?.entryMinute);
   const signalText=Number.isFinite(entry)?`${entry}'`:'—';
-  const signalEl=$('#signalMinute'),liveEl=$('#liveClock');
+  const signalEl=$('#signalMinute');
   if(signalEl&&signalEl.textContent!==signalText)signalEl.textContent=signalText;
-  if(liveEl){
-    const liveText=liveClockText(row);
-    if(liveEl.textContent!==liveText)liveEl.textContent=liveText;
-  }
 }
 
 function signedLine(value){
