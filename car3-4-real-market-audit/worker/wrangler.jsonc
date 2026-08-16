@@ -1,10 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "nomadtips3-car31-goaloo",
+  "name": "nomadtips3-car34-real-market-audit",
   "main": "src/main-v3.js",
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
-  "triggers": { "crons": ["* * * * *"] },
+  "triggers": { "crons": ["*/2 * * * *"] },
   "durable_objects": {
     "bindings": [
       { "name": "CAR31_STATE", "class_name": "Car31State" }
@@ -18,6 +18,8 @@
     "GOALOO_MOBILE": "https://live2.goaloo28.com/?half=0",
     "MAX_MATCHES_PER_CYCLE": "24",
     "FETCH_CONCURRENCY": "3",
-    "SOURCE_REFRESH_SECONDS": "60"
+    "SOURCE_REFRESH_SECONDS": "60",
+    "REAL_MARKET_BOOKMAKER": "1xbet",
+    "REAL_MARKET_MAX_AGE_SECONDS": "120"
   }
 }
