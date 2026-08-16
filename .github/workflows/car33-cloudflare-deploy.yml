@@ -30,6 +30,8 @@ jobs:
         working-directory: car3-3-live-engine/worker
         run: |
           node --check src/index.js
+          node --check src/entry.js
+          node --check src/animation-source.js
           node --test
           node --check ../web/app.js
           node --check ../web/settings.js
@@ -101,4 +103,41 @@ jobs:
               assert 'elapsedSeconds' in m
               assert 'score' in m
           print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']),'market=',c.get('config',{}).get('market'))
+          PY
+
+      - name: Verify source-driven animation contract
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          invalid_code=$(curl -sS -o /tmp/car33-animation-invalid.json -w '%{http_code}' "$DEPLOYMENT_URL/animation?id=not-a-match")
+          test "$invalid_code" = "400" || { cat /tmp/car33-animation-invalid.json; echo "::error::Animation invalid-id contract failed: HTTP $invalid_code"; exit 1; }
+          MATCH_ID=$(python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-live.json'))
+          print(str((p.get('matches') or [{}])[0].get('id') or ''))
+          PY
+          )
+          if [ -z "$MATCH_ID" ]; then
+            echo "No live match available; animation route validation passed with invalid-id contract."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/car33-animation.json -w '%{http_code}' "$DEPLOYMENT_URL/animation?id=$MATCH_ID")
+          cat /tmp/car33-animation.json
+          test "$code" = "200" || { echo "::error::Animation live route HTTP $code"; exit 1; }
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-animation.json'))
+          assert p.get('fallback')=='HOLD_LAST_SOURCE_POSITION', p
+          if p.get('ok'):
+              assert p.get('sourceTransport')=='GOALOO_PUBLIC_FLASHDATA_HTTP', p
+              assert p.get('sourceCoordinateSystem')=='NORMALIZED_0_1', p
+              for e in p.get('events') or []:
+                  for pt in e.get('points') or []:
+                      assert 0 <= float(pt['x']) <= 1, pt
+                      assert 0 <= float(pt['y']) <= 1, pt
+              print('CAR 3.3 source animation PASS; events=',len(p.get('events') or []),'current=',(p.get('current') or {}).get('type'))
+          else:
+              assert p.get('reason') in ('ANIMATION_SOURCE_UNAVAILABLE','ANIMATION_SOURCE_PARSE_INCOMPLETE'), p
+              print('CAR 3.3 animation route PASS with source hold:',p.get('reason'))
           PY
