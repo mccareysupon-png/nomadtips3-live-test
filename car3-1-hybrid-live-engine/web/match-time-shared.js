@@ -22,10 +22,11 @@ function ensureCard(card,row){
   if(!card||!row)return;
   const top=card.querySelector('.candidate-top');
   if(!top)return;
+  const nextMinute=minuteLabel(row),nextState=statusLabel(row);
   const oldMinute=card.querySelector('.candidate-minute');
   if(oldMinute){
     oldMinute.hidden=true;
-    oldMinute.textContent=minuteLabel(row);
+    if(oldMinute.textContent!==nextMinute)oldMinute.textContent=nextMinute;
   }
   card.dataset.matchId=String(row.sourceMatchId||row.id||'');
   let time=card.querySelector('.candidate-match-time');
@@ -37,7 +38,6 @@ function ensureCard(card,row){
   }
   const value=time.querySelector('b');
   const state=time.querySelector('em');
-  const nextMinute=minuteLabel(row),nextState=statusLabel(row);
   if(value&&value.textContent!==nextMinute)value.textContent=nextMinute;
   if(state&&state.textContent!==nextState)state.textContent=nextState;
 }
