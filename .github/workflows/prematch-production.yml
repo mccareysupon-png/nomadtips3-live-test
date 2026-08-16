@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/prematch-production.yml'
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -46,6 +46,34 @@ jobs:
           if [ ! -f data/prematch-current.json ]; then
             cp .prematch-runtime/latest-selections.json data/prematch-current.json
           fi
+
+      - name: Promote legacy capped set to today's all-qualified set
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const currentPath='data/prematch-current.json';
+          const sourcePath='.prematch-runtime/latest-selections.json';
+          const current=JSON.parse(fs.readFileSync(currentPath,'utf8'));
+          const source=JSON.parse(fs.readFileSync(sourcePath,'utf8'));
+          const curPublished=Number(current?.scan?.published||current?.matches?.length||0);
+          const srcPublished=Number(source?.scan?.published||source?.matches?.length||0);
+          const sameDay=String(current.selectionDate||'')===String(source.selectionDate||'');
+          const sourceNewer=Date.parse(source.generatedAtUtc||0)>Date.parse(current.generatedAtUtc||0);
+          const legacyCap=current?.rules?.maximumSelections===10 || current?.rules?.selectionPolicy!=='ALL_QUALIFIED';
+          const allPending=(current.matches||[]).every(m=>String(m.status||'PENDING').toUpperCase()==='PENDING');
+          const noneStarted=(source.matches||[]).every(m=>Date.parse(m.kickoffUtc||0)>Date.now());
+          if(sameDay && sourceNewer && legacyCap && allPending && noneStarted && srcPublished>curPublished){
+            for(const m of source.matches||[]){
+              if(m.context?.market && Object.prototype.hasOwnProperty.call(m.context.market,'company')) delete m.context.market.company;
+            }
+            source.contextSchema=1;
+            source.marketSchema=2;
+            fs.writeFileSync(currentPath,JSON.stringify(source,null,2)+'\n');
+            console.log(`PROMOTED same-day set ${curPublished} -> ${srcPublished} selections before kickoff.`);
+          }else{
+            console.log(`No promotion: sameDay=${sameDay} sourceNewer=${sourceNewer} legacyCap=${legacyCap} allPending=${allPending} noneStarted=${noneStarted} current=${curPublished} source=${srcPublished}`);
+          }
+          NODE
 
       - name: Hydrate locked set analysis context
         run: |
