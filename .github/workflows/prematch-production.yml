@@ -89,18 +89,10 @@ jobs:
 
       - name: Select next set only after full settlement
         run: |
-          if [ "$(tr -d '\r\n' < .prematch-runtime/action.txt)" = "SELECT" ]; then
+          ACTION="$(tr -d '\r\n' < .prematch-runtime/action.txt)"
+          if [ "$ACTION" = "SELECT" ]; then
             MAX_ANALYSIS=500 node .prematch-runtime/select.mjs
-            node --input-type=module <<'NODE'
-            import fs from 'node:fs';
-            const p='car1-1/data/public-selections.json';
-            const data=JSON.parse(fs.readFileSync(p,'utf8'));
-            for(const match of data.matches||[]){
-              if(match.context?.market && Object.prototype.hasOwnProperty.call(match.context.market,'company')) delete match.context.market.company;
-            }
-            data.contextSchema=1;
-            fs.writeFileSync(p,JSON.stringify(data,null,2)+'\n');
-            NODE
+            node -e "const fs=require('fs');const p='car1-1/data/public-selections.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));for(const m of d.matches||[]){if(m.context&&m.context.market)delete m.context.market.company;}d.contextSchema=1;fs.writeFileSync(p,JSON.stringify(d,null,2)+'\\n');"
             cp car1-1/data/public-selections.json data/prematch-current.json
           else
             echo 'Current set remains locked while results are pending.'
