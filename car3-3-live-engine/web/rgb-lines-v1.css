@@ -1,0 +1,150 @@
+/* CAR 3.3 thin RGB field-line visual system.
+   Visual overlay only: no engine, signal, clock, settlement or data logic. */
+:root{
+  --rgb-cyan:#36dcff;
+  --rgb-violet:#9a73ff;
+  --rgb-green:#42e47b;
+  --rgb-red:#ff626d;
+  --rgb-neutral:#9da6ac;
+  --rgb-line-soft:rgba(110,130,142,.16);
+}
+
+/* One-pixel field/HUD line. Keep surfaces dark and let data lines do the work. */
+.panel,.signal-summary,.match-card,.live-chart,.stat,.event,.scorebar-wrap,.performance-panel,.stats-metric,.settings-block,.rule-summary-v2{
+  position:relative;
+  border:0!important;
+}
+.panel::before,.signal-summary::before,.match-card::before,.live-chart::before,.scorebar-wrap::before,.performance-panel::before,.settings-block::before,.rule-summary-v2::before{
+  content:"";
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:0;
+  height:1px;
+  pointer-events:none;
+  z-index:2;
+  background:linear-gradient(90deg,transparent 0%,rgba(54,220,255,.72) 18%,rgba(154,115,255,.56) 51%,rgba(66,228,123,.62) 82%,transparent 100%);
+  box-shadow:0 0 5px rgba(54,220,255,.10);
+}
+
+/* LIVE DETECTION: cards and values use thin RGB separators instead of hard frames. */
+.candidate,.cell,.chip,.metric-btn,.source-status,.source-event,.pitch-readout,.pitch-live{
+  border:0!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.018),0 5px 14px rgba(0,0,0,.18)!important;
+}
+.candidate.active{
+  box-shadow:inset 1px 0 rgba(54,220,255,.92),0 5px 14px rgba(0,0,0,.22),0 0 7px rgba(54,220,255,.08)!important;
+}
+
+/* Live Attack/metric chart: football-field sharpness. */
+.chart-stage{
+  border:0!important;
+  box-shadow:inset 0 0 0 1px rgba(95,116,128,.09),inset 0 10px 24px rgba(0,0,0,.22)!important;
+}
+.chart-grid line{
+  stroke:rgba(104,126,138,.25)!important;
+  stroke-width:.75!important;
+  vector-effect:non-scaling-stroke;
+  shape-rendering:crispEdges;
+}
+.home-line,.away-line{
+  stroke-width:1.55!important;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+}
+.home-line{filter:drop-shadow(0 0 2px rgba(66,228,123,.34))!important}
+.away-line{filter:drop-shadow(0 0 2px rgba(255,98,109,.32))!important}
+
+/* Individual live statistics (Attack, Dangerous Attack, Shots, SOT, Corners, Possession...). */
+.stat{
+  overflow:hidden;
+  background:linear-gradient(145deg,#1c2226 0%,#14191c 54%,#0f1315 100%)!important;
+  box-shadow:0 6px 16px rgba(0,0,0,.20),inset 0 1px rgba(255,255,255,.014)!important;
+}
+.stat::before{
+  content:"";
+  position:absolute;
+  left:8px;
+  right:8px;
+  top:0;
+  height:1px;
+  background:linear-gradient(90deg,rgba(54,220,255,.62),rgba(154,115,255,.44) 52%,rgba(66,228,123,.54));
+  box-shadow:0 0 4px rgba(54,220,255,.08);
+}
+.stat-duel{
+  position:relative;
+  padding-top:6px;
+}
+.stat-duel::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:0;
+  height:1px;
+  background:linear-gradient(90deg,rgba(66,228,123,.55),rgba(110,130,142,.16) 48%,rgba(255,98,109,.55));
+}
+.stat-duel b{font-variant-numeric:tabular-nums;text-shadow:none!important}
+.home-value{color:var(--rgb-green)!important}
+.away-value{color:var(--rgb-red)!important}
+
+/* Events: one-pixel semantic edge only. */
+.home-event{box-shadow:inset 1px 0 rgba(66,228,123,.76),0 5px 14px rgba(0,0,0,.18)!important}
+.away-event{box-shadow:inset 1px 0 rgba(255,98,109,.76),0 5px 14px rgba(0,0,0,.18)!important}
+
+/* Digital pitch: keep all actual field markings thin, crisp and restrained. */
+.digital-pitch{border:0!important;box-shadow:inset 0 0 70px #000,inset 0 0 24px rgba(54,220,255,.065),0 12px 28px rgba(0,0,0,.55)!important}
+.digital-pitch:before{border-width:1px!important;box-shadow:0 0 5px rgba(54,220,255,.18)!important}
+.half-line{width:1px!important;box-shadow:0 0 4px rgba(54,220,255,.18)!important}
+.center-ring,.box,.goal{border-width:1px!important;box-shadow:0 0 4px rgba(154,115,255,.10)!important}
+.scanner{width:1px!important;box-shadow:0 0 7px rgba(54,220,255,.20)!important}
+
+/* ACTIVE SIGNALS: retain rounded tray but replace hard frames with a field-line accent. */
+.scorebar-wrap{box-shadow:0 10px 24px rgba(0,0,0,.38),inset 0 1px rgba(255,255,255,.012)!important}
+.scorebar{border:0!important;box-shadow:inset 0 1px rgba(255,255,255,.012)!important}
+.scorebar .scorecard{border:0!important;box-shadow:inset 1px 0 rgba(66,228,123,.72),0 7px 16px rgba(0,0,0,.34)!important}
+.scorebar .scorecard.active{box-shadow:inset 1px 0 rgba(54,220,255,.94),0 7px 16px rgba(0,0,0,.40),0 0 8px rgba(54,220,255,.08)!important}
+
+/* STATISTICS: same one-pixel football/HUD language. */
+.performance-panel,.stats-metric,.table-wrap.stats-table-wrap{border:0!important}
+.curve-wrap{border:0!important;box-shadow:inset 0 0 0 1px rgba(101,122,134,.08),inset 0 9px 20px rgba(0,0,0,.18)!important}
+.curve-grid line{stroke:rgba(104,126,138,.24)!important;stroke-width:.75!important;shape-rendering:crispEdges}
+.curve-series{stroke-width:1.45!important}
+.curve-win{filter:drop-shadow(0 0 1.5px rgba(72,223,123,.28))!important}
+.curve-loss{filter:drop-shadow(0 0 1.5px rgba(255,98,109,.25))!important}
+.curve-draw{filter:none!important}
+.stats-metric{overflow:hidden}
+.stats-metric::before{
+  content:"";
+  position:absolute;
+  top:0;left:9px;right:9px;height:1px;
+  background:linear-gradient(90deg,rgba(54,220,255,.52),rgba(154,115,255,.34),rgba(66,228,123,.44));
+}
+.stats-table th{box-shadow:0 6px 14px rgba(0,0,0,.18),inset 0 -1px rgba(117,137,149,.08)!important}
+.stats-table tr.record-row{box-shadow:inset 0 -1px rgba(117,137,149,.055)!important}
+.stats-table tr.record-row:last-child{box-shadow:none!important}
+
+/* SETTINGS: thin accent line marks sections, inputs remain restrained. */
+.settings-block{box-shadow:0 9px 24px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.012)!important}
+.setting-field,.switch-card,.evidence-card,.settlement-grid>div{
+  border:0!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.015),0 5px 14px rgba(0,0,0,.16)!important;
+}
+.setting-field input,.setting-field select,.evidence-card input{
+  border:0!important;
+  box-shadow:inset 0 0 0 1px rgba(111,132,144,.13)!important;
+}
+.setting-field input:focus,.setting-field select:focus,.evidence-card input:focus{
+  box-shadow:inset 0 0 0 1px rgba(54,220,255,.48),0 0 0 2px rgba(54,220,255,.045)!important;
+}
+.switch-card.master{box-shadow:inset 1px 0 rgba(54,220,255,.82),0 5px 14px rgba(0,0,0,.16)!important}
+
+/* Menu stays borderless; active state is a surface level, not a frame. */
+.topbar,.nav a,.nav a.active{border:0!important}
+
+@media(max-width:650px){
+  .panel::before,.signal-summary::before,.match-card::before,.live-chart::before,.scorebar-wrap::before,.performance-panel::before,.settings-block::before,.rule-summary-v2::before{left:7px;right:7px}
+  .home-line,.away-line{stroke-width:1.4!important}
+  .curve-series{stroke-width:1.35!important}
+}
