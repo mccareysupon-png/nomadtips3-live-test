@@ -6,6 +6,7 @@ on:
       - research/car31-goaloo-animation-source-20260816
     paths:
       - car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs
       - .github/workflows/car31-goaloo-animation-probe.yml
   workflow_dispatch:
 
@@ -24,9 +25,14 @@ jobs:
       - name: Probe public Goaloo animation sources for match 2930884
         run: |
           node car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs 2930884 | tee /tmp/goaloo-animation-report.json
-      - name: Upload redacted research report
+      - name: Deep probe public Goaloo event protocol for match 2930884
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs 2930884 | tee /tmp/goaloo-animation-deep-report.json
+      - name: Upload redacted research reports
         uses: actions/upload-artifact@v4
         with:
           name: goaloo-animation-probe-2930884
-          path: /tmp/goaloo-animation-report.json
+          path: |
+            /tmp/goaloo-animation-report.json
+            /tmp/goaloo-animation-deep-report.json
           retention-days: 1
