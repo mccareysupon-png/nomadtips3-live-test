@@ -1,12 +1,17 @@
 function cleanupMatchTimeCard(){
+  // The per-card/live-time display was not source-real-time and could mislead users.
+  // Keep only the immutable SIGNAL minute recorded when a confirmed signal is created.
   document.querySelectorAll('.candidate-match-time').forEach(el=>el.remove());
   document.querySelectorAll('.candidate-minute').forEach(el=>{if(el.hidden)el.hidden=false;});
+
   const row=document.querySelector('#signalClockRow');
   if(!row)return;
+
   const spans=row.querySelectorAll(':scope > span');
   const divider=row.querySelector(':scope > i');
-  if(divider&&divider.hidden)divider.hidden=false;
-  if(spans[1]&&spans[1].hidden)spans[1].hidden=false;
+  divider?.remove();
+  if(spans[1])spans[1].remove();
+
   if(spans[0]){
     const label=spans[0].querySelector('small');
     if(label&&label.textContent!=='SIGNAL')label.textContent='SIGNAL';
