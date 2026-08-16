@@ -24,11 +24,29 @@ async function statistics(){
   const pairs=[['total',s.total],['settled',s.settled],['win',s.win],['loss',s.loss],['draw',s.draw],['winRate',`${Number(s.winRate||0).toFixed(1)}%`],['avgOdds',Number(s.averageOdds||0).toFixed(2)],['netUnits',Number(s.netUnits||0).toFixed(2)]];for(const [id,v] of pairs){const e=$(`#${id}`);if(e)e.textContent=v??0;}
   $('#statsRows').innerHTML=(h.records||[]).map(r=>`<tr><td>${fmtTime(r.selectedAt)}<br><span class="muted">${esc(r.selectionDate||'')}</span></td><td>${esc(r.home)}<br><span class="muted">${esc(r.away)}</span></td><td class="pick">${esc(r.selectedTeam)}</td><td>${fmtLine(r.selectedLine??r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${r.entryScore?.home??'—'}-${r.entryScore?.away??'—'}</td><td>${r.finalScore?`${r.finalScore.home}-${r.finalScore.away}`:'—'}</td><td><span class="status ${resultClass(r.resultGroup||r.result)}">${esc(r.settlementResult||r.resultGroup||r.result||'PENDING')}</span></td><td>${esc(r.bookmaker||r.pricingSource||'1xbet')}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">No statistics yet.</td></tr>';
 }
-const settingFields=['side','minuteMin','minuteMax','oddsMin','oddsMax','ahMin','ahMax','momentumMin','attackEvidenceRequirement','confirmationRounds','realMarketMaxAgeSeconds'];
+const scalarSettingFields=['side','minuteMin','minuteMax','oddsMin','oddsMax','ahMin','ahMax','momentumMin','attackEvidenceDangerousAttacksMin','attackEvidenceShotsMin','attackEvidenceShotsOnTargetMin','attackEvidenceCornersMin','attackEvidenceRequirement','maxGoalGap','confirmationRounds','realMarketMaxAgeSeconds','sourceFreshnessMaxSeconds','matchConfidenceMin','maxSignalsPerDay','redCardPolicy'];
+const booleanSettingFields=['engineEnabled','attackEvidenceEnabled','attackEvidenceDangerousAttacksEnabled','attackEvidenceShotsEnabled','attackEvidenceShotsOnTargetEnabled','attackEvidenceCornersEnabled','goalGapLimited','requireCoreStats','signalLimitEnabled'];
+const momentumWeightFields={weightAttacks:'attacks',weightDangerousAttacks:'dangerous_attacks',weightShots:'shots',weightShotsOnTarget:'shots_on_target',weightCorners:'corners',weightPossession:'possession'};
+function setInputValue(id,value){const e=$(`#${id}`);if(!e)return;if(e.type==='checkbox')e.checked=Boolean(value);else e.value=value??'';}
+function readInputValue(id){const e=$(`#${id}`);if(!e)return undefined;if(e.type==='checkbox')return e.checked;if(e.type==='number')return e.value===''?null:Number(e.value);return e.value;}
 async function settings(){
-  const p=await api('/config'),c=p.config||{};for(const id of settingFields){const e=$(`#${id}`);if(e)e.value=c[id]??'';}$('#engineEnabled').checked=c.engineEnabled!==false;$('#marketLocked').textContent=p.marketLocked||'AH';$('#bookmaker').textContent=p.realMarketBookmaker||'1xbet';
-  $('#settingsForm').addEventListener('submit',async ev=>{ev.preventDefault();const body={engineEnabled:$('#engineEnabled').checked};for(const id of settingFields){const e=$(`#${id}`);if(!e)continue;body[id]=e.type==='number'?(e.value===''?null:Number(e.value)):e.value;}body.market='AH';const out=await api('/config',{method:'POST',body:JSON.stringify(body)});$('#saveState').textContent=out.ok?'Saved':'Error';setTimeout(()=>$('#saveState').textContent='',2500);});
-  $('#copy31').addEventListener('click',()=>{location.reload();});
+  const p=await api('/config'),c=p.config||{};
+  for(const id of scalarSettingFields)setInputValue(id,c[id]);
+  for(const id of booleanSettingFields)setInputValue(id,c[id]);
+  for(const [id,key] of Object.entries(momentumWeightFields))setInputValue(id,c.momentumWeights?.[key]);
+  $('#marketLocked').textContent=p.marketLocked||'AH';$('#bookmaker').textContent=p.realMarketBookmaker||'1xbet';
+  $('#configUpdated').textContent=p.updatedAt?fmtTime(p.updatedAt):'—';
+  $('#settingsForm').addEventListener('submit',async ev=>{
+    ev.preventDefault();
+    const body={market:'AH'};
+    for(const id of scalarSettingFields)body[id]=readInputValue(id);
+    for(const id of booleanSettingFields)body[id]=readInputValue(id);
+    body.momentumWeights={};for(const [id,key] of Object.entries(momentumWeightFields))body.momentumWeights[key]=readInputValue(id);
+    const state=$('#saveState');state.textContent='Saving…';state.className='warn';
+    try{const out=await api('/config',{method:'POST',body:JSON.stringify(body)});state.textContent=out.ok?'Saved · active next scan':'Error';state.className=out.ok?'good':'bad';$('#configUpdated').textContent=out.updatedAt?fmtTime(out.updatedAt):fmtTime(new Date().toISOString());}
+    catch(e){state.textContent=`Error: ${e.message}`;state.className='bad';}
+  });
+  $('#copy31').addEventListener('click',()=>location.reload());
 }
 async function run(){await bootRuntime();const page=document.body.dataset.page||'detector';nav(page);try{if(page==='detector'){await detector();setInterval(()=>detector().catch(console.error),(runtime.refreshSeconds||15)*1000);}else if(page==='statistics')await statistics();else if(page==='settings')await settings();}catch(e){const el=$('#pageError');if(el){el.textContent=e.message;el.hidden=false;}console.error(e);}}
 run();
