@@ -1,0 +1,29 @@
+{
+  "car31": {
+    "baseUrl": "https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev",
+    "historyLimit": 100,
+    "pollSeconds": 15,
+    "bootstrapMode": "tail"
+  },
+  "lmStudio": {
+    "baseUrl": "http://127.0.0.1:1234/v1",
+    "model": "auto",
+    "temperature": 0.1,
+    "maxTokens": 500,
+    "timeoutMs": 45000
+  },
+  "analysis": {
+    "trigger": "confirmed-history",
+    "requireCar31Confirmation": true,
+    "allowMissingLiveContext": true
+  },
+  "execution": {
+    "mode": "paper",
+    "paperStakeUnits": 1,
+    "manualOutbox": true,
+    "xxx": {
+      "enabled": false,
+      "note": "Reserved extension point. Intentionally not implemented here."
+    }
+  }
+}
