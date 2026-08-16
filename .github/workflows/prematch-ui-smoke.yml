@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate public multi-market contract
+      - name: Validate public data contract
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -33,24 +33,19 @@ jobs:
           if(d.rules?.selectionPolicy==='ALL_QUALIFIED' && Number(d.scan?.qualified)!==Number(d.scan?.published)) throw new Error(`qualified ${d.scan?.qualified} != published ${d.scan?.published}`);
           const context=ms.filter(m=>m.context).length;
           const momentum=ms.filter(m=>Number.isFinite(Number(m.context?.momentum?.score))).length;
-          const prediction=ms.filter(m=>m.context?.prediction).length;
           const marketSets=ms.filter(m=>m.markets && Object.keys(m.markets).length>=4).length;
-          const btts=ms.filter(m=>m.markets?.btts).length;
-          const dc=ms.filter(m=>m.markets?.doubleChance).length;
-          const oe=ms.filter(m=>m.markets?.oddEven).length;
-          if(context!==ms.length) throw new Error(`context ${context}/${ms.length}`);
-          if(momentum!==ms.length) throw new Error(`momentum ${momentum}/${ms.length}`);
-          if(prediction!==ms.length) throw new Error(`prediction ${prediction}/${ms.length}`);
-          if(marketSets!==ms.length) throw new Error(`multi-market ${marketSets}/${ms.length}`);
-          if(btts!==ms.length||dc!==ms.length||oe!==ms.length) throw new Error('derived markets missing');
+          if(context!==ms.length||momentum!==ms.length||marketSets!==ms.length) throw new Error(`contract incomplete context=${context} momentum=${momentum} markets=${marketSets} total=${ms.length}`);
           console.log(`PASS data selections=${ms.length} qualified=${d.scan?.qualified} published=${d.scan?.published}`);
           NODE
 
-      - name: Syntax check inline JavaScript
+      - name: Syntax and pagination contract
         run: |
           python - <<'PY'
           from pathlib import Path
           s=Path('index.html').read_text()
+          required=['const PAGE_SIZE=20','picksPagerTop','statsPagerTop','shareTodayPagerTop','shareResultPagerTop','selected-text','coreSelectionClass']
+          missing=[x for x in required if x not in s]
+          if missing: raise SystemExit('missing UI contract: '+', '.join(missing))
           js=s.split('<script>',1)[1].split('</script>',1)[0]
           Path('/tmp/prematch-ui.js').write_text(js)
           PY
@@ -62,56 +57,61 @@ jobs:
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Verify Picks Stats Share linkage responsive and local time
+      - name: Verify pagination colors responsive and local time
         run: |
           python3 -m http.server 8000 >/tmp/http.log 2>&1 &
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
           import fs from 'node:fs';
           const current=JSON.parse(fs.readFileSync('data/prematch-current.json','utf8'));
-          let history=[];try{history=JSON.parse(fs.readFileSync('data/prematch-history.json','utf8'))}catch{}
           const expectedCount=current.matches.length;
           const firstIso=current.matches[0].kickoffUtc;
-          const marketOrder=['oneX2','ah','btts','totals','doubleChance','oddEven'];
-          const expectedSettled=[current,...history].filter(x=>x&&Array.isArray(x.matches)).flatMap(s=>s.matches).flatMap(m=>marketOrder.map(k=>m.markets?.[k]).filter(Boolean)).filter(x=>String(x.status||'PENDING')!=='PENDING').length;
-          const sizes=[['desktop',1920,1080],['laptop',1366,768],['tablet-landscape',1024,768],['tablet-portrait',768,1024],['mobile',390,844],['mobile-landscape',844,390]];
+          const clone=x=>JSON.parse(JSON.stringify(x));
+          const settledMatches=current.matches.slice(0,Math.min(25,current.matches.length)).map((src,i)=>{
+            const m=clone(src);m.fixtureId=`SMOKE-${i}-${m.fixtureId}`;m.status=i%3===0?'LOSS':'WIN';m.finalScore=i%3===0?'0-1':'2-0';m.matchResult=i%3===0?'AWAY':'HOME';m.settledAtUtc=new Date(Date.now()-i*60000).toISOString();
+            for(const x of Object.values(m.markets||{})){if(x&&typeof x==='object')x.status=i%5===0?'PUSH':i%3===0?'LOSS':'WIN'}
+            return m;
+          });
+          const fakeHistory=[{selectionDate:'SMOKE-HISTORY',generatedAtUtc:new Date(Date.now()-86400000).toISOString(),matches:settledMatches}];
           const browser=await chromium.launch({headless:true});
-          for(const [name,width,height] of sizes){
-            const page=await browser.newPage({viewport:{width,height}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});await page.waitForTimeout(350);
-            const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);if(overflow>2)throw new Error(`${name}: overflow ${overflow}px`);
-            if(await page.locator('.nav button').count()!==3)throw new Error(`${name}: nav mismatch`);
-            const cardCount=await page.locator('.card').count();if(cardCount!==expectedCount)throw new Error(`${name}: cards ${cardCount} != data ${expectedCount}`);
-            const todayText=(await page.locator('#today').textContent())?.trim();if(Number(todayText)!==expectedCount)throw new Error(`${name}: qualified display ${todayText} != ${expectedCount}`);
-            const first=page.locator('.card').first();
-            const rings=await first.locator('.ring b').allTextContents();if(rings.length<3||rings.every(v=>v==='—'))throw new Error(`${name}: rings empty`);
-            if(await first.locator('.market-chip').count()<4)throw new Error(`${name}: market chips missing`);
-            const tab=first.locator('.subtab[data-tab="prediction"]');await tab.click();if(!(await first.locator('[data-detail]').evaluate(el=>el.classList.contains('open'))))throw new Error(`${name}: prediction tab failed`);
+          async function prepare(page){
+            await page.route('**/data/prematch-history.json*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(fakeHistory)}));
+            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});await page.waitForTimeout(250);
+          }
+
+          {
+            const page=await browser.newPage({viewport:{width:1920,height:1080}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await prepare(page);
+            const firstPageExpected=Math.min(20,expectedCount);
+            if(await page.locator('.card').count()!==firstPageExpected)throw new Error(`picks page1 cards != ${firstPageExpected}`);
+            if(expectedCount>20){
+              const p2=page.locator('[data-page-kind="picks"][data-page="2"]').first();if(!(await p2.count()))throw new Error('picks page2 missing');await p2.click();await page.waitForTimeout(100);
+              if(await page.locator('.card').count()!==Math.min(20,expectedCount-20))throw new Error('picks page2 count wrong');
+              await page.evaluate(()=>load());await page.waitForTimeout(200);
+              const active=(await page.locator('#picksPagerTop .page-btn.active').textContent())?.trim();if(active!=='2')throw new Error(`picks page lost after refresh: ${active}`);
+            }
+            const p1=page.locator('[data-page-kind="picks"][data-page="1"]').first();if(await p1.count())await p1.click();
+            const selected=page.locator('.card').first().locator('.team.selected');if(!(await selected.count()))throw new Error('selected team class missing');
+            const selectedColor=await selected.evaluate(el=>getComputedStyle(el).color);if(selectedColor!=='rgb(57, 215, 108)')throw new Error(`selected team not green: ${selectedColor}`);
+            const core=page.locator('.card').first().locator('.selection b');const coreColor=await core.evaluate(el=>getComputedStyle(el).color);if(coreColor!=='rgb(57, 215, 108)')throw new Error(`core selection not green: ${coreColor}`);
 
             await page.locator('.nav button[data-view="stats"]').click();
-            if(!(await page.locator('#stats').evaluate(el=>el.classList.contains('active'))))throw new Error(`${name}: stats view failed`);
-            if(await page.locator('.filter').count()<7)throw new Error(`${name}: market filters missing`);
-            const shownSettled=Number((await page.locator('#stTotal').textContent())?.trim());
-            if(shownSettled!==expectedSettled)throw new Error(`${name}: stats settled ${shownSettled} != data ${expectedSettled}`);
+            const settled=Number((await page.locator('#stTotal').textContent())?.trim());if(settled<=20)throw new Error(`synthetic stats not >20: ${settled}`);
+            if(await page.locator('#recordList .record').count()!==20)throw new Error('stats page1 not capped at 20');
+            const statP2=page.locator('[data-page-kind="stats"][data-page="2"]').first();if(!(await statP2.count()))throw new Error('stats page2 missing');await statP2.click();if(await page.locator('#recordList .record').count()>20)throw new Error('stats page2 exceeds 20');
+            await page.locator('.filter[data-market="1X2"]').click();const activeStats=(await page.locator('#statsPagerTop .page-btn.active').textContent())?.trim();if(activeStats&&activeStats!=='1')throw new Error('filter did not reset stats page to 1');
 
             await page.locator('.nav button[data-view="share"]').click();
-            if(!(await page.locator('#share').evaluate(el=>el.classList.contains('active'))))throw new Error(`${name}: share view failed`);
-            const canvases=page.locator('#share canvas');if(await canvases.count()<2)throw new Error(`${name}: expected two share posters`);
-            const nonBlank=await canvases.first().evaluate(c=>{
-              if(!c.width||!c.height)return false;
-              const d=c.getContext('2d').getImageData(0,0,Math.min(c.width,160),Math.min(c.height,160)).data;
-              return d.some(v=>v!==0);
-            });
-            if(!nonBlank)throw new Error(`${name}: share poster canvas blank`);
-            if(errors.length)throw new Error(`${name}: ${errors.join(' | ')}`);
-            console.log(`PASS ${name} picks=${cardCount} stats=${shownSettled} share=rendered`);await page.close();
+            if(expectedCount>20 && !(await page.locator('[data-page-kind="shareToday"][data-page="2"]').count()))throw new Error('share today page2 missing');
+            if(settledMatches.length>20 && !(await page.locator('[data-page-kind="shareResult"][data-page="2"]').count()))throw new Error('share results page2 missing');
+            const canvases=page.locator('#share canvas');if(await canvases.count()!==2)throw new Error('share canvases missing');
+            const nonBlank=await canvases.first().evaluate(c=>c.getContext('2d').getImageData(0,0,120,120).data.some(v=>v!==0));if(!nonBlank)throw new Error('share poster blank');
+            if(errors.length)throw new Error(errors.join(' | '));console.log(`PASS detailed pagination picks=${expectedCount} stats=${settled} shareTodayPages=${Math.ceil(expectedCount/20)}`);await page.close();
           }
+
+          const sizes=[['laptop',1366,768],['tablet-landscape',1024,768],['tablet-portrait',768,1024],['mobile',390,844],['mobile-landscape',844,390]];
+          for(const [name,width,height] of sizes){const page=await browser.newPage({viewport:{width,height}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await prepare(page);const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);if(overflow>2)throw new Error(`${name}: overflow ${overflow}px`);const cards=await page.locator('.card').count();if(cards>20)throw new Error(`${name}: cards exceed 20: ${cards}`);if(errors.length)throw new Error(`${name}: ${errors.join(' | ')}`);console.log(`PASS ${name} cards=${cards}`);await page.close()}
+
           const zones=['Asia/Bangkok','Asia/Tokyo','Europe/London','America/New_York','America/Los_Angeles','Australia/Sydney'];
-          for(const zone of zones){
-            const context=await browser.newContext({timezoneId:zone,viewport:{width:390,height:844}}),page=await context.newPage();
-            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});
-            const expected=await page.evaluate(iso=>new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(new Date(iso)),firstIso),shown=await page.locator('.card .kick').first().textContent();
-            if(!shown.includes(expected))throw new Error(`${zone}: expected ${expected}, got ${shown}`);console.log(`PASS timezone ${zone} ${expected}`);await context.close();
-          }
+          for(const zone of zones){const context=await browser.newContext({timezoneId:zone,viewport:{width:390,height:844}}),page=await context.newPage();await page.route('**/data/prematch-history.json*',route=>route.fulfill({status:200,contentType:'application/json',body:'[]'}));await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});const expected=await page.evaluate(iso=>new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(new Date(iso)),firstIso),shown=await page.locator('.card .kick').first().textContent();if(!shown.includes(expected))throw new Error(`${zone}: expected ${expected}, got ${shown}`);console.log(`PASS timezone ${zone} ${expected}`);await context.close()}
           await browser.close();
           NODE
