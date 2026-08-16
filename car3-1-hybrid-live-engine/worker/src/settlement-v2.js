@@ -1,4 +1,5 @@
 import upgradedWorker, { Car31State as UpgradedCar31State } from './upgrade.js';
+import { notifyCar31History } from './line-alerts.js';
 
 const HEADERS={
   'content-type':'application/json; charset=utf-8',
@@ -266,10 +267,17 @@ function summaryOf(records){
 
 export class Car31State extends UpgradedCar31State{
   async scan(trigger='cron'){
+    let lineActivatedAt=await this.state.storage.get('lineAlertActivatedAt').catch(()=>null);
+    if(!lineActivatedAt){
+      lineActivatedAt=new Date().toISOString();
+      await this.state.storage.put('lineAlertActivatedAt',lineActivatedAt).catch(()=>null);
+    }
+
     const response=await super.scan(trigger);
+    let normalized=[];
     try{
       const history=await this.state.storage.get('history')||[];
-      const normalized=history.map(normalizeRecord);
+      normalized=history.map(normalizeRecord);
       await this.state.storage.put('history',normalized);
       await this.state.storage.put('settlementContract',{
         version:'BET365_V4',
@@ -288,6 +296,16 @@ export class Car31State extends UpgradedCar31State{
       });
     }catch(error){
       await this.state.storage.put('settlementContract',{version:'BET365_V4',status:'ERROR',error:String(error?.message||error),updatedAt:new Date().toISOString()});
+    }
+
+    try{
+      const lineAlertStatus=await notifyCar31History(this.env,normalized,{activatedAt:lineActivatedAt});
+      await this.state.storage.put('lineAlertStatus',{...lineAlertStatus,activatedAt:lineActivatedAt});
+    }catch(error){
+      await this.state.storage.put('lineAlertStatus',{
+        source:'CAR31',configured:Boolean(this.env?.DB&&this.env?.LINE_CHANNEL_ACCESS_TOKEN),status:'ERROR',
+        error:String(error?.message||error),activatedAt:lineActivatedAt,lastRunAt:new Date().toISOString()
+      }).catch(()=>null);
     }
     return response;
   }
@@ -314,7 +332,10 @@ export class Car31State extends UpgradedCar31State{
     if(request.method==='GET'&&url.pathname==='/health'){
       const response=await super.fetch(request),payload=await response.json().catch(()=>({ok:false}));
       const contract=await this.state.storage.get('settlementContract')||{version:'BET365_V4'};
-      return json({...payload,settlementContract:contract.version||'BET365_V4',settlement:'bet365_market_aware_live'});
+      const lineAlertStatus=await this.state.storage.get('lineAlertStatus')||{
+        source:'CAR31',configured:Boolean(this.env?.DB&&this.env?.LINE_CHANNEL_ACCESS_TOKEN),status:'WAITING_FIRST_CYCLE'
+      };
+      return json({...payload,settlementContract:contract.version||'BET365_V4',settlement:'bet365_market_aware_live',lineAlerts:'CAR31',lineAlertStatus});
     }
     return super.fetch(request);
   }

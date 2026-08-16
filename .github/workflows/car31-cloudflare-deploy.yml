@@ -14,6 +14,7 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN || secrets.LINE_ACCESS_TOKEN }}
 
 jobs:
   deploy-and-start:
@@ -33,17 +34,19 @@ jobs:
           node --check worker/src/index.js
           node --check worker/src/upgrade.js
           node --check worker/src/settlement-v2.js
+          node --check worker/src/line-alerts.js
           node --check web/app.js
           node --check web/settings.js
           node --check web/history.js
           node --check web/signal-polish.js
 
-      - name: Validate Cloudflare credentials
+      - name: Validate Cloudflare and LINE credentials
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$LINE_CHANNEL_ACCESS_TOKEN" || { echo "::error::Missing LINE_CHANNEL_ACCESS_TOKEN/LINE_ACCESS_TOKEN"; exit 1; }
 
-      - name: Deploy CAR 3.1 worker and every-minute Cron
+      - name: Deploy CAR 3.1 worker, LINE secret, and every-minute Cron
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -52,6 +55,10 @@ jobs:
           workingDirectory: car3-1-hybrid-live-engine/worker
           wranglerVersion: "4"
           command: deploy
+          secrets: |
+            LINE_CHANNEL_ACCESS_TOKEN
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ env.LINE_CHANNEL_ACCESS_TOKEN }}
 
       - name: Inspect Goaloo odds and detail feed construction
         shell: bash
@@ -90,7 +97,7 @@ jobs:
             except Exception as exc:print('FETCH_ERROR',repr(exc))
           PY
 
-      - name: Wait for scheduled wheel and verify health
+      - name: Wait for scheduled wheel and verify CAR 3.1 LINE ownership
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
@@ -100,12 +107,20 @@ jobs:
           for i in $(seq 1 8); do
             BODY=$(curl -fsS "$DEPLOYMENT_URL/health")
             echo "$BODY"
-            if ! printf '%s' "$BODY" | grep -q '"lastCycle": null' && ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
+            printf '%s' "$BODY" > /tmp/car31-health.json
+            if node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const p=JSON.parse(fs.readFileSync('/tmp/car31-health.json','utf8'));
+          const cycleReady=Boolean(p.lastCycle);
+          const lineReady=p.lineAlerts==='CAR31' && p.lineAlertStatus?.tokenConfigured===true && p.lineAlertStatus?.dbConfigured===true;
+          process.exit(cycleReady&&lineReady?0:1);
+          NODE
+            then
               exit 0
             fi
             sleep 15
           done
-          echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
+          echo "::error::CAR 3.1 deployed, but LINE ownership/DB/token was not verified within 120 seconds"
           exit 1
 
       - name: Show live collector state

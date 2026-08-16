@@ -8,7 +8,6 @@ import {
   settlePendingTrades,
   syncSignalsToPaperTrades
 } from './paper-db-side.js';
-import { notifyPendingLineEvents } from './line-side.js';
 import { getSharedApiGuardStatus } from './shared-api-football.js';
 import { getActiveConditionConfig } from './condition-config.js';
 import { recordEngineSuccess } from './engine-control.js';
@@ -163,11 +162,7 @@ async function flushSignalSideEffects(env) {
   } catch (error) {
     console.warn(JSON.stringify({ event: 'signal_sync_degraded', error: error?.message || String(error) }));
   }
-  try {
-    await notifyPendingLineEvents(env);
-  } catch (error) {
-    console.warn(JSON.stringify({ event: 'line_notify_degraded', error: error?.message || String(error) }));
-  }
+  // LINE signal/result delivery moved to CAR 3.1. Engine 3 keeps only its paper/state side effects.
 }
 
 async function settleSignalSideEffects(env) {
@@ -181,11 +176,7 @@ async function settleSignalSideEffects(env) {
   } catch (error) {
     console.warn(JSON.stringify({ event: 'paper_settlement_degraded', error: error?.message || String(error) }));
   }
-  try {
-    await notifyPendingLineEvents(env);
-  } catch (error) {
-    console.warn(JSON.stringify({ event: 'line_delivery_degraded', error: error?.message || String(error) }));
-  }
+  // LINE result delivery moved to CAR 3.1. Settlement itself remains unchanged here.
   return pendingSettlementStatus(env);
 }
 
