@@ -19,7 +19,7 @@ concurrency:
 jobs:
   cycle:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,7 +31,9 @@ jobs:
       - name: Prepare analysis runtime
         run: |
           git fetch origin agent/car11-goaloo-launch-20260816
-          mkdir -p .prematch-runtime data
+          mkdir -p .prematch-runtime data car1-1/data
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/market_helpers.mjs > .prematch-runtime/market_helpers.mjs
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/upgrade_locked_markets.mjs > .prematch-runtime/upgrade.mjs
           git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/settle_guard.mjs > .prematch-runtime/settle.mjs
           git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/run_cycle.mjs > .prematch-runtime/select.mjs
           git show origin/agent/car11-goaloo-launch-20260816:car1-1/data/public-selections.json > .prematch-runtime/latest-selections.json
@@ -54,7 +56,7 @@ jobs:
           const current=JSON.parse(fs.readFileSync(currentPath,'utf8'));
           const source=JSON.parse(fs.readFileSync(sourcePath,'utf8'));
           const sourceById=new Map((source.matches||[]).map(m=>[String(m.fixtureId),m]));
-          const lockedFields=['fixtureId','league','home','away','kickoffUtc','pick','pickSide','odds','confidence','predictedScore','status','finalScore'];
+          const lockedFields=['fixtureId','league','home','away','kickoffUtc','pick','pickSide','odds','confidence','predictedScore','status','finalScore','matchResult','settledAtUtc'];
           let hydrated=0;
           for(const match of current.matches||[]){
             const src=sourceById.get(String(match.fixtureId));
@@ -77,8 +79,13 @@ jobs:
             current.contextSchema=1;
             fs.writeFileSync(currentPath,JSON.stringify(current,null,2)+'\n');
           }
-          console.log(`Hydrated ${hydrated} locked selections without changing pick/odds/confidence/status.`);
+          console.log(`Hydrated ${hydrated} locked selections without changing locked record fields.`);
           NODE
+
+      - name: Add multi-market predictions to locked set
+        env:
+          CURRENT_PATH: data/prematch-current.json
+        run: node .prematch-runtime/upgrade.mjs
 
       - name: Settle current set and guard rollover
         env:
@@ -91,8 +98,8 @@ jobs:
         run: |
           ACTION="$(tr -d '\r\n' < .prematch-runtime/action.txt)"
           if [ "$ACTION" = "SELECT" ]; then
-            MAX_ANALYSIS=500 node .prematch-runtime/select.mjs
-            node -e "const fs=require('fs');const p='car1-1/data/public-selections.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));for(const m of d.matches||[]){if(m.context&&m.context.market)delete m.context.market.company;}d.contextSchema=1;fs.writeFileSync(p,JSON.stringify(d,null,2)+'\\n');"
+            MAX_ANALYSIS=0 node .prematch-runtime/select.mjs
+            node -e "const fs=require('fs');const p='car1-1/data/public-selections.json';const d=JSON.parse(fs.readFileSync(p,'utf8'));for(const m of d.matches||[]){if(m.context&&m.context.market)delete m.context.market.company;}d.contextSchema=1;d.marketSchema=2;fs.writeFileSync(p,JSON.stringify(d,null,2)+'\\n');"
             cp car1-1/data/public-selections.json data/prematch-current.json
           else
             echo 'Current set remains locked while results are pending.'
