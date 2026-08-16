@@ -3,26 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>NOMADTIPS3 Statistics 3.3</title>
+  <title>NOMADTIPS3 · Statistics</title>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./rgb-dark-v2.css?v=20260816-source-xy">
   <link rel="stylesheet" href="./statistics.css?v=20260816-borderless-v5">
   <link rel="stylesheet" href="./rgb-lines-v1.css?v=20260816-field-lines-v1">
+  <link rel="stylesheet" href="./responsive-brand-v1.css?v=20260816-sentence-responsive-v1">
 </head>
 <body>
 <header class="topbar">
   <div class="brand">nomad<span>tips3</span></div>
   <nav class="nav">
-    <a href="./index.html">LIVE DETECTION</a>
-    <a class="active" href="./statistics.html">STATISTICS</a>
-    <a href="./settings.html">SETTINGS</a>
+    <a href="./index.html">Live detection</a>
+    <a class="active" href="./statistics.html">Statistics</a>
+    <a href="./settings.html">Settings</a>
   </nav>
 </header>
 
 <div class="shell stats-shell">
   <section class="stats-hero">
-    <h1>STATISTICS</h1>
-    <p>Confirmed signal performance from the same immutable engine history.</p>
+    <h1>Statistics</h1>
+    <p>Transparent performance records</p>
   </section>
 
   <div id="summary" class="stats-summary"></div>
@@ -30,8 +31,8 @@
   <section class="performance-panel">
     <div class="performance-head">
       <div>
-        <small>PERFORMANCE HISTORY</small>
-        <b>WIN / LOSS / DRAW</b>
+        <small>Performance history</small>
+        <b>Win / loss / draw</b>
       </div>
       <div class="performance-tools">
         <div class="performance-legend" aria-label="Chart legend">
@@ -48,7 +49,7 @@
         </div>
       </div>
     </div>
-    <div id="chartMeta" class="chart-meta">LOADING PERFORMANCE…</div>
+    <div id="chartMeta" class="chart-meta">Loading…</div>
     <div id="curve" class="curve-wrap"></div>
   </section>
 
@@ -57,8 +58,8 @@
   <section class="history-section">
     <div class="history-head">
       <div>
-        <small>SIGNAL HISTORY</small>
-        <b>25 RECORDS PER PAGE</b>
+        <small>Signal history</small>
+        <b>Results archive</b>
       </div>
       <span id="historyMeta" class="count">—</span>
     </div>
@@ -66,28 +67,28 @@
       <table class="stats-table">
         <thead>
           <tr>
-            <th>STATUS</th>
-            <th>SIGNAL</th>
-            <th>MATCH</th>
-            <th>ENTRY</th>
-            <th>MOMENTUM</th>
-            <th>FINAL</th>
-            <th>DETECTED</th>
-            <th>SETTLED</th>
+            <th>Status</th>
+            <th>Signal</th>
+            <th>Match</th>
+            <th>Entry</th>
+            <th>Momentum</th>
+            <th>Final</th>
+            <th>Detected</th>
+            <th>Settled</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
     </div>
     <div class="pager stats-pager">
-      <button id="prev" class="secondary-btn" type="button">PREV</button>
+      <button id="prev" class="secondary-btn" type="button">Prev</button>
       <div id="pages" class="page-buttons" aria-label="History pages"></div>
-      <button id="next" class="secondary-btn" type="button">NEXT</button>
+      <button id="next" class="secondary-btn" type="button">Next</button>
     </div>
-    <div class="foot-note">WIN rate and average odds use settled records only. PENDING remains visible until full-time settlement.</div>
+    <div class="foot-note">Win rate and average odds use settled records only. PENDING remains visible until full-time settlement.</div>
   </section>
 </div>
 
-<script type="module" src="./statistics.js?v=20260816-performance-v4"></script>
+<script type="module" src="./statistics.js?v=20260816-sentence-ui-v5"></script>
 </body>
 </html>
