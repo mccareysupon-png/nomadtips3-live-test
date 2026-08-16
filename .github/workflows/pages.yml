@@ -31,20 +31,26 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate CAR 3.1 Statistics routes and bundle
+      - name: Validate CAR 3.1 Statistics and Signal UI
         run: |
           WEB="car3-1-hybrid-live-engine/web"
           MON="car3-1-hybrid-live-engine/monitor"
 
+          test -f "$WEB/index.html"
           test -f "$WEB/statistics.html"
           test -f "$WEB/history.html"
           test -f "$WEB/statistics.js"
           test -f "$WEB/topbar-lock.js"
+          test -f "$WEB/signal-polish.js"
+          test -f "$MON/index.html"
           test -f "$MON/history.html"
           test -f "$MON/statistics.html"
+          test -f "$MON/match-time-card.js"
 
           node --check "$WEB/statistics.js"
           node --check "$WEB/topbar-lock.js"
+          node --check "$WEB/signal-polish.js"
+          node --check "$MON/match-time-card.js"
 
           for PAGE in "$WEB/statistics.html" "$WEB/history.html"; do
             grep -q 'statistics.js' "$PAGE"
@@ -56,10 +62,25 @@ jobs:
             fi
           done
 
-          grep -q './history.html' "$MON/index.html"
-          grep -q './history.html' "$MON/statistics.html"
-          grep -q "monitor/'))return './history.html'" "$WEB/topbar-lock.js"
+          grep -q 'href="./statistics.html"' "$WEB/index.html"
+          grep -q 'href="../web/statistics.html"' "$MON/index.html"
+          grep -q "monitor/'))return '../web/statistics.html'" "$WEB/topbar-lock.js"
           grep -q "return './statistics.html'" "$WEB/topbar-lock.js"
+
+          grep -q 'id="signalTicket"' "$WEB/index.html"
+          grep -q 'id="signalTicket"' "$MON/index.html"
+          grep -q 'ODDS @ SIGNAL' "$WEB/index.html"
+          grep -q 'ENTRY SCORE' "$WEB/index.html"
+          grep -q 'DETECTED MINUTE' "$WEB/index.html"
+
+          if grep -q 'LIVE TIME' "$WEB/index.html"; then
+            echo "::error::web/index.html still exposes obsolete LIVE TIME"
+            exit 1
+          fi
+          if grep -q 'LIVE TIME' "$MON/index.html"; then
+            echo "::error::monitor/index.html still exposes obsolete LIVE TIME"
+            exit 1
+          fi
 
       - name: Apply exact 40 percent visual reduction to heading
         run: |
