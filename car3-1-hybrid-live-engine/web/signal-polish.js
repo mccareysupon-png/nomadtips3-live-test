@@ -1,7 +1,7 @@
 let runtime=null,liveRows=[],historyRecords=[];
 const clockState=new Map();
 let lastAutoFocusedSignalKey=null;
-const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function confirmedRecord(row){
   return historyRecords.find(r=>String(r.id)===String(row?.sourceMatchId));
