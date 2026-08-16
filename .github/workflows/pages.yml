@@ -31,22 +31,35 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Validate CAR 3.1 canonical Statistics bundle
+      - name: Validate CAR 3.1 Statistics routes and bundle
         run: |
-          STATS="car3-1-hybrid-live-engine/web"
-          test -f "$STATS/statistics.html"
-          test -f "$STATS/statistics.js"
-          test -f "$STATS/history.html"
-          node --check "$STATS/statistics.js"
-          node --check "$STATS/topbar-lock.js"
-          grep -q 'statistics.js' "$STATS/statistics.html"
-          grep -q 'id="historySummary"' "$STATS/statistics.html"
-          grep -q 'id="historyBody"' "$STATS/statistics.html"
-          grep -q 'statistics.html' "$STATS/history.html"
-          if grep -q 'url=./history.html' "$STATS/statistics.html"; then
-            echo "::error::statistics.html must be the canonical page, not a redirect to history.html"
-            exit 1
-          fi
+          WEB="car3-1-hybrid-live-engine/web"
+          MON="car3-1-hybrid-live-engine/monitor"
+
+          test -f "$WEB/statistics.html"
+          test -f "$WEB/history.html"
+          test -f "$WEB/statistics.js"
+          test -f "$WEB/topbar-lock.js"
+          test -f "$MON/history.html"
+          test -f "$MON/statistics.html"
+
+          node --check "$WEB/statistics.js"
+          node --check "$WEB/topbar-lock.js"
+
+          for PAGE in "$WEB/statistics.html" "$WEB/history.html"; do
+            grep -q 'statistics.js' "$PAGE"
+            grep -q 'id="historySummary"' "$PAGE"
+            grep -q 'id="historyBody"' "$PAGE"
+            if grep -q 'http-equiv="refresh"' "$PAGE"; then
+              echo "::error::$PAGE must be a real Statistics page, not a redirect"
+              exit 1
+            fi
+          done
+
+          grep -q './history.html' "$MON/index.html"
+          grep -q './history.html' "$MON/statistics.html"
+          grep -q "monitor/'))return './history.html'" "$WEB/topbar-lock.js"
+          grep -q "return './statistics.html'" "$WEB/topbar-lock.js"
 
       - name: Apply exact 40 percent visual reduction to heading
         run: |
