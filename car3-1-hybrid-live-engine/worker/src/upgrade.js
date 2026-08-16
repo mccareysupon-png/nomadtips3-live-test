@@ -3,7 +3,10 @@ import baseWorker, { Car31State as BaseCar31State } from './index.js';
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'};
 const SOURCE_ODDS='https://live10.goaloo28.com/gf/data/odds/en/runOddsData_8.txt';
 const SOURCE_DETAIL='https://live10.goaloo28.com/gf/data/detail.js';
+const SOURCE_DETAIL_IN='https://live10.goaloo28.com/gf/data/detailIn.js';
 const ENRICH_SECONDS=15;
+const CORE_STATS_KEYS=['possession','attacks','dangerous_attacks','shots','shots_on_target','corners'];
+const DETAIL_IN_CORE_MAP={0:'corners',4:'shots',5:'shots_on_target',6:'attacks',7:'dangerous_attacks',11:'possession'};
 
 const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').trim());return Number.isFinite(n)?n:null;};
 const json=(data,status=200,cache='no-store')=>new Response(JSON.stringify(data,null,2),{status,headers:{...JSON_HEADERS,'cache-control':cache}});
@@ -50,6 +53,44 @@ export function parseDetailEvents(source,allowedIds=null){
   return out;
 }
 
+// Goaloo public eventdetail.js maps tT_f row[0] through T_Mul_TechKind.
+// Confirmed core IDs: 0 corners, 4 shots, 5 shots on goal, 6 attacks,
+// 7 dangerous attacks, 11 possession. Parse as data only; never eval source JS.
+export function parseDetailInStats(source,allowedIds=null){
+  const out=new Map(),assignment=/tT_f\[(\d+)\]\s*=\s*(\[[\s\S]*?\])\s*;/g;
+  for(const m of String(source||'').matchAll(assignment)){
+    const id=String(m[1]);
+    if(allowedIds&&!allowedIds.has(id))continue;
+    const stats={},rowRe=/\[\s*(\d+)\s*,\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]/g;
+    for(const row of m[2].matchAll(rowRe)){
+      const key=DETAIL_IN_CORE_MAP[Number(row[1])];
+      if(!key)continue;
+      const home=number(row[2]),away=number(row[3]);
+      if(home!==null&&away!==null)stats[key]={home,away};
+    }
+    if(Object.keys(stats).length)out.set(id,stats);
+  }
+  return out;
+}
+
+function coreStatsCompleteLocal(stats){return CORE_STATS_KEYS.every(k=>number(stats?.[k]?.home)!==null&&number(stats?.[k]?.away)!==null);}
+export function mergeCoreStats(match,detailStats){
+  if(!match||typeof match!=='object')return{match,filled:[],complete:false};
+  const stats={...(match.stats||{})},filled=[];
+  for(const key of CORE_STATS_KEYS){
+    const fallback=detailStats?.[key];
+    if(!fallback)continue;
+    const current={...(stats[key]||{})};
+    if(number(current.home)===null&&number(fallback.home)!==null){current.home=number(fallback.home);filled.push(`${key}.home`);}
+    if(number(current.away)===null&&number(fallback.away)!==null){current.away=number(fallback.away);filled.push(`${key}.away`);}
+    stats[key]=current;
+  }
+  match.stats=stats;
+  match.coreStatsComplete=coreStatsCompleteLocal(stats);
+  if(match.coreStatsComplete&&Array.isArray(match.warnings))match.warnings=match.warnings.filter(w=>w!=='CORE_STATS_INCOMPLETE');
+  return{match,filled,complete:match.coreStatsComplete};
+}
+
 const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0});
 const delta=(cur,prev,key)=>{const c=pair(cur.stats,key),p=pair(prev?.stats,key);return{home:c.home-p.home,away:c.away-p.away};};
 const sideOf=d=>d.home>d.away?'HOME':d.away>d.home?'AWAY':null;
@@ -72,7 +113,7 @@ async function sourceText(url,seconds){
 function pressure(stats,w){let h=0,a=0;for(const [k,wt] of Object.entries(w||{})){h+=(number(stats?.[k]?.home)||0)*wt;a+=(number(stats?.[k]?.away)||0)*wt;}const t=Math.max(.0001,h+a);return{home:Math.round(h/t*100),away:Math.round(a/t*100)};}
 function selectedSide(match,config,p){if(config.side==='HOME')return'HOME';if(config.side==='AWAY')return'AWAY';return p.away>p.home?'AWAY':'HOME';}
 function engineSidePair(obj,side){return side==='AWAY'?{selected:number(obj?.away)||0,opponent:number(obj?.home)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0};}
-function baselineFor(matchId,side,snapshots,config,current){for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin)continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};}
+function baselineFor(matchId,side,snapshots,config,current){for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!coreStatsCompleteLocal(f.stats))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};}
 function evaluateWithLiveOdds(match,config,snapshots){
   const p=pressure(match.stats,config.momentumWeights),side=selectedSide(match,config,p),selMomentum=side==='AWAY'?p.away:p.home;
   const base=baselineFor(match.sourceMatchId,side,snapshots,config,match.stats),cur={dangerous:engineSidePair(match.stats.dangerous_attacks,side).selected,shots:engineSidePair(match.stats.shots,side).selected,sot:engineSidePair(match.stats.shots_on_target,side).selected,corners:engineSidePair(match.stats.corners,side).selected};
@@ -99,16 +140,22 @@ export class Car31State extends BaseCar31State{
     const basePayload=await baseResponse.clone().json().catch(()=>({}));
     const at=basePayload.generatedAt||new Date().toISOString();
     try{
-      const [oddsSource,configResponse]=await Promise.all([
+      const [oddsSource,detailInResult,configResponse]=await Promise.all([
         sourceText(SOURCE_ODDS,ENRICH_SECONDS),
+        sourceText(SOURCE_DETAIL_IN,ENRICH_SECONDS).then(value=>({ok:true,value})).catch(error=>({ok:false,error:String(error?.message||error)})),
         super.fetch(new Request('https://car31.internal/config'))
       ]);
       const configPayload=await configResponse.json(),config=configPayload.config;
-      const oddsMap=parseRunOdds(oddsSource),latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],streaks=await this.state.storage.get('streaks')||{},history=await this.state.storage.get('history')||[];
+      const latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],streaks=await this.state.storage.get('streaks')||{},history=await this.state.storage.get('history')||[];
+      const ids=new Set((latest.matches||[]).map(m=>String(m.sourceMatchId))),oddsMap=parseRunOdds(oddsSource),detailStatsMap=detailInResult.ok?parseDetailInStats(detailInResult.value,ids):new Map();
       const today=bangkokDate(at),todayCount=history.filter(r=>r.selectionDate===today).length;
-      let newCount=0,oddsMatched=0;
+      let newCount=0,oddsMatched=0,detailMatched=0,detailFilledMatches=0;
       for(const match of latest.matches||[]){
-        const liveOdds=oddsMap.get(String(match.sourceMatchId));
+        const id=String(match.sourceMatchId),detailStats=detailStatsMap.get(id);
+        if(detailStats)detailMatched++;
+        const merged=mergeCoreStats(match,detailStats);
+        if(merged.filled.length)detailFilledMatches++;
+        const liveOdds=oddsMap.get(id);
         if(liveOdds){match.odds=liveOdds;oddsMatched++;}
         const engine=evaluateWithLiveOdds(match,config,snapshots),key=`${match.sourceMatchId}:${engine.side}:${config.market}`;
         if(engine.decision==='SHADOW SIGNAL')streaks[key]=(streaks[key]||0)+1;else streaks[key]=0;
@@ -119,15 +166,26 @@ export class Car31State extends BaseCar31State{
           newCount++;
         }
         match.engine={...engine,streak:streaks[key]||0,dailyBlocked};
-        match.enrichment={...(match.enrichment||{}),odds:liveOdds?'LIVE':'BASE'};
+        match.enrichment={...(match.enrichment||{}),odds:liveOdds?'LIVE':'BASE',coreStats:merged.filled.length?'DETAIL_IN':match.coreStatsComplete?'BASE':'PARTIAL'};
+      }
+      // super.scan() appended the current raw snapshot before this enrichment pass.
+      // Overlay only that same-cycle snapshot so the first structured-data cycle is
+      // its own baseline instead of comparing against old partial/zero snapshots.
+      const currentSnapshot=snapshots.at(-1);
+      if(currentSnapshot&&String(currentSnapshot.at||'')===String(at)){
+        for(const snapMatch of currentSnapshot.matches||[])mergeCoreStats(snapMatch,detailStatsMap.get(String(snapMatch.id)));
+        await this.state.storage.put('snapshots',snapshots);
       }
       while(history.length>5000)history.shift();
-      latest.oddsPipe={status:'DIRECT',feed:'runOddsData_8',oddsMatched,matchCount:(latest.matches||[]).length,evaluatedAfterOdds:true,at};
+      const matchCount=(latest.matches||[]).length,coreStatsReady=(latest.matches||[]).filter(m=>m.coreStatsComplete).length;
+      latest.oddsPipe={status:'DIRECT',feed:'runOddsData_8',oddsMatched,matchCount,evaluatedAfterOdds:true,at};
+      latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailFilledMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
       await this.state.storage.put('latest',latest);
       await this.state.storage.put('history',history);
       await this.state.storage.put('streaks',streaks);
       await this.state.storage.put('oddsPipe',latest.oddsPipe);
-      return json({ok:true,...latest,cycleMs:basePayload.cycleMs??null,historyTotal:history.length,newSignals:newCount,oddsPipe:latest.oddsPipe});
+      await this.state.storage.put('coreStatsPipe',latest.coreStatsPipe);
+      return json({ok:true,...latest,cycleMs:basePayload.cycleMs??null,historyTotal:history.length,newSignals:newCount,oddsPipe:latest.oddsPipe,coreStatsPipe:latest.coreStatsPipe});
     }catch(error){
       const pipe={status:'ERROR',error:String(error?.message||error),evaluatedAfterOdds:false,at};
       await this.state.storage.put('oddsPipe',pipe);
@@ -135,8 +193,8 @@ export class Car31State extends BaseCar31State{
     }
   }
   async health(){
-    const base=await super.health(),oddsPipe=await this.state.storage.get('oddsPipe')||null;
-    return{...base,oddsPipe};
+    const base=await super.health(),oddsPipe=await this.state.storage.get('oddsPipe')||null,coreStatsPipe=await this.state.storage.get('coreStatsPipe')||null;
+    return{...base,oddsPipe,coreStatsPipe};
   }
 }
 
@@ -174,8 +232,8 @@ async function enrichedLive(request,env){
 
 async function sourceStatus(request,env){
   const r=await enrichedLive(request,env),p=await r.clone().json();
-  const samples=(p.matches||[]).filter(m=>m.enrichment?.odds==='LIVE').slice(0,5).map(m=>({id:m.sourceMatchId,home:m.home,away:m.away,oneXtwo:m.odds?.oneXtwo,asianHandicap:m.odds?.asianHandicap,overUnder:m.odds?.overUnder,engineOdds:m.engine?.odds,engineMarketGate:m.engine?.gates?.find(g=>g[0]==='MARKET / ODDS')||null,eventCount:m.events?.length||0,activity:m.activity}));
-  return json({ok:true,brand:'NOMADTIPS3',generatedAt:p.enrichedAt,enrichment:p.enrichment,oddsPipe:p.oddsPipe||null,samples});
+  const samples=(p.matches||[]).filter(m=>m.enrichment?.odds==='LIVE').slice(0,5).map(m=>({id:m.sourceMatchId,home:m.home,away:m.away,oneXtwo:m.odds?.oneXtwo,asianHandicap:m.odds?.asianHandicap,overUnder:m.odds?.overUnder,engineOdds:m.engine?.odds,engineMarketGate:m.engine?.gates?.find(g=>g[0]==='MARKET / ODDS')||null,coreStatsComplete:m.coreStatsComplete,coreStatsSource:m.enrichment?.coreStats||null,eventCount:m.events?.length||0,activity:m.activity}));
+  return json({ok:true,brand:'NOMADTIPS3',generatedAt:p.enrichedAt,enrichment:p.enrichment,oddsPipe:p.oddsPipe||null,coreStatsPipe:p.coreStatsPipe||null,samples});
 }
 
 export default{
