@@ -1,0 +1,32 @@
+name: CAR 3.1 Goaloo Animation Probe
+
+on:
+  push:
+    branches:
+      - research/car31-goaloo-animation-source-20260816
+    paths:
+      - car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs
+      - .github/workflows/car31-goaloo-animation-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Probe public Goaloo animation sources for match 2930884
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs 2930884 | tee /tmp/goaloo-animation-report.json
+      - name: Upload redacted research report
+        uses: actions/upload-artifact@v4
+        with:
+          name: goaloo-animation-probe-2930884
+          path: /tmp/goaloo-animation-report.json
+          retention-days: 1
