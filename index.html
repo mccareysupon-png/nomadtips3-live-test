@@ -4,14 +4,187 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>NOMADTIPS3 — Match Intelligence</title>
 <meta name="description" content="NOMADTIPS3 daily match analysis, selections and transparent public performance records.">
-<meta name="theme-color" content="#090b0a">
+<meta name="theme-color" content="#000000">
 <style>
-:root{--bg:#080a09;--p1:#101411;--p2:#181d19;--text:#f5f7f5;--muted:#929c95;--yellow:#ffd43b;--green:#39d76c;--red:#ff626d;--shadow:0 18px 55px rgba(0,0,0,.33)}*{box-sizing:border-box}html{background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{margin:0;min-height:100vh;padding:72px 0 92px;background:radial-gradient(circle at 80% -8%,rgba(255,212,59,.10),transparent 27%),radial-gradient(circle at 8% 3%,rgba(57,215,108,.07),transparent 24%),linear-gradient(180deg,#0d100e,#070908 72%)}a{color:inherit}.top{position:fixed;z-index:60;inset:0 0 auto;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 max(16px,calc((100vw - 1180px)/2));background:linear-gradient(180deg,rgba(19,23,20,.98),rgba(8,11,9,.95));box-shadow:0 10px 35px rgba(0,0,0,.28);backdrop-filter:blur(16px)}.brand{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:950;letter-spacing:-.045em}.logo{width:37px;height:37px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(from 25deg,var(--yellow),#43572d,var(--green),#1b281f,var(--yellow));box-shadow:0 0 24px rgba(255,212,59,.12)}.logo:after{content:"N";width:29px;height:29px;border-radius:50%;display:grid;place-items:center;background:#0a0d0b;font-size:14px}.tips{color:var(--yellow)}.online{display:flex;align-items:center;gap:9px;font-size:10px;font-weight:900;letter-spacing:.07em;color:#cbd2cd}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(57,215,108,.10)}main{width:min(1180px,calc(100% - 28px));margin:auto;padding:26px 0 42px}.view{display:none}.view.active{display:block}.hero{position:relative;overflow:hidden;min-height:220px;border-radius:26px;padding:30px;display:flex;align-items:flex-end;background:linear-gradient(112deg,#171b18,#101411 52%,#282a18);box-shadow:var(--shadow)}.hero:before{content:"";position:absolute;right:-75px;bottom:-220px;width:430px;height:430px;border-radius:50%;background:radial-gradient(circle,rgba(255,212,59,.13),rgba(57,215,108,.04) 48%,transparent 69%)}.hero:after{content:"";position:absolute;right:8%;top:-80px;width:220px;height:220px;border-radius:50%;background:linear-gradient(135deg,rgba(57,215,108,.08),rgba(255,212,59,.03))}.hero-copy{position:relative;z-index:2;max-width:690px}.eyebrow{font-size:10px;font-weight:950;letter-spacing:.18em;color:var(--yellow)}h1{font-size:clamp(38px,6vw,66px);line-height:.95;letter-spacing:-.065em;margin:11px 0 12px}.hero p{margin:0;color:#b8c1ba;font-size:13px;line-height:1.6}.hero-meta{position:absolute;z-index:3;right:25px;top:22px;text-align:right}.hero-meta strong{display:block;font-size:12px}.hero-meta span{display:block;color:var(--muted);font-size:9px;margin-top:4px}.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:13px 0}.stat{min-height:89px;padding:16px 17px;border-radius:19px;background:linear-gradient(145deg,var(--p1),var(--p2));box-shadow:0 9px 25px rgba(0,0,0,.16)}.stat label{display:block;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.stat strong{display:block;margin-top:7px;font-size:27px;letter-spacing:-.04em}.yellow{color:var(--yellow)!important}.green{color:var(--green)!important}.red{color:var(--red)!important}.section{margin-top:29px}.head{display:flex;align-items:flex-end;justify-content:space-between;gap:15px;margin:0 2px 12px}.head h2{margin:0;font-size:22px;letter-spacing:-.035em}.sub{margin-top:3px;color:var(--muted);font-size:11px}.badge{padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,rgba(255,212,59,.14),rgba(57,215,108,.06));color:var(--yellow);font-size:9px;font-weight:950}.picks{display:grid;gap:11px}.pick{position:relative;overflow:hidden;padding:19px 20px;border-radius:21px;background:linear-gradient(135deg,#121713,#1a1f1b 65%,#222217);box-shadow:0 12px 35px rgba(0,0,0,.22)}.pick:after{content:"";position:absolute;right:-60px;top:-70px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(255,212,59,.10),transparent 68%)}.pick-top,.teams,.selection,.metrics{position:relative;z-index:2}.pick-top{display:flex;justify-content:space-between;gap:12px}.league{font-size:10px;color:#aab2ac;font-weight:850}.kick{margin-top:3px;font-size:9px;color:#6f7972}.conf{text-align:right}.conf b{font-size:24px;color:var(--yellow);letter-spacing:-.04em}.conf small{display:block;color:#78827b;font-size:8px;font-weight:900}.teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:15px}.team{font-size:15px;font-weight:850}.team.right{text-align:right}.vs{font-size:9px;color:#68716b;font-weight:900}.selection{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:15px;padding:12px 14px;border-radius:15px;background:linear-gradient(100deg,rgba(255,212,59,.11),rgba(57,215,108,.055))}.selection small{display:block;color:#8e9891;font-size:8px;font-weight:900;letter-spacing:.12em}.selection b{display:block;margin-top:2px;font-size:14px}.price{font-size:22px;font-weight:950;color:var(--yellow)}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}.metric{padding:9px 10px;border-radius:12px;background:rgba(255,255,255,.035)}.metric span{display:block;color:#747e77;font-size:8px;font-weight:900}.metric b{display:block;margin-top:3px;color:#dce2de;font-size:10px}.empty{min-height:190px;padding:28px;border-radius:23px;background:linear-gradient(145deg,var(--p1),#171c18);display:grid;place-items:center;text-align:center;box-shadow:var(--shadow)}.empty i{width:45px;height:45px;margin:auto;border-radius:50%;display:grid;place-items:center;background:rgba(255,212,59,.10);color:var(--yellow);font-style:normal;font-size:20px}.empty h3{margin:12px 0 5px;font-size:16px}.empty p{margin:auto;max-width:560px;color:var(--muted);font-size:12px;line-height:1.55}.trust{margin-top:31px;padding:20px 22px;border-radius:24px;background:linear-gradient(115deg,#141815,#1b1e17 55%,#222215);display:grid;grid-template-columns:auto 1fr auto;gap:17px;align-items:center}.seal{width:90px;height:90px;border-radius:50%;display:grid;place-items:center;text-align:center;background:radial-gradient(circle at 35% 30%,#414541,#202420 58%,#0f1210);box-shadow:inset 0 0 0 5px rgba(255,255,255,.025),0 10px 28px rgba(0,0,0,.25);font-size:8px;font-weight:950;letter-spacing:.08em;color:#d9dedb}.seal b{display:block;font-size:20px;color:var(--yellow)}.trust h3{margin:0 0 5px;font-size:14px}.trust p{margin:0;color:var(--muted);font-size:10px;line-height:1.55}.age{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#2a2e2a,#141714);color:var(--yellow);font-size:15px;font-weight:950}.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.share-card{padding:15px;border-radius:22px;background:linear-gradient(145deg,#111512,#1a1f1b);box-shadow:var(--shadow)}.share-label{margin:2px 2px 11px;color:var(--yellow);font-size:10px;font-weight:950;letter-spacing:.13em}.poster-wrap{overflow:hidden;border-radius:18px;background:#090b0a}.share-card canvas{display:block;width:100%;height:auto}.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.share-actions button{border:0;border-radius:13px;padding:12px 9px;background:linear-gradient(145deg,#242a25,#171b18);color:#dce2de;font:inherit;font-size:10px;font-weight:950;cursor:pointer}.share-actions button:first-child{background:linear-gradient(110deg,#ffd43b,#dbb61d);color:#10120f}.share-note{margin-top:10px;color:#758078;font-size:9px;line-height:1.5}.links{margin:18px 0 0;text-align:center;font-size:10px;color:#7b857e}.links a{margin:0 8px;text-decoration:none}.legal{margin:11px auto 0;max-width:850px;color:#606963;font-size:9px;line-height:1.55;text-align:center}.bottom{position:fixed;z-index:60;inset:auto 0 0;height:76px;background:linear-gradient(0deg,rgba(8,10,9,.99),rgba(17,21,18,.96));box-shadow:0 -12px 35px rgba(0,0,0,.30);backdrop-filter:blur(16px);display:flex;justify-content:center;align-items:center}.nav{width:min(760px,100%);display:grid;grid-template-columns:repeat(3,1fr);padding:0 12px}.nav button{border:0;background:none;color:#7a847d;text-align:center;padding:9px 2px;font:inherit;font-size:10px;font-weight:900;cursor:pointer}.nav b{display:block;margin-bottom:5px;font-size:17px;color:#949e97}.nav .active,.nav .active b{color:var(--yellow)}@media(max-width:760px){body{padding-top:64px;padding-bottom:84px}.top{height:64px;padding:0 14px}.brand{font-size:18px}.logo{width:32px;height:32px}.logo:after{width:25px;height:25px}.online span:last-child{display:none}main{width:calc(100% - 20px);padding-top:17px}.hero{min-height:225px;padding:21px;border-radius:20px}.hero-copy{padding-top:41px}.hero-meta{right:17px;top:16px}.stats{grid-template-columns:repeat(2,1fr)}.stat:last-child{grid-column:span 2}.head{align-items:flex-start;flex-direction:column;gap:6px}.pick{padding:17px}.metrics{grid-template-columns:repeat(2,1fr)}.trust{grid-template-columns:auto 1fr;padding:17px}.seal{width:76px;height:76px}.age{grid-column:1/-1;justify-self:end;margin-top:-58px}.share-grid{grid-template-columns:1fr}.bottom{height:70px}}
+:root{
+  --bg:#000;
+  --nav:#1a1a1a;
+  --card0:#0b0b0b;
+  --card1:#161616;
+  --card2:#262626;
+  --text:#f5f5f5;
+  --muted:#9a9a9a;
+  --yellow:#ffd43b;
+  --green:#39d76c;
+  --red:#ff626d;
+  --shadow:0 14px 38px rgba(0,0,0,.34);
+  --logo-size:20px;
+  --title-size:17px;
+  --heading-size:15px;
+  --body-size:12px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+body{margin:0;min-height:100vh;padding:66px 0 82px;background:#000}
+a{color:inherit}
+.top{
+  position:fixed;z-index:60;inset:0 0 auto;height:66px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 max(16px,calc((100vw - 1180px)/2));
+  background:#1a1a1a;
+  box-shadow:0 8px 24px rgba(0,0,0,.42)
+}
+.brand{
+  display:flex;align-items:center;
+  font-size:var(--logo-size);font-weight:900;letter-spacing:-.035em;
+  line-height:1;text-transform:lowercase
+}
+.brand .nomad{color:#fff}
+.brand .tips{color:var(--yellow)}
+.online{display:flex;align-items:center;gap:8px;font-size:9px;font-weight:850;letter-spacing:.08em;color:#c5c5c5}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(57,215,108,.09)}
+main{width:min(1180px,calc(100% - 28px));margin:auto;padding:20px 0 36px}
+.view{display:none}.view.active{display:block}
+.hero{
+  min-height:150px;border-radius:22px;padding:24px;
+  display:flex;align-items:flex-end;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--card0) 0%,var(--card1) 58%,var(--card2) 100%);
+  box-shadow:var(--shadow)
+}
+.hero-copy{max-width:720px}
+.eyebrow{font-size:9px;font-weight:900;letter-spacing:.16em;color:var(--yellow)}
+h1{
+  font-size:var(--title-size);line-height:1.18;letter-spacing:-.025em;
+  margin:9px 0 7px;font-weight:900
+}
+.hero p{margin:0;max-width:720px;color:#b7b7b7;font-size:11px;line-height:1.55}
+.hero-meta{position:absolute;right:22px;top:19px;text-align:right}
+.hero-meta strong{display:block;font-size:10px}
+.hero-meta span{display:block;color:var(--muted);font-size:8px;margin-top:3px}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin:12px 0}
+.stat{
+  min-height:78px;padding:14px 15px;border-radius:17px;
+  background:linear-gradient(145deg,#0c0c0c,#181818 62%,#262626);
+  box-shadow:0 8px 22px rgba(0,0,0,.22)
+}
+.stat label{display:block;color:var(--muted);font-size:8px;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
+.stat strong{display:block;margin-top:7px;font-size:17px;line-height:1;font-weight:900;letter-spacing:-.025em}
+.yellow{color:var(--yellow)!important}.green{color:var(--green)!important}.red{color:var(--red)!important}
+.section{margin-top:24px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin:0 2px 10px}
+.head h2{margin:0;font-size:var(--heading-size);font-weight:900;letter-spacing:-.02em}
+.sub{margin-top:3px;color:var(--muted);font-size:9px}
+.badge{
+  padding:6px 9px;border-radius:999px;
+  background:linear-gradient(145deg,#151515,#292929);
+  color:var(--yellow);font-size:8px;font-weight:900;letter-spacing:.04em
+}
+.picks{display:grid;gap:10px}
+.pick{
+  padding:16px 17px;border-radius:18px;
+  background:linear-gradient(135deg,#0b0b0b 0%,#171717 62%,#272727 100%);
+  box-shadow:0 10px 28px rgba(0,0,0,.24)
+}
+.pick-top{display:flex;justify-content:space-between;gap:12px}
+.league{font-size:9px;color:#b5b5b5;font-weight:800}
+.kick{margin-top:3px;font-size:8px;color:#777}
+.conf{text-align:right}.conf b{font-size:17px;color:var(--yellow);letter-spacing:-.025em}.conf small{display:block;color:#7d7d7d;font-size:7px;font-weight:850}
+.teams{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:13px}
+.team{font-size:13px;font-weight:850}.team.right{text-align:right}.vs{font-size:8px;color:#737373;font-weight:900}
+.selection{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-top:13px;padding:11px 12px;border-radius:13px;
+  background:linear-gradient(100deg,#1b1b1b,#262626)
+}
+.selection small{display:block;color:#919191;font-size:7px;font-weight:850;letter-spacing:.11em}
+.selection b{display:block;margin-top:2px;font-size:12px}
+.price{font-size:17px;font-weight:900;color:var(--yellow)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:9px}
+.metric{padding:8px 9px;border-radius:11px;background:linear-gradient(145deg,#131313,#202020)}
+.metric span{display:block;color:#777;font-size:7px;font-weight:850}
+.metric b{display:block;margin-top:3px;color:#dedede;font-size:9px}
+.empty{
+  min-height:165px;padding:24px;border-radius:20px;
+  background:linear-gradient(145deg,#0b0b0b,#181818 62%,#262626);
+  display:grid;place-items:center;text-align:center;box-shadow:var(--shadow)
+}
+.empty i{
+  width:39px;height:39px;margin:auto;border-radius:50%;
+  display:grid;place-items:center;background:#202020;color:var(--yellow);
+  font-style:normal;font-size:15px
+}
+.empty h3{margin:10px 0 4px;font-size:13px}.empty p{margin:auto;max-width:560px;color:var(--muted);font-size:10px;line-height:1.5}
+.trust{
+  margin-top:26px;padding:17px 18px;border-radius:20px;
+  background:linear-gradient(135deg,#0b0b0b,#181818 60%,#292929);
+  display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:center;
+  box-shadow:0 10px 30px rgba(0,0,0,.22)
+}
+.seal{
+  width:76px;height:76px;border-radius:50%;display:grid;place-items:center;text-align:center;
+  background:linear-gradient(145deg,#303030,#171717);
+  font-size:7px;font-weight:900;letter-spacing:.07em;color:#d8d8d8
+}
+.seal b{display:block;font-size:16px;color:var(--yellow)}
+.trust h3{margin:0 0 4px;font-size:12px}.trust p{margin:0;color:var(--muted);font-size:9px;line-height:1.5}
+.age{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(145deg,#2c2c2c,#141414);color:var(--yellow);font-size:13px;font-weight:900}
+.share-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.share-card{
+  padding:14px;border-radius:19px;
+  background:linear-gradient(145deg,#0b0b0b,#171717 62%,#282828);
+  box-shadow:var(--shadow)
+}
+.share-label{margin:2px 2px 10px;color:var(--yellow);font-size:9px;font-weight:900;letter-spacing:.12em}
+.poster-wrap{overflow:hidden;border-radius:15px;background:#070707}
+.share-card canvas{display:block;width:100%;height:auto}
+.share-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.share-actions button{
+  border:0;border-radius:11px;padding:10px 8px;
+  background:linear-gradient(145deg,#2a2a2a,#171717);
+  color:#dedede;font:inherit;font-size:9px;font-weight:900;cursor:pointer
+}
+.share-actions button:first-child{background:linear-gradient(110deg,#ffd43b,#d9b51f);color:#111}
+.share-note{margin-top:9px;color:#7f7f7f;font-size:8px;line-height:1.45}
+.links{margin:16px 0 0;text-align:center;font-size:9px;color:#808080}
+.links a{margin:0 8px;text-decoration:none}
+.legal{margin:10px auto 0;max-width:850px;color:#666;font-size:8px;line-height:1.5;text-align:center}
+.bottom{
+  position:fixed;z-index:60;inset:auto 0 0;height:70px;
+  background:#1a1a1a;box-shadow:0 -8px 24px rgba(0,0,0,.42);
+  display:flex;justify-content:center;align-items:center
+}
+.nav{width:min(760px,100%);display:grid;grid-template-columns:repeat(3,1fr);padding:0 12px}
+.nav button{
+  border:0;background:none;color:#858585;text-align:center;padding:8px 2px;
+  font:inherit;font-size:9px;font-weight:900;cursor:pointer
+}
+.nav b{display:block;margin-bottom:4px;font-size:14px;color:#9b9b9b}
+.nav .active,.nav .active b{color:var(--yellow)}
+@media(max-width:760px){
+  :root{--logo-size:18px;--title-size:15px;--heading-size:13px}
+  body{padding-top:60px;padding-bottom:78px}
+  .top{height:60px;padding:0 14px}
+  .online span:last-child{display:none}
+  main{width:calc(100% - 20px);padding-top:14px}
+  .hero{min-height:132px;padding:18px;border-radius:17px}
+  .hero-copy{padding-top:30px}
+  .hero-meta{right:15px;top:14px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat:last-child{grid-column:span 2}
+  .head{align-items:flex-start;flex-direction:column;gap:5px}
+  .pick{padding:14px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .trust{grid-template-columns:auto 1fr;padding:14px}
+  .seal{width:66px;height:66px}
+  .age{grid-column:1/-1;justify-self:end;margin-top:-52px}
+  .share-grid{grid-template-columns:1fr}
+  .bottom{height:66px}
+}
 </style>
 </head><body>
-<header class="top"><div class="brand"><span class="logo"></span><span>NOMAD<span class="tips">TIPS3</span></span></div><div class="online"><span class="dot"></span><span>SYSTEM ONLINE</span></div></header>
+<header class="top"><div class="brand"><span class="nomad">nomad</span><span class="tips">tips3</span></div><div class="online"><span class="dot"></span><span>SYSTEM ONLINE</span></div></header>
 <main>
-<section id="picks" class="view active"><div class="hero"><div class="hero-meta"><strong id="localDate">—</strong><span id="updated">LOCAL TIME</span></div><div class="hero-copy"><div class="eyebrow">● PRE-MATCH INTELLIGENCE</div><h1>Today’s<br>Selections</h1><p>Daily match analysis with visible confidence, recorded market price and a transparent public result history. Only selections that pass the active quality thresholds are published.</p></div></div><div class="stats"><div class="stat"><label>Today</label><strong id="today" class="yellow">0</strong></div><div class="stat"><label>Win</label><strong id="wins" class="green">0</strong></div><div class="stat"><label>Loss</label><strong id="losses" class="red">0</strong></div><div class="stat"><label>Pending</label><strong id="pending">0</strong></div><div class="stat"><label>Avg. Odds</label><strong id="avg">—</strong></div></div><div class="section"><div class="head"><div><h2>Today predictions</h2><div id="scan" class="sub">Loading current selection set.</div></div><div class="badge">VERIFIED PUBLIC RECORD</div></div><div id="pickList" class="picks"></div></div><div class="trust"><div class="seal"><div><b>✓</b>NOMADTIPS3<br>PUBLIC RECORD</div></div><div><h3>Transparent Results · Verified Records</h3><p>Published selections retain their recorded price, confidence and outcome. Results are not removed after settlement.</p></div><div class="age">18+</div></div></section>
+<section id="picks" class="view active"><div class="hero"><div class="hero-meta"><strong id="localDate">—</strong><span id="updated">LOCAL TIME</span></div><div class="hero-copy"><div class="eyebrow">● PRE-MATCH INTELLIGENCE</div><h1>Today’s Selections</h1><p>Daily match analysis with visible confidence, recorded market price and a transparent public result history. Only selections that pass the active quality thresholds are published.</p></div></div><div class="stats"><div class="stat"><label>Today</label><strong id="today" class="yellow">0</strong></div><div class="stat"><label>Win</label><strong id="wins" class="green">0</strong></div><div class="stat"><label>Loss</label><strong id="losses" class="red">0</strong></div><div class="stat"><label>Pending</label><strong id="pending">0</strong></div><div class="stat"><label>Avg. Odds</label><strong id="avg">—</strong></div></div><div class="section"><div class="head"><div><h2>Today predictions</h2><div id="scan" class="sub">Loading current selection set.</div></div><div class="badge">VERIFIED PUBLIC RECORD</div></div><div id="pickList" class="picks"></div></div><div class="trust"><div class="seal"><div><b>✓</b>NOMADTIPS3<br>PUBLIC RECORD</div></div><div><h3>Transparent Results · Verified Records</h3><p>Published selections retain their recorded price, confidence and outcome. Results are not removed after settlement.</p></div><div class="age">18+</div></div></section>
 <section id="stats" class="view"><div class="section" style="margin-top:0"><div class="head"><div><h2>Statistics</h2><div class="sub">Settled public selections only</div></div></div><div class="stats"><div class="stat"><label>Settled</label><strong id="stTotal">0</strong></div><div class="stat"><label>Win</label><strong id="stWin" class="green">0</strong></div><div class="stat"><label>Loss</label><strong id="stLoss" class="red">0</strong></div><div class="stat"><label>Win rate</label><strong id="stRate">—</strong></div><div class="stat"><label>Avg. Odds</label><strong id="stOdds">—</strong></div></div><div class="empty"><div><i>↗</i><h3>Performance follows the public record</h3><p>Statistics update from settled selections. No historical result is invented to fill a new operating record.</p></div></div></div></section>
 <section id="share" class="view"><div class="section" style="margin-top:0"><div class="head"><div><h2>Share Pictures</h2><div class="sub">Today’s selections and yesterday’s settled results</div></div><div class="badge">1080 × 1350 PNG</div></div><div class="share-grid"><article class="share-card"><div class="share-label">TODAY’S PICKS</div><div class="poster-wrap"><canvas id="todayPoster" width="1080" height="1350"></canvas></div><div class="share-actions"><button data-share="today">SHARE</button><button data-save="today">SAVE IMAGE</button></div><div class="share-note">Generated from the currently published selection set.</div></article><article class="share-card"><div class="share-label">YESTERDAY’S RESULTS</div><div class="poster-wrap"><canvas id="resultPoster" width="1080" height="1350"></canvas></div><div class="share-actions"><button data-share="results">SHARE</button><button data-save="results">SAVE IMAGE</button></div><div class="share-note">If no settled record exists for yesterday, the card states that clearly.</div></article></div></div></section>
 <div class="links"><a href="./about/">ABOUT</a><a href="./privacy/">PRIVACY</a><a href="./terms/">TERMS</a></div><div class="legal">18+ · Statistical information and match analysis only. No result is guaranteed. Users remain responsible for complying with applicable local laws and for their own decisions.</div>
@@ -24,15 +197,16 @@ document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.quer
 const metric=(n,v)=>`<div class="metric"><span>${n}</span><b>${esc(v||'—')}</b></div>`;
 function card(m){const a=m.analysis||{},k=new Date(m.kickoffUtc);return `<article class="pick"><div class="pick-top"><div><div class="league">${esc(m.league)}</div><div class="kick">${fd(k)} · ${ft(k)} LOCAL</div></div><div class="conf"><b>${esc(m.confidence)}%</b><small>CONFIDENCE</small></div></div><div class="teams"><div class="team">${esc(m.home)}</div><div class="vs">VS</div><div class="team right">${esc(m.away)}</div></div><div class="selection"><div><small>SELECTION · 1X2</small><b>${esc(m.pick)}</b></div><div class="price">${Number(m.odds).toFixed(2)}</div></div><div class="metrics">${metric('HOME FORM',a.homeForm)}${metric('AWAY FORM',a.awayForm)}${metric('STRENGTH',a.absoluteStrength)}${metric('VENUE EDGE',a.venuePpgEdge)}</div></article>`}
 async function json(url,fallback){try{const r=await fetch(url+'?v='+Date.now(),{cache:'no-store'});return r.ok?await r.json():fallback}catch{return fallback}}
-const C={text:'#f5f7f5',muted:'#8b958e',yellow:'#ffd43b',green:'#39d76c',red:'#ff626d'};
+const C={text:'#f5f5f5',muted:'#999999',yellow:'#ffd43b',green:'#39d76c',red:'#ff626d'};
 function rr(ctx,x,y,w,h,r,fill){ctx.beginPath();ctx.roundRect(x,y,w,h,r);ctx.fillStyle=fill;ctx.fill()}
 function fit(ctx,text,max){let t=String(text||'—');while(t.length>3&&ctx.measureText(t).width>max)t=t.slice(0,-2)+'…';return t}
-function posterBase(canvas,title,dateLabel){const c=canvas.getContext('2d'),g=c.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'#070908');g.addColorStop(.55,'#111612');g.addColorStop(1,'#232317');c.fillStyle=g;c.fillRect(0,0,1080,1350);const glow=c.createRadialGradient(930,80,20,930,80,430);glow.addColorStop(0,'rgba(255,212,59,.17)');glow.addColorStop(1,'rgba(255,212,59,0)');c.fillStyle=glow;c.fillRect(500,0,580,560);c.font='900 48px Arial';c.fillStyle=C.text;c.fillText('NOMAD',64,86);c.fillStyle=C.yellow;c.fillText('TIPS3',230,86);c.font='900 24px Arial';c.fillStyle=C.yellow;c.fillText(title,64,152);c.font='600 22px Arial';c.fillStyle=C.muted;c.fillText(dateLabel,64,190);c.textAlign='right';c.fillStyle=C.muted;c.font='700 18px Arial';c.fillText('TRANSPARENT PUBLIC RECORD',1016,82);c.textAlign='left';return c}
-function posterFooter(c){c.fillStyle='#69726c';c.font='600 17px Arial';c.fillText('18+ · Statistical match analysis · No result guaranteed.',64,1296);c.textAlign='right';c.fillText('nomadtips3.com',1016,1296);c.textAlign='left'}
-function drawToday(set){const canvas=$('#todayPoster'),ms=Array.isArray(set?.matches)?set.matches.slice(0,10):[],c=posterBase(canvas,'TODAY’S PICKS',set?.selectionDate||fd(new Date()));let y=235;if(!ms.length){c.fillStyle=C.muted;c.font='800 34px Arial';c.fillText('NO SELECTION PUBLISHED',64,420);c.font='600 22px Arial';c.fillText('No match passed every active quality threshold.',64,465)}else ms.forEach((m,i)=>{rr(c,54,y,972,88,18,i%2?'rgba(255,255,255,.035)':'rgba(255,255,255,.05)');c.fillStyle=C.muted;c.font='800 17px Arial';c.fillText(String(i+1).padStart(2,'0'),76,y+35);c.fillStyle=C.text;c.font='800 21px Arial';c.fillText(fit(c,`${m.home} vs ${m.away}`,430),126,y+34);c.fillStyle=C.muted;c.font='600 16px Arial';c.fillText(fit(c,m.league,430),126,y+60);c.fillStyle=C.yellow;c.font='900 21px Arial';c.fillText(fit(c,m.pick,240),600,y+34);c.fillStyle=C.muted;c.font='700 15px Arial';c.fillText(`CONF ${m.confidence}%`,600,y+60);c.textAlign='right';c.fillStyle=C.yellow;c.font='900 27px Arial';c.fillText(Number(m.odds||0).toFixed(2),990,y+45);c.textAlign='left';y+=98});const avg=ms.length?ms.reduce((s,m)=>s+Number(m.odds||0),0)/ms.length:0;rr(c,54,1220,972,48,16,'rgba(255,212,59,.08)');c.fillStyle=C.text;c.font='800 17px Arial';c.fillText(`${ms.length} SELECTIONS`,76,1251);c.fillStyle=C.yellow;c.fillText(ms.length?`AVG ODDS ${avg.toFixed(2)}`:'PUBLIC RECORD',280,1251);posterFooter(c)}
+function posterBase(canvas,title,dateLabel){const c=canvas.getContext('2d'),g=c.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'#050505');g.addColorStop(.55,'#151515');g.addColorStop(1,'#2a2a2a');c.fillStyle=g;c.fillRect(0,0,1080,1350);c.font='900 42px Arial';c.fillStyle=C.text;c.fillText('nomad',64,86);c.fillStyle=C.yellow;c.fillText('tips3',185,86);c.font='900 22px Arial';c.fillStyle=C.yellow;c.fillText(title,64,148);c.font='600 19px Arial';c.fillStyle=C.muted;c.fillText(dateLabel,64,184);c.textAlign='right';c.fillStyle=C.muted;c.font='700 16px Arial';c.fillText('TRANSPARENT PUBLIC RECORD',1016,82);c.textAlign='left';return c}
+function posterFooter(c){c.fillStyle='#737373';c.font='600 15px Arial';c.fillText('18+ · Statistical match analysis · No result guaranteed.',64,1296);c.textAlign='right';c.fillText('nomadtips3.com',1016,1296);c.textAlign='left'}
+function drawToday(set){const canvas=$('#todayPoster'),ms=Array.isArray(set?.matches)?set.matches.slice(0,10):[],c=posterBase(canvas,'TODAY’S PICKS',set?.selectionDate||fd(new Date()));let y=235;if(!ms.length){c.fillStyle=C.muted;c.font='800 30px Arial';c.fillText('NO SELECTION PUBLISHED',64,420);c.font='600 20px Arial';c.fillText('No match passed every active quality threshold.',64,465)}else ms.forEach((m,i)=>{rr(c,54,y,972,88,18,i%2?'#151515':'#202020');c.fillStyle=C.muted;c.font='800 16px Arial';c.fillText(String(i+1).padStart(2,'0'),76,y+35);c.fillStyle=C.text;c.font='800 19px Arial';c.fillText(fit(c,`${m.home} vs ${m.away}`,430),126,y+34);c.fillStyle=C.muted;c.font='600 15px Arial';c.fillText(fit(c,m.league,430),126,y+60);c.fillStyle=C.yellow;c.font='900 19px Arial';c.fillText(fit(c,m.pick,240),600,y+34);c.fillStyle=C.muted;c.font='700 14px Arial';c.fillText(`CONF ${m.confidence}%`,600,y+60);c.textAlign='right';c.fillStyle=C.yellow;c.font='900 24px Arial';c.fillText(Number(m.odds||0).toFixed(2),990,y+45);c.textAlign='left';y+=98});const avg=ms.length?ms.reduce((s,m)=>s+Number(m.odds||0),0)/ms.length:0;rr(c,54,1220,972,48,16,'#242424');c.fillStyle=C.text;c.font='800 16px Arial';c.fillText(`${ms.length} SELECTIONS`,76,1251);c.fillStyle=C.yellow;c.fillText(ms.length?`AVG ODDS ${avg.toFixed(2)}`:'PUBLIC RECORD',280,1251);posterFooter(c)}
 function isoMinus(dateStr,days){const d=new Date((dateStr||new Date().toISOString().slice(0,10))+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-days);return d.toISOString().slice(0,10)}
-function drawResults(set,dateStr){const canvas=$('#resultPoster'),ms=Array.isArray(set?.matches)?set.matches.slice(0,10):[],c=posterBase(canvas,'YESTERDAY’S RESULTS',dateStr),settled=ms.filter(m=>['WIN','LOSS'].includes(m.status)),w=settled.filter(m=>m.status==='WIN').length,l=settled.filter(m=>m.status==='LOSS').length;let y=235;if(!set||!ms.length){c.fillStyle=C.muted;c.font='800 34px Arial';c.fillText('NO SETTLED RECORD FOR YESTERDAY',64,420);c.font='600 22px Arial';c.fillText('Results will appear after the first completed daily set.',64,465)}else ms.forEach((m,i)=>{rr(c,54,y,972,88,18,i%2?'rgba(255,255,255,.035)':'rgba(255,255,255,.05)');c.fillStyle=C.muted;c.font='800 17px Arial';c.fillText(String(i+1).padStart(2,'0'),76,y+35);c.fillStyle=C.text;c.font='800 20px Arial';c.fillText(fit(c,`${m.home} vs ${m.away}`,420),126,y+34);c.fillStyle=C.muted;c.font='600 16px Arial';c.fillText(fit(c,m.pick,420),126,y+60);c.fillStyle=C.text;c.font='900 23px Arial';c.fillText(m.finalScore||'—',650,y+46);c.textAlign='right';const st=m.status||'PENDING';c.fillStyle=st==='WIN'?C.green:st==='LOSS'?C.red:C.yellow;c.font='900 22px Arial';c.fillText(st,990,y+46);c.textAlign='left';y+=98});rr(c,54,1220,972,48,16,'rgba(255,255,255,.04)');c.fillStyle=C.green;c.font='900 18px Arial';c.fillText(`WIN ${w}`,76,1251);c.fillStyle=C.red;c.fillText(`LOSS ${l}`,180,1251);c.fillStyle=C.yellow;c.fillText(set&&settled.length?`WIN RATE ${(w/settled.length*100).toFixed(1)}%`:'AWAITING SETTLEMENT',300,1251);posterFooter(c)}
+function drawResults(set,dateStr){const canvas=$('#resultPoster'),ms=Array.isArray(set?.matches)?set.matches.slice(0,10):[],c=posterBase(canvas,'YESTERDAY’S RESULTS',dateStr),settled=ms.filter(m=>['WIN','LOSS'].includes(m.status)),w=settled.filter(m=>m.status==='WIN').length,l=settled.filter(m=>m.status==='LOSS').length;let y=235;if(!set||!ms.length){c.fillStyle=C.muted;c.font='800 30px Arial';c.fillText('NO SETTLED RECORD FOR YESTERDAY',64,420);c.font='600 20px Arial';c.fillText('Results will appear after the first completed daily set.',64,465)}else ms.forEach((m,i)=>{rr(c,54,y,972,88,18,i%2?'#151515':'#202020');c.fillStyle=C.muted;c.font='800 16px Arial';c.fillText(String(i+1).padStart(2,'0'),76,y+35);c.fillStyle=C.text;c.font='800 18px Arial';c.fillText(fit(c,`${m.home} vs ${m.away}`,420),126,y+34);c.fillStyle=C.muted;c.font='600 15px Arial';c.fillText(fit(c,m.pick,420),126,y+60);c.fillStyle=C.text;c.font='900 21px Arial';c.fillText(m.finalScore||'—',650,y+46);c.textAlign='right';const st=m.status||'PENDING';c.fillStyle=st==='WIN'?C.green:st==='LOSS'?C.red:C.yellow;c.font='900 20px Arial';c.fillText(st,990,y+46);c.textAlign='left';y+=98});rr(c,54,1220,972,48,16,'#242424');c.fillStyle=C.green;c.font='900 16px Arial';c.fillText(`WIN ${w}`,76,1251);c.fillStyle=C.red;c.fillText(`LOSS ${l}`,180,1251);c.fillStyle=C.yellow;c.fillText(set&&settled.length?`WIN RATE ${(w/settled.length*100).toFixed(1)}%`:'AWAITING SETTLEMENT',300,1251);posterFooter(c)}
 let posterDate='';async function load(){const cur=await json('./data/prematch-current.json',null),hist=await json('./data/prematch-history.json',[]);if(!cur){$('#pickList').innerHTML='<div class="empty"><div><i>↻</i><h3>Updating selection record</h3><p>The latest verified cycle is being prepared.</p></div></div>';drawToday(null);drawResults(null,isoMinus('',1));return}const ms=Array.isArray(cur.matches)?cur.matches:[];posterDate=cur.selectionDate||new Date().toISOString().slice(0,10);$('#today').textContent=ms.length;$('#updated').textContent=cur.generatedAtUtc?'UPDATED '+ft(new Date(cur.generatedAtUtc)):'UPDATED';$('#scan').textContent=cur.scan?`${cur.scan.eligibleUpcoming} analyzed · ${cur.scan.qualified} passed · ${cur.scan.published} published`:'Current verified set';const w=ms.filter(x=>x.status==='WIN').length,l=ms.filter(x=>x.status==='LOSS').length,p=ms.length-w-l;$('#wins').textContent=w;$('#losses').textContent=l;$('#pending').textContent=p;$('#avg').textContent=ms.length?(ms.reduce((s,x)=>s+Number(x.odds||0),0)/ms.length).toFixed(2):'—';$('#pickList').innerHTML=ms.length?ms.map(card).join(''):'<div class="empty"><div><i>✓</i><h3>No selection published</h3><p>No match passed every active quality threshold in this cycle.</p></div></div>';const sets=[cur,...(Array.isArray(hist)?hist:[])],all=sets.flatMap(x=>Array.isArray(x.matches)?x.matches:[]),settled=all.filter(x=>['WIN','LOSS'].includes(x.status)),sw=settled.filter(x=>x.status==='WIN').length,sl=settled.filter(x=>x.status==='LOSS').length;$('#stTotal').textContent=settled.length;$('#stWin').textContent=sw;$('#stLoss').textContent=sl;$('#stRate').textContent=settled.length?(sw/settled.length*100).toFixed(1)+'%':'—';$('#stOdds').textContent=settled.length?(settled.reduce((s,x)=>s+Number(x.odds||0),0)/settled.length).toFixed(2):'—';drawToday(cur);const y=isoMinus(posterDate,1),yset=(Array.isArray(hist)?hist:[]).find(x=>x?.selectionDate===y);drawResults(yset,y)}
-function blobOf(canvas){return new Promise(r=>canvas.toBlob(r,'image/png',1))}async function exportPoster(kind,share){const canvas=kind==='today'?$('#todayPoster'):$('#resultPoster'),blob=await blobOf(canvas);if(!blob)return;const name=`nomadtips3-${kind}-${posterDate||new Date().toISOString().slice(0,10)}.png`,file=new File([blob],name,{type:'image/png'});if(share&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){try{await navigator.share({files:[file],title:'NOMADTIPS3'});return}catch(e){if(e?.name==='AbortError')return}}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)}
+function blobOf(canvas){return new Promise(r=>canvas.toBlob(r,'image/png',1))}
+async function exportPoster(kind,share){const canvas=kind==='today'?$('#todayPoster'):$('#resultPoster'),blob=await blobOf(canvas);if(!blob)return;const name=`nomadtips3-${kind}-${posterDate||new Date().toISOString().slice(0,10)}.png`,file=new File([blob],name,{type:'image/png'});if(share&&navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){try{await navigator.share({files:[file],title:'NOMADTIPS3'});return}catch(e){if(e?.name==='AbortError')return}}const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1200)}
 document.querySelectorAll('[data-share]').forEach(b=>b.onclick=()=>exportPoster(b.dataset.share,true));document.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>exportPoster(b.dataset.save,false));load();setInterval(load,60000);
 </script></body></html>
