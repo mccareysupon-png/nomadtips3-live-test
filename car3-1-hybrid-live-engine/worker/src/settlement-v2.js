@@ -44,29 +44,69 @@ function resultGroup(exact){
   return exact==='PENDING'?'PENDING':'VOID';
 }
 
-function settleExact(record){
-  if(!record?.settledAt||!record?.finalScore)return{exact:'PENDING',group:'PENDING',legs:[]};
-  const fh=num(record.finalScore.home),fa=num(record.finalScore.away);
-  if(fh===null||fa===null)return{exact:'VOID',group:'VOID',legs:[]};
+function fullMatchScore(record,away){
+  const fh=num(record?.finalScore?.home),fa=num(record?.finalScore?.away);
+  if(fh===null||fa===null)return null;
+  return{
+    selected:away?fa:fh,
+    opponent:away?fh:fa,
+    home:fh,
+    away:fa,
+    basis:'FULL_MATCH'
+  };
+}
+
+function postEntryScore(record,away){
+  const final=fullMatchScore(record,away);
+  if(!final)return null;
+  const eh=num(record?.entryScore?.home),ea=num(record?.entryScore?.away);
+  if(eh===null||ea===null)return null;
+  const home=final.home-eh,awayGoals=final.away-ea;
+  if(home<0||awayGoals<0)return null;
+  return{
+    selected:away?awayGoals:home,
+    opponent:away?home:awayGoals,
+    home,
+    away:awayGoals,
+    basis:'POST_ENTRY'
+  };
+}
+
+export function settleExact(record){
+  if(!record?.settledAt||!record?.finalScore)return{exact:'PENDING',group:'PENDING',legs:[],basis:'PENDING',score:null};
   const away=String(record.selectedSide||'HOME').toUpperCase()==='AWAY';
-  const selected=away?fa:fh,opponent=away?fh:fa;
+  const full=fullMatchScore(record,away);
+  if(!full)return{exact:'VOID',group:'VOID',legs:[],basis:'INVALID_FINAL_SCORE',score:null};
+
   let legs=[];
   if(record.market==='WIN'){
-    const exact=selected>opponent?'FULL_WIN':'FULL_LOSS';
-    return{exact,group:resultGroup(exact),legs:[selected-opponent]};
+    const exact=full.selected>full.opponent?'FULL_WIN':'FULL_LOSS';
+    return{exact,group:resultGroup(exact),legs:[full.selected-full.opponent],basis:'FULL_MATCH',score:{home:full.home,away:full.away}};
   }
   if(record.market==='AH'){
     const lines=splitQuarterLine(record.line);
-    if(!lines.length)return{exact:'VOID',group:'VOID',legs:[]};
-    legs=lines.map(line=>({line,outcome:legResult(selected+line-opponent)}));
-  }else if(record.market==='OU'){
+    if(!lines.length)return{exact:'VOID',group:'VOID',legs:[],basis:'INVALID_LINE',score:null};
+    const remainder=postEntryScore(record,away);
+    const score=remainder||full;
+    legs=lines.map(line=>({line,outcome:legResult(score.selected+line-score.opponent)}));
+    const exact=combineLegs(legs.map(x=>x.outcome));
+    return{
+      exact,
+      group:resultGroup(exact),
+      legs,
+      basis:remainder?'POST_ENTRY':'FULL_MATCH_FALLBACK',
+      score:{home:score.home,away:score.away}
+    };
+  }
+  if(record.market==='OU'){
     const lines=splitQuarterLine(record.line);
-    if(!lines.length)return{exact:'VOID',group:'VOID',legs:[]};
-    const total=fh+fa,direction=String(record.ouDirection||'OVER').toUpperCase();
+    if(!lines.length)return{exact:'VOID',group:'VOID',legs:[],basis:'INVALID_LINE',score:null};
+    const total=full.home+full.away,direction=String(record.ouDirection||'OVER').toUpperCase();
     legs=lines.map(line=>({line,outcome:legResult(direction==='UNDER'?line-total:total-line)}));
-  }else return{exact:'VOID',group:'VOID',legs:[]};
-  const exact=combineLegs(legs.map(x=>x.outcome));
-  return{exact,group:resultGroup(exact),legs};
+    const exact=combineLegs(legs.map(x=>x.outcome));
+    return{exact,group:resultGroup(exact),legs,basis:'FULL_MATCH',score:{home:full.home,away:full.away}};
+  }
+  return{exact:'VOID',group:'VOID',legs:[],basis:'UNSUPPORTED_MARKET',score:null};
 }
 
 function normalizeRecord(record){
@@ -79,8 +119,10 @@ function normalizeRecord(record){
     resultGroup:grade.group,
     settlementResult:grade.exact,
     settlementLegs:grade.legs,
-    settlement:'full_match_result_v2',
-    settlementRule:'WLD · HALF_WIN=>WIN · HALF_LOSS=>LOSS · PUSH=>DRAW'
+    settlementBasis:grade.basis,
+    settlementScore:grade.score,
+    settlement:'market_aware_live_v3',
+    settlementRule:'AH=POST_ENTRY when Entry Score exists · WIN/OU=FULL_MATCH · HALF_WIN=>WIN · HALF_LOSS=>LOSS · PUSH=>DRAW'
   };
 }
 
@@ -111,9 +153,20 @@ export class Car31State extends UpgradedCar31State{
       const history=await this.state.storage.get('history')||[];
       const normalized=history.map(normalizeRecord);
       await this.state.storage.put('history',normalized);
-      await this.state.storage.put('settlementContract',{version:'WLD_V2',settlement:'full_match_result',halfWin:'WIN',halfLoss:'LOSS',push:'DRAW',updatedAt:new Date().toISOString()});
+      await this.state.storage.put('settlementContract',{
+        version:'WLD_V3',
+        settlement:'market_aware_live',
+        asianHandicap:'post_entry_score',
+        asianHandicapFallback:'full_match_if_entry_score_missing',
+        win:'full_match_result',
+        overUnder:'full_match_result',
+        halfWin:'WIN',
+        halfLoss:'LOSS',
+        push:'DRAW',
+        updatedAt:new Date().toISOString()
+      });
     }catch(error){
-      await this.state.storage.put('settlementContract',{version:'WLD_V2',status:'ERROR',error:String(error?.message||error),updatedAt:new Date().toISOString()});
+      await this.state.storage.put('settlementContract',{version:'WLD_V3',status:'ERROR',error:String(error?.message||error),updatedAt:new Date().toISOString()});
     }
     return response;
   }
@@ -130,8 +183,8 @@ export class Car31State extends UpgradedCar31State{
       return json({
         ok:true,
         generatedAt:new Date().toISOString(),
-        settlementContract:'WLD_V2',
-        settlement:'full_match_result',
+        settlementContract:'WLD_V3',
+        settlement:'market_aware_live',
         page,limit,pages,total:sorted.length,offset,
         summary:summaryOf(records),
         records:sorted.slice(offset,offset+limit)
@@ -139,8 +192,8 @@ export class Car31State extends UpgradedCar31State{
     }
     if(request.method==='GET'&&url.pathname==='/health'){
       const response=await super.fetch(request),payload=await response.json().catch(()=>({ok:false}));
-      const contract=await this.state.storage.get('settlementContract')||{version:'WLD_V2'};
-      return json({...payload,settlementContract:contract.version||'WLD_V2',settlement:'full_match_result'});
+      const contract=await this.state.storage.get('settlementContract')||{version:'WLD_V3'};
+      return json({...payload,settlementContract:contract.version||'WLD_V3',settlement:'market_aware_live'});
     }
     return super.fetch(request);
   }
