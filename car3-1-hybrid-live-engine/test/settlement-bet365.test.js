@@ -44,10 +44,18 @@ test('half loss always loses half the stake',()=>{
 });
 
 test('missing entry score never falls back to full-match AH',()=>{
-  const grade=settleExact({...settled,entryScore:null,line:1.25});
+  for(const entryScore of [null,{home:null,away:null},{home:'',away:''}]){
+    const grade=settleExact({...settled,entryScore,line:1.25});
+    assert.equal(grade.exact,'VOID');
+    assert.equal(grade.group,'VOID');
+    assert.equal(grade.basis,'MISSING_ENTRY_SCORE');
+  }
+});
+
+test('invalid final score is void instead of being coerced to zero',()=>{
+  const grade=settleExact({...settled,finalScore:{home:null,away:1},line:1.25});
   assert.equal(grade.exact,'VOID');
-  assert.equal(grade.group,'VOID');
-  assert.equal(grade.basis,'MISSING_ENTRY_SCORE');
+  assert.equal(grade.basis,'INVALID_FINAL_SCORE');
 });
 
 test('Goaloo legacy AH line is home perspective and is inverted for away selection',()=>{
