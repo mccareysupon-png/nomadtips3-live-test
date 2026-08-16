@@ -2,7 +2,8 @@
 :root{--polish-green:#39d06f;--polish-red:#ef5b63;--polish-draw:#929aa2;--polish-glow:#75df28}
 .brand small{display:none!important}
 
-/* Keep the full-width bar, but align its content with each page content edge. */
+/* Keep the full-width bar, align its content with each page content edge, and start sticky at viewport top immediately. */
+.shell,.settings-shell{padding-top:0!important}
 .shell>.topbar{padding-left:max(12px,calc((100vw - 1480px)/2))!important;padding-right:max(12px,calc((100vw - 1480px)/2))!important}
 .settings-shell>.topbar{padding-left:max(12px,calc((100vw - 1180px)/2))!important;padding-right:max(12px,calc((100vw - 1180px)/2))!important}
 .topbar{border:0!important;background:linear-gradient(180deg,rgba(18,20,23,.98),rgba(10,11,13,.94))!important;box-shadow:0 10px 30px rgba(0,0,0,.28)!important}
