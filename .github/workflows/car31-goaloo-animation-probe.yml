@@ -10,6 +10,9 @@ on:
       - car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs
       - car3-1-hybrid-live-engine/tools/goaloo-flashdata-probe.mjs
       - car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.test.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-techmap-probe.mjs
       - .github/workflows/car31-goaloo-animation-probe.yml
   workflow_dispatch:
 
@@ -25,6 +28,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test public Goaloo flashdata parser fixtures
+        run: |
+          node --test car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.test.mjs
       - name: Probe public Goaloo animation sources for match 2930884
         run: |
           node car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs 2930884 | tee /tmp/goaloo-animation-report.json
@@ -40,6 +46,9 @@ jobs:
       - name: Save public Goaloo flash parser for field mapping
         run: |
           node car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs 2930884 | tee /tmp/goaloo-flash-parser-meta.json
+      - name: Probe public Goaloo technical-stat labels
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-techmap-probe.mjs 2930884 | tee /tmp/goaloo-techmap-report.json
       - name: Upload redacted research reports
         uses: actions/upload-artifact@v4
         with:
@@ -51,4 +60,5 @@ jobs:
             /tmp/goaloo-flashdata-report.json
             /tmp/goaloo-flash-parser-meta.json
             /tmp/goaloo-flashlive.js
+            /tmp/goaloo-techmap-report.json
           retention-days: 1
