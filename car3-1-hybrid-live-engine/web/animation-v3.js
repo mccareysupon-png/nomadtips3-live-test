@@ -29,8 +29,15 @@ function orientation(m){const shown=$('#homeTeam')?.textContent?.trim(),flip=Boo
 function icon(type){const t=String(type||'').toUpperCase();if(t.includes('GOAL'))return'⚽';if(t.includes('RED'))return'🟥';if(t.includes('YELLOW'))return'🟨';if(t.includes('CORNER'))return'⚑';if(t.includes('SHOT'))return'◎';if(t.includes('PENALTY'))return'●';if(t.includes('SUB'))return'↔';if(t.includes('OFFSIDE'))return'◇';return'•';}
 function cls(type){const t=String(type||'').toUpperCase();if(t.includes('GOAL'))return'goal';if(t.includes('DANGEROUS ATTACK'))return'danger';if(t.includes('SHOT'))return'shot';if(t.includes('CORNER'))return'corner';if(t.includes('RED'))return'red';if(t.includes('YELLOW'))return'yellow';if(t==='ATTACK')return'attack';return'possession';}
 function fallbackCoord(type,selected=true,location=null){
-  const t=String(type||'POSSESSION').toUpperCase();let x=selected?.58:.42,y=.5;
-  if(t==='ATTACK'){x=selected?.68:.32;y=.48}else if(t.includes('DANGEROUS ATTACK')){x=selected?.80:.20;y=.48}else if(t.includes('SHOT')){x=selected?.89:.11;y=.5}else if(t.includes('GOAL')){x=selected?.95:.05;y=.5}else if(t.includes('CORNER')){x=selected?.96:.04;y=Number(location)===2||Number(location)===3?.82:.18}else if(t.includes('PENALTY')){x=selected?.88:.12;y=.5}else if(t.includes('FREE KICK')){x=selected?.76:.24;y=.5}else if(t.includes('THROW')){x=selected?.72:.28;y=.12}
+  const t=String(type||'POSSESSION').toUpperCase();let x=selected ? .58 : .42,y=.5;
+  if(t==='ATTACK'){x=selected ? .68 : .32;y=.48}
+  else if(t.includes('DANGEROUS ATTACK')){x=selected ? .80 : .20;y=.48}
+  else if(t.includes('SHOT')){x=selected ? .89 : .11;y=.5}
+  else if(t.includes('GOAL')){x=selected ? .95 : .05;y=.5}
+  else if(t.includes('CORNER')){x=selected ? .96 : .04;y=(Number(location)===2||Number(location)===3) ? .82 : .18}
+  else if(t.includes('PENALTY')){x=selected ? .88 : .12;y=.5}
+  else if(t.includes('FREE KICK')){x=selected ? .76 : .24;y=.5}
+  else if(t.includes('THROW')){x=selected ? .72 : .28;y=.12}
   return{x,y,source:'EVENT_ZONE'};
 }
 function orientEvent(e,m){
