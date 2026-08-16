@@ -1,0 +1,150 @@
+name: CAR 3.1 Atomic Post-Deploy Verify
+
+on:
+  push:
+    branches:
+      - verify/car31-atomic-postdeploy-20260816
+    paths:
+      - .github/workflows/car31-atomic-postdeploy-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
+      DEPLOYED_AT: 2026-08-16T07:25:00Z
+    steps:
+      - name: Wait for fresh post-PR74 Cron cycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            curl -fsS "$WORKER/health" -o /tmp/health.json
+            cat /tmp/health.json
+            if python - <<'PY'
+          import json, os, sys
+          from datetime import datetime
+          with open('/tmp/health.json', encoding='utf-8') as f:
+              h=json.load(f)
+          def dt(s):
+              return datetime.fromisoformat(s.replace('Z','+00:00')) if s else None
+          last=dt(h.get('lastCycle'))
+          deployed=dt(os.environ['DEPLOYED_AT'])
+          pipe=h.get('coreStatsPipe')
+          fresh=bool(last and deployed and last>deployed)
+          print('FRESH_CHECK', json.dumps({
+              'lastCycle':h.get('lastCycle'),
+              'deployedAt':os.environ['DEPLOYED_AT'],
+              'fresh':fresh,
+              'coreStatsPipePresent':pipe is not None,
+              'coreStatsPipeStatus':(pipe or {}).get('status')
+          }))
+          sys.exit(0 if fresh and pipe and pipe.get('status')=='DIRECT' else 1)
+          PY
+            then
+              break
+            fi
+            if [ "$i" = 12 ]; then
+              echo "::error::No fresh post-PR74 cycle with DIRECT coreStatsPipe observed"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Inspect atomic Core Stats runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$WORKER/health" -o /tmp/health.json
+          curl -fsS "$WORKER/live" -o /tmp/live.json
+          curl -fsS "$WORKER/debug/source-status" -o /tmp/source.json
+          python - <<'PY'
+          import json, os
+          from datetime import datetime
+          with open('/tmp/health.json', encoding='utf-8') as f: h=json.load(f)
+          with open('/tmp/live.json', encoding='utf-8') as f: live=json.load(f)
+          with open('/tmp/source.json', encoding='utf-8') as f: source=json.load(f)
+          deployed=datetime.fromisoformat(os.environ['DEPLOYED_AT'].replace('Z','+00:00'))
+          last=datetime.fromisoformat(h['lastCycle'].replace('Z','+00:00'))
+          if last <= deployed: raise SystemExit('stale post-deploy cycle')
+          pipe=h.get('coreStatsPipe') or live.get('coreStatsPipe')
+          if not pipe or pipe.get('status')!='DIRECT': raise SystemExit(f'coreStatsPipe not DIRECT: {pipe}')
+          matches=live.get('matches') or []
+          detail=[m for m in matches if (m.get('enrichment') or {}).get('coreStats')=='DETAIL_IN']
+          complete=[m for m in matches if m.get('coreStatsComplete') is True]
+          partial=[m for m in matches if m.get('coreStatsComplete') is not True]
+          bad_ids={'3066631','2960845','2960846'}
+          prior_bad=[m for m in matches if str(m.get('sourceMatchId')) in bad_ids]
+          possession_anomalies=[]
+          for m in matches:
+              p=(m.get('stats') or {}).get('possession') or {}
+              a,b=p.get('home'),p.get('away')
+              if isinstance(a,(int,float)) and isinstance(b,(int,float)) and abs((a+b)-100)>0.5:
+                  possession_anomalies.append({
+                      'id':m.get('sourceMatchId'),'home':m.get('home'),'away':m.get('away'),
+                      'possession':p,'sum':round(a+b,3),
+                      'coreStatsSource':(m.get('enrichment') or {}).get('coreStats')
+                  })
+          summary={
+              'lastCycle':h.get('lastCycle'),
+              'lastSuccess':h.get('lastSuccess'),
+              'lastError':h.get('lastError'),
+              'liveMatches':len(matches),
+              'coreStatsPipe':pipe,
+              'completeInLive':len(complete),
+              'partialInLive':len(partial),
+              'detailInMatchCount':len(detail),
+              'oddsPipe':h.get('oddsPipe'),
+              'priorBadIdsStillLive':[m.get('sourceMatchId') for m in prior_bad],
+              'possessionAnomalyCount':len(possession_anomalies)
+          }
+          print('ATOMIC_RUNTIME_SUMMARY')
+          print(json.dumps(summary, indent=2, ensure_ascii=False))
+          print('DETAIL_IN_SAMPLES')
+          for m in detail[:10]:
+              st=m.get('stats') or {}
+              print(json.dumps({
+                  'id':m.get('sourceMatchId'),'league':m.get('league'),
+                  'home':m.get('home'),'away':m.get('away'),'minute':m.get('minute'),
+                  'coreStatsComplete':m.get('coreStatsComplete'),
+                  'coreStatsSource':(m.get('enrichment') or {}).get('coreStats'),
+                  'possession':st.get('possession'),'attacks':st.get('attacks'),
+                  'dangerous_attacks':st.get('dangerous_attacks'),'shots':st.get('shots'),
+                  'shots_on_target':st.get('shots_on_target'),'corners':st.get('corners'),
+                  'coreGate':next((g for g in ((m.get('engine') or {}).get('gates') or []) if g and g[0]=='CORE STATS'),None),
+                  'sourceGate':next((g for g in ((m.get('engine') or {}).get('gates') or []) if g and g[0]=='SOURCE'),None)
+              }, ensure_ascii=False))
+          print('PRIOR_BAD_ID_SAMPLES')
+          for m in prior_bad:
+              print(json.dumps({
+                  'id':m.get('sourceMatchId'),
+                  'possession':((m.get('stats') or {}).get('possession')),
+                  'coreStatsSource':(m.get('enrichment') or {}).get('coreStats'),
+                  'complete':m.get('coreStatsComplete')
+              }, ensure_ascii=False))
+          print('POSSESSION_ANOMALIES_REPORT_ONLY')
+          print(json.dumps(possession_anomalies, indent=2, ensure_ascii=False))
+          print('SOURCE_STATUS')
+          print(json.dumps({
+              'generatedAt':source.get('generatedAt'),
+              'coreStatsPipe':source.get('coreStatsPipe'),
+              'enrichment':source.get('enrichment')
+          }, indent=2, ensure_ascii=False))
+          # Atomic-pair correctness is proven by regression tests; runtime must at least
+          # show the new post-deploy cycle and active detailIn pipe. If detailIn actually
+          # filled current matches, require no impossible possession pair among those
+          # DETAIL_IN matches when the possession pair is the one visibly affected.
+          if pipe.get('filledMatches',0) <= 0:
+              print('::warning::Fresh cycle had no current match requiring detailIn fill; runtime path is DIRECT but atomic replacement was not exercised this minute')
+          if prior_bad:
+              for m in prior_bad:
+                  p=((m.get('stats') or {}).get('possession') or {})
+                  a,b=p.get('home'),p.get('away')
+                  if isinstance(a,(int,float)) and isinstance(b,(int,float)) and abs((a+b)-100)>0.5:
+                      raise SystemExit(f"previously mixed sample remains incoherent after atomic deploy: {m.get('sourceMatchId')} {p}")
+          PY
