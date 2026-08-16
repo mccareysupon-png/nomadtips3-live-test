@@ -37,7 +37,7 @@ function fill(c){
   for(const key of [...NUMBERS,'side','market','ouDirection','attackEvidenceRequirement','redCardPolicy'])setValue(key,cfg[key]);
   for(const key of BOOLS)setValue(key,cfg[key]);
   for(const [field,key] of Object.entries(WEIGHTS))setValue(field,cfg.momentumWeights[key]);
-  updateUI();summary();setValidation('Settings loaded','ok');
+  updateUI();summary();setValidation();
 }
 function currentBody(){
   const body={...cfg,momentumWeights:{...cfg.momentumWeights}};
@@ -83,7 +83,7 @@ function summary(){
   if(b.goalGapLimited)extra.push(`Gap ≤${b.maxGoalGap}`);
   if(b.signalLimitEnabled)extra.push(`Daily ≤${b.maxSignalsPerDay}`);
   if(b.attackEvidenceEnabled)extra.push(`Evidence ${b.attackEvidenceRequirement}`);else extra.push('Evidence OFF');
-  $('#rule').innerHTML=`<small>Active signal rule</small><b><span class="rule-accent">${b.side}</span> · ${b.minuteMin}'–${b.minuteMax}' · ${market} · Odds ≥${b.oddsMin??'—'} · Momentum ≥${b.momentumMin??'—'}% · Confirm ${b.confirmationRounds??'—'} rounds${extra.length?` · ${extra.join(' · ')}`:''}</b>`;
+  $('#rule').innerHTML=`<b><span class="rule-accent">${b.side}</span> · ${b.minuteMin}'–${b.minuteMax}' · ${market} · Odds ≥${b.oddsMin??'—'} · Momentum ≥${b.momentumMin??'—'}% · Confirm ${b.confirmationRounds??'—'} rounds${extra.length?` · ${extra.join(' · ')}`:''}</b>`;
 }
 async function refreshHealth(){
   const el=$('#engineState');
@@ -93,28 +93,28 @@ async function refreshHealth(){
   }catch(e){el.className='engine-state error';el.textContent='Status unavailable';}
 }
 async function load(){
-  if(busy)return;busy=true;setStatus('Loading…');
+  if(busy)return;busy=true;setStatus();
   try{
     const r=await fetch(`${WORKER}/config?t=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`CONFIG HTTP ${r.status}`);
-    const d=await r.json();fill(d.config||DEFAULT);setStatus('Ready','ok');await refreshHealth();
+    const d=await r.json();fill(d.config||DEFAULT);setStatus();await refreshHealth();
   }catch(e){fill(DEFAULT);setValidation('Saved settings could not be loaded.','error');setStatus('Using defaults','error');await refreshHealth();}
   finally{busy=false;}
 }
 async function saveConfig(runNow){
   if(busy)return;const body=currentBody(),errors=validate(body);
   if(errors.length){setValidation(errors.join(' '),'error');setStatus('Not saved','error');return;}
-  busy=true;setValidation('Settings valid','ok');setStatus(runNow?'Saving & running…':'Saving…');
+  busy=true;setValidation();setStatus(runNow?'Saving & running…':'Saving…');
   try{
     const r=await fetch(`${WORKER}/config`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(`SAVE HTTP ${r.status}`);
     const d=await r.json();if(!d?.config)throw new Error('Invalid save response');cfg=d.config;
     if(runNow){const scan=await fetch(`${WORKER}/scan?t=${Date.now()}`,{cache:'no-store'});const payload=await scan.json().catch(()=>({}));if(!scan.ok||payload.ok!==true)throw new Error(`SCAN ${scan.status}${payload.error?` · ${payload.error}`:''}`);setStatus(`Saved & run · ${payload.liveMatches??0} live · ${payload.candidates??0} candidates · ${payload.signals??0} signals`,'ok');}
-    else setStatus('Saved · next automatic cycle will use these rules','ok');
+    else setStatus('Saved','ok');
     fill(d.config);await refreshHealth();
   }catch(e){setStatus('Save failed','error');setValidation('Changes were not confirmed.','error');}
   finally{busy=false;}
 }
 
-form.addEventListener('input',()=>{updateUI();summary();const errors=validate(currentBody());setValidation(errors.length?errors.join(' '):'Settings valid',errors.length?'error':'ok');});
+form.addEventListener('input',()=>{updateUI();summary();const errors=validate(currentBody());setValidation(errors.length?errors.join(' '):'',errors.length?'error':'');});
 form.onsubmit=e=>{e.preventDefault();saveConfig(true);};
 $('#save').onclick=()=>saveConfig(false);
 $('#reload').onclick=()=>load();
