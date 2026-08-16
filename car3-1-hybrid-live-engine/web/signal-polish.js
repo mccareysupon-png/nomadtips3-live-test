@@ -2,7 +2,7 @@ let runtime=null,liveRows=[],historyRecords=[];
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function confirmedRecord(row){
-  return historyRecords.find(r=>String(r.id)===String(row?.sourceMatchId)&&String(r.selectedSide||'').toUpperCase()===String(row?.engine?.side||'').toUpperCase());
+  return historyRecords.find(r=>String(r.id)===String(row?.sourceMatchId));
 }
 
 function apply(){
@@ -11,10 +11,11 @@ function apply(){
     const index=Number(card.dataset.index||0),row=liveRows[index],record=confirmedRecord(row),teams=card.querySelector('.teams');
     card.classList.toggle('confirmed-signal',Boolean(record));
     if(!row||!record||!teams)return;
-    const side=String(record.selectedSide||row.engine?.side||'HOME').toUpperCase();
-    const selected=side==='AWAY'?row.away:row.home,opponent=side==='AWAY'?row.home:row.away;
+    const side=String(record.selectedSide||'HOME').toUpperCase();
+    const selected=record.selectedTeam||(side==='AWAY'?row.away:row.home),opponent=side==='AWAY'?row.home:row.away;
     const selectedScore=side==='AWAY'?row.score?.away:row.score?.home,opponentScore=side==='AWAY'?row.score?.home:row.score?.away;
-    teams.innerHTML=`<span class="signal-selected">${esc(selected)}</span> ${esc(selectedScore??0)}–${esc(opponentScore??0)} <span>${esc(opponent)}</span>`;
+    const markup=`<span class="signal-selected">${esc(selected)}</span> ${esc(selectedScore??0)}–${esc(opponentScore??0)} <span>${esc(opponent)}</span>`;
+    if(teams.innerHTML!==markup)teams.innerHTML=markup;
   });
 
   const active=$('.candidate.active'),index=Number(active?.dataset.index||0),row=liveRows[index],record=confirmedRecord(row);
@@ -25,6 +26,10 @@ function apply(){
   if(selectedLabel)selectedLabel.textContent=`SELECT ${side}`;
   if(opponentLabel)opponentLabel.textContent=`OPPONENT / ${other}`;
   const confirmed=Boolean(record);
+  if(confirmed){
+    const selected=record.selectedTeam||(side==='AWAY'?row.away:row.home),opponent=side==='AWAY'?row.home:row.away;
+    selectedName.textContent=selected;opponentName.textContent=opponent;
+  }
   selectedName.classList.toggle('signal-selected',confirmed);
   selectedLabel?.classList.toggle('signal-selected',confirmed);
 }
@@ -38,7 +43,7 @@ async function refresh(){
   liveRows=live.matches||[];historyRecords=history.records||[];apply();
 }
 
-const observer=new MutationObserver(()=>apply());
-observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});
 refresh().catch(()=>{});
+setInterval(apply,1000);
 setInterval(()=>refresh().catch(()=>{}),30000);
