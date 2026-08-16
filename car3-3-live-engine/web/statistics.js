@@ -61,14 +61,14 @@ function mainRow(r){
 function renderSummary(s={}){
   const settled=(n(s.win)||0)+(n(s.loss)||0)+(n(s.draw)||0);
   const cards=[
-    ['TOTAL',s.total??0,''],
-    ['SETTLED',settled,''],
-    ['PENDING',s.pending??0,'pending'],
-    ['WIN',s.win??0,'win'],
-    ['LOSS',s.loss??0,'loss'],
-    ['DRAW',s.draw??0,'draw'],
-    ['WIN RATE',s.winRate==null?'—':`${Number(s.winRate).toFixed(1)}%`,'rate'],
-    ['AVG ODDS',s.averageOdds==null?'—':Number(s.averageOdds).toFixed(2),'odds']
+    ['Total',s.total??0,''],
+    ['Settled',settled,''],
+    ['Pending',s.pending??0,'pending'],
+    ['Win',s.win??0,'win'],
+    ['Loss',s.loss??0,'loss'],
+    ['Draw',s.draw??0,'draw'],
+    ['Win rate',s.winRate==null?'—':`${Number(s.winRate).toFixed(1)}%`,'rate'],
+    ['Avg odds',s.averageOdds==null?'—':Number(s.averageOdds).toFixed(2),'odds']
   ];
   $('#summary').innerHTML=cards.map(([k,v,c])=>`<div class="stats-metric ${c}"><small>${k}</small><b>${v}</b></div>`).join('');
 }
@@ -105,7 +105,7 @@ function renderPager(){
   $('#prev').disabled=page<=1;
   $('#next').disabled=page>=count;
   const from=total?((page-1)*limit+1):0,to=Math.min(page*limit,total);
-  $('#historyMeta').textContent=`${from}–${to} OF ${total}`;
+  $('#historyMeta').textContent=`${from}–${to} of ${total}`;
 }
 
 async function loadPage(){
@@ -119,15 +119,15 @@ async function loadPage(){
     const rows=data.records||[];
     $('#rows').innerHTML=rows.map(mainRow).join('');
     if(!rows.length){
-      $('#rows').innerHTML='<tr><td colspan="8"><div class="stats-message">No signal records yet. Confirmed signals will appear here automatically.</div></td></tr>';
+      $('#rows').innerHTML='<tr><td colspan="8"><div class="stats-message">No signal records yet.</div></td></tr>';
     }
     renderPager();
   }catch(e){
     console.error(e);
     renderSummary({});
-    $('#rows').innerHTML='<tr><td colspan="8"><div class="stats-message error">Statistics could not load from the history API.</div></td></tr>';
-    $('#historyMeta').textContent='DATA ERROR';
-    showMessage(`STATISTICS DATA ERROR · ${e.message}`,true);
+    $('#rows').innerHTML='<tr><td colspan="8"><div class="stats-message error">Statistics unavailable.</div></td></tr>';
+    $('#historyMeta').textContent='Unavailable';
+    showMessage('Unable to load statistics.',true);
   }finally{pageBusy=false;}
 }
 
@@ -182,7 +182,7 @@ function renderCurve(records=[]){
   const {points,counts,raw}=compressSeries(scoped);
   if(!points.length){
     $('#curve').innerHTML='<div class="stats-message">No settled records in this range.</div>';
-    $('#chartMeta').textContent='NO SETTLED DATA';
+    $('#chartMeta').textContent='No settled data';
     return;
   }
   const w=1200,h=260,pL=46,pR=18,pT=18,pB=30;
@@ -200,20 +200,20 @@ function renderCurve(records=[]){
     <g class="curve-labels">${labels}</g>
   </svg>`;
   const range=chartRangeDays?`${chartRangeDays===365?'1Y':chartRangeDays===730?'2Y':`${chartRangeDays}D`}`:'ALL';
-  $('#chartMeta').textContent=`${range} · ${raw} SETTLED · ${counts.win} WIN · ${counts.loss} LOSS · ${counts.draw} DRAW · ${points.length-1} PLOTTED POINTS`;
+  $('#chartMeta').textContent=`${range} · ${raw} settled · ${counts.win} win · ${counts.loss} loss · ${counts.draw} draw · ${points.length-1} plotted points`;
 }
 
 async function loadChart(){
   if(chartBusy)return;
   chartBusy=true;
-  $('#chartMeta').textContent='LOADING PERFORMANCE…';
+  $('#chartMeta').textContent='Loading…';
   try{
     const records=await fetchChartRecords(chartRangeDays);
     renderCurve(records);
   }catch(e){
     console.error(e);
     $('#curve').innerHTML='<div class="stats-message error">Performance chart unavailable.</div>';
-    $('#chartMeta').textContent='CHART DATA ERROR';
+    $('#chartMeta').textContent='Chart unavailable';
   }finally{chartBusy=false;}
 }
 
