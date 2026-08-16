@@ -8,7 +8,7 @@ const HEADERS={
   'access-control-allow-headers':'content-type'
 };
 
-const num=v=>{const n=Number(v);return Number.isFinite(n)?n:null;};
+const num=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;};
 const json=(data,status=200)=>new Response(JSON.stringify(data,null,2),{status,headers:HEADERS});
 
 function splitQuarterLine(value){
@@ -233,6 +233,13 @@ function summaryOf(records){
   const averageOdds=odds.length?odds.reduce((a,b)=>a+b,0)/odds.length:0;
   const winRate=win+loss?win/(win+loss)*100:0;
   const netUnitsTotal=settled.map(r=>num(r.settlementNetUnits)).filter(v=>v!==null).reduce((a,b)=>a+b,0);
+  const exactCounts={
+    fullWin:settled.filter(r=>r.settlementResult==='FULL_WIN').length,
+    halfWin:settled.filter(r=>r.settlementResult==='HALF_WIN').length,
+    push:settled.filter(r=>r.settlementResult==='PUSH').length,
+    halfLoss:settled.filter(r=>r.settlementResult==='HALF_LOSS').length,
+    fullLoss:settled.filter(r=>r.settlementResult==='FULL_LOSS').length
+  };
   let cw=0,cl=0,cd=0;
   const trend=settled.filter(r=>r.resultGroup!=='VOID').sort((a,b)=>Date.parse(a.settledAt||a.selectedAt)-Date.parse(b.settledAt||b.selectedAt)).map((r,index)=>{
     if(r.resultGroup==='WIN')cw++;
@@ -252,6 +259,7 @@ function summaryOf(records){
     winRate:Number(winRate.toFixed(2)),
     accuracy:Number(winRate.toFixed(2)),
     netUnits:Number(netUnitsTotal.toFixed(4)),
+    exactSettlement:exactCounts,
     trend
   };
 }
