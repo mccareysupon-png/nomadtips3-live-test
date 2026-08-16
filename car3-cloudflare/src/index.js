@@ -10,6 +10,7 @@ import {
 
 const API_BASE = 'https://v3.football.api-sports.io';
 const STATE_NAME = 'car3-global';
+const LINE_NOTIFICATIONS_ENABLED = false;
 
 function cfg(env) {
   const n = (value, fallback) => {
@@ -109,6 +110,9 @@ async function apiGet(env, path, params, meter) {
 }
 
 async function sendLine(env, text) {
+  if (!LINE_NOTIFICATIONS_ENABLED) {
+    return { ok: false, skipped: true, reason: 'disabled_by_owner' };
+  }
   if (!env.LINE_CHANNEL_ACCESS_TOKEN || !env.LINE_TARGET_ID) {
     return { ok: false, skipped: true, reason: 'missing_line_secret' };
   }
@@ -314,7 +318,8 @@ export default {
         engine: 'Cloudflare Worker V6',
         schedule: '*/10 * * * *',
         apiConfigured: Boolean(env.API_FOOTBALL_KEY),
-        lineConfigured: Boolean(env.LINE_CHANNEL_ACCESS_TOKEN && env.LINE_TARGET_ID),
+        lineConfigured: LINE_NOTIFICATIONS_ENABLED && Boolean(env.LINE_CHANNEL_ACCESS_TOKEN && env.LINE_TARGET_ID),
+        lineNotifications: LINE_NOTIFICATIONS_ENABLED ? 'ON' : 'OFF',
         ...state,
       }, { headers: { 'cache-control': 'no-store' } });
     }
