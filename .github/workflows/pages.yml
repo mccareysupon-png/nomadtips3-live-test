@@ -31,6 +31,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Validate CAR 3.1 canonical Statistics bundle
+        run: |
+          STATS="car3-1-hybrid-live-engine/web"
+          test -f "$STATS/statistics.html"
+          test -f "$STATS/statistics.js"
+          test -f "$STATS/history.html"
+          node --check "$STATS/statistics.js"
+          node --check "$STATS/topbar-lock.js"
+          grep -q 'statistics.js' "$STATS/statistics.html"
+          grep -q 'id="historySummary"' "$STATS/statistics.html"
+          grep -q 'id="historyBody"' "$STATS/statistics.html"
+          grep -q 'statistics.html' "$STATS/history.html"
+          if grep -q 'url=./history.html' "$STATS/statistics.html"; then
+            echo "::error::statistics.html must be the canonical page, not a redirect to history.html"
+            exit 1
+          fi
+
       - name: Apply exact 40 percent visual reduction to heading
         run: |
           python - <<'PY'
