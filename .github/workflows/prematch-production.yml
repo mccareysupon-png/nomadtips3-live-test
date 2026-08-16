@@ -27,34 +27,85 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Prepare analysis runtime
         run: |
           git fetch origin agent/car11-goaloo-launch-20260816
-          mkdir -p /tmp/prematch data
-          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/settle_guard.mjs > /tmp/prematch/settle.mjs
-          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/run_cycle.mjs > /tmp/prematch/select.mjs
+          mkdir -p .prematch-runtime data
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/settle_guard.mjs > .prematch-runtime/settle.mjs
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/scripts/run_cycle.mjs > .prematch-runtime/select.mjs
+          git show origin/agent/car11-goaloo-launch-20260816:car1-1/data/public-selections.json > .prematch-runtime/latest-selections.json
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
+
       - name: Seed first locked set when needed
         run: |
           if [ ! -f data/prematch-current.json ]; then
-            git show origin/agent/car11-goaloo-launch-20260816:car1-1/data/public-selections.json > data/prematch-current.json
+            cp .prematch-runtime/latest-selections.json data/prematch-current.json
           fi
+
+      - name: Hydrate locked set analysis context
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const currentPath='data/prematch-current.json';
+          const sourcePath='.prematch-runtime/latest-selections.json';
+          const current=JSON.parse(fs.readFileSync(currentPath,'utf8'));
+          const source=JSON.parse(fs.readFileSync(sourcePath,'utf8'));
+          const sourceById=new Map((source.matches||[]).map(m=>[String(m.fixtureId),m]));
+          const lockedFields=['fixtureId','league','home','away','kickoffUtc','pick','pickSide','odds','confidence','predictedScore','status','finalScore'];
+          let hydrated=0;
+          for(const match of current.matches||[]){
+            const src=sourceById.get(String(match.fixtureId));
+            if(!src) continue;
+            const before=JSON.stringify({analysis:match.analysis,context:match.context,reason:match.reason});
+            const preserved={};
+            for(const key of lockedFields) if(Object.prototype.hasOwnProperty.call(match,key)) preserved[key]=match[key];
+            match.analysis={...(src.analysis||{}),...(match.analysis||{})};
+            if(src.context){
+              const ctx=structuredClone(src.context);
+              if(ctx.market && Object.prototype.hasOwnProperty.call(ctx.market,'company')) delete ctx.market.company;
+              match.context=ctx;
+            }
+            if(!match.reason && src.reason) match.reason=src.reason;
+            Object.assign(match,preserved);
+            const after=JSON.stringify({analysis:match.analysis,context:match.context,reason:match.reason});
+            if(before!==after) hydrated++;
+          }
+          if(hydrated){
+            current.contextSchema=1;
+            fs.writeFileSync(currentPath,JSON.stringify(current,null,2)+'\n');
+          }
+          console.log(`Hydrated ${hydrated} locked selections without changing pick/odds/confidence/status.`);
+          NODE
+
       - name: Settle current set and guard rollover
         env:
           CURRENT_PATH: data/prematch-current.json
           HISTORY_PATH: data/prematch-history.json
-          ACTION_PATH: /tmp/prematch/action.txt
-        run: node /tmp/prematch/settle.mjs
+          ACTION_PATH: .prematch-runtime/action.txt
+        run: node .prematch-runtime/settle.mjs
+
       - name: Select next set only after full settlement
         run: |
-          if [ "$(tr -d '\r\n' < /tmp/prematch/action.txt)" = "SELECT" ]; then
-            MAX_ANALYSIS=500 node /tmp/prematch/select.mjs
+          if [ "$(tr -d '\r\n' < .prematch-runtime/action.txt)" = "SELECT" ]; then
+            MAX_ANALYSIS=500 node .prematch-runtime/select.mjs
+            node --input-type=module <<'NODE'
+            import fs from 'node:fs';
+            const p='car1-1/data/public-selections.json';
+            const data=JSON.parse(fs.readFileSync(p,'utf8'));
+            for(const match of data.matches||[]){
+              if(match.context?.market && Object.prototype.hasOwnProperty.call(match.context.market,'company')) delete match.context.market.company;
+            }
+            data.contextSchema=1;
+            fs.writeFileSync(p,JSON.stringify(data,null,2)+'\n');
+            NODE
             cp car1-1/data/public-selections.json data/prematch-current.json
           else
             echo 'Current set remains locked while results are pending.'
           fi
+
       - name: Publish state
         run: |
           git config user.name 'nomadtips3-bot'
