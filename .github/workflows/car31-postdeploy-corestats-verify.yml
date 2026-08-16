@@ -1,0 +1,126 @@
+name: CAR 3.1 Post-Deploy Core Stats Verify
+
+on:
+  push:
+    branches:
+      - verify/car31-corestats-postdeploy-20260816
+    paths:
+      - .github/workflows/car31-postdeploy-corestats-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
+      DEPLOYED_AT: 2026-08-16T07:17:54Z
+    steps:
+      - name: Wait for a genuinely post-deploy Cron cycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            curl -fsS "$WORKER/health" -o /tmp/health.json
+            cat /tmp/health.json
+            if python - <<'PY'
+          import json, os, sys
+          from datetime import datetime, timezone
+          with open('/tmp/health.json', encoding='utf-8') as f:
+              h=json.load(f)
+          def dt(s):
+              if not s: return None
+              return datetime.fromisoformat(s.replace('Z','+00:00'))
+          last=dt(h.get('lastCycle'))
+          deployed=dt(os.environ['DEPLOYED_AT'])
+          pipe=h.get('coreStatsPipe')
+          ok=bool(last and deployed and last>deployed and pipe is not None)
+          print('POST_DEPLOY_CHECK', json.dumps({
+              'lastCycle':h.get('lastCycle'),
+              'deployedAt':os.environ['DEPLOYED_AT'],
+              'fresh':bool(last and deployed and last>deployed),
+              'coreStatsPipePresent':pipe is not None
+          }))
+          sys.exit(0 if ok else 1)
+          PY
+            then
+              break
+            fi
+            if [ "$i" = 12 ]; then
+              echo "::error::No fresh post-deploy cycle with coreStatsPipe was observed"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Verify Core Stats pipe and print exact runtime metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$WORKER/health" -o /tmp/health.json
+          curl -fsS "$WORKER/debug/source-status" -o /tmp/source.json
+          curl -fsS "$WORKER/live" -o /tmp/live.json
+          python - <<'PY'
+          import json, os, sys
+          from datetime import datetime
+          with open('/tmp/health.json', encoding='utf-8') as f: h=json.load(f)
+          with open('/tmp/source.json', encoding='utf-8') as f: s=json.load(f)
+          with open('/tmp/live.json', encoding='utf-8') as f: live=json.load(f)
+          deployed=datetime.fromisoformat(os.environ['DEPLOYED_AT'].replace('Z','+00:00'))
+          last=datetime.fromisoformat(h['lastCycle'].replace('Z','+00:00'))
+          pipe=h.get('coreStatsPipe') or live.get('coreStatsPipe')
+          if last <= deployed:
+              raise SystemExit('stale cycle')
+          if not pipe:
+              raise SystemExit('coreStatsPipe missing')
+          if pipe.get('status') != 'DIRECT':
+              raise SystemExit(f"coreStatsPipe not DIRECT: {pipe}")
+          matches=live.get('matches') or []
+          detail=[m for m in matches if (m.get('enrichment') or {}).get('coreStats')=='DETAIL_IN']
+          summary={
+              'lastCycle':h.get('lastCycle'),
+              'lastSuccess':h.get('lastSuccess'),
+              'lastError':h.get('lastError'),
+              'liveMatches':h.get('liveMatches'),
+              'healthCoreStatsReady':h.get('coreStatsReady'),
+              'coreStatsPipe':pipe,
+              'detailInMatchCount':len(detail),
+              'completeInLive':sum(1 for m in matches if m.get('coreStatsComplete') is True),
+              'partialInLive':sum(1 for m in matches if m.get('coreStatsComplete') is not True),
+              'oddsPipe':h.get('oddsPipe')
+          }
+          print('CORE_STATS_RUNTIME_SUMMARY')
+          print(json.dumps(summary, indent=2, ensure_ascii=False))
+          print('DETAIL_IN_SAMPLES')
+          for m in detail[:5]:
+              stats=m.get('stats') or {}
+              print(json.dumps({
+                  'id':m.get('sourceMatchId'),
+                  'league':m.get('league'),
+                  'home':m.get('home'),'away':m.get('away'),
+                  'minute':m.get('minute'),
+                  'coreStatsComplete':m.get('coreStatsComplete'),
+                  'coreStatsSource':(m.get('enrichment') or {}).get('coreStats'),
+                  'possession':stats.get('possession'),
+                  'attacks':stats.get('attacks'),
+                  'dangerous_attacks':stats.get('dangerous_attacks'),
+                  'shots':stats.get('shots'),
+                  'shots_on_target':stats.get('shots_on_target'),
+                  'corners':stats.get('corners'),
+                  'coreGate':next((g for g in ((m.get('engine') or {}).get('gates') or []) if g and g[0]=='CORE STATS'),None),
+                  'sourceGate':next((g for g in ((m.get('engine') or {}).get('gates') or []) if g and g[0]=='SOURCE'),None)
+              }, ensure_ascii=False))
+          print('SOURCE_STATUS')
+          print(json.dumps({
+              'generatedAt':s.get('generatedAt'),
+              'coreStatsPipe':s.get('coreStatsPipe'),
+              'enrichment':s.get('enrichment')
+          }, indent=2, ensure_ascii=False))
+          if pipe.get('detailMatched',0) <= 0:
+              print('::warning::detailIn feed is DIRECT but no current live match IDs overlapped it')
+          if pipe.get('filledMatches',0) <= 0:
+              print('::warning::No current base-partial match required detailIn filling in this cycle')
+          PY
