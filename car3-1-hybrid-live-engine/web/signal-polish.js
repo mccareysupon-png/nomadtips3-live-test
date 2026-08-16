@@ -14,7 +14,7 @@ function ensureSignalClock(){
   clock=document.createElement('div');
   clock.id='signalClockRow';
   clock.className='signal-clock-row';
-  clock.hidden=true;
+  clock.hidden=false;
   clock.innerHTML='<span><small>SIGNAL</small><b id="signalMinute">—</b></span><i aria-hidden="true"></i><span><small>LIVE TIME</small><b id="liveClock">—</b></span>';
   score.appendChild(clock);
   return clock;
@@ -46,9 +46,9 @@ function liveClockText(row){
 function updateSignalClock(row,record){
   const clock=ensureSignalClock();
   if(!clock)return;
-  if(!row||!record){clock.hidden=true;return;}
+  if(!row){clock.hidden=true;return;}
   clock.hidden=false;
-  const entry=Number(record.entryMinute);
+  const entry=Number(record?.entryMinute);
   const signalText=Number.isFinite(entry)?`${entry}'`:'—';
   const signalEl=$('#signalMinute'),liveEl=$('#liveClock');
   if(signalEl)signalEl.textContent=signalText;
