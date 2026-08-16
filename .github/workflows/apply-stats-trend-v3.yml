@@ -1,0 +1,62 @@
+name: Deploy Stats Trend Chart
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-stats-trend-v3.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deploy-stats-trend-chart
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply chart to index only
+        run: python scripts/apply_stats_trend_index_only.py
+
+      - name: Syntax check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          for x in ['HISTORICAL OUTCOME TREND','outcomeChart','drawOutcomeChart','coreOutcome']:
+            if x not in s: raise SystemExit('missing '+x)
+          Path('/tmp/ui.js').write_text(s.split('<script>',1)[1].split('</script>',1)[0])
+          PY
+          node --check /tmp/ui.js
+
+      - name: Install browser
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Browser smoke chart
+        run: |
+          python3 -m http.server 8000 >/tmp/http.log 2>&1 &
+          node scripts/smoke_stats_trend.mjs
+
+      - name: Publish tested index
+        run: |
+          git config user.name 'nomadtips3-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          if git diff --cached --quiet; then echo 'No index changes to publish'; exit 0; fi
+          git commit -m 'Stats: add responsive historical outcome trend chart'
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
