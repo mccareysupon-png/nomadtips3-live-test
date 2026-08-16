@@ -1,0 +1,81 @@
+name: Fix CAR 3.1 live card sync once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-car31-live-card-sync-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Keep live cards synchronized with worker
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app=Path('car3-1-hybrid-live-engine/web/app.js')
+          s=app.read_text(encoding='utf-8')
+          old="snapshots=snaps.snapshots||[];matches=(live.matches||[]).map(adapt);$('#lastUpdate').textContent=live.generatedAt?new Date(live.generatedAt).toLocaleTimeString():'live collector';render();}"
+          new="snapshots=snaps.snapshots||[];const activeRows=(live.matches||[]).filter(row=>{const status=String(row?.status||'').toUpperCase();return status!=='FT'&&!status.includes('FINISH');});window.__CAR31_LIVE_ROWS__=activeRows;matches=activeRows.map(adapt);if(selected>=matches.length)selected=Math.max(0,matches.length-1);$('#lastUpdate').textContent=live.generatedAt?new Date(live.generatedAt).toLocaleTimeString():'live collector';render();window.dispatchEvent(new CustomEvent('car31:live-updated'));}"
+          if old not in s:
+              raise SystemExit('app.js live assignment target not found')
+          s=s.replace(old,new,1)
+          old_interval="setInterval(()=>load().catch(()=>{}),30000);"
+          new_interval="setInterval(()=>load().catch(()=>{}),5000);"
+          if old_interval not in s:
+              raise SystemExit('app.js refresh interval target not found')
+          s=s.replace(old_interval,new_interval,1)
+          app.write_text(s,encoding='utf-8')
+
+          polish=Path('car3-1-hybrid-live-engine/web/signal-polish.js')
+          s=polish.read_text(encoding='utf-8')
+          old_refresh="""async function refresh(){
+  runtime=runtime||await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
+  const [live,history]=await Promise.all([
+    fetch(`${runtime.workerUrl}/live?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({matches:[]})),
+    fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}))
+  ]);
+  liveRows=live.matches||[];historyRecords=history.records||[];
+  // Sync every match to its latest CAR 3.1 source minute before rendering.
+  liveRows.forEach(row=>liveClockText(row));
+  apply();
+}
+"""
+          new_refresh="""async function refresh(){
+  runtime=runtime||await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
+  const history=await fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}));
+  historyRecords=history.records||[];
+  liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];
+  liveRows.forEach(row=>liveClockText(row));
+  apply();
+}
+"""
+          if old_refresh not in s:
+              raise SystemExit('signal-polish.js refresh target not found')
+          s=s.replace(old_refresh,new_refresh,1)
+          old_listener="document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});"
+          new_listener="window.addEventListener('car31:live-updated',()=>{liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];apply();});\ndocument.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});"
+          if old_listener not in s:
+              raise SystemExit('signal-polish.js listener target not found')
+          s=s.replace(old_listener,new_listener,1)
+          polish.write_text(s,encoding='utf-8')
+          PY
+          node --check car3-1-hybrid-live-engine/web/app.js
+          node --check car3-1-hybrid-live-engine/web/signal-polish.js
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name 'NOMADTIPS3 automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add car3-1-hybrid-live-engine/web/app.js car3-1-hybrid-live-engine/web/signal-polish.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'CAR 3.1: remove stale finished live cards promptly'
+          git push origin HEAD:main
