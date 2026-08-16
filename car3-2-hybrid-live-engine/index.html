@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#050607">
+  <title>NOMADTIPS3 — CAR 3.2 Live Signal View</title>
+  <link rel="stylesheet" href="../car3-1-hybrid-live-engine/web/styles.css">
+  <link rel="stylesheet" href="../car3-1-hybrid-live-engine/web/animation-v2.css">
+  <link rel="stylesheet" href="../car3-1-hybrid-live-engine/web/ui-clean.css">
+  <link rel="stylesheet" href="../car3-1-hybrid-live-engine/web/polish-v2.css?v=20260816-1059">
+  <link rel="stylesheet" href="./car32.css?v=20260816-v1">
+</head>
+<body>
+<div class="shell car32-shell">
+  <header class="topbar">
+    <div class="brand">nomad<b>tips3</b></div>
+    <nav class="nav">
+      <a class="active" href="./index.html">LIVE DETECTION</a>
+      <a href="../car3-1-hybrid-live-engine/web/history.html">STATISTICS</a>
+      <a href="../car3-1-hybrid-live-engine/web/settings.html">SETTINGS</a>
+    </nav>
+  </header>
+
+  <section class="car32-scorebar-wrap" aria-label="Active confirmed live signals">
+    <div class="car32-scorebar-head">
+      <div><span class="car32-live-dot"></span><b>ACTIVE SIGNALS</b><small>Detected matches stay here until FT</small></div>
+      <span id="car32SignalCount">0 ACTIVE</span>
+    </div>
+    <div id="car32Scorebar" class="car32-scorebar"><div class="car32-empty">Waiting for confirmed live signals…</div></div>
+  </section>
+
+  <section class="metrics car32-compact-metrics">
+    <article class="metric"><small>LIVE MATCHES</small><b id="metricLive">0</b></article>
+    <article class="metric"><small>DATA READY</small><b id="metricStats">0</b></article>
+    <article class="metric"><small>ACTIVE WINDOW</small><b id="metricWindow">0</b></article>
+    <article class="metric"><small>MONITORING</small><b id="metricWatch">0</b></article>
+    <article class="metric"><small>CLOSE</small><b class="warn" id="metricNear">0</b></article>
+    <article class="metric signal"><small>CONFIRMED</small><b class="good" id="metricSignal">0</b></article>
+  </section>
+
+  <section class="workspace car32-workspace">
+    <aside class="panel car32-monitoring-panel">
+      <div class="panel-head"><h2>Live Monitoring</h2><span id="lastUpdate">live update</span></div>
+      <div id="candidateList" class="candidate-list"></div>
+    </aside>
+
+    <main class="panel detail car32-detail">
+      <section id="car32SignalSummary" class="car32-signal-summary waiting">
+        <div class="car32-summary-status"><span class="car32-live-dot"></span><b>MONITORING</b><small>Click an active signal above to follow it live.</small></div>
+      </section>
+
+      <section class="scoreboard">
+        <div class="team"><div class="team-identity"><span class="team-jersey home">HOME</span><div class="team-copy"><small>SELECTED / HOME</small><strong id="homeTeam">—</strong></div></div></div>
+        <div class="score"><span id="matchMinute">—</span><b id="scoreText">—</b><small id="leagueText">—</small><div id="signalClockRow" class="signal-clock-row"><span><small>SIGNAL</small><b id="signalMinute">—</b></span><i aria-hidden="true"></i><span><small>LIVE TIME</small><b id="liveClock">—</b></span></div></div>
+        <div class="team"><div class="team-identity away"><span class="team-jersey away">AWAY</span><div class="team-copy"><small>OPPONENT / AWAY</small><strong id="awayTeam">—</strong></div></div></div>
+      </section>
+      <div id="sourceRow" class="source-row car32-hidden-tech"></div>
+
+      <section class="live-animation">
+        <div class="animation-head"><div><span class="live-dot"></span><b>LIVE MATCH</b><small> NOMADTIPS3 ANIMATION</small></div><div class="animation-tabs"><span>Video</span><b>Animation</b></div></div>
+        <div id="pitch" class="pitch"><svg class="pitch-svg-bg" viewBox="0 0 1200 675" preserveAspectRatio="none" role="img" aria-label="NOMADTIPS3 football pitch" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="1200" height="675" fill="#126b37"/><g fill="none" stroke="#f4f7f5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"><rect x="45" y="35" width="1110" height="605"/><line x1="600" y1="35" x2="600" y2="640"/><circle cx="600" cy="337.5" r="82"/><circle cx="600" cy="337.5" r="5" fill="#f4f7f5" stroke="none"/><rect x="45" y="150" width="190" height="375"/><rect x="45" y="235" width="78" height="205"/><circle cx="185" cy="337.5" r="5" fill="#f4f7f5" stroke="none"/><path d="M235 267 A82 82 0 0 1 235 408"/><rect x="965" y="150" width="190" height="375"/><rect x="1077" y="235" width="78" height="205"/><circle cx="1015" cy="337.5" r="5" fill="#f4f7f5" stroke="none"/><path d="M965 267 A82 82 0 0 0 965 408"/><rect x="18" y="267" width="27" height="141" stroke="#e4ece8" stroke-width="5"/><rect x="1155" y="267" width="27" height="141" stroke="#e4ece8" stroke-width="5"/></g></svg><div class="pitch-zone"></div><div class="pitch-ball">⚽</div><div id="possessionTag" class="possession-tag">LIVE POSSESSION</div></div>
+        <div id="pitchStats" class="pitch-stats"></div>
+      </section>
+
+      <div class="section-title"><h3>LIVE MATCH OVERVIEW</h3><span>Current match data · Selected vs Opponent</span></div><div id="statsGrid" class="stats-grid"></div>
+      <div class="section-title"><h3>LIVE PRESSURE TIMELINE</h3><span>Momentum and pressure by match minute</span></div>
+      <div class="charts"><div class="chart-card"><h4>MOMENTUM · 0–100</h4><div class="legend"><span class="home"><i></i>Selected</span><span class="away"><i></i>Opponent</span></div><svg id="pressureChart" viewBox="0 0 800 220" preserveAspectRatio="none"></svg></div><div class="chart-card"><h4>DANGEROUS ATTACK TREND</h4><div class="legend"><span class="home"><i></i>Selected</span><span class="away"><i></i>Opponent</span></div><svg id="dangerChart" viewBox="0 0 420 220" preserveAspectRatio="none"></svg></div></div>
+      <div class="section-title"><h3>WHY IT WAS DETECTED</h3><span>Evidence captured at the signal moment</span></div><div id="evidenceGrid" class="evidence-grid"></div>
+      <div class="tabs"><button class="tab active" data-tab="odds">ODDS</button><button class="tab" data-tab="events">EVENTS</button></div>
+      <div id="tab-odds" class="tab-panel"><div id="oddsGrid" class="odds-grid"></div></div>
+      <div id="tab-events" class="tab-panel" hidden><div id="events" class="events"></div></div>
+      <div id="tab-source" class="tab-panel" hidden><div id="sourceTrace"></div></div>
+      <section class="decision car32-hidden-tech"><div id="gateList" class="gate-list"></div><div class="decision-final"><small>SIGNAL STATUS</small><b id="finalDecision">MONITORING</b><span id="finalReason" class="tiny">—</span></div></section>
+    </main>
+  </section>
+</div>
+<script type="module" src="../car3-1-hybrid-live-engine/web/topbar-lock.js"></script>
+<script type="module" src="../car3-1-hybrid-live-engine/web/app.js"></script>
+<script type="module" src="../car3-1-hybrid-live-engine/web/animation-v2.js"></script>
+<script type="module" src="../car3-1-hybrid-live-engine/web/animation-v3.js"></script>
+<script type="module" src="./car32.js?v=20260816-v1"></script>
+</body>
+</html>
