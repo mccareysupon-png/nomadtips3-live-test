@@ -13,8 +13,9 @@ const SOURCE_ODDS='https://live10.goaloo28.com/gf/data/odds/en/runOddsData_8.txt
 const SOURCE_EVENTS='https://live10.goaloo28.com/gf/data/detail.js';
 const CORE_KEYS=['possession','attacks','dangerous_attacks','shots','shots_on_target','corners'];
 const DETAIL_MAP={0:'corners',4:'shots',5:'shots_on_target',6:'attacks',7:'dangerous_attacks',11:'possession'};
+const BANGKOK_DATE_FORMATTER=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'});
 const DEFAULT_CONFIG={
-  side:'HOME', minuteMin:60, minuteMax:80, market:'WIN', oddsMin:1.70, oddsMax:null,
+  side:'HOME', minuteMin:60, minuteMax:80, market:'AH', oddsMin:1.70, oddsMax:null,
   ahMin:0.25, ahMax:null, momentumMin:60, attackEvidenceEnabled:true,
   attackEvidenceDangerousAttacksEnabled:true, attackEvidenceDangerousAttacksMin:1,
   attackEvidenceShotsEnabled:true, attackEvidenceShotsMin:1,
@@ -150,7 +151,7 @@ function complete(stats){return CORE_KEYS.every(k=>num(stats?.[k]?.home)!==null&
 function pressure(stats,w){let h=0,a=0;for(const [k,wt] of Object.entries(w)){h+=(num(stats?.[k]?.home)||0)*wt;a+=(num(stats?.[k]?.away)||0)*wt;}const total=Math.max(.0001,h+a);return{home:Math.round(h/total*100),away:Math.round(a/total*100)};}
 function pair(obj,side){return side==='AWAY'?{selected:num(obj?.away)||0,opponent:num(obj?.home)||0}:{selected:num(obj?.home)||0,opponent:num(obj?.away)||0};}
 function chooseSide(match,config,p){if(config.side==='HOME'||config.side==='AWAY')return config.side;return p.away>p.home?'AWAY':'HOME';}
-function dateKey(iso){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));}
+function dateKey(iso){const d=new Date(iso);return Number.isFinite(d.getTime())?BANGKOK_DATE_FORMATTER.format(d):'';}
 
 export function evaluateMatch(match,config,baseline){
   const p=pressure(match.stats,config.momentumWeights),side=chooseSide(match,config,p),momentum=side==='AWAY'?p.away:p.home;
@@ -284,6 +285,7 @@ export class Car33State{
       const history=Array.isArray(history0)?history0:[],confirmations=confirmations0||{},baselines=baselines0||{},today=dateKey(snapshot.observedAt);
       const existing=new Map(history.map(r=>[String(r.id),r]));
       const candidates=[];
+      let todayCount=config.signalLimitEnabled?history.reduce((count,r)=>count+(dateKey(r.selectedAt)===today?1:0),0):0;
       for(const match of snapshot.matches){
         if(match.minute===null)continue;
         const p=pressure(match.stats,config.momentumWeights),side=chooseSide(match,config,p),baseKey=`${match.id}:${side}`;
@@ -292,10 +294,9 @@ export class Car33State{
         candidates.push({id:match.id,decision:evaluation.pass?'CONFIRMING':evaluation.momentum>=Math.max(1,config.momentumMin-7)?'NEAR':'WATCH',selectedSide:evaluation.side,selectedTeam:evaluation.selectedTeam,momentum:evaluation.momentum,evidence:evaluation.evidence,gates:evaluation.gates,line:evaluation.selectedLine,odds:evaluation.odds});
         if(existing.has(String(match.id)))continue;
         confirmations[match.id]=evaluation.pass?(Number(confirmations[match.id]||0)+1):0;
-        const todayCount=history.filter(r=>dateKey(r.selectedAt)===today).length;
         const limitOk=!config.signalLimitEnabled||todayCount<config.maxSignalsPerDay;
         if(evaluation.pass&&confirmations[match.id]>=config.confirmationRounds&&limitOk){
-          const record=buildSignalRecord(match,evaluation,snapshot.snapshotId,snapshot.observedAt);record.market=config.market;record.ouDirection=config.ouDirection;history.push(record);existing.set(String(match.id),record);confirmations[match.id]=0;
+          const record=buildSignalRecord(match,evaluation,snapshot.snapshotId,snapshot.observedAt);record.market=config.market;record.ouDirection=config.ouDirection;history.push(record);existing.set(String(match.id),record);confirmations[match.id]=0;todayCount+=1;
         }
       }
       for(const match of snapshot.all.filter(x=>x.status==='FT')){
@@ -307,7 +308,9 @@ export class Car33State{
       await this.state.storage.put({latest:livePayload,history:history.slice(-1000),confirmations,baselines,lastCycle});
       return json(lastCycle);
     }catch(error){
-      const lastCycle={ok:false,trigger,at:new Date().toISOString(),atMs:Date.now(),durationMs:Date.now()-started,error:String(error?.message||error)};await this.state.storage.put('lastCycle',lastCycle);return json(lastCycle,502);
+      const lastCycle={ok:false,trigger,at:new Date().toISOString(),atMs:Date.now(),durationMs:Date.now()-started,error:String(error?.message||error)};
+      try{await this.state.storage.put('lastCycle',lastCycle);}catch{}
+      return json(lastCycle,502);
     }
   }
 }
