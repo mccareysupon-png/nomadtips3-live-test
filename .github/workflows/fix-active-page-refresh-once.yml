@@ -1,0 +1,42 @@
+name: Fix active page refresh once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-active-page-refresh-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Preserve active page across refresh
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button,.view').forEach(x=>x.classList.remove('active'));b.classList.add('active');$('#'+b.dataset.view).classList.add('active');if(b.dataset.view==='stats')requestAnimationFrame(drawOutcomeChart);scrollTo({top:0,behavior:'smooth'})});"
+          new = "function activateView(view,{scroll=true,updateHash=true}={}){const allowed=['picks','stats','share'];if(!allowed.includes(view))view='picks';const btn=document.querySelector(`.nav button[data-view=\"${view}\"]`),panel=$('#'+view);if(!btn||!panel)return;document.querySelectorAll('.nav button,.view').forEach(x=>x.classList.remove('active'));btn.classList.add('active');panel.classList.add('active');if(updateHash&&location.hash!=='#'+view)history.replaceState(null,'','#'+view);if(view==='stats')requestAnimationFrame(drawOutcomeChart);if(scroll)scrollTo({top:0,behavior:'smooth'})}document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>activateView(b.dataset.view));const initialView=['picks','stats','share'].includes(location.hash.slice(1))?location.hash.slice(1):'picks';activateView(initialView,{scroll:false,updateHash:false});window.addEventListener('hashchange',()=>{const v=['picks','stats','share'].includes(location.hash.slice(1))?location.hash.slice(1):'picks';activateView(v,{scroll:false,updateHash:false})});"
+          if old not in s:
+              raise SystemExit('Navigation target not found; no changes made.')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No change needed.'
+            exit 0
+          fi
+          git config user.name 'NOMADTIPS3 automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Preserve active page on refresh'
+          git push origin HEAD:main
