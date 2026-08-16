@@ -2,6 +2,8 @@ import settlementWorker,{Car31State} from './settlement-v2.js';
 import {handleAnimationRequest} from './animation-v3-source.js';
 import {enrichLiveResponseWithGoalooClock} from './goaloo-clock.js';
 
+// Runtime continuity redeploy: keep the same Durable Object, engine rules,
+// settlement contract and every-minute Cron. This change is intentionally no-op.
 export{Car31State};
 
 export default{
