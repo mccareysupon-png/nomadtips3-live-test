@@ -1,0 +1,29 @@
+name: CAR 3.1 live clock test
+
+on:
+  push:
+    branches:
+      - fix/car31-live-clock-continuous-20260816
+    paths:
+      - "car3-1-hybrid-live-engine/web/signal-polish.js"
+      - ".github/workflows/car31-live-clock-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Validate live clock script
+        working-directory: car3-1-hybrid-live-engine
+        run: |
+          set -euo pipefail
+          node --check web/signal-polish.js
+          ! grep -q "sourceMinuteCeiling" web/signal-polish.js
+          grep -q "sync forward to it but never jump backward" web/signal-polish.js
