@@ -1,0 +1,181 @@
+/* CAR 3.3 presentation system: sentence-case headings, balanced responsive layout.
+   Visual/UI only. No engine, data, signal, clock or settlement logic. */
+:root{
+  --header-h:58px;
+  --brand-size:clamp(22px,1.8vw,26px);
+  --page-title-size:clamp(17.5px,1.45vw,20.8px);
+  --content-pad:clamp(10px,1.25vw,18px);
+}
+html,body{max-width:100%;overflow-x:hidden}
+body{min-width:0}
+.shell{width:100%;max-width:1500px;padding-left:var(--content-pad)!important;padding-right:var(--content-pad)!important}
+
+/* Header remains one stable row so sticky content never guesses a second height. */
+.topbar{
+  height:var(--header-h)!important;
+  min-height:var(--header-h)!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  gap:clamp(8px,1.2vw,18px)!important;
+  padding-top:0!important;
+  padding-bottom:0!important;
+  overflow:hidden;
+}
+.brand{font-size:var(--brand-size)!important;flex:0 0 auto}
+.nav{
+  min-width:0;
+  flex:1 1 auto;
+  justify-content:flex-end;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+}
+.nav::-webkit-scrollbar{display:none}
+.nav a{
+  flex:0 0 auto;
+  display:inline-block;
+  font-size:clamp(9px,.78vw,11px)!important;
+  padding:8px clamp(7px,.8vw,11px)!important;
+  letter-spacing:.01em!important;
+  text-transform:lowercase!important;
+}
+.nav a::first-letter{text-transform:uppercase}
+
+/* All visual headings use sentence case. Status codes remain untouched. */
+.hero h1,.stats-hero h1{
+  font-size:var(--page-title-size)!important;
+  line-height:1.15!important;
+  letter-spacing:.015em!important;
+  text-transform:lowercase!important;
+}
+.hero h1::first-letter,.stats-hero h1::first-letter{text-transform:uppercase}
+.hero p,.stats-hero p{
+  margin-top:5px!important;
+  color:#76828a!important;
+  font-size:clamp(8px,.7vw,10px)!important;
+  letter-spacing:.015em;
+}
+.scorebar-head b,.panel-title b,.chart-head small,.section-label,
+.performance-head small,.performance-head b,.history-head small,.history-head b,
+.settings-block h2,.advanced-block summary b,.setting-field>span,.switch-card b,.mini-switch span,
+.settlement-grid small,.stats-metric small,.stats-table th{
+  text-transform:lowercase!important;
+}
+.scorebar-head b::first-letter,.panel-title b::first-letter,.chart-head small::first-letter,
+.section-label::first-letter,.performance-head small::first-letter,.performance-head b::first-letter,
+.history-head small::first-letter,.history-head b::first-letter,.settings-block h2::first-letter,
+.advanced-block summary b::first-letter,.setting-field>span::first-letter,.switch-card b::first-letter,
+.mini-switch span::first-letter,.settlement-grid small::first-letter,.stats-metric small::first-letter,
+.stats-table th::first-letter{text-transform:uppercase}
+
+/* Fixed sticky geometry: topbar and trays share one source of truth. */
+.scorebar-wrap{top:var(--header-h)!important}
+.rule-summary-v2{top:var(--header-h)!important}
+.hero,.stats-hero,.settings-hero{scroll-margin-top:calc(var(--header-h) + 12px)}
+
+/* LIVE: flexible cards and charts without page-level horizontal overflow. */
+.workspace{grid-template-columns:minmax(250px,310px) minmax(0,1fr)!important;align-items:start}
+.panel,.detail-panel,.candidate-panel{min-width:0}
+.signal-grid{grid-template-columns:minmax(210px,1.55fr) repeat(3,minmax(110px,.75fr))!important}
+.scorebar{max-width:100%;overscroll-behavior-x:contain}
+.scorecard{min-width:0}
+.pick,.candidate strong,.cell b,.team b{overflow:hidden;text-overflow:ellipsis}
+.digital-pitch{height:clamp(230px,28vw,320px)!important}
+.live-chart{min-width:0}
+.chart-stage{height:clamp(190px,20vw,235px)!important}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.stat{min-width:0}
+
+/* STATISTICS: cards fill available width; only the table may scroll horizontally. */
+.stats-summary{grid-template-columns:repeat(8,minmax(0,1fr))!important}
+.performance-panel,.curve-wrap,.history-section{min-width:0}
+.curve-wrap{height:clamp(215px,22vw,275px)!important}
+.table-wrap.stats-table-wrap{
+  width:100%;
+  max-width:100%;
+  overflow-x:auto!important;
+  overflow-y:visible;
+  overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.stats-table{min-width:1040px!important}
+.stats-pager button,.page-btn{touch-action:manipulation}
+
+/* SETTINGS: fluid column progression and touch-friendly controls. */
+.settings-shell-v2{width:100%;max-width:1380px!important}
+.settings-grid-v2,.evidence-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.switch-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.setting-field,.switch-card,.evidence-card{min-width:0}
+.setting-field input,.setting-field select,.evidence-card input{min-width:0}
+.settings-actions button{min-height:38px}
+
+@media(max-width:1100px){
+  .stats-summary{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+  .signal-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .settings-grid-v2,.evidence-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .settlement-grid{grid-template-columns:1fr!important}
+}
+
+@media(max-width:980px){
+  .workspace{grid-template-columns:1fr!important}
+  .detail-panel{order:1}.candidate-panel{order:2}
+  .candidate-panel .candidates{max-height:420px}
+  .performance-head{align-items:flex-start!important;flex-direction:column!important}
+  .performance-tools{width:100%;justify-content:space-between!important}
+}
+
+@media(max-width:650px){
+  :root{--content-pad:10px;--brand-size:22px;--page-title-size:17.6px}
+  .topbar{padding-left:10px!important;padding-right:8px!important}
+  .brand{font-size:var(--brand-size)!important}
+  .nav{justify-content:flex-start;gap:2px!important}
+  .nav a{font-size:9px!important;padding:7px 6px!important}
+
+  .hero,.stats-hero{padding-top:12px!important;padding-bottom:8px!important}
+  .scorebar-wrap{margin-top:6px!important;padding:8px 7px 9px!important}
+  .scorebar-head{margin-bottom:6px!important}
+  .scorecard{flex-basis:min(78vw,250px)!important}
+
+  .signal-grid{grid-template-columns:1fr!important}
+  .match-card{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;padding:12px 8px!important;gap:7px!important}
+  .team b{font-size:clamp(12px,3.4vw,15px)!important}
+  .score b{font-size:clamp(24px,7vw,30px)!important}
+  .digital-pitch{height:clamp(220px,66vw,270px)!important}
+  .chart-stage{height:205px!important}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .stat:last-child:nth-child(odd){grid-column:1/-1}
+
+  .stats-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .performance-tools{align-items:flex-start!important;flex-direction:column!important;gap:8px!important}
+  .range-buttons{max-width:100%;width:100%;overflow-x:auto!important;scrollbar-width:none}
+  .range-buttons::-webkit-scrollbar{display:none}
+  .range-buttons button{flex:1 0 auto;min-height:34px}
+  .curve-wrap{height:220px!important}
+  .stats-table{min-width:900px!important}
+  .stats-table td{height:42px!important;padding:7px 8px!important;font-size:9px!important}
+  .stats-table th{padding:8px!important;font-size:7.5px!important}
+  .stats-pager{gap:5px!important}
+  .stats-pager>.secondary-btn,.page-btn{min-height:36px}
+
+  .settings-hero{align-items:flex-start!important;flex-direction:column!important;gap:8px!important}
+  .settings-grid-v2,.switch-grid,.evidence-grid{grid-template-columns:1fr!important}
+  .settings-block{padding:10px!important}
+  .settings-block-head{align-items:flex-start!important;flex-direction:column!important;gap:4px!important}
+  .settings-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px!important}
+  .settings-actions button{width:100%;min-width:0!important;min-height:42px}
+}
+
+@media(max-width:380px){
+  .brand{font-size:21px!important}
+  .nav a{font-size:8.5px!important;padding:7px 5px!important}
+  .stats{grid-template-columns:1fr!important}
+  .stat:last-child:nth-child(odd){grid-column:auto}
+  .settings-actions{grid-template-columns:1fr!important}
+}
+
+@media(orientation:landscape) and (max-height:520px){
+  .digital-pitch{height:210px!important}
+  .chart-stage{height:180px!important}
+  .candidate-panel .candidates{max-height:260px}
+}
