@@ -1,0 +1,83 @@
+name: Deploy CAR 3.3 Fresh Live Engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "car3-3-live-engine/worker/**"
+      - ".github/workflows/car33-cloudflare-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate CAR 3.3 fresh code
+        working-directory: car3-3-live-engine/worker
+        run: |
+          node --check src/index.js
+          node --test
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy isolated CAR 3.3 worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: car3-3-live-engine/worker
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Start and verify live cycle
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          echo "Worker: $DEPLOYMENT_URL"
+          curl -fsS "$DEPLOYMENT_URL/scan" | tee /tmp/car33-scan.json
+          curl -fsS "$DEPLOYMENT_URL/health" | tee /tmp/car33-health.json
+          python - <<'PY'
+          import json
+          health=json.load(open('/tmp/car33-health.json'))
+          assert health.get('engine')=='CAR 3.3', health
+          assert health.get('ok') is True, health
+          print('CAR 3.3 health PASS')
+          PY
+
+      - name: Verify live payload contract
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsS "$DEPLOYMENT_URL/live" > /tmp/car33-live.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-live.json'))
+          assert p.get('engine')=='CAR 3.3', p
+          assert isinstance(p.get('matches'),list), p
+          assert isinstance(p.get('activeSignals'),list), p
+          for m in p['matches'][:25]:
+              assert 'sourceClock' in m
+              assert 'elapsedSeconds' in m
+              assert 'score' in m
+          print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']))
+          PY
