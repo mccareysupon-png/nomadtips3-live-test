@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 app = Path('car3-1-hybrid-live-engine/web/app.js')
 s = app.read_text(encoding='utf-8')
@@ -15,33 +16,22 @@ app.write_text(s, encoding='utf-8')
 
 polish = Path('car3-1-hybrid-live-engine/web/signal-polish.js')
 s = polish.read_text(encoding='utf-8')
-old_refresh = '''async function refresh(){
-  runtime=runtime||await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
-  const [live,history]=await Promise.all([
-    fetch(`${runtime.workerUrl}/live?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({matches:[]})),
-    fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}))
-  ]);
-  liveRows=live.matches||[];historyRecords=history.records||[];
-  // Sync every match to its latest CAR 3.1 source minute before rendering.
-  liveRows.forEach(row=>liveClockText(row));
-  apply();
-}
-'''
-new_refresh = '''async function refresh(){
+pattern = re.compile(r"async function refresh\(\)\{\n.*?\n\}\n\ndocument\.addEventListener", re.S)
+replacement = """async function refresh(){
   runtime=runtime||await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
   const history=await fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}));
   historyRecords=history.records||[];
   liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];
-  liveRows.forEach(row=>liveClockText(row));
   apply();
 }
-'''
-if old_refresh not in s:
-    raise SystemExit('signal-polish.js refresh target not found')
-s = s.replace(old_refresh, new_refresh, 1)
-old_listener = "document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});"
-new_listener = "window.addEventListener('car31:live-updated',()=>{liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];apply();});\n" + old_listener
-if old_listener not in s:
-    raise SystemExit('signal-polish.js listener target not found')
-s = s.replace(old_listener, new_listener, 1)
-polish.write_text(s, encoding='utf-8')
+
+window.addEventListener('car31:live-updated',()=>{
+  liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];
+  apply();
+});
+
+document.addEventListener"""
+s2, count = pattern.subn(replacement, s, count=1)
+if count != 1:
+    raise SystemExit('signal-polish.js refresh block target not found')
+polish.write_text(s2, encoding='utf-8')
