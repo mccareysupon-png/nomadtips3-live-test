@@ -1,7 +1,10 @@
 import fs from 'node:fs/promises';
 const src = JSON.parse(await fs.readFile('car1-1/data/goaloo-probe.json','utf8'));
-const rows=(src.rows||[]).map(r=>({index:r.index,text:r.text,attrs:r.attrs,links:r.links,cells:r.cells}));
-const likely=rows.filter(r=>Array.isArray(r.cells)&&r.cells.length>=4).slice(0,80);
-const out={httpStatus:src.httpStatus,title:src.title,url:src.url,rowCount:src.rowCount,bodyText:(src.bodyText||'').slice(0,18000),likelyRows:likely,anchors:(src.anchors||[]).slice(0,100)};
+const rows=(src.rows||[]).map(r=>({index:r.index,text:r.text,attrs:r.attrs,links:r.links,cells:r.cells,html:r.html}));
+const likely=rows.filter(r=>Array.isArray(r.cells)&&r.cells.length>=4).slice(0,30).map(({html,...r})=>r);
+const candidates=rows.filter(r=>/Tips|Lineup/.test(r.text||'') && Array.isArray(r.cells) && r.cells.length>=4).slice(0,35);
+const target={httpStatus:src.httpStatus,rowCount:src.rowCount,candidates:candidates.map(r=>({index:r.index,text:r.text,attrs:r.attrs,links:r.links,cells:r.cells,html:(r.html||'').slice(0,4500)}))};
+const out={httpStatus:src.httpStatus,title:src.title,url:src.url,rowCount:src.rowCount,bodyText:(src.bodyText||'').slice(0,12000),likelyRows:likely,anchors:(src.anchors||[]).slice(0,60)};
 await fs.writeFile('car1-1/data/feed-diagnostic.json',JSON.stringify(out,null,2)+'\n');
-console.log(`wrote ${likely.length} likely rows`);
+await fs.writeFile('car1-1/data/feed-candidates.json',JSON.stringify(target,null,2)+'\n');
+console.log(`wrote likely=${likely.length} candidate=${candidates.length}`);
