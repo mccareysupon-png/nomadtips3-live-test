@@ -1,0 +1,50 @@
+name: Market Settlement Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/market-settlement-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  settle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/car11-goaloo-launch-20260816
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate market settlement rules
+        run: |
+          node --input-type=module <<'NODE'
+          import { settleMarket } from './car1-1/scripts/market_helpers.mjs';
+          const cases=[
+            ['1X2 WIN',{key:'1X2',selection:'HOME'},2,1,'WIN'],
+            ['1X2 DRAW is loss for HOME pick',{key:'1X2',selection:'HOME'},1,1,'LOSS'],
+            ['AH -0.25 draw',{key:'AH',side:'home',handicap:-0.25},1,1,'HALF_LOSS'],
+            ['AH +0.25 draw',{key:'AH',side:'home',handicap:0.25},1,1,'HALF_WIN'],
+            ['AH -0.5 win by one',{key:'AH',side:'home',handicap:-0.5},2,1,'WIN'],
+            ['AH 0 push draw',{key:'AH',side:'home',handicap:0},1,1,'PUSH'],
+            ['O/U over 2.25 total two',{key:'OU',selection:'OVER',line:2.25},1,1,'HALF_LOSS'],
+            ['O/U over 2.75 total three',{key:'OU',selection:'OVER',line:2.75},2,1,'HALF_WIN'],
+            ['O/U under 2 push total two',{key:'OU',selection:'UNDER',line:2},1,1,'PUSH'],
+            ['BTTS YES',{key:'BTTS',selection:'YES'},1,1,'WIN'],
+            ['BTTS NO',{key:'BTTS',selection:'NO'},1,0,'WIN'],
+            ['Double Chance 1X draw',{key:'DC',selection:'1X'},1,1,'WIN'],
+            ['Double Chance X2 away',{key:'DC',selection:'X2'},0,1,'WIN'],
+            ['Odd total',{key:'OE',selection:'ODD'},2,1,'WIN'],
+            ['Even total',{key:'OE',selection:'EVEN'},1,1,'WIN']
+          ];
+          for(const [name,m,h,a,expected] of cases){
+            const got=settleMarket(m,h,a);
+            if(got!==expected)throw new Error(`${name}: expected ${expected}, got ${got}`);
+            console.log(`PASS ${name}: ${got}`);
+          }
+          NODE
