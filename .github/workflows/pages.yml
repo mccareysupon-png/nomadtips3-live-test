@@ -42,6 +42,7 @@ jobs:
           test -f "$WEB/statistics.js"
           test -f "$WEB/topbar-lock.js"
           test -f "$WEB/signal-polish.js"
+          test -f "$WEB/live-fetch-guard.js"
           test -f "$MON/index.html"
           test -f "$MON/history.html"
           test -f "$MON/statistics.html"
@@ -50,7 +51,11 @@ jobs:
           node --check "$WEB/statistics.js"
           node --check "$WEB/topbar-lock.js"
           node --check "$WEB/signal-polish.js"
+          node --check "$WEB/live-fetch-guard.js"
           node --check "$MON/match-time-card.js"
+
+          grep -q "import './live-fetch-guard.js'" "$WEB/topbar-lock.js"
+          grep -q 'HOLDING LAST GOOD' "$WEB/live-fetch-guard.js"
 
           for PAGE in "$WEB/statistics.html" "$WEB/history.html"; do
             grep -q 'statistics.js' "$PAGE"
@@ -81,6 +86,49 @@ jobs:
             echo "::error::monitor/index.html still exposes obsolete LIVE TIME"
             exit 1
           fi
+
+      - name: Inspect CAR 3.1 Worker read-only
+        continue-on-error: true
+        run: |
+          set +e
+          BASE="https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev"
+          echo "=== HEALTH ==="
+          curl -fsS --max-time 20 "$BASE/health?t=$(date +%s)" | tee /tmp/car31-health.json
+          echo
+          echo "=== LIVE ==="
+          curl -fsS --max-time 20 "$BASE/live?t=$(date +%s)" | tee /tmp/car31-live.json
+          echo
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for name in ('health','live'):
+              p=Path(f'/tmp/car31-{name}.json')
+              if not p.exists() or not p.read_text().strip():
+                  print(f'{name}: NO RESPONSE')
+                  continue
+              try:
+                  d=json.loads(p.read_text())
+              except Exception as e:
+                  print(f'{name}: INVALID JSON {e}')
+                  continue
+              if name=='health':
+                  print('health summary:', {
+                      'ok': d.get('ok'),
+                      'lastCycle': d.get('lastCycle'),
+                      'lastSuccess': d.get('lastSuccess'),
+                      'lastError': d.get('lastError'),
+                      'historyTotal': d.get('historyTotal'),
+                      'settlementContract': d.get('settlementContract')
+                  })
+              else:
+                  rows=d.get('matches') or []
+                  print('live summary:', {
+                      'ok': d.get('ok'),
+                      'generatedAt': d.get('generatedAt'),
+                      'matches': len(rows),
+                      'signals': sum(1 for r in rows if str((r.get('engine') or {}).get('decision','')).upper()=='SHADOW SIGNAL')
+                  })
+          PY
 
       - name: Apply exact 40 percent visual reduction to heading
         run: |
