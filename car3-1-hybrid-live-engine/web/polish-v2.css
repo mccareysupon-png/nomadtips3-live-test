@@ -1,0 +1,47 @@
+/* CAR 3.1 presentation polish only. Engine gates and signal logic do not live here. */
+:root{--polish-green:#39d06f;--polish-red:#ef5b63;--polish-draw:#929aa2;--polish-glow:#75df28}
+.brand small{display:none!important}
+
+/* Keep the full-width bar, but align its content with each page content edge. */
+.shell>.topbar{padding-left:max(12px,calc((100vw - 1480px)/2))!important;padding-right:max(12px,calc((100vw - 1480px)/2))!important}
+.settings-shell>.topbar{padding-left:max(12px,calc((100vw - 1180px)/2))!important;padding-right:max(12px,calc((100vw - 1180px)/2))!important}
+.topbar{border:0!important;background:linear-gradient(180deg,rgba(18,20,23,.98),rgba(10,11,13,.94))!important;box-shadow:0 10px 30px rgba(0,0,0,.28)!important}
+
+/* Links and interactive controls share one glow language. */
+a[href],button,.tab{transition:color .18s ease,background .18s ease,filter .18s ease,text-shadow .18s ease,transform .18s ease!important}
+a[href]:hover,button:not(:disabled):hover,.tab:hover{color:#d9ffc8!important;text-shadow:0 0 12px rgba(117,223,40,.72)!important;filter:brightness(1.18);}
+a[href]:focus-visible,button:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid rgba(117,223,40,.72)!important;outline-offset:2px!important}
+
+/* Borderless depth: gradients, spacing and shadows replace decorative outlines. */
+.hero-copy,.engine-card,.panel,.metric,.settings-section,.settings-summary,.validation,.history-wrap,.history-chart-panel,
+.engine-card div,.candidate,.stat-row,.evidence-card,.odd-card,.gate,.field,.chart-card,.footer-note,.decision-final,.live-animation,.history-table,
+.source-pill,.tab,.pager button,.animation-head,.live-market-strip,.match-timeline{border:0!important}
+.hero-copy,.engine-card,.panel,.metric,.settings-section,.history-wrap,.history-chart-panel{background:linear-gradient(145deg,#20242a 0%,#15181c 46%,#101215 100%)!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important}
+.engine-card div,.candidate,.stat-row,.evidence-card,.odd-card,.gate,.field{background:linear-gradient(145deg,#292e34,#1b1f24)!important}
+.chart-card,.footer-note,.decision-final,.live-animation{background:linear-gradient(145deg,#191c20,#0f1114)!important}
+.history-table td{border-top:0!important;background:linear-gradient(180deg,rgba(35,40,45,.42),rgba(17,20,23,.18))!important}
+.history-table tr+tr td{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important}
+.history-table th{border:0!important;background:linear-gradient(180deg,#2a3036,#20252a)!important}
+
+/* Confirmed signal selection only: sourced from server history, not a transient shadow round. */
+.signal-selected{color:var(--polish-green)!important;font-weight:900!important;text-shadow:0 0 11px rgba(57,208,111,.3)!important}
+.candidate.confirmed-signal{background:linear-gradient(145deg,rgba(38,82,52,.58),#1b2220)!important;box-shadow:inset 3px 0 0 var(--polish-green),0 8px 22px rgba(0,0,0,.12)!important}
+.candidate.confirmed-signal .state{color:#caffd9!important;background:rgba(37,110,61,.7)!important}
+.history-selected-team{color:var(--polish-green)!important;font-weight:850!important}
+
+/* W/L/D statistics */
+.history-summary{grid-template-columns:repeat(7,1fr)!important}
+.result.win{color:var(--polish-green)!important}.result.loss{color:var(--polish-red)!important}.result.draw{color:var(--polish-draw)!important}.result.pending{color:#55c8ff!important}.result.void{color:#c0c5c9!important}
+.settlement-detail{display:block;margin-top:4px;color:#7f878e;font-size:7px;letter-spacing:.05em}
+.history-chart-panel{padding:14px;border-radius:12px;margin:0 0 12px}
+.history-chart-panel canvas{display:block;width:100%;height:260px;margin-top:6px}
+.result-chart-legend{display:flex;gap:14px;justify-content:flex-end;margin-top:-14px;margin-bottom:4px;font-size:8px;color:#a1a9b0}
+.result-chart-legend i{display:inline-block;width:16px;height:3px;border-radius:999px;margin-right:5px;vertical-align:middle}
+.result-chart-legend .win i{background:var(--polish-green)}.result-chart-legend .loss i{background:var(--polish-red)}.result-chart-legend .draw i{background:var(--polish-draw)}
+
+@media(max-width:760px){
+  .shell>.topbar,.settings-shell>.topbar{padding-left:12px!important;padding-right:12px!important}
+  .history-summary{grid-template-columns:repeat(3,1fr)!important}
+  .result-chart-legend{justify-content:flex-start;margin:8px 0 2px}
+}
+@media(max-width:520px){.history-summary{grid-template-columns:repeat(2,1fr)!important}}
