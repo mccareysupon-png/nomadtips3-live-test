@@ -1,0 +1,147 @@
+/* CAR 3.1 presentation polish only. Engine gates and signal logic do not live here. */
+:root{--polish-green:#39d06f;--polish-red:#ef5b63;--polish-draw:#929aa2;--polish-glow:#75df28}
+html,body{background:#000!important}
+body{background-image:none!important}
+.brand small{display:none!important}
+
+/* Fixed top navigation: solid dark gray for maximum contrast and zero scroll drift. */
+.shell,.settings-shell{padding-top:var(--topbar-offset,64px)!important}
+.shell>.topbar{padding-left:max(12px,calc((100vw - 1480px)/2))!important;padding-right:max(12px,calc((100vw - 1480px)/2))!important}
+.settings-shell>.topbar{padding-left:max(12px,calc((100vw - 1180px)/2))!important;padding-right:max(12px,calc((100vw - 1180px)/2))!important}
+.topbar{
+  position:fixed!important;
+  top:0!important;
+  left:0!important;
+  right:0!important;
+  width:100%!important;
+  margin:0!important;
+  z-index:100!important;
+  border:0!important;
+  border-radius:0!important;
+  background:linear-gradient(180deg,#20242a 0%,#171a1e 100%)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.55)!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  padding-top:12.1px!important;
+  padding-bottom:12.1px!important;
+}
+
+/* Topbar scale +10% on every CAR 3.1 page. */
+.brand{font-size:26.4px!important}
+.nav a,.shadow-badge{
+  font-size:9.9px!important;
+  padding:8.8px 11px!important;
+}
+
+/* Signal minute is fixed at detection; Live Time follows source minute jumps only. */
+.signal-clock-row{
+  margin-top:5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:5px 8px;
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(38,43,49,.76),rgba(20,23,27,.72));
+  box-shadow:0 5px 14px rgba(0,0,0,.16);
+  white-space:nowrap;
+}
+.signal-clock-row[hidden]{display:none!important}
+.signal-clock-row>span{display:flex;align-items:baseline;gap:4px}
+.signal-clock-row small{font-size:7px!important;letter-spacing:.08em;color:#89929a!important;font-weight:800}
+.signal-clock-row b{font-size:10px!important;line-height:1;font-weight:900}
+.signal-clock-row i{width:3px;height:3px;border-radius:50%;background:#697178}
+#signalMinute{color:var(--polish-green)!important;text-shadow:0 0 8px rgba(57,208,111,.28)}
+#liveClock{color:#f4c84b!important;font-variant-numeric:tabular-nums;min-width:38px;text-align:left}
+
+/* Links and interactive controls share one glow language. */
+a[href],button,.tab{transition:color .18s ease,background .18s ease,filter .18s ease,text-shadow .18s ease,transform .18s ease!important}
+a[href]:hover,button:not(:disabled):hover,.tab:hover{color:#d9ffc8!important;text-shadow:0 0 12px rgba(117,223,40,.72)!important;filter:brightness(1.18);}
+a[href]:focus-visible,button:focus-visible,.tab:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid rgba(117,223,40,.72)!important;outline-offset:2px!important}
+
+/* Borderless depth: gradients, spacing and shadows replace decorative outlines. */
+.hero-copy,.engine-card,.panel,.metric,.settings-section,.settings-summary,.validation,.history-wrap,.history-chart-panel,
+.engine-card div,.candidate,.stat-row,.evidence-card,.odd-card,.gate,.field,.chart-card,.footer-note,.decision-final,.live-animation,.history-table,
+.source-pill,.tab,.pager button,.animation-head,.live-market-strip,.match-timeline{border:0!important}
+.hero-copy,.engine-card,.panel,.metric,.settings-section,.history-wrap,.history-chart-panel{background:linear-gradient(145deg,#20242a 0%,#15181c 46%,#101215 100%)!important;box-shadow:0 12px 30px rgba(0,0,0,.16)!important}
+.engine-card div,.candidate,.stat-row,.evidence-card,.odd-card,.gate,.field{background:linear-gradient(145deg,#292e34,#1b1f24)!important}
+.chart-card,.footer-note,.decision-final,.live-animation{background:linear-gradient(145deg,#191c20,#0f1114)!important}
+.history-table td{border-top:0!important;background:linear-gradient(180deg,rgba(35,40,45,.42),rgba(17,20,23,.18))!important}
+.history-table tr+tr td{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important}
+.history-table th{border:0!important;background:linear-gradient(180deg,#2a3036,#20252a)!important}
+
+/* Confirmed signal selection only: sourced from server history, not a transient shadow round. */
+.signal-selected{color:var(--polish-green)!important;font-weight:900!important;text-shadow:0 0 11px rgba(57,208,111,.3)!important}
+@keyframes confirmedSignalPulse{
+  0%,100%{filter:brightness(1);box-shadow:inset 3px 0 0 var(--polish-green),0 8px 22px rgba(0,0,0,.12),0 0 0 rgba(57,208,111,0)}
+  50%{filter:brightness(1.26);box-shadow:inset 5px 0 0 #8cffad,0 10px 28px rgba(0,0,0,.2),0 0 24px rgba(57,208,111,.5)}
+}
+.candidate.confirmed-signal{
+  background:linear-gradient(145deg,rgba(38,82,52,.68),#1b2220)!important;
+  box-shadow:inset 3px 0 0 var(--polish-green),0 8px 22px rgba(0,0,0,.12)!important;
+  animation:confirmedSignalPulse 1.15s ease-in-out infinite;
+}
+.candidate.confirmed-signal .state{color:#caffd9!important;background:rgba(37,110,61,.7)!important}
+.history-selected-team{color:var(--polish-green)!important;font-weight:850!important}
+.signal-number-alert{animation:confirmedSignalPulse 1.15s ease-in-out infinite;border-radius:8px;padding:1px 5px}
+.locked-signal-order{
+  margin-top:8px;
+  padding:9px 10px;
+  border-radius:10px;
+  text-align:left;
+  background:linear-gradient(145deg,rgba(10,34,20,.94),rgba(18,48,27,.88));
+  box-shadow:inset 0 0 0 1px rgba(117,223,40,.16),0 8px 18px rgba(0,0,0,.16);
+}
+.signal-order-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.signal-order-head b{font-size:9px;color:#baffca;letter-spacing:.08em}
+.signal-order-head span{font-size:7px;color:#f4c84b;font-weight:850;white-space:nowrap}
+.signal-order-pick{display:flex;align-items:baseline;gap:7px;margin-bottom:7px}
+.signal-order-pick small{font-size:7px;color:#8d9a92;font-weight:850;letter-spacing:.08em}
+.signal-order-pick strong{font-size:13px;color:#fff;font-weight:950;line-height:1.15}
+.signal-order-grid{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:6px}
+.signal-order-grid>span{display:flex;flex-direction:column;gap:2px;min-width:0;padding:6px 7px;border-radius:7px;background:rgba(0,0,0,.2)}
+.signal-order-grid small{font-size:6px;color:#839087;font-weight:800;letter-spacing:.06em}
+.signal-order-grid b{font-size:9px;color:#e9f8ed;font-weight:900;overflow-wrap:anywhere}
+.signal-order-grid>span:last-child b{color:#f4c84b}
+
+/* W/L/D statistics */
+.history-summary{grid-template-columns:repeat(7,1fr)!important}
+.result.win{color:var(--polish-green)!important}.result.loss{color:var(--polish-red)!important}.result.draw{color:var(--polish-draw)!important}.result.pending{color:#55c8ff!important}.result.void{color:#c0c5c9!important}
+.settlement-detail{display:block;margin-top:4px;color:#7f878e;font-size:7px;letter-spacing:.05em}
+.history-chart-panel{padding:14px;border-radius:12px;margin:0 0 12px}
+.history-chart-panel canvas{display:block;width:100%;height:260px;margin-top:8px}
+.history-chart-panel>.panel-head{align-items:flex-start!important;gap:12px!important}
+.history-chart-panel>.panel-head>span{white-space:nowrap;color:#8e969d!important}
+.result-chart-legend{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex-wrap:wrap;
+  gap:8px 20px;
+  margin:8px 2px 4px 0;
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.08em;
+  color:#a1a9b0;
+}
+.result-chart-legend>span{display:inline-flex;align-items:center;white-space:nowrap}
+.result-chart-legend i{display:inline-block;width:18px;height:3px;border-radius:999px;margin-right:6px;vertical-align:middle}
+.result-chart-legend .win{color:#bdeece}.result-chart-legend .loss{color:#ffc0c5}.result-chart-legend .draw{color:#c3c8cd}
+.result-chart-legend .win i{background:var(--polish-green)}.result-chart-legend .loss i{background:var(--polish-red)}.result-chart-legend .draw i{background:var(--polish-draw)}
+
+@media(max-width:760px){
+  .shell>.topbar,.settings-shell>.topbar{padding-left:12px!important;padding-right:12px!important}
+  .history-summary{grid-template-columns:repeat(3,1fr)!important}
+  .history-chart-panel>.panel-head{flex-wrap:wrap!important}
+  .history-chart-panel>.panel-head>span{white-space:normal}
+  .result-chart-legend{justify-content:flex-start;gap:8px 16px;margin:10px 0 4px}
+  .signal-order-grid{grid-template-columns:1fr 1fr}
+  .signal-order-grid>span:first-child{grid-column:1/-1}
+}
+@media(max-width:520px){
+  .history-summary{grid-template-columns:repeat(2,1fr)!important}
+  .result-chart-legend{justify-content:space-between;gap:8px 10px}
+}
+@media(prefers-reduced-motion:reduce){
+  .candidate.confirmed-signal,.signal-number-alert{animation:none!important}
+}
