@@ -108,6 +108,38 @@ jobs:
           print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']),'market=',c.get('config',{}).get('market'))
           PY
 
+      - name: Verify full settings page and save roundtrip
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsSL "$DEPLOYMENT_URL/settings.html" > /tmp/car33-settings.html
+          for control in market goalGapLimited signalLimitEnabled requireCoreStats redCardPolicy attackEvidenceEnabled attackEvidenceDangerousAttacksEnabled attackEvidenceShotsEnabled attackEvidenceShotsOnTargetEnabled attackEvidenceCornersEnabled w_attacks w_dangerous_attacks w_shots w_shots_on_target w_corners w_possession; do
+            grep -q "name=\"$control\"" /tmp/car33-settings.html || { echo "::error::Missing settings control $control"; exit 1; }
+          done
+          curl -fsS "$DEPLOYMENT_URL/config" > /tmp/car33-config-before.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-config-before.json'))
+          c=p.get('config') or {}
+          required=('side','minuteMin','minuteMax','market','oddsMin','ahMin','momentumMin','confirmationRounds','goalGapLimited','maxGoalGap','signalLimitEnabled','maxSignalsPerDay','attackEvidenceEnabled','attackEvidenceDangerousAttacksEnabled','attackEvidenceShotsEnabled','attackEvidenceShotsOnTargetEnabled','attackEvidenceCornersEnabled','attackEvidenceRequirement','requireCoreStats','redCardPolicy','momentumWeights')
+          for k in required: assert k in c,(k,c)
+          json.dump(c,open('/tmp/car33-config-body.json','w'))
+          PY
+          curl -fsS -X POST "$DEPLOYMENT_URL/config" -H 'content-type: application/json' --data-binary @/tmp/car33-config-body.json > /tmp/car33-config-save.json
+          curl -fsS "$DEPLOYMENT_URL/config" > /tmp/car33-config-after.json
+          python - <<'PY'
+          import json
+          before=json.load(open('/tmp/car33-config-before.json'))['config']
+          saved=json.load(open('/tmp/car33-config-save.json'))['config']
+          after=json.load(open('/tmp/car33-config-after.json'))['config']
+          keys=('side','minuteMin','minuteMax','market','oddsMin','oddsMax','ahMin','ahMax','momentumMin','confirmationRounds','goalGapLimited','maxGoalGap','signalLimitEnabled','maxSignalsPerDay','attackEvidenceEnabled','attackEvidenceDangerousAttacksEnabled','attackEvidenceShotsEnabled','attackEvidenceShotsOnTargetEnabled','attackEvidenceCornersEnabled','attackEvidenceRequirement','requireCoreStats','redCardPolicy','momentumWeights')
+          for k in keys:
+              assert saved.get(k)==after.get(k),(k,saved.get(k),after.get(k))
+              assert before.get(k)==after.get(k),(k,before.get(k),after.get(k))
+          print('CAR 3.3 settings PASS; save roundtrip preserved active config; market=',after.get('market'))
+          PY
+
       - name: Verify statistics page and history contract
         shell: bash
         env:
