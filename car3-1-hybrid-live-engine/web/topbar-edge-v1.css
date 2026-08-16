@@ -1,13 +1,17 @@
-/* CAR 3.1 topbar geometry only: full-bleed sticky bar, content-aligned logo/nav. */
+/* CAR 3.1 topbar geometry only: viewport-fixed full-bleed bar, content-aligned logo/nav. */
 :root{--car31-content-max:1500px}
+.shell,.settings-shell{
+  padding-top:calc(var(--v-header,58px) + 12px)!important;
+}
 .topbar{
-  position:sticky!important;
+  position:fixed!important;
   top:0!important;
+  left:0!important;
+  right:0!important;
   z-index:120!important;
-  width:100vw!important;
+  width:100%!important;
   max-width:none!important;
-  margin-left:calc(50% - 50vw)!important;
-  margin-right:calc(50% - 50vw)!important;
+  margin:0!important;
   padding-left:max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px)))!important;
   padding-right:max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px)))!important;
   border-radius:0!important;
@@ -15,10 +19,16 @@
 .topbar .brand{margin-left:0!important}
 .topbar .nav{margin-right:0!important}
 @media(max-width:650px){
+  .shell,.settings-shell{
+    padding-top:calc(var(--v-header,56px) + 10px)!important;
+  }
   .topbar{
-    width:100vw!important;
-    margin-left:calc(50% - 50vw)!important;
-    margin-right:calc(50% - 50vw)!important;
+    position:fixed!important;
+    top:0!important;
+    left:0!important;
+    right:0!important;
+    width:100%!important;
+    margin:0!important;
     padding-left:10px!important;
     padding-right:10px!important;
   }
