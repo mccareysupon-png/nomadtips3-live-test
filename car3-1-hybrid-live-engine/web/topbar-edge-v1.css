@@ -1,0 +1,37 @@
+/* CAR 3.1 topbar geometry only: full-bleed sticky bar, content-aligned logo/nav. */
+:root{--car31-content-max:1500px}
+.topbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:120!important;
+  width:100vw!important;
+  max-width:none!important;
+  margin-left:calc(50% - 50vw)!important;
+  margin-right:calc(50% - 50vw)!important;
+  padding-left:max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px)))!important;
+  padding-right:max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px)))!important;
+  border-radius:0!important;
+}
+.topbar .brand{margin-left:0!important}
+.topbar .nav{margin-right:0!important}
+@media(max-width:650px){
+  .topbar{
+    width:100vw!important;
+    margin-left:calc(50% - 50vw)!important;
+    margin-right:calc(50% - 50vw)!important;
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+}
+@supports(padding:max(0px)){
+  .topbar{
+    padding-left:max(env(safe-area-inset-left),max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px))))!important;
+    padding-right:max(env(safe-area-inset-right),max(var(--v-pad,18px),calc((100vw - var(--car31-content-max))/2 + var(--v-pad,18px))))!important;
+  }
+  @media(max-width:650px){
+    .topbar{
+      padding-left:max(10px,env(safe-area-inset-left))!important;
+      padding-right:max(10px,env(safe-area-inset-right))!important;
+    }
+  }
+}
