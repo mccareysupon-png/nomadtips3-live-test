@@ -1,3 +1,5 @@
+import './live-fetch-guard.js';
+
 const topbar=document.querySelector('.topbar');
 const shell=document.querySelector('.shell,.settings-shell');
 
