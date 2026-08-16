@@ -38,6 +38,7 @@ jobs:
           node --check ../web/clock-sync.js
           node --check ../web/settings.js
           node --check ../web/history.js
+          node --check ../web/statistics.js
 
       - name: Validate Cloudflare credentials
         run: |
@@ -105,6 +106,27 @@ jobs:
               assert 'elapsedSeconds' in m
               assert 'score' in m
           print('CAR 3.3 live contract PASS; matches=',len(p['matches']),'signals=',len(p['activeSignals']),'market=',c.get('config',{}).get('market'))
+          PY
+
+      - name: Verify statistics page and history contract
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsS "$DEPLOYMENT_URL/statistics.html" > /tmp/car33-statistics.html
+          grep -q "STATISTICS" /tmp/car33-statistics.html
+          grep -q "statistics.js" /tmp/car33-statistics.html
+          curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25" > /tmp/car33-history.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/car33-history.json'))
+          assert isinstance(p.get('records'),list), p
+          assert isinstance(p.get('summary'),dict), p
+          s=p['summary']
+          for key in ('total','win','loss','draw','pending','winRate','averageOdds'):
+              assert key in s, (key,s)
+          assert p.get('total')==s.get('total'), p
+          print('CAR 3.3 statistics PASS; records=',len(p['records']),'total=',p['total'],'pending=',s['pending'],'winRate=',s['winRate'],'averageOdds=',s['averageOdds'])
           PY
 
       - name: Verify direct Goaloo clock contract
