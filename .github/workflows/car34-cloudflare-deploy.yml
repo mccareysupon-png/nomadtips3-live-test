@@ -87,9 +87,16 @@ jobs:
       - name: Run one audit cycle and inspect status
         shell: bash
         run: |
-          curl -fsS -X POST "$CAR34_WORKER_URL/scan" -o /tmp/car34-scan.json || true
-          cat /tmp/car34-scan.json | head -c 12000 || true
-          echo
+          STATUS=$(curl -sS -o /tmp/car34-scan.json -w '%{http_code}' -X POST "$CAR34_WORKER_URL/scan" || echo 000)
+          echo "CAR 3.4 scan HTTP $STATUS"
+          if [ -f /tmp/car34-scan.json ]; then
+            cat /tmp/car34-scan.json | head -c 16000 || true
+            echo
+          fi
+          if [ "$STATUS" = "000" ] || [ "$STATUS" -ge 500 ]; then
+            echo "::error::CAR 3.4 scan failed with HTTP $STATUS"
+            exit 1
+          fi
           HEALTH=$(curl -fsS "$CAR34_WORKER_URL/health")
           echo "$HEALTH" | head -c 12000
           echo
