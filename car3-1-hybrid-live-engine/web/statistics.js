@@ -2,7 +2,7 @@ const WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev';
 const LIMIT=25;
 let page=1,pages=1,loading=false,lastTrend=[];
 const $=id=>document.getElementById(id);
-const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
 const dt=v=>{if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('th-TH',{hour12:false});};
 const signed=v=>v===null||v===undefined||v===''?'—':`${Number(v)>=0?'+':''}${v}`;
@@ -14,7 +14,7 @@ async function getJson(path,timeout=15000){
     const response=await fetch(`${WORKER}${path}${path.includes('?')?'&':'?'}t=${Date.now()}`,{cache:'no-store',signal:controller.signal});
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json();
-    if(data?.ok===false)throw new Error(data.error||'Worker returned an error');
+    if(data?.ok===false)throw new Error(data.error||'Service returned an error');
     return data;
   }finally{clearTimeout(timer);}
 }
@@ -29,12 +29,12 @@ function renderHealth(h){
   const age=last?Math.max(0,Math.round((Date.now()-Date.parse(last))/1000)):null;
   const healthy=h?.ok===true&&last&&age<240&&!h?.lastError;
   setStatus(healthy?'ONLINE':h?.ok===true?'CHECKING':'OFFLINE',healthy?'good':'warn');
-  $('wheelMode').textContent=h?.cron||'EVERY_MINUTE';
+  $('wheelMode').textContent='CONTINUOUS';
   $('lastCycle').textContent=last?dt(last):'—';
   $('cycleAge').textContent=age===null?'—':`${age}s ago`;
-  $('cycleError').textContent=h?.lastError||'NONE';
-  $('feedState').textContent=`LIVE ${num(h?.liveMatches)} · CORE ${num(h?.coreStatsReady)}`;
-  $('settlementState').textContent=h?.settlementContract||'BET365_V4';
+  $('cycleError').textContent=h?.lastError?'CHECKING':'ACTIVE';
+  $('feedState').textContent=`LIVE ${num(h?.liveMatches)} · READY ${num(h?.coreStatsReady)}`;
+  $('settlementState').textContent='VERIFIED';
 }
 
 function normalizeSummary(data){
@@ -72,7 +72,7 @@ function drawChart(){
 function renderHistory(data){
   renderSummary(data);
   page=Math.max(1,num(data.page,page));pages=Math.max(1,num(data.pages,1));
-  $('historyUpdated').textContent=`Updated ${dt(data.generatedAt)} · ${num(data.total)} records · ${esc(data.settlementContract||'BET365_V4')}`;
+  $('historyUpdated').textContent=`Updated ${dt(data.generatedAt)} · ${num(data.total)} records`;
   const rows=Array.isArray(data.records)?data.records:[];
   $('historyBody').innerHTML=rows.length?rows.map((r,i)=>{
     let group=String(r.resultGroup||r.result||'PENDING').toUpperCase();
@@ -81,7 +81,7 @@ function renderHistory(data){
     const exact=r.settlementResult||group;
     const net=r.settlementNetUnits;
     return `<tr><td>${num(data.offset)+i+1}</td><td><b>${esc(r.selectionDate)}</b><br>${dt(r.selectedAt)}</td><td><b>${esc(r.league)}</b><br>${esc(r.home)} vs ${esc(r.away)}</td><td><b class="history-selected-team">${esc(r.selectedTeam||'—')}</b><br>${esc(r.selectedSide)}</td><td>${esc(r.entryMinute)}′<br>${esc(r.entryScore?.home)}-${esc(r.entryScore?.away)}</td><td><b>${esc(r.market)}</b><br>Line ${esc(signed(line))}<br>Odds ${esc(r.odds)}</td><td>${esc(r.momentum)}%<br>DA ${signed(r.evidence?.dangerous??0)} · Shots ${signed(r.evidence?.shots??0)}<br>SOT ${signed(r.evidence?.sot??0)} · C ${signed(r.evidence?.corners??0)}</td><td>${dt(r.kickoffUtc)}</td><td>${esc(r.ftStatus||r.status)}<br>${dt(r.settledAt)}</td><td>${r.finalScore?`${esc(r.finalScore.home)}-${esc(r.finalScore.away)}`:'—'}</td><td><span class="result ${resultClass(group)}">${esc(group)}</span><small class="settlement-detail">${esc(exactLabel(exact))}</small></td><td>${net===null||net===undefined?'—':signed(Number(net).toFixed(3))}</td></tr>`;
-  }).join(''):'<tr><td colspan="12" class="empty-row">ระบบ Statistics พร้อมใช้งาน · ขณะนี้ยังไม่มี Signal history ใน Worker ชุดปัจจุบัน</td></tr>';
+  }).join(''):'<tr><td colspan="12" class="empty-row">No confirmed signals have been recorded yet.</td></tr>';
   $('pageInfo').textContent=`Page ${page} / ${pages} · ${LIMIT} rows/page`;
   $('prevPage').disabled=loading||page<=1;$('nextPage').disabled=loading||page>=pages;
   requestAnimationFrame(drawChart);
@@ -89,8 +89,8 @@ function renderHistory(data){
 
 function showError(error){
   setStatus('RETRYING','red');
-  $('historyUpdated').textContent='Worker connection error — auto retry active';
-  $('historyBody').innerHTML=`<tr><td colspan="12" class="empty-row">โหลด Statistics ไม่สำเร็จ: ${esc(error?.message||error)}<br>ระบบจะลองใหม่อัตโนมัติ หรือกด REFRESH NOW</td></tr>`;
+  $('historyUpdated').textContent='Live data connection issue — automatic retry active';
+  $('historyBody').innerHTML=`<tr><td colspan="12" class="empty-row">Statistics are temporarily unavailable. Automatic retry is active. ${esc(error?.message||'')}</td></tr>`;
 }
 
 async function load(){
