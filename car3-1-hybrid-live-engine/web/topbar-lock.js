@@ -4,13 +4,18 @@ import './visual-tron-v1.js';
 const topbar=document.querySelector('.topbar');
 const shell=document.querySelector('.shell,.settings-shell');
 
-function installVisualLayer(){
-  if(document.querySelector('link[data-car31-visual="tron-v1"]'))return;
+function installStylesheet(id,file){
+  if(document.querySelector(`link[data-car31-layer="${id}"]`))return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href=new URL('./visual-tron-v1.css?v=20260816-car33-family-v1',import.meta.url).href;
-  link.dataset.car31Visual='tron-v1';
+  link.href=new URL(file,import.meta.url).href;
+  link.dataset.car31Layer=id;
   document.head.appendChild(link);
+}
+
+function installVisualLayer(){
+  installStylesheet('tron-v1','./visual-tron-v1.css?v=20260816-car33-family-v1');
+  installStylesheet('topbar-edge-v1','./topbar-edge-v1.css?v=20260816-fullbleed-r1');
 }
 
 function statisticsHrefForCurrentPage(){
