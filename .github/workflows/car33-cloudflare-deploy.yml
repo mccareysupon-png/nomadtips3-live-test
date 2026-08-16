@@ -57,8 +57,18 @@ jobs:
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           echo "Worker: $DEPLOYMENT_URL"
-          code=$(curl -sS -o /tmp/car33-scan.json -w '%{http_code}' "$DEPLOYMENT_URL/scan")
-          cat /tmp/car33-scan.json
+          code=000
+          for attempt in 1 2 3 4; do
+            code=$(curl -sS -o /tmp/car33-scan.json -w '%{http_code}' "$DEPLOYMENT_URL/scan" || true)
+            cat /tmp/car33-scan.json || true
+            if [ "$code" = "200" ]; then break; fi
+            if grep -q "Durable Object reset because its code was updated" /tmp/car33-scan.json 2>/dev/null; then
+              echo "Transient Durable Object reset; retry $attempt/4"
+              sleep 2
+              continue
+            fi
+            break
+          done
           test "$code" = "200" || { echo "::error::CAR 3.3 scan HTTP $code"; exit 1; }
           curl -fsS "$DEPLOYMENT_URL/health" | tee /tmp/car33-health.json
           python - <<'PY'
