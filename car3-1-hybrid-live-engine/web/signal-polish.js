@@ -165,13 +165,16 @@ function apply(){
 
 async function refresh(){
   runtime=runtime||await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
-  const [live,history]=await Promise.all([
-    fetch(`${runtime.workerUrl}/live?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({matches:[]})),
-    fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}))
-  ]);
-  liveRows=live.matches||[];historyRecords=history.records||[];
+  const history=await fetch(`${runtime.workerUrl}/history?page=1&limit=100&t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json()).catch(()=>({records:[]}));
+  historyRecords=history.records||[];
+  liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];
   apply();
 }
+
+window.addEventListener('car31:live-updated',()=>{
+  liveRows=Array.isArray(window.__CAR31_LIVE_ROWS__)?window.__CAR31_LIVE_ROWS__:[];
+  apply();
+});
 
 document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});
 refresh().catch(()=>{});
