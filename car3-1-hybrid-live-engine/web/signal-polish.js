@@ -60,7 +60,6 @@ function updateCandidateMinutes(cards){
 function liveClockText(row){
   const status=String(row?.status||'LIVE').toUpperCase();
   const minute=Number(row?.minute);
-  const freshness=Number(row?.sourceFreshnessSeconds);
   const key=String(row?.sourceMatchId||row?.id||'active'),now=Date.now();
 
   if(status==='FT'||status.includes('FINISH')){
@@ -73,20 +72,34 @@ function liveClockText(row){
   }
   if(!Number.isFinite(minute))return status==='LIVE'?'LIVE':'—';
 
-  // The match minute comes from the Goaloo-backed CAR 3.1 /live feed.
-  // sourceFreshnessSeconds is produced by that same response from the source collection timestamp.
-  // Together they give both pages the same source-anchored live clock instead of a page-local guess.
-  const sourceAge=Number.isFinite(freshness)?Math.max(0,Math.round(freshness)):0;
-  const sourceSeconds=Math.max(0,Math.round(minute*60)+sourceAge);
-  const stamp=`${minute}|${sourceAge}|${status}`;
+  // LIVE TIME belongs to the match, not to the selected card.
+  // CAR 3.1 /live minute is the source anchor; browser time only advances
+  // that match's second hand between source updates. Clicking another card
+  // never creates a new clock and sourceFreshnessSeconds is not match time.
+  const sourceMinute=Math.max(0,Math.round(minute));
+  const sourceFloor=sourceMinute*60;
   let state=clockState.get(key);
-  if(!state||state.stamp!==stamp){
-    state={stamp,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
+
+  if(!state){
+    state={sourceMinute,anchorSeconds:sourceFloor,anchorAt:now,lastSeconds:sourceFloor};
     clockState.set(key,state);
+  }else{
+    const carried=state.anchorSeconds+Math.max(0,Math.floor((now-state.anchorAt)/1000));
+    state.lastSeconds=Math.max(state.lastSeconds,carried);
+
+    // Only a newer source minute may re-anchor the clock. A refresh of the
+    // same minute or a card click must not reset seconds back to :00.
+    if(sourceMinute>state.sourceMinute){
+      const synced=Math.max(state.lastSeconds,sourceFloor);
+      state.sourceMinute=sourceMinute;
+      state.anchorSeconds=synced;
+      state.anchorAt=now;
+      state.lastSeconds=synced;
+    }
   }
 
   const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
-  const seconds=Math.max(sourceSeconds,state.anchorSeconds+elapsed);
+  const seconds=Math.max(state.lastSeconds,state.anchorSeconds+elapsed,sourceFloor);
   state.lastSeconds=seconds;
   const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
   return `${mins}:${String(secs).padStart(2,'0')}`;
