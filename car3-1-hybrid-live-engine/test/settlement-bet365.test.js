@@ -29,6 +29,20 @@ test('user regression: HOME +1.25 at 1-1, FT 1-2 is half win',()=>{
   assert.equal(grade.netUnits,0.5);
 });
 
+test('half win at decimal 1.70 returns +0.35 net units',()=>{
+  const grade=settleExact({...settled,entryScore:{home:1,away:1},finalScore:{home:1,away:2},line:1.25,odds:1.70});
+  assert.equal(grade.exact,'HALF_WIN');
+  assert.equal(grade.netUnits,0.35);
+  assert.equal(Number((100*grade.netUnits).toFixed(2)),35);
+});
+
+test('half loss always loses half the stake',()=>{
+  const grade=settleExact({...settled,line:0.75,odds:1.70});
+  assert.equal(grade.exact,'HALF_LOSS');
+  assert.equal(grade.netUnits,-0.5);
+  assert.equal(Number((100*grade.netUnits).toFixed(2)),-50);
+});
+
 test('missing entry score never falls back to full-match AH',()=>{
   const grade=settleExact({...settled,entryScore:null,line:1.25});
   assert.equal(grade.exact,'VOID');
@@ -41,6 +55,13 @@ test('Goaloo legacy AH line is home perspective and is inverted for away selecti
   assert.equal(selectedAhLine({market:'AH',selectedSide:'AWAY',line:-0.75}),0.75);
   assert.equal(selectedAhLine({market:'AH',selectedSide:'AWAY',line:0.75}),-0.75);
   assert.equal(selectedAhLine({market:'AH',selectedSide:'AWAY',line:0.75,linePerspective:'SELECTED'}),0.75);
+});
+
+test('away selection settles with selected-team line perspective',()=>{
+  const grade=settleExact({settledAt:'x',market:'AH',selectedSide:'AWAY',entryScore:{home:1,away:1},finalScore:{home:2,away:1},line:-1.25,odds:2.0});
+  assert.equal(selectedAhLine({market:'AH',selectedSide:'AWAY',line:-1.25}),1.25);
+  assert.equal(grade.exact,'HALF_WIN');
+  assert.equal(grade.group,'WIN');
 });
 
 test('Bet365 Goal Line in-play keeps full-match total',()=>{
