@@ -1,6 +1,5 @@
 let runtime=null,liveRows=[],historyRecords=[];
 let lastAutoFocusedSignalKey=null;
-const clockState=new Map();
 const $=s=>document.querySelector(s),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function confirmedRecord(row){
@@ -46,53 +45,24 @@ function sourceStatus(row){
   return status==='LIVE'?'LIVE':status||'LIVE';
 }
 
-function localClockSeconds(row){
-  const status=sourceStatus(row);
-  if(status==='FT'||status==='HT')return null;
+function sourceMinuteValue(row){
   const minute=Number(row?.minute);
-  if(!Number.isFinite(minute))return null;
-  const key=String(row?.sourceMatchId||row?.id||'active');
-  const now=Date.now();
-  const sourceSeconds=Math.max(0,Math.round(minute*60));
-  let state=clockState.get(key);
-  if(!state){
-    state={sourceMinute:minute,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
-    clockState.set(key,state);
-  }else if(minute>state.sourceMinute){
-    const projected=state.anchorSeconds+Math.max(0,Math.floor((now-state.anchorAt)/1000));
-    const next=Math.max(sourceSeconds,projected,state.lastSeconds||0);
-    state.sourceMinute=minute;
-    state.anchorSeconds=next;
-    state.anchorAt=now;
-    state.lastSeconds=next;
-  }
-  const projected=state.anchorSeconds+Math.max(0,Math.floor((now-state.anchorAt)/1000));
-  const seconds=Math.max(sourceSeconds,state.lastSeconds||0,projected);
-  state.lastSeconds=seconds;
-  return seconds;
+  return Number.isFinite(minute)?Math.max(0,Math.floor(minute)):null;
 }
 
-function localClockText(row){
+function sourceMinuteText(row){
   const status=sourceStatus(row);
   if(status==='FT'||status==='HT')return status;
-  const seconds=localClockSeconds(row);
-  if(seconds===null){
-    const minute=Number(row?.minute);
-    return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:status;
-  }
-  const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
-  return `${mins}:${String(secs).padStart(2,'0')}`;
+  const minute=sourceMinuteValue(row);
+  return minute===null?status:`${minute}'`;
 }
 
 function sourceClockText(row){
   const status=sourceStatus(row);
-  const clock=localClockText(row);
   if(status==='FT'||status==='HT')return status;
-  return status==='LIVE'?clock:`${status} · ${clock}`;
-}
-
-function sourceMinuteText(row){
-  return localClockText(row);
+  const minute=sourceMinuteValue(row);
+  if(minute===null)return status;
+  return status==='LIVE'?`${minute}'`:`${status} · ${minute}'`;
 }
 
 function updateCandidateMinutes(cards){
@@ -106,7 +76,7 @@ function updateCandidateMinutes(cards){
 }
 
 function liveClockText(row){
-  return localClockText(row);
+  return sourceMinuteText(row);
 }
 
 function updateSignalClock(row,record){
@@ -213,5 +183,4 @@ window.addEventListener('car31:live-updated',()=>{
 
 document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});
 refresh().catch(()=>{});
-setInterval(apply,1000);
 setInterval(()=>refresh().catch(()=>{}),5000);
