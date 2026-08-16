@@ -1,0 +1,42 @@
+name: Fix share poster spacing once
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-share-poster-spacing-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch share poster row spacing
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          old = "function drawRows(c,rows,resultMode=false){let y=220;const rowH=50;for(const [i,m] of rows.entries()){rr(c,54,y,972,43,12,i%2?'#141414':'#202020');c.font='800 13px Arial';c.fillStyle=C.muted;c.fillText(String(i+1).padStart(2,'0'),74,y+27);c.font='800 15px Arial';c.fillStyle=posterTeamColor(m,'home');c.fillText(fit(c,m.home,250),112,y+27);c.fillStyle=C.muted;c.fillText('vs',390,y+27);c.fillStyle=posterTeamColor(m,'away');c.fillText(fit(c,m.away,250),425,y+27);c.fillStyle=corePosterColor(m);c.font='900 15px Arial';c.fillText(fit(c,resultMode?(m.status||'—'):m.pick,250),705,y+27);c.textAlign='right';c.fillStyle=resultMode?C.text:C.yellow;c.fillText(resultMode?(m.finalScore||'—'):fmtOdds(m.odds),998,y+27);c.textAlign='left';y+=rowH}}"
+          new = "function drawRows(c,rows,resultMode=false){let y=220;const rowH=50;for(const [i,m] of rows.entries()){rr(c,54,y,972,43,12,i%2?'#141414':'#202020');c.font='800 13px Arial';c.fillStyle=C.muted;c.fillText(String(i+1).padStart(2,'0'),74,y+27);c.font='800 15px Arial';c.fillStyle=posterTeamColor(m,'home');c.fillText(fit(c,m.home,225),112,y+27);c.fillStyle=C.muted;c.textAlign='center';c.fillText('vs',382,y+27);c.textAlign='left';c.fillStyle=posterTeamColor(m,'away');c.fillText(fit(c,m.away,225),415,y+27);c.fillStyle=corePosterColor(m);c.font='900 15px Arial';c.fillText(fit(c,resultMode?(m.status||'—'):m.pick,210),675,y+27);c.textAlign='right';c.fillStyle=resultMode?C.text:C.yellow;c.fillText(resultMode?(m.finalScore||'—'):fmtOdds(m.odds),998,y+27);c.textAlign='left';y+=rowH}}"
+          if old not in s:
+              raise SystemExit('Target drawRows block not found; no changes made.')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo 'No change needed.'
+            exit 0
+          fi
+          git config user.name 'NOMADTIPS3 automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add index.html
+          git commit -m 'Fix share poster text spacing'
+          git push origin HEAD:main
