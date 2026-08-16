@@ -153,16 +153,22 @@ export async function notifyCar31History(env,records,{activatedAt}={}){
   const activationMs=ms(activatedAt);
   if(!env?.DB||!env?.LINE_CHANNEL_ACCESS_TOKEN){
     return{
-      source:'CAR31',configured:false,dbConfigured:Boolean(env?.DB),tokenConfigured:Boolean(env?.LINE_CHANNEL_ACCESS_TOKEN),
+      source:'CAR31',configured:false,entitlement:'PAID_ACTIVE',dbConfigured:Boolean(env?.DB),tokenConfigured:Boolean(env?.LINE_CHANNEL_ACCESS_TOKEN),
       subscribers:0,candidates:0,signalSent:0,resultSent:0,failed:0,lastRunAt:at
     };
   }
 
   await ensureSchema(env);
   const query=await env.DB.prepare(`
-    SELECT user_id,subscribed_at
-    FROM line_subscribers
-    WHERE active = 1
+    SELECT
+      ls.user_id AS user_id,
+      MAX(COALESCE(pm.activated_at,pm.paid_at,ls.subscribed_at)) AS subscribed_at
+    FROM line_subscribers ls
+    INNER JOIN paid_memberships pm
+      ON pm.line_user_id = ls.user_id
+      AND pm.status = 'ACTIVE'
+    WHERE ls.active = 1
+    GROUP BY ls.user_id
     ORDER BY subscribed_at ASC
   `).all();
   const subscribers=query.results||[];
@@ -194,7 +200,7 @@ export async function notifyCar31History(env,records,{activatedAt}={}){
   }
 
   return{
-    source:'CAR31',configured:true,dbConfigured:true,tokenConfigured:true,
+    source:'CAR31',configured:true,entitlement:'PAID_ACTIVE',dbConfigured:true,tokenConfigured:true,
     subscribers:subscribers.length,candidates:candidates.length,signalSent,resultSent,failed,lastRunAt:at
   };
 }
