@@ -13,6 +13,11 @@ export default {
     if(url.pathname==='/clock'&&(request.method==='GET'||request.method==='OPTIONS')){
       return handleLiveClockRequest(request);
     }
+    if(url.pathname==='/api/history'&&request.method==='GET'){
+      const internalUrl=new URL(request.url);
+      internalUrl.pathname='/history';
+      return core.fetch(new Request(internalUrl.toString(),request),env,ctx);
+    }
     return core.fetch(request,env,ctx);
   },
   async scheduled(event,env,ctx){
