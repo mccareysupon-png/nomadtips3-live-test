@@ -33,6 +33,27 @@ body{background-image:none!important}
   padding:8.8px 11px!important;
 }
 
+/* Confirmed signal timing: fixed entry minute + locally ticking live clock, synced from the live feed. */
+.signal-clock-row{
+  margin-top:5px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:5px 8px;
+  border-radius:8px;
+  background:linear-gradient(180deg,rgba(38,43,49,.76),rgba(20,23,27,.72));
+  box-shadow:0 5px 14px rgba(0,0,0,.16);
+  white-space:nowrap;
+}
+.signal-clock-row[hidden]{display:none!important}
+.signal-clock-row>span{display:flex;align-items:baseline;gap:4px}
+.signal-clock-row small{font-size:7px!important;letter-spacing:.08em;color:#89929a!important;font-weight:800}
+.signal-clock-row b{font-size:10px!important;line-height:1;font-weight:900}
+.signal-clock-row i{width:3px;height:3px;border-radius:50%;background:#697178}
+#signalMinute{color:var(--polish-green)!important;text-shadow:0 0 8px rgba(57,208,111,.28)}
+#liveClock{color:#f4c84b!important;font-variant-numeric:tabular-nums;min-width:38px;text-align:left}
+
 /* Links and interactive controls share one glow language. */
 a[href],button,.tab{transition:color .18s ease,background .18s ease,filter .18s ease,text-shadow .18s ease,transform .18s ease!important}
 a[href]:hover,button:not(:disabled):hover,.tab:hover{color:#d9ffc8!important;text-shadow:0 0 12px rgba(117,223,40,.72)!important;filter:brightness(1.18);}
