@@ -38,6 +38,8 @@ jobs:
           node --check web/app.js
           node --check web/settings.js
           node --check web/history.js
+          node --check web/statistics.js
+          node --check web/topbar-lock.js
           node --check web/signal-polish.js
           node --check web/animation-v2.js
           node --check web/animation-v3.js
@@ -105,12 +107,28 @@ jobs:
             BODY=$(curl -fsS "$DEPLOYMENT_URL/health")
             echo "$BODY"
             if ! printf '%s' "$BODY" | grep -q '"lastCycle": null' && ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
+              printf '%s' "$BODY" | grep -q '"lastError": null\|"lastError":null' || { echo "::error::Worker lastError is not null"; exit 1; }
+              printf '%s' "$BODY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::BET365_V4 settlement contract missing"; exit 1; }
               exit 0
             fi
             sleep 15
           done
           echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
           exit 1
+
+      - name: Smoke-test Statistics history endpoint
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          HISTORY=$(curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25")
+          echo "$HISTORY" | head -c 12000
+          echo
+          printf '%s' "$HISTORY" | grep -q '"ok": true\|"ok":true' || { echo "::error::History API not OK"; exit 1; }
+          printf '%s' "$HISTORY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::History API settlement contract mismatch"; exit 1; }
+          printf '%s' "$HISTORY" | grep -q '"records"' || { echo "::error::History API records field missing"; exit 1; }
+          printf '%s' "$HISTORY" | grep -q '"summary"' || { echo "::error::History API summary field missing"; exit 1; }
 
       - name: Smoke-test isolated animation endpoint
         shell: bash
@@ -141,6 +159,9 @@ jobs:
           if [ -n "$DEPLOYMENT_URL" ]; then
             echo "--- HEALTH ---"
             curl -fsS "$DEPLOYMENT_URL/health" || true
+            echo
+            echo "--- HISTORY ---"
+            curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=5" | head -c 4000 || true
             echo
             echo "--- LIVE SAMPLE ---"
             curl -fsS "$DEPLOYMENT_URL/live" | head -c 8000 || true
