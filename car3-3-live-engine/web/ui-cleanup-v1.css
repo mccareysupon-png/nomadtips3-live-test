@@ -1,0 +1,13 @@
+/* Final UI wording/heading presentation. Visual only. */
+.cell small,.chart-head b,.metric-btn,.rule-summary-v2 small,.advanced-block summary em{
+  text-transform:lowercase!important;
+}
+.cell small::first-letter,.chart-head b::first-letter,.metric-btn::first-letter,
+.rule-summary-v2 small::first-letter,.advanced-block summary em::first-letter{
+  text-transform:uppercase;
+}
+/* Source transport state is internal; keep the actual event label but hide transport/debug wording. */
+.source-status{display:none!important}
+.source-event{top:15px!important}
+/* Keep genuine result/status abbreviations untouched. */
+.status-pill,.score-top b,.result,.legend-win,.legend-loss,.legend-draw{text-transform:none!important}
