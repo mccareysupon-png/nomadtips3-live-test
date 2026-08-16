@@ -1,0 +1,43 @@
+name: CAR 1.1 Goaloo Probe
+
+on:
+  push:
+    branches:
+      - agent/car11-goaloo-launch-20260816
+    paths:
+      - 'car1-1/scripts/probe_goaloo.mjs'
+      - '.github/workflows/car11-goaloo-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/car11-goaloo-launch-20260816
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Probe public Goaloo feed
+        run: node car1-1/scripts/probe_goaloo.mjs
+      - name: Commit probe output
+        run: |
+          git config user.name 'nomadtips3-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add car1-1/data/goaloo-probe.json
+          if git diff --cached --quiet; then
+            echo 'No probe changes.'
+          else
+            git commit -m 'car1.1: capture Goaloo feed DOM probe'
+            git push origin HEAD:agent/car11-goaloo-launch-20260816
+          fi
