@@ -13,7 +13,6 @@ permissions:
 
 env:
   CAR34_WORKER_URL: https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev
-  CAR31_WORKER_URL: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
 
 jobs:
   validate-deploy:
@@ -68,21 +67,14 @@ jobs:
             echo "::warning::ODDS_API_KEY repository secret is not configured. CAR 3.4 will use its stored Durable Object key when provisioned."
           fi
 
-      - name: Copy CAR 3.1 conditions into CAR 3.4 and lock AH
+      - name: Preserve saved CAR 3.4 settings
         shell: bash
         run: |
-          curl -fsS "$CAR31_WORKER_URL/config" -o /tmp/car31-config.json
-          python - <<'PY'
-          import json
-          p=json.load(open('/tmp/car31-config.json'))
-          c=dict(p.get('config') or {})
-          c['market']='AH'
-          c.setdefault('engineEnabled', True)
-          c.setdefault('realMarketMaxAgeSeconds', 120)
-          json.dump(c,open('/tmp/car34-config.json','w'))
-          print(json.dumps(c,indent=2))
-          PY
-          curl -fsS -X POST -H 'content-type: application/json' --data-binary @/tmp/car34-config.json "$CAR34_WORKER_URL/config"
+          CONFIG=$(curl -fsS "$CAR34_WORKER_URL/config")
+          echo "$CONFIG" | head -c 12000
+          echo
+          printf '%s' "$CONFIG" | grep -q '"market": "AH"' || { echo "::error::CAR 3.4 market is not locked to AH"; exit 1; }
+          echo "Saved CAR 3.4 detection settings preserved; deploy does not copy CAR 3.1 config."
 
       - name: Run one audit cycle and inspect status
         shell: bash
