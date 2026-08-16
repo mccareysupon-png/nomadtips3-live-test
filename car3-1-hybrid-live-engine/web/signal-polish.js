@@ -39,43 +39,55 @@ function ensureConfirmedBanner(){
   return banner;
 }
 
+function sourceMinuteText(row){
+  const status=String(row?.status||'LIVE').toUpperCase();
+  if(status==='FT'||status.includes('FINISH'))return'FT';
+  if(status==='HT'||status.includes('HALF'))return'HT';
+  const minute=Number(row?.minute);
+  return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:'LIVE';
+}
+
+function updateCandidateMinutes(cards){
+  cards.forEach(card=>{
+    const index=Number(card.dataset.index||0),row=liveRows[index],minuteEl=card.querySelector('.candidate-minute');
+    if(!row||!minuteEl)return;
+    const next=sourceMinuteText(row);
+    if(minuteEl.textContent!==next)minuteEl.textContent=next;
+    if(minuteEl.hidden)minuteEl.hidden=false;
+  });
+}
+
 function liveClockText(row){
   const status=String(row?.status||'LIVE').toUpperCase();
   const minute=Number(row?.minute);
+  const freshness=Number(row?.sourceFreshnessSeconds);
   const key=String(row?.sourceMatchId||row?.id||'active'),now=Date.now();
 
   if(status==='FT'||status.includes('FINISH')){
-    const previous=clockState.get(key),sourceSeconds=Number.isFinite(minute)?Math.max(0,Math.round(minute*60)):0;
-    clockState.set(key,{sourceMinute:minute,status,anchorSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0),anchorAt:now,lastSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0)});
+    clockState.delete(key);
     return'FT';
   }
   if(status==='HT'||status.includes('HALF')){
-    const previous=clockState.get(key),sourceSeconds=Number.isFinite(minute)?Math.max(0,Math.round(minute*60)):0;
-    clockState.set(key,{sourceMinute:minute,status,anchorSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0),anchorAt:now,lastSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0)});
+    clockState.delete(key);
     return'HT';
   }
   if(!Number.isFinite(minute))return status==='LIVE'?'LIVE':'—';
 
-  // Goaloo/CAR 3.1 supplies the authoritative source minute. Between feed updates,
-  // keep a client-side second hand moving continuously across minute boundaries.
-  // When a newer source minute arrives, sync forward to it but never jump backward.
-  const sourceSeconds=Math.max(0,Math.round(minute*60));
+  // The match minute comes from the Goaloo-backed CAR 3.1 /live feed.
+  // sourceFreshnessSeconds is produced by that same response from the source collection timestamp.
+  // Together they give both pages the same source-anchored live clock instead of a page-local guess.
+  const sourceAge=Number.isFinite(freshness)?Math.max(0,Math.round(freshness)):0;
+  const sourceSeconds=Math.max(0,Math.round(minute*60)+sourceAge);
+  const stamp=`${minute}|${sourceAge}|${status}`;
   let state=clockState.get(key);
-  if(!state){
-    state={sourceMinute:minute,status,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
-    clockState.set(key,state);
-  }else if(minute!==state.sourceMinute||status!==state.status){
-    const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
-    const projected=Math.max(state.lastSeconds||0,state.anchorSeconds+elapsed);
-    const synced=Math.max(sourceSeconds,projected);
-    state={sourceMinute:minute,status,anchorSeconds:synced,anchorAt:now,lastSeconds:synced};
+  if(!state||state.stamp!==stamp){
+    state={stamp,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
     clockState.set(key,state);
   }
 
   const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
-  const seconds=Math.max(state.lastSeconds||0,state.anchorSeconds+elapsed);
+  const seconds=Math.max(sourceSeconds,state.anchorSeconds+elapsed);
   state.lastSeconds=seconds;
-
   const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
   return `${mins}:${String(secs).padStart(2,'0')}`;
 }
@@ -88,8 +100,11 @@ function updateSignalClock(row,record){
   const entry=Number(record?.entryMinute);
   const signalText=Number.isFinite(entry)?`${entry}'`:'—';
   const signalEl=$('#signalMinute'),liveEl=$('#liveClock');
-  if(signalEl)signalEl.textContent=signalText;
-  if(liveEl)liveEl.textContent=liveClockText(row);
+  if(signalEl&&signalEl.textContent!==signalText)signalEl.textContent=signalText;
+  if(liveEl){
+    const liveText=liveClockText(row);
+    if(liveEl.textContent!==liveText)liveEl.textContent=liveText;
+  }
 }
 
 function promoteConfirmedCards(cards){
@@ -111,6 +126,7 @@ function promoteConfirmedCards(cards){
 
 function apply(){
   let cards=[...document.querySelectorAll('.candidate')];
+  updateCandidateMinutes(cards);
   cards.forEach(card=>{
     const index=Number(card.dataset.index||0),row=liveRows[index],record=confirmedRecord(row),teams=card.querySelector('.teams');
     card.classList.toggle('confirmed-signal',Boolean(record));
@@ -146,6 +162,11 @@ function apply(){
   scoreboard?.classList.toggle('confirmed-signal-active',confirmed);
   if(banner)banner.hidden=!confirmed;
   updateSignalClock(row,record);
+  const matchMinute=$('#matchMinute');
+  if(row&&matchMinute){
+    const base=sourceMinuteText(row),next=(base==='HT'||base==='FT')?base:`${base} LIVE`;
+    if(matchMinute.textContent!==next)matchMinute.textContent=next;
+  }
   if(!selectedName||!row)return;
   const side=String(record?.selectedSide||row.engine?.side||'HOME').toUpperCase(),other=side==='AWAY'?'HOME':'AWAY';
   const selectedLabel=selectedName.closest('.team-copy')?.querySelector('small'),opponentLabel=opponentName?.closest('.team-copy')?.querySelector('small');
@@ -171,4 +192,4 @@ async function refresh(){
 document.addEventListener('click',event=>{if(event.target.closest('.candidate'))setTimeout(apply,0);});
 refresh().catch(()=>{});
 setInterval(apply,1000);
-setInterval(()=>refresh().catch(()=>{}),30000);
+setInterval(()=>refresh().catch(()=>{}),5000);
