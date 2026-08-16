@@ -1,0 +1,683 @@
+{
+  "checkedAt": "2026-08-16T12:46:57.305585+00:00",
+  "health": {
+    "ok": true,
+    "engine": "CAR 3.1 LIVE INTELLIGENCE ENGINE",
+    "brand": "NOMADTIPS3",
+    "mode": "SHADOW",
+    "sourceMode": "NOMADTIPS3_ONLY",
+    "apiFootball": "OFF",
+    "fallback": "OFF",
+    "cron": "EVERY_MINUTE",
+    "lastCycle": "2026-08-16T12:45:57.360Z",
+    "lastSuccess": "2026-08-16T12:45:57.360Z",
+    "lastError": null,
+    "cycleMs": 5360,
+    "indexMatches": 750,
+    "discovered": 131,
+    "fetched": 24,
+    "liveMatches": 24,
+    "coreStatsReady": 19,
+    "historyTotal": 16,
+    "configUpdatedAt": "2026-08-16T11:53:49.660Z",
+    "oddsPipe": {
+      "status": "DIRECT",
+      "feed": "runOddsData_8",
+      "oddsMatched": 18,
+      "matchCount": 24,
+      "evaluatedAfterOdds": true,
+      "at": "2026-08-16T12:45:57.360Z"
+    },
+    "coreStatsPipe": {
+      "status": "DIRECT",
+      "feed": "detailIn.js",
+      "detailMatched": 20,
+      "filledMatches": 20,
+      "structuredMatches": 20,
+      "structuredCompleteMatches": 19,
+      "coreStatsReady": 19,
+      "matchCount": 24,
+      "error": null,
+      "at": "2026-08-16T12:45:57.360Z"
+    },
+    "settlementContract": "BET365_V4",
+    "settlement": "bet365_market_aware_live",
+    "enrichmentLayer": "V3_DIRECT_ODDS_PIPE",
+    "enrichmentRefreshSeconds": 15
+  },
+  "liveSummary": {
+    "ok": true,
+    "generatedAt": "2026-08-16T12:45:57.360Z",
+    "matches": 24,
+    "coreComplete": 19,
+    "corePartial": 5,
+    "source100": 19,
+    "source70": 5,
+    "goalooClockVerified": 24,
+    "oddsLiveMatches": 18,
+    "enrichment": {
+      "oddsFeed": "OK",
+      "eventFeed": "OK",
+      "oddsMatched": 18,
+      "eventMatches": 24,
+      "matchCount": 24,
+      "oddsError": null,
+      "eventError": null
+    },
+    "goalooClockPipe": {
+      "source": "https://live10.goaloo28.com/gf/data/bf_us.js",
+      "verified": 24,
+      "total": 24,
+      "mode": "SOURCE_ONLY"
+    }
+  },
+  "sourceStatus": {
+    "ok": true,
+    "brand": "NOMADTIPS3",
+    "generatedAt": "2026-08-16T12:46:56.902Z",
+    "enrichment": {
+      "oddsFeed": "OK",
+      "eventFeed": "OK",
+      "oddsMatched": 18,
+      "eventMatches": 24,
+      "matchCount": 24,
+      "oddsError": null,
+      "eventError": null
+    },
+    "oddsPipe": {
+      "status": "DIRECT",
+      "feed": "runOddsData_8",
+      "oddsMatched": 18,
+      "matchCount": 24,
+      "evaluatedAfterOdds": true,
+      "at": "2026-08-16T12:45:57.360Z"
+    },
+    "coreStatsPipe": {
+      "status": "DIRECT",
+      "feed": "detailIn.js",
+      "detailMatched": 20,
+      "filledMatches": 20,
+      "structuredMatches": 20,
+      "structuredCompleteMatches": 19,
+      "coreStatsReady": 19,
+      "matchCount": 24,
+      "error": null,
+      "at": "2026-08-16T12:45:57.360Z"
+    },
+    "samples": [
+      {
+        "id": "2914662",
+        "home": "IFK Varnamo",
+        "away": "Ostersunds FK",
+        "oneXtwo": {
+          "home": 2.55,
+          "draw": 3.3,
+          "away": 2.38,
+          "raw": {
+            "home": 2.55,
+            "draw": 3.3,
+            "away": 2.38
+          }
+        },
+        "asianHandicap": {
+          "home": 2,
+          "line": 0,
+          "away": 1.8,
+          "raw": {
+            "home": 1,
+            "away": 0.8
+          }
+        },
+        "overUnder": {
+          "over": 1.98,
+          "line": 2.75,
+          "under": 1.83,
+          "raw": {
+            "over": 0.98,
+            "under": 0.83
+          }
+        },
+        "engineOdds": 2,
+        "engineMarketGate": [
+          "MARKET / ODDS",
+          false,
+          "AH @ 2"
+        ],
+        "coreStatsComplete": true,
+        "coreStatsSource": "DETAIL_IN",
+        "eventCount": 8,
+        "activity": {
+          "type": "CORNER",
+          "team": "AWAY",
+          "strength": 1
+        }
+      },
+      {
+        "id": "2919867",
+        "home": "Trelleborgs FF",
+        "away": "Eskilsminne IF",
+        "oneXtwo": {
+          "home": 1.5,
+          "draw": 4.1,
+          "away": 5,
+          "raw": {
+            "home": 1.5,
+            "draw": 4.1,
+            "away": 5
+          }
+        },
+        "asianHandicap": {
+          "home": 1.8,
+          "line": 1,
+          "away": 2,
+          "raw": {
+            "home": 0.8,
+            "away": 1
+          }
+        },
+        "overUnder": {
+          "over": 1.83,
+          "line": 3,
+          "under": 1.98,
+          "raw": {
+            "over": 0.83,
+            "under": 0.98
+          }
+        },
+        "engineOdds": 1.8,
+        "engineMarketGate": [
+          "MARKET / ODDS",
+          true,
+          "AH @ 1.8"
+        ],
+        "coreStatsComplete": true,
+        "coreStatsSource": "DETAIL_IN",
+        "eventCount": 4,
+        "activity": {
+          "type": "POSSESSION",
+          "team": "HOME",
+          "strength": 14
+        }
+      },
+      {
+        "id": "2920107",
+        "home": "FC Stockholm Internazionale",
+        "away": "FC Arlanda",
+        "oneXtwo": {
+          "home": 1.65,
+          "draw": 3.8,
+          "away": 4.1,
+          "raw": {
+            "home": 1.65,
+            "draw": 3.8,
+            "away": 4.1
+          }
+        },
+        "asianHandicap": {
+          "home": 1.85,
+          "line": 0.75,
+          "away": 1.95,
+          "raw": {
+            "home": 0.85,
+            "away": 0.95
+          }
+        },
+        "overUnder": {
+          "over": 1.83,
+          "line": 2.75,
+          "under": 1.98,
+          "raw": {
+            "over": 0.83,
+            "under": 0.98
+          }
+        },
+        "engineOdds": 1.85,
+        "engineMarketGate": [
+          "MARKET / ODDS",
+          false,
+          "AH @ 1.85"
+        ],
+        "coreStatsComplete": true,
+        "coreStatsSource": "DETAIL_IN",
+        "eventCount": 4,
+        "activity": {
+          "type": "POSSESSION",
+          "team": "HOME",
+          "strength": 12
+        }
+      },
+      {
+        "id": "2943366",
+        "home": "Lahden Reipas",
+        "away": "PEPO Lappeenranta",
+        "oneXtwo": {
+          "home": 2.3,
+          "draw": 4,
+          "away": 2.3,
+          "raw": {
+            "home": 2.3,
+            "draw": 4,
+            "away": 2.3
+          }
+        },
+        "asianHandicap": {
+          "home": 1.9,
+          "line": 0,
+          "away": 1.9,
+          "raw": {
+            "home": 0.9,
+            "away": 0.9
+          }
+        },
+        "overUnder": {
+          "over": 1.95,
+          "line": 3.75,
+          "under": 1.85,
+          "raw": {
+            "over": 0.95,
+            "under": 0.85
+          }
+        },
+        "engineOdds": 1.9,
+        "engineMarketGate": [
+          "MARKET / ODDS",
+          false,
+          "AH @ 1.9"
+        ],
+        "coreStatsComplete": true,
+        "coreStatsSource": "DETAIL_IN",
+        "eventCount": 3,
+        "activity": {
+          "type": "SHOT",
+          "team": "AWAY",
+          "strength": 1
+        }
+      },
+      {
+        "id": "2913497",
+        "home": "Follo",
+        "away": "Rana FK",
+        "oneXtwo": {
+          "home": 2.75,
+          "draw": 4,
+          "away": 2,
+          "raw": {
+            "home": 2.75,
+            "draw": 4,
+            "away": 2
+          }
+        },
+        "asianHandicap": {
+          "home": 1.98,
+          "line": -0.25,
+          "away": 1.83,
+          "raw": {
+            "home": 0.98,
+            "away": 0.83
+          }
+        },
+        "overUnder": {
+          "over": 1.88,
+          "line": 3.25,
+          "under": 1.93,
+          "raw": {
+            "over": 0.88,
+            "under": 0.93
+          }
+        },
+        "engineOdds": 1.98,
+        "engineMarketGate": [
+          "MARKET / ODDS",
+          false,
+          "AH @ 1.98"
+        ],
+        "coreStatsComplete": true,
+        "coreStatsSource": "DETAIL_IN",
+        "eventCount": 4,
+        "activity": {
+          "type": "DANGEROUS ATTACK",
+          "team": "HOME",
+          "strength": 4
+        }
+      }
+    ]
+  },
+  "samples": [
+    {
+      "id": "2914662",
+      "league": "Sweden Superettan",
+      "home": "IFK Varnamo",
+      "away": "Ostersunds FK",
+      "minute": 60,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2919867",
+      "league": "Sweden Division 1",
+      "home": "Trelleborgs FF",
+      "away": "Eskilsminne IF",
+      "minute": 64,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2920107",
+      "league": "Sweden Division 1",
+      "home": "FC Stockholm Internazionale",
+      "away": "FC Arlanda",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2943366",
+      "league": "Finland - Kakkonen Lohko",
+      "home": "Lahden Reipas",
+      "away": "PEPO Lappeenranta",
+      "minute": 61,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2913497",
+      "league": "Norway 2.Liga",
+      "home": "Follo",
+      "away": "Rana FK",
+      "minute": 66,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2951617",
+      "league": "Chinese Football Association Jia League",
+      "home": "ShenZhen Juniors",
+      "away": "Ningbo Professional",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2951618",
+      "league": "Chinese Football Association Jia League",
+      "home": "Suzhou Dongwu",
+      "away": "Nantong Zhiyun",
+      "minute": 62,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3035872",
+      "league": "Poland Division 2",
+      "home": "Zawisza Bydgoszcz SA",
+      "away": "Lechia Zielona Gora",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3013309",
+      "league": "Germany Woman's Cup",
+      "home": "Wormatia Worms (W)",
+      "away": "Eutingen W",
+      "minute": 74,
+      "status": "LIVE",
+      "coreStatsComplete": false,
+      "coreStatsProvenance": "BASE",
+      "coreStatsStructuredPairs": 0,
+      "sourceConfidence": 70,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3064529",
+      "league": "International Club Friendly",
+      "home": "Lyon (W)",
+      "away": "Eintracht Frankfurt (W)",
+      "minute": 66,
+      "status": "LIVE",
+      "coreStatsComplete": false,
+      "coreStatsProvenance": "BASE",
+      "coreStatsStructuredPairs": 0,
+      "sourceConfidence": 70,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3065357",
+      "league": "International Club Friendly",
+      "home": "Paris FC (W)",
+      "away": "Aston Villa (W)",
+      "minute": 68,
+      "status": "LIVE",
+      "coreStatsComplete": false,
+      "coreStatsProvenance": "BASE",
+      "coreStatsStructuredPairs": 0,
+      "sourceConfidence": 70,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3065367",
+      "league": "International Club Friendly",
+      "home": "Tottenham Hotspur",
+      "away": "TSG Hoffenheim",
+      "minute": 62,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2926770",
+      "league": "Sweden Div 3 Mellersta",
+      "home": "BK Forward",
+      "away": "Syrianska FC",
+      "minute": 62,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2927138",
+      "league": "Sweden Div 3 Mellersta",
+      "home": "Vaxjo Norra IF",
+      "away": "Staffanstorp United",
+      "minute": 60,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2927499",
+      "league": "Sweden Div 3 Mellersta",
+      "home": "Enskede IK",
+      "away": "Korsnas IF FK",
+      "minute": 65,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2927501",
+      "league": "Sweden Div 3 Mellersta",
+      "home": "Skiljebo SK",
+      "away": "Helges",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3035618",
+      "league": "Ukraine Division 2",
+      "home": "FC Inhulets Petrove",
+      "away": "Nyva Ternopil",
+      "minute": 80,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3061259",
+      "league": "Germany Oberliga",
+      "home": "Karlsruher SC (Youth)",
+      "away": "Holzhausen",
+      "minute": 74,
+      "status": "LIVE",
+      "coreStatsComplete": false,
+      "coreStatsProvenance": "BASE",
+      "coreStatsStructuredPairs": 0,
+      "sourceConfidence": 70,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3059836",
+      "league": "Czech Republic Cambrinus Liga Women's",
+      "home": "Slovan Liberec (W)",
+      "away": "Horni Herspice (W)",
+      "minute": 62,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3062738",
+      "league": "England U21 League Cup",
+      "home": "Brentford U21",
+      "away": "Wycombe Wanderers U21",
+      "minute": 61,
+      "status": "LIVE",
+      "coreStatsComplete": false,
+      "coreStatsProvenance": "DETAIL_IN_PARTIAL",
+      "coreStatsStructuredPairs": 4,
+      "sourceConfidence": 70,
+      "oddsSource": "BASE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3066645",
+      "league": "Finland Kolmonen",
+      "home": "JäPS'47",
+      "away": "ToTe'Tapio",
+      "minute": 65,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3061222",
+      "league": "Finland Women League 1",
+      "home": "ONS (W)",
+      "away": "Helsinki B (W)",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "3066647",
+      "league": "Paraguay reserve team league",
+      "home": "Sportivo Trinidense Reserves",
+      "away": "Nacional Asuncion Reserves",
+      "minute": 63,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    },
+    {
+      "id": "2961601",
+      "league": "Norway Division 1 Women",
+      "home": "Arna Bjornar (W)",
+      "away": "Start Kristiansand (W)",
+      "minute": 60,
+      "status": "LIVE",
+      "coreStatsComplete": true,
+      "coreStatsProvenance": "DETAIL_IN_STRUCTURED",
+      "coreStatsStructuredPairs": 6,
+      "sourceConfidence": 100,
+      "oddsSource": "LIVE",
+      "goalooClockVerified": true
+    }
+  ]
+}
