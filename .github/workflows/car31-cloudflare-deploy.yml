@@ -33,10 +33,14 @@ jobs:
           node --check worker/src/index.js
           node --check worker/src/upgrade.js
           node --check worker/src/settlement-v2.js
+          node --check worker/src/animation-v3-source.js
+          node --check worker/src/main-v3.js
           node --check web/app.js
           node --check web/settings.js
           node --check web/history.js
           node --check web/signal-polish.js
+          node --check web/animation-v2.js
+          node --check web/animation-v3.js
 
       - name: Validate Cloudflare credentials
         run: |
@@ -107,6 +111,25 @@ jobs:
           done
           echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
           exit 1
+
+      - name: Smoke-test isolated animation endpoint
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          CODE=$(curl -sS -o /tmp/car31-animation-invalid.json -w '%{http_code}' "$DEPLOYMENT_URL/animation?id=not-a-match")
+          cat /tmp/car31-animation-invalid.json
+          test "$CODE" = "400" || { echo "::error::Animation route did not return expected validation response"; exit 1; }
+          LIVE=$(curl -fsS "$DEPLOYMENT_URL/live")
+          MATCH_ID=$(printf '%s' "$LIVE" | python -c "import json,sys; p=json.load(sys.stdin); m=p.get('matches') or []; print(m[0].get('sourceMatchId','') if m else '')")
+          if [ -n "$MATCH_ID" ]; then
+            echo "--- ANIMATION SAMPLE: $MATCH_ID ---"
+            curl -sS "$DEPLOYMENT_URL/animation?id=$MATCH_ID" | head -c 8000
+            echo
+          else
+            echo "No live match available for optional source sample; strict route validation already passed."
+          fi
 
       - name: Show live collector state
         if: ${{ always() }}
