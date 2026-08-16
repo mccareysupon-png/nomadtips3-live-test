@@ -3,7 +3,7 @@ const shell=document.querySelector('.shell,.settings-shell');
 
 function statisticsHrefForCurrentPage(){
   const path=String(window.location.pathname||'').replace(/\\/g,'/').toLowerCase();
-  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return './history.html';
+  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return '../web/statistics.html';
   return './statistics.html';
 }
 
