@@ -1,0 +1,64 @@
+name: Temporary CAR 3.1 evening audit
+
+on:
+  push:
+    branches:
+      - audit/car31-evening-20260816
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: audit/car31-evening-20260816
+      - name: Fetch CAR 3.1 endpoints
+        run: |
+          set -euo pipefail
+          base='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev'
+          mkdir -p audit-output
+          curl -fsS --max-time 30 "$base/health?t=$(date +%s)" -o audit-output/health.json
+          curl -fsS --max-time 30 "$base/live?t=$(date +%s)" -o audit-output/live.json
+          curl -fsS --max-time 30 "$base/debug/source-status?t=$(date +%s)" -o audit-output/source-status.json
+          python - <<'PY'
+          import json, datetime, pathlib
+          d=pathlib.Path('audit-output')
+          health=json.loads((d/'health.json').read_text())
+          live=json.loads((d/'live.json').read_text())
+          src=json.loads((d/'source-status.json').read_text())
+          rows=live.get('matches') or []
+          complete=sum(bool(r.get('coreStatsComplete')) for r in rows)
+          partial=len(rows)-complete
+          conf100=sum((100 if r.get('coreStatsComplete') else 70)==100 for r in rows)
+          conf70=len(rows)-conf100
+          goaloo_verified=sum(bool((r.get('goalooClock') or {}).get('verified')) for r in rows)
+          odds_live=sum(bool(((r.get('enrichment') or {}).get('odds')=='LIVE')) for r in rows)
+          out={
+            'checkedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'health':health,
+            'liveSummary':{
+              'ok':live.get('ok'), 'generatedAt':live.get('generatedAt'), 'matches':len(rows),
+              'coreComplete':complete,'corePartial':partial,'source100':conf100,'source70':conf70,
+              'goalooClockVerified':goaloo_verified,'oddsLiveMatches':odds_live,
+              'enrichment':live.get('enrichment'),'goalooClockPipe':live.get('goalooClockPipe')
+            },
+            'sourceStatus':src,
+            'samples':[{
+              'id':r.get('sourceMatchId'),'league':r.get('league'),'home':r.get('home'),'away':r.get('away'),
+              'minute':r.get('minute'),'status':r.get('status'),'coreStatsComplete':r.get('coreStatsComplete'),
+              'coreStatsProvenance':r.get('coreStatsProvenance'),'coreStatsStructuredPairs':r.get('coreStatsStructuredPairs'),
+              'sourceConfidence':100 if r.get('coreStatsComplete') else 70,
+              'oddsSource':(r.get('enrichment') or {}).get('odds'),
+              'goalooClockVerified':bool((r.get('goalooClock') or {}).get('verified'))
+            } for r in rows[:30]]
+          }
+          (d/'summary.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          PY
+          git config user.name 'car31-evening-audit'
+          git config user.email 'actions@users.noreply.github.com'
+          git add audit-output
+          git commit -m 'Audit CAR 3.1 evening live status'
+          git push origin HEAD:audit/car31-evening-20260816
