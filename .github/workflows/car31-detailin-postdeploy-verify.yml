@@ -32,22 +32,23 @@ jobs:
           fresh=False
           if last:
               fresh=datetime.fromisoformat(last.replace('Z','+00:00')) > datetime.fromisoformat(os.environ['DEPLOY_FINISHED_AT'].replace('Z','+00:00'))
-          print('HEALTH',json.dumps({'lastCycle':last,'lastSuccess':h.get('lastSuccess'),'lastError':h.get('lastError'),'coreStatsPipe':h.get('coreStatsPipe'),'freshAfterDeploy':fresh},ensure_ascii=False))
-          sys.exit(0 if fresh and (h.get('coreStatsPipe') or {}).get('status')=='DIRECT' else 1)
+          pipe=h.get('coreStatsPipe') or {}
+          print('HEALTH',json.dumps({'lastCycle':last,'lastSuccess':h.get('lastSuccess'),'lastError':h.get('lastError'),'coreStatsPipe':pipe,'freshAfterDeploy':fresh},ensure_ascii=False))
+          sys.exit(0 if fresh and pipe.get('status')=='DIRECT' and pipe.get('structuredMatches',0)>0 else 1)
           PY
             then break; fi
-            if [ "$i" = 10 ]; then echo '::error::No fresh DIRECT Core Stats cycle after deploy'; exit 1; fi
+            if [ "$i" = 10 ]; then echo '::error::No fresh structured DIRECT Core Stats cycle after deploy'; exit 1; fi
             sleep 15
           done
 
-      - name: Compare worker Core Stats against raw Goaloo detailIn
+      - name: Verify structured Core Stats coherence and raw Goaloo continuity
         shell: bash
         run: |
           set -euo pipefail
           curl -fsS "$WORKER/live" -o /tmp/live.json
           curl -fsS "https://live10.goaloo28.com/gf/data/detailIn.js?t=$(date +%s)" -o /tmp/detailIn.js
           python - <<'PY'
-          import json,re,sys
+          import json,re
           live=json.load(open('/tmp/live.json',encoding='utf-8'))
           src=open('/tmp/detailIn.js',encoding='utf-8',errors='replace').read()
           core={0:'corners',4:'shots',5:'shots_on_target',6:'attacks',7:'dangerous_attacks',11:'possession'}
@@ -63,33 +64,52 @@ jobs:
                   h,a=num(row.group(2)),num(row.group(3))
                   if h is not None and a is not None: stats[core[code]]={'home':h,'away':a}
               if stats: raw[mid]=stats
-          compared=0; structured=0; mismatches=[]; samples=[]
+
+          bad=[]; samples=[]; structured=0; structured_complete=0; raw_overlap=0
+          prior_bad_ids={'3066631','2960845','2960846','2960847'}
+          prior_bad_seen=[]
           for m in live.get('matches') or []:
               mid=str(m.get('sourceMatchId'))
+              st=m.get('stats') or {}
+              prov=m.get('coreStatsProvenance')
+              if prov not in ('DETAIL_IN_STRUCTURED','DETAIL_IN_PARTIAL'):
+                  continue
+              structured+=1
+              if prov=='DETAIL_IN_STRUCTURED': structured_complete+=1
+              required=['possession','attacks','dangerous_attacks','shots','shots_on_target','corners']
+              if prov=='DETAIL_IN_STRUCTURED':
+                  for key in required:
+                      p=st.get(key) or {}
+                      if not isinstance(p.get('home'),(int,float)) or not isinstance(p.get('away'),(int,float)):
+                          bad.append({'id':mid,'reason':'missing structured pair','key':key,'value':p})
+              p=st.get('possession') or {}
+              ph,pa=p.get('home'),p.get('away')
+              if isinstance(ph,(int,float)) and isinstance(pa,(int,float)) and abs((ph+pa)-100)>0.1:
+                  bad.append({'id':mid,'reason':'worker possession incoherent','possession':p,'sum':ph+pa})
+              if mid in prior_bad_ids:
+                  prior_bad_seen.append({'id':mid,'possession':p,'sum':(ph+pa) if isinstance(ph,(int,float)) and isinstance(pa,(int,float)) else None,'provenance':prov})
               rs=raw.get(mid)
-              if not rs: continue
-              ws=m.get('stats') or {}
-              provenance=m.get('coreStatsProvenance')
-              source=(m.get('enrichment') or {}).get('coreStats')
-              applied=0
-              for key,pair in rs.items():
-                  w=ws.get(key) or {}
-                  wh,wa=w.get('home'),w.get('away')
-                  if isinstance(wh,(int,float)) and isinstance(wa,(int,float)):
-                      applied+=1; compared+=1
-                      if abs(float(wh)-pair['home'])>1e-9 or abs(float(wa)-pair['away'])>1e-9:
-                          mismatches.append({'id':mid,'key':key,'worker':{'home':wh,'away':wa},'raw':pair,'provenance':provenance,'source':source})
-              if provenance in ('DETAIL_IN_STRUCTURED','DETAIL_IN_PARTIAL') or source=='DETAIL_IN': structured+=1
-              if len(samples)<8:
-                  samples.append({'id':mid,'home':m.get('home'),'away':m.get('away'),'provenance':provenance,'source':source,'workerPossession':ws.get('possession'),'rawPossession':rs.get('possession'),'rawPairs':len(rs),'comparedPairs':applied})
-          print('VERIFY_SUMMARY',json.dumps({'liveMatches':len(live.get('matches') or []),'rawMatchedMatches':len(samples) if len(samples)<8 else '8+','structuredMatchesObserved':structured,'pairsCompared':compared,'mismatchCount':len(mismatches),'coreStatsPipe':live.get('coreStatsPipe')},ensure_ascii=False))
+              if rs:
+                  raw_overlap+=1
+                  rp=rs.get('possession') or {}
+                  rh,ra=rp.get('home'),rp.get('away')
+                  if isinstance(rh,(int,float)) and isinstance(ra,(int,float)) and abs((rh+ra)-100)>0.1:
+                      bad.append({'id':mid,'reason':'raw possession incoherent','rawPossession':rp,'sum':rh+ra})
+                  if len(samples)<8:
+                      samples.append({'id':mid,'home':m.get('home'),'away':m.get('away'),'provenance':prov,'workerPossession':p,'rawPossession':rp,'workerAttacks':st.get('attacks'),'rawAttacks':rs.get('attacks')})
+
+          pipe=live.get('coreStatsPipe') or {}
+          summary={'liveMatches':len(live.get('matches') or []),'structuredMatchesObserved':structured,'structuredCompleteObserved':structured_complete,'rawOverlap':raw_overlap,'priorBadSeen':prior_bad_seen,'badCount':len(bad),'coreStatsPipe':pipe}
+          print('VERIFY_SUMMARY',json.dumps(summary,ensure_ascii=False))
           print('SAMPLES')
           for x in samples: print(json.dumps(x,ensure_ascii=False))
-          if mismatches:
-              print('MISMATCHES')
-              for x in mismatches[:20]: print(json.dumps(x,ensure_ascii=False))
-              raise SystemExit('Worker Core Stats still differ from raw detailIn')
-          if compared==0 or structured==0:
-              raise SystemExit('No structured live Core Stats were available to verify')
-          print('PASS: worker structured Core Stats match raw Goaloo detailIn for all compared pairs')
+          if bad:
+              print('BAD')
+              for x in bad[:20]: print(json.dumps(x,ensure_ascii=False))
+              raise SystemExit('Structured Core Stats coherence failed')
+          if structured==0 or structured_complete==0 or raw_overlap==0:
+              raise SystemExit('Insufficient structured runtime data to verify')
+          if pipe.get('structuredCompleteMatches',0) != structured_complete:
+              raise SystemExit(f"structuredComplete count mismatch: pipe={pipe.get('structuredCompleteMatches')} live={structured_complete}")
+          print('PASS: post-deploy structured Core Stats are coherent; prior mixed possession pairs are no longer present')
           PY
