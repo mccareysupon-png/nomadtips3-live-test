@@ -82,10 +82,6 @@ export function mergeCoreStats(match,detailStats){
     if(!structured)continue;
     const home=number(structured.home),away=number(structured.away);
     if(home===null||away===null)continue;
-    // detailIn tT_f is the structured Goaloo source for the six confirmed Core Stats.
-    // When it supplies a complete home/away pair, use the pair atomically even when
-    // the page parser also appears complete. Runtime verification showed the page
-    // parser can combine values from different moments (e.g. possession 59 + 60.7).
     stats[key]={home,away};
     applied.push(key);
   }
@@ -142,6 +138,12 @@ function evaluateWithLiveOdds(match,config,snapshots){
 }
 function bangkokDate(iso){try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));}catch{return String(iso).slice(0,10)}}
 
+export function advanceConfirmationStreak(streaks,key,passed){
+  const next=passed?(Number(streaks[key])||0)+1:0;
+  streaks[key]=next;
+  return next;
+}
+
 export class Car31State extends BaseCar31State{
   async scan(trigger='cron'){
     const baseResponse=await super.scan(trigger);
@@ -155,7 +157,7 @@ export class Car31State extends BaseCar31State{
         super.fetch(new Request('https://car31.internal/config'))
       ]);
       const configPayload=await configResponse.json(),config=configPayload.config;
-      const latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],streaks=await this.state.storage.get('streaks')||{},history=await this.state.storage.get('history')||[];
+      const latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],confirmationStreaks=await this.state.storage.get('confirmationStreaksV2')||{},history=await this.state.storage.get('history')||[];
       const ids=new Set((latest.matches||[]).map(m=>String(m.sourceMatchId))),oddsMap=parseRunOdds(oddsSource),detailStatsMap=detailInResult.ok?parseDetailInStats(detailInResult.value,ids):new Map();
       const today=bangkokDate(at),todayCount=history.filter(r=>r.selectionDate===today).length;
       let newCount=0,oddsMatched=0,detailMatched=0,detailAppliedMatches=0,structuredCompleteMatches=0;
@@ -168,20 +170,16 @@ export class Car31State extends BaseCar31State{
         const liveOdds=oddsMap.get(id);
         if(liveOdds){match.odds=liveOdds;oddsMatched++;}
         const engine=evaluateWithLiveOdds(match,config,snapshots),key=`${match.sourceMatchId}:${engine.side}:${config.market}`;
-        if(engine.decision==='SHADOW SIGNAL')streaks[key]=(streaks[key]||0)+1;else streaks[key]=0;
+        advanceConfirmationStreak(confirmationStreaks,key,engine.decision==='SHADOW SIGNAL');
         const dailyBlocked=config.signalLimitEnabled&&todayCount+newCount>=config.maxSignalsPerDay,existing=history.some(r=>r.key===key);
-        if(!existing&&!dailyBlocked&&streaks[key]>=config.confirmationRounds){
+        if(!existing&&!dailyBlocked&&confirmationStreaks[key]>=config.confirmationRounds){
           const selectedTeam=engine.side==='AWAY'?match.away:match.home;
           history.push({key,id:match.sourceMatchId,selectionDate:today,selectedAt:at,league:match.league,home:match.home,away:match.away,selectedSide:engine.side,selectedTeam,entryMinute:match.minute,entryScore:{...match.score},market:config.market,line:engine.line,odds:engine.odds,ouDirection:config.ouDirection,momentum:engine.momentum,evidence:engine.evidence,kickoffUtc:match.kickoffUtc,status:'PENDING',ftStatus:null,settledAt:null,finalScore:null,result:'PENDING'});
           newCount++;
         }
-        match.engine={...engine,streak:streaks[key]||0,dailyBlocked};
+        match.engine={...engine,streak:confirmationStreaks[key]||0,dailyBlocked};
         match.enrichment={...(match.enrichment||{}),odds:liveOdds?'LIVE':'BASE',coreStats:merged.applied.length?'DETAIL_IN':match.coreStatsComplete?'BASE':'PARTIAL'};
       }
-      // super.scan() appended the current raw snapshot before this enrichment pass.
-      // Overlay the same cycle with structured stats and provenance. Evidence ignores
-      // older snapshots without DETAIL_IN_STRUCTURED provenance, preventing stale or
-      // previously mixed Core Stats from becoming the post-repair baseline.
       const currentSnapshot=snapshots.at(-1);
       if(currentSnapshot&&String(currentSnapshot.at||'')===String(at)){
         for(const snapMatch of currentSnapshot.matches||[])mergeCoreStats(snapMatch,detailStatsMap.get(String(snapMatch.id)));
@@ -193,7 +191,7 @@ export class Car31State extends BaseCar31State{
       latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailAppliedMatches,structuredMatches:detailAppliedMatches,structuredCompleteMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
       await this.state.storage.put('latest',latest);
       await this.state.storage.put('history',history);
-      await this.state.storage.put('streaks',streaks);
+      await this.state.storage.put('confirmationStreaksV2',confirmationStreaks);
       await this.state.storage.put('oddsPipe',latest.oddsPipe);
       await this.state.storage.put('coreStatsPipe',latest.coreStatsPipe);
       return json({ok:true,...latest,cycleMs:basePayload.cycleMs??null,historyTotal:history.length,newSignals:newCount,oddsPipe:latest.oddsPipe,coreStatsPipe:latest.coreStatsPipe});
