@@ -20,3 +20,27 @@
 .source-event{top:15px!important}
 /* Keep genuine result/status abbreviations untouched. */
 .status-pill,.score-top b,.result,.legend-win,.legend-loss,.legend-draw{text-transform:none!important}
+
+/* SETTINGS overlap fix: rule preview is part of normal document flow, never a floating sticky layer. */
+.rule-summary-v2{
+  position:relative!important;
+  top:auto!important;
+  z-index:1!important;
+  margin:0 0 12px!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  overflow:hidden;
+}
+.rule-summary-v2 b{
+  margin-top:0!important;
+  line-height:1.45!important;
+}
+/* Redundant floating system labels are hidden; operational errors remain visible near the controls. */
+.rule-summary-v2 small{display:none!important}
+.engine-state{display:none!important}
+.settings-hero{align-items:flex-start!important}
+#form{position:relative;z-index:0}
+
+@media(max-width:650px){
+  .rule-summary-v2{margin-bottom:10px!important}
+}
