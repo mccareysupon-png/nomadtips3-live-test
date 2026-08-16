@@ -1,10 +1,9 @@
-name: Deploy CAR 3.1 Goaloo Shadow
+name: Stop CAR 3.1 Cloudflare Worker
 
 on:
   push:
     branches: [main]
     paths:
-      - "car3-1-hybrid-live-engine/worker/**"
       - ".github/workflows/car31-cloudflare-deploy.yml"
   workflow_dispatch:
 
@@ -16,133 +15,17 @@ env:
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  deploy-and-start:
+  stop-car31:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-
-      - name: Validate CAR 3.1 source code
-        working-directory: car3-1-hybrid-live-engine
+      - name: Delete CAR 3.1 Worker and associated runtime resources
+        shell: bash
         run: |
-          node --test
-          node --check worker/src/index.js
-          node --check worker/src/upgrade.js
-          node --check worker/src/settlement-v2.js
-          node --check worker/src/animation-v3-source.js
-          node --check worker/src/main-v3.js
-          node --check web/app.js
-          node --check web/settings.js
-          node --check web/history.js
-          node --check web/signal-polish.js
-          node --check web/animation-v2.js
-          node --check web/animation-v3.js
-
-      - name: Validate Cloudflare credentials
-        run: |
+          set -euo pipefail
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
-
-      - name: Deploy CAR 3.1 worker and every-minute Cron
-        id: deploy
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ env.CF_API_TOKEN }}
-          accountId: ${{ env.CF_ACCOUNT_ID }}
-          workingDirectory: car3-1-hybrid-live-engine/worker
-          wranglerVersion: "4"
-          command: deploy
-
-      - name: Inspect Goaloo odds and detail feed construction
-        shell: bash
-        run: |
-          python - <<'PY'
-          import re, urllib.request
-          headers={'User-Agent':'NOMADTIPS3-CAR3.1-Shadow/1.0 (+public research monitor)','Accept':'*/*'}
-          scripts={
-            'liveScore':'https://live10.goaloo28.com/scripts/liveScore?v=l3DOxOCERrCvTal5BZfuZkIbuUDlQZVJB5ATblxZJI81',
-            'freeSoccer':'https://free.goaloo188.com/scripts/freesoccer?v=rirfjjjnd2u14HR04tN77b7HUbpXoevRI3VPnhWwIgE1'
-          }
-          needles=['runOddsData_','ch_runOddsData_','SoccerAjax?type=2','SoccerAjax?type=3','detail.js','sbCorner.js','change_en.xml']
-          def get(url):
-            req=urllib.request.Request(url,headers=headers)
-            with urllib.request.urlopen(req,timeout=20) as r:return r.read().decode('utf-8','replace')
-          for name,url in scripts.items():
-            print(f'=== {name} ===')
-            try:text=get(url)
-            except Exception as exc: print('FETCH_ERROR',repr(exc));continue
-            for needle in needles:
-              starts=[m.start() for m in re.finditer(re.escape(needle),text,re.I)]
-              print(f'--- {needle}: {len(starts)} occurrence(s) ---')
-              for pos in starts[:5]:print(text[max(0,pos-1400):min(len(text),pos+2200)])
-          match_id='3061002'
-          candidates=[
-            f'https://live10.goaloo28.com/Ajax/SoccerAjax?type=2&id={match_id}',
-            f'https://live10.goaloo28.com/Ajax/SoccerAjax?type=3&id={match_id}',
-            'https://live10.goaloo28.com/gf/data/detail.js',
-            'https://live10.goaloo28.com/gf/data/sbCorner.js',
-            'https://live10.goaloo28.com/gf/data/change_en.xml'
-          ]
-          for url in candidates:
-            print('=== FETCH',url,'===')
-            try:
-              text=get(url);print('bytes=',len(text));print(text[:8000])
-            except Exception as exc:print('FETCH_ERROR',repr(exc))
-          PY
-
-      - name: Wait for scheduled wheel and verify health
-        shell: bash
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-        run: |
-          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
-          echo "Worker: $DEPLOYMENT_URL"
-          for i in $(seq 1 8); do
-            BODY=$(curl -fsS "$DEPLOYMENT_URL/health")
-            echo "$BODY"
-            if ! printf '%s' "$BODY" | grep -q '"lastCycle": null' && ! printf '%s' "$BODY" | grep -q '"lastCycle":null'; then
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "::error::CAR 3.1 deployed, but no Cron cycle was observed within 120 seconds"
-          exit 1
-
-      - name: Smoke-test isolated animation endpoint
-        shell: bash
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-        run: |
-          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
-          CODE=$(curl -sS -o /tmp/car31-animation-invalid.json -w '%{http_code}' "$DEPLOYMENT_URL/animation?id=not-a-match")
-          cat /tmp/car31-animation-invalid.json
-          test "$CODE" = "400" || { echo "::error::Animation route did not return expected validation response"; exit 1; }
-          LIVE=$(curl -fsS "$DEPLOYMENT_URL/live")
-          MATCH_ID=$(printf '%s' "$LIVE" | python -c "import json,sys; p=json.load(sys.stdin); m=p.get('matches') or []; print(m[0].get('sourceMatchId','') if m else '')")
-          if [ -n "$MATCH_ID" ]; then
-            echo "--- ANIMATION SAMPLE: $MATCH_ID ---"
-            curl -sS "$DEPLOYMENT_URL/animation?id=$MATCH_ID" | head -c 8000
-            echo
-          else
-            echo "No live match available for optional source sample; strict route validation already passed."
-          fi
-
-      - name: Show live collector state
-        if: ${{ always() }}
-        shell: bash
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-        run: |
-          echo "CAR 3.1 Worker: ${DEPLOYMENT_URL:-unavailable}"
-          if [ -n "$DEPLOYMENT_URL" ]; then
-            echo "--- HEALTH ---"
-            curl -fsS "$DEPLOYMENT_URL/health" || true
-            echo
-            echo "--- LIVE SAMPLE ---"
-            curl -fsS "$DEPLOYMENT_URL/live" | head -c 8000 || true
-            echo
-          fi
+          curl -fsS -X DELETE \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/nomadtips3-car31-goaloo?force=true" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}"
+          echo "CAR 3.1 Cloudflare Worker deleted."
