@@ -8,7 +8,7 @@ function installVisualLayer(){
   if(document.querySelector('link[data-car31-visual="tron-v1"]'))return;
   const link=document.createElement('link');
   link.rel='stylesheet';
-  link.href='./visual-tron-v1.css?v=20260816-car33-family-v1';
+  link.href=new URL('./visual-tron-v1.css?v=20260816-car33-family-v1',import.meta.url).href;
   link.dataset.car31Visual='tron-v1';
   document.head.appendChild(link);
 }
@@ -22,7 +22,8 @@ function statisticsHrefForCurrentPage(){
 function lockCanonicalStatisticsRoute(){
   const href=statisticsHrefForCurrentPage();
   document.querySelectorAll('.nav a').forEach(link=>{
-    if(String(link.textContent||'').trim().toUpperCase()==='STATISTICS'||String(link.textContent||'').trim().toLowerCase()==='statistics')link.setAttribute('href',href);
+    const label=String(link.textContent||'').trim();
+    if(label.toUpperCase()==='STATISTICS'||label.toLowerCase()==='statistics')link.setAttribute('href',href);
   });
 }
 
