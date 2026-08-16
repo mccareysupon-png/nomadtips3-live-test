@@ -19,7 +19,7 @@ function ensureSignalClock(){
   clock.id='signalClockRow';
   clock.className='signal-clock-row';
   clock.hidden=false;
-  clock.innerHTML='<span><small>SIGNAL</small><b id="signalMinute">—</b></span><i aria-hidden="true"></i><span><small>LIVE TIME</small><b id="liveClock">—</b></span>';
+  clock.innerHTML='<span><small>SIGNAL</small><b id="signalMinute">—</b></span><i aria-hidden="true"></i><span><small>MATCH STATUS / TIME</small><b id="liveClock">—</b></span>';
   score.appendChild(clock);
   return clock;
 }
@@ -40,25 +40,38 @@ function ensureConfirmedBanner(){
 
 function formatElapsed(seconds){
   const value=Number(seconds);
-  if(!Number.isFinite(value)||value<0)return null;
+  if(!Number.isFinite(value)||value<0||value>120*60)return null;
   const whole=Math.round(value),mins=Math.floor(whole/60),secs=whole%60;
   return `${mins}:${String(secs).padStart(2,'0')}`;
 }
 
+function sourceStatus(row){
+  const status=String(row?.goalooClock?.status||row?.status||'LIVE').toUpperCase();
+  if(status.includes('FINISH')||status==='FT')return'FT';
+  if(status.includes('HALF')||status==='HT')return'HT';
+  return status==='LIVE'?'LIVE':status||'LIVE';
+}
+
 function sourceClockText(row){
-  const status=String(row?.status||'LIVE').toUpperCase();
-  if(status==='FT'||status.includes('FINISH'))return'FT';
-  if(status==='HT'||status.includes('HALF'))return'HT';
+  const status=sourceStatus(row);
+  if(status==='FT'||status==='HT')return status;
+  if(row?.goalooClock?.verified===true){
+    const exact=formatElapsed(row.goalooElapsedSeconds);
+    if(exact)return `${status} · ${exact}`;
+  }
+  const minute=Number(row?.minute);
+  return Number.isFinite(minute)?`${status} · ${Math.max(0,Math.round(minute))}'`:status;
+}
+
+function sourceMinuteText(row){
+  const status=sourceStatus(row);
+  if(status==='FT'||status==='HT')return status;
   if(row?.goalooClock?.verified===true){
     const exact=formatElapsed(row.goalooElapsedSeconds);
     if(exact)return exact;
   }
   const minute=Number(row?.minute);
-  return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:status==='LIVE'?'LIVE':'—';
-}
-
-function sourceMinuteText(row){
-  return sourceClockText(row);
+  return Number.isFinite(minute)?`${Math.max(0,Math.round(minute))}'`:'LIVE';
 }
 
 function updateCandidateMinutes(cards){
@@ -147,7 +160,8 @@ function apply(){
   updateSignalClock(row,record);
   const matchMinute=$('#matchMinute');
   if(row&&matchMinute){
-    const base=sourceMinuteText(row),next=(base==='HT'||base==='FT')?base:`${base} LIVE`;
+    const status=sourceStatus(row),base=sourceMinuteText(row);
+    const next=(status==='HT'||status==='FT')?status:`${status} · ${base}`;
     if(matchMinute.textContent!==next)matchMinute.textContent=next;
   }
   if(!selectedName||!row)return;
