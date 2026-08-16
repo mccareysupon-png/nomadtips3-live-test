@@ -1,9 +1,18 @@
 /* Final UI wording/heading presentation. Visual only. */
-.cell small,.chart-head b,.metric-btn,.rule-summary-v2 small,.advanced-block summary em{
+/* Static headings are already written in sentence case in HTML/JS; preserve them exactly. */
+.nav a,.hero h1,.stats-hero h1,.scorebar-head b,.panel-title b,
+.performance-head small,.performance-head b,.history-head small,.history-head b,
+.settings-block h2,.advanced-block summary b,.setting-field>span,.switch-card b,.mini-switch span,
+.settlement-grid small,.stats-metric small,.stats-table th,.rule-summary-v2 small,.advanced-block summary em{
+  text-transform:none!important;
+}
+/* Runtime headings that still arrive in caps/title case are normalized to sentence case. */
+.cell small,.chart-head small,.chart-head b,.section-label,.metric-btn{
   text-transform:lowercase!important;
 }
-.cell small::first-letter,.chart-head b::first-letter,.metric-btn::first-letter,
-.rule-summary-v2 small::first-letter,.advanced-block summary em::first-letter{
+.cell small,.chart-head small,.chart-head b,.section-label{display:block}
+.cell small::first-letter,.chart-head small::first-letter,.chart-head b::first-letter,
+.section-label::first-letter,.metric-btn::first-letter{
   text-transform:uppercase;
 }
 /* Source transport state is internal; keep the actual event label but hide transport/debug wording. */
