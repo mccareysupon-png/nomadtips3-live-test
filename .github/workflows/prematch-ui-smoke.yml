@@ -21,6 +21,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      - name: Validate public analysis context
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const d=JSON.parse(fs.readFileSync('data/prematch-current.json','utf8'));
+          const ms=d.matches||[];
+          if(ms.length!==10) throw new Error(`expected 10 published selections, got ${ms.length}`);
+          const context=ms.filter(m=>m.context).length;
+          const momentum=ms.filter(m=>Number.isFinite(Number(m.context?.momentum?.score))).length;
+          const market=ms.filter(m=>m.context?.market?.opening?.oneX2 && m.context?.market?.current?.oneX2).length;
+          const prediction=ms.filter(m=>m.context?.prediction).length;
+          if(context!==10) throw new Error(`context present on ${context}/10 selections`);
+          if(momentum!==10) throw new Error(`momentum present on ${momentum}/10 selections`);
+          if(market<9) throw new Error(`market context present on only ${market}/10 selections`);
+          if(prediction!==10) throw new Error(`prediction context present on ${prediction}/10 selections`);
+          console.log(`PASS data context=${context}/10 momentum=${momentum}/10 market=${market}/10 prediction=${prediction}/10`);
+          NODE
+
       - name: Syntax check inline JavaScript
         run: |
           python - <<'PY'
@@ -30,16 +49,21 @@ jobs:
           Path('/tmp/prematch-ui.js').write_text(js)
           PY
           node --check /tmp/prematch-ui.js
+
       - name: Install browser
         run: |
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Responsive and interaction smoke
+
+      - name: Responsive interaction and timezone smoke
         run: |
           python3 -m http.server 8000 >/tmp/http.log 2>&1 &
           node --input-type=module <<'NODE'
           import { chromium } from 'playwright';
+          import fs from 'node:fs';
+          const current=JSON.parse(fs.readFileSync('data/prematch-current.json','utf8'));
+          const firstIso=current.matches[0].kickoffUtc;
           const sizes=[
             ['desktop',1920,1080],['laptop',1366,768],['tablet-landscape',1024,768],
             ['tablet-portrait',768,1024],['mobile',390,844],['mobile-landscape',844,390]
@@ -53,14 +77,27 @@ jobs:
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
             if(overflow>2)throw new Error(`${name}: horizontal overflow ${overflow}px`);
             const nav=await page.locator('.nav button').count();if(nav!==3)throw new Error(`${name}: expected 3 nav buttons, got ${nav}`);
-            const first=page.locator('.pick').first();if(await first.count()){
-              const tab=first.locator('.subtab[data-tab="prediction"]');
-              await tab.click();
-              if(!(await first.locator('[data-detail]').evaluate(el=>el.classList.contains('open'))))throw new Error(`${name}: prediction detail did not open`);
-            }
+            const first=page.locator('.pick').first();
+            if(!(await first.count()))throw new Error(`${name}: no pick cards rendered`);
+            const rings=await first.locator('.score-ring b').allTextContents();
+            if(rings.length<3 || rings.every(v=>v==='—'))throw new Error(`${name}: analysis score rings not populated`);
+            const tab=first.locator('.subtab[data-tab="prediction"]');
+            await tab.click();
+            if(!(await first.locator('[data-detail]').evaluate(el=>el.classList.contains('open'))))throw new Error(`${name}: prediction detail did not open`);
             if(errors.length)throw new Error(`${name}: page error ${errors.join(' | ')}`);
             console.log(`PASS ${name}`);await page.close();
           }
+          const zones=['Asia/Bangkok','Asia/Tokyo','Europe/London','America/New_York','America/Los_Angeles','Australia/Sydney'];
+          for(const zone of zones){
+            const context=await browser.newContext({timezoneId:zone,viewport:{width:390,height:844}});
+            const page=await context.newPage();
+            await page.goto('http://127.0.0.1:8000/',{waitUntil:'networkidle'});
+            const expected=await page.evaluate(iso=>new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(new Date(iso)),firstIso);
+            const shown=await page.locator('.pick .kick').first().textContent();
+            const resolved=await page.evaluate(()=>Intl.DateTimeFormat().resolvedOptions().timeZone);
+            if(!shown.includes(expected))throw new Error(`${zone}: expected local kickoff ${expected}, got ${shown}`);
+            console.log(`PASS timezone ${zone} resolved=${resolved} kickoff=${expected}`);
+            await context.close();
+          }
           await browser.close();
           NODE
-# trigger: responsive verification
