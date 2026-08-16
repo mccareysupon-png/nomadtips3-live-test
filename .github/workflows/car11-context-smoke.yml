@@ -1,0 +1,31 @@
+name: CAR1.1 Context Smoke
+
+on:
+  push:
+    branches: [agent/car11-goaloo-launch-20260816]
+    paths:
+      - 'car1-1/scripts/context_smoke.mjs'
+      - '.github/workflows/car11-context-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/car11-goaloo-launch-20260816
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify analysis context parser
+        run: node car1-1/scripts/context_smoke.mjs
