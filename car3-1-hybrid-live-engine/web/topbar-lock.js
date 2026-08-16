@@ -1,9 +1,16 @@
 const topbar=document.querySelector('.topbar');
 const shell=document.querySelector('.shell,.settings-shell');
 
+function statisticsHrefForCurrentPage(){
+  const path=String(window.location.pathname||'').replace(/\\/g,'/').toLowerCase();
+  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return './history.html';
+  return './statistics.html';
+}
+
 function lockCanonicalStatisticsRoute(){
+  const href=statisticsHrefForCurrentPage();
   document.querySelectorAll('.nav a').forEach(link=>{
-    if(String(link.textContent||'').trim().toUpperCase()==='STATISTICS')link.setAttribute('href','./statistics.html');
+    if(String(link.textContent||'').trim().toUpperCase()==='STATISTICS')link.setAttribute('href',href);
   });
 }
 
