@@ -113,7 +113,7 @@ jobs:
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
-          curl -fsS "$DEPLOYMENT_URL/statistics.html" > /tmp/car33-statistics.html
+          curl -fsSL "$DEPLOYMENT_URL/statistics.html" > /tmp/car33-statistics.html
           grep -q "STATISTICS" /tmp/car33-statistics.html
           grep -q "statistics.js" /tmp/car33-statistics.html
           curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25" > /tmp/car33-history.json
