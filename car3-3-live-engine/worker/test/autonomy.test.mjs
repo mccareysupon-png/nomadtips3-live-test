@@ -24,10 +24,13 @@ test('every scan automatically settles pending records when source is FT',()=>{
   assert.match(worker,/record\.settledAt=snapshot\.observedAt/);
 });
 
-test('statistics uses the same stored history and has a non-conflicting API route',()=>{
+test('statistics uses the same stored history and refreshes page plus long-range chart',()=>{
   assert.match(entry,/url\.pathname==='\/api\/history'/);
   assert.match(worker,/summary:\{total:records\.length,win:wins,loss:losses,draw:draws,pending:/);
-  assert.match(statistics,/setInterval\(load,10000\)/);
+  assert.match(statistics,/const limit=25/);
+  assert.match(statistics,/setInterval\(loadPage,10000\)/);
+  assert.match(statistics,/setInterval\(loadChart,60000\)/);
+  assert.match(statistics,/data-days="730"|chartRangeDays===730|chartRangeDays=365/);
 });
 
 test('open live UI continuously refreshes live payload, Goaloo clock and source animation',()=>{
