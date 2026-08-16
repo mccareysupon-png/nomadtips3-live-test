@@ -94,6 +94,49 @@ function updateSignalClock(row,record){
   }
 }
 
+function signedLine(value){
+  const n=Number(value);
+  if(!Number.isFinite(n))return'—';
+  return `${n>0?'+':''}${Number.isInteger(n)?n.toFixed(1):String(n)}`;
+}
+
+function decimalOdds(value){
+  const n=Number(value);
+  return Number.isFinite(n)?n.toFixed(2):'—';
+}
+
+function lockedSignalView(record,row){
+  const side=String(record?.selectedSide||'HOME').toUpperCase();
+  const team=record?.selectedTeam||(side==='AWAY'?row?.away:row?.home)||'—';
+  const market=String(record?.market||'').toUpperCase();
+  const line=Number(record?.line);
+  const entry=Number(record?.entryMinute);
+  const detected=Number.isFinite(entry)?`${entry}'`:'—';
+  if(market==='AH'){
+    const handicap=signedLine(line);
+    return {pick:`${team} ${handicap}`,market:'ASIAN HANDICAP',line:handicap,odds:decimalOdds(record?.odds),detected};
+  }
+  if(market==='OU'){
+    const direction=String(record?.ouDirection||'OVER').toUpperCase();
+    const goalLine=Number.isFinite(line)?String(line):'—';
+    return {pick:`${direction} ${goalLine}`,market:'GOAL LINE',line:goalLine,odds:decimalOdds(record?.odds),detected};
+  }
+  return {pick:`${team} WIN`,market:'1X2',line:'WIN',odds:decimalOdds(record?.odds),detected};
+}
+
+function renderLockedSignalDetails(card,record,row){
+  let box=card.querySelector('.locked-signal-order');
+  if(!record||!row){box?.remove();return;}
+  if(!box){
+    box=document.createElement('div');
+    box.className='locked-signal-order';
+    card.appendChild(box);
+  }
+  const view=lockedSignalView(record,row);
+  const next=`<div class="signal-order-head"><b>⚡ SIGNAL LOCKED</b><span>DETECTED ${esc(view.detected)}</span></div><div class="signal-order-pick"><small>TAKE</small><strong>${esc(view.pick)}</strong></div><div class="signal-order-grid"><span><small>MARKET</small><b>${esc(view.market)}</b></span><span><small>LINE @ SIGNAL</small><b>${esc(view.line)}</b></span><span><small>ODDS @ SIGNAL</small><b>${esc(view.odds)}</b></span></div>`;
+  if(box.innerHTML!==next)box.innerHTML=next;
+}
+
 function promoteConfirmedCards(cards){
   const list=$('#candidateList');
   if(!list||cards.length<2)return cards;
@@ -117,6 +160,7 @@ function apply(){
   cards.forEach(card=>{
     const index=Number(card.dataset.index||0),row=liveRows[index],record=confirmedRecord(row),teams=card.querySelector('.teams');
     card.classList.toggle('confirmed-signal',Boolean(record));
+    renderLockedSignalDetails(card,record,row);
     if(!row||!record||!teams)return;
     const side=String(record.selectedSide||'HOME').toUpperCase();
     const selected=record.selectedTeam||(side==='AWAY'?row.away:row.home),opponent=side==='AWAY'?row.home:row.away;
