@@ -75,27 +75,30 @@ export function parseDetailInStats(source,allowedIds=null){
 
 function coreStatsCompleteLocal(stats){return CORE_STATS_KEYS.every(k=>number(stats?.[k]?.home)!==null&&number(stats?.[k]?.away)!==null);}
 export function mergeCoreStats(match,detailStats){
-  if(!match||typeof match!=='object')return{match,filled:[],complete:false};
-  const stats={...(match.stats||{})},filled=[];
+  if(!match||typeof match!=='object')return{match,filled:[],applied:[],structuredPairs:0,structuredComplete:false,complete:false};
+  const stats={...(match.stats||{})},applied=[];
   for(const key of CORE_STATS_KEYS){
-    const fallback=detailStats?.[key];
-    if(!fallback)continue;
-    const current={...(stats[key]||{})};
-    const currentHome=number(current.home),currentAway=number(current.away),fallbackHome=number(fallback.home),fallbackAway=number(fallback.away);
-    // Treat each home/away statistic as one atomic source pair. Mixing one side
-    // from the page parser with the other side from detailIn can create impossible
-    // combinations (for example possession totals above 100%). Keep a complete
-    // base pair untouched; otherwise replace the pair only when detailIn has both.
-    if(currentHome!==null&&currentAway!==null)continue;
-    if(fallbackHome===null||fallbackAway===null)continue;
-    stats[key]={home:fallbackHome,away:fallbackAway};
-    filled.push(`${key}.home`,`${key}.away`);
+    const structured=detailStats?.[key];
+    if(!structured)continue;
+    const home=number(structured.home),away=number(structured.away);
+    if(home===null||away===null)continue;
+    // detailIn tT_f is the structured Goaloo source for the six confirmed Core Stats.
+    // When it supplies a complete home/away pair, use the pair atomically even when
+    // the page parser also appears complete. Runtime verification showed the page
+    // parser can combine values from different moments (e.g. possession 59 + 60.7).
+    stats[key]={home,away};
+    applied.push(key);
   }
   match.stats=stats;
   match.coreStatsComplete=coreStatsCompleteLocal(stats);
+  match.coreStatsProvenance=applied.length===CORE_STATS_KEYS.length?'DETAIL_IN_STRUCTURED':applied.length?'DETAIL_IN_PARTIAL':'BASE';
+  match.coreStatsStructuredPairs=applied.length;
   if(match.coreStatsComplete&&Array.isArray(match.warnings))match.warnings=match.warnings.filter(w=>w!=='CORE_STATS_INCOMPLETE');
-  return{match,filled,complete:match.coreStatsComplete};
+  const filled=applied.flatMap(key=>[`${key}.home`,`${key}.away`]);
+  return{match,filled,applied,structuredPairs:applied.length,structuredComplete:applied.length===CORE_STATS_KEYS.length,complete:match.coreStatsComplete};
 }
+
+export function isStructuredCoreBaseline(match){return Boolean(match&&match.coreStatsProvenance==='DETAIL_IN_STRUCTURED'&&coreStatsCompleteLocal(match.stats));}
 
 const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0});
 const delta=(cur,prev,key)=>{const c=pair(cur.stats,key),p=pair(prev?.stats,key);return{home:c.home-p.home,away:c.away-p.away};};
@@ -119,7 +122,7 @@ async function sourceText(url,seconds){
 function pressure(stats,w){let h=0,a=0;for(const [k,wt] of Object.entries(w||{})){h+=(number(stats?.[k]?.home)||0)*wt;a+=(number(stats?.[k]?.away)||0)*wt;}const t=Math.max(.0001,h+a);return{home:Math.round(h/t*100),away:Math.round(a/t*100)};}
 function selectedSide(match,config,p){if(config.side==='HOME')return'HOME';if(config.side==='AWAY')return'AWAY';return p.away>p.home?'AWAY':'HOME';}
 function engineSidePair(obj,side){return side==='AWAY'?{selected:number(obj?.away)||0,opponent:number(obj?.home)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0};}
-function baselineFor(matchId,side,snapshots,config,current){for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!coreStatsCompleteLocal(f.stats))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};}
+function baselineFor(matchId,side,snapshots,config,current){for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!isStructuredCoreBaseline(f))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};}
 function evaluateWithLiveOdds(match,config,snapshots){
   const p=pressure(match.stats,config.momentumWeights),side=selectedSide(match,config,p),selMomentum=side==='AWAY'?p.away:p.home;
   const base=baselineFor(match.sourceMatchId,side,snapshots,config,match.stats),cur={dangerous:engineSidePair(match.stats.dangerous_attacks,side).selected,shots:engineSidePair(match.stats.shots,side).selected,sot:engineSidePair(match.stats.shots_on_target,side).selected,corners:engineSidePair(match.stats.corners,side).selected};
@@ -155,12 +158,13 @@ export class Car31State extends BaseCar31State{
       const latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],streaks=await this.state.storage.get('streaks')||{},history=await this.state.storage.get('history')||[];
       const ids=new Set((latest.matches||[]).map(m=>String(m.sourceMatchId))),oddsMap=parseRunOdds(oddsSource),detailStatsMap=detailInResult.ok?parseDetailInStats(detailInResult.value,ids):new Map();
       const today=bangkokDate(at),todayCount=history.filter(r=>r.selectionDate===today).length;
-      let newCount=0,oddsMatched=0,detailMatched=0,detailFilledMatches=0;
+      let newCount=0,oddsMatched=0,detailMatched=0,detailAppliedMatches=0,structuredCompleteMatches=0;
       for(const match of latest.matches||[]){
         const id=String(match.sourceMatchId),detailStats=detailStatsMap.get(id);
         if(detailStats)detailMatched++;
         const merged=mergeCoreStats(match,detailStats);
-        if(merged.filled.length)detailFilledMatches++;
+        if(merged.applied.length)detailAppliedMatches++;
+        if(merged.structuredComplete)structuredCompleteMatches++;
         const liveOdds=oddsMap.get(id);
         if(liveOdds){match.odds=liveOdds;oddsMatched++;}
         const engine=evaluateWithLiveOdds(match,config,snapshots),key=`${match.sourceMatchId}:${engine.side}:${config.market}`;
@@ -172,11 +176,12 @@ export class Car31State extends BaseCar31State{
           newCount++;
         }
         match.engine={...engine,streak:streaks[key]||0,dailyBlocked};
-        match.enrichment={...(match.enrichment||{}),odds:liveOdds?'LIVE':'BASE',coreStats:merged.filled.length?'DETAIL_IN':match.coreStatsComplete?'BASE':'PARTIAL'};
+        match.enrichment={...(match.enrichment||{}),odds:liveOdds?'LIVE':'BASE',coreStats:merged.applied.length?'DETAIL_IN':match.coreStatsComplete?'BASE':'PARTIAL'};
       }
       // super.scan() appended the current raw snapshot before this enrichment pass.
-      // Overlay only that same-cycle snapshot so the first structured-data cycle is
-      // its own baseline instead of comparing against old partial/zero snapshots.
+      // Overlay the same cycle with structured stats and provenance. Evidence ignores
+      // older snapshots without DETAIL_IN_STRUCTURED provenance, preventing stale or
+      // previously mixed Core Stats from becoming the post-repair baseline.
       const currentSnapshot=snapshots.at(-1);
       if(currentSnapshot&&String(currentSnapshot.at||'')===String(at)){
         for(const snapMatch of currentSnapshot.matches||[])mergeCoreStats(snapMatch,detailStatsMap.get(String(snapMatch.id)));
@@ -185,7 +190,7 @@ export class Car31State extends BaseCar31State{
       while(history.length>5000)history.shift();
       const matchCount=(latest.matches||[]).length,coreStatsReady=(latest.matches||[]).filter(m=>m.coreStatsComplete).length;
       latest.oddsPipe={status:'DIRECT',feed:'runOddsData_8',oddsMatched,matchCount,evaluatedAfterOdds:true,at};
-      latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailFilledMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
+      latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailAppliedMatches,structuredMatches:detailAppliedMatches,structuredCompleteMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
       await this.state.storage.put('latest',latest);
       await this.state.storage.put('history',history);
       await this.state.storage.put('streaks',streaks);
