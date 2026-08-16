@@ -1,0 +1,34 @@
+name: Local Live AI Bot Smoke
+
+on:
+  pull_request:
+    paths:
+      - 'local-live-ai-bot/**'
+      - '.github/workflows/local-live-ai-bot-smoke.yml'
+  push:
+    branches:
+      - 'agent/local-ai-live-bot'
+    paths:
+      - 'local-live-ai-bot/**'
+      - '.github/workflows/local-live-ai-bot-smoke.yml'
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check local-live-ai-bot/src/shared.mjs
+          node --check local-live-ai-bot/src/index.mjs
+          node --check local-live-ai-bot/src/doctor.mjs
+          node --check local-live-ai-bot/src/executors/xxx.mjs
+      - name: Load example config
+        run: |
+          node --input-type=module -e "import('./local-live-ai-bot/src/shared.mjs').then(async m => { const c = await m.loadConfig(); if (!c.car31?.baseUrl || !c.lmStudio?.baseUrl) process.exit(1); console.log('config OK'); })"
+      - name: Verify XXX hook remains isolated
+        run: |
+          node --input-type=module -e "import('./local-live-ai-bot/src/executors/xxx.mjs').then(async m => { const r = await m.executeXxx({recordKey:'smoke',ai:{decision:'PAPER_ACCEPT'}},{enabled:false}); if (r.status !== 'XXX_NOT_IMPLEMENTED') process.exit(1); console.log('XXX hook isolated'); })"
