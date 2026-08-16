@@ -41,24 +41,39 @@ function ensureConfirmedBanner(){
 
 function liveClockText(row){
   const status=String(row?.status||'LIVE').toUpperCase();
-  if(status==='FT'||status.includes('FINISH'))return'FT';
-  if(status==='HT'||status.includes('HALF'))return'HT';
   const minute=Number(row?.minute);
+  const key=String(row?.sourceMatchId||row?.id||'active'),now=Date.now();
+
+  if(status==='FT'||status.includes('FINISH')){
+    const previous=clockState.get(key),sourceSeconds=Number.isFinite(minute)?Math.max(0,Math.round(minute*60)):0;
+    clockState.set(key,{sourceMinute:minute,status,anchorSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0),anchorAt:now,lastSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0)});
+    return'FT';
+  }
+  if(status==='HT'||status.includes('HALF')){
+    const previous=clockState.get(key),sourceSeconds=Number.isFinite(minute)?Math.max(0,Math.round(minute*60)):0;
+    clockState.set(key,{sourceMinute:minute,status,anchorSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0),anchorAt:now,lastSeconds:Math.max(sourceSeconds,previous?.lastSeconds||0)});
+    return'HT';
+  }
   if(!Number.isFinite(minute))return status==='LIVE'?'LIVE':'—';
 
-  // CAR 3.1 source minute is authoritative. The client only animates seconds
-  // inside that source minute and must never drift into the next minute by itself.
-  const key=String(row.sourceMatchId||row.id||'active'),now=Date.now(),sourceSeconds=Math.max(0,Math.round(minute*60));
+  // Goaloo/CAR 3.1 supplies the authoritative source minute. Between feed updates,
+  // keep a client-side second hand moving continuously across minute boundaries.
+  // When a newer source minute arrives, sync forward to it but never jump backward.
+  const sourceSeconds=Math.max(0,Math.round(minute*60));
   let state=clockState.get(key);
-  if(!state||minute!==state.sourceMinute||status!==state.status){
+  if(!state){
     state={sourceMinute:minute,status,anchorSeconds:sourceSeconds,anchorAt:now,lastSeconds:sourceSeconds};
+    clockState.set(key,state);
+  }else if(minute!==state.sourceMinute||status!==state.status){
+    const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
+    const projected=Math.max(state.lastSeconds||0,state.anchorSeconds+elapsed);
+    const synced=Math.max(sourceSeconds,projected);
+    state={sourceMinute:minute,status,anchorSeconds:synced,anchorAt:now,lastSeconds:synced};
     clockState.set(key,state);
   }
 
   const elapsed=Math.max(0,Math.floor((now-state.anchorAt)/1000));
-  const projected=state.anchorSeconds+elapsed;
-  const sourceMinuteCeiling=sourceSeconds+59;
-  const seconds=Math.max(sourceSeconds,Math.min(projected,sourceMinuteCeiling));
+  const seconds=Math.max(state.lastSeconds||0,state.anchorSeconds+elapsed);
   state.lastSeconds=seconds;
 
   const mins=Math.floor(seconds/60),secs=Math.floor(seconds%60);
