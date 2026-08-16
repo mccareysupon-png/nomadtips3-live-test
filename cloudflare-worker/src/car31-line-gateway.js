@@ -1,4 +1,3 @@
-const CAR31_HISTORY_URL='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev/history?page=1&limit=100';
 const LINE_PUSH_URL='https://api.line.me/v2/bot/message/push';
 const CUTOVER_AT='2026-08-16T04:57:44.000Z';
 const CUTOVER_MS=Date.parse(CUTOVER_AT);
@@ -148,14 +147,16 @@ async function readStatus(env){
   }catch{return null;}
 }
 
-async function fetchCar31History(){
-  const response=await fetch(`${CAR31_HISTORY_URL}&t=${Date.now()}`,{
-    headers:{accept:'application/json'},
-    cf:{cacheTtl:0,cacheEverything:false}
+async function fetchCar31History(env){
+  if(!env?.CAR31_SOURCE)throw new Error('CAR 3.1 service binding is not configured');
+  const request=new Request(`https://car31.internal/history?page=1&limit=100&t=${Date.now()}`,{
+    method:'GET',
+    headers:{accept:'application/json'}
   });
+  const response=await env.CAR31_SOURCE.fetch(request);
   const payload=await response.json().catch(()=>null);
   if(!response.ok||!payload?.ok||!Array.isArray(payload?.records)){
-    throw new Error(`CAR 3.1 history unavailable: HTTP ${response.status}`);
+    throw new Error(`CAR 3.1 history unavailable through service binding: HTTP ${response.status}`);
   }
   return payload.records;
 }
@@ -235,10 +236,12 @@ export async function runCar31LineGateway(env){
     ok:false,
     source:'CAR3.1_HISTORY',
     sender:'SIGNAL_HUB',
+    transport:'SERVICE_BINDING',
     entitlement:'PAID_ACTIVE',
     cutoverAt:CUTOVER_AT,
     dbConfigured:Boolean(env?.DB),
     tokenConfigured:Boolean(env?.LINE_CHANNEL_ACCESS_TOKEN),
+    serviceConfigured:Boolean(env?.CAR31_SOURCE),
     car31FetchOk:false,
     eligibleMembers:0,
     candidateRecords:0,
@@ -249,15 +252,15 @@ export async function runCar31LineGateway(env){
     lastRunAt:startedAt
   };
 
-  if(!env?.DB||!env?.LINE_CHANNEL_ACCESS_TOKEN){
-    const status={...base,error:'Signal Hub DB or LINE token is not configured'};
+  if(!env?.DB||!env?.LINE_CHANNEL_ACCESS_TOKEN||!env?.CAR31_SOURCE){
+    const status={...base,error:'Signal Hub DB, LINE token, or CAR 3.1 service binding is not configured'};
     await saveStatus(env,status);
     return status;
   }
 
   try{
     await ensureSchema(env);
-    const [records,subscribers]=await Promise.all([fetchCar31History(),eligibleSubscribers(env)]);
+    const [records,subscribers]=await Promise.all([fetchCar31History(env),eligibleSubscribers(env)]);
     const candidates=records.filter(record=>ms(record?.selectedAt)>=CUTOVER_MS);
     let signalSent=0,resultSent=0,failed=0;
 
@@ -312,10 +315,12 @@ export async function handleCar31LineGatewayRoute(request,env){
       ok:false,
       source:'CAR3.1_HISTORY',
       sender:'SIGNAL_HUB',
+      transport:'SERVICE_BINDING',
       entitlement:'PAID_ACTIVE',
       cutoverAt:CUTOVER_AT,
       dbConfigured:Boolean(env?.DB),
       tokenConfigured:Boolean(env?.LINE_CHANNEL_ACCESS_TOKEN),
+      serviceConfigured:Boolean(env?.CAR31_SOURCE),
       status:'WAITING_FIRST_CRON'
     }
   },null,2),{
