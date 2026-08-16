@@ -18,7 +18,7 @@ test('Goaloo detailIn maps confirmed core statistic IDs from real public payload
   });
 });
 
-test('core stats fallback fills missing pairs and preserves complete real zero/base pairs',()=>{
+test('structured detailIn is authoritative for all six complete Core Stats pairs',()=>{
   const detail={corners:{home:3,away:5},shots:{home:8,away:13},shots_on_target:{home:5,away:3},attacks:{home:111,away:125},dangerous_attacks:{home:47,away:73},possession:{home:51,away:49}};
   const match={
     stats:{
@@ -34,15 +34,37 @@ test('core stats fallback fills missing pairs and preserves complete real zero/b
   };
   const merged=mergeCoreStats(match,detail);
   assert.equal(merged.complete,true);
-  assert.deepEqual(match.stats.shots,{home:0,away:0});
-  assert.deepEqual(match.stats.corners,{home:9,away:9});
+  assert.equal(merged.structuredComplete,true);
+  assert.equal(match.coreStatsProvenance,'DETAIL_IN_STRUCTURED');
+  assert.deepEqual(match.stats.shots,{home:8,away:13});
+  assert.deepEqual(match.stats.corners,{home:3,away:5});
   assert.deepEqual(match.stats.attacks,{home:111,away:125});
   assert.deepEqual(match.stats.dangerous_attacks,{home:47,away:73});
   assert.deepEqual(match.stats.shots_on_target,{home:5,away:3});
   assert.deepEqual(match.stats.possession,{home:51,away:49});
   assert.deepEqual(match.warnings,['KEEP_ME']);
   assert.ok(merged.filled.includes('attacks.home'));
-  assert.equal(merged.filled.includes('shots.home'),false);
+  assert.ok(merged.filled.includes('shots.home'));
+});
+
+test('structured pair replaces a mixed-looking complete base pair atomically',()=>{
+  const match={
+    stats:{
+      possession:{home:59,away:60.7},
+      attacks:{home:58,away:48},
+      dangerous_attacks:{home:72,away:40},
+      shots:{home:9,away:1},
+      shots_on_target:{home:5,away:1},
+      corners:{home:6,away:1}
+    },
+    coreStatsComplete:true,
+    warnings:[]
+  };
+  const merged=mergeCoreStats(match,{possession:{home:60,away:40}});
+  assert.deepEqual(match.stats.possession,{home:60,away:40});
+  assert.equal(match.stats.possession.home+match.stats.possession.away,100);
+  assert.equal(merged.structuredPairs,1);
+  assert.equal(match.coreStatsProvenance,'DETAIL_IN_PARTIAL');
 });
 
 test('incomplete base pair is replaced atomically instead of mixing two sources',()=>{
@@ -71,6 +93,7 @@ test('partial detailIn data cannot falsely mark core stats complete',()=>{
   const merged=mergeCoreStats(match,{attacks:{home:10,away:8}});
   assert.equal(merged.complete,false);
   assert.equal(match.coreStatsComplete,false);
+  assert.equal(match.coreStatsProvenance,'DETAIL_IN_PARTIAL');
 });
 
 test('activity prioritizes goal',()=>{const p={score:{home:0,away:0},stats:{red_cards:{home:0,away:0},yellow_cards:{home:0,away:0},corners:{home:0,away:0},shots_on_target:{home:0,away:0},shots:{home:0,away:0},dangerous_attacks:{home:0,away:0},attacks:{home:0,away:0},possession:{home:50,away:50}}},c={score:{home:1,away:0},stats:{...p.stats,shots:{home:1,away:0},possession:{home:60,away:40}}};assert.equal(deriveActivity(c,p).type,'GOAL');});
