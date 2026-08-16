@@ -7,6 +7,7 @@ on:
     paths:
       - car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs
       - car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs
       - .github/workflows/car31-goaloo-animation-probe.yml
   workflow_dispatch:
 
@@ -28,6 +29,9 @@ jobs:
       - name: Deep probe public Goaloo event protocol for match 2930884
         run: |
           node car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs 2930884 | tee /tmp/goaloo-animation-deep-report.json
+      - name: Extract public Goaloo websocket/detail protocol
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs 2930884 | tee /tmp/goaloo-protocol-report.json
       - name: Upload redacted research reports
         uses: actions/upload-artifact@v4
         with:
@@ -35,4 +39,5 @@ jobs:
           path: |
             /tmp/goaloo-animation-report.json
             /tmp/goaloo-animation-deep-report.json
+            /tmp/goaloo-protocol-report.json
           retention-days: 1
