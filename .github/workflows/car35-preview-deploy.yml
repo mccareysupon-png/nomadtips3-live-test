@@ -17,6 +17,7 @@ env:
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   PREVIEW_URL: https://nomadtips3-car35-preview.mccarey-supon.workers.dev
   MEMBERSHIP_URL: https://nomadtips3-test-api.mccarey-supon.workers.dev
+  LIVE_WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
 
 jobs:
   validate-and-deploy:
@@ -31,6 +32,9 @@ jobs:
       - name: Validate CAR 3.5 frontend and edge layer
         run: |
           node --check car3-5-live-soccer-analysis/web/app.js
+          node --check car3-5-live-soccer-analysis/web/statistics-v2.js
+          node --check car3-5-live-soccer-analysis/web/live-audit.js
+          node --check car3-5-live-soccer-analysis/web/net-units.js
           node --check car3-5-live-soccer-analysis/src/index.js
           test -s car3-5-live-soccer-analysis/web/index.html
           test -s car3-5-live-soccer-analysis/web/statistics.html
@@ -38,32 +42,42 @@ jobs:
           test -s car3-5-live-soccer-analysis/web/payment.html
           test -s car3-5-live-soccer-analysis/web/owner-control.html
           test -s car3-5-live-soccer-analysis/web/styles.css
+          test -s car3-5-live-soccer-analysis/web/ceo-polish.css
           grep -q 'owner-control.html' car3-5-live-soccer-analysis/src/index.js
           grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'id="ahMin"' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'name="oddsMin"' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'live-audit.js' car3-5-live-soccer-analysis/web/index.html
+          grep -q 'id="signalLine"' car3-5-live-soccer-analysis/web/index.html
+          grep -q 'id="entryScore"' car3-5-live-soccer-analysis/web/index.html
+          grep -q 'id="statUnits"' car3-5-live-soccer-analysis/web/statistics.html
+          grep -q 'net-units.js' car3-5-live-soccer-analysis/web/statistics.html
           grep -q 'payment.html' car3-5-live-soccer-analysis/web/alerts.html
           grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' car3-5-live-soccer-analysis/web/payment.html
+
+      - name: Verify live history and membership readiness
+        run: |
+          curl -fsS "$LIVE_WORKER/history?page=1&limit=1&range=30D" -o /tmp/history.json
+          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
+          python - <<'PY'
+          import json
+          h=json.load(open('/tmp/history.json',encoding='utf-8'))
+          m=json.load(open('/tmp/membership-health.json',encoding='utf-8'))
+          assert h.get('ok') is True, 'history endpoint is not OK'
+          assert isinstance(h.get('summary'),dict), 'history summary missing'
+          assert 'netUnits' in h['summary'], 'netUnits missing from history summary'
+          assert m.get('ok') is True, 'membership health is not OK'
+          assert m.get('stripeWebhookConfigured') is True, 'Stripe webhook is not configured'
+          assert m.get('lineConfigured') is True, 'LINE messaging is not configured'
+          assert m.get('lineAddFriendConfigured') is True, 'LINE add-friend URL is not configured'
+          assert m.get('paymentLinkConfigured') is True, 'Stripe payment link is not configured'
+          print('History + Stripe + LINE readiness: OK')
+          PY
 
       - name: Validate Cloudflare credentials
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-
-      - name: Verify Stripe and LINE membership readiness
-        run: |
-          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
-          python - <<'PY'
-          import json
-          with open('/tmp/membership-health.json', encoding='utf-8') as f:
-              d=json.load(f)
-          assert d.get('ok') is True, 'membership health is not OK'
-          assert d.get('stripeWebhookConfigured') is True, 'Stripe webhook is not configured'
-          assert d.get('lineConfigured') is True, 'LINE messaging is not configured'
-          assert d.get('lineAddFriendConfigured') is True, 'LINE add-friend URL is not configured'
-          assert d.get('paymentLinkConfigured') is True, 'Stripe payment link is not configured'
-          print('Stripe + LINE membership readiness: OK')
-          PY
 
       - name: Deploy isolated CAR 3.5 preview
         uses: cloudflare/wrangler-action@v3
@@ -79,10 +93,10 @@ jobs:
           node --input-type=module <<'NODE'
           const base=process.env.PREVIEW_URL;
           const checks=[
-            ['root','/',['nomadtips3']],
-            ['statistics','/statistics.html',['Statistics']],
-            ['alerts','/alerts.html',['Live alerts','payment.html']],
-            ['payment','/payment.html',['Continue to Stripe','nomadtips3-test-api.mccarey-supon.workers.dev/membership/start']],
+            ['root','/',['nomadtips3','live-audit.js','Line / handicap','Entry score','18+']],
+            ['statistics','/statistics.html',['Statistics','Net units','net-units.js','Locked odds','3Y']],
+            ['alerts','/alerts.html',['Live alerts','payment.html','18+']],
+            ['payment','/payment.html',['Continue to Stripe','nomadtips3-test-api.mccarey-supon.workers.dev/membership/start','18+']],
             ['owner legacy route','/owner-settings',['ราคาต่อรอง Asian Handicap','id="ahMin"','บันทึก + สแกนทันที']],
             ['owner direct','/owner-control.html',['ราคาต่อรอง Asian Handicap','id="ahMin"','บันทึก + สแกนทันที']]
           ];
@@ -101,5 +115,5 @@ jobs:
             if(!response?.ok)throw lastError||new Error(`${name} failed`);
             for(const needle of needles){if(!text.includes(needle))throw new Error(`${name}: missing ${needle}`);}
           }
-          console.log(`CAR 3.5 preview OK: ${base}`);
+          console.log(`CAR 3.5 preview CEO review OK: ${base}`);
           NODE
