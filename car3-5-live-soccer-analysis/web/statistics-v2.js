@@ -1,11 +1,12 @@
 const $=id=>document.getElementById(id);
 const DEFAULT_WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev';
+const HISTORY_WORKER=DEFAULT_WORKER;
 let runtime={liveUrl:`${DEFAULT_WORKER}/live`,healthUrl:`${DEFAULT_WORKER}/health`,refreshSeconds:15};
 let historyPage=1,historyPages=1,historyRange='ALL',trend=[],historyRefreshing=false;
 
 const esc=v=>String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=(v,f=0)=>Number.isFinite(Number(v))?Number(v):f;
-const workerBase=()=>String(runtime.workerUrl||runtime.liveUrl||DEFAULT_WORKER).replace(/\/live(?:\?.*)?$/,'');
+const workerBase=()=>HISTORY_WORKER;
 
 async function json(url,timeout=15000){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
