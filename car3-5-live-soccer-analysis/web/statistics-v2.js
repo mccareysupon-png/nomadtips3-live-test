@@ -26,17 +26,17 @@ function setFeed(ok,text){
   if($('feedState'))$('feedState').textContent=text;
 }
 
-function resultName(record){
-  let value=String(record?.resultGroup||record?.result||'PENDING').toUpperCase();
-  if(value==='CORRECT')value='WIN';
-  if(value==='INCORRECT')value='LOSS';
-  if(value==='PUSH')value='DRAW';
-  return value;
-}
-
-function resultDetail(record){
+function settlementName(record){
   const raw=String(record?.settlementResult||record?.resultDetail||record?.resultGroup||record?.result||'PENDING').toUpperCase();
   return raw.replaceAll('_',' ');
+}
+
+function resultClass(record){
+  const value=settlementName(record);
+  if(value.includes('WIN'))return'result-win';
+  if(value.includes('LOSS'))return'result-loss';
+  if(value==='PUSH'||value==='DRAW')return'result-draw';
+  return'';
 }
 
 function fmtDateTime(record){
@@ -81,13 +81,13 @@ function renderHistory(data){
   const summary=data.summary||{},win=num(summary.win??summary.correct),loss=num(summary.loss??summary.incorrect),draw=num(summary.draw??summary.push),avg=num(summary.averageOdds),rate=Number.isFinite(Number(summary.winRate))?num(summary.winRate):(win+loss?win/(win+loss)*100:0);
   $('statWin').textContent=win;$('statLoss').textContent=loss;$('statDraw').textContent=draw;$('statRate').textContent=`${rate.toFixed(2)}%`;$('statOdds').textContent=avg.toFixed(2);trend=Array.isArray(summary.trend)?summary.trend:[];
   const records=Array.isArray(data.records)?data.records:[];
-  $('historyBody').innerHTML=records.length?records.map(record=>{const result=resultName(record),cls=`result-${result.toLowerCase()}`;return`<tr><td>${esc(fmtDateTime(record))}</td><td class="league-cell" title="${esc(record.league||'—')}">${esc(record.league||'—')}</td><td class="match-cell">${esc(record.home||'—')} vs ${esc(record.away||'—')}</td><td>${esc(record.entryMinute??'—')}${record.entryMinute!==null&&record.entryMinute!==undefined?"'":''}</td><td><span class="score-pill">${esc(fmtScore(record.entryScore))}</span></td><td>${esc(fmtMarket(record))}</td><td>${esc(fmtPick(record))}</td><td class="line-cell">${esc(fmtLine(record))}</td><td class="odds-cell">${esc(fmtOdds(record))}</td><td>${esc(fmtMomentum(record))}</td><td><span class="score-pill">${esc(fmtScore(record.finalScore))}</span></td><td class="${cls}">${esc(result)}</td><td><span class="result-detail">${esc(resultDetail(record))}</span></td></tr>`;}).join(''):'<tr><td colspan="13">No records are available in this range.</td></tr>';
+  $('historyBody').innerHTML=records.length?records.map(record=>{const settlement=settlementName(record),cls=resultClass(record);return`<tr><td>${esc(fmtDateTime(record))}</td><td class="league-cell" title="${esc(record.league||'—')}">${esc(record.league||'—')}</td><td class="match-cell">${esc(record.home||'—')} vs ${esc(record.away||'—')}</td><td>${esc(record.entryMinute??'—')}${record.entryMinute!==null&&record.entryMinute!==undefined?"'":''}</td><td><span class="score-pill">${esc(fmtScore(record.entryScore))}</span></td><td>${esc(fmtMarket(record))}</td><td>${esc(fmtPick(record))}</td><td class="line-cell">${esc(fmtLine(record))}</td><td class="odds-cell">${esc(fmtOdds(record))}</td><td>${esc(fmtMomentum(record))}</td><td><span class="score-pill">${esc(fmtScore(record.finalScore))}</span></td><td class="${cls}">${esc(settlement)}</td></tr>`;}).join(''):'<tr><td colspan="12">No records are available in this range.</td></tr>';
   historyPage=num(data.page,historyPage);historyPages=Math.max(1,num(data.pages,1));$('pageInfo').textContent=`Page ${historyPage} / ${historyPages} · 25 rows/page`;$('prevPage').disabled=historyPage<=1;$('nextPage').disabled=historyPage>=historyPages;
   if($('historyMeta')){const storage=data.historyStorage==='SQLITE_HISTORY_ARCHIVE_V1'?'Long-term SQLite archive':'Working history';$('historyMeta').textContent=`${historyRange} · ${num(data.total)} records · ${storage}`;}
   requestAnimationFrame(drawHistory);setFeed(true,'Online');
 }
 
-async function refreshHistory(){if(historyRefreshing)return;historyRefreshing=true;try{const url=`${workerBase()}/history?page=${historyPage}&limit=25&range=${encodeURIComponent(historyRange)}&t=${Date.now()}`,data=await json(url);if(data.ok===false)throw new Error(data.error||'History unavailable');renderHistory(data);}catch(error){setFeed(false,'Reconnecting');$('historyBody').innerHTML='<tr><td colspan="13">Statistics are temporarily unavailable. Automatic retry is active.</td></tr>';console.warn('Statistics refresh failed',error);}finally{historyRefreshing=false;}}
+async function refreshHistory(){if(historyRefreshing)return;historyRefreshing=true;try{const url=`${workerBase()}/history?page=${historyPage}&limit=25&range=${encodeURIComponent(historyRange)}&t=${Date.now()}`,data=await json(url);if(data.ok===false)throw new Error(data.error||'History unavailable');renderHistory(data);}catch(error){setFeed(false,'Reconnecting');$('historyBody').innerHTML='<tr><td colspan="12">Statistics are temporarily unavailable. Automatic retry is active.</td></tr>';console.warn('Statistics refresh failed',error);}finally{historyRefreshing=false;}}
 
 async function init(){await loadRuntime();$('prevPage').onclick=()=>{if(historyPage>1){historyPage--;refreshHistory();}};$('nextPage').onclick=()=>{if(historyPage<historyPages){historyPage++;refreshHistory();}};document.querySelectorAll('#historyRanges [data-range]').forEach(button=>button.addEventListener('click',()=>{historyRange=button.dataset.range||'ALL';historyPage=1;document.querySelectorAll('#historyRanges [data-range]').forEach(item=>item.classList.toggle('active',item===button));refreshHistory();}));await refreshHistory();setInterval(refreshHistory,30000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshHistory();});window.addEventListener('online',refreshHistory);}
 init();

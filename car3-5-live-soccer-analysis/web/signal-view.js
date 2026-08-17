@@ -101,7 +101,7 @@ function applyList(){
     const bottom=item.querySelectorAll('.signal-bottom span');
     if(record){
       confirmed++;
-      setText(pill,'Signal');setClass(pill,'state-pill signal');
+      setText(pill,'Signal active');setClass(pill,'state-pill signal');
       setText(pick,pickLabel(record));
       if(bottom[0])setText(bottom[0],`${compactMarket(record)} · Odds ${oddsLabel(record)}`);
       if(bottom[1])setText(bottom[1],`Detected ${minuteLabel(record)} · Entry ${scoreLabel(record.entryScore)}`);
@@ -120,11 +120,11 @@ function applyList(){
 
 function clearLockedCenter(){
   const state=byId('decisionState');
-  if(state&&/signal active/i.test(state.textContent||'')){
+  if(state&&/signal/i.test(state.textContent||'')){
     setText(state,'Near signal');setClass(state,'state-pill near');
   }
   setText(byId('pickValue'),'Monitoring');
-  setText(byId('marketName'),'Live selection');
+  setText(byId('marketName'),'—');
   setText(byId('signalLine'),'—');
   setText(byId('lockedOdds'),'—');
   setText(byId('entryScore'),'—');
@@ -170,8 +170,10 @@ function buildLockedMap(payload){
     .sort((a,b)=>Date.parse(b.selectedAt||0)-Date.parse(a.selectedAt||0));
   const next=new Map();
   for(const record of pending){
-    const id=String(record.id??record.sourceMatchId??'');
-    if(id&&!next.has(id))next.set(id,record);
+    const ids=[record.id,record.sourceMatchId]
+      .filter(value=>value!==null&&value!==undefined&&String(value)!=='')
+      .map(String);
+    for(const id of ids)if(!next.has(id))next.set(id,record);
   }
   lockedByMatch=next;
 }
