@@ -24,7 +24,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
-
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -54,7 +53,6 @@ jobs:
       - name: Verify Stripe and LINE membership readiness
         run: |
           curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
-          cat /tmp/membership-health.json
           python - <<'PY'
           import json
           with open('/tmp/membership-health.json', encoding='utf-8') as f:
@@ -78,22 +76,30 @@ jobs:
 
       - name: Smoke test preview pages
         run: |
-          for i in $(seq 1 12); do
-            CODE=$(curl -L -sS -o /tmp/car35-index.html -w '%{http_code}' "$PREVIEW_URL/" || true)
-            if [ "$CODE" = "200" ]; then break; fi
-            sleep 5
-          done
-          test "$CODE" = "200" || { echo "::error::Preview root returned HTTP $CODE"; exit 1; }
-          grep -qi 'nomadtips3' /tmp/car35-index.html
-          curl -L -fsS "$PREVIEW_URL/statistics.html" | grep -qi 'Statistics'
-          curl -L -fsS "$PREVIEW_URL/alerts.html" -o /tmp/car35-alerts.html
-          grep -qi 'Live alerts' /tmp/car35-alerts.html
-          grep -q 'payment.html' /tmp/car35-alerts.html
-          curl -L -fsS "$PREVIEW_URL/payment.html" -o /tmp/car35-payment.html
-          grep -qi 'Continue to Stripe' /tmp/car35-payment.html
-          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' /tmp/car35-payment.html
-          curl -L -fsS "$PREVIEW_URL/owner-settings" -o /tmp/car35-owner.html
-          grep -qi 'ราคาต่อรอง Asian Handicap' /tmp/car35-owner.html
-          grep -q 'id="ahMin"' /tmp/car35-owner.html
-          grep -qi 'บันทึก + สแกนทันที' /tmp/car35-owner.html
-          echo "CAR 3.5 preview: $PREVIEW_URL"
+          node --input-type=module <<'NODE'
+          const base=process.env.PREVIEW_URL;
+          const checks=[
+            ['root','/',['nomadtips3']],
+            ['statistics','/statistics.html',['Statistics']],
+            ['alerts','/alerts.html',['Live alerts','payment.html']],
+            ['payment','/payment.html',['Continue to Stripe','nomadtips3-test-api.mccarey-supon.workers.dev/membership/start']],
+            ['owner legacy route','/owner-settings',['ราคาต่อรอง Asian Handicap','id="ahMin"','บันทึก + สแกนทันที']],
+            ['owner direct','/owner-control.html',['ราคาต่อรอง Asian Handicap','id="ahMin"','บันทึก + สแกนทันที']]
+          ];
+          for(const [name,path,needles] of checks){
+            let response,text,lastError;
+            for(let attempt=1;attempt<=6;attempt++){
+              try{
+                response=await fetch(`${base}${path}?smoke=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
+                text=await response.text();
+                if(response.ok)break;
+                lastError=new Error(`HTTP ${response.status}`);
+              }catch(error){lastError=error;}
+              await new Promise(r=>setTimeout(r,3000));
+            }
+            console.log(`${name}: HTTP ${response?.status ?? 'ERR'} -> ${response?.url ?? path}`);
+            if(!response?.ok)throw lastError||new Error(`${name} failed`);
+            for(const needle of needles){if(!text.includes(needle))throw new Error(`${name}: missing ${needle}`);}
+          }
+          console.log(`CAR 3.5 preview OK: ${base}`);
+          NODE
