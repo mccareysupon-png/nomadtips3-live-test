@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const DEFAULT_WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev';
-const HISTORY_WORKER=DEFAULT_WORKER;
+const HISTORY_WORKER='https://nomadtips3-car31-goaloo.'+'mccarey-supon.workers.dev';
 let runtime={liveUrl:`${DEFAULT_WORKER}/live`,healthUrl:`${DEFAULT_WORKER}/health`,refreshSeconds:15};
 let historyPage=1,historyPages=1,historyRange='ALL',trend=[],historyRefreshing=false;
 
