@@ -1,13 +1,10 @@
 {
   "engine": "CAR 3.5",
-  "mode": "READ_ONLY_PRESENTATION",
-  "source": "CAR_3_1_NORMALIZED_GOALOO",
-  "liveUrl": "https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev/live",
-  "healthUrl": "https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev/health",
-  "refreshSeconds": 15,
-  "secondaryEngine": {
-    "name": "CAR 3.3",
-    "enabled": false,
-    "liveUrl": null
-  }
+  "mode": "DIRECT_GOALOO",
+  "source": "GOALOO_DIRECT",
+  "workerUrl": "https://nomadtips3-car35-preview.mccarey-supon.workers.dev",
+  "liveUrl": "https://nomadtips3-car35-preview.mccarey-supon.workers.dev/live",
+  "healthUrl": "https://nomadtips3-car35-preview.mccarey-supon.workers.dev/health",
+  "animationUrl": "https://nomadtips3-car35-preview.mccarey-supon.workers.dev/animation",
+  "refreshSeconds": 15
 }
