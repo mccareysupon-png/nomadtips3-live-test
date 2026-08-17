@@ -27,7 +27,7 @@ env:
 
 jobs:
   production-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
@@ -35,9 +35,14 @@ jobs:
       - name: Validate production source
         run: |
           node --check car3-5-live-soccer-analysis/web/app.js
+          node --check car3-5-live-soccer-analysis/web/statistics-v2.js
           grep -q 'Live soccer analysis' index.html
           ! grep -q '>CAR 3.1<' index.html
-          grep -q 'Statistics' statistics.html
+          grep -q 'data-range="3Y"' statistics.html
+          grep -q 'Line / handicap' statistics.html
+          grep -q 'Locked odds' statistics.html
+          grep -q 'Entry score' statistics.html
+          grep -q 'statistics-v2.js' statistics.html
           grep -q 'payment.html' alerts.html
           grep -q 'Continue to Stripe' payment.html
           grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' payment.html
@@ -45,19 +50,28 @@ jobs:
           grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
 
-      - name: Verify backend readiness
+      - name: Verify backend readiness and long-term history
         run: |
           curl -fsS "$LIVE_WORKER/health" -o /tmp/live-health.json
+          curl -fsS "$LIVE_WORKER/history?page=1&limit=3&range=3Y" -o /tmp/history-3y.json
           curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
           python - <<'PY'
           import json
           live=json.load(open('/tmp/live-health.json', encoding='utf-8'))
+          history=json.load(open('/tmp/history-3y.json', encoding='utf-8'))
           membership=json.load(open('/tmp/membership-health.json', encoding='utf-8'))
           assert isinstance(live, dict), 'live health is invalid'
+          assert live.get('settlementContract')=='BET365_V4', 'settlement contract mismatch'
+          assert live.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', 'long-term archive health marker missing'
+          assert history.get('ok') is True, '3Y history API not OK'
+          assert history.get('range')=='3Y', '3Y history range not applied'
+          assert history.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', '3Y history is not reading SQLite archive'
+          assert isinstance((history.get('summary') or {}).get('trend'), list), 'history trend missing'
+          assert isinstance(history.get('records'), list), 'history records missing'
           assert membership.get('ok') is True, 'membership service not ready'
           for key in ('stripeWebhookConfigured','lineConfigured','lineAddFriendConfigured','paymentLinkConfigured'):
               assert membership.get(key) is True, f'{key} is not ready'
-          print('Backends ready')
+          print('Backends + long-term history ready')
           PY
 
       - name: Wait for GitHub Pages production
@@ -66,7 +80,8 @@ jobs:
           const base=process.env.PAGES_URL;
           const checks=[
             ['live','/',['Live soccer analysis','nomadtips3']],
-            ['statistics','/statistics.html',['Statistics','Performance history']],
+            ['statistics','/statistics.html',['Statistics','data-range="3Y"','Line / handicap','Locked odds','Entry score','statistics-v2.js']],
+            ['statistics renderer','/car3-5-live-soccer-analysis/web/statistics-v2.js',['range=${encodeURIComponent(historyRange)}','stroke-width="1.55"','settlementResult']],
             ['alerts','/alerts.html',['Live alerts','Continue to payment']],
             ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
             ['owner entry','/owner-control.html',['noindex,nofollow','car3-5-live-soccer-analysis/web/owner-control.html']],
@@ -94,12 +109,12 @@ jobs:
           node --input-type=module <<'NODE'
           const base=process.env.CUSTOM_URL;
           try{
-            const r=await fetch(`${base}/?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
+            const r=await fetch(`${base}/statistics.html?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
             const text=await r.text();
-            if(r.ok&&text.includes('Live soccer analysis')){
-              console.log(`Custom domain CAR 3.5 OK: ${base}`);
+            if(r.ok&&text.includes('data-range="3Y"')&&text.includes('Locked odds')){
+              console.log(`Custom domain CAR 3.5 Statistics OK: ${base}`);
             } else {
-              console.log(`::warning::Custom domain reachable but CAR 3.5 marker not present yet (HTTP ${r.status})`);
+              console.log(`::warning::Custom domain reachable but CAR 3.5 Statistics marker not present yet (HTTP ${r.status})`);
             }
           }catch(e){
             console.log(`::warning::Custom domain could not be verified from runner: ${e.message}`);
