@@ -7,6 +7,13 @@ function setText(el,text){
   if(el&&el.textContent!==text)el.textContent=text;
 }
 
+function routePaymentPage(){
+  const action=document.querySelector('.monitor-subscribe-action');
+  if(!action)return;
+  action.setAttribute('href','./payment.html');
+  setText(action.querySelector('span'),'VIEW PLAN · $20 / MONTH');
+}
+
 function activeConfirmed(){
   const active=document.querySelector('.candidate.active');
   return Boolean(active?.classList.contains('confirmed-signal'));
@@ -59,6 +66,7 @@ function updateTeamSignalLabel(confirmed){
 
 function publicize(){
   scheduled=false;
+  routePaymentPage();
 
   document.getElementById('metricNear')?.closest('.metric')?.classList.add('public-hidden');
 
