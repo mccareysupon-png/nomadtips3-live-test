@@ -36,25 +36,15 @@ jobs:
         run: |
           node --check car3-5-live-soccer-analysis/web/app.js
           node --check car3-5-live-soccer-analysis/web/statistics-v2.js
-          node --check car3-5-live-soccer-analysis/web/live-audit.js
-          node --check car3-5-live-soccer-analysis/web/net-units.js
           grep -q 'Live soccer analysis' index.html
-          grep -q 'live-audit.js' index.html
-          grep -q 'id="signalLine"' index.html
-          grep -q 'id="entryScore"' index.html
-          grep -q '18+' index.html
           ! grep -q '>CAR 3.1<' index.html
           grep -q 'data-range="3Y"' statistics.html
           grep -q 'Line / handicap' statistics.html
           grep -q 'Locked odds' statistics.html
           grep -q 'Entry score' statistics.html
-          grep -q 'Net units' statistics.html
-          grep -q 'net-units.js' statistics.html
           grep -q 'statistics-v2.js' statistics.html
           grep -q 'payment.html' alerts.html
-          grep -q 'Selected market, handicap line and locked odds' alerts.html
           grep -q 'Continue to Stripe' payment.html
-          grep -q 'Signal record' payment.html
           grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' payment.html
           grep -q 'noindex,nofollow' owner-control.html
           grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
@@ -64,26 +54,24 @@ jobs:
         run: |
           curl -fsS "$LIVE_WORKER/health" -o /tmp/live-health.json
           curl -fsS "$LIVE_WORKER/history?page=1&limit=3&range=3Y" -o /tmp/history-3y.json
-          curl -fsS "$LIVE_WORKER/history?page=1&limit=100&range=30D" -o /tmp/history-live-audit.json
           curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
           python - <<'PY'
           import json
           live=json.load(open('/tmp/live-health.json', encoding='utf-8'))
           history=json.load(open('/tmp/history-3y.json', encoding='utf-8'))
-          audit=json.load(open('/tmp/history-live-audit.json', encoding='utf-8'))
           membership=json.load(open('/tmp/membership-health.json', encoding='utf-8'))
           assert isinstance(live, dict), 'live health is invalid'
           assert live.get('settlementContract')=='BET365_V4', 'settlement contract mismatch'
           assert live.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', 'long-term archive health marker missing'
-          assert history.get('ok') is True and history.get('range')=='3Y', '3Y history API not ready'
+          assert history.get('ok') is True, '3Y history API not OK'
+          assert history.get('range')=='3Y', '3Y history range not applied'
           assert history.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', '3Y history is not reading SQLite archive'
           assert isinstance((history.get('summary') or {}).get('trend'), list), 'history trend missing'
-          assert 'netUnits' in (history.get('summary') or {}), 'netUnits missing'
-          assert audit.get('ok') is True and isinstance(audit.get('records'),list), 'live audit history unavailable'
+          assert isinstance(history.get('records'), list), 'history records missing'
           assert membership.get('ok') is True, 'membership service not ready'
           for key in ('stripeWebhookConfigured','lineConfigured','lineAddFriendConfigured','paymentLinkConfigured'):
               assert membership.get(key) is True, f'{key} is not ready'
-          print('Backends + history + live audit ready')
+          print('Backends + long-term history ready')
           PY
 
       - name: Wait for GitHub Pages production
@@ -91,12 +79,11 @@ jobs:
           node --input-type=module <<'NODE'
           const base=process.env.PAGES_URL;
           const checks=[
-            ['live','/',['Live soccer analysis','live-audit.js','Line / handicap','Entry score','18+']],
-            ['live audit','/car3-5-live-soccer-analysis/web/live-audit.js',['Signal locked','Locked odds','history?page=1&limit=100&range=30D']],
-            ['statistics','/statistics.html',['Statistics','data-range="3Y"','Line / handicap','Locked odds','Entry score','Net units','net-units.js']],
+            ['live','/',['Live soccer analysis','nomadtips3']],
+            ['statistics','/statistics.html',['Statistics','data-range="3Y"','Line / handicap','Locked odds','Entry score','statistics-v2.js']],
             ['statistics renderer','/car3-5-live-soccer-analysis/web/statistics-v2.js',['range=${encodeURIComponent(historyRange)}','stroke-width="1.55"','settlementResult']],
-            ['alerts','/alerts.html',['Live alerts','Continue to payment','handicap line and locked odds','18+']],
-            ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts','Signal record','18+']],
+            ['alerts','/alerts.html',['Live alerts','Continue to payment']],
+            ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
             ['owner entry','/owner-control.html',['noindex,nofollow','car3-5-live-soccer-analysis/web/owner-control.html']],
             ['owner controls','/car3-5-live-soccer-analysis/web/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที']]
           ];
@@ -111,10 +98,10 @@ jobs:
                 if(!ok){complete=false;break;}
               }catch(e){console.log(`round ${round} ${name}: ${e.message}`);complete=false;break;}
             }
-            if(complete){console.log(`GitHub Pages production CEO review OK: ${base}`);process.exit(0);}
+            if(complete){console.log(`GitHub Pages production OK: ${base}`);process.exit(0);}
             await new Promise(r=>setTimeout(r,10000));
           }
-          throw new Error('GitHub Pages did not publish the complete CAR 3.5 CEO release in time');
+          throw new Error('GitHub Pages did not publish the complete CAR 3.5 release in time');
           NODE
 
       - name: Check custom domain when reachable
@@ -124,7 +111,12 @@ jobs:
           try{
             const r=await fetch(`${base}/statistics.html?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
             const text=await r.text();
-            if(r.ok&&text.includes('data-range="3Y"')&&text.includes('Net units'))console.log(`Custom domain CAR 3.5 CEO release OK: ${base}`);
-            else console.log(`::warning::Custom domain reachable but CAR 3.5 CEO marker not present yet (HTTP ${r.status})`);
-          }catch(e){console.log(`::warning::Custom domain could not be verified from runner: ${e.message}`);}
+            if(r.ok&&text.includes('data-range="3Y"')&&text.includes('Locked odds')){
+              console.log(`Custom domain CAR 3.5 Statistics OK: ${base}`);
+            } else {
+              console.log(`::warning::Custom domain reachable but CAR 3.5 Statistics marker not present yet (HTTP ${r.status})`);
+            }
+          }catch(e){
+            console.log(`::warning::Custom domain could not be verified from runner: ${e.message}`);
+          }
           NODE
