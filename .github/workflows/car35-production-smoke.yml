@@ -49,6 +49,8 @@ jobs:
           grep -q 'noindex,nofollow' owner-control.html
           grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q "const WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev'" car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q "'x-owner-key':key" car3-5-live-soccer-analysis/web/owner-control.html
 
       - name: Verify backend readiness and long-term history
         run: |
@@ -74,6 +76,37 @@ jobs:
           print('Backends + long-term history ready')
           PY
 
+      - name: Verify owner control host compatibility
+        run: |
+          curl -fsS "$LIVE_WORKER/config?t=$(date +%s)" -o /tmp/owner-config.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/owner-config.json', encoding='utf-8'))
+          assert d.get('ok') is True, 'GET /config is not ready'
+          assert isinstance(d.get('config'), dict), 'owner config payload missing'
+          print('Owner GET /config ready')
+          PY
+
+          curl -sS -D /tmp/owner-options.headers -o /dev/null -X OPTIONS "$LIVE_WORKER/config" \
+            -H "Origin: $PAGES_URL" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: content-type,x-owner-key'
+          python - <<'PY'
+          h=open('/tmp/owner-options.headers', encoding='utf-8').read().lower()
+          assert ' 204 ' in h.splitlines()[0], 'owner preflight is not HTTP 204'
+          assert 'access-control-allow-origin: *' in h, 'owner CORS origin missing'
+          assert 'access-control-allow-methods:' in h and 'post' in h, 'owner POST CORS method missing'
+          assert 'access-control-allow-headers:' in h and 'x-owner-key' in h, 'x-owner-key CORS header missing'
+          print('Owner CORS preflight ready')
+          PY
+
+          code=$(curl -sS -o /tmp/owner-unauthorized.json -w '%{http_code}' -X POST "$LIVE_WORKER/config" \
+            -H 'content-type: application/json' \
+            --data '{}')
+          test "$code" = "401" || { echo "Owner auth gate expected 401, got $code"; cat /tmp/owner-unauthorized.json; exit 1; }
+          grep -q 'OWNER_AUTH_REQUIRED' /tmp/owner-unauthorized.json
+          echo 'Owner write route protected and reachable'
+
       - name: Wait for GitHub Pages production
         run: |
           node --input-type=module <<'NODE'
@@ -85,7 +118,7 @@ jobs:
             ['alerts','/alerts.html',['Live alerts','Continue to payment']],
             ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
             ['owner entry','/owner-control.html',['noindex,nofollow','car3-5-live-soccer-analysis/web/owner-control.html']],
-            ['owner controls','/car3-5-live-soccer-analysis/web/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที']]
+            ['owner controls','/car3-5-live-soccer-analysis/web/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที','x-owner-key']]
           ];
           for(let round=1;round<=30;round++){
             let complete=true;
