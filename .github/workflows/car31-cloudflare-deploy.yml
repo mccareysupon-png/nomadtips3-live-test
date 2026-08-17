@@ -137,12 +137,23 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
-          HISTORY=$(curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25")
-          printf '%s\n' "${HISTORY:0:12000}"
-          printf '%s' "$HISTORY" | grep -q '"ok": true\|"ok":true' || { echo "::error::History API not OK"; exit 1; }
-          printf '%s' "$HISTORY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::History API settlement contract mismatch"; exit 1; }
-          printf '%s' "$HISTORY" | grep -q '"records"' || { echo "::error::History API records field missing"; exit 1; }
-          printf '%s' "$HISTORY" | grep -q '"summary"' || { echo "::error::History API summary field missing"; exit 1; }
+          curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25" -o /tmp/car31-history.json
+          python - <<'PY'
+          import json
+          with open('/tmp/car31-history.json', encoding='utf-8') as f:
+              d=json.load(f)
+          assert d.get('ok') is True, 'History API not OK'
+          assert d.get('settlementContract')=='BET365_V4', 'History settlement contract mismatch'
+          assert isinstance(d.get('records'),list), 'History records missing'
+          assert isinstance(d.get('summary'),dict), 'History summary missing'
+          print(json.dumps({
+              'ok':d.get('ok'),
+              'settlementContract':d.get('settlementContract'),
+              'total':d.get('total'),
+              'page':d.get('page'),
+              'recordsOnPage':len(d.get('records') or [])
+          },indent=2))
+          PY
 
       - name: Inspect live confirmation state
         shell: bash
