@@ -1,0 +1,97 @@
+name: CAR 3.5 Domain Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/car35-domain-diagnostic.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect public response and DNS
+        shell: bash
+        run: |
+          set -u
+          echo '--- PUBLIC HEADERS ---'
+          curl -sSIL https://www.nomadtips3.com/ | sed -n '1,40p' || true
+          echo '--- PUBLIC TITLE / MARKERS ---'
+          curl -sSL https://www.nomadtips3.com/ -o /tmp/site.html || true
+          python - <<'PY'
+          import re, pathlib
+          p=pathlib.Path('/tmp/site.html')
+          t=p.read_text(errors='ignore') if p.exists() else ''
+          m=re.search(r'<title[^>]*>(.*?)</title>',t,re.I|re.S)
+          print('title=',re.sub(r'\s+',' ',m.group(1)).strip() if m else 'NONE')
+          for marker in ['Live soccer analysis','Match Intelligence','NOMADTIPS3','CAR 3.5']:
+              print(marker, marker in t)
+          print('bytes=',len(t.encode()))
+          PY
+          echo '--- DNS ---'
+          getent ahosts www.nomadtips3.com | head -10 || true
+          command -v dig >/dev/null && { dig +short CNAME www.nomadtips3.com; dig +short A www.nomadtips3.com; } || true
+
+      - name: Inspect Cloudflare zone, records and worker routes when permitted
+        shell: bash
+        run: |
+          set -u
+          if [ -z "${CF_API_TOKEN:-}" ]; then echo 'No Cloudflare token'; exit 0; fi
+          curl -sS 'https://api.cloudflare.com/client/v4/zones?name=nomadtips3.com' -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' -o /tmp/zones.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/zones.json'))
+          print('zones_success=',d.get('success'))
+          for e in d.get('errors',[]): print('zone_error=',e.get('code'),e.get('message'))
+          for z in d.get('result',[]): print('zone=',z.get('id'),z.get('name'),z.get('status'))
+          PY
+          ZONE_ID=$(python - <<'PY'
+          import json
+          d=json.load(open('/tmp/zones.json'))
+          r=d.get('result') or []
+          print(r[0].get('id','') if r else '')
+          PY
+          )
+          if [ -z "$ZONE_ID" ]; then exit 0; fi
+          curl -sS "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?per_page=100" -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' -o /tmp/dns.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/dns.json'))
+          print('dns_success=',d.get('success'))
+          for e in d.get('errors',[]): print('dns_error=',e.get('code'),e.get('message'))
+          for r in d.get('result',[]):
+              if r.get('name') in ('nomadtips3.com','www.nomadtips3.com'):
+                  print('dns=',r.get('id'),r.get('type'),r.get('name'),'->',r.get('content'),'proxied=',r.get('proxied'))
+          PY
+          curl -sS "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/workers/routes" -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' -o /tmp/routes.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/routes.json'))
+          print('routes_success=',d.get('success'))
+          for e in d.get('errors',[]): print('routes_error=',e.get('code'),e.get('message'))
+          for r in d.get('result',[]): print('route=',r.get('id'),r.get('pattern'),'script=',r.get('script'))
+          PY
+
+      - name: Inspect Cloudflare Pages projects when permitted
+        shell: bash
+        run: |
+          set -u
+          if [ -z "${CF_API_TOKEN:-}" ] || [ -z "${CF_ACCOUNT_ID:-}" ]; then exit 0; fi
+          curl -sS "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/pages/projects" -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' -o /tmp/pages.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/pages.json'))
+          print('pages_success=',d.get('success'))
+          for e in d.get('errors',[]): print('pages_error=',e.get('code'),e.get('message'))
+          for p in d.get('result',[]):
+              print('pages_project=',p.get('name'),'subdomain=',p.get('subdomain'),'production_branch=',p.get('production_branch'))
+              print('domains=',','.join(p.get('domains') or []))
+          PY
