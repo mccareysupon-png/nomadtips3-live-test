@@ -12,6 +12,8 @@ on:
       - 'runtime.json'
       - 'car3-5-live-soccer-analysis/**'
       - '.github/workflows/car35-production-smoke.yml'
+  schedule:
+    - cron: '17 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -40,6 +42,8 @@ jobs:
           grep -q 'Continue to Stripe' payment.html
           grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' payment.html
           grep -q 'noindex,nofollow' owner-control.html
+          grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
 
       - name: Verify backend readiness
         run: |
@@ -65,7 +69,8 @@ jobs:
             ['statistics','/statistics.html',['Statistics','Performance history']],
             ['alerts','/alerts.html',['Live alerts','Continue to payment']],
             ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
-            ['owner','/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที']]
+            ['owner entry','/owner-control.html',['noindex,nofollow','car3-5-live-soccer-analysis/web/owner-control.html']],
+            ['owner controls','/car3-5-live-soccer-analysis/web/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที']]
           ];
           for(let round=1;round<=30;round++){
             let complete=true;
