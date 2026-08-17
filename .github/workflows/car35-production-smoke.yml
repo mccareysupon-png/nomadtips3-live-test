@@ -1,0 +1,102 @@
+name: CAR 3.5 Production Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'statistics.html'
+      - 'alerts.html'
+      - 'payment.html'
+      - 'owner-control.html'
+      - 'runtime.json'
+      - 'car3-5-live-soccer-analysis/**'
+      - '.github/workflows/car35-production-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PAGES_URL: https://mccareysupon-png.github.io/nomadtips3-live-test
+  CUSTOM_URL: https://www.nomadtips3.com
+  LIVE_WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
+  MEMBERSHIP_URL: https://nomadtips3-test-api.mccarey-supon.workers.dev
+
+jobs:
+  production-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate production source
+        run: |
+          node --check car3-5-live-soccer-analysis/web/app.js
+          grep -q 'Live soccer analysis' index.html
+          ! grep -q '>CAR 3.1<' index.html
+          grep -q 'Statistics' statistics.html
+          grep -q 'payment.html' alerts.html
+          grep -q 'Continue to Stripe' payment.html
+          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' payment.html
+          grep -q 'noindex,nofollow' owner-control.html
+
+      - name: Verify backend readiness
+        run: |
+          curl -fsS "$LIVE_WORKER/health" -o /tmp/live-health.json
+          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
+          python - <<'PY'
+          import json
+          live=json.load(open('/tmp/live-health.json', encoding='utf-8'))
+          membership=json.load(open('/tmp/membership-health.json', encoding='utf-8'))
+          assert isinstance(live, dict), 'live health is invalid'
+          assert membership.get('ok') is True, 'membership service not ready'
+          for key in ('stripeWebhookConfigured','lineConfigured','lineAddFriendConfigured','paymentLinkConfigured'):
+              assert membership.get(key) is True, f'{key} is not ready'
+          print('Backends ready')
+          PY
+
+      - name: Wait for GitHub Pages production
+        run: |
+          node --input-type=module <<'NODE'
+          const base=process.env.PAGES_URL;
+          const checks=[
+            ['live','/',['Live soccer analysis','nomadtips3']],
+            ['statistics','/statistics.html',['Statistics','Performance history']],
+            ['alerts','/alerts.html',['Live alerts','Continue to payment']],
+            ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
+            ['owner','/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที']]
+          ];
+          for(let round=1;round<=30;round++){
+            let complete=true;
+            for(const [name,path,needles] of checks){
+              try{
+                const r=await fetch(`${base}${path}?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
+                const text=await r.text();
+                const ok=r.ok&&needles.every(n=>text.includes(n));
+                console.log(`round ${round} ${name}: ${r.status} ${ok?'OK':'OLD/NOT READY'}`);
+                if(!ok){complete=false;break;}
+              }catch(e){console.log(`round ${round} ${name}: ${e.message}`);complete=false;break;}
+            }
+            if(complete){console.log(`GitHub Pages production OK: ${base}`);process.exit(0);}
+            await new Promise(r=>setTimeout(r,10000));
+          }
+          throw new Error('GitHub Pages did not publish the complete CAR 3.5 release in time');
+          NODE
+
+      - name: Check custom domain when reachable
+        run: |
+          node --input-type=module <<'NODE'
+          const base=process.env.CUSTOM_URL;
+          try{
+            const r=await fetch(`${base}/?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
+            const text=await r.text();
+            if(r.ok&&text.includes('Live soccer analysis')){
+              console.log(`Custom domain CAR 3.5 OK: ${base}`);
+            } else {
+              console.log(`::warning::Custom domain reachable but CAR 3.5 marker not present yet (HTTP ${r.status})`);
+            }
+          }catch(e){
+            console.log(`::warning::Custom domain could not be verified from runner: ${e.message}`);
+          }
+          NODE
