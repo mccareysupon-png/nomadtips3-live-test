@@ -28,13 +28,15 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate CAR 3.5 frontend
+      - name: Validate CAR 3.5 frontend and edge layer
         run: |
           node --check car3-5-live-soccer-analysis/web/app.js
+          node --check car3-5-live-soccer-analysis/src/index.js
           test -s car3-5-live-soccer-analysis/web/index.html
           test -s car3-5-live-soccer-analysis/web/statistics.html
           test -s car3-5-live-soccer-analysis/web/alerts.html
           test -s car3-5-live-soccer-analysis/web/styles.css
+          grep -q 'owner-settings' car3-5-live-soccer-analysis/src/index.js
 
       - name: Validate Cloudflare credentials
         run: |
@@ -61,4 +63,5 @@ jobs:
           grep -qi 'nomadtips3' /tmp/car35-index.html
           curl -L -fsS "$PREVIEW_URL/statistics.html" | grep -qi 'Statistics'
           curl -L -fsS "$PREVIEW_URL/alerts.html" | grep -qi 'Live alerts'
+          curl -L -fsS "$PREVIEW_URL/owner-settings" | grep -qi 'ตั้งค่า CAR 3.5'
           echo "CAR 3.5 preview: $PREVIEW_URL"
