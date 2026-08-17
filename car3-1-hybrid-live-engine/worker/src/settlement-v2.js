@@ -10,6 +10,14 @@ const HEADERS={
 
 const num=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;};
 const json=(data,status=200)=>new Response(JSON.stringify(data,null,2),{status,headers:HEADERS});
+const HISTORY_RANGES={
+  '30D':30,
+  '90D':90,
+  '6M':183,
+  '1Y':365,
+  '3Y':1096,
+  'ALL':null
+};
 
 function splitQuarterLine(value){
   const raw=num(value);
@@ -264,6 +272,147 @@ function summaryOf(records){
   };
 }
 
+function archiveKey(record){
+  return String(record?.key||`${record?.id||'match'}:${record?.selectedAt||record?.selectionDate||'unknown'}:${record?.market||'market'}`);
+}
+
+function historyRange(value){
+  const v=String(value||'ALL').toUpperCase();
+  return Object.prototype.hasOwnProperty.call(HISTORY_RANGES,v)?v:'ALL';
+}
+
+function cutoffForRange(range){
+  const days=HISTORY_RANGES[range];
+  return days===null?null:new Date(Date.now()-days*86400000).toISOString();
+}
+
+function ensureArchiveSchema(state){
+  const sql=state?.storage?.sql;
+  if(!sql)return null;
+  sql.exec(`
+    CREATE TABLE IF NOT EXISTS history_archive_v1 (
+      record_key TEXT PRIMARY KEY,
+      selected_at TEXT NOT NULL,
+      selection_date TEXT,
+      settled_at TEXT,
+      result_group TEXT NOT NULL,
+      settlement_result TEXT,
+      market TEXT,
+      odds REAL,
+      net_units REAL,
+      payload TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_history_archive_v1_selected_at ON history_archive_v1(selected_at);
+    CREATE INDEX IF NOT EXISTS idx_history_archive_v1_selection_date ON history_archive_v1(selection_date);
+    CREATE INDEX IF NOT EXISTS idx_history_archive_v1_result_group ON history_archive_v1(result_group);
+  `);
+  return sql;
+}
+
+function archiveRecords(state,records){
+  const sql=ensureArchiveSchema(state);
+  if(!sql)return{ok:false,count:0,reason:'SQL_STORAGE_UNAVAILABLE'};
+  let count=0;
+  for(const record of records){
+    if(!record?.selectedAt)continue;
+    const payload=JSON.stringify(record);
+    sql.exec(`
+      INSERT INTO history_archive_v1
+        (record_key,selected_at,selection_date,settled_at,result_group,settlement_result,market,odds,net_units,payload)
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(record_key) DO UPDATE SET
+        selected_at=excluded.selected_at,
+        selection_date=excluded.selection_date,
+        settled_at=excluded.settled_at,
+        result_group=excluded.result_group,
+        settlement_result=excluded.settlement_result,
+        market=excluded.market,
+        odds=excluded.odds,
+        net_units=excluded.net_units,
+        payload=excluded.payload
+      WHERE history_archive_v1.payload<>excluded.payload
+    `,
+      archiveKey(record),record.selectedAt,record.selectionDate||null,record.settledAt||null,
+      record.resultGroup||'PENDING',record.settlementResult||'PENDING',record.market||null,
+      num(record.odds),num(record.settlementNetUnits),payload
+    );
+    count++;
+  }
+  return{ok:true,count};
+}
+
+function sqlHistory(state,{range,page,limit}){
+  const sql=ensureArchiveSchema(state);
+  if(!sql)return null;
+  const cutoff=cutoffForRange(range);
+  const where=cutoff?'WHERE selected_at>=?':'';
+  const params=cutoff?[cutoff]:[];
+  const totalRow=sql.exec(`SELECT COUNT(*) AS n FROM history_archive_v1 ${where}`,...params).one();
+  const total=Number(totalRow?.n||0),offset=(page-1)*limit,pages=Math.max(1,Math.ceil(total/limit));
+  const pageRows=sql.exec(`SELECT payload FROM history_archive_v1 ${where} ORDER BY selected_at DESC LIMIT ? OFFSET ?`,...params,limit,offset).toArray();
+  const records=pageRows.map(row=>{try{return JSON.parse(row.payload);}catch{return null;}}).filter(Boolean);
+  const settledWhere=cutoff?`WHERE selected_at>=? AND result_group<>'PENDING'`:`WHERE result_group<>'PENDING'`;
+  const settledParams=cutoff?[cutoff]:[];
+  const summaryRow=sql.exec(`
+    SELECT
+      COUNT(*) AS settled,
+      SUM(CASE WHEN result_group='WIN' THEN 1 ELSE 0 END) AS win,
+      SUM(CASE WHEN result_group='LOSS' THEN 1 ELSE 0 END) AS loss,
+      SUM(CASE WHEN result_group='DRAW' THEN 1 ELSE 0 END) AS draw,
+      SUM(CASE WHEN result_group='VOID' THEN 1 ELSE 0 END) AS void_count,
+      AVG(CASE WHEN result_group<>'VOID' AND odds>0 THEN odds END) AS average_odds,
+      SUM(CASE WHEN net_units IS NOT NULL THEN net_units ELSE 0 END) AS net_units,
+      SUM(CASE WHEN settlement_result='FULL_WIN' THEN 1 ELSE 0 END) AS full_win,
+      SUM(CASE WHEN settlement_result='HALF_WIN' THEN 1 ELSE 0 END) AS half_win,
+      SUM(CASE WHEN settlement_result='PUSH' THEN 1 ELSE 0 END) AS push,
+      SUM(CASE WHEN settlement_result='HALF_LOSS' THEN 1 ELSE 0 END) AS half_loss,
+      SUM(CASE WHEN settlement_result='FULL_LOSS' THEN 1 ELSE 0 END) AS full_loss
+    FROM history_archive_v1 ${settledWhere}
+  `,...settledParams).one();
+  const pendingWhere=cutoff?'WHERE selected_at>=? AND result_group=\'PENDING\'':'WHERE result_group=\'PENDING\'';
+  const pending=Number(sql.exec(`SELECT COUNT(*) AS n FROM history_archive_v1 ${pendingWhere}`,...params).one()?.n||0);
+  const win=Number(summaryRow?.win||0),loss=Number(summaryRow?.loss||0),draw=Number(summaryRow?.draw||0),settled=Number(summaryRow?.settled||0);
+  const trendWhere=cutoff?`WHERE selected_at>=? AND result_group NOT IN ('PENDING','VOID')`:`WHERE result_group NOT IN ('PENDING','VOID')`;
+  const daily=sql.exec(`
+    SELECT selection_date AS date,
+      SUM(CASE WHEN result_group='WIN' THEN 1 ELSE 0 END) AS win,
+      SUM(CASE WHEN result_group='LOSS' THEN 1 ELSE 0 END) AS loss,
+      SUM(CASE WHEN result_group='DRAW' THEN 1 ELSE 0 END) AS draw
+    FROM history_archive_v1
+    ${trendWhere}
+    GROUP BY selection_date
+    ORDER BY selection_date ASC
+  `,...params).toArray();
+  let cw=0,cl=0,cd=0,index=0;
+  const trend=daily.map(row=>{
+    cw+=Number(row.win||0);cl+=Number(row.loss||0);cd+=Number(row.draw||0);index+=Number(row.win||0)+Number(row.loss||0)+Number(row.draw||0);
+    return{index,date:row.date||'',win:cw,loss:cl,draw:cd};
+  });
+  const archiveTotal=Number(sql.exec('SELECT COUNT(*) AS n FROM history_archive_v1').one()?.n||0);
+  return{
+    total,page,limit,pages,offset,records,archiveTotal,
+    summary:{
+      total,
+      pending,
+      settled,
+      win,loss,draw,
+      void:Number(summaryRow?.void_count||0),
+      averageOdds:Number(Number(summaryRow?.average_odds||0).toFixed(2)),
+      winRate:Number((win+loss?win/(win+loss)*100:0).toFixed(2)),
+      accuracy:Number((win+loss?win/(win+loss)*100:0).toFixed(2)),
+      netUnits:Number(Number(summaryRow?.net_units||0).toFixed(4)),
+      exactSettlement:{
+        fullWin:Number(summaryRow?.full_win||0),
+        halfWin:Number(summaryRow?.half_win||0),
+        push:Number(summaryRow?.push||0),
+        halfLoss:Number(summaryRow?.half_loss||0),
+        fullLoss:Number(summaryRow?.full_loss||0)
+      },
+      trend
+    }
+  };
+}
+
 export class Car31State extends UpgradedCar31State{
   async scan(trigger='cron'){
     const response=await super.scan(trigger);
@@ -271,6 +420,19 @@ export class Car31State extends UpgradedCar31State{
       const history=await this.state.storage.get('history')||[];
       const normalized=history.map(normalizeRecord);
       await this.state.storage.put('history',normalized);
+
+      const backfilled=await this.state.storage.get('historyArchiveV1Backfilled');
+      if(!backfilled){
+        archiveRecords(this.state,normalized);
+        await this.state.storage.put('historyArchiveV1Backfilled',{at:new Date().toISOString(),workingSetCount:normalized.length});
+      }else{
+        const sixHoursAgo=Date.now()-6*60*60*1000;
+        const hot=normalized.filter(r=>!r.settledAt||Date.parse(r.selectedAt||0)>=sixHoursAgo);
+        const latest=normalized.slice(-20);
+        const dedup=new Map([...hot,...latest].map(r=>[archiveKey(r),r]));
+        archiveRecords(this.state,[...dedup.values()]);
+      }
+
       await this.state.storage.put('settlementContract',{
         version:'BET365_V4',
         reference:'BET365_FOOTBALL_RULES',
@@ -284,6 +446,7 @@ export class Car31State extends UpgradedCar31State{
         halfWin:'WIN',
         halfLoss:'LOSS',
         push:'DRAW',
+        historyArchive:'SQLITE_HISTORY_ARCHIVE_V1',
         updatedAt:new Date().toISOString()
       });
     }catch(error){
@@ -299,22 +462,52 @@ export class Car31State extends UpgradedCar31State{
       const records=stored.map(normalizeRecord);
       const page=Math.max(1,Math.round(num(url.searchParams.get('page'))||1));
       const limit=Math.max(1,Math.min(100,Math.round(num(url.searchParams.get('limit'))||25)));
-      const sorted=[...records].sort((a,b)=>Date.parse(b.selectedAt||0)-Date.parse(a.selectedAt||0));
+      const range=historyRange(url.searchParams.get('range'));
+
+      try{
+        const backfilled=await this.state.storage.get('historyArchiveV1Backfilled');
+        if(!backfilled){
+          archiveRecords(this.state,records);
+          await this.state.storage.put('historyArchiveV1Backfilled',{at:new Date().toISOString(),workingSetCount:records.length});
+        }
+        const archived=sqlHistory(this.state,{range,page,limit});
+        if(archived){
+          return json({
+            ok:true,
+            generatedAt:new Date().toISOString(),
+            settlementContract:'BET365_V4',
+            settlement:'bet365_market_aware_live',
+            historyStorage:'SQLITE_HISTORY_ARCHIVE_V1',
+            range,
+            ...archived
+          });
+        }
+      }catch(error){
+        console.warn('SQLite history archive fallback',String(error?.message||error));
+      }
+
+      const cutoff=cutoffForRange(range);
+      const filtered=cutoff?records.filter(r=>Date.parse(r.selectedAt||0)>=Date.parse(cutoff)):records;
+      const sorted=[...filtered].sort((a,b)=>Date.parse(b.selectedAt||0)-Date.parse(a.selectedAt||0));
       const offset=(page-1)*limit,pages=Math.max(1,Math.ceil(sorted.length/limit));
       return json({
         ok:true,
         generatedAt:new Date().toISOString(),
         settlementContract:'BET365_V4',
         settlement:'bet365_market_aware_live',
+        historyStorage:'WORKING_SET_FALLBACK',
+        range,
         page,limit,pages,total:sorted.length,offset,
-        summary:summaryOf(records),
+        summary:summaryOf(filtered),
         records:sorted.slice(offset,offset+limit)
       });
     }
     if(request.method==='GET'&&url.pathname==='/health'){
       const response=await super.fetch(request),payload=await response.json().catch(()=>({ok:false}));
       const contract=await this.state.storage.get('settlementContract')||{version:'BET365_V4'};
-      return json({...payload,settlementContract:contract.version||'BET365_V4',settlement:'bet365_market_aware_live'});
+      let archiveTotal=null;
+      try{const sql=ensureArchiveSchema(this.state);archiveTotal=sql?Number(sql.exec('SELECT COUNT(*) AS n FROM history_archive_v1').one()?.n||0):null;}catch{}
+      return json({...payload,settlementContract:contract.version||'BET365_V4',settlement:'bet365_market_aware_live',historyStorage:'SQLITE_HISTORY_ARCHIVE_V1',historyArchiveTotal:archiveTotal});
     }
     return super.fetch(request);
   }
