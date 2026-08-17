@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111315">
-  <title>nomadtips3 — Statistics</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./ui-fix.css">
+  <title>nomadtips3 — Statistics</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./ui-fix.css"><link rel="stylesheet" href="./ceo-polish.css">
   <style>
     .stats-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.pagination{position:sticky;left:0;min-width:100%}
     .history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}.range-tabs{display:flex;gap:5px;flex-wrap:wrap}.range-tabs button{border:0;border-radius:8px;background:#20242a;color:#969da6;padding:7px 9px;font:700 10px Arial;cursor:pointer}.range-tabs button.active{background:#f3c623;color:#111}.history-meta{color:#969da6;font-size:10px}.history-graph-wrap{position:relative}.history-tooltip{position:absolute;z-index:5;display:none;pointer-events:none;padding:6px 8px;border-radius:8px;background:rgba(8,10,12,.94);border:1px solid rgba(255,255,255,.08);font:10px/1.35 Arial;color:#e8eaec;white-space:nowrap;transform:translate(-50%,-110%)}
@@ -20,6 +20,7 @@
     <article class="metric-card soft-card draw"><span>Draw</span><b id="statDraw">0</b></article>
     <article class="metric-card soft-card"><span>Winrate</span><b id="statRate">0.00%</b></article>
     <article class="metric-card soft-card"><span>Average odds</span><b id="statOdds">0.00</b></article>
+    <article class="metric-card soft-card units"><span>Net units</span><b id="statUnits">0.00u</b><small>1u flat stake</small></article>
   </section>
   <section class="soft-card graph-card">
     <div class="history-toolbar">
@@ -35,8 +36,10 @@
     <table class="stats-table"><thead><tr><th>Date / time</th><th>League</th><th>Match</th><th>Detected</th><th>Entry score</th><th>Market</th><th>Pick</th><th>Line / handicap</th><th>Locked odds</th><th>Momentum</th><th>FT score</th><th>Result</th><th>Result detail</th></tr></thead><tbody id="historyBody"><tr><td colspan="13">Loading statistics…</td></tr></tbody></table>
     <div class="pagination"><button id="prevPage" type="button">‹</button><span id="pageInfo">Page 1 / 1 · 25 rows/page</span><button id="nextPage" type="button">›</button></div>
   </section>
-  <p class="history-note">Asian Handicap line and locked decimal odds are separate values. Result detail follows the authoritative settlement record, including full/half win, push and full/half loss.</p>
+  <p class="history-note">Asian Handicap line and locked decimal odds are separate values. Result detail follows the authoritative settlement record, including full/half win, push and full/half loss. Net units use a flat 1-unit stake per settled signal.</p>
+  <aside class="trust-strip" aria-label="Responsible use"><b>18+</b><span>Informational sports analysis · Timestamped records · No match outcome is guaranteed</span></aside>
 </main>
 <nav class="bottom-nav"><a href="./index.html"><span>●</span>Live</a><a class="active" href="./statistics.html"><span>⌁</span>Statistics</a><a href="./alerts.html"><span>◉</span>Live alerts</a></nav>
 <script type="module" src="./statistics-v2.js"></script>
+<script type="module" src="./net-units.js"></script>
 </body></html>
