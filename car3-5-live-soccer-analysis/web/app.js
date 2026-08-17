@@ -89,6 +89,8 @@ function normalize(row){
   return{
     id:String(row.sourceMatchId??row.id??`${row.home}-${row.away}-${row.minute}`),
     league:row.league||'Live match',home:row.home||'Home',away:row.away||'Away',score:pair(row.score),
+    homeId:row.homeId??row.home_id??row.homeTeamId??row.home?.id??null,
+    awayId:row.awayId??row.away_id??row.awayTeamId??row.away?.id??null,
     minute:row.minute,status:row.status||'LIVE',
     stats:{
       possession:pair(row.stats?.possession),attacks:pair(row.stats?.attacks),dangerous:pair(row.stats?.dangerous_attacks),
@@ -128,23 +130,79 @@ function renderSignalList(){
   list.querySelectorAll('.signal-item').forEach(btn=>btn.onclick=()=>selectMatch(btn.dataset.id,true));
 }
 
-function latestEvent(m){if(!m.events.length)return null;return[...m.events].sort((a,b)=>num(b.minute)-num(a.minute))[0];}
+const normText=(v)=>String(v??'').trim().toLowerCase().replace(/[^a-z0-9\p{L}]+/gu,' ' ).replace(/\s+/g,' ').trim();
+function eventSide(event,m){
+  const rawSide=String(event?.side??event?.teamSide??event?.team_side??event?.homeAway??event?.home_away??event?.position??'').trim().toLowerCase();
+  if(['home','h','1','local'].includes(rawSide))return'home';
+  if(['away','a','2','visitor'].includes(rawSide))return'away';
+
+  const eventTeamId=event?.teamId??event?.team_id??event?.team?.id??null;
+  if(eventTeamId!==null&&eventTeamId!==undefined){
+    if(m.homeId!==null&&String(eventTeamId)===String(m.homeId))return'home';
+    if(m.awayId!==null&&String(eventTeamId)===String(m.awayId))return'away';
+  }
+
+  const teamName=normText(typeof event?.team==='object'?(event.team?.name??event.team?.shortName):event?.team);
+  if(teamName){
+    const home=normText(m.home),away=normText(m.away);
+    if(teamName===home)return'home';
+    if(teamName===away)return'away';
+  }
+  return'unknown';
+}
+function eventTimestamp(event){
+  const raw=event?.timestamp??event?.eventTimestamp??event?.event_timestamp??event?.createdAt??event?.created_at??event?.updatedAt??event?.updated_at;
+  if(raw===null||raw===undefined||raw==='')return null;
+  if(Number.isFinite(Number(raw)))return Number(raw);
+  const t=Date.parse(String(raw));
+  return Number.isFinite(t)?t:null;
+}
+function eventSequence(event){
+  const raw=event?.sequence??event?.seq??event?.eventId??event?.event_id??event?.id;
+  return Number.isFinite(Number(raw))?Number(raw):null;
+}
+function compareEventsDesc(a,b){
+  const minuteDiff=num(b.event?.minute,-1)-num(a.event?.minute,-1);
+  if(minuteDiff)return minuteDiff;
+  const ta=eventTimestamp(a.event),tb=eventTimestamp(b.event);
+  if(ta!==null||tb!==null){const diff=(tb??-Infinity)-(ta??-Infinity);if(diff)return diff;}
+  const sa=eventSequence(a.event),sb=eventSequence(b.event);
+  if(sa!==null||sb!==null){const diff=(sb??-Infinity)-(sa??-Infinity);if(diff)return diff;}
+  return b.index-a.index;
+}
+function sortedEvents(events){return events.map((event,index)=>({event,index})).sort(compareEventsDesc).map(x=>x.event);}
+function latestEvent(m){return m.events.length?sortedEvents(m.events)[0]:null;}
 function eventZone(event,m){
-  const type=String(event?.type||event?.event||'').toLowerCase(),team=String(event?.team||'').toLowerCase();
-  const home=team&&team.includes(String(m.home).toLowerCase()),side=home?'home':'away';
-  let x=side==='home'?68:32,y=50;
-  if(type.includes('danger'))x=side==='home'?84:16;
-  else if(type.includes('attack'))x=side==='home'?72:28;
-  if(type.includes('corner')){x=side==='home'?94:6;y=type.includes('left')?12:88;}
+  if(!event)return{x:50,y:50,side:'unknown',trackable:false,label:'Waiting for event'};
+
+  const type=String(event?.type||event?.event||'').toLowerCase();
+  const side=eventSide(event,m);
+  const label=`${event.minute??m.minute}' · ${event.type||event.event||'Live event'}`;
+  if(side==='unknown')return{x:50,y:50,side,trackable:false,label:`${label} · team unknown`};
+  if(type.includes('card')||type.includes('sub'))return{x:50,y:50,side,trackable:false,label};
+
+  let x=50,y=50,trackable=true;
   if(type.includes('goal kick'))x=side==='home'?12:88;
-  if(type.includes('goal'))x=side==='home'?94:6;
-  if(type.includes('card')||type.includes('sub')){x=50;y=50;}
-  return{x,y,side,label:event?`${event.minute??m.minute}' · ${event.type||event.event||'Live event'}`:'Live data'};
+  else if(type.includes('corner')){
+    x=side==='home'?94:6;
+    if(type.includes('left'))y=12;
+    else if(type.includes('right'))y=88;
+  }
+  else if(type.includes('danger'))x=side==='home'?84:16;
+  else if(type.includes('shot'))x=side==='home'?88:12;
+  else if(type.includes('attack'))x=side==='home'?72:28;
+  else if(type.includes('goal'))x=side==='home'?94:6;
+  else trackable=false;
+
+  return{x:trackable?x:50,y:trackable?y:50,side,trackable,label};
 }
 function moveBall(m){
   const event=latestEvent(m),z=eventZone(event,m),ball=$('ball'),glow=$('zoneGlow');
   if(ball){ball.style.left=`${z.x}%`;ball.style.top=`${z.y}%`;}
-  if(glow){glow.style.transform=`translateX(${z.side==='home'?'115%':'0'})`;glow.style.opacity=event?'.58':'.28';}
+  if(glow){
+    glow.style.transform=z.side==='home'?'translateX(115%)':'translateX(0)';
+    glow.style.opacity=z.trackable?'.58':'0';
+  }
   if($('pitchEvent'))$('pitchEvent').textContent=z.label;
 }
 function statRow(label,v){
@@ -173,9 +231,9 @@ function renderMatch(m){
   $('pickValue').textContent=s.selected;$('lockedOdds').textContent=s.odds?s.odds.toFixed(2):'—';$('confidence').textContent=s.confidence!==null?`${s.confidence}%`:'—';
   $('detectedMinute').textContent=s.detected!==null?`${s.detected}'`:'—';if($('marketName'))$('marketName').textContent=s.market||'Live';
   $('statsRows').innerHTML=[['Possession %',m.stats.possession],['Attacks',m.stats.attacks],['Dangerous attacks',m.stats.dangerous],['Shots',m.stats.shots],['Shots on target',m.stats.sot],['Corners',m.stats.corners],['Red cards',m.stats.red]].map(([l,v])=>statRow(l,v)).join('');
-  const events=[...m.events].sort((a,b)=>num(b.minute)-num(a.minute)).slice(0,20);
+  const events=sortedEvents(m.events).slice(0,20);
   $('eventCount').textContent=`${events.length} events`;
-  $('eventList').innerHTML=events.length?events.map(e=>`<div class="event"><time>${esc(e.minute??'—')}'</time><span>${esc(e.type||e.event||'Event')}</span><small>${esc(e.team||'')}</small></div>`).join(''):'<div class="event"><time>—</time><span>Waiting for live event data</span><small>Live feed</small></div>';
+  $('eventList').innerHTML=events.length?events.map(e=>`<div class="event"><time>${esc(e.minute??'—')}'</time><span>${esc(e.type||e.event||'Event')}</span><small>${esc(typeof e.team==='object'?(e.team?.name??e.team?.shortName??''):e.team||'')}</small></div>`).join(''):'<div class="event"><time>—</time><span>Waiting for live event data</span><small>Live feed</small></div>';
   moveBall(m);drawMomentum(m);
 }
 function selectMatch(id,openMobile=false){
