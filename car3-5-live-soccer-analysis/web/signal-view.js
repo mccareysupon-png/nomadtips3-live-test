@@ -107,6 +107,9 @@ function applyList(){
       if(bottom[1])setText(bottom[1],`Detected ${minuteLabel(record)} · Entry ${scoreLabel(record.entryScore)}`);
     }else if(pill&&/signal/i.test(pill.textContent||'')){
       setText(pill,'Near signal');setClass(pill,'state-pill near');
+      setText(pick,'Monitoring');
+      if(bottom[0])setText(bottom[0],'Waiting for confirmed signal');
+      if(bottom[1])setText(bottom[1],'No locked record yet');
     }
   }
   if(items.length){
@@ -119,11 +122,15 @@ function clearLockedCenter(){
   const state=byId('decisionState');
   if(state&&/signal active/i.test(state.textContent||'')){
     setText(state,'Near signal');setClass(state,'state-pill near');
-    setText(byId('pickValue'),'Monitoring');
   }
+  setText(byId('pickValue'),'Monitoring');
+  setText(byId('marketName'),'Live selection');
   setText(byId('signalLine'),'—');
+  setText(byId('lockedOdds'),'—');
   setText(byId('entryScore'),'—');
+  setText(byId('detectedMinute'),'—');
   setText(byId('detectedTime'),'—');
+  setText(byId('confidence'),'—');
 }
 
 function applyCenter(){
