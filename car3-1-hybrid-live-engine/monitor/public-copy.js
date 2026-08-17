@@ -1,3 +1,5 @@
+import '../web/mobile-compact.js';
+
 const FINAL_COPY={SIGNAL:'CONFIRMED LIVE SIGNAL','SHADOW SIGNAL':'CONFIRMED LIVE SIGNAL'};
 let scheduled=false;
 

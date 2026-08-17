@@ -1,3 +1,5 @@
+import './mobile-compact.js';
+
 let scheduled=false;
 const $=s=>document.querySelector(s);
 const setText=(el,text)=>{if(el&&el.textContent!==text)el.textContent=text;};
