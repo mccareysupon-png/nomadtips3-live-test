@@ -138,8 +138,7 @@ jobs:
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
           HISTORY=$(curl -fsS "$DEPLOYMENT_URL/history?page=1&limit=25")
-          echo "$HISTORY" | head -c 12000
-          echo
+          printf '%s\n' "${HISTORY:0:12000}"
           printf '%s' "$HISTORY" | grep -q '"ok": true\|"ok":true' || { echo "::error::History API not OK"; exit 1; }
           printf '%s' "$HISTORY" | grep -q '"settlementContract": "BET365_V4"\|"settlementContract":"BET365_V4"' || { echo "::error::History API settlement contract mismatch"; exit 1; }
           printf '%s' "$HISTORY" | grep -q '"records"' || { echo "::error::History API records field missing"; exit 1; }
