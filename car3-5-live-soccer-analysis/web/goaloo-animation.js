@@ -3,7 +3,7 @@
   const clamp=v=>Math.max(0,Math.min(1,Number(v)||0));
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let runtime=null,currentMatchId=null,lastSourceOk=0,timer=null,pollMs=1500,playing=false,queue=[],seen=new Set(),ball={x:.5,y:.5};
+  let runtime=null,currentMatchId=null,lastSourceOk=0,timer=null,pollMs=1500,playing=false,queue=[],seen=new Set(),seenPoints=new Map(),ball={x:.5,y:.5},generation=0;
 
   function animationUrl(matchId){
     const explicit=String(runtime?.animationUrl||'').trim();
@@ -27,7 +27,7 @@
       const style=document.createElement('style');
       style.id='car35-source-animation-style';
       style.textContent=`
-        #sourceBall{position:absolute;z-index:7;left:0;top:0;width:15px;height:15px;margin:-7px;border:2px solid rgba(255,255,255,.98);background:#121416;border-radius:50%;box-shadow:0 3px 12px rgba(0,0,0,.55),0 0 0 4px rgba(243,198,35,.12);transform:translate3d(50%,50%,0);opacity:0;pointer-events:none;will-change:transform;}
+        #sourceBall{position:absolute;z-index:7;left:0;top:0;width:15px;height:15px;border:2px solid rgba(255,255,255,.98);background:#121416;border-radius:50%;box-shadow:0 3px 12px rgba(0,0,0,.55),0 0 0 4px rgba(243,198,35,.12);transform:translate3d(50%,50%,0);opacity:0;pointer-events:none;will-change:transform;}
         #sourceTrail{position:absolute;z-index:6;height:3px;border-radius:999px;background:linear-gradient(90deg,rgba(243,198,35,0),rgba(243,198,35,.56));transform-origin:right center;opacity:0;pointer-events:none;will-change:left,top,width,transform;}
         #pitch.source-xy-active #sourceBall{opacity:1}
         #pitch.source-xy-active #sourceTrail{opacity:.7}
@@ -62,12 +62,13 @@
   }
 
   function ease(t){return 1-Math.pow(1-t,3);}
-  function moveBall(target,duration=360){
+  function moveBall(target,duration=360,token=generation){
     return new Promise(resolve=>{
       const start={...ball},end={x:clamp(target.x),y:clamp(target.y)};
       if(reduceMotion){ball=end;setBall(ball.x,ball.y,start);return resolve();}
       const begun=performance.now();
       const tick=now=>{
+        if(token!==generation)return resolve();
         const p=Math.min(1,(now-begun)/duration),e=ease(p);
         ball={x:start.x+(end.x-start.x)*e,y:start.y+(end.y-start.y)*e};
         setBall(ball.x,ball.y,start);
@@ -109,14 +110,14 @@
     list.innerHTML=events.map(e=>`<div class="event"><time>${esc(Number.isFinite(Number(e.minute))?e.minute:'—')}'</time><span>${esc(e.type||'Event')}</span><small>${esc(teamName(e,payload))}</small></div>`).join('');
   }
 
-  async function animate(event){
+  async function animate(event,token=generation){
     updatePitchEvent(event);
     if(!hasSourceXY(event)){setSourceActive(false);return;}
     setSourceActive(true);
     const points=Array.isArray(event.points)?event.points.filter(p=>Number.isFinite(Number(p?.x))&&Number.isFinite(Number(p?.y))).map(p=>({x:clamp(p.x),y:clamp(p.y)})):[];
     if(!points.length)points.push({x:clamp(event.x),y:clamp(event.y)});
     const each=Math.max(140,Math.min(420,1050/Math.max(1,points.length)));
-    for(const point of points)await moveBall(point,each);
+    for(const point of points){if(token!==generation)return;await moveBall(point,each,token);}
   }
 
   async function drain(){
@@ -124,13 +125,14 @@
     while(queue.length){
       const item=queue.shift();
       if(item.matchId!==currentMatchId)continue;
-      await animate(item.event);
+      if(item.generation!==generation)continue;
+      await animate(item.event,item.generation);
     }
     playing=false;
   }
 
   function reset(matchId){
-    currentMatchId=matchId;lastSourceOk=0;seen=new Set();queue=[];playing=false;ball={x:.5,y:.5};
+    generation++;currentMatchId=matchId;lastSourceOk=0;seen=new Set();seenPoints=new Map();queue=[];playing=false;ball={x:.5,y:.5};
     setSourceActive(false);setBall(.5,.5,{x:.5,y:.5});
   }
 
@@ -143,12 +145,28 @@
     if(!incoming.length){setSourceActive(false);return;}
 
     if(!seen.size){
-      for(const event of incoming.slice(0,-1))seen.add(String(event.id));
+      for(const event of incoming.slice(0,-1)){
+        const key=String(event.id);seen.add(key);
+        const pointIds=(event.points||[]).map(p=>Number(p?.id)).filter(Number.isFinite);
+        if(pointIds.length)seenPoints.set(key,Math.max(...pointIds));
+      }
     }
     const fresh=incoming.filter(event=>!seen.has(String(event.id)));
     for(const event of fresh.slice(-8)){
-      seen.add(String(event.id));
-      queue.push({matchId,event});
+      const key=String(event.id);seen.add(key);
+      const pointIds=(event.points||[]).map(p=>Number(p?.id)).filter(Number.isFinite);
+      if(pointIds.length)seenPoints.set(key,Math.max(...pointIds));
+      queue.push({matchId,event,generation});
+    }
+    const current=payload.current;
+    if(current&&seen.has(String(current.id))&&hasSourceXY(current)){
+      const key=String(current.id),lastPoint=seenPoints.get(key)??-Infinity;
+      const newPoints=(current.points||[]).filter(p=>Number.isFinite(Number(p?.id))&&Number(p.id)>lastPoint);
+      if(newPoints.length){
+        seenPoints.set(key,Math.max(...newPoints.map(p=>Number(p.id))));
+        const last=newPoints[newPoints.length-1];
+        queue.push({matchId,event:{...current,points:newPoints,x:last.x,y:last.y},generation});
+      }
     }
     if(queue.length>10)queue=queue.slice(-10);
     if(!fresh.length&&payload.current){
