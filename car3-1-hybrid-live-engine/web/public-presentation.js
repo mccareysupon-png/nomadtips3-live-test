@@ -1,3 +1,5 @@
+import './mobile-compact.js';
+
 let scheduled=false;
 const $=s=>document.querySelector(s);
 const setText=(el,text)=>{if(el&&el.textContent!==text)el.textContent=text;};
@@ -70,68 +72,7 @@ function publicize(){
   cleanDynamicCopy();
 }
 
-/* Mobile compact mode is presentation-only. It folds deep analysis without changing live data or engine state. */
-const mobileQuery=window.matchMedia('(max-width: 760px)');
-let mobileToggle=null;
-
-function ensureMobileCompactStyles(){
-  if(document.querySelector('link[data-car31-mobile-compact]'))return;
-  const link=document.createElement('link');
-  link.rel='stylesheet';
-  link.href='./mobile-compact.css?v=20260818-r1';
-  link.dataset.car31MobileCompact='true';
-  document.head.appendChild(link);
-}
-
-function markMobileExtras(){
-  const detail=document.querySelector('.detail');
-  if(!detail)return;
-  const titles=[...detail.querySelectorAll(':scope > .section-title')];
-  titles.slice(1).forEach(el=>el.classList.add('mobile-extra'));
-  ['.charts','#evidenceGrid','.tabs','#tab-odds','#tab-events','#tab-source','.decision','.footer-note'].forEach(selector=>{
-    detail.querySelectorAll(selector).forEach(el=>el.classList.add('mobile-extra'));
-  });
-}
-
-function ensureMobileToggle(){
-  const grid=$('#statsGrid');
-  if(!grid||mobileToggle)return;
-  mobileToggle=document.createElement('button');
-  mobileToggle.type='button';
-  mobileToggle.className='mobile-more-toggle';
-  mobileToggle.setAttribute('aria-expanded','false');
-  mobileToggle.innerHTML='<span>More stats</span><small>ODDS · PRESSURE · EVENTS · SIGNAL STATUS</small>';
-  mobileToggle.addEventListener('click',()=>{
-    const open=document.body.classList.toggle('mobile-more-open');
-    mobileToggle.setAttribute('aria-expanded',String(open));
-    mobileToggle.querySelector('span').textContent=open?'Less stats':'More stats';
-    if(!open)mobileToggle.scrollIntoView({block:'nearest',behavior:'smooth'});
-  });
-  grid.insertAdjacentElement('afterend',mobileToggle);
-}
-
-function applyMobileMode(){
-  document.body.classList.toggle('mobile-compact',mobileQuery.matches);
-  if(!mobileQuery.matches){
-    document.body.classList.remove('mobile-more-open');
-    if(mobileToggle){
-      mobileToggle.setAttribute('aria-expanded','false');
-      mobileToggle.querySelector('span').textContent='More stats';
-    }
-  }
-}
-
-function initMobileCompact(){
-  ensureMobileCompactStyles();
-  markMobileExtras();
-  ensureMobileToggle();
-  applyMobileMode();
-  mobileQuery.addEventListener?.('change',applyMobileMode);
-}
-
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(publicize);}
 new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','hidden']});
 window.addEventListener('load',schedule,{once:true});
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initMobileCompact,{once:true});
-else initMobileCompact();
 schedule();
