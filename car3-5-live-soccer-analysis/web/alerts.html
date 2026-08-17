@@ -2,24 +2,24 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111315">
-  <title>nomadtips3 live — Live alerts</title><link rel="stylesheet" href="./styles.css">
+  <title>nomadtips3 — Live alerts</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./ui-fix.css">
 </head>
 <body data-page="alerts">
-<header class="topbar"><a class="brand" href="./index.html">nomadtips3 <span>live</span></a><div class="feed-state"><i></i><span id="feedState">Plans ready</span></div></header>
+<header class="topbar"><a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a><div class="feed-state"><i></i><span id="feedState">Plans ready</span></div></header>
 <main class="page-shell">
   <section class="page-title"><h1>Live alerts</h1><p>Choose simple live notifications or reserve a custom live engine with your own conditions.</p></section>
   <section class="plans">
     <article class="plan soft-card featured">
-      <span class="kicker">Live alerts</span><h2>Signal notifications</h2><div class="price">$20 <small>/ access period</small></div>
+      <span class="kicker">Live alerts</span><h2>Signal notifications</h2><div class="price">$20 <small>/ month</small></div>
       <ul><li>Qualified live match signals</li><li>Selected market and locked odds</li><li>Detected minute</li><li>Result notification</li><li>LINE alert connection</li></ul>
       <a class="primary-btn" href="#" data-integration="stripe">Get live alerts</a>
-      <p class="integration-note">Production flow: Stripe checkout → verified webhook → LINE connection → alert entitlement. Payment success must be verified server-side before access is enabled.</p>
+      <p class="integration-note">Payment integration remains disabled in this preview. Membership status and LINE access are verified server-side when enabled.</p>
     </article>
     <article class="plan soft-card">
       <span class="kicker">Pre-order</span><h2>Custom live engine</h2><div class="price">$200 <small>/ pre-order</small></div>
       <ul><li>Private member settings page</li><li>Custom minute window</li><li>Market and odds filters</li><li>Confidence and league filters</li><li>Manual owner provisioning</li><li>30-day engine access when activated</li></ul>
       <a class="secondary-btn" href="#" data-integration="preorder">Pre-order custom engine</a>
-      <p class="integration-note">After verified payment, the owner is notified by email and manually provisions the account. Expiry enforcement belongs on the server, not in browser JavaScript.</p>
+      <p class="integration-note">After verified payment, the owner is notified and manually provisions the account. Expiry enforcement belongs on the server, not in browser JavaScript.</p>
     </article>
   </section>
 </main>
