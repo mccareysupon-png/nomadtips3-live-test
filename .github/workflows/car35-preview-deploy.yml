@@ -35,8 +35,12 @@ jobs:
           test -s car3-5-live-soccer-analysis/web/index.html
           test -s car3-5-live-soccer-analysis/web/statistics.html
           test -s car3-5-live-soccer-analysis/web/alerts.html
+          test -s car3-5-live-soccer-analysis/web/owner-control.html
           test -s car3-5-live-soccer-analysis/web/styles.css
           grep -q 'owner-settings' car3-5-live-soccer-analysis/src/index.js
+          grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'name="ahMin"' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'name="oddsMin"' car3-5-live-soccer-analysis/web/owner-control.html
 
       - name: Validate Cloudflare credentials
         run: |
@@ -64,4 +68,5 @@ jobs:
           curl -L -fsS "$PREVIEW_URL/statistics.html" | grep -qi 'Statistics'
           curl -L -fsS "$PREVIEW_URL/alerts.html" | grep -qi 'Live alerts'
           curl -L -fsS "$PREVIEW_URL/owner-settings" | grep -qi 'ตั้งค่า CAR 3.5'
+          curl -L -fsS "$PREVIEW_URL/owner-control.html" | grep -qi 'บันทึก + สแกนทันที'
           echo "CAR 3.5 preview: $PREVIEW_URL"
