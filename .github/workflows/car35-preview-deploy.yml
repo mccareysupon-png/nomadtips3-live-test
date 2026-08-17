@@ -1,0 +1,64 @@
+name: Deploy CAR 3.5 Preview
+
+on:
+  push:
+    branches:
+      - work/car3-5-live-soccer-analysis
+    paths:
+      - 'car3-5-live-soccer-analysis/**'
+      - '.github/workflows/car35-preview-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREVIEW_URL: https://nomadtips3-car35-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate CAR 3.5 frontend
+        run: |
+          node --check car3-5-live-soccer-analysis/web/app.js
+          test -s car3-5-live-soccer-analysis/web/index.html
+          test -s car3-5-live-soccer-analysis/web/statistics.html
+          test -s car3-5-live-soccer-analysis/web/alerts.html
+          test -s car3-5-live-soccer-analysis/web/styles.css
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated CAR 3.5 preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: car3-5-live-soccer-analysis
+          wranglerVersion: '4'
+          command: deploy
+
+      - name: Smoke test preview pages
+        run: |
+          for i in $(seq 1 12); do
+            CODE=$(curl -L -sS -o /tmp/car35-index.html -w '%{http_code}' "$PREVIEW_URL/" || true)
+            if [ "$CODE" = "200" ]; then break; fi
+            sleep 5
+          done
+          test "$CODE" = "200" || { echo "::error::Preview root returned HTTP $CODE"; exit 1; }
+          grep -qi 'nomadtips3' /tmp/car35-index.html
+          curl -L -fsS "$PREVIEW_URL/statistics.html" | grep -qi 'Statistics'
+          curl -L -fsS "$PREVIEW_URL/alerts.html" | grep -qi 'Live alerts'
+          echo "CAR 3.5 preview: $PREVIEW_URL"
