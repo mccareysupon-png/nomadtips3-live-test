@@ -36,13 +36,15 @@ jobs:
           test -s car3-5-live-soccer-analysis/web/index.html
           test -s car3-5-live-soccer-analysis/web/statistics.html
           test -s car3-5-live-soccer-analysis/web/alerts.html
+          test -s car3-5-live-soccer-analysis/web/payment.html
           test -s car3-5-live-soccer-analysis/web/owner-control.html
           test -s car3-5-live-soccer-analysis/web/styles.css
-          grep -q 'owner-settings' car3-5-live-soccer-analysis/src/index.js
-          grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'name="ahMin"' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'owner-control.html' car3-5-live-soccer-analysis/src/index.js
+          grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'id="ahMin"' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'name="oddsMin"' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' car3-5-live-soccer-analysis/web/alerts.html
+          grep -q 'payment.html' car3-5-live-soccer-analysis/web/alerts.html
+          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' car3-5-live-soccer-analysis/web/payment.html
 
       - name: Validate Cloudflare credentials
         run: |
@@ -86,7 +88,12 @@ jobs:
           curl -L -fsS "$PREVIEW_URL/statistics.html" | grep -qi 'Statistics'
           curl -L -fsS "$PREVIEW_URL/alerts.html" -o /tmp/car35-alerts.html
           grep -qi 'Live alerts' /tmp/car35-alerts.html
-          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' /tmp/car35-alerts.html
-          curl -L -fsS "$PREVIEW_URL/owner-settings" | grep -qi 'ตั้งค่า CAR 3.5'
-          curl -L -fsS "$PREVIEW_URL/owner-control.html" | grep -qi 'บันทึก + สแกนทันที'
+          grep -q 'payment.html' /tmp/car35-alerts.html
+          curl -L -fsS "$PREVIEW_URL/payment.html" -o /tmp/car35-payment.html
+          grep -qi 'Continue to Stripe' /tmp/car35-payment.html
+          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' /tmp/car35-payment.html
+          curl -L -fsS "$PREVIEW_URL/owner-settings" -o /tmp/car35-owner.html
+          grep -qi 'ราคาต่อรอง Asian Handicap' /tmp/car35-owner.html
+          grep -q 'id="ahMin"' /tmp/car35-owner.html
+          grep -qi 'บันทึก + สแกนทันที' /tmp/car35-owner.html
           echo "CAR 3.5 preview: $PREVIEW_URL"
