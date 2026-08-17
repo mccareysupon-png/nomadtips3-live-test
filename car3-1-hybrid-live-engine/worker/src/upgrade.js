@@ -13,7 +13,8 @@ const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(S
 const json=(data,status=200,cache='no-store')=>new Response(JSON.stringify(data,null,2),{status,headers:{...JSON_HEADERS,'cache-control':cache}});
 function bookmakerId(config){const id=Number(config?.bookmakerCompanyId);return Object.prototype.hasOwnProperty.call(BOOKMAKERS,id)?id:8;}
 function bookmakerName(config){return BOOKMAKERS[bookmakerId(config)]||BOOKMAKERS[8];}
-function oddsSource(config){return `${SOURCE_ODDS_BASE}/runOddsData_${bookmakerId(config)}.txt`;}
+function oddsSource(config){const id=bookmakerId(config);return id===50?`${SOURCE_ODDS_BASE}/goal50.xml`:`${SOURCE_ODDS_BASE}/runOddsData_${id}.txt`;}
+function oddsSourceLabel(config){const id=bookmakerId(config);return id===50?'goal50.xml':`runOddsData_${id}`;}
 
 function marketOdd(raw,market){
   const v=number(raw); if(v===null)return null;
@@ -41,6 +42,40 @@ export function parseRunOdds(source,providerCompanyId=8){
     if(record.oneXtwo||record.asianHandicap||record.overUnder)out.set(id,record);
   }
   return out;
+}
+
+
+function hkDecimal(raw){
+  const v=number(raw);if(v===null)return null;
+  return v>=0?Number((1+v).toFixed(3)):null;
+}
+
+// Generic Goaloo goal{companyId}.xml current-odds feed.
+// Field layout verified against goal8.xml and goal50.xml on 2026-08-17:
+// matchId, ahOddsId, ahLine, ahHomeHK, ahAwayHK,
+// 1x2OddsId, home, draw, away, ouOddsId, ouLine, overHK, underHK, ...
+export function parseGoalOddsXml(source,providerCompanyId=50){
+  const out=new Map(),re=/<m>([^<]+)<\/m>/g;
+  for(const m of String(source||'').matchAll(re)){
+    const row=m[1].split(',').map(v=>String(v??'').trim()),id=row[0];
+    if(!/^\d+$/.test(id||''))continue;
+    const ahLine=number(row[2]),ahHome=number(row[3]),ahAway=number(row[4]);
+    const oneHome=number(row[6]),oneDraw=number(row[7]),oneAway=number(row[8]);
+    const ouLine=number(row[10]),ouOver=number(row[11]),ouUnder=number(row[12]);
+    const record={
+      oneXtwo:oneHome!==null&&oneDraw!==null&&oneAway!==null?{home:oneHome,draw:oneDraw,away:oneAway,raw:{home:oneHome,draw:oneDraw,away:oneAway}}:null,
+      asianHandicap:ahLine!==null&&ahHome!==null&&ahAway!==null?{home:hkDecimal(ahHome),line:ahLine,away:hkDecimal(ahAway),raw:{home:ahHome,away:ahAway}}:null,
+      overUnder:ouLine!==null&&ouOver!==null&&ouUnder!==null?{over:hkDecimal(ouOver),line:ouLine,under:hkDecimal(ouUnder),raw:{over:ouOver,under:ouUnder}}:null,
+      providerCompanyId:Number(providerCompanyId)||50,
+      providerName:BOOKMAKERS[Number(providerCompanyId)]||`Company ${providerCompanyId}`
+    };
+    if(record.oneXtwo||record.asianHandicap||record.overUnder)out.set(id,record);
+  }
+  return out;
+}
+
+function parseBookmakerOdds(source,providerCompanyId){
+  return Number(providerCompanyId)===50?parseGoalOddsXml(source,providerCompanyId):parseRunOdds(source,providerCompanyId);
 }
 
 // Only codes confirmed from the public client are named. Other codes remain generic.
@@ -164,7 +199,7 @@ export class Car31State extends BaseCar31State{
         sourceText(SOURCE_DETAIL_IN,ENRICH_SECONDS).then(value=>({ok:true,value})).catch(error=>({ok:false,error:String(error?.message||error)}))
       ]);
       const latest=await this.state.storage.get('latest')||{generatedAt:at,matches:[]},snapshots=await this.state.storage.get('snapshots')||[],confirmationStreaks=await this.state.storage.get('confirmationStreaksV2')||{},history=await this.state.storage.get('history')||[];
-      const ids=new Set((latest.matches||[]).map(m=>String(m.sourceMatchId))),oddsMap=parseRunOdds(oddsSourceText,providerCompanyId),detailStatsMap=detailInResult.ok?parseDetailInStats(detailInResult.value,ids):new Map();
+      const ids=new Set((latest.matches||[]).map(m=>String(m.sourceMatchId))),oddsMap=parseBookmakerOdds(oddsSourceText,providerCompanyId),detailStatsMap=detailInResult.ok?parseDetailInStats(detailInResult.value,ids):new Map();
       const today=bangkokDate(at),todayCount=history.filter(r=>r.selectionDate===today).length;
       let newCount=0,oddsMatched=0,detailMatched=0,detailAppliedMatches=0,structuredCompleteMatches=0;
       for(const match of latest.matches||[]){
@@ -180,7 +215,7 @@ export class Car31State extends BaseCar31State{
         const dailyBlocked=config.signalLimitEnabled&&todayCount+newCount>=config.maxSignalsPerDay,existing=history.some(r=>r.key===key);
         if(!existing&&!dailyBlocked&&confirmationStreaks[key]>=config.confirmationRounds){
           const selectedTeam=engine.side==='AWAY'?match.away:match.home;
-          history.push({key,id:match.sourceMatchId,selectionDate:today,selectedAt:at,league:match.league,home:match.home,away:match.away,selectedSide:engine.side,selectedTeam,entryMinute:match.minute,entryScore:{...match.score},market:config.market,line:engine.line,odds:engine.odds,bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:`runOddsData_${providerCompanyId}`,ouDirection:config.ouDirection,momentum:engine.momentum,evidence:engine.evidence,kickoffUtc:match.kickoffUtc,status:'PENDING',ftStatus:null,settledAt:null,finalScore:null,result:'PENDING'});
+          history.push({key,id:match.sourceMatchId,selectionDate:today,selectedAt:at,league:match.league,home:match.home,away:match.away,selectedSide:engine.side,selectedTeam,entryMinute:match.minute,entryScore:{...match.score},market:config.market,line:engine.line,odds:engine.odds,bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:oddsSourceLabel(config),ouDirection:config.ouDirection,momentum:engine.momentum,evidence:engine.evidence,kickoffUtc:match.kickoffUtc,status:'PENDING',ftStatus:null,settledAt:null,finalScore:null,result:'PENDING'});
           newCount++;
         }
         match.engine={...engine,streak:confirmationStreaks[key]||0,dailyBlocked,bookmakerCompanyId:providerCompanyId,bookmaker:providerName};
@@ -193,7 +228,7 @@ export class Car31State extends BaseCar31State{
       }
       while(history.length>5000)history.shift();
       const matchCount=(latest.matches||[]).length,coreStatsReady=(latest.matches||[]).filter(m=>m.coreStatsComplete).length;
-      latest.oddsPipe={status:'DIRECT',feed:`runOddsData_${providerCompanyId}`,bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsMatched,matchCount,evaluatedAfterOdds:true,at};
+      latest.oddsPipe={status:'DIRECT',feed:oddsSourceLabel(config),bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsMatched,matchCount,evaluatedAfterOdds:true,at};
       latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailAppliedMatches,structuredMatches:detailAppliedMatches,structuredCompleteMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
       await this.state.storage.put('latest',latest);
       await this.state.storage.put('history',history);
@@ -233,7 +268,7 @@ async function enrichedLive(request,env){
     sourceText(SOURCE_DETAIL,ENRICH_SECONDS).then(value=>({ok:true,value})).catch(error=>({ok:false,error:String(error?.message||error)}))
   ]);
   const ids=new Set((base.matches||[]).map(m=>String(m.sourceMatchId)));
-  const oddsMap=oddsResult.ok?parseRunOdds(oddsResult.value,providerCompanyId):new Map();
+  const oddsMap=oddsResult.ok?parseBookmakerOdds(oddsResult.value,providerCompanyId):new Map();
   const eventMap=detailResult.ok?parseDetailEvents(detailResult.value,ids):new Map();
   const snaps=snapshotPayload.snapshots||[],prev=snaps.at(-2)||snaps.at(-1)||{matches:[]};
   let oddsMatched=0,eventMatches=0;
@@ -243,7 +278,7 @@ async function enrichedLive(request,env){
     const old=(prev.matches||[]).find(x=>String(x.id)===id);
     return{...match,odds,events,activity:deriveActivity(match,old?{...old,stats:old.stats||{}}:null),enrichment:{...(match.enrichment||{}),odds:oddsMap.has(id)?'LIVE':match.enrichment?.odds||'BASE',bookmakerCompanyId:providerCompanyId,bookmaker:providerName,events:events.length?'LIVE':'SNAPSHOT'}};
   });
-  const payload={...base,matches,enrichedAt:new Date().toISOString(),enrichment:{oddsFeed:oddsResult.ok?'OK':'ERROR',bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:`runOddsData_${providerCompanyId}`,eventFeed:detailResult.ok?'OK':'ERROR',oddsMatched,eventMatches,matchCount:matches.length,oddsError:oddsResult.ok?null:oddsResult.error,eventError:detailResult.ok?null:detailResult.error}};
+  const payload={...base,matches,enrichedAt:new Date().toISOString(),enrichment:{oddsFeed:oddsResult.ok?'OK':'ERROR',bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:oddsSourceLabel(config),eventFeed:detailResult.ok?'OK':'ERROR',oddsMatched,eventMatches,matchCount:matches.length,oddsError:oddsResult.ok?null:oddsResult.error,eventError:detailResult.ok?null:detailResult.error}};
   const response=json(payload,200,'public, max-age=8');if(cache)await cache.put(cacheKey,response.clone());return response;
 }
 
