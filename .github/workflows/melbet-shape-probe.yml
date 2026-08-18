@@ -23,20 +23,28 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const url='https://my.melbet.com/service-api/LiveFeed/Get1x2_VZip?sports=1&count=5&lng=en&mode=4&getEmpty=true';
-          const r=await fetch(url,{headers:{accept:'application/json,text/plain,*/*','user-agent':'Mozilla/5.0'}});
-          const text=await r.text();
-          let data=null; try{data=JSON.parse(text)}catch{}
-          const event=Array.isArray(data?.Value)?data.Value[0]:null;
-          const summarize=(v,depth=0)=>{
-            if(depth>3)return typeof v;
-            if(Array.isArray(v))return {type:'array',length:v.length,sample:v.slice(0,8).map(x=>summarize(x,depth+1))};
-            if(v&&typeof v==='object'){
-              const out={}; for(const k of Object.keys(v).slice(0,80)) out[k]=summarize(v[k],depth+1); return out;
+          const headers={accept:'application/json,text/plain,*/*','user-agent':'Mozilla/5.0'};
+          const listUrl='https://my.melbet.com/service-api/LiveFeed/Get1x2_VZip?sports=1&count=8&lng=en&mode=4&getEmpty=true';
+          const lr=await fetch(listUrl,{headers});
+          const list=await lr.json();
+          const events=Array.isArray(list?.Value)?list.Value:[];
+          const compact=events.map(e=>({id:e.I,home:e.O1,away:e.O2,league:e.L,score:e.SC,main:e.E,additional:e.AE?.slice?.(0,6)}));
+          const event=events[0]||null;
+          let detail=null,detailStatus=null,detailType=null,detailUrl=null;
+          if(event?.I){
+            const candidates=[
+              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250&grMode=2`,
+              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250`,
+              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en`
+            ];
+            for(const u of candidates){
+              try{
+                const r=await fetch(u,{headers}); const t=await r.text(); let j=null; try{j=JSON.parse(t)}catch{}
+                if(j){detail=j;detailStatus=r.status;detailType=r.headers.get('content-type');detailUrl=u;break}
+              }catch{}
             }
-            return v;
-          };
-          const out={status:r.status,contentType:r.headers.get('content-type'),success:data?.Success,eventCount:Array.isArray(data?.Value)?data.Value.length:0,eventKeys:event?Object.keys(event):[],eventSummary:event?summarize(event):null,rawEvent:event};
+          }
+          const out={status:lr.status,contentType:lr.headers.get('content-type'),success:list?.Success,eventCount:events.length,compact,detailUrl,detailStatus,detailType,detail};
           fs.mkdirSync('.deploy-status',{recursive:true});
           fs.writeFileSync('.deploy-status/melbet-shape.json',JSON.stringify(out,null,2));
           NODE
@@ -45,5 +53,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .deploy-status/melbet-shape.json
-          git commit -m "Record MelBet feed shape" || exit 0
+          git commit -m "Record MelBet game detail shape" || exit 0
           git push
