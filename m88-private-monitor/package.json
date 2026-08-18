@@ -1,0 +1,13 @@
+{
+  "name": "m88-private-monitor-local",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node local-server.mjs",
+    "check": "node --check local-server.mjs && node --check web/app.js"
+  },
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}
