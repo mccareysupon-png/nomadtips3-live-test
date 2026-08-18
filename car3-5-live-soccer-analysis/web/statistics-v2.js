@@ -26,22 +26,62 @@ function setFeed(ok,text){
   if($('feedState'))$('feedState').textContent=text;
 }
 
-function resultName(record){
-  const value=String(record?.resultGroup||record?.result||record?.settlementResult||'')
-    .trim().toUpperCase().replace(/[\s-]+/g,'_');
-  if(['WIN','CORRECT','FULL_WIN','HALF_WIN'].includes(value))return'WIN';
-  if(['LOSS','INCORRECT','FULL_LOSS','HALF_LOSS'].includes(value))return'LOSS';
-  if(['DRAW','PUSH'].includes(value))return'DRAW';
+function normalizeResult(value){
+  return String(value??'').trim().toUpperCase().replace(/[\s-]+/g,'_');
+}
+
+function exactResult(record){
+  const exact=normalizeResult(record?.settlementResult??record?.resultDetail);
+  if(['FULL_WIN','HALF_WIN','PUSH','HALF_LOSS','FULL_LOSS','VOID','PENDING'].includes(exact))return exact;
+
+  const grouped=normalizeResult(record?.resultGroup??record?.result);
+  if(['WIN','CORRECT'].includes(grouped))return'WIN';
+  if(['LOSS','INCORRECT'].includes(grouped))return'LOSS';
+  if(['DRAW','PUSH'].includes(grouped))return grouped==='PUSH'?'PUSH':'DRAW';
+  if(['VOID','PENDING'].includes(grouped))return grouped;
   return'—';
+}
+
+function resultGroupName(record){
+  const value=exactResult(record);
+  if(['FULL_WIN','HALF_WIN','WIN'].includes(value))return'WIN';
+  if(['FULL_LOSS','HALF_LOSS','LOSS'].includes(value))return'LOSS';
+  if(['PUSH','DRAW'].includes(value))return'DRAW';
+  return value;
+}
+
+function resultLabel(record){
+  const value=exactResult(record);
+  return value==='—'?'—':value.replaceAll('_',' ');
+}
+
+function lockedNetUnits(record){
+  const stored=record?.settlementNetUnits;
+  if(stored!==null&&stored!==undefined&&stored!==''&&Number.isFinite(Number(stored)))return Number(stored);
+
+  const exact=exactResult(record);
+  const odds=Number(record?.odds);
+  if(!Number.isFinite(odds)||odds<=0)return null;
+  if(exact==='FULL_WIN')return odds-1;
+  if(exact==='HALF_WIN')return(odds-1)/2;
+  if(exact==='PUSH')return 0;
+  if(exact==='HALF_LOSS')return-.5;
+  if(exact==='FULL_LOSS')return-1;
+  return null;
+}
+
+function fmtSettlement(record){
+  const label=resultLabel(record),units=lockedNetUnits(record);
+  if(units===null)return label;
+  const rounded=Math.abs(units)<.0005?0:units;
+  return`${label} · ${rounded>0?'+':''}${rounded.toFixed(2)}u`;
 }
 
 function fmtDateTime(record){
   const value=record?.selectedAt;
   if(value){
     const date=new Date(value);
-    if(Number.isFinite(date.getTime()))return date.toLocaleString([],{
-      year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'
-    });
+    if(Number.isFinite(date.getTime()))return date.toLocaleString([],{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   }
   return record?.selectionDate||'—';
 }
@@ -149,7 +189,7 @@ function renderHistory(data){
 
   const records=Array.isArray(data.records)?data.records:[];
   $('historyBody').innerHTML=records.length?records.map(record=>{
-    const result=resultName(record),cls=result==='WIN'||result==='LOSS'||result==='DRAW'?`result-${result.toLowerCase()}`:'';
+    const group=resultGroupName(record),cls=group==='WIN'||group==='LOSS'||group==='DRAW'?`result-${group.toLowerCase()}`:'';
     return`<tr>
       <td>${esc(fmtDateTime(record))}</td>
       <td class="league-cell" title="${esc(record.league||'—')}">${esc(record.league||'—')}</td>
@@ -162,7 +202,7 @@ function renderHistory(data){
       <td class="odds-cell">${esc(fmtLockedOdds(record))}</td>
       <td>${esc(fmtMomentum(record))}</td>
       <td><span class="score-pill">${esc(fmtScore(record.finalScore))}</span></td>
-      <td class="${cls}">${esc(result)}</td>
+      <td class="${cls}" title="Settlement uses the locked market, line and odds stored on this signal.">${esc(fmtSettlement(record))}</td>
     </tr>`;
   }).join(''):'<tr><td colspan="12">No records are available in this range.</td></tr>';
 
