@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-melbet-preview",
+  "main": "index.js",
+  "compatibility_date": "2026-08-18",
+  "durable_objects": {
+    "bindings": [
+      { "name": "MELBET_STATE", "class_name": "MelbetState" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MelbetState"] }
+  ]
+}
