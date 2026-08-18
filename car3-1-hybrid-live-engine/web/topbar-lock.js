@@ -24,12 +24,30 @@ function statisticsHrefForCurrentPage(){
   return './statistics.html';
 }
 
+function paymentHrefForCurrentPage(){
+  const path=String(window.location.pathname||'').replace(/\\/g,'/').toLowerCase();
+  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return './payment.html';
+  return '../monitor/payment.html';
+}
+
 function lockCanonicalStatisticsRoute(){
   const href=statisticsHrefForCurrentPage();
   document.querySelectorAll('.nav a').forEach(link=>{
     const label=String(link.textContent||'').trim();
     if(label.toUpperCase()==='STATISTICS'||label.toLowerCase()==='statistics')link.setAttribute('href',href);
   });
+}
+
+function ensurePaymentRoute(){
+  const nav=document.querySelector('.nav');
+  if(!nav)return;
+  let link=[...nav.querySelectorAll('a')].find(a=>String(a.textContent||'').trim().toUpperCase()==='PAYMENT');
+  if(!link){
+    link=document.createElement('a');
+    link.textContent='PAYMENT';
+    nav.appendChild(link);
+  }
+  link.setAttribute('href',paymentHrefForCurrentPage());
 }
 
 function syncTopbarOffset(){
@@ -40,6 +58,7 @@ function syncTopbarOffset(){
 
 installVisualLayer();
 lockCanonicalStatisticsRoute();
+ensurePaymentRoute();
 syncTopbarOffset();
 window.addEventListener('resize',syncTopbarOffset,{passive:true});
 window.addEventListener('orientationchange',syncTopbarOffset,{passive:true});
