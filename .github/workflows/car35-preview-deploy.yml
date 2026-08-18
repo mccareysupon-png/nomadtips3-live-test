@@ -46,6 +46,16 @@ jobs:
           ! grep -R -q 'payment.html' car3-5-live-soccer-analysis/web
           ! grep -q 'sessionStorage.*owner' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'location.origin' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'id="mobileBack"' car3-5-live-soccer-analysis/web/index.html
+          grep -q 'id="signalList"' car3-5-live-soccer-analysis/web/index.html
+          grep -q 'id="prevPage"' car3-5-live-soccer-analysis/web/statistics.html
+          grep -q 'id="nextPage"' car3-5-live-soccer-analysis/web/statistics.html
+          grep -q 'LINE alert subscription' car3-5-live-soccer-analysis/web/alerts.html
+          grep -q 'membership/start' car3-5-live-soccer-analysis/web/alerts.html
+          grep -q './owner-control.html' car3-5-live-soccer-analysis/web/alerts.html
+          grep -q 'id="reload"' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'id="save"' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'id="saveRun"' car3-5-live-soccer-analysis/web/owner-control.html
           grep -q 'CAR35_SQLITE_HISTORY_V2' car3-5-live-soccer-analysis/src/index.js
           grep -q 'new_sqlite_classes' car3-5-live-soccer-analysis/wrangler.jsonc
 
@@ -107,15 +117,21 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base=process.env.PREVIEW_URL,stamp=Date.now();
-          const pages=[['root','/','Live soccer analysis'],['statistics','/statistics.html','CAR 3.5'],['alerts','/alerts.html','No checkout or payment route'],['owner','/owner-control.html','เงื่อนไขที่ใช้งานจริง']];
-          for(const [name,path,needle] of pages){const r=await fetch(`${base}${path}?smoke=${stamp}`,{redirect:'follow',headers:{'cache-control':'no-cache'}}),text=await r.text();if(!r.ok||!text.includes(needle))throw new Error(`${name} failed: ${r.status}`)}
+          const pages=[['root','/','Live soccer analysis'],['statistics','/statistics.html','CAR 3.5'],['alerts','/alerts.html','LINE alert subscription'],['owner','/owner-control.html','เงื่อนไขที่ใช้งานจริง']];
+          const html={};
+          for(const [name,path,needle] of pages){const r=await fetch(`${base}${path}?smoke=${stamp}`,{redirect:'follow',headers:{'cache-control':'no-cache'}}),text=await r.text();if(!r.ok||!text.includes(needle))throw new Error(`${name} failed: ${r.status}`);html[name]=text}
+          if(!html.root.includes('id="signalList"')||!html.root.includes('id="mobileBack"'))throw new Error('Live interaction controls missing');
+          if(!html.statistics.includes('id="prevPage"')||!html.statistics.includes('id="nextPage"'))throw new Error('Statistics pagination controls missing');
+          if(!html.alerts.includes('membership/start')||!html.alerts.includes('./owner-control.html'))throw new Error('Alerts checkout/owner links missing');
+          if(!html.owner.includes('id="reload"')||!html.owner.includes('id="save"')||!html.owner.includes('id="saveRun"'))throw new Error('Owner action controls missing');
           const payment=await fetch(`${base}/payment.html?smoke=${stamp}`,{redirect:'manual'});if(payment.ok)throw new Error('CAR 3.5 payment route still exists');
           const health=await fetch(`${base}/health?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!health.ok||health.mode!=='DIRECT_GOALOO')throw new Error(`health failed: ${JSON.stringify(health).slice(0,500)}`);
           const configResponse=await fetch(`${base}/config?t=${stamp}`,{cache:'no-store'}),config=await configResponse.json();if(!configResponse.ok||!config.ok||!config.config)throw new Error('config GET failed');
-          const saveResponse=await fetch(`${base}/config`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(config.config)}),saved=await saveResponse.json();if(!saveResponse.ok||!saved.ok)throw new Error(`no-key config POST failed: ${JSON.stringify(saved)}`);
+          const saveResponse=await fetch(`${base}/config`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(config.config)}),saved=await saveResponse.json();if(!saveResponse.ok||!saved.ok||!saved.config)throw new Error(`no-key config POST failed: ${JSON.stringify(saved)}`);
+          const verifyConfig=await fetch(`${base}/config?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json());if(JSON.stringify(verifyConfig.config)!==JSON.stringify(saved.config))throw new Error('saved config did not read back identically');
           const scanResponse=await fetch(`${base}/scan?t=${stamp}`,{method:'POST',headers:{'content-type':'application/json'},body:'{}',cache:'no-store'}),scan=await scanResponse.json();if(!scanResponse.ok||!scan.ok||!Array.isArray(scan.matches))throw new Error(`no-key scan failed: ${JSON.stringify(scan).slice(0,500)}`);
-          const live=await fetch(`${base}/live?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!live.ok||live.source!=='GOALOO_DIRECT'||!Array.isArray(live.matches))throw new Error('live contract failed');
+          const live=await fetch(`${base}/live?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!live.ok||live.source!=='GOALOO_DIRECT'||!Array.isArray(live.matches)||!live.activeConfig)throw new Error('live/config contract failed');
           const history=await fetch(`${base}/history?page=1&limit=25&range=ALL&t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!history.ok||history.historyStorage!=='CAR35_SQLITE_HISTORY_V2'||!Array.isArray(history.records)||!history.summary)throw new Error('CAR 3.5 history contract failed');
           const bad=await fetch(`${base}/animation?id=not-a-match`);if(bad.status!==400)throw new Error(`animation validation expected 400, got ${bad.status}`);
-          console.log('CAR 3.5 end-to-end wiring: OK');
+          console.log('CAR 3.5 complete end-to-end wiring: OK');
           NODE
