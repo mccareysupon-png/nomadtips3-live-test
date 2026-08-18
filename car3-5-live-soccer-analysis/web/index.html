@@ -6,35 +6,12 @@
 <main class="page-shell">
 <section class="status-strip" aria-label="Live summary"><div><b id="liveCount">0</b><span>Live</span></div><div><b id="watchCount">0</b><span>Watch</span></div><div><b id="signalCount">0</b><span>Signal</span></div><div><b id="freshness">—</b><span>Freshness</span></div></section>
 <div class="live-layout" id="liveLayout"><aside class="signal-rail" id="signalRail"><div class="section-heading"><div><span class="kicker">Live selection</span><h1>Live soccer analysis</h1></div><span id="lastUpdated" class="muted">Waiting for feed</span></div><div id="signalList" class="signal-list" aria-live="polite"></div></aside>
-<section class="match-center" id="matchCenter" aria-live="polite"><button class="mobile-back" id="mobileBack" type="button">‹ Live signals</button><div class="empty-state" id="emptyState"><span class="pulse"></span><h2>Waiting for a live match</h2><p>The live analysis feed updates automatically when eligible matches are available.</p></div>
+<section class="match-center" id="matchCenter" aria-live="polite"><div class="empty-state" id="emptyState"><span class="pulse"></span><h2>Waiting for a live match</h2><p>The live analysis feed updates automatically when eligible matches are available.</p></div>
 <div id="matchContent" hidden><section class="score-card soft-card"><div class="score-meta"><span id="leagueName">—</span><b id="matchClock">Live</b></div><div class="score-row"><div class="team-block"><span>Home</span><strong id="homeName">—</strong></div><div class="score-main"><b id="scoreText">0–0</b><small id="matchStatus">Live</small></div><div class="team-block away"><span>Away</span><strong id="awayName">—</strong></div></div></section>
 <div class="center-grid"><section class="pitch-card soft-card"><div class="card-head"><div><span class="live-dot"></span><b>Match center</b></div><small>Event visualization</small></div><div class="pitch" id="pitch"><svg viewBox="0 0 1200 675" preserveAspectRatio="none" aria-label="Football pitch"><rect width="1200" height="675" rx="24" fill="#173a2a"/><g fill="none" stroke="rgba(246,249,247,.72)" stroke-width="5" vector-effect="non-scaling-stroke"><rect x="42" y="34" width="1116" height="607" rx="8"/><line x1="600" y1="34" x2="600" y2="641"/><circle cx="600" cy="337.5" r="82"/><rect x="42" y="153" width="190" height="369"/><rect x="42" y="238" width="78" height="199"/><rect x="968" y="153" width="190" height="369"/><rect x="1080" y="238" width="78" height="199"/><rect x="16" y="269" width="26" height="137"/><rect x="1158" y="269" width="26" height="137"/></g></svg><div class="zone-glow" id="zoneGlow"></div><div class="ball" id="ball" aria-hidden="true">●</div><div class="pitch-event" id="pitchEvent">Live data</div></div><p class="visual-note">The ball moves only when a new source coordinate or source event is received. With no new event, it stays in place.</p></section>
 <section class="signal-card soft-card" id="signalCard"><div class="card-head"><b>Our signal</b><span class="state-pill" id="decisionState">Watch</span></div><div class="pick-value" id="pickValue">Monitoring</div><div class="signal-facts"><div><span>Market</span><b id="marketName">—</b></div><div><span>Line / handicap</span><b id="signalLine">—</b></div><div><span>Locked odds</span><b id="lockedOdds">—</b></div><div><span>Entry score</span><b id="entryScore">—</b></div><div><span>Detected minute</span><b id="detectedMinute">—</b></div><div><span>Detected time</span><b id="detectedTime">—</b></div><div><span>Momentum</span><b id="confidence">—</b></div></div></section></div>
 <section class="soft-card stats-card"><div class="card-head"><b>Live statistics</b><small>Home vs Away</small></div><div id="statsRows" class="stats-rows"></div></section><section class="soft-card graph-card"><div class="card-head"><b>Momentum</b><small>Engine pressure history</small></div><svg id="momentumChart" viewBox="0 0 800 220" preserveAspectRatio="none" aria-label="Momentum graph"></svg></section><section class="soft-card events-card"><div class="card-head"><b>Live events</b><small id="eventCount">0 events</small></div><div id="eventList" class="event-list"></div></section></div></section></div>
 </main>
 <nav class="bottom-nav" aria-label="Main navigation"><a class="active" href="./index.html"><span>●</span>Live</a><a href="./statistics.html"><span>⌁</span>Statistics</a><a href="./alerts.html"><span>◉</span>Live alerts</a></nav>
-<script type="module" src="./app.js"></script>
-<script>
-(()=>{
-  const mobile=window.matchMedia('(max-width:1023px)');
-  const layout=document.getElementById('liveLayout');
-  const scoreCard=document.querySelector('.score-card');
-  if(!layout||!scoreCard)return;
-  const collapseMatchCenter=()=>{
-    if(!mobile.matches||!layout.classList.contains('match-open'))return;
-    layout.classList.remove('match-open');
-  };
-  scoreCard.addEventListener('click',collapseMatchCenter);
-  scoreCard.addEventListener('keydown',event=>{
-    if((event.key==='Enter'||event.key===' ')&&mobile.matches&&layout.classList.contains('match-open')){
-      event.preventDefault();
-      collapseMatchCenter();
-    }
-  });
-  scoreCard.setAttribute('role','button');
-  scoreCard.setAttribute('tabindex','0');
-  scoreCard.setAttribute('aria-label','Collapse match center');
-})();
-</script>
-<script type="module" src="./signal-view.js"></script><script type="module" src="./goaloo-animation.js"></script>
+<script type="module" src="./app.js"></script><script src="./mobile-toggle.js"></script><script type="module" src="./signal-view.js"></script><script type="module" src="./goaloo-animation.js"></script>
 </body></html>
