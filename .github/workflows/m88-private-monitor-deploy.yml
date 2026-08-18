@@ -36,9 +36,14 @@ jobs:
         run: |
           node --check src/index.js
           node --check web/app.js
+          node --check web/detection-rich-ui.js
           node --check local-server.mjs
           node --check local-server-v3.mjs
           node --check local-server-v4.mjs
+          node --check local-server-v5.mjs
+          node --check rich-utils.mjs
+          node --check rich-normalizer.mjs
+          node --check rich-dom.mjs
           node --check ci-browser-probe.mjs
           test -f package.json
           test -f start-m88.cmd
