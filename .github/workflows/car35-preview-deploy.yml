@@ -16,7 +16,6 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   PREVIEW_URL: https://nomadtips3-car35-preview.mccarey-supon.workers.dev
-  MEMBERSHIP_URL: https://nomadtips3-test-api.mccarey-supon.workers.dev
 
 jobs:
   validate-and-deploy:
@@ -28,9 +27,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate CAR 3.5 direct Goaloo engine and frontend
+      - name: Validate CAR 3.5 source and wiring
         run: |
           node --check car3-5-live-soccer-analysis/web/app.js
+          node --check car3-5-live-soccer-analysis/web/signal-view.js
+          node --check car3-5-live-soccer-analysis/web/statistics-v2.js
           node --check car3-5-live-soccer-analysis/web/goaloo-animation.js
           node --check car3-5-live-soccer-analysis/src/index.js
           node --check car3-5-live-soccer-analysis/src/goaloo-direct.js
@@ -38,41 +39,44 @@ jobs:
           test -s car3-5-live-soccer-analysis/web/index.html
           test -s car3-5-live-soccer-analysis/web/statistics.html
           test -s car3-5-live-soccer-analysis/web/alerts.html
-          test -s car3-5-live-soccer-analysis/web/payment.html
           test -s car3-5-live-soccer-analysis/web/owner-control.html
-          test -s car3-5-live-soccer-analysis/web/styles.css
-          grep -q 'GOALOO_DIRECT' car3-5-live-soccer-analysis/web/runtime.json
-          grep -q 'CAR35_STATE' car3-5-live-soccer-analysis/wrangler.jsonc
-          grep -q 'goaloo28.com/gf/data/bf_us.js' car3-5-live-soccer-analysis/src/goaloo-direct.js
-          grep -q 'goaloo28.com/gf/data/detailIn.js' car3-5-live-soccer-analysis/src/goaloo-direct.js
-          grep -q 'runOddsData_8.txt' car3-5-live-soccer-analysis/src/goaloo-direct.js
-          grep -q 'm.goaloo.com/flashdata/get' car3-5-live-soccer-analysis/src/goaloo-direct.js
-          grep -q 'owner-control.html' car3-5-live-soccer-analysis/src/index.js
-          grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'id="ahMin"' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'name="oddsMin"' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'payment.html' car3-5-live-soccer-analysis/web/alerts.html
-          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' car3-5-live-soccer-analysis/web/payment.html
+          test ! -e car3-5-live-soccer-analysis/web/payment.html
+          ! grep -R -q 'nomadtips3-car31-goaloo' car3-5-live-soccer-analysis/src car3-5-live-soccer-analysis/web
+          ! grep -R -q 'payment.html' car3-5-live-soccer-analysis/web
+          ! grep -q 'sessionStorage.*owner' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'location.origin' car3-5-live-soccer-analysis/web/owner-control.html
+          grep -q 'CAR35_SQLITE_HISTORY_V2' car3-5-live-soccer-analysis/src/index.js
+          grep -q 'new_sqlite_classes' car3-5-live-soccer-analysis/wrangler.jsonc
+
+      - name: Validate setting-to-engine contracts
+        run: |
+          node --input-type=module <<'NODE'
+          import { oddsUrl } from './car3-5-live-soccer-analysis/src/goaloo-direct.js';
+          import { evaluate, validateConfig } from './car3-5-live-soccer-analysis/src/car35-engine.js';
+          if (!oddsUrl(8).endsWith('runOddsData_8.txt')) throw new Error('Bet365 odds route broken');
+          if (!oddsUrl(50).endsWith('runOddsData_50.txt')) throw new Error('1xBet odds route broken');
+          const match={sourceMatchId:'1',home:'H',away:'A',minute:70,score:{home:0,away:0},stats:{possession:{home:55,away:45},attacks:{home:50,away:30},dangerous_attacks:{home:20,away:10},shots:{home:8,away:4},shots_on_target:{home:4,away:2},corners:{home:5,away:2},red_cards:{home:0,away:0}},coreStatsComplete:true,sourceFreshnessSeconds:3,matchConfidence:100,odds:{oneXtwo:{home:1.9,draw:3.2,away:4},asianHandicap:{home:1.9,line:.5,away:1.9},overUnder:{over:1.9,line:3,under:1.9}}};
+          const common={minuteMin:60,minuteMax:80,oddsMin:1.01,oddsMax:null,momentumMin:1,confirmationRounds:1,attackEvidenceEnabled:false,requireCoreStats:true,sourceFreshnessMaxSeconds:10,matchConfidenceMin:80,redCardPolicy:'ALLOW'};
+          const pos=evaluate(match,{...common,side:'HOME',market:'AH',ahMin:.25,ahMax:.75},[]);
+          if (!pos.checks.line) throw new Error('Positive AH range should pass +0.50');
+          const negHome=evaluate(match,{...common,side:'HOME',market:'AH',ahMin:-.75,ahMax:-.25},[]);
+          if (negHome.checks.line) throw new Error('Negative AH range must not accept +0.50');
+          const negAway=evaluate(match,{...common,side:'AWAY',market:'AH',ahMin:-.75,ahMax:-.25},[]);
+          if (!negAway.checks.line) throw new Error('Negative AH range should accept selected away -0.50');
+          const ouWrong=evaluate(match,{...common,side:'HOME',market:'OU',ouDirection:'OVER',ouLine:2.5},[]);
+          if (ouWrong.checks.line) throw new Error('O/U must reject source line 3.0 when configured 2.5');
+          match.odds.overUnder.line=2.5;
+          const ouRight=evaluate(match,{...common,side:'HOME',market:'OU',ouDirection:'OVER',ouLine:2.5},[]);
+          if (!ouRight.checks.line) throw new Error('O/U must accept exact configured line');
+          const invalid=validateConfig({...common,market:'AH',ahMin:.75,ahMax:.25});
+          if (invalid.ok) throw new Error('Invalid AH range was accepted');
+          console.log('CAR 3.5 setting-to-engine contracts: OK');
+          NODE
 
       - name: Validate Cloudflare credentials
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-
-      - name: Verify Stripe and LINE membership readiness
-        run: |
-          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
-          python - <<'PY'
-          import json
-          with open('/tmp/membership-health.json', encoding='utf-8') as f:
-              d=json.load(f)
-          assert d.get('ok') is True, 'membership health is not OK'
-          assert d.get('stripeWebhookConfigured') is True, 'Stripe webhook is not configured'
-          assert d.get('lineConfigured') is True, 'LINE messaging is not configured'
-          assert d.get('lineAddFriendConfigured') is True, 'LINE add-friend URL is not configured'
-          assert d.get('paymentLinkConfigured') is True, 'Stripe payment link is not configured'
-          print('Stripe + LINE membership readiness: OK')
-          PY
 
       - name: Deploy isolated CAR 3.5 preview
         uses: cloudflare/wrangler-action@v3
@@ -83,30 +87,19 @@ jobs:
           wranglerVersion: '4'
           command: deploy
 
-      - name: Smoke test direct Goaloo preview
+      - name: Smoke test CAR 3.5 end-to-end wiring
         run: |
           node --input-type=module <<'NODE'
-          const base=process.env.PREVIEW_URL;
-          const pages=[
-            ['root','/',['nomadtips3']],
-            ['statistics','/statistics.html',['Statistics']],
-            ['alerts','/alerts.html',['Live alerts','payment.html']],
-            ['payment','/payment.html',['Continue to Stripe','nomadtips3-test-api.mccarey-supon.workers.dev/membership/start']],
-            ['owner legacy route','/owner-settings',['ราคาต่อรอง Asian Handicap','id="ahMin"']],
-            ['owner direct','/owner-control.html',['ราคาต่อรอง Asian Handicap','id="ahMin"']]
-          ];
-          for(const [name,path,needles] of pages){
-            const response=await fetch(`${base}${path}?smoke=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
-            const text=await response.text();
-            console.log(`${name}: HTTP ${response.status}`);
-            if(!response.ok)throw new Error(`${name}: HTTP ${response.status}`);
-            for(const needle of needles)if(!text.includes(needle))throw new Error(`${name}: missing ${needle}`);
-          }
-          const health=await fetch(`${base}/health?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json());
-          if(!health.ok||health.mode!=='DIRECT_GOALOO')throw new Error(`health not direct Goaloo: ${JSON.stringify(health)}`);
-          const live=await fetch(`${base}/live?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.json());
-          if(!live.ok||live.source!=='GOALOO_DIRECT'||!Array.isArray(live.matches))throw new Error(`live contract failed: ${JSON.stringify(live).slice(0,800)}`);
-          const bad=await fetch(`${base}/animation?id=not-a-match`);
-          if(bad.status!==400)throw new Error(`animation validation expected 400, got ${bad.status}`);
-          console.log(`CAR 3.5 direct Goaloo preview OK: ${base}`);
+          const base=process.env.PREVIEW_URL,stamp=Date.now();
+          const pages=[['root','/','Live soccer analysis'],['statistics','/statistics.html','CAR 3.5'],['alerts','/alerts.html','No checkout or payment route'],['owner','/owner-control.html','เงื่อนไขที่ใช้งานจริง']];
+          for(const [name,path,needle] of pages){const r=await fetch(`${base}${path}?smoke=${stamp}`,{redirect:'follow',headers:{'cache-control':'no-cache'}}),text=await r.text();if(!r.ok||!text.includes(needle))throw new Error(`${name} failed: ${r.status}`)}
+          const payment=await fetch(`${base}/payment.html?smoke=${stamp}`,{redirect:'manual'});if(payment.ok)throw new Error('CAR 3.5 payment route still exists');
+          const health=await fetch(`${base}/health?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!health.ok||health.mode!=='DIRECT_GOALOO')throw new Error(`health failed: ${JSON.stringify(health).slice(0,500)}`);
+          const configResponse=await fetch(`${base}/config?t=${stamp}`,{cache:'no-store'}),config=await configResponse.json();if(!configResponse.ok||!config.ok||!config.config)throw new Error('config GET failed');
+          const saveResponse=await fetch(`${base}/config`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(config.config)}),saved=await saveResponse.json();if(!saveResponse.ok||!saved.ok)throw new Error(`no-key config POST failed: ${JSON.stringify(saved)}`);
+          const scanResponse=await fetch(`${base}/scan?t=${stamp}`,{method:'POST',headers:{'content-type':'application/json'},body:'{}',cache:'no-store'}),scan=await scanResponse.json();if(!scanResponse.ok||!scan.ok||!Array.isArray(scan.matches))throw new Error(`no-key scan failed: ${JSON.stringify(scan).slice(0,500)}`);
+          const live=await fetch(`${base}/live?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!live.ok||live.source!=='GOALOO_DIRECT'||!Array.isArray(live.matches))throw new Error('live contract failed');
+          const history=await fetch(`${base}/history?page=1&limit=25&range=ALL&t=${stamp}`,{cache:'no-store'}).then(r=>r.json());if(!history.ok||history.historyStorage!=='CAR35_SQLITE_HISTORY_V2'||!Array.isArray(history.records)||!history.summary)throw new Error('CAR 3.5 history contract failed');
+          const bad=await fetch(`${base}/animation?id=not-a-match`);if(bad.status!==400)throw new Error(`animation validation expected 400, got ${bad.status}`);
+          console.log('CAR 3.5 end-to-end wiring: OK');
           NODE

@@ -1,39 +1,33 @@
 # CAR 3.5 — Live Soccer Analysis
 
-Public display name: `nomadtips3 live`
-
-CAR 3.5 is a new read-only presentation layer for live football analysis. It does not replace or mutate CAR 3.1 logic, settlement, history or worker state.
+CAR 3.5 is an isolated live-analysis engine and presentation package. Its live feed, settings, signal archive, settlement and statistics all use the CAR 3.5 Worker/Durable Object only.
 
 ## Product structure
 
-1. **Live soccer analysis** — signal list + responsive Match center.
-2. **Statistics** — long-range Win/Loss/Draw history, Winrate, Average odds, charts and 25-row pagination.
-3. **Live alerts** — $20 alert plan plus $200 Custom live engine pre-order.
+1. **Live soccer analysis** — live list, match center, source-driven event visualization and engine pressure history.
+2. **Statistics** — CAR 3.5 SQLite signal archive with Win/Loss/Draw, win rate, average odds, net units, range filters and pagination.
+3. **Live alerts** — signal information and access to the CAR 3.5 settings page. Checkout/payment is intentionally not connected to this preview.
+4. **Owner control** — no owner key; settings are written to CAR 3.5, read back from the Worker, and only then shown as active.
 
-## Responsive contract
+## Data and engine
 
-- Mobile-first, one codebase.
-- Mobile: signal list -> tap -> full-screen Match center.
-- Tablet: responsive single/split layout based on available width.
-- Desktop: sticky signal rail on the left and Match center on the right.
-- Fixed top brand bar and fixed bottom navigation with safe-area padding.
+- Match index and statistics are read directly from the live source.
+- Live odds source is selected by `bookmakerCompanyId`: Bet365 = 8, 1xBet = 50. The selected source never silently falls back to another bookmaker.
+- Markets: WIN/1X2, Asian Handicap and Over/Under.
+- Asian Handicap preserves the sign of the selected-team line; positive and negative lines are different conditions.
+- Over/Under requires the live line to match the configured goal line.
+- Momentum, evidence, goal-gap, red-card, freshness, confidence, core-stat and daily-limit gates are enforced by the engine.
+- Daily signal limits use Thailand time (UTC+7).
+- Confirmed records lock market, line, odds, entry minute and entry score before settlement.
 
-## Visual system
+## Storage
 
-- Font: Arial; logo uses Arial Bold/Black and lowercase `nomadtips3 live`.
-- Body copy uses sentence case.
-- Background: charcoal; cards use soft depth and minimal borders.
-- Brand accent: yellow; Live/Win: green; Loss: red; Draw: gray.
+CAR 3.5 uses its SQLite-backed Durable Object for long-term signal history. Existing legacy history is migrated once into the SQL archive and future history is no longer truncated to the previous 1,000-record working list.
 
-## Live data
+## Visualization
 
-Phase A reads the existing CAR 3.1 normalized Goaloo live feed in read-only mode. The adapter accepts the CAR 3.1 normalized contract and leaves a second engine slot for CAR 3.3 once its accessible feed/ref is confirmed.
+Exact source XY coordinates are used when available. Without XY, a source event may be mapped to a fixed event zone. The ball does not move while no new source coordinate/event is received.
 
-The Match center renders event-driven pitch animation. It never claims exact tracking coordinates unless the upstream source actually supplies coordinates. Without coordinates, Goaloo events are mapped to approximate field zones (attack, dangerous attack, corner, goal kick, goal, card, substitution) and are labelled as an event visualization.
+## Deployment integrity
 
-## Commercial integration
-
-- Plan 1: `$20` Live alerts. Intended flow: Stripe checkout -> server-side webhook verification -> LINE connection -> alert entitlement.
-- Plan 2: `$200` pre-order. Manual owner provisioning; account expiry is server-side and defaults to 30 days when implemented.
-
-No Stripe key, LINE secret or customer credential is stored in this front-end scaffold.
+The CAR 3.5 deployment workflow validates syntax, setting-to-engine contracts, bookmaker routing, AH sign behavior, O/U line behavior, absence of CAR 3.1 Worker references, absence of payment/checkout files, no-key configuration writes, CAR 3.5 history storage and live-feed health before considering the preview healthy.
