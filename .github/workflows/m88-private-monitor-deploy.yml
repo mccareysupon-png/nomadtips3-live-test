@@ -66,3 +66,26 @@ jobs:
           echo
           curl -fsS "$DEPLOYMENT_URL/" -o /tmp/m88-monitor.html
           grep -q "Condition Detection" /tmp/m88-monitor.html
+
+      - name: Deep probe M88 public MSports source
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          curl -fsS "$DEPLOYMENT_URL/api/source/probe?deep=1" -o /tmp/m88-probe.json
+          python - <<'PY'
+          import json
+          p=json.load(open('/tmp/m88-probe.json',encoding='utf-8'))
+          print(json.dumps({
+            'source':p.get('source'),
+            'appUrl':p.get('appUrl'),
+            'fetchedUrl':p.get('fetchedUrl'),
+            'status':p.get('status'),
+            'ok':p.get('ok'),
+            'bytes':p.get('bytes'),
+            'scriptCount':p.get('scriptCount'),
+            'scripts':p.get('scripts'),
+            'candidates':p.get('candidates'),
+            'bundleReports':p.get('bundleReports')
+          },ensure_ascii=False,indent=2))
+          PY
