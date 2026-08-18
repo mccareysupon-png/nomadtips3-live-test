@@ -1,0 +1,73 @@
+name: Deploy X1 1xBet Detector Preview
+
+on:
+  push:
+    branches:
+      - work/car-x1-1xbet-detector
+    paths:
+      - 'car-x1-1xbet-detector/**'
+      - '.github/workflows/car-x1-1xbet-preview-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREVIEW_URL: https://nomadtips3-x1-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate X1 source
+        run: |
+          node --check car-x1-1xbet-detector/src/index.js
+          node --check car-x1-1xbet-detector/web/app.js
+          node --check car-x1-1xbet-detector/web/statistics.js
+          test -s car-x1-1xbet-detector/web/index.html
+          test -s car-x1-1xbet-detector/web/statistics.html
+          grep -q '1xBet DIRECT' car-x1-1xbet-detector/web/index.html
+          grep -q 'X1_SQLITE_HISTORY_V1' car-x1-1xbet-detector/src/index.js
+          grep -q 'new_sqlite_classes' car-x1-1xbet-detector/wrangler.jsonc
+          ! grep -R -q 'GOALOO' car-x1-1xbet-detector
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy X1 detector preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: car-x1-1xbet-detector
+          wranglerVersion: '4'
+          command: deploy
+
+      - name: Smoke test X1 preview
+        run: |
+          node --input-type=module <<'NODE'
+          const base=process.env.PREVIEW_URL, stamp=Date.now();
+          const root=await fetch(`${base}/?smoke=${stamp}`,{cache:'no-store'});
+          const html=await root.text();
+          if(!root.ok||!html.includes('Signal Detector')||!html.includes('1xBet DIRECT')) throw new Error(`root failed ${root.status}`);
+          const stats=await fetch(`${base}/statistics.html?smoke=${stamp}`,{cache:'no-store'});
+          const statsHtml=await stats.text();
+          if(!stats.ok||!statsHtml.includes('Statistics')||!statsHtml.includes('Locked 1xBet signal history')) throw new Error(`statistics failed ${stats.status}`);
+          const health=await fetch(`${base}/health?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());
+          if(!health.ok||health.mode!=='DIRECT_1XBET'||health.source!=='1XBET_DIRECT') throw new Error(`health contract failed ${JSON.stringify(health).slice(0,400)}`);
+          const live=await fetch(`${base}/live?t=${stamp}`,{cache:'no-store'}).then(r=>r.json());
+          if(!live.ok||!Array.isArray(live.matches)||live.source!=='1XBET_DIRECT') throw new Error(`live contract failed ${JSON.stringify(live).slice(0,400)}`);
+          const history=await fetch(`${base}/history?page=1&limit=25&range=ALL&t=${stamp}`,{cache:'no-store'}).then(r=>r.json());
+          if(!history.ok||history.historyStorage!=='X1_SQLITE_HISTORY_V1'||!Array.isArray(history.records)||!history.summary) throw new Error('history contract failed');
+          console.log('X1 preview smoke tests: OK');
+          NODE
