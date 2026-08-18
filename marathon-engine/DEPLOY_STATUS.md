@@ -1,7 +1,7 @@
 # Marathon Engine Online Preview — Last Deploy
 
-- Commit: 9a7fc059e19b184a91d86380edc8eee38e0980bd
-- UTC: 2026-08-18T13:43:08Z
+- Commit: da3dc23443402f4174ae2aca18cc45b5b91e7f73
+- UTC: 2026-08-18T13:46:10Z
 - Syntax: success
 - Credentials: success
 - Deploy: success
@@ -15,7 +15,7 @@ Health:
   "ok": false,
   "source": "MARATHONBET",
   "version": "0.3.0-online-preview",
-  "lastScan": "2026-08-18T13:43:08.213Z",
+  "lastScan": "2026-08-18T13:46:10.104Z",
   "lastSourceOk": null,
   "lastError": "SOURCE_HTTP_451",
   "matchCount": 0,
