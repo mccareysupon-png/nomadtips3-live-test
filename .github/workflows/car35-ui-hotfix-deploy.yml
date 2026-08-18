@@ -1,0 +1,39 @@
+name: Deploy CAR 3.5 UI Hotfix
+
+on:
+  push:
+    branches:
+      - work/car3-5-live-soccer-analysis
+    paths:
+      - 'car3-5-live-soccer-analysis/web/index.html'
+      - 'car3-5-live-soccer-analysis/web/mobile-toggle.js'
+      - 'car3-5-live-soccer-analysis/web/ui-fix.css'
+      - '.github/workflows/car35-ui-hotfix-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-ui-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate UI files
+        run: |
+          node --check car3-5-live-soccer-analysis/web/app.js
+          node --check car3-5-live-soccer-analysis/web/mobile-toggle.js
+          test -s car3-5-live-soccer-analysis/web/index.html
+          test -s car3-5-live-soccer-analysis/web/ui-fix.css
+      - name: Deploy CAR 3.5 preview
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-5-live-soccer-analysis
+          wranglerVersion: '4'
+          command: deploy
