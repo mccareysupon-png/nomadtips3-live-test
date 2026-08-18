@@ -16,38 +16,55 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '22'
       - name: Probe MelBet JSON
         run: |
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const headers={accept:'application/json,text/plain,*/*','user-agent':'Mozilla/5.0'};
-          const listUrl='https://my.melbet.com/service-api/LiveFeed/Get1x2_VZip?sports=1&count=8&lng=en&mode=4&getEmpty=true';
-          const lr=await fetch(listUrl,{headers});
-          const list=await lr.json();
-          const events=Array.isArray(list?.Value)?list.Value:[];
-          const compact=events.map(e=>({id:e.I,home:e.O1,away:e.O2,league:e.L,score:e.SC,main:e.E,additional:e.AE?.slice?.(0,6)}));
-          const event=events[0]||null;
-          let detail=null,detailStatus=null,detailType=null,detailUrl=null;
-          if(event?.I){
-            const candidates=[
-              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250&grMode=2`,
-              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250`,
-              `https://my.melbet.com/service-api/LiveFeed/GetGameZip?id=${event.I}&lng=en`
-            ];
-            for(const u of candidates){
-              try{
-                const r=await fetch(u,{headers}); const t=await r.text(); let j=null; try{j=JSON.parse(t)}catch{}
-                if(j){detail=j;detailStatus=r.status;detailType=r.headers.get('content-type');detailUrl=u;break}
-              }catch{}
-            }
+          python - <<'PY'
+          import json, urllib.request, urllib.parse, os
+          headers={
+            'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+            'Accept':'application/json,text/plain,*/*',
+            'X-Requested-With':'XMLHttpRequest',
+            'Referer':'https://my.melbet.com/en/live'
           }
-          const out={status:lr.status,contentType:lr.headers.get('content-type'),success:list?.Success,eventCount:events.length,compact,detailUrl,detailStatus,detailType,detail};
-          fs.mkdirSync('.deploy-status',{recursive:true});
-          fs.writeFileSync('.deploy-status/melbet-shape.json',JSON.stringify(out,null,2));
-          NODE
+          qs=urllib.parse.urlencode({'sports':1,'count':8,'lng':'en','mode':4,'getEmpty':'true'})
+          events=[]; list_meta=[]
+          for base in ['https://my.melbet.com','https://th.melbet.com','https://melbet.com']:
+            u=base+'/service-api/LiveFeed/Get1x2_VZip?'+qs
+            row={'url':u}
+            try:
+              req=urllib.request.Request(u,headers=headers)
+              with urllib.request.urlopen(req,timeout=15) as r:
+                body=r.read(500000).decode('utf-8','replace'); data=json.loads(body)
+                row.update(status=r.status,contentType=r.headers.get('content-type'),success=data.get('Success'),events=len(data.get('Value') or []))
+                if not events and isinstance(data.get('Value'),list): events=data['Value']
+            except Exception as e: row['error']=type(e).__name__+': '+str(e)[:300]
+            list_meta.append(row)
+          compact=[{'id':e.get('I'),'home':e.get('O1'),'away':e.get('O2'),'league':e.get('L'),'score':e.get('SC'),'main':e.get('E'),'additional':(e.get('AE') or [])[:8]} for e in events]
+          detail=None; detail_meta=[]
+          if events:
+            eid=events[0].get('I')
+            paths=[
+              f'/service-api/LiveFeed/GetGameZip?id={eid}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250&grMode=2',
+              f'/service-api/LiveFeed/GetGameZip?id={eid}&lng=en&cfview=0&isSubGames=true&GroupEvents=true&allEventsGroupSubGames=true&countevents=250',
+              f'/service-api/LiveFeed/GetGameZip?id={eid}&lng=en'
+            ]
+            for base in ['https://my.melbet.com','https://th.melbet.com','https://melbet.com']:
+              for path in paths:
+                u=base+path; row={'url':u}
+                try:
+                  req=urllib.request.Request(u,headers=headers)
+                  with urllib.request.urlopen(req,timeout=15) as r:
+                    body=r.read(1000000).decode('utf-8','replace'); data=json.loads(body)
+                    row.update(status=r.status,contentType=r.headers.get('content-type'),success=data.get('Success'),keys=list(data)[:20])
+                    if detail is None and data.get('Success') is not False: detail=data
+                except Exception as e: row['error']=type(e).__name__+': '+str(e)[:300]
+                detail_meta.append(row)
+                if detail is not None: break
+              if detail is not None: break
+          out={'listMeta':list_meta,'eventCount':len(events),'compact':compact,'detailMeta':detail_meta,'detail':detail}
+          os.makedirs('.deploy-status',exist_ok=True)
+          with open('.deploy-status/melbet-shape.json','w',encoding='utf-8') as f: json.dump(out,f,ensure_ascii=False,indent=2)
+          PY
       - name: Persist probe
         run: |
           git config user.name "github-actions[bot]"
