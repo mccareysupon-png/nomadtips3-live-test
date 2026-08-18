@@ -1,7 +1,8 @@
-const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s), esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const fmtTime=v=>{if(!v)return'—';try{return new Date(v).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch{return'—'}};
 const fmtLine=v=>{const n=Number(v);return Number.isFinite(n)?`${n>0?'+':''}${n}`:'—'};
 const fmtOdds=v=>{const n=Number(v);return Number.isFinite(n)?n.toFixed(2):'—'};
+const bangkokDate=v=>{try{return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(v||Date.now()));}catch{return new Date(v||Date.now()).toISOString().slice(0,10);}};
 const HISTORY_CACHE_KEY='nomadtips3.car34.history.v1';
 let runtime={workerUrl:'https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev',refreshSeconds:15};
 async function bootRuntime(){try{runtime={...runtime,...await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json())};}catch{}}
@@ -31,17 +32,37 @@ async function detector(){
   setPageError(failures.length?`Worker data issue: ${failures.join(', ')}`:'');
 
   const pipe=health?.realMarketPipe||live?.realMarketPipe||{};
-  $('#engine').textContent=health?(health.lastError?'CHECK':'ONLINE'):'OFFLINE';
-  $('#engine').className=health?(health.lastError?'bad':'good'):'bad';
-  $('#cycle').textContent=fmtTime(health?.lastCycle||live?.generatedAt);
+  const liveMatches=live?.matches||[];
+  const active=liveMatches.filter(m=>m.realMarket?.status==='MATCH'||m.engine?.decision==='NEAR'||(m.engine?.streak||0)>0).sort((a,b)=>(b.engine?.momentum||0)-(a.engine?.momentum||0));
+  const nearCount=liveMatches.filter(m=>String(m.engine?.decision||'').toUpperCase()==='NEAR').length;
+  const records=history.records||[];
+  const today=bangkokDate();
+  const lockedToday=records.filter(r=>String(r.selectionDate||bangkokDate(r.selectedAt))===today).length;
+  const enginePaused=pipe.engineEnabled===false||live?.engineEnabled===false;
+  const engineError=Boolean(health?.lastError)||pipe.status==='ERROR';
+  const engineState=!health&&!live?'OFFLINE':engineError?'ERROR':enginePaused?'PAUSED':'RUNNING';
+
+  $('#engine').textContent=engineState;
+  $('#engine').className=engineState==='RUNNING'?'good':engineState==='PAUSED'?'warn':'bad';
+  $('#scanning').textContent=live?(pipe.matchCount??liveMatches.length):'—';
+  $('#watching').textContent=live?active.length:'—';
+  $('#nearSignal').textContent=live?nearCount:'—';
+  $('#nearSignal').className=nearCount>0?'warn':'';
+  $('#lockedToday').textContent=historyInfo.error&&!historyInfo.cached?'—':lockedToday;
+  $('#lockedToday').className=lockedToday>0?'good':'';
+  $('#cycle').textContent=fmtTime(health?.lastCycle||live?.generatedAt||pipe.at);
   $('#marketState').textContent=pipe.status||(!health&&!live?'UNAVAILABLE':'WAITING');
   $('#marketState').className=pipe.status==='OK'?'good':pipe.status==='KEY_MISSING'||pipe.status==='ERROR'||(!health&&!live)?'bad':'warn';
   $('#matched').textContent=`${pipe.ahMatched??0}/${pipe.eligibleMatches??0}`;
+  const note=$('#monitorNote');
+  if(note){
+    if(!health&&!live)note.textContent='Worker unavailable · live counts cannot be confirmed';
+    else if(enginePaused)note.textContent='Engine paused · counts reflect the latest available cycle';
+    else note.textContent=`Live monitor · refresh every ${runtime.refreshSeconds||15}s · cycle ${fmtTime(health?.lastCycle||live?.generatedAt||pipe.at)}`;
+  }
   $('#sourceInfo').innerHTML=`<span class="pill">Price: ${esc(pipe.source||runtime.priceSource||'1xbet')}</span><span class="pill">Market: AH only</span><span class="pill">Mapped: ${pipe.mappedMatches??0}</span><span class="pill">API key: ${pipe.keyConfigured?'ready':'missing / unavailable'}</span>${pipe.error?`<span class="pill bad">${esc(pipe.error)}</span>`:''}`;
 
-  const records=history.records||[];
   renderSignals(records,Boolean(historyInfo.error&&!historyInfo.cached));
-  const active=(live?.matches||[]).filter(m=>m.realMarket?.status==='MATCH'||m.engine?.decision==='NEAR'||(m.engine?.streak||0)>0).sort((a,b)=>(b.engine?.momentum||0)-(a.engine?.momentum||0));
   $('#candidates').innerHTML=active.length?active.slice(0,20).map(m=>`<tr><td>${esc(m.home)}<br><span class="muted">${esc(m.away)}</span></td><td>${m.score?.home??'—'}-${m.score?.away??'—'}</td><td>${esc(m.engine?.side||'—')}</td><td class="pick">${fmtLine(m.engine?.line)}</td><td class="odds">${fmtOdds(m.engine?.odds)}</td><td>${m.engine?.momentum??'—'}%</td><td>${esc(m.realMarket?.status||'NOT FOUND')}<br><span class="muted">map ${m.realMarket?.mappingConfidence?Math.round(m.realMarket.mappingConfidence*100)+'%':'—'}</span></td><td>${esc(m.engine?.decision||'WATCH')} · ${m.engine?.streak??0}</td></tr>`).join(''):`<tr><td colspan="8" class="empty">${live?'No current AH candidates with a real-market match.':'Live feed unavailable. History and statistics remain available.'}</td></tr>`;
 }
 function renderStatistics(h){
