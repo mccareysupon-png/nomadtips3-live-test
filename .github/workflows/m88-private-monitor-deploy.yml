@@ -36,6 +36,9 @@ jobs:
         run: |
           node --check src/index.js
           node --check web/app.js
+          node --check local-server.mjs
+          test -f package.json
+          test -f start-m88.cmd
           test -f web/index.html
           test -f web/statistics.html
           test -f web/settings.html
