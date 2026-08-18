@@ -136,7 +136,7 @@ export function mergeCoreStats(match,detailStats){
 
 export function isStructuredCoreBaseline(match){return Boolean(match&&match.coreStatsProvenance==='DETAIL_IN_STRUCTURED'&&coreStatsCompleteLocal(match.stats));}
 
-const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0});
+const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0});
 const delta=(cur,prev,key)=>{const c=pair(cur.stats,key),p=pair(prev?.stats,key);return{home:c.home-p.home,away:c.away-p.away};};
 const sideOf=d=>d.home>d.away?'HOME':d.away>d.home?'AWAY':null;
 export function deriveActivity(current,previous){
