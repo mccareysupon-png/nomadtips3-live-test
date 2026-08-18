@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f11">
+  <title>nomadtips3 X1 — Statistics</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./"><span>nomad</span><span class="tips">tips3</span></a>
+  <div class="engine-tag" id="feedTag"><i></i><span id="feedLabel">X1 statistics</span></div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div>
+      <h1>Statistics</h1>
+      <p>Locked 1xBet signal history · original entry odds · settlement record</p>
+    </div>
+    <div class="source-badge">HISTORY <b>X1 SQLITE</b></div>
+  </section>
+
+  <section class="metrics">
+    <article class="metric win"><span>Win</span><b id="statWin">0</b></article>
+    <article class="metric loss"><span>Loss</span><b id="statLoss">0</b></article>
+    <article class="metric"><span>Draw / Push</span><b id="statDraw">0</b></article>
+    <article class="metric signal"><span>Winrate</span><b id="statRate">0.00%</b></article>
+    <article class="metric"><span>Pending</span><b id="statPending">0</b></article>
+    <article class="metric"><span>Average odds</span><b id="statOdds">0.00</b></article>
+    <article class="metric"><span>Net units</span><b id="statUnits">0.000u</b></article>
+    <article class="metric"><span>ROI</span><b id="statRoi">0.00%</b></article>
+    <article class="metric"><span>Total signals</span><b id="statSignals">0</b></article>
+    <article class="metric"><span>Settled</span><b id="statSettled">0</b></article>
+  </section>
+
+  <section class="toolbar">
+    <div class="tabs" id="rangeTabs">
+      <button data-range="7D">7D</button>
+      <button data-range="30D">30D</button>
+      <button data-range="90D">90D</button>
+      <button data-range="6M">6M</button>
+      <button data-range="1Y">1Y</button>
+      <button class="active" data-range="ALL">ALL</button>
+    </div>
+    <div class="refresh-note" id="historyMeta">25 rows/page</div>
+  </section>
+
+  <section class="graph-card">
+    <div class="graph-head"><b>Cumulative net units</b><span id="graphCaption">No settled signals yet</span></div>
+    <svg id="historyChart" viewBox="0 0 900 220" preserveAspectRatio="none"></svg>
+  </section>
+
+  <section class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date / time</th><th>League</th><th>Match</th><th>Detected</th><th>Entry score</th>
+            <th>Market</th><th>Pick</th><th>Line</th><th>Locked odds</th><th>FT score</th>
+            <th>Result</th><th>Net units</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"><tr><td colspan="12">Loading history…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button id="prevPage" type="button">‹</button>
+      <span id="pageInfo">Page 1 / 1</span>
+      <button id="nextPage" type="button">›</button>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <a href="./">SIGNAL DETECTOR</a>
+  <a class="active" href="./statistics.html">STATISTICS</a>
+</nav>
+
+<script type="module" src="./statistics.js"></script>
+</body>
+</html>
