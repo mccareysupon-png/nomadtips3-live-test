@@ -1,0 +1,63 @@
+name: Deploy M88 Private Monitor
+
+on:
+  push:
+    branches: [feature/m88-private-monitor-20260818]
+    paths:
+      - "m88-private-monitor/**"
+      - ".github/workflows/m88-private-monitor-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate isolated M88 monitor
+        working-directory: m88-private-monitor
+        run: |
+          node --check src/index.js
+          node --check web/app.js
+          test -f web/index.html
+          test -f web/statistics.html
+          test -f web/settings.html
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy private monitor Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: m88-private-monitor
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Smoke test read-only service
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          echo "M88 monitor: $DEPLOYMENT_URL"
+          curl -fsS "$DEPLOYMENT_URL/api/health"
+          echo
+          curl -fsS "$DEPLOYMENT_URL/" -o /tmp/m88-monitor.html
+          grep -q "Condition Detection" /tmp/m88-monitor.html
