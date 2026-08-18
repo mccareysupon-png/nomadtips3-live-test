@@ -34,9 +34,10 @@ if errorlevel 1 (
 
 echo.
 echo Starting Marathon Engine...
-echo Monitor: http://127.0.0.1:8791/
-echo Detector is OFF unless DETECTOR_ENABLED=true is configured.
+echo Monitor : http://127.0.0.1:8791/
+echo Settings: http://127.0.0.1:8791/settings
 echo.
+start "" /b cmd /c "timeout /t 3 /nobreak >nul & start "" http://127.0.0.1:8791/settings"
 call npm start
 
 pause
