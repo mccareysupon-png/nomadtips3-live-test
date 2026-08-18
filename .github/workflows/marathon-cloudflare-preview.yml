@@ -1,0 +1,70 @@
+name: Deploy Marathon Engine Preview
+
+on:
+  push:
+    branches:
+      - feature/marathon-engine-20260818
+    paths:
+      - "marathon-engine/worker/**"
+      - ".github/workflows/marathon-cloudflare-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate source syntax
+        working-directory: marathon-engine/worker
+        run: node --check src/index.js
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy isolated Marathon worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: marathon-engine/worker
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Smoke test online pages and Marathon source
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          echo "Deployment: $DEPLOYMENT_URL"
+          curl -fsS "$DEPLOYMENT_URL/" >/dev/null
+          curl -fsS "$DEPLOYMENT_URL/settings" >/dev/null
+          curl -fsS "$DEPLOYMENT_URL/statistics" >/dev/null
+          curl -fsS -X POST "$DEPLOYMENT_URL/api/refresh" -o /tmp/marathon-live.json
+          cat /tmp/marathon-live.json | head -c 12000
+          python - <<'PY'
+          import json
+          with open('/tmp/marathon-live.json',encoding='utf-8') as f:
+              d=json.load(f)
+          assert d.get('source')=='MARATHONBET', 'source mismatch'
+          assert d.get('lastScan'), 'scan timestamp missing'
+          assert d.get('lastError') is None, f"source error: {d.get('lastError')}"
+          assert isinstance(d.get('matches'),list), 'matches missing'
+          print('MATCH_COUNT=',d.get('matchCount'))
+          PY
