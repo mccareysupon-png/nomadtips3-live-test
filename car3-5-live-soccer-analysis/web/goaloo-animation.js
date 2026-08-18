@@ -1,5 +1,5 @@
 (()=>{
-const $=s=>document.querySelector(s),clamp=v=>Math.max(0,Math.min(1,Number(v)||0)),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s),clamp=v=>Math.max(0,Math.min(1,Number(v)||0)),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 let current=null,timer=null,pollMs=1500,seen=new Set(),seenPoints=new Map(),queue=[],playing=false,ball={x:.5,y:.5},roll=0,generation=0,payload=null,lastMotionAt=0,idleStepIndex=0;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function matchId(){const el=$('.signal-item.active[data-id]')||$('.signal-item[data-id]'),id=String(el?.dataset.id||'');return /^\d+$/.test(id)?id:null}
@@ -113,8 +113,8 @@ async function poll(){
   if(current!==id)reset(id);
   try{
     const r=await fetch(`/animation?id=${encodeURIComponent(id)}&t=${Date.now()}`,{cache:'no-store'}),p=await r.json();
-    if(r.ok&&p?.ok&&String(p.matchId)===id)ingest(p,id);else idleStep(id);
-  }catch(e){idleStep(id);console.warn('CAR 3.5 direct Goaloo animation unavailable',e)}
+    if(r.ok&&p?.ok&&String(p.matchId)===id)ingest(p,id);
+  }catch(e){console.warn('CAR 3.5 direct Goaloo animation unavailable',e)}
   idleStep(id);timer=setTimeout(poll,pollMs);
 }
 window.addEventListener('resize',()=>setBall(ball.x,ball.y,roll,ball));document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll()});ui();setTimeout(poll,250);
