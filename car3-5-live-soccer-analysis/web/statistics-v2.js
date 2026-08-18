@@ -27,16 +27,12 @@ function setFeed(ok,text){
 }
 
 function resultName(record){
-  let value=String(record?.resultGroup||record?.result||'PENDING').toUpperCase();
-  if(value==='CORRECT')value='WIN';
-  if(value==='INCORRECT')value='LOSS';
-  if(value==='PUSH')value='DRAW';
-  return value;
-}
-
-function resultDetail(record){
-  const raw=String(record?.settlementResult||record?.resultDetail||record?.resultGroup||record?.result||'PENDING').toUpperCase();
-  return raw.replaceAll('_',' ');
+  const value=String(record?.resultGroup||record?.result||record?.settlementResult||'')
+    .trim().toUpperCase().replace(/[\s-]+/g,'_');
+  if(['WIN','CORRECT','FULL_WIN','HALF_WIN'].includes(value))return'WIN';
+  if(['LOSS','INCORRECT','FULL_LOSS','HALF_LOSS'].includes(value))return'LOSS';
+  if(['DRAW','PUSH'].includes(value))return'DRAW';
+  return'—';
 }
 
 function fmtDateTime(record){
@@ -78,6 +74,16 @@ function fmtLine(record){
 function fmtOdds(record){
   const odds=Number(record?.odds);
   return Number.isFinite(odds)?odds.toFixed(2):'—';
+}
+
+function fmtBookmaker(record){
+  const value=record?.bookmaker??record?.bookmakerName??record?.oddsBookmaker;
+  const label=String(value??'').trim();
+  return label||'—';
+}
+
+function fmtLockedOdds(record){
+  return`${fmtOdds(record)} · ${fmtBookmaker(record)}`;
 }
 
 function fmtMomentum(record){
@@ -139,7 +145,7 @@ function renderHistory(data){
 
   const records=Array.isArray(data.records)?data.records:[];
   $('historyBody').innerHTML=records.length?records.map(record=>{
-    const result=resultName(record),cls=`result-${result.toLowerCase()}`;
+    const result=resultName(record),cls=result==='WIN'||result==='LOSS'||result==='DRAW'?`result-${result.toLowerCase()}`:'';
     return`<tr>
       <td>${esc(fmtDateTime(record))}</td>
       <td class="league-cell" title="${esc(record.league||'—')}">${esc(record.league||'—')}</td>
@@ -149,13 +155,12 @@ function renderHistory(data){
       <td>${esc(fmtMarket(record))}</td>
       <td>${esc(fmtPick(record))}</td>
       <td class="line-cell">${esc(fmtLine(record))}</td>
-      <td class="odds-cell">${esc(fmtOdds(record))}</td>
+      <td class="odds-cell">${esc(fmtLockedOdds(record))}</td>
       <td>${esc(fmtMomentum(record))}</td>
       <td><span class="score-pill">${esc(fmtScore(record.finalScore))}</span></td>
       <td class="${cls}">${esc(result)}</td>
-      <td><span class="result-detail">${esc(resultDetail(record))}</span></td>
     </tr>`;
-  }).join(''):'<tr><td colspan="13">No records are available in this range.</td></tr>';
+  }).join(''):'<tr><td colspan="12">No records are available in this range.</td></tr>';
 
   historyPage=num(data.page,historyPage);historyPages=Math.max(1,num(data.pages,1));
   $('pageInfo').textContent=`Page ${historyPage} / ${historyPages} · 25 rows/page`;
@@ -179,7 +184,7 @@ async function refreshHistory(){
     renderHistory(data);
   }catch(error){
     setFeed(false,'Reconnecting');
-    $('historyBody').innerHTML='<tr><td colspan="13">Statistics are temporarily unavailable. Automatic retry is active.</td></tr>';
+    $('historyBody').innerHTML='<tr><td colspan="12">Statistics are temporarily unavailable. Automatic retry is active.</td></tr>';
     console.warn('Statistics refresh failed',error);
   }finally{historyRefreshing=false;}
 }

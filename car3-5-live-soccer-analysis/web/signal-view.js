@@ -41,6 +41,12 @@ function oddsLabel(record){
   return value===null?'—':value.toFixed(2);
 }
 
+function bookmakerLabel(record){
+  const value=record?.bookmaker??record?.bookmakerName??record?.oddsBookmaker;
+  const label=String(value??'').trim();
+  return label||'—';
+}
+
 function scoreLabel(score){
   const home=n(score?.home),away=n(score?.away);
   return home===null||away===null?'—':`${home}–${away}`;
@@ -79,6 +85,7 @@ function ensureSignalFacts(){
     <div><span>Market</span><b id="marketName">—</b></div>
     <div><span>Line / handicap</span><b id="signalLine">—</b></div>
     <div><span>Locked odds</span><b id="lockedOdds">—</b></div>
+    <div><span>Odds source</span><b id="oddsSource">—</b></div>
     <div><span>Entry score</span><b id="entryScore">—</b></div>
     <div><span>Detected minute</span><b id="detectedMinute">—</b></div>
     <div><span>Detected time</span><b id="detectedTime">—</b></div>
@@ -86,7 +93,7 @@ function ensureSignalFacts(){
   if(!byId('signalViewResponsive')){
     const style=document.createElement('style');
     style.id='signalViewResponsive';
-    style.textContent=`.signal-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}.signal-facts div{min-width:0}.signal-facts b{overflow-wrap:anywhere}@media(min-width:700px){.signal-facts{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media(min-width:1024px){.signal-facts{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`;
+    style.textContent=`.signal-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}.signal-facts div{min-width:0}.signal-facts b{overflow-wrap:anywhere}@media(min-width:700px){.signal-facts{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`;
     document.head.appendChild(style);
   }
 }
@@ -103,7 +110,7 @@ function applyList(){
       confirmed++;
       setText(pill,'Signal');setClass(pill,'state-pill signal');
       setText(pick,pickLabel(record));
-      if(bottom[0])setText(bottom[0],`${compactMarket(record)} · Odds ${oddsLabel(record)}`);
+      if(bottom[0])setText(bottom[0],`${compactMarket(record)} · Odds ${oddsLabel(record)} · ${bookmakerLabel(record)}`);
       if(bottom[1])setText(bottom[1],`Detected ${minuteLabel(record)} · Entry ${scoreLabel(record.entryScore)}`);
     }else if(pill&&/signal/i.test(pill.textContent||'')){
       setText(pill,'Near signal');setClass(pill,'state-pill near');
@@ -127,6 +134,7 @@ function clearLockedCenter(){
   setText(byId('marketName'),'Live selection');
   setText(byId('signalLine'),'—');
   setText(byId('lockedOdds'),'—');
+  setText(byId('oddsSource'),'—');
   setText(byId('entryScore'),'—');
   setText(byId('detectedMinute'),'—');
   setText(byId('detectedTime'),'—');
@@ -145,6 +153,7 @@ function applyCenter(){
   setText(byId('marketName'),marketLabel(record));
   setText(byId('signalLine'),lineLabel(record));
   setText(byId('lockedOdds'),oddsLabel(record));
+  setText(byId('oddsSource'),bookmakerLabel(record));
   setText(byId('entryScore'),scoreLabel(record.entryScore));
   setText(byId('detectedMinute'),minuteLabel(record));
   setText(byId('detectedTime'),timeLabel(record));
