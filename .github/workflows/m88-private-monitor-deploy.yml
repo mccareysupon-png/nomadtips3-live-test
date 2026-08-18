@@ -6,6 +6,11 @@ on:
     paths:
       - "m88-private-monitor/**"
       - ".github/workflows/m88-private-monitor-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "m88-private-monitor/**"
+      - ".github/workflows/m88-private-monitor-deploy.yml"
   workflow_dispatch:
 
 permissions:
