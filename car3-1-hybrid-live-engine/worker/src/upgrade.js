@@ -136,7 +136,7 @@ export function mergeCoreStats(match,detailStats){
 
 export function isStructuredCoreBaseline(match){return Boolean(match&&match.coreStatsProvenance==='DETAIL_IN_STRUCTURED'&&coreStatsCompleteLocal(match.stats));}
 
-const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0});
+const pair=(obj,key)=>({home:number(obj?.[key]?.home)||0,away:number(obj?.[key]?.away)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0});
 const delta=(cur,prev,key)=>{const c=pair(cur.stats,key),p=pair(prev?.stats,key);return{home:c.home-p.home,away:c.away-p.away};};
 const sideOf=d=>d.home>d.away?'HOME':d.away>d.home?'AWAY':null;
 export function deriveActivity(current,previous){
@@ -158,21 +158,26 @@ async function sourceText(url,seconds){
 function pressure(stats,w){let h=0,a=0;for(const [k,wt] of Object.entries(w||{})){h+=(number(stats?.[k]?.home)||0)*wt;a+=(number(stats?.[k]?.away)||0)*wt;}const t=Math.max(.0001,h+a);return{home:Math.round(h/t*100),away:Math.round(a/t*100)};}
 function selectedSide(match,config,p){if(config.side==='HOME')return'HOME';if(config.side==='AWAY')return'AWAY';return p.away>p.home?'AWAY':'HOME';}
 function engineSidePair(obj,side){return side==='AWAY'?{selected:number(obj?.away)||0,opponent:number(obj?.home)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0};}
+export function selectedAhLineForSide(homePerspectiveLine,side){const line=number(homePerspectiveLine);if(line===null)return null;return String(side||'HOME').toUpperCase()==='AWAY'?-line:line;}
+export function marketSelectionFromLiveOdds(liveOdds,market,side,ouDirection='OVER',fallbackOuLine=null){
+  if(!liveOdds)return{line:null,odds:null};
+  if(market==='WIN')return{line:null,odds:liveOdds.oneXtwo?.[side==='AWAY'?'away':'home']??null};
+  if(market==='AH')return{line:selectedAhLineForSide(liveOdds.asianHandicap?.line,side),odds:liveOdds.asianHandicap?.[side==='AWAY'?'away':'home']??null};
+  return{line:liveOdds.overUnder?.line??fallbackOuLine,odds:liveOdds.overUnder?.[ouDirection==='OVER'?'over':'under']??null};
+}
 function baselineFor(matchId,side,snapshots,config,current){for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!isStructuredCoreBaseline(f))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};}
-function evaluateWithLiveOdds(match,config,snapshots){
+function evaluateWithLiveOdds(match,config,snapshots,liveOdds){
   const p=pressure(match.stats,config.momentumWeights),side=selectedSide(match,config,p),selMomentum=side==='AWAY'?p.away:p.home;
   const base=baselineFor(match.sourceMatchId,side,snapshots,config,match.stats),cur={dangerous:engineSidePair(match.stats.dangerous_attacks,side).selected,shots:engineSidePair(match.stats.shots,side).selected,sot:engineSidePair(match.stats.shots_on_target,side).selected,corners:engineSidePair(match.stats.corners,side).selected};
   const evidence={dangerous:cur.dangerous-base.dangerous,shots:cur.shots-base.shots,sot:cur.sot-base.sot,corners:cur.corners-base.corners};
   const evRules=[[config.attackEvidenceDangerousAttacksEnabled,evidence.dangerous,config.attackEvidenceDangerousAttacksMin],[config.attackEvidenceShotsEnabled,evidence.shots,config.attackEvidenceShotsMin],[config.attackEvidenceShotsOnTargetEnabled,evidence.sot,config.attackEvidenceShotsOnTargetMin],[config.attackEvidenceCornersEnabled,evidence.corners,config.attackEvidenceCornersMin]].filter(r=>r[0]);
   const passed=evRules.filter(r=>r[1]>=r[2]).length,required=config.attackEvidenceRequirement==='ALL'?evRules.length:Number(config.attackEvidenceRequirement),score=engineSidePair(match.score,side),red=engineSidePair(match.stats.red_cards,side),goalGap=Math.abs(score.selected-score.opponent);
-  let line=null,odds=null;
-  if(config.market==='WIN')odds=match.odds?.oneXtwo?.[side==='AWAY'?'away':'home']??null;
-  else if(config.market==='AH'){line=match.odds?.asianHandicap?.line??null;odds=match.odds?.asianHandicap?.[side==='AWAY'?'away':'home']??null;}
-  else{line=match.odds?.overUnder?.line??config.ouLine;odds=match.odds?.overUnder?.[config.ouDirection==='OVER'?'over':'under']??null;}
+  const marketSelection=marketSelectionFromLiveOdds(liveOdds,config.market,side,config.ouDirection,config.ouLine),line=marketSelection.line,odds=marketSelection.odds;
   const oddsOk=number(odds)!==null&&number(odds)>=config.oddsMin&&(config.oddsMax===null||number(odds)<=config.oddsMax);
   const ahOk=config.market!=='AH'||(line!==null&&line>=config.ahMin&&(config.ahMax===null||line<=config.ahMax));
   const redOk=config.redCardPolicy==='ALLOW'||(config.redCardPolicy==='REJECT_SELECTED'?red.selected===0:(red.selected===0&&red.opponent===0));
-  const gates=[['MINUTE',match.minute>=config.minuteMin&&match.minute<=config.minuteMax,`${config.minuteMin}-${config.minuteMax}'`],['CORE STATS',!config.requireCoreStats||match.coreStatsComplete,match.coreStatsComplete?'complete':'partial'],['MARKET / ODDS',oddsOk&&ahOk,odds===null?'waiting live odds':`${config.market} @ ${odds}`],['MOMENTUM',selMomentum>=config.momentumMin,`${selMomentum}% / ≥${config.momentumMin}%`],['EVIDENCE',!config.attackEvidenceEnabled||passed>=required,`${passed}/${evRules.length} · need ${config.attackEvidenceRequirement}`],['GOAL GAP',!config.goalGapLimited||goalGap<=config.maxGoalGap,`${goalGap} / max ${config.maxGoalGap}`],['RED CARD',redOk,`${red.selected}-${red.opponent}`],['SOURCE',match.coreStatsComplete?100>=config.matchConfidenceMin:70>=config.matchConfidenceMin,match.coreStatsComplete?'100%':'70%']];
+  const marketDetail=odds===null?'waiting live odds':config.market==='AH'?`AH ${line>=0?'+':''}${line} @ ${odds}`:`${config.market} @ ${odds}`;
+  const gates=[['MINUTE',match.minute>=config.minuteMin&&match.minute<=config.minuteMax,`${config.minuteMin}-${config.minuteMax}'`],['CORE STATS',!config.requireCoreStats||match.coreStatsComplete,match.coreStatsComplete?'complete':'partial'],['MARKET / ODDS',oddsOk&&ahOk,marketDetail],['MOMENTUM',selMomentum>=config.momentumMin,`${selMomentum}% / ≥${config.momentumMin}%`],['EVIDENCE',!config.attackEvidenceEnabled||passed>=required,`${passed}/${evRules.length} · need ${config.attackEvidenceRequirement}`],['GOAL GAP',!config.goalGapLimited||goalGap<=config.maxGoalGap,`${goalGap} / max ${config.maxGoalGap}`],['RED CARD',redOk,`${red.selected}-${red.opponent}`],['SOURCE',match.coreStatsComplete?100>=config.matchConfidenceMin:70>=config.matchConfidenceMin,match.coreStatsComplete?'100%':'70%']];
   const pass=gates.every(g=>g[1]);
   return{decision:pass?'SHADOW SIGNAL':selMomentum>=Math.max(1,config.momentumMin-7)?'NEAR':'WATCH',reason:pass?`confirmation ${config.confirmationRounds} rounds required`:'one or more gates not ready',side,momentum:selMomentum,evidence,gates,line,odds,entryScore:{home:match.score.home,away:match.score.away}};
 }
@@ -208,14 +213,14 @@ export class Car31State extends BaseCar31State{
         const merged=mergeCoreStats(match,detailStats);
         if(merged.applied.length)detailAppliedMatches++;
         if(merged.structuredComplete)structuredCompleteMatches++;
-        const liveOdds=oddsMap.get(id);
+        const liveOdds=oddsMap.get(id)||null;
         if(liveOdds){match.odds=liveOdds;oddsMatched++;}
-        const engine=evaluateWithLiveOdds(match,config,snapshots),baseKey=`${match.sourceMatchId}:${engine.side}:${config.market}`,key=providerCompanyId===8?baseKey:`${baseKey}:bookmaker:${providerCompanyId}`;
+        const engine=evaluateWithLiveOdds(match,config,snapshots,liveOdds),baseKey=`${match.sourceMatchId}:${engine.side}:${config.market}`,key=providerCompanyId===8?baseKey:`${baseKey}:bookmaker:${providerCompanyId}`;
         advanceConfirmationStreak(confirmationStreaks,key,engine.decision==='SHADOW SIGNAL');
         const dailyBlocked=config.signalLimitEnabled&&todayCount+newCount>=config.maxSignalsPerDay,existing=history.some(r=>r.key===key);
         if(!existing&&!dailyBlocked&&confirmationStreaks[key]>=config.confirmationRounds){
           const selectedTeam=engine.side==='AWAY'?match.away:match.home;
-          history.push({key,id:match.sourceMatchId,selectionDate:today,selectedAt:at,league:match.league,home:match.home,away:match.away,selectedSide:engine.side,selectedTeam,entryMinute:match.minute,entryScore:{...match.score},market:config.market,line:engine.line,odds:engine.odds,bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:oddsSourceLabel(config),ouDirection:config.ouDirection,momentum:engine.momentum,evidence:engine.evidence,kickoffUtc:match.kickoffUtc,status:'PENDING',ftStatus:null,settledAt:null,finalScore:null,result:'PENDING'});
+          history.push({key,id:match.sourceMatchId,selectionDate:today,selectedAt:at,league:match.league,home:match.home,away:match.away,selectedSide:engine.side,selectedTeam,entryMinute:match.minute,entryScore:{...match.score},market:config.market,line:engine.line,selectedLine:config.market==='AH'?engine.line:null,linePerspective:config.market==='AH'?'SELECTED':null,odds:engine.odds,bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsSource:oddsSourceLabel(config),ouDirection:config.ouDirection,momentum:engine.momentum,evidence:engine.evidence,kickoffUtc:match.kickoffUtc,status:'PENDING',ftStatus:null,settledAt:null,finalScore:null,result:'PENDING'});
           newCount++;
         }
         match.engine={...engine,streak:confirmationStreaks[key]||0,dailyBlocked,bookmakerCompanyId:providerCompanyId,bookmaker:providerName};
@@ -228,7 +233,7 @@ export class Car31State extends BaseCar31State{
       }
       while(history.length>5000)history.shift();
       const matchCount=(latest.matches||[]).length,coreStatsReady=(latest.matches||[]).filter(m=>m.coreStatsComplete).length;
-      latest.oddsPipe={status:'DIRECT',feed:oddsSourceLabel(config),bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsMatched,matchCount,evaluatedAfterOdds:true,at};
+      latest.oddsPipe={status:'DIRECT',feed:oddsSourceLabel(config),bookmakerCompanyId:providerCompanyId,bookmaker:providerName,oddsMatched,matchCount,evaluatedAfterOdds:true,strictLiveOdds:true,selectedAhPerspective:true,at};
       latest.coreStatsPipe={status:detailInResult.ok?'DIRECT':'ERROR',feed:'detailIn.js',detailMatched,filledMatches:detailAppliedMatches,structuredMatches:detailAppliedMatches,structuredCompleteMatches,coreStatsReady,matchCount,error:detailInResult.ok?null:detailInResult.error,at};
       await this.state.storage.put('latest',latest);
       await this.state.storage.put('history',history);
@@ -237,7 +242,7 @@ export class Car31State extends BaseCar31State{
       await this.state.storage.put('coreStatsPipe',latest.coreStatsPipe);
       return json({ok:true,...latest,cycleMs:basePayload.cycleMs??null,historyTotal:history.length,newSignals:newCount,oddsPipe:latest.oddsPipe,coreStatsPipe:latest.coreStatsPipe});
     }catch(error){
-      const pipe={status:'ERROR',error:String(error?.message||error),evaluatedAfterOdds:false,at};
+      const pipe={status:'ERROR',error:String(error?.message||error),evaluatedAfterOdds:false,strictLiveOdds:true,at};
       await this.state.storage.put('oddsPipe',pipe);
       return baseResponse;
     }
