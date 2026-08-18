@@ -51,28 +51,24 @@ jobs:
 
       - name: Smoke test preview
         id: smoke
+        continue-on-error: true
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const base=process.env.PREVIEW_URL, stamp=Date.now();
-          const getText=async p=>{const r=await fetch(base+p+(p.includes('?')?'&':'?')+'t='+stamp,{cache:'no-store'});return{r,text:await r.text()}};
-          const root=await getText('/');
-          if(!root.r.ok||!root.text.includes('Signal Detector')||!root.text.includes('MELBET DIRECT'))throw new Error('detector page failed');
-          const stats=await getText('/statistics');
-          if(!stats.r.ok||!stats.text.includes('Statistics'))throw new Error('statistics page failed');
-          const settings=await getText('/settings');
-          if(!settings.r.ok||!settings.text.includes('Settings')||!settings.text.includes('Momentum weights'))throw new Error('settings page failed');
-          const health=await fetch(base+'/health?t='+stamp,{cache:'no-store'}).then(r=>r.json());
-          if(!health.ok||health.source!=='MELBET_DIRECT'||health.mode!=='DIRECT_MELBET')throw new Error('health contract failed');
-          const config=await fetch(base+'/config?t='+stamp,{cache:'no-store'}).then(r=>r.json());
-          if(!config.ok||!config.config||config.config.minuteMin!==60||config.config.minuteMax!==80)throw new Error('config contract failed');
-          const hist=await fetch(base+'/history?page=1&limit=25&t='+stamp,{cache:'no-store'}).then(r=>r.json());
-          if(!hist.ok||hist.historyStorage!=='MELBET_SQLITE_HISTORY_V1'||!Array.isArray(hist.records))throw new Error('history contract failed');
-          const live=await fetch(base+'/live?t='+stamp,{cache:'no-store'}).then(r=>r.json());
-          if(live.source!=='MELBET_DIRECT'||!Array.isArray(live.matches))throw new Error('live contract failed');
-          fs.mkdirSync('.deploy-status',{recursive:true});
-          fs.writeFileSync('.deploy-status/melbet-preview.json',JSON.stringify({deploy:'success',smoke:'success',previewUrl:base,liveOk:!!live.ok,liveError:live.error||null,liveMatches:live.matches.length,sourceHealth:live.sourceHealth||null,generatedAt:live.generatedAt||null},null,2));
-          console.log(JSON.stringify({liveOk:live.ok,liveError:live.error,liveMatches:live.matches.length,sourceHealth:live.sourceHealth},null,2));
+          const diag={deploy:'success',smoke:'failed',previewUrl:base,stage:null,error:null};
+          const save=()=>{fs.mkdirSync('.deploy-status',{recursive:true});fs.writeFileSync('.deploy-status/melbet-preview.json',JSON.stringify(diag,null,2))};
+          try{
+            const getText=async p=>{const r=await fetch(base+p+(p.includes('?')?'&':'?')+'t='+stamp,{cache:'no-store'});return{r,text:await r.text()}};
+            diag.stage='detector'; const root=await getText('/'); if(!root.r.ok||!root.text.includes('Signal Detector')||!root.text.includes('MELBET DIRECT'))throw new Error(`detector ${root.r.status}`);
+            diag.stage='statistics'; const stats=await getText('/statistics'); if(!stats.r.ok||!stats.text.includes('Statistics'))throw new Error(`statistics ${stats.r.status}`);
+            diag.stage='settings'; const settings=await getText('/settings'); if(!settings.r.ok||!settings.text.includes('Settings')||!settings.text.includes('Momentum weights'))throw new Error(`settings ${settings.r.status}`);
+            diag.stage='health'; const health=await fetch(base+'/health?t='+stamp,{cache:'no-store'}).then(async r=>({status:r.status,body:await r.text()})); let h;try{h=JSON.parse(health.body)}catch{throw new Error(`health non-json ${health.status}: ${health.body.slice(0,180)}`)} if(!h.ok||h.source!=='MELBET_DIRECT'||h.mode!=='DIRECT_MELBET')throw new Error(`health contract ${health.status}: ${health.body.slice(0,240)}`);
+            diag.stage='config'; const cr=await fetch(base+'/config?t='+stamp,{cache:'no-store'}); const cb=await cr.text(); let c;try{c=JSON.parse(cb)}catch{throw new Error(`config non-json ${cr.status}: ${cb.slice(0,180)}`)} if(!c.ok||!c.config||c.config.minuteMin!==60||c.config.minuteMax!==80)throw new Error(`config contract ${cr.status}: ${cb.slice(0,240)}`);
+            diag.stage='history'; const hr=await fetch(base+'/history?page=1&limit=25&t='+stamp,{cache:'no-store'}); const hb=await hr.text(); let hist;try{hist=JSON.parse(hb)}catch{throw new Error(`history non-json ${hr.status}: ${hb.slice(0,180)}`)} if(!hist.ok||hist.historyStorage!=='MELBET_SQLITE_HISTORY_V1'||!Array.isArray(hist.records))throw new Error(`history contract ${hr.status}: ${hb.slice(0,240)}`);
+            diag.stage='live'; const lr=await fetch(base+'/live?t='+stamp,{cache:'no-store'}); const lb=await lr.text(); let live;try{live=JSON.parse(lb)}catch{throw new Error(`live non-json ${lr.status}: ${lb.slice(0,180)}`)} if(live.source!=='MELBET_DIRECT'||!Array.isArray(live.matches))throw new Error(`live contract ${lr.status}: ${lb.slice(0,300)}`);
+            Object.assign(diag,{smoke:'success',stage:'complete',liveOk:!!live.ok,liveError:live.error||null,liveMatches:live.matches.length,sourceHealth:live.sourceHealth||null,generatedAt:live.generatedAt||null}); save();
+          }catch(e){diag.error=String(e?.message||e);save();process.exitCode=1}
           NODE
 
       - name: Persist diagnostics
@@ -80,10 +76,14 @@ jobs:
         run: |
           if [ ! -f .deploy-status/melbet-preview.json ]; then
             mkdir -p .deploy-status
-            printf '{"deploy":"%s","smoke":"failed","previewUrl":"%s"}\n' "${{ steps.deploy.outcome }}" "$PREVIEW_URL" > .deploy-status/melbet-preview.json
+            printf '{"deploy":"%s","smoke":"failed","stage":"before-smoke","previewUrl":"%s"}\n' "${{ steps.deploy.outcome }}" "$PREVIEW_URL" > .deploy-status/melbet-preview.json
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .deploy-status/melbet-preview.json
           git commit -m "Record MelBet preview diagnostics" || exit 0
           git push
+
+      - name: Fail if smoke failed
+        if: steps.smoke.outcome != 'success'
+        run: exit 1
