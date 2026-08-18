@@ -7,6 +7,10 @@ on:
     paths:
       - 'car-x1-1xbet-detector/**'
       - '.github/workflows/car-x1-1xbet-preview-deploy.yml'
+  pull_request:
+    paths:
+      - 'car-x1-1xbet-detector/**'
+      - '.github/workflows/car-x1-1xbet-preview-deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -72,7 +76,8 @@ jobs:
           console.log('X1 preview smoke tests: OK');
           NODE
 
-      - name: Record successful deployment
+      - name: Record successful push deployment
+        if: github.event_name == 'push'
         run: |
           mkdir -p .deploy-status
           cat > .deploy-status/x1-preview.json <<EOF
