@@ -3,9 +3,14 @@
   const safe=v=>String(v??'').trim();
   const n=v=>{if(v===null||v===undefined||v==='')return null;const x=Number(v);return Number.isFinite(x)?x:null};
   const norm=s=>safe(s).toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9À-žก-๙]+/gi,' ').replace(/\s+/g,' ').trim();
+  const rawText=m=>{
+    let raw='';
+    try{raw=JSON.stringify(m?.raw??'').slice(0,5000)}catch{}
+    return [m?.sport,m?.league,m?.home,m?.away,m?.status,m?.market,m?.selection,m?.sourceUrl,m?.sourceKind,raw].map(safe).join(' ').toLowerCase();
+  };
   const badSport=m=>{
-    const t=[m.sport,m.league,m.home,m.away].map(safe).join(' ').toLowerCase();
-    return /(e\s*-?sports?|virtual|simulat|efootball|e-football|fifa\s*\d*|cyber|basketball|tennis|volleyball|baseball|hockey|table tennis|badminton|cricket|snooker|darts|handball|rugby|boxing|mma|motorsport)/i.test(t);
+    const t=rawText(m);
+    return /(e\s*-?sports?|virtual(?:\s+(?:football|soccer|sports?))?|simulat(?:ed|ion)?|simulated\s+reality|\bsrl\b|efootball|e-football|e-soccer|esoccer|fifa\s*\d*|cyber|battle\s*\d|gt\s*league|short\s*football|basketball|tennis|volleyball|baseball|ice hockey|hockey|table tennis|badminton|cricket|snooker|darts|handball|rugby|boxing|mma|formula|motorsport)/i.test(t);
   };
   const liveNetwork=m=>{
     if(badSport(m))return false;
@@ -41,8 +46,9 @@
       const network=data.matches.filter(m=>m?.sourceKind!=='dom-fallback'&&liveNetwork(m));
       const dom=data.matches.filter(m=>m?.sourceKind==='dom-fallback'&&liveDom(m));
       // Network payload is authoritative when available. DOM is only a last-resort fallback.
+      // Virtual/eSports markers are checked across normalized fields, source URL and raw payload.
       const chosen=dedupe(network.length?network:dom);
-      const body=JSON.stringify({...data,mode:'strict-live-football-v5',serverMatchCount:data.matchCount??data.matches.length,networkLiveCount:dedupe(network).length,domFallbackCount:dedupe(dom).length,matchCount:chosen.length,matches:chosen});
+      const body=JSON.stringify({...data,mode:'strict-real-live-football-v6',serverMatchCount:data.matchCount??data.matches.length,networkLiveCount:dedupe(network).length,domFallbackCount:dedupe(dom).length,matchCount:chosen.length,matches:chosen});
       const headers=new Headers(response.headers);headers.set('content-type','application/json; charset=utf-8');headers.set('cache-control','no-store');
       return new Response(body,{status:response.status,statusText:response.statusText,headers});
     }catch{return response;}
