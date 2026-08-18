@@ -1,0 +1,49 @@
+name: Probe MelBet Live Feed Shape
+
+on:
+  push:
+    branches:
+      - work/melbet-car35-detector
+    paths:
+      - '.github/workflows/melbet-shape-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Probe MelBet JSON
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const url='https://my.melbet.com/service-api/LiveFeed/Get1x2_VZip?sports=1&count=5&lng=en&mode=4&getEmpty=true';
+          const r=await fetch(url,{headers:{accept:'application/json,text/plain,*/*','user-agent':'Mozilla/5.0'}});
+          const text=await r.text();
+          let data=null; try{data=JSON.parse(text)}catch{}
+          const event=Array.isArray(data?.Value)?data.Value[0]:null;
+          const summarize=(v,depth=0)=>{
+            if(depth>3)return typeof v;
+            if(Array.isArray(v))return {type:'array',length:v.length,sample:v.slice(0,8).map(x=>summarize(x,depth+1))};
+            if(v&&typeof v==='object'){
+              const out={}; for(const k of Object.keys(v).slice(0,80)) out[k]=summarize(v[k],depth+1); return out;
+            }
+            return v;
+          };
+          const out={status:r.status,contentType:r.headers.get('content-type'),success:data?.Success,eventCount:Array.isArray(data?.Value)?data.Value.length:0,eventKeys:event?Object.keys(event):[],eventSummary:event?summarize(event):null,rawEvent:event};
+          fs.mkdirSync('.deploy-status',{recursive:true});
+          fs.writeFileSync('.deploy-status/melbet-shape.json',JSON.stringify(out,null,2));
+          NODE
+      - name: Persist probe
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .deploy-status/melbet-shape.json
+          git commit -m "Record MelBet feed shape" || exit 0
+          git push
