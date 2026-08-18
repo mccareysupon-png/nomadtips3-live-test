@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -89,3 +89,22 @@ jobs:
             'bundleReports':p.get('bundleReports')
           },ensure_ascii=False,indent=2))
           PY
+
+      - name: Save latest probe result to feature branch
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: feature/m88-private-monitor-20260818
+        run: |
+          SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json?ref=$TARGET_BRANCH" --jq .sha 2>/dev/null || true)
+          CONTENT=$(base64 -w0 /tmp/m88-probe.json)
+          if [ -n "$SHA" ]; then
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json" \
+              -f message='M88 probe: refresh latest public source discovery' \
+              -f content="$CONTENT" -f branch="$TARGET_BRANCH" -f sha="$SHA" >/dev/null
+          else
+            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json" \
+              -f message='M88 probe: save latest public source discovery' \
+              -f content="$CONTENT" -f branch="$TARGET_BRANCH" >/dev/null
+          fi
