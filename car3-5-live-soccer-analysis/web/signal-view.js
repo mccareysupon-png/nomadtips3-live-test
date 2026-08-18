@@ -44,7 +44,11 @@ function oddsLabel(record){
 function bookmakerLabel(record){
   const value=record?.bookmaker??record?.bookmakerName??record?.oddsBookmaker;
   const label=String(value??'').trim();
-  return label||'—';
+  if(label)return label;
+  const companyId=Number(record?.bookmakerCompanyId);
+  if(companyId===8)return'Bet365';
+  if(companyId===50)return'1xBet';
+  return'—';
 }
 
 function scoreLabel(score){
