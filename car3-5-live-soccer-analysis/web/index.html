@@ -13,5 +13,28 @@
 <section class="soft-card stats-card"><div class="card-head"><b>Live statistics</b><small>Home vs Away</small></div><div id="statsRows" class="stats-rows"></div></section><section class="soft-card graph-card"><div class="card-head"><b>Momentum</b><small>Engine pressure history</small></div><svg id="momentumChart" viewBox="0 0 800 220" preserveAspectRatio="none" aria-label="Momentum graph"></svg></section><section class="soft-card events-card"><div class="card-head"><b>Live events</b><small id="eventCount">0 events</small></div><div id="eventList" class="event-list"></div></section></div></section></div>
 </main>
 <nav class="bottom-nav" aria-label="Main navigation"><a class="active" href="./index.html"><span>●</span>Live</a><a href="./statistics.html"><span>⌁</span>Statistics</a><a href="./alerts.html"><span>◉</span>Live alerts</a></nav>
-<script type="module" src="./app.js"></script><script type="module" src="./signal-view.js"></script><script type="module" src="./goaloo-animation.js"></script>
+<script type="module" src="./app.js"></script>
+<script>
+(()=>{
+  const mobile=window.matchMedia('(max-width:1023px)');
+  const layout=document.getElementById('liveLayout');
+  const scoreCard=document.querySelector('.score-card');
+  if(!layout||!scoreCard)return;
+  const collapseMatchCenter=()=>{
+    if(!mobile.matches||!layout.classList.contains('match-open'))return;
+    layout.classList.remove('match-open');
+  };
+  scoreCard.addEventListener('click',collapseMatchCenter);
+  scoreCard.addEventListener('keydown',event=>{
+    if((event.key==='Enter'||event.key===' ')&&mobile.matches&&layout.classList.contains('match-open')){
+      event.preventDefault();
+      collapseMatchCenter();
+    }
+  });
+  scoreCard.setAttribute('role','button');
+  scoreCard.setAttribute('tabindex','0');
+  scoreCard.setAttribute('aria-label','Collapse match center');
+})();
+</script>
+<script type="module" src="./signal-view.js"></script><script type="module" src="./goaloo-animation.js"></script>
 </body></html>
