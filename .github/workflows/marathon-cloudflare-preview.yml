@@ -7,6 +7,11 @@ on:
     paths:
       - "marathon-engine/worker/**"
       - ".github/workflows/marathon-cloudflare-preview.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "marathon-engine/worker/**"
+      - ".github/workflows/marathon-cloudflare-preview.yml"
   workflow_dispatch:
 
 permissions:
