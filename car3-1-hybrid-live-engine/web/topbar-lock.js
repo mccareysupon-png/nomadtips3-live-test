@@ -44,9 +44,9 @@ function ensurePaymentRoute(){
   let link=[...nav.querySelectorAll('a')].find(a=>String(a.textContent||'').trim().toUpperCase()==='PAYMENT');
   if(!link){
     link=document.createElement('a');
-    link.textContent='PAYMENT';
     nav.appendChild(link);
   }
+  link.textContent='Payment';
   link.setAttribute('href',paymentHrefForCurrentPage());
 }
 
