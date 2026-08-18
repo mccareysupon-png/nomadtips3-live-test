@@ -10,7 +10,7 @@
   };
   const badSport=m=>{
     const t=rawText(m);
-    return /(e\s*-?sports?|virtual(?:\s+(?:football|soccer|sports?))?|simulat(?:ed|ion)?|simulated\s+reality|\bsrl\b|efootball|e-football|e-soccer|esoccer|fifa\s*\d*|cyber|battle\s*\d|gt\s*league|short\s*football|basketball|tennis|volleyball|baseball|ice hockey|hockey|table tennis|badminton|cricket|snooker|darts|handball|rugby|boxing|mma|formula|motorsport)/i.test(t);
+    return /(เสมือนจริง|กีฬาเสมือนจริง|ฟุตบอลเสมือนจริง|e\s*-?sports?|virtual(?:\s+(?:football|soccer|sports?))?|simulat(?:ed|ion)?|simulated\s+reality|\bsrl\b|efootball|e-football|e-soccer|esoccer|fifa\s*\d*|cyber|battle\s*\d|gt\s*league|short\s*football|basketball|tennis|volleyball|baseball|ice hockey|hockey|table tennis|badminton|cricket|snooker|darts|handball|rugby|boxing|mma|formula|motorsport)/i.test(t);
   };
   const liveNetwork=m=>{
     if(badSport(m))return false;
@@ -46,9 +46,10 @@
       const network=data.matches.filter(m=>m?.sourceKind!=='dom-fallback'&&liveNetwork(m));
       const dom=data.matches.filter(m=>m?.sourceKind==='dom-fallback'&&liveDom(m));
       // Network payload is authoritative when available. DOM is only a last-resort fallback.
-      // Virtual/eSports markers are checked across normalized fields, source URL and raw payload.
+      // Virtual/eSports markers are checked across normalized fields, source URL and raw payload,
+      // including Thai labels such as "เสมือนจริง".
       const chosen=dedupe(network.length?network:dom);
-      const body=JSON.stringify({...data,mode:'strict-real-live-football-v6',serverMatchCount:data.matchCount??data.matches.length,networkLiveCount:dedupe(network).length,domFallbackCount:dedupe(dom).length,matchCount:chosen.length,matches:chosen});
+      const body=JSON.stringify({...data,mode:'strict-real-live-football-v7-thai-virtual-filter',serverMatchCount:data.matchCount??data.matches.length,networkLiveCount:dedupe(network).length,domFallbackCount:dedupe(dom).length,matchCount:chosen.length,matches:chosen});
       const headers=new Headers(response.headers);headers.set('content-type','application/json; charset=utf-8');headers.set('cache-control','no-store');
       return new Response(body,{status:response.status,statusText:response.statusText,headers});
     }catch{return response;}
