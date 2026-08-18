@@ -1,0 +1,89 @@
+name: Deploy MelBet CAR35 Preview
+
+on:
+  push:
+    branches:
+      - work/melbet-car35-detector
+    paths:
+      - 'melbet-car35-detector/**'
+      - '.github/workflows/melbet-car35-preview-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREVIEW_URL: https://nomadtips3-melbet-preview.mccarey-supon.workers.dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate source
+        run: |
+          node --check melbet-car35-detector/index.js
+          grep -q "MELBET_DIRECT" melbet-car35-detector/index.js
+          grep -q "Signal Detector" melbet-car35-detector/index.js
+          grep -q "Statistics" melbet-car35-detector/index.js
+          grep -q "Settings" melbet-car35-detector/index.js
+          grep -q "MELBET_STATE" melbet-car35-detector/wrangler.jsonc
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+
+      - name: Deploy preview
+        id: deploy
+        working-directory: melbet-car35-detector
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy
+
+      - name: Smoke test preview
+        id: smoke
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const base=process.env.PREVIEW_URL, stamp=Date.now();
+          const getText=async p=>{const r=await fetch(base+p+(p.includes('?')?'&':'?')+'t='+stamp,{cache:'no-store'});return{r,text:await r.text()}};
+          const root=await getText('/');
+          if(!root.r.ok||!root.text.includes('Signal Detector')||!root.text.includes('MELBET DIRECT'))throw new Error('detector page failed');
+          const stats=await getText('/statistics');
+          if(!stats.r.ok||!stats.text.includes('Statistics'))throw new Error('statistics page failed');
+          const settings=await getText('/settings');
+          if(!settings.r.ok||!settings.text.includes('Settings')||!settings.text.includes('Momentum weights'))throw new Error('settings page failed');
+          const health=await fetch(base+'/health?t='+stamp,{cache:'no-store'}).then(r=>r.json());
+          if(!health.ok||health.source!=='MELBET_DIRECT'||health.mode!=='DIRECT_MELBET')throw new Error('health contract failed');
+          const config=await fetch(base+'/config?t='+stamp,{cache:'no-store'}).then(r=>r.json());
+          if(!config.ok||!config.config||config.config.minuteMin!==60||config.config.minuteMax!==80)throw new Error('config contract failed');
+          const hist=await fetch(base+'/history?page=1&limit=25&t='+stamp,{cache:'no-store'}).then(r=>r.json());
+          if(!hist.ok||hist.historyStorage!=='MELBET_SQLITE_HISTORY_V1'||!Array.isArray(hist.records))throw new Error('history contract failed');
+          const live=await fetch(base+'/live?t='+stamp,{cache:'no-store'}).then(r=>r.json());
+          if(live.source!=='MELBET_DIRECT'||!Array.isArray(live.matches))throw new Error('live contract failed');
+          fs.mkdirSync('.deploy-status',{recursive:true});
+          fs.writeFileSync('.deploy-status/melbet-preview.json',JSON.stringify({deploy:'success',smoke:'success',previewUrl:base,liveOk:!!live.ok,liveError:live.error||null,liveMatches:live.matches.length,sourceHealth:live.sourceHealth||null,generatedAt:live.generatedAt||null},null,2));
+          console.log(JSON.stringify({liveOk:live.ok,liveError:live.error,liveMatches:live.matches.length,sourceHealth:live.sourceHealth},null,2));
+          NODE
+
+      - name: Persist diagnostics
+        if: always()
+        run: |
+          if [ ! -f .deploy-status/melbet-preview.json ]; then
+            mkdir -p .deploy-status
+            printf '{"deploy":"%s","smoke":"failed","previewUrl":"%s"}\n' "${{ steps.deploy.outcome }}" "$PREVIEW_URL" > .deploy-status/melbet-preview.json
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .deploy-status/melbet-preview.json
+          git commit -m "Record MelBet preview diagnostics" || exit 0
+          git push
