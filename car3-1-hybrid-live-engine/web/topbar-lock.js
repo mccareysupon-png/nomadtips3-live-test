@@ -30,6 +30,15 @@ function paymentHrefForCurrentPage(){
   return './payment.html';
 }
 
+function normalizeNavLabels(){
+  document.querySelectorAll('.nav a').forEach(link=>{
+    const label=String(link.textContent||'').trim().toUpperCase();
+    if(label==='LIVE SIGNALS')link.textContent='Live Signals';
+    if(label==='STATISTICS')link.textContent='Statistics';
+    if(label==='PAYMENT')link.textContent='Payment';
+  });
+}
+
 function lockCanonicalStatisticsRoute(){
   const href=statisticsHrefForCurrentPage();
   document.querySelectorAll('.nav a').forEach(link=>{
@@ -57,6 +66,7 @@ function syncTopbarOffset(){
 }
 
 installVisualLayer();
+normalizeNavLabels();
 lockCanonicalStatisticsRoute();
 ensurePaymentRoute();
 syncTopbarOffset();
