@@ -26,8 +26,8 @@ function statisticsHrefForCurrentPage(){
 
 function paymentHrefForCurrentPage(){
   const path=String(window.location.pathname||'').replace(/\\/g,'/').toLowerCase();
-  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return './payment.html';
-  return '../monitor/payment.html';
+  if(path.includes('/car3-1-hybrid-live-engine/monitor/'))return '../web/payment.html';
+  return './payment.html';
 }
 
 function lockCanonicalStatisticsRoute(){
