@@ -117,11 +117,11 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const base=process.env.PREVIEW_URL,stamp=Date.now();
-          const pages=[['root','/','Live soccer analysis'],['statistics','/statistics.html','CAR 3.5'],['alerts','/alerts.html','LINE alert subscription'],['owner','/owner-control.html','เงื่อนไขที่ใช้งานจริง']];
+          const pages=[['root','/','Live soccer analysis'],['statistics-route','/statistics','Loading statistics'],['statistics-file','/statistics.html','Loading statistics'],['alerts','/alerts.html','LINE alert subscription'],['owner','/owner-control.html','เงื่อนไขที่ใช้งานจริง']];
           const html={};
           for(const [name,path,needle] of pages){const r=await fetch(`${base}${path}?smoke=${stamp}`,{redirect:'follow',headers:{'cache-control':'no-cache'}}),text=await r.text();if(!r.ok||!text.includes(needle))throw new Error(`${name} failed: ${r.status}`);html[name]=text}
           if(!html.root.includes('id="signalList"')||!html.root.includes('id="mobileBack"'))throw new Error('Live interaction controls missing');
-          if(!html.statistics.includes('id="prevPage"')||!html.statistics.includes('id="nextPage"'))throw new Error('Statistics pagination controls missing');
+          if(!html['statistics-route'].includes('/statistics-v2.js?v=20260819-0601')||!html['statistics-route'].includes('id="prevPage"')||!html['statistics-route'].includes('id="nextPage"'))throw new Error('Statistics public route is not serving the current loader');
           if(!html.alerts.includes('membership/start')||!html.alerts.includes('./owner-control.html'))throw new Error('Alerts checkout/owner links missing');
           if(!html.owner.includes('id="reload"')||!html.owner.includes('id="save"')||!html.owner.includes('id="saveRun"'))throw new Error('Owner action controls missing');
           const payment=await fetch(`${base}/payment.html?smoke=${stamp}`,{redirect:'manual'});if(payment.ok)throw new Error('CAR 3.5 payment route still exists');
