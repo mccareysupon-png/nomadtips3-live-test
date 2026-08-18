@@ -36,36 +36,14 @@ function pickLabel(record){
   return record?.selectedTeam||record?.selectedSide||'—';
 }
 
-function oddsLabel(record){
-  const value=n(record?.odds);
-  return value===null?'—':value.toFixed(2);
-}
-
-function scoreLabel(score){
-  const home=n(score?.home),away=n(score?.away);
-  return home===null||away===null?'—':`${home}–${away}`;
-}
-
-function minuteLabel(record){
-  const minute=n(record?.entryMinute);
-  return minute===null?'—':`${Math.round(minute)}'`;
-}
-
-function timeLabel(record){
-  if(!record?.selectedAt)return'—';
-  const date=new Date(record.selectedAt);
-  if(!Number.isFinite(date.getTime()))return'—';
-  return date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-}
-
-function momentumLabel(record){
-  const value=n(record?.momentum);
-  return value===null?'—':`${Math.round(value)}%`;
-}
+function oddsLabel(record){const value=n(record?.odds);return value===null?'—':value.toFixed(2);}
+function scoreLabel(score){const home=n(score?.home),away=n(score?.away);return home===null||away===null?'—':`${home}–${away}`;}
+function minuteLabel(record){const minute=n(record?.entryMinute);return minute===null?'—':`${Math.round(minute)}'`;}
+function timeLabel(record){if(!record?.selectedAt)return'—';const date=new Date(record.selectedAt);if(!Number.isFinite(date.getTime()))return'—';return date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function momentumLabel(record){const value=n(record?.momentum);return value===null?'—':`${Math.round(value)}%`;}
 
 function compactMarket(record){
-  const market=String(record?.market||'').toUpperCase();
-  const line=lineLabel(record);
+  const market=String(record?.market||'').toUpperCase(),line=lineLabel(record);
   if(market==='AH')return`AH ${line}`;
   if(market==='OU')return`O/U ${line}`;
   if(market==='WIN')return'1X2';
@@ -84,11 +62,27 @@ function ensureSignalFacts(){
     <div><span>Detected time</span><b id="detectedTime">—</b></div>
     <div><span>Momentum</span><b id="confidence">—</b></div>`;
   if(!byId('signalViewResponsive')){
-    const style=document.createElement('style');
-    style.id='signalViewResponsive';
+    const style=document.createElement('style');style.id='signalViewResponsive';
     style.textContent=`.signal-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}.signal-facts div{min-width:0}.signal-facts b{overflow-wrap:anywhere}@media(min-width:700px){.signal-facts{grid-template-columns:repeat(3,minmax(0,1fr))!important}}@media(min-width:1024px){.signal-facts{grid-template-columns:repeat(4,minmax(0,1fr))!important}}`;
     document.head.appendChild(style);
   }
+}
+
+function scoreMinute(item){const text=item.querySelector('.minute')?.textContent||'';const value=parseInt(text,10);return Number.isFinite(value)?value:-1;}
+function listPriority(item){
+  const id=String(item.dataset.id||'');
+  if(lockedByMatch.has(id))return 0;
+  const pill=String(item.querySelector('.state-pill')?.textContent||'').toLowerCase();
+  if(pill.includes('signal')&&!pill.includes('near'))return 0;
+  if(pill.includes('near'))return 1;
+  return 2;
+}
+function keepSignalsOnTop(items){
+  const list=byId('signalList');if(!list||items.length<2)return;
+  const desired=[...items].sort((a,b)=>listPriority(a)-listPriority(b)||scoreMinute(b)-scoreMinute(a));
+  const current=items.map(item=>item.dataset.id).join('|'),next=desired.map(item=>item.dataset.id).join('|');
+  if(current===next)return;
+  for(const item of desired)list.appendChild(item);
 }
 
 function applyList(){
@@ -96,111 +90,56 @@ function applyList(){
   let confirmed=0;
   for(const item of items){
     const record=lockedByMatch.get(String(item.dataset.id));
-    const pill=item.querySelector('.state-pill');
-    const pick=item.querySelector('.pick-line');
-    const bottom=item.querySelectorAll('.signal-bottom span');
+    const pill=item.querySelector('.state-pill'),pick=item.querySelector('.pick-line'),bottom=item.querySelectorAll('.signal-bottom span');
     if(record){
       confirmed++;
-      setText(pill,'Signal active');setClass(pill,'state-pill signal');
-      setText(pick,pickLabel(record));
+      setText(pill,'Signal active');setClass(pill,'state-pill signal');setText(pick,pickLabel(record));
       if(bottom[0])setText(bottom[0],`${compactMarket(record)} · Odds ${oddsLabel(record)}`);
       if(bottom[1])setText(bottom[1],`Detected ${minuteLabel(record)} · Entry ${scoreLabel(record.entryScore)}`);
     }else if(pill&&/signal/i.test(pill.textContent||'')){
-      setText(pill,'Near signal');setClass(pill,'state-pill near');
-      setText(pick,'Monitoring');
+      setText(pill,'Near signal');setClass(pill,'state-pill near');setText(pick,'Monitoring');
       if(bottom[0])setText(bottom[0],'Waiting for confirmed signal');
       if(bottom[1])setText(bottom[1],'No locked record yet');
     }
   }
-  if(items.length){
-    setText(byId('signalCount'),confirmed);
-    setText(byId('watchCount'),Math.max(0,items.length-confirmed));
-  }
+  keepSignalsOnTop(items);
+  if(items.length){setText(byId('signalCount'),confirmed);setText(byId('watchCount'),Math.max(0,items.length-confirmed));}
 }
 
 function clearLockedCenter(){
-  const state=byId('decisionState');
-  if(state&&/signal/i.test(state.textContent||'')){
-    setText(state,'Near signal');setClass(state,'state-pill near');
-  }
-  setText(byId('pickValue'),'Monitoring');
-  setText(byId('marketName'),'—');
-  setText(byId('signalLine'),'—');
-  setText(byId('lockedOdds'),'—');
-  setText(byId('entryScore'),'—');
-  setText(byId('detectedMinute'),'—');
-  setText(byId('detectedTime'),'—');
-  setText(byId('confidence'),'—');
+  const state=byId('decisionState');if(state&&/signal/i.test(state.textContent||'')){setText(state,'Near signal');setClass(state,'state-pill near');}
+  setText(byId('pickValue'),'Monitoring');setText(byId('marketName'),'—');setText(byId('signalLine'),'—');setText(byId('lockedOdds'),'—');setText(byId('entryScore'),'—');setText(byId('detectedMinute'),'—');setText(byId('detectedTime'),'—');setText(byId('confidence'),'—');
 }
 
 function applyCenter(){
-  ensureSignalFacts();
-  const active=document.querySelector('.signal-item.active[data-id]');
-  if(!active){clearLockedCenter();return;}
-  const record=lockedByMatch.get(String(active.dataset.id));
-  if(!record){clearLockedCenter();return;}
-  const state=byId('decisionState');
-  setText(state,'Signal active');setClass(state,'state-pill signal');
-  setText(byId('pickValue'),pickLabel(record));
-  setText(byId('marketName'),marketLabel(record));
-  setText(byId('signalLine'),lineLabel(record));
-  setText(byId('lockedOdds'),oddsLabel(record));
-  setText(byId('entryScore'),scoreLabel(record.entryScore));
-  setText(byId('detectedMinute'),minuteLabel(record));
-  setText(byId('detectedTime'),timeLabel(record));
-  setText(byId('confidence'),momentumLabel(record));
+  ensureSignalFacts();const active=document.querySelector('.signal-item.active[data-id]');if(!active){clearLockedCenter();return;}
+  const record=lockedByMatch.get(String(active.dataset.id));if(!record){clearLockedCenter();return;}
+  const state=byId('decisionState');setText(state,'Signal active');setClass(state,'state-pill signal');setText(byId('pickValue'),pickLabel(record));setText(byId('marketName'),marketLabel(record));setText(byId('signalLine'),lineLabel(record));setText(byId('lockedOdds'),oddsLabel(record));setText(byId('entryScore'),scoreLabel(record.entryScore));setText(byId('detectedMinute'),minuteLabel(record));setText(byId('detectedTime'),timeLabel(record));setText(byId('confidence'),momentumLabel(record));
 }
 
-function apply(){
-  applyQueued=false;
-  applyList();
-  applyCenter();
-}
-
-function queueApply(){
-  if(applyQueued)return;
-  applyQueued=true;
-  setTimeout(apply,0);
-}
+function apply(){applyQueued=false;applyList();applyCenter();}
+function queueApply(){if(applyQueued)return;applyQueued=true;setTimeout(apply,0);}
 
 function buildLockedMap(payload){
   const records=Array.isArray(payload?.records)?payload.records:[];
-  const pending=records
-    .filter(record=>record&&!record.settledAt&&String(record.resultGroup||record.result||'PENDING').toUpperCase()==='PENDING')
-    .sort((a,b)=>Date.parse(b.selectedAt||0)-Date.parse(a.selectedAt||0));
+  const pending=records.filter(record=>record&&!record.settledAt&&String(record.resultGroup||record.result||'PENDING').toUpperCase()==='PENDING').sort((a,b)=>Date.parse(b.selectedAt||0)-Date.parse(a.selectedAt||0));
   const next=new Map();
-  for(const record of pending){
-    const ids=[record.id,record.sourceMatchId]
-      .filter(value=>value!==null&&value!==undefined&&String(value)!=='')
-      .map(String);
-    for(const id of ids)if(!next.has(id))next.set(id,record);
-  }
+  for(const record of pending){const ids=[record.id,record.sourceMatchId].filter(value=>value!==null&&value!==undefined&&String(value)!=='').map(String);for(const id of ids)if(!next.has(id))next.set(id,record);}
   lockedByMatch=next;
 }
 
 async function refreshLockedSignals(){
-  if(refreshing)return;
-  refreshing=true;
-  try{
-    const response=await fetch(`${WORKER}/history?page=1&limit=100&range=30D&t=${Date.now()}`,{cache:'no-store'});
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    buildLockedMap(await response.json());
-    queueApply();
-  }catch(error){
-    console.warn('Confirmed signal history unavailable',error);
-  }finally{refreshing=false;}
+  if(refreshing)return;refreshing=true;
+  try{const response=await fetch(`${WORKER}/history?page=1&limit=100&range=30D&t=${Date.now()}`,{cache:'no-store'});if(!response.ok)throw new Error(`HTTP ${response.status}`);buildLockedMap(await response.json());queueApply();}
+  catch(error){console.warn('Confirmed signal history unavailable',error)}finally{refreshing=false;}
 }
 
 function init(){
-  ensureSignalFacts();
-  const target=document.querySelector('.live-layout')||document.body;
+  ensureSignalFacts();const target=document.querySelector('.live-layout')||document.body;
   new MutationObserver(queueApply).observe(target,{childList:true,subtree:true});
   document.addEventListener('click',event=>{if(event.target.closest('.signal-item'))queueApply();});
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLockedSignals();});
-  window.addEventListener('online',refreshLockedSignals);
-  refreshLockedSignals();
-  setInterval(refreshLockedSignals,15000);
+  window.addEventListener('online',refreshLockedSignals);refreshLockedSignals();setInterval(refreshLockedSignals,15000);
 }
 
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});
-else init();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
