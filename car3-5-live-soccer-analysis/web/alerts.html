@@ -1,9 +1,34 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111315"><title>nomadtips3 — Live alerts</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./ui-fix.css"></head>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111315">
+  <title>nomadtips3 — Live alerts</title><link rel="stylesheet" href="./styles.css"><link rel="stylesheet" href="./ui-fix.css">
+</head>
 <body data-page="alerts">
-<header class="topbar"><a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a><div class="feed-state"><i></i><span id="feedState">Ready</span></div></header>
-<main class="page-shell"><section class="page-title"><h1>Live alerts</h1><p>This CAR 3.5 preview keeps analysis and alert presentation isolated from checkout and payment systems.</p></section><section class="plans"><article class="plan soft-card featured"><span class="kicker">Live signals</span><h2>Signal information</h2><ul><li>Qualified live match signals</li><li>Selected market and locked odds</li><li>Detected minute and entry score</li><li>Transparent result settlement</li><li>Statistics from the same CAR 3.5 archive</li></ul><a class="primary-btn" href="./index.html">Open live signals</a><p class="integration-note">No checkout or payment route is connected to this preview.</p></article><article class="plan soft-card"><span class="kicker">Owner</span><h2>Engine settings</h2><ul><li>Minute window</li><li>Market, line and odds filters</li><li>Momentum and evidence filters</li><li>Bookmaker source selection</li><li>Immediate scan after save</li></ul><a class="secondary-btn" href="./owner-control.html">Open engine settings</a><p class="integration-note">Settings are written directly to CAR 3.5 and read back for confirmation.</p></article></section></main>
+<header class="topbar"><a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a><div class="feed-state"><i></i><span id="feedState">Plans ready</span></div></header>
+<main class="page-shell">
+  <section class="page-title"><h1>Live alerts</h1><p>Choose LINE notifications, reserve a custom live engine, or open the CAR 3.5 engine settings.</p></section>
+  <section class="plans">
+    <article class="plan soft-card featured">
+      <span class="kicker">Live alerts</span><h2>LINE alert subscription</h2><div class="price">$20 <small>/ month</small></div>
+      <ul><li>Qualified live match alerts</li><li>Selected market and locked odds</li><li>Detected minute and entry score</li><li>Result notification</li><li>LINE Official Account delivery</li></ul>
+      <a class="primary-btn" href="https://nomadtips3-test-api.mccarey-supon.workers.dev/membership/start" data-integration="stripe-line">Continue to Stripe Checkout</a>
+      <p class="integration-note">Secure Stripe Checkout is hosted externally. After payment is verified, connect LINE with the activation code shown on the confirmation page.</p>
+    </article>
+    <article class="plan soft-card">
+      <span class="kicker">Pre-order</span><h2>Custom live engine</h2><div class="price">$200 <small>/ pre-order</small></div>
+      <ul><li>Private member settings page</li><li>Custom minute window</li><li>Market and odds filters</li><li>Confidence and league filters</li><li>Manual owner provisioning</li><li>30-day engine access when activated</li></ul>
+      <a class="secondary-btn" href="mailto:manualprototype@nomadtips3.com?subject=NOMADTIPS3%20Custom%20live%20engine">Contact by email</a>
+      <p class="integration-note">Contact: manualprototype@nomadtips3.com · Requirements and price are agreed before development begins.</p>
+    </article>
+    <article class="plan soft-card">
+      <span class="kicker">Owner</span><h2>Engine settings</h2>
+      <ul><li>Minute window and team side</li><li>Bookmaker, market, line and odds filters</li><li>Momentum and attack evidence</li><li>Goal gap, red card and data quality rules</li><li>Save settings directly to CAR 3.5</li><li>Save and scan immediately</li></ul>
+      <a class="secondary-btn" href="./owner-control.html">Open engine settings</a>
+      <p class="integration-note">No Owner key is required. Saved settings are read back from CAR 3.5 before the page confirms they are active.</p>
+    </article>
+  </section>
+</main>
 <nav class="bottom-nav"><a href="./index.html"><span>●</span>Live</a><a href="./statistics.html"><span>⌁</span>Statistics</a><a class="active" href="./alerts.html"><span>◉</span>Live alerts</a></nav>
 <script type="module" src="./app.js"></script>
 </body></html>
