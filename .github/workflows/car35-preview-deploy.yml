@@ -16,6 +16,7 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   PREVIEW_URL: https://nomadtips3-car35-preview.mccarey-supon.workers.dev
+  MEMBERSHIP_URL: https://nomadtips3-test-api.mccarey-supon.workers.dev
 
 jobs:
   validate-and-deploy:
@@ -77,6 +78,21 @@ jobs:
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Verify Stripe and LINE membership readiness
+        run: |
+          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
+          python - <<'PY'
+          import json
+          with open('/tmp/membership-health.json', encoding='utf-8') as f:
+              d=json.load(f)
+          assert d.get('ok') is True, 'membership health is not OK'
+          assert d.get('stripeWebhookConfigured') is True, 'Stripe webhook is not configured'
+          assert d.get('lineConfigured') is True, 'LINE messaging is not configured'
+          assert d.get('lineAddFriendConfigured') is True, 'LINE add-friend URL is not configured'
+          assert d.get('paymentLinkConfigured') is True, 'Stripe payment link is not configured'
+          print('Stripe + LINE membership readiness: OK')
+          PY
 
       - name: Deploy isolated CAR 3.5 preview
         uses: cloudflare/wrangler-action@v3
