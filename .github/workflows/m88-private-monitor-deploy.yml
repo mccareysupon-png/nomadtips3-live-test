@@ -23,7 +23,7 @@ env:
 jobs:
   validate-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v6
 
@@ -37,6 +37,7 @@ jobs:
           node --check src/index.js
           node --check web/app.js
           node --check local-server.mjs
+          node --check ci-browser-probe.mjs
           test -f package.json
           test -f start-m88.cmd
           test -f web/index.html
@@ -80,34 +81,37 @@ jobs:
           import json
           p=json.load(open('/tmp/m88-probe.json',encoding='utf-8'))
           print(json.dumps({
-            'source':p.get('source'),
-            'appUrl':p.get('appUrl'),
-            'fetchedUrl':p.get('fetchedUrl'),
-            'status':p.get('status'),
-            'ok':p.get('ok'),
-            'bytes':p.get('bytes'),
-            'scriptCount':p.get('scriptCount'),
-            'scripts':p.get('scripts'),
-            'candidates':p.get('candidates'),
-            'bundleReports':p.get('bundleReports')
+            'source':p.get('source'),'appUrl':p.get('appUrl'),'fetchedUrl':p.get('fetchedUrl'),
+            'status':p.get('status'),'ok':p.get('ok'),'bytes':p.get('bytes'),'scriptCount':p.get('scriptCount'),
+            'scripts':p.get('scripts'),'candidates':p.get('candidates'),'bundleReports':p.get('bundleReports')
           },ensure_ascii=False,indent=2))
           PY
 
-      - name: Save latest probe result to feature branch
+      - name: Chromium network probe from GitHub runner
+        continue-on-error: true
+        working-directory: m88-private-monitor
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          node ci-browser-probe.mjs
+
+      - name: Save latest probe results to feature branch
         if: github.event_name == 'push'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_BRANCH: feature/m88-private-monitor-20260818
         run: |
-          SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json?ref=$TARGET_BRANCH" --jq .sha 2>/dev/null || true)
-          CONTENT=$(base64 -w0 /tmp/m88-probe.json)
-          if [ -n "$SHA" ]; then
-            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json" \
-              -f message='M88 probe: refresh latest public source discovery' \
-              -f content="$CONTENT" -f branch="$TARGET_BRANCH" -f sha="$SHA" >/dev/null
-          else
-            gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/m88-probe-latest.json" \
-              -f message='M88 probe: save latest public source discovery' \
-              -f content="$CONTENT" -f branch="$TARGET_BRANCH" >/dev/null
-          fi
+          save_file () {
+            LOCAL="$1"; REMOTE="$2"; MESSAGE="$3"
+            [ -f "$LOCAL" ] || return 0
+            SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/$REMOTE?ref=$TARGET_BRANCH" --jq .sha 2>/dev/null || true)
+            CONTENT=$(base64 -w0 "$LOCAL")
+            if [ -n "$SHA" ]; then
+              gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$REMOTE" -f message="$MESSAGE" -f content="$CONTENT" -f branch="$TARGET_BRANCH" -f sha="$SHA" >/dev/null
+            else
+              gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/$REMOTE" -f message="$MESSAGE" -f content="$CONTENT" -f branch="$TARGET_BRANCH" >/dev/null
+            fi
+          }
+          save_file /tmp/m88-probe.json m88-probe-latest.json 'M88 probe: refresh server-side source discovery'
+          save_file m88-private-monitor/browser-probe-latest.json m88-browser-probe-latest.json 'M88 probe: refresh Chromium network discovery'
