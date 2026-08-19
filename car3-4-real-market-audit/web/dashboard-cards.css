@@ -1,0 +1,142 @@
+/* Dashboard card polish: visual-only overrides for Live and Statistics. */
+:root{
+  --dash-shell:linear-gradient(145deg,#1d3e2d 0%,#172c22 54%,#111a15 100%);
+  --dash-shell-soft:linear-gradient(145deg,#234b35 0%,#1a3327 52%,#142119 100%);
+  --dash-green-1:linear-gradient(145deg,#28533b 0%,#1e3c2c 55%,#16251c 100%);
+  --dash-green-2:linear-gradient(145deg,#244b36 0%,#1b3529 55%,#14221a 100%);
+  --dash-green-3:linear-gradient(145deg,#2e4e32 0%,#233729 55%,#182219 100%);
+  --dash-green-4:linear-gradient(145deg,#2c5b3d 0%,#21452f 55%,#17271d 100%);
+  --dash-yellow:#f2d21b;
+  --dash-yellow-soft:rgba(242,210,27,.24);
+  --dash-divider:rgba(204,225,208,.08);
+  --dash-inner:inset 0 1px 0 rgba(255,255,255,.035);
+  --dash-shadow:0 10px 24px rgba(0,0,0,.17);
+}
+
+/* Page 1: one summary sheet with smaller gradient cards inside. */
+body[data-page="detector"] .public-status{
+  padding:8px!important;
+  gap:6px!important;
+  margin-bottom:8px!important;
+  border-radius:12px!important;
+  background:var(--dash-shell)!important;
+  box-shadow:var(--dash-shadow)!important;
+}
+body[data-page="detector"] .public-metric{
+  min-width:0!important;
+  border:0!important;
+  border-radius:9px!important;
+  box-shadow:var(--dash-inner)!important;
+}
+body[data-page="detector"] .public-metric:nth-child(1){background:var(--dash-green-1)!important}
+body[data-page="detector"] .public-metric:nth-child(2){background:var(--dash-green-2)!important}
+body[data-page="detector"] .public-metric:nth-child(3){background:var(--dash-green-3)!important}
+body[data-page="detector"] .public-metric:nth-child(4){background:var(--dash-green-4)!important}
+body[data-page="detector"] .public-metric.signal-metric strong{color:#8fe295!important}
+
+/* Page 1 match cards: green by default, brighter green near signal. */
+body[data-page="detector"] .match-card{
+  background:linear-gradient(145deg,#234b35 0%,#1a3528 54%,#131f18 100%)!important;
+  border:0!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+body[data-page="detector"] .match-card.close{
+  background:linear-gradient(145deg,#31553a 0%,#263e2e 52%,#17251c 100%)!important;
+  border:0!important;
+}
+body[data-page="detector"] .match-card .match-sub,
+body[data-page="detector"] .match-card .detail-stat{
+  border-color:var(--dash-divider)!important;
+}
+body[data-page="detector"] .match-card .detail-stat,
+body[data-page="detector"] .match-card .evidence-chip{
+  background:rgba(8,18,12,.24)!important;
+}
+
+/* Signal: retain the green family, then call attention with a yellow pulse. */
+body[data-page="detector"] .match-card.signal{
+  background:linear-gradient(145deg,#3f5424 0%,#2a3d1c 48%,#17231a 100%)!important;
+  border:0!important;
+  animation:nomadSignalPulse 1.65s ease-in-out infinite!important;
+}
+body[data-page="detector"] .match-card.signal::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  border-radius:inherit;
+  box-shadow:inset 0 0 0 1px rgba(242,210,27,.34),inset 0 3px 0 rgba(242,210,27,.52);
+}
+body[data-page="detector"] .match-card.signal>*{position:relative;z-index:1}
+body[data-page="detector"] .match-card.signal .state-badge.signal{
+  color:#fff3a1!important;
+  background:rgba(242,210,27,.12)!important;
+  box-shadow:inset 0 0 0 1px rgba(242,210,27,.16)!important;
+}
+body[data-page="detector"] .signal-card{
+  background:linear-gradient(145deg,#234b35 0%,#1a3528 54%,#131f18 100%)!important;
+  border:0!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+}
+body[data-page="detector"] .signal-card.new-signal{
+  animation:nomadSignalPulse 1.65s ease-in-out 4!important;
+  box-shadow:inset 0 0 0 1px rgba(242,210,27,.30)!important;
+}
+@keyframes nomadSignalPulse{
+  0%,100%{box-shadow:0 9px 22px rgba(0,0,0,.16),0 0 0 0 rgba(242,210,27,0),inset 0 1px 0 rgba(255,255,255,.03)}
+  50%{box-shadow:0 11px 27px rgba(0,0,0,.19),0 0 0 3px rgba(242,210,27,.22),0 0 24px rgba(242,210,27,.13),inset 0 1px 0 rgba(255,255,255,.04)}
+}
+
+/* Page 2: one statistics sheet, with gradient tiles inside. */
+body[data-page="statistics"] .stats-summary{
+  padding:8px 8px 5px!important;
+  gap:6px!important;
+  margin:0!important;
+  border-radius:12px 12px 0 0!important;
+  background:var(--dash-shell)!important;
+  box-shadow:var(--dash-shadow)!important;
+}
+body[data-page="statistics"] .stats-primary,
+body[data-page="statistics"] .stats-tile{
+  min-width:0!important;
+  border:0!important;
+  border-radius:9px!important;
+  box-shadow:var(--dash-inner)!important;
+}
+body[data-page="statistics"] .stats-primary{background:var(--dash-green-4)!important}
+body[data-page="statistics"] .stats-tile:nth-child(2){background:var(--dash-green-1)!important}
+body[data-page="statistics"] .stats-tile:nth-child(3){background:linear-gradient(145deg,#44302f 0%,#322424 52%,#21191a 100%)!important}
+body[data-page="statistics"] .stats-tile:nth-child(4){background:linear-gradient(145deg,#353d37 0%,#292f2b 52%,#1d211e 100%)!important}
+body[data-page="statistics"] .stats-tile:nth-child(5){background:var(--dash-green-2)!important}
+body[data-page="statistics"] .stats-tile:nth-child(6){background:var(--dash-green-3)!important}
+body[data-page="statistics"] .stats-secondary{
+  margin:0 0 8px!important;
+  padding:6px 12px 9px!important;
+  border:0!important;
+  border-radius:0 0 12px 12px!important;
+  background:var(--dash-shell)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.17)!important;
+}
+body[data-page="statistics"] .stats-secondary span{
+  padding-top:5px;
+  border-top:1px solid var(--dash-divider);
+}
+
+@media(max-width:820px){
+  body[data-page="detector"] .public-status,
+  body[data-page="statistics"] .stats-summary{padding:6px!important;gap:6px!important}
+  body[data-page="detector"] .public-metric,
+  body[data-page="statistics"] .stats-primary,
+  body[data-page="statistics"] .stats-tile{border-radius:8px!important}
+}
+
+@media(max-width:380px){
+  body[data-page="detector"] .public-status,
+  body[data-page="statistics"] .stats-summary{padding:5px!important;gap:5px!important}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-page="detector"] .match-card.signal,
+  body[data-page="detector"] .signal-card.new-signal{animation:none!important}
+}
