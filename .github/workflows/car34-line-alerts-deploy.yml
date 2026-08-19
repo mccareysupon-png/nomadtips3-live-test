@@ -1,4 +1,4 @@
-name: Deploy CAR 3.4 LINE Alerts
+name: Deploy nomadtips3 Line alerts
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
 
-      - name: Deploy LINE membership worker
+      - name: Deploy Line membership worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -77,11 +77,11 @@ jobs:
           HEALTH=$(curl -fsS "$WORKER_URL/health")
           echo "$HEALTH" | head -c 12000
           echo
-          printf '%s' "$HEALTH" | grep -q 'NOMADTIPS3 CAR 3.4 LINE ALERTS' || { echo "::error::LINE alerts worker identity missing"; exit 1; }
+          printf '%s' "$HEALTH" | grep -q 'nomadtips3 Line alerts' || { echo "::error::Line alerts worker identity missing"; exit 1; }
 
       - name: Show endpoints
         run: |
           echo "Health: $WORKER_URL/health"
-          echo "LINE webhook: $WORKER_URL/line/webhook"
+          echo "Line webhook: $WORKER_URL/line/webhook"
           echo "Stripe webhook: $WORKER_URL/stripe/webhook"
           echo "Payment redirect: $WORKER_URL/payment"
