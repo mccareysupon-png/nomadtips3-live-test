@@ -1,1 +1,67 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>3.4 AH Detector</title><link rel="stylesheet" href="car34.css"></head><body data-page="detector"><header><div class="top"><div class="brand">NOMAD<b>TIPS3</b> · 3.4 AH TEST</div><div class="badge">REAL MARKET AUDIT</div></div></header><main><div class="title"><div><h1>AH Detector</h1><p>Live conditions from the stats feed · AH/Odds locked from 1xBet market data.</p></div><div id="pageError" class="bad" hidden></div></div><section class="grid"><div class="metric"><small>Engine</small><strong id="engine">—</strong></div><div class="metric"><small>Scanning</small><strong id="scanning">—</strong></div><div class="metric"><small>Watching</small><strong id="watching">—</strong></div><div class="metric"><small>Near signal</small><strong id="nearSignal">—</strong></div><div class="metric"><small>Locked today</small><strong id="lockedToday">—</strong></div><div class="metric"><small>Last cycle</small><strong id="cycle">—</strong></div><div class="metric"><small>Market feed</small><strong id="marketState">—</strong></div><div class="metric"><small>AH matched / eligible</small><strong id="matched">—</strong></div></section><section class="panel"><div class="panel-head"><h2>Live engine monitor</h2><span class="muted" id="monitorNote">Waiting for current cycle data</span></div><div class="source-row"><span class="pill">Scanning = live matches processed</span><span class="pill">Watching = current live candidates</span><span class="pill">Near = engine decision NEAR</span><span class="pill">Locked = signals recorded today</span></div></section><section class="panel"><div class="panel-head"><h2>Source check</h2><span class="muted">No Goaloo odds fallback</span></div><div id="sourceInfo" class="source-row"></div></section><section class="panel"><div class="panel-head"><h2>Locked signals</h2><span class="muted">Team · AH · Odds · detection score · result</span></div><div id="signals"></div></section><section class="panel"><div class="panel-head"><h2>Live candidates</h2><span class="muted">Only useful rows are shown</span></div><div class="scroll"><table><thead><tr><th>Match</th><th>Score</th><th>Side</th><th>AH</th><th>Odds</th><th>Momentum</th><th>Real market</th><th>Decision</th></tr></thead><tbody id="candidates"></tbody></table></div></section></main><nav class="nav"><a href="index.html" data-page="detector">DETECTOR</a><a href="statistics.html" data-page="statistics">STATISTICS</a><a href="settings.html" data-page="settings">SETTINGS</a></nav><script type="module" src="car34.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#11130f">
+  <title>NOMADTIPS3 · Live</title>
+  <link rel="stylesheet" href="car34.css">
+</head>
+<body data-page="detector">
+<header>
+  <div class="top public-top">
+    <div class="brand">NOMAD<b>TIPS3</b></div>
+    <div class="live-system" id="systemBadge"><span class="live-dot"></span><span id="systemText">CONNECTING</span></div>
+  </div>
+</header>
+<main>
+  <div class="public-hero">
+    <div>
+      <p class="eyebrow">LIVE FOOTBALL MONITOR</p>
+      <h1>Live Match Center</h1>
+      <p class="hero-copy">Live match pressure and real Asian Handicap market signals. Locked signals keep the exact price recorded at detection.</p>
+    </div>
+    <div id="pageError" class="bad notice" hidden></div>
+  </div>
+
+  <section class="public-status" aria-label="Live system status">
+    <div class="public-metric"><small>LIVE</small><strong id="liveCount">—</strong><span>matches monitored</span></div>
+    <div class="public-metric"><small>WATCHING</small><strong id="watching">—</strong><span>active candidates</span></div>
+    <div class="public-metric close-metric"><small>CLOSE</small><strong id="nearSignal">—</strong><span>near conditions</span></div>
+    <div class="public-metric signal-metric"><small>SIGNALS TODAY</small><strong id="lockedToday">—</strong><span>locked records</span></div>
+  </section>
+
+  <section class="live-strip">
+    <div class="live-strip-main"><span class="live-dot"></span><strong id="liveStatusText">Live monitoring</strong><span class="muted" id="monitorNote">Waiting for current cycle</span></div>
+    <span class="freshness" id="freshness">Updated —</span>
+  </section>
+
+  <section class="public-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">CURRENT MATCHES</p><h2>Live Watch</h2></div>
+      <span class="muted">Closest matches appear first</span>
+    </div>
+    <div id="candidateCards" class="match-grid"></div>
+  </section>
+
+  <section class="public-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">LOCKED RECORDS</p><h2>Latest Signals</h2></div>
+      <span class="muted">Exact AH and odds retained</span>
+    </div>
+    <div id="signals" class="signal-list"></div>
+  </section>
+
+  <section class="trust-strip" aria-label="Data transparency">
+    <span>Live match statistics</span><span>Real AH market price</span><span>Locked detection record</span><span>Results retained</span>
+  </section>
+
+  <div class="legacy-hooks" aria-hidden="true">
+    <span id="engine"></span><span id="scanning"></span><span id="cycle"></span><span id="marketState"></span><span id="matched"></span><span id="sourceInfo"></span>
+    <table><tbody id="candidates"></tbody></table>
+  </div>
+</main>
+<nav class="nav public-nav"><a href="index.html" data-page="detector">LIVE</a><a href="statistics.html" data-page="statistics">STATISTICS</a></nav>
+<script type="module" src="car34.js"></script>
+</body>
+</html>
