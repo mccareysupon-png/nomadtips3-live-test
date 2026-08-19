@@ -1,0 +1,47 @@
+name: Deploy CAR LiveScore Nowgoal
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "car-livescore/**"
+      - ".github/workflows/car-livescore-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LIVESCORE_WORKER_URL: https://nomadtips3-car-livescore.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Validate source
+        run: node --check car-livescore/worker/src/index.js
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+      - name: Deploy isolated CAR LiveScore worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car-livescore/worker
+          wranglerVersion: "4"
+          command: deploy
+      - name: Smoke test
+        run: |
+          sleep 4
+          curl -fsS "$LIVESCORE_WORKER_URL/health"
+          curl -fsS "$LIVESCORE_WORKER_URL/probe" | head -c 16000
