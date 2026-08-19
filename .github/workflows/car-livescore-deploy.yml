@@ -1,11 +1,9 @@
-name: Deploy CAR LiveScore Nowgoal
+name: Retire CAR LiveScore
 
 on:
   push:
     branches: [main]
     paths:
-      - "car-livescore/worker/**"
-      - "car-livescore/web/**"
       - ".github/workflows/car-livescore-deploy.yml"
   workflow_dispatch:
 
@@ -13,46 +11,36 @@ permissions:
   contents: read
 
 concurrency:
-  group: car-livescore-nowgoal
+  group: car-livescore-retire
   cancel-in-progress: true
 
 env:
+  SCRIPT_NAME: nomadtips3-car-livescore
   LIVESCORE_WORKER_URL: https://nomadtips3-car-livescore.mccarey-supon.workers.dev
 
 jobs:
-  validate-deploy:
+  retire:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-      - name: Validate source
-        run: |
-          node --check car-livescore/worker/src/index.js
-          node --check car-livescore/web/livescore.js
-          test -f car-livescore/web/index.html
-          test -f car-livescore/web/livescore.css
-          test -f car-livescore/web/runtime.json
-      - name: Validate Cloudflare credentials
+      - name: Delete isolated CAR LiveScore worker
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
+          set -euo pipefail
           test -n "$CF_API_TOKEN"
           test -n "$CF_ACCOUNT_ID"
-      - name: Deploy isolated CAR LiveScore worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: car-livescore/worker
-          wranglerVersion: "4"
-          command: deploy
-      - name: Smoke test Nowgoal26 feed
+          curl --fail-with-body -sS \
+            -X DELETE \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT_NAME"
+
+      - name: Verify Worker no longer serves traffic
         run: |
           sleep 5
-          curl -fsS "$LIVESCORE_WORKER_URL/health"
-          curl -fsS "$LIVESCORE_WORKER_URL/scores" > /tmp/car-livescore-smoke.json
-          head -c 24000 /tmp/car-livescore-smoke.json
+          if curl -fsS "$LIVESCORE_WORKER_URL/health" >/dev/null; then
+            echo "Worker is still reachable"
+            exit 1
+          fi
+          echo "CAR LiveScore worker is retired"
