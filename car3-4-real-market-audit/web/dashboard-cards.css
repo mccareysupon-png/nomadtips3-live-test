@@ -1,19 +1,19 @@
 /* Dashboard card polish: visual-only overrides for Live and Statistics. */
 :root{
-  --dash-shell:linear-gradient(145deg,#1d3e2d 0%,#172c22 54%,#111a15 100%);
-  --dash-shell-soft:linear-gradient(145deg,#234b35 0%,#1a3327 52%,#142119 100%);
-  --dash-green-1:linear-gradient(145deg,#28533b 0%,#1e3c2c 55%,#16251c 100%);
-  --dash-green-2:linear-gradient(145deg,#244b36 0%,#1b3529 55%,#14221a 100%);
-  --dash-green-3:linear-gradient(145deg,#2e4e32 0%,#233729 55%,#182219 100%);
-  --dash-green-4:linear-gradient(145deg,#2c5b3d 0%,#21452f 55%,#17271d 100%);
+  --dash-shell:linear-gradient(145deg,rgba(44,50,46,.84) 0%,rgba(34,39,36,.82) 54%,rgba(25,29,27,.86) 100%);
+  --dash-shell-soft:linear-gradient(145deg,rgba(47,55,50,.78) 0%,rgba(35,42,38,.76) 52%,rgba(27,31,29,.82) 100%);
+  --dash-green-1:linear-gradient(145deg,rgba(46,91,64,.30) 0%,rgba(35,51,42,.50) 55%,rgba(28,32,30,.72) 100%);
+  --dash-green-2:linear-gradient(145deg,rgba(40,78,57,.24) 0%,rgba(33,46,39,.46) 55%,rgba(27,31,29,.72) 100%);
+  --dash-green-3:linear-gradient(145deg,rgba(57,81,61,.22) 0%,rgba(39,48,41,.44) 55%,rgba(28,31,29,.72) 100%);
+  --dash-green-4:linear-gradient(145deg,rgba(42,94,63,.34) 0%,rgba(34,56,44,.48) 55%,rgba(27,32,29,.72) 100%);
   --dash-yellow:#f2d21b;
   --dash-yellow-soft:rgba(242,210,27,.24);
   --dash-divider:rgba(204,225,208,.08);
   --dash-inner:inset 0 1px 0 rgba(255,255,255,.035);
-  --dash-shadow:0 10px 24px rgba(0,0,0,.17);
+  --dash-shadow:0 10px 24px rgba(0,0,0,.16);
 }
 
-/* Page 1: one summary sheet with smaller gradient cards inside. */
+/* Page 1: one translucent summary sheet with smaller tinted cards inside. */
 body[data-page="detector"] .public-status{
   padding:8px!important;
   gap:6px!important;
@@ -34,14 +34,14 @@ body[data-page="detector"] .public-metric:nth-child(3){background:var(--dash-gre
 body[data-page="detector"] .public-metric:nth-child(4){background:var(--dash-green-4)!important}
 body[data-page="detector"] .public-metric.signal-metric strong{color:#8fe295!important}
 
-/* Page 1 match cards: green by default, brighter green near signal. */
+/* Page 1 match cards: charcoal base with a soft transparent green tint. */
 body[data-page="detector"] .match-card{
-  background:linear-gradient(145deg,#234b35 0%,#1a3528 54%,#131f18 100%)!important;
+  background:linear-gradient(145deg,rgba(45,93,65,.26) 0%,rgba(38,48,42,.58) 50%,rgba(29,32,30,.78) 100%)!important;
   border:0!important;
-  box-shadow:0 9px 22px rgba(0,0,0,.16),inset 0 1px 0 rgba(255,255,255,.03)!important;
+  box-shadow:0 9px 22px rgba(0,0,0,.15),inset 0 1px 0 rgba(255,255,255,.03)!important;
 }
 body[data-page="detector"] .match-card.close{
-  background:linear-gradient(145deg,#31553a 0%,#263e2e 52%,#17251c 100%)!important;
+  background:linear-gradient(145deg,rgba(63,103,69,.30) 0%,rgba(44,57,48,.60) 50%,rgba(29,33,30,.78) 100%)!important;
   border:0!important;
 }
 body[data-page="detector"] .match-card .match-sub,
@@ -50,12 +50,12 @@ body[data-page="detector"] .match-card .detail-stat{
 }
 body[data-page="detector"] .match-card .detail-stat,
 body[data-page="detector"] .match-card .evidence-chip{
-  background:rgba(8,18,12,.24)!important;
+  background:rgba(11,15,13,.24)!important;
 }
 
-/* Signal: retain the green family, then call attention with a yellow pulse. */
+/* Signal: keep the gray/green base and call attention only with a yellow pulse. */
 body[data-page="detector"] .match-card.signal{
-  background:linear-gradient(145deg,#3f5424 0%,#2a3d1c 48%,#17231a 100%)!important;
+  background:linear-gradient(145deg,rgba(83,88,38,.30) 0%,rgba(49,55,34,.55) 48%,rgba(28,32,29,.80) 100%)!important;
   border:0!important;
   animation:nomadSignalPulse 1.65s ease-in-out infinite!important;
 }
@@ -71,11 +71,11 @@ body[data-page="detector"] .match-card.signal::after{
 body[data-page="detector"] .match-card.signal>*{position:relative;z-index:1}
 body[data-page="detector"] .match-card.signal .state-badge.signal{
   color:#fff3a1!important;
-  background:rgba(242,210,27,.12)!important;
-  box-shadow:inset 0 0 0 1px rgba(242,210,27,.16)!important;
+  background:rgba(242,210,27,.08)!important;
+  box-shadow:inset 0 0 0 1px rgba(242,210,27,.14)!important;
 }
 body[data-page="detector"] .signal-card{
-  background:linear-gradient(145deg,#234b35 0%,#1a3528 54%,#131f18 100%)!important;
+  background:linear-gradient(145deg,rgba(45,93,65,.24) 0%,rgba(38,48,42,.56) 52%,rgba(29,32,30,.78) 100%)!important;
   border:0!important;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
 }
@@ -84,11 +84,11 @@ body[data-page="detector"] .signal-card.new-signal{
   box-shadow:inset 0 0 0 1px rgba(242,210,27,.30)!important;
 }
 @keyframes nomadSignalPulse{
-  0%,100%{box-shadow:0 9px 22px rgba(0,0,0,.16),0 0 0 0 rgba(242,210,27,0),inset 0 1px 0 rgba(255,255,255,.03)}
-  50%{box-shadow:0 11px 27px rgba(0,0,0,.19),0 0 0 3px rgba(242,210,27,.22),0 0 24px rgba(242,210,27,.13),inset 0 1px 0 rgba(255,255,255,.04)}
+  0%,100%{box-shadow:0 9px 22px rgba(0,0,0,.15),0 0 0 0 rgba(242,210,27,0),inset 0 1px 0 rgba(255,255,255,.03)}
+  50%{box-shadow:0 11px 27px rgba(0,0,0,.18),0 0 0 3px rgba(242,210,27,.20),0 0 22px rgba(242,210,27,.11),inset 0 1px 0 rgba(255,255,255,.04)}
 }
 
-/* Page 2: one statistics sheet, with gradient tiles inside. */
+/* Page 2: one charcoal statistics sheet with lightly tinted tiles. */
 body[data-page="statistics"] .stats-summary{
   padding:8px 8px 5px!important;
   gap:6px!important;
@@ -106,8 +106,8 @@ body[data-page="statistics"] .stats-tile{
 }
 body[data-page="statistics"] .stats-primary{background:var(--dash-green-4)!important}
 body[data-page="statistics"] .stats-tile:nth-child(2){background:var(--dash-green-1)!important}
-body[data-page="statistics"] .stats-tile:nth-child(3){background:linear-gradient(145deg,#44302f 0%,#322424 52%,#21191a 100%)!important}
-body[data-page="statistics"] .stats-tile:nth-child(4){background:linear-gradient(145deg,#353d37 0%,#292f2b 52%,#1d211e 100%)!important}
+body[data-page="statistics"] .stats-tile:nth-child(3){background:linear-gradient(145deg,rgba(91,50,50,.26) 0%,rgba(53,39,39,.52) 52%,rgba(29,30,29,.76) 100%)!important}
+body[data-page="statistics"] .stats-tile:nth-child(4){background:linear-gradient(145deg,rgba(72,78,73,.28) 0%,rgba(45,49,46,.52) 52%,rgba(29,31,29,.76) 100%)!important}
 body[data-page="statistics"] .stats-tile:nth-child(5){background:var(--dash-green-2)!important}
 body[data-page="statistics"] .stats-tile:nth-child(6){background:var(--dash-green-3)!important}
 body[data-page="statistics"] .stats-secondary{
@@ -116,7 +116,7 @@ body[data-page="statistics"] .stats-secondary{
   border:0!important;
   border-radius:0 0 12px 12px!important;
   background:var(--dash-shell)!important;
-  box-shadow:0 10px 24px rgba(0,0,0,.17)!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.16)!important;
 }
 body[data-page="statistics"] .stats-secondary span{
   padding-top:5px;
