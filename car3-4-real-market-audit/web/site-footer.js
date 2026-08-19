@@ -20,7 +20,7 @@
           <p>This website does not accept bets, process wagers or provide gambling transactions. Information is displayed for match analysis, transparency, historical review and entertainment.</p>
           <p>Market prices may change after a signal is recorded. Locked records preserve the price, Asian Handicap, entry score and time available at the recorded signal point. Historical results remain visible to support transparent performance review.</p>
           <p>Users are responsible for how they interpret and use the information presented. Nothing on this website guarantees a future sporting outcome.</p>
-          <p>By accessing or continuing to use this website, you acknowledge that basic browser storage or technical cookies may be used where necessary for site operation, performance and user experience.</p>
+          <p>By accessing or continuing to use this website, you acknowledge that basic browser storage or technical cookies may be used where necessary for site operation, performance and user experience. See our <a href="privacy-policy.html">Privacy Policy</a> and <a href="terms-of-service.html">Terms of Service</a>.</p>
         </div>
 
         <div class="site-footer-meta">
@@ -36,7 +36,10 @@
       </div>
 
       <div class="site-footer-bottom">
-        <span>© 2026 nomadtips3. Information and entertainment use only.</span>
+        <div class="site-footer-legal">
+          <span>© 2026 nomadtips3. Information and entertainment use only.</span>
+          <div class="site-legal-links"><a href="privacy-policy.html">Privacy Policy</a><span>·</span><a href="terms-of-service.html">Terms of Service</a></div>
+        </div>
         <div class="site-socials" aria-label="Social channels coming soon">
           <span class="site-social" role="img" aria-label="X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4l14 16M19 4L5 20"/></svg></span>
           <span class="site-social facebook" role="img" aria-label="Facebook" title="Facebook">f</span>
