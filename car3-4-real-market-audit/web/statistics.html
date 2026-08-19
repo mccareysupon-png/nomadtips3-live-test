@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="public-theme.css">
   <link rel="stylesheet" href="dashboard-cards.css">
   <link rel="stylesheet" href="nav-text.css">
+  <link rel="stylesheet" href="statistics-pagination.css">
   <link rel="stylesheet" href="site-footer.css">
 </head>
 <body data-page="statistics">
@@ -35,13 +36,14 @@
   </section>
 
   <section class="public-section">
-    <div class="section-heading"><div><p class="eyebrow">Signal ledger</p><h2>All results</h2></div><span class="muted">Locked price · entry score · final result</span></div>
+    <div class="section-heading"><div><p class="eyebrow">Signal ledger</p><h2>All results</h2></div><span class="muted">25 records per page · newest first</span></div>
     <div id="statsCards" class="stats-cards"></div>
     <div class="scroll desktop-ledger"><table><thead><tr><th>Detected</th><th>Match</th><th>Pick</th><th>AH</th><th>Odds</th><th>Entry</th><th>Final</th><th>Result</th><th>Source</th></tr></thead><tbody id="statsRows"></tbody></table></div>
+    <nav id="statsPager" class="stats-pager" aria-label="Statistics pages"></nav>
   </section>
 </main>
 <nav class="nav public-nav"><a href="index.html" data-page="detector">Live</a><a class="active" aria-current="page" href="statistics.html" data-page="statistics">Statistics</a><a href="line-alerts.html">Line alerts</a><a href="user-guide.html">User guide</a></nav>
-<script type="module" src="car34.js"></script>
+<script src="statistics-pagination.js" defer></script>
 <script src="statistics-source-credit.js" defer></script>
 <script src="site-footer.js" defer></script>
 </body>
