@@ -20,8 +20,19 @@ export class Car31State extends SettlementCar31State{
     return'DURABLE_OBJECT';
   }
 
+  async lockSingleConfirmationRound(){
+    const saved=await this.state.storage.get('config');
+    const current=saved?.config&&typeof saved.config==='object'?saved.config:{};
+    if(Number(current.confirmationRounds)===1)return;
+    await this.state.storage.put('config',{
+      config:{...current,confirmationRounds:1},
+      updatedAt:saved?.updatedAt||new Date().toISOString()
+    });
+  }
+
   async scan(trigger='cron'){
     await this.hydrateStoredOddsKey();
+    await this.lockSingleConfirmationRound();
     return super.scan(trigger);
   }
 
@@ -56,6 +67,15 @@ function car34State(env){
   return env.CAR31_STATE.get(id);
 }
 
+async function forceSingleConfirmationConfigRequest(request){
+  const body=await request.clone().json().catch(()=>({}));
+  return new Request(request.url,{
+    method:'POST',
+    headers:request.headers,
+    body:JSON.stringify({...body,confirmationRounds:1})
+  });
+}
+
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
@@ -67,6 +87,15 @@ export default{
     }
     if(request.method==='GET'&&url.pathname==='/debug/key-status'){
       return car34State(env).fetch(request);
+    }
+    if(url.pathname==='/config'&&request.method==='POST'){
+      const forced=await forceSingleConfirmationConfigRequest(request);
+      return settlementWorker.fetch(forced,env,ctx);
+    }
+    if(url.pathname==='/config'&&request.method==='GET'){
+      const response=await settlementWorker.fetch(request,env,ctx);
+      const payload=await response.json().catch(()=>({ok:false}));
+      return json({...payload,config:{...(payload.config||{}),confirmationRounds:1},confirmationRoundsLocked:1});
     }
     if(request.method==='GET'&&url.pathname==='/live'){
       const response=await settlementWorker.fetch(request,env,ctx);
