@@ -1,4 +1,4 @@
-/* Top navigation text treatment: no boxes, yellow hover/current state. */
+/* Top navigation text treatment: larger text, no boxes, yellow hover/current state. */
 .public-nav a{
   color:rgba(255,255,255,.78)!important;
   background:transparent!important;
@@ -6,6 +6,8 @@
   border:0!important;
   border-radius:0!important;
   text-decoration:none!important;
+  font-size:13px!important;
+  letter-spacing:0!important;
 }
 .public-nav a:hover,
 .public-nav a:focus-visible{
@@ -19,4 +21,30 @@
   color:#f2d21b!important;
   background:transparent!important;
   box-shadow:none!important;
+}
+
+/* Legacy history top navigation follows the same text-only rule. */
+.history-page .topbar .nav a{
+  color:rgba(255,255,255,.78)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  font-size:12px!important;
+}
+.history-page .topbar .nav a:hover,
+.history-page .topbar .nav a:focus-visible,
+.history-page .topbar .nav a.active,
+.history-page .topbar .nav a[aria-current="page"]{
+  color:#f2d21b!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+@media(max-width:820px){
+  .public-nav a{font-size:11.5px!important;padding-left:2px!important;padding-right:2px!important}
+  .history-page .topbar .nav a{font-size:10.5px!important}
+}
+@media(max-width:420px){
+  .public-nav a{font-size:10.5px!important}
+  .history-page .topbar .nav a{font-size:9.5px!important}
 }
