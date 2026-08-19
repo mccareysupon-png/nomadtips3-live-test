@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: car-livescore-nowgoal
@@ -53,18 +53,6 @@ jobs:
       - name: Smoke test Nowgoal26 feed
         run: |
           sleep 5
-          mkdir -p car-livescore
           curl -fsS "$LIVESCORE_WORKER_URL/health"
-          curl -fsS "$LIVESCORE_WORKER_URL/scores" > car-livescore/smoke-result.json
-          head -c 24000 car-livescore/smoke-result.json
-      - name: Save smoke result
-        run: |
-          git config user.name "nomadtips3-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add car-livescore/smoke-result.json
-          if git diff --cached --quiet; then
-            echo "Smoke result unchanged"
-          else
-            git commit -m "Record CAR LiveScore Nowgoal smoke result"
-            git push
-          fi
+          curl -fsS "$LIVESCORE_WORKER_URL/scores" > /tmp/car-livescore-smoke.json
+          head -c 24000 /tmp/car-livescore-smoke.json
