@@ -99,11 +99,11 @@ function signalKey(r){
 function signalMessage(r,env){
   const entry=r?.entryScore?`${r.entryScore.home??'—'}-${r.entryScore.away??'—'}`:'—';
   const minute=num(r?.entryMinute);
-  const when=minute!==null?`${Math.round(minute)}'`:'LIVE';
+  const when=minute!==null?`${Math.round(minute)}'`:'Live';
   const team=r?.selectedTeam||r?.selectedSide||'—';
   const liveUrl=env.PUBLIC_LIVE_URL||DEFAULT_LIVE_URL;
   return [
-    'NOMADTIPS3 · LIVE SIGNAL',
+    'nomadtips3 · Live signal',
     `${r?.home||'—'} vs ${r?.away||'—'}`,
     `Pick: ${team} ${fmtLine(r?.selectedLine??r?.line)} @ ${num(r?.odds)?.toFixed(2)||'—'}`,
     `Detected: ${when} · Score ${entry}`,
@@ -232,28 +232,28 @@ async function handleLineWebhook(request,env){
     const userId=clean(event?.source?.userId),replyToken=clean(event?.replyToken);
     if(!userId)continue;
     if(event.type==='follow'){
-      await lineReply(env,replyToken,'NOMADTIPS3 LINE Alerts\nSend JOIN to get your payment pairing code.\nSend STATUS to check alert access.');
+      await lineReply(env,replyToken,'nomadtips3 Line alerts\nSend JOIN to get your payment pairing code.\nSend STATUS to check alert access.');
       continue;
     }
     if(event.type!=='message'||event?.message?.type!=='text')continue;
     const message=clean(event.message.text),upper=message.toUpperCase();
     if(upper==='JOIN'){
       const out=await stateJson(env,'/pair/start',{userId});
-      if(out.owner)await lineReply(env,replyToken,'OWNER access is ACTIVE. You receive locked CAR 3.4 signal alerts without subscription.');
+      if(out.owner)await lineReply(env,replyToken,'Owner access is Active. You receive locked nomadtips3 signal alerts without subscription.');
       else if(out.code)await lineReply(env,replyToken,`Your pairing code: ${out.code}\nEnter this code on the $30/month Stripe checkout page. Code expires in 24 hours.`);
       else await lineReply(env,replyToken,'Could not create a pairing code. Please try again.');
       continue;
     }
     if(upper==='STATUS'){
       const out=await stateJson(env,'/member/status',{userId}),m=out.member;
-      await lineReply(env,replyToken,m?`NOMADTIPS3 Alerts: ${m.status}${m.role==='OWNER'?' · OWNER':''}`:'NOMADTIPS3 Alerts: NOT ACTIVE\nSend JOIN to subscribe.');
+      await lineReply(env,replyToken,m?`nomadtips3 Alerts: ${m.status}${m.role==='OWNER'?' · Owner':''}`:'nomadtips3 Alerts: Not active\nSend JOIN to subscribe.');
       continue;
     }
     if(upper.startsWith('OWNER ')){
       const supplied=message.slice(6).trim();
       if(!env.OWNER_PAIR_SECRET||!safeEq(supplied,env.OWNER_PAIR_SECRET)){await lineReply(env,replyToken,'Owner code not accepted.');continue;}
       await stateJson(env,'/owner/activate',{userId});
-      await lineReply(env,replyToken,'OWNER access activated. Locked CAR 3.4 signals will be sent to this LINE account.');
+      await lineReply(env,replyToken,'Owner access activated. Locked nomadtips3 signals will be sent to this Line account.');
       continue;
     }
     await lineReply(env,replyToken,'Commands: JOIN · STATUS');
@@ -274,19 +274,19 @@ async function handleStripeWebhook(request,env){
       paymentStatus:obj?.payment_status||null,sessionId:obj?.id||null
     });
     if(out?.userId&&out?.member?.status==='ACTIVE'){
-      await linePush(env,out.userId,'NOMADTIPS3 LINE Alerts activated.\nPlan: $30/month\nStatus: ACTIVE\nLocked CAR 3.4 signals will be sent here.');
+      await linePush(env,out.userId,'nomadtips3 Line alerts activated.\nPlan: $30/month\nStatus: Active\nLocked nomadtips3 signals will be sent here.');
     }
   }else if(event.type==='invoice.paid'||event.type==='invoice.payment_failed'){
     const status=event.type==='invoice.paid'?'ACTIVE':'PAST_DUE';
     const out=await stateJson(env,'/stripe/status',{subscriptionId:stripeSubscriptionId(obj),customerId:stripeCustomerId(obj),status,eventType:event.type});
     if(out?.userId&&!out.ownerBypass){
-      await linePush(env,out.userId,status==='ACTIVE'?'NOMADTIPS3 LINE Alerts payment confirmed. Access is ACTIVE.':'NOMADTIPS3 LINE Alerts payment failed. Alerts are paused until Stripe confirms payment.');
+      await linePush(env,out.userId,status==='ACTIVE'?'nomadtips3 Line alerts payment confirmed. Access is Active.':'nomadtips3 Line alerts payment failed. Alerts are paused until Stripe confirms payment.');
     }
   }else if(event.type==='customer.subscription.updated'||event.type==='customer.subscription.deleted'){
     const status=event.type==='customer.subscription.deleted'?'CANCELED':subscriptionState(obj?.status);
     const out=await stateJson(env,'/stripe/status',{subscriptionId:clean(obj?.id),customerId:stripeCustomerId(obj),status,eventType:event.type});
     if(out?.userId&&!out.ownerBypass&&['PAST_DUE','CANCELED'].includes(status)){
-      await linePush(env,out.userId,status==='CANCELED'?'NOMADTIPS3 LINE Alerts subscription canceled. Alerts are now disabled.':'NOMADTIPS3 LINE Alerts subscription needs payment. Alerts are temporarily paused.');
+      await linePush(env,out.userId,status==='CANCELED'?'nomadtips3 Line alerts subscription canceled. Alerts are now disabled.':'nomadtips3 Line alerts subscription needs payment. Alerts are temporarily paused.');
     }
   }
   return json({received:true});
@@ -329,7 +329,7 @@ export default{
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:JSON_HEADERS});
     if(url.pathname==='/health'){
       const state=await stateJson(env,'/health');
-      return json({ok:true,service:'NOMADTIPS3 CAR 3.4 LINE ALERTS',stripePaymentLink:env.STRIPE_PAYMENT_LINK||null,configured:{lineChannelSecret:Boolean(env.LINE_CHANNEL_SECRET),lineAccessToken:Boolean(env.LINE_CHANNEL_ACCESS_TOKEN),stripeWebhookSecret:Boolean(env.STRIPE_WEBHOOK_SECRET),ownerPairSecret:Boolean(env.OWNER_PAIR_SECRET),ownerAdminToken:Boolean(env.OWNER_ADMIN_TOKEN)},...state});
+      return json({ok:true,service:'nomadtips3 Line alerts',stripePaymentLink:env.STRIPE_PAYMENT_LINK||null,configured:{lineChannelSecret:Boolean(env.LINE_CHANNEL_SECRET),lineAccessToken:Boolean(env.LINE_CHANNEL_ACCESS_TOKEN),stripeWebhookSecret:Boolean(env.STRIPE_WEBHOOK_SECRET),ownerPairSecret:Boolean(env.OWNER_PAIR_SECRET),ownerAdminToken:Boolean(env.OWNER_ADMIN_TOKEN)},...state});
     }
     if(url.pathname==='/line/webhook'&&request.method==='POST')return handleLineWebhook(request,env);
     if(url.pathname==='/stripe/webhook'&&request.method==='POST')return handleStripeWebhook(request,env);
@@ -340,7 +340,7 @@ export default{
     if(url.pathname==='/admin/test'&&request.method==='POST'){
       if(!adminOk(request,env))return json({ok:false,error:'UNAUTHORIZED'},401);
       const active=await stateJson(env,'/members/active',{}),owners=(active.members||[]).filter(m=>m.role==='OWNER');
-      let sent=0;for(const owner of owners){await linePush(env,owner.lineUserId,'NOMADTIPS3 · TEST ALERT\nLINE notification system is connected and working.');sent++;}
+      let sent=0;for(const owner of owners){await linePush(env,owner.lineUserId,'nomadtips3 · Test alert\nLine notification system is connected and working.');sent++;}
       return json({ok:true,owners:owners.length,sent});
     }
     if(url.pathname==='/admin/poll'&&request.method==='POST'){
