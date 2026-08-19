@@ -1,0 +1,22 @@
+/* Top navigation text treatment: no boxes, yellow hover/current state. */
+.public-nav a{
+  color:rgba(255,255,255,.78)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border:0!important;
+  border-radius:0!important;
+  text-decoration:none!important;
+}
+.public-nav a:hover,
+.public-nav a:focus-visible{
+  color:#f2d21b!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+.public-nav a.active,
+.public-nav a[aria-current="page"]{
+  color:#f2d21b!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
