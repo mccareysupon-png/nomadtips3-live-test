@@ -1,13 +1,6 @@
 name: CAR 1.1 Operational Cycle
 
 on:
-  push:
-    branches: [agent/car11-goaloo-launch-20260816]
-    paths:
-      - 'car1-1/scripts/run_cycle.mjs'
-      - 'car1-1/scripts/market_helpers.mjs'
-      - 'car1-1/scripts/upgrade_locked_markets.mjs'
-      - '.github/workflows/car11-cycle.yml'
   workflow_dispatch:
 
 permissions:
