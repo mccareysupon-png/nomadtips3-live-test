@@ -4,12 +4,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "car-livescore/**"
+      - "car-livescore/worker/**"
+      - "car-livescore/web/**"
       - ".github/workflows/car-livescore-deploy.yml"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   LIVESCORE_WORKER_URL: https://nomadtips3-car-livescore.mccarey-supon.workers.dev
@@ -40,8 +41,21 @@ jobs:
           workingDirectory: car-livescore/worker
           wranglerVersion: "4"
           command: deploy
-      - name: Smoke test
+      - name: Probe Nowgoal26 source
         run: |
           sleep 4
+          mkdir -p car-livescore
           curl -fsS "$LIVESCORE_WORKER_URL/health"
-          curl -fsS "$LIVESCORE_WORKER_URL/probe" | head -c 16000
+          curl -fsS "$LIVESCORE_WORKER_URL/probe" > car-livescore/probe-result.json
+          head -c 20000 car-livescore/probe-result.json
+      - name: Save probe result
+        run: |
+          git config user.name "nomadtips3-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add car-livescore/probe-result.json
+          if git diff --cached --quiet; then
+            echo "Probe result unchanged"
+          else
+            git commit -m "Record Nowgoal26 probe result"
+            git push
+          fi
