@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d0f11">
+  <title>nomadtips3 X1 — Signal Detector</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./"><span>nomad</span><span class="tips">tips3</span></a>
+  <div class="engine-tag" id="feedTag"><i></i><span id="feedLabel">Checking feed</span></div>
+</header>
+
+<main class="page">
+  <section class="hero">
+    <div>
+      <h1>Signal Detector</h1>
+      <p>Direct 1xBet football feed · price-condition scanner · locked signal records</p>
+    </div>
+    <div class="source-badge">SOURCE <b>1xBet DIRECT</b></div>
+  </section>
+
+  <section class="metrics">
+    <article class="metric"><span>Live matches</span><b id="liveCount">0</b></article>
+    <article class="metric"><span>Watching</span><b id="watchCount">0</b></article>
+    <article class="metric"><span>Near condition</span><b id="nearCount">0</b></article>
+    <article class="metric signal"><span>Signals live</span><b id="signalCount">0</b></article>
+    <article class="metric"><span>Last scan</span><b id="lastScan">—</b></article>
+  </section>
+
+  <div class="feed-message" id="feedMessage"></div>
+
+  <section class="toolbar">
+    <div class="tabs" id="filterTabs">
+      <button class="active" data-filter="ALL">ALL</button>
+      <button data-filter="WATCH">WATCH</button>
+      <button data-filter="NEAR">NEAR</button>
+      <button data-filter="SIGNAL">SIGNAL</button>
+    </div>
+    <div class="refresh-note" id="refreshNote">Auto refresh 10s</div>
+  </section>
+
+  <section class="match-list" id="matchList">
+    <div class="empty">Connecting to the 1xBet public live football feed…</div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <a class="active" href="./">SIGNAL DETECTOR</a>
+  <a href="./statistics.html">STATISTICS</a>
+</nav>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
