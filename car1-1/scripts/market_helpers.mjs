@@ -96,7 +96,9 @@ export function buildMarketPredictions(match){
   if(asian?.line!=null){
     const raw=parseSplitLine(asian.line);
     if(raw!=null){
-      const homeHcp=round4(-raw),awayHcp=round4(raw);
+      // Goaloo AH line is stored from the HOME perspective. Keep HOME as-is and invert only for AWAY.
+      // This matches CAR 3.1 / CAR 3.3 and prevents selected-team handicap from being reversed.
+      const homeHcp=round4(raw),awayHcp=round4(-raw);
       const ph=ahProbability(grid,'home',homeHcp),pa=ahProbability(grid,'away',awayHcp);
       const ahSide=(ph??0)>=(pa??0)?'home':'away';
       const handicap=ahSide==='home'?homeHcp:awayHcp;
