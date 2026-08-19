@@ -13,7 +13,7 @@ export default {
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:HEADERS});
     const {pathname}=new URL(request.url);
     if(pathname==='/health')return reply({ok:true,service:'CAR LIVESCORE',status:'STOPPED',scraping:false});
-    if(pathname==='/scores')return reply({ok:false,service:'CAR LIVESCORE',status:'STOPPED',scraping:false,matches:[],summary:{total:0,live:0,finished:0,upcoming:0,leagues:0}},410);
+    if(pathname==='/scores')return reply({ok:true,service:'CAR LIVESCORE',status:'STOPPED',scraping:false,matches:[],summary:{total:0,live:0,finished:0,upcoming:0,leagues:0}});
     return reply({ok:false,service:'CAR LIVESCORE',status:'STOPPED',scraping:false},410);
   }
 };
