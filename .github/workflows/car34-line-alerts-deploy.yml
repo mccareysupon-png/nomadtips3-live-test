@@ -1,0 +1,87 @@
+name: Deploy CAR 3.4 LINE Alerts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "car3-4-line-membership/**"
+      - ".github/workflows/car34-line-alerts-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WORKER_NAME: nomadtips3-car34-line-alerts
+  WORKER_URL: https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate source
+        working-directory: car3-4-line-membership/worker
+        run: npm run check
+
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy LINE membership worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-4-line-membership/worker
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Configure private secrets when available
+        working-directory: car3-4-line-membership/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          LINE_CHANNEL_SECRET: ${{ secrets.LINE_CHANNEL_SECRET }}
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          OWNER_PAIR_SECRET: ${{ secrets.OWNER_PAIR_SECRET }}
+          OWNER_ADMIN_TOKEN: ${{ secrets.OWNER_ADMIN_TOKEN }}
+        run: |
+          set_secret () {
+            NAME="$1"; VALUE="$2"
+            if [ -n "$VALUE" ]; then
+              printf '%s' "$VALUE" | npx --yes wrangler@4 secret put "$NAME" --name "$WORKER_NAME" >/dev/null
+              echo "$NAME configured"
+            else
+              echo "::warning::$NAME is not configured yet"
+            fi
+          }
+          set_secret LINE_CHANNEL_SECRET "$LINE_CHANNEL_SECRET"
+          set_secret LINE_CHANNEL_ACCESS_TOKEN "$LINE_CHANNEL_ACCESS_TOKEN"
+          set_secret STRIPE_WEBHOOK_SECRET "$STRIPE_WEBHOOK_SECRET"
+          set_secret OWNER_PAIR_SECRET "$OWNER_PAIR_SECRET"
+          set_secret OWNER_ADMIN_TOKEN "$OWNER_ADMIN_TOKEN"
+
+      - name: Inspect health
+        run: |
+          HEALTH=$(curl -fsS "$WORKER_URL/health")
+          echo "$HEALTH" | head -c 12000
+          echo
+          printf '%s' "$HEALTH" | grep -q 'NOMADTIPS3 CAR 3.4 LINE ALERTS' || { echo "::error::LINE alerts worker identity missing"; exit 1; }
+
+      - name: Show endpoints
+        run: |
+          echo "Health: $WORKER_URL/health"
+          echo "LINE webhook: $WORKER_URL/line/webhook"
+          echo "Stripe webhook: $WORKER_URL/stripe/webhook"
+          echo "Payment redirect: $WORKER_URL/payment"
