@@ -1,16 +1,16 @@
-# CAR 3.4 LINE Alerts Membership
+# nomadtips3 Line alerts membership
 
-This service is deliberately isolated from the CAR 3.4 detector. It reads locked signal history and manages LINE delivery entitlements only.
+This service is deliberately isolated from the internal detector. It reads locked signal history and manages Line delivery entitlements only.
 
 ## Public flow
 
-1. User adds the NOMADTIPS3 LINE Official Account.
+1. User adds the nomadtips3 Line Official Account.
 2. User sends `JOIN`.
-3. The LINE webhook returns an 8-character pairing code valid for 24 hours.
+3. The Line webhook returns an 8-character pairing code valid for 24 hours.
 4. User opens the Stripe $30/month subscription checkout and enters the pairing code in the required field.
 5. Stripe sends signed subscription events to the membership worker.
-6. Active Stripe subscription = LINE alerts ACTIVE. Failed/canceled subscription pauses alerts.
-7. The membership worker polls CAR 3.4 locked history every minute and sends only newly locked signals.
+6. Active Stripe subscription = Line alerts ACTIVE. Failed/canceled subscription pauses alerts.
+7. The membership worker polls locked signal history every minute and sends only newly locked signals.
 
 The first poll initializes the seen-signal baseline and does not send historical alerts.
 
@@ -20,14 +20,14 @@ The owner does not need a Stripe subscription. After `OWNER_PAIR_SECRET` is conf
 
 `OWNER <private-owner-pair-secret>`
 
-from the owner LINE account. The webhook stores that LINE user ID as `OWNER / ACTIVE` and it remains exempt from Stripe entitlement changes.
+from the owner Line account. The webhook stores that Line user ID as `OWNER / ACTIVE` and it remains exempt from Stripe entitlement changes.
 
-`STATUS` shows the current LINE entitlement state.
+`STATUS` shows the current Line entitlement state.
 
 ## Public endpoints
 
 - Health: `https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev/health`
-- LINE webhook: `https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev/line/webhook`
+- Line webhook: `https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev/line/webhook`
 - Stripe webhook: `https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev/stripe/webhook`
 - Payment redirect: `https://nomadtips3-car34-line-alerts.mccarey-supon.workers.dev/payment`
 
@@ -43,7 +43,7 @@ Never commit these values to the repository. Configure them as GitHub Actions re
 
 The public subscription page keeps checkout disabled until the first three delivery/payment secrets are present.
 
-## LINE Developers Console
+## Line Developers Console
 
 Set the Messaging API webhook URL to:
 
@@ -53,7 +53,7 @@ Enable webhooks. The worker verifies `x-line-signature` with HMAC-SHA256 before 
 
 ## Stripe
 
-Live product and recurring price are managed in Stripe. The Payment Link requires the custom field `LINE pairing code`.
+Live product and recurring price are managed in Stripe. The Payment Link requires the custom field `Line pairing code`.
 
 The Stripe webhook endpoint must send:
 
@@ -71,4 +71,4 @@ After secrets are configured and the owner is enrolled, call the private endpoin
 
 `POST /admin/test`
 
-It sends one test LINE alert to every active OWNER account.
+It sends one test Line alert to every active OWNER account.
