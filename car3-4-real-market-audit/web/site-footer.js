@@ -31,7 +31,7 @@
             Greyhaven Island, Atlantic Territory · GH 1047<br>
             Contact: <a href="mailto:manualprototype@nomadtips3.com">manualprototype@nomadtips3.com</a>
           </div>
-          <div class="site-platform-time"><small>Platform Time · UTC</small><b id="nomadPlatformTime">--:--:-- UTC</b></div>
+          <div class="site-platform-time"><small>Local Time</small><b id="nomadPlatformTime">--:--:--</b></div>
         </div>
       </div>
 
@@ -56,10 +56,10 @@
 
   const render=()=>{
     const d=new Date(baseEpoch+(performance.now()-basePerf));
-    const hh=String(d.getUTCHours()).padStart(2,'0');
-    const mm=String(d.getUTCMinutes()).padStart(2,'0');
-    const ss=String(d.getUTCSeconds()).padStart(2,'0');
-    if(timeEl) timeEl.textContent=`${hh}:${mm}:${ss} UTC`;
+    const hh=String(d.getHours()).padStart(2,'0');
+    const mm=String(d.getMinutes()).padStart(2,'0');
+    const ss=String(d.getSeconds()).padStart(2,'0');
+    if(timeEl) timeEl.textContent=`${hh}:${mm}:${ss}`;
   };
 
   render();
