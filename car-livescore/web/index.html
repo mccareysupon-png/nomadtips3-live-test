@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1712">
+  <title>nomadtips3 · Live Scores</title>
+  <link rel="stylesheet" href="livescore.css">
+</head>
+<body data-view="live">
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand-wrap">
+      <div class="brand">nomad<span>tips</span>3</div>
+      <div class="product">Scores &amp; Results</div>
+    </div>
+    <div class="header-status"><span class="status-dot"></span><span id="headerStatus">Connecting</span></div>
+  </div>
+</header>
+
+<main class="shell">
+  <section class="hero">
+    <div>
+      <p class="eyebrow">Football center</p>
+      <h1>Live Scores</h1>
+      <p>Live scores, match flow and key statistics in one clean view.</p>
+    </div>
+    <div class="freshness" id="freshness">Updated —</div>
+  </section>
+
+  <nav class="section-nav" aria-label="Scores and results">
+    <a class="active" aria-current="page" href="index.html">Live Scores</a>
+    <a href="results.html">Results</a>
+  </nav>
+
+  <section class="overview" aria-label="Live score summary">
+    <article><small>Live now</small><strong id="liveCount">—</strong><span>matches</span></article>
+    <article><small>Today</small><strong id="totalCount">—</strong><span>fixtures</span></article>
+    <article><small>Leagues</small><strong id="leagueCount">—</strong><span>covered</span></article>
+  </section>
+
+  <section class="toolbar">
+    <div class="filters" id="filters">
+      <button type="button" class="active" data-filter="all">All</button>
+      <button type="button" data-filter="live">Live</button>
+      <button type="button" data-filter="upcoming">Upcoming</button>
+      <button type="button" data-filter="finished">Finished</button>
+    </div>
+    <div class="toolbar-note">Tap a match for full statistics</div>
+  </section>
+
+  <div id="pageError" class="notice error" hidden></div>
+  <section id="scoreboard" class="scoreboard" aria-live="polite">
+    <div class="loading-card">Loading live football…</div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div><strong>nomadtips3</strong><span>Scores &amp; Results</span></div>
+  <small>Live football information · automatic refresh</small>
+</footer>
+
+<script src="livescore.js" defer></script>
+</body>
+</html>
