@@ -31,7 +31,14 @@
             Greyhaven Island, Atlantic Territory · GH 1047<br>
             Contact: <a href="mailto:manualprototype@nomadtips3.com">manualprototype@nomadtips3.com</a>
           </div>
-          <div class="site-platform-time"><small>Local Time</small><b id="nomadPlatformTime">--:--:--</b></div>
+          <div class="site-footer-side">
+            <div class="site-platform-time"><small>Local Time</small><b id="nomadPlatformTime">--:--:--</b></div>
+            <nav class="site-score-links" aria-label="Scores and results">
+              <strong>Scores &amp; Results</strong>
+              <a href="https://mccareysupon-png.github.io/nomadtips3-live-test/car-livescore/web/" target="_blank" rel="noopener noreferrer">Live Scores</a>
+              <a href="https://mccareysupon-png.github.io/nomadtips3-live-test/car-livescore/web/results.html" target="_blank" rel="noopener noreferrer">Results</a>
+            </nav>
+          </div>
         </div>
       </div>
 
