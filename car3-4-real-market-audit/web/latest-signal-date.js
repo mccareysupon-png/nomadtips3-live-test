@@ -2,7 +2,7 @@
   const FALLBACK_WORKER='https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev';
   const LIMIT=6;
   let records=[];
-  let refreshSeconds=15;
+  let workerUrl=FALLBACK_WORKER;
 
   const formatDate=value=>{
     if(!value)return'—';
@@ -23,17 +23,12 @@
       const meta=card.querySelector('.signal-meta');
       if(!meta)return;
       const entry=`${record.entryScore?.home??'—'}-${record.entryScore?.away??'—'}`;
-      meta.textContent=`Locked ${formatDate(record.selectedAt)} · ${formatTime(record.selectedAt)} · entry ${entry}`;
+      const next=`Locked ${formatDate(record.selectedAt)} · ${formatTime(record.selectedAt)} · entry ${entry}`;
+      if(meta.textContent!==next)meta.textContent=next;
     });
   };
 
   const load=async()=>{
-    let workerUrl=FALLBACK_WORKER;
-    try{
-      const runtime=await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
-      workerUrl=runtime.workerUrl||workerUrl;
-      refreshSeconds=Math.max(10,Number(runtime.refreshSeconds)||15);
-    }catch{}
     try{
       const payload=await fetch(`${workerUrl}/history?page=1&limit=${LIMIT}`,{cache:'no-store'}).then(r=>{
         if(!r.ok)throw new Error(`HTTP ${r.status}`);
@@ -44,11 +39,18 @@
     }catch{}
   };
 
-  const start=()=>{
+  const start=async()=>{
+    try{
+      const runtime=await fetch('./runtime.json',{cache:'no-store'}).then(r=>r.json());
+      workerUrl=runtime.workerUrl||workerUrl;
+    }catch{}
+
     const holder=document.getElementById('signals');
-    if(holder)new MutationObserver(apply).observe(holder,{childList:true,subtree:true});
-    load();
-    setInterval(load,refreshSeconds*1000);
+    if(holder){
+      new MutationObserver(()=>apply()).observe(holder,{childList:true});
+    }
+    await load();
+    setInterval(load,15000);
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
