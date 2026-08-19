@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-car34-line-alerts",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-19",
+  "workers_dev": true,
+  "triggers": { "crons": ["* * * * *"] },
+  "durable_objects": {
+    "bindings": [
+      { "name": "MEMBERSHIP_STATE", "class_name": "MembershipState" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MembershipState"] }
+  ],
+  "vars": {
+    "CAR34_WORKER_URL": "https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev",
+    "PUBLIC_LIVE_URL": "https://mccareysupon-png.github.io/nomadtips3-live-test/car3-4-real-market-audit/web/",
+    "STRIPE_PAYMENT_LINK": "https://buy.stripe.com/7sY4gz4Pg0M1gCg4Vp8AE03"
+  }
+}
