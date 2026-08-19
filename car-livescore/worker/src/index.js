@@ -1,20 +1,103 @@
 const BASE='https://live10.nowgoal26.com';
-const CANDIDATES=['/gf/data/bf_us.js','/gf/data/bf_us1.js','/gf/data/detailIn.js','/gf/data/goaldata.js','/gf/data/gf_us.js'];
-const INSPECT=['/scripts/ng/config.js','/scripts/Main/wsUtil.js','/scripts/Main/soccer/soccer_common.js','/scripts/Main/soccer/soccer.js'];
-const TERMS=['connectWs(','wsUtil.','channels','getwebsockettoken','scorePolling','getxml','getData','loadData','initData','$.get(','$.ajax(','getScript','matchcount =','A =','B =','type=17'];
-const HEADERS={'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'};
+const DETAIL_FEED=BASE+'/gf/data/detailIn.js';
+const MAX_MATCHES=20;
+const REFRESH_SECONDS=30;
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
-const json=(data,status=200)=>new Response(JSON.stringify(data,null,2),{status,headers:HEADERS});
-async function get(url){const r=await fetch(url,{headers:{'user-agent':UA,'accept':'*/*','accept-language':'en-US,en;q=0.8','referer':BASE+'/'},redirect:'follow'});const text=await r.text();return{url:r.url,status:r.status,type:r.headers.get('content-type')||'',length:text.length,text};}
-function scripts(html){const out=[];const re=/<script[^>]+src=["']([^"']+)["'][^>]*>/gi;let m;while((m=re.exec(html))){try{out.push(new URL(m[1],BASE).href)}catch{}}return[...new Set(out)];}
-function refs(text){const out=[];const patterns=[/(?:wss?|https?):\/\/[^"'\s)]+/gi,/['"](\/[^'"\s]{3,160})['"]/g];for(const re of patterns){let m;while((m=re.exec(text))&&out.length<160){const v=(m[1]||m[0]).replace(/\\u0026/g,'&');if(/(ws|socket|score|soccer|football|data|api|live|signal|push|match|bf_|detail)/i.test(v))out.push(v);}}return[...new Set(out)].slice(0,100);}
-function around(text,needle,limit=8){const out=[];let pos=0;while(out.length<limit){const i=text.indexOf(needle,pos);if(i<0)break;out.push(text.slice(Math.max(0,i-180),Math.min(text.length,i+520)).replace(/\s+/g,' ').slice(0,700));pos=i+needle.length;}return out;}
-function termMap(text){const out={};for(const term of TERMS){const hit=around(text,term,5);if(hit.length)out[term]=hit;}return out;}
-async function probe(){
-  const home=await get(BASE+'/');const scriptUrls=scripts(home.text);
-  const candidates=[];for(const path of CANDIDATES){try{const r=await get(BASE+path);candidates.push({path,status:r.status,type:r.type,length:r.length,preview:r.text.slice(0,220)});}catch(e){candidates.push({path,error:String(e?.message||e)});}}
-  const inspected=[];for(const path of INSPECT){try{const r=await get(BASE+path);inspected.push({path,status:r.status,type:r.type,length:r.length,refs:refs(r.text),terms:termMap(r.text)});}catch(e){inspected.push({path,error:String(e?.message||e)});}}
-  const homeData={hasA:/\bA\s*\[/.test(home.text),hasB:/\bB\s*\[/.test(home.text),hasMatchcount:/matchcount/i.test(home.text),terms:termMap(home.text)};
-  return{ok:true,service:'CAR LIVESCORE NOWGOAL PROBE',source:BASE,generatedAt:new Date().toISOString(),home:{status:home.status,type:home.type,length:home.length},homeData,scripts:scriptUrls.slice(0,80),candidates,inspected};
+const COMMON={'access-control-allow-origin':'*','access-control-allow-methods':'GET,OPTIONS','access-control-allow-headers':'content-type'};
+
+const number=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').trim());return Number.isFinite(n)?n:null;};
+const json=(data,status=200,cache='no-store')=>new Response(JSON.stringify(data,null,2),{status,headers:{...COMMON,'content-type':'application/json; charset=utf-8','cache-control':cache}});
+const escRe=s=>String(s||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+async function fetchText(url,ttl=30){
+  const bucket=Math.floor(Date.now()/(ttl*1000));
+  const u=new URL(url);u.searchParams.set('_nomad',String(bucket));
+  const r=await fetch(u.toString(),{headers:{'user-agent':UA,'accept':'text/html,application/javascript,*/*;q=0.8','accept-language':'en-US,en;q=0.8','referer':BASE+'/'},redirect:'follow',cf:{cacheTtl:ttl,cacheEverything:true}});
+  if(!r.ok)throw new Error(`HTTP_${r.status}_${u.pathname}`);
+  return r.text();
 }
-export default{async fetch(request){const url=new URL(request.url);if(request.method==='OPTIONS')return new Response(null,{status:204,headers:HEADERS});if(url.pathname==='/health')return json({ok:true,service:'CAR LIVESCORE NOWGOAL PROBE',source:BASE,scraping:'PROBE_ONLY'});if(url.pathname==='/probe'){try{return json(await probe());}catch(e){return json({ok:false,error:String(e?.message||e)},502);}}return json({ok:true,service:'CAR LIVESCORE NOWGOAL PROBE',routes:['/health','/probe']});}};
+
+function decode(text=''){
+  return String(text).replace(/&nbsp;|&#160;/gi,' ').replace(/&amp;/gi,'&').replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&lt;/gi,'<').replace(/&gt;/gi,'>');
+}
+function cleanBody(html=''){
+  return decode(String(html).replace(/<head[\s\S]*?<\/head>/gi,' ').replace(/<script[\s\S]*?<\/script>/gi,' ').replace(/<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
+}
+function titleFrom(html=''){
+  return decode(((String(html).match(/<title[^>]*>([\s\S]*?)<\/title>/i)||[])[1]||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim());
+}
+function idsFromDetail(source=''){
+  const ids=[];const seen=new Set();
+  for(const m of String(source).matchAll(/d_f\[(\d+)\]\s*=/g)){if(!seen.has(m[1])){seen.add(m[1]);ids.push(m[1]);if(ids.length>=MAX_MATCHES)break;}}
+  return ids;
+}
+function pair(text,label){
+  const e=escRe(label);
+  for(const re of [new RegExp(`(\\d+(?:\\.\\d+)?%?)\\s+${e}\\s+(\\d+(?:\\.\\d+)?%?)`,'i'),new RegExp(`${e}\\s*[:：]?\\s*(\\d+(?:\\.\\d+)?%?)\\s*[-–:]\\s*(\\d+(?:\\.\\d+)?%?)`,'i')]){
+    const m=text.match(re);if(m)return{home:number(m[1]),away:number(m[2])};
+  }
+  return{home:null,away:null};
+}
+function parseTeams(title){
+  const m=String(title).match(/^(.+?)\s+(?:VS|vs)\s+(.+?)\s+-\s+Live Score/i);
+  if(m)return{home:m[1].trim(),away:m[2].trim()};
+  const m2=String(title).match(/^(.+?)\s+(?:VS|vs)\s+(.+?)(?:\s+-|$)/i);
+  return m2?{home:m2[1].trim(),away:m2[2].trim()}:{home:'',away:''};
+}
+function parseHeader(text,home,away){
+  if(!home||!away)return{score:{home:null,away:null},status:'LIVE',statusText:'Live'};
+  const re=new RegExp(`${escRe(home)}\\s+(\\d{1,2})\\s+(.{0,120}?)\\s+(\\d{1,2})\\s+${escRe(away)}`,'i');
+  const m=text.match(re);
+  if(!m)return{score:{home:null,away:null},status:'LIVE',statusText:'Live'};
+  const middle=String(m[2]||'').trim();
+  let status='LIVE';
+  if(/finished|\bFT\b/i.test(middle))status='FT';
+  else if(/half.?time|\bHT\b/i.test(middle))status='HT';
+  else if(/postpon|cancel|abandon/i.test(middle))status='OTHER';
+  return{score:{home:number(m[1]),away:number(m[3])},status,statusText:middle||status};
+}
+function parseMinute(statusText){const m=String(statusText||'').match(/(\d{1,3})(?:\+\d+)?\s*['’]/);return m?number(m[1]):null;}
+function parseLeague(text,home){
+  const i=text.indexOf(home);if(i<0)return'Football';
+  const before=text.slice(Math.max(0,i-220),i).trim();
+  const bits=before.split(/\s{2,}|\|/).map(x=>x.trim()).filter(Boolean);
+  const candidate=bits.at(-1)||'';
+  return candidate.length>2&&candidate.length<90&&!/nowgoal|live score|prediction|football live/i.test(candidate)?candidate:'Football';
+}
+function parseMatch(html,id){
+  const title=titleFrom(html);const teams=parseTeams(title);const text=cleanBody(html);const head=parseHeader(text,teams.home,teams.away);
+  const stats={
+    possession:pair(text,'Possession'),
+    attacks:pair(text,'Attacks'),
+    dangerous_attacks:pair(text,'Dangerous Attacks'),
+    shots:pair(text,'Shots'),
+    shots_on_target:pair(text,'Shots on Goal'),
+    corners:pair(text,'Corner Kicks'),
+    yellow_cards:pair(text,'Yellow Cards'),
+    red_cards:pair(text,'Red Cards')
+  };
+  return{id:String(id),league:parseLeague(text,teams.home),home:teams.home||`Match ${id}`,away:teams.away||'',status:head.status,statusText:head.statusText,minute:parseMinute(head.statusText),score:head.score,stats,sourceUrl:`${BASE}/match/live-${id}`};
+}
+async function mapLimit(items,limit,fn){
+  const out=new Array(items.length);let next=0;
+  async function run(){while(true){const i=next++;if(i>=items.length)return;try{out[i]=await fn(items[i],i);}catch(e){out[i]={error:String(e?.message||e),id:String(items[i])};}}}
+  await Promise.all(Array.from({length:Math.max(1,limit)},run));return out;
+}
+function quality(m){return !m.error&&m.home&&m.away;}
+function rank(s){return s==='LIVE'?0:s==='HT'?1:s==='FT'?2:3;}
+async function build(){
+  const detail=await fetchText(DETAIL_FEED,REFRESH_SECONDS);const ids=idsFromDetail(detail);
+  const raw=await mapLimit(ids,5,async id=>parseMatch(await fetchText(`${BASE}/match/live-${id}`,REFRESH_SECONDS),id));
+  const matches=raw.filter(quality).sort((a,b)=>rank(a.status)-rank(b.status)||String(a.league).localeCompare(String(b.league)));
+  return{ok:true,service:'CAR LIVESCORE NOWGOAL BETA',source:'Nowgoal26 public live feed',generatedAt:new Date().toISOString(),refreshSeconds:REFRESH_SECONDS,summary:{capturedIds:ids.length,matches:matches.length,live:matches.filter(x=>x.status==='LIVE'||x.status==='HT').length,finished:matches.filter(x=>x.status==='FT').length,leagues:new Set(matches.map(x=>x.league)).size},matches,diagnostics:{detailFeed:true,failed:raw.filter(x=>x.error).length,method:'detailIn IDs + public match pages'}};
+}
+async function scores(request){
+  const cache=caches.default;const key=new Request(new URL('/__car_livescore_scores',request.url).toString(),{method:'GET'});const cached=await cache.match(key);if(cached)return cached;
+  const data=await build();const response=json(data,200,`public, max-age=5, s-maxage=${REFRESH_SECONDS}`);await cache.put(key,response.clone());return response;
+}
+export default{async fetch(request){
+  const url=new URL(request.url);if(request.method==='OPTIONS')return new Response(null,{status:204,headers:COMMON});
+  if(url.pathname==='/health')return json({ok:true,service:'CAR LIVESCORE NOWGOAL BETA',source:BASE,refreshSeconds:REFRESH_SECONDS,isolated:true});
+  if(url.pathname==='/scores'){try{return await scores(request);}catch(e){return json({ok:false,error:String(e?.message||e),service:'CAR LIVESCORE NOWGOAL BETA'},502);}}
+  return json({ok:true,service:'CAR LIVESCORE NOWGOAL BETA',routes:['/health','/scores']});
+}};
