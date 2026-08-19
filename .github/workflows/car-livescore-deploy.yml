@@ -12,6 +12,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: car-livescore-nowgoal
+  cancel-in-progress: true
+
 env:
   LIVESCORE_WORKER_URL: https://nomadtips3-car-livescore.mccarey-supon.workers.dev
 
@@ -25,7 +29,12 @@ jobs:
         with:
           node-version: "22"
       - name: Validate source
-        run: node --check car-livescore/worker/src/index.js
+        run: |
+          node --check car-livescore/worker/src/index.js
+          node --check car-livescore/web/livescore.js
+          test -f car-livescore/web/index.html
+          test -f car-livescore/web/livescore.css
+          test -f car-livescore/web/runtime.json
       - name: Validate Cloudflare credentials
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -41,21 +50,21 @@ jobs:
           workingDirectory: car-livescore/worker
           wranglerVersion: "4"
           command: deploy
-      - name: Probe Nowgoal26 source
+      - name: Smoke test Nowgoal26 feed
         run: |
-          sleep 4
+          sleep 5
           mkdir -p car-livescore
           curl -fsS "$LIVESCORE_WORKER_URL/health"
-          curl -fsS "$LIVESCORE_WORKER_URL/probe" > car-livescore/probe-result.json
-          head -c 20000 car-livescore/probe-result.json
-      - name: Save probe result
+          curl -fsS "$LIVESCORE_WORKER_URL/scores" > car-livescore/smoke-result.json
+          head -c 24000 car-livescore/smoke-result.json
+      - name: Save smoke result
         run: |
           git config user.name "nomadtips3-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add car-livescore/probe-result.json
+          git add car-livescore/smoke-result.json
           if git diff --cached --quiet; then
-            echo "Probe result unchanged"
+            echo "Smoke result unchanged"
           else
-            git commit -m "Record Nowgoal26 probe result"
+            git commit -m "Record CAR LiveScore Nowgoal smoke result"
             git push
           fi
