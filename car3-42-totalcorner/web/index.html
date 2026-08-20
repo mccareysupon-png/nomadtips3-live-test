@@ -17,83 +17,94 @@
       <a href="#settings">Settings</a>
       <a href="#health">Health</a>
     </nav>
-    <div class="source-pill"><span class="dot"></span>TOTALCORNER ENGINE</div>
+    <div class="source-pill"><span class="dot"></span>TOTALCORNER ENGINE · MOCK</div>
   </div>
 </header>
 
 <main id="live" class="shell">
   <section class="status-grid" aria-label="System summary">
-    <article><span>LIVE MATCHES</span><strong id="metricLive">0</strong><small>source scan</small></article>
-    <article><span>WATCHING</span><strong id="metricWatching">0</strong><small>under detector</small></article>
-    <article><span>NEAR SIGNAL</span><strong id="metricNear">0</strong><small>almost passed</small></article>
-    <article class="signal-metric"><span>SIGNAL</span><strong id="metricSignal">0</strong><small>locked now</small></article>
+    <article><span>LIVE MATCHES</span><strong>126</strong><small>mock source scan</small></article>
+    <article><span>WATCHING</span><strong>18</strong><small>under detector</small></article>
+    <article><span>NEAR SIGNAL</span><strong>4</strong><small>almost passed</small></article>
+    <article class="signal-metric"><span>SIGNAL</span><strong>1</strong><small>locked preview</small></article>
   </section>
 
   <section class="hero-strip">
     <div>
       <p class="eyebrow">LIVE DETECTOR CONTROL PANEL</p>
       <h1>CAR 3.42 · TotalCorner</h1>
-      <p class="subcopy">Priority rows first. Signal → Near signal → Watching → Live. Open one row to inspect live evidence, market and detector checks.</p>
+      <p class="subcopy">Static UI preview. Priority order: Signal → Near signal → Watching → Live. Live scraping is not connected yet.</p>
     </div>
-    <div class="freshness">
-      <span>DATA AGE</span>
-      <strong id="dataAge">3s</strong>
-      <small id="lastUpdate">updated just now</small>
-    </div>
+    <div class="freshness"><span>MODE</span><strong>MOCK</strong><small>UI preview only</small></div>
   </section>
 
   <section class="toolbar" aria-label="Live filters">
-    <div class="tabs" role="tablist" aria-label="Filter matches">
-      <button class="tab active" data-filter="all" type="button">All</button>
-      <button class="tab" data-filter="signal" type="button">Signal</button>
-      <button class="tab" data-filter="near" type="button">Near</button>
-      <button class="tab" data-filter="watching" type="button">Watching</button>
-      <button class="tab" data-filter="live" type="button">Live</button>
+    <div class="tabs">
+      <button class="tab active" type="button">All</button>
+      <button class="tab" type="button">Signal</button>
+      <button class="tab" type="button">Near</button>
+      <button class="tab" type="button">Watching</button>
+      <button class="tab" type="button">Live</button>
     </div>
-    <label class="search-wrap">Search
-      <input id="searchInput" type="search" placeholder="team or league">
-    </label>
+    <label class="search-wrap">Search <input type="search" placeholder="preview only" disabled></label>
   </section>
 
   <section class="scanner-panel">
     <div class="scanner-head">
-      <div>
-        <p class="eyebrow">PRIORITY SCANNER</p>
-        <h2>Monitored matches</h2>
-      </div>
-      <div class="scanner-note"><span class="dot"></span><span id="scannerState">mock feed active</span></div>
+      <div><p class="eyebrow">PRIORITY SCANNER</p><h2>Monitored matches</h2></div>
+      <div class="scanner-note"><span class="dot"></span><span>mock data</span></div>
     </div>
-    <div id="matchList" class="match-list" aria-live="polite"></div>
+    <div class="match-list">
+
+      <article class="match-wrap" data-state="signal">
+        <div class="match-row">
+          <div class="statebox"><span class="state-label state-signal">● SIGNAL</span><span class="minute">72′</span></div>
+          <div class="match-main"><span class="league">USA · MLS</span><span class="teams">Colorado Rapids — LAFC</span></div>
+          <div class="score">1–1</div>
+          <div class="quick-stats"><div class="qstat"><span>DA</span><b>61–39</b></div><div class="qstat"><span>SOT</span><b>5–2</b></div><div class="qstat"><span>MOM</span><b>78</b></div><div class="qstat"><span>Δ5m</span><b>+14</b></div></div>
+          <div class="market"><span>BET365 · LIVE AH</span><strong>-0.50 @ 1.91</strong></div>
+          <div class="condition"><span>CONDITIONS</span><strong class="pass">8 / 8</strong></div>
+        </div>
+      </article>
+
+      <article class="match-wrap" data-state="near">
+        <div class="match-row">
+          <div class="statebox"><span class="state-label state-near">● NEAR SIGNAL</span><span class="minute">66′</span></div>
+          <div class="match-main"><span class="league">Finland · Ykkönen</span><span class="teams">Home FC — Away FC</span></div>
+          <div class="score">0–0</div>
+          <div class="quick-stats"><div class="qstat"><span>DA</span><b>47–28</b></div><div class="qstat"><span>SOT</span><b>4–1</b></div><div class="qstat"><span>MOM</span><b>72</b></div><div class="qstat"><span>Δ5m</span><b>+9</b></div></div>
+          <div class="market"><span>BET365 · LIVE AH</span><strong>-0.25 @ 1.67</strong></div>
+          <div class="condition"><span>CONDITIONS</span><strong class="warn">7 / 8</strong></div>
+        </div>
+      </article>
+
+      <article class="match-wrap" data-state="watching">
+        <div class="match-row">
+          <div class="statebox"><span class="state-label state-watching">● WATCHING</span><span class="minute">59′</span></div>
+          <div class="match-main"><span class="league">Japan · J League</span><span class="teams">Blue United — City SC</span></div>
+          <div class="score">1–0</div>
+          <div class="quick-stats"><div class="qstat"><span>DA</span><b>31–27</b></div><div class="qstat"><span>SOT</span><b>3–3</b></div><div class="qstat"><span>MOM</span><b>61</b></div><div class="qstat"><span>Δ5m</span><b>+2</b></div></div>
+          <div class="market"><span>BET365 · LIVE AH</span><strong>-0.25 @ 1.84</strong></div>
+          <div class="condition"><span>CONDITIONS</span><strong>4 / 8</strong></div>
+        </div>
+      </article>
+
+      <article class="match-wrap" data-state="live">
+        <div class="match-row">
+          <div class="statebox"><span class="state-label state-live">● LIVE</span><span class="minute">43′</span></div>
+          <div class="match-main"><span class="league">Brazil · Serie B</span><span class="teams">Athletic Club — Nova City</span></div>
+          <div class="score">0–0</div>
+          <div class="quick-stats"><div class="qstat"><span>DA</span><b>19–18</b></div><div class="qstat"><span>SOT</span><b>2–1</b></div><div class="qstat"><span>MOM</span><b>48</b></div><div class="qstat"><span>Δ5m</span><b>+1</b></div></div>
+          <div class="market"><span>BET365 · LIVE AH</span><strong>0.00 @ 1.88</strong></div>
+          <div class="condition"><span>CONDITIONS</span><strong>2 / 8</strong></div>
+        </div>
+      </article>
+    </div>
   </section>
 
-  <section id="statistics" class="placeholder-section">
-    <div>
-      <p class="eyebrow">PHASE 2</p>
-      <h2>Statistics</h2>
-      <p>Reserved for locked-signal settlement, win/loss, ROI, average odds and detector-version analysis.</p>
-    </div>
-    <span>NOT CONNECTED</span>
-  </section>
-
-  <section id="settings" class="placeholder-section">
-    <div>
-      <p class="eyebrow">PHASE 2</p>
-      <h2>Detector settings</h2>
-      <p>Reserved for minute, score, attacks, dangerous attacks, shots, corners, momentum, AH and odds thresholds.</p>
-    </div>
-    <span>NOT CONNECTED</span>
-  </section>
-
-  <section id="health" class="placeholder-section">
-    <div>
-      <p class="eyebrow">PHASE 2</p>
-      <h2>Source health</h2>
-      <p>Reserved for TotalCorner Today, live stats, Bet365 odds, parser freshness and per-match failures.</p>
-    </div>
-    <span>MOCK DATA</span>
-  </section>
+  <section id="statistics" class="placeholder-section"><div><p class="eyebrow">NEXT</p><h2>Statistics</h2><p>Locked signal results, win/loss, ROI and average odds.</p></div><span>NOT CONNECTED</span></section>
+  <section id="settings" class="placeholder-section"><div><p class="eyebrow">NEXT</p><h2>Detector settings</h2><p>Minute, score, attacks, dangerous attacks, shots, corners, momentum, AH and odds thresholds.</p></div><span>NOT CONNECTED</span></section>
+  <section id="health" class="placeholder-section"><div><p class="eyebrow">NEXT</p><h2>Source health</h2><p>TotalCorner source, stats freshness, price freshness and parser status.</p></div><span>MOCK DATA</span></section>
 </main>
-
-<script src="app.js" defer></script>
 </body>
 </html>
