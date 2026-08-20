@@ -1,0 +1,19 @@
+.goaloo-status-dot{
+  display:inline-block;
+  width:5px;
+  height:5px;
+  flex:0 0 5px;
+  margin-left:1px;
+  border-radius:50%;
+  background:#fff;
+  opacity:.35;
+  box-shadow:none;
+  vertical-align:middle;
+  cursor:help;
+}
+.goaloo-status-dot.goaloo-ok{opacity:.95}
+.goaloo-status-dot.goaloo-empty{opacity:.55}
+.goaloo-status-dot.goaloo-error{opacity:.25}
+.goaloo-status-dot.goaloo-stale{opacity:.15}
+.goaloo-status-dot.goaloo-checking{animation:goalooDotBreath 1.6s ease-in-out infinite}
+@keyframes goalooDotBreath{0%,100%{opacity:.2}50%{opacity:.65}}
