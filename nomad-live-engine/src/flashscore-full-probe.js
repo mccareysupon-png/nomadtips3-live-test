@@ -12,7 +12,8 @@ const clip=(s,n=12000)=>String(s||'').slice(0,n);
 function rowObjects(text=''){
   return String(text).split('¬').map(raw=>{
     const out={};
-    for(const bit of raw.split('÷')){
+    for(const bit0 of raw.split('÷')){
+      const bit=bit0.replace(/^~/,'');
       const i=bit.indexOf('=');
       if(i>0) out[bit.slice(0,i)]=bit.slice(i+1);
     }
@@ -27,7 +28,7 @@ async function fsFetch(path){
 }
 function eventCandidates(text){
   const rs=rowObjects(text);
-  return rs.filter(x=>x.AA && Object.keys(x).length>=6).slice(0,20);
+  return rs.filter(x=>x.AA && x.AE && x.AF).slice(0,20);
 }
 function compactRows(text,max=80){
   return rowObjects(text).slice(0,max).map(x=>Object.fromEntries(Object.entries(x).filter(([,v])=>String(v).length<700)));
@@ -61,14 +62,14 @@ export default {
       const allRows=rowObjects(feed.text);
       const candidates=eventCandidates(feed.text);
       const samples=[];
-      for(const e of candidates.slice(0,6)){
+      for(const e of candidates.slice(0,8)){
         const s=await inspectEvent(e);
         samples.push(s);
         if(s.status.stats===200&&s.status.odds===200&&s.oddsRaw.length>20) break;
       }
       return json({
         ok:true,checkedAt:new Date().toISOString(),
-        feed:{status:feed.status,bytes:feed.text.length,rowCount:allRows.length,eventCount:candidates.length,headRaw:clip(feed.text,8000),headRows:compactRows(feed.text,30)},
+        feed:{status:feed.status,bytes:feed.text.length,rowCount:allRows.length,eventCount:candidates.length,headRows:compactRows(feed.text,12)},
         samples
       });
     }catch(e){
