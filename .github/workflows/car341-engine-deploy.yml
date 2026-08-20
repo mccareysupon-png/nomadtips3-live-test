@@ -1,0 +1,111 @@
+name: Deploy CAR 3.4.1 Engine
+
+on:
+  push:
+    branches:
+      - feature/car3-4-1-ui-shell
+    paths:
+      - "car3-4-1/engine/**"
+      - ".github/workflows/car341-engine-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_URL: https://nomadtips3-car341-source-monitor.mccarey-supon.workers.dev
+  ENGINE_URL: https://nomadtips3-car341-engine.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate CAR 3.4.1 engine
+        working-directory: car3-4-1/engine
+        run: |
+          npm test
+          npm run check
+          npx --yes wrangler@4 deploy --dry-run --outdir /tmp/car341-engine-dry-run
+
+      - name: Require isolated source Worker first
+        shell: bash
+        run: |
+          OK=0
+          for i in $(seq 1 24); do
+            if H=$(curl -fsS "$SOURCE_URL/health") && printf '%s' "$H" | grep -q '"version": "3.4.1"'; then
+              if S=$(curl -fsS "$SOURCE_URL/source-health") && printf '%s' "$S" | grep -q '"ok": true'; then OK=1; break; fi
+            fi
+            sleep 5
+          done
+          test "$OK" = "1" || { echo "::error::CAR 3.4.1 source Worker is not healthy; engine deploy blocked"; exit 1; }
+
+      - name: Validate Cloudflare and Odds API credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$ODDS_API_KEY" || { echo "::error::Missing ODDS_API_KEY; full 3.4.1 engine requires real 1xBet pricing"; exit 1; }
+
+      - name: Deploy isolated CAR 3.4.1 engine
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-4-1/engine
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Configure Odds API secret on CAR 3.4.1 only
+        working-directory: car3-4-1/engine
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          printf '%s' "$ODDS_API_KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-car341-engine
+
+      - name: Run first isolated scan
+        shell: bash
+        run: |
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sS -o /tmp/car341-scan.json -w '%{http_code}' -X POST "$ENGINE_URL/scan" || true)
+            if [ "$STATUS" = "200" ]; then break; fi
+            sleep 5
+          done
+          cat /tmp/car341-scan.json | head -c 24000 || true
+          echo
+          test "$STATUS" = "200" || { echo "::error::CAR 3.4.1 first scan failed HTTP $STATUS"; exit 1; }
+
+      - name: Verify full engine contract
+        shell: bash
+        run: |
+          HEALTH=$(curl -fsS "$ENGINE_URL/health")
+          printf '%s' "$HEALTH" | head -c 16000
+          echo
+          printf '%s' "$HEALTH" | grep -q '"version": "3.4.1"' || exit 1
+          printf '%s' "$HEALTH" | grep -q '"phase": "FULL_ENGINE"' || exit 1
+          printf '%s' "$HEALTH" | grep -q '"pricingConfigured": true' || exit 1
+          printf '%s' "$HEALTH" | grep -q '"settlementContract": "BET365_V4"' || exit 1
+          LIVE=$(curl -fsS "$ENGINE_URL/live")
+          printf '%s' "$LIVE" | grep -q '"generatedAt"' || exit 1
+          HISTORY=$(curl -fsS "$ENGINE_URL/history?limit=1")
+          printf '%s' "$HISTORY" | grep -q '"settlementContract": "BET365_V4"' || exit 1
+
+      - name: Show isolated engine URLs
+        run: |
+          echo "Engine: $ENGINE_URL"
+          echo "Health: $ENGINE_URL/health"
+          echo "Source status: $ENGINE_URL/source-health"
+          echo "Live: $ENGINE_URL/live"
+          echo "History: $ENGINE_URL/history"
+          echo "Config: $ENGINE_URL/config"
+          echo "CAR 3.4 and CAR 3.5 were not deployed by this workflow."
