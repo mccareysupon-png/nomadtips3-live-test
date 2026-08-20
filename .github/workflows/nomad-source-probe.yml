@@ -44,4 +44,20 @@ jobs:
             sleep 5
           done
           test -s /tmp/probe.json
-          node -e "const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8')); console.log(JSON.stringify(x,null,2)); if(!x.today) process.exit(2)"
+          node <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8'));
+          const compact={
+            checkedAt:x.checkedAt,
+            today:x.today,
+            deep:(x.deep||[]).map(d=>({
+              matchId:d.matchId,minute:d.minute,score:d.score,
+              stats:{status:d.stats?.status,title:d.stats?.title,challenge:d.stats?.challenge,parsed:d.stats?.parsed},
+              live:{status:d.live?.status,title:d.live?.title,challenge:d.live?.challenge,parsed:d.live?.parsed},
+              odds:{status:d.odds?.status,title:d.odds?.title,challenge:d.odds?.challenge,parsed:d.odds?.parsed,bookmaker:d.odds?.bookmaker,line:d.odds?.line}
+            })),
+            ended:x.ended
+          };
+          console.log(JSON.stringify(compact,null,2));
+          if(!x.today) process.exit(2);
+          NODE
