@@ -25,13 +25,13 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-
       - name: Validate browser scripts and static asset bundle
         run: |
           node --check car3-4-1/web/mock-app.js
+          node --check car3-4-1/web/statistics-live.js
+          node --check car3-4-1/web/history-live.js
           node --check car3-4-1/web/site-footer.js
           npx --yes wrangler@4 deploy --dry-run --config car3-4-1/preview/wrangler.jsonc --outdir /tmp/car341-preview-dry-run
-
       - name: Validate Cloudflare credentials
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -39,7 +39,6 @@ jobs:
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
-
       - name: Deploy static CAR 3.4.1 preview only
         uses: cloudflare/wrangler-action@v3
         with:
@@ -48,19 +47,18 @@ jobs:
           workingDirectory: car3-4-1/preview
           wranglerVersion: "4"
           command: deploy
-
-      - name: Smoke test preview pages
+      - name: Smoke test preview pages and runtime assets
         shell: bash
         run: |
+          HOME=""
           for i in $(seq 1 12); do
             if HOME=$(curl -fsS "$PREVIEW_URL/index.html"); then break; fi
             sleep 5
           done
           printf '%s' "$HOME" | grep -q 'CAR 3.4.1' || { echo "::error::CAR 3.4.1 preview identity missing"; exit 1; }
-          for page in statistics.html settings.html line-alerts.html user-guide.html privacy-policy.html terms-of-service.html history.html runtime.json; do
-            curl -fsS "$PREVIEW_URL/$page" >/dev/null || { echo "::error::Preview page failed: $page"; exit 1; }
+          for path in statistics.html settings.html line-alerts.html user-guide.html privacy-policy.html terms-of-service.html history.html runtime.json mock-app.js statistics-live.js history-live.js site-footer.js shell.css favicon.svg assets/nomadtips3-live-pitch.webp; do
+            curl -fsS "$PREVIEW_URL/$path" >/dev/null || { echo "::error::Preview asset failed: $path"; exit 1; }
           done
-
       - name: Show preview URL
         run: |
           echo "CAR 3.4.1 Preview: $PREVIEW_URL/index.html"
