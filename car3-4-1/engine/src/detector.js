@@ -107,12 +107,18 @@ export function evaluateBase(match,cfgInput,snapshots=[]){
 }
 
 export function evaluateFinal(match,cfgInput,snapshots=[],realMarket=null){
-  const cfg=normalizeConfig(cfgInput),base=evaluateBase(match,cfg,snapshots),rawLine=num(realMarket?.ah?.line),selectedLine=rawLine===null?null:(base.side==='AWAY'?-rawLine:rawLine),odds=num(realMarket?.ah?.[base.side==='AWAY'?'away':'home']),age=num(realMarket?.marketAgeSeconds);
+  const cfg=normalizeConfig(cfgInput),base=evaluateBase(match,cfg,snapshots),rawLine=num(realMarket?.ah?.line),selectedLine=rawLine===null?null:(base.side==='AWAY'?-rawLine:rawLine),odds=num(realMarket?.ah?.[base.side==='AWAY'?'away':'home']),age=num(realMarket?.marketAgeSeconds),mappingConfidence=num(realMarket?.matchConfidence),mappingPct=mappingConfidence===null?0:Math.round(mappingConfidence*1000)/10;
   const marketOk=realMarket?.status==='MATCH';
+  const mappingOk=marketOk&&mappingPct>=cfg.matchConfidenceMin;
   const ageOk=age!==null&&age<=cfg.realMarketMaxAgeSeconds;
   const oddsOk=odds!==null&&odds>=cfg.oddsMin&&(cfg.oddsMax===null||odds<=cfg.oddsMax);
   const lineOk=selectedLine!==null&&selectedLine>=cfg.ahMin&&(cfg.ahMax===null||selectedLine<=cfg.ahMax);
-  const marketGates=[['REAL MARKET',marketOk,realMarket?.status||'NOT_FOUND'],['PRICE AGE',ageOk,age===null?'n/a':`${age}s / ≤${cfg.realMarketMaxAgeSeconds}s`],['AH / ODDS',oddsOk&&lineOk,odds===null?'waiting':`${selectedLine>=0?'+':''}${selectedLine} @ ${odds}`]];
+  const marketGates=[
+    ['REAL MARKET',marketOk,realMarket?.status||'NOT_FOUND'],
+    ['MARKET MATCH',mappingOk,`${mappingPct}% / ≥${cfg.matchConfidenceMin}%`],
+    ['PRICE AGE',ageOk,age===null?'n/a':`${age}s / ≤${cfg.realMarketMaxAgeSeconds}s`],
+    ['AH / ODDS',oddsOk&&lineOk,odds===null?'waiting':`${selectedLine>=0?'+':''}${selectedLine} @ ${odds}`]
+  ];
   const gates=[...base.gates,...marketGates],pass=gates.every(x=>x[1]);
-  return{...base,pass,decision:pass?'SIGNAL':base.pass?'PRICE_WAIT':base.momentum>=Math.max(1,cfg.momentumMin-7)?'CLOSE':'WATCHING',gates,rawLine,selectedLine,line:selectedLine,odds,bookmaker:realMarket?.ah?.bookmaker||'1xbet',marketAgeSeconds:age,matchConfidence:realMarket?.matchConfidence??0,oddsUpdatedAt:realMarket?.ah?.updatedAt||null};
+  return{...base,pass,decision:pass?'SIGNAL':base.pass?'PRICE_WAIT':base.momentum>=Math.max(1,cfg.momentumMin-7)?'CLOSE':'WATCHING',gates,rawLine,selectedLine,line:selectedLine,odds,bookmaker:realMarket?.ah?.bookmaker||'1xbet',marketAgeSeconds:age,matchConfidence:mappingConfidence??0,matchConfidencePct:mappingPct,oddsUpdatedAt:realMarket?.ah?.updatedAt||null};
 }
