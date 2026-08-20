@@ -1,0 +1,57 @@
+name: Deploy NOMAD Live Engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "nomad-live-engine/**"
+      - ".github/workflows/nomad-live-engine-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ENGINE_URL: https://nomadtips3-live-engine.mccarey-supon.workers.dev
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Offline parser detector and settlement tests
+        working-directory: nomad-live-engine
+        run: node --test
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+      - name: Deploy isolated Worker and Cron
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: "4"
+          command: deploy
+      - name: Wake engine and verify first live cycle
+        shell: bash
+        run: |
+          curl -fsS "$ENGINE_URL/health" >/tmp/health.json || true
+          for i in $(seq 1 24); do
+            BODY=$(curl -fsS "$ENGINE_URL/health" || true)
+            printf '%s\n' "$BODY"
+            if printf '%s' "$BODY" | grep -Eq '"lastSuccess":"[^"]+"'; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Worker deployed but no successful source cycle was observed"
+          exit 1
