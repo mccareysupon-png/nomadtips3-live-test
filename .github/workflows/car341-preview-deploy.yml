@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 env:
   PREVIEW_URL: https://nomadtips3-car341-preview.mccarey-supon.workers.dev
@@ -63,3 +64,18 @@ jobs:
         run: |
           echo "CAR 3.4.1 Preview: $PREVIEW_URL/index.html"
           echo "UI workflow does not deploy Source or Engine Workers."
+      - name: Publish preview deployment proof
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          STATE=success
+          [ "$JOB_STATUS" = "success" ] || STATE=failure
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -d "{\"state\":\"$STATE\",\"context\":\"car341/preview-deploy\",\"description\":\"CAR 3.4.1 preview deployment $STATE\"}"
