@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 env:
   CAR341_WORKER_URL: https://nomadtips3-car341-source-monitor.mccarey-supon.workers.dev
@@ -91,3 +92,18 @@ jobs:
           echo "Fixtures: $CAR341_WORKER_URL/fixtures"
           echo "Live normalized source: $CAR341_WORKER_URL/live"
           echo "CAR 3.4 worker was not referenced or deployed by this workflow."
+      - name: Publish source deployment proof
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          STATE=success
+          [ "$JOB_STATUS" = "success" ] || STATE=failure
+          curl -fsS -X POST \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+            -d "{\"state\":\"$STATE\",\"context\":\"car341/source-deploy\",\"description\":\"CAR 3.4.1 source deployment $STATE\"}"
