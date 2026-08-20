@@ -65,10 +65,10 @@ jobs:
             sleep 5
           done
           printf '%s\n' "${HEALTH:0:12000}"
-          printf '%s' "$HEALTH" | grep -q '"version": "3.4.1"' || { echo "::error::CAR 3.4.1 identity missing"; exit 1; }
-          printf '%s' "$HEALTH" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::SOURCE_MONITOR phase missing"; exit 1; }
-          printf '%s' "$HEALTH" | grep -q '"detector": false' || { echo "::error::Detector must remain disconnected"; exit 1; }
-          printf '%s' "$HEALTH" | grep -q '"cron": false' || { echo "::error::Cron must remain disconnected"; exit 1; }
+          [[ "$HEALTH" == *'"version": "3.4.1"'* ]] || { echo "::error::CAR 3.4.1 identity missing"; exit 1; }
+          [[ "$HEALTH" == *'"phase": "SOURCE_MONITOR"'* ]] || { echo "::error::SOURCE_MONITOR phase missing"; exit 1; }
+          [[ "$HEALTH" == *'"detector": false'* ]] || { echo "::error::Detector must remain disconnected"; exit 1; }
+          [[ "$HEALTH" == *'"cron": false'* ]] || { echo "::error::Cron must remain disconnected"; exit 1; }
       - name: Mark source process health
         env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: |
@@ -78,8 +78,8 @@ jobs:
         run: |
           SOURCE=$(curl -fsS "$CAR341_WORKER_URL/source-health")
           printf '%s\n' "${SOURCE:0:12000}"
-          printf '%s' "$SOURCE" | grep -q '"provider": "GOALOO"' || { echo "::error::Goaloo provider identity missing"; exit 1; }
-          printf '%s' "$SOURCE" | grep -q '"ok": true' || { echo "::error::Goaloo source probe failed"; exit 1; }
+          [[ "$SOURCE" == *'"provider": "GOALOO"'* ]] || { echo "::error::Goaloo provider identity missing"; exit 1; }
+          [[ "$SOURCE" == *'"ok": true'* ]] || { echo "::error::Goaloo source probe failed"; exit 1; }
       - name: Mark Goaloo probe
         env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: |
@@ -89,9 +89,9 @@ jobs:
         run: |
           LIVE=$(curl -fsS "$CAR341_WORKER_URL/live")
           printf '%s\n' "${LIVE:0:20000}"
-          printf '%s' "$LIVE" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::Live snapshot phase missing"; exit 1; }
-          printf '%s' "$LIVE" | grep -q '"source": "GOALOO"' || { echo "::error::Live snapshot source missing"; exit 1; }
-          printf '%s' "$LIVE" | grep -q '"generatedAt"' || { echo "::error::Live generatedAt missing"; exit 1; }
+          [[ "$LIVE" == *'"phase": "SOURCE_MONITOR"'* ]] || { echo "::error::Live snapshot phase missing"; exit 1; }
+          [[ "$LIVE" == *'"source": "GOALOO"'* ]] || { echo "::error::Live snapshot source missing"; exit 1; }
+          [[ "$LIVE" == *'"generatedAt"'* ]] || { echo "::error::Live generatedAt missing"; exit 1; }
       - name: Mark normalized live feed
         env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: |
@@ -101,9 +101,9 @@ jobs:
         run: |
           FIXTURES=$(curl -fsS "$CAR341_WORKER_URL/fixtures")
           printf '%s\n' "${FIXTURES:0:20000}"
-          printf '%s' "$FIXTURES" | grep -q '"source": "GOALOO"' || { echo "::error::Fixture source missing"; exit 1; }
-          printf '%s' "$FIXTURES" | grep -q '"fixtures"' || { echo "::error::Fixture collection missing"; exit 1; }
-          printf '%s' "$FIXTURES" | grep -q '"generatedAt"' || { echo "::error::Fixture generatedAt missing"; exit 1; }
+          [[ "$FIXTURES" == *'"source": "GOALOO"'* ]] || { echo "::error::Fixture source missing"; exit 1; }
+          [[ "$FIXTURES" == *'"fixtures"'* ]] || { echo "::error::Fixture collection missing"; exit 1; }
+          [[ "$FIXTURES" == *'"generatedAt"'* ]] || { echo "::error::Fixture generatedAt missing"; exit 1; }
       - name: Mark fixture feed
         env: { GITHUB_TOKEN: "${{ github.token }}" }
         run: |
