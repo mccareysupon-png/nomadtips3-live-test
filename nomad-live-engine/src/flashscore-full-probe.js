@@ -26,7 +26,8 @@ async function fsFetch(path){
   return {url,status:r.status,ok:r.ok,ct:r.headers.get('content-type'),text};
 }
 function eventCandidates(text){
-  return rowObjects(text).filter(x=>x.AA&&x.AE&&x.AF).slice(0,20);
+  const rs=rowObjects(text);
+  return rs.filter(x=>x.AA && Object.keys(x).length>=6).slice(0,20);
 }
 function compactRows(text,max=80){
   return rowObjects(text).slice(0,max).map(x=>Object.fromEntries(Object.entries(x).filter(([,v])=>String(v).length<700)));
@@ -42,7 +43,7 @@ async function inspectEvent(e){
     fsFetch(`/x/feed/df_od_1_${id}`),
   ]);
   return {
-    event:Object.fromEntries(Object.entries(e).filter(([k])=>['AA','AC','AD','AE','AF','AG','AH','AB','AI','FK','OG','OA'].includes(k))),
+    event:e,
     status:{summary:summary.status,stats:stats.status,h2h:h2h.status,lineups:lineups.status,players:players.status,odds:odds.status},
     statsRows:compactRows(stats.text,120),
     oddsRows:compactRows(odds.text,160),
@@ -57,6 +58,7 @@ export default {
     if(u.pathname!=='/probe') return json({ok:true,service:'isolated-source-probe'});
     try{
       const feed=await fsFetch('/x/feed/f_1_0_3_en_1');
+      const allRows=rowObjects(feed.text);
       const candidates=eventCandidates(feed.text);
       const samples=[];
       for(const e of candidates.slice(0,6)){
@@ -64,7 +66,11 @@ export default {
         samples.push(s);
         if(s.status.stats===200&&s.status.odds===200&&s.oddsRaw.length>20) break;
       }
-      return json({ok:true,checkedAt:new Date().toISOString(),feed:{status:feed.status,bytes:feed.text.length,eventCount:candidates.length},samples});
+      return json({
+        ok:true,checkedAt:new Date().toISOString(),
+        feed:{status:feed.status,bytes:feed.text.length,rowCount:allRows.length,eventCount:candidates.length,headRaw:clip(feed.text,8000),headRows:compactRows(feed.text,30)},
+        samples
+      });
     }catch(e){
       return json({ok:false,checkedAt:new Date().toISOString(),error:String(e?.stack||e)},500);
     }
