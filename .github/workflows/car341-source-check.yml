@@ -1,0 +1,38 @@
+name: CAR 3.4.1 Source Check
+
+on:
+  push:
+    branches:
+      - feature/car3-4-1-ui-shell
+    paths:
+      - "car3-4-1/worker/**"
+      - ".github/workflows/car341-source-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Parser regression tests
+        working-directory: car3-4-1/worker
+        run: npm test
+
+      - name: JavaScript syntax checks
+        working-directory: car3-4-1/worker
+        run: npm run check
+
+      - name: Wrangler dry run
+        working-directory: car3-4-1/worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/car341-dry-run
