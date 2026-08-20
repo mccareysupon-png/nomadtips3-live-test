@@ -39,8 +39,8 @@ When the user approves the UI shell, the new engine will be connected in layers:
 - `web/privacy-policy.html` — Privacy Policy
 - `web/terms-of-service.html` — Terms of Service
 
-## Static dependency
-The pitch card currently reuses the existing static image from `car3-4-real-market-audit/web/assets/nomadtips3-live-pitch.webp`. This is a presentation asset only; it has no runtime/engine dependency.
+## Static assets
+The CAR 3.4 pitch image has been copied into `web/assets/nomadtips3-live-pitch.webp`, and the Live page explicitly uses that local CAR 3.4.1 asset. No runtime asset is required from CAR 3.4.
 
 ## Rule for this phase
 Do not connect any engine until the UI is reviewed and explicitly approved as complete.
