@@ -36,6 +36,16 @@ function liveHasData(v){
   return v?.score?.home!=null||v?.score?.away!=null;
 }
 
+async function liveLayer(url){
+  const raw=await grab(url);
+  const shape=htmlShape(raw);
+  let parsed=null;
+  try{parsed=raw.ok?parseLiveDetail(raw.text):null;}catch(e){shape.parseError=String(e?.message||e);}
+  shape.parsed=liveHasData(parsed);
+  shape.minute=Number.isFinite(parsed?.minute)?parsed.minute:null;
+  return shape;
+}
+
 async function probe(){
   const todayRaw=await grab(DEFAULT_CONFIG.scanUrl);
   const today=htmlShape(todayRaw);
@@ -50,12 +60,8 @@ async function probe(){
 
   const deep=[];
   for(const m of parsed.slice(0,3)){
-    const statsRaw=await grab(m.urls.stats);
-    const statsShape=htmlShape(statsRaw);
-    let statsParsed=null;
-    try{statsParsed=statsRaw.ok?parseLiveDetail(statsRaw.text):null;}catch(e){statsShape.parseError=String(e?.message||e);}
-    statsShape.parsed=liveHasData(statsParsed);
-    statsShape.minute=Number.isFinite(statsParsed?.minute)?statsParsed.minute:null;
+    const statsShape=await liveLayer(m.urls.stats);
+    const liveShape=await liveLayer(m.urls.live);
 
     const oddsRaw=await grab(m.urls.odds);
     const oddsShape=htmlShape(oddsRaw);
@@ -65,7 +71,7 @@ async function probe(){
     oddsShape.bookmaker=market?.bookmaker||null;
     oddsShape.line=Number.isFinite(market?.line)?market.line:null;
 
-    deep.push({matchId:m.id,minute:m.minute,score:m.score,stats:statsShape,odds:oddsShape});
+    deep.push({matchId:m.id,minute:m.minute,score:m.score,stats:statsShape,live:liveShape,odds:oddsShape});
   }
 
   const endedRaw=await grab(DEFAULT_CONFIG.endedUrl);
