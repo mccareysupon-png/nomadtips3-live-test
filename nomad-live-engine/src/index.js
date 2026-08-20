@@ -30,8 +30,19 @@ export class EngineState {
   constructor(state,env){this.state=state;this.env=env;this.running=false;}
   async read(){return (await this.state.storage.get('state'))||{lastCycle:null,lastSuccess:null,lastError:null,matches:[],signals:[],cycle:0,source:{today:false,ended:false}};}
   async write(v){await this.state.storage.put('state',v);}
+  async armAlarm(delay=DEFAULT_CONFIG.cycleEveryMs){
+    const current=await this.state.storage.getAlarm();
+    if(current==null) await this.state.storage.setAlarm(now()+delay);
+  }
+  async alarm(){
+    if(this.running){await this.state.storage.setAlarm(now()+DEFAULT_CONFIG.cycleEveryMs);return;}
+    this.running=true;
+    try{await this.runCycle();}
+    finally{this.running=false;await this.state.storage.setAlarm(now()+DEFAULT_CONFIG.cycleEveryMs);}
+  }
   async fetch(request){
     const u=new URL(request.url);
+    await this.armAlarm(1500);
     if(u.pathname==='/cycle'){
       if(this.running) return j({ok:true,running:true});
       this.running=true; try{return j(await this.runCycle());} finally{this.running=false;}
