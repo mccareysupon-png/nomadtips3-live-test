@@ -7,6 +7,7 @@ const JSON_HEADERS={
 };
 const PAIR_TTL_MS=24*60*60*1000;
 const MAX_SEEN_SIGNALS=300;
+const CLAIM_LEASE_MS=2*60*1000;
 const LINE_API='https://api.line.me/v2/bot/message';
 const DEFAULT_CAR34='https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev';
 const DEFAULT_LIVE_URL='https://mccareysupon-png.github.io/nomadtips3-live-test/car3-4-real-market-audit/web/';
@@ -141,7 +142,10 @@ export class MembershipState{
         if(m?.status==='ACTIVE')active++;
         if(m?.role==='OWNER')owners++;
       }
-      return json({ok:true,members:ids.length,active,owners,initialized:Boolean(await this.state.storage.get('signals:initialized')),lastPoll:await this.state.storage.get('lastPoll')||null,lastSignalAt:await this.state.storage.get('lastSignalAt')||null,lastError:await this.state.storage.get('lastError')||null});
+      const inflight=await this.state.storage.get('signals:inflight')||{};
+      const now=Date.now();
+      const inflightSignals=Object.values(inflight).filter(at=>Number.isFinite(Date.parse(at))&&now-Date.parse(at)<CLAIM_LEASE_MS).length;
+      return json({ok:true,members:ids.length,active,owners,initialized:Boolean(await this.state.storage.get('signals:initialized')),inflightSignals,lastPoll:await this.state.storage.get('lastPoll')||null,lastSignalAt:await this.state.storage.get('lastSignalAt')||null,lastDeliveryAt:await this.state.storage.get('lastDeliveryAt')||null,lastError:await this.state.storage.get('lastError')||null});
     }
     if(request.method!=='POST')return json({ok:false,error:'METHOD_NOT_ALLOWED'},405);
     const body=await request.json().catch(()=>({}));
@@ -198,25 +202,53 @@ export class MembershipState{
       const records=Array.isArray(body.records)?body.records:[];
       const keys=records.map(signalKey).filter(Boolean);
       let seen=await this.state.storage.get('signals:seen')||[];
+      let inflight=await this.state.storage.get('signals:inflight')||{};
       const initialized=Boolean(await this.state.storage.get('signals:initialized'));
       if(!initialized){
         seen=[...new Set([...seen,...keys])].slice(-MAX_SEEN_SIGNALS);
         await this.state.storage.put('signals:seen',seen);
+        await this.state.storage.put('signals:inflight',{});
         await this.state.storage.put('signals:initialized',true);
         await this.state.storage.put('lastPoll',nowIso());
         return json({ok:true,initializedNow:true,newKeys:[]});
       }
-      const set=new Set(seen),newKeys=keys.filter(k=>!set.has(k));
-      seen=[...seen,...newKeys].slice(-MAX_SEEN_SIGNALS);
-      await this.state.storage.put('signals:seen',seen);
+      const now=Date.now();
+      for(const [key,at] of Object.entries(inflight)){
+        const ts=Date.parse(at);
+        if(!Number.isFinite(ts)||now-ts>=CLAIM_LEASE_MS)delete inflight[key];
+      }
+      const set=new Set(seen),newKeys=keys.filter(k=>!set.has(k)&&!inflight[k]);
+      const claimedAt=nowIso();
+      for(const key of newKeys)inflight[key]=claimedAt;
+      await this.state.storage.put('signals:inflight',inflight);
       await this.state.storage.put('lastPoll',nowIso());
       if(newKeys.length)await this.state.storage.put('lastSignalAt',nowIso());
       return json({ok:true,newKeys});
+    }
+    if(url.pathname==='/signals/ack'){
+      const keys=(Array.isArray(body.keys)?body.keys:[]).map(clean).filter(Boolean);
+      if(!keys.length)return json({ok:true,acked:0});
+      let seen=await this.state.storage.get('signals:seen')||[];
+      const inflight=await this.state.storage.get('signals:inflight')||{};
+      seen=[...new Set([...seen,...keys])].slice(-MAX_SEEN_SIGNALS);
+      for(const key of keys)delete inflight[key];
+      await this.state.storage.put('signals:seen',seen);
+      await this.state.storage.put('signals:inflight',inflight);
+      await this.state.storage.put('lastDeliveryAt',nowIso());
+      return json({ok:true,acked:keys.length});
+    }
+    if(url.pathname==='/signals/release'){
+      const keys=(Array.isArray(body.keys)?body.keys:[]).map(clean).filter(Boolean);
+      const inflight=await this.state.storage.get('signals:inflight')||{};
+      for(const key of keys)delete inflight[key];
+      await this.state.storage.put('signals:inflight',inflight);
+      return json({ok:true,released:keys.length});
     }
     if(url.pathname==='/ops/result'){
       if(body.error)await this.state.storage.put('lastError',String(body.error).slice(0,500));
       else await this.state.storage.delete('lastError');
       if(body.lastPoll)await this.state.storage.put('lastPoll',body.lastPoll);
+      if(body.lastDeliveryAt)await this.state.storage.put('lastDeliveryAt',body.lastDeliveryAt);
       return json({ok:true});
     }
     return json({ok:false,error:'NOT_FOUND'},404);
@@ -303,15 +335,37 @@ async function pollSignals(env){
     if(!claim.newKeys?.length){await stateJson(env,'/ops/result',{lastPoll:nowIso()});return{sent:0,newSignals:0};}
     const keySet=new Set(claim.newKeys),fresh=records.filter(r=>keySet.has(signalKey(r)));
     const active=await stateJson(env,'/members/active',{}),members=active.members||[];
-    let sent=0,failures=0;
+    if(!members.length){
+      await stateJson(env,'/signals/release',{keys:claim.newKeys});
+      await stateJson(env,'/ops/result',{lastPoll:nowIso(),error:'NO_ACTIVE_RECIPIENTS'});
+      return{sent:0,newSignals:fresh.length,recipients:0,failures:fresh.length,error:'NO_ACTIVE_RECIPIENTS'};
+    }
+    let sent=0,failures=0,deliveredSignals=0;
+    const errors=[];
     for(const signal of fresh){
-      const msg=signalMessage(signal,env);
+      const key=signalKey(signal),msg=signalMessage(signal,env);
+      let signalFailures=0;
       for(const member of members){
-        try{await linePush(env,member.lineUserId,msg);sent++;}catch{failures++;}
+        try{await linePush(env,member.lineUserId,msg);sent++;}
+        catch(error){
+          failures++;signalFailures++;
+          if(errors.length<3)errors.push(String(error?.message||error));
+        }
+      }
+      if(signalFailures===0){
+        await stateJson(env,'/signals/ack',{keys:[key]});
+        deliveredSignals++;
+      }else{
+        await stateJson(env,'/signals/release',{keys:[key]});
       }
     }
-    await stateJson(env,'/ops/result',failures?{lastPoll:nowIso(),error:`LINE_DELIVERY_FAILURES:${failures}`}:{lastPoll:nowIso()});
-    return{sent,newSignals:fresh.length,recipients:members.length,failures};
+    const lastPoll=nowIso();
+    if(failures){
+      await stateJson(env,'/ops/result',{lastPoll,error:`LINE_DELIVERY_FAILURES:${failures}${errors.length?` · ${errors.join(' | ')}`:''}`});
+    }else{
+      await stateJson(env,'/ops/result',{lastPoll,lastDeliveryAt:sent?lastPoll:undefined});
+    }
+    return{sent,newSignals:fresh.length,deliveredSignals,recipients:members.length,failures};
   }catch(error){
     await stateJson(env,'/ops/result',{lastPoll:nowIso(),error:String(error?.message||error)});
     return{sent:0,newSignals:0,error:String(error?.message||error)};
