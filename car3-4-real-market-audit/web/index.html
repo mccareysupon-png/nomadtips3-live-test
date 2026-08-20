@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#123328">
   <title>nomadtips3 · Live</title>
   <link rel="stylesheet" href="car34.css">
+  <link rel="stylesheet" href="goaloo-status-dot.css">
   <link rel="stylesheet" href="brand.css">
   <link rel="stylesheet" href="public-theme.css">
   <link rel="stylesheet" href="dashboard-cards.css">
@@ -16,7 +17,7 @@
 <header>
   <div class="top public-top">
     <div class="brand"><strong>nomad<span class="brand-tips">tips</span>3</strong></div>
-    <div class="live-system" id="systemBadge"><span class="live-dot"></span><span id="systemText">Connecting</span></div>
+    <div class="live-system" id="systemBadge"><span class="live-dot"></span><span id="systemText">Connecting</span><span id="goalooStatusDot" class="goaloo-status-dot goaloo-checking" title="Goaloo CHECKING" aria-label="Goaloo CHECKING"></span></div>
   </div>
 </header>
 <main>
@@ -68,6 +69,7 @@
 </main>
 <nav class="nav public-nav"><a class="active" aria-current="page" href="index.html" data-page="detector">Live</a><a href="statistics.html" data-page="statistics">Statistics</a><a href="line-alerts.html">Line alerts</a><a href="user-guide.html">User guide</a></nav>
 <script type="module" src="car34.js"></script>
+<script type="module" src="goaloo-status-dot.js"></script>
 <script type="module" src="stale-guard.js"></script>
 <script type="module" src="signal-pitch.js"></script>
 <script src="latest-signal-date.js?v=20260819-hotfix2" defer></script>
