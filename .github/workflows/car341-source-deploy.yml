@@ -64,7 +64,7 @@ jobs:
             if HEALTH=$(curl -fsS "$CAR341_WORKER_URL/health"); then break; fi
             sleep 5
           done
-          printf '%s' "$HEALTH" | head -c 12000; echo
+          printf '%s\n' "${HEALTH:0:12000}"
           printf '%s' "$HEALTH" | grep -q '"version": "3.4.1"' || { echo "::error::CAR 3.4.1 identity missing"; exit 1; }
           printf '%s' "$HEALTH" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::SOURCE_MONITOR phase missing"; exit 1; }
           printf '%s' "$HEALTH" | grep -q '"detector": false' || { echo "::error::Detector must remain disconnected"; exit 1; }
@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           SOURCE=$(curl -fsS "$CAR341_WORKER_URL/source-health")
-          printf '%s' "$SOURCE" | head -c 12000; echo
+          printf '%s\n' "${SOURCE:0:12000}"
           printf '%s' "$SOURCE" | grep -q '"provider": "GOALOO"' || { echo "::error::Goaloo provider identity missing"; exit 1; }
           printf '%s' "$SOURCE" | grep -q '"ok": true' || { echo "::error::Goaloo source probe failed"; exit 1; }
       - name: Mark Goaloo probe
@@ -88,7 +88,7 @@ jobs:
         shell: bash
         run: |
           LIVE=$(curl -fsS "$CAR341_WORKER_URL/live")
-          printf '%s' "$LIVE" | head -c 20000; echo
+          printf '%s\n' "${LIVE:0:20000}"
           printf '%s' "$LIVE" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::Live snapshot phase missing"; exit 1; }
           printf '%s' "$LIVE" | grep -q '"source": "GOALOO"' || { echo "::error::Live snapshot source missing"; exit 1; }
           printf '%s' "$LIVE" | grep -q '"generatedAt"' || { echo "::error::Live generatedAt missing"; exit 1; }
@@ -100,7 +100,7 @@ jobs:
         shell: bash
         run: |
           FIXTURES=$(curl -fsS "$CAR341_WORKER_URL/fixtures")
-          printf '%s' "$FIXTURES" | head -c 20000; echo
+          printf '%s\n' "${FIXTURES:0:20000}"
           printf '%s' "$FIXTURES" | grep -q '"source": "GOALOO"' || { echo "::error::Fixture source missing"; exit 1; }
           printf '%s' "$FIXTURES" | grep -q '"fixtures"' || { echo "::error::Fixture collection missing"; exit 1; }
           printf '%s' "$FIXTURES" | grep -q '"generatedAt"' || { echo "::error::Fixture generatedAt missing"; exit 1; }
