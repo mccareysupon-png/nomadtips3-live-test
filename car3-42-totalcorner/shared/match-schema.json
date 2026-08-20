@@ -1,0 +1,59 @@
+{
+  "version": "3.42",
+  "source": "totalcorner",
+  "match": {
+    "id": "string",
+    "league": "string",
+    "home": "string",
+    "away": "string",
+    "status": "live|ht|ft",
+    "minute": "number|null",
+    "period": "1H|HT|2H|FT|null",
+    "score": {"home": "number|null", "away": "number|null"}
+  },
+  "stats": {
+    "attack": {"home": "number|null", "away": "number|null"},
+    "dangerousAttack": {"home": "number|null", "away": "number|null"},
+    "shotsOn": {"home": "number|null", "away": "number|null"},
+    "shotsOff": {"home": "number|null", "away": "number|null"},
+    "corners": {"home": "number|null", "away": "number|null"},
+    "possession": {"home": "number|null", "away": "number|null"},
+    "history": {
+      "attack": "array",
+      "dangerousAttack": "array",
+      "shotsOn": "array",
+      "shotsOff": "array"
+    }
+  },
+  "market": {
+    "bookmaker": "Bet365",
+    "market": "Asian Handicap",
+    "selection": "home|away|null",
+    "lineHome": "number|null",
+    "lineAway": "number|null",
+    "oddsHome": "number|null",
+    "oddsAway": "number|null",
+    "isInplay": "boolean",
+    "updatedAt": "ISO-8601|null"
+  },
+  "detector": {
+    "state": "live|watching|near|signal",
+    "momentum": "number|null",
+    "delta5m": "number|null",
+    "passed": "number",
+    "total": "number",
+    "checks": "array"
+  },
+  "freshness": {
+    "matchUpdatedAt": "ISO-8601|null",
+    "statsUpdatedAt": "ISO-8601|null",
+    "oddsUpdatedAt": "ISO-8601|null",
+    "normalizedAt": "ISO-8601|null"
+  },
+  "rules": {
+    "missingIsZero": false,
+    "requireFreshStatsForSignal": true,
+    "requireFreshBet365OddsForSignal": true,
+    "lockedSignalMustNotMutate": true
+  }
+}
