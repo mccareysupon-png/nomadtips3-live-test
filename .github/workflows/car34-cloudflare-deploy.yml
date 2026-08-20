@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "car3-4-real-market-audit/**"
+      - "car3-4-real-market-audit/worker/**"
       - ".github/workflows/car34-cloudflare-deploy.yml"
   workflow_dispatch:
 
@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Validate CAR 3.4 source
+      - name: Validate CAR 3.4 worker source
         working-directory: car3-4-real-market-audit
         run: |
           node --test
@@ -33,7 +33,6 @@ jobs:
           node --check worker/src/upgrade.js
           node --check worker/src/settlement-v2.js
           node --check worker/src/main-v3.js
-          node --check web/car34.js
 
       - name: Validate Cloudflare credentials
         env:
