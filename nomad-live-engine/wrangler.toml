@@ -1,0 +1,15 @@
+name = "nomadtips3-live-engine"
+main = "src/index.js"
+compatibility_date = "2026-08-20"
+workers_dev = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "EngineState"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["EngineState"]
