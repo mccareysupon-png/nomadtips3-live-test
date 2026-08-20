@@ -1,0 +1,94 @@
+name: Deploy CAR 3.4.1 Source Monitor
+
+on:
+  push:
+    branches:
+      - feature/car3-4-1-ui-shell
+    paths:
+      - "car3-4-1/worker/**"
+      - ".github/workflows/car341-source-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CAR341_WORKER_URL: https://nomadtips3-car341-source-monitor.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate isolated CAR 3.4.1 source layer
+        working-directory: car3-4-1/worker
+        run: |
+          npm test
+          npm run check
+          npx --yes wrangler@4 deploy --dry-run --outdir /tmp/car341-dry-run
+
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy new CAR 3.4.1 source monitor only
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-4-1/worker
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Smoke test process health
+        shell: bash
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if HEALTH=$(curl -fsS "$CAR341_WORKER_URL/health"); then break; fi
+            sleep 5
+          done
+          printf '%s' "$HEALTH" | head -c 12000
+          echo
+          printf '%s' "$HEALTH" | grep -q '"version": "3.4.1"' || { echo "::error::CAR 3.4.1 identity missing"; exit 1; }
+          printf '%s' "$HEALTH" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::SOURCE_MONITOR phase missing"; exit 1; }
+          printf '%s' "$HEALTH" | grep -q '"detector": false' || { echo "::error::Detector must remain disconnected"; exit 1; }
+          printf '%s' "$HEALTH" | grep -q '"cron": false' || { echo "::error::Cron must remain disconnected"; exit 1; }
+
+      - name: Probe Goaloo source
+        shell: bash
+        run: |
+          SOURCE=$(curl -fsS "$CAR341_WORKER_URL/source-health")
+          printf '%s' "$SOURCE" | head -c 12000
+          echo
+          printf '%s' "$SOURCE" | grep -q '"provider": "GOALOO"' || { echo "::error::Goaloo provider identity missing"; exit 1; }
+          printf '%s' "$SOURCE" | grep -q '"ok": true' || { echo "::error::Goaloo source probe failed"; exit 1; }
+
+      - name: Probe normalized live snapshot
+        shell: bash
+        run: |
+          LIVE=$(curl -fsS "$CAR341_WORKER_URL/live")
+          printf '%s' "$LIVE" | head -c 20000
+          echo
+          printf '%s' "$LIVE" | grep -q '"phase": "SOURCE_MONITOR"' || { echo "::error::Live snapshot phase missing"; exit 1; }
+          printf '%s' "$LIVE" | grep -q '"source": "GOALOO"' || { echo "::error::Live snapshot source missing"; exit 1; }
+          printf '%s' "$LIVE" | grep -q '"generatedAt"' || { echo "::error::Live generatedAt missing"; exit 1; }
+
+      - name: Show isolated test URLs
+        run: |
+          echo "CAR 3.4.1 Worker: $CAR341_WORKER_URL"
+          echo "Health: $CAR341_WORKER_URL/health"
+          echo "Source health: $CAR341_WORKER_URL/source-health"
+          echo "Live normalized source: $CAR341_WORKER_URL/live"
+          echo "CAR 3.4 worker was not referenced or deployed by this workflow."
