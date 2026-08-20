@@ -1,0 +1,67 @@
+name: Deploy CAR 3.4.1 Preview UI
+
+on:
+  push:
+    branches:
+      - feature/car3-4-1-ui-shell
+    paths:
+      - "car3-4-1/web/**"
+      - "car3-4-1/preview/**"
+      - ".github/workflows/car341-preview-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PREVIEW_URL: https://nomadtips3-car341-preview.mccarey-supon.workers.dev
+
+jobs:
+  deploy-preview-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate browser scripts and static asset bundle
+        run: |
+          node --check car3-4-1/web/mock-app.js
+          node --check car3-4-1/web/site-footer.js
+          npx --yes wrangler@4 deploy --dry-run --config car3-4-1/preview/wrangler.jsonc --outdir /tmp/car341-preview-dry-run
+
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy static CAR 3.4.1 preview only
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: car3-4-1/preview
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Smoke test preview pages
+        shell: bash
+        run: |
+          for i in $(seq 1 12); do
+            if HOME=$(curl -fsS "$PREVIEW_URL/index.html"); then break; fi
+            sleep 5
+          done
+          printf '%s' "$HOME" | grep -q 'CAR 3.4.1' || { echo "::error::CAR 3.4.1 preview identity missing"; exit 1; }
+          for page in statistics.html settings.html line-alerts.html user-guide.html privacy-policy.html terms-of-service.html history.html runtime.json; do
+            curl -fsS "$PREVIEW_URL/$page" >/dev/null || { echo "::error::Preview page failed: $page"; exit 1; }
+          done
+
+      - name: Show preview URL
+        run: |
+          echo "CAR 3.4.1 Preview: $PREVIEW_URL/index.html"
+          echo "UI workflow does not deploy Source or Engine Workers."
