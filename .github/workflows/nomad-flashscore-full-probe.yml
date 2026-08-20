@@ -37,12 +37,12 @@ jobs:
         run: |
           URL='https://nomadtips3-flashscore-full-probe.mccarey-supon.workers.dev/probe'
           rm -f /tmp/probe.json
-          for i in $(seq 1 12); do
-            CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' "$URL" || true)
-            echo "probe attempt $i HTTP $CODE"
-            if [ "$CODE" = "200" ] && [ -s /tmp/probe.json ]; then break; fi
-            sleep 5
+          for i in $(seq 1 15); do
+            CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' "$URL?attempt=$i" || true)
+            VERSION=$(node -e "try{console.log(require('/tmp/probe.json').probeVersion||'')}catch{}")
+            echo "probe attempt $i HTTP $CODE version $VERSION"
+            if [ "$CODE" = "200" ] && [ "$VERSION" = "full-v5" ]; then break; fi
+            sleep 3
           done
-          test -s /tmp/probe.json
+          node -e "const x=require('/tmp/probe.json'); if(!x.ok||x.probeVersion!=='full-v5') process.exit(2);"
           cat /tmp/probe.json
-          node -e "const x=require('/tmp/probe.json'); if(!x.ok) process.exit(2);"
