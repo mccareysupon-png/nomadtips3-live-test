@@ -58,3 +58,5 @@
   render();
   setInterval(render,1000);
 })();
+
+import('./runtime.js').catch(()=>{});
