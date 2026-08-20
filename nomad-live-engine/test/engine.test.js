@@ -28,14 +28,23 @@ test('detector signals only when all eight checks pass',()=>{
   assert.equal(d.side,'home'); assert.equal(d.state,'SIGNAL'); assert.equal(d.passed,8);
 });
 
-test('runtime config accepts editable detector values',()=>{
-  const r=validateEditableConfig({minuteFrom:50,minuteTo:86,maxScoreDifference:4,momentumMinimum:64,allowedSelectionLines:'0,-0.25,-0.5,0.25',oddsMinimum:1.55,oddsMaximum:2.4,maxWatchMatches:30,maxNearOddsMatches:12});
-  assert.equal(r.ok,true); assert.equal(r.config.maxScoreDifference,4); assert.deepEqual(r.config.allowedSelectionLines,[0,-0.25,-0.5,0.25]);
+test('runtime config accepts ALL for both scan limits',()=>{
+  const r=validateEditableConfig({minuteFrom:50,minuteTo:86,maxScoreDifference:4,momentumMinimum:64,allowedSelectionLines:'0,-0.25,-0.5,0.25',oddsMinimum:1.55,oddsMaximum:2.4,maxWatchMatches:'ALL',maxNearOddsMatches:'ALL'});
+  assert.equal(r.ok,true); assert.equal(r.config.maxScoreDifference,4); assert.equal(r.config.maxWatchMatches,0); assert.equal(r.config.maxNearOddsMatches,0); assert.deepEqual(r.config.allowedSelectionLines,[0,-0.25,-0.5,0.25]);
+});
+
+test('runtime config still accepts finite scan limits',()=>{
+  const r=validateEditableConfig({maxWatchMatches:300,maxNearOddsMatches:120});
+  assert.equal(r.ok,true); assert.equal(r.config.maxWatchMatches,300); assert.equal(r.config.maxNearOddsMatches,120);
 });
 
 test('runtime config rejects invalid ranges',()=>{
   const r=validateEditableConfig({minuteFrom:90,minuteTo:60,oddsMinimum:2.5,oddsMaximum:1.5,maxWatchMatches:5,maxNearOddsMatches:9});
   assert.equal(r.ok,false); assert.ok(r.errors.length>=3);
+});
+
+test('ALL defaults remove scan caps',()=>{
+  assert.equal(DEFAULT_CONFIG.maxWatchMatches,0); assert.equal(DEFAULT_CONFIG.maxNearOddsMatches,0);
 });
 
 test('quarter line settles half loss correctly',()=>{

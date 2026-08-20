@@ -41,6 +41,13 @@ export class EngineState {
   async write(v){await this.state.storage.put('state',v);}
   async currentConfig(){
     const saved=(await this.state.storage.get('config'))||{};
+    const limitModeVersion=await this.state.storage.get('limitModeVersion');
+    if(limitModeVersion!==1){
+      saved.maxWatchMatches=0;
+      saved.maxNearOddsMatches=0;
+      await this.state.storage.put('config',saved);
+      await this.state.storage.put('limitModeVersion',1);
+    }
     return {...DEFAULT_CONFIG,...saved,allowedSelectionLines:Array.isArray(saved.allowedSelectionLines)?[...saved.allowedSelectionLines]:[...DEFAULT_CONFIG.allowedSelectionLines]};
   }
   async configUpdatedAt(){return (await this.state.storage.get('configUpdatedAt'))||null;}
@@ -93,7 +100,7 @@ export class EngineState {
   feed(s){
     const counts={live:0,watching:0,near:0,signal:0};
     for(const m of s.matches){counts.live++; if(m.state==='WATCHING')counts.watching++; if(m.state==='NEAR SIGNAL')counts.near++; if(m.state==='SIGNAL')counts.signal++;}
-    return {ok:!s.lastError,updatedAt:s.lastSuccess?iso(s.lastSuccess):null,cycle:s.cycle||0,counts,matches:[...s.matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.momentum||0)-(a.momentum||0))).slice(0,80),lastError:s.lastError};
+    return {ok:!s.lastError,updatedAt:s.lastSuccess?iso(s.lastSuccess):null,cycle:s.cycle||0,counts,matches:[...s.matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.momentum||0)-(a.momentum||0))),lastError:s.lastError};
   }
   statistics(s){
     const settled=s.signals.filter(x=>x.settlement);
@@ -116,7 +123,7 @@ export class EngineState {
       pendingSignals:(s.signals||[]).filter(x=>!x.settlement).length,
       settledSignals:(s.signals||[]).filter(x=>x.settlement).length,
     };
-    return {ok:!s.lastError,lastCycle:s.lastCycle?iso(s.lastCycle):null,lastSuccess:s.lastSuccess?iso(s.lastSuccess):null,lastError:s.lastError,cycle:s.cycle||0,source:s.source||{},counts,config:{minute:`${config.minuteFrom}-${config.minuteTo}`,maxScoreDifference:config.maxScoreDifference,momentumMinimum:config.momentumMinimum,odds:`${config.oddsMinimum}-${config.oddsMaximum}`,freshnessSec:Math.round(config.staleAfterMs/1000),pollSec:Math.round(config.cycleEveryMs/1000)}};
+    return {ok:!s.lastError,lastCycle:s.lastCycle?iso(s.lastCycle):null,lastSuccess:s.lastSuccess?iso(s.lastSuccess):null,lastError:s.lastError,cycle:s.cycle||0,source:s.source||{},counts,config:{minute:`${config.minuteFrom}-${config.minuteTo}`,maxScoreDifference:config.maxScoreDifference,momentumMinimum:config.momentumMinimum,odds:`${config.oddsMinimum}-${config.oddsMaximum}`,watchLimit:config.maxWatchMatches===0?'ALL':config.maxWatchMatches,oddsCheckLimit:config.maxNearOddsMatches===0?'ALL':config.maxNearOddsMatches,freshnessSec:Math.round(config.staleAfterMs/1000),pollSec:Math.round(config.cycleEveryMs/1000)}};
   }
   async runCycle(){
     const config=await this.currentConfig();
@@ -125,8 +132,9 @@ export class EngineState {
     try{
       const todayHtml=await getHtml(config.scanUrl,config); next.source.today=true;
       let rows=parseToday(todayHtml,config.sourceHost);
-      rows=rows.filter(m=>Number.isFinite(m.minute)&&m.minute>=config.watchMinuteFrom&&m.minute<=config.watchMinuteTo&&m.score.home!=null&&m.score.away!=null).slice(0,config.maxWatchMatches);
-      let oddsBudget=config.maxNearOddsMatches;
+      rows=rows.filter(m=>Number.isFinite(m.minute)&&m.minute>=config.watchMinuteFrom&&m.minute<=config.watchMinuteTo&&m.score.home!=null&&m.score.away!=null);
+      if(config.maxWatchMatches>0) rows=rows.slice(0,config.maxWatchMatches);
+      let oddsBudget=config.maxNearOddsMatches>0?config.maxNearOddsMatches:Infinity;
       const enriched=await Promise.all(rows.map(async m=>{
         let live={}; let liveOk=false;
         try{live=parseLiveDetail(await getHtml(m.urls.stats,config));liveOk=true;}catch{
@@ -145,7 +153,7 @@ export class EngineState {
         const base={id:m.id,league:m.league,home:m.home,away:m.away,minute,score,stats,urls:m.urls,freshness:{todayAt:started,liveAt:liveOk?started:null,oddsAt:null},market:null};
         let d=evaluate(base,config,null);
         if(d.state==='NEAR SIGNAL'&&oddsBudget>0){
-          oddsBudget--;
+          if(Number.isFinite(oddsBudget)) oddsBudget--;
           try{
             const market=parseBet365Asian(await getHtml(m.urls.odds,config));
             if(market){base.market=market;base.freshness.oddsAt=started;d=evaluate(base,config,market);}
