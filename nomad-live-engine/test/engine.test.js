@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseToday,parseLiveDetail,parseBet365Asian} from '../src/parser.js';
-import {DEFAULT_CONFIG} from '../src/config.js';
+import {DEFAULT_CONFIG,validateEditableConfig} from '../src/config.js';
 import {evaluate} from '../src/detector.js';
 import {settleAsian} from '../src/settlement.js';
 
@@ -26,6 +26,16 @@ test('detector signals only when all eight checks pass',()=>{
   const m={minute:70,score:{home:1,away:1},stats:{attacks:{home:120,away:80},dangerousAttack:{home:60,away:35},shotsOn:{home:6,away:2},shotsOff:{home:10,away:5},corners:{home:7,away:3},possession:{home:58,away:42}}};
   const d=evaluate(m,DEFAULT_CONFIG,{line:-.5,homeOdds:1.91,awayOdds:1.95});
   assert.equal(d.side,'home'); assert.equal(d.state,'SIGNAL'); assert.equal(d.passed,8);
+});
+
+test('runtime config accepts editable detector values',()=>{
+  const r=validateEditableConfig({minuteFrom:50,minuteTo:86,maxScoreDifference:4,momentumMinimum:64,allowedSelectionLines:'0,-0.25,-0.5,0.25',oddsMinimum:1.55,oddsMaximum:2.4,maxWatchMatches:30,maxNearOddsMatches:12});
+  assert.equal(r.ok,true); assert.equal(r.config.maxScoreDifference,4); assert.deepEqual(r.config.allowedSelectionLines,[0,-0.25,-0.5,0.25]);
+});
+
+test('runtime config rejects invalid ranges',()=>{
+  const r=validateEditableConfig({minuteFrom:90,minuteTo:60,oddsMinimum:2.5,oddsMaximum:1.5,maxWatchMatches:5,maxNearOddsMatches:9});
+  assert.equal(r.ok,false); assert.ok(r.errors.length>=3);
 });
 
 test('quarter line settles half loss correctly',()=>{
