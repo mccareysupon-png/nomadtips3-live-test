@@ -103,7 +103,8 @@ export default{
     }
     return settlementWorker.fetch(request,env,ctx);
   },
-  async scheduled(event,env,ctx){
-    return settlementWorker.scheduled(event,env,ctx);
+  async scheduled(_event,env,ctx){
+    const request=new Request('https://car34.internal/scan',{method:'POST'});
+    ctx.waitUntil(car34State(env).fetch(request));
   }
 };
