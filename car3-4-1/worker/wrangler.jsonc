@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-car341-source-monitor",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 }
+  },
+  "vars": {
+    "GOALOO_INDEX_PRIMARY": "https://live10.goaloo28.com/gf/data/bf_us.js",
+    "GOALOO_INDEX_ALT": "https://live10.goaloo28.com/gf/data/bf_us1.js",
+    "GOALOO_DETAIL_BASE": "https://live10.goaloo28.com/match/live-",
+    "MAX_MATCHES_PER_REQUEST": "24",
+    "FETCH_CONCURRENCY": "3",
+    "SOURCE_CACHE_SECONDS": "10",
+    "MAX_INDEX_BYTES": "1500000",
+    "MAX_DETAIL_BYTES": "750000"
+  }
+}
