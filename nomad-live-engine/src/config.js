@@ -19,8 +19,8 @@ export const DEFAULT_CONFIG = Object.freeze({
   oddsMaximum: 2.10,
   staleAfterMs: 90000,
   cycleEveryMs: 55000,
-  maxWatchMatches: 24,
-  maxNearOddsMatches: 12,
+  maxWatchMatches: 0,
+  maxNearOddsMatches: 0,
   requestTimeoutMs: 10000,
   oneSignalPerMatch: true,
 });
@@ -32,16 +32,22 @@ export const EDITABLE_KEYS = Object.freeze([
   'allowedSelectionLines','oddsMinimum','oddsMaximum','maxWatchMatches','maxNearOddsMatches'
 ]);
 
+const LIMIT_KEYS = new Set(['maxWatchMatches','maxNearOddsMatches']);
 const NUMBER_RULES = Object.freeze({
   minuteFrom:[0,120,true], minuteTo:[0,120,true], watchMinuteFrom:[0,120,true], watchMinuteTo:[0,120,true],
   maxScoreDifference:[0,20,true], attackDifference:[0,250,true], dangerousAttackDifference:[0,250,true],
   dangerousAttackRatio:[1,5,false], shotsOnTargetMinimum:[0,50,true], shotsOnTargetDifference:[0,50,true],
   cornersMinimum:[0,30,true], momentumMinimum:[0,100,true], oddsMinimum:[1.01,20,false], oddsMaximum:[1.01,20,false],
-  maxWatchMatches:[1,100,true], maxNearOddsMatches:[1,100,true]
+  maxWatchMatches:[0,5000,true], maxNearOddsMatches:[0,5000,true]
 });
 
 export function editableConfig(config=DEFAULT_CONFIG){
   return Object.fromEntries(EDITABLE_KEYS.map(k=>[k,Array.isArray(config[k])?[...config[k]]:config[k]]));
+}
+
+function numericValue(key,value){
+  if(LIMIT_KEYS.has(key) && String(value).trim().toUpperCase()==='ALL') return 0;
+  return Number(value);
 }
 
 export function validateEditableConfig(input={}){
@@ -49,8 +55,12 @@ export function validateEditableConfig(input={}){
   const config=editableConfig(DEFAULT_CONFIG);
   for(const [key,[min,max,integer]] of Object.entries(NUMBER_RULES)){
     if(!(key in input)) continue;
-    const n=Number(input[key]);
-    if(!Number.isFinite(n)||n<min||n>max||(integer&&!Number.isInteger(n))){errors.push(`${key} must be ${integer?'an integer':'a number'} between ${min} and ${max}`);continue;}
+    const n=numericValue(key,input[key]);
+    if(!Number.isFinite(n)||n<min||n>max||(integer&&!Number.isInteger(n))){
+      const hint=LIMIT_KEYS.has(key)?'ALL or ':'';
+      errors.push(`${key} must be ${hint}${integer?'an integer':'a number'} between ${min} and ${max}`);
+      continue;
+    }
     config[key]=n;
   }
   if('allowedSelectionLines' in input){
@@ -62,6 +72,6 @@ export function validateEditableConfig(input={}){
   if(config.minuteFrom>config.minuteTo) errors.push('minuteFrom must be less than or equal to minuteTo');
   if(config.watchMinuteFrom>config.watchMinuteTo) errors.push('watchMinuteFrom must be less than or equal to watchMinuteTo');
   if(config.oddsMinimum>config.oddsMaximum) errors.push('oddsMinimum must be less than or equal to oddsMaximum');
-  if(config.maxNearOddsMatches>config.maxWatchMatches) errors.push('maxNearOddsMatches must be less than or equal to maxWatchMatches');
+  if(config.maxWatchMatches>0&&config.maxNearOddsMatches>0&&config.maxNearOddsMatches>config.maxWatchMatches) errors.push('maxNearOddsMatches must be less than or equal to maxWatchMatches unless either limit is ALL');
   return {ok:errors.length===0,errors,config};
 }
