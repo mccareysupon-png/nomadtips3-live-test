@@ -47,7 +47,7 @@ jobs:
           node <<'NODE'
           const fs=require('fs');
           const x=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8'));
-          const compact={checkedAt:x.checkedAt,feed:x.feed,idChain:x.idChain,detail:x.detail,gql:x.gql,pages:x.pages,error:x.error||null};
+          const compact={checkedAt:x.checkedAt,feed:x.feed,samples:x.samples,anchor:x.anchor,extras:x.extras,teamPages:x.teamPages,error:x.error||null};
           console.log(JSON.stringify(compact,null,2));
           if(x.error) process.exit(2);
           NODE
