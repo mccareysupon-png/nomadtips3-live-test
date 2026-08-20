@@ -35,8 +35,8 @@
         <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">SCAN WINDOW</p><h2>Watching range</h2></div></div><div class="form-grid">
           <div class="field"><label for="watchMinuteFrom">Watch minute from</label><input id="watchMinuteFrom" name="watchMinuteFrom" type="number" min="0" max="120" step="1" required></div>
           <div class="field"><label for="watchMinuteTo">Watch minute to</label><input id="watchMinuteTo" name="watchMinuteTo" type="number" min="0" max="120" step="1" required></div>
-          <div class="field"><label for="maxWatchMatches">Max watched matches</label><input id="maxWatchMatches" name="maxWatchMatches" type="number" min="1" max="100" step="1" required></div>
-          <div class="field"><label for="maxNearOddsMatches">Max odds checks / cycle</label><input id="maxNearOddsMatches" name="maxNearOddsMatches" type="number" min="1" max="100" step="1" required><small>Must not exceed max watched matches.</small></div>
+          <div class="field"><label for="maxWatchMatches">Max watched matches</label><input id="maxWatchMatches" name="maxWatchMatches" type="text" inputmode="text" pattern="(?:[Aa][Ll][Ll]|[0-9]+)" placeholder="ALL" required><small><strong>ALL</strong> = scan every match available. Or enter a number to cap it.</small></div>
+          <div class="field"><label for="maxNearOddsMatches">Max odds checks / cycle</label><input id="maxNearOddsMatches" name="maxNearOddsMatches" type="text" inputmode="text" pattern="(?:[Aa][Ll][Ll]|[0-9]+)" placeholder="ALL" required><small><strong>ALL</strong> = check every Near Signal candidate. Or enter a number to cap it.</small></div>
         </div></section>
 
         <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">MATCH</p><h2>Time & score</h2></div></div><div class="form-grid">
@@ -78,7 +78,8 @@
     (()=>{
       const ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
       const EXPECTED='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
-      const NUMERIC=['minuteFrom','minuteTo','watchMinuteFrom','watchMinuteTo','maxScoreDifference','attackDifference','dangerousAttackDifference','dangerousAttackRatio','shotsOnTargetMinimum','shotsOnTargetDifference','cornersMinimum','momentumMinimum','oddsMinimum','oddsMaximum','maxWatchMatches','maxNearOddsMatches'];
+      const NUMERIC=['minuteFrom','minuteTo','watchMinuteFrom','watchMinuteTo','maxScoreDifference','attackDifference','dangerousAttackDifference','dangerousAttackRatio','shotsOnTargetMinimum','shotsOnTargetDifference','cornersMinimum','momentumMinimum','oddsMinimum','oddsMaximum'];
+      const LIMITS=['maxWatchMatches','maxNearOddsMatches'];
       const gate=document.getElementById('settingsGate'),app=document.getElementById('settingsApp'),gateForm=document.getElementById('gateForm'),gatePassword=document.getElementById('gatePassword'),gateError=document.getElementById('gateError');
       const settingsForm=document.getElementById('settingsForm'),saveButton=document.getElementById('saveButton'),reloadButton=document.getElementById('reloadButton'),defaultsButton=document.getElementById('defaultsButton'),saveStatus=document.getElementById('saveStatus'),profileUpdated=document.getElementById('profileUpdated');
       let settingsKey='',serverDefaults=null;
@@ -87,10 +88,13 @@
       const setBusy=busy=>{saveButton.disabled=busy;reloadButton.disabled=busy;defaultsButton.disabled=busy;};
       const setForm=config=>{
         for(const key of NUMERIC){const el=document.getElementById(key);if(el&&config[key]!=null)el.value=config[key];}
+        for(const key of LIMITS){const el=document.getElementById(key);if(el&&config[key]!=null)el.value=Number(config[key])===0?'ALL':config[key];}
         if(Array.isArray(config.allowedSelectionLines))document.getElementById('allowedSelectionLines').value=config.allowedSelectionLines.join(', ');
       };
       const readForm=()=>{
-        const config={}; for(const key of NUMERIC)config[key]=Number(document.getElementById(key).value);
+        const config={};
+        for(const key of NUMERIC)config[key]=Number(document.getElementById(key).value);
+        for(const key of LIMITS){const raw=document.getElementById(key).value.trim();config[key]=raw.toUpperCase()==='ALL'?'ALL':Number(raw);}
         config.allowedSelectionLines=document.getElementById('allowedSelectionLines').value;
         return config;
       };
