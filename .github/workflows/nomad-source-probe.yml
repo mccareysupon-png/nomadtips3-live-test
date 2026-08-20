@@ -1,0 +1,39 @@
+name: NOMAD Source Probe
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-engine/src/probe.js'
+      - 'nomad-live-engine/wrangler.probe.toml'
+      - '.github/workflows/nomad-source-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+      - name: Deploy isolated diagnostic worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: '4'
+          command: deploy --config wrangler.probe.toml
+      - name: Probe all source layers
+        run: |
+          curl -fsS --retry 3 --retry-delay 2 'https://nomadtips3-source-probe.mccarey-supon.workers.dev/probe' | tee /tmp/probe.json
+          node -e "const x=require('/tmp/probe.json'); console.log(JSON.stringify(x,null,2)); if(!x.today) process.exit(2)"
