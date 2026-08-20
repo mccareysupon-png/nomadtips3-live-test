@@ -1,0 +1,9 @@
+{
+  "name":"nomadtips3-car341-engine",
+  "private":true,
+  "type":"module",
+  "scripts":{
+    "test":"node --test test/*.test.js",
+    "check":"node --check src/index.js && node --check src/detector.js && node --check src/real-market.js && node --check src/settlement.js"
+  }
+}
