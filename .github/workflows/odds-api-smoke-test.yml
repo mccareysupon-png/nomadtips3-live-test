@@ -51,38 +51,40 @@ jobs:
             if(!r.ok) throw new Error(`${path} HTTP ${r.status}: ${text.slice(0,120)}`);
             return JSON.parse(text);
           }
-          try{
-            const live=await get('/events/live',{sport:'football'});
-            if(!Array.isArray(live)) finish('ERROR live response is not an array',4);
-            if(!live.length) finish('NO LIVE football events returned by Odds-API.io',2);
-            const ids=live.map(x=>x?.id).filter(x=>x!=null).slice(0,50);
-            let payloadCount=0,bookmakerCount=0,spreadCount=0,proof=null;
-            for(let i=0;i<ids.length;i+=10){
-              const odds=await get('/odds/multi',{eventIds:ids.slice(i,i+10).join(','),bookmakers:'1xbet'});
-              if(!Array.isArray(odds)) continue;
-              payloadCount+=odds.length;
-              for(const payload of odds){
-                const bookies=payload?.bookmakers||{};
-                const keyName=Object.keys(bookies).find(k=>k.toLowerCase()==='1xbet');
-                const markets=keyName&&Array.isArray(bookies[keyName])?bookies[keyName]:[];
-                if(markets.length) bookmakerCount++;
-                const spread=markets.find(m=>String(m?.name||'').toLowerCase()==='spread');
-                const rows=Array.isArray(spread?.odds)?spread.odds:[];
-                if(rows.length){
-                  spreadCount++;
-                  if(!proof){
-                    const row=rows.find(r=>r?.hdp!=null&&r?.home!=null&&r?.away!=null)||rows[0];
-                    proof={eventId:payload?.id,line:row?.hdp,home:row?.home,away:row?.away,updatedAt:spread?.updatedAt||null};
+          (async()=>{
+            try{
+              const live=await get('/events/live',{sport:'football'});
+              if(!Array.isArray(live)) finish('ERROR live response is not an array',4);
+              if(!live.length) finish('NO LIVE football events returned by Odds-API.io',2);
+              const ids=live.map(x=>x?.id).filter(x=>x!=null).slice(0,50);
+              let payloadCount=0,bookmakerCount=0,spreadCount=0,proof=null;
+              for(let i=0;i<ids.length;i+=10){
+                const odds=await get('/odds/multi',{eventIds:ids.slice(i,i+10).join(','),bookmakers:'1xbet'});
+                if(!Array.isArray(odds)) continue;
+                payloadCount+=odds.length;
+                for(const payload of odds){
+                  const bookies=payload?.bookmakers||{};
+                  const keyName=Object.keys(bookies).find(k=>k.toLowerCase()==='1xbet');
+                  const markets=keyName&&Array.isArray(bookies[keyName])?bookies[keyName]:[];
+                  if(markets.length) bookmakerCount++;
+                  const spread=markets.find(m=>String(m?.name||'').toLowerCase()==='spread');
+                  const rows=Array.isArray(spread?.odds)?spread.odds:[];
+                  if(rows.length){
+                    spreadCount++;
+                    if(!proof){
+                      const row=rows.find(r=>r?.hdp!=null&&r?.home!=null&&r?.away!=null)||rows[0];
+                      proof={eventId:payload?.id,line:row?.hdp,home:row?.home,away:row?.away,updatedAt:spread?.updatedAt||null};
+                    }
                   }
                 }
+                if(proof) break;
               }
-              if(proof) break;
+              if(proof) finish(`PASS live=${live.length} 1xbet=${bookmakerCount} spread=${spreadCount} line=${proof.line} homeOdds=${proof.home} awayOdds=${proof.away}`,0);
+              finish(`NO 1xBet Spread live=${live.length} payloads=${payloadCount} 1xbet=${bookmakerCount}`,3);
+            }catch(error){
+              finish(`ERROR ${String(error?.message||error).slice(0,110)}`,5);
             }
-            if(proof) finish(`PASS live=${live.length} 1xbet=${bookmakerCount} spread=${spreadCount} line=${proof.line} homeOdds=${proof.home} awayOdds=${proof.away}`,0);
-            finish(`NO 1xBet Spread live=${live.length} payloads=${payloadCount} 1xbet=${bookmakerCount}`,3);
-          }catch(error){
-            finish(`ERROR ${String(error?.message||error).slice(0,110)}`,5);
-          }
+          })();
           NODE
             RC=$?
             set -e
