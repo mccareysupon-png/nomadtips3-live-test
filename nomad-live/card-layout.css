@@ -1,0 +1,94 @@
+/* Compact detector-card summary. Loaded after styles.css so the detailed panel remains unchanged. */
+.match-row {
+  grid-template-columns:72px minmax(210px,1.15fr) 60px 180px minmax(300px,1fr) 64px;
+  gap:10px;
+  align-items:center;
+  padding:12px;
+}
+.statebox,.match-main,.market {min-width:0}
+.state {font-size:7px;letter-spacing:.08em}
+.minute {font-size:16px;margin-top:4px}
+.league {margin-bottom:4px;letter-spacing:.02em}
+.teams {display:block;font-size:12px;line-height:1.25}
+.quick {grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.q {padding:7px 5px;background:rgba(255,255,255,.045)}
+.q span {font-size:6.5px;font-weight:800;letter-spacing:.06em}
+.q b {display:block;margin-top:3px;font-size:11px}
+.market .price-stack {display:grid;gap:2px}
+.market .price-source-row,.market .price-selected-row {
+  display:grid;
+  grid-template-columns:minmax(108px,.8fr) minmax(0,1.2fr);
+  gap:8px;
+  align-items:baseline;
+  min-width:0;
+  padding:2px 0;
+}
+.market .price-source-name,.market .price-selected-name,
+.market .price-source-value,.market .price-selected-value {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.market .price-source-name {color:#aab2ab;font-size:8px;font-weight:800}
+.market .price-source-value {color:#d8ddd8;font-size:9px;font-weight:900;text-align:right}
+.price-source-row.is-pass .price-source-value {color:var(--green)}
+.price-source-row.is-wait .price-source-value {color:var(--yellow)}
+.price-source-row.is-na .price-source-value {color:#7f8980;font-weight:800}
+.price-selected-row {
+  margin-top:3px;
+  padding:5px 7px;
+  border:1px solid rgba(242,210,27,.16);
+  border-radius:7px;
+  background:rgba(242,210,27,.055);
+}
+.market .price-selected-name {color:var(--yellow);font-size:7px;font-weight:900;letter-spacing:.07em}
+.market .price-selected-value {color:#aab2ab;font-size:9px;font-weight:900;text-align:right}
+.price-selected-row.has-price .price-selected-value {color:#fff}
+.cond {
+  justify-self:end;
+  min-width:58px;
+  padding:7px 6px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:8px;
+  background:rgba(255,255,255,.035);
+  text-align:center;
+}
+.cond span {font-size:6.5px;font-weight:900;letter-spacing:.07em}
+.cond strong {display:block;margin-top:3px;font-size:13px}
+
+@media(max-width:1050px) {
+  .match-row {grid-template-columns:68px minmax(170px,1fr) 54px 160px minmax(240px,1fr) 60px;gap:6px}
+  .price-source-row,.price-selected-row {grid-template-columns:minmax(98px,.75fr) minmax(0,1.25fr);gap:6px}
+  .market .price-source-name {font-size:7.5px}
+  .market .price-source-value,.market .price-selected-value {font-size:8px}
+}
+
+@media(max-width:820px) {
+  .match-row {
+    grid-template-columns:68px minmax(0,1fr) 58px 64px;
+    grid-template-areas:'state match score cond' 'stats stats stats stats' 'market market market market';
+    gap:7px;
+    padding:9px;
+  }
+  .statebox {grid-area:state}
+  .match-main {grid-area:match}
+  .score {grid-area:score}
+  .quick {grid-area:stats}
+  .market {grid-area:market;padding:7px 8px;border-radius:8px;background:rgba(255,255,255,.025)}
+  .cond {grid-area:cond;align-self:center}
+  .q {padding:6px 5px}
+}
+
+@media(max-width:520px) {
+  .match-row {grid-template-columns:56px minmax(0,1fr) 48px 54px;gap:5px;padding:8px}
+  .minute {font-size:14px}
+  .teams {font-size:11px}
+  .score {font-size:17px}
+  .price-source-row,.price-selected-row {grid-template-columns:minmax(82px,.72fr) minmax(0,1.28fr);gap:5px}
+  .market .price-source-name,.market .price-selected-name {font-size:7px}
+  .market .price-source-value,.market .price-selected-value {font-size:7.5px}
+  .price-selected-row {padding:5px 6px}
+  .cond {min-width:50px;padding:6px 4px}
+}
+
