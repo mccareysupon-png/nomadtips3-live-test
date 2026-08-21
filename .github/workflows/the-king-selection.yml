@@ -2,6 +2,13 @@ name: The King — 07:00 Selection Wheel
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/the_king_engine.py'
+      - '.github/workflows/the-king-selection.yml'
+      - '.github/workflows/the-king-settlement.yml'
+      - 'the-king-state.json'
   schedule:
     - cron: '0 0 * * *'
 
