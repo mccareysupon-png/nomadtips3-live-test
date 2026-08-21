@@ -190,38 +190,80 @@ export function parseLiveDetail(html){
   return {valid,minute:st.minute,status:st.status,score:st.score,attacks,dangerousAttack,shotsOn,shotsOff,corners:st.corners,possession,rawText:text.slice(0,4000)};
 }
 
-function normalizeAsianLine(raw){
+export function normalizeAsianLine(raw){
   const parts=String(raw).split(',').map(x=>Number(x.trim()));
   if(!parts.length||parts.some(x=>!Number.isFinite(x))) return null;
   const line=parts.reduce((a,b)=>a+b,0)/parts.length;
-  if(line < -4||line > 4||Math.abs(line*4-Math.round(line*4))>=1e-9) return null;
+  if(line < -10||line > 10||Math.abs(line*4-Math.round(line*4))>=1e-9) return null;
   return line;
 }
-function numericTriples(segment){
-  const number='[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)';
-  const line=`${number}(?:\\s*,\\s*${number})?`;
-  const re=new RegExp(`(\\d+(?:\\.\\d+)?)\\s+(${line})\\s+(\\d+(?:\\.\\d+)?)`,'g');
-  const out=[]; let m;
-  while((m=re.exec(segment))){
-    const h=Number(m[1]), normalizedLine=normalizeAsianLine(m[2]), a=Number(m[3]);
-    if(h>=1.01&&h<=6 && a>=1.01&&a<=6 && normalizedLine!=null) out.push({homeOdds:h,line:normalizedLine,awayOdds:a,index:m.index});
-  }
-  return out;
+
+export function handicapPanelUrl(oddsUrl){
+  const url=new URL(oddsUrl);
+  url.searchParams.set('panel','handicap');
+  url.searchParams.set('ajax','1');
+  return url.toString();
 }
-export function parseBet365Asian(html){
-  const text=stripHtml(html).replace(/\s+/g,' ');
-  const ahAnchor=Math.max(
-    text.search(/cover rates/i),
-    text.search(/Home Line Away/i)
-  );
-  const scope=ahAnchor>=0?text.slice(ahAnchor,ahAnchor+9000):text;
-  const m=/Bet\s*365/i.exec(scope);
-  if(!m) return null;
-  const seg=scope.slice(m.index+m[0].length,m.index+900);
-  const triples=numericTriples(seg);
-  if(!triples.length) return null;
-  const chosen=triples.length>=2?triples[1]:triples[0];
-  return {homeOdds:chosen.homeOdds,line:chosen.line,awayOdds:chosen.awayOdds,bookmaker:'Bet365'};
+
+function classAttribute(tag){
+  return (tag.match(/\bclass=["']([^"']*)["']/i)||[])[1]||'';
+}
+function dataAttribute(tag,name){
+  const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return decode((tag.match(new RegExp(`\\b${escaped}=["']([^"']*)["']`,'i'))||[])[1]||'');
+}
+function findSnapshot(html,period,phase){
+  const starts=[];
+  const re=/<div\b[^>]*>/gi; let match;
+  while((match=re.exec(html))){
+    const tag=match[0];
+    if(/\boa-handicap-snapshot\b/.test(classAttribute(tag))) starts.push({index:match.index,tag});
+  }
+  const found=starts.find(item=>dataAttribute(item.tag,'data-handicap-period')===period&&dataAttribute(item.tag,'data-handicap-phase')===phase);
+  if(!found) return null;
+  const next=starts.find(item=>item.index>found.index);
+  return html.slice(found.index,next?.index??html.length);
+}
+function rowSegments(snapshot){
+  const starts=[]; const re=/<div\b[^>]*>/gi; let match;
+  while((match=re.exec(snapshot))) if(/\boa-major-row\b/.test(classAttribute(match[0]))) starts.push(match.index);
+  return starts.map((start,index)=>snapshot.slice(start,starts[index+1]??snapshot.length));
+}
+function groupValues(row){
+  const groups=[];
+  const re=/<div\b[^>]*class=["'][^"']*\boa-major-group\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/gi;
+  let match;
+  while((match=re.exec(row))){
+    const values=[]; const spans=/<span\b([^>]*)>([\s\S]*?)<\/span>/gi; let span;
+    while((span=spans.exec(match[1]))){
+      const raw=(span[1].match(/\bdata-sort-value=["']([^"']*)["']/i)||[])[1];
+      values.push(decode(raw??stripHtml(span[2])).trim());
+    }
+    if(values.length>=3) groups.push(values.slice(0,3));
+  }
+  return groups;
+}
+
+export function parseBet365Asian(html,sourceUpdatedAt=Date.now()){
+  const raw=String(html||'');
+  if(!raw.trim()||/\bLoading\b/i.test(stripHtml(raw))||/No odds detail yet|No odds data yet|No inplay handicap markets yet/i.test(stripHtml(raw))){
+    return {status:'AH UNAVAILABLE',reason:'inplay_handicap_not_available'};
+  }
+  const panel=raw.match(/<div\b[^>]*class=["'][^"']*\boa-market-panel\b[^"']*["'][^>]*data-market-panel=["']handicap["'][^>]*>/i)
+    ||raw.match(/<div\b[^>]*data-market-panel=["']handicap["'][^>]*class=["'][^"']*\boa-market-panel\b[^"']*["'][^>]*>/i);
+  if(!panel) return {status:'AH UNAVAILABLE',reason:'handicap_panel_missing'};
+  const snapshot=findSnapshot(raw,'full','inplay');
+  if(!snapshot) return {status:'AH UNAVAILABLE',reason:'full_inplay_handicap_missing'};
+  const row=rowSegments(snapshot).find(segment=>/\bBet\s*365\b/i.test(stripHtml(segment)));
+  if(!row) return {status:'AH UNAVAILABLE',reason:'bet365_full_inplay_row_missing'};
+  const groups=groupValues(row);
+  if(groups.length<2) return {status:'AH INVALID',reason:'bet365_inplay_columns_missing'};
+  const [homeRaw,lineRaw,awayRaw]=groups[1];
+  const homeOdds=Number(homeRaw),line=normalizeAsianLine(lineRaw),awayOdds=Number(awayRaw);
+  if(!Number.isFinite(homeOdds)||!Number.isFinite(awayOdds)||line==null||homeOdds<1.01||homeOdds>6||awayOdds<1.01||awayOdds>6){
+    return {status:'AH INVALID',reason:'bet365_inplay_values_invalid'};
+  }
+  return {status:'AH READY',homeOdds,line,awayOdds,bookmaker:'Bet365',market:'FULL MATCH LIVE AH',side:'HOME',source:'Bet365 via TotalCorner',sourceUpdatedAt};
 }
 
 export function parseEnded(html, sourceHost='https://www.totalcorner.com'){
