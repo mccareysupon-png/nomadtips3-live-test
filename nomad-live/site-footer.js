@@ -59,5 +59,5 @@
   setInterval(render,1000);
 })();
 
-import('./runtime.js?v=20260821-compact-na').catch(()=>{});
+import('./runtime.js?v=20260821-card-v2').catch(()=>{});
 
