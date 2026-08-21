@@ -59,4 +59,5 @@
   setInterval(render,1000);
 })();
 
-import('./runtime.js').catch(()=>{});
+import('./runtime.js?v=20260821-compact-na').catch(()=>{});
+
