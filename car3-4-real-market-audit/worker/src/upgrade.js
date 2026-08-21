@@ -140,8 +140,8 @@ export class Car31State extends BaseCar31State{
           const oddsById=new Map(oddsPayloads.map(x=>[String(x?.id),x])),selectedByMatch=new Map(selected.map(x=>[String(x.match.sourceMatchId),x]));
           for(const match of latest.matches||[]){
             const mappedItem=selectedByMatch.get(String(match.sourceMatchId));if(!mappedItem){if(marketCandidate(match,config,snapshots))match.realMarket={source:bookmaker,status:'NOT_FOUND',checkedAt:at};continue;}
-            const payload=oddsById.get(String(mappedItem.event.id)),ah=parseAsianHandicap(payload,bookmaker),age=marketAgeSeconds(ah);
-            match.realMarket={source:bookmaker,status:ah?'MATCH':'NO_AH',checkedAt:at,eventId:mappedItem.event.id,eventHome:mappedItem.event.home,eventAway:mappedItem.event.away,mappingConfidence:mappedItem.matchConfidence,mapping:mappedItem.matchBreakdown,oddsUpdatedAt:ah?.updatedAt||null,marketAgeSeconds:age};
+            const payload=oddsById.get(String(mappedItem.event.id)),marketPressure=pressure(match.stats,config.momentumWeights),marketSide=selectedSide(match,config,marketPressure),ah=parseAsianHandicap(payload,bookmaker,{side:marketSide,ahMin:config.ahMin,ahMax:config.ahMax,oddsMin:config.oddsMin,oddsMax:config.oddsMax}),age=marketAgeSeconds(ah);
+            match.realMarket={source:bookmaker,status:ah?'MATCH':'NO_AH',checkedAt:at,eventId:mappedItem.event.id,eventHome:mappedItem.event.home,eventAway:mappedItem.event.away,mappingConfidence:mappedItem.matchConfidence,mapping:mappedItem.matchBreakdown,oddsUpdatedAt:ah?.updatedAt||null,marketAgeSeconds:age,alternatives:ah?.alternatives??0,matchedPreference:ah?.matchedPreference??false,matchedOdds:ah?.matchedOdds??false};
             if(ah){match.odds.asianHandicap={line:ah.line,home:ah.home,away:ah.away,updatedAt:ah.updatedAt,provider:bookmaker};ahMatched++;}
           }
         }catch(error){realStatus='ERROR';realError=String(error?.message||error);for(const match of latest.matches||[])if(marketCandidate(match,config,snapshots))match.realMarket={source:bookmaker,status:'ERROR',error:realError,checkedAt:at};}
