@@ -1,7 +1,7 @@
 {
-  "engine": "the-king-v4",
+  "engine": "the-king-v6",
   "status": "OK",
-  "last_selection_run": "2026-08-21T02:33:32Z",
+  "last_selection_run": "2026-08-21T02:52:00Z",
   "last_settlement_run": null,
   "selection_date": "2026-08-21",
   "fixtures_seen": 27,
@@ -11,7 +11,22 @@
     "www.soccerway.com": {
       "ok": true,
       "status": 200,
-      "ms": 835
+      "ms": 803
+    },
+    "ng.soccerway.com": {
+      "ok": true,
+      "status": 200,
+      "ms": 891
+    },
+    "us.soccerway.com": {
+      "ok": true,
+      "status": 200,
+      "ms": 880
+    },
+    "au.soccerway.com": {
+      "ok": true,
+      "status": 200,
+      "ms": 947
     }
   },
   "rejected": 27,
@@ -76,5 +91,10 @@
       "away_n": 0,
       "odds": null
     }
-  ]
+  ],
+  "browser_fallback": {
+    "started": true,
+    "renders": 208,
+    "errors": 0
+  }
 }
