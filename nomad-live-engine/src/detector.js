@@ -6,11 +6,6 @@ const ratio=(p,side)=>{
   const own=side==='home'?p.home:p.away, opp=side==='home'?p.away:p.home;
   return opp===0 ? (own>0?99:1) : own/opp;
 };
-const own=(p,side)=>finite(p?.[side])?Number(p[side]):null;
-const totalShotsPair=stats=>({
-  home:(finite(stats?.shotsOn?.home)||finite(stats?.shotsOff?.home))?(Number(stats?.shotsOn?.home||0)+Number(stats?.shotsOff?.home||0)):null,
-  away:(finite(stats?.shotsOn?.away)||finite(stats?.shotsOff?.away))?(Number(stats?.shotsOn?.away||0)+Number(stats?.shotsOff?.away||0)):null,
-});
 
 export function computeMomentum(stats, side){
   let score=0, weight=0;
@@ -43,29 +38,20 @@ export function evaluate(match, config, market=null){
   const attackDiff=diff(match.stats.attacks,side);
   const daDiff=diff(match.stats.dangerousAttack,side);
   const daRatio=ratio(match.stats.dangerousAttack,side);
-  const shotsDiff=diff(totalShotsPair(match.stats),side);
-  const sotOwn=own(match.stats.shotsOn,side);
+  const sotOwn=side==='home'?match.stats.shotsOn.home:match.stats.shotsOn.away;
   const sotDiff=diff(match.stats.shotsOn,side);
-  const cornersOwn=own(match.stats.corners,side);
+  const cornersOwn=side==='home'?match.stats.corners.home:match.stats.corners.away;
 
-  const evidenceItems=[
-    {key:'attack',enabled:config.evidenceAttackEnabled!==false,ok:attackDiff!=null&&attackDiff>=config.attackDifference},
-    {key:'danger',enabled:config.evidenceDangerousAttackEnabled!==false,ok:daDiff!=null&&daDiff>=config.dangerousAttackDifference&&daRatio!=null&&daRatio>=config.dangerousAttackRatio},
-    {key:'shots',enabled:config.evidenceShotsEnabled!==false,ok:shotsDiff!=null&&shotsDiff>=config.shotsDifference},
-    {key:'shotsOnTarget',enabled:config.evidenceShotsOnTargetEnabled!==false,ok:finite(sotOwn)&&sotOwn>=config.shotsOnTargetMinimum&&sotDiff!=null&&sotDiff>=config.shotsOnTargetDifference},
-    {key:'corners',enabled:config.evidenceCornersEnabled!==false,ok:finite(cornersOwn)&&cornersOwn>=config.cornersMinimum},
-  ];
-  const enabledEvidence=evidenceItems.filter(x=>x.enabled);
-  const evidencePassedCount=enabledEvidence.filter(x=>x.ok).length;
-  const evidenceRequired=config.evidenceRequired==='ALL'?enabledEvidence.length:Number(config.evidenceRequired||1);
-  const evidenceOk=config.attackEvidenceEnabled===false || (enabledEvidence.length>0&&evidencePassedCount>=evidenceRequired);
-  const evidence={
-    enabled:config.attackEvidenceEnabled!==false,
-    required:config.attackEvidenceEnabled===false?0:(config.evidenceRequired==='ALL'?'ALL':evidenceRequired),
-    enabledCount:enabledEvidence.length,
-    passedCount:evidencePassedCount,
-    checks:Object.fromEntries(evidenceItems.map(x=>[x.key,{enabled:x.enabled,pass:Boolean(x.ok)}])),
+  const evidenceChecks={
+    attack:attackDiff!=null&&attackDiff>=config.attackDifference,
+    danger:daDiff!=null&&daDiff>=config.dangerousAttackDifference&&daRatio!=null&&daRatio>=config.dangerousAttackRatio,
+    shots:finite(sotOwn)&&sotOwn>=config.shotsOnTargetMinimum&&sotDiff!=null&&sotDiff>=config.shotsOnTargetDifference,
+    corners:finite(cornersOwn)&&cornersOwn>=config.cornersMinimum,
   };
+  const evidencePassedCount=Object.values(evidenceChecks).filter(Boolean).length;
+  const evidenceRequired=config.evidenceRequired==='ALL'?4:Number(config.evidenceRequired||1);
+  const evidenceOk=config.attackEvidenceEnabled===false || evidencePassedCount>=evidenceRequired;
+  const evidence={enabled:config.attackEvidenceEnabled!==false,required:config.evidenceRequired??1,passedCount:evidencePassedCount,total:4,checks:evidenceChecks};
 
   const checks=[
     ['minute',finite(match.minute)&&match.minute>=config.minuteFrom&&match.minute<=config.minuteTo],
