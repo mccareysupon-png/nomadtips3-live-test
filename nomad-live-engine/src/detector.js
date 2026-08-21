@@ -59,14 +59,15 @@ export function buildRollingAnalysis(snapshots=[],config){
 }
 
 function evidenceResult(rolling,config){
+  const required=config.homeEventRequired!==false;
   const checks={
     sot:config.sotEvidenceEnabled?number(rolling?.recent?.delta?.shotsOn?.home)>=config.sotDeltaMinimum:null,
     shotOff:config.shotOffEvidenceEnabled?number(rolling?.recent?.delta?.shotsOff?.home)>=config.shotOffDeltaMinimum:null,
     corner:config.cornerEvidenceEnabled?number(rolling?.recent?.delta?.corners?.home)>=config.cornerDeltaMinimum:null,
   };
   const enabled=Object.values(checks).filter(value=>value!==null);
-  const passed=config.evidenceMode==='ALL'?enabled.length>0&&enabled.every(Boolean):enabled.some(Boolean);
-  return {mode:config.evidenceMode,checks,passed,passedCount:enabled.filter(Boolean).length,total:enabled.length};
+  const eventPassed=config.evidenceMode==='ALL'?enabled.length>0&&enabled.every(Boolean):enabled.some(Boolean);
+  return {required,bypassed:!required,mode:config.evidenceMode,checks,passed:!required||eventPassed,passedCount:enabled.filter(Boolean).length,total:enabled.length};
 }
 
 const quarterGoal = value => finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
@@ -121,3 +122,4 @@ export function evaluate(match,config,market=null,observedAt=Date.now()){
     momentum:rolling.available?Math.round(rolling.homePressureShare):null,
   };
 }
+
