@@ -22,6 +22,11 @@ test('Bet365 Asian parser chooses inplay triple',()=>{
   assert.deepEqual(x,{homeOdds:1.8,line:-0.5,awayOdds:2,bookmaker:'Bet365'});
 });
 
+test('Bet365 Asian parser normalizes split inplay handicap',()=>{
+  const x=parseBet365Asian(`<div>cover rates Full Half Pre-match Inplay Home Line Away Home Line Away Bet365 1.85 0.0, -0.5 1.95 2.00 -0.5, -1.0 1.80</div>`);
+  assert.deepEqual(x,{homeOdds:2,line:-0.75,awayOdds:1.8,bookmaker:'Bet365'});
+});
+
 test('detector signals when the configured evidence count and other gates pass',()=>{
   const m={minute:70,score:{home:1,away:1},stats:{attacks:{home:120,away:80},dangerousAttack:{home:60,away:35},shotsOn:{home:6,away:2},shotsOff:{home:10,away:5},corners:{home:7,away:3},possession:{home:58,away:42}}};
   const d=evaluate(m,DEFAULT_CONFIG,{line:-.5,homeOdds:1.91,awayOdds:1.95});
