@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DEFAULT_CONFIG} from '../src/config.js';
-import {createLockedSignal} from '../src/index.js';
+import {createLockedSignal,summarizeApiFootballRecovery} from '../src/index.js';
 import {buildPriceSourceSnapshots,publicPriceSourceSnapshot,selectPriceSource} from '../src/price-sources.js';
 import {buildTheOddsApiMarkets,parseTheOddsApiAsianHandicaps} from '../src/the-odds-api.js';
-import {buildApiFootballMarkets,fetchApiFootballLiveAsianHandicaps,parseApiFootballAsianHandicaps,selectApiFootballAsianHandicapBet} from '../src/api-football.js';
+import {buildApiFootballMarkets,fetchApiFootballLiveAsianHandicaps,matchApiFootballEvent,parseApiFootballAsianHandicaps,selectApiFootballAsianHandicapBet} from '../src/api-football.js';
 
 const observedAt=Date.parse('2026-08-21T10:00:40Z');
 const market=(source,bookmaker,line,odds,updatedAt)=>({
@@ -39,7 +39,7 @@ test('SOURCE 3 resolves the Full Match live Asian Handicap bet without using hal
   assert.deepEqual(bet,{id:22,name:'Asian Handicap'});
 });
 
-test('API-Football resolves the live AH bet once, then uses one filtered odds request per cycle',async()=>{
+test('API-Football resolves the live AH bet once, then uses filtered odds and fixture requests per cycle',async()=>{
   const originalFetch=globalThis.fetch,calls=[];
   globalThis.fetch=async(url,options)=>{
     calls.push({url:String(url),key:options?.headers?.['x-apisports-key']});
@@ -55,6 +55,7 @@ test('API-Football resolves the live AH bet once, then uses one filtered odds re
     assert.equal(second.received,0);
     assert.equal(calls.filter(call=>call.url.includes('/odds/live/bets')).length,1);
     assert.equal(calls.filter(call=>call.url.includes('/odds/live?bet=22')).length,2);
+    assert.equal(calls.filter(call=>call.url.includes('/fixtures?live=all')).length,2);
     assert.ok(calls.every(call=>call.key==='test-key'));
     assert.deepEqual(first.quota,{remainingDay:7498,remainingMinute:298});
   }finally{globalThis.fetch=originalFetch;}
@@ -78,6 +79,65 @@ test('API-Football caches the resolved live AH bet before a rate-limited price r
     assert.deepEqual(cachedBet,{id:22,name:'Asian Handicap'});
     assert.equal(calls.filter(url=>url.includes('/odds/live/bets')).length,1);
     assert.equal(calls.filter(url=>url.includes('/odds/live?bet=22')).length,1);
+    assert.equal(calls.filter(url=>url.includes('/fixtures?live=all')).length,1);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test('API-Football reads every live odds page before matching prices',async()=>{
+  const originalFetch=globalThis.fetch,calls=[];
+  globalThis.fetch=async url=>{
+    const parsed=new URL(String(url)),page=Number(parsed.searchParams.get('page')||1);
+    calls.push(`${parsed.pathname}:${page}`);
+    if(parsed.pathname==='/fixtures') return Response.json({errors:[],paging:{current:1,total:1},response:[]});
+    const event=page===2?{fixture:{id:202},status:{},odds:[]}:null;
+    return Response.json({errors:[],paging:{current:page,total:2},response:event?[event]:[]});
+  };
+  try{
+    const response=await fetchApiFootballLiveAsianHandicaps('test-key',{id:22,name:'Asian Handicap'});
+    assert.equal(response.received,1);
+    assert.equal(response.events[0].fixture.id,202);
+    assert.deepEqual(response.pages.odds,{total:2,fetched:2});
+    assert.deepEqual(calls.filter(item=>item.startsWith('/odds/live:')),['/odds/live:1','/odds/live:2']);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test('API-Football keeps odds usable when the optional live fixture helper fails',async()=>{
+  const originalFetch=globalThis.fetch;
+  globalThis.fetch=async url=>{
+    const parsed=new URL(String(url));
+    if(parsed.pathname==='/fixtures') return Response.json({errors:{server:'fixture unavailable'},response:[]});
+    return Response.json({errors:[],response:[{fixture:{id:303},status:{},odds:[]}]});
+  };
+  try{
+    const response=await fetchApiFootballLiveAsianHandicaps('test-key',{id:22,name:'Asian Handicap'});
+    assert.equal(response.events.length,1);
+    assert.match(response.fixturesError,/API_FOOTBALL_ERRORS:server/);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
+test('API-Football reuses compact live fixtures to protect Pro-plan quota without caching odds',async()=>{
+  const originalFetch=globalThis.fetch,calls=[];
+  let fixtureCache=null;
+  globalThis.fetch=async url=>{
+    const parsed=new URL(String(url));calls.push(parsed.pathname);
+    if(parsed.pathname==='/fixtures') return Response.json({errors:[],response:[{
+      fixture:{id:404,date:'2026-08-21T09:30:00Z'},league:{name:'Example League'},
+      teams:{home:{name:'Home FC'},away:{name:'Away FC'}},
+    }]});
+    return Response.json({errors:[],response:[]});
+  };
+  try{
+    const first=await fetchApiFootballLiveAsianHandicaps(
+      'test-key',{id:22,name:'Asian Handicap'},9000,null,null,value=>{fixtureCache=value;},observedAt,
+    );
+    const second=await fetchApiFootballLiveAsianHandicaps(
+      'test-key',{id:22,name:'Asian Handicap'},9000,null,fixtureCache,null,observedAt+60_000,
+    );
+    assert.equal(first.fixtureCache,'REFRESHED');
+    assert.equal(second.fixtureCache,'HIT');
+    assert.equal(second.fixtures[0].fixture.id,404);
+    assert.equal(calls.filter(path=>path==='/fixtures').length,1);
+    assert.equal(calls.filter(path=>path==='/odds/live').length,2);
   }finally{globalThis.fetch=originalFetch;}
 });
 
@@ -115,6 +175,34 @@ test('SOURCE 3 mapping honors Settings and prefers the primary API-Football AH l
   assert.equal(result.results[0].market.source,'API-Football');
   assert.equal(result.results[0].market.line,-.75);
   assert.equal(result.results[0].market.homeOdds,1.86);
+});
+
+test('SOURCE 3 joins odds through the canonical live Fixture ID before relying on bookmaker team labels',()=>{
+  const matches=[{id:'m1',home:'Manchester United',away:'Liverpool',league:'Premier League'}];
+  const fixtures=[{
+    fixture:{id:777,date:'2026-08-21T09:30:00Z'},league:{name:'Premier League'},
+    teams:{home:{name:'Manchester United FC'},away:{name:'Liverpool FC'}},
+  }];
+  const events=[{
+    fixture:{id:777},teams:{home:{name:'MU Red'},away:{name:'Merseyside Red'}},update:'2026-08-21T10:00:35Z',
+    odds:[{id:22,name:'Asian Handicap',values:[
+      {value:'Home',handicap:'-0.75',odd:'1.86',main:true},{value:'Away',handicap:'+0.75',odd:'1.96',main:true},
+    ]}],
+  }];
+  const result=buildApiFootballMarkets(matches,events,DEFAULT_CONFIG,observedAt,{id:22,name:'Asian Handicap'},fixtures);
+  assert.equal(result.fixtureMapped,1);
+  assert.equal(result.mapped,1);
+  assert.equal(result.results[0].mappingMethod,'fixture_id');
+  assert.equal(result.results[0].market.line,-.75);
+});
+
+test('SOURCE 3 rejects senior versus youth or women identity mismatches',()=>{
+  const senior={home:'Arsenal',away:'Chelsea',league:'Premier League'};
+  const youth={home:'Arsenal U23',away:'Chelsea U23',league:{name:'Premier League 2'}};
+  const women={home:'Arsenal Women',away:'Chelsea Women',league:{name:'Women Super League'}};
+  assert.equal(matchApiFootballEvent(senior,youth).ok,false);
+  assert.equal(matchApiFootballEvent(senior,youth).classMismatch,true);
+  assert.equal(matchApiFootballEvent(senior,women).ok,false);
 });
 
 test('selected price prefers freshness, then better odds inside the near-freshness window',()=>{
@@ -167,6 +255,18 @@ test('SOURCE 3 timeout never blocks a valid SOURCE 2 price',()=>{
   const selected=selectPriceSource(snapshots);
   assert.equal(selected.id,'source2');
   assert.equal(snapshots.find(item=>item.id==='source3').status,'UNAVAILABLE');
+});
+
+test('SOURCE 3 recovery counts only football-qualified matches that Source 1 and 2 could not price',()=>{
+  const matches=[
+    {id:'recovered',detectionPassed:true,state:'SIGNAL',selectedPrice:{id:'source3'},priceSources:[{id:'source1',status:'UNAVAILABLE'},{id:'source2',status:'UNAVAILABLE'},{id:'source3',status:'PASS'}]},
+    {id:'better-price',detectionPassed:true,state:'SIGNAL',selectedPrice:{id:'source3'},priceSources:[{id:'source1',status:'PASS'},{id:'source2',status:'UNAVAILABLE'},{id:'source3',status:'PASS'}]},
+    {id:'not-qualified',detectionPassed:false,state:'WATCHING',selectedPrice:{id:'source3'},priceSources:[{id:'source1',status:'UNAVAILABLE'},{id:'source2',status:'UNAVAILABLE'},{id:'source3',status:'PASS'}]},
+  ];
+  const summary=summarizeApiFootballRecovery(matches,new Map([
+    ['recovered',{bookmakerVerified:false}],['better-price',{bookmakerVerified:true}],['not-qualified',{bookmakerVerified:true}],
+  ]));
+  assert.deepEqual(summary,{ready:3,recoveryCandidates:1,recoveredSignals:1,selected:3,bookmakerUnverified:1});
 });
 
 test('locked signal stores source, bookmaker, line, odds, timestamp and age from the selected source',()=>{
