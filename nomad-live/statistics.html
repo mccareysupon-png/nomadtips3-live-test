@@ -23,9 +23,13 @@
         <div><span>WATCH WINDOW</span><b id="cfgWatchWindow">—</b></div>
         <div><span>SIGNAL WINDOW</span><b id="cfgSignalWindow">—</b></div>
         <div><span>SCORE DIFF</span><b id="cfgScoreDiff">—</b></div>
+        <div><span>EVIDENCE GATE</span><b id="cfgEvidenceGate">—</b></div>
+        <div><span>EVIDENCE REQUIRED</span><b id="cfgEvidenceRequired">—</b></div>
+        <div><span>EVIDENCE TYPES</span><b id="cfgEvidenceTypes">—</b></div>
         <div><span>ATTACK DIFF</span><b id="cfgAttackDiff">—</b></div>
         <div><span>DANGER DIFF</span><b id="cfgDangerDiff">—</b></div>
         <div><span>DANGER RATIO</span><b id="cfgDangerRatio">—</b></div>
+        <div><span>SHOTS DIFF</span><b id="cfgShotsDiff">—</b></div>
         <div><span>SOT MIN</span><b id="cfgSotMin">—</b></div>
         <div><span>SOT DIFF</span><b id="cfgSotDiff">—</b></div>
         <div><span>CORNERS MIN</span><b id="cfgCornersMin">—</b></div>
@@ -48,6 +52,13 @@
       const line=v=>Number.isFinite(Number(v))?`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`:'—';
       const windowText=(a,b)=>`${val(a)}′–${val(b)}′`;
       const threshold=(symbol,v,d=null)=>v===null||v===undefined?'—':`${symbol} ${d===null?val(v):fixed(v,d)}`;
+      const enabledTypes=c=>[
+        ['ATTACK',c.evidenceAttackEnabled],
+        ['DANGER',c.evidenceDangerousAttackEnabled],
+        ['SHOTS',c.evidenceShotsEnabled],
+        ['SOT',c.evidenceShotsOnTargetEnabled],
+        ['CORNERS',c.evidenceCornersEnabled],
+      ].filter(([,on])=>on!==false).map(([name])=>name).join(' · ')||'NONE';
       const load=async()=>{
         try{
           const r=await fetch(`${API}/config`,{cache:'no-store'});
@@ -57,9 +68,13 @@
           put('cfgWatchWindow',windowText(c.watchMinuteFrom,c.watchMinuteTo));
           put('cfgSignalWindow',windowText(c.minuteFrom,c.minuteTo));
           put('cfgScoreDiff',threshold('≤',c.maxScoreDifference));
+          put('cfgEvidenceGate',c.attackEvidenceEnabled===false?'OFF':'ON');
+          put('cfgEvidenceRequired',c.attackEvidenceEnabled===false?'BYPASS':val(c.evidenceRequired??1));
+          put('cfgEvidenceTypes',enabledTypes(c));
           put('cfgAttackDiff',threshold('≥',c.attackDifference));
           put('cfgDangerDiff',threshold('≥',c.dangerousAttackDifference));
           put('cfgDangerRatio',threshold('≥',c.dangerousAttackRatio,2));
+          put('cfgShotsDiff',threshold('≥',c.shotsDifference));
           put('cfgSotMin',threshold('≥',c.shotsOnTargetMinimum));
           put('cfgSotDiff',threshold('≥',c.shotsOnTargetDifference));
           put('cfgCornersMin',threshold('≥',c.cornersMinimum));
