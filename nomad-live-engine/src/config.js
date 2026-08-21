@@ -128,4 +128,3 @@ export function validateEditableConfig(input={},options={}){
 export function engineConfig(editable=DEFAULT_CONFIG){
   return {...DEFAULT_CONFIG,...clone(editable),allowedSelectionLines:[...(editable.allowedSelectionLines||[])]};
 }
-
