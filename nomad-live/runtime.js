@@ -18,8 +18,8 @@ function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
   el.innerHTML=`<span class="dot" style="${ok?'':'background:#f2d21b;box-shadow:none'}"></span>${esc(text)}`;
 }
-function renderChecks(checks={}){
-  const labels={homeOnly:'HOME only',minute:'Minute 55–88',score:'Score filter',hunger:'HOME hunger trend',evidence:'New HOME event',market:'Full Match Live AH'};
+function renderChecks(checks={},evidence={}){
+  const labels={homeOnly:'HOME only',minute:'Minute window',score:'Score filter',hunger:'HOME hunger trend',evidence:evidence.required===false?'New HOME event (optional)':'New HOME event',market:'Full Match Live AH'};
   return Object.entries(checks).map(([k,v])=>`<div class="check"><span>${esc(labels[k]||k)}</span>${pill(Boolean(v),v?'PASS':'WAIT')}</div>`).join('');
 }
 function detail(m){
@@ -40,7 +40,7 @@ function detail(m){
       <div><span>Δ SOT / OFF / COR</span><b>${eventDelta.shotsOn?.home??'—'} / ${eventDelta.shotsOff?.home??'—'} / ${eventDelta.corners?.home??'—'}</b></div><div><span>HUNGER</span><b>${m.hunger?.passedCount??0} / ${m.hunger?.total??3}</b></div>
     </div></section>
     <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>HOME pressure · recent / previous</span><b>${recent.homePressure??'—'} / ${previous.homePressure??'—'}</b></div><div class="check"><span>HOME pressure share</span><b>${rolling.available?`${Number(rolling.homePressureShare).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
-    <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks)}</section>
+    <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks,m.evidence)}</section>
     <section class="detail-card"><h3>PRICE CHECK</h3><div class="check"><span>Primary status</span><b class="${price.passed?'ok':'wait'}">${esc(priceLabel(m.priceStatus))}</b></div><div class="check"><span>1xBet Ah / odds</span><b>${fmtLine(oneXBet.line)} / ${fmtOdds(oneXBet.homeOdds)}</b></div><div class="check"><span>Bet365 Ah / odds</span><b>${fmtLine(bet365.line)} / ${fmtOdds(bet365.homeOdds)}</b></div><div class="check"><span>1xBet status</span><b class="${oneXBet.status==='AH READY'?'ok':'wait'}">${esc(priceLabel(oneXBet.status))}</b></div><div class="check"><span>Bet365 status</span><b class="${bet365.status==='AH READY'?'ok':'wait'}">${esc(priceLabel(bet365.status))}</b></div><div class="check"><span>Source</span><b>Odds-API.io · 1xBet + Bet365</b></div><div class="check"><span>1xBet updated</span><b>${oneXBet.sourceUpdatedAt?when(oneXBet.sourceUpdatedAt):'—'}</b></div><div class="check"><span>Bet365 updated</span><b>${bet365.sourceUpdatedAt?when(bet365.sourceUpdatedAt):'—'}</b></div><div class="check"><span>Primary price age</span><b>${price.ageSeconds!=null?`${Number(price.ageSeconds).toFixed(0)} sec`:'—'}</b></div><div class="check"><span>Signal line / odds</span><b>${fmtLine(line)} / ${fmtOdds(odds)}</b></div></section>
   </div>`;
 }

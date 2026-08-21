@@ -178,11 +178,12 @@ export class EngineState {
   async handleConfig(request){
     const state=await this.read();
     const configState=await this.configState();
+    const activeConfig=editableConfig(engineConfig(configState.active.config));
     if(request.method==='GET') return j({
-      ok:true,activeConfig:clone(configState.active.config),defaultConfig:editableConfig(DEFAULT_CONFIG),
+      ok:true,activeConfig:clone(activeConfig),defaultConfig:editableConfig(DEFAULT_CONFIG),
       version:configState.active.version,updatedAt:iso(configState.active.updatedAt),appliesFromCycle:configState.active.appliesFromCycle,
       pending:publicEnvelope(configState.pending),history:configState.history.slice(0,10).map(publicEnvelope),
-      config:clone(configState.active.config),defaults:editableConfig(DEFAULT_CONFIG)
+      config:clone(activeConfig),defaults:editableConfig(DEFAULT_CONFIG)
     });
     if(request.method!=='POST') return j({ok:false,error:'method_not_allowed'},405);
     if(!await settingsAuthorized(request)) return j({ok:false,error:'unauthorized'},401);

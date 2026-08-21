@@ -142,6 +142,30 @@ test('no new HOME event in the rolling window blocks detection',()=>{
   assert.equal(decision.checks.evidence,false); assert.equal(decision.state,'WATCHING');
 });
 
+test('New HOME event gate can be disabled without requiring an enabled evidence type',()=>{
+  const config={
+    ...editableConfig(DEFAULT_CONFIG),homeEventRequired:false,
+    sotEvidenceEnabled:false,shotOffEvidenceEnabled:false,cornerEvidenceEnabled:false,
+  };
+  const validation=validateEditableConfig(config,{requireAll:true});
+  assert.equal(validation.ok,true);
+  const snapshots=passingSnapshots().map((item,index)=>index===2?{...item,stats:{...item.stats,shotsOn:{home:10,away:2}}}:item);
+  const rolling=buildRollingAnalysis(snapshots,validation.config);
+  const decision=evaluate({minute:55,score:{home:0,away:0},stats:snapshots.at(-1).stats,rolling},validation.config,readyMarket(),55*60000);
+  assert.equal(decision.evidence.required,false); assert.equal(decision.evidence.bypassed,true);
+  assert.equal(decision.checks.evidence,true); assert.equal(decision.state,'SIGNAL');
+});
+
+test('New HOME event gate still requires at least one enabled evidence type when on',()=>{
+  const config={
+    ...editableConfig(DEFAULT_CONFIG),homeEventRequired:true,
+    sotEvidenceEnabled:false,shotOffEvidenceEnabled:false,cornerEvidenceEnabled:false,
+  };
+  const validation=validateEditableConfig(config,{requireAll:true});
+  assert.equal(validation.ok,false);
+  assert.match(validation.errors.join(' '),/Enable at least one HOME evidence type/);
+});
+
 test('1X2 rows can never be parsed as Asian Handicap',()=>{
   const parsed=parseBet365Asian(`<div class="oa-market-panel" data-market-panel="1x2"><div>Bet 365 1.46 3.50 6.00</div></div>`,1234);
   assert.equal(parsed.status,'AH UNAVAILABLE');
