@@ -4,89 +4,105 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111315">
-  <meta name="description" content="NOMADTIPS3 The King compact pick statistics and verified performance history.">
-  <title>nomadtips3 — The King stats</title>
+  <meta name="description" content="NOMADTIPS3 The King full-time pre-match picks and verified performance record.">
+  <title>nomadtips3 — The King</title>
   <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/styles.css">
   <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/ui-fix.css">
   <link rel="stylesheet" href="./the-king.css">
 </head>
 <body class="king-page" data-page="the-king">
-  <header class="topbar">
-    <a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a>
-    <div class="feed-state king-state"><i></i><span>The King</span></div>
+  <header class="topbar king-topbar">
+    <div class="brand" aria-label="nomadtips3"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></div>
+    <div class="king-mode"><span class="king-mode-dot"></span><span>FULL-TIME · THE KING</span></div>
   </header>
 
   <main class="page-shell king-shell">
-    <section class="page-title king-title">
-      <div class="king-title-row">
-        <div><span class="kicker">Add K The King · verified record</span><h1>The King Picks</h1></div>
-        <span class="muted" id="kingUpdated">Waiting for feed</span>
+    <section class="king-hero">
+      <div class="king-hero-main">
+        <span class="kicker">ADD K THE KING · WINNER FIRST</span>
+        <div class="king-heading-line">
+          <h1>Full-Time Picks</h1>
+          <span class="king-verified">VERIFIED RECORD</span>
+        </div>
+        <p>Pre-match selection · Confidence ≥58% · Winner Edge ≥12 · Locked Odds ≥1.70</p>
       </div>
-      <p>Compact Winner First record. Current public gate requires Confidence ≥58%, Winner Edge ≥12 and locked odds ≥1.70.</p>
+      <div class="king-updated" id="kingUpdated">Waiting for feed</div>
     </section>
 
-    <section class="status-strip king-scorebar" aria-label="The King performance summary">
-      <div><b id="sumPicks">—</b><span>Picks</span></div>
-      <div class="king-win"><b id="sumWin">—</b><span>Win</span></div>
-      <div class="king-loss"><b id="sumLoss">—</b><span>Loss</span></div>
-      <div><b id="sumRate">—</b><span>Win rate</span></div>
-      <div><b id="sumOdds">—</b><span>Avg odds</span></div>
-      <div><b id="sumNet">—</b><span>Net</span></div>
-      <div><b id="sumRoi">—</b><span>ROI</span></div>
+    <section class="king-scorebar" aria-label="The King performance summary">
+      <div class="metric"><span>PICKS</span><b id="sumPicks">—</b></div>
+      <div class="metric win"><span>WIN</span><b id="sumWin">—</b></div>
+      <div class="metric loss"><span>LOSS</span><b id="sumLoss">—</b></div>
+      <div class="metric"><span>WIN RATE</span><b id="sumRate">—</b></div>
+      <div class="metric"><span>AVG ODDS</span><b id="sumOdds">—</b></div>
+      <div class="metric"><span>NET</span><b id="sumNet">—</b></div>
+      <div class="metric"><span>ROI</span><b id="sumRoi">—</b></div>
     </section>
 
     <nav class="king-tabs" aria-label="The King sections">
-      <button class="active" data-tab="today" type="button">Today</button>
-      <button data-tab="history" type="button">History</button>
-      <button data-tab="daily" type="button">Daily</button>
-      <button data-tab="rules" type="button">Rules</button>
+      <button class="active" data-tab="today" type="button">TODAY</button>
+      <button data-tab="history" type="button">HISTORY</button>
+      <button data-tab="daily" type="button">DAILY</button>
+      <button data-tab="rules" type="button">RULES</button>
     </nav>
 
-    <section class="king-panel active soft-card" data-panel="today">
-      <div class="king-panel-head"><div><b>Today</b><small>Qualified picks only</small></div><span id="todayCount">0 picks</span></div>
-      <div class="king-table-wrap stats-table-wrap">
-        <table class="king-table stats-table">
-          <thead><tr><th>Match</th><th>Pick</th><th>Conf.</th><th>Edge</th><th>Odds</th><th>Status</th></tr></thead>
+    <section class="king-panel active" data-panel="today">
+      <div class="king-panel-head">
+        <div><b>TODAY'S PICKS</b><small>Qualified full-time selections only</small></div>
+        <span id="todayCount">0 picks</span>
+      </div>
+      <div class="king-table-wrap">
+        <table class="king-table">
+          <thead><tr><th>MATCH</th><th>PICK</th><th>CONF.</th><th>EDGE</th><th>ODDS</th><th>STATUS</th></tr></thead>
           <tbody id="todayRows"></tbody>
         </table>
       </div>
-      <div class="king-empty" id="todayEmpty" hidden>No qualified pick.</div>
+      <div class="king-empty" id="todayEmpty" hidden>NO QUALIFIED PICK</div>
     </section>
 
-    <section class="king-panel soft-card" data-panel="history">
-      <div class="king-panel-head"><div><b>History</b><small>Verified FT results</small></div><span id="historyCount">0 settled</span></div>
-      <div class="king-table-wrap stats-table-wrap">
-        <table class="king-table stats-table">
-          <thead><tr><th>Date</th><th>Pick</th><th>Odds</th><th>FT</th><th>Result</th><th>P/L</th></tr></thead>
+    <section class="king-panel" data-panel="history">
+      <div class="king-panel-head">
+        <div><b>VERIFIED HISTORY</b><small>Settled full-time results</small></div>
+        <span id="historyCount">0 settled</span>
+      </div>
+      <div class="king-table-wrap">
+        <table class="king-table">
+          <thead><tr><th>DATE</th><th>PICK</th><th>ODDS</th><th>FT</th><th>RESULT</th><th>P/L</th></tr></thead>
           <tbody id="historyRows"></tbody>
         </table>
       </div>
     </section>
 
-    <section class="king-panel soft-card" data-panel="daily">
-      <div class="king-panel-head"><div><b>Daily</b><small>Compact performance log</small></div></div>
-      <div class="king-table-wrap stats-table-wrap">
-        <table class="king-table stats-table">
-          <thead><tr><th>Date</th><th>Picks</th><th>W</th><th>L</th><th>Accuracy</th><th>Net</th></tr></thead>
+    <section class="king-panel" data-panel="daily">
+      <div class="king-panel-head">
+        <div><b>DAILY RECORD</b><small>Compact performance log</small></div>
+      </div>
+      <div class="king-table-wrap">
+        <table class="king-table">
+          <thead><tr><th>DATE</th><th>PICKS</th><th>W</th><th>L</th><th>ACCURACY</th><th>NET</th></tr></thead>
           <tbody id="dailyRows"></tbody>
         </table>
       </div>
     </section>
 
-    <section class="king-panel soft-card" data-panel="rules">
-      <div class="king-panel-head"><div><b>Rules</b><small>Current public gate</small></div></div>
-      <div class="king-rules">
-        <div><span>Winner First</span><b>Required</b></div>
-        <div><span>Confidence</span><b>≥ 58%</b></div>
-        <div><span>Winner edge</span><b>≥ 12 pts</b></div>
-        <div><span>Locked odds</span><b>≥ 1.70</b></div>
-        <div><span>Stake model</span><b>฿100 / pick</b></div>
-        <div><span>Excluded</span><b>Friendly · Youth · low-data</b></div>
+    <section class="king-panel" data-panel="rules">
+      <div class="king-panel-head">
+        <div><b>PUBLIC GATE</b><small>Current The King selection rules</small></div>
       </div>
-      <p class="king-note">Projected Score, BTTS and Odd/Even are not published. Odds are checked after analysis and used only as the minimum lock gate.</p>
+      <div class="king-rules">
+        <div><span>CORE</span><b>Winner First</b></div>
+        <div><span>CONFIDENCE</span><b>≥ 58%</b></div>
+        <div><span>WINNER EDGE</span><b>≥ 12 pts</b></div>
+        <div><span>LOCKED ODDS</span><b>≥ 1.70</b></div>
+        <div><span>STAKE MODEL</span><b>฿100 / pick</b></div>
+        <div><span>EXCLUDED</span><b>Friendly · Youth · Low-data</b></div>
+      </div>
+      <p class="king-note">Projected Score, BTTS and Odd/Even remain unpublished. Odds are checked separately after analysis and used as the minimum lock gate.</p>
     </section>
 
-    <footer class="king-footer"><a href="./index.html">Live</a><span>·</span><a href="./statistics.html">Statistics</a><span>·</span><b>The King</b></footer>
+    <footer class="king-footer">
+      <span>NOMADTIPS3 · THE KING</span><i></i><span>FULL-TIME PRE-MATCH</span>
+    </footer>
   </main>
 
   <script type="module" src="./the-king.js"></script>
