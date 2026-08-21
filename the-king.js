@@ -1,7 +1,7 @@
 const FEED='./the-king-feed.json';
 const $=(s)=>document.querySelector(s);
 const $$=(s)=>[...document.querySelectorAll(s)];
-const money=(n)=>Number.isFinite(n)?`${n>=0?'+':''}฿${Math.abs(n).toFixed(0)}`:'—';
+const money=(n)=>Number.isFinite(n)?`${n>=0?'+':''}${Math.abs(n).toFixed(0)}`:'—';
 const pct=(n)=>Number.isFinite(n)?`${(n*100).toFixed(1)}%`:'—';
 const odds=(n)=>Number.isFinite(n)?n.toFixed(2):'—';
 
