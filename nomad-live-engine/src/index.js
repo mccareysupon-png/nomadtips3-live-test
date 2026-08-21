@@ -512,4 +512,3 @@ export default {
     context.waitUntil(env.ENGINE.get(id).fetch('https://engine.local/cycle'));
   }
 };
-
