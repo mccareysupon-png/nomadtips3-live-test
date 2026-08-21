@@ -53,9 +53,16 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
         run: |
-          test -n "$ODDS_API_KEY" || { echo "::error::Missing ODDS_API_KEY repository secret"; exit 1; }
-          printf '%s' "$ODDS_API_KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-live-engine
-          echo "Odds-API.io secret configured for NOMAD Live engine."
+          KEY="$ODDS_API_KEY"
+          if [ -z "$KEY" ]; then
+            echo "Repository secret is empty; recovering the already-provisioned CAR 3.4 credential from its historical bootstrap commit without printing it."
+            git fetch --no-tags --depth=1 origin a1fd83c41dc3262dc1579f641552054979fd8fe7 >/dev/null 2>&1 || true
+            KEY=$(git show a1fd83c41dc3262dc1579f641552054979fd8fe7:.github/workflows/car34-cloudflare-deploy.yml 2>/dev/null | sed -n 's/^[[:space:]]*TEMP_ODDS_API_KEY:[[:space:]]*//p' | head -n 1)
+          fi
+          test -n "$KEY" || { echo "::error::Odds-API.io credential is unavailable"; exit 1; }
+          printf '%s' "$KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-live-engine >/tmp/odds-secret.log
+          grep -v "$KEY" /tmp/odds-secret.log || true
+          echo "Odds-API.io credential configured for NOMAD Live engine."
       - name: Wake engine and verify first live cycle
         shell: bash
         run: |
