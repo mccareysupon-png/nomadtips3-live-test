@@ -26,10 +26,10 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4
 
       - name: Engine self-test
-        run: python3 .github/scripts/the_king_engine_v2.py self-test
+        run: python3 .github/scripts/the_king_engine_v3.py self-test
 
       - name: Settle verified pending picks
-        run: python3 .github/scripts/the_king_engine_v2.py settle
+        run: python3 .github/scripts/the_king_engine_v3.py settle
 
       - name: Publish verified results
         shell: bash
