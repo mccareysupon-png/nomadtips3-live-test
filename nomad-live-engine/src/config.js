@@ -9,15 +9,9 @@ export const DEFAULT_CONFIG = Object.freeze({
   maxScoreDifference: 1,
   attackEvidenceEnabled: true,
   evidenceRequired: 1,
-  evidenceAttackEnabled: true,
-  evidenceDangerousAttackEnabled: true,
-  evidenceShotsEnabled: true,
-  evidenceShotsOnTargetEnabled: true,
-  evidenceCornersEnabled: true,
   attackDifference: 15,
   dangerousAttackDifference: 10,
   dangerousAttackRatio: 1.30,
-  shotsDifference: 1,
   shotsOnTargetMinimum: 4,
   shotsOnTargetDifference: 2,
   cornersMinimum: 4,
@@ -35,22 +29,17 @@ export const DEFAULT_CONFIG = Object.freeze({
 
 export const EDITABLE_KEYS = Object.freeze([
   'minuteFrom','minuteTo','watchMinuteFrom','watchMinuteTo','maxScoreDifference',
-  'attackEvidenceEnabled','evidenceRequired','evidenceAttackEnabled','evidenceDangerousAttackEnabled',
-  'evidenceShotsEnabled','evidenceShotsOnTargetEnabled','evidenceCornersEnabled',
-  'attackDifference','dangerousAttackDifference','dangerousAttackRatio','shotsDifference',
+  'attackEvidenceEnabled','evidenceRequired',
+  'attackDifference','dangerousAttackDifference','dangerousAttackRatio',
   'shotsOnTargetMinimum','shotsOnTargetDifference','cornersMinimum','momentumMinimum',
   'allowedSelectionLines','oddsMinimum','oddsMaximum','maxWatchMatches','maxNearOddsMatches'
 ]);
 
 const LIMIT_KEYS = new Set(['maxWatchMatches','maxNearOddsMatches']);
-const BOOLEAN_KEYS = Object.freeze([
-  'attackEvidenceEnabled','evidenceAttackEnabled','evidenceDangerousAttackEnabled',
-  'evidenceShotsEnabled','evidenceShotsOnTargetEnabled','evidenceCornersEnabled'
-]);
 const NUMBER_RULES = Object.freeze({
   minuteFrom:[0,120,true], minuteTo:[0,120,true], watchMinuteFrom:[0,120,true], watchMinuteTo:[0,120,true],
   maxScoreDifference:[0,20,true], attackDifference:[0,250,true], dangerousAttackDifference:[0,250,true],
-  dangerousAttackRatio:[1,5,false], shotsDifference:[0,100,true], shotsOnTargetMinimum:[0,50,true], shotsOnTargetDifference:[0,50,true],
+  dangerousAttackRatio:[1,5,false], shotsOnTargetMinimum:[0,50,true], shotsOnTargetDifference:[0,50,true],
   cornersMinimum:[0,30,true], momentumMinimum:[0,100,true], oddsMinimum:[1.01,20,false], oddsMaximum:[1.01,20,false],
   maxWatchMatches:[0,5000,true], maxNearOddsMatches:[0,5000,true]
 });
@@ -62,13 +51,6 @@ export function editableConfig(config=DEFAULT_CONFIG){
 function numericValue(key,value){
   if(LIMIT_KEYS.has(key) && String(value).trim().toUpperCase()==='ALL') return 0;
   return Number(value);
-}
-
-function booleanValue(value){
-  if(typeof value==='boolean') return value;
-  if(String(value).toLowerCase()==='true') return true;
-  if(String(value).toLowerCase()==='false') return false;
-  return null;
 }
 
 export function validateEditableConfig(input={}){
@@ -84,18 +66,16 @@ export function validateEditableConfig(input={}){
     }
     config[key]=n;
   }
-  for(const key of BOOLEAN_KEYS){
-    if(!(key in input)) continue;
-    const b=booleanValue(input[key]);
-    if(b===null) errors.push(`${key} must be true or false`);
-    else config[key]=b;
+  if('attackEvidenceEnabled' in input){
+    if(typeof input.attackEvidenceEnabled!=='boolean') errors.push('attackEvidenceEnabled must be true or false');
+    else config.attackEvidenceEnabled=input.attackEvidenceEnabled;
   }
   if('evidenceRequired' in input){
     const raw=String(input.evidenceRequired).trim().toUpperCase();
     if(raw==='ALL') config.evidenceRequired='ALL';
     else {
       const n=Number(raw);
-      if(!Number.isInteger(n)||n<1||n>5) errors.push('evidenceRequired must be 1, 2, 3, 4, 5 or ALL');
+      if(!Number.isInteger(n)||![1,2,3].includes(n)) errors.push('evidenceRequired must be 1, 2, 3 or ALL');
       else config.evidenceRequired=n;
     }
   }
@@ -105,9 +85,6 @@ export function validateEditableConfig(input={}){
     if(!lines.length||lines.some(x=>x < -5||x > 5||Math.abs(x*4-Math.round(x*4))>1e-9)) errors.push('allowedSelectionLines must contain quarter-goal values between -5 and 5');
     else config.allowedSelectionLines=lines;
   }
-  const enabledEvidence=[config.evidenceAttackEnabled,config.evidenceDangerousAttackEnabled,config.evidenceShotsEnabled,config.evidenceShotsOnTargetEnabled,config.evidenceCornersEnabled].filter(Boolean).length;
-  if(config.attackEvidenceEnabled&&enabledEvidence===0) errors.push('at least one live evidence type must be enabled');
-  if(config.attackEvidenceEnabled&&config.evidenceRequired!=='ALL'&&Number(config.evidenceRequired)>enabledEvidence) errors.push('evidenceRequired cannot exceed the number of enabled evidence types');
   if(config.minuteFrom>config.minuteTo) errors.push('minuteFrom must be less than or equal to minuteTo');
   if(config.watchMinuteFrom>config.watchMinuteTo) errors.push('watchMinuteFrom must be less than or equal to watchMinuteTo');
   if(config.oddsMinimum>config.oddsMaximum) errors.push('oddsMinimum must be less than or equal to oddsMaximum');
