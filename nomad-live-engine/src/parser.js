@@ -203,7 +203,7 @@ export function parseBet365Asian(html){
   const scope=ahAnchor>=0?text.slice(ahAnchor,ahAnchor+9000):text;
   const m=/Bet\s*365/i.exec(scope);
   if(!m) return null;
-  const seg=scope.slice(m.index,m.index+900);
+  const seg=scope.slice(m.index+m[0].length,m.index+900);
   const triples=numericTriples(seg);
   if(!triples.length) return null;
   const chosen=triples.length>=2?triples[1]:triples[0];
