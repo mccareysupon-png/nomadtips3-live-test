@@ -5,6 +5,8 @@ import {parseToday,parseLiveDetail,parseEnded} from './parser.js';
 import {buildRollingAnalysis,evaluate} from './detector.js';
 import {settleAsian} from './settlement.js';
 import {fetchLiveEvents,fetchMultiOdds,mapMatchesToOddsEvents,parseAsianHandicap,marketUpdatedAtMs} from './real-market.js';
+import {buildPriceSourceSnapshots,publicPriceSourceSnapshot,selectPriceSource} from './price-sources.js';
+import {buildTheOddsApiMarkets,fetchTheOddsApiLiveSoccer,theOddsApiUnavailable} from './the-odds-api.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const SETTINGS_KEY_SHA256='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
@@ -17,7 +19,7 @@ const now=()=>Date.now();
 const iso=value=>value==null?null:new Date(value).toISOString();
 const clone=value=>JSON.parse(JSON.stringify(value));
 const safePair=pair=>({home:Number.isFinite(pair?.home)?pair.home:null,away:Number.isFinite(pair?.away)?pair.away:null});
-const emptyState=()=>({lastCycle:null,lastSuccess:null,lastError:null,matches:[],signals:[],cycle:0,source:{today:false,ended:false,oddsApi:{status:'IDLE'}}});
+const emptyState=()=>({lastCycle:null,lastSuccess:null,lastError:null,matches:[],signals:[],cycle:0,source:{today:false,ended:false,oddsApi:{status:'IDLE'},theOddsApi:{status:'IDLE'}}});
 const sourceRequestUrl=(url,token=now())=>{const result=new URL(url);result.searchParams.set('_nomad_cycle',String(token));return result.toString();};
 const bookmakerLabel=bookmaker=>String(bookmaker).toLowerCase()==='1xbet'?'1xBet':String(bookmaker);
 const marketState=(bookmaker,status,reason,extra={})=>({status,reason,source:'Odds-API.io',bookmaker:bookmakerLabel(bookmaker),...extra});
@@ -82,10 +84,13 @@ export function canLockSignal(signals,match,config){
 }
 
 export function createLockedSignal(match,activeEnvelope,config,lockedAt){
+  const selectedMarket=match.market||{};
   return {
     matchId:match.id,league:match.league,home:match.home,away:match.away,selection:'home',line:match.selectionLine,odds:match.selectionOdds,
-    bookmaker:'1xBet',oddsSource:'Odds-API.io',market:'FULL MATCH LIVE AH',minute:match.minute,entryScore:match.score,stats:match.stats,
-    hunger:match.hunger,rolling:match.rolling,lockedAt,sourceUpdatedAt:match.market.sourceUpdatedAt,settlement:null,
+    bookmaker:selectedMarket.bookmaker||'1xBet',oddsSource:selectedMarket.source||'Odds-API.io',priceSourceId:match.selectedPrice?.id||'source1',
+    market:selectedMarket.market||'FULL MATCH LIVE AH',minute:match.minute,entryScore:match.score,stats:match.stats,
+    hunger:match.hunger,rolling:match.rolling,lockedAt,sourceUpdatedAt:selectedMarket.sourceUpdatedAt??null,
+    priceAgeSeconds:Number.isFinite(selectedMarket.sourceUpdatedAt)?Math.max(0,(lockedAt-selectedMarket.sourceUpdatedAt)/1000):null,settlement:null,
     configSnapshot:{schemaVersion:activeEnvelope.schemaVersion,version:activeEnvelope.version,updatedAt:iso(activeEnvelope.updatedAt),appliesFromCycle:activeEnvelope.appliesFromCycle,values:editableConfig(config)}
   };
 }
@@ -264,7 +269,7 @@ export class EngineState {
     const activeEnvelope=await this.activateConfigForCycle(upcomingCycle);
     const config=engineConfig(activeEnvelope.config);
     const started=now();
-    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}}},configVersion:activeEnvelope.version};
+    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}},theOddsApi:{status:'IDLE',checked:0,mapped:0,ready:0}},configVersion:activeEnvelope.version};
     try{
       const todayHtml=await getHtml(config.scanUrl,config,started); next.source.today=true;
       const watchMinuteFrom=Math.max(0,config.minuteFrom-(2*config.rollingWindowMinutes)-2);
@@ -295,6 +300,9 @@ export class EngineState {
       next.source.oddsApi.checked=priceCandidates.length;
       const marketById=new Map();
       const marketComparisonById=new Map();
+      const source2FetchPromise=priceCandidates.length&&this.env.THE_ODDS_API_KEY
+        ?fetchTheOddsApiLiveSoccer(this.env.THE_ODDS_API_KEY,started).then(value=>({value,error:null}),error=>({value:null,error}))
+        :null;
 
       if(priceCandidates.length){
         if(!this.env.ODDS_API_KEY){
@@ -359,13 +367,47 @@ export class EngineState {
         }
       }
 
+      const theOddsMarketById=new Map();
+      if(priceCandidates.length){
+        if(!this.env.THE_ODDS_API_KEY){
+          next.source.theOddsApi={status:'KEY_MISSING',checked:priceCandidates.length,mapped:0,ready:0,checkedAt:started};
+          for(const match of priceCandidates) theOddsMarketById.set(match.id,theOddsApiUnavailable('the_odds_api_key_missing'));
+        }else{
+          try{
+            const source2Fetch=await source2FetchPromise;
+            if(source2Fetch.error) throw source2Fetch.error;
+            const response=source2Fetch.value;
+            const built=buildTheOddsApiMarkets(priceCandidates,response.events,config,started);
+            for(const item of built.results) theOddsMarketById.set(item.matchId,item.market);
+            next.source.theOddsApi={
+              status:'READY',checked:priceCandidates.length,mapped:built.mapped,ready:0,events:response.events.length,
+              received:response.received,quota:response.quota,checkedAt:started,
+            };
+          }catch(error){
+            const reason=`price_fetch_failed:${String(error?.message||error)}`;
+            next.source.theOddsApi={status:'ERROR',checked:priceCandidates.length,mapped:0,ready:0,error:reason,checkedAt:started};
+            for(const match of priceCandidates) theOddsMarketById.set(match.id,theOddsApiUnavailable(reason));
+          }
+        }
+      }
+
       const enriched=baseMatches.map(match=>{
         if(match.freshness?.sourceStale) return match;
-        const market=marketById.get(match.id)||marketState(REAL_BOOKMAKER,'ODDS NOT READY','price_not_checked');
-        const marketComparison=marketComparisonById.get(match.id)||{oneXBet:market,bet365:marketState(COMPARE_BOOKMAKER,'ODDS NOT READY','price_not_checked')};
-        const base={...match,market,marketComparison,freshness:{...match.freshness,oddsAt:market.status==='AH READY'?market.sourceUpdatedAt:null}};
+        const source1Market=marketById.get(match.id)||marketState(REAL_BOOKMAKER,'ODDS NOT READY','price_not_checked');
+        const source2Market=theOddsMarketById.get(match.id)||theOddsApiUnavailable('price_not_checked');
+        const marketComparison=marketComparisonById.get(match.id)||{oneXBet:source1Market,bet365:marketState(COMPARE_BOOKMAKER,'ODDS NOT READY','price_not_checked')};
+        const priceSourceSnapshots=buildPriceSourceSnapshots(new Map([['source1',source1Market],['source2',source2Market]]),config,started);
+        const selectedPriceSnapshot=selectPriceSource(priceSourceSnapshots);
+        const market=selectedPriceSnapshot?.market||source1Market;
+        const priceSources=priceSourceSnapshots.map(publicPriceSourceSnapshot);
+        const selectedPrice=publicPriceSourceSnapshot(selectedPriceSnapshot);
+        const base={...match,market,marketComparison,priceSources,selectedPrice,freshness:{...match.freshness,oddsAt:selectedPrice?.sourceUpdatedAt??null}};
         return {...base,...evaluate(base,config,market,started)};
       });
+
+      if(next.source.theOddsApi.status==='READY'){
+        next.source.theOddsApi.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source2')?.status==='PASS').length;
+      }
 
       const signals=[...(previous.signals||[])];
       for(const match of enriched){
