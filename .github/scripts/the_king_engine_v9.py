@@ -80,13 +80,93 @@ def rows_for_team(html, team, max_n=10):
     return out
 
 
+def venue_counts(home_rows, away_rows):
+    return {
+        "home_home_n": sum(1 for r in home_rows if r.get("venue") == "home"),
+        "away_away_n": sum(1 for r in away_rows if r.get("venue") == "away"),
+    }
+
+
+def goaloo_score_model(home_rows, away_rows):
+    """Core Poisson/DC model with a conservative Goaloo venue-data fallback.
+
+    Goaloo can return >=5 usable recent matches while the venue-specific slice is
+    temporarily sparse. In that case use overall recent form only for the venue
+    input instead of discarding the entire fixture. Selection gates are unchanged.
+    """
+    ho = core.weighted_stats(home_rows)
+    ao = core.weighted_stats(away_rows)
+    if not ho or not ao or ho["n"] < 5 or ao["n"] < 5:
+        return None
+
+    hv_raw = core.weighted_stats(home_rows, "home")
+    av_raw = core.weighted_stats(away_rows, "away")
+    home_fallback = not hv_raw or hv_raw["n"] < 2
+    away_fallback = not av_raw or av_raw["n"] < 2
+    hv = ho if home_fallback else hv_raw
+    av = ao if away_fallback else av_raw
+
+    lh = min(3.6, max(.2,
+        .54 * (.62 * hv["gf"] + .38 * ho["gf"]) +
+        .46 * (.62 * av["ga"] + .38 * ao["ga"]) + .10))
+    la = min(3.6, max(.2,
+        .54 * (.62 * av["gf"] + .38 * ao["gf"]) +
+        .46 * (.62 * hv["ga"] + .38 * ho["ga"])))
+
+    mat = core.dixon_coles_matrix(lh, la)
+    ph = pd = pa = btts = odd = 0.0
+    best = (0.0, 0, 0)
+    for i, row in enumerate(mat):
+        for j, p in enumerate(row):
+            if i > j:
+                ph += p
+            elif i == j:
+                pd += p
+            else:
+                pa += p
+            if i > 0 and j > 0:
+                btts += p
+            if (i + j) % 2:
+                odd += p
+            if p > best[0]:
+                best = (p, i, j)
+
+    probs = {"home": ph, "draw": pd, "away": pa}
+    ordered = sorted(probs.items(), key=lambda kv: kv[1], reverse=True)
+    side, conf = ordered[0]
+    edge = conf - ordered[1][1]
+    eligible = (conf > .70) if side == "draw" else (conf >= .58 and edge >= .12)
+    return {
+        "lambda_home": round(lh, 3), "lambda_away": round(la, 3),
+        "home_win": round(ph, 4), "draw": round(pd, 4), "away_win": round(pa, 4),
+        "projected_score": f"{best[1]}-{best[2]}",
+        "btts_yes": round(btts, 4), "btts_no": round(1 - btts, 4),
+        "odd": round(odd, 4), "even": round(1 - odd, 4),
+        "side": side, "confidence": conf, "edge": edge, "eligible": eligible,
+        "venue_fallback": {
+            "home": home_fallback, "away": away_fallback,
+            "home_venue_n": 0 if not hv_raw else hv_raw["n"],
+            "away_venue_n": 0 if not av_raw else av_raw["n"],
+        },
+    }
+
+
 def form_adjustment(home_rows, away_rows):
     ho = core.weighted_stats(home_rows); ao = core.weighted_stats(away_rows)
-    hv = core.weighted_stats(home_rows, "home"); av = core.weighted_stats(away_rows, "away")
-    if not ho or not ao or not hv or not av:
+    hv_raw = core.weighted_stats(home_rows, "home")
+    av_raw = core.weighted_stats(away_rows, "away")
+    if not ho or not ao:
         return None
-    # Manual Set 2: current venue form carries the largest non-Poisson weight.
-    venue_ppg = (hv["ppg"] - av["ppg"]) / 3.0
+
+    home_fallback = not hv_raw or hv_raw["n"] < 2
+    away_fallback = not av_raw or av_raw["n"] < 2
+    venue_ready = not home_fallback and not away_fallback
+    hv = ho if home_fallback else hv_raw
+    av = ao if away_fallback else av_raw
+
+    # If Goaloo's venue slice is sparse, do not invent a venue edge. Overall
+    # recent form still contributes, and Poisson/DC receives the same fallback.
+    venue_ppg = (hv["ppg"] - av["ppg"]) / 3.0 if venue_ready else 0.0
     overall_ppg = (ho["ppg"] - ao["ppg"]) / 3.0
     home_gd = hv["gf"] - hv["ga"]
     away_gd = av["gf"] - av["ga"]
@@ -94,16 +174,19 @@ def form_adjustment(home_rows, away_rows):
     cs_edge = hv["clean_sheet"] - av["clean_sheet"]
     fts_edge = av["failed_to_score"] - hv["failed_to_score"]
     raw = .42 * venue_ppg + .24 * overall_ppg + .20 * gd_edge + .08 * cs_edge + .06 * fts_edge
-    # At most ten percentage points may be moved by form; Poisson remains the backbone.
-    return max(-.10, min(.10, raw * .13)), {
+    bounded = max(-.10, min(.10, raw * .13))
+    return bounded, {
         "venue_ppg_edge": round(venue_ppg, 4), "overall_ppg_edge": round(overall_ppg, 4),
         "gd_edge": round(gd_edge, 4), "clean_sheet_edge": round(cs_edge, 4),
-        "failed_to_score_edge": round(fts_edge, 4), "bounded_adjustment": round(max(-.10, min(.10, raw * .13)), 4)
+        "failed_to_score_edge": round(fts_edge, 4), "bounded_adjustment": round(bounded, 4),
+        "venue_ready": venue_ready,
+        "home_venue_n": 0 if not hv_raw else hv_raw["n"],
+        "away_venue_n": 0 if not av_raw else av_raw["n"],
     }
 
 
 def composite_model(home_rows, away_rows, h2h_edge=0.0):
-    base = core.score_model(home_rows, away_rows)
+    base = goaloo_score_model(home_rows, away_rows)
     if not base:
         return None
     adj_pack = form_adjustment(home_rows, away_rows)
@@ -141,7 +224,8 @@ def analyse(row, date_str, odds_map):
     he, hn = v8.h2h_hint(html, row["home"], row["away"])
     model = composite_model(hr, ar, he)
     if not model:
-        return None, {"reason": "MODEL_DATA_SHORT", "home_n": len(hr), "away_n": len(ar)}
+        return None, {"reason": "MODEL_DATA_SHORT", "home_n": len(hr), "away_n": len(ar),
+                      **venue_counts(hr, ar)}
     if model["side"] == "draw":
         return None, {"reason": "DRAW_NOT_MAIN_PICK", "confidence": round(model["confidence"],4)}
     if not model["eligible"]:
@@ -165,7 +249,8 @@ def analyse(row, date_str, odds_map):
         "result": "PENDING", "ft": None, "source_url": row["h2h_url"], "summary_url": row["summary_url"],
         "model": {"lambda_home": model["lambda_home"], "lambda_away": model["lambda_away"],
                   "home_win": model["home_win"], "draw": model["draw"], "away_win": model["away_win"],
-                  "manual_set2": model["manual_set2"], "h2h_adjustment": model["h2h_adjustment"]},
+                  "manual_set2": model["manual_set2"], "h2h_adjustment": model["h2h_adjustment"],
+                  "venue_fallback": model["venue_fallback"]},
         "data_quality": {"home_recent": len(hr), "away_recent": len(ar), "h2h_n": hn,
                          "primary_source": "Goaloo direct feeds"},
     }, None
@@ -210,12 +295,20 @@ def main():
     s = sp.add_parser("select"); s.add_argument("--date", required=True)
     sp.add_parser("settle"); sp.add_parser("self-test")
     a = p.parse_args()
-    if a.cmd == "select": selection(a.date)
-    elif a.cmd == "settle": v8.settle()
+    if a.cmd == "select":
+        selection(a.date)
+    elif a.cmd == "settle":
+        v8.settle()
     else:
         home=[{"gf":2,"ga":0,"result":"W","venue":"home"},{"gf":2,"ga":1,"result":"W","venue":"away"},{"gf":3,"ga":0,"result":"W","venue":"home"},{"gf":1,"ga":0,"result":"W","venue":"away"},{"gf":2,"ga":0,"result":"W","venue":"home"},{"gf":2,"ga":1,"result":"W","venue":"home"}]
         away=[{"gf":0,"ga":2,"result":"L","venue":"away"},{"gf":1,"ga":2,"result":"L","venue":"home"},{"gf":0,"ga":3,"result":"L","venue":"away"},{"gf":1,"ga":1,"result":"D","venue":"home"},{"gf":0,"ga":2,"result":"L","venue":"away"},{"gf":1,"ga":2,"result":"L","venue":"away"}]
         m=composite_model(home,away,0.2); assert m and m["home_win"]>m["away_win"]
+        sparse_home=[{"gf":2,"ga":0,"result":"W","venue":"away"},{"gf":1,"ga":0,"result":"W","venue":"away"},{"gf":2,"ga":1,"result":"W","venue":"away"},{"gf":1,"ga":1,"result":"D","venue":"away"},{"gf":3,"ga":1,"result":"W","venue":"home"},{"gf":2,"ga":0,"result":"W","venue":"away"}]
+        sparse_away=[{"gf":0,"ga":2,"result":"L","venue":"home"},{"gf":1,"ga":2,"result":"L","venue":"home"},{"gf":0,"ga":1,"result":"L","venue":"home"},{"gf":1,"ga":1,"result":"D","venue":"home"},{"gf":0,"ga":3,"result":"L","venue":"away"},{"gf":1,"ga":2,"result":"L","venue":"home"}]
+        sm=composite_model(sparse_home,sparse_away,0.0)
+        assert sm and sm["venue_fallback"]["home"] and sm["venue_fallback"]["away"]
         print("the-king-v9-manual-set2-goaloo self-test OK")
 
-if __name__ == "__main__": main()
+
+if __name__ == "__main__":
+    main()
