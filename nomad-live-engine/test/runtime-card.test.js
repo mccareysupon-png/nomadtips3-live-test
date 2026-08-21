@@ -45,5 +45,6 @@ test('detector card collapses missing source and selected prices to N/A',()=>{
   assert.match(context.__output,/SOURCE 3 · API-Football · N\/A/);
   assert.match(context.__output,/SELECTED PRICE · N\/A/);
   assert.doesNotMatch(context.__output,/very long provider error|no matching live match|rate limit|No selected source/);
+  assert.doesNotMatch(context.__output,/<span class="wait">N\/A<\/span>/);
 });
 

@@ -69,12 +69,13 @@ function matchRow(m){
   const priceStatus=m.priceStatus||'AH CHECKING';
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
   const currentPrice=`${sources.map(source=>`SOURCE ${source.position} · ${esc(source.source)} · ${esc(sourceValue(source))}`).join('<br>')}<br>SELECTED PRICE · ${esc(selectedValue(selected))}`;
+  const selectedSummary=selected?`<span class="${m.marketCheck?.passed?'ok':'wait'}">${esc(priceLabel(priceStatus))} · Selected ${esc(selected.source)}</span>`:'';
   return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
     <div class="quick"><div class="q"><span>Δ HOME PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>Δ SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div><div class="q"><span>SIDE</span><b>${side}</b></div></div>
-    <div class="market"><strong>${currentPrice}</strong><span class="${m.marketCheck?.passed?'ok':'wait'}">${selected?`${esc(priceLabel(priceStatus))} · Selected ${esc(selected.source)}`:'N/A'}</span></div>
+    <div class="market"><strong>${currentPrice}</strong>${selectedSummary}</div>
     <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0} / ${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
 function setupFilters(){
