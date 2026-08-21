@@ -87,9 +87,9 @@ async function fetchJson(url,timeoutMs=9000){
   }finally{clearTimeout(timer);}
 }
 
-export async function fetchLiveEvents(apiKey,bookmaker=DEFAULT_BOOKMAKER){
+export async function fetchLiveEvents(apiKey){
   if(!apiKey) throw new Error('ODDS_API_KEY_MISSING');
-  const data=await fetchJson(apiUrl('/events',{sport:'football',status:'live',bookmaker},apiKey));
+  const data=await fetchJson(apiUrl('/events/live',{sport:'football'},apiKey));
   return Array.isArray(data)?data:[];
 }
 
