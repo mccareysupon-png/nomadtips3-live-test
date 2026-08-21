@@ -25,11 +25,11 @@ const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.pri
 }];
 const sourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
   ?`${source.status} · ${source.bookmaker||'—'} · HOME ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
-  :`${source.status} · ${sourceReason(source.reason)}`;
+  :'N/A';
 const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
 const selectedValue=selected=>selected
   ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
-  :'none · no source passed';
+  :'N/A';
 
 function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
@@ -74,7 +74,7 @@ function matchRow(m){
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
     <div class="quick"><div class="q"><span>Δ HOME PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>Δ SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div><div class="q"><span>SIDE</span><b>${side}</b></div></div>
-    <div class="market"><strong>${currentPrice}</strong><span class="${m.marketCheck?.passed?'ok':'wait'}">${esc(priceLabel(priceStatus))} · ${selected?`Selected ${selected.source}`:'No selected source'}</span></div>
+    <div class="market"><strong>${currentPrice}</strong><span class="${m.marketCheck?.passed?'ok':'wait'}">${selected?`${esc(priceLabel(priceStatus))} · Selected ${esc(selected.source)}`:'N/A'}</span></div>
     <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0} / ${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
 function setupFilters(){
