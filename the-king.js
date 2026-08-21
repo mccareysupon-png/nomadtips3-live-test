@@ -27,7 +27,8 @@ function render(data){
   $('#sumOdds').textContent=odds(avg);
   $('#sumNet').textContent=money(net);
   $('#sumRoi').textContent=pct(roi);
-  $('#kingUpdated').textContent=data.updated_at?`Updated ${data.updated_at}`:'Verified feed';
+  const dataset=data.dataset==='legacy-baseline'?'Legacy baseline · ':'';
+  $('#kingUpdated').textContent=data.updated_at?`${dataset}Updated ${data.updated_at}`:`${dataset}Verified feed`;
 
   const today=data.today||[];
   $('#todayCount').textContent=`${today.length} pick${today.length===1?'':'s'}`;
