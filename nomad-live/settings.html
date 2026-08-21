@@ -4,74 +4,64 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · Settings</title>
+  <title>nomadtips3 · Settings 3.41</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="site-footer.css">
   <style>
-    .settings-app[hidden]{display:none!important}.settings-gate{position:fixed;inset:0;z-index:100;background:#10120f;display:grid;place-items:center;padding:18px}.settings-gate[hidden]{display:none!important}
-    .gate-card{width:min(390px,100%);background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.38);padding:22px}.gate-brand{text-align:center;font-size:25px;font-weight:900;letter-spacing:-.03em;margin-bottom:22px}.gate-brand span{color:#f2d21b}
-    .gate-card .eyebrow{text-align:center}.gate-card h1{text-align:center;font-size:18px;margin:5px 0 6px}.gate-copy{text-align:center;color:#98a091;font-size:10px;line-height:1.45;margin:0 0 17px}.gate-form{display:grid;gap:9px}.gate-form label{font-size:9px;font-weight:900;color:#a7afa7}.gate-form input{width:100%;background:#121612;border:1px solid rgba(150,158,151,.18);color:#f2f4ef;border-radius:9px;padding:12px;outline:none;font-size:14px;letter-spacing:.12em}.gate-form input:focus{border-color:rgba(242,210,27,.65)}
-    .gate-form button,.settings-actions button{border:0;border-radius:9px;padding:11px 14px;background:#f2d21b;color:#10120f;font-weight:900;cursor:pointer}.gate-form button:hover,.settings-actions button:hover{filter:brightness(1.04)}.gate-error{min-height:15px;text-align:center;color:#ff8b8b;font-size:9px;margin-top:4px}.gate-back{display:block;text-align:center;margin-top:11px;color:#8f968f;text-decoration:none;font-size:9px}.gate-back:hover{color:#f2d21b}
-    .settings-form input,.settings-form select{outline:none}.settings-form input:focus,.settings-form select:focus{border-color:rgba(242,210,27,.62)}.settings-actions{position:sticky;bottom:68px;z-index:15;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(16,18,15,.94);backdrop-filter:blur(8px);padding:9px;border-radius:11px;margin-top:8px}.settings-actions button.secondary{background:#263027;color:#f2f4ef}.settings-actions button:disabled{opacity:.45;cursor:wait}.save-status{margin-left:auto;font-size:9px;color:#98a091}.save-status.ok{color:#83df89}.save-status.bad{color:#ff8b8b}.readonly{opacity:.72}.field small{display:block;color:#737b73;font-size:7px;margin-top:5px;line-height:1.35}.checkline{display:flex!important;align-items:center;gap:8px;min-height:40px;padding:10px;border-radius:9px;background:#121612;border:1px solid rgba(150,158,151,.12);color:#dce1dc!important}.checkline input[type="checkbox"]{width:16px!important;height:16px!important;accent-color:#f2d21b;margin:0}
-    @media(max-width:700px){.settings-actions{bottom:58px}.save-status{width:100%;margin-left:0}}
+    .settings-app[hidden],.settings-gate[hidden]{display:none!important}.settings-gate{position:fixed;inset:0;z-index:100;background:#10120f;display:grid;place-items:center;padding:18px}.gate-card{width:min(390px,100%);background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.38);padding:22px}.gate-brand{text-align:center;font-size:25px;font-weight:900;letter-spacing:-.03em;margin-bottom:22px}.gate-brand span{color:#f2d21b}.gate-card .eyebrow,.gate-card h1,.gate-copy{text-align:center}.gate-card h1{font-size:18px;margin:5px 0 6px}.gate-copy{color:#98a091;font-size:10px;line-height:1.45;margin:0 0 17px}.gate-form{display:grid;gap:9px}.gate-form label{font-size:9px;font-weight:900;color:#a7afa7}.gate-form input{width:100%;background:#121612;border:1px solid rgba(150,158,151,.18);color:#f2f4ef;border-radius:9px;padding:12px;outline:none;font-size:14px;letter-spacing:.12em}.gate-form button,.settings-actions button{border:0;border-radius:9px;padding:11px 14px;background:#f2d21b;color:#10120f;font-weight:900;cursor:pointer}.gate-error{min-height:15px;text-align:center;color:#ff8b8b;font-size:9px;margin-top:4px}.gate-back{display:block;text-align:center;margin-top:11px;color:#8f968f;text-decoration:none;font-size:9px}.settings-form input,.settings-form select{outline:none}.settings-form input:focus,.settings-form select:focus{border-color:rgba(242,210,27,.62)}.settings-actions{position:sticky;bottom:68px;z-index:15;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(16,18,15,.94);backdrop-filter:blur(8px);padding:9px;border-radius:11px;margin-top:8px}.settings-actions button.secondary{background:#263027;color:#f2f4ef}.settings-actions button.danger{background:#542c2c;color:#fff}.settings-actions button:disabled{opacity:.45;cursor:wait}.save-status{margin-left:auto;font-size:9px;color:#98a091}.save-status.ok{color:#83df89}.save-status.bad{color:#ff8b8b}.save-status.wait{color:#f2d21b}.readonly{opacity:.74}.field small{display:block;color:#7e877e;font-size:8px;margin-top:5px;line-height:1.4}.checkline{display:flex!important;align-items:center;gap:8px;min-height:40px;padding:10px;border-radius:9px;background:#121612;border:1px solid rgba(150,158,151,.12);color:#dce1dc!important}.checkline input[type="checkbox"]{width:16px!important;height:16px!important;accent-color:#f2d21b;margin:0}.evidence-field{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:end}.evidence-field .toggle{padding-bottom:9px}.active-settings{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.active-item{background:rgba(255,255,255,.025);border-radius:8px;padding:8px}.active-item span{display:block;color:#899289;font-size:7px;text-transform:uppercase}.active-item b{display:block;margin-top:3px;font-size:10px;overflow-wrap:anywhere}.active-meta{display:flex;gap:12px;flex-wrap:wrap;color:#98a091;font-size:8px}.multi-lines{min-height:122px}.validation{margin-top:8px;padding:9px;border-radius:9px;background:rgba(255,139,139,.08);color:#ff9f9f;font-size:9px;line-height:1.5}.validation[hidden]{display:none}.fixed-contract{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.fixed-contract .field input{font-size:9px}
+    @media(max-width:800px){.active-settings{grid-template-columns:repeat(2,1fr)}.fixed-contract{grid-template-columns:1fr}}@media(max-width:700px){.settings-actions{bottom:58px}.save-status{width:100%;margin-left:0}.evidence-field{grid-template-columns:1fr}.evidence-field .toggle{padding-bottom:0}}
   </style>
 </head>
 <body>
   <section class="settings-gate" id="settingsGate" aria-label="Settings access">
-    <div class="gate-card">
-      <div class="gate-brand">nomad<span>tips</span>3</div>
-      <p class="eyebrow">RESTRICTED ACCESS</p><h1>Settings</h1><p class="gate-copy">Enter the access code to open detector settings.</p>
-      <form class="gate-form" id="gateForm"><label for="gatePassword">ACCESS CODE</label><input id="gatePassword" type="password" inputmode="numeric" autocomplete="current-password" autofocus required><button type="submit">Unlock settings</button><div class="gate-error" id="gateError" role="alert"></div></form>
-      <a class="gate-back" href="index.html">← Back to Live</a>
-    </div>
+    <div class="gate-card"><div class="gate-brand">nomad<span>tips</span>3</div><p class="eyebrow">RESTRICTED ACCESS</p><h1>Settings 3.41</h1><p class="gate-copy">Enter the access code to read and update the running engine.</p><form class="gate-form" id="gateForm"><label for="gatePassword">ACCESS CODE</label><input id="gatePassword" type="password" autocomplete="current-password" autofocus required><button type="submit">Unlock settings</button><div class="gate-error" id="gateError" role="alert"></div></form><a class="gate-back" href="index.html">← Back to Live</a></div>
   </section>
 
   <div class="settings-app" id="settingsApp" hidden>
-    <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>DETECTOR PROFILE · LIVE</div></div></header>
+    <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>DETECTOR 3.41 · LIVE</div></div></header>
     <main class="shell">
-      <section class="hero"><div><p class="eyebrow">DETECTOR CONTROL</p><h1>Settings</h1><p>Values on this page are loaded from the running engine. Save changes to apply them on the next scan cycle.</p></div><div class="mode"><span>PROFILE</span><strong id="profileState">LIVE</strong><small id="profileUpdated">loading…</small></div></section>
+      <section class="hero"><div><p class="eyebrow">HOME LIVE AH CONTROL</p><h1>Settings 3.41</h1><p>Save validates the complete profile atomically. A saved version becomes active at the start of the next engine cycle.</p></div><div class="mode"><span>ACTIVE VERSION</span><strong id="profileState">—</strong><small id="profileUpdated">loading…</small></div></section>
 
-      <form class="settings-form" id="settingsForm">
-        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">SCAN WINDOW</p><h2>Watching range</h2></div></div><div class="form-grid">
-          <div class="field"><label for="watchMinuteFrom">Watch minute from</label><input id="watchMinuteFrom" name="watchMinuteFrom" type="number" min="0" max="120" step="1" required></div>
-          <div class="field"><label for="watchMinuteTo">Watch minute to</label><input id="watchMinuteTo" name="watchMinuteTo" type="number" min="0" max="120" step="1" required></div>
-          <div class="field"><label for="maxWatchMatches">Max watched matches</label><input id="maxWatchMatches" name="maxWatchMatches" type="text" inputmode="text" pattern="(?:[Aa][Ll][Ll]|[0-9]+)" placeholder="ALL" required><small><strong>ALL</strong> = scan every match available. Or enter a number to cap it.</small></div>
-          <div class="field"><label for="maxNearOddsMatches">Max odds checks / cycle</label><input id="maxNearOddsMatches" name="maxNearOddsMatches" type="text" inputmode="text" pattern="(?:[Aa][Ll][Ll]|[0-9]+)" placeholder="ALL" required><small><strong>ALL</strong> = check every Near Signal candidate. Or enter a number to cap it.</small></div>
+      <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">ENGINE TRUTH</p><h2>Active Settings</h2></div><div class="active-meta"><span id="activeUpdated">Last Updated —</span><span id="activeCycle">Applies From Cycle —</span></div></div><div class="active-settings" id="activeSettings"><div class="note">Connecting to engine…</div></div></section>
+
+      <form class="settings-form" id="settingsForm" novalidate>
+        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">A · DETECTION WINDOW</p><h2>Time and score gate</h2></div></div><div class="form-grid">
+          <div class="field"><label for="minuteFrom">Minute From</label><input id="minuteFrom" type="number" min="0" max="120" step="1" required></div>
+          <div class="field"><label for="minuteTo">Minute To</label><input id="minuteTo" type="number" min="0" max="120" step="1" required></div>
+          <div class="field"><label for="rollingWindowMinutes">Rolling Window Minutes</label><input id="rollingWindowMinutes" type="number" min="1" max="15" step="1" required><small>Latest window is compared with the immediately preceding window.</small></div>
+          <div class="field"><label>Score Difference Filter</label><label class="checkline"><input id="scoreDifferenceFilterEnabled" type="checkbox"> Enable score filter</label></div>
+          <div class="field"><label for="maxScoreDifference">Max Score Difference</label><input id="maxScoreDifference" type="number" min="0" max="20" step="1" required></div>
         </div></section>
 
-        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">MATCH</p><h2>Time & score</h2></div></div><div class="form-grid">
-          <div class="field"><label for="minuteFrom">Signal minute from</label><input id="minuteFrom" name="minuteFrom" type="number" min="0" max="120" step="1" required></div>
-          <div class="field"><label for="minuteTo">Signal minute to</label><input id="minuteTo" name="minuteTo" type="number" min="0" max="120" step="1" required></div>
-          <div class="field"><label for="maxScoreDifference">Max score difference</label><input id="maxScoreDifference" name="maxScoreDifference" type="number" min="0" max="20" step="1" required><small>Editable — no longer locked to 1.</small></div>
+        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">B · HOME EVIDENCE</p><h2>Pressure, hunger and new events</h2></div></div><div class="form-grid">
+          <div class="field"><label for="attackWeight">Attack Weight</label><input id="attackWeight" type="number" min="0" max="10" step="0.1" required></div>
+          <div class="field"><label for="dangerousAttackWeight">Dangerous Attack Weight</label><input id="dangerousAttackWeight" type="number" min="0" max="10" step="0.1" required></div>
+          <div class="field"><label for="homePressureShareMinimum">HOME Pressure Share %</label><input id="homePressureShareMinimum" type="number" min="0" max="100" step="0.1" required></div>
+          <div class="field"><label for="trendConditionsRequired">Trend Conditions Required</label><select id="trendConditionsRequired" required><option value="1">1 / 3</option><option value="2">2 / 3</option><option value="3">3 / 3</option></select></div>
+          <div class="field evidence-field"><label class="checkline toggle"><input id="sotEvidenceEnabled" type="checkbox"> SOT enabled</label><div><label for="sotDeltaMinimum">SOT Delta Minimum</label><input id="sotDeltaMinimum" type="number" min="1" max="20" step="1" required></div></div>
+          <div class="field evidence-field"><label class="checkline toggle"><input id="shotOffEvidenceEnabled" type="checkbox"> Shot Off enabled</label><div><label for="shotOffDeltaMinimum">Shot Off Delta Minimum</label><input id="shotOffDeltaMinimum" type="number" min="1" max="20" step="1" required></div></div>
+          <div class="field evidence-field"><label class="checkline toggle"><input id="cornerEvidenceEnabled" type="checkbox"> Corner enabled</label><div><label for="cornerDeltaMinimum">Corner Delta Minimum</label><input id="cornerDeltaMinimum" type="number" min="1" max="20" step="1" required></div></div>
+          <div class="field"><label for="evidenceMode">Evidence Required</label><select id="evidenceMode" required><option value="ANY">ANY enabled event</option><option value="ALL">ALL enabled events</option></select></div>
         </div></section>
 
-        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">LIVE EVIDENCE</p><h2>Attack conditions</h2></div></div><div class="form-grid">
-          <div class="field"><label>Attack evidence</label><label class="checkline"><input id="attackEvidenceEnabled" name="attackEvidenceEnabled" type="checkbox" checked> Enable attack evidence</label></div>
-          <div class="field"><label for="evidenceRequired">Evidence required</label><select id="evidenceRequired" name="evidenceRequired"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="ALL">ALL</option></select><small>1 = any one attack condition can pass the evidence gate.</small></div>
-          <div class="field"><label for="attackDifference">Attack difference</label><input id="attackDifference" name="attackDifference" type="number" min="0" max="250" step="1" required></div>
-          <div class="field"><label for="dangerousAttackDifference">Dangerous attack difference</label><input id="dangerousAttackDifference" name="dangerousAttackDifference" type="number" min="0" max="250" step="1" required></div>
-          <div class="field"><label for="dangerousAttackRatio">Dangerous attack ratio</label><input id="dangerousAttackRatio" name="dangerousAttackRatio" type="number" min="1" max="5" step="0.01" required></div>
-          <div class="field"><label for="shotsOnTargetMinimum">Shots on target minimum</label><input id="shotsOnTargetMinimum" name="shotsOnTargetMinimum" type="number" min="0" max="50" step="1" required></div>
-          <div class="field"><label for="shotsOnTargetDifference">Shots on target difference</label><input id="shotsOnTargetDifference" name="shotsOnTargetDifference" type="number" min="0" max="50" step="1" required></div>
-          <div class="field"><label for="cornersMinimum">Corners minimum</label><input id="cornersMinimum" name="cornersMinimum" type="number" min="0" max="30" step="1" required></div>
-        </div></section>
+        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">C · HOME ASIAN HANDICAP</p><h2>Live market and price gate</h2></div></div>
+          <div class="fixed-contract">
+            <div class="field readonly"><label>Market</label><input value="Full Match Live AH" disabled></div><div class="field readonly"><label>Side</label><input value="HOME" disabled></div><div class="field readonly"><label>Bookmaker</label><input value="Bet365 via TotalCorner" disabled></div>
+          </div>
+          <div class="form-grid" style="margin-top:8px">
+            <div class="field"><label for="allowedLinesMode">Allowed Lines</label><select id="allowedLinesMode" required><option value="ANY">ANY valid AH line</option><option value="SELECTED">Selected HOME lines</option></select></div>
+            <div class="field"><label for="allowedSelectionLines">Selected HOME Lines</label><select class="multi-lines" id="allowedSelectionLines" multiple size="6" aria-describedby="linesHint"></select><small id="linesHint">Use Ctrl/Cmd or Shift to select multiple quarter-goal lines.</small></div>
+            <div class="field"><label for="oddsMinimum">Minimum Odds</label><input id="oddsMinimum" type="number" min="1.01" max="6" step="0.01" required></div>
+            <div class="field evidence-field"><label class="checkline toggle"><input id="oddsMaximumEnabled" type="checkbox"> Maximum enabled</label><div><label for="oddsMaximum">Maximum Odds</label><input id="oddsMaximum" type="number" min="1.01" max="6" step="0.01"></div></div>
+            <div class="field"><label for="maximumPriceAgeSeconds">Maximum Price Age (seconds)</label><input id="maximumPriceAgeSeconds" type="number" min="1" max="3600" step="1" required></div>
+            <div class="field"><label>One Signal Per Match</label><label class="checkline"><input id="oneSignalPerMatch" type="checkbox"> Enabled</label></div>
+          </div>
+        </section>
 
-        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">MOMENTUM</p><h2>Pressure threshold</h2></div></div><div class="form-grid">
-          <div class="field"><label for="momentumMinimum">Momentum minimum</label><input id="momentumMinimum" name="momentumMinimum" type="number" min="0" max="100" step="1" required></div>
-          <div class="field readonly"><label>Pressure calculation</label><input value="Attack + DA + SOT + Corners + Possession" disabled><small>Calculation model is engine logic, not a runtime threshold.</small></div>
-        </div></section>
-
-        <section class="panel setting-section"><div class="panel-head"><div><p class="eyebrow">MARKET</p><h2>Asian Handicap & odds</h2></div></div><div class="form-grid">
-          <div class="field readonly"><label>Bookmaker reference</label><input value="Bet365" disabled></div>
-          <div class="field"><label for="allowedSelectionLines">Allowed AH lines</label><input id="allowedSelectionLines" name="allowedSelectionLines" type="text" placeholder="0, -0.25, -0.50" required><small>Comma-separated quarter-goal lines.</small></div>
-          <div class="field"><label for="oddsMinimum">Odds minimum</label><input id="oddsMinimum" name="oddsMinimum" type="number" min="1.01" max="20" step="0.01" required></div>
-          <div class="field"><label for="oddsMaximum">Odds maximum</label><input id="oddsMaximum" name="oddsMaximum" type="number" min="1.01" max="20" step="0.01" required></div>
-          <div class="field readonly"><label>One signal per match</label><input value="ON" disabled><small>Safety lock remains fixed so saved signals cannot duplicate.</small></div>
-        </div></section>
-
-        <div class="settings-actions"><button id="saveButton" type="submit">Save changes</button><button class="secondary" id="reloadButton" type="button">Reload current</button><button class="secondary" id="defaultsButton" type="button">Load defaults</button><span class="save-status" id="saveStatus">Connecting to engine…</span></div>
+        <div class="validation" id="validationMessages" role="alert" hidden></div>
+        <div class="settings-actions"><button id="saveButton" type="submit">SAVE &amp; APPLY NEXT CYCLE</button><button class="secondary" id="reloadButton" type="button">RELOAD ACTIVE</button><button class="danger" id="defaultsButton" type="button">RESTORE DEFAULT</button><span class="save-status" id="saveStatus">Connecting to engine…</span></div>
       </form>
-      <div class="note">Saved values are stored with the running engine and remain active across page reloads and deployments. Existing locked signals keep the detector settings captured at their lock time.</div>
+      <div class="note">The engine rejects the complete save if any setting is invalid. Existing signals and settlements are never rewritten; every new signal stores the active config snapshot.</div>
     </main>
     <nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
   </div>
@@ -80,56 +70,64 @@
     (()=>{
       const ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
       const EXPECTED='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
-      const NUMERIC=['minuteFrom','minuteTo','watchMinuteFrom','watchMinuteTo','maxScoreDifference','attackDifference','dangerousAttackDifference','dangerousAttackRatio','shotsOnTargetMinimum','shotsOnTargetDifference','cornersMinimum','momentumMinimum','oddsMinimum','oddsMaximum'];
-      const LIMITS=['maxWatchMatches','maxNearOddsMatches'];
+      const NUMERIC=['minuteFrom','minuteTo','rollingWindowMinutes','maxScoreDifference','attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired','sotDeltaMinimum','shotOffDeltaMinimum','cornerDeltaMinimum','oddsMinimum','maximumPriceAgeSeconds'];
+      const BOOLEAN=['scoreDifferenceFilterEnabled','sotEvidenceEnabled','shotOffEvidenceEnabled','cornerEvidenceEnabled','oddsMaximumEnabled','oneSignalPerMatch'];
       const gate=document.getElementById('settingsGate'),app=document.getElementById('settingsApp'),gateForm=document.getElementById('gateForm'),gatePassword=document.getElementById('gatePassword'),gateError=document.getElementById('gateError');
-      const settingsForm=document.getElementById('settingsForm'),saveButton=document.getElementById('saveButton'),reloadButton=document.getElementById('reloadButton'),defaultsButton=document.getElementById('defaultsButton'),saveStatus=document.getElementById('saveStatus'),profileUpdated=document.getElementById('profileUpdated');
+      const settingsForm=document.getElementById('settingsForm'),saveButton=document.getElementById('saveButton'),reloadButton=document.getElementById('reloadButton'),defaultsButton=document.getElementById('defaultsButton'),saveStatus=document.getElementById('saveStatus'),validationMessages=document.getElementById('validationMessages');
+      const profileState=document.getElementById('profileState'),profileUpdated=document.getElementById('profileUpdated'),activeSettings=document.getElementById('activeSettings'),activeUpdated=document.getElementById('activeUpdated'),activeCycle=document.getElementById('activeCycle');
       let settingsKey='',serverDefaults=null;
-      const hash=async value=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');};
+      for(let value=5;value>=-5;value-=.25){const option=document.createElement('option');option.value=String(Number(value.toFixed(2)));option.textContent=`${value>0?'+':''}${Number(value.toFixed(2))}`;document.getElementById('allowedSelectionLines').append(option);}
+      const hash=async value=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');};
       const status=(text,type='')=>{saveStatus.textContent=text;saveStatus.className=`save-status ${type}`.trim();};
       const setBusy=busy=>{saveButton.disabled=busy;reloadButton.disabled=busy;defaultsButton.disabled=busy;};
+      const showErrors=errors=>{validationMessages.hidden=!errors?.length;validationMessages.innerHTML=errors?.length?errors.map(error=>`• ${String(error).replace(/[&<>]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[char]))}`).join('<br>'):'';};
+      const toggleDependent=()=>{document.getElementById('maxScoreDifference').disabled=!document.getElementById('scoreDifferenceFilterEnabled').checked;document.getElementById('oddsMaximum').disabled=!document.getElementById('oddsMaximumEnabled').checked;document.getElementById('allowedSelectionLines').disabled=document.getElementById('allowedLinesMode').value==='ANY';};
+      ['scoreDifferenceFilterEnabled','oddsMaximumEnabled','allowedLinesMode'].forEach(id=>document.getElementById(id).addEventListener('change',toggleDependent));
       const setForm=config=>{
-        for(const key of NUMERIC){const el=document.getElementById(key);if(el&&config[key]!=null)el.value=config[key];}
-        for(const key of LIMITS){const el=document.getElementById(key);if(el&&config[key]!=null)el.value=Number(config[key])===0?'ALL':config[key];}
-        if(config.attackEvidenceEnabled!=null)document.getElementById('attackEvidenceEnabled').checked=Boolean(config.attackEvidenceEnabled);
-        if(config.evidenceRequired!=null)document.getElementById('evidenceRequired').value=String(config.evidenceRequired);
-        if(Array.isArray(config.allowedSelectionLines))document.getElementById('allowedSelectionLines').value=config.allowedSelectionLines.join(', ');
+        for(const key of NUMERIC){const element=document.getElementById(key);if(config[key]!=null)element.value=config[key];}
+        for(const key of BOOLEAN) document.getElementById(key).checked=Boolean(config[key]);
+        document.getElementById('evidenceMode').value=config.evidenceMode;
+        document.getElementById('allowedLinesMode').value=config.allowedLinesMode;
+        document.getElementById('oddsMaximum').value=config.oddsMaximum??'';
+        const selected=new Set((config.allowedSelectionLines||[]).map(Number));
+        [...document.getElementById('allowedSelectionLines').options].forEach(option=>{option.selected=selected.has(Number(option.value));});
+        toggleDependent();
       };
       const readForm=()=>{
         const config={};
-        for(const key of NUMERIC)config[key]=Number(document.getElementById(key).value);
-        for(const key of LIMITS){const raw=document.getElementById(key).value.trim();config[key]=raw.toUpperCase()==='ALL'?'ALL':Number(raw);}
-        config.attackEvidenceEnabled=document.getElementById('attackEvidenceEnabled').checked;
-        const required=document.getElementById('evidenceRequired').value;config.evidenceRequired=required==='ALL'?'ALL':Number(required);
-        config.allowedSelectionLines=document.getElementById('allowedSelectionLines').value;
+        for(const key of NUMERIC) config[key]=Number(document.getElementById(key).value);
+        for(const key of BOOLEAN) config[key]=document.getElementById(key).checked;
+        config.evidenceMode=document.getElementById('evidenceMode').value;
+        config.allowedLinesMode=document.getElementById('allowedLinesMode').value;
+        config.allowedSelectionLines=[...document.getElementById('allowedSelectionLines').selectedOptions].map(option=>Number(option.value));
+        config.oddsMaximum=config.oddsMaximumEnabled?Number(document.getElementById('oddsMaximum').value):null;
         return config;
       };
+      const renderActive=data=>{
+        const config=data.activeConfig||data.config||{};
+        const lines=config.allowedLinesMode==='ANY'?'ANY':(config.allowedSelectionLines||[]).map(value=>`${value>0?'+':''}${value}`).join(', ');
+        const values=[['Side','HOME'],['Market','FULL MATCH LIVE AH'],['Minute',`${config.minuteFrom}–${config.minuteTo}`],['Rolling',`${config.rollingWindowMinutes} + ${config.rollingWindowMinutes} min`],['Score filter',config.scoreDifferenceFilterEnabled?`ON · max ${config.maxScoreDifference}`:'OFF'],['Pressure',`A×${config.attackWeight} + DA×${config.dangerousAttackWeight}`],['Hunger',`${config.trendConditionsRequired}/3 · share ${config.homePressureShareMinimum}%`],['Evidence',`${config.evidenceMode} · SOT ${config.sotEvidenceEnabled?'ON':'OFF'} · OFF ${config.shotOffEvidenceEnabled?'ON':'OFF'} · COR ${config.cornerEvidenceEnabled?'ON':'OFF'}`],['HOME AH Lines',lines],['Odds',`${config.oddsMinimum}–${config.oddsMaximumEnabled?config.oddsMaximum:'disabled'}`],['Price age',`${config.maximumPriceAgeSeconds}s`],['One signal',config.oneSignalPerMatch?'ON':'OFF']];
+        activeSettings.innerHTML=values.map(([label,value])=>`<div class="active-item"><span>${label}</span><b>${value}</b></div>`).join('');
+        profileState.textContent=`v${data.version??'—'}`;profileUpdated.textContent=data.pending?`v${data.pending.version} pending cycle ${data.pending.appliesFromCycle}`:'active now';activeUpdated.textContent=`Last Updated ${data.updatedAt?new Date(data.updatedAt).toLocaleString():'—'}`;activeCycle.textContent=`Applies From Cycle ${data.appliesFromCycle??'—'}`;
+      };
       const relock=()=>{sessionStorage.removeItem('nomadSettingsUnlocked');sessionStorage.removeItem('nomadSettingsKey');settingsKey='';app.hidden=true;gate.hidden=false;gatePassword.value='';gatePassword.focus();};
-      const loadConfig=async()=>{
-        setBusy(true);status('Loading current engine settings…');
-        try{
-          const r=await fetch(`${ENGINE}/config`,{cache:'no-store'});const data=await r.json();if(!r.ok||!data.ok)throw new Error(data.error||`HTTP ${r.status}`);
-          serverDefaults=data.defaults;setForm(data.config);profileUpdated.textContent=data.updatedAt?`saved ${new Date(data.updatedAt).toLocaleString()}`:'engine defaults';status('Current engine settings loaded','ok');
-        }catch(e){status(`Load failed: ${e.message}`,'bad');}
-        finally{setBusy(false);}
+      const fetchConfig=async({updateForm=true}={})=>{const response=await fetch(`${ENGINE}/config?_=${Date.now()}`,{cache:'no-store'});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);serverDefaults=data.defaultConfig||data.defaults;renderActive(data);if(updateForm)setForm(data.activeConfig||data.config);return data;};
+      const loadConfig=async()=>{setBusy(true);showErrors([]);status('Loading active engine settings…','wait');try{await fetchConfig();status('Active engine settings loaded','ok');}catch(error){status(`Load failed: ${error.message}`,'bad');}finally{setBusy(false);}};
+      const waitForActive=async version=>{for(let attempt=0;attempt<30;attempt++){await new Promise(resolve=>setTimeout(resolve,1000));const data=await fetchConfig({updateForm:false});if(data.version===version){setForm(data.activeConfig);return data;}}throw new Error(`Version ${version} was saved but did not become active within 30 seconds`);};
+      const postConfig=async body=>{
+        const response=await fetch(`${ENGINE}/config`,{method:'POST',headers:{'content-type':'application/json','x-settings-key':settingsKey},body:JSON.stringify(body)});const data=await response.json();
+        if(response.status===401){relock();throw new Error('Access expired — unlock Settings again');}
+        if(!response.ok||!data.ok||!data.saved||!data.pending?.version){const errors=data.errors||[data.error||`HTTP ${response.status}`];showErrors(errors);throw new Error(errors.join(' · '));}
+        renderActive({activeConfig:data.active.config,version:data.active.version,updatedAt:data.active.updatedAt,appliesFromCycle:data.active.appliesFromCycle,pending:data.pending});
+        status(`Saved v${data.pending.version} · waiting for cycle ${data.pending.appliesFromCycle}…`,'wait');
+        await waitForActive(data.pending.version);status(`Version ${data.pending.version} is ACTIVE`,'ok');
       };
       const unlock=async key=>{settingsKey=key;sessionStorage.setItem('nomadSettingsUnlocked','1');sessionStorage.setItem('nomadSettingsKey',key);gate.hidden=true;app.hidden=false;await loadConfig();};
-      const cachedKey=sessionStorage.getItem('nomadSettingsKey');
-      if(sessionStorage.getItem('nomadSettingsUnlocked')==='1'&&cachedKey){unlock(cachedKey);}
-      gateForm.addEventListener('submit',async e=>{e.preventDefault();gateError.textContent='';const key=gatePassword.value;if(await hash(key)===EXPECTED){gatePassword.value='';unlock(key);}else{gateError.textContent='Incorrect access code';gatePassword.select();}});
-      settingsForm.addEventListener('submit',async e=>{
-        e.preventDefault();if(!settingsForm.reportValidity())return;setBusy(true);status('Saving to live engine…');
-        try{
-          const r=await fetch(`${ENGINE}/config`,{method:'POST',headers:{'content-type':'application/json','x-settings-key':settingsKey},body:JSON.stringify({config:readForm()})});
-          const data=await r.json();
-          if(r.status===401){relock();throw new Error('Access expired — unlock Settings again');}
-          if(!r.ok||!data.ok)throw new Error((data.errors||[data.error||`HTTP ${r.status}`]).join(' · '));
-          setForm(data.config);profileUpdated.textContent=`saved ${new Date(data.updatedAt).toLocaleString()}`;status('Saved — applies on next scan cycle','ok');
-        }catch(e){status(`Save failed: ${e.message}`,'bad');}
-        finally{setBusy(false);}
-      });
+      const cachedKey=sessionStorage.getItem('nomadSettingsKey');if(sessionStorage.getItem('nomadSettingsUnlocked')==='1'&&cachedKey)unlock(cachedKey);
+      gateForm.addEventListener('submit',async event=>{event.preventDefault();gateError.textContent='';const key=gatePassword.value;if(await hash(key)===EXPECTED){gatePassword.value='';unlock(key);}else{gateError.textContent='Incorrect access code';gatePassword.select();}});
+      settingsForm.addEventListener('submit',async event=>{event.preventDefault();showErrors([]);if(!settingsForm.reportValidity()){status('Fix the highlighted fields; nothing was saved','bad');return;}setBusy(true);status('Validating complete settings…','wait');try{await postConfig({config:readForm()});}catch(error){status(`Save failed: ${error.message}`,'bad');}finally{setBusy(false);}});
       reloadButton.addEventListener('click',loadConfig);
-      defaultsButton.addEventListener('click',()=>{if(serverDefaults){setForm(serverDefaults);status('Defaults loaded — click Save to apply');}});
+      defaultsButton.addEventListener('click',async()=>{setBusy(true);showErrors([]);status('Restoring engine defaults…','wait');try{await postConfig({action:'restore_default'});}catch(error){status(`Restore failed: ${error.message}`,'bad');}finally{setBusy(false);}});
     })();
   </script>
   <script src="site-footer.js" defer></script>

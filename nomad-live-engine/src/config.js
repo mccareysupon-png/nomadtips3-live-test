@@ -1,93 +1,128 @@
+export const CONFIG_SCHEMA_VERSION = 34102;
+export const CONFIG_HISTORY_LIMIT = 20;
+export const HARD_ODDS_MINIMUM = 1.01;
+export const HARD_ODDS_MAXIMUM = 6.00;
+
 export const DEFAULT_CONFIG = Object.freeze({
   scanUrl: 'https://www.totalcorner.com/match/today/',
   endedUrl: 'https://www.totalcorner.com/match/today/ended',
   sourceHost: 'https://www.totalcorner.com',
   minuteFrom: 55,
-  minuteTo: 80,
-  watchMinuteFrom: 45,
-  watchMinuteTo: 88,
+  minuteTo: 88,
+  rollingWindowMinutes: 5,
+  scoreDifferenceFilterEnabled: false,
   maxScoreDifference: 1,
-  attackEvidenceEnabled: true,
-  evidenceRequired: 1,
-  attackDifference: 15,
-  dangerousAttackDifference: 10,
-  dangerousAttackRatio: 1.30,
-  shotsOnTargetMinimum: 4,
-  shotsOnTargetDifference: 2,
-  cornersMinimum: 4,
-  momentumMinimum: 70,
-  allowedSelectionLines: [0, -0.25, -0.5, -0.75, -1],
-  oddsMinimum: 1.70,
-  oddsMaximum: 2.10,
-  staleAfterMs: 90000,
-  cycleEveryMs: 55000,
-  maxWatchMatches: 0,
-  maxNearOddsMatches: 0,
-  requestTimeoutMs: 10000,
+  attackWeight: 1,
+  dangerousAttackWeight: 2,
+  homePressureShareMinimum: 54,
+  trendConditionsRequired: 2,
+  sotEvidenceEnabled: true,
+  sotDeltaMinimum: 1,
+  shotOffEvidenceEnabled: true,
+  shotOffDeltaMinimum: 1,
+  cornerEvidenceEnabled: true,
+  cornerDeltaMinimum: 1,
+  evidenceMode: 'ANY',
+  allowedLinesMode: 'ANY',
+  allowedSelectionLines: [],
+  oddsMinimum: 1.50,
+  oddsMaximumEnabled: false,
+  oddsMaximum: null,
+  maximumPriceAgeSeconds: 90,
   oneSignalPerMatch: true,
+  sourceStaleAfterMs: 90000,
+  cycleEveryMs: 55000,
+  requestTimeoutMs: 10000,
 });
 
 export const EDITABLE_KEYS = Object.freeze([
-  'minuteFrom','minuteTo','watchMinuteFrom','watchMinuteTo','maxScoreDifference',
-  'attackEvidenceEnabled','evidenceRequired',
-  'attackDifference','dangerousAttackDifference','dangerousAttackRatio',
-  'shotsOnTargetMinimum','shotsOnTargetDifference','cornersMinimum','momentumMinimum',
-  'allowedSelectionLines','oddsMinimum','oddsMaximum','maxWatchMatches','maxNearOddsMatches'
+  'minuteFrom','minuteTo','rollingWindowMinutes',
+  'scoreDifferenceFilterEnabled','maxScoreDifference',
+  'attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired',
+  'sotEvidenceEnabled','sotDeltaMinimum','shotOffEvidenceEnabled','shotOffDeltaMinimum',
+  'cornerEvidenceEnabled','cornerDeltaMinimum','evidenceMode',
+  'allowedLinesMode','allowedSelectionLines','oddsMinimum',
+  'oddsMaximumEnabled','oddsMaximum','maximumPriceAgeSeconds','oneSignalPerMatch'
 ]);
 
-const LIMIT_KEYS = new Set(['maxWatchMatches','maxNearOddsMatches']);
+const BOOLEAN_KEYS = new Set([
+  'scoreDifferenceFilterEnabled','sotEvidenceEnabled','shotOffEvidenceEnabled',
+  'cornerEvidenceEnabled','oddsMaximumEnabled','oneSignalPerMatch'
+]);
 const NUMBER_RULES = Object.freeze({
-  minuteFrom:[0,120,true], minuteTo:[0,120,true], watchMinuteFrom:[0,120,true], watchMinuteTo:[0,120,true],
-  maxScoreDifference:[0,20,true], attackDifference:[0,250,true], dangerousAttackDifference:[0,250,true],
-  dangerousAttackRatio:[1,5,false], shotsOnTargetMinimum:[0,50,true], shotsOnTargetDifference:[0,50,true],
-  cornersMinimum:[0,30,true], momentumMinimum:[0,100,true], oddsMinimum:[1.01,20,false], oddsMaximum:[1.01,20,false],
-  maxWatchMatches:[0,5000,true], maxNearOddsMatches:[0,5000,true]
+  minuteFrom:[0,120,true], minuteTo:[0,120,true], rollingWindowMinutes:[1,15,true],
+  maxScoreDifference:[0,20,true], attackWeight:[0,10,false], dangerousAttackWeight:[0,10,false],
+  homePressureShareMinimum:[0,100,false], trendConditionsRequired:[1,3,true],
+  sotDeltaMinimum:[1,20,true], shotOffDeltaMinimum:[1,20,true], cornerDeltaMinimum:[1,20,true],
+  oddsMinimum:[HARD_ODDS_MINIMUM,HARD_ODDS_MAXIMUM,false], maximumPriceAgeSeconds:[1,3600,true],
 });
+const clone = value => JSON.parse(JSON.stringify(value));
+const quarterGoal = value => Number.isFinite(value) && Math.abs(value * 4 - Math.round(value * 4)) < 1e-9;
 
 export function editableConfig(config=DEFAULT_CONFIG){
-  return Object.fromEntries(EDITABLE_KEYS.map(k=>[k,Array.isArray(config[k])?[...config[k]]:config[k]]));
+  return Object.fromEntries(EDITABLE_KEYS.map(key=>[key,clone(config[key])]));
 }
 
-function numericValue(key,value){
-  if(LIMIT_KEYS.has(key) && String(value).trim().toUpperCase()==='ALL') return 0;
-  return Number(value);
+function validateNumber(errors,config,input,key,rules=NUMBER_RULES[key]){
+  const [min,max,integer]=rules;
+  const value=Number(input[key]);
+  if(!Number.isFinite(value)||value<min||value>max||(integer&&!Number.isInteger(value))){
+    errors.push(`${key} must be ${integer?'a whole number':'a number'} from ${min} to ${max}`);
+    return;
+  }
+  config[key]=value;
 }
 
-export function validateEditableConfig(input={}){
+export function validateEditableConfig(input={},options={}){
+  const requireAll=options.requireAll===true;
   const errors=[];
   const config=editableConfig(DEFAULT_CONFIG);
-  for(const [key,[min,max,integer]] of Object.entries(NUMBER_RULES)){
+  if(!input||typeof input!=='object'||Array.isArray(input)) return {ok:false,errors:['config must be an object'],config:null};
+  const unknown=Object.keys(input).filter(key=>!EDITABLE_KEYS.includes(key));
+  if(unknown.length) errors.push(`unknown settings: ${unknown.join(', ')}`);
+  if(requireAll){
+    const missing=EDITABLE_KEYS.filter(key=>!(key in input));
+    if(missing.length) errors.push(`missing settings: ${missing.join(', ')}`);
+  }
+  for(const key of Object.keys(NUMBER_RULES)) if(key in input) validateNumber(errors,config,input,key);
+  for(const key of BOOLEAN_KEYS){
     if(!(key in input)) continue;
-    const n=numericValue(key,input[key]);
-    if(!Number.isFinite(n)||n<min||n>max||(integer&&!Number.isInteger(n))){
-      const hint=LIMIT_KEYS.has(key)?'ALL or ':'';
-      errors.push(`${key} must be ${hint}${integer?'an integer':'a number'} between ${min} and ${max}`);
-      continue;
-    }
-    config[key]=n;
+    if(typeof input[key]!=='boolean') errors.push(`${key} must be true or false`);
+    else config[key]=input[key];
   }
-  if('attackEvidenceEnabled' in input){
-    if(typeof input.attackEvidenceEnabled!=='boolean') errors.push('attackEvidenceEnabled must be true or false');
-    else config.attackEvidenceEnabled=input.attackEvidenceEnabled;
+  if('evidenceMode' in input){
+    const value=String(input.evidenceMode).trim().toUpperCase();
+    if(!['ANY','ALL'].includes(value)) errors.push('evidenceMode must be ANY or ALL');
+    else config.evidenceMode=value;
   }
-  if('evidenceRequired' in input){
-    const raw=String(input.evidenceRequired).trim().toUpperCase();
-    if(raw==='ALL') config.evidenceRequired='ALL';
-    else {
-      const n=Number(raw);
-      if(!Number.isInteger(n)||![1,2,3].includes(n)) errors.push('evidenceRequired must be 1, 2, 3 or ALL');
-      else config.evidenceRequired=n;
-    }
+  if('allowedLinesMode' in input){
+    const value=String(input.allowedLinesMode).trim().toUpperCase();
+    if(!['ANY','SELECTED'].includes(value)) errors.push('allowedLinesMode must be ANY or SELECTED');
+    else config.allowedLinesMode=value;
   }
   if('allowedSelectionLines' in input){
-    const raw=Array.isArray(input.allowedSelectionLines)?input.allowedSelectionLines:String(input.allowedSelectionLines).split(',');
-    const lines=[...new Set(raw.map(Number).filter(Number.isFinite))];
-    if(!lines.length||lines.some(x=>x < -5||x > 5||Math.abs(x*4-Math.round(x*4))>1e-9)) errors.push('allowedSelectionLines must contain quarter-goal values between -5 and 5');
-    else config.allowedSelectionLines=lines;
+    const raw=Array.isArray(input.allowedSelectionLines)?input.allowedSelectionLines:String(input.allowedSelectionLines??'').split(',').map(value=>value.trim()).filter(Boolean);
+    const parsed=raw.map(Number);
+    if(parsed.some(value=>!Number.isFinite(value)||value < -10||value > 10||!quarterGoal(value))){
+      errors.push('allowedSelectionLines must contain only quarter-goal HOME lines from -10 to +10');
+    }else config.allowedSelectionLines=[...new Set(parsed)].sort((a,b)=>a-b);
   }
-  if(config.minuteFrom>config.minuteTo) errors.push('minuteFrom must be less than or equal to minuteTo');
-  if(config.watchMinuteFrom>config.watchMinuteTo) errors.push('watchMinuteFrom must be less than or equal to watchMinuteTo');
-  if(config.oddsMinimum>config.oddsMaximum) errors.push('oddsMinimum must be less than or equal to oddsMaximum');
-  if(config.maxWatchMatches>0&&config.maxNearOddsMatches>0&&config.maxNearOddsMatches>config.maxWatchMatches) errors.push('maxNearOddsMatches must be less than or equal to maxWatchMatches unless either limit is ALL');
-  return {ok:errors.length===0,errors,config};
+  if('oddsMaximum' in input){
+    const raw=input.oddsMaximum;
+    if(raw===null||raw===''||typeof raw==='undefined') config.oddsMaximum=null;
+    else validateNumber(errors,config,{oddsMaximum:raw},'oddsMaximum',[HARD_ODDS_MINIMUM,HARD_ODDS_MAXIMUM,false]);
+  }
+  if(config.minuteFrom>config.minuteTo) errors.push('Minute From must not be later than Minute To');
+  if(config.attackWeight===0&&config.dangerousAttackWeight===0) errors.push('Attack Weight and Dangerous Attack Weight cannot both be zero');
+  if(!config.sotEvidenceEnabled&&!config.shotOffEvidenceEnabled&&!config.cornerEvidenceEnabled) errors.push('Enable at least one HOME evidence type');
+  if(config.allowedLinesMode==='SELECTED'&&!config.allowedSelectionLines.length) errors.push('Choose at least one HOME AH line or use ANY');
+  if(config.oddsMaximumEnabled){
+    if(config.oddsMaximum==null) errors.push('Maximum Odds is required when its switch is enabled');
+    else if(config.oddsMinimum>config.oddsMaximum) errors.push('Minimum Odds must not be greater than Maximum Odds');
+  }else config.oddsMaximum=null;
+  return {ok:errors.length===0,errors,config:errors.length?null:config};
+}
+
+export function engineConfig(editable=DEFAULT_CONFIG){
+  return {...DEFAULT_CONFIG,...clone(editable),allowedSelectionLines:[...(editable.allowedSelectionLines||[])]};
 }

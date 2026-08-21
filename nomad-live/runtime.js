@@ -12,36 +12,42 @@ function setSource(text,ok=true){
   el.innerHTML=`<span class="dot" style="${ok?'':'background:#f2d21b;box-shadow:none'}"></span>${esc(text)}`;
 }
 function renderChecks(checks={}){
-  const labels={minute:'Minute window',score:'Score difference',attack:'Attack difference',danger:'Dangerous attack',shots:'Shots on target',corners:'Corners',momentum:'Momentum',market:'Bet365 market'};
+  const labels={homeOnly:'HOME only',minute:'Minute 55–88',score:'Score filter',hunger:'HOME hunger trend',evidence:'New HOME event',market:'Full Match Live AH'};
   return Object.entries(checks).map(([k,v])=>`<div class="check"><span>${esc(labels[k]||k)}</span>${pill(Boolean(v),v?'PASS':'WAIT')}</div>`).join('');
 }
 function detail(m){
   const s=m.stats||{};
+  const rolling=m.rolling||{},recent=rolling.recent||{},previous=rolling.previous||{},eventDelta=recent.delta||{};
+  const price=m.marketCheck||{};
   return `<div class="match-detail">
-    <section class="detail-card"><h3>LIVE EVIDENCE</h3><div class="evidence">
+    <section class="detail-card"><h3>HOME ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
       <div><span>ATTACK</span><b>${pair(s.attacks)}</b></div><div><span>DANGER</span><b>${pair(s.dangerousAttack)}</b></div>
       <div><span>SHOT OFF</span><b>${pair(s.shotsOff)}</b></div><div><span>SHOT ON</span><b>${pair(s.shotsOn)}</b></div>
       <div><span>CORNERS</span><b>${pair(s.corners)}</b></div><div><span>POSSESSION</span><b>${pair(s.possession)}</b></div>
-      <div><span>AH</span><b>${fmtLine(m.selectionLine ?? (m.side==='away'&&m.market?-m.market.line:m.market?.line))}</b></div><div><span>ODDS</span><b>${fmtOdds(m.selectionOdds ?? (m.side==='away'?m.market?.awayOdds:m.market?.homeOdds))}</b></div>
+      <div><span>Δ SOT / OFF / COR</span><b>${eventDelta.shotsOn?.home??'—'} / ${eventDelta.shotsOff?.home??'—'} / ${eventDelta.corners?.home??'—'}</b></div><div><span>HUNGER</span><b>${m.hunger?.passedCount??0} / ${m.hunger?.total??3}</b></div>
     </div></section>
+    <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>HOME pressure · recent / previous</span><b>${recent.homePressure??'—'} / ${previous.homePressure??'—'}</b></div><div class="check"><span>HOME pressure share</span><b>${rolling.available?`${Number(rolling.homePressureShare).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
     <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks)}</section>
+    <section class="detail-card"><h3>PRICE CHECK</h3><div class="check"><span>Status</span><b class="${price.passed?'ok':'wait'}">${esc(m.priceStatus||'AH WAIT')}</b></div><div class="check"><span>Source updated</span><b>${m.market?.sourceUpdatedAt?when(m.market.sourceUpdatedAt):'—'}</b></div><div class="check"><span>Price age</span><b>${price.ageSeconds!=null?`${Number(price.ageSeconds).toFixed(0)} sec`:'—'}</b></div></section>
   </div>`;
 }
 function matchRow(m){
   const state=m.state||'WATCHING';
   const st=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
   const market=m.market;
-  const side=(m.side||'').toUpperCase();
-  const line=m.selectionLine ?? (m.side==='away'&&market?-market.line:market?.line);
-  const odds=m.selectionOdds ?? (m.side==='away'?market?.awayOdds:market?.homeOdds);
+  const side='HOME';
+  const line=m.selectionLine ?? market?.line;
+  const odds=m.selectionOdds ?? market?.homeOdds;
+  const priceStatus=m.priceStatus||'AH WAIT';
+  const priceReady=priceStatus==='AH READY';
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
   return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
-    <div class="quick"><div class="q"><span>DA</span><b>${pair(m.stats?.dangerousAttack)}</b></div><div class="q"><span>SOT</span><b>${pair(m.stats?.shotsOn)}</b></div><div class="q"><span>MOM</span><b>${m.momentum??'—'}</b></div><div class="q"><span>SIDE</span><b>${esc(side||'—')}</b></div></div>
-    <div class="market"><span>BET365 · LIVE AH</span><strong>${fmtLine(line)} @ ${fmtOdds(odds)}</strong></div>
-    <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.passed>=6?'warn':''}">${m.passed??0} / ${m.total??8}</strong></div></summary>${detail(m)}</details>`;
+    <div class="quick"><div class="q"><span>Δ HOME PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>Δ SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div><div class="q"><span>SIDE</span><b>${side}</b></div></div>
+    <div class="market"><span>${priceReady?'BET365 · FULL MATCH LIVE AH':esc(priceStatus)}</span><strong>${priceReady?`HOME ${fmtLine(line)} @ ${fmtOdds(odds)}`:esc(m.marketCheck?.reason||'waiting')}</strong>${priceReady?`<span>updated ${when(m.market.sourceUpdatedAt)} · age ${Number(m.marketCheck.ageSeconds||0).toFixed(0)}s</span>`:''}</div>
+    <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0} / ${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
 function setupFilters(){
   const tabs=[...document.querySelectorAll('.tabs .tab')], search=document.querySelector('.search input');
