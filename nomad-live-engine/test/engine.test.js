@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseToday,parseLiveDetail,parseBet365Asian} from '../src/parser.js';
+import {trackSourceFreshness} from '../src/index.js';
 import {DEFAULT_CONFIG,validateEditableConfig} from '../src/config.js';
 import {evaluate} from '../src/detector.js';
 import {settleAsian} from '../src/settlement.js';
@@ -12,9 +13,32 @@ test('today parser extracts live row',()=>{
   assert.deepEqual(m.score,{home:1,away:1}); assert.deepEqual(m.corner,{home:7,away:4}); assert.deepEqual(m.dangerousAttack,{home:61,away:39});
 });
 
+test('today parser never treats a number in a team name as the live minute',()=>{
+  const html=`<table><tr data-match_id="199844651"><td><a href="/league/view/35264">Ecuador LigaPro Serie B</a></td><td class="today-match-time">21:30</td><td class="text-center match_status"><span class="today-match-status-value"><span class="match_status_minutes"></span></span></td><td class="match_home"><span class="leaguePos">[9]</span><a href="/team/view/12261">LDU Portoviejo</a></td><td class="match_goal">0 - 0</td><td class="match_away"><a href="/team/view/161562">22 de Julio</a><span class="leaguePos">[12]</span></td><td><a href="/stats/ldu-portoviejo-vs-22-de-julio/199844651">Stats</a><a href="/odds/ldu-portoviejo-vs-22-de-julio/199844651">Odds</a></td></tr></table>`;
+  const [m]=parseToday(html);
+  assert.equal(m.minute,null);
+  assert.equal(m.home,'LDU Portoviejo');
+  assert.equal(m.away,'22 de Julio');
+});
+
 test('stats parser reads TotalCorner live-event layout',()=>{
   const x=parseLiveDetail(`<div>Live Events Status: 72 ' , Score: 1 - 1 , Corner: 7 - 4 5 Shoot on target 2 12 Shoot off target 7 122 Attack 75 61 Dangerous Attack 39 56 Possession % 44 * * * Score: 0 - 0 , Corner: 3 - 2 Half</div>`);
-  assert.deepEqual(x.attacks,{home:122,away:75}); assert.deepEqual(x.shotsOn,{home:5,away:2}); assert.deepEqual(x.possession,{home:56,away:44}); assert.deepEqual(x.corners,{home:7,away:4}); assert.equal(x.minute,72);
+  assert.equal(x.valid,true); assert.deepEqual(x.attacks,{home:122,away:75}); assert.deepEqual(x.shotsOn,{home:5,away:2}); assert.deepEqual(x.possession,{home:56,away:44}); assert.deepEqual(x.corners,{home:7,away:4}); assert.equal(x.minute,72);
+});
+
+test('stats parser marks a body without a live status as unusable',()=>{
+  const x=parseLiveDetail('<main><h1>LDU Portoviejo vs 22 de Julio</h1><p>0 - 0</p></main>');
+  assert.equal(x.valid,false);
+});
+
+test('unchanged source snapshots become stale after the configured limit',()=>{
+  const first=trackSourceFreshness({minute:67,score:{home:0,away:0},stats:{dangerousAttack:{home:40,away:30}},freshness:{}},null,1_000,90_000);
+  const second=trackSourceFreshness({minute:67,score:{home:0,away:0},stats:{dangerousAttack:{home:40,away:30}},freshness:{}},first,92_000,90_000);
+  assert.equal(second.freshness.sourceChangedAt,1_000);
+  assert.equal(second.freshness.sourceStale,true);
+  const advanced=trackSourceFreshness({minute:68,score:{home:0,away:0},stats:{dangerousAttack:{home:41,away:30}},freshness:{}},second,93_000,90_000);
+  assert.equal(advanced.freshness.sourceChangedAt,93_000);
+  assert.equal(advanced.freshness.sourceStale,false);
 });
 
 test('Bet365 Asian parser chooses inplay triple',()=>{
