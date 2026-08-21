@@ -3,6 +3,7 @@ import {assessHomeMarket} from './detector.js';
 export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
+  Object.freeze({id:'source3',position:3,source:'API-Football'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
@@ -49,3 +50,4 @@ export function publicPriceSourceSnapshot(snapshot){
   const {assessment,market,...publicSnapshot}=snapshot;
   return publicSnapshot;
 }
+
