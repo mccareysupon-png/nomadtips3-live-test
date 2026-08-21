@@ -1,100 +1,20 @@
 {
-  "engine": "the-king-v6",
-  "status": "OK",
-  "last_selection_run": "2026-08-21T02:52:00Z",
+  "engine": "the-king-v7-goaloo",
+  "status": "SOURCE_EMPTY",
+  "last_selection_run": "2026-08-21T03:24:37Z",
   "last_settlement_run": null,
   "selection_date": "2026-08-21",
-  "fixtures_seen": 27,
+  "fixtures_seen": 0,
   "qualified": 0,
   "pending": 0,
+  "primary_source": "Goaloo",
+  "rejected": 0,
+  "rejection_reasons": {},
+  "rejection_samples": [],
   "source_health": {
-    "www.soccerway.com": {
-      "ok": true,
-      "status": 200,
-      "ms": 803
-    },
-    "ng.soccerway.com": {
-      "ok": true,
-      "status": 200,
-      "ms": 891
-    },
-    "us.soccerway.com": {
-      "ok": true,
-      "status": 200,
-      "ms": 880
-    },
-    "au.soccerway.com": {
-      "ok": true,
-      "status": 200,
-      "ms": 947
-    }
-  },
-  "rejected": 27,
-  "discovery_errors": [],
-  "rejection_reasons": {
-    "FORM_DATA_SHORT": 27
-  },
-  "rejection_samples": [
-    {
-      "match": "Sabah Baku vs Hapoel Beer Sheva",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "LASK vs Celtic",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "Bodo/Glimt vs Nijmegen",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "AEK Athens vs Levski Sofia",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "Viking vs Dinamo Zagreb",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "Celje vs Slovan Bratislava",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "Lyon vs Fenerbahce",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    },
-    {
-      "match": "Arsenal vs Coventry",
-      "reason": "FORM_DATA_SHORT",
-      "home_n": 0,
-      "away_n": 0,
-      "odds": null
-    }
-  ],
-  "browser_fallback": {
-    "started": true,
-    "renders": 208,
-    "errors": 0
+    "goaloo_renders": 1,
+    "goaloo_errors": 0,
+    "goaloo_fixture_links": 0,
+    "goaloo_h2h_pages": 0
   }
 }
