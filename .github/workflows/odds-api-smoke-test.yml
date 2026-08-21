@@ -92,7 +92,7 @@ jobs:
           STATE=error
           if [ "$RC" -eq 0 ]; then STATE=success; fi
           SHORT_DESC=$(printf '%s' "$DESC" | cut -c1-140)
-          TARGET_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions"
+          TARGET_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           PAYLOAD=$(jq -n --arg state "$STATE" --arg context "odds-api/live-ah-smoke" --arg description "$SHORT_DESC" --arg target_url "$TARGET_URL" '{state:$state,context:$context,description:$description,target_url:$target_url}')
           curl -fsS -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
