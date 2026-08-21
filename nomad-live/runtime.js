@@ -15,6 +15,7 @@ const bookmakerPriceLine=(market,label)=>market?.status==='AH READY'&&n(market.l
   :`${esc(label)} · ${esc(priceLabel(market?.status||'ODDS NOT READY'))}`;
 const sourceReason=reason=>({
   no_matching_live_match:'no matching live match',no_matching_live_ah:'no matching live AH',the_odds_api_key_missing:'API key unavailable',
+  api_football_key_missing:'API key unavailable',api_football_live_ah_bet_not_found:'live Asian Handicap market not found',
   match_mapper_no_event:'no matching live match',odds_api_key_missing:'API key unavailable',price_not_checked:'price not checked',
 }[reason]||String(reason||'no valid live AH').replace(/^price_fetch_failed:/,'').replace(/_/g,' '));
 const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.priceSources:[{
@@ -139,3 +140,4 @@ const path=location.pathname.toLowerCase();
 if(path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
 else if(path.endsWith('/nomad-live/statistics.html')) statsPage();
 else if(path.endsWith('/nomad-live/health.html')) healthPage();
+
