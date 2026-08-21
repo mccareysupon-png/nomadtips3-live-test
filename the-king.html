@@ -7,31 +7,32 @@
   <meta name="description" content="NOMADTIPS3 The King compact pick statistics and verified performance history.">
   <title>nomadtips3 — The King stats</title>
   <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/styles.css">
+  <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/ui-fix.css">
   <link rel="stylesheet" href="./the-king.css">
 </head>
-<body class="king-page">
+<body class="king-page" data-page="the-king">
   <header class="topbar">
     <a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a>
-    <div class="king-badge"><i></i><span>The King</span></div>
+    <div class="feed-state king-state"><i></i><span>The King</span></div>
   </header>
 
-  <main class="king-shell">
-    <section class="king-head">
-      <div>
-        <span class="king-kicker">Add K The King · verified record</span>
-        <h1>The King Picks</h1>
+  <main class="page-shell king-shell">
+    <section class="page-title king-title">
+      <div class="king-title-row">
+        <div><span class="kicker">Add K The King · verified record</span><h1>The King Picks</h1></div>
+        <span class="muted" id="kingUpdated">Waiting for feed</span>
       </div>
-      <span class="king-updated" id="kingUpdated">Waiting for feed</span>
+      <p>Compact Winner First record. Current public gate requires Confidence ≥58%, Winner Edge ≥12 and locked odds ≥1.70.</p>
     </section>
 
-    <section class="king-scorebar" aria-label="The King performance summary">
-      <div><span>Picks</span><b id="sumPicks">—</b></div>
-      <div class="positive"><span>Win</span><b id="sumWin">—</b></div>
-      <div class="negative"><span>Loss</span><b id="sumLoss">—</b></div>
-      <div><span>Win rate</span><b id="sumRate">—</b></div>
-      <div><span>Avg odds</span><b id="sumOdds">—</b></div>
-      <div><span>Net</span><b id="sumNet">—</b></div>
-      <div><span>ROI</span><b id="sumRoi">—</b></div>
+    <section class="status-strip king-scorebar" aria-label="The King performance summary">
+      <div><b id="sumPicks">—</b><span>Picks</span></div>
+      <div class="king-win"><b id="sumWin">—</b><span>Win</span></div>
+      <div class="king-loss"><b id="sumLoss">—</b><span>Loss</span></div>
+      <div><b id="sumRate">—</b><span>Win rate</span></div>
+      <div><b id="sumOdds">—</b><span>Avg odds</span></div>
+      <div><b id="sumNet">—</b><span>Net</span></div>
+      <div><b id="sumRoi">—</b><span>ROI</span></div>
     </section>
 
     <nav class="king-tabs" aria-label="The King sections">
@@ -41,10 +42,10 @@
       <button data-tab="rules" type="button">Rules</button>
     </nav>
 
-    <section class="king-panel active" data-panel="today">
-      <div class="king-panel-head"><div><b>Today</b><span>Qualified picks only</span></div><span id="todayCount">0 picks</span></div>
-      <div class="king-table-wrap">
-        <table class="king-table">
+    <section class="king-panel active soft-card" data-panel="today">
+      <div class="king-panel-head"><div><b>Today</b><small>Qualified picks only</small></div><span id="todayCount">0 picks</span></div>
+      <div class="king-table-wrap stats-table-wrap">
+        <table class="king-table stats-table">
           <thead><tr><th>Match</th><th>Pick</th><th>Conf.</th><th>Edge</th><th>Odds</th><th>Status</th></tr></thead>
           <tbody id="todayRows"></tbody>
         </table>
@@ -52,28 +53,28 @@
       <div class="king-empty" id="todayEmpty" hidden>No qualified pick.</div>
     </section>
 
-    <section class="king-panel" data-panel="history">
-      <div class="king-panel-head"><div><b>History</b><span>Verified FT results</span></div><span id="historyCount">0 settled</span></div>
-      <div class="king-table-wrap">
-        <table class="king-table">
+    <section class="king-panel soft-card" data-panel="history">
+      <div class="king-panel-head"><div><b>History</b><small>Verified FT results</small></div><span id="historyCount">0 settled</span></div>
+      <div class="king-table-wrap stats-table-wrap">
+        <table class="king-table stats-table">
           <thead><tr><th>Date</th><th>Pick</th><th>Odds</th><th>FT</th><th>Result</th><th>P/L</th></tr></thead>
           <tbody id="historyRows"></tbody>
         </table>
       </div>
     </section>
 
-    <section class="king-panel" data-panel="daily">
-      <div class="king-panel-head"><div><b>Daily</b><span>Compact performance log</span></div></div>
-      <div class="king-table-wrap">
-        <table class="king-table">
+    <section class="king-panel soft-card" data-panel="daily">
+      <div class="king-panel-head"><div><b>Daily</b><small>Compact performance log</small></div></div>
+      <div class="king-table-wrap stats-table-wrap">
+        <table class="king-table stats-table">
           <thead><tr><th>Date</th><th>Picks</th><th>W</th><th>L</th><th>Accuracy</th><th>Net</th></tr></thead>
           <tbody id="dailyRows"></tbody>
         </table>
       </div>
     </section>
 
-    <section class="king-panel" data-panel="rules">
-      <div class="king-panel-head"><div><b>Rules</b><span>Current public gate</span></div></div>
+    <section class="king-panel soft-card" data-panel="rules">
+      <div class="king-panel-head"><div><b>Rules</b><small>Current public gate</small></div></div>
       <div class="king-rules">
         <div><span>Winner First</span><b>Required</b></div>
         <div><span>Confidence</span><b>≥ 58%</b></div>
@@ -84,11 +85,9 @@
       </div>
       <p class="king-note">Projected Score, BTTS and Odd/Even are not published. Odds are checked after analysis and used only as the minimum lock gate.</p>
     </section>
-  </main>
 
-  <footer class="king-footer">
-    <a href="./index.html">Live</a><span>·</span><a href="./statistics.html">Statistics</a><span>·</span><b>The King</b>
-  </footer>
+    <footer class="king-footer"><a href="./index.html">Live</a><span>·</span><a href="./statistics.html">Statistics</a><span>·</span><b>The King</b></footer>
+  </main>
 
   <script type="module" src="./the-king.js"></script>
 </body>
