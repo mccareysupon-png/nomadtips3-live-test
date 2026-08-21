@@ -13,6 +13,22 @@ const priceLabel=status=>({
 const bookmakerPriceLine=(market,label)=>market?.status==='AH READY'&&n(market.line)!=null&&n(market.homeOdds)!=null
   ?`${esc(label)} · Ah ${fmtLine(market.line)} · Odds ${fmtOdds(market.homeOdds)}`
   :`${esc(label)} · ${esc(priceLabel(market?.status||'ODDS NOT READY'))}`;
+const sourceReason=reason=>({
+  no_matching_live_match:'no matching live match',no_matching_live_ah:'no matching live AH',the_odds_api_key_missing:'API key unavailable',
+  match_mapper_no_event:'no matching live match',odds_api_key_missing:'API key unavailable',price_not_checked:'price not checked',
+}[reason]||String(reason||'no valid live AH').replace(/^price_fetch_failed:/,'').replace(/_/g,' '));
+const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.priceSources:[{
+  id:'source1',position:1,source:'Odds-API.io',status:m.marketCheck?.passed?'PASS':m.priceStatus==='AH STALE'?'STALE':'WAIT',
+  reason:m.marketCheck?.reason||m.market?.reason||null,bookmaker:m.market?.bookmaker||'1xBet',line:m.marketCheck?.line??m.market?.line,
+  odds:m.marketCheck?.homeOdds??m.market?.homeOdds,sourceUpdatedAt:m.market?.sourceUpdatedAt,priceAgeSeconds:m.marketCheck?.ageSeconds,
+}];
+const sourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
+  ?`${source.status} · ${source.bookmaker||'—'} · HOME ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
+  :`${source.status} · ${sourceReason(source.reason)}`;
+const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
+const selectedValue=selected=>selected
+  ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
+  :'none · no source passed';
 
 function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
@@ -25,13 +41,12 @@ function renderChecks(checks={},evidence={}){
 function detail(m){
   const s=m.stats||{};
   const rolling=m.rolling||{},recent=rolling.recent||{},previous=rolling.previous||{},eventDelta=recent.delta||{};
-  const price=m.marketCheck||{};
-  const market=m.market||{};
   const comparison=m.marketComparison||{};
-  const oneXBet=comparison.oneXBet||market;
   const bet365=comparison.bet365||{};
-  const line=price.line??market.line;
-  const odds=price.homeOdds??market.homeOdds;
+  const sources=priceSources(m);
+  const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
+  const sourceRows=sources.map(sourceRow).join('');
+  const sourceOneComparison=bet365?.status?`<div class="check"><span>SOURCE 1 compare · Bet365</span><b class="${bet365.status==='AH READY'?'ok':'wait'}">${bookmakerPriceLine(bet365,'Bet365')} · ${bet365.sourceUpdatedAt?when(bet365.sourceUpdatedAt):'—'}</b></div>`:'';
   return `<div class="match-detail">
     <section class="detail-card"><h3>HOME ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
       <div><span>ATTACK</span><b>${pair(s.attacks)}</b></div><div><span>DANGER</span><b>${pair(s.dangerousAttack)}</b></div>
@@ -41,26 +56,24 @@ function detail(m){
     </div></section>
     <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>HOME pressure · recent / previous</span><b>${recent.homePressure??'—'} / ${previous.homePressure??'—'}</b></div><div class="check"><span>HOME pressure share</span><b>${rolling.available?`${Number(rolling.homePressureShare).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
     <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks,m.evidence)}</section>
-    <section class="detail-card"><h3>PRICE CHECK</h3><div class="check"><span>Primary status</span><b class="${price.passed?'ok':'wait'}">${esc(priceLabel(m.priceStatus))}</b></div><div class="check"><span>1xBet Ah / odds</span><b>${fmtLine(oneXBet.line)} / ${fmtOdds(oneXBet.homeOdds)}</b></div><div class="check"><span>Bet365 Ah / odds</span><b>${fmtLine(bet365.line)} / ${fmtOdds(bet365.homeOdds)}</b></div><div class="check"><span>1xBet status</span><b class="${oneXBet.status==='AH READY'?'ok':'wait'}">${esc(priceLabel(oneXBet.status))}</b></div><div class="check"><span>Bet365 status</span><b class="${bet365.status==='AH READY'?'ok':'wait'}">${esc(priceLabel(bet365.status))}</b></div><div class="check"><span>Source</span><b>Odds-API.io · 1xBet + Bet365</b></div><div class="check"><span>1xBet updated</span><b>${oneXBet.sourceUpdatedAt?when(oneXBet.sourceUpdatedAt):'—'}</b></div><div class="check"><span>Bet365 updated</span><b>${bet365.sourceUpdatedAt?when(bet365.sourceUpdatedAt):'—'}</b></div><div class="check"><span>Primary price age</span><b>${price.ageSeconds!=null?`${Number(price.ageSeconds).toFixed(0)} sec`:'—'}</b></div><div class="check"><span>Signal line / odds</span><b>${fmtLine(line)} / ${fmtOdds(odds)}</b></div></section>
+    <section class="detail-card"><h3>PRICE CHECK</h3>${sourceRows}${sourceOneComparison}<div class="check"><span>SELECTED PRICE</span><b class="${selected?'ok':'wait'}">${esc(selectedValue(selected))}</b></div></section>
   </div>`;
 }
 function matchRow(m){
   const state=m.state||'WATCHING';
   const st=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
-  const market=m.market||{};
-  const comparison=m.marketComparison||{};
-  const oneXBet=comparison.oneXBet||market;
-  const bet365=comparison.bet365||{};
+  const sources=priceSources(m);
+  const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const side='HOME';
   const priceStatus=m.priceStatus||'AH CHECKING';
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
-  const currentPrice=`${bookmakerPriceLine(oneXBet,'1xBet')}<br>${bookmakerPriceLine(bet365,'Bet365')}`;
+  const currentPrice=`${sources.map(source=>`SOURCE ${source.position} · ${esc(source.source)} · ${esc(sourceValue(source))}`).join('<br>')}<br>SELECTED PRICE · ${esc(selectedValue(selected))}`;
   return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
     <div class="quick"><div class="q"><span>Δ HOME PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>Δ SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div><div class="q"><span>SIDE</span><b>${side}</b></div></div>
-    <div class="market"><strong>${currentPrice}</strong><span class="${m.marketCheck?.passed?'ok':'wait'}">${esc(priceLabel(priceStatus))} · Primary 1xBet</span></div>
+    <div class="market"><strong>${currentPrice}</strong><span class="${m.marketCheck?.passed?'ok':'wait'}">${esc(priceLabel(priceStatus))} · ${selected?`Selected ${selected.source}`:'No selected source'}</span></div>
     <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0} / ${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
 function setupFilters(){
