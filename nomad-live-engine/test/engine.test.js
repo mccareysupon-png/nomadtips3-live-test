@@ -266,4 +266,3 @@ test('Asian quarter-line settlement regressions still pass',()=>{
   assert.equal(quarter.result,'HALF LOSS'); assert.equal(quarter.profit,-0.5);
   assert.equal(half.result,'WIN'); assert.equal(half.profit,0.9);
 });
-
