@@ -77,7 +77,7 @@ function validCachedBet(value){
   return id==null?null:{id,name:String(value?.name||'Asian Handicap')};
 }
 
-export async function fetchApiFootballLiveAsianHandicaps(apiKey,cachedBet=null,timeoutMs=9000){
+export async function fetchApiFootballLiveAsianHandicaps(apiKey,cachedBet=null,timeoutMs=9000,onBetResolved=null){
   if(!apiKey) throw new Error('API_FOOTBALL_KEY_MISSING');
   let bet=validCachedBet(cachedBet),referenceQuota=null;
   if(!bet){
@@ -85,6 +85,7 @@ export async function fetchApiFootballLiveAsianHandicaps(apiKey,cachedBet=null,t
     referenceQuota=reference.quota;
     bet=selectApiFootballAsianHandicapBet(reference.data);
     if(!bet) throw new Error('API_FOOTBALL_LIVE_AH_BET_NOT_FOUND');
+    if(typeof onBetResolved==='function') await onBetResolved(bet);
   }
   const response=await fetchJson(apiKey,'/odds/live',{bet:bet.id},timeoutMs);
   const events=response.data.filter(event=>!event?.status?.blocked&&!event?.status?.stopped&&!event?.status?.finished);
