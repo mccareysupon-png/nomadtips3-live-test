@@ -26,9 +26,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: Offline parser detector and settlement tests
+      - name: Offline parser detector settlement and market tests
         working-directory: nomad-live-engine
-        run: node --test
+        run: |
+          node --test
+          node --check src/index.js
+          node --check src/real-market.js
       - name: Validate Cloudflare credentials
         shell: bash
         run: |
@@ -42,6 +45,17 @@ jobs:
           workingDirectory: nomad-live-engine
           wranglerVersion: "4"
           command: deploy
+      - name: Configure Odds-API.io key for 1xBet market feed
+        working-directory: nomad-live-engine
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          test -n "$ODDS_API_KEY" || { echo "::error::Missing ODDS_API_KEY repository secret"; exit 1; }
+          printf '%s' "$ODDS_API_KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-live-engine
+          echo "Odds-API.io secret configured for NOMAD Live engine."
       - name: Wake engine and verify first live cycle
         shell: bash
         run: |
@@ -49,12 +63,12 @@ jobs:
           for i in $(seq 1 24); do
             BODY=$(curl -fsS "$ENGINE_URL/health" || true)
             printf '%s\n' "$BODY"
-            if printf '%s' "$BODY" | grep -Eq '"lastSuccess":"[^"]+"'; then
+            if printf '%s' "$BODY" | grep -Eq '"lastSuccess":"[^"]+"' && printf '%s' "$BODY" | grep -q '1xBet via Odds-API.io'; then
               exit 0
             fi
             sleep 10
           done
-          echo "::error::Worker deployed but no successful source cycle was observed"
+          echo "::error::Worker deployed but no successful Odds-API.io-configured source cycle was observed"
           exit 1
       - name: Publish deploy commit status
         if: always()
@@ -67,7 +81,7 @@ jobs:
           DESCRIPTION="NOMAD live engine deploy failed"
           if [ "$JOB_STATUS" = "success" ]; then
             STATE=success
-            DESCRIPTION="Worker deployed and first live cycle succeeded"
+            DESCRIPTION="Worker deployed with Odds-API.io 1xBet feed"
           elif [ "$JOB_STATUS" = "cancelled" ]; then
             DESCRIPTION="NOMAD live engine deploy cancelled"
           fi
