@@ -1,0 +1,83 @@
+name: One-off Odds-API.io Live AH Smoke Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/odds-api-smoke-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Probe live football and 1xBet Spread without exposing credential
+        shell: bash
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          set -euo pipefail
+          KEY="$ODDS_API_KEY"
+          if [ -z "$KEY" ]; then
+            git fetch --no-tags --depth=1 origin a1fd83c41dc3262dc1579f641552054979fd8fe7 >/dev/null 2>&1 || true
+            KEY=$(git show a1fd83c41dc3262dc1579f641552054979fd8fe7:.github/workflows/car34-cloudflare-deploy.yml 2>/dev/null | sed -n 's/^[[:space:]]*TEMP_ODDS_API_KEY:[[:space:]]*//p' | head -n 1)
+          fi
+          test -n "$KEY" || { echo "ODDS_API_KEY unavailable"; exit 1; }
+          export ODDS_API_KEY="$KEY"
+          node <<'NODE'
+          const key=process.env.ODDS_API_KEY;
+          const base='https://api.odds-api.io/v3';
+          async function get(path,params={}){
+            const url=new URL(base+path);
+            url.searchParams.set('apiKey',key);
+            for(const [k,v] of Object.entries(params)) url.searchParams.set(k,String(v));
+            const r=await fetch(url,{headers:{accept:'application/json','user-agent':'NOMADTIPS3-ODDS-SMOKE/1.0'}});
+            const text=await r.text();
+            if(!r.ok) throw new Error(`${path} HTTP ${r.status}: ${text.slice(0,160)}`);
+            return JSON.parse(text);
+          }
+          const live=await get('/events/live',{sport:'football'});
+          if(!Array.isArray(live)) throw new Error('live events response is not an array');
+          console.log(`live_football_events=${live.length}`);
+          if(!live.length){console.log('result=NO_LIVE_EVENTS');process.exit(2);}
+          const ids=live.map(x=>x?.id).filter(x=>x!=null).slice(0,50);
+          let payloadCount=0,bookmakerCount=0,spreadCount=0,proof=null;
+          for(let i=0;i<ids.length;i+=10){
+            const batch=ids.slice(i,i+10);
+            const odds=await get('/odds/multi',{eventIds:batch.join(','),bookmakers:'1xbet'});
+            if(!Array.isArray(odds)) continue;
+            payloadCount+=odds.length;
+            for(const payload of odds){
+              const bookies=payload?.bookmakers||{};
+              const keyName=Object.keys(bookies).find(k=>k.toLowerCase()==='1xbet');
+              const markets=keyName&&Array.isArray(bookies[keyName])?bookies[keyName]:[];
+              if(markets.length) bookmakerCount++;
+              const spread=markets.find(m=>String(m?.name||'').toLowerCase()==='spread');
+              const rows=Array.isArray(spread?.odds)?spread.odds:[];
+              if(rows.length){
+                spreadCount++;
+                if(!proof){
+                  const row=rows.find(r=>r?.hdp!=null&&r?.home!=null&&r?.away!=null)||rows[0];
+                  proof={eventId:payload?.id,line:row?.hdp,home:row?.home,away:row?.away,updatedAt:spread?.updatedAt||null};
+                }
+              }
+            }
+            if(proof) break;
+          }
+          console.log(`odds_payloads=${payloadCount}`);
+          console.log(`payloads_with_1xbet=${bookmakerCount}`);
+          console.log(`payloads_with_spread=${spreadCount}`);
+          if(proof){
+            console.log(`result=PASS eventId=${proof.eventId} ah_line=${proof.line} home_odds=${proof.home} away_odds=${proof.away} updatedAt=${proof.updatedAt}`);
+            process.exit(0);
+          }
+          console.log('result=NO_1XBET_SPREAD_IN_PROBED_LIVE_EVENTS');
+          process.exit(3);
+          NODE
