@@ -1,7 +1,7 @@
 {
-  "engine": "the-king-v8-goaloo-direct",
+  "engine": "the-king-v9-manual-set2-goaloo",
   "status": "OK",
-  "last_selection_run": "2026-08-21T03:32:25Z",
+  "last_selection_run": "2026-08-21T03:46:00Z",
   "last_settlement_run": null,
   "selection_date": "2026-08-21",
   "fixtures_seen": 387,
@@ -10,8 +10,8 @@
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
   "rejected": 387,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 32,
-    "MODEL_GATE": 355
+    "GOALOO_FORM_SHORT": 26,
+    "MODEL_DATA_SHORT": 361
   },
   "rejection_samples": [
     {
@@ -22,13 +22,13 @@
     },
     {
       "match": "AC Carina vs North Brisbane",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 9,
       "away_n": 10
     },
     {
       "match": "South Coast Flame FC vs Gladesville Ryde Magic",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 8,
       "away_n": 10
     },
@@ -52,7 +52,7 @@
     },
     {
       "match": "Rebel Kyiv vs Ahrobiznes TSK Romny",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 9,
       "away_n": 6
     },
@@ -64,29 +64,30 @@
     },
     {
       "match": "Green Gully Cavaliers vs St Albans Saints",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 10,
       "away_n": 10
     },
     {
       "match": "Calcutta Polica Club vs Peerless SC",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 6,
       "away_n": 6
     },
     {
       "match": "Coal India vs Police AC",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 8,
       "away_n": 6
     },
     {
       "match": "Box Hill United SC vs Nunawading City",
-      "reason": "MODEL_GATE",
+      "reason": "MODEL_DATA_SHORT",
       "home_n": 10,
       "away_n": 10
     }
   ],
+  "near_gate_top": [],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
