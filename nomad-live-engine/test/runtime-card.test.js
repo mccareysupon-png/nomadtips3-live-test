@@ -19,10 +19,11 @@ test('detector card renders every enabled source and the selected whole price',(
   };
   const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
-  assert.match(context.__output,/SOURCE 1 · Odds-API\.io · PASS · 1xBet · HOME -0\.75 @ 1\.82 · age 14s/);
-  assert.match(context.__output,/SOURCE 2 · The Odds API · N\/A/);
-  assert.match(context.__output,/SOURCE 3 · API-Football · PASS · API-Football \(bookmaker not supplied\) · HOME -0\.75 @ 1\.80 · age 9s/);
-  assert.match(context.__output,/SELECTED PRICE · Odds-API\.io · 1xBet · HOME -0\.75 @ 1\.82 · age 14s/);
+  assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">PASS · 1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
+  assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
+  assert.match(context.__output,/<span class="price-source-name">S3 · API-Football<\/span><span class="price-source-value">PASS · API-Football \(bookmaker not supplied\) · -0\.75 @ 1\.80 · 9s<\/span>/);
+  assert.match(context.__output,/<span class="price-selected-name">SELECTED · S1<\/span><span class="price-selected-value">1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
+  assert.doesNotMatch(context.__output,/Price pass · Selected|>SIDE</);
 });
 
 test('detector card collapses missing source and selected prices to N/A',()=>{
@@ -40,10 +41,10 @@ test('detector card collapses missing source and selected prices to N/A',()=>{
   };
   const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
-  assert.match(context.__output,/SOURCE 1 · Odds-API\.io · N\/A/);
-  assert.match(context.__output,/SOURCE 2 · The Odds API · N\/A/);
-  assert.match(context.__output,/SOURCE 3 · API-Football · N\/A/);
-  assert.match(context.__output,/SELECTED PRICE · N\/A/);
+  assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">N\/A<\/span>/);
+  assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
+  assert.match(context.__output,/<span class="price-source-name">S3 · API-Football<\/span><span class="price-source-value">N\/A<\/span>/);
+  assert.match(context.__output,/<span class="price-selected-name">SELECTED<\/span><span class="price-selected-value">N\/A<\/span>/);
   assert.doesNotMatch(context.__output,/very long provider error|no matching live match|rate limit|No selected source/);
   assert.doesNotMatch(context.__output,/<span class="wait">N\/A<\/span>/);
 });
