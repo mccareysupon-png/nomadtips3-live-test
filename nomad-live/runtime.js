@@ -30,6 +30,20 @@ const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · $
 const selectedValue=selected=>selected
   ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
   :'N/A';
+const compactAge=source=>source?.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—';
+const compactSourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
+  ?`${source.status} · ${source.bookmaker||'—'} · ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · ${compactAge(source)}`
+  :'N/A';
+const compactSourceRow=source=>{
+  const value=compactSourceValue(source);
+  const rowState=source.status==='PASS'?'is-pass':value==='N/A'?'is-na':'is-wait';
+  return `<span class="price-source-row ${rowState}"><span class="price-source-name">S${source.position} · ${esc(source.source)}</span><span class="price-source-value">${esc(value)}</span></span>`;
+};
+const compactSelectedRow=selected=>{
+  const position=selected?.position??(String(selected?.id||'').replace(/\D/g,'')||'—');
+  const value=selected?`${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
+  return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">SELECTED${selected?` · S${position}`:''}</span><span class="price-selected-value">${esc(value)}</span></span>`;
+};
 
 function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
@@ -65,18 +79,15 @@ function matchRow(m){
   const st=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
   const sources=priceSources(m);
   const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
-  const side='HOME';
-  const priceStatus=m.priceStatus||'AH CHECKING';
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
-  const currentPrice=`${sources.map(source=>`SOURCE ${source.position} · ${esc(source.source)} · ${esc(sourceValue(source))}`).join('<br>')}<br>SELECTED PRICE · ${esc(selectedValue(selected))}`;
-  const selectedSummary=selected?`<span class="${m.marketCheck?.passed?'ok':'wait'}">${esc(priceLabel(priceStatus))} · Selected ${esc(selected.source)}</span>`:'';
+  const currentPrice=`<span class="price-stack">${sources.map(compactSourceRow).join('')}${compactSelectedRow(selected)}</span>`;
   return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
-    <div class="quick"><div class="q"><span>Δ HOME PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>Δ SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div><div class="q"><span>SIDE</span><b>${side}</b></div></div>
-    <div class="market"><strong>${currentPrice}</strong>${selectedSummary}</div>
-    <div class="cond"><span>CONDITIONS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0} / ${m.total??6}</strong></div></summary>${detail(m)}</details>`;
+    <div class="quick"><div class="q"><span>PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div></div>
+    <div class="market">${currentPrice}</div>
+    <div class="cond"><span>CHECKS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0}/${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
 function setupFilters(){
   const tabs=[...document.querySelectorAll('.tabs .tab')], search=document.querySelector('.search input');
