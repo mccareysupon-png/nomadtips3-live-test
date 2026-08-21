@@ -77,17 +77,30 @@ function bookmakerMarkets(payload,bookmaker=DEFAULT_BOOKMAKER){
   const key=Object.keys(bookies).find(k=>k.toLowerCase()===String(bookmaker).toLowerCase());
   return key&&Array.isArray(bookies[key])?bookies[key]:[];
 }
-export function parseAsianHandicap(payload,bookmaker=DEFAULT_BOOKMAKER){
+function balanced(rows=[]){return [...rows].sort((a,b)=>Math.abs(a.home-b.away)-Math.abs(b.home-b.away));}
+export function parseAsianHandicap(payload,bookmaker=DEFAULT_BOOKMAKER,preference=null){
   const markets=bookmakerMarkets(payload,bookmaker);
   const spread=markets.find(m=>String(m?.name||'').toLowerCase()==='spread');
   const rows=Array.isArray(spread?.odds)?spread.odds:[];
   const valid=rows.map(row=>({line:num(row?.hdp),home:num(row?.home),away:num(row?.away)})).filter(r=>r.line!==null&&r.home!==null&&r.away!==null&&r.home>1&&r.away>1);
   if(!valid.length)return null;
-  // The API may expose more than one live spread. Prefer a balanced two-way price,
-  // which is normally the current main AH line rather than an alternate line.
-  valid.sort((a,b)=>Math.abs(a.home-b.away)-Math.abs(b.home-b.away));
-  const chosen=valid[0];
-  return{line:chosen.line,home:chosen.home,away:chosen.away,updatedAt:spread?.updatedAt||null,bookmaker:String(bookmaker),market:'Spread',alternatives:valid.length};
+
+  let pool=valid,matchedPreference=false,matchedOdds=false;
+  if(preference&&typeof preference==='object'){
+    const side=String(preference.side||'HOME').toUpperCase()==='AWAY'?'AWAY':'HOME';
+    const ahMin=num(preference.ahMin),ahMax=num(preference.ahMax),oddsMin=num(preference.oddsMin),oddsMax=num(preference.oddsMax);
+    const withPerspective=valid.map(row=>({...row,selectedLine:side==='AWAY'?-row.line:row.line,selectedOdds:side==='AWAY'?row.away:row.home}));
+    const lineMatches=withPerspective.filter(row=>(ahMin===null||row.selectedLine>=ahMin)&&(ahMax===null||row.selectedLine<=ahMax));
+    if(lineMatches.length){
+      matchedPreference=true;
+      const priceMatches=lineMatches.filter(row=>(oddsMin===null||row.selectedOdds>=oddsMin)&&(oddsMax===null||row.selectedOdds<=oddsMax));
+      if(priceMatches.length){pool=priceMatches;matchedOdds=true;}
+      else pool=lineMatches;
+    }
+  }
+
+  const chosen=balanced(pool)[0];
+  return{line:chosen.line,home:chosen.home,away:chosen.away,updatedAt:spread?.updatedAt||null,bookmaker:String(bookmaker),market:'Spread',alternatives:valid.length,matchedPreference,matchedOdds};
 }
 export function marketAgeSeconds(ah,now=Date.now()){
   const ts=Date.parse(ah?.updatedAt||'');return Number.isFinite(ts)?Math.max(0,Math.round((now-ts)/1000)):null;
