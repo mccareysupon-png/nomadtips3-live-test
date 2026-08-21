@@ -17,68 +17,10 @@
 
     <section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted">WIN 221 · LOSS 147 · PUSH 14</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th>PICK</th><th>AH</th><th>ODDS</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody><tr><td>20 Aug · 10:28</td><td>Colorado Rapids — LAFC</td><td>HOME</td><td>-0.50</td><td>1.91</td><td>1–1</td><td>2–1</td><td class="win">WIN</td><td class="win">+0.91u</td></tr><tr><td>20 Aug · 09:42</td><td>Team A — Team B</td><td>AWAY</td><td>+0.25</td><td>1.84</td><td>1–0</td><td>1–1</td><td class="win">WIN</td><td class="win">+0.84u</td></tr><tr><td>20 Aug · 08:17</td><td>Team C — Team D</td><td>HOME</td><td>-0.25</td><td>1.92</td><td>0–0</td><td>0–1</td><td class="loss">LOSS</td><td class="loss">-1.00u</td></tr></tbody></table></div></section>
 
-    <section class="panel" id="activeDetectorSettings">
-      <div class="panel-head"><div><p class="eyebrow">CURRENT DETECTOR SETTINGS</p><h2>Active thresholds</h2></div><span class="muted" id="configUpdated">connecting…</span></div>
-      <div class="evidence">
-        <div><span>WATCH WINDOW</span><b id="cfgWatchWindow">—</b></div>
-        <div><span>SIGNAL WINDOW</span><b id="cfgSignalWindow">—</b></div>
-        <div><span>SCORE DIFF</span><b id="cfgScoreDiff">—</b></div>
-        <div><span>ATTACK EVIDENCE</span><b id="cfgEvidenceGate">—</b></div>
-        <div><span>EVIDENCE REQUIRED</span><b id="cfgEvidenceRequired">—</b></div>
-        <div><span>ATTACK DIFF</span><b id="cfgAttackDiff">—</b></div>
-        <div><span>DANGER DIFF</span><b id="cfgDangerDiff">—</b></div>
-        <div><span>DANGER RATIO</span><b id="cfgDangerRatio">—</b></div>
-        <div><span>SOT MIN</span><b id="cfgSotMin">—</b></div>
-        <div><span>SOT DIFF</span><b id="cfgSotDiff">—</b></div>
-        <div><span>CORNERS MIN</span><b id="cfgCornersMin">—</b></div>
-        <div><span>MOMENTUM MIN</span><b id="cfgMomentumMin">—</b></div>
-        <div><span>ALLOWED AH</span><b id="cfgAhLines">—</b></div>
-        <div><span>ODDS RANGE</span><b id="cfgOddsRange">—</b></div>
-      </div>
-    </section>
-
-    <div class="note">Statistics and current detector settings are loading from the live engine.</div>
+    <div class="note">Statistics are loading from the live engine.</div>
   </main>
   <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav>
 
-  <script>
-    (()=>{
-      const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
-      const put=(id,value)=>{const el=document.getElementById(id);if(el)el.textContent=value;};
-      const val=v=>v===null||v===undefined||v===''?'—':String(v);
-      const fixed=(v,d=2)=>Number.isFinite(Number(v))?Number(v).toFixed(d):'—';
-      const line=v=>Number.isFinite(Number(v))?`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`:'—';
-      const windowText=(a,b)=>`${val(a)}′–${val(b)}′`;
-      const threshold=(symbol,v,d=null)=>v===null||v===undefined?'—':`${symbol} ${d===null?val(v):fixed(v,d)}`;
-      const load=async()=>{
-        try{
-          const r=await fetch(`${API}/config`,{cache:'no-store'});
-          const d=await r.json();
-          if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);
-          const c=d.config||{};
-          put('cfgWatchWindow',windowText(c.watchMinuteFrom,c.watchMinuteTo));
-          put('cfgSignalWindow',windowText(c.minuteFrom,c.minuteTo));
-          put('cfgScoreDiff',threshold('≤',c.maxScoreDifference));
-          put('cfgEvidenceGate',c.attackEvidenceEnabled===false?'OFF':'ON');
-          put('cfgEvidenceRequired',c.attackEvidenceEnabled===false?'BYPASS':val(c.evidenceRequired??1));
-          put('cfgAttackDiff',threshold('≥',c.attackDifference));
-          put('cfgDangerDiff',threshold('≥',c.dangerousAttackDifference));
-          put('cfgDangerRatio',threshold('≥',c.dangerousAttackRatio,2));
-          put('cfgSotMin',threshold('≥',c.shotsOnTargetMinimum));
-          put('cfgSotDiff',threshold('≥',c.shotsOnTargetDifference));
-          put('cfgCornersMin',threshold('≥',c.cornersMinimum));
-          put('cfgMomentumMin',threshold('≥',c.momentumMinimum));
-          put('cfgAhLines',Array.isArray(c.allowedSelectionLines)&&c.allowedSelectionLines.length?c.allowedSelectionLines.map(line).join(', '):'—');
-          put('cfgOddsRange',`${fixed(c.oddsMinimum)}–${fixed(c.oddsMaximum)}`);
-          put('configUpdated',d.updatedAt?`saved ${new Date(d.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`:'live engine');
-        }catch(e){
-          put('configUpdated','settings unavailable');
-        }
-      };
-      load();
-      setInterval(load,10000);
-    })();
-  </script>
   <script src="site-footer.js" defer></script>
 </body>
 </html>
