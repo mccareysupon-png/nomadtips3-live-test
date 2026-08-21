@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-21T19:35:51Z",
+  "updated_at": "2026-08-21T21:03:27Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -66,8 +66,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.9144,
       "edge": 83.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-7",
       "source_url": "https://www.goaloo.com/football/iceland-division-1-kfr-aegir-vs-afturelding/h2h-2931285",
       "summary_url": "https://www.goaloo.com/football/iceland-division-1-kfr-aegir-vs-afturelding/summary-2931285",
       "model": {
@@ -116,8 +116,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8858,
       "edge": 78.4,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-5",
       "source_url": "https://www.goaloo.com/football/welsh-premier-league-uwic-inter-cardiff-vs-the-new-saints/h2h-3019482",
       "summary_url": "https://www.goaloo.com/football/welsh-premier-league-uwic-inter-cardiff-vs-the-new-saints/summary-3019482",
       "model": {
@@ -540,6 +540,106 @@
           "away_venue_n": 6
         },
         "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "9d1e7e0b4a4e0f94",
+      "goaloo_id": "2931285",
+      "date": "2026-08-21",
+      "kickoff": "2026-08-21 18:00:00",
+      "league": "Iceland Division 1",
+      "home": "KFR Aegir",
+      "away": "Afturelding",
+      "pick": "KFR Aegir Win",
+      "side": "home",
+      "odds": 9.15,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9144,
+      "edge": 83.8,
+      "result": "LOSS",
+      "ft": "0-7",
+      "source_url": "https://www.goaloo.com/football/iceland-division-1-kfr-aegir-vs-afturelding/h2h-2931285",
+      "summary_url": "https://www.goaloo.com/football/iceland-division-1-kfr-aegir-vs-afturelding/summary-2931285",
+      "model": {
+        "lambda_home": 3.6,
+        "lambda_away": 0.612,
+        "home_win": 0.9144,
+        "draw": 0.0759,
+        "away_win": 0.0097,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8846,
+          "gd_edge": 0.9848,
+          "clean_sheet_edge": 0.5317,
+          "failed_to_score_edge": 0.4585,
+          "bounded_adjustment": 0.0623,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "2449b01af09b058b",
+      "goaloo_id": "3019482",
+      "date": "2026-08-21",
+      "kickoff": "2026-08-21 18:45:00",
+      "league": "Welsh Premier League",
+      "home": "UWIC Inter Cardiff",
+      "away": "The New Saints",
+      "pick": "UWIC Inter Cardiff Win",
+      "side": "home",
+      "odds": 7.48,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8858,
+      "edge": 78.4,
+      "result": "LOSS",
+      "ft": "0-5",
+      "source_url": "https://www.goaloo.com/football/welsh-premier-league-uwic-inter-cardiff-vs-the-new-saints/h2h-3019482",
+      "summary_url": "https://www.goaloo.com/football/welsh-premier-league-uwic-inter-cardiff-vs-the-new-saints/summary-3019482",
+      "model": {
+        "lambda_home": 3.577,
+        "lambda_away": 0.941,
+        "home_win": 0.8858,
+        "draw": 0.1018,
+        "away_win": 0.0124,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5122,
+          "gd_edge": 0.9682,
+          "clean_sheet_edge": 0.4244,
+          "failed_to_score_edge": 0.4439,
+          "bounded_adjustment": 0.049,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.005,
         "venue_fallback": {
           "home": true,
           "away": false,
