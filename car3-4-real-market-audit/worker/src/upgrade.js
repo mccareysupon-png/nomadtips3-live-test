@@ -77,9 +77,26 @@ async function sourceText(url,seconds){
 function pressure(stats,w){let h=0,a=0;for(const [k,wt] of Object.entries(w||{})){h+=(number(stats?.[k]?.home)||0)*wt;a+=(number(stats?.[k]?.away)||0)*wt;}const t=Math.max(.0001,h+a);return{home:Math.round(h/t*100),away:Math.round(a/t*100)};}
 function selectedSide(match,config,p){if(config.side==='HOME')return'HOME';if(config.side==='AWAY')return'AWAY';return p.away>p.home?'AWAY':'HOME';}
 function engineSidePair(obj,side){return side==='AWAY'?{selected:number(obj?.away)||0,opponent:number(obj?.home)||0}:{selected:number(obj?.home)||0,opponent:number(obj?.away)||0};}
-function baselineFor(matchId,side,snapshots,config,current){
-  for(const snap of snapshots){const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));if(!f||Number(f.minute)<config.minuteMin||!isStructuredCoreBaseline(f))continue;return{dangerous:engineSidePair(f.stats?.dangerous_attacks,side).selected,shots:engineSidePair(f.stats?.shots,side).selected,sot:engineSidePair(f.stats?.shots_on_target,side).selected,corners:engineSidePair(f.stats?.corners,side).selected};}
-  return{dangerous:engineSidePair(current.dangerous_attacks,side).selected,shots:engineSidePair(current.shots,side).selected,sot:engineSidePair(current.shots_on_target,side).selected,corners:engineSidePair(current.corners,side).selected};
+function selectedMetric(obj,side){const home=number(obj?.home),away=number(obj?.away);if(home===null||away===null)return null;return side==='AWAY'?away:home;}
+export function baselineFor(matchId,side,snapshots,config,current){
+  const map={dangerous:'dangerous_attacks',shots:'shots',sot:'shots_on_target',corners:'corners'};
+  const baseline={dangerous:null,shots:null,sot:null,corners:null};
+  for(const snap of snapshots){
+    const f=(snap.matches||[]).find(m=>String(m.id)===String(matchId));
+    if(!f||Number(f.minute)<config.minuteMin)continue;
+    for(const [target,key] of Object.entries(map)){
+      if(baseline[target]!==null)continue;
+      const value=selectedMetric(f.stats?.[key],side);
+      if(value!==null)baseline[target]=value;
+    }
+    if(Object.values(baseline).every(v=>v!==null))break;
+  }
+  for(const [target,key] of Object.entries(map)){
+    if(baseline[target]!==null)continue;
+    const value=selectedMetric(current?.[key],side);
+    baseline[target]=value===null?0:value;
+  }
+  return baseline;
 }
 
 function evaluateWithRealAh(match,config,snapshots){
@@ -120,8 +137,8 @@ export class Car31State extends BaseCar31State{
       let detailMatched=0,detailAppliedMatches=0,structuredCompleteMatches=0;
       for(const match of latest.matches||[]){const detailStats=detailStatsMap.get(String(match.sourceMatchId));if(detailStats)detailMatched++;const merged=mergeCoreStats(match,detailStats);if(merged.applied.length)detailAppliedMatches++;if(merged.structuredComplete)structuredCompleteMatches++;match.odds={...(match.odds||{}),asianHandicap:null};match.realMarket={source:bookmaker,status:'WAITING',checkedAt:at};}
 
-      // CAR 3.1 parity: persist the enriched current snapshot so future Evidence
-      // deltas use a real structured baseline instead of falling back to current stats.
+      // Persist the enriched current snapshot. Evidence baseline is metric-level,
+      // so any available structured pair can be used without waiting for all stats.
       const currentSnapshot=snapshots.at(-1);
       if(currentSnapshot&&String(currentSnapshot.at||'')===String(at)){
         for(const snapMatch of currentSnapshot.matches||[])mergeCoreStats(snapMatch,detailStatsMap.get(String(snapMatch.id)));
@@ -170,7 +187,7 @@ export class Car31State extends BaseCar31State{
   async health(){const base=await super.health(),realMarketPipe=await this.state.storage.get('realMarketPipe')||null,coreStatsPipe=await this.state.storage.get('coreStatsPipe')||null;return{...base,engine:'CAR 3.4 REAL MARKET AUDIT',sourceMode:'GOALOO_STATS_PLUS_REAL_1XBET_AH',market:'AH',cron:'EVERY_2_MINUTES',realMarketPipe,coreStatsPipe};}
   async fetch(request){
     const url=new URL(request.url);
-    if(request.method==='GET'&&url.pathname==='/debug/source-status'){const latest=await this.live(),samples=(latest.matches||[]).filter(m=>m.realMarket?.status!=='WAITING').slice(0,12).map(m=>({id:m.sourceMatchId,home:m.home,away:m.away,minute:m.minute,score:m.score,realMarket:m.realMarket,asianHandicap:m.odds?.asianHandicap,engine:{side:m.engine?.side,line:m.engine?.line,odds:m.engine?.odds,decision:m.engine?.decision,streak:m.engine?.streak}}));return json({ok:true,engine:'CAR 3.4',generatedAt:new Date().toISOString(),realMarketPipe:await this.state.storage.get('realMarketPipe')||null,samples});}
+    if(request.method==='GET'&&url.pathname==='/debug/source-status'){const latest=await this.live(),samples=(latest.matches||[]).filter(m=>m.realMarket?.status!=='WAITING').slice(0,12).map(m=>({id:m.sourceMatchId,home:m.home,away:m.away,minute:m.minute,score:m.score,realMarket:m.realMarket,asianHandicap:m.odds?.asianHandicap,engine:{side:m.engine?.side,line:m.engine?.line,odds:m.engine?.odds,decision:m.engine?.decision,streak:m.engine?.streak,gates:m.engine?.gates,evidence:m.engine?.evidence}}));return json({ok:true,engine:'CAR 3.4',generatedAt:new Date().toISOString(),realMarketPipe:await this.state.storage.get('realMarketPipe')||null,samples});}
     return super.fetch(request);
   }
 }
