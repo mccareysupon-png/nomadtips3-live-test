@@ -96,6 +96,18 @@ export function createLockedSignal(match,activeEnvelope,config,lockedAt){
   };
 }
 
+export function summarizeApiFootballRecovery(matches=[],marketsByMatchId=new Map()){
+  const sourceStatus=(match,id)=>match.priceSources?.find(source=>source.id===id)?.status;
+  const recoveryCandidates=matches.filter(match=>match.detectionPassed&&sourceStatus(match,'source1')!=='PASS'&&sourceStatus(match,'source2')!=='PASS');
+  return {
+    ready:matches.filter(match=>sourceStatus(match,'source3')==='PASS').length,
+    recoveryCandidates:recoveryCandidates.length,
+    recoveredSignals:recoveryCandidates.filter(match=>match.state==='SIGNAL'&&match.selectedPrice?.id==='source3').length,
+    selected:matches.filter(match=>match.selectedPrice?.id==='source3').length,
+    bookmakerUnverified:matches.filter(match=>sourceStatus(match,'source3')==='PASS'&&marketsByMatchId.get(match.id)?.bookmakerVerified===false).length,
+  };
+}
+
 function priority(state){return {'SIGNAL':0,'NEAR SIGNAL':1,'WATCHING':2,'LIVE':3,'STALE':4}[state]??9;}
 async function sha256Hex(value){
   const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
@@ -270,7 +282,7 @@ export class EngineState {
     const activeEnvelope=await this.activateConfigForCycle(upcomingCycle);
     const config=engineConfig(activeEnvelope.config);
     const started=now();
-    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}},theOddsApi:{status:'IDLE',checked:0,mapped:0,ready:0},apiFootball:{status:'IDLE',checked:0,mapped:0,ready:0}},configVersion:activeEnvelope.version};
+    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}},theOddsApi:{status:'IDLE',checked:0,mapped:0,ready:0},apiFootball:{status:'IDLE',checked:0,eligible:0,fixtureMapped:0,mapped:0,ready:0,recoveryCandidates:0,recoveredSignals:0}},configVersion:activeEnvelope.version};
     try{
       const todayHtml=await getHtml(config.scanUrl,config,started); next.source.today=true;
       const watchMinuteFrom=Math.max(0,config.minuteFrom-(2*config.rollingWindowMinutes)-2);
@@ -304,13 +316,19 @@ export class EngineState {
       const source2FetchPromise=priceCandidates.length&&this.env.THE_ODDS_API_KEY
         ?fetchTheOddsApiLiveSoccer(this.env.THE_ODDS_API_KEY,started).then(value=>({value,error:null}),error=>({value:null,error}))
         :null;
-      const cachedApiFootballBet=priceCandidates.length&&this.env.API_FOOTBALL_KEY
-        ?await this.state.storage.get('apiFootballAsianHandicapBet')
-        :null;
+      const [cachedApiFootballBet,cachedApiFootballFixtures]=priceCandidates.length&&this.env.API_FOOTBALL_KEY
+        ?await Promise.all([
+          this.state.storage.get('apiFootballAsianHandicapBet'),
+          this.state.storage.get('apiFootballLiveFixtures'),
+        ])
+        :[null,null];
       const source3FetchPromise=priceCandidates.length&&this.env.API_FOOTBALL_KEY
         ?fetchApiFootballLiveAsianHandicaps(
           this.env.API_FOOTBALL_KEY,cachedApiFootballBet,9000,
           bet=>this.state.storage.put('apiFootballAsianHandicapBet',bet).catch(()=>{}),
+          cachedApiFootballFixtures,
+          fixtures=>this.state.storage.put('apiFootballLiveFixtures',fixtures).catch(()=>{}),
+          started,
         ).then(value=>({value,error:null}),error=>({value:null,error}))
         :null;
 
@@ -404,25 +422,29 @@ export class EngineState {
       const apiFootballMarketById=new Map();
       if(priceCandidates.length){
         if(!this.env.API_FOOTBALL_KEY){
-          next.source.apiFootball={status:'KEY_MISSING',checked:priceCandidates.length,mapped:0,ready:0,checkedAt:started};
+          next.source.apiFootball={status:'KEY_MISSING',checked:priceCandidates.length,eligible:eligible.length,fixtureMapped:0,mapped:0,ready:0,recoveryCandidates:0,recoveredSignals:0,checkedAt:started};
           for(const match of priceCandidates) apiFootballMarketById.set(match.id,apiFootballUnavailable('api_football_key_missing'));
         }else{
           try{
             const source3Fetch=await source3FetchPromise;
             if(source3Fetch.error) throw source3Fetch.error;
             const response=source3Fetch.value;
-            const built=buildApiFootballMarkets(priceCandidates,response.events,config,started,response.bet);
+            const built=buildApiFootballMarkets(priceCandidates,response.events,config,started,response.bet,response.fixtures);
             for(const item of built.results) apiFootballMarketById.set(item.matchId,item.market);
             if(!cachedApiFootballBet||Number(cachedApiFootballBet.id)!==Number(response.bet.id)){
               await this.state.storage.put('apiFootballAsianHandicapBet',response.bet);
             }
             next.source.apiFootball={
-              status:'READY',checked:priceCandidates.length,mapped:built.mapped,ready:0,events:response.events.length,
-              received:response.received,bet:response.bet,quota:response.quota,checkedAt:started,
+              status:'READY',checked:priceCandidates.length,eligible:eligible.length,fixtureMapped:built.fixtureMapped,mapped:built.mapped,ready:0,
+              recoveryCandidates:0,recoveredSignals:0,selected:0,bookmakerUnverified:0,
+              events:response.events.length,received:response.received,fixtures:response.fixturesReceived,
+              fixturesError:response.fixturesError,fixtureCache:response.fixtureCache,fixtureCacheAgeSeconds:response.fixtureCacheAgeSeconds,
+              pages:response.pages,requests:response.requests,
+              bet:response.bet,quota:response.quota,checkedAt:started,
             };
           }catch(error){
             const reason=`price_fetch_failed:${String(error?.message||error)}`;
-            next.source.apiFootball={status:'ERROR',checked:priceCandidates.length,mapped:0,ready:0,error:reason,checkedAt:started};
+            next.source.apiFootball={status:'ERROR',checked:priceCandidates.length,eligible:eligible.length,fixtureMapped:0,mapped:0,ready:0,recoveryCandidates:0,recoveredSignals:0,error:reason,checkedAt:started};
             for(const match of priceCandidates) apiFootballMarketById.set(match.id,apiFootballUnavailable(reason));
           }
         }
@@ -446,8 +468,10 @@ export class EngineState {
       if(next.source.theOddsApi.status==='READY'){
         next.source.theOddsApi.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source2')?.status==='PASS').length;
       }
+      const source3Summary=summarizeApiFootballRecovery(enriched,apiFootballMarketById);
+      next.source.apiFootball.recoveryCandidates=source3Summary.recoveryCandidates;
       if(next.source.apiFootball.status==='READY'){
-        next.source.apiFootball.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source3')?.status==='PASS').length;
+        Object.assign(next.source.apiFootball,source3Summary);
       }
 
       const signals=[...(previous.signals||[])];
@@ -488,4 +512,3 @@ export default {
     context.waitUntil(env.ENGINE.get(id).fetch('https://engine.local/cycle'));
   }
 };
-

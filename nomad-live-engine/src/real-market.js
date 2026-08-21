@@ -52,12 +52,12 @@ export function matchEvent(match,event){
   return {ok,confidence:Number(confidence.toFixed(4)),home:Number(home.toFixed(4)),away:Number(away.toFixed(4)),league:Number(league.toFixed(4)),kickoff:Number(kickoff.toFixed(4))};
 }
 
-export function mapMatchesToOddsEvents(matches=[],events=[]){
+export function mapMatchesToOddsEvents(matches=[],events=[],matcher=matchEvent){
   const unused=new Set(events.map((_,index)=>index)),mapped=[];
   for(const match of matches){
     let best=null;
     for(const index of unused){
-      const score=matchEvent(match,events[index]);
+      const score=matcher(match,events[index]);
       if(!score.ok) continue;
       if(!best||score.confidence>best.score.confidence) best={index,event:events[index],score};
     }
