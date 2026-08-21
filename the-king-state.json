@@ -1,17 +1,20 @@
 {
   "engine": "the-king-v9-manual-set2-goaloo",
   "status": "OK",
-  "last_selection_run": "2026-08-21T03:46:00Z",
+  "last_selection_run": "2026-08-21T04:02:15Z",
   "last_settlement_run": null,
   "selection_date": "2026-08-21",
   "fixtures_seen": 387,
-  "qualified": 0,
-  "pending": 0,
+  "qualified": 6,
+  "pending": 6,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "rejected": 387,
+  "rejected": 381,
   "rejection_reasons": {
     "GOALOO_FORM_SHORT": 26,
-    "MODEL_DATA_SHORT": 361
+    "WINNER_FIRST_GATE": 250,
+    "NO_GOALOO_1X2_ODDS": 18,
+    "ODDS_GATE": 4,
+    "DRAW_NOT_MAIN_PICK": 1
   },
   "rejection_samples": [
     {
@@ -21,16 +24,11 @@
       "away_n": 0
     },
     {
-      "match": "AC Carina vs North Brisbane",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 9,
-      "away_n": 10
-    },
-    {
       "match": "South Coast Flame FC vs Gladesville Ryde Magic",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 8,
-      "away_n": 10
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4356,
+      "edge": 0.0889,
+      "side": "home"
     },
     {
       "match": "Umrynjah SCC vs Tynring Sports Club",
@@ -52,9 +50,10 @@
     },
     {
       "match": "Rebel Kyiv vs Ahrobiznes TSK Romny",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 9,
-      "away_n": 6
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4221,
+      "edge": 0.1021,
+      "side": "home"
     },
     {
       "match": "Dzongri FC vs Boys Club",
@@ -64,36 +63,120 @@
     },
     {
       "match": "Green Gully Cavaliers vs St Albans Saints",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 10,
-      "away_n": 10
-    },
-    {
-      "match": "Calcutta Polica Club vs Peerless SC",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 6,
-      "away_n": 6
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.3668,
+      "edge": 0.0148,
+      "side": "away"
     },
     {
       "match": "Coal India vs Police AC",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 8,
-      "away_n": 6
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5001,
+      "edge": 0.2328,
+      "side": "home"
     },
     {
       "match": "Box Hill United SC vs Nunawading City",
-      "reason": "MODEL_DATA_SHORT",
-      "home_n": 10,
-      "away_n": 10
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.3679,
+      "edge": 0.0127,
+      "side": "home"
+    },
+    {
+      "match": "Kashiwa Reysol vs V-Varen Nagasaki",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5761,
+      "edge": 0.3414,
+      "side": "away"
+    },
+    {
+      "match": "KSPO FC (W) vs Seoul Amazones (W)",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5075,
+      "edge": 0.26,
+      "side": "away"
     }
   ],
-  "near_gate_top": [],
+  "near_gate_top": [
+    {
+      "match": "Banik Ostrava (W) vs Slavia Praha (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.9476,
+      "edge": 0.9046
+    },
+    {
+      "match": "ETSV Hamburg vs HEBC Hamburg",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.8444,
+      "edge": 0.7063
+    },
+    {
+      "match": "Pecsi MFC vs Sarbogard",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.8095,
+      "edge": 0.6564
+    },
+    {
+      "match": "Juventus (W) vs Como 2000 (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7988,
+      "edge": 0.6371
+    },
+    {
+      "match": "Uraedd FK vs Pors Grenland",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7837,
+      "edge": 0.6284
+    },
+    {
+      "match": "Bala Town F.C. vs Gresford",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7764,
+      "edge": 0.6256
+    },
+    {
+      "match": "Vortuna Bad Leonfelden vs OTSU Hallein",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7713,
+      "edge": 0.6195
+    },
+    {
+      "match": "Karbalaa vs Al Zawraa",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7259,
+      "edge": 0.5295
+    },
+    {
+      "match": "Progresso da Lunda Sul vs Petro Atletico de Luanda",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7237,
+      "edge": 0.4926
+    },
+    {
+      "match": "Austria Wien (W) vs Red Bull Salzburg (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7028,
+      "edge": 0.4619
+    },
+    {
+      "match": "Tanta vs Team FC Cairo",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.6877,
+      "edge": 0.4805
+    },
+    {
+      "match": "Ferrymead Bays vs Nelson Suburbs",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.657,
+      "edge": 0.4771
+    }
+  ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
     "odds_ok": true,
-    "index_rows": 515,
-    "odds_rows": 424,
+    "index_rows": 516,
+    "odds_rows": 425,
     "h2h_static_ok": 387,
     "h2h_browser_fallback": 0,
     "errors": []
