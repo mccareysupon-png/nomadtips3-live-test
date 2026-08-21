@@ -122,4 +122,3 @@ export function evaluate(match,config,market=null,observedAt=Date.now()){
     momentum:rolling.available?Math.round(rolling.homePressureShare):null,
   };
 }
-
