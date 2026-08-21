@@ -34,7 +34,8 @@ function matchRow(m){
   const side=(m.side||'').toUpperCase();
   const line=m.selectionLine ?? (m.side==='away'&&market?-market.line:market?.line);
   const odds=m.selectionOdds ?? (m.side==='away'?market?.awayOdds:market?.homeOdds);
-  return `<details class="match-wrap ${st}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
+  const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
+  return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
@@ -68,7 +69,9 @@ async function livePage(){
     try{
       const d=await get('/feed');
       if(metric[0])metric[0].textContent=d.counts?.live??0;if(metric[1])metric[1].textContent=d.counts?.watching??0;if(metric[2])metric[2].textContent=d.counts?.near??0;if(metric[3])metric[3].textContent=d.counts?.signal??0;
+      const openMatchIds=new Set([...list.querySelectorAll('.match-wrap[open]')].map(row=>row.dataset.matchId).filter(Boolean));
       list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class="note">Engine online · no monitored matches currently meet the watch window.</div>';
+      list.querySelectorAll('.match-wrap').forEach(row=>{if(openMatchIds.has(row.dataset.matchId))row.open=true;});
       const muted=document.querySelector('.panel-head .muted');if(muted)muted.textContent=`cycle ${d.cycle??0} · ${d.updatedAt?when(d.updatedAt):'waiting first cycle'}`;
       const note=document.querySelector('main > .note');if(note)note.textContent=d.lastError?`Engine source error: ${d.lastError}`:`Live engine connected · last update ${d.updatedAt?when(d.updatedAt):'pending'}.`;
       setSource(d.lastError?'LIVE DATA · SOURCE WAIT':'LIVE DATA · LIVE',!d.lastError);
