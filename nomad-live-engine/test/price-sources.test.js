@@ -308,4 +308,3 @@ test('SOURCE 2 bookmaker selection honors Settings before freshness',()=>{
   assert.equal(result.results[0].market.bookmaker,'Valid line');
   assert.equal(result.results[0].market.line,-.75);
 });
-
