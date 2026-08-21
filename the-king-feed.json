@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-21T11:46:05Z",
+  "updated_at": "2026-08-21T14:19:37Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8828,
       "edge": 78.0,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "source_url": "https://www.goaloo.com/football/australia-darwin-premier-league-garuda-fc-vs-darwin-olympics/h2h-3068588",
       "summary_url": "https://www.goaloo.com/football/australia-darwin-premier-league-garuda-fc-vs-darwin-olympics/summary-3068588",
       "model": {
@@ -403,6 +403,56 @@
       "confidence": 0.58,
       "ft": "3–0",
       "result": "LOSS"
+    },
+    {
+      "id": "ae91b7c1a628c25e",
+      "goaloo_id": "3068588",
+      "date": "2026-08-21",
+      "kickoff": "2026-08-21 11:00:00",
+      "league": "Australia Darwin Premier League",
+      "home": "Garuda FC",
+      "away": "Darwin Olympics",
+      "pick": "Garuda FC Win",
+      "side": "home",
+      "odds": 18.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8828,
+      "edge": 78.0,
+      "result": "LOSS",
+      "ft": "0-2",
+      "source_url": "https://www.goaloo.com/football/australia-darwin-premier-league-garuda-fc-vs-darwin-olympics/h2h-3068588",
+      "summary_url": "https://www.goaloo.com/football/australia-darwin-premier-league-garuda-fc-vs-darwin-olympics/summary-3068588",
+      "model": {
+        "lambda_home": 3.6,
+        "lambda_away": 0.979,
+        "home_win": 0.8828,
+        "draw": 0.1029,
+        "away_win": 0.0143,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8602,
+          "gd_edge": 0.997,
+          "clean_sheet_edge": 0.2244,
+          "failed_to_score_edge": 0.2976,
+          "bounded_adjustment": 0.0574,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
