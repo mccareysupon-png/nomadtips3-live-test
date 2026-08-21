@@ -5,6 +5,7 @@ let latestMatches=[];
 const num=value=>{const n=Number(value);return Number.isFinite(n)?n:null;};
 const fmtLine=value=>{const n=num(value);if(n===null)return'—';return `${n>0?'+':''}${Number.isInteger(n)?n:n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`;};
 const fmtOdds=value=>{const n=num(value);return n===null?'—':n.toFixed(2);};
+const liveAge=ah=>{const t=Date.parse(ah?.updatedAt||'');return Number.isFinite(t)?Math.max(0,Math.floor((Date.now()-t)/1000)):num(ah?.marketAgeSeconds);};
 const ageText=value=>{
   const n=num(value);
   if(n===null)return'updated —';
@@ -45,7 +46,7 @@ function decorate(match,card){
   const detectorSide=String(match?.engine?.side||'').toUpperCase();
   const detectorMeta=detectorLine!==null&&detectorOdds!==null?` · detector ${detectorSide||'SIDE'} ${fmtLine(detectorLine)} @ ${fmtOdds(detectorOdds)}`:'';
   strip.innerHTML=ready
-    ? `<small>AH NOW · ${provider}</small><strong>HOME ${fmtLine(line)} @ ${fmtOdds(home)} <span>· AWAY ${fmtLine(-line)} @ ${fmtOdds(away)}</span></strong><em>${ageText(ah.marketAgeSeconds)}${detectorMeta}</em>`
+    ? `<small>AH NOW · ${provider}</small><strong>HOME ${fmtLine(line)} @ ${fmtOdds(home)} <span>· AWAY ${fmtLine(-line)} @ ${fmtOdds(away)}</span></strong><em>${ageText(liveAge(ah))}${detectorMeta}</em>`
     : `<small>AH NOW · ${provider}</small><strong>${statusLabel(ah?.status)}</strong><em>Current live AH price is not available for this match.</em>`;
 }
 function decorateCurrent(){
