@@ -22,10 +22,17 @@ test('Bet365 Asian parser chooses inplay triple',()=>{
   assert.deepEqual(x,{homeOdds:1.8,line:-0.5,awayOdds:2,bookmaker:'Bet365'});
 });
 
-test('detector signals only when all eight checks pass',()=>{
+test('detector signals when the configured evidence count and other gates pass',()=>{
   const m={minute:70,score:{home:1,away:1},stats:{attacks:{home:120,away:80},dangerousAttack:{home:60,away:35},shotsOn:{home:6,away:2},shotsOff:{home:10,away:5},corners:{home:7,away:3},possession:{home:58,away:42}}};
   const d=evaluate(m,DEFAULT_CONFIG,{line:-.5,homeOdds:1.91,awayOdds:1.95});
-  assert.equal(d.side,'home'); assert.equal(d.state,'SIGNAL'); assert.equal(d.passed,8);
+  assert.equal(d.side,'home'); assert.equal(d.state,'SIGNAL'); assert.equal(d.passed,5); assert.equal(d.evidence.required,1); assert.ok(d.evidence.passedCount>=1);
+});
+
+test('evidence required accepts 1 2 3 or ALL',()=>{
+  for(const value of [1,2,3,'ALL']){
+    const r=validateEditableConfig({attackEvidenceEnabled:true,evidenceRequired:value});
+    assert.equal(r.ok,true); assert.equal(r.config.evidenceRequired,value);
+  }
 });
 
 test('runtime config accepts ALL for both scan limits',()=>{
