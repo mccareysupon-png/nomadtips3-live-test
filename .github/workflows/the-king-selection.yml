@@ -5,12 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/scripts/the_king_engine.py'
-      - '.github/scripts/the_king_engine_v2.py'
-      - '.github/scripts/the_king_engine_v3.py'
-      - '.github/scripts/the_king_engine_v4.py'
-      - '.github/scripts/the_king_engine_v5.py'
-      - '.github/scripts/the_king_engine_v6.py'
+      - '.github/scripts/the_king_engine_v7.py'
       - '.github/workflows/the-king-selection.yml'
       - '.github/workflows/the-king-settlement.yml'
   schedule:
@@ -26,7 +21,7 @@ concurrency:
 jobs:
   select:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,14 +32,14 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
       - name: Engine self-test
-        run: python3 .github/scripts/the_king_engine_v6.py self-test
+        run: python3 .github/scripts/the_king_engine_v7.py self-test
 
-      - name: Run 07:00 Thailand selection
+      - name: Run 07:00 Thailand selection — Goaloo primary
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          python3 .github/scripts/the_king_engine_v6.py select --date "$TARGET_DATE"
+          python3 .github/scripts/the_king_engine_v7.py select --date "$TARGET_DATE"
 
       - name: Publish The King feed and health state
         shell: bash
@@ -57,7 +52,7 @@ jobs:
             echo 'No The King selection-state change.'
             exit 0
           fi
-          git commit -m "The King 07:00 selection $(TZ=Asia/Bangkok date +%F)"
+          git commit -m "The King Goaloo 07:00 selection $(TZ=Asia/Bangkok date +%F)"
           for attempt in 1 2 3; do
             if git pull --rebase origin main && git push origin main; then exit 0; fi
             git rebase --abort 2>/dev/null || true
