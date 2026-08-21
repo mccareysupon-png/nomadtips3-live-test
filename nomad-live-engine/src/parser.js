@@ -176,12 +176,21 @@ export function parseLiveDetail(html){
   return {minute:st.minute,status:st.status,score:st.score,attacks,dangerousAttack,shotsOn,shotsOff,corners:st.corners,possession,rawText:text.slice(0,4000)};
 }
 
+function normalizeAsianLine(raw){
+  const parts=String(raw).split(',').map(x=>Number(x.trim()));
+  if(!parts.length||parts.some(x=>!Number.isFinite(x))) return null;
+  const line=parts.reduce((a,b)=>a+b,0)/parts.length;
+  if(line < -4||line > 4||Math.abs(line*4-Math.round(line*4))>=1e-9) return null;
+  return line;
+}
 function numericTriples(segment){
-  const re=/(\d+(?:\.\d+)?)\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s+(\d+(?:\.\d+)?)/g;
+  const number='[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)';
+  const line=`${number}(?:\\s*,\\s*${number})?`;
+  const re=new RegExp(`(\\d+(?:\\.\\d+)?)\\s+(${line})\\s+(\\d+(?:\\.\\d+)?)`,'g');
   const out=[]; let m;
   while((m=re.exec(segment))){
-    const h=Number(m[1]), line=Number(m[2]), a=Number(m[3]);
-    if(h>=1.01&&h<=6 && a>=1.01&&a<=6 && line>=-4&&line<=4 && Math.abs(line*4-Math.round(line*4))<1e-9) out.push({homeOdds:h,line,awayOdds:a,index:m.index});
+    const h=Number(m[1]), normalizedLine=normalizeAsianLine(m[2]), a=Number(m[3]);
+    if(h>=1.01&&h<=6 && a>=1.01&&a<=6 && normalizedLine!=null) out.push({homeOdds:h,line:normalizedLine,awayOdds:a,index:m.index});
   }
   return out;
 }
