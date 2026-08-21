@@ -308,7 +308,10 @@ export class EngineState {
         ?await this.state.storage.get('apiFootballAsianHandicapBet')
         :null;
       const source3FetchPromise=priceCandidates.length&&this.env.API_FOOTBALL_KEY
-        ?fetchApiFootballLiveAsianHandicaps(this.env.API_FOOTBALL_KEY,cachedApiFootballBet).then(value=>({value,error:null}),error=>({value:null,error}))
+        ?fetchApiFootballLiveAsianHandicaps(
+          this.env.API_FOOTBALL_KEY,cachedApiFootballBet,9000,
+          bet=>this.state.storage.put('apiFootballAsianHandicapBet',bet).catch(()=>{}),
+        ).then(value=>({value,error:null}),error=>({value:null,error}))
         :null;
 
       if(priceCandidates.length){

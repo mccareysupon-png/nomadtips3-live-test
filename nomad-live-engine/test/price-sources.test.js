@@ -60,6 +60,27 @@ test('API-Football resolves the live AH bet once, then uses one filtered odds re
   }finally{globalThis.fetch=originalFetch;}
 });
 
+test('API-Football caches the resolved live AH bet before a rate-limited price request',async()=>{
+  const originalFetch=globalThis.fetch,calls=[];
+  let cachedBet=null;
+  globalThis.fetch=async url=>{
+    calls.push(String(url));
+    if(String(url).includes('/odds/live/bets')){
+      return Response.json({errors:[],response:[{id:22,name:'Asian Handicap'}]});
+    }
+    return Response.json({errors:{rateLimit:'Too many requests per minute'},response:[]});
+  };
+  try{
+    await assert.rejects(
+      fetchApiFootballLiveAsianHandicaps('test-key',null,9000,async bet=>{cachedBet=bet;}),
+      /API_FOOTBALL_ERRORS:rateLimit/,
+    );
+    assert.deepEqual(cachedBet,{id:22,name:'Asian Handicap'});
+    assert.equal(calls.filter(url=>url.includes('/odds/live/bets')).length,1);
+    assert.equal(calls.filter(url=>url.includes('/odds/live?bet=22')).length,1);
+  }finally{globalThis.fetch=originalFetch;}
+});
+
 test('API-Football keeps HOME line, both odds and timestamp from one live market',()=>{
   const event={
     fixture:{id:123,date:'2026-08-21T09:30:00Z'},league:{name:'Example League'},
