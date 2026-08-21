@@ -1,5 +1,6 @@
 const DEFAULT_WORKER='https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev';
 let workerUrl=DEFAULT_WORKER;
+let latestMatches=[];
 
 const num=value=>{const n=Number(value);return Number.isFinite(n)?n:null;};
 const fmtLine=value=>{const n=num(value);if(n===null)return'—';return `${n>0?'+':''}${Number.isInteger(n)?n:n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`;};
@@ -47,6 +48,12 @@ function decorate(match,card){
     ? `<small>AH NOW · ${provider}</small><strong>HOME ${fmtLine(line)} @ ${fmtOdds(home)} <span>· AWAY ${fmtLine(-line)} @ ${fmtOdds(away)}</span></strong><em>${ageText(ah.marketAgeSeconds)}${detectorMeta}</em>`
     : `<small>AH NOW · ${provider}</small><strong>${statusLabel(ah?.status)}</strong><em>Current live AH price is not available for this match.</em>`;
 }
+function decorateCurrent(){
+  const holder=document.querySelector('#candidateCards');
+  if(!holder)return;
+  const cards=[...holder.querySelectorAll('.match-card')];
+  latestMatches.forEach((match,index)=>{if(cards[index])decorate(match,cards[index]);});
+}
 async function loadRuntime(){
   try{
     const response=await fetch('./runtime.json',{cache:'no-store'});
@@ -57,18 +64,15 @@ async function loadRuntime(){
   }catch{}
 }
 async function refresh(){
-  const holder=document.querySelector('#candidateCards');
-  if(!holder)return;
   try{
     const response=await fetch(`${workerUrl}/live`,{cache:'no-store'});
     if(!response.ok)return;
     const payload=await response.json();
-    const matches=(Array.isArray(payload?.matches)?payload.matches:[])
+    latestMatches=(Array.isArray(payload?.matches)?payload.matches:[])
       .filter(visible)
       .sort((a,b)=>rank(b)-rank(a)||(num(b?.engine?.momentum)||0)-(num(a?.engine?.momentum)||0))
       .slice(0,16);
-    const cards=[...holder.querySelectorAll('.match-card')];
-    matches.forEach((match,index)=>{if(cards[index])decorate(match,cards[index]);});
+    decorateCurrent();
   }catch{}
 }
 const style=document.createElement('style');
@@ -81,6 +85,8 @@ style.textContent=`
 @media(max-width:700px){.ah-now-strip{margin:0 10px 8px;padding:7px 8px}.ah-now-strip strong{font-size:10px}}
 `;
 document.head.append(style);
+const holder=document.querySelector('#candidateCards');
+if(holder)new MutationObserver(()=>decorateCurrent()).observe(holder,{childList:true});
 await loadRuntime();
 await refresh();
 setInterval(refresh,15000);
