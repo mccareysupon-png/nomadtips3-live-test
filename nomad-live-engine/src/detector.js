@@ -111,7 +111,7 @@ export function evaluate(match,config,market=null,observedAt=Date.now()){
     evidence:evidence.passed,
   };
   const detectionPassed=Object.values(checks).every(Boolean);
-  const marketCheck=detectionPassed?assessHomeMarket(market,config,observedAt):{status:'AH WAIT',passed:false,reason:'detection_not_ready',ageSeconds:null};
+  const marketCheck=market?assessHomeMarket(market,config,observedAt):{status:'AH CHECKING',passed:false,reason:'waiting_price_check',ageSeconds:null};
   const allChecks={...checks,market:marketCheck.passed};
   const state=detectionPassed?(marketCheck.passed?'SIGNAL':'NEAR SIGNAL'):'WATCHING';
   return {
