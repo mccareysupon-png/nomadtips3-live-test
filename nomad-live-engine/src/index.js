@@ -9,7 +9,7 @@ import {fetchLiveEvents,fetchMultiOdds,mapMatchesToOddsEvents,parseAsianHandicap
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const SETTINGS_KEY_SHA256='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
 const REAL_BOOKMAKER='1xbet';
-const ODDS_BATCH_LIMIT=10;
+const ODDS_BATCH_SIZE=10;
 const j=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:JSON_HEADERS});
 const now=()=>Date.now();
 const iso=value=>value==null?null:new Date(value).toISOString();
@@ -247,7 +247,7 @@ export class EngineState {
     const activeEnvelope=await this.activateConfigForCycle(upcomingCycle);
     const config=engineConfig(activeEnvelope.config);
     const started=now();
-    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',eligible:0,mapped:0,ready:0}},configVersion:activeEnvelope.version};
+    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0}},configVersion:activeEnvelope.version};
     try{
       const todayHtml=await getHtml(config.scanUrl,config,started); next.source.today=true;
       const watchMinuteFrom=Math.max(0,config.minuteFrom-(2*config.rollingWindowMinutes)-2);
@@ -273,20 +273,27 @@ export class EngineState {
       }));
 
       const eligible=baseMatches.filter(match=>match.detectionPassed&&!match.freshness?.sourceStale);
+      const priceCandidates=baseMatches.filter(match=>!match.freshness?.sourceStale);
       next.source.oddsApi.eligible=eligible.length;
+      next.source.oddsApi.checked=priceCandidates.length;
       const marketById=new Map();
 
-      if(eligible.length){
+      if(priceCandidates.length){
         if(!this.env.ODDS_API_KEY){
           next.source.oddsApi.status='KEY_MISSING';
-          for(const match of eligible) marketById.set(match.id,{status:'ODDS NOT READY',reason:'odds_api_key_missing',source:'Odds-API.io',bookmaker:'1xBet'});
+          for(const match of priceCandidates) marketById.set(match.id,{status:'ODDS NOT READY',reason:'odds_api_key_missing',source:'Odds-API.io',bookmaker:'1xBet'});
         }else{
           try{
             const events=await fetchLiveEvents(this.env.ODDS_API_KEY,REAL_BOOKMAKER);
-            const mapped=mapMatchesToOddsEvents(eligible,events);
-            const selected=mapped.filter(item=>item.event).slice(0,ODDS_BATCH_LIMIT);
+            const mapped=mapMatchesToOddsEvents(priceCandidates,events);
+            const selected=mapped.filter(item=>item.event);
             const selectedIds=new Set(selected.map(item=>String(item.event.id)));
-            const payloads=await fetchMultiOdds(this.env.ODDS_API_KEY,[...selectedIds],REAL_BOOKMAKER);
+            const eventIds=[...selectedIds];
+            const payloads=[];
+            for(let i=0;i<eventIds.length;i+=ODDS_BATCH_SIZE){
+              const batch=await fetchMultiOdds(this.env.ODDS_API_KEY,eventIds.slice(i,i+ODDS_BATCH_SIZE),REAL_BOOKMAKER);
+              payloads.push(...batch);
+            }
             const oddsById=new Map(payloads.map(payload=>[String(payload?.id),payload]));
             let mappedCount=0,readyCount=0;
 
@@ -298,10 +305,6 @@ export class EngineState {
               }
               mappedCount++;
               const eventId=String(item.event.id);
-              if(!selectedIds.has(eventId)){
-                marketById.set(match.id,{status:'ODDS NOT READY',reason:'odds_api_batch_limit',source:'Odds-API.io',bookmaker:'1xBet',eventId,mappingConfidence:item.matchConfidence});
-                continue;
-              }
               const payload=oddsById.get(eventId);
               const preference={
                 allowedLines:config.allowedLinesMode==='SELECTED'?config.allowedSelectionLines:[],
@@ -324,17 +327,17 @@ export class EngineState {
               });
               readyCount++;
             }
-            next.source.oddsApi={status:'READY',eligible:eligible.length,mapped:mappedCount,ready:readyCount,events:events.length,checkedAt:started};
+            next.source.oddsApi={status:'READY',checked:priceCandidates.length,eligible:eligible.length,mapped:mappedCount,ready:readyCount,events:events.length,checkedAt:started};
           }catch(error){
             const reason=`price_fetch_failed:${String(error?.message||error)}`;
-            next.source.oddsApi={status:'ERROR',eligible:eligible.length,mapped:0,ready:0,error:reason,checkedAt:started};
-            for(const match of eligible) marketById.set(match.id,{status:'ODDS NOT READY',reason,source:'Odds-API.io',bookmaker:'1xBet'});
+            next.source.oddsApi={status:'ERROR',checked:priceCandidates.length,eligible:eligible.length,mapped:0,ready:0,error:reason,checkedAt:started};
+            for(const match of priceCandidates) marketById.set(match.id,{status:'ODDS NOT READY',reason,source:'Odds-API.io',bookmaker:'1xBet'});
           }
         }
       }
 
       const enriched=baseMatches.map(match=>{
-        if(!match.detectionPassed||match.freshness?.sourceStale) return match;
+        if(match.freshness?.sourceStale) return match;
         const market=marketById.get(match.id)||{status:'ODDS NOT READY',reason:'price_not_checked',source:'Odds-API.io',bookmaker:'1xBet'};
         const base={...match,market,freshness:{...match.freshness,oddsAt:market.status==='AH READY'?market.sourceUpdatedAt:null}};
         return {...base,...evaluate(base,config,market,started)};
