@@ -9,6 +9,7 @@ on:
       - '.github/scripts/the_king_engine_v2.py'
       - '.github/scripts/the_king_engine_v3.py'
       - '.github/scripts/the_king_engine_v4.py'
+      - '.github/scripts/the_king_engine_v5.py'
       - '.github/workflows/the-king-selection.yml'
       - '.github/workflows/the-king-settlement.yml'
   schedule:
@@ -35,14 +36,14 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4
 
       - name: Engine self-test
-        run: python3 .github/scripts/the_king_engine_v4.py self-test
+        run: python3 .github/scripts/the_king_engine_v5.py self-test
 
       - name: Run 07:00 Thailand selection
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          python3 .github/scripts/the_king_engine_v4.py select --date "$TARGET_DATE"
+          python3 .github/scripts/the_king_engine_v5.py select --date "$TARGET_DATE"
 
       - name: Publish The King feed and health state
         shell: bash
