@@ -15,7 +15,7 @@ concurrency:
 jobs:
   settle:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -26,10 +26,10 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
       - name: Engine self-test
-        run: python3 .github/scripts/the_king_engine_v7.py self-test
+        run: python3 .github/scripts/the_king_engine_v8.py self-test
 
-      - name: Settle verified pending picks — Goaloo primary
-        run: python3 .github/scripts/the_king_engine_v7.py settle
+      - name: Settle verified pending picks — Goaloo direct index
+        run: python3 .github/scripts/the_king_engine_v8.py settle
 
       - name: Publish verified results
         shell: bash
@@ -42,7 +42,7 @@ jobs:
             echo 'No The King settlement change.'
             exit 0
           fi
-          git commit -m "The King Goaloo settlement $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git commit -m "The King Goaloo direct settlement $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3; do
             if git pull --rebase origin main && git push origin main; then exit 0; fi
             git rebase --abort 2>/dev/null || true
