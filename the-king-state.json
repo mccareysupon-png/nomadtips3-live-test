@@ -1,20 +1,100 @@
 {
-  "engine": "the-king-v7-goaloo",
-  "status": "SOURCE_EMPTY",
-  "last_selection_run": "2026-08-21T03:24:37Z",
+  "engine": "the-king-v8-goaloo-direct",
+  "status": "OK",
+  "last_selection_run": "2026-08-21T03:32:25Z",
   "last_settlement_run": null,
   "selection_date": "2026-08-21",
-  "fixtures_seen": 0,
+  "fixtures_seen": 387,
   "qualified": 0,
   "pending": 0,
-  "primary_source": "Goaloo",
-  "rejected": 0,
-  "rejection_reasons": {},
-  "rejection_samples": [],
+  "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
+  "rejected": 387,
+  "rejection_reasons": {
+    "GOALOO_FORM_SHORT": 32,
+    "MODEL_GATE": 355
+  },
+  "rejection_samples": [
+    {
+      "match": "Brotherhood FC vs Northerners FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 0
+    },
+    {
+      "match": "AC Carina vs North Brisbane",
+      "reason": "MODEL_GATE",
+      "home_n": 9,
+      "away_n": 10
+    },
+    {
+      "match": "South Coast Flame FC vs Gladesville Ryde Magic",
+      "reason": "MODEL_GATE",
+      "home_n": 8,
+      "away_n": 10
+    },
+    {
+      "match": "Umrynjah SCC vs Tynring Sports Club",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 1,
+      "away_n": 3
+    },
+    {
+      "match": "Sohiong United vs Jongksha SC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 3
+    },
+    {
+      "match": "Bratslav Vinnytsia vs PFC Oleksandria",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 7
+    },
+    {
+      "match": "Rebel Kyiv vs Ahrobiznes TSK Romny",
+      "reason": "MODEL_GATE",
+      "home_n": 9,
+      "away_n": 6
+    },
+    {
+      "match": "Dzongri FC vs Boys Club",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 1,
+      "away_n": 7
+    },
+    {
+      "match": "Green Gully Cavaliers vs St Albans Saints",
+      "reason": "MODEL_GATE",
+      "home_n": 10,
+      "away_n": 10
+    },
+    {
+      "match": "Calcutta Polica Club vs Peerless SC",
+      "reason": "MODEL_GATE",
+      "home_n": 6,
+      "away_n": 6
+    },
+    {
+      "match": "Coal India vs Police AC",
+      "reason": "MODEL_GATE",
+      "home_n": 8,
+      "away_n": 6
+    },
+    {
+      "match": "Box Hill United SC vs Nunawading City",
+      "reason": "MODEL_GATE",
+      "home_n": 10,
+      "away_n": 10
+    }
+  ],
   "source_health": {
-    "goaloo_renders": 1,
-    "goaloo_errors": 0,
-    "goaloo_fixture_links": 0,
-    "goaloo_h2h_pages": 0
+    "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
+    "index_ok": true,
+    "odds_ok": true,
+    "index_rows": 515,
+    "odds_rows": 424,
+    "h2h_static_ok": 387,
+    "h2h_browser_fallback": 0,
+    "errors": []
   }
 }
