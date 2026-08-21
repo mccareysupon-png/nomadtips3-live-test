@@ -9,14 +9,15 @@ const j=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:JSO
 const now=()=>Date.now();
 const iso=t=>new Date(t).toISOString();
 const safePair=p=>({home:Number.isFinite(p?.home)?p.home:null,away:Number.isFinite(p?.away)?p.away:null});
+const sourceRequestUrl=(url,token=now())=>{const u=new URL(url);u.searchParams.set('_nomad_cycle',String(token));return u.toString();};
 const timeoutFetch=async(url,ms)=>{
   const ac=new AbortController(); const timer=setTimeout(()=>ac.abort(),ms);
   try{
-    return await fetch(url,{signal:ac.signal,headers:{'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36','accept':'text/html,application/xhtml+xml','accept-language':'en-US,en;q=0.9','cache-control':'no-cache'}});
+    return await fetch(url,{signal:ac.signal,cache:'no-store',headers:{'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36','accept':'text/html,application/xhtml+xml','accept-language':'en-US,en;q=0.9','cache-control':'no-cache, no-store','pragma':'no-cache'}});
   } finally {clearTimeout(timer)}
 };
-async function getHtml(url,config){
-  const r=await timeoutFetch(url,config.requestTimeoutMs);
+async function getHtml(url,config,token=now()){
+  const r=await timeoutFetch(sourceRequestUrl(url,token),config.requestTimeoutMs);
   if(!r.ok) throw new Error(`source_http_${r.status}`);
   const text=await r.text();
   if(text.length<500) throw new Error('source_body_too_small');
@@ -24,6 +25,14 @@ async function getHtml(url,config){
 }
 function mergePair(primary,fallback){
   return {home:Number.isFinite(primary?.home)?primary.home:(Number.isFinite(fallback?.home)?fallback.home:null),away:Number.isFinite(primary?.away)?primary.away:(Number.isFinite(fallback?.away)?fallback.away:null)};
+}
+const sourceFingerprint=match=>JSON.stringify({minute:match.minute,score:match.score,stats:match.stats});
+export function trackSourceFreshness(match,previous,observedAt,staleAfterMs){
+  const fingerprint=sourceFingerprint(match);
+  const previousFreshness=previous?.freshness||{};
+  const unchanged=previousFreshness.sourceFingerprint===fingerprint;
+  const sourceChangedAt=unchanged&&Number.isFinite(previousFreshness.sourceChangedAt)?previousFreshness.sourceChangedAt:observedAt;
+  return {...match,freshness:{...match.freshness,sourceFingerprint:fingerprint,sourceChangedAt,sourceStale:observedAt-sourceChangedAt>staleAfterMs}};
 }
 function priority(s){return {'SIGNAL':0,'NEAR SIGNAL':1,'WATCHING':2,'LIVE':3}[s]??9}
 async function sha256Hex(value){
@@ -99,8 +108,9 @@ export class EngineState {
   }
   feed(s){
     const counts={live:0,watching:0,near:0,signal:0};
-    for(const m of s.matches){counts.live++; if(m.state==='WATCHING')counts.watching++; if(m.state==='NEAR SIGNAL')counts.near++; if(m.state==='SIGNAL')counts.signal++;}
-    return {ok:!s.lastError,updatedAt:s.lastSuccess?iso(s.lastSuccess):null,cycle:s.cycle||0,counts,matches:[...s.matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.momentum||0)-(a.momentum||0))),lastError:s.lastError};
+    const matches=(s.matches||[]).filter(m=>!m.freshness?.sourceStale);
+    for(const m of matches){counts.live++; if(m.state==='WATCHING')counts.watching++; if(m.state==='NEAR SIGNAL')counts.near++; if(m.state==='SIGNAL')counts.signal++;}
+    return {ok:!s.lastError,updatedAt:s.lastSuccess?iso(s.lastSuccess):null,cycle:s.cycle||0,counts,matches:[...matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.momentum||0)-(a.momentum||0))),lastError:s.lastError};
   }
   statistics(s){
     const settled=s.signals.filter(x=>x.settlement);
@@ -112,7 +122,8 @@ export class EngineState {
     return {updatedAt:s.lastSuccess?iso(s.lastSuccess):null,totalSignals:s.signals.length,settled:settled.length,wins,losses,pushes,winRate:settled.length?wins/settled.length*100:0,avgOdds,profit,roi:settled.length?profit/settled.length*100:0,records:[...s.signals].sort((a,b)=>b.lockedAt-a.lockedAt).slice(0,200)};
   }
   health(s,config=DEFAULT_CONFIG){
-    const matches=s.matches||[];
+    const allMatches=s.matches||[];
+    const matches=allMatches.filter(x=>!x.freshness?.sourceStale);
     const counts={
       matches:matches.length,
       watching:matches.filter(x=>x.state==='WATCHING').length,
@@ -122,6 +133,7 @@ export class EngineState {
       signals:s.signals?.length||0,
       pendingSignals:(s.signals||[]).filter(x=>!x.settlement).length,
       settledSignals:(s.signals||[]).filter(x=>x.settlement).length,
+      stale:allMatches.length-matches.length,
     };
     return {ok:!s.lastError,lastCycle:s.lastCycle?iso(s.lastCycle):null,lastSuccess:s.lastSuccess?iso(s.lastSuccess):null,lastError:s.lastError,cycle:s.cycle||0,source:s.source||{},counts,config:{minute:`${config.minuteFrom}-${config.minuteTo}`,maxScoreDifference:config.maxScoreDifference,momentumMinimum:config.momentumMinimum,odds:`${config.oddsMinimum}-${config.oddsMaximum}`,watchLimit:config.maxWatchMatches===0?'ALL':config.maxWatchMatches,oddsCheckLimit:config.maxNearOddsMatches===0?'ALL':config.maxNearOddsMatches,freshnessSec:Math.round(config.staleAfterMs/1000),pollSec:Math.round(config.cycleEveryMs/1000)}};
   }
@@ -135,10 +147,12 @@ export class EngineState {
       rows=rows.filter(m=>Number.isFinite(m.minute)&&m.minute>=config.watchMinuteFrom&&m.minute<=config.watchMinuteTo&&m.score.home!=null&&m.score.away!=null);
       if(config.maxWatchMatches>0) rows=rows.slice(0,config.maxWatchMatches);
       let oddsBudget=config.maxNearOddsMatches>0?config.maxNearOddsMatches:Infinity;
+      const previousMatches=new Map((prev.matches||[]).map(x=>[x.id,x]));
       const enriched=await Promise.all(rows.map(async m=>{
         let live={}; let liveOk=false;
-        try{live=parseLiveDetail(await getHtml(m.urls.stats,config));liveOk=true;}catch{
-          try{live=parseLiveDetail(await getHtml(m.urls.live,config));liveOk=true;}catch{}
+        try{const parsed=parseLiveDetail(await getHtml(m.urls.stats,config,started));if(parsed.valid){live=parsed;liveOk=true;}}catch{}
+        if(!liveOk){
+          try{const parsed=parseLiveDetail(await getHtml(m.urls.live,config,started));if(parsed.valid){live=parsed;liveOk=true;}}catch{}
         }
         const stats={
           attacks:mergePair(live.attacks,m.attack),
@@ -150,7 +164,8 @@ export class EngineState {
         };
         const score=(live.score?.home!=null&&live.score?.away!=null)?live.score:m.score;
         const minute=Number.isFinite(live.minute)?live.minute:m.minute;
-        const base={id:m.id,league:m.league,home:m.home,away:m.away,minute,score,stats,urls:m.urls,freshness:{todayAt:started,liveAt:liveOk?started:null,oddsAt:null},market:null};
+        const base=trackSourceFreshness({id:m.id,league:m.league,home:m.home,away:m.away,minute,score,stats,urls:m.urls,freshness:{todayAt:started,liveAt:liveOk?started:null,oddsAt:null},market:null},previousMatches.get(m.id),started,config.staleAfterMs);
+        if(base.freshness.sourceStale) return {...base,state:'STALE',side:null,momentum:null,checks:{},passed:0,total:8};
         let d=evaluate(base,config,null);
         if(d.state==='NEAR SIGNAL'&&oddsBudget>0){
           if(Number.isFinite(oddsBudget)) oddsBudget--;
@@ -163,7 +178,7 @@ export class EngineState {
       }));
       const signalMap=new Map((prev.signals||[]).map(x=>[x.matchId,x]));
       for(const m of enriched){
-        if(m.state!=='SIGNAL'||signalMap.has(m.id)) continue;
+        if(m.freshness?.sourceStale||m.state!=='SIGNAL'||signalMap.has(m.id)) continue;
         signalMap.set(m.id,{matchId:m.id,league:m.league,home:m.home,away:m.away,selection:m.side,line:m.selectionLine,odds:m.selectionOdds,bookmaker:'Bet365',minute:m.minute,entryScore:m.score,stats:m.stats,momentum:m.momentum,lockedAt:started,sourceUpdatedAt:started,settlement:null,detectorConfig:editableConfig(config)});
       }
       try{
