@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 concurrency:
-  group: the-king-settlement-wheel
-  cancel-in-progress: false
+  group: the-king-settlement-wheel-v9
+  cancel-in-progress: true
 
 jobs:
   settle:
@@ -26,10 +26,10 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
       - name: Engine self-test
-        run: python3 .github/scripts/the_king_engine_v8.py self-test
+        run: python3 .github/scripts/the_king_engine_v9.py self-test
 
       - name: Settle verified pending picks — Goaloo direct index
-        run: python3 .github/scripts/the_king_engine_v8.py settle
+        run: python3 .github/scripts/the_king_engine_v9.py settle
 
       - name: Publish verified results
         shell: bash
@@ -42,7 +42,7 @@ jobs:
             echo 'No The King settlement change.'
             exit 0
           fi
-          git commit -m "The King Goaloo direct settlement $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git commit -m "The King Goaloo Manual Set2 settlement $(date -u +%Y-%m-%dT%H:%M:%SZ)"
           for attempt in 1 2 3; do
             if git pull --rebase origin main && git push origin main; then exit 0; fi
             git rebase --abort 2>/dev/null || true
