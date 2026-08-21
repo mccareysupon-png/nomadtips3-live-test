@@ -1,8 +1,8 @@
 {
-  // Redeploy marker 2026-08-21: publish CAR 3.4 evidence-baseline and configured AH-line fixes.
+  // CAR 3.4 Goaloo-only data path: Goaloo live/stats + Goaloo bookmaker AH.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-car34-real-market-audit",
-  "main": "src/main-v3.js",
+  "main": "src/goaloo-only-main.js",
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
   "triggers": { "crons": ["*/2 * * * *"] },
@@ -17,6 +17,7 @@
   "vars": {
     "GOALOO_HOME": "https://free.goaloo188.com/free/freesoccer?f=ft1",
     "GOALOO_MOBILE": "https://live2.goaloo28.com/?half=0",
+    "GOALOO_BOOKMAKER_COMPANY_ID": "50",
     "MAX_MATCHES_PER_CYCLE": "24",
     "FETCH_CONCURRENCY": "3",
     "SOURCE_REFRESH_SECONDS": "60",
