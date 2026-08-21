@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-21T15:59:35Z",
+  "updated_at": "2026-08-21T17:51:37Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -16,8 +16,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.9334,
       "edge": 87.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-2",
       "source_url": "https://www.goaloo.com/football/finland-kolmonen-mps-helsinki-vs-espa/h2h-3068715",
       "summary_url": "https://www.goaloo.com/football/finland-kolmonen-mps-helsinki-vs-espa/summary-3068715",
       "model": {
@@ -451,6 +451,56 @@
         "home_recent": 9,
         "away_recent": 10,
         "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "1878ebb71e8cd71e",
+      "goaloo_id": "3068715",
+      "date": "2026-08-21",
+      "kickoff": "2026-08-21 16:00:00",
+      "league": "Finland Kolmonen",
+      "home": "MPS Helsinki",
+      "away": "EsPa",
+      "pick": "MPS Helsinki Win",
+      "side": "home",
+      "odds": 8.3,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9334,
+      "edge": 87.6,
+      "result": "LOSS",
+      "ft": "2-2",
+      "source_url": "https://www.goaloo.com/football/finland-kolmonen-mps-helsinki-vs-espa/h2h-3068715",
+      "summary_url": "https://www.goaloo.com/football/finland-kolmonen-mps-helsinki-vs-espa/summary-3068715",
+      "model": {
+        "lambda_home": 3.571,
+        "lambda_away": 0.369,
+        "home_win": 0.9334,
+        "draw": 0.0572,
+        "away_win": 0.0094,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8976,
+          "gd_edge": 0.9844,
+          "clean_sheet_edge": 0.722,
+          "failed_to_score_edge": 0.6878,
+          "bounded_adjustment": 0.0665,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
       }
     }
