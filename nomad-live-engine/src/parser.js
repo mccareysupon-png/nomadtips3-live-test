@@ -48,19 +48,32 @@ function getMatchLink(row, kind='live'){
 }
 function teamNamesFromAnchors(row){
   const a=anchors(row).filter(x=>/\/team\/view\/\d+/i.test(x.href) && x.text);
-  return a.slice(0,2).map(x=>x.text.replace(/^\d+\s+/,'').replace(/\s+\d+(?:\s+\d+)?$/,'').trim());
+  return a.slice(0,2).map(x=>x.text.trim());
 }
 function leagueFromAnchors(row){
   const a=anchors(row).find(x=>/\/league\//i.test(x.href) && x.text);
   return a?.text || null;
 }
-function parseMinute(cellsText, rowText){
-  const candidates=[...cellsText, rowText];
-  for(const t of candidates){
-    if(/\d{1,2}:\d{2}/.test(String(t))) continue;
-    const m=String(t).match(/(?:^|\s)(\d{1,3})(?:'|′)?(?:\s|$)/);
-    if(m){ const v=Number(m[1]); if(v>=1&&v<=130) return v; }
-    if(/half/i.test(t)) return 45;
+function statusCellText(row){
+  const statusCell=row.match(/<td\b[^>]*class=["'][^"']*\bmatch_status\b[^"']*["'][^>]*>([\s\S]*?)<\/td>/i);
+  return statusCell?normSpace(statusCell[1]):null;
+}
+function minuteValue(text,{allowBare=false}={}){
+  const value=String(text??'').trim();
+  if(!value) return null;
+  if(/^(?:half(?:\s*time)?|ht|break)$/i.test(value)) return 45;
+  const marked=value.match(/(?:^|\s)(\d{1,3})\s*(?:'|′|min(?:ute)?s?)(?:\s|$)/i);
+  const bare=allowBare&&/^\d{1,3}$/.test(value)?value.match(/\d{1,3}/):null;
+  const m=marked||bare;
+  if(m){ const v=Number(m[1]??m[0]); if(v>=0&&v<=130) return v; }
+  return null;
+}
+function parseMinute(cellsText,row){
+  const status=statusCellText(row);
+  if(status!=null) return minuteValue(status,{allowBare:true});
+  for(const text of cellsText){
+    const minute=minuteValue(text,{allowBare:true});
+    if(minute!=null) return minute;
   }
   return null;
 }
@@ -115,7 +128,7 @@ export function parseToday(html, sourceHost='https://www.totalcorner.com'){
     const score=parseScoreFromCells(c);
     const corner=parseCornerFromCells(c,score);
     const ad=parseAttackDangerousFromCells(c);
-    const minute=parseMinute(c,rowText);
+    const minute=parseMinute(c,row);
     const league=leagueFromAnchors(row);
     const slug=ref.slug || (odds?.slug||'');
     const names=teams.length===2?teams:(slug.split('-vs-').map(s=>s.replace(/-/g,' ').replace(/\b\w/g,ch=>ch.toUpperCase())));
@@ -173,7 +186,8 @@ export function parseLiveDetail(html){
   const shotsOn=findMetricPair(text,['Shoot on target','Shots on Target','Shot on Target']);
   const shotsOff=findMetricPair(text,['Shoot off target','Shots off Target','Shot off Target']);
   const possession=findMetricPair(text,['Possession %','Possession','Ball Possession']);
-  return {minute:st.minute,status:st.status,score:st.score,attacks,dangerousAttack,shotsOn,shotsOff,corners:st.corners,possession,rawText:text.slice(0,4000)};
+  const valid=Number.isFinite(st.minute)&&Number.isFinite(st.score.home)&&Number.isFinite(st.score.away);
+  return {valid,minute:st.minute,status:st.status,score:st.score,attacks,dangerousAttack,shotsOn,shotsOff,corners:st.corners,possession,rawText:text.slice(0,4000)};
 }
 
 function normalizeAsianLine(raw){
