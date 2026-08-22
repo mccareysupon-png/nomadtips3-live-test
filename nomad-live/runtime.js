@@ -17,15 +17,23 @@ const sourceReason=reason=>({
   no_matching_live_match:'no matching live match',no_matching_live_ah:'no matching live AH',the_odds_api_key_missing:'API key unavailable',
   api_football_key_missing:'API key unavailable',api_football_live_ah_bet_not_found:'live Asian Handicap market not found',
   match_mapper_no_event:'no matching live match',odds_api_key_missing:'API key unavailable',price_not_checked:'price not checked',
+  detection_not_ready:'waiting detector',no_matching_event:'no matching Oddspedia event',bookmaker_pair_not_found:'Bet365 HOME/AWAY pair unavailable',
+  'parser_failed:asian_handicap_section_not_found':'parser failed · Asian Handicap missing',
+  'parser_failed:full_time_asian_handicap_not_found':'parser failed · Full Time AH missing',
+  'source_blocked:http_403':'source blocked · HTTP 403','source_blocked:http_429':'source blocked · HTTP 429',
+  'source_blocked:challenge_page':'source blocked · challenge page',source_timeout:'source timeout',
 }[reason]||String(reason||'no valid live AH').replace(/^price_fetch_failed:/,'').replace(/_/g,' '));
 const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.priceSources:[{
   id:'source1',position:1,source:'Odds-API.io',status:m.marketCheck?.passed?'PASS':m.priceStatus==='AH STALE'?'STALE':'WAIT',
   reason:m.marketCheck?.reason||m.market?.reason||null,bookmaker:m.market?.bookmaker||'1xBet',line:m.marketCheck?.line??m.market?.line,
   odds:m.marketCheck?.homeOdds??m.market?.homeOdds,sourceUpdatedAt:m.market?.sourceUpdatedAt,priceAgeSeconds:m.marketCheck?.ageSeconds,
 }];
+const sourceUnavailableValue=source=>source?.id==='source5'&&source?.reason
+  ?`${source.status||'UNAVAILABLE'} · ${sourceReason(source.reason)}`
+  :'N/A';
 const sourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
   ?`${source.status} · ${source.bookmaker||'—'} · HOME ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
-  :'N/A';
+  :sourceUnavailableValue(source);
 const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
 const selectedValue=selected=>selected
   ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
@@ -33,7 +41,7 @@ const selectedValue=selected=>selected
 const compactAge=source=>source?.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—';
 const compactSourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
   ?`${source.status} · ${source.bookmaker||'—'} · ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · ${compactAge(source)}`
-  :'N/A';
+  :sourceUnavailableValue(source);
 const compactSourceRow=source=>{
   const value=compactSourceValue(source);
   const rowState=source.status==='PASS'?'is-pass':value==='N/A'?'is-na':'is-wait';
@@ -152,4 +160,3 @@ const path=location.pathname.toLowerCase();
 if(path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
 else if(path.endsWith('/nomad-live/statistics.html')) statsPage();
 else if(path.endsWith('/nomad-live/health.html')) healthPage();
-

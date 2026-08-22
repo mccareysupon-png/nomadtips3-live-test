@@ -4,10 +4,13 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
+  // SOURCE 5 is a primary peer added later; SOURCE 4 keeps its historical id and fallback-only role.
+  Object.freeze({id:'source5',position:5,source:'Oddspedia'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
+const freshnessComparable=item=>item?.id!=='source5'; // Oddspedia scrape time is page-fetch time, not a verified bookmaker update timestamp.
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -39,12 +42,13 @@ export function selectPriceSource(sources=[],freshnessNearMs=FRESHNESS_NEAR_MS){
   if(!valid.length) return null;
   return valid.reduce((selected,candidate)=>{
     const selectedUpdated=Number(selected.sourceUpdatedAt),candidateUpdated=Number(candidate.sourceUpdatedAt);
+    const comparableFreshness=freshnessComparable(selected)&&freshnessComparable(candidate);
     const freshnessDifference=Math.abs(candidateUpdated-selectedUpdated);
-    if(freshnessDifference>freshnessNearMs) return candidateUpdated>selectedUpdated?candidate:selected;
+    if(comparableFreshness&&freshnessDifference>freshnessNearMs) return candidateUpdated>selectedUpdated?candidate:selected;
     const selectedOdds=Number(selected.odds),candidateOdds=Number(candidate.odds);
     const sameLine=Math.abs(Number(candidate.line)-Number(selected.line))<1e-9;
     if(sameLine&&candidateOdds!==selectedOdds) return candidateOdds>selectedOdds?candidate:selected;
-    if(candidateUpdated!==selectedUpdated) return candidateUpdated>selectedUpdated?candidate:selected;
+    if(comparableFreshness&&candidateUpdated!==selectedUpdated) return candidateUpdated>selectedUpdated?candidate:selected;
     return candidate.position<selected.position?candidate:selected;
   });
 }
