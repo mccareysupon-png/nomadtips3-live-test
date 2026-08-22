@@ -15,18 +15,18 @@ test('SOURCE 4 is TotalCorner and remains last in registry',()=>{
   assert.deepEqual(PRICE_SOURCE_REGISTRY.at(-1),{id:'source4',position:4,source:'TotalCorner'});
 });
 
-test('SOURCE 5 is Oddspedia and is a primary peer before SOURCE 4 fallback',()=>{
-  assert.deepEqual(PRICE_SOURCE_REGISTRY.find(item=>item.id==='source5'),{id:'source5',position:5,source:'Oddspedia'});
+test('SOURCE 5 is Nowgoal and is a primary peer before SOURCE 4 fallback',()=>{
+  assert.deepEqual(PRICE_SOURCE_REGISTRY.find(item=>item.id==='source5'),{id:'source5',position:5,source:'Nowgoal'});
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
     ['source3',unavailable('API-Football')],
-    ['source5',ready('Oddspedia','Bet365',-.5,1.90,observedAt-3_000)],
+    ['source5',ready('Nowgoal','1xBet',-.5,1.90,observedAt-3_000)],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,2.05,observedAt-1_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const selected=selectPriceSourceWithFallback(snapshots);
   assert.equal(selected.id,'source5');
-  assert.equal(selected.bookmaker,'Bet365');
+  assert.equal(selected.bookmaker,'1xBet');
 });
 
 test('Oddspedia page-fetch timestamp alone cannot outrank a verified primary price on a different AH line',()=>{
@@ -56,7 +56,7 @@ test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5 have no
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
     ['source3',unavailable('API-Football')],
-    ['source5',unavailable('Oddspedia')],
+    ['source5',unavailable('Nowgoal')],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.88,observedAt-4_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const selected=selectPriceSourceWithFallback(snapshots);
@@ -70,7 +70,7 @@ test('explicitly unverified API-Football bookmaker is rejected and falls through
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
     ['source3',ready('API-Football','API-Football (bookmaker not supplied)',-.5,1.90,observedAt-2_000,{bookmakerVerified:false})],
-    ['source5',unavailable('Oddspedia')],
+    ['source5',unavailable('Nowgoal')],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.88,observedAt-4_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const source3=snapshots.find(item=>item.id==='source3');
@@ -84,7 +84,7 @@ test('a valid primary source always beats TotalCorner even when fallback is fres
     ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-18_000)],
     ['source2',unavailable('The Odds API')],
     ['source3',unavailable('API-Football')],
-    ['source5',unavailable('Oddspedia')],
+    ['source5',unavailable('Nowgoal')],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,2.05,observedAt-1_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const selected=selectPriceSourceWithFallback(snapshots);
@@ -97,7 +97,7 @@ test('invalid TotalCorner fallback never creates a selected price',()=>{
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
     ['source3',unavailable('API-Football')],
-    ['source5',unavailable('Oddspedia')],
+    ['source5',unavailable('Nowgoal')],
     ['source4',{status:'AH INVALID',source:'TotalCorner',reason:'handicap_panel_missing'}],
   ]),DEFAULT_CONFIG,observedAt);
   assert.equal(selectPriceSourceWithFallback(snapshots),null);
