@@ -4,6 +4,7 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
+  Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
@@ -45,9 +46,15 @@ export function selectPriceSource(sources=[],freshnessNearMs=FRESHNESS_NEAR_MS){
   });
 }
 
+export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
+  const primary=sources.filter(item=>item.id!==fallbackId);
+  const selectedPrimary=selectPriceSource(primary);
+  if(selectedPrimary) return selectedPrimary;
+  return sources.find(item=>item.id===fallbackId&&item.status==='PASS'&&item.market)||null;
+}
+
 export function publicPriceSourceSnapshot(snapshot){
   if(!snapshot) return null;
   const {assessment,market,...publicSnapshot}=snapshot;
   return publicSnapshot;
 }
-
