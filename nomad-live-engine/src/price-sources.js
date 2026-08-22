@@ -26,7 +26,10 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     .map(definition=>{
     const market=marketsBySource.get(definition.id)||null;
     const assessed=assessHomeMarket(market,config,observedAt);
-    const assessment=market?.bookmakerVerified===false
+    // API-Football is allowed to decide from its intact live AH market even when the API omits bookmaker identity.
+    // Other sources still fail closed if they explicitly report an unverified bookmaker.
+    const requiresVerifiedBookmaker=market?.bookmakerVerified===false&&definition.id!=='source3';
+    const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
     return {
