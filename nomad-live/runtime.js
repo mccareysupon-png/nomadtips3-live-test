@@ -134,13 +134,14 @@ async function livePage(){
   await load(); setInterval(load,10000);
 }
 function clsResult(r=''){return /WIN/.test(r)?'win':/LOSS/.test(r)?'loss':''}
+const recordSource=r=>`${r?.bookmaker||'—'} · ${r?.oddsSource||'—'}`;
 async function statsPage(){
   const metrics=[...document.querySelectorAll('.summary-grid .metric strong')], tbody=document.querySelector('.data-table tbody');
-  metrics.forEach(x=>x.textContent='—');if(tbody)tbody.innerHTML='<tr><td colspan="9">Connecting statistics engine…</td></tr>';setSource('RESULT LEDGER · CONNECTING',false);
+  metrics.forEach(x=>x.textContent='—');if(tbody)tbody.innerHTML='<tr><td colspan="10">Connecting statistics engine…</td></tr>';setSource('RESULT LEDGER · CONNECTING',false);
   const load=async()=>{try{
     const d=await get('/statistics');
     if(metrics[0])metrics[0].textContent=d.totalSignals??0;if(metrics[1])metrics[1].textContent=`${Number(d.winRate||0).toFixed(1)}%`;if(metrics[2])metrics[2].textContent=d.avgOdds?Number(d.avgOdds).toFixed(2):'—';if(metrics[3])metrics[3].textContent=`${Number(d.roi||0)>=0?'+':''}${Number(d.roi||0).toFixed(1)}%`;
-    if(tbody)tbody.innerHTML=(d.records||[]).length?d.records.map(r=>{const fin=r.settlement?.finalScore;const res=r.settlement?.result||'PENDING';const c=clsResult(res);return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${pair(r.entryScore)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`}).join(''):'<tr><td colspan="9">No locked signals yet.</td></tr>';
+    if(tbody)tbody.innerHTML=(d.records||[]).length?d.records.map(r=>{const fin=r.settlement?.finalScore;const res=r.settlement?.result||'PENDING';const c=clsResult(res);return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordSource(r))}</td><td>${pair(r.entryScore)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`}).join(''):'<tr><td colspan="10">No locked signals yet.</td></tr>';
     const muted=document.querySelector('.panel-head .muted');if(muted)muted.textContent=`WIN ${d.wins||0} · LOSS ${d.losses||0} · PUSH ${d.pushes||0}`;
     const note=document.querySelector('main > .note');if(note)note.textContent=`Statistics connected · ${d.settled||0} settled records.`;setSource('RESULT LEDGER · LIVE',true);
   }catch(e){setSource('RESULT LEDGER · OFFLINE',false);}};await load();setInterval(load,15000);
