@@ -3,6 +3,9 @@ main = "src/index.js"
 compatibility_date = "2026-08-20"
 workers_dev = true
 
+[limits]
+subrequests = 1000
+
 [[durable_objects.bindings]]
 name = "ENGINE"
 class_name = "EngineState"
