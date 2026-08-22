@@ -4,13 +4,13 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
-  // SOURCE 5 is a primary peer added later; SOURCE 4 keeps its historical id and fallback-only role.
+  // SOURCE 5 id is retained for historical locked-signal compatibility, but production can mark it source_removed.
   Object.freeze({id:'source5',position:5,source:'Oddspedia'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
-const freshnessComparable=item=>item?.id!=='source5'; // Oddspedia scrape time is page-fetch time, not a verified bookmaker update timestamp.
+const freshnessComparable=item=>item?.id!=='source5'; // Historical Oddspedia timestamps were page-fetch time, not verified bookmaker update time.
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -21,7 +21,9 @@ function displayStatus(market,assessment){
 }
 
 export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date.now()){
-  return PRICE_SOURCE_REGISTRY.map(definition=>{
+  return PRICE_SOURCE_REGISTRY
+    .filter(definition=>!(definition.id==='source5'&&marketsBySource.get(definition.id)?.reason==='source_removed'))
+    .map(definition=>{
     const market=marketsBySource.get(definition.id)||null;
     const assessed=assessHomeMarket(market,config,observedAt);
     const assessment=market?.bookmakerVerified===false
