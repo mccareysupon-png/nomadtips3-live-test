@@ -1,5 +1,5 @@
 const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
 const n=v=>Number.isFinite(Number(v))?Number(v):null;
 const fmtLine=v=>v==null?'—':`${v>0?'+':''}${Number(v).toFixed(2)}`;
