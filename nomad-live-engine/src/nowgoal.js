@@ -22,7 +22,7 @@ async function requestText(fetchImpl,path,config,cookie='',accept='*/*'){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),config?.requestTimeoutMs||9000);
   try{
     const response=await fetchImpl(new URL(path,BASE).toString(),{
-      signal:controller.signal,redirect:'follow',cache:'no-store',cf:{cacheTtl:0,cacheEverything:false},
+      signal:controller.signal,redirect:'follow',cache:'no-store',
       headers:{'user-agent':UA,'accept':accept,'accept-language':'en-US,en;q=0.9','cache-control':'no-cache, no-store','pragma':'no-cache','referer':`${BASE}/`,...(cookie?{cookie}:{})}
     });
     const text=await response.text();
