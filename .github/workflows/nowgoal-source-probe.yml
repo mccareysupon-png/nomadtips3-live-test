@@ -6,6 +6,7 @@ on:
       - 'tools/nowgoal-probe.mjs'
       - 'tools/nowgoal-live-ah-probe.mjs'
       - 'tools/nowgoal-schema-probe.mjs'
+      - 'tools/nowgoal-roster-sign-probe.mjs'
       - '.github/workflows/nowgoal-source-probe.yml'
 
 permissions:
@@ -26,3 +27,5 @@ jobs:
         run: node tools/nowgoal-live-ah-probe.mjs
       - name: Inspect Nowgoal live schema and polling files
         run: node tools/nowgoal-schema-probe.mjs
+      - name: Inspect Nowgoal roster URLs and AH sign convention
+        run: node tools/nowgoal-roster-sign-probe.mjs
