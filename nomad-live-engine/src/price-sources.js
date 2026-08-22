@@ -4,13 +4,13 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
-  // SOURCE 5 id is retained for historical locked-signal compatibility, but production can mark it source_removed.
-  Object.freeze({id:'source5',position:5,source:'Oddspedia'}),
+  // SOURCE 5 id is retained for historical locked-signal compatibility; live production now uses Nowgoal 1xBet.
+  Object.freeze({id:'source5',position:5,source:'Nowgoal'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
-const freshnessComparable=item=>item?.id!=='source5'; // Historical Oddspedia timestamps were page-fetch time, not verified bookmaker update time.
+const freshnessComparable=item=>item?.id!=='source5'||item?.market?.source==='Nowgoal';
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
