@@ -12,6 +12,13 @@ test('live AH 0.00: entry 2-3 and final 2-3 is PUSH because no goals were scored
   assert.equal(settled.settlementScope,'LIVE_POST_ENTRY');
 });
 
+test('live AH 0.00: entry 1-0 and final 1-0 is PUSH, never WIN from the pre-entry goal',()=>{
+  const settled=settleAsian(homeSignal(0,1.80,{home:1,away:0}),{home:1,away:0});
+  assert.equal(settled.result,'PUSH');
+  assert.equal(settled.profit,0);
+  assert.deepEqual(settled.postEntryScore,{home:0,away:0});
+});
+
 test('live AH +0.25: entry 1-1 and final 1-1 is HALF WIN',()=>{
   const settled=settleAsian(homeSignal(.25,1.30,{home:1,away:1}),{home:1,away:1});
   assert.equal(settled.result,'HALF WIN');
