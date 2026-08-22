@@ -26,7 +26,7 @@ test('detector card renders every enabled source and the selected whole price',(
   assert.doesNotMatch(context.__output,/Price pass · Selected|>SIDE</);
 });
 
-test('detector card collapses missing source and selected prices to N/A',()=>{
+test('detector card collapses missing legacy source and selected prices to N/A',()=>{
   const runtime=readFileSync(new URL('../../nomad-live/runtime.js',import.meta.url),'utf8');
   const match={
     id:'m2',state:'NEAR SIGNAL',home:'Home FC',away:'Away FC',league:'Example',minute:60,score:{home:0,away:0},
@@ -49,3 +49,20 @@ test('detector card collapses missing source and selected prices to N/A',()=>{
   assert.doesNotMatch(context.__output,/<span class="wait">N\/A<\/span>/);
 });
 
+test('Oddspedia SOURCE 5 reports a readable failure instead of silently showing N/A',()=>{
+  const runtime=readFileSync(new URL('../../nomad-live/runtime.js',import.meta.url),'utf8');
+  const match={
+    id:'m5',state:'NEAR SIGNAL',home:'Home FC',away:'Away FC',league:'Example',minute:61,score:{home:0,away:0},
+    passed:5,total:6,detectionPassed:true,checks:{market:false},marketCheck:{passed:false},priceStatus:'AH UNAVAILABLE',
+    rolling:{recent:{delta:{shotsOn:{home:1}},homePressure:11}},hunger:{passedCount:2},
+    priceSources:[
+      {id:'source5',position:5,source:'Oddspedia',status:'UNAVAILABLE',reason:'source_blocked:http_403',bookmaker:'Bet365',line:null,odds:null,priceAgeSeconds:null},
+    ],
+    selectedPrice:null,
+  };
+  const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
+  vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
+  assert.match(context.__output,/<span class="price-source-name">S5 · Oddspedia<\/span><span class="price-source-value">UNAVAILABLE · source blocked · HTTP 403<\/span>/);
+  assert.match(context.__output,/SOURCE 5 · Oddspedia/);
+  assert.match(context.__output,/source blocked · HTTP 403/);
+});
