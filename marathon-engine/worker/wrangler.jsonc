@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-marathon-engine",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-18",
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      { "name": "MARATHON_STATE", "class_name": "MarathonState" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["MarathonState"] }
+  ],
+  "vars": {
+    "MARATHON_SOURCE_URL": "https://www.marathonbet.com/ind/live/allstream"
+  }
+}

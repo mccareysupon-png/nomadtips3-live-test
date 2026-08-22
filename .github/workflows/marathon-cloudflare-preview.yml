@@ -1,0 +1,115 @@
+name: Deploy Marathon Engine Preview
+
+on:
+  push:
+    branches:
+      - feature/marathon-engine-20260818
+    paths:
+      - "marathon-engine/worker/**"
+      - ".github/workflows/marathon-cloudflare-preview.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "marathon-engine/worker/**"
+      - ".github/workflows/marathon-cloudflare-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate source syntax
+        id: syntax
+        working-directory: marathon-engine/worker
+        run: node --check src/index.js
+
+      - name: Validate Cloudflare credentials
+        id: credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+
+      - name: Deploy isolated Marathon worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: marathon-engine/worker
+          wranglerVersion: "4"
+          command: deploy
+
+      - name: Smoke test online pages and Marathon source
+        id: smoke
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::Deployment URL unavailable"; exit 1; }
+          echo "Deployment: $DEPLOYMENT_URL"
+          curl -fsS "$DEPLOYMENT_URL/" >/dev/null
+          curl -fsS "$DEPLOYMENT_URL/settings" >/dev/null
+          curl -fsS "$DEPLOYMENT_URL/statistics" >/dev/null
+          curl -fsS -X POST "$DEPLOYMENT_URL/api/refresh" -o /tmp/marathon-live.json
+          cat /tmp/marathon-live.json | head -c 12000
+          python - <<'PY'
+          import json
+          with open('/tmp/marathon-live.json',encoding='utf-8') as f:
+              d=json.load(f)
+          assert d.get('source')=='MARATHONBET', 'source mismatch'
+          assert d.get('lastScan'), 'scan timestamp missing'
+          assert d.get('lastError') is None, f"source error: {d.get('lastError')}"
+          assert isinstance(d.get('matches'),list), 'matches missing'
+          print('MATCH_COUNT=',d.get('matchCount'))
+          PY
+
+      - name: Record preview deployment status
+        if: ${{ always() && github.event_name == 'push' }}
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          SYNTAX_OUTCOME: ${{ steps.syntax.outcome }}
+          CREDENTIALS_OUTCOME: ${{ steps.credentials.outcome }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+        run: |
+          HEALTH='not-available'
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            HEALTH=$(curl -fsS "$DEPLOYMENT_URL/health" || true)
+          fi
+          cat > marathon-engine/DEPLOY_STATUS.md <<EOF
+          # Marathon Engine Online Preview — Last Deploy
+
+          - Commit: $GITHUB_SHA
+          - UTC: $(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          - Syntax: ${SYNTAX_OUTCOME:-unknown}
+          - Credentials: ${CREDENTIALS_OUTCOME:-unknown}
+          - Deploy: ${DEPLOY_OUTCOME:-unknown}
+          - Smoke: ${SMOKE_OUTCOME:-unknown}
+          - Deployment URL: ${DEPLOYMENT_URL:-unavailable}
+
+          Health:
+
+          \`\`\`json
+          $HEALTH
+          \`\`\`
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add marathon-engine/DEPLOY_STATUS.md
+          git commit -m "Record Marathon preview deployment [skip ci]" || exit 0
+          git push origin HEAD:feature/marathon-engine-20260818
