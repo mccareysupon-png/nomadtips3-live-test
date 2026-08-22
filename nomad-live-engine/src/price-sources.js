@@ -4,6 +4,8 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
+  // SOURCE 5 is a primary peer added later; SOURCE 4 keeps its historical id and fallback-only role.
+  Object.freeze({id:'source5',position:5,source:'Oddspedia'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
