@@ -65,7 +65,7 @@ test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5 have no
   assert.equal(selected.status,'PASS');
 });
 
-test('explicitly unverified API-Football bookmaker is rejected and falls through to TotalCorner',()=>{
+test('API-Football can decide from an intact live AH even when bookmaker is not supplied',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -74,9 +74,10 @@ test('explicitly unverified API-Football bookmaker is rejected and falls through
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.88,observedAt-4_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const source3=snapshots.find(item=>item.id==='source3');
-  assert.equal(source3.status,'FAIL');
-  assert.equal(source3.reason,'bookmaker_not_supplied');
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
+  assert.equal(source3.status,'PASS');
+  assert.equal(source3.reason,null);
+  assert.equal(source3.bookmaker,'API-Football (bookmaker not supplied)');
+  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source3');
 });
 
 test('a valid primary source always beats TotalCorner even when fallback is fresher and pays more',()=>{
