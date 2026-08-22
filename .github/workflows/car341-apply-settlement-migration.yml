@@ -1,0 +1,54 @@
+name: CAR 3.41 Apply Settlement Migration
+
+on:
+  push:
+    branches: [car341-live-ah-settlement-fix]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-index:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Patch settlement reconciliation block exactly
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-engine/src/index.js')
+          text=p.read_text()
+          old="""        for(const signal of signals){
+          if(signal.settlement) continue;
+          const final=ended.get(signal.matchId);
+          if(!final||final.score.home==null) continue;
+          signal.settlement={...settleAsian(signal,final.score),finalScore:final.score,settledAt:started};
+        }"""
+          new="""        for(const signal of signals){
+          const endedFinal=ended.get(signal.matchId)?.score||null;
+          const storedFinal=signal.settlement?.finalScore||null;
+          const finalScore=endedFinal||storedFinal;
+          if(!finalScore||finalScore.home==null||finalScore.away==null) continue;
+          if(signal.settlement?.settlementRuleVersion===2) continue;
+          const previousSettledAt=signal.settlement?.settledAt??null;
+          const corrected=settleAsian(signal,finalScore);
+          signal.settlement={...corrected,finalScore,settledAt:previousSettledAt??started,...(previousSettledAt?{correctedAt:started}:{})};
+        }"""
+          if old not in text:
+              raise SystemExit('Settlement block did not match exactly; refusing unsafe patch')
+          p.write_text(text.replace(old,new,1))
+          PY
+          git diff --check
+          git diff -- nomad-live-engine/src/index.js
+      - name: Commit exact migration patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-engine/src/index.js
+          git commit -m 'CAR 3.41: recalculate stored live AH settlements [migration-applied]'
+          git push origin HEAD:car341-live-ah-settlement-fix
