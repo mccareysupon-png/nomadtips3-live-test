@@ -8,6 +8,8 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source5',position:5,source:'Nowgoal'}),
   // SOURCE 6 is the Bet365 peer read from the same Nowgoal session/feed family as SOURCE 5.
   Object.freeze({id:'source6',position:6,source:'Nowgoal'}),
+  // SOURCE 7 is M88 / Mansion88 company 17 from the same Nowgoal live AH session.
+  Object.freeze({id:'source7',position:7,source:'Nowgoal'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
@@ -22,16 +24,24 @@ function displayStatus(market,assessment){
   return 'WAIT';
 }
 
+function peerMarket(definition,marketsBySource){
+  const direct=marketsBySource.get(definition.id)||null;
+  if(direct) return direct;
+  const nowgoal=marketsBySource.get('source5')||null;
+  if(definition.id==='source6') return nowgoal?.nowgoalBet365Peer||null;
+  if(definition.id==='source7') return nowgoal?.nowgoalM88Peer||null;
+  return null;
+}
+
 export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date.now()){
   return PRICE_SOURCE_REGISTRY
     .filter(definition=>!(definition.id==='source5'&&marketsBySource.get(definition.id)?.reason==='source_removed'))
     .map(definition=>{
-    const directMarket=marketsBySource.get(definition.id)||null;
-    const market=directMarket||(definition.id==='source6'?marketsBySource.get('source5')?.nowgoalBet365Peer||null:null);
+    const market=peerMarket(definition,marketsBySource);
     const assessed=assessHomeMarket(market,config,observedAt);
-    // API-Football is allowed to decide from its intact live AH market even when the API omits bookmaker identity.
-    // Other sources still fail closed if they explicitly report an unverified bookmaker.
-    const requiresVerifiedBookmaker=market?.bookmakerVerified===false&&definition.id!=='source3';
+    // Fail closed when a provider cannot identify the bookmaker behind its AH price.
+    // This prevents API-Football's anonymous aggregate line from acting as the live AH price judge.
+    const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
     const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
