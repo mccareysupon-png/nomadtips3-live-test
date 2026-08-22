@@ -29,6 +29,28 @@ test('SOURCE 5 is Oddspedia and is a primary peer before SOURCE 4 fallback',()=>
   assert.equal(selected.bookmaker,'Bet365');
 });
 
+test('Oddspedia page-fetch timestamp alone cannot outrank a verified primary price on a different AH line',()=>{
+  const snapshots=buildPriceSourceSnapshots(new Map([
+    ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-20_000)],
+    ['source2',unavailable('The Odds API')],
+    ['source3',unavailable('API-Football')],
+    ['source5',ready('Oddspedia','Bet365',-.75,2.10,observedAt-500)],
+    ['source4',unavailable('TotalCorner')],
+  ]),DEFAULT_CONFIG,observedAt);
+  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source1');
+});
+
+test('Oddspedia can win as a peer when it has better HOME odds on the same AH line',()=>{
+  const snapshots=buildPriceSourceSnapshots(new Map([
+    ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-20_000)],
+    ['source2',unavailable('The Odds API')],
+    ['source3',unavailable('API-Football')],
+    ['source5',ready('Oddspedia','Bet365',-.5,1.90,observedAt-500)],
+    ['source4',unavailable('TotalCorner')],
+  ]),DEFAULT_CONFIG,observedAt);
+  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source5');
+});
+
 test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5 have no PASS market',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
