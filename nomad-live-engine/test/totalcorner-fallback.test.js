@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {DEFAULT_CONFIG} from '../src/config.js';
 import {PRICE_SOURCE_REGISTRY,buildPriceSourceSnapshots,selectPriceSourceWithFallback} from '../src/price-sources.js';
 
-// SOURCE 4 is intentionally fallback-only; primary Sources 1-3 plus Nowgoal Sources 5-6 retain priority.
+// SOURCE 4 is intentionally fallback-only; primary Sources 1-3 plus Nowgoal Sources 5-7 retain priority when valid.
 const observedAt=Date.parse('2026-08-22T01:00:40Z');
 const ready=(source,bookmaker,line,odds,updatedAt,extra={})=>({
   status:'AH READY',source,bookmaker,line,homeOdds:odds,awayOdds:1.95,
@@ -70,7 +70,7 @@ test('Oddspedia can win as a peer when it has better HOME odds on the same AH li
   assert.equal(selectPriceSourceWithFallback(snapshots).id,'source5');
 });
 
-test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5-6 have no PASS market',()=>{
+test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5-7 have no PASS market',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -84,7 +84,7 @@ test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5-6 have 
   assert.equal(selected.status,'PASS');
 });
 
-test('API-Football can decide from an intact live AH even when bookmaker is not supplied',()=>{
+test('API-Football without bookmaker identity cannot judge live AH and falls through to verified fallback',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -93,10 +93,10 @@ test('API-Football can decide from an intact live AH even when bookmaker is not 
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.88,observedAt-4_000)],
   ]),DEFAULT_CONFIG,observedAt);
   const source3=snapshots.find(item=>item.id==='source3');
-  assert.equal(source3.status,'PASS');
-  assert.equal(source3.reason,null);
+  assert.equal(source3.status,'FAIL');
+  assert.equal(source3.reason,'bookmaker_not_supplied');
   assert.equal(source3.bookmaker,'API-Football (bookmaker not supplied)');
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source3');
+  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
 });
 
 test('a valid primary source always beats TotalCorner even when fallback is fresher and pays more',()=>{
