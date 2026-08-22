@@ -357,7 +357,6 @@ export class EngineState {
             }
             const oddsById=new Map(payloads.map(payload=>[String(payload?.id),payload]));
             let mappedCount=0,readyCount=0,bet365ReadyCount=0,readyAnyCount=0;
-
             for(const item of mapped){
               const match=item.match;
               if(!item.event){
@@ -537,10 +536,14 @@ export class EngineState {
         const endedHtml=await getHtml(config.endedUrl,config,started); next.source.ended=true;
         const ended=new Map(parseEnded(endedHtml,config.sourceHost).map(match=>[match.id,match]));
         for(const signal of signals){
-          if(signal.settlement) continue;
-          const final=ended.get(signal.matchId);
-          if(!final||final.score.home==null) continue;
-          signal.settlement={...settleAsian(signal,final.score),finalScore:final.score,settledAt:started};
+          const endedFinal=ended.get(signal.matchId)?.score||null;
+          const storedFinal=signal.settlement?.finalScore||null;
+          const finalScore=endedFinal||storedFinal;
+          if(!finalScore||finalScore.home==null||finalScore.away==null) continue;
+          if(signal.settlement?.settlementRuleVersion===2) continue;
+          const previousSettledAt=signal.settlement?.settledAt??null;
+          const corrected=settleAsian(signal,finalScore);
+          signal.settlement={...corrected,finalScore,settledAt:previousSettledAt??started,...(previousSettledAt?{correctedAt:started}:{})};
         }
       }catch(error){next.source.ended=false;next.source.endedError=String(error?.message||error);}
       next.matches=enriched; next.signals=signals; next.lastSuccess=now();
