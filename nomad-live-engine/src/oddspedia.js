@@ -226,6 +226,13 @@ async function eventIndex(matches,timeoutMs,fetchImpl){
 export async function fetchOddspediaBet365Markets(matches=[],config,observedAt=Date.now(),fetchImpl=fetch){
   const targets=Array.isArray(matches)?matches:[];
   if(!targets.length) return {status:'NOT_NEEDED',checked:0,mapped:0,ready:0,results:[],checkedAt:observedAt};
+  if(fetchImpl===fetch){
+    const reason='source_removed';
+    return {
+      status:'REMOVED',checked:targets.length,mapped:0,ready:0,error:null,checkedAt:observedAt,
+      results:targets.map(match=>({matchId:match.id,market:oddspediaUnavailable(reason),event:null})),
+    };
+  }
   let events;
   try{events=await eventIndex(targets,config.requestTimeoutMs,fetchImpl);}
   catch(error){
