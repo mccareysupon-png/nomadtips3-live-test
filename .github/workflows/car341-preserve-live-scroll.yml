@@ -1,0 +1,55 @@
+name: CAR 3.41 Preserve Open Signal Scroll
+
+on:
+  push:
+    branches: [car341-preserve-open-signal]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-runtime:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Preserve open match position across live refresh
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live/runtime.js')
+          text=p.read_text()
+          old="""      const openMatchIds=new Set([...list.querySelectorAll('.match-wrap[open]')].map(row=>row.dataset.matchId).filter(Boolean));
+      list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class=\"note\">Engine online · no monitored matches currently meet the watch window.</div>';
+      list.querySelectorAll('.match-wrap').forEach(row=>{if(openMatchIds.has(row.dataset.matchId))row.open=true;});"""
+          new="""      const openRows=[...list.querySelectorAll('.match-wrap[open]')];
+      const openMatchIds=new Set(openRows.map(row=>row.dataset.matchId).filter(Boolean));
+      const anchorRow=openRows.find(row=>row.getBoundingClientRect().bottom>0)||openRows[0]||null;
+      const anchorId=anchorRow?.dataset.matchId||null;
+      const anchorTop=anchorRow?.getBoundingClientRect().top??null;
+      list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class=\"note\">Engine online · no monitored matches currently meet the watch window.</div>';
+      list.querySelectorAll('.match-wrap').forEach(row=>{if(openMatchIds.has(row.dataset.matchId))row.open=true;});
+      if(anchorId&&Number.isFinite(anchorTop)){
+        const restored=[...list.querySelectorAll('.match-wrap')].find(row=>row.dataset.matchId===anchorId);
+        if(restored){
+          const delta=restored.getBoundingClientRect().top-anchorTop;
+          if(Math.abs(delta)>1)window.scrollBy(0,delta);
+        }
+      }"""
+          if old not in text:
+              raise SystemExit('Live refresh block did not match exactly; refusing unsafe patch')
+          p.write_text(text.replace(old,new,1))
+          PY
+          git diff --check
+          git diff -- nomad-live/runtime.js
+      - name: Commit live scroll fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live/runtime.js
+          git commit -m 'CAR 3.41: preserve open signal position on refresh'
+          git push origin HEAD:car341-preserve-open-signal
