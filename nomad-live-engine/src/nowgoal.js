@@ -5,6 +5,7 @@ const COMPANY_ID='50';
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
 const finite=value=>Number.isFinite(Number(value));
 const n=value=>finite(value)?Number(value):null;
+const observedPriceChanges=new Map();
 
 export function nowgoalUnavailable(reason='nowgoal_unavailable'){
   return {status:'AH UNAVAILABLE',reason,source:'Nowgoal',bookmaker:'1xBet',bookmakerVerified:true,market:'FULL MATCH LIVE AH',sourceUpdatedAt:null};
@@ -93,7 +94,7 @@ function mapMatches(matches,roster){
   });
 }
 
-export async function fetchNowgoal1xBetMarkets(matches=[],config,observedAt=Date.now(),previousUpdates={},fetchImpl=fetch){
+export async function fetchNowgoal1xBetMarkets(matches=[],config,observedAt=Date.now(),previousUpdates=null,fetchImpl=fetch){
   const targets=Array.isArray(matches)?matches:[];
   if(!targets.length) return {status:'NOT_NEEDED',checked:0,mapped:0,ready:0,results:[],priceUpdates:{},checkedAt:observedAt};
   const homepage=await requestText(fetchImpl,'/',config,'','text/html,*/*');
@@ -109,9 +110,14 @@ export async function fetchNowgoal1xBetMarkets(matches=[],config,observedAt=Date
   if(!full.size) throw new Error('NOWGOAL_1XBET_FEED_EMPTY');
 
   const keepMs=Math.max((config?.maximumPriceAgeSeconds||3600)*2000,7200000);
-  const priceUpdates={};
-  for(const [id,value] of Object.entries(previousUpdates||{})) if(Number.isFinite(Number(value))&&observedAt-Number(value)<=keepMs) priceUpdates[id]=Number(value);
-  for(const id of changed.keys()) priceUpdates[id]=observedAt;
+  const seed=previousUpdates&&typeof previousUpdates==='object'?new Map(Object.entries(previousUpdates)):observedPriceChanges;
+  for(const [id,value] of [...seed.entries()]) if(!Number.isFinite(Number(value))||observedAt-Number(value)>keepMs) seed.delete(id);
+  for(const id of changed.keys()) seed.set(id,observedAt);
+  if(seed!==observedPriceChanges){
+    observedPriceChanges.clear();
+    for(const [id,value] of seed) observedPriceChanges.set(id,Number(value));
+  }
+  const priceUpdates=Object.fromEntries([...seed.entries()].map(([id,value])=>[id,Number(value)]));
 
   const mapped=mapMatches(targets,roster); let mappedCount=0,ready=0;
   const results=mapped.map(item=>{
@@ -119,7 +125,7 @@ export async function fetchNowgoal1xBetMarkets(matches=[],config,observedAt=Date
     mappedCount++;
     const row=full.get(item.row.id);
     if(!row) return {matchId:item.match.id,market:nowgoalUnavailable('nowgoal_1xbet_ah_missing'),event:item.row};
-    const market=normalizeNowgoalAhRow(row,priceUpdates[item.row.id]);
+    const market=normalizeNowgoalAhRow(row,seed.get(item.row.id));
     market.mappingConfidence=item.confidence; market.mapping=item.breakdown; market.nowgoalMatchId=item.row.id;
     if(market.status==='AH READY') ready++;
     return {matchId:item.match.id,market,event:item.row};
