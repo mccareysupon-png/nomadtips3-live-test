@@ -14,7 +14,7 @@ const headers = {
 };
 
 const interesting = /(odds|handicap|in-?play|1xbet|companyid|matchid|asian|socket|signalr|websocket|xhr|ajax|api)/i;
-const endpointish = /(?:https?:\\?\/\\?\/[^\s"'`<>]+|\/[A-Za-z0-9_./?=&%{}:-]{5,})/g;
+const endpointish = /(?:https?:\/\/[^\s"'`<>]+|\/[A-Za-z0-9_./?=&%{}:-]{5,})/g;
 
 function uniq(values) { return [...new Set(values)]; }
 function clean(value) { return String(value || '').replace(/\\u0026/g, '&').replace(/\\\//g, '/'); }
@@ -31,7 +31,7 @@ async function get(url) {
 
 function scriptUrls(html, base) {
   const out = [];
-  for (const match of html.matchAll(/<script\\b[^>]*\\bsrc=["']([^"']+)["'][^>]*>/gi)) {
+  for (const match of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)) {
     try { out.push(new URL(clean(match[1]), base).href); } catch {}
   }
   return uniq(out);
@@ -50,6 +50,12 @@ function snippets(text, term, radius=220) {
 function candidates(text) {
   const raw = text.match(endpointish) || [];
   return uniq(raw.map(clean).filter(v => interesting.test(v))).slice(0, 250);
+}
+
+function hasNetworkOrOddsCode(text) {
+  const lower = String(text).toLowerCase();
+  return ['odds','handicap','1xbet','companyid','matchid','fetch(','xmlhttprequest','.ajax(','axios','websocket','signalr']
+    .some(term => lower.includes(term));
 }
 
 const fetchedAssets = new Set();
@@ -74,9 +80,7 @@ for (const page of pages) {
       fetchedAssets.add(src);
       try {
         const asset = await get(src);
-        if (asset.status !== 200 || asset.text.length > 4_000_000) continue;
-        const hasInterest = interesting.test(asset.text) || /fetch\\(|XMLHttpRequest|\\.ajax\\(|axios|WebSocket/i.test(asset.text);
-        if (!hasInterest) continue;
+        if (asset.status !== 200 || asset.text.length > 4_000_000 || !hasNetworkOrOddsCode(asset.text)) continue;
         const found = candidates(asset.text);
         const hits = [];
         for (const term of ['1xBet','companyId','matchId','odds','handicap','inplay','fetch(','XMLHttpRequest','ajax','WebSocket']) {
