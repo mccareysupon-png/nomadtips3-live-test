@@ -1,4 +1,5 @@
 import {normalizeTeamName,teamSimilarity} from './real-market.js';
+import {fetchNowgoal1xBetMarkets} from './nowgoal.js';
 
 export const ODDSPEDIA_SOURCE='Oddspedia';
 export const ODDSPEDIA_BOOKMAKER='Bet365';
@@ -178,6 +179,7 @@ export function selectOddspediaCandidate(parsed,config){
 }
 
 export function oddspediaUnavailable(reason='not_available'){
+  if(reason==='price_not_checked'||reason==='detection_not_ready') return {status:'AH UNAVAILABLE',reason,source:'Nowgoal',bookmaker:'1xBet',bookmakerVerified:true,market:'FULL MATCH LIVE AH'};
   return {status:'AH UNAVAILABLE',reason,source:ODDSPEDIA_SOURCE,bookmaker:ODDSPEDIA_BOOKMAKER,market:'FULL MATCH LIVE AH'};
 }
 
@@ -226,13 +228,7 @@ async function eventIndex(matches,timeoutMs,fetchImpl){
 export async function fetchOddspediaBet365Markets(matches=[],config,observedAt=Date.now(),fetchImpl=fetch){
   const targets=Array.isArray(matches)?matches:[];
   if(!targets.length) return {status:'NOT_NEEDED',checked:0,mapped:0,ready:0,results:[],checkedAt:observedAt};
-  if(fetchImpl===fetch){
-    const reason='source_removed';
-    return {
-      status:'REMOVED',checked:targets.length,mapped:0,ready:0,error:null,checkedAt:observedAt,
-      results:targets.map(match=>({matchId:match.id,market:oddspediaUnavailable(reason),event:null})),
-    };
-  }
+  if(fetchImpl===fetch) return fetchNowgoal1xBetMarkets(targets,config,observedAt,null,fetchImpl);
   let events;
   try{events=await eventIndex(targets,config.requestTimeoutMs,fetchImpl);}
   catch(error){
