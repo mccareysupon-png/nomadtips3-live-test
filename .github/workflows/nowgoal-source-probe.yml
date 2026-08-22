@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'tools/nowgoal-probe.mjs'
+      - 'tools/nowgoal-live-ah-probe.mjs'
       - '.github/workflows/nowgoal-source-probe.yml'
 
 permissions:
@@ -20,3 +21,5 @@ jobs:
           node-version: '22'
       - name: Inspect public Nowgoal page and JS request paths
         run: node tools/nowgoal-probe.mjs
+      - name: Inspect live Nowgoal 1xBet AH payloads
+        run: node tools/nowgoal-live-ah-probe.mjs
