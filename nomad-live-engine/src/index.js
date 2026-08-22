@@ -1,11 +1,11 @@
 import {
   CONFIG_HISTORY_LIMIT,CONFIG_SCHEMA_VERSION,DEFAULT_CONFIG,editableConfig,engineConfig,validateEditableConfig
 } from './config.js';
-import {parseToday,parseLiveDetail,parseEnded} from './parser.js';
+import {parseToday,parseLiveDetail,parseEnded,parseBet365Asian,handicapPanelUrl} from './parser.js';
 import {buildRollingAnalysis,evaluate} from './detector.js';
 import {settleAsian} from './settlement.js';
 import {fetchLiveEvents,fetchMultiOdds,mapMatchesToOddsEvents,parseAsianHandicap,marketUpdatedAtMs} from './real-market.js';
-import {buildPriceSourceSnapshots,publicPriceSourceSnapshot,selectPriceSource} from './price-sources.js';
+import {buildPriceSourceSnapshots,publicPriceSourceSnapshot,selectPriceSource,selectPriceSourceWithFallback} from './price-sources.js';
 import {buildTheOddsApiMarkets,fetchTheOddsApiLiveSoccer,theOddsApiUnavailable} from './the-odds-api.js';
 import {apiFootballUnavailable,buildApiFootballMarkets,fetchApiFootballLiveAsianHandicaps} from './api-football.js';
 
@@ -20,10 +20,11 @@ const now=()=>Date.now();
 const iso=value=>value==null?null:new Date(value).toISOString();
 const clone=value=>JSON.parse(JSON.stringify(value));
 const safePair=pair=>({home:Number.isFinite(pair?.home)?pair.home:null,away:Number.isFinite(pair?.away)?pair.away:null});
-const emptyState=()=>({lastCycle:null,lastSuccess:null,lastError:null,matches:[],signals:[],cycle:0,source:{today:false,ended:false,oddsApi:{status:'IDLE'},theOddsApi:{status:'IDLE'},apiFootball:{status:'IDLE'}}});
+const emptyState=()=>({lastCycle:null,lastSuccess:null,lastError:null,matches:[],signals:[],cycle:0,source:{today:false,ended:false,oddsApi:{status:'IDLE'},theOddsApi:{status:'IDLE'},apiFootball:{status:'IDLE'},totalCorner:{status:'IDLE'}}});
 const sourceRequestUrl=(url,token=now())=>{const result=new URL(url);result.searchParams.set('_nomad_cycle',String(token));return result.toString();};
 const bookmakerLabel=bookmaker=>String(bookmaker).toLowerCase()==='1xbet'?'1xBet':String(bookmaker);
 const marketState=(bookmaker,status,reason,extra={})=>({status,reason,source:'Odds-API.io',bookmaker:bookmakerLabel(bookmaker),...extra});
+const totalCornerMarketState=(status,reason,extra={})=>({status,reason,source:'TotalCorner',bookmaker:null,...extra});
 
 function parsedBookmakerMarket(payload,bookmaker,preference,eventId,item){
   const label=bookmakerLabel(bookmaker);
@@ -282,7 +283,7 @@ export class EngineState {
     const activeEnvelope=await this.activateConfigForCycle(upcomingCycle);
     const config=engineConfig(activeEnvelope.config);
     const started=now();
-    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}},theOddsApi:{status:'IDLE',checked:0,mapped:0,ready:0},apiFootball:{status:'IDLE',checked:0,eligible:0,fixtureMapped:0,mapped:0,ready:0,recoveryCandidates:0,recoveredSignals:0}},configVersion:activeEnvelope.version};
+    const next={...previous,lastCycle:started,cycle:upcomingCycle,lastError:null,source:{today:false,ended:false,oddsApi:{status:'IDLE',checked:0,eligible:0,mapped:0,ready:0,readyByBookmaker:{'1xBet':0,'Bet365':0}},theOddsApi:{status:'IDLE',checked:0,mapped:0,ready:0},apiFootball:{status:'IDLE',checked:0,eligible:0,fixtureMapped:0,mapped:0,ready:0,recoveryCandidates:0,recoveredSignals:0},totalCorner:{status:'IDLE',checked:0,ready:0,selected:0}},configVersion:activeEnvelope.version};
     try{
       const todayHtml=await getHtml(config.scanUrl,config,started); next.source.today=true;
       const watchMinuteFrom=Math.max(0,config.minuteFrom-(2*config.rollingWindowMinutes)-2);
@@ -450,14 +451,42 @@ export class EngineState {
         }
       }
 
+      const totalCornerMarketById=new Map();
+      const fallbackCandidates=eligible.filter(match=>{
+        const source1=marketById.get(match.id)||marketState(REAL_BOOKMAKER,'ODDS NOT READY','price_not_checked');
+        const source2=theOddsMarketById.get(match.id)||theOddsApiUnavailable('price_not_checked');
+        const source3=apiFootballMarketById.get(match.id)||apiFootballUnavailable('price_not_checked');
+        const primarySnapshots=buildPriceSourceSnapshots(
+          new Map([['source1',source1],['source2',source2],['source3',source3]]),config,started
+        ).filter(source=>source.id!=='source4');
+        return !selectPriceSource(primarySnapshots);
+      });
+      next.source.totalCorner.checked=fallbackCandidates.length;
+      if(!fallbackCandidates.length){
+        next.source.totalCorner.status='NOT_NEEDED';
+      }else{
+        const fetched=await Promise.all(fallbackCandidates.map(async match=>{
+          try{
+            const document=await getDocument(handicapPanelUrl(match.urls.odds),config,started);
+            return [match.id,parseBet365Asian(document.html,document.sourceUpdatedAt)];
+          }catch(error){
+            return [match.id,totalCornerMarketState('AH UNAVAILABLE',`price_fetch_failed:${String(error?.message||error)}`)];
+          }
+        }));
+        for(const [matchId,market] of fetched) totalCornerMarketById.set(matchId,market);
+        next.source.totalCorner.status='READY';
+        next.source.totalCorner.checkedAt=started;
+      }
+
       const enriched=baseMatches.map(match=>{
         if(match.freshness?.sourceStale) return match;
         const source1Market=marketById.get(match.id)||marketState(REAL_BOOKMAKER,'ODDS NOT READY','price_not_checked');
         const source2Market=theOddsMarketById.get(match.id)||theOddsApiUnavailable('price_not_checked');
         const source3Market=apiFootballMarketById.get(match.id)||apiFootballUnavailable('price_not_checked');
+        const source4Market=totalCornerMarketById.get(match.id)||totalCornerMarketState('AH UNAVAILABLE',match.detectionPassed?'fallback_not_available':'fallback_not_needed');
         const marketComparison=marketComparisonById.get(match.id)||{oneXBet:source1Market,bet365:marketState(COMPARE_BOOKMAKER,'ODDS NOT READY','price_not_checked')};
-        const priceSourceSnapshots=buildPriceSourceSnapshots(new Map([['source1',source1Market],['source2',source2Market],['source3',source3Market]]),config,started);
-        const selectedPriceSnapshot=selectPriceSource(priceSourceSnapshots);
+        const priceSourceSnapshots=buildPriceSourceSnapshots(new Map([['source1',source1Market],['source2',source2Market],['source3',source3Market],['source4',source4Market]]),config,started);
+        const selectedPriceSnapshot=selectPriceSourceWithFallback(priceSourceSnapshots);
         const market=selectedPriceSnapshot?.market||source1Market;
         const priceSources=priceSourceSnapshots.map(publicPriceSourceSnapshot);
         const selectedPrice=publicPriceSourceSnapshot(selectedPriceSnapshot);
@@ -468,6 +497,8 @@ export class EngineState {
       if(next.source.theOddsApi.status==='READY'){
         next.source.theOddsApi.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source2')?.status==='PASS').length;
       }
+      next.source.totalCorner.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source4')?.status==='PASS').length;
+      next.source.totalCorner.selected=enriched.filter(match=>match.selectedPrice?.id==='source4').length;
       const source3Summary=summarizeApiFootballRecovery(enriched,apiFootballMarketById);
       next.source.apiFootball.recoveryCandidates=source3Summary.recoveryCandidates;
       if(next.source.apiFootball.status==='READY'){
