@@ -1,0 +1,48 @@
+name: NOMAD Flashscore Full Probe
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-engine/src/flashscore-full-probe.js'
+      - 'nomad-live-engine/wrangler.flashscore-full-probe.toml'
+      - '.github/workflows/nomad-flashscore-full-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+      - name: Deploy isolated full-source probe
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: '4'
+          command: deploy --config wrangler.flashscore-full-probe.toml
+      - name: Inspect live stats and bookmaker markets
+        run: |
+          URL='https://nomadtips3-flashscore-full-probe.mccarey-supon.workers.dev/probe'
+          rm -f /tmp/probe.json
+          for i in $(seq 1 15); do
+            CODE=$(curl -sS -o /tmp/probe.json -w '%{http_code}' "$URL?attempt=$i" || true)
+            VERSION=$(node -e "try{console.log(require('/tmp/probe.json').probeVersion||'')}catch{}")
+            echo "probe attempt $i HTTP $CODE version $VERSION"
+            if [ "$VERSION" = "full-v5" ]; then break; fi
+            sleep 3
+          done
+          cat /tmp/probe.json
+          node -e "const x=require('/tmp/probe.json'); if(!x.ok||x.probeVersion!=='full-v5') process.exit(2);"
