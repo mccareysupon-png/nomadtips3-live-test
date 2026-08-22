@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {DEFAULT_CONFIG} from '../src/config.js';
 import {PRICE_SOURCE_REGISTRY,buildPriceSourceSnapshots,selectPriceSourceWithFallback} from '../src/price-sources.js';
 
+// SOURCE 4 is intentionally fallback-only; primary Sources 1-3 retain priority.
 const observedAt=Date.parse('2026-08-22T01:00:40Z');
 const ready=(source,bookmaker,line,odds,updatedAt,extra={})=>({
   status:'AH READY',source,bookmaker,line,homeOdds:odds,awayOdds:1.95,
