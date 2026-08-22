@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <title>nomadtips3 · Settings 3.41 Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="site-footer.css">
+  <style>
+    .guide-app[hidden],.guide-gate[hidden]{display:none!important}
+    .guide-gate{position:fixed;inset:0;z-index:100;background:#10120f;display:grid;place-items:center;padding:18px}
+    .gate-card{width:min(390px,100%);background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.38);padding:22px}
+    .gate-brand{text-align:center;font-size:25px;font-weight:900;letter-spacing:-.03em;margin-bottom:22px}.gate-brand span{color:#f2d21b}
+    .gate-card .eyebrow,.gate-card h1,.gate-copy{text-align:center}.gate-card h1{font-size:18px;margin:5px 0 6px}.gate-copy{color:#98a091;font-size:10px;line-height:1.45;margin:0 0 17px}
+    .gate-form{display:grid;gap:9px}.gate-form label{font-size:9px;font-weight:900;color:#a7afa7}.gate-form input{width:100%;background:#121612;border:1px solid rgba(150,158,151,.18);color:#f2f4ef;border-radius:9px;padding:12px;outline:none;font-size:14px;letter-spacing:.12em}.gate-form input:focus{border-color:rgba(242,210,27,.62)}
+    .gate-form button{border:0;border-radius:9px;padding:11px 14px;background:#f2d21b;color:#10120f;font-weight:900;cursor:pointer}.gate-error{min-height:15px;text-align:center;color:#ff8b8b;font-size:9px;margin-top:4px}.gate-back{display:block;text-align:center;margin-top:11px;color:#8f968f;text-decoration:none;font-size:9px}
+    .hero-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.guide-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;border-radius:8px;padding:8px 10px;background:#263027;color:#f2f4ef;font-size:9px;font-weight:900}.guide-btn.primary{background:#f2d21b;color:#10120f}
+    .preset-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.preset{background:rgba(255,255,255,.025);border-radius:9px;padding:9px}.preset span{display:block;color:#899289;font-size:7px;text-transform:uppercase}.preset strong{display:block;margin-top:3px;font-size:14px}.preset small{display:block;color:#98a091;font-size:8px;line-height:1.4;margin-top:3px}
+    .guide-list{display:grid;gap:6px}.guide-item{display:grid;grid-template-columns:minmax(190px,.8fr) minmax(0,1.6fr) minmax(155px,.7fr);gap:10px;align-items:start;background:rgba(255,255,255,.025);border-radius:9px;padding:10px}.guide-name b{display:block;font-size:10px}.guide-name span{display:block;color:#98a091;font-size:8px;margin-top:3px}.guide-copy{font-size:9px;line-height:1.55;color:#dce1dc}.guide-copy strong{color:#f2f4ef}.guide-rec{border-left:1px solid rgba(150,158,151,.12);padding-left:10px}.guide-rec span{display:block;color:#899289;font-size:7px;text-transform:uppercase;font-weight:900}.guide-rec b{display:block;color:#83df89;font-size:10px;margin-top:4px;line-height:1.45}.guide-rec small{display:block;color:#98a091;font-size:8px;line-height:1.4;margin-top:3px}
+    .logic{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.logic-card{background:rgba(255,255,255,.025);border-radius:9px;padding:10px}.logic-card .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#f2d21b;color:#10120f;font-weight:900;font-size:10px;margin-bottom:7px}.logic-card b{font-size:10px}.logic-card p{font-size:8px;color:#98a091;line-height:1.5;margin:5px 0 0}.warning{padding:10px;border-radius:9px;background:rgba(242,210,27,.06);border:1px solid rgba(242,210,27,.15);font-size:9px;color:#d9ddcf;line-height:1.55}.warning b{color:#f2d21b}
+    .backbar{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}.backbar .muted{font-size:8px}
+    @media(max-width:800px){.preset-grid{grid-template-columns:repeat(2,1fr)}.guide-item{grid-template-columns:1fr}.guide-rec{border-left:0;border-top:1px solid rgba(150,158,151,.12);padding:8px 0 0}.logic{grid-template-columns:1fr}}
+    @media(max-width:700px){.mode{display:none}.hero{display:block}.preset-grid{grid-template-columns:repeat(2,1fr)}.guide-btn{flex:1}.mobile-nav{grid-template-columns:repeat(4,1fr)}}
+  </style>
+</head>
+<body>
+  <section class="guide-gate" id="guideGate" aria-label="Guide access">
+    <div class="gate-card">
+      <div class="gate-brand">nomad<span>tips</span>3</div>
+      <p class="eyebrow">RESTRICTED ACCESS</p>
+      <h1>Settings 3.41 Guide</h1>
+      <p class="gate-copy">ใช้รหัสเดียวกับหน้า Settings 3.41</p>
+      <form class="gate-form" id="gateForm">
+        <label for="gatePassword">ACCESS CODE</label>
+        <input id="gatePassword" type="password" autocomplete="current-password" autofocus required>
+        <button type="submit">Unlock guide</button>
+        <div class="gate-error" id="gateError" role="alert"></div>
+      </form>
+      <a class="gate-back" href="settings.html">← Back to Settings</a>
+    </div>
+  </section>
+
+  <div class="guide-app" id="guideApp" hidden>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">nomad<span>tips</span>3</div>
+        <nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
+        <div class="source-pill"><span class="dot"></span>GUIDE · 3.41</div>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">HOME LIVE AH CONTROL</p>
+          <h1>คู่มือ Settings 3.41</h1>
+          <p>อ่านความหมายของแต่ละค่าแบบภาษาคน พร้อมผลเมื่อปรับสูง/ต่ำ และค่าที่กำลังใช้ทดสอบกับแนวคิด HOME เร่งบุก + HOME Asian Handicap</p>
+          <div class="hero-actions"><a class="guide-btn primary" href="settings.html">← เปิดหน้า Settings</a><a class="guide-btn" href="#home-evidence">ไปที่ HOME Evidence</a></div>
+        </div>
+        <div class="mode"><span>MANUAL</span><strong>3.41</strong><small>HOME LIVE AH</small></div>
+      </section>
+
+      <section class="panel setting-section">
+        <div class="panel-head"><div><p class="eyebrow">CURRENT TEST BASELINE</p><h2>ค่าหลักที่กำลังใช้</h2></div></div>
+        <div class="preset-grid">
+          <div class="preset"><span>Rolling Window</span><strong>10 min</strong><small>10 นาทีล่าสุด เทียบ 10 นาทีก่อนหน้า</small></div>
+          <div class="preset"><span>HOME Pressure Share</span><strong>55%</strong><small>เจ้าบ้านต้องถือ Pressure มากกว่าครึ่งเล็กน้อย</small></div>
+          <div class="preset"><span>SOT Delta Minimum</span><strong>1</strong><small>มี Shot on Target ใหม่อย่างน้อย 1</small></div>
+          <div class="preset"><span>New HOME Event Gate</span><strong>ON</strong><small>ต้องมีเหตุการณ์ใหม่ของเจ้าบ้าน ไม่กินข้อมูลเก่าอย่างเดียว</small></div>
+        </div>
+      </section>
+
+      <section class="panel setting-section">
+        <div class="panel-head"><div><p class="eyebrow">HOW 3.41 THINKS</p><h2>อ่านระบบเป็น 3 ชั้น</h2></div></div>
+        <div class="logic">
+          <div class="logic-card"><div class="n">1</div><b>เวลา + สกอร์</b><p>เลือกช่วงนาทีที่ต้องการเฝ้า และจะใช้/ไม่ใช้ตัวกรองความต่างของสกอร์ก็ได้</p></div>
+          <div class="logic-card"><div class="n">2</div><b>HOME Evidence</b><p>ดูว่าเจ้าบ้านมี Pressure, แนวโน้มเร่ง และเหตุการณ์ใหม่ เช่น SOT / Shot Off / Corner หรือไม่</p></div>
+          <div class="logic-card"><div class="n">3</div><b>HOME AH + ราคา</b><p>เมื่อพฤติกรรมผ่านแล้ว ค่อยตรวจ Asian Handicap ฝั่ง HOME, odds และความสดของราคา</p></div>
+        </div>
+      </section>
+
+      <section class="panel setting-section">
+        <div class="panel-head"><div><p class="eyebrow">A · DETECTION WINDOW</p><h2>Time and score gate</h2></div></div>
+        <div class="guide-list">
+          <div class="guide-item"><div class="guide-name"><b>Minute From</b><span>นาทีเริ่มตรวจ</span></div><div class="guide-copy">ระบบจะยังไม่พิจารณาคู่ก่อนถึงนาทีนี้ ใช้กำหนดว่าเราอยากเริ่มมองพฤติกรรม LIVE ตั้งแต่ช่วงไหน</div><div class="guide-rec"><span>หลักใช้</span><b>อย่าเริ่มเร็วเกินจนข้อมูลยังบาง</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Minute To</b><span>นาทีสุดท้ายที่ตรวจ</span></div><div class="guide-copy">เมื่อเลยนาทีนี้ ระบบหยุดเปิดสัญญาณใหม่ ช่วยไม่ให้เข้าสัญญาณช้าเกินไปจนเวลาที่เหลือน้อย</div><div class="guide-rec"><span>หลักใช้</span><b>เผื่อเวลาให้เดิมพันมีโอกาสทำงาน</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Rolling Window Minutes</b><span>หน้าต่างวัดการเร่ง</span></div><div class="guide-copy">เอาช่วงล่าสุดไปเทียบกับช่วงก่อนหน้าที่มีความยาวเท่ากัน เช่น <strong>10 นาทีล่าสุด เทียบ 10 นาทีก่อนหน้า</strong> เพื่อดูว่า HOME กำลังเร่งขึ้นจริงหรือไม่</div><div class="guide-rec"><span>ค่าที่กำลังใช้</span><b>10 นาที</b><small>นิ่งกว่า 5 นาที แต่สัญญาณจะช้าขึ้นเล็กน้อย</small></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Score Difference Filter</b><span>กรองตามผลต่างสกอร์</span></div><div class="guide-copy">เปิดเมื่อต้องการตัดเกมที่ผลต่างสกอร์มากเกินไป ปิดเมื่อไม่ต้องการให้สกอร์เป็นตัวขวางการตรวจพฤติกรรมเจ้าบ้าน</div><div class="guide-rec"><span>ผลของการเปิด</span><b>เข้มขึ้น</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Max Score Difference</b><span>ผลต่างสกอร์สูงสุด</span></div><div class="guide-copy">ทำงานเมื่อ Score Difference Filter เปิดอยู่ กำหนดว่าเกมที่สกอร์ต่างกันมากที่สุดเท่าไรจึงยังอนุญาตให้ผ่าน</div><div class="guide-rec"><span>หมายเหตุ</span><b>ไม่มีผลเมื่อ Filter ปิด</b></div></div>
+        </div>
+      </section>
+
+      <section class="panel setting-section" id="home-evidence">
+        <div class="panel-head"><div><p class="eyebrow">B · HOME EVIDENCE</p><h2>Pressure, hunger and new events</h2></div></div>
+        <div class="guide-list">
+          <div class="guide-item"><div class="guide-name"><b>Attack Weight</b><span>น้ำหนักการบุกทั่วไป</span></div><div class="guide-copy">กำหนดอิทธิพลของค่า Attack ในคะแนน Pressure ยิ่งสูง Attack ธรรมดายิ่งมีผลกับ Pressure มากขึ้น</div><div class="guide-rec"><span>หลักใช้</span><b>ให้น้ำหนักต่ำกว่า Dangerous Attack</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Dangerous Attack Weight</b><span>น้ำหนักการบุกอันตราย</span></div><div class="guide-copy">กำหนดอิทธิพลของ Dangerous Attack ต่อ Pressure จุดประสงค์คือให้การบุกที่เข้าเขตอันตรายมีความสำคัญกว่าการพาบอลขึ้นมาเฉย ๆ</div><div class="guide-rec"><span>หลักใช้</span><b>สูงกว่า Attack Weight</b><small>ยังไม่ล็อกค่าตายตัว จนกว่าจะดูผลทดสอบ</small></div></div>
+          <div class="guide-item"><div class="guide-name"><b>HOME Pressure Share %</b><span>สัดส่วน Pressure ของ HOME</span></div><div class="guide-copy">ใช้ยืนยันว่าในช่วงที่ตรวจ เจ้าบ้านไม่ได้เป็นฝ่ายถูกกดอยู่ หาก HOME ถือ Pressure เกินครึ่ง แปลว่าอย่างน้อยภาพรวมเอนมาทางเจ้าบ้าน</div><div class="guide-rec"><span>ค่าที่กำลังใช้</span><b>55%</b><small>เกินเส้น 50% มาเล็กน้อย ไม่ตัดคู่รอง + ง่ายเกินไป</small></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Trend Conditions Required</b><span>ต้องผ่านกี่ Trend จาก 3</span></div><div class="guide-copy">กำหนดจำนวนเงื่อนไขแนวโน้มที่ต้องผ่าน ยิ่งเลือก 3/3 ยิ่งเข้ม แต่จำนวนสัญญาณจะลดลง ส่วน 1/3 จะผ่อนมากที่สุด</div><div class="guide-rec"><span>แนวคิด</span><b>2/3 = จุดกลางที่ควรเริ่มทดสอบ</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>New HOME Event Gate</b><span>บังคับเหตุการณ์ใหม่</span></div><div class="guide-copy">เมื่อเปิด ระบบต้องเห็นเหตุการณ์ใหม่ของ HOME จากชนิดที่เปิดใช้งาน เช่น SOT, Shot Off หรือ Corner ช่วยกันเคส Pressure ยังสูงเพราะข้อมูลสะสม แต่ช่วงล่าสุดเจ้าบ้านเงียบแล้ว</div><div class="guide-rec"><span>ค่าที่กำลังใช้</span><b>ON</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>SOT enabled</b><span>ใช้ Shot on Target เป็นหลักฐาน</span></div><div class="guide-copy">เปิดให้การยิงเข้ากรอบใหม่ของ HOME เป็นหนึ่งในเหตุการณ์ที่ใช้ยืนยันความเร่งของเกม</div><div class="guide-rec"><span>แนะนำ</span><b>ON</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>SOT Delta Minimum</b><span>ยิงเข้ากรอบใหม่ขั้นต่ำ</span></div><div class="guide-copy">จำนวน SOT ของ HOME ที่ต้องเพิ่มใน Rolling Window ล่าสุด เช่นตั้ง 1 หมายถึงต้องมี SOT ใหม่อย่างน้อยหนึ่งครั้งในช่วงที่กำลังตรวจ</div><div class="guide-rec"><span>ค่าที่กำลังใช้</span><b>1</b><small>ตั้ง 2 จะเข้มขึ้นมาก</small></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Shot Off enabled</b><span>ใช้ยิงไม่เข้ากรอบ</span></div><div class="guide-copy">เปิดให้ Shot Off ใหม่เป็นหลักฐานว่าทีมเจ้าบ้านกำลังสร้างจังหวะจบ แม้ยังไม่เข้ากรอบ</div><div class="guide-rec"><span>ผล</span><b>เพิ่มความไวของ Event Gate</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Shot Off Delta Minimum</b><span>ยิงออกใหม่ขั้นต่ำ</span></div><div class="guide-copy">จำนวน Shot Off ใหม่ขั้นต่ำในช่วงล่าสุด ยิ่งตั้งสูงยิ่งต้องเห็นการยิงต่อเนื่องก่อนผ่าน</div><div class="guide-rec"><span>เริ่มทดสอบ</span><b>1</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Corner enabled</b><span>ใช้เตะมุมเป็นหลักฐาน</span></div><div class="guide-copy">เปิดให้ Corner ใหม่ของ HOME เป็นหลักฐานสด ช่วยจับช่วงที่เจ้าบ้านกดพื้นที่จนบอลถูกสกัดออกหลัง</div><div class="guide-rec"><span>ผล</span><b>ช่วยยืนยันแรงบุกในพื้นที่สุดท้าย</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Corner Delta Minimum</b><span>เตะมุมใหม่ขั้นต่ำ</span></div><div class="guide-copy">จำนวน Corner ใหม่ขั้นต่ำในช่วงล่าสุด ถ้าตั้ง 1 แค่มีเตะมุมใหม่หนึ่งครั้งก็ถือว่าเหตุการณ์ชนิดนี้ผ่าน</div><div class="guide-rec"><span>เริ่มทดสอบ</span><b>1</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Evidence Required</b><span>ANY / ALL</span></div><div class="guide-copy"><strong>ANY</strong> = มีเหตุการณ์ใหม่ชนิดใดชนิดหนึ่งที่เปิดไว้ก็พอ · <strong>ALL</strong> = ทุกชนิดที่เปิดไว้ต้องผ่านพร้อมกัน จึงเข้มกว่ามาก</div><div class="guide-rec"><span>สำหรับทดสอบ</span><b>ANY</b><small>เหมาะกับการไม่ตัดเกมที่กำลังเร่งคนละรูปแบบ</small></div></div>
+        </div>
+      </section>
+
+      <section class="panel setting-section">
+        <div class="panel-head"><div><p class="eyebrow">C · HOME ASIAN HANDICAP</p><h2>Live market and price gate</h2></div></div>
+        <div class="guide-list">
+          <div class="guide-item"><div class="guide-name"><b>Allowed Lines</b><span>ANY / SELECTED</span></div><div class="guide-copy"><strong>ANY</strong> อนุญาต HOME AH line ที่ถูกต้องทุกเส้น · <strong>SELECTED</strong> ใช้เฉพาะเส้นที่เลือกไว้เท่านั้น</div><div class="guide-rec"><span>โหมดทดสอบ</span><b>ANY เปิดทางกว้างกว่า</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Selected HOME Lines</b><span>เส้น AH ที่เลือก</span></div><div class="guide-copy">ทำงานเมื่อ Allowed Lines = SELECTED ใช้จำกัดเฉพาะ HOME +/− line ที่ต้องการ เช่น +0.25, +0.5, 0, −0.25 เป็นต้น</div><div class="guide-rec"><span>หมายเหตุ</span><b>ไม่มีผลเมื่อใช้ ANY</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Minimum Odds</b><span>ราคาต่ำสุด</span></div><div class="guide-copy">กำหนด odds ต่ำสุดที่ยอมรับ คู่ที่ราคาต่ำกว่านี้จะไม่ผ่าน แม้พฤติกรรม LIVE ผ่านทุกข้อแล้ว</div><div class="guide-rec"><span>ผลเมื่อเพิ่ม</span><b>ราคาดีขึ้น แต่สัญญาณน้อยลง</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Maximum Odds</b><span>ราคาสูงสุด</span></div><div class="guide-copy">ใช้เมื่อเปิด Maximum enabled เพื่อกันราคาที่สูงเกินกรอบที่ต้องการ ถ้าปิดไว้จะไม่ใช้เพดานราคานี้</div><div class="guide-rec"><span>ผล</span><b>เป็นตัวกรองเสริม</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>Maximum Price Age (seconds)</b><span>อายุราคาสูงสุด</span></div><div class="guide-copy">ราคา AH ที่ระบบอ่านมาต้องไม่เก่ากว่าจำนวนวินาทีที่กำหนด เช่น 60 = ต้องเป็นราคาที่อัปเดตภายใน 1 นาที ส่วน 3600 = ยอมรับราคาที่เก่าได้ถึง 1 ชั่วโมง</div><div class="guide-rec"><span>หลักใช้</span><b>ยิ่งต่ำ = ยิ่งบังคับราคาสด</b></div></div>
+          <div class="guide-item"><div class="guide-name"><b>One Signal Per Match</b><span>หนึ่งสัญญาณต่อหนึ่งคู่</span></div><div class="guide-copy">เมื่อเปิด คู่ที่เคยออกสัญญาณแล้วจะไม่ออกซ้ำ ช่วยกันการแจ้งเตือนคู่เดิมหลายรอบเมื่อเงื่อนไขกลับมาผ่านอีก</div><div class="guide-rec"><span>แนะนำ</span><b>ON</b></div></div>
+        </div>
+      </section>
+
+      <section class="panel setting-section">
+        <div class="panel-head"><div><p class="eyebrow">READ THIS FIRST</p><h2>หลักการปรับค่า</h2></div></div>
+        <div class="warning"><b>อย่าปรับหลายตัวพร้อมกันถ้ากำลังวัดผล</b> — ถ้าเปลี่ยน Rolling Window, Pressure Share, Trend และ Event Delta พร้อมกัน จะย้อนดูยากว่าตัวไหนทำให้สัญญาณดีขึ้นหรือแย่ลง ควรใช้ชุดฐานเดิมแล้วเปลี่ยนทีละแกน จากนั้นเทียบจำนวนสัญญาณและผลจริงใน Statistics</div>
+        <div class="backbar"><span class="muted">Guide นี้อธิบายการใช้งานหน้า Settings โดยไม่เปลี่ยน Engine หรือ Detector</span><a class="guide-btn primary" href="settings.html">กลับหน้า Settings 3.41 →</a></div>
+      </section>
+    </main>
+
+    <nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
+  </div>
+
+  <script>
+    (()=>{
+      const EXPECTED='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
+      const gate=document.getElementById('guideGate');
+      const app=document.getElementById('guideApp');
+      const form=document.getElementById('gateForm');
+      const password=document.getElementById('gatePassword');
+      const error=document.getElementById('gateError');
+      const hash=async value=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');};
+      const show=()=>{gate.hidden=true;app.hidden=false;};
+      if(sessionStorage.getItem('nomadSettingsUnlocked')==='1'&&sessionStorage.getItem('nomadSettingsKey')) show();
+      form.addEventListener('submit',async event=>{
+        event.preventDefault();error.textContent='';
+        const key=password.value;
+        if(await hash(key)===EXPECTED){sessionStorage.setItem('nomadSettingsUnlocked','1');sessionStorage.setItem('nomadSettingsKey',key);password.value='';show();}
+        else{error.textContent='Incorrect access code';password.select();}
+      });
+    })();
+  </script>
+</body>
+</html>
