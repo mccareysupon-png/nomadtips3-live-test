@@ -5,6 +5,7 @@ on:
     paths:
       - 'tools/nowgoal-probe.mjs'
       - 'tools/nowgoal-live-ah-probe.mjs'
+      - 'tools/nowgoal-schema-probe.mjs'
       - '.github/workflows/nowgoal-source-probe.yml'
 
 permissions:
@@ -23,3 +24,5 @@ jobs:
         run: node tools/nowgoal-probe.mjs
       - name: Inspect live Nowgoal 1xBet AH payloads
         run: node tools/nowgoal-live-ah-probe.mjs
+      - name: Inspect Nowgoal live schema and polling files
+        run: node tools/nowgoal-schema-probe.mjs
