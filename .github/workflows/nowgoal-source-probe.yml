@@ -3,9 +3,6 @@ name: Nowgoal Source Probe
 on:
   pull_request:
     paths:
-      - 'tools/nowgoal-probe.mjs'
-      - 'tools/nowgoal-live-ah-probe.mjs'
-      - 'tools/nowgoal-schema-probe.mjs'
       - 'tools/nowgoal-roster-sign-probe.mjs'
       - '.github/workflows/nowgoal-source-probe.yml'
 
@@ -21,11 +18,5 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Inspect public Nowgoal page and JS request paths
-        run: node tools/nowgoal-probe.mjs
-      - name: Inspect live Nowgoal 1xBet AH payloads
-        run: node tools/nowgoal-live-ah-probe.mjs
-      - name: Inspect Nowgoal live schema and polling files
-        run: node tools/nowgoal-schema-probe.mjs
-      - name: Inspect Nowgoal roster URLs and AH sign convention
+      - name: Inspect Nowgoal roster and match metadata
         run: node tools/nowgoal-roster-sign-probe.mjs
