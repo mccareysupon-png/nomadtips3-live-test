@@ -48,7 +48,7 @@ function splitLiteral(body=''){
     }
     if(ch==='\''||ch==='"'){quote=ch;continue;}
     if(ch===','){out.push(current.trim());current='';continue;}
-    current+=ch;
+    current+=ch;continue;
   }
   out.push(current.trim());
   return out.map(value=>value===''?null:value);
@@ -94,13 +94,43 @@ export function normalizeNowgoalBet365AhRow(row,sourceUpdatedAt){
   return {status:'AH READY',line,homeOdds,awayOdds,bookmaker:'Bet365',bookmakerVerified:true,market:'FULL MATCH LIVE AH',source:'Nowgoal',sourceUpdatedAt:Number(sourceUpdatedAt),sourceTimestampKind:'nowgoal_change_observed'};
 }
 
+function teamVariant(value=''){
+  const text=String(value).trim().toLowerCase();
+  const youth=text.match(/(?:^|[\s(\-])(?:u|under\s*)(\d{2})(?:$|[\s)\-])/i);
+  return {
+    women:/\(\s*w\s*\)|(?:^|\s)(?:women|ladies|feminine|femenino)(?:$|\s)/i.test(text),
+    youth:youth?Number(youth[1]):null,
+    reserve:/(?:^|\s)(?:reserves?|reserve|ii|b)(?:$|\s)/i.test(text),
+  };
+}
+
+function sameVariant(a,b){
+  const left=teamVariant(a),right=teamVariant(b);
+  if(left.women!==right.women) return false;
+  if((left.youth==null)!==(right.youth==null)) return false;
+  if(left.youth!=null&&right.youth!=null&&left.youth!==right.youth) return false;
+  if(left.reserve!==right.reserve) return false;
+  return true;
+}
+
+export function nowgoalMappingCompatible(match,row){
+  if(!match||!row) return false;
+  if(!sameVariant(match.home,row.home)||!sameVariant(match.away,row.away)) return false;
+  const matchScore=match.score||{},rowScore=row.score||{};
+  const bothScoresKnown=finite(matchScore.home)&&finite(matchScore.away)&&finite(rowScore.home)&&finite(rowScore.away);
+  if(bothScoresKnown&&(Number(matchScore.home)!==Number(rowScore.home)||Number(matchScore.away)!==Number(rowScore.away))) return false;
+  return true;
+}
+
 function mapMatches(matches,roster){
   const candidates=roster.filter(row=>Number.isFinite(row.state)&&row.state>0);
   const unused=new Set(candidates.map((_,i)=>i));
   return matches.map(match=>{
     let best=null;
     for(const index of unused){
-      const row=candidates[index],home=teamSimilarity(match.home,row.home),away=teamSimilarity(match.away,row.away),score=(home+away)/2;
+      const row=candidates[index];
+      if(!nowgoalMappingCompatible(match,row)) continue;
+      const home=teamSimilarity(match.home,row.home),away=teamSimilarity(match.away,row.away),score=(home+away)/2;
       if(home<.62||away<.62||score<.74) continue;
       if(!best||score>best.score) best={index,row,score,home,away};
     }
