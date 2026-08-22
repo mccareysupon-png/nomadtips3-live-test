@@ -20,7 +20,10 @@ function displayStatus(market,assessment){
 export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date.now()){
   return PRICE_SOURCE_REGISTRY.map(definition=>{
     const market=marketsBySource.get(definition.id)||null;
-    const assessment=assessHomeMarket(market,config,observedAt);
+    const assessed=assessHomeMarket(market,config,observedAt);
+    const assessment=market?.bookmakerVerified===false
+      ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
+      :assessed;
     return {
       ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
       bookmaker:market?.bookmaker||null,line:assessment.line??market?.line??null,
