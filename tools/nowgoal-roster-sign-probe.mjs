@@ -4,11 +4,23 @@ const headers={
   'accept':'text/html,application/javascript,text/javascript,*/*;q=0.8',
   'accept-language':'en-US,en;q=0.9','cache-control':'no-cache','pragma':'no-cache'
 };
-async function get(urlOrPath){
-  const url=new URL(urlOrPath,BASE);url.searchParams.set('_nomad_roster',String(Date.now()));
+let sessionCookie='';
+async function get(urlOrPath,{referer=null,useCookie=true,cacheBust=true}={}){
+  const url=new URL(urlOrPath,BASE);
+  if(cacheBust) url.searchParams.set('_nomad_roster',String(Date.now()));
+  const requestHeaders={...headers};
+  if(referer) requestHeaders.referer=referer;
+  if(useCookie&&sessionCookie) requestHeaders.cookie=sessionCookie;
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
-  try{const r=await fetch(url,{headers,redirect:'follow',signal:controller.signal});return {status:r.status,url:r.url,type:r.headers.get('content-type')||'',text:await r.text()};}
-  finally{clearTimeout(timer);}
+  try{
+    const r=await fetch(url,{headers:requestHeaders,redirect:'follow',signal:controller.signal});
+    const setCookies=typeof r.headers.getSetCookie==='function'?r.headers.getSetCookie():[];
+    if(setCookies.length){
+      sessionCookie=setCookies.map(v=>v.split(';')[0]).join('; ');
+      console.log(`SESSION_COOKIE_COUNT ${setCookies.length}`);
+    }
+    return {status:r.status,url:r.url,type:r.headers.get('content-type')||'',text:await r.text()};
+  }finally{clearTimeout(timer);}
 }
 function compact(s){return String(s||'').replace(/\s+/g,' ').trim();}
 function vars(text,names){
@@ -33,19 +45,29 @@ function extractFunction(text,name){
   return text.slice(start,start+5000);
 }
 
-const home=await get('/');
+const home=await get('/',{useCookie:false});
 console.log(`HOME status=${home.status} bytes=${home.text.length}`);
 const found=vars(home.text,['_bfTxtByLeague','_bfTxtByTime','_bfTxt','_bfEvenDetail','_serverTime']);
 console.log(`HOME_VARS ${JSON.stringify(found)}`);
 for(const [name,path] of Object.entries(found)){
   if(!path||!/^\//.test(path)||!/_bfTxt|bf|data/i.test(name+path))continue;
-  try{const r=await get(path);console.log(`ROSTER_FILE name=${name} path=${path} status=${r.status} type=${r.type} bytes=${r.text.length} sample=${compact(r.text).slice(0,20000)}`);}catch(e){console.log(`ROSTER_ERROR ${name} ${path} ${e?.message||e}`);}
+  const attempts=[
+    ['browser', {referer:`${BASE}/`}],
+    ['browser-no-bust',{referer:`${BASE}/`,cacheBust:false}],
+    ['xhr',{referer:`${BASE}/`,cacheBust:false}],
+  ];
+  for(const [label,opts] of attempts){
+    try{
+      const r=await get(path,opts);
+      console.log(`ROSTER_FILE attempt=${label} name=${name} path=${path} status=${r.status} type=${r.type} bytes=${r.text.length} sample=${compact(r.text).slice(0,4000)}`);
+    }catch(e){console.log(`ROSTER_ERROR ${label} ${name} ${path} ${e?.message||e}`);}
+  }
 }
 
 const commonSrc=[...home.text.matchAll(/<script\b[^>]*src=["']([^"']*(?:common|setting)[^"']*)["']/gi)].map(m=>new URL(m[1],BASE).href);
 for(const src of commonSrc){
   try{
-    const js=await get(src);
+    const js=await get(src,{referer:`${BASE}/`});
     for(const name of ['Goal2GoalCn','Goal2Goal','Goal2CnOU']){
       const fn=extractFunction(js.text,name);if(fn)console.log(`FUNCTION ${name} FROM ${src} :: ${compact(fn)}`);
     }
@@ -55,7 +77,6 @@ for(const src of commonSrc){
   }catch(e){console.log(`COMMON_ERROR ${src} ${e?.message||e}`);}
 }
 
-// Find inline source URLs even if the variable assignment is not a simple quoted literal.
 for(const term of ['_bfTxtByLeague','_bfTxtByTime']){
   let at=0,count=0;
   while((at=home.text.indexOf(term,at))>=0&&count<10){
