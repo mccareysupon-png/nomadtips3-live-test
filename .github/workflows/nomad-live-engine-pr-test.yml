@@ -1,0 +1,30 @@
+name: NOMAD Live Engine PR Test
+
+on:
+  pull_request:
+    paths:
+      - "nomad-live-engine/**"
+      - ".github/workflows/nomad-live-engine-pr-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Run engine tests
+        working-directory: nomad-live-engine
+        run: |
+          node --test
+          node --check src/index.js
+          node --check src/price-sources.js
+          node --check src/parser.js
+          node --check src/api-football.js
+          node --check src/the-odds-api.js
+          node --check src/real-market.js
