@@ -7,7 +7,13 @@
   const STORE='nomad341LiveFilterV1';
   const valid=new Set(['ALL','SIGNAL','NEAR','WATCHING']);
   const tabName=tab=>String(tab?.textContent||'').trim().toUpperCase();
+  const signalOrder=new Map();
+  let nextSignalOrder=0;
   let selected='ALL';
+
+  // Prevent browser scroll anchoring from following newly inserted/reordered live cards.
+  list.style.overflowAnchor='none';
+
   try{
     const saved=String(localStorage.getItem(STORE)||'').toUpperCase();
     if(valid.has(saved))selected=saved;
@@ -24,7 +30,21 @@
   const apply=()=>{
     syncTabs();
     const q=String(search?.value||'').trim().toLowerCase();
-    for(const row of list.querySelectorAll('.match-wrap')){
+    const rows=[...list.querySelectorAll('.match-wrap')];
+
+    if(selected==='SIGNAL'){
+      for(const row of rows){
+        const state=String(row.dataset.state||'').toUpperCase();
+        if(state!=='SIGNAL'){row.style.order='';continue;}
+        const id=String(row.dataset.matchId||row.dataset.search||'');
+        if(!signalOrder.has(id))signalOrder.set(id,nextSignalOrder++);
+        row.style.order=String(signalOrder.get(id));
+      }
+    }else{
+      for(const row of rows)row.style.order='';
+    }
+
+    for(const row of rows){
       const state=String(row.dataset.state||'').toUpperCase();
       const stateOk=selected==='ALL'||(selected==='NEAR'?state==='NEAR SIGNAL':state===selected);
       const searchOk=!q||String(row.dataset.search||'').includes(q);
