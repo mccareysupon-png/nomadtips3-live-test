@@ -61,7 +61,7 @@ function detail(m){
   const sources=priceSources(m);
   const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const sourceRows=sources.map(sourceRow).join('');
-  const sourceOneComparison=bet365?.status?`<div class="check"><span>SOURCE 1 compare · Bet365</span><b class="${bet365.status==='AH READY'?'ok':'wait'}">${bookmakerPriceLine(bet365,'Bet365')} · ${bet365.sourceUpdatedAt?when(bet365.sourceUpdatedAt):'—'}</b></div>`:'';
+  const sourceOneComparison='';
   return `<div class="match-detail">
     <section class="detail-card"><h3>HOME ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
       <div><span>ATTACK</span><b>${pair(s.attacks)}</b></div><div><span>DANGER</span><b>${pair(s.dangerousAttack)}</b></div>
