@@ -36,3 +36,21 @@ for(const id of ids){
   }
   console.log('PAGE','id='+id,'status='+page.status,'title='+compact(title),'desc='+compact(desc).slice(0,500),'vars='+JSON.stringify(info));
 }
+
+const ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+async function engineJson(path){
+  const r=await fetch(`${ENGINE}${path}`,{headers:{'user-agent':UA,'accept':'application/json','cache-control':'no-cache'}});
+  const text=await r.text();
+  let json=null; try{json=JSON.parse(text);}catch{}
+  console.log('ENGINE',path,'status='+r.status,'body='+compact(text).slice(0,12000));
+  return {status:r.status,json,text};
+}
+const before=await engineJson('/health');
+const cycle=await engineJson('/cycle');
+const after=await engineJson('/health');
+const liveFeed=await engineJson('/feed');
+const source=after.json?.source?.oddspedia||null;
+const source5Rows=(liveFeed.json?.matches||[]).map(m=>(m.priceSources||[]).find(s=>s.id==='source5')).filter(Boolean);
+console.log('VERIFY',JSON.stringify({beforeCycle:before.json?.cycle,cycle:after.json?.cycle,source,source5Count:source5Rows.length,source5Samples:source5Rows.slice(0,5)}));
+if(after.status!==200||!after.json?.ok) process.exitCode=2;
+if(!source||source.status==='REMOVED') process.exitCode=3;
