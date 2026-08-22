@@ -3,7 +3,7 @@ import {teamSimilarity} from './real-market.js';
 const BASE='https://www.nowgoal.net';
 const COMPANY_ID='50';
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
-const finite=value=>Number.isFinite(Number(value));
+const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const n=value=>finite(value)?Number(value):null;
 const observedPriceChanges=new Map();
 
@@ -72,9 +72,9 @@ export function parseGoal50Rows(xml=''){
 
 export function normalizeNowgoalAhRow(row,sourceUpdatedAt){
   if(!row||!finite(row.rawLine)||!finite(row.homeHk)||!finite(row.awayHk)) return nowgoalUnavailable('invalid_nowgoal_ah_row');
-  const line=-Number(row.rawLine),homeOdds=Number(row.homeHk)+1,awayOdds=Number(row.awayHk)+1;
+  const line=-Number(row.rawLine),homeOdds=Number((Number(row.homeHk)+1).toFixed(4)),awayOdds=Number((Number(row.awayHk)+1).toFixed(4));
   if(!finite(line)||!finite(homeOdds)||!finite(awayOdds)||homeOdds<=1||awayOdds<=1) return nowgoalUnavailable('invalid_nowgoal_ah_row');
-  if(!Number.isFinite(Number(sourceUpdatedAt))) return nowgoalUnavailable('missing_verified_price_change_time');
+  if(!finite(sourceUpdatedAt)) return nowgoalUnavailable('missing_verified_price_change_time');
   return {status:'AH READY',line,homeOdds,awayOdds,bookmaker:'1xBet',bookmakerVerified:true,market:'FULL MATCH LIVE AH',source:'Nowgoal',sourceUpdatedAt:Number(sourceUpdatedAt),sourceTimestampKind:'nowgoal_change_observed'};
 }
 
@@ -111,7 +111,7 @@ export async function fetchNowgoal1xBetMarkets(matches=[],config,observedAt=Date
 
   const keepMs=Math.max((config?.maximumPriceAgeSeconds||3600)*2000,7200000);
   const seed=previousUpdates&&typeof previousUpdates==='object'?new Map(Object.entries(previousUpdates)):observedPriceChanges;
-  for(const [id,value] of [...seed.entries()]) if(!Number.isFinite(Number(value))||observedAt-Number(value)>keepMs) seed.delete(id);
+  for(const [id,value] of [...seed.entries()]) if(!finite(value)||observedAt-Number(value)>keepMs) seed.delete(id);
   for(const id of changed.keys()) seed.set(id,observedAt);
   if(seed!==observedPriceChanges){
     observedPriceChanges.clear();
