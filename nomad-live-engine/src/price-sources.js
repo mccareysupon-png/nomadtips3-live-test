@@ -10,15 +10,11 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source6',position:6,source:'Nowgoal'}),
   // SOURCE 7 is M88 / Mansion88 company 17 from the same Nowgoal live AH session.
   Object.freeze({id:'source7',position:7,source:'Nowgoal'}),
-  // SOURCE 8 is visible for observation only. It must never participate in price selection or fallback decisions.
-  Object.freeze({id:'source8',position:8,source:'5DollarFootballAPI',selectable:false,shadowOnly:true}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
-// SOURCE 8 exposes the adapter observation timestamp, not Bet365's upstream odds-update timestamp.
-// Never allow that observation time to win a cross-source freshness race.
-const freshnessComparable=item=>item?.id!=='source8'&&(item?.id!=='source5'||item?.market?.source==='Nowgoal');
+const freshnessComparable=item=>item?.id!=='source5'||item?.market?.source==='Nowgoal';
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -60,7 +56,7 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
 }
 
 export function selectPriceSource(sources=[],freshnessNearMs=FRESHNESS_NEAR_MS){
-  const valid=sources.filter(item=>item.selectable!==false&&item.status==='PASS'&&item.market&&Number.isFinite(Number(item.sourceUpdatedAt)));
+  const valid=sources.filter(item=>item.status==='PASS'&&item.market&&Number.isFinite(Number(item.sourceUpdatedAt)));
   if(!valid.length) return null;
   return valid.reduce((selected,candidate)=>{
     const selectedUpdated=Number(selected.sourceUpdatedAt),candidateUpdated=Number(candidate.sourceUpdatedAt);
