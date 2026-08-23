@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -28,12 +28,14 @@ jobs:
           node-version: "22"
 
       - name: Verify sidecar source only
+        id: sourcecheck
         working-directory: workers/nomadtips3-s8-sidecar
         run: |
           node --check src/index.js
           test "$(node -e "const c=require('./package.json'); process.stdout.write(c.name)")" = "nomadtips3-s8-sidecar"
 
       - name: Validate canary secrets
+        id: validate
         shell: bash
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
@@ -55,6 +57,7 @@ jobs:
           FIVEDOLLAR_API_KEY: ${{ env.FIVEDOLLAR_API_KEY }}
 
       - name: Wait for isolated health contract
+        id: health
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
@@ -78,8 +81,59 @@ jobs:
           cat /tmp/s8-health.json || true
           exit 1
 
+      - name: Run bounded S8 live probe
+        id: probe
+        if: ${{ steps.health.outcome == 'success' }}
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          HTTP=$(curl -sS -o /tmp/s8-probe.json -w '%{http_code}' --max-time 30 "$DEPLOYMENT_URL/probe" || true)
+          echo "probe http=$HTTP"
+          cat /tmp/s8-probe.json || true
+          test "$HTTP" = "200" || { echo "::error::S8 probe endpoint HTTP $HTTP"; exit 1; }
+          grep -q '"sourceId":"source8"' /tmp/s8-probe.json
+          grep -q '"isolated":true' /tmp/s8-probe.json
+          grep -q '"touchesLegacySources":false' /tmp/s8-probe.json
+
+      - name: Record canary evidence on test branch
+        if: ${{ always() }}
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          SOURCECHECK: ${{ steps.sourcecheck.outcome }}
+          VALIDATE: ${{ steps.validate.outcome }}
+          DEPLOY: ${{ steps.deploy.outcome }}
+          HEALTH: ${{ steps.health.outcome }}
+          PROBE: ${{ steps.probe.outcome }}
+        run: |
+          mkdir -p canary-status
+          [ -s /tmp/s8-health.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-health.json
+          [ -s /tmp/s8-probe.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-probe.json
+          cp /tmp/s8-health.json canary-status/s8-health.json
+          cp /tmp/s8-probe.json canary-status/s8-probe.json
+          cat > canary-status/s8-run.txt <<EOF
+          worker=nomadtips3-s8-sidecar
+          branch=${GITHUB_REF_NAME}
+          sourceCheck=${SOURCECHECK:-unknown}
+          secretValidation=${VALIDATE:-unknown}
+          deploy=${DEPLOY:-unknown}
+          health=${HEALTH:-unknown}
+          probe=${PROBE:-unknown}
+          deploymentUrl=${DEPLOYMENT_URL:-}
+          touchesLegacySources=false
+          utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add canary-status/s8-health.json canary-status/s8-probe.json canary-status/s8-run.txt
+          git commit -m "Record S8 canary evidence [skip ci]" || exit 0
+          git fetch origin "$GITHUB_REF_NAME"
+          git rebase "origin/$GITHUB_REF_NAME" || { git rebase --abort || true; echo "status write skipped due branch movement"; exit 0; }
+          git push origin HEAD:"$GITHUB_REF_NAME" || echo "status write skipped; canary runtime was not changed"
+
       - name: Safety notice
         if: ${{ success() }}
         run: |
-          echo "S8 canary deployed as a separate Worker only."
+          echo "S8 canary stayed isolated."
           echo "NOMAD 3.41 legacy Worker and S1-S7 were not deployed or modified by this workflow."
