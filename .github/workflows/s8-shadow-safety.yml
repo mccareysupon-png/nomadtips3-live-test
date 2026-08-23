@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           git fetch origin main
-          ALLOWED='^(nomad-live-engine/src/price-sources\.js|nomad-live-engine/test/s8-external\.test\.js|\.github/workflows/s8-shadow-safety\.yml)$'
+          ALLOWED='^(nomad-live-engine/src/price-sources\.js|nomad-live-engine/src/s8-external\.js|nomad-live-engine/test/s8-external\.test\.js|\.github/workflows/s8-shadow-safety\.yml)$'
           BAD=$(git diff --name-only origin/main...HEAD | grep -Ev "$ALLOWED" || true)
           if [ -n "$BAD" ]; then
             echo "::error::Unexpected files changed on S8 shadow branch"
@@ -44,9 +44,11 @@ jobs:
         working-directory: nomad-live-engine
         run: npm test
 
-      - name: Assert S8 is hard-blocked from selection
+      - name: Assert S8 shadow and request-budget fuses
         shell: bash
         run: |
           grep -q "item.id!=='source8'" nomad-live-engine/src/price-sources.js
           grep -q "S8 shadow can never act alone" nomad-live-engine/test/s8-external.test.js
-          echo "S8 shadow selection fuse present"
+          grep -q "nomadtips3-s8-sidecar.mccarey-supon.workers.dev/quotes" nomad-live-engine/src/s8-external.js
+          grep -q "S8_MAX_BATCH=2" nomad-live-engine/src/s8-external.js
+          echo "S8 shadow selection and request-budget fuses present"
