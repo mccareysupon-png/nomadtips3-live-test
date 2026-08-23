@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-live-engine-5dollar",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-23",
+  "build": {
+    "command": "node build.mjs"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ENGINE",
+        "class_name": "EngineState"
+      }
+    ]
+  },
+  "exports": {
+    "EngineState": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}
