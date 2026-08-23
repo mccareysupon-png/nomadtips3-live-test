@@ -6,6 +6,11 @@ on:
     paths:
       - "workers/nomadtips3-s8-sidecar/**"
       - ".github/workflows/s8-sidecar-canary-deploy.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "workers/nomadtips3-s8-sidecar/**"
+      - ".github/workflows/s8-sidecar-canary-deploy.yml"
   workflow_dispatch:
 
 concurrency:
@@ -76,7 +81,9 @@ jobs:
                grep -q '"sourceId":"source8"' /tmp/s8-health.json && \
                grep -q '"isolated":true' /tmp/s8-health.json && \
                grep -q '"touchesLegacySources":false' /tmp/s8-health.json && \
-               grep -q '"keyConfigured":true' /tmp/s8-health.json; then
+               grep -q '"keyConfigured":true' /tmp/s8-health.json && \
+               grep -q '"batchMaxMatches":2' /tmp/s8-health.json && \
+               grep -q '"maxVendorRequestsPerBatchWindow":3' /tmp/s8-health.json; then
               echo "S8 health PASS on attempt $i"
               cat /tmp/s8-health.json
               exit 0
@@ -102,6 +109,34 @@ jobs:
           grep -q '"sourceId":"source8"' /tmp/s8-probe.json
           grep -q '"isolated":true' /tmp/s8-probe.json
           grep -q '"touchesLegacySources":false' /tmp/s8-probe.json
+          grep -q '"maxVendorRequestsPerProbeWindow":2' /tmp/s8-probe.json
+
+      - name: Verify bounded POST quotes contract
+        id: batch
+        if: ${{ steps.probe.outcome == 'success' }}
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const probe=JSON.parse(fs.readFileSync('/tmp/s8-probe.json','utf8'));
+          const sample=Array.isArray(probe.samples)?probe.samples[0]:null;
+          const matches=sample?.home&&sample?.away?[{clientId:'canary-1',home:sample.home,away:sample.away}]:[];
+          fs.writeFileSync('/tmp/s8-batch-request.json',JSON.stringify({matches}));
+          NODE
+          HTTP=$(curl -sS -o /tmp/s8-batch.json -w '%{http_code}' --max-time 30 \
+            -H "content-type: application/json" \
+            -X POST "$DEPLOYMENT_URL/quotes" \
+            --data-binary @/tmp/s8-batch-request.json || true)
+          echo "batch http=$HTTP"
+          cat /tmp/s8-batch.json || true
+          test "$HTTP" = "200" || { echo "::error::S8 batch endpoint HTTP $HTTP"; exit 1; }
+          grep -q '"sourceId":"source8"' /tmp/s8-batch.json
+          grep -q '"isolated":true' /tmp/s8-batch.json
+          grep -q '"touchesLegacySources":false' /tmp/s8-batch.json
+          grep -q '"maxBatch":2' /tmp/s8-batch.json
+          grep -q '"maxVendorRequestsPerBatchWindow":3' /tmp/s8-batch.json
 
       - name: Report canary evidence to PR 160
         if: ${{ always() }}
@@ -114,11 +149,14 @@ jobs:
           DEPLOY: ${{ steps.deploy.outcome }}
           HEALTH: ${{ steps.health.outcome }}
           PROBE: ${{ steps.probe.outcome }}
+          BATCH: ${{ steps.batch.outcome }}
         run: |
           [ -s /tmp/s8-health.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-health.json
           [ -s /tmp/s8-probe.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-probe.json
+          [ -s /tmp/s8-batch.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-batch.json
           HEALTH_JSON=$(cat /tmp/s8-health.json)
           PROBE_JSON=$(cat /tmp/s8-probe.json)
+          BATCH_JSON=$(cat /tmp/s8-batch.json)
           BODY=$(cat <<EOF
           S8 CANARY EVIDENCE
 
@@ -127,6 +165,7 @@ jobs:
           deploy=${DEPLOY:-unknown}
           health=${HEALTH:-unknown}
           probe=${PROBE:-unknown}
+          batch=${BATCH:-unknown}
           deploymentUrl=${DEPLOYMENT_URL:-}
           touchesLegacySources=false
 
@@ -135,6 +174,9 @@ jobs:
 
           probePayload:
           ${PROBE_JSON}
+
+          batchPayload:
+          ${BATCH_JSON}
           EOF
           )
           jq -n --arg body "$BODY" '{body:$body}' > /tmp/pr-comment.json
@@ -150,4 +192,5 @@ jobs:
         if: ${{ success() }}
         run: |
           echo "S8 canary stayed isolated."
+          echo "Batch port is capped at two matches and three vendor requests per uncached batch window."
           echo "NOMAD 3.41 legacy Worker and S1-S7 were not deployed or modified by this workflow."
