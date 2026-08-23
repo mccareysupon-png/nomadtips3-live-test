@@ -35,7 +35,7 @@ test('S8 adapter client normalizes Bet365 live AH without trusting an upstream t
   assert.equal(built.results[0].market.sourceTimestampSemantics,'adapter_observed_at');
 });
 
-test('S1-S7 registry identities remain intact and S8 is additive',()=>{
+test('S1-S7 registry identities remain intact and S8 stays additive for display',()=>{
   assert.deepEqual(
     PRICE_SOURCE_REGISTRY.map(item=>[item.id,item.position,item.source]),
     [
@@ -46,14 +46,11 @@ test('S1-S7 registry identities remain intact and S8 is additive',()=>{
   );
 });
 
-test('S8 can win only by same-line better odds, not by its adapter observation freshness',()=>{
+test('S8 shadow stays visible and PASS but can never beat an existing primary',()=>{
   const source1=ready('Odds-API.io','1xBet',-.75,1.80,observedAt-40_000);
-  const source8=ready('5DollarFootballAPI','Bet365',-.75,1.88,observedAt);
-  let snapshots=buildPriceSourceSnapshots(new Map([['source1',source1],['source8',source8]]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source8');
-
-  source8.line=-.5;
-  snapshots=buildPriceSourceSnapshots(new Map([['source1',source1],['source8',source8]]),DEFAULT_CONFIG,observedAt);
+  const source8=ready('5DollarFootballAPI','Bet365',-.75,2.20,observedAt);
+  const snapshots=buildPriceSourceSnapshots(new Map([['source1',source1],['source8',source8]]),DEFAULT_CONFIG,observedAt);
+  assert.equal(snapshots.find(item=>item.id==='source8').status,'PASS');
   assert.equal(selectPriceSourceWithFallback(snapshots).id,'source1');
 });
 
@@ -72,8 +69,13 @@ test('S8 outage never blocks an existing primary and TotalCorner remains fallbac
   assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
 });
 
-test('S8 can act alone when every other primary is unavailable',()=>{
+test('S8 shadow can never act alone and cannot suppress TotalCorner fallback',()=>{
   const source8=ready('5DollarFootballAPI','Bet365',0,1.91,observedAt);
-  const snapshots=buildPriceSourceSnapshots(new Map([['source8',source8]]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source8');
+  let snapshots=buildPriceSourceSnapshots(new Map([['source8',source8]]),DEFAULT_CONFIG,observedAt);
+  assert.equal(snapshots.find(item=>item.id==='source8').status,'PASS');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
+
+  const source4=ready('TotalCorner','Bet365',0,1.86,observedAt-5_000);
+  snapshots=buildPriceSourceSnapshots(new Map([['source8',source8],['source4',source4]]),DEFAULT_CONFIG,observedAt);
+  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
 });
