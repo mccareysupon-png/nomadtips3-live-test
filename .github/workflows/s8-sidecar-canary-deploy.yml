@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 env:
@@ -69,17 +69,19 @@ jobs:
         run: |
           test -n "$DEPLOYMENT_URL" || { echo "::error::No deployment URL"; exit 1; }
           : > /tmp/s8-health.json
-          for i in $(seq 1 20); do
+          sleep 5
+          for i in $(seq 1 30); do
             HTTP=$(curl -sS -o /tmp/s8-health.json -w '%{http_code}' --max-time 10 "$DEPLOYMENT_URL/health" || true)
             if [ "$HTTP" = "200" ] && \
                grep -q '"sourceId":"source8"' /tmp/s8-health.json && \
                grep -q '"isolated":true' /tmp/s8-health.json && \
                grep -q '"touchesLegacySources":false' /tmp/s8-health.json && \
                grep -q '"keyConfigured":true' /tmp/s8-health.json; then
+              echo "S8 health PASS on attempt $i"
               cat /tmp/s8-health.json
               exit 0
             fi
-            echo "health not ready yet: attempt=$i http=$HTTP"
+            echo "health not ready: attempt=$i http=$HTTP"
             sleep 3
           done
           echo "::error::S8 health contract did not become ready"
@@ -100,42 +102,6 @@ jobs:
           grep -q '"sourceId":"source8"' /tmp/s8-probe.json
           grep -q '"isolated":true' /tmp/s8-probe.json
           grep -q '"touchesLegacySources":false' /tmp/s8-probe.json
-
-      - name: Persist latest canary evidence
-        if: ${{ always() }}
-        shell: bash
-        env:
-          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
-          SOURCECHECK: ${{ steps.sourcecheck.outcome }}
-          VALIDATE: ${{ steps.validate.outcome }}
-          DEPLOY: ${{ steps.deploy.outcome }}
-          HEALTH: ${{ steps.health.outcome }}
-          PROBE: ${{ steps.probe.outcome }}
-        run: |
-          mkdir -p canary-status
-          [ -s /tmp/s8-health.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-health.json
-          [ -s /tmp/s8-probe.json ] || printf '%s\n' '{"status":"not_available"}' > /tmp/s8-probe.json
-          cp /tmp/s8-health.json canary-status/s8-health.json
-          cp /tmp/s8-probe.json canary-status/s8-probe.json
-          cat > canary-status/s8-run.txt <<EOF
-          worker=nomadtips3-s8-sidecar
-          branch=${GITHUB_REF_NAME}
-          sourceCheck=${SOURCECHECK:-unknown}
-          secretValidation=${VALIDATE:-unknown}
-          deploy=${DEPLOY:-unknown}
-          health=${HEALTH:-unknown}
-          probe=${PROBE:-unknown}
-          deploymentUrl=${DEPLOYMENT_URL:-}
-          touchesLegacySources=false
-          utc=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
-          EOF
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add canary-status/s8-health.json canary-status/s8-probe.json canary-status/s8-run.txt
-          git commit -m "Record latest S8 canary evidence [skip ci]" || exit 0
-          git fetch origin "$GITHUB_REF_NAME"
-          git rebase "origin/$GITHUB_REF_NAME" || { git rebase --abort || true; echo "status write skipped due branch movement"; exit 0; }
-          git push origin HEAD:"$GITHUB_REF_NAME" || echo "status write skipped; runtime was not changed"
 
       - name: Report canary evidence to PR 160
         if: ${{ always() }}
