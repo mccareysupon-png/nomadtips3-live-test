@@ -1,0 +1,73 @@
+name: Deploy S8 Sidecar Canary
+
+on:
+  push:
+    branches: [feature/s8-external-sidecar-canary]
+    paths:
+      - "workers/nomadtips3-s8-sidecar/**"
+      - ".github/workflows/s8-sidecar-canary-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  deploy-canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Verify sidecar source only
+        working-directory: workers/nomadtips3-s8-sidecar
+        run: |
+          node --check src/index.js
+          test "$(node -e "const c=require('./package.json'); process.stdout.write(c.name)")" = "nomadtips3-s8-sidecar"
+
+      - name: Validate canary secrets
+        shell: bash
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo "::error::Missing FIVEDOLLAR_API_KEY in GitHub Actions secrets"; exit 1; }
+
+      - name: Deploy isolated S8 Worker
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-s8-sidecar
+          wranglerVersion: "4"
+          command: deploy
+          secrets: |
+            FIVEDOLLAR_API_KEY
+        env:
+          FIVEDOLLAR_API_KEY: ${{ env.FIVEDOLLAR_API_KEY }}
+
+      - name: Verify isolated health contract
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          test -n "$DEPLOYMENT_URL" || { echo "::error::No deployment URL"; exit 1; }
+          BODY=$(curl -fsS --max-time 10 "$DEPLOYMENT_URL/health")
+          printf '%s\n' "$BODY"
+          printf '%s' "$BODY" | grep -q '"sourceId":"source8"'
+          printf '%s' "$BODY" | grep -q '"isolated":true'
+          printf '%s' "$BODY" | grep -q '"touchesLegacySources":false'
+          printf '%s' "$BODY" | grep -q '"keyConfigured":true'
+
+      - name: Safety notice
+        run: |
+          echo "S8 canary deployed as a separate Worker only."
+          echo "NOMAD 3.41 legacy Worker and S1-S7 were not deployed or modified by this workflow."
