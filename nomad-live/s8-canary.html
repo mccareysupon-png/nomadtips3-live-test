@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101a16">
+<title>NOMAD 3.41 · S8 Canary</title>
+<style>
+:root{color-scheme:dark;--bg:#0b100e;--card:#111a16;--line:#27352e;--text:#edf5f0;--muted:#93a69c;--green:#38d878;--amber:#ffc857;--red:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}.shell{width:min(1100px,calc(100% - 28px));margin:0 auto;padding:28px 0 54px}.head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:18px}.eyebrow{font-size:11px;letter-spacing:.13em;color:var(--green);font-weight:800}.head h1{margin:4px 0 7px;font-size:clamp(24px,4vw,38px)}.muted{color:var(--muted)}.badge{border:1px solid var(--line);border-radius:999px;padding:8px 12px;font-size:12px;white-space:nowrap}.badge.ok{color:var(--green)}.badge.bad{color:var(--red)}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.metric,.panel{background:var(--card);border:1px solid var(--line);border-radius:14px}.metric{padding:15px}.metric span{display:block;color:var(--muted);font-size:10px;letter-spacing:.08em}.metric strong{display:block;font-size:24px;margin-top:4px}.panel{padding:16px;margin-top:12px}.panel h2{font-size:15px;margin:0 0 12px}.row{display:grid;grid-template-columns:minmax(220px,1.4fr) 100px 110px 110px minmax(170px,1fr);gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}.row:first-of-type{border-top:0}.teams{font-weight:800}.small{font-size:11px;color:var(--muted)}.pass{color:var(--green);font-weight:900}.wait{color:var(--amber);font-weight:900}.fail{color:var(--red);font-weight:900}.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:end}.field{display:grid;gap:4px;min-width:180px;flex:1}.field label{font-size:10px;color:var(--muted);letter-spacing:.06em}.field input{width:100%;background:#0d1411;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:10px}button{background:#173c29;color:#dffbea;border:1px solid #27643f;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}.note{margin-top:14px;border-left:3px solid var(--amber);padding:10px 12px;background:#17170f;color:#d8d3ae}.code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;overflow-wrap:anywhere}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr 80px 90px}.row .reason,.row .book{grid-column:auto}.head{display:block}.badge{display:inline-block;margin-top:10px}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <div class="head"><div><div class="eyebrow">NOMAD 3.41 · SHADOW TEST ONLY</div><h1>S8 Canary Room</h1><div class="muted">Read-only test bench for 5DollarFootballAPI · Bet365 · Full Match Live Asian Handicap. S8 cannot select price, lock signal, write settings or alter statistics here.</div></div><div id="s8Badge" class="badge">S8 CHECKING</div></div>
+
+  <section class="grid">
+    <article class="metric"><span>3.41 MATCHES</span><strong id="matches">—</strong></article>
+    <article class="metric"><span>DETECTOR ELIGIBLE</span><strong id="eligible">—</strong></article>
+    <article class="metric"><span>S8 PASS</span><strong id="passes">—</strong></article>
+    <article class="metric"><span>LAST TEST</span><strong id="last" style="font-size:15px">—</strong></article>
+  </section>
+
+  <section class="panel"><h2>Automatic shadow check</h2><div class="small">Reads the legacy 3.41 feed, chooses up to 3 detector-passed live matches, then asks S8 only. Refresh interval: 70 seconds. No production writes.</div><div id="rows" style="margin-top:8px"><div class="small">Waiting for first scan…</div></div></section>
+
+  <section class="panel"><h2>Manual one-match probe</h2><div class="controls"><div class="field"><label>HOME</label><input id="home" autocomplete="off" placeholder="Home team"></div><div class="field"><label>AWAY</label><input id="away" autocomplete="off" placeholder="Away team"></div><button id="probe">Test S8</button></div><div id="manual" class="small" style="margin-top:10px">No manual probe yet.</div></section>
+
+  <div class="note"><b>Safety lock:</b> this page does not call Settings endpoints, Statistics writes, Durable Object mutations, or <span class="code">selectPriceSource()</span>. S1–S7 remain under the legacy 3.41 worker. S8 is observation-only.</div>
+</main>
+<script>
+(()=>{
+  const LEGACY_API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+  const params=new URLSearchParams(location.search);
+  const S8_API=params.get('s8')||'https://nomadtips3-s8-sidecar.mccarey-supon.workers.dev';
+  const INTERVAL_MS=70000;
+  const MAX_AUTO_QUOTES=3;
+  const $=id=>document.getElementById(id);
+  let running=false;
+
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=value=>value==null||value===''?'—':esc(value);
+  const stamp=()=>new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const fetchJson=async(url,timeout=7000)=>{const c=new AbortController();const t=setTimeout(()=>c.abort(),timeout);try{const r=await fetch(url,{cache:'no-store',signal:c.signal});if(!r.ok)throw new Error(`HTTP ${r.status}`);return await r.json();}finally{clearTimeout(t)}};
+  const feedMatches=data=>Array.isArray(data?.matches)?data.matches:Array.isArray(data?.data?.matches)?data.data.matches:Array.isArray(data?.feed)?data.feed:[];
+
+  function renderQuote(match,q){
+    const status=q?.status||'UNAVAILABLE';
+    const cls=status==='PASS'?'pass':status==='UNAVAILABLE'?'wait':'fail';
+    return `<div class="row"><div><div class="teams">${esc(match.home||'')} — ${esc(match.away||'')}</div><div class="small">${fmt(match.minute)}' · ${fmt(match.state)}</div></div><div class="${cls}">${esc(status)}</div><div>AH ${fmt(q?.line)}</div><div>@ ${fmt(q?.odds)}</div><div class="reason"><div class="book">Bet365 via 5Dollar</div><div class="small">${fmt(q?.reason||q?.matchedHome&&`${q.matchedHome} — ${q.matchedAway}`||'quote ready')}</div></div></div>`;
+  }
+
+  async function health(){
+    try{const h=await fetchJson(`${S8_API}/health?_=${Date.now()}`,5000);$('s8Badge').className='badge '+(h?.ok&&h?.keyConfigured?'ok':'bad');$('s8Badge').textContent=h?.ok?(h?.keyConfigured?'S8 ONLINE · KEY OK':'S8 ONLINE · KEY MISSING'):'S8 HEALTH FAIL';return h}catch(e){$('s8Badge').className='badge bad';$('s8Badge').textContent='S8 OFFLINE / NOT DEPLOYED';return null}
+  }
+
+  async function autoScan(){
+    if(running)return;running=true;
+    try{
+      await health();
+      const data=await fetchJson(`${LEGACY_API}/feed?_=${Date.now()}`);
+      const matches=feedMatches(data);
+      const eligible=matches.filter(m=>m?.detectionPassed&&!m?.freshness?.sourceStale);
+      $('matches').textContent=matches.length;
+      $('eligible').textContent=eligible.length;
+      const targets=eligible.slice(0,MAX_AUTO_QUOTES);
+      if(!targets.length){$('passes').textContent='0';$('rows').innerHTML='<div class="small">No detector-passed match in this cycle. S8 was not queried.</div>';return}
+      const results=[];
+      for(const m of targets){
+        try{const d=await fetchJson(`${S8_API}/quote?home=${encodeURIComponent(m.home||'')}&away=${encodeURIComponent(m.away||'')}&_=${Date.now()}`);results.push({m,q:d?.quote||{status:'UNAVAILABLE',reason:'invalid_sidecar_response'}})}catch(e){results.push({m,q:{status:'UNAVAILABLE',reason:e?.name==='AbortError'?'sidecar_timeout':String(e?.message||e)}})}
+      }
+      $('passes').textContent=results.filter(x=>x.q?.status==='PASS').length;
+      $('rows').innerHTML=results.map(x=>renderQuote(x.m,x.q)).join('');
+    }catch(e){$('rows').innerHTML=`<div class="fail">Legacy feed read failed: ${esc(e?.message||e)}</div>`}finally{$('last').textContent=stamp();running=false}
+  }
+
+  $('probe').addEventListener('click',async()=>{
+    const home=$('home').value.trim(),away=$('away').value.trim();if(!home||!away){$('manual').textContent='Enter both HOME and AWAY.';return}
+    $('probe').disabled=true;$('manual').textContent='Testing S8…';
+    try{const d=await fetchJson(`${S8_API}/quote?home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}&_=${Date.now()}`);const q=d?.quote||{};$('manual').innerHTML=`<span class="${q.status==='PASS'?'pass':'wait'}">${esc(q.status||'UNAVAILABLE')}</span> · Bet365 · AH ${fmt(q.line)} @ ${fmt(q.odds)} · <span class="code">${fmt(q.reason||q.fixtureId||'quote ready')}</span>`}catch(e){$('manual').innerHTML=`<span class="fail">S8 ERROR</span> · ${esc(e?.message||e)}`}finally{$('probe').disabled=false}
+  });
+
+  autoScan();setInterval(autoScan,INTERVAL_MS);
+})();
+</script>
+</body></html>
