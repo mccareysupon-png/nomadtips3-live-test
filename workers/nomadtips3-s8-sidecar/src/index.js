@@ -1,10 +1,12 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const LIVE_CACHE_MS = 60_000;
 const QUOTE_CACHE_MS = 65_000;
+const PROBE_CACHE_MS = 70_000;
 const FETCH_TIMEOUT_MS = 4_500;
 
 let liveCache = { at: 0, fixtures: [] };
 const quoteCache = new Map();
+let probeCache = { at: 0, value: null };
 
 const cors = {
   'access-control-allow-origin': '*',
@@ -183,6 +185,87 @@ async function quote(home, away, env) {
   }
 }
 
+async function probe(env) {
+  const now = Date.now();
+  if (probeCache.value && now - probeCache.at < PROBE_CACHE_MS) {
+    return { ...probeCache.value, cached: true };
+  }
+
+  const startedAt = new Date().toISOString();
+  try {
+    const fixtures = await liveFixtures(env);
+    const samples = [];
+    const candidates = fixtures.slice(0, 3);
+
+    for (const fixture of candidates) {
+      const teams = fixtureTeams(fixture);
+      const fixtureId = fixture?.id;
+      if (!fixtureId) {
+        samples.push({ home: teams.home, away: teams.away, status: 'UNAVAILABLE', reason: 'fixture_id_missing' });
+        continue;
+      }
+
+      try {
+        const payload = await apiFetch(`/fixtures/${encodeURIComponent(fixtureId)}/odds?market=asian&bookmakers=bet365`, env);
+        const ah = extractBet365Asian(payload);
+        samples.push({
+          fixtureId,
+          home: teams.home,
+          away: teams.away,
+          status: ah ? 'PASS' : 'UNAVAILABLE',
+          reason: ah ? null : 'no_matching_live_ah',
+          line: ah?.line ?? null,
+          homeOdds: ah?.home ?? null,
+          awayOdds: ah?.away ?? null,
+        });
+      } catch (error) {
+        samples.push({
+          fixtureId,
+          home: teams.home,
+          away: teams.away,
+          status: 'UNAVAILABLE',
+          reason: error?.code || error?.message || 'source_error',
+        });
+      }
+    }
+
+    const value = {
+      ok: true,
+      sourceId: 'source8',
+      source: '5DollarFootballAPI',
+      bookmaker: 'Bet365',
+      market: 'FULL MATCH LIVE AH',
+      isolated: true,
+      touchesLegacySources: false,
+      liveFixtureCount: fixtures.length,
+      testedFixtureCount: samples.length,
+      passCount: samples.filter(item => item.status === 'PASS').length,
+      maxVendorRequestsPerProbeWindow: 4,
+      probeCacheSeconds: PROBE_CACHE_MS / 1000,
+      startedAt,
+      testedAt: new Date().toISOString(),
+      samples,
+    };
+    probeCache = { at: Date.now(), value };
+    return value;
+  } catch (error) {
+    const value = {
+      ok: false,
+      sourceId: 'source8',
+      source: '5DollarFootballAPI',
+      bookmaker: 'Bet365',
+      isolated: true,
+      touchesLegacySources: false,
+      status: 'UNAVAILABLE',
+      reason: error?.code || error?.message || 'source_error',
+      startedAt,
+      testedAt: new Date().toISOString(),
+    };
+    probeCache = { at: Date.now(), value };
+    return value;
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
@@ -202,7 +285,12 @@ export default {
         keyConfigured: Boolean(env.FIVEDOLLAR_API_KEY),
         liveCacheSeconds: LIVE_CACHE_MS / 1000,
         quoteCacheSeconds: QUOTE_CACHE_MS / 1000,
+        probeCacheSeconds: PROBE_CACHE_MS / 1000,
       });
+    }
+
+    if (url.pathname === '/probe') {
+      return json(await probe(env));
     }
 
     if (url.pathname === '/quote') {
