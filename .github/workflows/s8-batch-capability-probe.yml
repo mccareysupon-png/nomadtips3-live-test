@@ -42,7 +42,7 @@ jobs:
           echo "vendor_http=$HTTP"
           test "$HTTP" = "200" || { echo "::error::5Dollar batch HTTP $HTTP"; exit 1; }
 
-      - name: Summarize embedded Bet365 Asian Handicap capability
+      - name: Inspect Asian Handicap shape for two fixtures
         shell: bash
         run: |
           node <<'NODE'
@@ -54,43 +54,34 @@ jobs:
               ? payload.data.fixtures
               : [];
 
-          function bet365Book(data){
-            const arrays=[data?.bookmakers,data?.odds?.bookmakers,data?.odds];
-            for(const candidate of arrays){
-              if(!Array.isArray(candidate)) continue;
-              const found=candidate.find(b=>String(b?.slug||'').toLowerCase()==='bet365'||/bet\s*365/i.test(String(b?.name||'')));
-              if(found) return found;
+          const teamName=t=>t?.name||t?.team_name||t?.title||'';
+          const teams=f=>({
+            home:teamName(f?.teams?.home)||f?.home_team||f?.home||'',
+            away:teamName(f?.teams?.away)||f?.away_team||f?.away||''
+          });
+
+          function safeShape(value,depth=0){
+            if(depth>4) return '[depth-limit]';
+            if(value===null) return null;
+            if(Array.isArray(value)) return {type:'array',length:value.length,sample:value.slice(0,2).map(v=>safeShape(v,depth+1))};
+            if(typeof value==='object'){
+              const out={};
+              for(const [k,v] of Object.entries(value).slice(0,30)) out[k]=safeShape(v,depth+1);
+              return out;
             }
-            return null;
-          }
-          function asian(data){
-            const book=bet365Book(data);
-            const market=book?.asian_handicap||book?.odds?.asian_handicap||data?.asian_handicap||data?.odds?.asian_handicap||null;
-            const inplay=market?.inplay||market?.in_play||null;
-            const line=Number(inplay?.line),home=Number(inplay?.home),away=Number(inplay?.away);
-            if(Number.isFinite(line)&&Number.isFinite(home)) return {line,home,away:Number.isFinite(away)?away:null};
-            return null;
-          }
-          function teams(f){
-            const name=t=>t?.name||t?.team_name||t?.title||'';
-            return {
-              home:name(f?.teams?.home)||f?.home_team||f?.home||'',
-              away:name(f?.teams?.away)||f?.away_team||f?.away||''
-            };
+            if(typeof value==='number'||typeof value==='boolean') return value;
+            if(typeof value==='string') return value.length>80?`${value.slice(0,80)}…`:value;
+            return typeof value;
           }
 
-          const decoded=fixtures.map(f=>({fixtureId:f?.id??null,...teams(f),ah:asian(f)}));
-          const ready=decoded.filter(x=>x.ah);
-          const sample=decoded.slice(0,5).map((x,i)=>({
-            fixtureId:x.fixtureId,home:x.home,away:x.away,hasEmbeddedBet365LiveAH:Boolean(x.ah),
-            line:x.ah?.line??null,homeOdds:x.ah?.home??null,awayOdds:x.ah?.away??null,
-            fixtureKeys:Object.keys(fixtures[i]||{}).sort().slice(0,30),
-            oddsKeys:fixtures[i]?.odds&&typeof fixtures[i].odds==='object'&&!Array.isArray(fixtures[i].odds)
-              ?Object.keys(fixtures[i].odds).sort().slice(0,30):[]
+          const samples=fixtures.slice(0,2).map(f=>({
+            fixtureId:f?.id??null,
+            ...teams(f),
+            asianHandicapShape:safeShape(f?.odds?.asian_handicap??null),
+            asianHandicapHalfShape:safeShape(f?.odds?.asian_handicap_half??null)
           }));
           console.log(JSON.stringify({
             sourceId:'source8',source:'5DollarFootballAPI',requestCount:1,
-            liveFixtureCount:fixtures.length,embeddedBet365LiveAHCount:ready.length,
-            singleRequestUsable:ready.length>0,sample
+            liveFixtureCount:fixtures.length,samples
           },null,2));
           NODE
