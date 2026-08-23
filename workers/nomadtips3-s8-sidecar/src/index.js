@@ -1,16 +1,19 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const LIVE_CACHE_MS = 60_000;
 const QUOTE_CACHE_MS = 65_000;
+const BATCH_CACHE_MS = 65_000;
 const PROBE_CACHE_MS = 70_000;
 const FETCH_TIMEOUT_MS = 4_500;
+const BATCH_MAX_MATCHES = 2;
 
 let liveCache = { at: 0, fixtures: [] };
 const quoteCache = new Map();
+const batchCache = new Map();
 let probeCache = { at: 0, value: null };
 
 const cors = {
   'access-control-allow-origin': '*',
-  'access-control-allow-methods': 'GET,OPTIONS',
+  'access-control-allow-methods': 'GET,POST,OPTIONS',
   'access-control-allow-headers': 'content-type',
   'cache-control': 'no-store',
 };
@@ -102,7 +105,8 @@ async function apiFetch(path, env) {
 
 async function liveFixtures(env) {
   const now = Date.now();
-  if (now - liveCache.at < LIVE_CACHE_MS && liveCache.fixtures.length) return liveCache.fixtures;
+  // Cache empty responses too. Otherwise a temporary zero-fixture window can burn the vendor rate limit.
+  if (now - liveCache.at < LIVE_CACHE_MS) return liveCache.fixtures;
   const payload = await apiFetch('/fixtures?status=live&per_page=500', env);
   const fixtures = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.data?.fixtures) ? payload.data.fixtures : [];
   liveCache = { at: now, fixtures };
@@ -113,16 +117,44 @@ function extractBet365Asian(payload) {
   const data = payload?.data || {};
   const books = Array.isArray(data.bookmakers) ? data.bookmakers : [];
   const bet365 = books.find(b => String(b?.slug || '').toLowerCase() === 'bet365' || /bet\s*365/i.test(String(b?.name || '')));
-  const market = bet365?.odds?.asian_handicap || data?.odds?.asian_handicap || data?.asian_handicap || null;
+  const market = bet365?.asian_handicap || bet365?.odds?.asian_handicap || data?.odds?.asian_handicap || data?.asian_handicap || null;
   const inplay = market?.inplay || market?.in_play || null;
-  if (!inplay) return null;
-  if (typeof inplay === 'object') {
-    const line = Number(inplay.line);
-    const home = Number(inplay.home);
-    const away = Number(inplay.away);
-    if (Number.isFinite(line) && Number.isFinite(home)) return { line, home, away: Number.isFinite(away) ? away : null };
-  }
-  return null;
+  if (!inplay || typeof inplay !== 'object') return null;
+  const line = Number(inplay.line);
+  const home = Number(inplay.home);
+  const away = Number(inplay.away);
+  if (!Number.isFinite(line) || !Number.isFinite(home)) return null;
+  return { line, home, away: Number.isFinite(away) ? away : null };
+}
+
+function unavailableMarket(reason, extra = {}) {
+  return {
+    status: 'AH UNAVAILABLE',
+    reason,
+    source: '5DollarFootballAPI',
+    bookmaker: 'Bet365',
+    bookmakerVerified: true,
+    market: 'FULL MATCH LIVE AH',
+    ...extra,
+  };
+}
+
+async function directMarket(fixtureId, env) {
+  const payload = await apiFetch(`/fixtures/${encodeURIComponent(fixtureId)}/odds?market=asian&bookmakers=bet365`, env);
+  const ah = extractBet365Asian(payload);
+  if (!ah) return unavailableMarket('no_matching_live_ah', { fixtureId });
+  return {
+    status: 'AH READY',
+    reason: null,
+    source: '5DollarFootballAPI',
+    bookmaker: 'Bet365',
+    bookmakerVerified: true,
+    market: 'FULL MATCH LIVE AH',
+    line: ah.line,
+    homeOdds: ah.home,
+    awayOdds: ah.away,
+    fixtureId,
+  };
 }
 
 async function quote(home, away, env) {
@@ -145,12 +177,11 @@ async function quote(home, away, env) {
       return { source: '5DollarFootballAPI', sourceId: 'source8', bookmaker: 'Bet365', status: 'UNAVAILABLE', reason: 'fixture_id_missing', home, away };
     }
 
-    const payload = await apiFetch(`/fixtures/${encodeURIComponent(fixtureId)}/odds?market=asian&bookmakers=bet365`, env);
-    const ah = extractBet365Asian(payload);
-    if (!ah) {
+    const market = await directMarket(fixtureId, env);
+    if (market.status !== 'AH READY') {
       const value = {
         source: '5DollarFootballAPI', sourceId: 'source8', bookmaker: 'Bet365',
-        status: 'UNAVAILABLE', reason: 'no_matching_live_ah', fixtureId,
+        status: 'UNAVAILABLE', reason: market.reason || 'no_matching_live_ah', fixtureId,
         matchedHome: matched.teams.home, matchedAway: matched.teams.away,
       };
       quoteCache.set(cacheKey, { at: Date.now(), value });
@@ -165,9 +196,9 @@ async function quote(home, away, env) {
       market: 'FULL MATCH LIVE AH',
       side: 'HOME',
       status: 'PASS',
-      line: ah.line,
-      odds: ah.home,
-      awayOdds: ah.away,
+      line: market.line,
+      odds: market.homeOdds,
+      awayOdds: market.awayOdds,
       fixtureId,
       matchedHome: matched.teams.home,
       matchedAway: matched.teams.away,
@@ -185,6 +216,94 @@ async function quote(home, away, env) {
   }
 }
 
+async function batchQuotes(inputMatches, env) {
+  const input = Array.isArray(inputMatches) ? inputMatches : [];
+  const batch = input.slice(0, BATCH_MAX_MATCHES);
+  const cacheKey = batch.map(m => `${String(m?.clientId ?? '')}:${normalize(m?.home)}|${normalize(m?.away)}`).join('||');
+  const cached = batchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < BATCH_CACHE_MS) return { ...cached.value, cached: true };
+
+  if (!batch.length) {
+    return { ok: true, sourceId: 'source8', source: '5DollarFootballAPI', checked: 0, mapped: 0, ready: 0, results: [], live: 0, maxBatch: BATCH_MAX_MATCHES };
+  }
+
+  try {
+    const fixtures = await liveFixtures(env);
+    const results = [];
+    for (const item of batch) {
+      const clientId = item?.clientId ?? null;
+      const home = String(item?.home || '');
+      const away = String(item?.away || '');
+      const matched = findFixture(fixtures, home, away);
+      if (!matched) {
+        results.push({ clientId, matched: false, market: unavailableMarket('no_matching_live_match') });
+        continue;
+      }
+      const fixtureId = matched.fixture?.id;
+      if (!fixtureId) {
+        results.push({ clientId, matched: true, fixtureId: null, market: unavailableMarket('fixture_id_missing') });
+        continue;
+      }
+      try {
+        const market = await directMarket(fixtureId, env);
+        results.push({
+          clientId,
+          matched: true,
+          fixtureId,
+          mapping: { homeScore: matched.h, awayScore: matched.a, totalScore: matched.total },
+          matchedHome: matched.teams.home,
+          matchedAway: matched.teams.away,
+          market,
+        });
+      } catch (error) {
+        results.push({
+          clientId,
+          matched: true,
+          fixtureId,
+          market: unavailableMarket(error?.code || error?.message || 'source_error', { fixtureId }),
+        });
+      }
+    }
+
+    const value = {
+      ok: true,
+      sourceId: 'source8',
+      source: '5DollarFootballAPI',
+      bookmaker: 'Bet365',
+      market: 'FULL MATCH LIVE AH',
+      isolated: true,
+      touchesLegacySources: false,
+      checked: batch.length,
+      mapped: results.filter(r => r.matched).length,
+      ready: results.filter(r => r.market?.status === 'AH READY').length,
+      live: fixtures.length,
+      maxBatch: BATCH_MAX_MATCHES,
+      maxVendorRequestsPerBatchWindow: BATCH_MAX_MATCHES + 1,
+      results,
+    };
+    batchCache.set(cacheKey, { at: Date.now(), value });
+    return value;
+  } catch (error) {
+    const value = {
+      ok: false,
+      sourceId: 'source8',
+      source: '5DollarFootballAPI',
+      bookmaker: 'Bet365',
+      isolated: true,
+      touchesLegacySources: false,
+      checked: batch.length,
+      mapped: 0,
+      ready: 0,
+      live: null,
+      maxBatch: BATCH_MAX_MATCHES,
+      error: error?.code || error?.message || 'source_error',
+      results: batch.map(item => ({ clientId: item?.clientId ?? null, matched: false, market: unavailableMarket(error?.code || error?.message || 'source_error') })),
+    };
+    batchCache.set(cacheKey, { at: Date.now(), value });
+    return value;
+  }
+}
+
 async function probe(env) {
   const now = Date.now();
   if (probeCache.value && now - probeCache.at < PROBE_CACHE_MS) {
@@ -195,7 +314,7 @@ async function probe(env) {
   try {
     const fixtures = await liveFixtures(env);
     const samples = [];
-    const candidates = fixtures.slice(0, 3);
+    const candidates = fixtures.slice(0, 1);
 
     for (const fixture of candidates) {
       const teams = fixtureTeams(fixture);
@@ -206,17 +325,16 @@ async function probe(env) {
       }
 
       try {
-        const payload = await apiFetch(`/fixtures/${encodeURIComponent(fixtureId)}/odds?market=asian&bookmakers=bet365`, env);
-        const ah = extractBet365Asian(payload);
+        const market = await directMarket(fixtureId, env);
         samples.push({
           fixtureId,
           home: teams.home,
           away: teams.away,
-          status: ah ? 'PASS' : 'UNAVAILABLE',
-          reason: ah ? null : 'no_matching_live_ah',
-          line: ah?.line ?? null,
-          homeOdds: ah?.home ?? null,
-          awayOdds: ah?.away ?? null,
+          status: market.status === 'AH READY' ? 'PASS' : 'UNAVAILABLE',
+          reason: market.status === 'AH READY' ? null : market.reason,
+          line: market.line ?? null,
+          homeOdds: market.homeOdds ?? null,
+          awayOdds: market.awayOdds ?? null,
         });
       } catch (error) {
         samples.push({
@@ -240,7 +358,7 @@ async function probe(env) {
       liveFixtureCount: fixtures.length,
       testedFixtureCount: samples.length,
       passCount: samples.filter(item => item.status === 'PASS').length,
-      maxVendorRequestsPerProbeWindow: 4,
+      maxVendorRequestsPerProbeWindow: 2,
       probeCacheSeconds: PROBE_CACHE_MS / 1000,
       startedAt,
       testedAt: new Date().toISOString(),
@@ -269,9 +387,17 @@ async function probe(env) {
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+    const url = new URL(request.url);
+
+    if (url.pathname === '/quotes' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch { return json({ ok: false, error: 'invalid_json' }, 400); }
+      if (!Array.isArray(body?.matches)) return json({ ok: false, error: 'matches_array_required' }, 400);
+      return json(await batchQuotes(body.matches, env));
+    }
+
     if (request.method !== 'GET') return json({ ok: false, error: 'method_not_allowed' }, 405);
 
-    const url = new URL(request.url);
     if (url.pathname === '/' || url.pathname === '/health') {
       return json({
         ok: true,
@@ -285,6 +411,9 @@ export default {
         keyConfigured: Boolean(env.FIVEDOLLAR_API_KEY),
         liveCacheSeconds: LIVE_CACHE_MS / 1000,
         quoteCacheSeconds: QUOTE_CACHE_MS / 1000,
+        batchCacheSeconds: BATCH_CACHE_MS / 1000,
+        batchMaxMatches: BATCH_MAX_MATCHES,
+        maxVendorRequestsPerBatchWindow: BATCH_MAX_MATCHES + 1,
         probeCacheSeconds: PROBE_CACHE_MS / 1000,
       });
     }
