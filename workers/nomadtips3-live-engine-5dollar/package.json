@@ -1,8 +1,9 @@
 {
   "name": "nomadtips3-live-engine-5dollar",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "node build.mjs",
+    "build": "node --check src/index.js",
     "deploy": "npx wrangler deploy"
   },
   "devDependencies": {
