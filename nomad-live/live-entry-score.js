@@ -11,7 +11,7 @@
   const scoreText=score=>score&&score.home!=null&&score.away!=null?`${score.home}–${score.away}`:null;
 
   const style=document.createElement('style');
-  style.textContent='.match-wrap.signal .score .entry-score{display:block;margin-top:3px;font-size:7px;line-height:1.1;color:var(--green);font-weight:900;letter-spacing:.05em;white-space:nowrap}';
+  style.textContent='@keyframes entryPulse{0%,100%{opacity:1}50%{opacity:.35}}.match-wrap.signal .score .entry-score{display:block;margin-top:3px;font-size:7px;line-height:1.1;color:var(--green);font-weight:900;letter-spacing:.05em;white-space:nowrap;animation:entryPulse 1.4s ease-in-out infinite}@media (prefers-reduced-motion:reduce){.match-wrap.signal .score .entry-score{animation:none}}';
   document.head.appendChild(style);
 
   const rebuildLedger=records=>{
