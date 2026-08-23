@@ -1,20 +1,20 @@
 import {assessHomeMarket} from './detector.js';
+import {NOWGOAL_BOOKMAKERS} from './nowgoal.js';
 
 export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
-  // SOURCE 5 id is retained for historical locked-signal compatibility; live production now uses Nowgoal 1xBet.
-  Object.freeze({id:'source5',position:5,source:'Nowgoal'}),
-  // SOURCE 6 is the Bet365 peer read from the same Nowgoal session/feed family as SOURCE 5.
-  Object.freeze({id:'source6',position:6,source:'Nowgoal'}),
-  // SOURCE 7 is M88 / Mansion88 company 17 from the same Nowgoal live AH session.
-  Object.freeze({id:'source7',position:7,source:'Nowgoal'}),
+  ...NOWGOAL_BOOKMAKERS.map(item=>Object.freeze({
+    id:item.sourceId,position:item.position,source:'Nowgoal',bookmaker:item.bookmaker,companyId:item.companyId,
+  })),
+  // SOURCE 8 is intentionally absent: retired 5Dollar experiment.
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
 const FRESHNESS_NEAR_MS=5000;
 const freshnessComparable=item=>item?.id!=='source5'||item?.market?.source==='Nowgoal';
+const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -27,7 +27,11 @@ function displayStatus(market,assessment){
 function peerMarket(definition,marketsBySource){
   const direct=marketsBySource.get(definition.id)||null;
   if(direct) return direct;
+  if(definition.source!=='Nowgoal'||definition.id==='source5') return null;
   const nowgoal=marketsBySource.get('source5')||null;
+  const peer=nowgoal?.nowgoalPeers?.[definition.id]||null;
+  if(peer) return peer;
+  // Preserve the 3.41 peer properties used by existing signals/tests.
   if(definition.id==='source6') return nowgoal?.nowgoalBet365Peer||null;
   if(definition.id==='source7') return nowgoal?.nowgoalM88Peer||null;
   return null;
@@ -39,15 +43,14 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     .map(definition=>{
     const market=peerMarket(definition,marketsBySource);
     const assessed=assessHomeMarket(market,config,observedAt);
-    // Fail closed when a provider cannot identify the bookmaker behind its AH price.
-    // This prevents API-Football's anonymous aggregate line from acting as the live AH price judge.
+    // Fail closed whenever the provider cannot identify the bookmaker behind its AH price.
     const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
     const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
     return {
       ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
-      bookmaker:market?.bookmaker||null,line:assessment.line??market?.line??null,
+      bookmaker:market?.bookmaker||definition.bookmaker||null,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
       assessment,market,
@@ -71,10 +74,64 @@ export function selectPriceSource(sources=[],freshnessNearMs=FRESHNESS_NEAR_MS){
   });
 }
 
+function median(values=[]){
+  const sorted=values.filter(finite).map(Number).sort((a,b)=>a-b);
+  if(!sorted.length) return null;
+  const middle=Math.floor(sorted.length/2);
+  return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+}
+
+function consensusEligible(item){
+  if(item?.source!=='Nowgoal'||item?.market?.status!=='AH READY') return false;
+  if(!finite(item.line)||!finite(item.odds)||!finite(item.sourceUpdatedAt)) return false;
+  return !['AH STALE','AH LINE FAIL','AH INVALID'].includes(item.assessment?.status);
+}
+
+export function selectNowgoalConsensus(sources=[]){
+  const candidates=sources.filter(consensusEligible);
+  if(!candidates.length) return null;
+  const groups=new Map();
+  for(const item of candidates){
+    const key=String(Number(item.line));
+    if(!groups.has(key)) groups.set(key,[]);
+    groups.get(key).push(item);
+  }
+  const ranked=[...groups.values()].sort((left,right)=>{
+    if(right.length!==left.length) return right.length-left.length;
+    const rightFresh=Math.max(...right.map(item=>Number(item.sourceUpdatedAt)));
+    const leftFresh=Math.max(...left.map(item=>Number(item.sourceUpdatedAt)));
+    if(rightFresh!==leftFresh) return rightFresh-leftFresh;
+    return Math.min(...left.map(item=>item.position))-Math.min(...right.map(item=>item.position));
+  });
+  const consensus=ranked[0];
+  const actionable=consensus.filter(item=>item.status==='PASS');
+  if(!actionable.length) return null;
+  const medianOdds=median(consensus.map(item=>item.odds));
+  const selected=[...actionable].sort((left,right)=>{
+    const leftDistance=Math.abs(Number(left.odds)-medianOdds),rightDistance=Math.abs(Number(right.odds)-medianOdds);
+    if(leftDistance!==rightDistance) return leftDistance-rightDistance;
+    if(Number(right.sourceUpdatedAt)!==Number(left.sourceUpdatedAt)) return Number(right.sourceUpdatedAt)-Number(left.sourceUpdatedAt);
+    return left.position-right.position;
+  })[0];
+  return {
+    ...selected,
+    consensusCount:consensus.length,
+    consensusLine:Number(selected.line),
+    consensusMedianOdds:Number(medianOdds.toFixed(4)),
+    consensusBookmakers:consensus.map(item=>item.bookmaker).filter(Boolean),
+  };
+}
+
 export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
   const primary=sources.filter(item=>item.id!==fallbackId);
-  const selectedPrimary=selectPriceSource(primary);
-  if(selectedPrimary) return selectedPrimary;
+  // 3.41 policy: Nowgoal is the main judge. Choose the modal valid HOME AH line,
+  // then lock a real bookmaker quote closest to the median on that line.
+  const nowgoalSelected=selectNowgoalConsensus(primary);
+  if(nowgoalSelected) return nowgoalSelected;
+  // Existing sources remain live supplements and are never removed by Nowgoal expansion.
+  const legacySelected=selectPriceSource(primary.filter(item=>item.source!=='Nowgoal'));
+  if(legacySelected) return legacySelected;
+  // TotalCorner remains last-resort fallback exactly as before.
   return sources.find(item=>item.id===fallbackId&&item.status==='PASS'&&item.market)||null;
 }
 
