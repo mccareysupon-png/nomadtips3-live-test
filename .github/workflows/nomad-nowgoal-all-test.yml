@@ -1,0 +1,34 @@
+name: NOMAD 3.41 Nowgoal All Bookmakers Test
+
+on:
+  push:
+    branches: [nowgoal-all-bookmakers-341-20260823]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Run complete NOMAD 3.41 regression suite
+        working-directory: nomad-live-engine
+        run: node --test
+      - name: Syntax-check production engine modules
+        working-directory: nomad-live-engine
+        run: |
+          node --check src/index.js
+          node --check src/nowgoal.js
+          node --check src/price-sources.js
+          node --check src/detector.js
+          node --check src/settlement.js
+          node --check src/real-market.js
+          node --check src/the-odds-api.js
+          node --check src/api-football.js
+          node --check src/oddspedia.js
