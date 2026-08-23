@@ -26,6 +26,8 @@ export const NOWGOAL_BOOKMAKERS=Object.freeze([
   Object.freeze({companyId:'42',bookmaker:'18Bet',sourceId:'source21',position:21}),
   Object.freeze({companyId:'48',bookmaker:'HK Jockey Club',sourceId:'source22',position:22}),
   Object.freeze({companyId:'49',bookmaker:'BWin',sourceId:'source23',position:23}),
+  Object.freeze({companyId:'23',bookmaker:'188BET',sourceId:'source24',position:24}),
+  Object.freeze({companyId:'47',bookmaker:'Pinnacle',sourceId:'source25',position:25}),
 ]);
 
 const COMPANY_ID='50';
