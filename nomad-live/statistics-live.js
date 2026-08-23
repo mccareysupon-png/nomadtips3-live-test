@@ -1,6 +1,6 @@
 (()=>{
   const API='https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev';
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
   const fmtLine=v=>v==null?'—':`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`;
   const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
