@@ -1,4 +1,4 @@
-const API='https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev';
+const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
 const n=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -28,14 +28,13 @@ const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.pri
   reason:m.marketCheck?.reason||m.market?.reason||null,bookmaker:m.market?.bookmaker||'1xBet',line:m.marketCheck?.line??m.market?.line,
   odds:m.marketCheck?.homeOdds??m.market?.homeOdds,sourceUpdatedAt:m.market?.sourceUpdatedAt,priceAgeSeconds:m.marketCheck?.ageSeconds,
 }];
-const sourceDisplayName=source=>source?.id==='source8'?'5DollarFootballAPI · Bet365':source?.source||'—';
 const sourceUnavailableValue=source=>source?.id==='source5'&&source?.reason
   ?`${source.status||'UNAVAILABLE'} · ${sourceReason(source.reason)}`
   :'N/A';
 const sourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
   ?`${source.status} · ${source.bookmaker||'—'} · HOME ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
   :sourceUnavailableValue(source);
-const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(sourceDisplayName(source))}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
+const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
 const selectedValue=selected=>selected
   ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
   :'N/A';
@@ -46,7 +45,7 @@ const compactSourceValue=source=>source.status==='PASS'||source.line!=null||sour
 const compactSourceRow=source=>{
   const value=compactSourceValue(source);
   const rowState=source.status==='PASS'?'is-pass':value==='N/A'?'is-na':'is-wait';
-  return `<span class="price-source-row ${rowState}"><span class="price-source-name">S${source.position} · ${esc(sourceDisplayName(source))}</span><span class="price-source-value">${esc(value)}</span></span>`;
+  return `<span class="price-source-row ${rowState}"><span class="price-source-name">S${source.position} · ${esc(source.source)}</span><span class="price-source-value">${esc(value)}</span></span>`;
 };
 const compactSelectedRow=selected=>{
   const position=selected?.position??(String(selected?.id||'').replace(/\D/g,'')||'—');
@@ -149,11 +148,10 @@ async function statsPage(){
 }
 async function healthPage(){
   const grid=document.querySelector('.health-grid');if(!grid)return;grid.innerHTML='<div class="note">Connecting engine health…</div>';setSource('SYSTEM HEALTH · CONNECTING',false);
-  const load=async()=>{try{const d=await get('/health');const c=d.counts||{},s=d.source||{},o=s.oddsApi||{},rb=o.readyByBookmaker||{},fd=s.fiveDollar||{};grid.innerHTML=`
+  const load=async()=>{try{const d=await get('/health');const c=d.counts||{},s=d.source||{},o=s.oddsApi||{},rb=o.readyByBookmaker||{};grid.innerHTML=`
     <article class="health-item"><header><b>Primary feed</b><span class="${s.today?'win':'loss'}">● ${s.today?'READY':'WAIT'}</span></header><div class="rows"><div><span>Matches</span><strong>${c.matches||0}</strong></div><div><span>Last cycle</span><strong>${d.lastCycle?when(d.lastCycle):'—'}</strong></div><div><span>Cycle</span><strong>${d.cycle||0}</strong></div><div><span>Source</span><strong>TotalCorner · ${s.today?'FRESH':'WAIT'}</strong></div></div></article>
     <article class="health-item"><header><b>Live statistics</b><span class="${c.liveStats?'win':''}">● ${c.liveStats?'READY':'WAIT'}</span></header><div class="rows"><div><span>Watching</span><strong>${c.watching||0}</strong></div><div><span>Near signal</span><strong>${c.near||0}</strong></div><div><span>Stats available</span><strong>${c.liveStats||0}</strong></div><div><span>Freshness</span><strong>${d.config?.freshnessSec||'—'} sec</strong></div></div></article>
     <article class="health-item"><header><b>Market feed</b><span class="${o.status==='READY'?'win':o.status==='ERROR'||o.status==='KEY_MISSING'?'loss':''}">● ${esc(o.status||'IDLE')}</span></header><div class="rows"><div><span>Source</span><strong>Odds-API.io</strong></div><div><span>Bookmaker</span><strong>1xBet + Bet365</strong></div><div><span>Checked / mapped</span><strong>${o.checked??o.eligible??0} / ${o.mapped||0}</strong></div><div><span>AH ready · 1x / 365</span><strong>${rb['1xBet']??o.ready??c.market??0} / ${rb['Bet365']??0}</strong></div></div></article>
-    <article class="health-item"><header><b>5Dollar market referee</b><span class="${fd.status==='READY'?'win':fd.status==='ERROR'||fd.status==='KEY_MISSING'?'loss':''}">● ${esc(fd.status||'IDLE')}</span></header><div class="rows"><div><span>Source</span><strong>5DollarFootballAPI</strong></div><div><span>Bookmaker</span><strong>Bet365</strong></div><div><span>Requests</span><strong>${fd.requests||0}</strong></div><div><span>Mapped / ready / selected</span><strong>${fd.mapped||0} / ${fd.ready||0} / ${fd.selected||0}</strong></div></div></article>
     <article class="health-item"><header><b>Detector</b><span class="${d.ok?'win':'loss'}">● ${d.ok?'READY':'ERROR'}</span></header><div class="rows"><div><span>Minute window</span><strong>${esc(d.config?.minute||'—')}</strong></div><div><span>Poll</span><strong>${d.config?.pollSec||'—'} sec</strong></div><div><span>Ended feed</span><strong>${s.ended?'READY':'WAIT'}</strong></div><div><span>Error</span><strong>${esc(d.lastError||'none')}</strong></div></div></article>`;
     const mode=document.querySelector('.mode strong');if(mode){mode.textContent=d.ok?'READY':'WAIT';mode.className=d.ok?'win':'warn';}setSource(d.ok?'SYSTEM HEALTH · LIVE':'SYSTEM HEALTH · SOURCE WAIT',d.ok);
   }catch(e){setSource('SYSTEM HEALTH · OFFLINE',false);}};await load();setInterval(load,10000);
