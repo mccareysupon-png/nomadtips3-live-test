@@ -57,6 +57,15 @@
 .cond span {font-size:6.5px;font-weight:900;letter-spacing:.07em}
 .cond strong {display:block;margin-top:3px;font-size:13px}
 
+/* Keep an expanded SIGNAL card visually continuous with its green summary row. */
+.match-wrap.signal > .match-detail {
+  background:linear-gradient(145deg,#234b2a,#18351d 52%,#121b14);
+  border-top-color:rgba(131,223,137,.18);
+}
+.match-wrap.signal > .match-detail .detail-card {
+  background:rgba(131,223,137,.045);
+}
+
 @media(max-width:1050px) {
   .match-row {grid-template-columns:68px minmax(170px,1fr) 54px 160px minmax(250px,1fr) 60px;gap:6px}
   .price-source-row,.price-selected-row {grid-template-columns:minmax(98px,.75fr) minmax(0,1.25fr);gap:6px}
