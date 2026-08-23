@@ -5,9 +5,7 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source1',position:1,source:'Odds-API.io'}),
   Object.freeze({id:'source2',position:2,source:'The Odds API'}),
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
-  ...NOWGOAL_BOOKMAKERS.map(item=>Object.freeze({
-    id:item.sourceId,position:item.position,source:'Nowgoal',bookmaker:item.bookmaker,companyId:item.companyId,
-  })),
+  ...NOWGOAL_BOOKMAKERS.map(item=>Object.freeze({id:item.sourceId,position:item.position,source:'Nowgoal'})),
   // SOURCE 8 is intentionally absent: retired 5Dollar experiment.
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
@@ -15,6 +13,7 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
 const FRESHNESS_NEAR_MS=5000;
 const freshnessComparable=item=>item?.id!=='source5'||item?.market?.source==='Nowgoal';
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
+const nowgoalDefinitionBySource=new Map(NOWGOAL_BOOKMAKERS.map(item=>[item.sourceId,item]));
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -48,9 +47,10 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
+    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
     return {
       ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
-      bookmaker:market?.bookmaker||definition.bookmaker||null,line:assessment.line??market?.line??null,
+      bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||null,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
       assessment,market,
@@ -82,7 +82,8 @@ function median(values=[]){
 }
 
 function consensusEligible(item){
-  if(item?.source!=='Nowgoal'||item?.market?.status!=='AH READY') return false;
+  // Source 5 historically carried other providers. Only a real Nowgoal market may vote.
+  if(item?.market?.source!=='Nowgoal'||item?.market?.status!=='AH READY') return false;
   if(!finite(item.line)||!finite(item.odds)||!finite(item.sourceUpdatedAt)) return false;
   return !['AH STALE','AH LINE FAIL','AH INVALID'].includes(item.assessment?.status);
 }
@@ -128,8 +129,8 @@ export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
   // then lock a real bookmaker quote closest to the median on that line.
   const nowgoalSelected=selectNowgoalConsensus(primary);
   if(nowgoalSelected) return nowgoalSelected;
-  // Existing sources remain live supplements and are never removed by Nowgoal expansion.
-  const legacySelected=selectPriceSource(primary.filter(item=>item.source!=='Nowgoal'));
+  // Existing non-Nowgoal market records remain live supplements, including historical source5 compatibility.
+  const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'));
   if(legacySelected) return legacySelected;
   // TotalCorner remains last-resort fallback exactly as before.
   return sources.find(item=>item.id===fallbackId&&item.status==='PASS'&&item.market)||null;
