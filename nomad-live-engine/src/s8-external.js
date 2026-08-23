@@ -1,5 +1,7 @@
-export const S8_EXTERNAL_URL='https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev/quotes';
-export const S8_MAX_BATCH=7;
+export const S8_EXTERNAL_URL='https://nomadtips3-s8-sidecar.mccarey-supon.workers.dev/quotes';
+// Keep generous headroom under the 5Dollar Pro 10 requests/min limit.
+// The sidecar itself also hard-caps each uncached batch at two matches.
+export const S8_MAX_BATCH=2;
 
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const quarterGoal=value=>finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
@@ -19,7 +21,7 @@ function normalizeReadyMarket(market,observedAt){
     return s8ExternalUnavailable(market?.reason||'no_matching_live_ah',{fixtureId:market?.fixtureId??null});
   }
   // The adapter observation time is deliberately used only to satisfy the normal AH age gate.
-  // price-sources.js excludes SOURCE 8 from cross-source freshness races.
+  // price-sources.js excludes SOURCE 8 from cross-source freshness races and selection entirely.
   return {
     status:'AH READY',reason:null,source:'5DollarFootballAPI',bookmaker:'Bet365',bookmakerVerified:true,
     market:'FULL MATCH LIVE AH',line,homeOdds,awayOdds,sourceUpdatedAt:observedAt,
@@ -59,6 +61,8 @@ export async function fetchS8ExternalMarkets(matches=[],observedAt=Date.now(),fe
     return {
       status:payload?.ok===false?'DEGRADED':'READY',checked:batch.length,mapped,ready,results,
       error:payload?.error??null,live:payload?.live??null,upstream:payload?.upstream??null,
+      maxBatch:payload?.maxBatch??S8_MAX_BATCH,
+      maxVendorRequestsPerBatchWindow:payload?.maxVendorRequestsPerBatchWindow??null,
     };
   }finally{
     clearTimeout(timer);
