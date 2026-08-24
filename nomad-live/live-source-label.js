@@ -4,9 +4,13 @@
 
   const apply=()=>{
     const text=(pill.textContent||'').trim().replace(/\s+/g,' ');
-    if(text==='LIVE DATA · LIVE'){
+    const next=text
+      .replace(/\s*·\s*(?:TotalCorner|Nowgoal|Goaloo|Odds-API\.io|The Odds API|API-Football|Oddspedia).*$/i,'')
+      .replace(/SOURCE WAIT/gi,'WAIT')
+      .replace(/ENGINE OFFLINE/gi,'OFFLINE');
+    if(next!==text){
       const dot=pill.querySelector('.dot')?.outerHTML||'<span class="dot"></span>';
-      pill.innerHTML=`${dot}LIVE DATA · LIVE · TotalCorner`;
+      pill.innerHTML=`${dot}${next}`;
     }
   };
 
