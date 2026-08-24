@@ -1,0 +1,59 @@
+name: Install Empty Live Stadium Media
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/install-empty-live-media.yml'
+      - '.empty-live-upload/READY'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nomadtips3-install-empty-live-media
+  cancel-in-progress: true
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decode empty live stadium image
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f .empty-live-upload/READY ]; then
+            echo 'Empty live media is not ready yet.'
+            exit 0
+          fi
+          if ! compgen -G '.empty-live-upload/empty-live.part*.b64' > /dev/null; then
+            echo 'No staged empty live media found.'
+            exit 1
+          fi
+          mkdir -p assets
+          cat .empty-live-upload/empty-live.part*.b64 | tr -d '\n\r ' | base64 --decode > assets/empty-live-stadium.webp
+          test -s assets/empty-live-stadium.webp
+          file assets/empty-live-stadium.webp | grep -qi 'Web/P image'
+          rm -rf .empty-live-upload
+          ls -lh assets/empty-live-stadium.webp
+
+      - name: Commit empty live stadium image
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- assets/empty-live-stadium.webp .empty-live-upload
+          if git diff --cached --quiet; then
+            echo 'No media changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Install empty live stadium image'
+          git pull --rebase origin main
+          git push origin main
