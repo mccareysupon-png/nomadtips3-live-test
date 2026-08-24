@@ -48,11 +48,8 @@
     if (!id) return;
     const match = latestMatches.get(id);
     const detail = row.querySelector('.match-detail');
-    if (!match || !detail) return;
-    const existing = detail.querySelector('[data-match-flow="1"]');
-    const html = flowCard(match);
-    if (existing) existing.outerHTML = html;
-    else detail.insertAdjacentHTML('beforeend', html);
+    if (!match || !detail || detail.querySelector('[data-match-flow="1"]')) return;
+    detail.insertAdjacentHTML('beforeend', flowCard(match));
   }
 
   function renderAll() {
