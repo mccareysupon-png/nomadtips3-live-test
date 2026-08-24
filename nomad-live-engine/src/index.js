@@ -9,6 +9,7 @@ import {buildPriceSourceSnapshots,publicPriceSourceSnapshot,selectPriceSource,se
 import {buildTheOddsApiMarkets,fetchTheOddsApiLiveSoccer,theOddsApiUnavailable} from './the-odds-api.js';
 import {apiFootballUnavailable,buildApiFootballMarkets,fetchApiFootballLiveAsianHandicaps} from './api-football.js';
 import {fetchOddspediaBet365Markets,oddspediaUnavailable} from './oddspedia.js';
+import {PUBLIC_STATS_EPOCH_VERSION,createPublicStatsEpoch,selectPublicStatsSignals,summarizePublicStats} from './public-statistics.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const SETTINGS_KEY_SHA256='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
@@ -16,6 +17,7 @@ const REAL_BOOKMAKER='1xbet';
 const COMPARE_BOOKMAKER='Bet365';
 const ODDS_BOOKMAKER_QUERY=`${REAL_BOOKMAKER},${COMPARE_BOOKMAKER}`;
 const ODDS_BATCH_SIZE=10;
+const PUBLIC_STATS_EPOCH_KEY='publicStatsEpochV1';
 const j=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:JSON_HEADERS});
 const now=()=>Date.now();
 const iso=value=>value==null?null:new Date(value).toISOString();
@@ -216,7 +218,6 @@ export class EngineState {
     this.wakeCycle();
     return j({ok:true,saved:true,pending:publicEnvelope(staged),active:publicEnvelope(configState.active),applies:'next_cycle'},202);
   }
-
   async fetch(request){
     const url=new URL(request.url);
     await this.armAlarm(1500);
@@ -231,7 +232,7 @@ export class EngineState {
     const config=engineConfig(configState.active.config);
     if((!state.lastCycle||now()-state.lastCycle>config.cycleEveryMs*1.2)&&!this.running) this.wakeCycle();
     if(url.pathname==='/feed') return j(this.feed(state,configState.active));
-    if(url.pathname==='/statistics') return j(this.statistics(state));
+    if(url.pathname==='/statistics') return j(await this.statistics(state));
     if(url.pathname==='/health') return j(this.health(state,config,configState.active,configState.pending));
     return j({error:'not_found'},404);
   }
@@ -250,15 +251,29 @@ export class EngineState {
     return {ok:!state.lastError,updatedAt:iso(state.lastSuccess),cycle:state.cycle||0,configVersion:activeConfig?.version||null,counts,priceStatuses,matches:[...matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.rolling?.recent?.homePressure||0)-(a.rolling?.recent?.homePressure||0))),lastError:state.lastError};
   }
 
-  statistics(state){
-    const signals=state.signals||[];
-    const settled=signals.filter(item=>item.settlement);
-    const wins=settled.filter(item=>/WIN/.test(item.settlement.result)).length;
-    const losses=settled.filter(item=>/LOSS/.test(item.settlement.result)).length;
-    const pushes=settled.filter(item=>item.settlement.result==='PUSH').length;
-    const profit=settled.reduce((total,item)=>total+(item.settlement.profit||0),0);
-    const avgOdds=signals.length?signals.reduce((total,item)=>total+item.odds,0)/signals.length:0;
-    return {updatedAt:iso(state.lastSuccess),totalSignals:signals.length,settled:settled.length,wins,losses,pushes,winRate:settled.length?wins/settled.length*100:0,avgOdds,profit,roi:settled.length?profit/settled.length*100:0,records:[...signals].sort((a,b)=>b.lockedAt-a.lockedAt).slice(0,200)};
+  async statistics(state){
+    let epoch=await this.state.storage.get(PUBLIC_STATS_EPOCH_KEY);
+    if(!epoch||epoch.version!==PUBLIC_STATS_EPOCH_VERSION){
+      await this.state.storage.transaction(async transaction=>{
+        const existing=await transaction.get(PUBLIC_STATS_EPOCH_KEY);
+        if(existing?.version===PUBLIC_STATS_EPOCH_VERSION){
+          epoch=existing;
+          return;
+        }
+        epoch=createPublicStatsEpoch(state.signals||[],now());
+        await transaction.put(PUBLIC_STATS_EPOCH_KEY,epoch);
+      });
+    }
+    const scopedSignals=selectPublicStatsSignals(state.signals||[],epoch);
+    const summary=summarizePublicStats(scopedSignals);
+    return {
+      updatedAt:iso(state.lastSuccess),
+      scope:'PUBLIC_STATS_EPOCH',
+      epochVersion:epoch.version,
+      epochStartedAt:iso(epoch.startedAt),
+      epochSeedCount:Array.isArray(epoch.seedKeys)?epoch.seedKeys.length:0,
+      ...summary,
+    };
   }
 
   health(state,config=DEFAULT_CONFIG,active=null,pending=null){
