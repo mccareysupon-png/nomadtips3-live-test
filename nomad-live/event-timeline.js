@@ -10,7 +10,7 @@
   const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
   const number = value => finite(value) ? Number(value) : null;
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const normalize = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
   const matchKey = match => String(match?.id ?? `${normalize(match?.home)}|${normalize(match?.away)}|${normalize(match?.league)}`);
 
@@ -125,6 +125,12 @@
     return [...groups.values()].sort((a, b) => a.minute - b.minute);
   }
 
+  function eventSignature(match, store) {
+    const minute = number(match?.minute);
+    const groups = groupedEvents(match, store);
+    return `${minute ?? 'x'}|${groups.map(group => `${group.side}:${group.minute}:${group.goal}:${group.sot}:${group.corner}`).join(';')}`;
+  }
+
   function goalIcon(count = 1) {
     const badge = count > 1 ? `<small>×${count}</small>` : '';
     return `<span class="event-icon event-goal" title="Goal">` +
@@ -171,7 +177,9 @@
   function makeCard(match, store) {
     const holder = document.createElement('div');
     holder.innerHTML = cardHtml(match, store);
-    return holder.firstElementChild;
+    const card = holder.firstElementChild;
+    if (card) card.dataset.eventSignature = eventSignature(match, store);
+    return card;
   }
 
   function renderRow(row, store) {
@@ -186,6 +194,7 @@
     const next = makeCard(match, store);
     if (!next) return;
     const existing = detail.querySelector('[data-event-timeline="1"]');
+    if (existing?.dataset?.eventSignature === next.dataset.eventSignature) return;
     if (existing) existing.replaceWith(next);
     else flow.insertAdjacentElement('afterend', next);
   }
