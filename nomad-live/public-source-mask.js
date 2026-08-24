@@ -1,37 +1,42 @@
 (()=>{
   'use strict';
 
-  const BOOKMAKER_RE=/\b(Bet365|Pinnacle|SBOBET|M88|188BET|12BET|1xBet)\b/i;
-  const PROVIDER_RE=/\b(?:Odds-API\.io|The Odds API|API-Football|TotalCorner|Nowgoal|Goaloo|Oddspedia|SOURCE\s*\d+|S\d+)\b/gi;
-  const TECHNICAL_RE=/(?:http\s*\d{3}|parser|endpoint|fallback|provider|source[_ -]?blocked|challenge page|api key|price_fetch_failed|source_timeout)/i;
+  const TECHNICAL_RE=/(?:http\s*\d{3}|parser|endpoint|fallback|provider|source[_ -]?(?:blocked|error|timeout)|challenge page|api key|price_fetch_failed|waiting_api|odds[- ]?api|api[- ]?football|totalcorner|nowgoal|goaloo|oddspedia)/i;
+  const STATUS_RE=/^(?:PASS|WAIT|STALE|FAIL|UNAVAILABLE)$/i;
 
-  const bookmaker=text=>String(text||'').match(BOOKMAKER_RE)?.[1]||'';
   const setText=(node,value)=>{
     if(!node)return;
     const next=String(value??'');
     if(node.textContent!==next)node.textContent=next;
   };
+  const parts=value=>String(value||'').trim().replace(/\s+/g,' ').split(/\s*·\s*/).map(item=>item.trim()).filter(Boolean);
+
+  function bookmakerFromPrice(value){
+    const list=parts(value);
+    if(!list.length)return '';
+    if(STATUS_RE.test(list[0]))list.shift();
+    const homeIndex=list.findIndex(item=>/^HOME\b/i.test(item));
+    if(homeIndex>0)return list[homeIndex-1];
+    return list[0]||'';
+  }
 
   function cleanPriceText(value){
-    let text=String(value||'').trim().replace(/\s+/g,' ');
-    if(!text)return text;
-    if(TECHNICAL_RE.test(text))return 'UNAVAILABLE';
-    text=text
-      .replace(/^(?:PASS|WAIT|STALE|FAIL|UNAVAILABLE)\s*·\s*/i,'')
-      .replace(PROVIDER_RE,'')
-      .replace(/\s*·\s*·\s*/g,' · ')
-      .replace(/^\s*[·|/,:-]+\s*|\s*[·|/,:-]+\s*$/g,'')
-      .replace(/\s{2,}/g,' ')
-      .trim();
-    return text||'UNAVAILABLE';
+    const raw=String(value||'').trim().replace(/\s+/g,' ');
+    if(!raw)return raw;
+    if(TECHNICAL_RE.test(raw))return 'UNAVAILABLE';
+    const list=parts(raw);
+    if(STATUS_RE.test(list[0]))list.shift();
+    const homeIndex=list.findIndex(item=>/^HOME\b/i.test(item));
+    if(homeIndex>0)list.splice(0,homeIndex-1);
+    return list.join(' · ')||'UNAVAILABLE';
   }
 
   function maskLivePriceRows(){
     document.querySelectorAll('.price-source-row').forEach(row=>{
       const name=row.querySelector('.price-source-name');
       const value=row.querySelector('.price-source-value');
-      const book=bookmaker(value?.textContent)||bookmaker(name?.textContent)||bookmaker(row.textContent);
-      setText(name,book||'BOOKMAKER');
+      const book=bookmakerFromPrice(value?.textContent)||'BOOKMAKER';
+      setText(name,book);
       setText(value,cleanPriceText(value?.textContent));
     });
 
@@ -46,10 +51,10 @@
         const value=row.querySelector('b');
         if(!label||!value)return;
         const labelText=String(label.textContent||'').trim();
-        const priceSourceRow=/^SOURCE\s*\d+/i.test(labelText)||/^BOOKMAKER$/i.test(labelText)||BOOKMAKER_RE.test(labelText);
-        if(priceSourceRow){
-          const book=bookmaker(value.textContent)||bookmaker(labelText)||bookmaker(row.textContent);
-          setText(label,book||'BOOKMAKER');
+        const sourceRow=/^SOURCE\s*\d+/i.test(labelText)||/^BOOKMAKER$/i.test(labelText)||(!/^SELECTED PRICE$/i.test(labelText)&&/^(?:Bet|Pinnacle|SBO|M88|188|12|1x)/i.test(labelText));
+        if(sourceRow){
+          const book=bookmakerFromPrice(value.textContent)||(!/^SOURCE\s*\d+/i.test(labelText)&&!/^BOOKMAKER$/i.test(labelText)?labelText:'BOOKMAKER');
+          setText(label,book);
           setText(value,cleanPriceText(value.textContent));
         }else if(/^SELECTED PRICE$/i.test(labelText)){
           setText(value,cleanPriceText(value.textContent));
@@ -66,8 +71,8 @@
       document.querySelectorAll('.data-table tbody tr').forEach(row=>{
         const cell=row.children[bookIndex];
         if(!cell)return;
-        const book=bookmaker(cell.textContent);
-        setText(cell,book||'—');
+        const book=parts(cell.textContent)[0]||'—';
+        setText(cell,book);
       });
     }
   }
@@ -76,10 +81,10 @@
     const pill=document.querySelector('.source-pill');
     if(pill){
       const text=String(pill.textContent||'').replace(/\s+/g,' ').trim();
-      const next=text
-        .replace(/\s*·\s*(?:TotalCorner|Nowgoal|Goaloo|Odds-API\.io|The Odds API|API-Football|Oddspedia).*$/i,'')
-        .replace(/SOURCE WAIT/gi,'WAIT')
-        .replace(/ENGINE OFFLINE/gi,'OFFLINE');
+      let next=text;
+      if(/^LIVE DATA\s*·\s*LIVE/i.test(text))next='LIVE DATA · LIVE';
+      else if(/SOURCE WAIT|WAITING_API/i.test(text))next='LIVE DATA · WAIT';
+      else if(/ENGINE OFFLINE|OFFLINE/i.test(text)&&/^LIVE DATA/i.test(text))next='LIVE DATA · OFFLINE';
       if(next!==text){
         const dot=pill.querySelector('.dot')?.outerHTML||'<span class="dot"></span>';
         pill.innerHTML=`${dot}${next}`;
