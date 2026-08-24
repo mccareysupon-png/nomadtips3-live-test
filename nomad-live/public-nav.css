@@ -1,10 +1,22 @@
-/* Public NOMAD Live navigation: lock the two public links in one fixed center position. */
+/* Public NOMAD Live navigation.
+   Core links stay fixed: Live + Statistics.
+   Up to two future public links can be added without moving the core pair:
+   - desktop: class public-nav-extra-left or public-nav-extra-right
+   - mobile: add public-nav-3 or public-nav-4 to .mobile-nav when extra links are enabled. */
 .topbar-inner{position:relative}
 .topnav{position:absolute;left:50%;transform:translateX(-50%);justify-self:auto;white-space:nowrap}
+.topnav>a[href="index.html"]{width:64px;text-align:center}
+.topnav>a[href="statistics.html"]{width:90px;text-align:center}
+.topnav>.public-nav-extra-left,
+.topnav>.public-nav-extra-right{position:absolute;top:0;width:90px;text-align:center}
+.topnav>.public-nav-extra-left{right:100%;margin-right:2px}
+.topnav>.public-nav-extra-right{left:100%;margin-left:2px}
 .topnav a[href="settings.html"],
 .topnav a[href="health.html"],
 .mobile-nav a[href="settings.html"],
 .mobile-nav a[href="health.html"]{display:none!important}
 @media(max-width:700px){
   .mobile-nav{grid-template-columns:repeat(2,1fr)}
+  .mobile-nav.public-nav-3{grid-template-columns:repeat(3,1fr)}
+  .mobile-nav.public-nav-4{grid-template-columns:repeat(4,1fr)}
 }
