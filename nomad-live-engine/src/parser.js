@@ -283,7 +283,9 @@ export function parseTotalCornerAsian(html,bookmaker,sourceUpdatedAt=Date.now())
 export function parseBet365Asian(html,sourceUpdatedAt=Date.now()){
   const bet365=parseTotalCornerAsian(html,'Bet365',sourceUpdatedAt);
   const pinnacle=parseTotalCornerAsian(html,'Pinnacle',sourceUpdatedAt);
-  return {...bet365,totalCornerPeers:{source26:pinnacle}};
+  // Keep the long-standing Bet365 return contract enumerable-shape compatible with existing 3.41 tests/UI.
+  Object.defineProperty(bet365,'totalCornerPeers',{value:{source26:pinnacle},enumerable:false,writable:false,configurable:false});
+  return bet365;
 }
 
 export function parseEnded(html, sourceHost='https://www.totalcorner.com'){
