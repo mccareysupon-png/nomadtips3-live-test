@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-24T03:36:19Z",
+  "updated_at": "2026-08-24T03:38:46Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -16,8 +16,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.9463,
       "edge": 90.2,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-7",
       "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-club-necaxa-w-vs-club-america-w/h2h-3045996",
       "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-club-necaxa-w-vs-club-america-w/summary-3045996",
       "model": {
@@ -649,6 +649,56 @@
       },
       "data_quality": {
         "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "4d538fffb539c415",
+      "goaloo_id": "3045996",
+      "date": "2026-08-24",
+      "kickoff": "2026-08-24 00:05:00",
+      "league": "Mexico Liga MX Femenil",
+      "home": "Club Necaxa (W)",
+      "away": "Club America (W)",
+      "pick": "Club Necaxa (W) Win",
+      "side": "home",
+      "odds": 28.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9463,
+      "edge": 90.2,
+      "result": "LOSS",
+      "ft": "0-7",
+      "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-club-necaxa-w-vs-club-america-w/h2h-3045996",
+      "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-club-necaxa-w-vs-club-america-w/summary-3045996",
+      "model": {
+        "lambda_home": 3.6,
+        "lambda_away": 0.215,
+        "home_win": 0.9463,
+        "draw": 0.0443,
+        "away_win": 0.0094,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8829,
+          "gd_edge": 0.9954,
+          "clean_sheet_edge": 0.8244,
+          "failed_to_score_edge": 0.7512,
+          "bounded_adjustment": 0.0679,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
