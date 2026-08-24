@@ -1,0 +1,54 @@
+/* NOMADTIPS3 public LIVE SIGNALS presentation layer.
+   Intentionally scoped to /livesignal only. No engine/feed/layout logic lives here. */
+
+body.public-live-signals {
+  --nomad-public-green: #22c55e;
+  --nomad-public-yellow: #f5c542;
+  --nomad-public-white: #f4f4f5;
+  --nomad-public-gray: #9ca3af;
+  --nomad-public-red: #ef4444;
+}
+
+/* Internal-only rows are removed from the public presentation without
+   changing the underlying monitor/feed contracts. */
+body.public-live-signals .public-internal,
+body.public-live-signals .public-hidden-internal {
+  display: none !important;
+}
+
+/* NOMAD public colour language. Keep geometry and responsive rules intact. */
+body.public-live-signals .good,
+body.public-live-signals .win,
+body.public-live-signals .outcome.win {
+  color: var(--nomad-public-green) !important;
+}
+
+body.public-live-signals .loss,
+body.public-live-signals .bad,
+body.public-live-signals .offline,
+body.public-live-signals .outcome.loss,
+body.public-live-signals .freshness.offline,
+body.public-live-signals .freshness.stale {
+  color: var(--nomad-public-red) !important;
+}
+
+body.public-live-signals .hero-live small,
+body.public-live-signals .promo-badge,
+body.public-live-signals [data-public-state="live"],
+body.public-live-signals [data-public-state="wait"] {
+  color: var(--nomad-public-yellow) !important;
+}
+
+body.public-live-signals .match-name,
+body.public-live-signals .match-value b,
+body.public-live-signals .history-match b,
+body.public-live-signals .history-scores strong {
+  color: var(--nomad-public-white);
+}
+
+body.public-live-signals .match-meta,
+body.public-live-signals .history-match span,
+body.public-live-signals .history-ledger,
+body.public-live-signals .footnote-card p {
+  color: var(--nomad-public-gray);
+}
