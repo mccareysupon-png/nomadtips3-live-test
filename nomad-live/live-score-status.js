@@ -81,6 +81,10 @@
     document.head.appendChild(style);
   }
 
+  function setText(node,text){
+    if(node&&node.textContent!==text)node.textContent=text;
+  }
+
   function readMinute(row){
     const raw=String(row.querySelector('.minute')?.textContent||'');
     const match=raw.match(/\d+/);
@@ -132,10 +136,8 @@
       score.classList.add('score-live-stack');
     }
 
-    const phase=score.querySelector('.live-phase');
-    const minuteLabel=score.querySelector('.live-minute');
-    if(phase)phase.textContent=phaseFor(minute);
-    if(minuteLabel)minuteLabel.textContent=`${minute}′`;
+    setText(score.querySelector('.live-phase'),phaseFor(minute));
+    setText(score.querySelector('.live-minute'),`${minute}′`);
   }
 
   function apply(){
