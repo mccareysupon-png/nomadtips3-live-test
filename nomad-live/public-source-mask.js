@@ -99,10 +99,47 @@
     if(note&&PRIVATE_NOTE_RE.test(note.textContent||''))setText(note,'Live data temporarily unavailable.');
   }
 
+  function footerAlert(){
+    const bottom=document.querySelector('.site-footer-bottom');
+    if(!bottom)return null;
+    let alert=bottom.querySelector('.public-system-alert');
+    if(!alert){
+      alert=document.createElement('span');
+      alert.className='public-system-alert';
+      alert.setAttribute('role','status');
+      alert.setAttribute('aria-live','polite');
+      const socials=bottom.querySelector('.site-socials');
+      if(socials)bottom.insertBefore(alert,socials);
+      else bottom.appendChild(alert);
+    }
+    return alert;
+  }
+
+  function syncFooterStatus(){
+    const alert=footerAlert();
+    if(!alert)return;
+    const pill=document.querySelector('.source-pill');
+    const text=String(pill?.textContent||'').replace(/\s+/g,' ').trim();
+    let label='';
+    let state='';
+
+    if(/OFFLINE|UNAVAILABLE|\bFAIL\b/i.test(text)){
+      label='SYSTEM STATUS · TEMPORARILY UNAVAILABLE';
+      state='is-error';
+    }else if(/\bWAIT\b|SOURCE WAIT|WAITING_API/i.test(text)){
+      label='SYSTEM STATUS · DATA DELAYED';
+      state='is-warning';
+    }
+
+    alert.className=`public-system-alert${state?` is-visible ${state}`:''}`;
+    setText(alert,label);
+  }
+
   function sanitize(){
     maskLivePriceRows();
     maskStatistics();
     maskStatus();
+    syncFooterStatus();
   }
 
   let queued=false;
