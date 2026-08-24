@@ -30,7 +30,7 @@
     const delta = rolling?.recent?.delta || {};
     const windowMinutes = number(rolling?.windowMinutes);
     const titleWindow = windowMinutes != null ? windowMinutes : '—';
-    return `<section class="detail-card match-flow-card" data-match-flow="1">
+    return `<section class="detail-card match-flow-card detail-flow-card" data-match-flow="1">
       <h3>MATCH FLOW · LAST ${esc(titleWindow)} MIN</h3>
       <div class="flow-legend"><span></span><b class="flow-home-label">HOME</b><b class="flow-away-label">AWAY</b></div>
       <div class="flow-table">
@@ -43,13 +43,46 @@
     </section>`;
   }
 
+  function cardTitle(card) {
+    return (card?.querySelector('h3')?.textContent || '').trim().toUpperCase();
+  }
+
+  function organizeDetail(detail, match) {
+    if (!detail || detail.dataset.flowLayout === '1') return;
+    const cards = [...detail.querySelectorAll(':scope > .detail-card')];
+    const rolling = cards.find(card => cardTitle(card).startsWith('HOME ROLLING DELTA'));
+    const pressure = cards.find(card => cardTitle(card) === 'PRESSURE TREND');
+    const detector = cards.find(card => cardTitle(card) === 'DETECTOR CHECK');
+    const price = cards.find(card => cardTitle(card) === 'PRICE CHECK');
+    if (!rolling || !pressure || !detector || !price) return;
+
+    rolling.classList.add('detail-rolling-card');
+    pressure.classList.add('detail-pressure-card');
+    detector.classList.add('detail-detector-card');
+    price.classList.add('detail-price-card');
+
+    const left = document.createElement('div');
+    left.className = 'detail-left-stack';
+    const right = document.createElement('div');
+    right.className = 'detail-right-stack';
+    const flowHolder = document.createElement('div');
+    flowHolder.innerHTML = flowCard(match);
+    const flow = flowHolder.firstElementChild;
+
+    detail.classList.add('is-flow-columns');
+    detail.dataset.flowLayout = '1';
+    detail.append(left, right);
+    left.append(rolling, detector, flow);
+    right.append(pressure, price);
+  }
+
   function renderRow(row) {
     const id = row?.dataset?.matchId;
     if (!id) return;
     const match = latestMatches.get(id);
     const detail = row.querySelector('.match-detail');
-    if (!match || !detail || detail.querySelector('[data-match-flow="1"]')) return;
-    detail.insertAdjacentHTML('beforeend', flowCard(match));
+    if (!match || !detail) return;
+    organizeDetail(detail, match);
   }
 
   function renderAll() {
