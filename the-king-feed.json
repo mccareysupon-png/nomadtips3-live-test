@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-24T23:04:27Z",
+  "updated_at": "2026-08-24T23:58:00Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -116,8 +116,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8569,
       "edge": 73.2,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-0",
       "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-club-libertad-vs-sportivo-san-lorenzo/h2h-3067092",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-club-libertad-vs-sportivo-san-lorenzo/summary-3067092",
       "model": {
@@ -840,6 +840,56 @@
           "away_venue_n": 6
         },
         "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "f40552e78f11c087",
+      "goaloo_id": "3067092",
+      "date": "2026-08-24",
+      "kickoff": "2026-08-24 21:30:00",
+      "league": "Primera Division de Paraguay",
+      "home": "Club Libertad",
+      "away": "Sportivo San Lorenzo",
+      "pick": "Sportivo San Lorenzo Win",
+      "side": "away",
+      "odds": 8.2,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8569,
+      "edge": 73.2,
+      "result": "LOSS",
+      "ft": "1-0",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-paraguay-club-libertad-vs-sportivo-san-lorenzo/h2h-3067092",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-paraguay-club-libertad-vs-sportivo-san-lorenzo/summary-3067092",
+      "model": {
+        "lambda_home": 0.796,
+        "lambda_away": 3.051,
+        "home_win": 0.0186,
+        "draw": 0.1245,
+        "away_win": 0.8569,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.7935,
+          "gd_edge": -0.9515,
+          "clean_sheet_edge": -0.2439,
+          "failed_to_score_edge": -0.5756,
+          "bounded_adjustment": -0.0565,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
         "venue_fallback": {
           "home": true,
           "away": false,
