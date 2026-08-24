@@ -1,0 +1,137 @@
+/* NOMAD Live 3.41 · presentation-only bookmaker board.
+   Provider/source identities stay behind the UI; only verified bookmaker names are rendered. */
+
+.price-board {
+  width:100%;
+  min-width:0;
+  font-variant-numeric:tabular-nums;
+}
+
+.price-board-grid {
+  display:grid;
+  grid-template-columns:minmax(105px,1.55fr) 58px 58px 42px 64px;
+  gap:6px;
+  align-items:center;
+  min-width:0;
+}
+
+.price-board-head {
+  padding:0 0 6px;
+  color:var(--muted);
+  font-size:6.8px;
+  font-weight:900;
+  letter-spacing:.055em;
+  text-align:center;
+  border-bottom:1px solid var(--line);
+}
+
+.price-board-head span:first-child {text-align:left}
+
+.price-board-body {display:block}
+
+.price-board-row {
+  padding:6px 0;
+  border-bottom:1px solid var(--line);
+  font-size:8px;
+  line-height:1.15;
+  text-align:center;
+}
+
+.price-board-row > span,
+.price-board-row > strong {
+  min-width:0;
+  white-space:nowrap;
+}
+
+.price-board-book {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  text-align:left;
+  color:#fff;
+  font-weight:900;
+}
+
+.price-board-row > strong {
+  font-size:7px;
+  letter-spacing:.035em;
+}
+
+.price-board-row.is-pass > strong {color:var(--green)}
+.price-board-row.is-wait > strong {color:var(--yellow)}
+.price-board-row.is-no-odds > strong {color:var(--muted)}
+.price-board-row.is-fail > strong {color:#ff8b8b}
+
+.price-board-row.is-no-odds > span:not(.price-board-book) {color:var(--muted)}
+
+.price-board-selected {
+  margin-top:7px;
+  padding-top:7px;
+  border-top:1px solid rgba(131,223,137,.22);
+}
+
+.price-board-selected-title {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-width:0;
+  margin-bottom:2px;
+}
+
+.price-board-selected-title span {
+  flex:none;
+  color:var(--green);
+  font-size:6.8px;
+  font-weight:900;
+  letter-spacing:.07em;
+}
+
+.price-board-selected-title strong {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#fff;
+  font-size:8px;
+}
+
+.price-board-row.is-selected {
+  border-bottom:0;
+  padding-bottom:1px;
+}
+
+.price-board-row.is-selected .price-board-book {color:var(--green)}
+.price-board-row.is-selected > strong {color:var(--green)}
+
+.price-board-empty {
+  padding:9px 0;
+  border-bottom:1px solid var(--line);
+  color:var(--muted);
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-align:center;
+}
+
+@media(max-width:700px) {
+  .price-board-grid {
+    grid-template-columns:minmax(78px,1.45fr) 46px 46px 34px 54px;
+    gap:4px;
+  }
+  .price-board-head {font-size:6.4px}
+  .price-board-row {font-size:7.6px;padding:6px 0}
+  .price-board-row > strong {font-size:6.7px}
+  .price-board-selected-title strong {font-size:7.6px}
+}
+
+@media(max-width:420px) {
+  .price-board-grid {
+    grid-template-columns:minmax(70px,1.4fr) 42px 42px 30px 48px;
+    gap:3px;
+  }
+  .price-board-head {font-size:5.9px;letter-spacing:.03em}
+  .price-board-row {font-size:7.1px}
+  .price-board-row > strong {font-size:6.2px;letter-spacing:0}
+  .price-board-selected-title {gap:5px}
+  .price-board-selected-title span {font-size:6.2px}
+  .price-board-selected-title strong {font-size:7.2px}
+}
