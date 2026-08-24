@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - scout-goaloo-bet365-34-20260824
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
