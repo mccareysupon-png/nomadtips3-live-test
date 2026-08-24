@@ -52,9 +52,11 @@
 
   function publicStatus(source) {
     const status = String(source?.status || '').trim().toUpperCase();
-    if (!status || status === 'UNAVAILABLE') return 'NO ODDS';
-    if (status === 'PASS' || status === 'WAIT' || status === 'STALE' || status === 'FAIL') return status;
-    return finite(source?.line) && finite(source?.odds) ? status : 'NO ODDS';
+    const hasPrice = finite(source?.line) && finite(source?.odds);
+    if (status === 'STALE' || status === 'FAIL') return status;
+    if (!hasPrice || !status || status === 'UNAVAILABLE') return 'NO ODDS';
+    if (status === 'PASS' || status === 'WAIT') return status;
+    return status;
   }
 
   function statusClass(status) {
