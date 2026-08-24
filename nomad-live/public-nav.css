@@ -2,9 +2,11 @@
    Core links stay fixed: Live + Statistics.
    Up to two future public links can be added without moving the core pair:
    - desktop: class public-nav-extra-left or public-nav-extra-right
-   - mobile: add public-nav-3 or public-nav-4 to .mobile-nav when extra links are enabled. */
+   - mobile: add public-nav-3 or public-nav-4 to .mobile-nav when extra links are enabled.
+   Public runtime/status pills are intentionally hidden here; diagnostic status remains available on internal/direct pages. */
 .topbar-inner{position:relative}
 .topnav{position:absolute;left:50%;transform:translateX(-50%);justify-self:auto;white-space:nowrap}
+.topbar>.topbar-inner>.source-pill{display:none!important}
 .topnav>a[href="index.html"]{width:64px;text-align:center}
 .topnav>a[href="statistics.html"]{width:90px;text-align:center}
 .topnav>.public-nav-extra-left,
