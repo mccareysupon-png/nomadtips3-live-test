@@ -1,7 +1,8 @@
 (()=>{
   'use strict';
 
-  const TECHNICAL_RE=/(?:http\s*\d{3}|parser|endpoint|fallback|provider|source[_ -]?(?:blocked|error|timeout)|challenge page|api key|price_fetch_failed|waiting_api|odds[- ]?api|api[- ]?football|totalcorner|nowgoal|goaloo|oddspedia)/i;
+  const PRICE_ERROR_RE=/(?:http\s*\d{3}|parser|endpoint|source[_ -]?(?:blocked|error|timeout)|challenge page|api key|price_fetch_failed|waiting_api)/i;
+  const PRIVATE_NOTE_RE=/(?:source[_ -]?error|provider|fallback|http\s*\d{3}|parser|endpoint|api key|price_fetch_failed|waiting_api|odds[- ]?api|api[- ]?football|totalcorner|nowgoal|goaloo|oddspedia)/i;
   const STATUS_RE=/^(?:PASS|WAIT|STALE|FAIL|UNAVAILABLE)$/i;
 
   const setText=(node,value)=>{
@@ -23,11 +24,14 @@
   function cleanPriceText(value){
     const raw=String(value||'').trim().replace(/\s+/g,' ');
     if(!raw)return raw;
-    if(TECHNICAL_RE.test(raw))return 'UNAVAILABLE';
     const list=parts(raw);
     if(STATUS_RE.test(list[0]))list.shift();
     const homeIndex=list.findIndex(item=>/^HOME\b/i.test(item));
-    if(homeIndex>0)list.splice(0,homeIndex-1);
+    if(homeIndex>0){
+      list.splice(0,homeIndex-1);
+      return list.join(' · ')||'UNAVAILABLE';
+    }
+    if(PRICE_ERROR_RE.test(raw))return 'UNAVAILABLE';
     return list.join(' · ')||'UNAVAILABLE';
   }
 
@@ -92,7 +96,7 @@
     }
 
     const note=document.querySelector('main > .note');
-    if(note&&TECHNICAL_RE.test(note.textContent||''))setText(note,'Live data temporarily unavailable.');
+    if(note&&PRIVATE_NOTE_RE.test(note.textContent||''))setText(note,'Live data temporarily unavailable.');
   }
 
   function sanitize(){
