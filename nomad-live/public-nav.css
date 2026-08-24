@@ -4,7 +4,8 @@
    - desktop: class public-nav-extra-left or public-nav-extra-right
    - mobile: add public-nav-3 or public-nav-4 to .mobile-nav when extra links are enabled.
    Public runtime/status pills are intentionally hidden here; diagnostic status remains available on internal/direct pages.
-   A small neutral footer status appears only when the public data state has a real warning/offline condition. */
+   A small neutral footer status appears only when the public data state has a real warning/offline condition.
+   Public hero H1 titles are reduced by 20% from the shared base size. */
 .topbar-inner{position:relative}
 .topnav{position:absolute;left:50%;transform:translateX(-50%);justify-self:auto;white-space:nowrap}
 .topbar>.topbar-inner>.source-pill{display:none!important}
@@ -18,12 +19,14 @@
 .topnav a[href="health.html"],
 .mobile-nav a[href="settings.html"],
 .mobile-nav a[href="health.html"]{display:none!important}
+.hero h1{font-size:14.4px}
 .public-system-alert{display:none;align-items:center;gap:6px;margin-left:auto;font-size:8px;font-weight:900;letter-spacing:.04em;white-space:nowrap}
 .public-system-alert.is-visible{display:inline-flex}
 .public-system-alert::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.9}
 .public-system-alert.is-warning{color:#f2d21b}
 .public-system-alert.is-error{color:#ff8b8b}
 @media(max-width:700px){
+  .hero h1{font-size:12.8px}
   .mobile-nav{grid-template-columns:repeat(2,1fr)}
   .mobile-nav.public-nav-3{grid-template-columns:repeat(3,1fr)}
   .mobile-nav.public-nav-4{grid-template-columns:repeat(4,1fr)}
