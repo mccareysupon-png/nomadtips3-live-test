@@ -1,8 +1,8 @@
 {
-  // Redeploy marker 2026-08-21: publish CAR 3.4 evidence-baseline and configured AH-line fixes.
+  // CAR 3.4 only: keep Odds-API.io primary and add non-blocking Goaloo Bet365 fallback.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-car34-real-market-audit",
-  "main": "src/main-v3.js",
+  "main": "src/main-v4.js",
   "compatibility_date": "2026-08-15",
   "workers_dev": true,
   "triggers": { "crons": ["*/2 * * * *"] },
