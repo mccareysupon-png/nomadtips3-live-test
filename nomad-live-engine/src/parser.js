@@ -244,7 +244,16 @@ function groupValues(row){
   return groups;
 }
 
-export function parseBet365Asian(html,sourceUpdatedAt=Date.now()){
+const totalCornerBookmakerDefinition=bookmaker=>{
+  const value=String(bookmaker||'').trim().toLowerCase();
+  if(value==='bet365'||value==='bet 365') return {bookmaker:'Bet365',key:'bet365',rowPattern:/\bBet\s*365\b/i};
+  if(value==='pinnacle') return {bookmaker:'Pinnacle',key:'pinnacle',rowPattern:/\bPinnacle\b/i};
+  return null;
+};
+
+export function parseTotalCornerAsian(html,bookmaker,sourceUpdatedAt=Date.now()){
+  const definition=totalCornerBookmakerDefinition(bookmaker);
+  if(!definition) return {status:'AH UNAVAILABLE',reason:'unsupported_totalcorner_bookmaker'};
   const raw=String(html||'');
   if(!raw.trim()||/\bLoading\b/i.test(stripHtml(raw))||/No odds detail yet|No odds data yet|No inplay handicap markets yet/i.test(stripHtml(raw))){
     return {status:'AH UNAVAILABLE',reason:'inplay_handicap_not_available'};
@@ -254,16 +263,29 @@ export function parseBet365Asian(html,sourceUpdatedAt=Date.now()){
   if(!panel) return {status:'AH UNAVAILABLE',reason:'handicap_panel_missing'};
   const snapshot=findSnapshot(raw,'full','inplay');
   if(!snapshot) return {status:'AH UNAVAILABLE',reason:'full_inplay_handicap_missing'};
-  const row=rowSegments(snapshot).find(segment=>/\bBet\s*365\b/i.test(stripHtml(segment)));
-  if(!row) return {status:'AH UNAVAILABLE',reason:'bet365_full_inplay_row_missing'};
+  const row=rowSegments(snapshot).find(segment=>definition.rowPattern.test(stripHtml(segment)));
+  if(!row) return {status:'AH UNAVAILABLE',reason:`${definition.key}_full_inplay_row_missing`};
   const groups=groupValues(row);
-  if(groups.length<2) return {status:'AH INVALID',reason:'bet365_inplay_columns_missing'};
+  if(groups.length<2) return {status:'AH INVALID',reason:`${definition.key}_inplay_columns_missing`};
   const [homeRaw,lineRaw,awayRaw]=groups[1];
   const homeOdds=Number(homeRaw),line=normalizeAsianLine(lineRaw),awayOdds=Number(awayRaw);
   if(!Number.isFinite(homeOdds)||!Number.isFinite(awayOdds)||line==null||homeOdds<1.01||homeOdds>6||awayOdds<1.01||awayOdds>6){
-    return {status:'AH INVALID',reason:'bet365_inplay_values_invalid'};
+    return {status:'AH INVALID',reason:`${definition.key}_inplay_values_invalid`};
   }
-  return {status:'AH READY',homeOdds,line,awayOdds,bookmaker:'Bet365',market:'FULL MATCH LIVE AH',side:'HOME',source:'Bet365 via TotalCorner',sourceUpdatedAt};
+  // TotalCorner's AH line is HOME perspective. Pinnacle sometimes omits the literal '+' sign;
+  // an unsigned positive quarter-line (for example 0.25) must remain HOME +0.25, never be flipped.
+  return {
+    status:'AH READY',homeOdds,line,awayOdds,bookmaker:definition.bookmaker,market:'FULL MATCH LIVE AH',side:'HOME',
+    source:`${definition.bookmaker} via TotalCorner`,sourceUpdatedAt,
+  };
+}
+
+export function parseBet365Asian(html,sourceUpdatedAt=Date.now()){
+  const bet365=parseTotalCornerAsian(html,'Bet365',sourceUpdatedAt);
+  const pinnacle=parseTotalCornerAsian(html,'Pinnacle',sourceUpdatedAt);
+  // Keep the long-standing Bet365 return contract enumerable-shape compatible with existing 3.41 tests/UI.
+  Object.defineProperty(bet365,'totalCornerPeers',{value:{source26:pinnacle},enumerable:false,writable:false,configurable:false});
+  return bet365;
 }
 
 export function parseEnded(html, sourceHost='https://www.totalcorner.com'){

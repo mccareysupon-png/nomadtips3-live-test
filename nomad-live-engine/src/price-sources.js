@@ -7,6 +7,8 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source3',position:3,source:'API-Football'}),
   ...NOWGOAL_BOOKMAKERS.map(item=>Object.freeze({id:item.sourceId,position:item.position,source:'Nowgoal'})),
   // SOURCE 8 is intentionally absent: retired 5Dollar experiment.
+  // SOURCE 26 reuses the same TotalCorner response as SOURCE 4; it never adds another HTTP request.
+  Object.freeze({id:'source26',position:26,source:'TotalCorner',bookmaker:'Pinnacle'}),
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
@@ -26,6 +28,10 @@ function displayStatus(market,assessment){
 function peerMarket(definition,marketsBySource){
   const direct=marketsBySource.get(definition.id)||null;
   if(direct) return direct;
+  if(definition.id==='source26'){
+    const totalCorner=marketsBySource.get('source4')||null;
+    return totalCorner?.totalCornerPeers?.source26||null;
+  }
   if(definition.source!=='Nowgoal'||definition.id==='source5') return null;
   const nowgoal=marketsBySource.get('source5')||null;
   const peer=nowgoal?.nowgoalPeers?.[definition.id]||null;
@@ -50,7 +56,7 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
     return {
       ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
-      bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||null,line:assessment.line??market?.line??null,
+      bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
       assessment,market,
@@ -124,7 +130,8 @@ export function selectNowgoalConsensus(sources=[]){
 }
 
 export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
-  const primary=sources.filter(item=>item.id!==fallbackId);
+  const fallbackIds=new Set([fallbackId,'source26']);
+  const primary=sources.filter(item=>!fallbackIds.has(item.id));
   // 3.41 policy: Nowgoal is the main judge. Choose the modal valid HOME AH line,
   // then lock a real bookmaker quote closest to the median on that line.
   const nowgoalSelected=selectNowgoalConsensus(primary);
@@ -132,8 +139,8 @@ export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
   // Existing non-Nowgoal market records remain live supplements, including historical source5 compatibility.
   const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'));
   if(legacySelected) return legacySelected;
-  // TotalCorner remains last-resort fallback exactly as before.
-  return sources.find(item=>item.id===fallbackId&&item.status==='PASS'&&item.market)||null;
+  // TotalCorner remains last-resort fallback. Bet365 and Pinnacle may compete only inside that fallback tier.
+  return selectPriceSource(sources.filter(item=>fallbackIds.has(item.id)));
 }
 
 export function publicPriceSourceSnapshot(snapshot){
