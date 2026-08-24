@@ -9,8 +9,9 @@
   <link rel="stylesheet" href="../page4-engine3-monitor/styles.css?v=202608121537">
   <link rel="stylesheet" href="../page4-engine3-monitor/presentation-overrides.css?v=202608131553">
   <link rel="stylesheet" href="../site-footer.css?v=202608040844">
+  <link rel="stylesheet" href="./public-card-overrides.css?v=202608241135">
 </head>
-<body
+<body class="public-live-signals"
   data-state-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/page5-latest"
   data-health-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/engine-health"
   data-analytics-url="https://nomadtips3-test-api.mccarey-supon.workers.dev/paper-trades?limit=5000"
@@ -27,9 +28,9 @@
   <main class="page">
     <section class="hero">
       <div class="hero-copy">
-        <span class="eyebrow">LIVE CONDITION DETECTION · READ-ONLY ENGINE VIEW</span>
+        <span class="eyebrow">LIVE FOOTBALL CONDITIONS · READ ONLY</span>
         <h1>LIVE SIGNALS</h1>
-        <p>Live football condition detection, prediction signals and LINE alerts powered by the stored Engine 3 monitor feed.</p>
+        <p>Live football condition detection, prediction signals and LINE alerts updated automatically from live monitoring.</p>
 
         <div class="hero-promo" aria-label="LINE live football signals subscription">
           <div class="promo-copy">
@@ -48,21 +49,21 @@
           </div>
         </div>
       </div>
-      <div class="hero-live" aria-label="Engine status">
+      <div class="hero-live" aria-label="System status">
         <span id="engineDot" class="hero-dot"></span>
-        <div><small>ENGINE STATUS</small><strong id="engineStatus">WAITING</strong></div>
+        <div><small>SYSTEM STATUS</small><strong id="engineStatus">WAITING</strong></div>
       </div>
     </section>
 
-    <section class="runtime-strip" aria-label="Engine runtime summary">
-      <div><small>ENGINE</small><b id="runtimeEngine">WAITING</b></div>
-      <div><small>SCAN</small><b id="runtimeScan">WAITING</b></div>
+    <section class="runtime-strip" aria-label="Live system summary">
+      <div><small>SYSTEM</small><b id="runtimeEngine">WAITING</b></div>
+      <div><small>MONITOR</small><b id="runtimeScan">WAITING</b></div>
       <div><small>LAST UPDATE</small><b id="runtimeUpdate">—</b></div>
       <div><small>PUBLIC MODE</small><b class="good">READ ONLY</b></div>
     </section>
 
-    <section class="summary" aria-label="Live Engine 3 counters">
-      <article class="metric"><small>LIVE FIXTURES</small><b id="liveFixtures">—</b><span>stored scanner count</span></article>
+    <section class="summary" aria-label="Live monitoring counters">
+      <article class="metric"><small>LIVE FIXTURES</small><b id="liveFixtures">—</b><span>currently tracked</span></article>
       <article class="metric"><small>IN MINUTE WINDOW</small><b id="minuteWindow">—</b><span>active window</span></article>
       <article class="metric"><small>BASE CANDIDATES</small><b id="baseCandidates">—</b><span>under observation</span></article>
       <article class="metric signal"><small>MATCHED SIGNALS</small><b id="matchedSignals">—</b><span>current cycle</span></article>
@@ -70,11 +71,11 @@
 
     <section class="monitor-card">
       <div class="section-head">
-        <div><span class="section-kicker">ENGINE 3</span><h2>Live Monitor</h2></div>
-        <div id="freshnessLabel" class="freshness">Waiting for Engine 3</div>
+        <div><span class="section-kicker">LIVE</span><h2>Live Monitor</h2></div>
+        <div id="freshnessLabel" class="freshness">Waiting for live data</div>
       </div>
 
-      <div class="tabs" role="tablist" aria-label="Engine 3 public monitor views">
+      <div class="tabs" role="tablist" aria-label="Public live monitor views">
         <button class="tab active" type="button" role="tab" aria-selected="true" data-tab="live">LIVE MONITOR</button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-tab="rules">RULES IN USE</button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-tab="system">SYSTEM STATUS</button>
@@ -83,36 +84,34 @@
       <div id="panel-live" class="tab-panel active" role="tabpanel">
         <div id="signalHero" class="signal-hero empty-state">
           <div class="radar" aria-hidden="true"><i></i><i></i><i></i><span></span></div>
-          <div><small>CURRENT ENGINE VIEW</small><h3 id="signalHeadline">Connecting to Engine 3…</h3><p id="signalSubline">The screen updates automatically.</p></div>
+          <div><small>CURRENT LIVE VIEW</small><h3 id="signalHeadline">Connecting to live data…</h3><p id="signalSubline">The screen updates automatically.</p></div>
         </div>
         <div class="list-head"><h3>Current Candidates</h3><span id="candidateNote">—</span></div>
         <div id="candidateList" class="match-list"><div class="list-empty">Waiting for data.</div></div>
-        <div class="list-head fixtures-head"><h3>Active Engine States</h3><span id="fixtureNote">—</span></div>
+        <div class="list-head fixtures-head"><h3>Active Live States</h3><span id="fixtureNote">—</span></div>
         <div id="fixtureList" class="match-list compact"><div class="list-empty">Waiting for data.</div></div>
       </div>
 
       <div id="panel-rules" class="tab-panel" role="tabpanel" hidden>
-        <div id="ruleRows" class="status-table"><div class="status-row"><span>Rule details</span><b>WAITING FOR FEED</b></div></div>
+        <div id="ruleRows" class="status-table"><div class="status-row"><span>Rule details</span><b>WAITING FOR DATA</b></div></div>
       </div>
 
       <div id="panel-system" class="tab-panel" role="tabpanel" hidden>
         <div class="status-table">
-          <div class="status-row"><span>Stored Monitor Feed</span><b id="sysSharedState">WAITING</b></div>
-          <div class="status-row"><span>Engine Runtime</span><b id="sysEngineData">WAITING</b></div>
-          <div class="status-row"><span>Browser → Football API Calls</span><b class="good">0</b></div>
+          <div class="status-row"><span>Live System</span><b id="sysEngineData">WAITING</b></div>
           <div class="status-row"><span>Screen Refresh</span><b id="sysRefresh">10 sec</b></div>
-          <div class="status-row"><span>Last Good Scan</span><b id="sysLastGood">—</b></div>
-          <div class="status-row"><span>Settlement Pending</span><b id="sysSettlementPending">—</b></div>
+          <div class="status-row"><span>Last Update</span><b id="sysLastGood">—</b></div>
+          <div class="status-row"><span>Pending Results</span><b id="sysSettlementPending">—</b></div>
         </div>
       </div>
     </section>
 
     <section class="performance-card">
       <div class="section-head">
-        <div><span class="section-kicker">ENGINE 3 HISTORY</span><h2>Performance · Last 30 Days</h2></div>
-        <div id="historyFreshness" class="freshness">Waiting for D1 history</div>
+        <div><span class="section-kicker">SIGNAL HISTORY</span><h2>Performance · Last 30 Days</h2></div>
+        <div id="historyFreshness" class="freshness">Waiting for history</div>
       </div>
-      <div class="history-summary" aria-label="Engine 3 historical statistics">
+      <div class="history-summary" aria-label="Signal historical statistics">
         <div><small>TOTAL</small><b id="histTotal">—</b></div>
         <div class="win"><small>WIN</small><b id="histWin">—</b></div>
         <div class="loss"><small>LOSS</small><b id="histLoss">—</b></div>
@@ -131,7 +130,7 @@
 
     <section class="footnote-card">
       <b>PUBLIC RESEARCH ACCESS</b><span id="pageClock">—</span>
-      <p>Display data comes from stored Engine 3 scanner state, Engine Health and the Engine 3 D1 PAPER ledger. This page does not trigger a scan and has no engine controls.</p>
+      <p>This is a public read-only display of live signal data and recorded results.</p>
     </section>
   </main>
 
@@ -144,6 +143,7 @@
 
   <script src="../page4-engine3-monitor/app.js?v=202608121438" defer></script>
   <script src="../page4-engine3-monitor/history-pagination.js?v=202608131553" defer></script>
+  <script src="./public-mask.js?v=202608241135" defer></script>
   <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
