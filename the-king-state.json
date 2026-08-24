@@ -1,185 +1,193 @@
 {
   "engine": "the-king-v9-manual-set2-goaloo",
   "status": "OK",
-  "last_selection_run": "2026-08-21T04:02:15Z",
+  "last_selection_run": "2026-08-24T03:36:19Z",
   "last_settlement_run": "2026-08-23T23:56:18Z",
-  "selection_date": "2026-08-21",
-  "fixtures_seen": 387,
+  "selection_date": "2026-08-24",
+  "fixtures_seen": 148,
   "qualified": 6,
-  "pending": 1,
+  "pending": 6,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "rejected": 381,
+  "rejected": 142,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 26,
-    "WINNER_FIRST_GATE": 250,
-    "NO_GOALOO_1X2_ODDS": 18,
-    "ODDS_GATE": 4,
-    "DRAW_NOT_MAIN_PICK": 1
+    "WINNER_FIRST_GATE": 98,
+    "GOALOO_FORM_SHORT": 18,
+    "NO_GOALOO_1X2_ODDS": 1,
+    "DRAW_NOT_MAIN_PICK": 1,
+    "ODDS_GATE": 2
   },
   "rejection_samples": [
     {
-      "match": "Brotherhood FC vs Northerners FC",
+      "match": "Nongrah vs Mawpat SC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.453,
+      "edge": 0.1719,
+      "side": "home"
+    },
+    {
+      "match": "Umphrup FC vs Mawkriah West",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
+      "home_n": 2,
+      "away_n": 1
+    },
+    {
+      "match": "Northerners FC vs Dzongri FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 0,
+      "away_n": 2
+    },
+    {
+      "match": "Kalighat FC vs East Bengal",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.3876,
+      "edge": 0.0238,
+      "side": "away"
+    },
+    {
+      "match": "Calcutta Polica Club vs Kalighat Sports Lovers",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.3976,
+      "edge": 0.0709,
+      "side": "away"
+    },
+    {
+      "match": "Peerless SC vs Wari AC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4466,
+      "edge": 0.1252,
+      "side": "away"
+    },
+    {
+      "match": "Kairat Almaty (W) vs FK Atyrau (W)",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
       "away_n": 0
     },
     {
-      "match": "South Coast Flame FC vs Gladesville Ryde Magic",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4356,
-      "edge": 0.0889,
-      "side": "home"
-    },
-    {
-      "match": "Umrynjah SCC vs Tynring Sports Club",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 1,
-      "away_n": 3
-    },
-    {
-      "match": "Sohiong United vs Jongksha SC",
+      "match": "Liaoning Shengjing Xinrui vs Dalian Juxing Shengheng",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 4,
-      "away_n": 3
+      "away_n": 2
     },
     {
-      "match": "Bratslav Vinnytsia vs PFC Oleksandria",
+      "match": "Araks Ararat vs FC Cilicia",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 2,
-      "away_n": 7
+      "home_n": 7,
+      "away_n": 2
     },
     {
-      "match": "Rebel Kyiv vs Ahrobiznes TSK Romny",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4221,
-      "edge": 0.1021,
-      "side": "home"
-    },
-    {
-      "match": "Dzongri FC vs Boys Club",
+      "match": "Hayq vs Olympia Yerevan",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 1,
-      "away_n": 7
+      "home_n": 8,
+      "away_n": 2
     },
     {
-      "match": "Green Gully Cavaliers vs St Albans Saints",
+      "match": "Sabah vs Star City",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.3668,
-      "edge": 0.0148,
+      "confidence": 0.3611,
+      "edge": 0.0124,
       "side": "away"
     },
     {
-      "match": "Coal India vs Police AC",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5001,
-      "edge": 0.2328,
-      "side": "home"
-    },
-    {
-      "match": "Box Hill United SC vs Nunawading City",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.3679,
-      "edge": 0.0127,
-      "side": "home"
-    },
-    {
-      "match": "Kashiwa Reysol vs V-Varen Nagasaki",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5761,
-      "edge": 0.3414,
-      "side": "away"
-    },
-    {
-      "match": "KSPO FC (W) vs Seoul Amazones (W)",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5075,
-      "edge": 0.26,
-      "side": "away"
+      "match": "Tobol Kostanay (W) vs Yelimay Semey W",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 2
     }
   ],
   "near_gate_top": [
     {
-      "match": "Banik Ostrava (W) vs Slavia Praha (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.9476,
-      "edge": 0.9046
+      "match": "Wurzburger Kickers vs FC Koln",
+      "reason": "ODDS_GATE",
+      "odds": 1.3,
+      "confidence": 0.677,
+      "edge": 0.4857
     },
     {
-      "match": "ETSV Hamburg vs HEBC Hamburg",
+      "match": "Lula FC vs Deportivo Alexis Garcia",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8444,
-      "edge": 0.7063
+      "confidence": 0.6062,
+      "edge": 0.3869
     },
     {
-      "match": "Pecsi MFC vs Sarbogard",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8095,
-      "edge": 0.6564
+      "match": "SC Verl vs Hamburger SV",
+      "reason": "ODDS_GATE",
+      "odds": 1.44,
+      "confidence": 0.5964,
+      "edge": 0.394
     },
     {
-      "match": "Juventus (W) vs Como 2000 (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7988,
-      "edge": 0.6371
+      "match": "FK Isloch Minsk vs Dinamo Minsk",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.575,
+      "edge": 0.3139,
+      "side": "home"
     },
     {
-      "match": "Uraedd FK vs Pors Grenland",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7837,
-      "edge": 0.6284
+      "match": "Transinvest Vilnius vs Siauliai",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5735,
+      "edge": 0.3403,
+      "side": "away"
     },
     {
-      "match": "Bala Town F.C. vs Gresford",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7764,
-      "edge": 0.6256
+      "match": "Sport Club do Recife vs America MG",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5701,
+      "edge": 0.3095,
+      "side": "home"
     },
     {
-      "match": "Vortuna Bad Leonfelden vs OTSU Hallein",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7713,
-      "edge": 0.6195
+      "match": "Bahla vs Dhufar",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5434,
+      "edge": 0.2455,
+      "side": "home"
     },
     {
-      "match": "Karbalaa vs Al Zawraa",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7259,
-      "edge": 0.5295
+      "match": "Martin Ledesma vs Olimpia de Ita",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.54,
+      "edge": 0.3043,
+      "side": "away"
     },
     {
-      "match": "Progresso da Lunda Sul vs Petro Atletico de Luanda",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7237,
-      "edge": 0.4926
+      "match": "Kocaelispor vs Amedspor",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5392,
+      "edge": 0.2638,
+      "side": "home"
     },
     {
-      "match": "Austria Wien (W) vs Red Bull Salzburg (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7028,
-      "edge": 0.4619
+      "match": "Rotor Volgograd vs Neftekhimik Nizhnekamsk",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5369,
+      "edge": 0.2518,
+      "side": "away"
     },
     {
-      "match": "Tanta vs Team FC Cairo",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6877,
-      "edge": 0.4805
+      "match": "Gil Vicente vs Casa Pia AC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5357,
+      "edge": 0.2512,
+      "side": "away"
     },
     {
-      "match": "Ferrymead Bays vs Nelson Suburbs",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.657,
-      "edge": 0.4771
+      "match": "Maccabi Kiryat Gat vs Hapoel Rishon Lezion",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5316,
+      "edge": 0.2799,
+      "side": "home"
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 235,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 207,
+    "odds_rows": 196,
+    "h2h_static_ok": 148,
     "h2h_browser_fallback": 0,
     "errors": []
-  },
-  "settled_this_run": 0
+  }
 }
