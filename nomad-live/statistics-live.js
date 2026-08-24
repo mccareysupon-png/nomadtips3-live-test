@@ -6,7 +6,7 @@
   const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
   const when=s=>{try{return new Date(s).toLocaleString([], {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
   const clsResult=r=>/WIN/.test(r||'')?'win':/LOSS/.test(r||'')?'loss':'';
-  const recordSource=r=>`${r?.bookmaker||'—'} · ${r?.oddsSource||'—'}`;
+  const recordBookmaker=r=>r?.bookmaker||'—';
   const metrics=[...document.querySelectorAll('.summary-grid .metric strong')];
   const tbody=document.querySelector('.data-table tbody');
   const muted=document.querySelector('.panel-head .muted');
@@ -32,7 +32,7 @@
     const fin=r.settlement?.finalScore;
     const res=r.settlement?.result||'PENDING';
     const c=clsResult(res);
-    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordSource(r))}</td><td>${pair(r.entryScore)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
+    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${pair(r.entryScore)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
   };
   const summarizeRecords=records=>{
     const settled=records.filter(item=>item?.settlement);
@@ -79,7 +79,7 @@
       setSource('RESULT LEDGER · LIVE',true);
       firstLoad=false;
     }catch(e){
-      setText(note,`Statistics connection unavailable: ${e.message}`);
+      setText(note,'Statistics connection temporarily unavailable.');
       setSource('RESULT LEDGER · OFFLINE',false);
       firstLoad=false;
     }
