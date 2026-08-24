@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-24T16:06:21Z",
+  "updated_at": "2026-08-24T17:56:14Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8562,
       "edge": 72.2,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-0",
       "source_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-jkt-tanzania/h2h-3064160",
       "summary_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-jkt-tanzania/summary-3064160",
       "model": {
@@ -749,6 +749,56 @@
       },
       "data_quality": {
         "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "20725261ed96e551",
+      "goaloo_id": "3064160",
+      "date": "2026-08-24",
+      "kickoff": "2026-08-24 15:00:00",
+      "league": "Tanzania Ligue 1",
+      "home": "Young Africans",
+      "away": "JKT Tanzania",
+      "pick": "JKT Tanzania Win",
+      "side": "away",
+      "odds": 22.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8562,
+      "edge": 72.2,
+      "result": "LOSS",
+      "ft": "4-0",
+      "source_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-jkt-tanzania/h2h-3064160",
+      "summary_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-jkt-tanzania/summary-3064160",
+      "model": {
+        "lambda_home": 0.222,
+        "lambda_away": 2.249,
+        "home_win": 0.0096,
+        "draw": 0.1341,
+        "away_win": 0.8562,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.8016,
+          "gd_edge": -0.9405,
+          "clean_sheet_edge": -0.878,
+          "failed_to_score_edge": -0.7024,
+          "bounded_adjustment": -0.0641,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
