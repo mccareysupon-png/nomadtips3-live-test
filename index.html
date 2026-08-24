@@ -8,6 +8,7 @@
   <title>nomadtips3 — Live soccer analysis</title>
   <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/styles.css">
   <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/ui-fix.css">
+  <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/empty-live.css">
 </head>
 <body data-page="live">
   <header class="topbar">
@@ -21,6 +22,14 @@
       <div><b id="watchCount">0</b><span>Watch</span></div>
       <div><b id="signalCount">0</b><span>Signal</span></div>
       <div><b id="freshness">—</b><span>Freshness</span></div>
+    </section>
+
+    <section class="no-live-hero" id="noLiveHero" hidden aria-live="polite">
+      <div class="no-live-copy">
+        <span class="eyebrow">Live football</span>
+        <h2>No Live Matches at the Moment</h2>
+        <p>There are currently no live matches available. Please check back later.</p>
+      </div>
     </section>
 
     <div class="live-layout" id="liveLayout">
@@ -118,5 +127,6 @@
   </nav>
   <script type="module" src="./car3-5-live-soccer-analysis/web/app.js"></script>
   <script type="module" src="./car3-5-live-soccer-analysis/web/signal-view.js"></script>
+  <script type="module" src="./car3-5-live-soccer-analysis/web/empty-live-state.js"></script>
 </body>
 </html>
