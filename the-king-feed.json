@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-24T14:06:18Z",
+  "updated_at": "2026-08-24T16:06:21Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -66,8 +66,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8775,
       "edge": 76.5,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-2",
       "source_url": "https://www.goaloo.com/football/serbia-league-women-vojvodina-w-vs-lask-crvena-zvezda-w/h2h-3071580",
       "summary_url": "https://www.goaloo.com/football/serbia-league-women-vojvodina-w-vs-lask-crvena-zvezda-w/summary-3071580",
       "model": {
@@ -699,6 +699,56 @@
       },
       "data_quality": {
         "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "3cdc20130083903c",
+      "goaloo_id": "3071580",
+      "date": "2026-08-24",
+      "kickoff": "2026-08-24 14:00:00",
+      "league": "Serbia League Women",
+      "home": "Vojvodina (W)",
+      "away": "LASK Crvena Zvezda (W)",
+      "pick": "Vojvodina (W) Win",
+      "side": "home",
+      "odds": 6.59,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8775,
+      "edge": 76.5,
+      "result": "LOSS",
+      "ft": "2-2",
+      "source_url": "https://www.goaloo.com/football/serbia-league-women-vojvodina-w-vs-lask-crvena-zvezda-w/h2h-3071580",
+      "summary_url": "https://www.goaloo.com/football/serbia-league-women-vojvodina-w-vs-lask-crvena-zvezda-w/summary-3071580",
+      "model": {
+        "lambda_home": 3.136,
+        "lambda_away": 0.718,
+        "home_win": 0.8775,
+        "draw": 0.1125,
+        "away_win": 0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.6163,
+          "gd_edge": 0.9559,
+          "clean_sheet_edge": 0.4878,
+          "failed_to_score_edge": 0.3122,
+          "bounded_adjustment": 0.0516,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0075,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
