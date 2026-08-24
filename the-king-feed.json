@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-24T17:56:14Z",
+  "updated_at": "2026-08-24T19:49:14Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -216,8 +216,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8291,
       "edge": 66.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "source_url": "https://www.goaloo.com/football/poland-liga-1-stal-rzeszow-vs-ruch-chorzow/h2h-3004960",
       "summary_url": "https://www.goaloo.com/football/poland-liga-1-stal-rzeszow-vs-ruch-chorzow/summary-3004960",
       "model": {
@@ -799,6 +799,56 @@
       },
       "data_quality": {
         "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "887b1e4fbebf34fc",
+      "goaloo_id": "3004960",
+      "date": "2026-08-24",
+      "kickoff": "2026-08-24 17:00:00",
+      "league": "Poland Liga 1",
+      "home": "Stal Rzeszow",
+      "away": "Ruch Chorzow",
+      "pick": "Stal Rzeszow Win",
+      "side": "home",
+      "odds": 3.76,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8291,
+      "edge": 66.8,
+      "result": "LOSS",
+      "ft": "0-1",
+      "source_url": "https://www.goaloo.com/football/poland-liga-1-stal-rzeszow-vs-ruch-chorzow/h2h-3004960",
+      "summary_url": "https://www.goaloo.com/football/poland-liga-1-stal-rzeszow-vs-ruch-chorzow/summary-3004960",
+      "model": {
+        "lambda_home": 2.263,
+        "lambda_away": 0.427,
+        "home_win": 0.8291,
+        "draw": 0.161,
+        "away_win": 0.0099,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8667,
+          "gd_edge": 0.8777,
+          "clean_sheet_edge": 0.2293,
+          "failed_to_score_edge": 0.8244,
+          "bounded_adjustment": 0.0587,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
