@@ -1,4 +1,10 @@
-/* Public NOMAD Live navigation: Health is intentionally kept off the public walkway. */
+/* Public NOMAD Live navigation: lock the two public links in one fixed center position. */
+.topbar-inner{position:relative}
+.topnav{position:absolute;left:50%;transform:translateX(-50%);justify-self:auto;white-space:nowrap}
+.topnav a[href="settings.html"],
+.topnav a[href="health.html"],
+.mobile-nav a[href="settings.html"],
+.mobile-nav a[href="health.html"]{display:none!important}
 @media(max-width:700px){
-  .mobile-nav{grid-template-columns:repeat(3,1fr)}
+  .mobile-nav{grid-template-columns:repeat(2,1fr)}
 }
