@@ -35,9 +35,10 @@
     const grouped = new Map();
     for (const source of sources) {
       const bookmaker = String(source?.bookmaker || '').trim();
-      if (!bookmaker) continue;
+      if (!bookmaker || bookmaker === '—') continue;
       const key = bookmakerKey(bookmaker);
-      if (!key) continue;
+      const providerKey = bookmakerKey(source?.source);
+      if (!key || key === 'bookmaker' || /^source\s*\d+$/i.test(bookmaker) || (providerKey && key === providerKey)) continue;
       const existing = grouped.get(key);
       if (!existing) {
         grouped.set(key, {bookmaker, source, position: finite(source?.position) ? Number(source.position) : Number.POSITIVE_INFINITY});
