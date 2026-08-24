@@ -1,4 +1,4 @@
-const finite=value=>Number.isFinite(Number(value));
+const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 
 export const PUBLIC_STATS_EPOCH_VERSION=1;
 
@@ -12,6 +12,8 @@ export function isPendingSignal(signal){
 }
 
 export function createPublicStatsEpoch(signals=[],startedAt=Date.now()){
+  const lockedAts=signals.map(signal=>signal?.lockedAt).filter(finite).map(Number);
+  const afterLockedAt=lockedAts.length?Math.max(...lockedAts):null;
   const seedKeys=signals
     .filter(isPendingSignal)
     .map(publicSignalKey)
@@ -19,6 +21,7 @@ export function createPublicStatsEpoch(signals=[],startedAt=Date.now()){
   return {
     version:PUBLIC_STATS_EPOCH_VERSION,
     startedAt:Number(startedAt),
+    afterLockedAt,
     seedKeys:[...new Set(seedKeys)],
   };
 }
@@ -29,7 +32,9 @@ export function selectPublicStatsSignals(signals=[],epoch){
   return signals.filter(signal=>{
     const key=publicSignalKey(signal);
     if(key&&seedKeys.has(key)) return true;
-    return finite(signal?.lockedAt)&&Number(signal.lockedAt)>=Number(epoch.startedAt);
+    if(!finite(signal?.lockedAt)) return false;
+    if(finite(epoch.afterLockedAt)) return Number(signal.lockedAt)>Number(epoch.afterLockedAt);
+    return Number(signal.lockedAt)>=Number(epoch.startedAt);
   });
 }
 
