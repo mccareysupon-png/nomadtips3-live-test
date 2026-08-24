@@ -3,6 +3,13 @@
 
   if (!document.body.classList.contains('public-live-signals')) return;
 
+  // The shared monitor reads these values during its own initialization, before
+  // this scoped script runs. Remove them from the live DOM afterwards so the
+  // public page does not continue advertising internal route names.
+  ['data-state-url', 'data-health-url', 'data-analytics-url'].forEach(attribute => {
+    document.body.removeAttribute(attribute);
+  });
+
   const PUBLIC_ROOTS = [
     '#signalHero',
     '#candidateList',
