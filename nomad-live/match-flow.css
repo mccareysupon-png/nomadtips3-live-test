@@ -1,9 +1,22 @@
 /* NOMAD Live 3.41 · presentation-only recent match flow.
    Uses rolling deltas already present in /feed; detector and market logic stay untouched. */
 
-.match-flow-card {
-  grid-column:1;
+.match-detail.is-flow-columns {
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  gap:8px;
+  align-items:start;
 }
+
+.detail-left-stack,
+.detail-right-stack {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-width:0;
+}
+
+.detail-left-stack {grid-column:1}
+.detail-right-stack {grid-column:2}
 
 .match-flow-card h3 {
   margin-bottom:7px;
@@ -87,7 +100,24 @@
 }
 
 @media(max-width:700px) {
-  .match-flow-card {grid-column:1 / -1}
+  .match-detail.is-flow-columns {
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:stretch;
+  }
+
+  .detail-left-stack,
+  .detail-right-stack {
+    display:contents;
+  }
+
+  .detail-rolling-card {order:1}
+  .detail-pressure-card {order:2}
+  .detail-detector-card {order:3}
+  .detail-flow-card {order:4}
+  .detail-price-card {order:5}
+
   .flow-row {grid-template-columns:58px 21px minmax(36px,1fr) 1px minmax(36px,1fr) 21px;gap:4px}
   .flow-legend {grid-template-columns:58px 1fr 1fr}
 }
