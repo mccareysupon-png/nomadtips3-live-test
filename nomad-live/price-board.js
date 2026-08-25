@@ -7,6 +7,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const matchKey = match => String(match?.id ?? `${match?.home ?? ''}|${match?.away ?? ''}|${match?.league ?? ''}`);
   const bookmakerKey = value => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const hiddenPublicSource = value => /^api[-\s]?football(?:\b|\s*\()/i.test(String(value || '').trim());
   const fmtLine = value => finite(value) ? `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(2)}` : '—';
   const fmtOdds = value => finite(value) ? Number(value).toFixed(2) : '—';
   const fmtAge = value => finite(value) ? `${Math.max(0, Math.round(Number(value)))}s` : '—';
@@ -35,9 +36,11 @@
     const grouped = new Map();
     for (const source of sources) {
       const bookmaker = String(source?.bookmaker || '').trim();
+      const provider = String(source?.source || '').trim();
       if (!bookmaker || bookmaker === '—') continue;
+      if (hiddenPublicSource(bookmaker) || hiddenPublicSource(provider)) continue;
       const key = bookmakerKey(bookmaker);
-      const providerKey = bookmakerKey(source?.source);
+      const providerKey = bookmakerKey(provider);
       if (!key || key === 'bookmaker' || /^source\s*\d+$/i.test(bookmaker) || (providerKey && key === providerKey)) continue;
       const existing = grouped.get(key);
       if (!existing) {
