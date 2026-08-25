@@ -2,6 +2,11 @@ name: Deploy NOMAD Live Engine TEST
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - work/nomad341-test-production-rail
+    paths:
+      - .github/workflows/nomad-live-engine-test-deploy.yml
 
 permissions:
   contents: read
@@ -13,6 +18,7 @@ env:
 
 jobs:
   validate-and-deploy-test:
+    if: github.ref == 'refs/heads/work/nomad341-test-production-rail' && github.repository == 'mccareysupon-png/nomadtips3-live-test'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
