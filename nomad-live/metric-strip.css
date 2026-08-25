@@ -13,6 +13,7 @@
 
 .status-grid > .metric,
 .summary-grid > .metric {
+  position:relative;
   min-width:0;
   border-radius:0;
   background:transparent;
@@ -21,14 +22,24 @@
   text-align:center;
 }
 
-.status-grid > .metric + .metric,
-.summary-grid > .metric + .metric {
-  border-left:1px solid rgba(150,158,151,.12);
+/* Inset dividers keep the strip feeling like one card rather than a table. */
+.status-grid > .metric + .metric::before,
+.summary-grid > .metric + .metric::before {
+  content:"";
+  position:absolute;
+  z-index:2;
+  left:0;
+  top:17%;
+  bottom:17%;
+  width:1px;
+  background:rgba(150,158,151,.14);
+  pointer-events:none;
 }
 
+/* Highlight the important metric, then feather the tint away before the edges. */
 .status-grid > .metric.signal,
 .summary-grid > .metric.signal {
-  background:linear-gradient(145deg,rgba(35,75,42,.72),rgba(24,53,29,.56) 52%,rgba(18,27,20,.42));
+  background:radial-gradient(ellipse 88% 84% at 50% 50%,rgba(35,75,42,.72) 0%,rgba(24,53,29,.50) 42%,rgba(18,27,20,.20) 68%,rgba(18,27,20,0) 100%);
 }
 
 .status-grid > .metric.signal strong,
@@ -53,16 +64,38 @@
   .status-grid > .metric,
   .summary-grid > .metric {
     padding:11px 9px;
-    border-left:0;
   }
 
-  .status-grid > .metric:nth-child(even),
-  .summary-grid > .metric:nth-child(even) {
-    border-left:1px solid rgba(150,158,151,.12);
+  /* Reset desktop dividers, then draw only the two vertical mobile dividers. */
+  .status-grid > .metric::before,
+  .summary-grid > .metric::before {
+    content:none;
   }
 
-  .status-grid > .metric:nth-child(n+3),
-  .summary-grid > .metric:nth-child(n+3) {
-    border-top:1px solid rgba(150,158,151,.12);
+  .status-grid > .metric:nth-child(even)::before,
+  .summary-grid > .metric:nth-child(even)::before {
+    content:"";
+    position:absolute;
+    z-index:2;
+    left:0;
+    top:17%;
+    bottom:17%;
+    width:1px;
+    background:rgba(150,158,151,.14);
+    pointer-events:none;
+  }
+
+  /* The second row gets a matching inset horizontal divider. */
+  .status-grid > .metric:nth-child(n+3)::after,
+  .summary-grid > .metric:nth-child(n+3)::after {
+    content:"";
+    position:absolute;
+    z-index:2;
+    top:0;
+    left:17%;
+    right:17%;
+    height:1px;
+    background:rgba(150,158,151,.14);
+    pointer-events:none;
   }
 }
