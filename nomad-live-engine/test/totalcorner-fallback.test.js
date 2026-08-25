@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {DEFAULT_CONFIG} from '../src/config.js';
 import {PRICE_SOURCE_REGISTRY,buildPriceSourceSnapshots,selectPriceSourceWithFallback} from '../src/price-sources.js';
 
-// SOURCE 4 is intentionally fallback-only; primary Sources 1-3 plus Nowgoal Sources 5-7 retain priority when valid.
+// SOURCE 4 remains the legacy TotalCorner Bet365 carrier but is non-voting.
+// Pinnacle from the same payload is exposed as SOURCE 26 and is covered by the dedicated Pinnacle tests.
 const observedAt=Date.parse('2026-08-22T01:00:40Z');
 const ready=(source,bookmaker,line,odds,updatedAt,extra={})=>({
   status:'AH READY',source,bookmaker,line,homeOdds:odds,awayOdds:1.95,
@@ -11,11 +12,11 @@ const ready=(source,bookmaker,line,odds,updatedAt,extra={})=>({
 });
 const unavailable=(source,reason='not_available')=>({status:'AH UNAVAILABLE',source,reason});
 
-test('SOURCE 4 is TotalCorner and remains last in registry',()=>{
+test('SOURCE 4 is TotalCorner and remains last in registry for compatibility',()=>{
   assert.deepEqual(PRICE_SOURCE_REGISTRY.at(-1),{id:'source4',position:4,source:'TotalCorner'});
 });
 
-test('SOURCE 5 is Nowgoal and is a primary peer before SOURCE 4 fallback',()=>{
+test('SOURCE 5 is Nowgoal and remains an active primary judge while SOURCE 4 Bet365 cannot vote',()=>{
   assert.deepEqual(PRICE_SOURCE_REGISTRY.find(item=>item.id==='source5'),{id:'source5',position:5,source:'Nowgoal'});
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
@@ -29,7 +30,7 @@ test('SOURCE 5 is Nowgoal and is a primary peer before SOURCE 4 fallback',()=>{
   assert.equal(selected.bookmaker,'1xBet');
 });
 
-test('SOURCE 6 is derived from Nowgoal Bet365 peer and can decide before SOURCE 4 fallback',()=>{
+test('SOURCE 6 is derived from Nowgoal Bet365 peer and can decide while SOURCE 4 Bet365 stays non-voting',()=>{
   assert.deepEqual(PRICE_SOURCE_REGISTRY.find(item=>item.id==='source6'),{id:'source6',position:6,source:'Nowgoal'});
   const source5=ready('Nowgoal','1xBet',-.5,1.90,observedAt-3_000);
   source5.status='AH UNAVAILABLE';
@@ -70,7 +71,7 @@ test('Oddspedia can win as a peer when it has better HOME odds on the same AH li
   assert.equal(selectPriceSourceWithFallback(snapshots).id,'source5');
 });
 
-test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5-7 have no PASS market',()=>{
+test('TotalCorner Bet365 carrier cannot create a selected price by itself',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -78,13 +79,10 @@ test('TotalCorner Bet365 is selected only when primary Sources 1-3 and 5-7 have 
     ['source5',unavailable('Nowgoal')],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.88,observedAt-4_000)],
   ]),DEFAULT_CONFIG,observedAt);
-  const selected=selectPriceSourceWithFallback(snapshots);
-  assert.equal(selected.id,'source4');
-  assert.equal(selected.bookmaker,'Bet365');
-  assert.equal(selected.status,'PASS');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
 });
 
-test('API-Football without bookmaker identity cannot judge live AH and falls through to verified fallback',()=>{
+test('API-Football without bookmaker identity still fails closed and SOURCE 4 Bet365 cannot rescue it',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -96,10 +94,10 @@ test('API-Football without bookmaker identity cannot judge live AH and falls thr
   assert.equal(source3.status,'FAIL');
   assert.equal(source3.reason,'bookmaker_not_supplied');
   assert.equal(source3.bookmaker,'API-Football (bookmaker not supplied)');
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
 });
 
-test('a valid primary source always beats TotalCorner even when fallback is fresher and pays more',()=>{
+test('a valid legacy source remains usable when SOURCE 4 Bet365 is fresher and pays more',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-18_000)],
     ['source2',unavailable('The Odds API')],
@@ -112,7 +110,7 @@ test('a valid primary source always beats TotalCorner even when fallback is fres
   assert.equal(selected.bookmaker,'1xBet');
 });
 
-test('invalid TotalCorner fallback never creates a selected price',()=>{
+test('invalid TotalCorner carrier never creates a selected price',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],

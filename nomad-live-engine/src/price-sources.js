@@ -88,8 +88,12 @@ function median(values=[]){
 }
 
 function consensusEligible(item){
-  // Source 5 historically carried other providers. Only a real Nowgoal market may vote.
-  if(item?.market?.source!=='Nowgoal'||item?.market?.status!=='AH READY') return false;
+  // Pinnacle has one authoritative vote only: SOURCE 26 via TotalCorner.
+  // The duplicate Nowgoal Pinnacle socket (SOURCE 25) remains wired for compatibility/display diagnostics but cannot vote.
+  if(item?.id==='source25') return false;
+  const nowgoalJudge=item?.market?.source==='Nowgoal';
+  const totalCornerPinnacle=item?.id==='source26'&&item?.bookmaker==='Pinnacle'&&/TotalCorner/i.test(String(item?.market?.source||''));
+  if((!nowgoalJudge&&!totalCornerPinnacle)||item?.market?.status!=='AH READY') return false;
   if(!finite(item.line)||!finite(item.odds)||!finite(item.sourceUpdatedAt)) return false;
   return !['AH STALE','AH LINE FAIL','AH INVALID'].includes(item.assessment?.status);
 }
@@ -130,17 +134,17 @@ export function selectNowgoalConsensus(sources=[]){
 }
 
 export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
-  const fallbackIds=new Set([fallbackId,'source26']);
-  const primary=sources.filter(item=>!fallbackIds.has(item.id));
-  // 3.41 policy: Nowgoal is the main judge. Choose the modal valid HOME AH line,
-  // then lock a real bookmaker quote closest to the median on that line.
-  const nowgoalSelected=selectNowgoalConsensus(primary);
-  if(nowgoalSelected) return nowgoalSelected;
-  // Existing non-Nowgoal market records remain live supplements, including historical source5 compatibility.
-  const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'));
+  // SOURCE 4 Bet365 via TotalCorner is retained as an internal compatibility socket only.
+  // SOURCE 25 Pinnacle via Nowgoal is retained but cannot duplicate Pinnacle's vote.
+  const nonVoterIds=new Set([fallbackId,'source25']);
+  const primary=sources.filter(item=>!nonVoterIds.has(item.id));
+  // Main judge pool: all eligible Nowgoal bookmakers plus Pinnacle from TotalCorner (SOURCE 26).
+  const judgeSelected=selectNowgoalConsensus(primary);
+  if(judgeSelected) return judgeSelected;
+  // Existing non-Nowgoal records remain secondary supplements; SOURCE 26 is judged only inside the consensus pool above.
+  const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'&&item.id!=='source26'));
   if(legacySelected) return legacySelected;
-  // TotalCorner remains last-resort fallback. Bet365 and Pinnacle may compete only inside that fallback tier.
-  return selectPriceSource(sources.filter(item=>fallbackIds.has(item.id)));
+  return null;
 }
 
 export function publicPriceSourceSnapshot(snapshot){

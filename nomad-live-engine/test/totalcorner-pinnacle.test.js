@@ -10,9 +10,9 @@ const row=(bookmaker,open,current)=>`<div class="oa-major-row"><div class="oa-ma
 const panel=(pinnacleCurrent=['1.88','-0.5','1.96'])=>`<div class="oa-market-panel" data-market-panel="handicap"><div class="oa-major-list oa-handicap-snapshot" data-handicap-period="full" data-handicap-phase="inplay">${row('Bet 365',['1.84','-0.5','1.98'],['1.82','-0.5','2.00'])}${row('Pinnacle',['1.86','-0.5','1.96'],pinnacleCurrent)}</div></div>`;
 
 const unavailable=(source,reason='not_available')=>({status:'AH UNAVAILABLE',source,reason});
-const readyNowgoal=(line=-0.5,homeOdds=1.86)=>({
-  status:'AH READY',source:'Nowgoal',bookmaker:'1xBet',line,homeOdds,awayOdds:1.96,
-  sourceUpdatedAt:observedAt-1_000,market:'FULL MATCH LIVE AH',
+const readyNowgoal=(line=-0.5,homeOdds=1.86,bookmaker='1xBet',updatedAt=observedAt-1_000)=>({
+  status:'AH READY',source:'Nowgoal',bookmaker,line,homeOdds,awayOdds:1.96,
+  sourceUpdatedAt:updatedAt,market:'FULL MATCH LIVE AH',bookmakerVerified:true,
 });
 
 test('TotalCorner Pinnacle keeps an unsigned positive AH line on the HOME side',()=>{
@@ -54,9 +54,13 @@ test('SOURCE 26 exposes TotalCorner Pinnacle while SOURCE 4 stays the legacy fin
   assert.equal(pinnacle.status,'PASS');
 });
 
-test('TotalCorner Pinnacle remains fallback-only and cannot outrank a valid Nowgoal primary judge',()=>{
-  const source4=parseBet365Asian(panel(),observedAt-2_000);
-  const source5=readyNowgoal();
+test('TotalCorner Pinnacle joins the primary judge consensus while duplicate Nowgoal Pinnacle has no second vote',()=>{
+  const source4=parseBet365Asian(panel(['1.82','-0.5','1.96']),observedAt-2_000);
+  const source5=readyNowgoal(-.5,1.80,'1xBet',observedAt-4_000);
+  source5.nowgoalPeers={
+    source6:readyNowgoal(-.5,1.84,'Bet365',observedAt-3_000),
+    source25:readyNowgoal(-.5,2.20,'Pinnacle',observedAt-1_000),
+  };
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
     ['source2',unavailable('The Odds API')],
@@ -65,11 +69,14 @@ test('TotalCorner Pinnacle remains fallback-only and cannot outrank a valid Nowg
     ['source4',source4],
   ]),DEFAULT_CONFIG,observedAt);
   const selected=selectPriceSourceWithFallback(snapshots);
-  assert.equal(selected.id,'source5');
-  assert.equal(selected.bookmaker,'1xBet');
+  assert.equal(selected.id,'source26');
+  assert.equal(selected.bookmaker,'Pinnacle');
+  assert.equal(selected.consensusLine,-.5);
+  assert.equal(selected.consensusCount,3);
+  assert.deepEqual([...selected.consensusBookmakers].sort(),['1xBet','Bet365','Pinnacle'].sort());
 });
 
-test('inside the TotalCorner fallback tier, Pinnacle can win the same-line best price over Bet365',()=>{
+test('TotalCorner Pinnacle can decide alone while the attached TotalCorner Bet365 carrier remains non-voting',()=>{
   const source4=parseBet365Asian(panel(),observedAt-2_000);
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
