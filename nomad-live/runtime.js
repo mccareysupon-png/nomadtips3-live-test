@@ -158,6 +158,7 @@ async function healthPage(){
 }
 
 const path=location.pathname.toLowerCase();
-if(path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
+const LIVE_ROOT_PATHS=new Set(['/','/index.html','/live','/live/']);
+if(LIVE_ROOT_PATHS.has(path)||path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
 else if(path.endsWith('/nomad-live/statistics.html')) statsPage();
 else if(path.endsWith('/nomad-live/health.html')) healthPage();

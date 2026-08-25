@@ -11,6 +11,7 @@ const frontend=join(project,'../nomad-live');
 const engineProject=join(project,'../nomad-live-engine');
 const config=JSON.parse(readFileSync(join(project,'wrangler.jsonc'),'utf8'));
 const runtimeSource=readFileSync(join(frontend,'runtime-config.js'),'utf8');
+const runtimeBootstrapSource=readFileSync(join(frontend,'runtime.js'),'utf8');
 const engineWrangler=readFileSync(join(engineProject,'wrangler.toml'),'utf8');
 const TEST_HOST='nomadtips3-live-web-test.mccarey-supon.workers.dev';
 const TEST_ENGINE_HOST='nomadtips3-live-engine-test.mccarey-supon.workers.dev';
@@ -32,6 +33,34 @@ function configuredRuntime(hostname){
   const window={location:{hostname}};
   vm.runInNewContext(runtimeSource,{window,document});
   return {runtime:window.NOMAD_RUNTIME,dataset:document.documentElement.dataset};
+}
+
+function initializeLiveRuntime(pathname){
+  let listHtml='not initialized';
+  const fetchCalls=[];
+  const matchList={
+    get innerHTML(){return listHtml;},
+    set innerHTML(value){listHtml=value;},
+    querySelectorAll(){return [];},
+  };
+  const document={
+    querySelector(selector){return selector==='.match-list'?matchList:null;},
+    querySelectorAll(){return [];},
+  };
+  const window={NOMAD_RUNTIME:{engineBase:'/api'}};
+
+  vm.runInNewContext(runtimeBootstrapSource,{
+    window,
+    document,
+    location:{pathname},
+    fetch(url){
+      fetchCalls.push(String(url));
+      return new Promise(()=>{});
+    },
+    setInterval(){throw new Error('Live polling must not start before the first feed response');},
+  });
+
+  return {listHtml,fetchCalls};
 }
 
 function testEnvironmentConfig(){
@@ -78,6 +107,16 @@ test('TEST browser runtime uses same-origin /api while Production routing stays 
   assert.equal(production.runtime.environment,'production');
   assert.equal(production.runtime.production,true);
   assert.equal(production.runtime.engineBase,PRODUCTION_ENGINE);
+});
+
+test('Live runtime initializes root aliases and the legacy path through same-origin /api/feed',()=>{
+  const livePaths=['/','/index.html','/live','/live/','/nomad-live/','/nomad-live/index.html'];
+
+  for(const path of livePaths){
+    const initialized=initializeLiveRuntime(path);
+    assert.match(initialized.listHtml,/Connecting live engine/);
+    assert.deepEqual(initialized.fetchCalls,['/api/feed']);
+  }
 });
 
 test('browser assets never contain the public TEST Engine hostname',()=>{
