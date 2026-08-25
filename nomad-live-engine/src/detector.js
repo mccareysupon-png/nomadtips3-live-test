@@ -3,6 +3,8 @@ import {HARD_ODDS_MINIMUM,HARD_ODDS_MAXIMUM} from './config.js';
 const finite = value => Number.isFinite(Number(value));
 const number = value => finite(value)?Number(value):null;
 const METRICS = ['attacks','dangerousAttack','shotsOn','shotsOff','corners'];
+const HARD_AH_LINE_MINIMUM=-10;
+const HARD_AH_LINE_MAXIMUM=10;
 
 function metricDelta(end,start,key){
   const result={home:null,away:null};
@@ -70,16 +72,25 @@ function evidenceResult(rolling,config){
   return {required,bypassed:!required,mode:config.evidenceMode,checks,passed:!required||eventPassed,passedCount:enabled.filter(Boolean).length,total:enabled.length};
 }
 
-const quarterGoal = value => finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
+function marketNumber(value){
+  if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
+  if(typeof value==='string'&&!value.trim()) return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed:null;
+}
+const quarterGoal = value => value!=null&&Math.abs(value*4-Math.round(value*4))<1e-9;
 
 export function assessHomeMarket(market,config,observedAt=Date.now()){
   if(!market) return {status:'AH CHECKING',passed:false,reason:'waiting_price_check',ageSeconds:null};
-  if(market.status&&market.status!=='AH READY') return {status:market.status,passed:false,reason:market.reason||null,ageSeconds:null};
-  const line=number(market.line),homeOdds=number(market.homeOdds),awayOdds=number(market.awayOdds);
-  if(!quarterGoal(line)||homeOdds==null||awayOdds==null||homeOdds<HARD_ODDS_MINIMUM||homeOdds>HARD_ODDS_MAXIMUM||awayOdds<HARD_ODDS_MINIMUM||awayOdds>HARD_ODDS_MAXIMUM){
+  if(market.status!=='AH READY'){
+    if(market.status) return {status:market.status,passed:false,reason:market.reason||null,ageSeconds:null};
+    return {status:'AH INVALID',passed:false,reason:'missing_market_status',ageSeconds:null};
+  }
+  const line=marketNumber(market.line),homeOdds=marketNumber(market.homeOdds),awayOdds=marketNumber(market.awayOdds);
+  if(line==null||line<HARD_AH_LINE_MINIMUM||line>HARD_AH_LINE_MAXIMUM||!quarterGoal(line)||homeOdds==null||awayOdds==null||homeOdds<HARD_ODDS_MINIMUM||homeOdds>HARD_ODDS_MAXIMUM||awayOdds<HARD_ODDS_MINIMUM||awayOdds>HARD_ODDS_MAXIMUM){
     return {status:'AH INVALID',passed:false,reason:'invalid_line_or_odds',line,homeOdds,awayOdds,ageSeconds:null};
   }
-  const updatedAt=number(market.sourceUpdatedAt);
+  const updatedAt=marketNumber(market.sourceUpdatedAt);
   if(updatedAt==null) return {status:'AH INVALID',passed:false,reason:'missing_source_updated_time',line,homeOdds,awayOdds,ageSeconds:null};
   const ageSeconds=Math.max(0,(observedAt-updatedAt)/1000);
   if(ageSeconds>config.maximumPriceAgeSeconds) return {status:'AH STALE',passed:false,reason:'price_too_old',line,homeOdds,awayOdds,ageSeconds};
