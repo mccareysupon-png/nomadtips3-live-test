@@ -91,22 +91,22 @@ jobs:
           put_secret THE_ODDS_API_KEY "$TEST_THE_ODDS_API_KEY"
           put_secret API_FOOTBALL_KEY "$TEST_API_FOOTBALL_KEY"
 
-      - name: Smoke test isolated TEST Worker
+      - name: Smoke test TEST Worker without waking Durable Object
         shell: bash
         run: |
           for attempt in $(seq 1 12); do
-            code=$(curl -sS -o /tmp/test-health.json -w '%{http_code}' "$TEST_ENGINE_URL/health?_=$(date +%s)" || true)
+            code=$(curl -sS -o /tmp/test-root.json -w '%{http_code}' "$TEST_ENGINE_URL/?_=$(date +%s)" || true)
             if [ "$code" = "200" ]; then
               node - <<'NODE'
           const fs=require('fs');
-          const data=JSON.parse(fs.readFileSync('/tmp/test-health.json','utf8'));
-          if(!data || typeof data!=='object') throw new Error('Invalid TEST health payload');
-          console.log('TEST health reachable', {ok:data.ok,cycle:data.cycle,lastSuccess:data.lastSuccess,lastError:data.lastError});
+          const data=JSON.parse(fs.readFileSync('/tmp/test-root.json','utf8'));
+          if(data?.service!=='nomadtips3-live-engine' || data?.status!=='running') throw new Error('Invalid TEST root payload');
+          console.log('TEST Worker deployed and dormant; Durable Object has not been intentionally woken.');
           NODE
               exit 0
             fi
             sleep 5
           done
-          echo '::error::TEST Worker health endpoint did not become reachable'
-          cat /tmp/test-health.json 2>/dev/null || true
+          echo '::error::TEST Worker root endpoint did not become reachable'
+          cat /tmp/test-root.json 2>/dev/null || true
           exit 1
