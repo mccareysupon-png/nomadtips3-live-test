@@ -1,0 +1,68 @@
+/* NOMAD Live 3.41 metric strip.
+   Presentation-only: keeps the existing metric HTML/JS contract intact. */
+
+.status-grid,
+.summary-grid {
+  gap:0;
+  overflow:hidden;
+  border:1px solid rgba(150,158,151,.10);
+  border-radius:12px;
+  background:linear-gradient(145deg,#20251f,#191d17 52%,#141712);
+  box-shadow:var(--shadow);
+}
+
+.status-grid > .metric,
+.summary-grid > .metric {
+  min-width:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+  padding:12px 14px;
+  text-align:center;
+}
+
+.status-grid > .metric + .metric,
+.summary-grid > .metric + .metric {
+  border-left:1px solid rgba(150,158,151,.12);
+}
+
+.status-grid > .metric.signal,
+.summary-grid > .metric.signal {
+  background:linear-gradient(145deg,rgba(35,75,42,.72),rgba(24,53,29,.56) 52%,rgba(18,27,20,.42));
+}
+
+.status-grid > .metric.signal strong,
+.summary-grid > .metric.signal strong {
+  color:var(--green);
+}
+
+.status-grid > .metric span,
+.status-grid > .metric small,
+.summary-grid > .metric span,
+.summary-grid > .metric small {
+  text-align:center;
+}
+
+@media(max-width:700px) {
+  .status-grid,
+  .summary-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:0;
+  }
+
+  .status-grid > .metric,
+  .summary-grid > .metric {
+    padding:11px 9px;
+    border-left:0;
+  }
+
+  .status-grid > .metric:nth-child(even),
+  .summary-grid > .metric:nth-child(even) {
+    border-left:1px solid rgba(150,158,151,.12);
+  }
+
+  .status-grid > .metric:nth-child(n+3),
+  .summary-grid > .metric:nth-child(n+3) {
+    border-top:1px solid rgba(150,158,151,.12);
+  }
+}
