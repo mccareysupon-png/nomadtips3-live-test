@@ -1,6 +1,7 @@
 (()=>{
-  const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
-  const STORE='nomad341StickySignalsV1';
+  const API=window.NOMAD_RUNTIME?.engineUrl;
+  if(!API){console.error('NOMAD runtime engine URL is unavailable');return;}
+  const STORE=`nomad341StickySignalsV1:${window.NOMAD_RUNTIME?.environment||'unknown'}`;
   const MAX_AGE_MS=8*60*60*1000;
   const LEDGER_TTL_MS=30000;
   const originalFetch=window.fetch.bind(window);
