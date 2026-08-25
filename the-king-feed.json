@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-25T03:20:56Z",
+  "updated_at": "2026-08-25T03:27:57Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -116,8 +116,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8033,
       "edge": 63.1,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-0",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-inter-palmira-vs-barranquilla-fc/h2h-3012165",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-inter-palmira-vs-barranquilla-fc/summary-3012165",
       "model": {
@@ -899,6 +899,56 @@
       },
       "data_quality": {
         "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "11980f60a6eb64d0",
+      "goaloo_id": "3012165",
+      "date": "2026-08-25",
+      "kickoff": "2026-08-25 00:45:00",
+      "league": "Colombia Primera B",
+      "home": "Inter Palmira",
+      "away": "Barranquilla FC",
+      "pick": "Barranquilla FC Win",
+      "side": "away",
+      "odds": 5.9,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8033,
+      "edge": 63.1,
+      "result": "LOSS",
+      "ft": "1-0",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-inter-palmira-vs-barranquilla-fc/h2h-3012165",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-inter-palmira-vs-barranquilla-fc/summary-3012165",
+      "model": {
+        "lambda_home": 0.535,
+        "lambda_away": 2.267,
+        "home_win": 0.0246,
+        "draw": 0.1721,
+        "away_win": 0.8033,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.587,
+          "gd_edge": -0.8897,
+          "clean_sheet_edge": -0.5659,
+          "failed_to_score_edge": -0.5268,
+          "bounded_adjustment": -0.0514,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.01,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
