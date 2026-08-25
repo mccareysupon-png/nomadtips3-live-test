@@ -5,8 +5,10 @@ on:
     paths:
       - 'nomad-live/**'
       - 'nomad-live-web-test/**'
+      - 'nomad-live-engine/wrangler.toml'
       - '.github/workflows/nomad-live-web-test-pr-test.yml'
       - '.github/workflows/nomad-live-web-test-deploy.yml'
+      - '.github/workflows/nomad-live-engine-test-deploy.yml'
 
 permissions:
   contents: read
@@ -25,7 +27,8 @@ jobs:
         run: |
           node --check nomad-live-web-test/src/index.js
           node --test nomad-live-web-test/test/*.test.js
+          node --test nomad-live-engine/test/runtime-isolation.test.js
 
       - name: Dry-run the exact Static Assets Worker bundle
         working-directory: nomad-live-web-test
-        run: npx --yes wrangler@4.92.0 deploy --dry-run
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc

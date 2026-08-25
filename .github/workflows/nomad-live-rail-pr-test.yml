@@ -4,8 +4,11 @@ on:
   pull_request:
     paths:
       - 'nomad-live/**'
+      - 'nomad-live-web-test/**'
       - 'nomad-live-engine/wrangler.toml'
       - '.github/workflows/nomad-live-rail-pr-test.yml'
+      - '.github/workflows/nomad-live-engine-test-deploy.yml'
+      - '.github/workflows/nomad-live-web-test-deploy.yml'
 
 permissions:
   contents: read
@@ -37,6 +40,11 @@ jobs:
             echo '::error::Production engine URL is hardcoded outside nomad-live/runtime-config.js'
             exit 1
           fi
+          TEST_ENGINE_HOST='nomadtips3-live-engine-test.mccarey-supon.workers.dev'
+          if grep -RInF "$TEST_ENGINE_HOST" nomad-live; then
+            echo '::error::Public TEST Engine URL is exposed to browser runtime assets'
+            exit 1
+          fi
           ! grep -RIn 'NOMAD_RUNTIME[^;]*engineUrl' nomad-live
           node --test nomad-live-engine/test/runtime-isolation.test.js
 
@@ -57,8 +65,12 @@ jobs:
         run: |
           grep -q '^\[env.test\]' nomad-live-engine/wrangler.toml
           grep -q 'name = "nomadtips3-live-engine-test"' nomad-live-engine/wrangler.toml
+          TEST_ENV_CONFIG="$(awk '/^\[env.test\]$/{inside=1;next} /^\[/{if(inside) exit} inside{print}' nomad-live-engine/wrangler.toml)"
+          printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^workers_dev = false$'
+          printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^preview_urls = false$'
           grep -q '^\[env.test.vars\]' nomad-live-engine/wrangler.toml
           grep -q '^ENGINE_CYCLE_MODE = "on_demand"' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.durable_objects.bindings\]\]' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.migrations\]\]' nomad-live-engine/wrangler.toml
-          grep -q 'nomadtips3-live-engine-test.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          grep -q ":'/api'" nomad-live/runtime-config.js
+          node --test nomad-live-web-test/test/*.test.js

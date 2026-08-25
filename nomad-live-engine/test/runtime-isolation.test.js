@@ -8,7 +8,7 @@ import vm from 'node:vm';
 const frontend=fileURLToPath(new URL('../../nomad-live/',import.meta.url));
 const read=name=>readFileSync(join(frontend,name),'utf8');
 const PRODUCTION_ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
-const TEST_ENGINE='https://nomadtips3-live-engine-test.mccarey-supon.workers.dev';
+const TEST_ENGINE_HOST='nomadtips3-live-engine-test.mccarey-supon.workers.dev';
 
 function configuredRuntime(hostname){
   const document={documentElement:{dataset:{}}};
@@ -47,13 +47,13 @@ function frontendFiles(directory=frontend){
   });
 }
 
-test('runtime config exposes engineBase and routes TEST hosts away from Production',()=>{
+test('runtime config preserves Production Engine routing and gives TEST a same-origin API base',()=>{
   const production=configuredRuntime('www.nomadtips3.com');
-  const testHost=configuredRuntime('preview.nomadtips3.example');
+  const testHost=configuredRuntime('nomadtips3-live-web-test.mccarey-supon.workers.dev');
 
   assert.equal(production.runtime.engineBase,PRODUCTION_ENGINE);
   assert.equal(production.runtime.environment,'production');
-  assert.equal(testHost.runtime.engineBase,TEST_ENGINE);
+  assert.equal(testHost.runtime.engineBase,'/api');
   assert.equal(testHost.runtime.environment,'test');
   assert.equal(testHost.dataset.nomadEnvironment,'test');
   assert.equal('engineUrl' in testHost.runtime,false);
@@ -67,12 +67,12 @@ test('Live loads runtime config before runtime and footer never loads a hidden r
   assert.notEqual(configPosition,-1,'Live page must load runtime-config.js');
   assert.notEqual(runtimePosition,-1,'Live page must explicitly load runtime.js');
   assert.ok(configPosition<runtimePosition,'runtime-config.js must load first');
-  assert.match(page.slice(runtimePosition),/^src="runtime\.js[^\"]*" defer/);
+  assert.match(page.slice(runtimePosition),/^src="runtime\.js[^"]*" defer/);
   assert.doesNotMatch(read('site-footer.js'),/import\s*\([^)]*runtime\.js/);
 });
 
-test('Live /feed uses only the configured TEST engine',async()=>{
-  assert.deepEqual(await runLivePage(TEST_ENGINE),[`${TEST_ENGINE}/feed`]);
+test('Live /feed uses the same-origin TEST API base',async()=>{
+  assert.deepEqual(await runLivePage('/api'),['/api/feed']);
 });
 
 test('Live fails closed instead of inventing an engine when runtime config is missing',async()=>{
@@ -81,7 +81,7 @@ test('Live fails closed instead of inventing an engine when runtime config is mi
 
 test('Live, Statistics, Settings, Health, retention and entry scores share engineBase',()=>{
   for(const file of ['runtime.js','statistics-live.js','settings.html','health-live.js','signal-retention.js','live-entry-score.js']){
-    assert.match(read(file),/window\.NOMAD_RUNTIME\?\.engineBase/,`${file} must read the configured engineBase`);
+    assert.match(read(file),/window\.NOMAD_RUNTIME\?\.engineBase/,file+' must read the configured engineBase');
   }
 });
 
@@ -90,6 +90,14 @@ test('only the centralized runtime config may contain the Production engine host
   const violations=frontendFiles()
     .filter(path=>relative(frontend,path)!=='runtime-config.js')
     .filter(path=>readFileSync(path,'utf8').includes(host))
+    .map(path=>relative(frontend,path));
+
+  assert.deepEqual(violations,[]);
+});
+
+test('no browser asset contains the public TEST Engine hostname',()=>{
+  const violations=frontendFiles()
+    .filter(path=>readFileSync(path,'utf8').includes(TEST_ENGINE_HOST))
     .map(path=>relative(frontend,path));
 
   assert.deepEqual(violations,[]);

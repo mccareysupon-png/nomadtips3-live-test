@@ -37,7 +37,7 @@ jobs:
 
       - name: Dry-run the exact Static Assets Worker bundle
         working-directory: nomad-live-web-test
-        run: npx --yes wrangler@4.92.0 deploy --dry-run
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
 
       - name: Validate Cloudflare credentials
         run: |
@@ -53,23 +53,18 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy
 
-      - name: Smoke test SEALED TEST Web without loading frontend or Engine
+      - name: Smoke test Cloudflare Access gate without reaching Worker or Engine
         shell: bash
         run: |
           for attempt in $(seq 1 12); do
-            code=$(curl -sS -o /tmp/test-web-sealed.html -w '%{http_code}' "$TEST_WEB_URL/?_=$(date +%s)" || true)
-            if [ "$code" = "403" ]; then
-              node - <<'NODE'
-          const fs=require('fs');
-          const body=fs.readFileSync('/tmp/test-web-sealed.html','utf8');
-          if(!body.includes('NOMAD_TEST_WEB_SEALED')) throw new Error('Missing SEALED marker');
-          if(/<script\b|nomadtips3-live-engine|\/feed|\/health|\/config/i.test(body)) throw new Error('SEALED page exposes frontend or Engine access');
-          console.log('SEALED TEST Web is reachable; frontend assets and Engine remain locked.');
-          NODE
+            code=$(curl -sS -o /tmp/test-web-access.html -D /tmp/test-web-access.headers -w '%{http_code}' "$TEST_WEB_URL/?_=$(date +%s)" || true)
+            location=$(awk 'BEGIN{IGNORECASE=1} /^location:/{print $2}' /tmp/test-web-access.headers | tr -d '\r' | tail -n 1)
+            if [[ "$code" =~ ^30[12378]$ ]] && [[ "$location" == https://*.cloudflareaccess.com/cdn-cgi/access/login/* ]]; then
+              echo 'Cloudflare Access is the public TEST Web gate; Worker and Engine were not reached.'
               exit 0
             fi
             sleep 5
           done
-          echo '::error::SEALED TEST Web did not return the locked 403 page'
-          cat /tmp/test-web-sealed.html 2>/dev/null || true
+          echo '::error::TEST Web did not present the expected Cloudflare Access gate'
+          cat /tmp/test-web-access.headers 2>/dev/null || true
           exit 1

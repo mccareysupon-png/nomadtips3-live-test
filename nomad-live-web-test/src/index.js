@@ -32,6 +32,27 @@ const SEALED_HEADERS={
   'x-robots-tag':'noindex, nofollow, noarchive',
 };
 
+const API_ROUTES=new Map([
+  ['/api/feed','/feed'],
+  ['/api/statistics','/statistics'],
+  ['/api/config','/config'],
+  ['/api/health','/health'],
+]);
+
+function unavailable(message,status=503){
+  return new Response(message,{status,headers:{'cache-control':'no-store','content-type':'text/plain; charset=utf-8'}});
+}
+
+async function proxyApi(request,env,url){
+  const enginePath=API_ROUTES.get(url.pathname);
+  if(!enginePath) return unavailable('TEST API route not found',404);
+  if(!env?.TEST_ENGINE||typeof env.TEST_ENGINE.fetch!=='function'){
+    return unavailable('TEST Engine binding unavailable');
+  }
+  const internalUrl=new URL(enginePath+url.search,'https://nomadtips3-live-engine-test.internal');
+  return await env.TEST_ENGINE.fetch(new Request(internalUrl,request));
+}
+
 export function sealedResponse(){
   return new Response(SEALED_PAGE,{status:403,headers:SEALED_HEADERS});
 }
@@ -39,6 +60,10 @@ export function sealedResponse(){
 export default {
   async fetch(request,env){
     if(env?.NOMAD_WEB_MODE!=='open') return sealedResponse();
+    const url=new URL(request.url);
+    if(url.pathname==='/api'||url.pathname.startsWith('/api/')){
+      return proxyApi(request,env,url);
+    }
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
       return new Response('Static assets unavailable',{status:503,headers:{'cache-control':'no-store'}});
     }

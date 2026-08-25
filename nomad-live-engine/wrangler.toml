@@ -16,7 +16,8 @@ new_sqlite_classes = ["EngineState"]
 
 [env.test]
 name = "nomadtips3-live-engine-test"
-workers_dev = true
+workers_dev = false
+preview_urls = false
 
 [env.test.vars]
 ENGINE_CYCLE_MODE = "on_demand"

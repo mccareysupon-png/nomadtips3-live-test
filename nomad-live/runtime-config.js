@@ -6,7 +6,7 @@
     environment:production?'production':'test',
     engineBase:production
       ?'https://nomadtips3-live-engine.mccarey-supon.workers.dev'
-      :'https://nomadtips3-live-engine-test.mccarey-supon.workers.dev',
+      :'/api',
     production,
     host,
   });
