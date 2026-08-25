@@ -1,10 +1,10 @@
 (()=>{
   const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
   const fmtLine=v=>v==null?'—':`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`;
   const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
-  const when=s=>{try{const d=new Date(s);if(Number.isNaN(d.getTime()))return '—';const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});return `Date ${date} · ${time}`;}catch{return '—'}};
+  const when=s=>{try{const d=new Date(s);if(Number.isNaN(d.getTime()))return '—';const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});const time=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});return `${date} · ${time}`;}catch{return '—'}};
   const clsResult=r=>/WIN/.test(r||'')?'win':/LOSS/.test(r||'')?'loss':'';
   const recordBookmaker=r=>r?.bookmaker||'—';
   const metrics=[...document.querySelectorAll('.summary-grid .metric strong')];
