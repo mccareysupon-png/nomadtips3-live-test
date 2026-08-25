@@ -1,0 +1,112 @@
+name: Deploy NOMAD Live Engine TEST
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TEST_ENGINE_URL: https://nomadtips3-live-engine-test.mccarey-supon.workers.dev
+
+jobs:
+  validate-and-deploy-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/nomad341-test-production-rail
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate 3.41 engine and test environment
+        working-directory: nomad-live-engine
+        run: |
+          node --test
+          node --check src/index.js
+          node --check src/real-market.js
+          node --check src/price-sources.js
+          node --check src/the-odds-api.js
+          node --check src/api-football.js
+          grep -q '^\[env.test\]' wrangler.toml
+          grep -q 'name = "nomadtips3-live-engine-test"' wrangler.toml
+          grep -q '^\[\[env.test.durable_objects.bindings\]\]' wrangler.toml
+          grep -q '^\[\[env.test.migrations\]\]' wrangler.toml
+
+      - name: Validate frontend environment isolation
+        run: |
+          node --check nomad-live/runtime-config.js
+          node --check nomad-live/signal-retention.js
+          node --check nomad-live/statistics-live.js
+          node --check nomad-live/health-live.js
+          grep -q 'nomadtips3-live-engine-test.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          grep -q 'runtime-config.js' nomad-live/index.html
+          grep -q 'runtime-config.js' nomad-live/statistics.html
+          grep -q 'runtime-config.js' nomad-live/settings.html
+          grep -q 'runtime-config.js' nomad-live/health.html
+          ! grep -q 'href="settings.html"' nomad-live/index.html
+          ! grep -q 'href="settings.html"' nomad-live/statistics.html
+          grep -q 'noindex,nofollow' nomad-live/settings.html
+          grep -q 'noindex,nofollow' nomad-live/health.html
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: '4'
+          command: deploy --env test
+
+      - name: Configure optional TEST provider secrets
+        working-directory: nomad-live-engine
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TEST_ODDS_API_KEY: ${{ secrets.TEST_ODDS_API_KEY }}
+          TEST_THE_ODDS_API_KEY: ${{ secrets.TEST_THE_ODDS_API_KEY }}
+          TEST_API_FOOTBALL_KEY: ${{ secrets.TEST_API_FOOTBALL_KEY }}
+        run: |
+          put_secret() {
+            local name="$1" value="$2"
+            if [ -z "$value" ]; then
+              echo "TEST $name not configured; source stays unavailable in TEST."
+              return 0
+            fi
+            printf '%s' "$value" | npx --yes wrangler@4 secret put "$name" --env test >/dev/null
+            echo "TEST $name configured."
+          }
+          put_secret ODDS_API_KEY "$TEST_ODDS_API_KEY"
+          put_secret THE_ODDS_API_KEY "$TEST_THE_ODDS_API_KEY"
+          put_secret API_FOOTBALL_KEY "$TEST_API_FOOTBALL_KEY"
+
+      - name: Smoke test isolated TEST Worker
+        shell: bash
+        run: |
+          for attempt in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/test-health.json -w '%{http_code}' "$TEST_ENGINE_URL/health?_=$(date +%s)" || true)
+            if [ "$code" = "200" ]; then
+              node - <<'NODE'
+          const fs=require('fs');
+          const data=JSON.parse(fs.readFileSync('/tmp/test-health.json','utf8'));
+          if(!data || typeof data!=='object') throw new Error('Invalid TEST health payload');
+          console.log('TEST health reachable', {ok:data.ok,cycle:data.cycle,lastSuccess:data.lastSuccess,lastError:data.lastError});
+          NODE
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::TEST Worker health endpoint did not become reachable'
+          cat /tmp/test-health.json 2>/dev/null || true
+          exit 1
