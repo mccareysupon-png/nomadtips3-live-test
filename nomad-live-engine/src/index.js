@@ -100,6 +100,34 @@ export function createLockedSignal(match,activeEnvelope,config,lockedAt){
   };
 }
 
+export function publicSignalLock(signal){
+  if(!signal) return null;
+  return {
+    status:'LOCKED',
+    lockedAt:iso(signal.lockedAt),
+    minute:Number.isFinite(signal.minute)?signal.minute:null,
+    entryScore:clone(signal.entryScore??null),
+    line:Number.isFinite(signal.line)?signal.line:null,
+    odds:Number.isFinite(signal.odds)?signal.odds:null,
+    bookmaker:signal.bookmaker??null,
+    oddsSource:signal.oddsSource??null,
+    priceSourceId:signal.priceSourceId??null,
+    settlement:signal.settlement?.result??null,
+  };
+}
+
+function latestSignalByMatch(signals=[]){
+  const byMatch=new Map();
+  for(const signal of signals){
+    if(!signal?.matchId) continue;
+    const current=byMatch.get(signal.matchId);
+    const currentAt=Number.isFinite(current?.lockedAt)?current.lockedAt:-Infinity;
+    const signalAt=Number.isFinite(signal.lockedAt)?signal.lockedAt:-Infinity;
+    if(!current||signalAt>=currentAt) byMatch.set(signal.matchId,signal);
+  }
+  return byMatch;
+}
+
 export function summarizeApiFootballRecovery(matches=[],marketsByMatchId=new Map()){
   const sourceStatus=(match,id)=>match.priceSources?.find(source=>source.id===id)?.status;
   const recoveryCandidates=matches.filter(match=>match.detectionPassed&&sourceStatus(match,'source1')!=='PASS'&&sourceStatus(match,'source2')!=='PASS');
@@ -246,17 +274,22 @@ export class EngineState {
   }
 
   feed(state,activeConfig){
-    const counts={live:0,watching:0,near:0,signal:0};
+    const counts={live:0,watching:0,near:0,signal:0,detectorSignal:0};
     const priceStatuses={};
-    const matches=(state.matches||[]).filter(match=>!match.freshness?.sourceStale);
+    const lockedByMatch=latestSignalByMatch(state.signals||[]);
+    const matches=(state.matches||[]).filter(match=>!match.freshness?.sourceStale).map(match=>{
+      const locked=lockedByMatch.get(match.id);
+      return locked?{...match,signalStatus:'LOCKED',signalLock:publicSignalLock(locked)}:{...match,signalStatus:null,signalLock:null};
+    });
     for(const match of matches){
       counts.live++;
       if(match.state==='WATCHING') counts.watching++;
       if(match.state==='NEAR SIGNAL') counts.near++;
-      if(match.state==='SIGNAL') counts.signal++;
+      if(match.state==='SIGNAL') counts.detectorSignal++;
+      if(match.signalStatus==='LOCKED') counts.signal++;
       priceStatuses[match.priceStatus]=(priceStatuses[match.priceStatus]||0)+1;
     }
-    return {ok:!state.lastError,updatedAt:iso(state.lastSuccess),cycle:state.cycle||0,configVersion:activeConfig?.version||null,counts,priceStatuses,matches:[...matches].sort((a,b)=>priority(a.state)-priority(b.state)||((b.rolling?.recent?.homePressure||0)-(a.rolling?.recent?.homePressure||0))),lastError:state.lastError};
+    return {ok:!state.lastError,updatedAt:iso(state.lastSuccess),cycle:state.cycle||0,configVersion:activeConfig?.version||null,counts,priceStatuses,matches:[...matches].sort((a,b)=>Number(b.signalStatus==='LOCKED')-Number(a.signalStatus==='LOCKED')||priority(a.state)-priority(b.state)||((b.rolling?.recent?.homePressure||0)-(a.rolling?.recent?.homePressure||0))),lastError:state.lastError};
   }
 
   async statistics(state){
