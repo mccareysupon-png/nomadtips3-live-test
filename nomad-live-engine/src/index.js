@@ -485,21 +485,14 @@ export class EngineState {
       }
 
       const totalCornerMarketById=new Map();
-      const fallbackCandidates=eligible.filter(match=>{
-        const source1=marketById.get(match.id)||marketState(REAL_BOOKMAKER,'ODDS NOT READY','price_not_checked');
-        const source2=theOddsMarketById.get(match.id)||theOddsApiUnavailable('price_not_checked');
-        const source3=apiFootballMarketById.get(match.id)||apiFootballUnavailable('price_not_checked');
-        const source5=oddspediaMarketById.get(match.id)||oddspediaUnavailable('price_not_checked');
-        const primarySnapshots=buildPriceSourceSnapshots(
-          new Map([['source1',source1],['source2',source2],['source3',source3],['source5',source5]]),config,started
-        ).filter(source=>source.id!=='source4');
-        return !selectPriceSource(primarySnapshots);
-      });
-      next.source.totalCorner.checked=fallbackCandidates.length;
-      if(!fallbackCandidates.length){
+      // Pinnacle via TotalCorner is a main judge for every detector-eligible match.
+      // Keep the existing one-request-per-match behavior and do not expand this to all WATCHING cards.
+      const totalCornerCandidates=eligible;
+      next.source.totalCorner.checked=totalCornerCandidates.length;
+      if(!totalCornerCandidates.length){
         next.source.totalCorner.status='NOT_NEEDED';
       }else{
-        const fetched=await Promise.all(fallbackCandidates.map(async match=>{
+        const fetched=await Promise.all(totalCornerCandidates.map(async match=>{
           try{
             const document=await getDocument(handicapPanelUrl(match.urls.odds),config,started);
             return [match.id,parseBet365Asian(document.html,document.sourceUpdatedAt)];
@@ -518,12 +511,13 @@ export class EngineState {
         const source2Market=theOddsMarketById.get(match.id)||theOddsApiUnavailable('price_not_checked');
         const source3Market=apiFootballMarketById.get(match.id)||apiFootballUnavailable('price_not_checked');
         const source5Market=oddspediaMarketById.get(match.id)||oddspediaUnavailable(match.detectionPassed?'price_not_checked':'detection_not_ready');
-        const source4Market=totalCornerMarketById.get(match.id)||totalCornerMarketState('AH UNAVAILABLE',match.detectionPassed?'fallback_not_available':'fallback_not_needed');
+        const source4Market=totalCornerMarketById.get(match.id)||totalCornerMarketState('AH UNAVAILABLE',match.detectionPassed?'judge_not_available':'judge_not_needed');
         const marketComparison=marketComparisonById.get(match.id)||{oneXBet:source1Market,bet365:marketState(COMPARE_BOOKMAKER,'ODDS NOT READY','price_not_checked')};
         const priceSourceSnapshots=buildPriceSourceSnapshots(new Map([['source1',source1Market],['source2',source2Market],['source3',source3Market],['source5',source5Market],['source4',source4Market]]),config,started);
         const selectedPriceSnapshot=selectPriceSourceWithFallback(priceSourceSnapshots);
         const market=selectedPriceSnapshot?.market||source1Market;
-        const priceSources=priceSourceSnapshots.map(publicPriceSourceSnapshot);
+        // Keep provider plumbing hidden: SOURCE 4 is the internal TotalCorner Bet365 carrier and SOURCE 25 is duplicate Pinnacle/Nowgoal.
+        const priceSources=priceSourceSnapshots.filter(source=>source.id!=='source4'&&source.id!=='source25').map(publicPriceSourceSnapshot);
         const selectedPrice=publicPriceSourceSnapshot(selectedPriceSnapshot);
         const base={...match,market,marketComparison,priceSources,selectedPrice,freshness:{...match.freshness,oddsAt:selectedPrice?.sourceUpdatedAt??null}};
         return {...base,...evaluate(base,config,market,started)};
@@ -534,8 +528,8 @@ export class EngineState {
       }
       next.source.oddspedia.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source5')?.status==='PASS').length;
       next.source.oddspedia.selected=enriched.filter(match=>match.selectedPrice?.id==='source5').length;
-      next.source.totalCorner.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source4')?.status==='PASS').length;
-      next.source.totalCorner.selected=enriched.filter(match=>match.selectedPrice?.id==='source4').length;
+      next.source.totalCorner.ready=enriched.filter(match=>match.priceSources?.find(source=>source.id==='source26')?.status==='PASS').length;
+      next.source.totalCorner.selected=enriched.filter(match=>match.selectedPrice?.id==='source26').length;
       const source3Summary=summarizeApiFootballRecovery(enriched,apiFootballMarketById);
       next.source.apiFootball.recoveryCandidates=source3Summary.recoveryCandidates;
       if(next.source.apiFootball.status==='READY'){
