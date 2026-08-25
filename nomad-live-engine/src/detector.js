@@ -6,11 +6,18 @@ const METRICS = ['attacks','dangerousAttack','shotsOn','shotsOff','corners'];
 const HARD_AH_LINE_MINIMUM=-10;
 const HARD_AH_LINE_MAXIMUM=10;
 
+function metricNumber(value){
+  if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
+  if(typeof value==='string'&&!value.trim()) return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed:null;
+}
+
 function metricDelta(end,start,key){
   const result={home:null,away:null};
   for(const side of ['home','away']){
-    const a=number(end?.stats?.[key]?.[side]);
-    const b=number(start?.stats?.[key]?.[side]);
+    const a=metricNumber(end?.stats?.[key]?.[side]);
+    const b=metricNumber(start?.stats?.[key]?.[side]);
     result[side]=a!=null&&b!=null&&a>=b?a-b:null;
   }
   return result;
@@ -62,10 +69,14 @@ export function buildRollingAnalysis(snapshots=[],config){
 
 function evidenceResult(rolling,config){
   const required=config.homeEventRequired!==false;
+  const evidenceCheck=(value,minimum)=>{
+    const delta=metricNumber(value);
+    return delta!=null&&delta>=minimum;
+  };
   const checks={
-    sot:config.sotEvidenceEnabled?number(rolling?.recent?.delta?.shotsOn?.home)>=config.sotDeltaMinimum:null,
-    shotOff:config.shotOffEvidenceEnabled?number(rolling?.recent?.delta?.shotsOff?.home)>=config.shotOffDeltaMinimum:null,
-    corner:config.cornerEvidenceEnabled?number(rolling?.recent?.delta?.corners?.home)>=config.cornerDeltaMinimum:null,
+    sot:config.sotEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.shotsOn?.home,config.sotDeltaMinimum):null,
+    shotOff:config.shotOffEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.shotsOff?.home,config.shotOffDeltaMinimum):null,
+    corner:config.cornerEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.corners?.home,config.cornerDeltaMinimum):null,
   };
   const enabled=Object.values(checks).filter(value=>value!==null);
   const eventPassed=config.evidenceMode==='ALL'?enabled.length>0&&enabled.every(Boolean):enabled.some(Boolean);
