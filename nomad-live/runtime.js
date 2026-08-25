@@ -1,5 +1,5 @@
 const API=window.NOMAD_RUNTIME?.engineBase;
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
 const n=v=>Number.isFinite(Number(v))?Number(v):null;
 const fmtLine=v=>v==null?'—':`${v>0?'+':''}${Number(v).toFixed(2)}`;
@@ -52,6 +52,7 @@ const compactSelectedRow=selected=>{
   const value=selected?`${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
   return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">SELECTED${selected?` · S${position}`:''}</span><span class="price-selected-value">${esc(value)}</span></span>`;
 };
+const signalLock=m=>m?.signalStatus==='LOCKED'&&m?.signalLock?.status==='LOCKED'?m.signalLock:null;
 
 function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
@@ -70,7 +71,10 @@ function detail(m){
   const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const sourceRows=sources.map(sourceRow).join('');
   const sourceOneComparison='';
+  const locked=signalLock(m);
+  const lockSection=locked?`<section class="detail-card"><h3>SIGNAL LOCK · LOCKED</h3><div class="check"><span>Entry minute / score</span><b>${locked.minute??'—'}′ · ${pair(locked.entryScore)}</b></div><div class="check"><span>Locked HOME AH / odds</span><b>${fmtLine(locked.line)} @ ${fmtOdds(locked.odds)}</b></div><div class="check"><span>Bookmaker / source</span><b>${esc(locked.bookmaker||'—')} · ${esc(locked.oddsSource||'—')}</b></div><div class="check"><span>Locked at</span><b>${locked.lockedAt?when(locked.lockedAt):'—'}</b></div></section>`:'';
   return `<div class="match-detail">
+    ${lockSection}
     <section class="detail-card"><h3>HOME ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
       <div><span>ATTACK</span><b>${pair(s.attacks)}</b></div><div><span>DANGER</span><b>${pair(s.dangerousAttack)}</b></div>
       <div><span>SHOT OFF</span><b>${pair(s.shotsOff)}</b></div><div><span>SHOT ON</span><b>${pair(s.shotsOn)}</b></div>
@@ -84,13 +88,15 @@ function detail(m){
 }
 function matchRow(m){
   const state=m.state||'WATCHING';
-  const st=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
+  const locked=Boolean(signalLock(m));
+  const detectorStyle=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
+  const rowStyle=locked||state==='SIGNAL'?'signal':detectorStyle;
   const sources=priceSources(m);
   const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
   const currentPrice=`<span class="price-stack">${sources.map(compactSourceRow).join('')}${compactSelectedRow(selected)}</span>`;
-  return `<details class="match-wrap ${st}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
-    <summary class="match-row"><div class="statebox"><span class="state ${st}">● ${esc(state)}</span><span class="minute">${m.minute??'—'}′</span></div>
+  return `<details class="match-wrap ${rowStyle}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-signal-status="${locked?'LOCKED':''}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
+    <summary class="match-row"><div class="statebox"><span class="state ${detectorStyle}">● ${esc(state)}</span>${locked?'<span class="state signal">◆ LOCKED</span>':''}<span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
     <div class="quick"><div class="q"><span>PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div></div>
@@ -104,7 +110,9 @@ function setupFilters(){
     const active=tabs.find(x=>x.dataset.active==='1')?.textContent?.trim().toUpperCase()||'ALL';
     const q=(search?.value||'').trim().toLowerCase();
     document.querySelectorAll('.match-wrap').forEach(row=>{
-      const state=row.dataset.state||''; const stateOk=active==='ALL'||(active==='NEAR'?state==='NEAR SIGNAL':state===active);
+      const state=row.dataset.state||'';
+      const locked=row.dataset.signalStatus==='LOCKED';
+      const stateOk=active==='ALL'||(active==='SIGNAL'?(locked||state==='SIGNAL'):active==='NEAR'?state==='NEAR SIGNAL':state===active);
       row.style.display=stateOk&&(!q||row.dataset.search.includes(q))?'':'none';
     });
   };
