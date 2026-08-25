@@ -5,6 +5,7 @@ const number = value => finite(value)?Number(value):null;
 const METRICS = ['attacks','dangerousAttack','shotsOn','shotsOff','corners'];
 const HARD_AH_LINE_MINIMUM=-10;
 const HARD_AH_LINE_MAXIMUM=10;
+const SECOND_HALF_START_MINUTE=45;
 
 function metricNumber(value){
   if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
@@ -43,27 +44,47 @@ export function buildRollingAnalysis(snapshots=[],config){
   const ordered=[...snapshots].filter(item=>finite(item?.minute)).sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt);
   const current=ordered.at(-1);
   if(!current) return {available:false,reason:'no_current_snapshot'};
-  const window=config.rollingWindowMinutes;
-  const recentStart=nearestSnapshot(ordered,current.minute-window);
-  const previousStart=nearestSnapshot(ordered,current.minute-(2*window));
-  if(!recentStart||!previousStart) return {available:false,reason:'insufficient_snapshot_history',currentMinute:current.minute};
+  const currentMinute=Number(current.minute);
+  const window=Number(config.rollingWindowMinutes);
+  if(!Number.isFinite(window)||window<=0) return {available:false,reason:'invalid_rolling_window',currentMinute};
+  const periodFloor=currentMinute>=SECOND_HALF_START_MINUTE?SECOND_HALF_START_MINUTE:0;
+  const periodSnapshots=ordered.filter(item=>Number(item.minute)>=periodFloor&&Number(item.minute)<=currentMinute);
+  const recentStart=nearestSnapshot(periodSnapshots,currentMinute-window);
+  const previousStart=recentStart?nearestSnapshot(periodSnapshots,Number(recentStart.minute)-window):null;
+  if(!recentStart||!previousStart) return {available:false,reason:'insufficient_snapshot_history',currentMinute};
+  const recentDuration=currentMinute-Number(recentStart.minute);
+  const previousDuration=Number(recentStart.minute)-Number(previousStart.minute);
+  if(recentDuration<=0||previousDuration<=0) return {available:false,reason:'invalid_window_duration',currentMinute};
   const recent=windowDelta(current,recentStart,config);
   const previous=windowDelta(recentStart,previousStart,config);
   if([recent.homePressure,recent.awayPressure,recent.tempo,previous.homePressure,previous.awayPressure,previous.tempo].some(value=>value==null)){
-    return {available:false,reason:'incomplete_pressure_metrics',currentMinute:current.minute};
+    return {available:false,reason:'incomplete_pressure_metrics',currentMinute};
   }
+  const rates={
+    previous:{
+      homePressure:previous.homePressure/previousDuration,
+      awayPressure:previous.awayPressure/previousDuration,
+      tempo:previous.tempo/previousDuration,
+    },
+    recent:{
+      homePressure:recent.homePressure/recentDuration,
+      awayPressure:recent.awayPressure/recentDuration,
+      tempo:recent.tempo/recentDuration,
+    },
+  };
   const pressureTotal=recent.homePressure+recent.awayPressure;
   const homePressureShare=pressureTotal>0?recent.homePressure/pressureTotal*100:0;
   const conditions={
-    homePressureTrend:recent.homePressure>previous.homePressure,
+    homePressureTrend:rates.recent.homePressure>rates.previous.homePressure,
     homePressureShare:homePressureShare>=config.homePressureShareMinimum,
-    matchTempoTrend:recent.tempo>previous.tempo,
+    matchTempoTrend:rates.recent.tempo>rates.previous.tempo,
   };
   const passedCount=Object.values(conditions).filter(Boolean).length;
   return {
-    available:true,currentMinute:current.minute,windowMinutes:window,
-    baselines:{previousMinute:previousStart.minute,recentMinute:recentStart.minute,currentMinute:current.minute},
-    recent,previous,homePressureShare,conditions,passedCount,
+    available:true,currentMinute,windowMinutes:window,
+    baselines:{previousMinute:Number(previousStart.minute),recentMinute:Number(recentStart.minute),currentMinute},
+    durations:{previousMinutes:previousDuration,recentMinutes:recentDuration},
+    rates,recent,previous,homePressureShare,conditions,passedCount,
   };
 }
 
