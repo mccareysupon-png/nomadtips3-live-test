@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-25T14:09:58Z",
+  "updated_at": "2026-08-25T16:18:39Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -66,8 +66,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8095,
       "edge": 65.5,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-4",
       "source_url": "https://www.goaloo.com/football/slovakia-cup-tj-visnove-vs-namestovo/h2h-3058173",
       "summary_url": "https://www.goaloo.com/football/slovakia-cup-tj-visnove-vs-namestovo/summary-3058173",
       "model": {
@@ -951,6 +951,56 @@
         "home_recent": 9,
         "away_recent": 10,
         "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "4888fc3860946838",
+      "goaloo_id": "3058173",
+      "date": "2026-08-25",
+      "kickoff": "2026-08-25 14:30:00",
+      "league": "Slovakia Cup",
+      "home": "TJ Visnove",
+      "away": "Namestovo",
+      "pick": "TJ Visnove Win",
+      "side": "home",
+      "odds": 10.7,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8095,
+      "edge": 65.5,
+      "result": "LOSS",
+      "ft": "0-4",
+      "source_url": "https://www.goaloo.com/football/slovakia-cup-tj-visnove-vs-namestovo/h2h-3058173",
+      "summary_url": "https://www.goaloo.com/football/slovakia-cup-tj-visnove-vs-namestovo/summary-3058173",
+      "model": {
+        "lambda_home": 2.663,
+        "lambda_away": 0.798,
+        "home_win": 0.8095,
+        "draw": 0.1548,
+        "away_win": 0.0357,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5154,
+          "gd_edge": 0.8937,
+          "clean_sheet_edge": 0.5073,
+          "failed_to_score_edge": 0.322,
+          "bounded_adjustment": 0.0471,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 7,
+        "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
       }
     }
