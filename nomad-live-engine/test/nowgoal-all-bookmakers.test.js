@@ -26,7 +26,7 @@ test('gate 1: Nowgoal exposes all 20 verified bookmaker identities with unique c
 test('gate 2: retired SOURCE 8 stays absent while legacy and TotalCorner sockets remain registered',()=>{
   const ids=PRICE_SOURCE_REGISTRY.map(item=>item.id);
   assert.equal(ids.includes('source8'),false);
-  for(const id of ['source1','source2','source3','source4','source5','source6','source7']) assert.equal(ids.includes(id),true);
+  for(const id of ['source1','source2','source3','source4','source5','source6','source7','source26']) assert.equal(ids.includes(id),true);
   for(let position=9;position<=25;position++) assert.equal(ids.includes(`source${position}`),true);
 });
 
@@ -153,23 +153,35 @@ test('gate 9: stale or disallowed-line quotes cannot vote in Nowgoal consensus',
   assert.equal(selected.bookmaker,'1xBet');
 });
 
-test('gate 10: selection order is Nowgoal first, legacy sources second, TotalCorner last',()=>{
+test('gate 10: TotalCorner Pinnacle joins the main judge pool while duplicate Pinnacle and TotalCorner Bet365 cannot vote',()=>{
+  const source5=ready('Nowgoal','1xBet',-.5,1.80,observedAt-4_000);
+  source5.nowgoalPeers={
+    source6:ready('Nowgoal','Bet365',-.5,1.84,observedAt-3_000),
+    source25:ready('Nowgoal','Pinnacle',-.5,2.20,observedAt-1_000),
+  };
+  const totalCornerBet365=ready('Bet365 via TotalCorner','Bet365',-.75,2.30,observedAt-2_000);
+  totalCornerBet365.totalCornerPeers={
+    source26:ready('Pinnacle via TotalCorner','Pinnacle',-.5,1.82,observedAt-2_000),
+  };
   let snapshots=buildPriceSourceSnapshots(new Map([
-    ['source1',ready('Odds-API.io','1xBet',-.5,2.10,observedAt)],
-    ['source5',ready('Nowgoal','1xBet',-.5,1.82,observedAt-5_000)],
-    ['source4',ready('TotalCorner','Bet365',-.5,2.20,observedAt)],
+    ['source5',source5],['source4',totalCornerBet365],
   ]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).source,'Nowgoal');
+  let selected=selectPriceSourceWithFallback(snapshots);
+  assert.equal(selected.id,'source26');
+  assert.equal(selected.bookmaker,'Pinnacle');
+  assert.equal(selected.consensusLine,-.5);
+  assert.equal(selected.consensusCount,3);
+  assert.deepEqual([...selected.consensusBookmakers].sort(),['1xBet','Bet365','Pinnacle'].sort());
 
   snapshots=buildPriceSourceSnapshots(new Map([
-    ['source1',ready('Odds-API.io','1xBet',-.5,1.88,observedAt)],
-    ['source5',{status:'AH UNAVAILABLE',reason:'nowgoal_unavailable',source:'Nowgoal',bookmaker:'1xBet',bookmakerVerified:true,market:'FULL MATCH LIVE AH'}],
-    ['source4',ready('TotalCorner','Bet365',-.5,1.90,observedAt)],
+    ['source4',totalCornerBet365],
   ]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source1');
+  selected=selectPriceSourceWithFallback(snapshots);
+  assert.equal(selected.id,'source26');
+  assert.equal(selected.bookmaker,'Pinnacle');
 
   snapshots=buildPriceSourceSnapshots(new Map([
-    ['source4',ready('TotalCorner','Bet365',-.5,1.90,observedAt)],
+    ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,1.90,observedAt)],
   ]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source4');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
 });
