@@ -1,0 +1,49 @@
+name: NOMAD Live 3.41 Rail PR Test
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live/**'
+      - 'nomad-live-engine/wrangler.toml'
+      - '.github/workflows/nomad-live-rail-pr-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-rail:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate runtime JavaScript
+        run: |
+          node --check nomad-live/runtime-config.js
+          node --check nomad-live/signal-retention.js
+          node --check nomad-live/statistics-live.js
+          node --check nomad-live/health-live.js
+
+      - name: Validate public and owner page separation
+        run: |
+          grep -q 'runtime-config.js' nomad-live/index.html
+          grep -q 'runtime-config.js' nomad-live/statistics.html
+          grep -q 'runtime-config.js' nomad-live/settings.html
+          grep -q 'runtime-config.js' nomad-live/health.html
+          ! grep -q 'href="settings.html"' nomad-live/index.html
+          ! grep -q 'href="health.html"' nomad-live/index.html
+          ! grep -q 'href="settings.html"' nomad-live/statistics.html
+          ! grep -q 'href="health.html"' nomad-live/statistics.html
+          grep -q 'noindex,nofollow' nomad-live/settings.html
+          grep -q 'noindex,nofollow' nomad-live/health.html
+
+      - name: Validate TEST isolation config
+        run: |
+          grep -q '^\[env.test\]' nomad-live-engine/wrangler.toml
+          grep -q 'name = "nomadtips3-live-engine-test"' nomad-live-engine/wrangler.toml
+          grep -q '^\[\[env.test.durable_objects.bindings\]\]' nomad-live-engine/wrangler.toml
+          grep -q '^\[\[env.test.migrations\]\]' nomad-live-engine/wrangler.toml
+          grep -q 'nomadtips3-live-engine-test.mccarey-supon.workers.dev' nomad-live/runtime-config.js
