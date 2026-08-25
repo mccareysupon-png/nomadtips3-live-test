@@ -4,7 +4,7 @@
   const production=PROD_HOSTS.has(host);
   const runtime=Object.freeze({
     environment:production?'production':'test',
-    engineUrl:production
+    engineBase:production
       ?'https://nomadtips3-live-engine.mccarey-supon.workers.dev'
       :'https://nomadtips3-live-engine-test.mccarey-supon.workers.dev',
     production,

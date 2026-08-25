@@ -1,5 +1,5 @@
 (()=>{
-  const API=window.NOMAD_RUNTIME?.engineUrl;
+  const API=window.NOMAD_RUNTIME?.engineBase;
   const byId=id=>document.getElementById(id);
   const set=(id,value)=>{const node=byId(id);if(node)node.textContent=value??'—';};
   const fmtTime=value=>{if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?'—':d.toLocaleString();};

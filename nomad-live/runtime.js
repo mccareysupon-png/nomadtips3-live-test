@@ -1,4 +1,4 @@
-const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+const API=window.NOMAD_RUNTIME?.engineBase;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
 const n=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -111,7 +111,7 @@ function setupFilters(){
   tabs.forEach((b,i)=>b.addEventListener('click',()=>{tabs.forEach(x=>x.dataset.active='0');b.dataset.active='1';apply();}));
   if(tabs[0])tabs[0].dataset.active='1'; if(search)search.addEventListener('input',apply);
 }
-async function get(path){const r=await fetch(API+path,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
+async function get(path){if(!API)throw new Error('Runtime engine URL unavailable');const r=await fetch(API+path,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
 
 async function livePage(){
   const list=document.querySelector('.match-list'); if(!list)return;

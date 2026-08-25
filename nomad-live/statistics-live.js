@@ -1,5 +1,5 @@
 (()=>{
-  const API=window.NOMAD_RUNTIME?.engineUrl;
+  const API=window.NOMAD_RUNTIME?.engineBase;
   if(!API){console.error('NOMAD runtime engine URL is unavailable');return;}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;

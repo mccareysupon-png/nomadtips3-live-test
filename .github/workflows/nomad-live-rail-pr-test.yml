@@ -23,9 +23,22 @@ jobs:
       - name: Validate runtime JavaScript
         run: |
           node --check nomad-live/runtime-config.js
+          node --check nomad-live/runtime.js
           node --check nomad-live/signal-retention.js
+          node --check nomad-live/live-entry-score.js
           node --check nomad-live/statistics-live.js
           node --check nomad-live/health-live.js
+          node --check nomad-live/site-footer.js
+
+      - name: Reject Production engine URLs outside the centralized runtime config
+        run: |
+          PRODUCTION_ENGINE_HOST='nomadtips3-live-engine.mccarey-supon.workers.dev'
+          if grep -RInF --exclude='runtime-config.js' "$PRODUCTION_ENGINE_HOST" nomad-live; then
+            echo '::error::Production engine URL is hardcoded outside nomad-live/runtime-config.js'
+            exit 1
+          fi
+          ! grep -RIn 'NOMAD_RUNTIME[^;]*engineUrl' nomad-live
+          node --test nomad-live-engine/test/runtime-isolation.test.js
 
       - name: Validate public and owner page separation
         run: |
@@ -44,6 +57,8 @@ jobs:
         run: |
           grep -q '^\[env.test\]' nomad-live-engine/wrangler.toml
           grep -q 'name = "nomadtips3-live-engine-test"' nomad-live-engine/wrangler.toml
+          grep -q '^\[env.test.vars\]' nomad-live-engine/wrangler.toml
+          grep -q '^ENGINE_CYCLE_MODE = "on_demand"' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.durable_objects.bindings\]\]' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.migrations\]\]' nomad-live-engine/wrangler.toml
           grep -q 'nomadtips3-live-engine-test.mccarey-supon.workers.dev' nomad-live/runtime-config.js

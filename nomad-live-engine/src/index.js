@@ -131,6 +131,7 @@ function publicEnvelope(envelope){
 
 export class EngineState {
   constructor(state,env){this.state=state;this.env=env;this.running=false;}
+  continuousCycles(){return String(this.env?.ENGINE_CYCLE_MODE||'continuous').trim().toLowerCase()!=='on_demand';}
   async read(){return (await this.state.storage.get('state'))||emptyState();}
   async write(value){await this.state.storage.put('state',value);}
 
@@ -163,7 +164,7 @@ export class EngineState {
       await transaction.put('configPending',staged);
       await transaction.put('configHistory',[staged,...history].slice(0,CONFIG_HISTORY_LIMIT));
     });
-    await this.state.storage.setAlarm(now()+100);
+    if(this.continuousCycles()) await this.state.storage.setAlarm(now()+100);
     return staged;
   }
 
@@ -183,8 +184,9 @@ export class EngineState {
   }
 
   async currentConfig(){return engineConfig((await this.configState()).active.config);}
-  async armAlarm(delay=1500){if(await this.state.storage.getAlarm()==null) await this.state.storage.setAlarm(now()+delay);}
+  async armAlarm(delay=1500){if(this.continuousCycles()&&await this.state.storage.getAlarm()==null) await this.state.storage.setAlarm(now()+delay);}
   async alarm(){
+    if(!this.continuousCycles()) return;
     const config=await this.currentConfig();
     if(this.running){await this.state.storage.setAlarm(now()+config.cycleEveryMs);return;}
     this.running=true;
@@ -221,6 +223,12 @@ export class EngineState {
   async fetch(request){
     const url=new URL(request.url);
     await this.armAlarm(1500);
+    if(!this.continuousCycles()&&url.pathname==='/health'){
+      const state=await this.read();
+      const active=await this.state.storage.get('configActive');
+      const pending=await this.state.storage.get('configPending')||null;
+      return j(this.health(state,engineConfig(active?.config||DEFAULT_CONFIG),active||null,pending));
+    }
     if(url.pathname==='/config') return this.handleConfig(request);
     if(url.pathname==='/cycle'){
       if(this.running) return j({ok:true,running:true});
@@ -230,7 +238,7 @@ export class EngineState {
     const state=await this.read();
     const configState=await this.configState();
     const config=engineConfig(configState.active.config);
-    if((!state.lastCycle||now()-state.lastCycle>config.cycleEveryMs*1.2)&&!this.running) this.wakeCycle();
+    if((this.continuousCycles()||url.pathname==='/feed')&&(!state.lastCycle||now()-state.lastCycle>config.cycleEveryMs*1.2)&&!this.running) this.wakeCycle();
     if(url.pathname==='/feed') return j(this.feed(state,configState.active));
     if(url.pathname==='/statistics') return j(await this.statistics(state));
     if(url.pathname==='/health') return j(this.health(state,config,configState.active,configState.pending));

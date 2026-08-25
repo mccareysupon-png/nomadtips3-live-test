@@ -1,5 +1,6 @@
 (()=>{
-  const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+  const API=window.NOMAD_RUNTIME?.engineBase;
+  if(!API){console.error('NOMAD runtime engine URL is unavailable');return;}
   const REFRESH_MS=15000;
   let ledger=new Map();
   let lastFetch=0;

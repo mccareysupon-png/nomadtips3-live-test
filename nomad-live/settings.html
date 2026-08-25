@@ -68,10 +68,10 @@
     <nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
   </div>
 
-  <script src="runtime-config.js?v=20260825-rail-v1"></script>
+  <script src="runtime-config.js?v=20260825-rail-v2"></script>
   <script>
     (()=>{
-      const ENGINE=window.NOMAD_RUNTIME?.engineUrl;
+      const ENGINE=window.NOMAD_RUNTIME?.engineBase;
       if(!ENGINE)throw new Error('NOMAD runtime engine URL is unavailable');
       const ENV=window.NOMAD_RUNTIME?.environment||'unknown';
       const SESSION_UNLOCKED=`nomadSettingsUnlocked:${ENV}`;
@@ -139,6 +139,6 @@
       defaultsButton.addEventListener('click',async()=>{setBusy(true);showErrors([]);status(`Restoring ${ENV} engine defaults…`,'wait');try{await postConfig({action:'restore_default'});}catch(error){status(`Restore failed: ${error.message}`,'bad');}finally{setBusy(false);}});
     })();
   </script>
-  <script src="site-footer.js" defer></script>
+  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
 </body>
 </html>

@@ -1,0 +1,96 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,readdirSync} from 'node:fs';
+import {join,relative} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import vm from 'node:vm';
+
+const frontend=fileURLToPath(new URL('../../nomad-live/',import.meta.url));
+const read=name=>readFileSync(join(frontend,name),'utf8');
+const PRODUCTION_ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+const TEST_ENGINE='https://nomadtips3-live-engine-test.mccarey-supon.workers.dev';
+
+function configuredRuntime(hostname){
+  const document={documentElement:{dataset:{}}};
+  const window={location:{hostname}};
+  vm.runInNewContext(read('runtime-config.js'),{window,document});
+  return {runtime:window.NOMAD_RUNTIME,dataset:document.documentElement.dataset};
+}
+
+async function runLivePage(engineBase){
+  const requests=[];
+  const list={innerHTML:'',querySelectorAll:()=>[]};
+  const document={
+    querySelector:selector=>selector==='.match-list'?list:null,
+    querySelectorAll:()=>[],
+  };
+  const context={
+    window:{NOMAD_RUNTIME:engineBase?{engineBase}:{}},
+    location:{pathname:'/nomad-live/index.html'},
+    document,
+    setInterval(){},
+    fetch:async url=>{
+      requests.push(url);
+      return {ok:true,json:async()=>({counts:{},matches:[],cycle:1})};
+    },
+    console,
+  };
+  vm.runInNewContext(read('runtime.js'),context);
+  await new Promise(resolve=>setImmediate(resolve));
+  return requests;
+}
+
+function frontendFiles(directory=frontend){
+  return readdirSync(directory,{withFileTypes:true}).flatMap(entry=>{
+    const path=join(directory,entry.name);
+    return entry.isDirectory()?frontendFiles(path):entry.isFile()?[path]:[];
+  });
+}
+
+test('runtime config exposes engineBase and routes TEST hosts away from Production',()=>{
+  const production=configuredRuntime('www.nomadtips3.com');
+  const testHost=configuredRuntime('preview.nomadtips3.example');
+
+  assert.equal(production.runtime.engineBase,PRODUCTION_ENGINE);
+  assert.equal(production.runtime.environment,'production');
+  assert.equal(testHost.runtime.engineBase,TEST_ENGINE);
+  assert.equal(testHost.runtime.environment,'test');
+  assert.equal(testHost.dataset.nomadEnvironment,'test');
+  assert.equal('engineUrl' in testHost.runtime,false);
+});
+
+test('Live loads runtime config before runtime and footer never loads a hidden runtime',()=>{
+  const page=read('index.html');
+  const configPosition=page.indexOf('src="runtime-config.js');
+  const runtimePosition=page.indexOf('src="runtime.js');
+
+  assert.notEqual(configPosition,-1,'Live page must load runtime-config.js');
+  assert.notEqual(runtimePosition,-1,'Live page must explicitly load runtime.js');
+  assert.ok(configPosition<runtimePosition,'runtime-config.js must load first');
+  assert.match(page.slice(runtimePosition),/^src="runtime\.js[^\"]*" defer/);
+  assert.doesNotMatch(read('site-footer.js'),/import\s*\([^)]*runtime\.js/);
+});
+
+test('Live /feed uses only the configured TEST engine',async()=>{
+  assert.deepEqual(await runLivePage(TEST_ENGINE),[`${TEST_ENGINE}/feed`]);
+});
+
+test('Live fails closed instead of inventing an engine when runtime config is missing',async()=>{
+  assert.deepEqual(await runLivePage(null),[]);
+});
+
+test('Live, Statistics, Settings, Health, retention and entry scores share engineBase',()=>{
+  for(const file of ['runtime.js','statistics-live.js','settings.html','health-live.js','signal-retention.js','live-entry-score.js']){
+    assert.match(read(file),/window\.NOMAD_RUNTIME\?\.engineBase/,`${file} must read the configured engineBase`);
+  }
+});
+
+test('only the centralized runtime config may contain the Production engine hostname',()=>{
+  const host=new URL(PRODUCTION_ENGINE).hostname;
+  const violations=frontendFiles()
+    .filter(path=>relative(frontend,path)!=='runtime-config.js')
+    .filter(path=>readFileSync(path,'utf8').includes(host))
+    .map(path=>relative(frontend,path));
+
+  assert.deepEqual(violations,[]);
+});
