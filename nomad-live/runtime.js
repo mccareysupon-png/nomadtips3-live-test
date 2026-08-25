@@ -158,6 +158,7 @@ async function healthPage(){
 }
 
 const path=location.pathname.toLowerCase();
+// TEST Web serves Live at root; retain the legacy subdirectory aliases.
 const LIVE_ROOT_PATHS=new Set(['/','/index.html','/live','/live/']);
 if(LIVE_ROOT_PATHS.has(path)||path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
 else if(path.endsWith('/nomad-live/statistics.html')) statsPage();
