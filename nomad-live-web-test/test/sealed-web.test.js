@@ -51,7 +51,7 @@ test('wrangler config publishes the dedicated TEST Web with one exact TEST Engin
   assert.equal(config.assets.binding,'ASSETS');
   assert.equal(config.assets.run_worker_first,true);
   assert.deepEqual(config.services,[{binding:'TEST_ENGINE',service:'nomadtips3-live-engine-test'}]);
-  assert.equal(config.vars.NOMAD_WEB_MODE,'sealed');
+  assert.equal(config.vars.NOMAD_WEB_MODE,'open');
   assert.equal('routes' in config,false);
   assert.equal('route' in config,false);
   assert.equal('durable_objects' in config,false);
