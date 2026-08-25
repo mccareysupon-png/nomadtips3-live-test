@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "nomadtips3-live-web-test",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-25",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../nomad-live",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "vars": {
+    "NOMAD_WEB_MODE": "sealed"
+  }
+}

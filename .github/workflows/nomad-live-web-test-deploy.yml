@@ -1,0 +1,75 @@
+name: Deploy NOMAD Live Web TEST SEALED
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/nomad341-test-production-rail
+    paths:
+      - '.github/test-web-deploy-trigger'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TEST_WEB_URL: https://nomadtips3-live-web-test.mccarey-supon.workers.dev
+
+jobs:
+  validate-and-deploy-sealed-test-web:
+    if: github.ref == 'refs/heads/work/nomad341-test-production-rail' && github.repository == 'mccareysupon-png/nomadtips3-live-test'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/nomad341-test-production-rail
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate SEALED TEST Web and frontend isolation
+        run: |
+          node --check nomad-live-web-test/src/index.js
+          node --test nomad-live-web-test/test/*.test.js
+
+      - name: Dry-run the exact Static Assets Worker bundle
+        working-directory: nomad-live-web-test
+        run: npx --yes wrangler@4.92.0 deploy --dry-run
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated SEALED TEST Web Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-web-test
+          wranglerVersion: '4.92.0'
+          command: deploy
+
+      - name: Smoke test SEALED TEST Web without loading frontend or Engine
+        shell: bash
+        run: |
+          for attempt in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/test-web-sealed.html -w '%{http_code}' "$TEST_WEB_URL/?_=$(date +%s)" || true)
+            if [ "$code" = "403" ]; then
+              node - <<'NODE'
+          const fs=require('fs');
+          const body=fs.readFileSync('/tmp/test-web-sealed.html','utf8');
+          if(!body.includes('NOMAD_TEST_WEB_SEALED')) throw new Error('Missing SEALED marker');
+          if(/<script\b|nomadtips3-live-engine|\/feed|\/health|\/config/i.test(body)) throw new Error('SEALED page exposes frontend or Engine access');
+          console.log('SEALED TEST Web is reachable; frontend assets and Engine remain locked.');
+          NODE
+              exit 0
+            fi
+            sleep 5
+          done
+          echo '::error::SEALED TEST Web did not return the locked 403 page'
+          cat /tmp/test-web-sealed.html 2>/dev/null || true
+          exit 1
