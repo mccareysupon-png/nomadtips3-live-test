@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-25T17:51:10Z",
+  "updated_at": "2026-08-25T19:50:09Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7886,
       "edge": 64.3,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-2",
       "source_url": "https://www.goaloo.com/football/sweden-cupen-utsiktens-bk-vs-hacken/h2h-3004378",
       "summary_url": "https://www.goaloo.com/football/sweden-cupen-utsiktens-bk-vs-hacken/summary-3004378",
       "model": {
@@ -1001,6 +1001,56 @@
         "home_recent": 10,
         "away_recent": 7,
         "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "4e0ef914a83e7b3b",
+      "goaloo_id": "3004378",
+      "date": "2026-08-25",
+      "kickoff": "2026-08-25 16:30:00",
+      "league": "Sweden Cupen",
+      "home": "Utsiktens BK",
+      "away": "Hacken",
+      "pick": "Utsiktens BK Win",
+      "side": "home",
+      "odds": 30.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7886,
+      "edge": 64.3,
+      "result": "LOSS",
+      "ft": "1-2",
+      "source_url": "https://www.goaloo.com/football/sweden-cupen-utsiktens-bk-vs-hacken/h2h-3004378",
+      "summary_url": "https://www.goaloo.com/football/sweden-cupen-utsiktens-bk-vs-hacken/summary-3004378",
+      "model": {
+        "lambda_home": 3.051,
+        "lambda_away": 1.14,
+        "home_win": 0.7886,
+        "draw": 0.146,
+        "away_win": 0.0654,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.7089,
+          "gd_edge": 0.9059,
+          "clean_sheet_edge": 0.5463,
+          "failed_to_score_edge": 0.1951,
+          "bounded_adjustment": 0.0529,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.012,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
       }
     }
