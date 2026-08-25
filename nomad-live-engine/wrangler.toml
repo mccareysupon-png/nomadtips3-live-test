@@ -13,3 +13,15 @@ class_name = "EngineState"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["EngineState"]
+
+[env.test]
+name = "nomadtips3-live-engine-test"
+workers_dev = true
+
+[[env.test.durable_objects.bindings]]
+name = "ENGINE"
+class_name = "EngineState"
+
+[[env.test.migrations]]
+tag = "v1"
+new_sqlite_classes = ["EngineState"]
