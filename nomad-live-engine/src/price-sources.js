@@ -65,29 +65,20 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     .filter(definition=>!(definition.id==='source5'&&marketsBySource.get(definition.id)?.reason==='source_removed'))
     .map(definition=>{
     const market=peerMarket(definition,marketsBySource);
-    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
-    const bookmaker=market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null;
-    const judgeEligible=bookmakerJudgeEligible(bookmaker,definition.id);
-    const observerReady=Boolean(market?.status==='AH READY'&&!judgeEligible);
-    // INDEX currently falls back to raw SOURCE 1 when no selectedPrice exists. Fail that legacy path closed
-    // so a healthy observer-only 1xBet quote can never become the decision market by accident.
-    if(definition.id==='source1'&&observerReady){
-      market.status='AH UNAVAILABLE';
-      market.reason='observer_only_bookmaker';
-    }
     const assessed=assessHomeMarket(market,config,observedAt);
     // Fail closed whenever the provider cannot identify the bookmaker behind its AH price.
     const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
     const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
-    const status=!judgeEligible&&(assessment.passed||observerReady)?'OBSERVER':displayStatus(market,assessment);
+    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
+    const bookmaker=market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null;
     return {
-      ...definition,enabled:true,status,reason:assessment.reason||market?.reason||null,
+      ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
       bookmaker,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
-      judgeEligible,
+      judgeEligible:bookmakerJudgeEligible(bookmaker,definition.id),
       assessment,market,
     };
   });
@@ -163,6 +154,17 @@ export function selectNowgoalConsensus(sources=[]){
 }
 
 export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
+  // Observer sockets stay connected for diagnostics, but cannot appear as PASS/SELECTED in the public decision path.
+  for(const item of sources){
+    if(item?.judgeEligible===false&&item?.status==='PASS') item.status='OBSERVER';
+  }
+  // INDEX has a historical raw SOURCE 1 fallback when selectedPrice is null. Mutate only that observer market
+  // to fail closed, so 1xBet can remain wired without ever becoming the signal decision market by accident.
+  const legacySource1=sources.find(item=>item?.id==='source1');
+  if(legacySource1?.judgeEligible===false&&legacySource1?.market?.status==='AH READY'){
+    legacySource1.market.status='AH UNAVAILABLE';
+    legacySource1.market.reason='observer_only_bookmaker';
+  }
   // SOURCE 4 Bet365 via TotalCorner is retained as an internal compatibility socket only.
   // SOURCE 25 Pinnacle via Nowgoal is retained but cannot duplicate Pinnacle's vote.
   const nonVoterIds=new Set([fallbackId,'source25']);
