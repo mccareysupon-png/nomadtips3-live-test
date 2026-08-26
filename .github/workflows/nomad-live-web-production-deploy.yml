@@ -138,7 +138,7 @@ jobs:
           grep -Fq 'NOMAD LIVE 3.41' /tmp/custom-home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
 
-          curl -fsS --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
+          curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
 
           curl -fsS --max-time 20 "$CUSTOM_URL/api/health?t=$(date +%s)" -o /tmp/custom-engine-health.json
