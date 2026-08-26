@@ -1,44 +1,35 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111315">
-  <meta name="description" content="NOMADTIPS3 transparent settled live signal statistics and long-term performance history.">
-  <title>nomadtips3 — Statistics</title>
-  <link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/styles.css"><link rel="stylesheet" href="./car3-5-live-soccer-analysis/web/ui-fix.css">
-  <style>
-    .stats-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}.pagination{position:sticky;left:0;min-width:100%}
-    .history-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}.range-tabs{display:flex;gap:5px;flex-wrap:wrap}.range-tabs button{border:0;border-radius:8px;background:#20242a;color:#969da6;padding:7px 9px;font:700 10px Arial;cursor:pointer}.range-tabs button.active{background:#f3c623;color:#111}.history-meta{color:#969da6;font-size:10px}.history-graph-wrap{position:relative}.history-tooltip{position:absolute;z-index:5;display:none;pointer-events:none;padding:6px 8px;border-radius:8px;background:rgba(8,10,12,.94);border:1px solid rgba(255,255,255,.08);font:10px/1.35 Arial;color:#e8eaec;white-space:nowrap;transform:translate(-50%,-110%)}
-    #historyChart{shape-rendering:geometricPrecision;touch-action:pan-y}.stats-table{min-width:1320px}.stats-table td,.stats-table th{vertical-align:middle}.stats-table .match-cell{min-width:210px}.stats-table .league-cell{max-width:150px;overflow:hidden;text-overflow:ellipsis}.stats-table .line-cell,.stats-table .odds-cell{font-variant-numeric:tabular-nums;font-weight:800}.stats-table .line-cell{color:#f3c623}.stats-table .odds-cell{min-width:112px;color:#f5f5f5}.stats-table td:last-child{white-space:nowrap;font-variant-numeric:tabular-nums}.score-pill{display:inline-flex;min-width:42px;justify-content:center;padding:4px 6px;border-radius:7px;background:#20242a;font-weight:800;font-variant-numeric:tabular-nums}.history-note{margin:10px 2px 0;color:#969da6;font-size:10px;line-height:1.45}
-    @media(max-width:699px){.history-toolbar{align-items:flex-start}.range-tabs{width:100%;display:grid;grid-template-columns:repeat(3,1fr)}.range-tabs button{padding:8px 5px}.history-meta{width:100%}}
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <base href="./nomad-live/">
+  <title>nomadtips3 · Statistics</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="statistics-pagination.css">
+  <link rel="stylesheet" href="public-nav.css?v=20260824-v2">
+  <link rel="stylesheet" href="site-footer.css">
+  <link rel="stylesheet" href="metric-strip.css?v=20260825-v2">
 </head>
-<body data-page="statistics">
-<header class="topbar"><a class="brand" href="./index.html" aria-label="nomadtips3 home"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></a><div class="feed-state"><i></i><span id="feedState">Connecting</span></div></header>
-<main class="page-shell">
-  <section class="page-title"><h1>Statistics</h1><p>Settlement uses the market, selected side, entry score, handicap line and decimal odds locked on the original signal record.</p></section>
-  <section class="metric-grid">
-    <article class="metric-card soft-card win"><span>Win</span><b id="statWin">0</b></article>
-    <article class="metric-card soft-card loss"><span>Loss</span><b id="statLoss">0</b></article>
-    <article class="metric-card soft-card draw"><span>Draw</span><b id="statDraw">0</b></article>
-    <article class="metric-card soft-card"><span>Winrate</span><b id="statRate">0.00%</b></article>
-    <article class="metric-card soft-card"><span>Average odds</span><b id="statOdds">0.00</b></article>
-  </section>
-  <section class="soft-card graph-card">
-    <div class="history-toolbar">
-      <div><div class="card-head"><b>Performance history</b></div><div class="history-meta" id="historyMeta">Long-term archive · loading</div></div>
-      <div class="range-tabs" id="historyRanges" aria-label="History range">
-        <button type="button" data-range="30D">30D</button><button type="button" data-range="90D">90D</button><button type="button" data-range="6M">6M</button><button type="button" data-range="1Y">1Y</button><button type="button" data-range="3Y">3Y</button><button class="active" type="button" data-range="ALL">ALL</button>
-      </div>
-    </div>
-    <div class="chart-legend"><span><i class="win-line"></i>Win</span><span><i class="loss-line"></i>Loss</span><span><i class="draw-line"></i>Draw</span></div>
-    <div class="history-graph-wrap"><svg id="historyChart" viewBox="0 0 800 240" preserveAspectRatio="none" aria-label="Performance history graph"></svg><div class="history-tooltip" id="historyTooltip"></div></div>
-  </section>
-  <section class="soft-card stats-table-wrap">
-    <table class="stats-table"><thead><tr><th>Date / time</th><th>League</th><th>Match</th><th>Detected</th><th>Entry score</th><th>Market</th><th>Pick</th><th>Line / handicap</th><th>Locked odds</th><th>Momentum</th><th>FT score</th><th>Result</th></tr></thead><tbody id="historyBody"><tr><td colspan="12">Loading statistics…</td></tr></tbody></table>
-    <div class="pagination"><button id="prevPage" type="button">‹</button><span id="pageInfo">Page 1 / 1 · 25 rows/page</span><button id="nextPage" type="button">›</button></div>
-  </section>
-  <p class="history-note">Settlement follows the stored result for each locked signal: FULL WIN, HALF WIN, PUSH, HALF LOSS or FULL LOSS when available.<br>For live Asian Handicap, settlement uses goals after the entry score; quarter lines split the stake 50/50. Goal Line / O-U uses the full-match total.<br>The displayed unit P/L uses the decimal odds locked on that signal record only — never a later or current price. NOMADTIPS3 is independent and is not affiliated with or endorsed by Bet365.</p>
-</main>
-<nav class="bottom-nav"><a href="./index.html"><span>●</span>Live</a><a class="active" href="./statistics.html"><span>⌁</span>Statistics</a><a href="./alerts.html"><span>◉</span>Live alerts</a></nav>
-<script type="module" src="./car3-5-live-soccer-analysis/web/statistics-v2.js?v=20260819-settlement-1"></script>
-</body></html>
+<body>
+  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a></nav><div class="source-pill"><span class="dot"></span>RESULT LEDGER · CONNECTING</div></div></header>
+  <main class="shell">
+    <section class="hero"><div><p class="eyebrow">PERFORMANCE</p><h1>Statistics</h1><p>Locked prices, settled results and unit-based performance from recorded live signals.</p></div><div class="mode"><span>RANGE</span><strong>ALL</strong><small>full ledger</small></div></section>
+
+    <section class="summary-grid"><article class="metric"><span>TOTAL SIGNALS</span><strong>0</strong><small>all records</small></article><article class="metric signal"><span>WIN RATE</span><strong>0.0%</strong><small>settled only</small></article><article class="metric"><span>AVG ODDS</span><strong>—</strong><small>locked price</small></article><article class="metric"><span>ROI</span><strong>+0.0%</strong><small>1 unit / signal</small></article></section>
+
+    <section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted">WIN 0 · LOSS 0 · PUSH 0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th>PICK</th><th>AH</th><th>ODDS</th><th>BOOKMAKER</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody><tr><td colspan="10">No locked signals yet.</td></tr></tbody></table></div><nav class="stats-pagination" data-stats-pagination aria-label="Statistics pages" hidden></nav></section>
+
+    <div class="note">Statistics are loading from the live system.</div>
+  </main>
+  <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a></nav>
+
+  <script src="runtime-config.js?v=20260825-service-binding-v1"></script>
+  <script src="statistics-live.js?v=20260825-rail-v2" defer></script>
+  <script src="statistics-summary-colors.js" defer></script>
+  <script src="statistics-pagination.js" defer></script>
+  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
+  <script src="public-source-mask.js?v=20260824-v1" defer></script>
+</body>
+</html>
