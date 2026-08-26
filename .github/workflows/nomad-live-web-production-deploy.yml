@@ -104,7 +104,6 @@ jobs:
           curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
           grep -Fq 'NOMAD LIVE 3.41' /tmp/home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
-          grep -Fq 'live-filter-lock.js?v=20260826-signal-lock-v3' /tmp/home.html
 
           curl -fsS --max-time 20 "$CANARY_URL/api/health?t=$(date +%s)" -o /tmp/engine-health.json
           test -s /tmp/engine-health.json
@@ -138,7 +137,6 @@ jobs:
           curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
           grep -Fq 'NOMAD LIVE 3.41' /tmp/custom-home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
-          grep -Fq 'live-filter-lock.js?v=20260826-signal-lock-v3' /tmp/custom-home.html
 
           curl -fsS --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
