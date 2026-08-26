@@ -1,0 +1,104 @@
+name: Deploy NOMAD Live Engine TEST
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/nomad341-test-production-rail
+    paths:
+      - '.github/test-deploy-trigger'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  validate-and-deploy-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/nomad341-test-production-rail
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate 3.41 engine and test environment
+        working-directory: nomad-live-engine
+        run: |
+          node --test
+          node --check src/index.js
+          node --check src/real-market.js
+          node --check src/price-sources.js
+          node --check src/the-odds-api.js
+          node --check src/api-football.js
+          grep -q '^\[env.test\]' wrangler.toml
+          grep -q 'name = "nomadtips3-live-engine-test"' wrangler.toml
+          TEST_ENV_CONFIG="$(awk '/^\[env.test\]$/{inside=1;next} /^\[/{if(inside) exit} inside{print}' wrangler.toml)"
+          printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^workers_dev = false$'
+          printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^preview_urls = false$'
+          grep -q '^\[\[env.test.durable_objects.bindings\]\]' wrangler.toml
+          grep -q '^\[\[env.test.migrations\]\]' wrangler.toml
+
+      - name: Dry-run private TEST Engine bundle
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --env test --config wrangler.toml
+
+      - name: Validate frontend environment isolation
+        run: |
+          node --check nomad-live/runtime-config.js
+          node --check nomad-live/signal-retention.js
+          node --check nomad-live/statistics-live.js
+          node --check nomad-live/health-live.js
+          grep -q ":'/api'" nomad-live/runtime-config.js
+          ! grep -RInF 'nomadtips3-live-engine-test.mccarey-supon.workers.dev' nomad-live
+          grep -q 'runtime-config.js' nomad-live/index.html
+          grep -q 'runtime-config.js' nomad-live/statistics.html
+          grep -q 'runtime-config.js' nomad-live/settings.html
+          grep -q 'runtime-config.js' nomad-live/health.html
+          ! grep -q 'href="settings.html"' nomad-live/index.html
+          ! grep -q 'href="settings.html"' nomad-live/statistics.html
+          grep -q 'noindex,nofollow' nomad-live/settings.html
+          grep -q 'noindex,nofollow' nomad-live/health.html
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine
+          wranglerVersion: '4.92.0'
+          command: deploy --env test
+
+      - name: Configure optional TEST provider secrets
+        working-directory: nomad-live-engine
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          TEST_ODDS_API_KEY: ${{ secrets.TEST_ODDS_API_KEY }}
+          TEST_THE_ODDS_API_KEY: ${{ secrets.TEST_THE_ODDS_API_KEY }}
+          TEST_API_FOOTBALL_KEY: ${{ secrets.TEST_API_FOOTBALL_KEY }}
+        run: |
+          put_secret() {
+            local name="$1" value="$2"
+            if [ -z "$value" ]; then
+              echo "TEST $name not configured; source stays unavailable in TEST."
+              return 0
+            fi
+            printf '%s' "$value" | npx --yes wrangler@4.92.0 secret put "$name" --env test >/dev/null
+            echo "TEST $name configured."
+          }
+          put_secret ODDS_API_KEY "$TEST_ODDS_API_KEY"
+          put_secret THE_ODDS_API_KEY "$TEST_THE_ODDS_API_KEY"
+          put_secret API_FOOTBALL_KEY "$TEST_API_FOOTBALL_KEY"

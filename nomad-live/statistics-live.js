@@ -1,5 +1,6 @@
 (()=>{
-  const API='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+  const API=window.NOMAD_RUNTIME?.engineBase;
+  if(!API){console.error('NOMAD runtime engine URL is unavailable');return;}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
   const fmtLine=v=>v==null?'—':`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`;
@@ -76,7 +77,7 @@
         setText(note,`Statistics connected · ${publicStats.settled} settled public records.`);
         lastSummaryKey=summaryKey;
       }
-      setSource('RESULT LEDGER · LIVE',true);
+      setSource(`RESULT LEDGER · ${String(window.NOMAD_RUNTIME?.environment||'live').toUpperCase()}`,true);
       firstLoad=false;
     }catch(e){
       setText(note,'Statistics connection temporarily unavailable.');

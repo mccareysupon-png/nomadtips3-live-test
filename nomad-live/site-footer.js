@@ -59,5 +59,3 @@
   setInterval(render,1000);
 })();
 
-const isStatisticsPage=/\/nomad-live\/statistics\.html$/i.test(window.location.pathname);
-if(!isStatisticsPage) import('./runtime.js?v=20260821-card-v2').catch(()=>{});

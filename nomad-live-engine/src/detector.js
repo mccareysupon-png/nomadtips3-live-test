@@ -3,12 +3,22 @@ import {HARD_ODDS_MINIMUM,HARD_ODDS_MAXIMUM} from './config.js';
 const finite = value => Number.isFinite(Number(value));
 const number = value => finite(value)?Number(value):null;
 const METRICS = ['attacks','dangerousAttack','shotsOn','shotsOff','corners'];
+const HARD_AH_LINE_MINIMUM=-10;
+const HARD_AH_LINE_MAXIMUM=10;
+const SECOND_HALF_START_MINUTE=45;
+
+function metricNumber(value){
+  if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
+  if(typeof value==='string'&&!value.trim()) return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed:null;
+}
 
 function metricDelta(end,start,key){
   const result={home:null,away:null};
   for(const side of ['home','away']){
-    const a=number(end?.stats?.[key]?.[side]);
-    const b=number(start?.stats?.[key]?.[side]);
+    const a=metricNumber(end?.stats?.[key]?.[side]);
+    const b=metricNumber(start?.stats?.[key]?.[side]);
     result[side]=a!=null&&b!=null&&a>=b?a-b:null;
   }
   return result;
@@ -34,52 +44,85 @@ export function buildRollingAnalysis(snapshots=[],config){
   const ordered=[...snapshots].filter(item=>finite(item?.minute)).sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt);
   const current=ordered.at(-1);
   if(!current) return {available:false,reason:'no_current_snapshot'};
-  const window=config.rollingWindowMinutes;
-  const recentStart=nearestSnapshot(ordered,current.minute-window);
-  const previousStart=nearestSnapshot(ordered,current.minute-(2*window));
-  if(!recentStart||!previousStart) return {available:false,reason:'insufficient_snapshot_history',currentMinute:current.minute};
+  const currentMinute=Number(current.minute);
+  const window=Number(config.rollingWindowMinutes);
+  if(!Number.isFinite(window)||window<=0) return {available:false,reason:'invalid_rolling_window',currentMinute};
+  const periodFloor=currentMinute>=SECOND_HALF_START_MINUTE?SECOND_HALF_START_MINUTE:0;
+  const periodSnapshots=ordered.filter(item=>Number(item.minute)>=periodFloor&&Number(item.minute)<=currentMinute);
+  const recentStart=nearestSnapshot(periodSnapshots,currentMinute-window);
+  const previousStart=recentStart?nearestSnapshot(periodSnapshots,Number(recentStart.minute)-window):null;
+  if(!recentStart||!previousStart) return {available:false,reason:'insufficient_snapshot_history',currentMinute};
+  const recentDuration=currentMinute-Number(recentStart.minute);
+  const previousDuration=Number(recentStart.minute)-Number(previousStart.minute);
+  if(recentDuration<=0||previousDuration<=0) return {available:false,reason:'invalid_window_duration',currentMinute};
   const recent=windowDelta(current,recentStart,config);
   const previous=windowDelta(recentStart,previousStart,config);
   if([recent.homePressure,recent.awayPressure,recent.tempo,previous.homePressure,previous.awayPressure,previous.tempo].some(value=>value==null)){
-    return {available:false,reason:'incomplete_pressure_metrics',currentMinute:current.minute};
+    return {available:false,reason:'incomplete_pressure_metrics',currentMinute};
   }
+  const rates={
+    previous:{
+      homePressure:previous.homePressure/previousDuration,
+      awayPressure:previous.awayPressure/previousDuration,
+      tempo:previous.tempo/previousDuration,
+    },
+    recent:{
+      homePressure:recent.homePressure/recentDuration,
+      awayPressure:recent.awayPressure/recentDuration,
+      tempo:recent.tempo/recentDuration,
+    },
+  };
   const pressureTotal=recent.homePressure+recent.awayPressure;
   const homePressureShare=pressureTotal>0?recent.homePressure/pressureTotal*100:0;
   const conditions={
-    homePressureTrend:recent.homePressure>previous.homePressure,
+    homePressureTrend:rates.recent.homePressure>rates.previous.homePressure,
     homePressureShare:homePressureShare>=config.homePressureShareMinimum,
-    matchTempoTrend:recent.tempo>previous.tempo,
+    matchTempoTrend:rates.recent.tempo>rates.previous.tempo,
   };
   const passedCount=Object.values(conditions).filter(Boolean).length;
   return {
-    available:true,currentMinute:current.minute,windowMinutes:window,
-    baselines:{previousMinute:previousStart.minute,recentMinute:recentStart.minute,currentMinute:current.minute},
-    recent,previous,homePressureShare,conditions,passedCount,
+    available:true,currentMinute,windowMinutes:window,
+    baselines:{previousMinute:Number(previousStart.minute),recentMinute:Number(recentStart.minute),currentMinute},
+    durations:{previousMinutes:previousDuration,recentMinutes:recentDuration},
+    rates,recent,previous,homePressureShare,conditions,passedCount,
   };
 }
 
 function evidenceResult(rolling,config){
   const required=config.homeEventRequired!==false;
+  const evidenceCheck=(value,minimum)=>{
+    const delta=metricNumber(value);
+    return delta!=null&&delta>=minimum;
+  };
   const checks={
-    sot:config.sotEvidenceEnabled?number(rolling?.recent?.delta?.shotsOn?.home)>=config.sotDeltaMinimum:null,
-    shotOff:config.shotOffEvidenceEnabled?number(rolling?.recent?.delta?.shotsOff?.home)>=config.shotOffDeltaMinimum:null,
-    corner:config.cornerEvidenceEnabled?number(rolling?.recent?.delta?.corners?.home)>=config.cornerDeltaMinimum:null,
+    sot:config.sotEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.shotsOn?.home,config.sotDeltaMinimum):null,
+    shotOff:config.shotOffEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.shotsOff?.home,config.shotOffDeltaMinimum):null,
+    corner:config.cornerEvidenceEnabled?evidenceCheck(rolling?.recent?.delta?.corners?.home,config.cornerDeltaMinimum):null,
   };
   const enabled=Object.values(checks).filter(value=>value!==null);
   const eventPassed=config.evidenceMode==='ALL'?enabled.length>0&&enabled.every(Boolean):enabled.some(Boolean);
   return {required,bypassed:!required,mode:config.evidenceMode,checks,passed:!required||eventPassed,passedCount:enabled.filter(Boolean).length,total:enabled.length};
 }
 
-const quarterGoal = value => finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
+function marketNumber(value){
+  if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
+  if(typeof value==='string'&&!value.trim()) return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed:null;
+}
+const quarterGoal = value => value!=null&&Math.abs(value*4-Math.round(value*4))<1e-9;
 
 export function assessHomeMarket(market,config,observedAt=Date.now()){
   if(!market) return {status:'AH CHECKING',passed:false,reason:'waiting_price_check',ageSeconds:null};
-  if(market.status&&market.status!=='AH READY') return {status:market.status,passed:false,reason:market.reason||null,ageSeconds:null};
-  const line=number(market.line),homeOdds=number(market.homeOdds),awayOdds=number(market.awayOdds);
-  if(!quarterGoal(line)||homeOdds==null||awayOdds==null||homeOdds<HARD_ODDS_MINIMUM||homeOdds>HARD_ODDS_MAXIMUM||awayOdds<HARD_ODDS_MINIMUM||awayOdds>HARD_ODDS_MAXIMUM){
+  if(market.status!=='AH READY'){
+    if(market.status) return {status:market.status,passed:false,reason:market.reason||null,ageSeconds:null};
+    return {status:'AH INVALID',passed:false,reason:'missing_market_status',ageSeconds:null};
+  }
+  const line=marketNumber(market.line),homeOdds=marketNumber(market.homeOdds),awayOdds=marketNumber(market.awayOdds);
+  if(line==null||line<HARD_AH_LINE_MINIMUM||line>HARD_AH_LINE_MAXIMUM||!quarterGoal(line)||homeOdds==null||awayOdds==null||homeOdds<HARD_ODDS_MINIMUM||homeOdds>HARD_ODDS_MAXIMUM||awayOdds<HARD_ODDS_MINIMUM||awayOdds>HARD_ODDS_MAXIMUM){
     return {status:'AH INVALID',passed:false,reason:'invalid_line_or_odds',line,homeOdds,awayOdds,ageSeconds:null};
   }
-  const updatedAt=number(market.sourceUpdatedAt);
+  const updatedAt=marketNumber(market.sourceUpdatedAt);
   if(updatedAt==null) return {status:'AH INVALID',passed:false,reason:'missing_source_updated_time',line,homeOdds,awayOdds,ageSeconds:null};
   const ageSeconds=Math.max(0,(observedAt-updatedAt)/1000);
   if(ageSeconds>config.maximumPriceAgeSeconds) return {status:'AH STALE',passed:false,reason:'price_too_old',line,homeOdds,awayOdds,ageSeconds};

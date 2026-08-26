@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="metric-strip.css?v=20260825-v2">
 </head>
 <body>
-  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a></nav><div class="source-pill"><span class="dot"></span>RESULT LEDGER · CONNECTING</div></div></header>
+  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a></nav><div class="source-pill"><span class="dot"></span>RESULT LEDGER · CONNECTING</div></div></header>
   <main class="shell">
     <section class="hero"><div><p class="eyebrow">PERFORMANCE</p><h1>Statistics</h1><p>Locked prices, settled results and unit-based performance from recorded live signals.</p></div><div class="mode"><span>RANGE</span><strong>ALL</strong><small>full ledger</small></div></section>
 
@@ -22,12 +22,13 @@
 
     <div class="note">Statistics are loading from the live system.</div>
   </main>
-  <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a></nav>
+  <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a></nav>
 
-  <script src="statistics-live.js?v=20260825-date-v2" defer></script>
+  <script src="runtime-config.js?v=20260825-service-binding-v1"></script>
+  <script src="statistics-live.js?v=20260825-rail-v2" defer></script>
   <script src="statistics-summary-colors.js" defer></script>
   <script src="statistics-pagination.js" defer></script>
-  <script src="site-footer.js?v=20260825-stats-isolation-v1" defer></script>
+  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
   <script src="public-source-mask.js?v=20260824-v1" defer></script>
 </body>
 </html>

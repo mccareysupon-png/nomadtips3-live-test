@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#123328">
   <title>nomadtips3 · Settings 3.41</title>
   <link rel="stylesheet" href="styles.css">
@@ -14,11 +15,11 @@
 </head>
 <body>
   <section class="settings-gate" id="settingsGate" aria-label="Settings access">
-    <div class="gate-card"><div class="gate-brand">nomad<span>tips</span>3</div><p class="eyebrow">RESTRICTED ACCESS</p><h1>Settings 3.41</h1><p class="gate-copy">Enter the access code to read and update the running engine.</p><form class="gate-form" id="gateForm"><label for="gatePassword">ACCESS CODE</label><input id="gatePassword" type="password" autocomplete="current-password" autofocus required><button type="submit">Unlock settings</button><div class="gate-error" id="gateError" role="alert"></div></form><a class="gate-back" href="index.html">← Back to Live</a></div>
+    <div class="gate-card"><div class="gate-brand">nomad<span>tips</span>3</div><p class="eyebrow">RESTRICTED ACCESS</p><h1>Settings 3.41</h1><p class="gate-copy">Enter the access code to read and update the engine assigned to this environment.</p><form class="gate-form" id="gateForm"><label for="gatePassword">ACCESS CODE</label><input id="gatePassword" type="password" autocomplete="current-password" autofocus required><button type="submit">Unlock settings</button><div class="gate-error" id="gateError" role="alert"></div></form><a class="gate-back" href="index.html">← Back to Live</a></div>
   </section>
 
   <div class="settings-app" id="settingsApp" hidden>
-    <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>DETECTOR 3.41 · LIVE</div></div></header>
+    <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>OWNER SETTINGS · CONNECTING</div></div></header>
     <main class="shell">
       <section class="hero"><div><p class="eyebrow">HOME LIVE AH CONTROL</p><h1>Settings 3.41</h1><p>Save validates the complete profile atomically. A saved version becomes active at the start of the next engine cycle.</p></div><div class="mode"><span>ACTIVE VERSION</span><strong id="profileState">—</strong><small id="profileUpdated">loading…</small></div></section>
 
@@ -67,16 +68,23 @@
     <nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
   </div>
 
+  <script src="runtime-config.js?v=20260825-service-binding-v1"></script>
   <script>
     (()=>{
-      const ENGINE='https://nomadtips3-live-engine.mccarey-supon.workers.dev';
+      const ENGINE=window.NOMAD_RUNTIME?.engineBase;
+      if(!ENGINE)throw new Error('NOMAD runtime engine URL is unavailable');
+      const ENV=window.NOMAD_RUNTIME?.environment||'unknown';
+      const SESSION_UNLOCKED=`nomadSettingsUnlocked:${ENV}`;
+      const SESSION_KEY=`nomadSettingsKey:${ENV}`;
       const EXPECTED='1cc981355210634b60e5798eced35e7f441e9b8c8e6d4484b632986bcf31b1c2';
       const NUMERIC=['minuteFrom','minuteTo','rollingWindowMinutes','maxScoreDifference','attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired','sotDeltaMinimum','shotOffDeltaMinimum','cornerDeltaMinimum','oddsMinimum','maximumPriceAgeSeconds'];
       const BOOLEAN=['scoreDifferenceFilterEnabled','homeEventRequired','sotEvidenceEnabled','shotOffEvidenceEnabled','cornerEvidenceEnabled','oddsMaximumEnabled','oneSignalPerMatch'];
       const gate=document.getElementById('settingsGate'),app=document.getElementById('settingsApp'),gateForm=document.getElementById('gateForm'),gatePassword=document.getElementById('gatePassword'),gateError=document.getElementById('gateError');
       const settingsForm=document.getElementById('settingsForm'),saveButton=document.getElementById('saveButton'),reloadButton=document.getElementById('reloadButton'),defaultsButton=document.getElementById('defaultsButton'),saveStatus=document.getElementById('saveStatus'),validationMessages=document.getElementById('validationMessages');
       const profileState=document.getElementById('profileState'),profileUpdated=document.getElementById('profileUpdated'),activeSettings=document.getElementById('activeSettings'),activeUpdated=document.getElementById('activeUpdated'),activeCycle=document.getElementById('activeCycle');
+      const sourcePill=document.querySelector('.source-pill');
       let settingsKey='',serverDefaults=null;
+      if(sourcePill)sourcePill.innerHTML=`<span class="dot"></span>OWNER SETTINGS · ${ENV.toUpperCase()}`;
       for(let value=5;value>=-5;value-=.25){const option=document.createElement('option');option.value=String(Number(value.toFixed(2)));option.textContent=`${value>0?'+':''}${Number(value.toFixed(2))}`;document.getElementById('allowedSelectionLines').append(option);}
       const hash=async value=>{const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));return [...new Uint8Array(digest)].map(byte=>byte.toString(16).padStart(2,'0')).join('');};
       const status=(text,type='')=>{saveStatus.textContent=text;saveStatus.className=`save-status ${type}`.trim();};
@@ -111,9 +119,9 @@
         activeSettings.innerHTML=values.map(([label,value])=>`<div class="active-item"><span>${label}</span><b>${value}</b></div>`).join('');
         profileState.textContent=`v${data.version??'—'}`;profileUpdated.textContent=data.pending?`v${data.pending.version} pending cycle ${data.pending.appliesFromCycle}`:'active now';activeUpdated.textContent=`Last Updated ${data.updatedAt?new Date(data.updatedAt).toLocaleString():'—'}`;activeCycle.textContent=`Applies From Cycle ${data.appliesFromCycle??'—'}`;
       };
-      const relock=()=>{sessionStorage.removeItem('nomadSettingsUnlocked');sessionStorage.removeItem('nomadSettingsKey');settingsKey='';app.hidden=true;gate.hidden=false;gatePassword.value='';gatePassword.focus();};
+      const relock=()=>{sessionStorage.removeItem(SESSION_UNLOCKED);sessionStorage.removeItem(SESSION_KEY);settingsKey='';app.hidden=true;gate.hidden=false;gatePassword.value='';gatePassword.focus();};
       const fetchConfig=async({updateForm=true}={})=>{const response=await fetch(`${ENGINE}/config?_=${Date.now()}`,{cache:'no-store'});const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||`HTTP ${response.status}`);serverDefaults=data.defaultConfig||data.defaults;renderActive(data);if(updateForm)setForm(data.activeConfig||data.config);return data;};
-      const loadConfig=async()=>{setBusy(true);showErrors([]);status('Loading active engine settings…','wait');try{await fetchConfig();status('Active engine settings loaded','ok');}catch(error){status(`Load failed: ${error.message}`,'bad');}finally{setBusy(false);}};
+      const loadConfig=async()=>{setBusy(true);showErrors([]);status(`Loading ${ENV} engine settings…`,'wait');try{await fetchConfig();status(`${ENV.toUpperCase()} engine settings loaded`,'ok');}catch(error){status(`Load failed: ${error.message}`,'bad');}finally{setBusy(false);}};
       const waitForActive=async version=>{for(let attempt=0;attempt<30;attempt++){await new Promise(resolve=>setTimeout(resolve,1000));const data=await fetchConfig({updateForm:false});if(data.version===version){setForm(data.activeConfig);return data;}}throw new Error(`Version ${version} was saved but did not become active within 30 seconds`);};
       const postConfig=async body=>{
         const response=await fetch(`${ENGINE}/config`,{method:'POST',headers:{'content-type':'application/json','x-settings-key':settingsKey},body:JSON.stringify(body)});const data=await response.json();
@@ -121,16 +129,16 @@
         if(!response.ok||!data.ok||!data.saved||!data.pending?.version){const errors=data.errors||[data.error||`HTTP ${response.status}`];showErrors(errors);throw new Error(errors.join(' · '));}
         renderActive({activeConfig:data.active.config,version:data.active.version,updatedAt:data.active.updatedAt,appliesFromCycle:data.active.appliesFromCycle,pending:data.pending});
         status(`Saved v${data.pending.version} · waiting for cycle ${data.pending.appliesFromCycle}…`,'wait');
-        await waitForActive(data.pending.version);status(`Version ${data.pending.version} is ACTIVE`,'ok');
+        await waitForActive(data.pending.version);status(`Version ${data.pending.version} is ACTIVE on ${ENV.toUpperCase()}`,'ok');
       };
-      const unlock=async key=>{settingsKey=key;sessionStorage.setItem('nomadSettingsUnlocked','1');sessionStorage.setItem('nomadSettingsKey',key);gate.hidden=true;app.hidden=false;await loadConfig();};
-      const cachedKey=sessionStorage.getItem('nomadSettingsKey');if(sessionStorage.getItem('nomadSettingsUnlocked')==='1'&&cachedKey)unlock(cachedKey);
+      const unlock=async key=>{settingsKey=key;sessionStorage.setItem(SESSION_UNLOCKED,'1');sessionStorage.setItem(SESSION_KEY,key);gate.hidden=true;app.hidden=false;await loadConfig();};
+      const cachedKey=sessionStorage.getItem(SESSION_KEY);if(sessionStorage.getItem(SESSION_UNLOCKED)==='1'&&cachedKey)unlock(cachedKey);
       gateForm.addEventListener('submit',async event=>{event.preventDefault();gateError.textContent='';const key=gatePassword.value;if(await hash(key)===EXPECTED){gatePassword.value='';unlock(key);}else{gateError.textContent='Incorrect access code';gatePassword.select();}});
-      settingsForm.addEventListener('submit',async event=>{event.preventDefault();showErrors([]);if(!settingsForm.reportValidity()){status('Fix the highlighted fields; nothing was saved','bad');return;}setBusy(true);status('Validating complete settings…','wait');try{await postConfig({config:readForm()});}catch(error){status(`Save failed: ${error.message}`,'bad');}finally{setBusy(false);}});
+      settingsForm.addEventListener('submit',async event=>{event.preventDefault();showErrors([]);if(!settingsForm.reportValidity()){status('Fix the highlighted fields; nothing was saved','bad');return;}setBusy(true);status(`Validating complete ${ENV} settings…`,'wait');try{await postConfig({config:readForm()});}catch(error){status(`Save failed: ${error.message}`,'bad');}finally{setBusy(false);}});
       reloadButton.addEventListener('click',loadConfig);
-      defaultsButton.addEventListener('click',async()=>{setBusy(true);showErrors([]);status('Restoring engine defaults…','wait');try{await postConfig({action:'restore_default'});}catch(error){status(`Restore failed: ${error.message}`,'bad');}finally{setBusy(false);}});
+      defaultsButton.addEventListener('click',async()=>{setBusy(true);showErrors([]);status(`Restoring ${ENV} engine defaults…`,'wait');try{await postConfig({action:'restore_default'});}catch(error){status(`Restore failed: ${error.message}`,'bad');}finally{setBusy(false);}});
     })();
   </script>
-  <script src="site-footer.js" defer></script>
+  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
 </body>
 </html>

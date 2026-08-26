@@ -17,7 +17,7 @@ test('detector card renders every enabled source and the selected whole price',(
     ],
     selectedPrice:{id:'source1',position:1,source:'Odds-API.io',status:'PASS',bookmaker:'1xBet',line:-.75,odds:1.82,priceAgeSeconds:14},
   };
-  const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
+  const context={window:{NOMAD_RUNTIME:{engineBase:'https://test.invalid'}},location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
   assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">PASS · 1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
@@ -39,7 +39,7 @@ test('detector card collapses missing legacy source and selected prices to N/A',
     ],
     selectedPrice:null,
   };
-  const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
+  const context={window:{NOMAD_RUNTIME:{engineBase:'https://test.invalid'}},location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
   assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">N\/A<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
@@ -60,7 +60,7 @@ test('Oddspedia SOURCE 5 reports a readable failure instead of silently showing 
     ],
     selectedPrice:null,
   };
-  const context={location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
+  const context={window:{NOMAD_RUNTIME:{engineBase:'https://test.invalid'}},location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
   assert.match(context.__output,/<span class="price-source-name">S5 · Oddspedia<\/span><span class="price-source-value">UNAVAILABLE · source blocked · HTTP 403<\/span>/);
   assert.match(context.__output,/SOURCE 5 · Oddspedia/);

@@ -1,1 +1,32 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#123328"><title>nomadtips3 · Health</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="site-footer.css"></head><body><header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a class="active" href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>SYSTEM HEALTH · MOCK</div></div></header><main class="shell"><section class="hero"><div><p class="eyebrow">DIAGNOSTICS</p><h1>System health</h1><p>Separate source, parser, market and detector health so a single failure does not look like the whole engine is down.</p></div><div class="mode"><span>STATUS</span><strong>READY</strong><small>preview</small></div></section><section class="health-grid"><article class="health-item"><header><b>Primary feed</b><span class="win">● READY</span></header><div class="rows"><div><span>Live matches</span><strong>126</strong></div><div><span>Last fetch</span><strong>3 sec</strong></div><div><span>Failed rows</span><strong>0</strong></div><div><span>Fresh data</span><strong>YES</strong></div></div></article><article class="health-item"><header><b>Live statistics</b><span class="win">● READY</span></header><div class="rows"><div><span>Watching</span><strong>18</strong></div><div><span>Stats available</span><strong>18 / 18</strong></div><div><span>Stale</span><strong>0</strong></div><div><span>Missing</span><strong>0</strong></div></div></article><article class="health-item"><header><b>Market feed</b><span class="win">● READY</span></header><div class="rows"><div><span>Near signal</span><strong>4</strong></div><div><span>Bet365 available</span><strong>4 / 4</strong></div><div><span>Stale odds</span><strong>0</strong></div><div><span>Missing odds</span><strong>0</strong></div></div></article><article class="health-item"><header><b>Detector</b><span class="win">● READY</span></header><div class="rows"><div><span>Evaluated</span><strong>18</strong></div><div><span>Near signal</span><strong>4</strong></div><div><span>Locked</span><strong>1</strong></div><div><span>Error count</span><strong>0</strong></div></div></article></section><section class="panel" style="margin-top:8px"><div class="panel-head"><div><p class="eyebrow">FAIL-SAFE RULES</p><h2>Health contract</h2></div></div><div class="check"><span>Missing statistic is not converted to zero</span><b class="ok">ON</b></div><div class="check"><span>Stale statistics block a signal</span><b class="ok">ON</b></div><div class="check"><span>Stale market price blocks a signal</span><b class="ok">ON</b></div><div class="check"><span>Locked price remains immutable</span><b class="ok">ON</b></div></section><div class="note">This page uses mock health states. It does not poll any live source or touch the current production worker.</div></main><nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a class="active" href="health.html">Health</a></nav><script src="site-footer.js" defer></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>nomadtips3 · Health 3.41</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="site-footer.css">
+  <style>
+    .health-rows{display:grid;gap:6px}.health-rows>div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid rgba(150,158,151,.1)}.health-rows span{color:#98a091}.health-rows strong{overflow-wrap:anywhere;text-align:right}.health-env{font-size:9px;color:#f2d21b;font-weight:900;letter-spacing:.06em}.health-note{color:#98a091;font-size:9px;margin-top:10px}.win{color:#83df89}.loss{color:#ff8b8b}
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a class="active" href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>OWNER DIAGNOSTICS</div></div></header>
+  <main class="shell">
+    <section class="hero"><div><p class="eyebrow">PRIVATE DIAGNOSTICS</p><h1>System health 3.41</h1><p>Read-only diagnostics from the engine selected by this environment.</p></div><div class="mode"><span>STATUS</span><strong id="healthState">CONNECTING</strong><small id="healthEnvironment" class="health-env">—</small></div></section>
+
+    <section class="health-grid">
+      <article class="health-item"><header><b>Engine</b><span id="healthStateLabel">LIVE</span></header><div class="health-rows"><div><span>Cycle</span><strong id="healthCycle">—</strong></div><div><span>Last cycle</span><strong id="healthLastCycle">—</strong></div><div><span>Last success</span><strong id="healthLastSuccess">—</strong></div><div><span>Config version</span><strong id="healthConfig">—</strong></div></div></article>
+      <article class="health-item"><header><b>Runtime</b><span>READ ONLY</span></header><div class="health-rows"><div><span>Live matches</span><strong id="healthMatches">—</strong></div><div><span>Signals</span><strong id="healthSignals">—</strong></div><div><span>Last error</span><strong id="healthError">—</strong></div></div></article>
+      <article class="health-item"><header><b>Sources</b><span>ENGINE REPORT</span></header><div class="health-rows" id="sourceHealth"><div><span>Sources</span><strong>Connecting…</strong></div></div></article>
+    </section>
+    <div class="health-note" id="healthNote">Connecting to engine…</div>
+  </main>
+  <nav class="mobile-nav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a class="active" href="health.html">Health</a></nav>
+  <script src="runtime-config.js?v=20260825-service-binding-v1"></script>
+  <script src="health-live.js?v=20260825-health-v2" defer></script>
+  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
+</body>
+</html>

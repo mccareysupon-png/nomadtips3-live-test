@@ -65,10 +65,17 @@ export function editableConfig(config=DEFAULT_CONFIG){
   return Object.fromEntries(EDITABLE_KEYS.map(key=>[key,clone(config[key])]));
 }
 
+function numericScalar(value){
+  if(value===null||value===undefined||typeof value==='boolean'||typeof value==='object') return null;
+  if(typeof value==='string'&&!value.trim()) return null;
+  const parsed=Number(value);
+  return Number.isFinite(parsed)?parsed:null;
+}
+
 function validateNumber(errors,config,input,key,rules=NUMBER_RULES[key]){
   const [min,max,integer]=rules;
-  const value=Number(input[key]);
-  if(!Number.isFinite(value)||value<min||value>max||(integer&&!Number.isInteger(value))){
+  const value=numericScalar(input[key]);
+  if(value==null||value<min||value>max||(integer&&!Number.isInteger(value))){
     errors.push(`${key} must be ${integer?'a whole number':'a number'} from ${min} to ${max}`);
     return;
   }
@@ -104,8 +111,8 @@ export function validateEditableConfig(input={},options={}){
   }
   if('allowedSelectionLines' in input){
     const raw=Array.isArray(input.allowedSelectionLines)?input.allowedSelectionLines:String(input.allowedSelectionLines??'').split(',').map(value=>value.trim()).filter(Boolean);
-    const parsed=raw.map(Number);
-    if(parsed.some(value=>!Number.isFinite(value)||value < -10||value > 10||!quarterGoal(value))){
+    const parsed=raw.map(numericScalar);
+    if(parsed.some(value=>value==null||value < -10||value > 10||!quarterGoal(value))){
       errors.push('allowedSelectionLines must contain only quarter-goal HOME lines from -10 to +10');
     }else config.allowedSelectionLines=[...new Set(parsed)].sort((a,b)=>a-b);
   }
