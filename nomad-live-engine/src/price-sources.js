@@ -12,10 +12,28 @@ export const PRICE_SOURCE_REGISTRY=Object.freeze([
   Object.freeze({id:'source4',position:4,source:'TotalCorner'}),
 ]);
 
+// Only independently verified, direct bookmaker brands can vote in the 3.41 consensus.
+// Other sockets remain wired for observation/diagnostics but cannot select or lock a signal price.
+export const JUDGE_BOOKMAKERS=Object.freeze([
+  'Bet365',
+  'Macauslot',
+  'Ladbrokes',
+  'SNAI',
+  'William Hill',
+  'Interwetten',
+  '10BET',
+  '12Bet',
+  '18Bet',
+  'HK Jockey Club',
+  'Pinnacle',
+]);
+const JUDGE_BOOKMAKER_SET=new Set(JUDGE_BOOKMAKERS);
+
 const FRESHNESS_NEAR_MS=5000;
 const freshnessComparable=item=>item?.id!=='source5'||item?.market?.source==='Nowgoal';
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const nowgoalDefinitionBySource=new Map(NOWGOAL_BOOKMAKERS.map(item=>[item.sourceId,item]));
+const bookmakerJudgeEligible=(bookmaker,id)=>Boolean(bookmaker&&JUDGE_BOOKMAKER_SET.has(bookmaker)&&id!=='source25');
 
 function displayStatus(market,assessment){
   if(assessment.passed) return 'PASS';
@@ -54,11 +72,13 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
     const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
+    const bookmaker=market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null;
     return {
       ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
-      bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null,line:assessment.line??market?.line??null,
+      bookmaker,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
+      judgeEligible:bookmakerJudgeEligible(bookmaker,definition.id),
       assessment,market,
     };
   });
@@ -90,7 +110,7 @@ function median(values=[]){
 function consensusEligible(item){
   // Pinnacle has one authoritative vote only: SOURCE 26 via TotalCorner.
   // The duplicate Nowgoal Pinnacle socket (SOURCE 25) remains wired for compatibility/display diagnostics but cannot vote.
-  if(item?.id==='source25') return false;
+  if(item?.id==='source25'||item?.judgeEligible!==true) return false;
   const nowgoalJudge=item?.market?.source==='Nowgoal';
   const totalCornerPinnacle=item?.id==='source26'&&item?.bookmaker==='Pinnacle'&&/TotalCorner/i.test(String(item?.market?.source||''));
   if((!nowgoalJudge&&!totalCornerPinnacle)||item?.market?.status!=='AH READY') return false;
@@ -138,11 +158,11 @@ export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
   // SOURCE 25 Pinnacle via Nowgoal is retained but cannot duplicate Pinnacle's vote.
   const nonVoterIds=new Set([fallbackId,'source25']);
   const primary=sources.filter(item=>!nonVoterIds.has(item.id));
-  // Main judge pool: all eligible Nowgoal bookmakers plus Pinnacle from TotalCorner (SOURCE 26).
+  // Main judge pool: only approved direct bookmakers plus Pinnacle from TotalCorner (SOURCE 26).
   const judgeSelected=selectNowgoalConsensus(primary);
   if(judgeSelected) return judgeSelected;
-  // Existing non-Nowgoal records remain secondary supplements; SOURCE 26 is judged only inside the consensus pool above.
-  const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'&&item.id!=='source26'));
+  // Existing non-Nowgoal records remain secondary supplements, but only if their bookmaker also passes the judge gate.
+  const legacySelected=selectPriceSource(primary.filter(item=>item?.judgeEligible===true&&item?.market?.source!=='Nowgoal'&&item.id!=='source26'));
   if(legacySelected) return legacySelected;
   return null;
 }
