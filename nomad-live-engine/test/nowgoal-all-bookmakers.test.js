@@ -5,7 +5,7 @@ import {
   NOWGOAL_BOOKMAKERS,fetchNowgoal1xBetMarkets,normalizeNowgoalBookmakerAhRow,
 } from '../src/nowgoal.js';
 import {
-  PRICE_SOURCE_REGISTRY,buildPriceSourceSnapshots,selectNowgoalConsensus,selectPriceSourceWithFallback,
+  JUDGE_BOOKMAKERS,PRICE_SOURCE_REGISTRY,buildPriceSourceSnapshots,selectNowgoalConsensus,selectPriceSourceWithFallback,
 } from '../src/price-sources.js';
 
 const observedAt=Date.parse('2026-08-23T14:30:00Z');
@@ -21,6 +21,12 @@ test('gate 1: Nowgoal exposes all 20 verified bookmaker identities with unique c
   assert.deepEqual(NOWGOAL_BOOKMAKERS.slice(0,3).map(item=>[item.sourceId,item.companyId,item.bookmaker]),[
     ['source5','50','1xBet'],['source6','8','Bet365'],['source7','17','M88'],
   ]);
+  for(const bookmaker of ['1xBet','M88','Crown','Easybets','Vcbet','Sbobet','Wewbet','BWin','188BET']){
+    assert.equal(JUDGE_BOOKMAKERS.includes(bookmaker),false,`${bookmaker} must remain observer-only`);
+  }
+  for(const bookmaker of ['Bet365','Macauslot','Ladbrokes','SNAI','William Hill','Interwetten','10BET','12Bet','18Bet','HK Jockey Club','Pinnacle']){
+    assert.equal(JUDGE_BOOKMAKERS.includes(bookmaker),true,`${bookmaker} must be an approved judge`);
+  }
 });
 
 test('gate 2: retired SOURCE 8 stays absent while legacy and TotalCorner sockets remain registered',()=>{
@@ -92,7 +98,7 @@ test('gate 5: one Nowgoal session reads all extra change feeds without requiring
   assert.ok(calls.slice(1).every(call=>call.cookie.includes('ngsid=all-books')));
 });
 
-test('gate 6: failure of extra Nowgoal feeds cannot block the proven 1xBet core socket',async()=>{
+test('gate 6: failure of extra Nowgoal feeds cannot block the proven 1xBet observer socket',async()=>{
   const roster=`var A=Array(2); A[1]=[3003850,2,384,27,'Home FC','Away FC','2026-08-23 13:00:00','2026-08-23 14:29:00',3,0,0,0,0];`;
   const oneX=`<c><match><m>3003850,17348417,0.5,0.80,1.05,155043777,1.63,4.41,5.28</m></match></c>`;
   const fetchImpl=async url=>{
@@ -109,51 +115,56 @@ test('gate 6: failure of extra Nowgoal feeds cannot block the proven 1xBet core 
   assert.equal(result.results[0].market.nowgoalPeers.source19.status,'AH UNAVAILABLE');
 });
 
-test('gate 7: price snapshots expose every Nowgoal bookmaker while preserving verified-bookmaker fail closed',()=>{
+test('gate 7: snapshots expose every Nowgoal bookmaker but mark only approved independent judges as voters',()=>{
   const source5=ready('Nowgoal','1xBet',-.5,1.82);
-  source5.nowgoalPeers={source6:ready('Nowgoal','Bet365',-.5,1.84),source19:ready('Nowgoal','Sbobet',-.5,1.83),source24:ready('Nowgoal','188BET',-.5,1.85),source25:ready('Nowgoal','Pinnacle',-.5,1.81)};
+  source5.nowgoalPeers={source6:ready('Nowgoal','Bet365',-.5,1.84),source13:ready('Nowgoal','William Hill',-.5,1.83),source19:ready('Nowgoal','Sbobet',-.5,1.83),source24:ready('Nowgoal','188BET',-.5,1.85),source25:ready('Nowgoal','Pinnacle',-.5,1.81)};
   const anonymous=ready('API-Football','API-Football (bookmaker not supplied)',-.5,2.20,observedAt);
   anonymous.bookmakerVerified=false;
   const snapshots=buildPriceSourceSnapshots(new Map([['source3',anonymous],['source5',source5]]),DEFAULT_CONFIG,observedAt);
   assert.equal(snapshots.filter(item=>item.source==='Nowgoal').length,20);
-  assert.equal(snapshots.find(item=>item.id==='source19').bookmaker,'Sbobet');
-  assert.equal(snapshots.find(item=>item.id==='source24').bookmaker,'188BET');
-  assert.equal(snapshots.find(item=>item.id==='source25').bookmaker,'Pinnacle');
+  assert.equal(snapshots.find(item=>item.id==='source5').judgeEligible,false);
+  assert.equal(snapshots.find(item=>item.id==='source6').judgeEligible,true);
+  assert.equal(snapshots.find(item=>item.id==='source13').judgeEligible,true);
+  assert.equal(snapshots.find(item=>item.id==='source19').judgeEligible,false);
+  assert.equal(snapshots.find(item=>item.id==='source24').judgeEligible,false);
+  assert.equal(snapshots.find(item=>item.id==='source25').judgeEligible,false);
   assert.equal(snapshots.find(item=>item.id==='source3').status,'FAIL');
   assert.equal(snapshots.find(item=>item.id==='source3').reason,'bookmaker_not_supplied');
 });
 
-test('gate 8: Nowgoal consensus selects the modal HOME AH line and a real quote nearest median odds',()=>{
+test('gate 8: consensus ignores observer-only 1xBet/M88/Sbobet and uses approved judges only',()=>{
   const markets=new Map([
-    ['source5',ready('Nowgoal','1xBet',-.5,1.80,observedAt-4_000)],
+    ['source5',ready('Nowgoal','1xBet',-.5,2.20,observedAt-500)],
     ['source6',ready('Nowgoal','Bet365',-.5,1.86,observedAt-3_000)],
-    ['source7',ready('Nowgoal','M88',-.5,1.84,observedAt-2_000)],
-    ['source19',ready('Nowgoal','Sbobet',-.75,1.95,observedAt-1_000)],
-    ['source18',ready('Nowgoal','12Bet',-.75,1.92,observedAt-1_000)],
+    ['source7',ready('Nowgoal','M88',-.5,2.30,observedAt-400)],
+    ['source13',ready('Nowgoal','William Hill',-.5,1.84,observedAt-2_000)],
+    ['source16',ready('Nowgoal','Interwetten',-.5,1.82,observedAt-1_000)],
+    ['source19',ready('Nowgoal','Sbobet',-.75,1.95,observedAt-100)],
   ]);
   const snapshots=buildPriceSourceSnapshots(markets,DEFAULT_CONFIG,observedAt);
   const selected=selectNowgoalConsensus(snapshots);
   assert.equal(selected.consensusLine,-.5);
   assert.equal(selected.consensusCount,3);
   assert.equal(selected.consensusMedianOdds,1.84);
-  assert.equal(selected.bookmaker,'M88');
+  assert.equal(selected.bookmaker,'William Hill');
   assert.equal(selected.odds,1.84);
+  assert.deepEqual([...selected.consensusBookmakers].sort(),['Bet365','William Hill','Interwetten'].sort());
 });
 
-test('gate 9: stale or disallowed-line quotes cannot vote in Nowgoal consensus',()=>{
+test('gate 9: observer quotes cannot create a decision when all approved judges fail the market gates',()=>{
   const config={...DEFAULT_CONFIG,allowedLinesMode:'SELECTED',allowedSelectionLines:[-.5],maximumPriceAgeSeconds:90};
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source5',ready('Nowgoal','1xBet',-.5,1.82,observedAt-5_000)],
+    ['source7',ready('Nowgoal','M88',-.5,1.84,observedAt-5_000)],
+    ['source19',ready('Nowgoal','Sbobet',-.5,1.83,observedAt-5_000)],
     ['source6',ready('Nowgoal','Bet365',-.75,1.90,observedAt-5_000)],
-    ['source7',ready('Nowgoal','M88',-.5,1.84,observedAt-100_000)],
+    ['source13',ready('Nowgoal','William Hill',-.5,1.88,observedAt-100_000)],
   ]),config,observedAt);
-  const selected=selectNowgoalConsensus(snapshots);
-  assert.equal(selected.consensusLine,-.5);
-  assert.equal(selected.consensusCount,1);
-  assert.equal(selected.bookmaker,'1xBet');
+  assert.equal(selectNowgoalConsensus(snapshots),null);
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
 });
 
-test('gate 10: TotalCorner Pinnacle joins the main judge pool while duplicate Pinnacle and TotalCorner Bet365 cannot vote',()=>{
+test('gate 10: TotalCorner Pinnacle and Bet365 vote; 1xBet and duplicate Nowgoal Pinnacle cannot vote',()=>{
   const source5=ready('Nowgoal','1xBet',-.5,1.80,observedAt-4_000);
   source5.nowgoalPeers={
     source6:ready('Nowgoal','Bet365',-.5,1.84,observedAt-3_000),
@@ -170,8 +181,8 @@ test('gate 10: TotalCorner Pinnacle joins the main judge pool while duplicate Pi
   assert.equal(selected.id,'source26');
   assert.equal(selected.bookmaker,'Pinnacle');
   assert.equal(selected.consensusLine,-.5);
-  assert.equal(selected.consensusCount,3);
-  assert.deepEqual([...selected.consensusBookmakers].sort(),['1xBet','Bet365','Pinnacle'].sort());
+  assert.equal(selected.consensusCount,2);
+  assert.deepEqual([...selected.consensusBookmakers].sort(),['Bet365','Pinnacle'].sort());
 
   snapshots=buildPriceSourceSnapshots(new Map([
     ['source4',totalCornerBet365],
