@@ -34,23 +34,29 @@ jobs:
             echo
             echo "===== $label ====="
             rm -f /tmp/h /tmp/b
+            sep='?'
+            case "$url" in *\?*) sep='&' ;; esac
             curl -sS -L --max-time 20 \
               -D /tmp/h -o /tmp/b \
               -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\nREMOTE_IP=%{remote_ip}\nCONTENT_TYPE=%{content_type}\n' \
-              "${url}?diag=$(date +%s%N)" || true
+              "${url}${sep}diag=$(date +%s%N)" || true
             echo '--- HEADERS ---'
             sed -n '1,80p' /tmp/h 2>/dev/null || true
             echo '--- MARKERS ---'
-            grep -Eio '<title>[^<]*|NOMAD LIVE 3\.41|Live Asian Handicap scanner|Live soccer analysis|LOCKED SIGNALS|cloudflare|github' /tmp/b 2>/dev/null | head -30 || true
+            grep -Eio '<title>[^<]*|NOMAD LIVE 3\.41|Live Asian Handicap scanner|Live soccer analysis|LOCKED SIGNALS|nomadtips3-live-web-production|"version":"3\.41"|signalStatus|LOCKED|cloudflare|github' /tmp/b 2>/dev/null | head -40 || true
             echo '--- BODY HEAD ---'
-            head -c 1200 /tmp/b 2>/dev/null || true
+            head -c 1600 /tmp/b 2>/dev/null || true
             echo
             echo '--- BYTES ---'
             wc -c /tmp/b 2>/dev/null || true
           }
 
+          probe 'CUSTOM RELEASE' 'https://www.nomadtips3.com/__nomad_release'
           probe 'CUSTOM HOME' 'https://www.nomadtips3.com/'
+          probe 'CUSTOM SIGNAL FILTER' 'https://www.nomadtips3.com/live-filter-lock.js?v=20260826-signal-lock-v3'
           probe 'CUSTOM STATS' 'https://www.nomadtips3.com/statistics.html'
+          probe 'CUSTOM HEALTH' 'https://www.nomadtips3.com/api/health'
+          probe 'CUSTOM FEED' 'https://www.nomadtips3.com/api/feed'
           probe 'GITHUB PAGES HOME' 'https://mccareysupon-png.github.io/nomadtips3-live-test/'
           probe 'GITHUB PAGES STATS' 'https://mccareysupon-png.github.io/nomadtips3-live-test/statistics.html'
           probe 'PRODUCTION ENGINE HEALTH' 'https://nomadtips3-live-engine.mccarey-supon.workers.dev/health'
