@@ -65,20 +65,29 @@ export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date
     .filter(definition=>!(definition.id==='source5'&&marketsBySource.get(definition.id)?.reason==='source_removed'))
     .map(definition=>{
     const market=peerMarket(definition,marketsBySource);
+    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
+    const bookmaker=market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null;
+    const judgeEligible=bookmakerJudgeEligible(bookmaker,definition.id);
+    const observerReady=Boolean(market?.status==='AH READY'&&!judgeEligible);
+    // INDEX currently falls back to raw SOURCE 1 when no selectedPrice exists. Fail that legacy path closed
+    // so a healthy observer-only 1xBet quote can never become the decision market by accident.
+    if(definition.id==='source1'&&observerReady){
+      market.status='AH UNAVAILABLE';
+      market.reason='observer_only_bookmaker';
+    }
     const assessed=assessHomeMarket(market,config,observedAt);
     // Fail closed whenever the provider cannot identify the bookmaker behind its AH price.
     const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
     const assessment=requiresVerifiedBookmaker
       ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
       :assessed;
-    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
-    const bookmaker=market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null;
+    const status=!judgeEligible&&(assessment.passed||observerReady)?'OBSERVER':displayStatus(market,assessment);
     return {
-      ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
+      ...definition,enabled:true,status,reason:assessment.reason||market?.reason||null,
       bookmaker,line:assessment.line??market?.line??null,
       odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
       sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
-      judgeEligible:bookmakerJudgeEligible(bookmaker,definition.id),
+      judgeEligible,
       assessment,market,
     };
   });
