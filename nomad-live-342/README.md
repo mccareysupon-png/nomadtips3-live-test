@@ -1,41 +1,52 @@
-# NOMAD Live 3.42 — Isolated Human Logic Build
+# NOMAD Live 3.42 — M88 Single-Judge Test Build
 
-This directory is a separate 3.42 test project inside the existing GitHub Pages test repository. It does not modify files under `nomad-live/` (3.41).
+This directory is an isolated 3.42 test project inside the existing GitHub Pages test repository. Files under `nomad-live/` (3.41) are not modified.
 
-## Decision flow
+## Current decision flow
 
-`TotalCorner → Event → Candidate → Price Court (7) → Normalize → Freshness → Consensus → เซียน K Final Judge → Signal`
+`TotalCorner → Event → Candidate → M88 Direct Observer → RAW HDP → Decode / Normalize → Freshness → เซียน K Final Judge → Signal / WAIT`
 
-Price Court slots:
-- Pinnacle
-- Bet365
-- Marathonbet
-- M88
-- William Hill
-- 18BET
-- Ladbrokes
+There is no multi-bookmaker quorum or consensus in the current test build. M88 is the only active price-judge module.
 
-## Safety / isolation
+## M88 scout evidence already proven
+
+The Official M88/MSports Live Soccer page was verified in a real browser without login. The scout observed:
+
+- HOME / AWAY team structure
+- live minute and score
+- FT HDP market
+- separate line and two-sided Hong Kong odds
+- live odds changes over multiple refreshes
+- JavaScript-rendered React DOM inside the Official M88/MSports page
+
+Example verified scout snapshot:
+
+`Strommen IF vs Raufoss IL | 1H 16' | 0-0 | HOME RAW HDP 0.5 | HK 0.85 / 1.05`
+
+The scout did not prove the transport layer as XHR versus WebSocket, so the implementation does not invent an endpoint.
+
+## Fail-closed M88 rules
+
+- Preserve RAW HDP and RAW Hong Kong odds before normalization.
+- Convert Hong Kong odds to decimal only for the NOMAD odds gate (`0.85 HK → 1.85 decimal`).
+- `0` is sign-safe and may normalize to HOME AH `0`.
+- An explicitly signed non-zero line may normalize using the visible sign.
+- An unsigned non-zero M88 HDP such as `0.5` is `UNKNOWN` until the HOME/AWAY sign rule is independently proven.
+- `UNKNOWN`, `UNAVAILABLE`, `STALE`, and `MISMATCH` all produce WAIT / no signal.
+- Empty line/odds fields are not labelled SUSPENDED until that state is separately proven.
+
+## Isolation
 
 - Settings key: `nomadSettings342`
-- Ledger key: `nomadLedger342`
-- No 3.41 engine endpoint is referenced.
-- No 3.41 storage key is referenced.
-- No direct bookmaker slot is labelled LIVE unless a future backend adapter actually proves it.
-- Current GitHub Pages build uses deterministic fixtures for human logic inspection.
-- Stale / suspended / missing / mismatched price observations fail closed and are excluded from consensus.
+- Signal ledger key: `nomadLedger342`
+- M88 observation key: `nomadM88Observation342`
+- No 3.41 engine endpoint or storage key is referenced.
+- No credentials are stored in the repository or browser settings namespace.
 
-## Human review targets
+## Current static-preview boundary
 
-1. Event gate passes only within configured conditions.
-2. Candidate opens Price Court only after Event PASS.
-3. Seven bookmaker observations preserve RAW AH notation.
-4. Normalizer converts split lines such as `0/-0.5` to `-0.25`.
-5. Stale or invalid sources are excluded.
-6. Consensus counts only same normalized AH line.
-7. Final Judge emits SIGNAL only when Event PASS and Price Confirmed both pass.
-8. Signal snapshots write only to the 3.42 local ledger.
+`m88-observer.js` is the adapter boundary. It validates source state, preserves RAW evidence, normalizes Hong Kong odds, performs fail-closed HDP decoding, and exposes an observation intake slot.
 
-## Not yet claimed
+The GitHub Pages preview does not itself read the current M88 page. A separate permitted browser capture step can later feed live observations into the adapter without changing the judging pipeline.
 
-The static Pages build does **not** claim live direct bookmaker connectivity. The adapter boundaries are intentionally present as test slots for the next backend phase.
+The Event side is still represented by isolated fixtures in this static preview. The fixtures now calculate rolling-window pressure and trend from raw event snapshots so the Event settings actually affect the decision instead of relying on precomputed pass values.
