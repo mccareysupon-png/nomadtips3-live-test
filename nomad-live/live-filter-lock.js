@@ -35,7 +35,8 @@
     if(selected==='SIGNAL'){
       for(const row of rows){
         const state=String(row.dataset.state||'').toUpperCase();
-        if(state!=='SIGNAL'){row.style.order='';continue;}
+        const locked=String(row.dataset.signalStatus||'').toUpperCase()==='LOCKED';
+        if(state!=='SIGNAL'&&!locked){row.style.order='';continue;}
         const id=String(row.dataset.matchId||row.dataset.search||'');
         if(!signalOrder.has(id))signalOrder.set(id,nextSignalOrder++);
         row.style.order=String(signalOrder.get(id));
@@ -46,7 +47,8 @@
 
     for(const row of rows){
       const state=String(row.dataset.state||'').toUpperCase();
-      const stateOk=selected==='ALL'||(selected==='NEAR'?state==='NEAR SIGNAL':state===selected);
+      const locked=String(row.dataset.signalStatus||'').toUpperCase()==='LOCKED';
+      const stateOk=selected==='ALL'||(selected==='SIGNAL'?(locked||state==='SIGNAL'):selected==='NEAR'?state==='NEAR SIGNAL':state===selected);
       const searchOk=!q||String(row.dataset.search||'').includes(q);
       row.style.display=stateOk&&searchOk?'':'none';
     }
