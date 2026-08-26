@@ -3,14 +3,8 @@
   "name": "nomadtips3-live-web-production",
   "main": "src/index.js",
   "compatibility_date": "2026-08-26",
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
-  "routes": [
-    {
-      "pattern": "www.nomadtips3.com/*",
-      "zone_name": "nomadtips3.com"
-    }
-  ],
   "assets": {
     "directory": "../nomad-live",
     "binding": "ASSETS",
