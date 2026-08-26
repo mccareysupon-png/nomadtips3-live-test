@@ -15,12 +15,12 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  PROD_WORKER_URL: https://nomadtips3-live-web-production.mccarey-supon.workers.dev
+  CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
   CUSTOM_URL: https://www.nomadtips3.com
   BACKUP_URL: https://mccareysupon-png.github.io/nomadtips3-live-test
 
 jobs:
-  validate-preview-cutover:
+  validate-canary-cutover:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -37,13 +37,14 @@ jobs:
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
-          grep -q 'NOMAD LIVE 3.41' nomad-live/index.html
-          grep -q 'Live Asian Handicap scanner' nomad-live/index.html
-          grep -q "'www.nomadtips3.com','nomadtips3.com'" nomad-live/runtime-config.js
-          grep -q 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
-          grep -q '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
-          grep -q '"pattern": "www.nomadtips3.com/\*"' nomad-live-web-production/wrangler.production.jsonc
-          grep -q '"zone_name": "nomadtips3.com"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq 'NOMAD LIVE 3.41' nomad-live/index.html
+          grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
+          grep -Fq "'www.nomadtips3.com','nomadtips3.com'" nomad-live/runtime-config.js
+          grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
+          grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"pattern": "www.nomadtips3.com/*"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"zone_name": "nomadtips3.com"' nomad-live-web-production/wrangler.production.jsonc
           echo '3.41 production web source validated'
 
       - name: Validate Cloudflare credentials
@@ -51,7 +52,7 @@ jobs:
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
 
-      - name: Dry-run preview and production bundles
+      - name: Dry-run canary and production bundles
         working-directory: nomad-live-web-production
         run: |
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.preview.jsonc
@@ -63,13 +64,13 @@ jobs:
           set +e
           echo "Old web remains preserved at: $BACKUP_URL"
           curl -fsSL --max-time 20 "$BACKUP_URL/?precutover=$(date +%s)" -o /tmp/old-web.html
-          if grep -q 'Live soccer analysis' /tmp/old-web.html 2>/dev/null; then
+          if grep -Fq 'Live soccer analysis' /tmp/old-web.html 2>/dev/null; then
             echo 'Old GitHub Pages web backup confirmed before cutover.'
           else
             echo '::warning::Old GitHub Pages marker was not confirmed; no files will be deleted.'
           fi
 
-      - name: Deploy 3.41 production Worker to workers.dev first
+      - name: Deploy isolated 3.41 production canary
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CF_API_TOKEN }}
@@ -78,29 +79,29 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.preview.jsonc
 
-      - name: Smoke-test production Worker before touching www route
+      - name: Smoke-test canary before touching www route
         shell: bash
         run: |
           set -euo pipefail
           ok=0
           for attempt in $(seq 1 12); do
-            if curl -fsS --max-time 20 "$PROD_WORKER_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json \
-              && grep -q 'nomadtips3-live-web-production' /tmp/release.json \
-              && grep -q '"version":"3.41"' /tmp/release.json; then
+            if curl -fsS --max-time 20 "$CANARY_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json \
+              && grep -Fq 'nomadtips3-live-web-production' /tmp/release.json \
+              && grep -Fq '"version":"3.41"' /tmp/release.json; then
               ok=1
               break
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::Production Worker preview did not become healthy; www route left untouched'; exit 1; }
+          test "$ok" = 1 || { echo '::error::Production canary did not become healthy; www route left untouched'; exit 1; }
 
-          curl -fsS --max-time 20 "$PROD_WORKER_URL/?t=$(date +%s)" -o /tmp/home.html
-          grep -q 'NOMAD LIVE 3.41' /tmp/home.html
-          grep -q 'Live Asian Handicap scanner' /tmp/home.html
+          curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
+          grep -Fq 'NOMAD LIVE 3.41' /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
 
-          curl -fsS --max-time 20 "$PROD_WORKER_URL/api/health?t=$(date +%s)" -o /tmp/engine-health.json
+          curl -fsS --max-time 20 "$CANARY_URL/api/health?t=$(date +%s)" -o /tmp/engine-health.json
           test -s /tmp/engine-health.json
-          echo 'Production Worker + static assets + Production Engine binding passed before cutover.'
+          echo 'Canary + static assets + Production Engine binding passed before cutover.'
 
       - name: Cut over www route to NOMAD Live 3.41
         uses: cloudflare/wrangler-action@v3
@@ -118,8 +119,8 @@ jobs:
           ok=0
           for attempt in $(seq 1 12); do
             if curl -fsS --max-time 20 "$CUSTOM_URL/__nomad_release?t=$(date +%s)" -o /tmp/custom-release.json \
-              && grep -q 'nomadtips3-live-web-production' /tmp/custom-release.json \
-              && grep -q '"version":"3.41"' /tmp/custom-release.json; then
+              && grep -Fq 'nomadtips3-live-web-production' /tmp/custom-release.json \
+              && grep -Fq '"version":"3.41"' /tmp/custom-release.json; then
               ok=1
               break
             fi
@@ -128,11 +129,11 @@ jobs:
           test "$ok" = 1 || { echo '::error::www route did not verify as NOMAD Live 3.41'; exit 1; }
 
           curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
-          grep -q 'NOMAD LIVE 3.41' /tmp/custom-home.html
-          grep -q 'Live Asian Handicap scanner' /tmp/custom-home.html
+          grep -Fq 'NOMAD LIVE 3.41' /tmp/custom-home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
 
           curl -fsS --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
-          grep -q 'Statistics' /tmp/custom-statistics.html
+          grep -Fq 'Statistics' /tmp/custom-statistics.html
 
           curl -fsS --max-time 20 "$CUSTOM_URL/api/health?t=$(date +%s)" -o /tmp/custom-engine-health.json
           test -s /tmp/custom-engine-health.json
