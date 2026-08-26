@@ -69,7 +69,7 @@ jobs:
           printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^workers_dev = false$'
           printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^preview_urls = false$'
           grep -q '^\[env.test.vars\]' nomad-live-engine/wrangler.toml
-          grep -q '^ENGINE_CYCLE_MODE = "on_demand"' nomad-live-engine/wrangler.toml
+          grep -q '^ENGINE_CYCLE_MODE = "continuous"' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.durable_objects.bindings\]\]' nomad-live-engine/wrangler.toml
           grep -q '^\[\[env.test.migrations\]\]' nomad-live-engine/wrangler.toml
           grep -q ":'/api'" nomad-live/runtime-config.js
