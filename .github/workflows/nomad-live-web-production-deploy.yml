@@ -34,17 +34,23 @@ jobs:
         run: |
           set -euo pipefail
           node --check nomad-live-web-production/src/index.js
+          node --check nomad-live/runtime.js
+          node --check nomad-live/live-filter-lock.js
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
           grep -Fq 'NOMAD LIVE 3.41' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
+          grep -Fq 'live-filter-lock.js?v=20260826-signal-lock-v3' nomad-live/index.html
           grep -Fq "'www.nomadtips3.com','nomadtips3.com'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
           grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
-          grep -Fq '"pattern": "www.nomadtips3.com/*"' nomad-live-web-production/wrangler.production.jsonc
-          grep -Fq '"zone_name": "nomadtips3.com"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"workers_dev": false' nomad-live-web-production/wrangler.production.jsonc
+          if grep -Fq '"routes"' nomad-live-web-production/wrangler.production.jsonc; then
+            echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
+            exit 1
+          fi
           echo '3.41 production web source validated'
 
       - name: Validate Cloudflare credentials
@@ -79,7 +85,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.preview.jsonc
 
-      - name: Smoke-test canary before touching www route
+      - name: Smoke-test canary before touching Production Worker
         shell: bash
         run: |
           set -euo pipefail
@@ -93,17 +99,18 @@ jobs:
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::Production canary did not become healthy; www route left untouched'; exit 1; }
+          test "$ok" = 1 || { echo '::error::Production canary did not become healthy; Production Worker left untouched'; exit 1; }
 
           curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
           grep -Fq 'NOMAD LIVE 3.41' /tmp/home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          grep -Fq 'live-filter-lock.js?v=20260826-signal-lock-v3' /tmp/home.html
 
           curl -fsS --max-time 20 "$CANARY_URL/api/health?t=$(date +%s)" -o /tmp/engine-health.json
           test -s /tmp/engine-health.json
-          echo 'Canary + static assets + Production Engine binding passed before cutover.'
+          echo 'Canary + static assets + Production Engine binding passed before Production deploy.'
 
-      - name: Cut over www route to NOMAD Live 3.41
+      - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CF_API_TOKEN }}
@@ -131,6 +138,7 @@ jobs:
           curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
           grep -Fq 'NOMAD LIVE 3.41' /tmp/custom-home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
+          grep -Fq 'live-filter-lock.js?v=20260826-signal-lock-v3' /tmp/custom-home.html
 
           curl -fsS --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
