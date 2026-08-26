@@ -16,7 +16,7 @@ test('SOURCE 4 is TotalCorner and remains last in registry for compatibility',()
   assert.deepEqual(PRICE_SOURCE_REGISTRY.at(-1),{id:'source4',position:4,source:'TotalCorner'});
 });
 
-test('SOURCE 5 is Nowgoal and remains an active primary judge while SOURCE 4 Bet365 cannot vote',()=>{
+test('SOURCE 5 1xBet remains wired as observer while SOURCE 4 Bet365 cannot vote',()=>{
   assert.deepEqual(PRICE_SOURCE_REGISTRY.find(item=>item.id==='source5'),{id:'source5',position:5,source:'Nowgoal'});
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',unavailable('Odds-API.io')],
@@ -25,9 +25,10 @@ test('SOURCE 5 is Nowgoal and remains an active primary judge while SOURCE 4 Bet
     ['source5',ready('Nowgoal','1xBet',-.5,1.90,observedAt-3_000)],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,2.05,observedAt-1_000)],
   ]),DEFAULT_CONFIG,observedAt);
-  const selected=selectPriceSourceWithFallback(snapshots);
-  assert.equal(selected.id,'source5');
-  assert.equal(selected.bookmaker,'1xBet');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
+  const source5=snapshots.find(item=>item.id==='source5');
+  assert.equal(source5.status,'OBSERVER');
+  assert.equal(source5.judgeEligible,false);
 });
 
 test('SOURCE 6 is derived from Nowgoal Bet365 peer and can decide while SOURCE 4 Bet365 stays non-voting',()=>{
@@ -46,10 +47,11 @@ test('SOURCE 6 is derived from Nowgoal Bet365 peer and can decide while SOURCE 4
   const source6=snapshots.find(item=>item.id==='source6');
   assert.equal(source6.status,'PASS');
   assert.equal(source6.bookmaker,'Bet365');
+  assert.equal(source6.judgeEligible,true);
   assert.equal(selectPriceSourceWithFallback(snapshots).id,'source6');
 });
 
-test('Oddspedia page-fetch timestamp alone cannot outrank a verified primary price on a different AH line',()=>{
+test('observer-only 1xBet cannot outrank an eligible Oddspedia Bet365 market on another AH line',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-20_000)],
     ['source2',unavailable('The Odds API')],
@@ -57,10 +59,13 @@ test('Oddspedia page-fetch timestamp alone cannot outrank a verified primary pri
     ['source5',ready('Oddspedia','Bet365',-.75,2.10,observedAt-500)],
     ['source4',unavailable('TotalCorner')],
   ]),DEFAULT_CONFIG,observedAt);
-  assert.equal(selectPriceSourceWithFallback(snapshots).id,'source1');
+  const selected=selectPriceSourceWithFallback(snapshots);
+  assert.equal(selected.id,'source5');
+  assert.equal(selected.bookmaker,'Bet365');
+  assert.equal(snapshots.find(item=>item.id==='source1').status,'OBSERVER');
 });
 
-test('Oddspedia can win as a peer when it has better HOME odds on the same AH line',()=>{
+test('Oddspedia Bet365 can win as an eligible peer on the same AH line',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-20_000)],
     ['source2',unavailable('The Odds API')],
@@ -97,7 +102,7 @@ test('API-Football without bookmaker identity still fails closed and SOURCE 4 Be
   assert.equal(selectPriceSourceWithFallback(snapshots),null);
 });
 
-test('a valid legacy source remains usable when SOURCE 4 Bet365 is fresher and pays more',()=>{
+test('observer-only legacy 1xBet cannot be rescued by non-voting SOURCE 4 Bet365',()=>{
   const snapshots=buildPriceSourceSnapshots(new Map([
     ['source1',ready('Odds-API.io','1xBet',-.5,1.80,observedAt-18_000)],
     ['source2',unavailable('The Odds API')],
@@ -105,9 +110,11 @@ test('a valid legacy source remains usable when SOURCE 4 Bet365 is fresher and p
     ['source5',unavailable('Nowgoal')],
     ['source4',ready('Bet365 via TotalCorner','Bet365',-.5,2.05,observedAt-1_000)],
   ]),DEFAULT_CONFIG,observedAt);
-  const selected=selectPriceSourceWithFallback(snapshots);
-  assert.equal(selected.id,'source1');
-  assert.equal(selected.bookmaker,'1xBet');
+  assert.equal(selectPriceSourceWithFallback(snapshots),null);
+  const source1=snapshots.find(item=>item.id==='source1');
+  assert.equal(source1.status,'OBSERVER');
+  assert.equal(source1.market.status,'AH UNAVAILABLE');
+  assert.equal(source1.market.reason,'observer_only_bookmaker');
 });
 
 test('invalid TotalCorner carrier never creates a selected price',()=>{
