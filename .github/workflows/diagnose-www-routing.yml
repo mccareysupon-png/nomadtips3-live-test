@@ -1,0 +1,56 @@
+name: Diagnose NOMAD www Routing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-www-routing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect DNS and HTTP routing
+        shell: bash
+        run: |
+          set +e
+          echo '=== DNS A ==='
+          dig +short www.nomadtips3.com A || true
+          echo '=== DNS AAAA ==='
+          dig +short www.nomadtips3.com AAAA || true
+          echo '=== DNS CNAME ==='
+          dig +short www.nomadtips3.com CNAME || true
+          echo '=== HOST ==='
+          host www.nomadtips3.com || true
+
+          probe() {
+            label="$1"
+            url="$2"
+            echo
+            echo "===== $label ====="
+            rm -f /tmp/h /tmp/b
+            curl -sS -L --max-time 20 \
+              -D /tmp/h -o /tmp/b \
+              -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\nREMOTE_IP=%{remote_ip}\nCONTENT_TYPE=%{content_type}\n' \
+              "${url}?diag=$(date +%s%N)" || true
+            echo '--- HEADERS ---'
+            sed -n '1,80p' /tmp/h 2>/dev/null || true
+            echo '--- MARKERS ---'
+            grep -Eio '<title>[^<]*|NOMAD LIVE 3\.41|Live Asian Handicap scanner|Live soccer analysis|LOCKED SIGNALS|cloudflare|github' /tmp/b 2>/dev/null | head -30 || true
+            echo '--- BODY HEAD ---'
+            head -c 1200 /tmp/b 2>/dev/null || true
+            echo
+            echo '--- BYTES ---'
+            wc -c /tmp/b 2>/dev/null || true
+          }
+
+          probe 'CUSTOM HOME' 'https://www.nomadtips3.com/'
+          probe 'CUSTOM STATS' 'https://www.nomadtips3.com/statistics.html'
+          probe 'GITHUB PAGES HOME' 'https://mccareysupon-png.github.io/nomadtips3-live-test/'
+          probe 'GITHUB PAGES STATS' 'https://mccareysupon-png.github.io/nomadtips3-live-test/statistics.html'
+          probe 'PRODUCTION ENGINE HEALTH' 'https://nomadtips3-live-engine.mccarey-supon.workers.dev/health'
