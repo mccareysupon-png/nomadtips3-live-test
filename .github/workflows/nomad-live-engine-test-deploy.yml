@@ -14,6 +14,7 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TEST_WEB_URL: https://nomadtips3-live-web-test.mccarey-supon.workers.dev
 
 jobs:
   validate-and-deploy-test:
@@ -42,6 +43,7 @@ jobs:
           TEST_ENV_CONFIG="$(awk '/^\[env.test\]$/{inside=1;next} /^\[/{if(inside) exit} inside{print}' wrangler.toml)"
           printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^workers_dev = false$'
           printf '%s\n' "$TEST_ENV_CONFIG" | grep -q '^preview_urls = false$'
+          grep -q '^ENGINE_CYCLE_MODE = "continuous"$' wrangler.toml
           grep -q '^\[\[env.test.durable_objects.bindings\]\]' wrangler.toml
           grep -q '^\[\[env.test.migrations\]\]' wrangler.toml
 
@@ -102,3 +104,26 @@ jobs:
           put_secret ODDS_API_KEY "$TEST_ODDS_API_KEY"
           put_secret THE_ODDS_API_KEY "$TEST_THE_ODDS_API_KEY"
           put_secret API_FOOTBALL_KEY "$TEST_API_FOOTBALL_KEY"
+
+      - name: Wake TEST engine and verify continuous cycle
+        shell: bash
+        run: |
+          read_cycle() {
+            node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.stdout.write(String(Number.isFinite(Number(j.cycle))?Number(j.cycle):-1));})"
+          }
+          BEFORE_BODY="$(curl -fsS "$TEST_WEB_URL/api/health")"
+          BEFORE_CYCLE="$(printf '%s' "$BEFORE_BODY" | read_cycle)"
+          echo "TEST cycle before continuous wake: $BEFORE_CYCLE"
+          for i in $(seq 1 20); do
+            sleep 3
+            BODY="$(curl -fsS "$TEST_WEB_URL/api/health")"
+            CYCLE="$(printf '%s' "$BODY" | read_cycle)"
+            echo "TEST cycle check $i: $CYCLE"
+            if [ "$CYCLE" -gt "$BEFORE_CYCLE" ]; then
+              printf '%s' "$BODY" | grep -Eq '"lastSuccess":"[^"]+"'
+              echo "TEST continuous cycle verified."
+              exit 0
+            fi
+          done
+          echo "::error::TEST Worker deployed but continuous cycle did not advance"
+          exit 1
