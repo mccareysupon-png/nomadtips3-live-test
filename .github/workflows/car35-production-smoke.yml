@@ -1,4 +1,4 @@
-name: CAR 3.5 Production Smoke
+name: NOMAD Live 3.41 Production Smoke
 
 on:
   push:
@@ -6,11 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'statistics.html'
-      - 'alerts.html'
-      - 'payment.html'
-      - 'owner-control.html'
-      - 'runtime.json'
-      - 'car3-5-live-soccer-analysis/**'
+      - 'nomad-live/**'
       - '.github/workflows/car35-production-smoke.yml'
   schedule:
     - cron: '17 */6 * * *'
@@ -22,134 +18,73 @@ permissions:
 env:
   PAGES_URL: https://mccareysupon-png.github.io/nomadtips3-live-test
   CUSTOM_URL: https://www.nomadtips3.com
-  LIVE_WORKER: https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev
-  MEMBERSHIP_URL: https://nomadtips3-test-api.mccarey-supon.workers.dev
+  LIVE_WORKER: https://nomadtips3-live-engine.mccarey-supon.workers.dev
 
 jobs:
   production-smoke:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
-      - name: Validate production source
+      - name: Validate 3.41 production entry pages
         run: |
-          node --check car3-5-live-soccer-analysis/web/app.js
-          node --check car3-5-live-soccer-analysis/web/statistics-v2.js
-          grep -q 'Live soccer analysis' index.html
-          ! grep -q '>CAR 3.1<' index.html
-          grep -q 'data-range="3Y"' statistics.html
-          grep -q 'Line / handicap' statistics.html
-          grep -q 'Locked odds' statistics.html
-          grep -q 'Entry score' statistics.html
-          grep -q 'statistics-v2.js' statistics.html
-          grep -q 'payment.html' alerts.html
-          grep -q 'Continue to Stripe' payment.html
-          grep -q 'nomadtips3-test-api.mccarey-supon.workers.dev/membership/start' payment.html
-          grep -q 'noindex,nofollow' owner-control.html
-          grep -q 'ราคาต่อรอง Asian Handicap' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q 'บันทึก + สแกนทันที' car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q "const WORKER='https://nomadtips3-car31-goaloo.mccarey-supon.workers.dev'" car3-5-live-soccer-analysis/web/owner-control.html
-          grep -q "'x-owner-key':key" car3-5-live-soccer-analysis/web/owner-control.html
+          set -euo pipefail
+          grep -Fq 'NOMAD LIVE 3.41' index.html
+          grep -Fq 'Live Asian Handicap scanner' index.html
+          grep -Fq '<base href="./nomad-live/">' index.html
+          grep -Fq '<base href="./nomad-live/">' statistics.html
+          grep -Fq 'LOCKED SIGNALS' statistics.html
+          grep -Fq "'www.nomadtips3.com','nomadtips3.com'" nomad-live/runtime-config.js
+          grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          test -f legacy-car35/index.html
+          test -f legacy-car35/statistics.html
+          echo 'Production entry pages point to NOMAD Live 3.41; CAR 3.5 entry pages are archived.'
 
-      - name: Verify backend readiness and long-term history
+      - name: Verify NOMAD Live production engine
         run: |
-          curl -fsS "$LIVE_WORKER/health" -o /tmp/live-health.json
-          curl -fsS "$LIVE_WORKER/history?page=1&limit=3&range=3Y" -o /tmp/history-3y.json
-          curl -fsS "$MEMBERSHIP_URL/membership/health" -o /tmp/membership-health.json
+          curl -fsS "$LIVE_WORKER/health?t=$(date +%s)" -o /tmp/live-health.json
           python - <<'PY'
           import json
-          live=json.load(open('/tmp/live-health.json', encoding='utf-8'))
-          history=json.load(open('/tmp/history-3y.json', encoding='utf-8'))
-          membership=json.load(open('/tmp/membership-health.json', encoding='utf-8'))
-          assert isinstance(live, dict), 'live health is invalid'
-          assert live.get('settlementContract')=='BET365_V4', 'settlement contract mismatch'
-          assert live.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', 'long-term archive health marker missing'
-          assert history.get('ok') is True, '3Y history API not OK'
-          assert history.get('range')=='3Y', '3Y history range not applied'
-          assert history.get('historyStorage')=='SQLITE_HISTORY_ARCHIVE_V1', '3Y history is not reading SQLite archive'
-          assert isinstance((history.get('summary') or {}).get('trend'), list), 'history trend missing'
-          assert isinstance(history.get('records'), list), 'history records missing'
-          assert membership.get('ok') is True, 'membership service not ready'
-          for key in ('stripeWebhookConfigured','lineConfigured','lineAddFriendConfigured','paymentLinkConfigured'):
-              assert membership.get(key) is True, f'{key} is not ready'
-          print('Backends + long-term history ready')
+          data=json.load(open('/tmp/live-health.json', encoding='utf-8'))
+          assert isinstance(data, dict), 'health response is not an object'
+          print('NOMAD Live production engine reachable')
           PY
 
-      - name: Verify owner control host compatibility
+      - name: Wait for GitHub Pages 3.41 publication
+        shell: bash
         run: |
-          curl -fsS "$LIVE_WORKER/config?t=$(date +%s)" -o /tmp/owner-config.json
-          python - <<'PY'
-          import json
-          d=json.load(open('/tmp/owner-config.json', encoding='utf-8'))
-          assert d.get('ok') is True, 'GET /config is not ready'
-          assert isinstance(d.get('config'), dict), 'owner config payload missing'
-          print('Owner GET /config ready')
-          PY
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 18); do
+            home=$(curl -fsSL --max-time 20 "$PAGES_URL/?release=$(date +%s)" || true)
+            stats=$(curl -fsSL --max-time 20 "$PAGES_URL/statistics.html?release=$(date +%s)" || true)
+            if printf '%s' "$home" | grep -Fq 'NOMAD LIVE 3.41' \
+              && printf '%s' "$home" | grep -Fq 'Live Asian Handicap scanner' \
+              && printf '%s' "$stats" | grep -Fq 'LOCKED SIGNALS'; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { echo '::error::GitHub Pages did not publish the NOMAD Live 3.41 entry pages'; exit 1; }
+          echo 'GitHub Pages NOMAD Live 3.41 publication verified.'
 
-          curl -sS -D /tmp/owner-options.headers -o /dev/null -X OPTIONS "$LIVE_WORKER/config" \
-            -H "Origin: $PAGES_URL" \
-            -H 'Access-Control-Request-Method: POST' \
-            -H 'Access-Control-Request-Headers: content-type,x-owner-key'
-          python - <<'PY'
-          h=open('/tmp/owner-options.headers', encoding='utf-8').read().lower()
-          assert ' 204 ' in h.splitlines()[0], 'owner preflight is not HTTP 204'
-          assert 'access-control-allow-origin: *' in h, 'owner CORS origin missing'
-          assert 'access-control-allow-methods:' in h and 'post' in h, 'owner POST CORS method missing'
-          assert 'access-control-allow-headers:' in h and 'x-owner-key' in h, 'x-owner-key CORS header missing'
-          print('Owner CORS preflight ready')
-          PY
-
-          code=$(curl -sS -o /tmp/owner-unauthorized.json -w '%{http_code}' -X POST "$LIVE_WORKER/config" \
-            -H 'content-type: application/json' \
-            --data '{}')
-          test "$code" = "401" || { echo "Owner auth gate expected 401, got $code"; cat /tmp/owner-unauthorized.json; exit 1; }
-          grep -q 'OWNER_AUTH_REQUIRED' /tmp/owner-unauthorized.json
-          echo 'Owner write route protected and reachable'
-
-      - name: Wait for GitHub Pages production
+      - name: Verify custom domain serves 3.41
+        shell: bash
         run: |
-          node --input-type=module <<'NODE'
-          const base=process.env.PAGES_URL;
-          const checks=[
-            ['live','/',['Live soccer analysis','nomadtips3']],
-            ['statistics','/statistics.html',['Statistics','data-range="3Y"','Line / handicap','Locked odds','Entry score','statistics-v2.js']],
-            ['statistics renderer','/car3-5-live-soccer-analysis/web/statistics-v2.js',['range=${encodeURIComponent(historyRange)}','stroke-width="1.55"','settlementResult']],
-            ['alerts','/alerts.html',['Live alerts','Continue to payment']],
-            ['payment','/payment.html',['Continue to Stripe','NOMADTIPS3 LINE Alerts']],
-            ['owner entry','/owner-control.html',['noindex,nofollow','car3-5-live-soccer-analysis/web/owner-control.html']],
-            ['owner controls','/car3-5-live-soccer-analysis/web/owner-control.html',['ราคาต่อรอง Asian Handicap','บันทึก + สแกนทันที','x-owner-key']]
-          ];
-          for(let round=1;round<=30;round++){
-            let complete=true;
-            for(const [name,path,needles] of checks){
-              try{
-                const r=await fetch(`${base}${path}?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
-                const text=await r.text();
-                const ok=r.ok&&needles.every(n=>text.includes(n));
-                console.log(`round ${round} ${name}: ${r.status} ${ok?'OK':'OLD/NOT READY'}`);
-                if(!ok){complete=false;break;}
-              }catch(e){console.log(`round ${round} ${name}: ${e.message}`);complete=false;break;}
-            }
-            if(complete){console.log(`GitHub Pages production OK: ${base}`);process.exit(0);}
-            await new Promise(r=>setTimeout(r,10000));
-          }
-          throw new Error('GitHub Pages did not publish the complete CAR 3.5 release in time');
-          NODE
-
-      - name: Check custom domain when reachable
-        run: |
-          node --input-type=module <<'NODE'
-          const base=process.env.CUSTOM_URL;
-          try{
-            const r=await fetch(`${base}/statistics.html?release=${Date.now()}`,{redirect:'follow',headers:{'cache-control':'no-cache'}});
-            const text=await r.text();
-            if(r.ok&&text.includes('data-range="3Y"')&&text.includes('Locked odds')){
-              console.log(`Custom domain CAR 3.5 Statistics OK: ${base}`);
-            } else {
-              console.log(`::warning::Custom domain reachable but CAR 3.5 Statistics marker not present yet (HTTP ${r.status})`);
-            }
-          }catch(e){
-            console.log(`::warning::Custom domain could not be verified from runner: ${e.message}`);
-          }
-          NODE
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 18); do
+            home=$(curl -fsSL --max-time 20 "$CUSTOM_URL/?release=$(date +%s)" || true)
+            stats=$(curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?release=$(date +%s)" || true)
+            if printf '%s' "$home" | grep -Fq 'NOMAD LIVE 3.41' \
+              && printf '%s' "$home" | grep -Fq 'Live Asian Handicap scanner' \
+              && printf '%s' "$stats" | grep -Fq 'LOCKED SIGNALS'; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { echo '::error::www.nomadtips3.com is not serving NOMAD Live 3.41'; exit 1; }
+          echo 'www.nomadtips3.com NOMAD Live 3.41 verified.'
