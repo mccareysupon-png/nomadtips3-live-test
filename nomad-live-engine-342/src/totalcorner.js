@@ -99,19 +99,18 @@ function parseCorner(c,score){
 }
 
 function parseAttackDangerous(c){
-  const groups=[];
+  const pairs=[];
   for(const x of c){
     if(/\(/.test(x)) continue;
     const ps=[...String(x).matchAll(/(\d+)\s*[-–]\s*(\d+)/g)]
       .map(m=>[Number(m[1]),Number(m[2])])
       .filter(p=>p[0]<=500&&p[1]<=500);
-    if(ps.length) groups.push(ps);
+    pairs.push(...ps);
   }
-  if(!groups.length) return {attacks:null,dangerous:null};
-  const last=groups[groups.length-1];
+  if(!pairs.length) return {attacks:null,dangerous:null};
   return {
-    attacks:last.length>=2?last[last.length-2]:null,
-    dangerous:last[last.length-1]||null,
+    attacks:pairs.length>=2?pairs[pairs.length-2]:null,
+    dangerous:pairs[pairs.length-1]||null,
   };
 }
 
