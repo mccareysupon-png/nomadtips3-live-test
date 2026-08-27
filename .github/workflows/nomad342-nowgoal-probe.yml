@@ -91,7 +91,19 @@ jobs:
             integration:j.integration,
             company:j.company,
             summary:j.summary,
-            results:(j.results||[]).map(x=>({host:x.host,ok:x.ok,status:x.status,bytes:x.bytes,error:x.error||null,m88Found:x.m88?.found,m88Name:x.m88?.companyNamePresent,first:x.m88?.rows?.first?.values||null,live:x.m88?.rows?.live?.values||null,run:x.m88?.rows?.run?.values||null}))
+            results:(j.results||[]).map(x=>({
+              host:x.host,
+              ok:x.ok,
+              status:x.status,
+              bytes:x.bytes,
+              error:x.error||null,
+              m88Found:x.m88?.found,
+              m88Name:x.m88?.companyNamePresent,
+              first:x.m88?.rows?.first?.values||null,
+              live:x.m88?.rows?.live?.values||null,
+              run:x.m88?.rows?.run?.values||null,
+              diagnostics:x.diagnostics||null
+            }))
           },null,2));
           NODE
           done
