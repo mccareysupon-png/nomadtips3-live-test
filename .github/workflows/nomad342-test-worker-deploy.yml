@@ -62,26 +62,42 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 15 "$TEST_URL/contract" -o /tmp/contract.json; then break; fi
+          ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS --max-time 15 "$TEST_URL/contract?_=$RANDOM$RANDOM" -o /tmp/contract.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
+          if(j.version!=='3.42'||j.ok!==true||j.source?.detailMode!=='TODAY_ONLY') process.exit(1);
+          if(j.source?.capabilities?.attacks!==true||j.source?.capabilities?.dangerous!==true||j.source?.capabilities?.corner!==true) process.exit(1);
+          NODE
+            then ok=1; break; fi
             sleep 5
           done
+          test "$ok" = '1'
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
-          if(j.version!=='3.42'||j.ok!==true) throw new Error('3.42 TEST contract mismatch');
-          console.log('contract OK',j.version);
+          console.log('contract OK',j.version,j.source.detailMode,j.source.capabilities);
           NODE
 
       - name: Probe live TotalCorner feed
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$TEST_URL/feed?force=1" -o /tmp/feed.json
+          ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS --max-time 30 "$TEST_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||j.source?.detailMode!=='TODAY_ONLY'||!Array.isArray(j.matches)) process.exit(1);
+          if(Number(j.counts?.detailAttempts||0)!==0||Number(j.counts?.detailFetchErrors||0)!==0) process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
-          console.log(JSON.stringify({ok:j.ok,version:j.version,mode:j.mode,source:j.source?.name,counts:j.counts,lastError:j.lastError,updatedAt:j.updatedAt},null,2));
-          if(j.version!=='3.42'||j.source?.name!=='TotalCorner'||!Array.isArray(j.matches)) throw new Error('3.42 feed contract mismatch');
-          if(j.ok!==true) throw new Error(`TotalCorner live probe failed: ${j.lastError||'unknown error'}`);
+          console.log(JSON.stringify({ok:j.ok,version:j.version,mode:j.mode,source:j.source?.name,detailMode:j.source?.detailMode,capabilities:j.source?.capabilities,counts:j.counts,lastError:j.lastError,updatedAt:j.updatedAt},null,2));
           NODE
