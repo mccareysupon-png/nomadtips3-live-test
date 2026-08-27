@@ -1,8 +1,8 @@
 const TEST_ENGINE='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
 const ALLOWED=new Set([
-  '/index.html','/statistics.html','/styles.css','/m88-observer.js','/app.js','/totalcorner-live.js'
+  '/index.html','/statistics.html','/health.html','/styles.css','/m88-observer.js','/app.js','/totalcorner-live.js','/health-live.js'
 ]);
-const BLOCKED=new Set(['/settings.html','/health.html']);
+const BLOCKED=new Set(['/settings.html']);
 
 const TEST_HEADERS={
   'x-robots-tag':'noindex, nofollow, noarchive',
