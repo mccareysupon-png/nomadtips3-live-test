@@ -49,6 +49,19 @@
 
     document.querySelectorAll('.detail-card').forEach(card=>{
       const title=String(card.querySelector('h3')?.textContent||'').trim().toUpperCase();
+      if(title==='SIGNAL LOCK · LOCKED'){
+        card.querySelectorAll('.check').forEach(row=>{
+          const label=row.querySelector('span');
+          const value=row.querySelector('b');
+          if(!label||!value)return;
+          if(/^BOOKMAKER\s*\/\s*SOURCE$/i.test(String(label.textContent||'').trim())){
+            const book=parts(value.textContent)[0]||'—';
+            setText(label,'Bookmaker');
+            setText(value,book);
+          }
+        });
+        return;
+      }
       if(title!=='PRICE CHECK')return;
       card.querySelectorAll('.check').forEach(row=>{
         const label=row.querySelector('span');
