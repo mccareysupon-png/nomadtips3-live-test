@@ -38,7 +38,9 @@ jobs:
           node --check nomad-live-342/m88-observer.js
           node --check nomad-live-342/app.js
           node --check nomad-live-342/totalcorner-live.js
+          node --check nomad-live-342/health-live.js
           grep -q 'TOTALCORNER LIVE' nomad-live-342/index.html
+          grep -q 'health-live.js' nomad-live-342/health.html
           grep -q 'run_worker_first' nomad-live-342-web-test/wrangler.jsonc
 
       - name: Dry-run browser TEST Worker
@@ -59,7 +61,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy
 
-      - name: Smoke browser TEST page
+      - name: Smoke browser TEST pages
         shell: bash
         run: |
           set -euo pipefail
@@ -71,6 +73,11 @@ jobs:
           grep -q 'TotalCorner → Event → M88' /tmp/index.html
           curl -fsS --max-time 15 "$TEST_WEB_URL/runtime-config.js" -o /tmp/runtime.js
           grep -q "environment:'TEST'" /tmp/runtime.js
+          curl -fsS --max-time 15 "$TEST_WEB_URL/health.html?_=$(date +%s)" -o /tmp/health.html
+          grep -q '3.42 · LIVE HEALTH' /tmp/health.html
+          grep -q 'health-live.js' /tmp/health.html
+          curl -fsS --max-time 15 "$TEST_WEB_URL/health-live.js?_=$(date +%s)" -o /tmp/health-live.js
+          grep -q 'nomadEventHistory342' /tmp/health-live.js
           code=$(curl -sS -o /tmp/blocked.txt -w '%{http_code}' "$TEST_WEB_URL/settings.html")
           test "$code" = '404'
 
@@ -78,10 +85,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$TEST_ENGINE_URL/feed?force=1" -o /tmp/feed.json
+          ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if curl -fsS --max-time 30 "$TEST_ENGINE_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||j.source?.detailMode!=='TODAY_ONLY') process.exit(1);
+          if(Number(j.counts?.detailAttempts||0)!==0||Number(j.counts?.detailFetchErrors||0)!==0) process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
-          console.log(JSON.stringify({ok:j.ok,version:j.version,source:j.source?.name,counts:j.counts,lastError:j.lastError},null,2));
-          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner') throw new Error('3.42 TEST engine unavailable');
+          console.log(JSON.stringify({ok:j.ok,version:j.version,source:j.source?.name,detailMode:j.source?.detailMode,counts:j.counts,lastError:j.lastError},null,2));
           NODE
