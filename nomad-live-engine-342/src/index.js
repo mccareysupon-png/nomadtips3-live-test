@@ -21,7 +21,7 @@ const state={
   matches:[],
   history:new Map(),
   freshness:new Map(),
-  detailDiagnostics:{eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0},
+  detailDiagnostics:{eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,errors:{}},
 };
 
 const cors={
@@ -167,7 +167,7 @@ function cleanup(activeIds,observedAt){
 async function performScan(){
   const started=now();
   state.cycle+=1;
-  const detailDiagnostics={eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0};
+  const detailDiagnostics={eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,errors:{}};
   try{
     const todayHtml=await fetchHtml(TODAY_URL,started);
     const parsed=parseToday(todayHtml,SOURCE_HOST)
@@ -189,8 +189,10 @@ async function performScan(){
               break;
             }
             detailDiagnostics.parseInvalid+=1;
-          }catch{
+          }catch(error){
             detailDiagnostics.fetchErrors+=1;
+            const key=String(error?.message||error||'unknown_detail_fetch_error').slice(0,120);
+            detailDiagnostics.errors[key]=(detailDiagnostics.errors[key]||0)+1;
           }
         }
       }
@@ -259,6 +261,7 @@ function feedPayload(){
       detailParseInvalid:Number(detail.parseInvalid||0),
       detailSuccess:Number(detail.successes||0),
     },
+    detailErrors:detail.errors||{},
     matches,
     lastError:state.lastError,
   };
