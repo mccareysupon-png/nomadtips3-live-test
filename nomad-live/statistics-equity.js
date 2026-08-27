@@ -9,8 +9,11 @@
   let empty=null;
   let totalNode=null;
   let metaNode=null;
+  let tooltip=null;
   let resizeObserver=null;
   let series=[];
+  let hitRegions=[];
+  let selectedKey=null;
   let frame=0;
 
   const finiteNumber=value=>{
@@ -37,6 +40,27 @@
     return Number(value).toFixed(digits);
   };
   const formatDate=value=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short'}).format(new Date(value));
+  const formatDateTime=value=>{
+    const date=new Date(value);
+    if(Number.isNaN(date.getTime())) return 'Settlement time unavailable';
+    const day=new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(date);
+    const time=new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false}).format(date);
+    return `${day} · ${time}`;
+  };
+  const resultClass=result=>{
+    const value=String(result||'').toUpperCase();
+    if(value.includes('WIN')) return 'is-positive';
+    if(value.includes('LOSS')) return 'is-negative';
+    return '';
+  };
+  const stableKey=item=>{
+    const record=item?.record||{};
+    const settledAt=Number.isFinite(item?.settledAt)?item.settledAt:'';
+    const lockedAt=Number.isFinite(item?.lockedAt)?item.lockedAt:'';
+    const identity=record.id||record.signalId||record.matchId||`${record.home||''}|${record.away||''}|${record.selection||''}|${record.line??''}|${record.odds??''}`;
+    const result=String(record?.settlement?.result||'').toUpperCase();
+    return `${settledAt}|${lockedAt}|${identity}|${result}|${item?.delta??''}`;
+  };
 
   const buildSeries=(records,now=Date.now())=>{
     const candidates=(Array.isArray(records)?records:[]).filter(record=>{
@@ -59,9 +83,40 @@
       const open=running;
       const close=open+item.delta;
       running=close;
-      return {open,delta:item.delta,close,settledAt:item.settledAt,record:item.record};
+      return {open,delta:item.delta,close,settledAt:item.settledAt,key:stableKey(item),record:item.record};
     });
     return {points,total:running,invalid:false};
+  };
+
+  const hideTooltip=()=>{
+    if(tooltip){
+      tooltip.hidden=true;
+      tooltip.removeAttribute('data-result-state');
+    }
+  };
+
+  const updateTooltip=(point,region,width,height)=>{
+    if(!tooltip||!point||!region) return;
+    const result=String(point?.record?.settlement?.result||'SETTLED').trim().toUpperCase()||'SETTLED';
+    tooltip.innerHTML=`<span class="cumulative-unit-tooltip-date">${formatDateTime(point.settledAt)}</span><strong class="cumulative-unit-tooltip-result ${resultClass(result)}">${result}</strong><span>Result <b>${formatUnit(point.delta)}</b></span><span>Cumulative <b>${formatUnit(point.close)}</b></span>`;
+    tooltip.dataset.resultState=resultClass(result);
+    tooltip.hidden=false;
+    tooltip.style.visibility='hidden';
+    tooltip.style.left='0px';
+    tooltip.style.top='0px';
+    const tipWidth=tooltip.offsetWidth;
+    const tipHeight=tooltip.offsetHeight;
+    const gap=8;
+    const margin=6;
+    let left=region.center+gap;
+    if(left+tipWidth>width-margin) left=region.center-tipWidth-gap;
+    left=Math.max(margin,Math.min(width-tipWidth-margin,left));
+    const anchorY=(region.top+region.bottom)/2;
+    let top=anchorY-tipHeight/2;
+    top=Math.max(margin,Math.min(height-tipHeight-margin,top));
+    tooltip.style.left=`${Math.round(left)}px`;
+    tooltip.style.top=`${Math.round(top)}px`;
+    tooltip.style.visibility='visible';
   };
 
   const mount=()=>{
@@ -72,12 +127,41 @@
     chart=document.createElement('section');
     chart.className='cumulative-unit-chart';
     chart.setAttribute('aria-labelledby','cumulativeUnitTitle');
-    chart.innerHTML=`<div class="cumulative-unit-plot"><header class="cumulative-unit-head"><div><h2 class="cumulative-unit-title" id="cumulativeUnitTitle">CUMULATIVE UNIT</h2><span class="cumulative-unit-meta" data-unit-meta>365D · WAITING FOR SETTLED RESULTS</span></div><strong class="cumulative-unit-total" data-unit-total>+0.00u</strong></header><div class="cumulative-unit-surface"><canvas class="cumulative-unit-canvas" data-unit-canvas role="img" aria-label="Cumulative unit chart waiting for settled results"></canvas><p class="cumulative-unit-empty" data-unit-empty>Waiting for settled results.</p></div></div><div class="cumulative-unit-explanation" role="note" aria-labelledby="cumulativeUnitExplanationTitle"><h3 class="cumulative-unit-explanation-title" id="cumulativeUnitExplanationTitle">HOW TO READ THIS CHART</h3><p class="cumulative-unit-explanation-copy"><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key is-positive">Green bar</strong> — Positive Unit from a settled result. <strong class="cumulative-unit-explanation-key is-negative">Red bar</strong> — Negative Unit from a settled result.</span><span class="cumulative-unit-explanation-line">Each bar represents 1 settled result and continues from the previous cumulative Unit level.</span><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key">Dashed line</strong> — Current cumulative Unit after the latest settled result.</span><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key">1u</strong> = one standard reference unit, used to compare results consistently across different odds.</span><span class="cumulative-unit-explanation-line">Pending results are excluded. Source: Result Ledger · Settled results only · Up to 365 days.</span></p></div>`;
+    chart.innerHTML=`<div class="cumulative-unit-plot"><header class="cumulative-unit-head"><div><h2 class="cumulative-unit-title" id="cumulativeUnitTitle">CUMULATIVE UNIT</h2><span class="cumulative-unit-meta" data-unit-meta>365D · WAITING FOR SETTLED RESULTS</span></div><strong class="cumulative-unit-total" data-unit-total>+0.00u</strong></header><div class="cumulative-unit-surface"><canvas class="cumulative-unit-canvas" data-unit-canvas role="img" aria-label="Cumulative unit chart waiting for settled results"></canvas><div class="cumulative-unit-tooltip" data-unit-tooltip hidden></div><p class="cumulative-unit-empty" data-unit-empty>Waiting for settled results.</p></div></div><div class="cumulative-unit-explanation" role="note" aria-labelledby="cumulativeUnitExplanationTitle"><h3 class="cumulative-unit-explanation-title" id="cumulativeUnitExplanationTitle">HOW TO READ THIS CHART</h3><p class="cumulative-unit-explanation-copy"><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key is-positive">Green bar</strong> — Positive Unit from a settled result. <strong class="cumulative-unit-explanation-key is-negative">Red bar</strong> — Negative Unit from a settled result.</span><span class="cumulative-unit-explanation-line">Each bar represents 1 settled result and continues from the previous cumulative Unit level.</span><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key">Dashed line</strong> — Current cumulative Unit after the latest settled result.</span><span class="cumulative-unit-explanation-line"><strong class="cumulative-unit-explanation-key">1u</strong> = one standard reference unit, used to compare results consistently across different odds.</span><span class="cumulative-unit-explanation-line">Tap or click a bar to inspect that settled result. Pending results are excluded. Source: Result Ledger · Settled results only · Up to 365 days.</span></p></div>`;
     toolbar.insertAdjacentElement('afterend',chart);
     canvas=chart.querySelector('[data-unit-canvas]');
     empty=chart.querySelector('[data-unit-empty]');
     totalNode=chart.querySelector('[data-unit-total]');
     metaNode=chart.querySelector('[data-unit-meta]');
+    tooltip=chart.querySelector('[data-unit-tooltip]');
+    canvas.addEventListener('click',event=>{
+      if(!series.length||!hitRegions.length) return;
+      const rect=canvas.getBoundingClientRect();
+      const x=event.clientX-rect.left;
+      const y=event.clientY-rect.top;
+      const insidePlot=y>=hitRegions[0].plotTop&&y<=hitRegions[0].plotBottom;
+      if(!insidePlot){
+        selectedKey=null;
+        hideTooltip();
+        scheduleDraw();
+        return;
+      }
+      let nearest=null;
+      let distance=Infinity;
+      hitRegions.forEach(region=>{
+        if(x<region.hitLeft||x>region.hitRight) return;
+        const next=Math.abs(x-region.center);
+        if(next<distance){nearest=region;distance=next;}
+      });
+      if(!nearest){
+        selectedKey=null;
+        hideTooltip();
+        scheduleDraw();
+        return;
+      }
+      selectedKey=nearest.key;
+      scheduleDraw();
+    });
     if('ResizeObserver' in window){
       resizeObserver=new ResizeObserver(scheduleDraw);
       resizeObserver.observe(canvas);
@@ -87,6 +171,7 @@
 
   const clearCanvas=()=>{
     if(!canvas) return;
+    hitRegions=[];
     const ctx=canvas.getContext('2d');
     if(!ctx) return;
     ctx.setTransform(1,0,0,1,0,0);
@@ -171,23 +256,35 @@
 
     const slot=plotWidth/series.length;
     const barWidth=Math.max(1,Math.min(12,slot*.66));
+    const hitWidth=Math.max(barWidth,Math.min(24,slot));
+    hitRegions=[];
     series.forEach((point,index)=>{
       const center=plot.left+slot*(index+.5);
       const openY=y(point.open);
       const closeY=y(point.close);
+      const top=Math.min(openY,closeY);
+      const bottom=Math.max(openY,closeY);
+      const selected=point.key===selectedKey;
+      hitRegions.push({key:point.key,index,center,top,bottom,hitLeft:center-hitWidth/2,hitRight:center+hitWidth/2,plotTop:plot.top,plotBottom:plot.bottom});
       if(point.delta===0){
         ctx.beginPath();
         ctx.moveTo(center-barWidth/2,openY);
         ctx.lineTo(center+barWidth/2,openY);
-        ctx.strokeStyle='rgba(169,177,172,.76)';
-        ctx.lineWidth=1.25;
+        ctx.strokeStyle=selected?'rgba(224,231,227,.92)':'rgba(169,177,172,.76)';
+        ctx.lineWidth=selected?1.6:1.25;
         ctx.stroke();
         return;
       }
-      const top=Math.min(openY,closeY);
       const barHeight=Math.abs(closeY-openY);
       ctx.fillStyle=point.delta>0?'rgba(76,157,94,.92)':'rgba(194,77,82,.92)';
       ctx.fillRect(center-barWidth/2,top,barWidth,barHeight);
+      if(selected){
+        ctx.fillStyle='rgba(255,255,255,.10)';
+        ctx.fillRect(center-barWidth/2,top,barWidth,barHeight);
+        ctx.strokeStyle='rgba(255,255,255,.28)';
+        ctx.lineWidth=1;
+        ctx.strokeRect(center-barWidth/2+.5,top+.5,Math.max(0,barWidth-1),Math.max(0,barHeight-1));
+      }
     });
 
     const currentLabel=formatUnit(currentValue);
@@ -209,6 +306,16 @@
     ctx.fillText(formatDate(series[0].settledAt),plot.left,height-4);
     ctx.textAlign='right';
     ctx.fillText(formatDate(series[series.length-1].settledAt),plot.right,height-4);
+
+    if(selectedKey){
+      const selectedIndex=series.findIndex(point=>point.key===selectedKey);
+      const region=hitRegions.find(item=>item.key===selectedKey);
+      if(selectedIndex>=0&&region) updateTooltip(series[selectedIndex],region,width,height);
+      else{
+        selectedKey=null;
+        hideTooltip();
+      }
+    }else hideTooltip();
   };
 
   function scheduleDraw(){
@@ -220,6 +327,7 @@
     if(!mount()) return;
     const built=buildSeries(records);
     series=built.points;
+    if(selectedKey&&!series.some(point=>point.key===selectedKey)) selectedKey=null;
     totalNode.textContent=formatUnit(built.total);
     totalNode.classList.toggle('is-positive',built.total>0);
     totalNode.classList.toggle('is-negative',built.total<0);
@@ -228,15 +336,19 @@
       empty.textContent='Cumulative unit is unavailable because a settled record has no reliable timestamp or unit value.';
       empty.hidden=false;
       canvas.setAttribute('aria-label','Cumulative unit chart unavailable because settled data is incomplete');
+      hideTooltip();
       clearCanvas();
       return;
     }
     metaNode.textContent=`365D · ${series.length} SETTLED`;
     empty.textContent='No settled results in the last 365 days.';
     empty.hidden=series.length>0;
-    canvas.setAttribute('aria-label',series.length?`Cumulative unit chart with ${series.length} settled results. Current total ${formatUnit(built.total)}.`:'Cumulative unit chart with no settled results in the last 365 days');
+    canvas.setAttribute('aria-label',series.length?`Cumulative unit chart with ${series.length} settled results. Current total ${formatUnit(built.total)}. Tap or click a bar for details.`:'Cumulative unit chart with no settled results in the last 365 days');
     if(series.length) scheduleDraw();
-    else clearCanvas();
+    else{
+      hideTooltip();
+      clearCanvas();
+    }
   };
 
   const start=()=>{
