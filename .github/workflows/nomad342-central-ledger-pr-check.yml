@@ -1,0 +1,34 @@
+name: NOMAD 3.42 Central Ledger PR Check
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-engine-342/**'
+      - 'nomad-live-342/README.md'
+      - '.github/workflows/nomad342-central-ledger-pr-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate isolated 3.42 blueprint
+        working-directory: nomad-live-engine-342
+        run: |
+          npm test
+          npm run check
+          grep -q '^name = "nomadtips3-live-engine-342"$' wrangler.toml
+          grep -q 'SIGNALS_DB' README.md
+          test -f migrations/0001_signal_ledger.sql
+          ! grep -RIn 'nomad-live-engine/' .
+      - name: Confirm no deployment job exists
+        run: |
+          ! grep -Eq 'wrangler-action|wrangler@.* deploy|command:[[:space:]]*deploy' .github/workflows/nomad342-central-ledger-pr-check.yml

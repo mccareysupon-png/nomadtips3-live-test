@@ -1,0 +1,9 @@
+{
+  "name": "nomad-live-engine-342",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/totalcorner.js && node --check src/signal-ledger.js && node --check src/statistics.js && node --check src/settlement.js"
+  }
+}

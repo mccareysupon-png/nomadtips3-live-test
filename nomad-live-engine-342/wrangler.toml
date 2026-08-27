@@ -1,0 +1,32 @@
+name = "nomadtips3-live-engine-342"
+main = "src/index.js"
+compatibility_date = "2026-08-27"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[vars]
+NOMAD_ENV = "git-blueprint"
+
+[env.test]
+name = "nomadtips3-live-engine-342-test"
+workers_dev = true
+
+[env.test.vars]
+NOMAD_ENV = "test"
+
+# D1 is intentionally NOT bound in Git until a real database is provisioned.
+# After provisioning, add the real binding (never invent database_id):
+#
+# [[d1_databases]]
+# binding = "SIGNALS_DB"
+# database_name = "nomadtips3-live-342"
+# database_id = "<REAL_DATABASE_ID>"
+#
+# [[env.test.d1_databases]]
+# binding = "SIGNALS_DB"
+# database_name = "nomadtips3-live-342-test"
+# database_id = "<REAL_TEST_DATABASE_ID>"
+#
+# Write endpoint also requires the Worker secret SIGNAL_WRITE_TOKEN.
