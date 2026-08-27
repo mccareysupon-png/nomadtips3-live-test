@@ -11,14 +11,14 @@ let rendering=false;
 function readRows(key){try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function writeRows(key,rows){try{localStorage.setItem(key,JSON.stringify(rows))}catch{}}
 function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
-function finite(v){const n=Number(v);return Number.isFinite(n)?n:null}
+function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';const x=Number(n.toFixed(2));return `${x>0?'+':''}${x}`}
 function fmtOdds(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
 function signalClock(ts){const d=new Date(ts);return Number.isNaN(d.getTime())?'—':d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}
 function signalDateTime(ts){const d=new Date(ts);return Number.isNaN(d.getTime())?'—':d.toLocaleString()}
-function phase(minute){return finite(minute)!==null&&Number(minute)<=45?'1ST HALF':'2ND HALF'}
+function phase(minute){const n=finite(minute);return n!==null&&n<=45?'1ST HALF':'2ND HALF'}
 function rowId(row){return String(row?.id||'')}
-function derivePick(row){if(row?.pick)return row.pick;const m=String(row?.match||'');return m.includes(' — ')?m.split(' — ')[0]:m.split(' - ')[0]||'—'}
+function derivePick(row){if(row?.pick)return row.pick;const m=String(row?.match||'');return m.includes(' — ')?m.split(' — ')[0]:(m.split(' - ')[0]||'—')}
 
 function fallbackLock(r){
   if(!r?.signal||!r?.m)return null;
@@ -65,7 +65,7 @@ function currentOdds(r){return fmtOdds(r?.price?.obs?.homeOddsDecimal)}
 function stateFor(r,lock){if(lock)return 'SIGNAL';return r?.candidate?'NEAR SIGNAL':'WATCHING'}
 function stateClass(state){return state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'watch'}
 function metricText(value){return value===null||value===undefined||value===''?'—':String(value)}
-function proofValue(lock,r,key){if(!lock)return key==='line'?currentLine(r):key==='odds'?currentOdds(r):'—';return key==='line'?(lock.line??'—'):key==='odds'?fmtOdds(lock.odds):lock[key]??'—'}
+function proofValue(lock,r,key){if(!lock)return key==='line'?currentLine(r):key==='odds'?currentOdds(r):'—';return key==='line'?(lock.line??'—'):key==='odds'?fmtOdds(lock.odds):(lock[key]??'—')}
 
 function cardHtml(r,lock){
   const m=r.m||{};
