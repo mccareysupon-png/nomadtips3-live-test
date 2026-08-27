@@ -53,11 +53,10 @@ function findRow(html,rowType){
   const match=html.match(re);
   if(!match) return null;
   const full=match[0];
-  const values=rawCellValues(full);
   return {
     id,
     label:rowType==='1'?'FIRST':rowType==='2'?'LIVE':'RUN',
-    values,
+    values:rawCellValues(full),
     text:cleanText(full).slice(0,500),
   };
 }
@@ -74,6 +73,40 @@ function parseM88(html){
     companyNamePresent:/\bMansion88\b/i.test(html),
     rows,
     found:Boolean(rows.first||rows.live||rows.run),
+  };
+}
+
+function unique(values,limit=80){
+  return [...new Set(values)].slice(0,limit);
+}
+
+function pageDiagnostics(html){
+  const companyIds=[];
+  for(const m of html.matchAll(/\bid=["']tr_o_[123]_(\d+)["']/gi)) companyIds.push(m[1]);
+
+  const companyNames=[];
+  for(const m of html.matchAll(/<td\b[^>]*\bclass=["'][^"']*companyBg[^"']*["'][^>]*>[\s\S]*?<b>([\s\S]*?)<\/b>/gi)){
+    const name=cleanText(m[1]);
+    if(name) companyNames.push(name);
+  }
+
+  const ajaxPaths=[];
+  for(const m of html.matchAll(/["'](\/[^"']{1,180}(?:ajax|odds)[^"']{0,180})["']/gi)){
+    const path=String(m[1]||'').replace(/&amp;/gi,'&');
+    if(path) ajaxPaths.push(path);
+  }
+
+  return {
+    companyRowCount:companyIds.length,
+    companyIds:unique(companyIds),
+    companyNames:unique(companyNames),
+    hasLiveCompareDiv:/\bid=["']liveCompareDiv["']/i.test(html),
+    hasAhDetail:/\bid=["']ahdetail["']/i.test(html),
+    hasAddOddsCmp:/\baddOddsCmp\s*\(/i.test(html),
+    hasOddsDetailWin:/\b_oddsDetailWin\b/i.test(html),
+    hasMansion88Text:/\bMansion88\b/i.test(html),
+    hasM88Text:/\bM88\b/i.test(html),
+    ajaxPaths:unique(ajaxPaths,30),
   };
 }
 
@@ -104,6 +137,7 @@ async function fetchOne(host,matchId){
       contentType:response.headers.get('content-type'),
       finalUrl:response.url,
       m88:parseM88(html),
+      diagnostics:pageDiagnostics(html),
     };
   }catch(error){
     return {
@@ -115,6 +149,7 @@ async function fetchOne(host,matchId){
       bytes:0,
       error:String(error?.name==='AbortError'?'timeout':error?.message||error),
       m88:{companyId:COMPANY_ID,companyName:COMPANY_NAME,companyNamePresent:false,rows:{first:null,live:null,run:null},found:false},
+      diagnostics:null,
     };
   }finally{
     clearTimeout(timer);
