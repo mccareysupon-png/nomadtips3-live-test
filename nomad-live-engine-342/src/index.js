@@ -40,26 +40,28 @@ const finite=v=>{
 };
 const pairArray=p=>[finite(p?.home),finite(p?.away)];
 
-function sourceUrl(url,token){
+function sourceUrl(url,token,cacheBust=true){
   const u=new URL(url);
-  u.searchParams.set('_nomad342_cycle',String(token));
+  if(cacheBust) u.searchParams.set('_nomad342_cycle',String(token));
   return u.toString();
 }
 
-async function fetchHtml(url,token){
+async function fetchHtml(url,token,{cacheBust=true,referer=null}={}){
   const ac=new AbortController();
   const timer=setTimeout(()=>ac.abort(),REQUEST_TIMEOUT_MS);
   try{
-    const response=await fetch(sourceUrl(url,token),{
+    const headers={
+      'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+      'accept':'text/html,application/xhtml+xml',
+      'accept-language':'en-US,en;q=0.9',
+      'cache-control':'no-cache, no-store',
+      'pragma':'no-cache',
+    };
+    if(referer) headers.referer=referer;
+    const response=await fetch(sourceUrl(url,token,cacheBust),{
       signal:ac.signal,
       cache:'no-store',
-      headers:{
-        'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
-        'accept':'text/html,application/xhtml+xml',
-        'accept-language':'en-US,en;q=0.9',
-        'cache-control':'no-cache, no-store',
-        'pragma':'no-cache',
-      },
+      headers,
     });
     if(!response.ok) throw new Error(`source_http_${response.status}`);
     const text=await response.text();
@@ -182,7 +184,7 @@ async function performScan(){
         for(const url of urls){
           detailDiagnostics.attempts+=1;
           try{
-            const candidate=parseLiveDetail(await fetchHtml(url,started));
+            const candidate=parseLiveDetail(await fetchHtml(url,started,{cacheBust:false,referer:TODAY_URL}));
             if(candidate.valid){
               detail=candidate;
               detailDiagnostics.successes+=1;
