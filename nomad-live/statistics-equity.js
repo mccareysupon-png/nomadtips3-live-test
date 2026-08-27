@@ -158,14 +158,16 @@
 
     const currentValue=series[series.length-1].close;
     const currentY=y(currentValue);
-    const currentLineColor=currentValue>0?'rgba(92,177,108,.74)':currentValue<0?'rgba(207,91,96,.74)':'rgba(169,177,172,.68)';
+    const currentLineColor=currentValue>0?'rgba(92,177,108,.60)':currentValue<0?'rgba(207,91,96,.60)':'rgba(169,177,172,.60)';
     const currentTextColor=currentValue>0?'#68b777':currentValue<0?'#d16a6e':'#a9b1ac';
+    ctx.setLineDash([2,3]);
     ctx.beginPath();
     ctx.moveTo(plot.left,currentY);
     ctx.lineTo(plot.right,currentY);
     ctx.strokeStyle=currentLineColor;
     ctx.lineWidth=1;
     ctx.stroke();
+    ctx.setLineDash([]);
 
     const slot=plotWidth/series.length;
     const barWidth=Math.max(1,Math.min(12,slot*.66));
