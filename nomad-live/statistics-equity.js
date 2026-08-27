@@ -146,8 +146,7 @@
     totalNode=chart.querySelector('[data-unit-total]');
     metaNode=chart.querySelector('[data-unit-meta]');
     tooltip=chart.querySelector('[data-unit-tooltip]');
-    canvas.addEventListener('pointermove',event=>{
-      if(event.pointerType&&event.pointerType!=='mouse') return;
+    canvas.addEventListener('mousemove',event=>{
       if(!series.length||!hitRegions.length) return;
       const rect=canvas.getBoundingClientRect();
       const x=event.clientX-rect.left;
@@ -170,7 +169,7 @@
       hoverY=Math.max(bounds.plotTop,Math.min(bounds.plotBottom,y));
       scheduleDraw();
     },{passive:true});
-    canvas.addEventListener('pointerleave',()=>{
+    canvas.addEventListener('mouseleave',()=>{
       if(clearHover()) scheduleDraw();
     },{passive:true});
     canvas.addEventListener('click',event=>{
@@ -330,11 +329,11 @@
     if(hoverKey&&hoverX!==null&&hoverY!==null){
       const hoveredIndex=series.findIndex(point=>point.key===hoverKey);
       if(hoveredIndex>=0){
-        const guideColor='rgba(170,178,173,.44)';
+        const guideColor='rgba(170,178,173,.58)';
         ctx.save();
         ctx.setLineDash([2,2]);
         ctx.strokeStyle=guideColor;
-        ctx.lineWidth=.75;
+        ctx.lineWidth=1;
         ctx.beginPath();
         ctx.moveTo(hoverX,plot.top);
         ctx.lineTo(hoverX,plot.bottom);
