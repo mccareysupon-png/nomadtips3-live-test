@@ -26,6 +26,7 @@
       tab.dataset.active=active?'1':'0';
       tab.setAttribute('aria-pressed',active?'true':'false');
       tab.style.color=active?'var(--yellow)':'';
+      tab.style.cursor='pointer';
     }
   };
   const apply=()=>{
