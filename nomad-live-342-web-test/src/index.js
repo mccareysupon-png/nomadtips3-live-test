@@ -4,25 +4,40 @@ const ALLOWED=new Set([
 ]);
 const BLOCKED=new Set(['/settings.html','/health.html']);
 
+const TEST_HEADERS={
+  'x-robots-tag':'noindex, nofollow, noarchive',
+  'cache-control':'no-store'
+};
+
 const withHeaders=response=>{
   const headers=new Headers(response.headers);
-  headers.set('x-robots-tag','noindex, nofollow, noarchive');
-  headers.set('cache-control','no-store');
+  Object.entries(TEST_HEADERS).forEach(([key,value])=>headers.set(key,value));
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 };
 
 export default {
   async fetch(request,env){
     const url=new URL(request.url);
-    if(BLOCKED.has(url.pathname)) return new Response('Not available in 3.42 browser test',{status:404,headers:{'x-robots-tag':'noindex, nofollow, noarchive','cache-control':'no-store'}});
+
+    if(url.pathname==='/'){
+      const target=new URL('/index.html',url.origin);
+      target.search=url.search;
+      return new Response(null,{status:302,headers:{...TEST_HEADERS,location:target.toString()}});
+    }
+
+    if(BLOCKED.has(url.pathname)){
+      return new Response('Not available in 3.42 browser test',{status:404,headers:TEST_HEADERS});
+    }
+
     if(url.pathname==='/runtime-config.js'){
       const body=`(()=>{window.NOMAD342_RUNTIME=Object.freeze({version:'3.42',environment:'TEST',engineBase:'${TEST_ENGINE}',feedPath:'/feed',pollMs:10000,requestTimeoutMs:9000});})();`;
-      return new Response(body,{headers:{'content-type':'application/javascript; charset=utf-8','x-robots-tag':'noindex, nofollow, noarchive','cache-control':'no-store'}});
+      return new Response(body,{headers:{'content-type':'application/javascript; charset=utf-8',...TEST_HEADERS}});
     }
-    const path=url.pathname==='/'?'/index.html':url.pathname;
-    if(!ALLOWED.has(path)) return new Response('Not found',{status:404,headers:{'x-robots-tag':'noindex, nofollow, noarchive','cache-control':'no-store'}});
-    const assetUrl=new URL(request.url);
-    assetUrl.pathname=path;
-    return withHeaders(await env.ASSETS.fetch(new Request(assetUrl,request)));
+
+    if(!ALLOWED.has(url.pathname)){
+      return new Response('Not found',{status:404,headers:TEST_HEADERS});
+    }
+
+    return withHeaders(await env.ASSETS.fetch(request));
   }
 };
