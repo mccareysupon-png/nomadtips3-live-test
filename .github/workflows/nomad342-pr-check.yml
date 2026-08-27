@@ -1,6 +1,13 @@
 name: NOMAD 3.42 PR Check
 
 on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - 'nomad-live-342/**'
+      - 'nomad-live-engine-342/**'
+      - '.github/workflows/nomad342-pr-check.yml'
   pull_request:
     paths:
       - 'nomad-live-342/**'
