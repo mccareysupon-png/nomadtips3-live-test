@@ -3,7 +3,6 @@
 
   const STORE_KEY = 'nomad341EventTimelineV1';
   const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
-  const number = value => finite(value) ? Number(value) : null;
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
   function loadStore() {
@@ -77,11 +76,22 @@
     const note = !nowScore || complete
       ? ''
       : `<div class="signal-match-note">CURRENT ${esc(`${nowScore.home}–${nowScore.away}`)} · goal minute unavailable for unobserved score change</div>`;
+    const signature = [
+      lock.minute,lock.score.home,lock.score.away,
+      ...goals.flatMap(goal=>[goal.side,goal.minute,goal.count,goal.observedAt]),
+      nowScore?.home??'x',nowScore?.away??'x',complete?'1':'0'
+    ].join('|');
+
+    const existing = detail.querySelector(':scope > [data-signal-match-events="1"]');
+    if (existing?.dataset?.signalEventsSignature === signature) {
+      detail.classList.add('has-signal-match-events');
+      return;
+    }
 
     const holder = document.createElement('div');
     holder.innerHTML = `<section class="detail-card signal-match-events-card" data-signal-match-events="1"><h3>MATCH EVENTS · SINCE LOCK</h3><div class="signal-match-events-list">${events.join('')}</div>${note}</section>`;
     const next = holder.firstElementChild;
-    const existing = detail.querySelector(':scope > [data-signal-match-events="1"]');
+    next.dataset.signalEventsSignature = signature;
     if (existing) existing.replaceWith(next);
     else lock.card.insertAdjacentElement('afterend', next);
     detail.classList.add('has-signal-match-events');
