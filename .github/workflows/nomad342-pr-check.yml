@@ -1,0 +1,32 @@
+name: NOMAD 3.42 PR Check
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-342/**'
+      - 'nomad-live-engine-342/**'
+      - '.github/workflows/nomad342-pr-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-342:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check 3.42 browser adapter
+        run: |
+          node --check nomad-live-342/runtime-config.js
+          node --check nomad-live-342/totalcorner-live.js
+      - name: Syntax check 3.42 worker
+        run: |
+          node --check nomad-live-engine-342/src/totalcorner.js
+          node --check nomad-live-engine-342/src/index.js
+      - name: Run TotalCorner parser tests
+        working-directory: nomad-live-engine-342
+        run: npm test
