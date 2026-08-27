@@ -1,4 +1,4 @@
-import {parseToday,parseLiveDetail} from './totalcorner.js';
+import {parseToday} from './totalcorner.js';
 
 const VERSION='3.42';
 const SOURCE_NAME='TotalCorner';
@@ -9,8 +9,21 @@ const SOURCE_STALE_MS=90000;
 const HISTORY_MS=12*60*1000;
 const DETAIL_MINUTE_FROM=45;
 const DETAIL_MINUTE_TO=100;
-const DETAIL_CONCURRENCY=6;
+const DETAIL_MODE='TODAY_ONLY';
+const DETAIL_UNAVAILABLE_REASON='source_http_403';
 const REQUEST_TIMEOUT_MS=9000;
+
+const CAPABILITIES=Object.freeze({
+  today:true,
+  minute:true,
+  score:true,
+  attacks:true,
+  dangerous:true,
+  corner:true,
+  sot:false,
+  off:false,
+  detail:false,
+});
 
 const state={
   scanning:null,
@@ -21,7 +34,7 @@ const state={
   matches:[],
   history:new Map(),
   freshness:new Map(),
-  detailDiagnostics:{eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,errors:{}},
+  detailDiagnostics:{eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,skipped:0,errors:{}},
 };
 
 const cors={
@@ -40,28 +53,26 @@ const finite=v=>{
 };
 const pairArray=p=>[finite(p?.home),finite(p?.away)];
 
-function sourceUrl(url,token,cacheBust=true){
+function sourceUrl(url,token){
   const u=new URL(url);
-  if(cacheBust) u.searchParams.set('_nomad342_cycle',String(token));
+  u.searchParams.set('_nomad342_cycle',String(token));
   return u.toString();
 }
 
-async function fetchHtml(url,token,{cacheBust=true,referer=null}={}){
+async function fetchHtml(url,token){
   const ac=new AbortController();
   const timer=setTimeout(()=>ac.abort(),REQUEST_TIMEOUT_MS);
   try{
-    const headers={
-      'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
-      'accept':'text/html,application/xhtml+xml',
-      'accept-language':'en-US,en;q=0.9',
-      'cache-control':'no-cache, no-store',
-      'pragma':'no-cache',
-    };
-    if(referer) headers.referer=referer;
-    const response=await fetch(sourceUrl(url,token,cacheBust),{
+    const response=await fetch(sourceUrl(url,token),{
       signal:ac.signal,
       cache:'no-store',
-      headers,
+      headers:{
+        'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+        'accept':'text/html,application/xhtml+xml',
+        'accept-language':'en-US,en;q=0.9',
+        'cache-control':'no-cache, no-store',
+        'pragma':'no-cache',
+      },
     });
     if(!response.ok) throw new Error(`source_http_${response.status}`);
     const text=await response.text();
@@ -72,20 +83,6 @@ async function fetchHtml(url,token,{cacheBust=true,referer=null}={}){
   }
 }
 
-async function mapLimit(items,limit,worker){
-  const out=new Array(items.length);
-  let cursor=0;
-  const runners=Array.from({length:Math.min(limit,items.length)},async()=>{
-    while(true){
-      const index=cursor++;
-      if(index>=items.length) return;
-      out[index]=await worker(items[index],index);
-    }
-  });
-  await Promise.all(runners);
-  return out;
-}
-
 function mergePair(primary,fallback){
   return {
     home:finite(primary?.home)??finite(fallback?.home),
@@ -93,25 +90,24 @@ function mergePair(primary,fallback){
   };
 }
 
-function mergeMatch(row,detail,observedAt){
-  const live=detail?.valid?detail:null;
-  const score=live?.score||row.score;
+function mergeMatch(row,observedAt){
+  const score=row.score;
   const stats={
-    attacks:mergePair(live?.stats?.attacks,row.stats?.attacks),
-    dangerous:mergePair(live?.stats?.dangerous,row.stats?.dangerous),
-    sot:mergePair(live?.stats?.sot,row.stats?.sot),
-    off:mergePair(live?.stats?.off,row.stats?.off),
-    corner:mergePair(live?.stats?.corner,row.stats?.corner),
+    attacks:mergePair(null,row.stats?.attacks),
+    dangerous:mergePair(null,row.stats?.dangerous),
+    sot:{home:null,away:null},
+    off:{home:null,away:null},
+    corner:mergePair(null,row.stats?.corner),
   };
   return {
     id:String(row.id),
     league:row.league||null,
     home:row.home||null,
     away:row.away||null,
-    minute:finite(live?.minute)??finite(row.minute),
+    minute:finite(row.minute),
     score:{home:finite(score?.home),away:finite(score?.away)},
     stats,
-    source:{name:SOURCE_NAME,observedAt,detail:Boolean(live)},
+    source:{name:SOURCE_NAME,observedAt,detail:false,mode:DETAIL_MODE},
   };
 }
 
@@ -133,8 +129,8 @@ function snapshotFromMatch(m,observedAt){
     observedAt,
     attacks:pairArray(m.stats.attacks),
     dangerous:pairArray(m.stats.dangerous),
-    sot:pairArray(m.stats.sot),
-    off:pairArray(m.stats.off),
+    sot:[null,null],
+    off:[null,null],
     corner:pairArray(m.stats.corner),
   };
 }
@@ -169,36 +165,19 @@ function cleanup(activeIds,observedAt){
 async function performScan(){
   const started=now();
   state.cycle+=1;
-  const detailDiagnostics={eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,errors:{}};
+  const detailDiagnostics={eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0,skipped:0,errors:{}};
   try{
     const todayHtml=await fetchHtml(TODAY_URL,started);
     const parsed=parseToday(todayHtml,SOURCE_HOST)
       .filter(m=>Number.isFinite(m.minute)&&m.minute>=1&&m.minute<=130)
       .filter(m=>Number.isFinite(m.score?.home)&&Number.isFinite(m.score?.away));
 
-    const enriched=await mapLimit(parsed,DETAIL_CONCURRENCY,async row=>{
-      let detail=null;
+    const enriched=parsed.map(row=>{
       if(row.minute>=DETAIL_MINUTE_FROM&&row.minute<=DETAIL_MINUTE_TO){
         detailDiagnostics.eligible+=1;
-        const urls=[row.urls?.stats,row.urls?.live].filter(Boolean);
-        for(const url of urls){
-          detailDiagnostics.attempts+=1;
-          try{
-            const candidate=parseLiveDetail(await fetchHtml(url,started,{cacheBust:false,referer:TODAY_URL}));
-            if(candidate.valid){
-              detail=candidate;
-              detailDiagnostics.successes+=1;
-              break;
-            }
-            detailDiagnostics.parseInvalid+=1;
-          }catch(error){
-            detailDiagnostics.fetchErrors+=1;
-            const key=String(error?.message||error||'unknown_detail_fetch_error').slice(0,120);
-            detailDiagnostics.errors[key]=(detailDiagnostics.errors[key]||0)+1;
-          }
-        }
+        detailDiagnostics.skipped+=1;
       }
-      const match=updateFreshness(mergeMatch(row,detail,started),started);
+      const match=updateFreshness(mergeMatch(row,started),started);
       const snapshots=updateHistory(match,started);
       return {
         id:match.id,
@@ -235,6 +214,20 @@ async function scan(force=false){
   return state.scanning;
 }
 
+function sourceMeta(){
+  return {
+    name:SOURCE_NAME,
+    host:SOURCE_HOST,
+    scanUrl:TODAY_URL,
+    cacheSeconds:CACHE_MS/1000,
+    staleSeconds:SOURCE_STALE_MS/1000,
+    detailMode:DETAIL_MODE,
+    detailWindow:`${DETAIL_MINUTE_FROM}-${DETAIL_MINUTE_TO}`,
+    detailUnavailableReason:DETAIL_UNAVAILABLE_REASON,
+    capabilities:CAPABILITIES,
+  };
+}
+
 function feedPayload(){
   const matches=state.matches||[];
   const detail=state.detailDiagnostics||{};
@@ -244,26 +237,19 @@ function feedPayload(){
     mode:'LIVE_EVENT_FEED',
     updatedAt:iso(state.lastSuccessAt),
     cycle:state.cycle,
-    source:{
-      name:SOURCE_NAME,
-      host:SOURCE_HOST,
-      scanUrl:TODAY_URL,
-      cacheSeconds:CACHE_MS/1000,
-      staleSeconds:SOURCE_STALE_MS/1000,
-      detailWindow:`${DETAIL_MINUTE_FROM}-${DETAIL_MINUTE_TO}`,
-      detailConcurrency:DETAIL_CONCURRENCY,
-    },
+    source:sourceMeta(),
     counts:{
       live:matches.length,
-      detailed:matches.filter(m=>m.source?.detail).length,
+      detailed:0,
       stale:matches.filter(m=>m.freshness?.stale).length,
       detailEligible:Number(detail.eligible||0),
-      detailAttempts:Number(detail.attempts||0),
-      detailFetchErrors:Number(detail.fetchErrors||0),
-      detailParseInvalid:Number(detail.parseInvalid||0),
-      detailSuccess:Number(detail.successes||0),
+      detailAttempts:0,
+      detailFetchErrors:0,
+      detailParseInvalid:0,
+      detailSuccess:0,
+      detailSkipped:Number(detail.skipped||0),
     },
-    detailErrors:detail.errors||{},
+    detailErrors:{},
     matches,
     lastError:state.lastError,
   };
@@ -274,7 +260,7 @@ function healthPayload(){
     ok:!state.lastError,
     version:VERSION,
     component:'totalcorner-inlet',
-    source:SOURCE_NAME,
+    source:sourceMeta(),
     cycle:state.cycle,
     lastScanAt:iso(state.lastScanAt),
     lastSuccessAt:iso(state.lastSuccessAt),
@@ -296,7 +282,8 @@ export default {
     if(url.pathname==='/contract') return json({
       ok:true,
       version:VERSION,
-      match:{id:'string',league:'string|null',home:'string',away:'string',minute:'number',score:['home','away'],event:{snapshots:[{minute:'number',observedAt:'epoch-ms',attacks:['home','away'],dangerous:['home','away'],sot:['home','away'],off:['home','away'],corner:['home','away']}]},freshness:{changedAt:'epoch-ms',lastSeenAt:'epoch-ms',stale:'boolean'}},
+      source:sourceMeta(),
+      match:{id:'string',league:'string|null',home:'string',away:'string',minute:'number',score:['home','away'],event:{snapshots:[{minute:'number',observedAt:'epoch-ms',attacks:['home','away'],dangerous:['home','away'],sot:[null,null],off:[null,null],corner:['home','away']}]},freshness:{changedAt:'epoch-ms',lastSeenAt:'epoch-ms',stale:'boolean'}},
     });
     return json({ok:false,error:'not_found'},404);
   },
