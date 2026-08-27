@@ -1,0 +1,87 @@
+name: NOMAD 3.42 TEST Web Deploy
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - 'nomad-live-342/**'
+      - 'nomad-live-342-web-test/**'
+      - '.github/workflows/nomad342-test-web-deploy.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TEST_WEB_URL: https://nomadtips3-live-342-web-test.mccarey-supon.workers.dev
+  TEST_ENGINE_URL: https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/342-totalcorner-inlet
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate 3.42 browser TEST bundle
+        run: |
+          node --check nomad-live-342-web-test/src/index.js
+          node --check nomad-live-342/runtime-config.js
+          node --check nomad-live-342/m88-observer.js
+          node --check nomad-live-342/app.js
+          node --check nomad-live-342/totalcorner-live.js
+          grep -q 'TOTALCORNER LIVE' nomad-live-342/index.html
+          grep -q 'run_worker_first' nomad-live-342-web-test/wrangler.jsonc
+
+      - name: Dry-run browser TEST Worker
+        working-directory: nomad-live-342-web-test
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated 3.42 browser TEST Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-342-web-test
+          wranglerVersion: '4.92.0'
+          command: deploy
+
+      - name: Smoke browser TEST page
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsSL --max-time 15 "$TEST_WEB_URL/?_=$(date +%s)" -o /tmp/index.html; then break; fi
+            sleep 5
+          done
+          grep -q '3.42 · TOTALCORNER LIVE' /tmp/index.html
+          grep -q 'TotalCorner → Event → M88' /tmp/index.html
+          curl -fsS --max-time 15 "$TEST_WEB_URL/runtime-config.js" -o /tmp/runtime.js
+          grep -q "environment:'TEST'" /tmp/runtime.js
+          code=$(curl -sS -o /tmp/blocked.txt -w '%{http_code}' "$TEST_WEB_URL/settings.html")
+          test "$code" = '404'
+
+      - name: Verify browser TEST engine is live
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$TEST_ENGINE_URL/feed?force=1" -o /tmp/feed.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,version:j.version,source:j.source?.name,counts:j.counts,lastError:j.lastError},null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner') throw new Error('3.42 TEST engine unavailable');
+          NODE
