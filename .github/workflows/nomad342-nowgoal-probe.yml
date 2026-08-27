@@ -1,0 +1,97 @@
+name: NOMAD 3.42 Nowgoal M88 Isolated Probe
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - 'nomad-nowgoal-probe-342/**'
+      - '.github/workflows/nomad342-nowgoal-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PROBE_URL: https://nomadtips3-nowgoal-probe-342-test.mccarey-supon.workers.dev
+
+jobs:
+  deploy-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/342-totalcorner-inlet
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate isolated probe only
+        working-directory: nomad-nowgoal-probe-342
+        run: |
+          set -euo pipefail
+          node --check src/index.js
+          grep -q '^\[env.test\]' wrangler.toml
+          grep -q '^name = "nomadtips3-nowgoal-probe-342-test"$' wrangler.toml
+          test ! -e ../nomad-live-engine-342/src/nowgoal.js
+
+      - name: Dry-run isolated probe bundle
+        working-directory: nomad-nowgoal-probe-342
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --env test --config wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated probe Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-nowgoal-probe-342
+          wranglerVersion: '4.92.0'
+          command: deploy --env test
+
+      - name: Smoke isolated probe health
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 15 "$PROBE_URL/health?_=$RANDOM$RANDOM" -o /tmp/health.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          if(j.ok!==true||j.version!=='3.42-probe'||j.integration!==false||j.company?.id!=='17') process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 4
+          done
+          test "$ok" = '1'
+          cat /tmp/health.json
+
+      - name: Probe Nowgoal M88 company 17 without integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for id in 2607237 2916839; do
+            echo "===== matchId=$id ====="
+            curl -fsS --max-time 45 "$PROBE_URL/probe?matchId=$id&_=$RANDOM$RANDOM" -o "/tmp/probe-$id.json"
+            node - "$id" <<'NODE'
+          const fs=require('fs');
+          const id=process.argv[2];
+          const j=JSON.parse(fs.readFileSync(`/tmp/probe-${id}.json`,'utf8'));
+          console.log(JSON.stringify({
+            matchId:j.matchId,
+            ok:j.ok,
+            integration:j.integration,
+            company:j.company,
+            summary:j.summary,
+            results:(j.results||[]).map(x=>({host:x.host,ok:x.ok,status:x.status,bytes:x.bytes,error:x.error||null,m88Found:x.m88?.found,m88Name:x.m88?.companyNamePresent,first:x.m88?.rows?.first?.values||null,live:x.m88?.rows?.live?.values||null,run:x.m88?.rows?.run?.values||null}))
+          },null,2));
+          NODE
+          done
