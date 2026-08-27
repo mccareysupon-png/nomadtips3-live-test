@@ -23,7 +23,7 @@ function finite(v){
   return Number.isFinite(n)?n:null;
 }
 function fmtLine(n){const x=finite(n);if(x===null)return '—';const v=Number(x.toFixed(2));return `${v>0?'+':''}${v}`;}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function at(pair,index){return Array.isArray(pair)?finite(pair[index]):null;}
 function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[key],index);return a===null||b===null?null:b-a;}
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null;}
