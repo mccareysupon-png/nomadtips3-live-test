@@ -32,7 +32,11 @@ const cors={
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,'content-type':'application/json; charset=utf-8'}});
 const now=()=>Date.now();
 const iso=t=>t?new Date(t).toISOString():null;
-const finite=v=>Number.isFinite(Number(v))?Number(v):null;
+const finite=v=>{
+  if(v===null||v===undefined||v===''||typeof v==='boolean') return null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+};
 const pairArray=p=>[finite(p?.home),finite(p?.away)];
 
 function sourceUrl(url,token){
@@ -49,7 +53,7 @@ async function fetchHtml(url,token){
       signal:ac.signal,
       cache:'no-store',
       headers:{
-        'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+        'user-agent':'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
         'accept':'text/html,application/xhtml+xml',
         'accept-language':'en-US,en;q=0.9',
         'cache-control':'no-cache, no-store',
