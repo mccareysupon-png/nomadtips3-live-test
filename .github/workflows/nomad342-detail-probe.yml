@@ -15,42 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: feat/342-totalcorner-inlet
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Probe TotalCorner detail URLs
+      - name: Read TEST Worker detail diagnostics
         shell: bash
+        env:
+          TEST_URL: https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev
         run: |
           node --input-type=module <<'NODE'
-          import {parseToday} from './nomad-live-engine-342/src/totalcorner.js';
-          const host='https://www.totalcorner.com';
-          const ua='Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
-          const baseHeaders={'user-agent':ua,'accept':'text/html,application/xhtml+xml','accept-language':'en-US,en;q=0.9','cache-control':'no-cache, no-store','pragma':'no-cache'};
-          const today=await fetch(`${host}/match/today/?_nomad342_probe=${Date.now()}`,{headers:baseHeaders,redirect:'follow'});
-          const todayText=await today.text();
-          console.log('TODAY',today.status,todayText.length,today.url);
-          const rows=parseToday(todayText,host).filter(m=>Number.isFinite(m.minute)&&m.minute>=45&&m.minute<=100).slice(0,3);
-          console.log('ELIGIBLE',rows.map(r=>({id:r.id,minute:r.minute,home:r.home,away:r.away,stats:r.urls?.stats,live:r.urls?.live})));
-          for(const row of rows){
-            for(const [kind,raw] of [['stats',row.urls?.stats],['live',row.urls?.live]]){
-              if(!raw) continue;
-              const probes=[
-                ['worker-style',`${raw}${raw.includes('?')?'&':'?'}_nomad342_cycle=${Date.now()}`,baseHeaders],
-                ['clean',raw,baseHeaders],
-                ['referer',raw,{...baseHeaders,'referer':`${host}/match/today/`}],
-              ];
-              for(const [mode,url,headers] of probes){
-                try{
-                  const r=await fetch(url,{headers,redirect:'follow'});
-                  const text=await r.text();
-                  console.log('DETAIL',JSON.stringify({id:row.id,minute:row.minute,kind,mode,status:r.status,length:text.length,finalUrl:r.url,contentType:r.headers.get('content-type')}));
-                }catch(e){
-                  console.log('DETAIL_ERROR',JSON.stringify({id:row.id,minute:row.minute,kind,mode,error:String(e?.message||e)}));
-                }
-              }
-            }
-          }
+          const base=process.env.TEST_URL;
+          const r=await fetch(`${base}/feed?force=1&probe=${Date.now()}`,{headers:{accept:'application/json'}});
+          const j=await r.json();
+          console.log(JSON.stringify({status:r.status,ok:j.ok,version:j.version,counts:j.counts,detailErrors:j.detailErrors,lastError:j.lastError,updatedAt:j.updatedAt},null,2));
+          if(r.status!==200||j.version!=='3.42'||j.ok!==true) process.exitCode=1;
           NODE
