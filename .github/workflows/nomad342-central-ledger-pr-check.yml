@@ -29,6 +29,9 @@ jobs:
           grep -q 'SIGNALS_DB' README.md
           test -f migrations/0001_signal_ledger.sql
           ! grep -RIn 'nomad-live-engine/' .
-      - name: Confirm no deployment job exists
+      - name: Confirm workflow is validation-only
         run: |
-          ! grep -Eq 'wrangler-action|wrangler@.* deploy|command:[[:space:]]*deploy' .github/workflows/nomad342-central-ledger-pr-check.yml
+          UNEXPECTED="$(grep -E '^[[:space:]]+- uses:' .github/workflows/nomad342-central-ledger-pr-check.yml | grep -Ev 'actions/(checkout@v6|setup-node@v5)' || true)"
+          test -z "$UNEXPECTED"
+          ! grep -Eq '^[[:space:]]*\[\[d1_databases\]\]' nomad-live-engine-342/wrangler.toml
+          ! grep -Eq '^[[:space:]]*database_id[[:space:]]*=' nomad-live-engine-342/wrangler.toml
