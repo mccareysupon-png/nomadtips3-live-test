@@ -1,0 +1,8 @@
+.odds-display-control{display:inline-flex;align-items:center;gap:4px;padding:4px;border:1px solid rgba(180,210,194,.28);border-radius:10px;background:rgba(8,28,21,.55);white-space:nowrap}
+.odds-display-label{padding:0 6px;font-size:10px;font-weight:700;letter-spacing:.12em;color:#91aa9e}
+.odds-display-control button{appearance:none;border:0;border-radius:7px;padding:7px 9px;background:transparent;color:#9db3a8;font:inherit;font-size:11px;font-weight:700;letter-spacing:.03em;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.odds-display-control button:hover{color:#eef7f2;background:rgba(255,255,255,.05)}
+.odds-display-control button.is-active{color:#f4fff8;background:rgba(47,137,94,.34);box-shadow:inset 0 0 0 1px rgba(100,210,148,.28)}
+.odds-display-control button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.odds-display-toolbar{display:flex;justify-content:flex-end;align-items:center;margin:-2px 0 12px}
+@media(max-width:700px){.toolbar{flex-wrap:wrap}.toolbar .odds-display-control{order:3}.toolbar .search{order:4;flex:1 1 100%}.odds-display-toolbar{justify-content:flex-start;margin:0 0 10px}.odds-display-control button{padding:7px 8px;font-size:10px}}
