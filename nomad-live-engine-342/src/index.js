@@ -21,6 +21,7 @@ const state={
   matches:[],
   history:new Map(),
   freshness:new Map(),
+  detailDiagnostics:{eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0},
 };
 
 const cors={
@@ -166,6 +167,7 @@ function cleanup(activeIds,observedAt){
 async function performScan(){
   const started=now();
   state.cycle+=1;
+  const detailDiagnostics={eligible:0,attempts:0,fetchErrors:0,parseInvalid:0,successes:0};
   try{
     const todayHtml=await fetchHtml(TODAY_URL,started);
     const parsed=parseToday(todayHtml,SOURCE_HOST)
@@ -175,12 +177,21 @@ async function performScan(){
     const enriched=await mapLimit(parsed,DETAIL_CONCURRENCY,async row=>{
       let detail=null;
       if(row.minute>=DETAIL_MINUTE_FROM&&row.minute<=DETAIL_MINUTE_TO){
+        detailDiagnostics.eligible+=1;
         const urls=[row.urls?.stats,row.urls?.live].filter(Boolean);
         for(const url of urls){
+          detailDiagnostics.attempts+=1;
           try{
             const candidate=parseLiveDetail(await fetchHtml(url,started));
-            if(candidate.valid){detail=candidate;break;}
-          }catch{}
+            if(candidate.valid){
+              detail=candidate;
+              detailDiagnostics.successes+=1;
+              break;
+            }
+            detailDiagnostics.parseInvalid+=1;
+          }catch{
+            detailDiagnostics.fetchErrors+=1;
+          }
         }
       }
       const match=updateFreshness(mergeMatch(row,detail,started),started);
@@ -201,10 +212,12 @@ async function performScan(){
     const activeIds=new Set(enriched.map(m=>m.id));
     cleanup(activeIds,started);
     state.matches=enriched;
+    state.detailDiagnostics=detailDiagnostics;
     state.lastScanAt=started;
     state.lastSuccessAt=now();
     state.lastError=null;
   }catch(error){
+    state.detailDiagnostics=detailDiagnostics;
     state.lastScanAt=started;
     state.lastError=String(error?.message||error);
   }
@@ -220,6 +233,7 @@ async function scan(force=false){
 
 function feedPayload(){
   const matches=state.matches||[];
+  const detail=state.detailDiagnostics||{};
   return {
     ok:!state.lastError,
     version:VERSION,
@@ -239,6 +253,11 @@ function feedPayload(){
       live:matches.length,
       detailed:matches.filter(m=>m.source?.detail).length,
       stale:matches.filter(m=>m.freshness?.stale).length,
+      detailEligible:Number(detail.eligible||0),
+      detailAttempts:Number(detail.attempts||0),
+      detailFetchErrors:Number(detail.fetchErrors||0),
+      detailParseInvalid:Number(detail.parseInvalid||0),
+      detailSuccess:Number(detail.successes||0),
     },
     matches,
     lastError:state.lastError,
@@ -258,6 +277,7 @@ function healthPayload(){
     liveMatches:state.matches.length,
     staleMatches:state.matches.filter(m=>m.freshness?.stale).length,
     historyMatches:state.history.size,
+    detailDiagnostics:state.detailDiagnostics,
   };
 }
 
