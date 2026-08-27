@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#123328">
+  <title>NOMAD M88 BOT · Control Room</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">nomad<span>tips</span>3</div>
+      <div class="title">M88 BOT CONTROL ROOM</div>
+      <div class="pills"><span>3.42</span><span>READ ONLY</span></div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">PRIVATE OPERATIONS BLUEPRINT</p>
+        <h1>M88 BOT · Control Room</h1>
+        <p>This page documents and observes the NOMAD 3.42 flow. It does not change the engine, place bets, write signals, or contain secrets.</p>
+      </div>
+      <div class="target">
+        <span>TARGET ROUTE</span>
+        <strong id="targetRoute">www.nomadtips3.com/m88bot</strong>
+        <small id="routeState">NOT ROUTED</small>
+      </div>
+    </section>
+
+    <section class="status-grid" aria-label="runtime status">
+      <article class="metric"><span>3.42 WORKER</span><strong id="workerStatus">CHECKING</strong><small id="workerNote">read-only probe</small></article>
+      <article class="metric"><span>TOTALCORNER</span><strong id="feedStatus">CHECKING</strong><small id="feedNote">live feed</small></article>
+      <article class="metric"><span>M88 JUDGE</span><strong class="neutral">LOCAL JUDGE</strong><small>browser-local observer</small></article>
+      <article class="metric"><span>CENTRAL D1</span><strong id="dbStatus" class="neutral">NOT PROVISIONED</strong><small>future authoritative ledger</small></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">SYSTEM FLOW</p><h2>3.42 decision path</h2></div><span class="muted">engine logic unchanged</span></div>
+      <div class="flow" role="list">
+        <div class="node" role="listitem"><b>1</b><strong>TotalCorner</strong><span>match + event evidence</span></div><i>→</i>
+        <div class="node" role="listitem"><b>2</b><strong>NOMAD 3.42</strong><span>event conditions</span></div><i>→</i>
+        <div class="node" role="listitem"><b>3</b><strong>M88</strong><span>HOME AH price judge</span></div><i>→</i>
+        <div class="node" role="listitem"><b>4</b><strong>Final Judge</strong><span>fail closed</span></div><i>→</i>
+        <div class="node" role="listitem"><b>5</b><strong>Signal Lock</strong><span>immutable entry evidence</span></div><i>→</i>
+        <div class="node future" role="listitem"><b>6</b><strong>D1</strong><span>central history</span></div><i>→</i>
+        <div class="node future" role="listitem"><b>7</b><strong>Stats / Health</strong><span>read-only output</span></div>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">LIVE PROBE</p><h2>Read-only observations</h2></div><span class="muted" id="lastProbe">—</span></div>
+        <dl class="facts">
+          <div><dt>Worker version</dt><dd id="workerVersion">—</dd></div>
+          <div><dt>Feed mode</dt><dd id="feedMode">—</dd></div>
+          <div><dt>Live matches</dt><dd id="liveCount">—</dd></div>
+          <div><dt>Feed updated</dt><dd id="feedUpdated">—</dd></div>
+          <div><dt>Last error</dt><dd id="lastError">—</dd></div>
+        </dl>
+      </article>
+
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">SOURCE OF TRUTH</p><h2>Keep the project unambiguous</h2></div><span class="muted">Git first</span></div>
+        <dl class="facts">
+          <div><dt>Version</dt><dd>3.42</dd></div>
+          <div><dt>Source branch</dt><dd id="sourceBranch">—</dd></div>
+          <div><dt>Engine</dt><dd>UNCHANGED</dd></div>
+          <div><dt>Control room</dt><dd>READ ONLY</dd></div>
+          <div><dt>Production route</dt><dd>NOT CONNECTED</dd></div>
+        </dl>
+      </article>
+    </section>
+
+    <section class="panel safety">
+      <p class="eyebrow">SAFETY BOUNDARY</p>
+      <h2>What this page must never do</h2>
+      <div class="rules"><span>No bookmaker login</span><span>No API secrets</span><span>No signal writes</span><span>No betting execution</span><span>No 3.41 engine changes</span><span>No production routing yet</span></div>
+    </section>
+  </main>
+
+  <script src="runtime-config.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>

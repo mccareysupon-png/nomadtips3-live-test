@@ -41,3 +41,13 @@ Example observation:
 ## Test boundary
 
 The current page uses controlled event and M88 snapshots to test the complete decision logic. `m88-observer.js` validates source state, keeps raw evidence, normalizes Hong Kong odds and applies cautious HDP decoding before the price gate.
+
+## Central persistence blueprint (Git branch)
+
+The live browser build still uses its existing LocalStorage keys during the transition. The new isolated backend blueprint is `../nomad-live-engine-342/`.
+
+Target flow:
+
+`TotalCorner -> NOMAD -> M88 -> SIGNAL LOCK -> Worker -> D1 -> Statistics / History / Health`
+
+Do not switch Statistics or Signal Lock to server mode until a real 3.42 D1 binding is provisioned and the new API passes validation. During cutover, dual-write and compare counts first.

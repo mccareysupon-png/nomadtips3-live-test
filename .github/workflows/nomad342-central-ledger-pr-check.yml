@@ -1,0 +1,47 @@
+name: NOMAD 3.42 Central Ledger PR Check
+
+on:
+  pull_request:
+    paths:
+      - 'nomad-live-engine-342/**'
+      - 'nomad-live-342/README.md'
+      - 'm88bot/**'
+      - '.github/workflows/nomad342-central-ledger-pr-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate isolated 3.42 blueprint
+        working-directory: nomad-live-engine-342
+        run: |
+          npm test
+          npm run check
+          grep -q '^name = "nomadtips3-live-engine-342"$' wrangler.toml
+          grep -q 'SIGNALS_DB' README.md
+          test -f migrations/0001_signal_ledger.sql
+          ! grep -RIn 'nomad-live-engine/' .
+      - name: Validate M88BOT read-only control room
+        run: |
+          node --check m88bot/runtime-config.js
+          node --check m88bot/app.js
+          grep -Fq 'noindex,nofollow' m88bot/index.html
+          grep -Fq "mode:'READ_ONLY'" m88bot/runtime-config.js
+          grep -Fq 'https://www.nomadtips3.com/m88bot' m88bot/runtime-config.js
+          ! grep -REn "method[[:space:]]*:[[:space:]]*['\"](POST|PUT|PATCH|DELETE)" m88bot
+          ! grep -RIn 'localStorage.setItem' m88bot
+      - name: Confirm workflow is validation-only
+        run: |
+          UNEXPECTED="$(grep -E '^[[:space:]]+- uses:' .github/workflows/nomad342-central-ledger-pr-check.yml | grep -Ev 'actions/(checkout@v6|setup-node@v5)' || true)"
+          test -z "$UNEXPECTED"
+          ! grep -Eq '^[[:space:]]*\[\[d1_databases\]\]' nomad-live-engine-342/wrangler.toml
+          ! grep -Eq '^[[:space:]]*database_id[[:space:]]*=' nomad-live-engine-342/wrangler.toml
