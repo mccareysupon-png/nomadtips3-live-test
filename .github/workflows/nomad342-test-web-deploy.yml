@@ -64,13 +64,13 @@ jobs:
         run: |
           set -euo pipefail
           for attempt in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 15 "$TEST_WEB_URL/?_=$(date +%s)" -o /tmp/index.html; then break; fi
+            if curl -fsSL --max-time 15 "$TEST_WEB_URL/?_=$(date +%s)" -o /tmp/index.html; then break; fi
             sleep 5
           done
           grep -q '3.42 · TOTALCORNER LIVE' /tmp/index.html
           grep -q 'TotalCorner → Event → M88' /tmp/index.html
           curl -fsS --max-time 15 "$TEST_WEB_URL/runtime-config.js" -o /tmp/runtime.js
-          grep -q 'environment:\x27TEST\x27\|environment:\x27TEST\x27' /tmp/runtime.js || grep -q "environment:'TEST'" /tmp/runtime.js
+          grep -q "environment:'TEST'" /tmp/runtime.js
           code=$(curl -sS -o /tmp/blocked.txt -w '%{http_code}' "$TEST_WEB_URL/settings.html")
           test "$code" = '404'
 
