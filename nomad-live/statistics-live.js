@@ -77,6 +77,7 @@
         setText(note,`Statistics connected · ${publicStats.settled} settled public records.`);
         lastSummaryKey=summaryKey;
       }
+      window.dispatchEvent(new CustomEvent('nomad:statistics-records',{detail:{records}}));
       setSource(`RESULT LEDGER · ${String(window.NOMAD_RUNTIME?.environment||'live').toUpperCase()}`,true);
       firstLoad=false;
     }catch(e){
