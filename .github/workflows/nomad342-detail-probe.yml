@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Read TEST Worker detail diagnostics
+      - name: Inspect TEST Worker snapshots
         shell: bash
         env:
           TEST_URL: https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev
@@ -27,6 +27,17 @@ jobs:
           const base=process.env.TEST_URL;
           const r=await fetch(`${base}/feed?force=1&probe=${Date.now()}`,{headers:{accept:'application/json'}});
           const j=await r.json();
-          console.log(JSON.stringify({status:r.status,ok:j.ok,version:j.version,counts:j.counts,detailErrors:j.detailErrors,lastError:j.lastError,updatedAt:j.updatedAt},null,2));
+          const matches=(j.matches||[]).map(m=>{
+            const s=Array.isArray(m.event?.snapshots)?m.event.snapshots:[];
+            const first=s[0]||null,last=s[s.length-1]||null;
+            return {
+              id:m.id,match:`${m.home} vs ${m.away}`,minute:m.minute,score:m.score,
+              snapshotCount:s.length,
+              first:first?{minute:first.minute,attacks:first.attacks,dangerous:first.dangerous,sot:first.sot,off:first.off,corner:first.corner}:null,
+              last:last?{minute:last.minute,attacks:last.attacks,dangerous:last.dangerous,sot:last.sot,off:last.off,corner:last.corner}:null,
+              stale:Boolean(m.freshness?.stale)
+            };
+          });
+          console.log(JSON.stringify({status:r.status,ok:j.ok,version:j.version,counts:j.counts,detailErrors:j.detailErrors,lastError:j.lastError,updatedAt:j.updatedAt,matches},null,2));
           if(r.status!==200||j.version!=='3.42'||j.ok!==true) process.exitCode=1;
           NODE
