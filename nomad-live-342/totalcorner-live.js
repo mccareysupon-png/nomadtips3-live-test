@@ -4,6 +4,7 @@ const SETTINGS_KEY='nomadSettings342';
 const LEDGER_KEY='nomadLedger342';
 const DEFAULTS={minuteFrom:55,minuteTo:88,rollingWindowMinutes:5,scoreDifferenceFilterEnabled:true,maxScoreDifference:1,attackWeight:1,dangerousAttackWeight:2,homePressureShareMinimum:55,trendConditionsRequired:2,homeEventRequired:true,sotEvidenceEnabled:true,sotDeltaMinimum:1,shotOffEvidenceEnabled:true,shotOffDeltaMinimum:1,cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY',allowedLinesMode:'ANY',allowedSelectionLines:[],oddsMinimum:1.80,oddsMaximumEnabled:false,oddsMaximum:2.40,maximumPriceAgeSeconds:30,oneSignalPerMatch:true};
 const runtime=window.NOMAD342_RUNTIME||{};
+const browserHistory=new Map();
 let timer=null;
 let running=false;
 
@@ -14,12 +15,34 @@ function settings(){
   }catch{return {...DEFAULTS,allowedSelectionLines:[]};}
 }
 
-function finite(v){const n=Number(v);return Number.isFinite(n)?n:null;}
+function finite(v){
+  if(v===null||v===undefined||v===''||typeof v==='boolean') return null;
+  const n=Number(v);
+  return Number.isFinite(n)?n:null;
+}
 function fmtLine(n){const x=finite(n);if(x===null)return '—';const v=Number(x.toFixed(2));return `${v>0?'+':''}${v}`;}
 function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
 function at(pair,index){return Array.isArray(pair)?finite(pair[index]):null;}
 function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[key],index);return a===null||b===null?null:b-a;}
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null;}
+
+function mergeFeedHistory(match){
+  const id=String(match.id);
+  const incoming=Array.isArray(match.event?.snapshots)?match.event.snapshots:[];
+  const previous=browserHistory.get(id)||[];
+  const byMinute=new Map();
+  for(const snapshot of [...previous,...incoming]){
+    const minute=finite(snapshot?.minute);
+    if(minute===null) continue;
+    const next={...snapshot,minute,observedAt:finite(snapshot?.observedAt)||Date.now()};
+    const current=byMinute.get(minute);
+    if(!current||next.observedAt>=current.observedAt) byMinute.set(minute,next);
+  }
+  const cutoff=Date.now()-15*60*1000;
+  const rows=[...byMinute.values()].filter(s=>s.observedAt>=cutoff).sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt).slice(-40);
+  browserHistory.set(id,rows);
+  return {...match,event:{...match.event,snapshots:rows}};
+}
 
 function eventMetrics(m,c){
   const snaps=[...(m.event?.snapshots||[])]
@@ -76,8 +99,8 @@ function eventCheck(m,c){
 }
 
 function sameName(a,b){
-  const norm=v=>String(v||'').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,' ').trim();
-  return norm(a)&&norm(a)===norm(b);
+  const norm=v=>String(v||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+  return Boolean(norm(a))&&norm(a)===norm(b);
 }
 
 function lineAllowed(line,c){
@@ -175,6 +198,7 @@ async function getFeed(){
     if(!response.ok) throw new Error(`engine_http_${response.status}`);
     const data=await response.json();
     if(String(data.version)!=='3.42'||!Array.isArray(data.matches)) throw new Error('invalid_342_feed_contract');
+    if(data.ok===false) throw new Error(data.lastError||'342_feed_not_ok');
     return data;
   }finally{clearTimeout(timeout);}
 }
@@ -186,7 +210,7 @@ async function cycle(){
   try{
     const feed=await getFeed();
     const c=settings();
-    const live=feed.matches.filter(m=>!m.freshness?.stale);
+    const live=feed.matches.filter(m=>!m.freshness?.stale).map(mergeFeedHistory);
     const results=live.map(m=>evaluate(m,c));
     results.forEach(r=>saveLedger(r,c));
     const list=document.getElementById('matchList');
@@ -196,7 +220,7 @@ async function cycle(){
     setMetric('candidateCount',results.filter(x=>x.candidate).length);
     setMetric('signalCount',results.filter(x=>x.signal).length);
     const pipes=[...document.querySelectorAll('[data-pipe]')];
-    pipes.forEach((x,i)=>x.classList.toggle('ok',i<=2||results.some(r=>r.candidate)&&i<=6||results.some(r=>r.signal)));
+    pipes.forEach((x,i)=>x.classList.toggle('ok',i<=2||(results.some(r=>r.candidate)&&i<=6)||results.some(r=>r.signal)));
     renderObserver(c);
     window.__nomad342LiveResults=results;
     window.__nomad342Feed=feed;
