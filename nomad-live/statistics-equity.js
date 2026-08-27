@@ -131,19 +131,40 @@
       ctx.beginPath();
       ctx.moveTo(plot.left,yPos);
       ctx.lineTo(plot.right,yPos);
-      ctx.strokeStyle='rgba(150,158,151,.085)';
+      ctx.strokeStyle='rgba(128,136,131,.09)';
       ctx.lineWidth=1;
       ctx.stroke();
-      ctx.fillStyle='rgba(152,160,145,.68)';
+      ctx.fillStyle='rgba(148,156,151,.66)';
       ctx.fillText(formatAxis(value),plot.left-7,yPos);
     }
+
+    ctx.beginPath();
+    for(let index=1;index<6;index+=1){
+      const xPos=plot.left+plotWidth*(index/6);
+      ctx.moveTo(xPos,plot.top);
+      ctx.lineTo(xPos,plot.bottom);
+    }
+    ctx.strokeStyle='rgba(128,136,131,.065)';
+    ctx.lineWidth=1;
+    ctx.stroke();
 
     const zeroY=y(0);
     ctx.beginPath();
     ctx.moveTo(plot.left,zeroY);
     ctx.lineTo(plot.right,zeroY);
-    ctx.strokeStyle='rgba(207,219,210,.28)';
-    ctx.lineWidth=1.2;
+    ctx.strokeStyle='rgba(176,185,179,.25)';
+    ctx.lineWidth=1.1;
+    ctx.stroke();
+
+    const currentValue=series[series.length-1].close;
+    const currentY=y(currentValue);
+    const currentLineColor=currentValue>0?'rgba(92,177,108,.74)':currentValue<0?'rgba(207,91,96,.74)':'rgba(169,177,172,.68)';
+    const currentTextColor=currentValue>0?'#68b777':currentValue<0?'#d16a6e':'#a9b1ac';
+    ctx.beginPath();
+    ctx.moveTo(plot.left,currentY);
+    ctx.lineTo(plot.right,currentY);
+    ctx.strokeStyle=currentLineColor;
+    ctx.lineWidth=1;
     ctx.stroke();
 
     const slot=plotWidth/series.length;
@@ -156,24 +177,29 @@
         ctx.beginPath();
         ctx.moveTo(center-barWidth/2,openY);
         ctx.lineTo(center+barWidth/2,openY);
-        ctx.strokeStyle='rgba(195,204,197,.72)';
+        ctx.strokeStyle='rgba(169,177,172,.76)';
         ctx.lineWidth=1.25;
         ctx.stroke();
         return;
       }
       const top=Math.min(openY,closeY);
       const barHeight=Math.abs(closeY-openY);
-      const gradient=ctx.createLinearGradient(0,top,0,top+barHeight);
-      if(point.delta>0){
-        gradient.addColorStop(0,'rgba(112,191,128,.92)');
-        gradient.addColorStop(1,'rgba(48,116,76,.82)');
-      }else{
-        gradient.addColorStop(0,'rgba(185,73,80,.82)');
-        gradient.addColorStop(1,'rgba(225,121,121,.9)');
-      }
-      ctx.fillStyle=gradient;
+      ctx.fillStyle=point.delta>0?'rgba(76,157,94,.92)':'rgba(194,77,82,.92)';
       ctx.fillRect(center-barWidth/2,top,barWidth,barHeight);
     });
+
+    const currentLabel=formatUnit(currentValue);
+    ctx.font='700 8px Arial, sans-serif';
+    const labelWidth=Math.ceil(ctx.measureText(currentLabel).width)+8;
+    const labelHeight=14;
+    const labelX=Math.max(plot.left,plot.right-labelWidth);
+    const labelY=Math.min(plot.bottom-labelHeight,Math.max(plot.top,currentY-labelHeight/2));
+    ctx.fillStyle='rgba(15,17,16,.92)';
+    ctx.fillRect(labelX,labelY,labelWidth,labelHeight);
+    ctx.fillStyle=currentTextColor;
+    ctx.textBaseline='middle';
+    ctx.textAlign='right';
+    ctx.fillText(currentLabel,plot.right-4,labelY+labelHeight/2);
 
     ctx.fillStyle='rgba(152,160,145,.72)';
     ctx.textBaseline='bottom';
