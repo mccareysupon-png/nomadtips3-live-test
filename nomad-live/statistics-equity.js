@@ -14,6 +14,9 @@
   let series=[];
   let hitRegions=[];
   let selectedKey=null;
+  let hoverKey=null;
+  let hoverX=null;
+  let hoverY=null;
   let frame=0;
 
   const finiteNumber=value=>{
@@ -40,6 +43,7 @@
     return Number(value).toFixed(digits);
   };
   const formatDate=value=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short'}).format(new Date(value));
+  const formatHoverDate=value=>new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(value));
   const formatDateTime=value=>{
     const date=new Date(value);
     if(Number.isNaN(date.getTime())) return 'Settlement time unavailable';
@@ -95,6 +99,14 @@
     }
   };
 
+  const clearHover=()=>{
+    if(hoverKey===null&&hoverX===null&&hoverY===null) return false;
+    hoverKey=null;
+    hoverX=null;
+    hoverY=null;
+    return true;
+  };
+
   const updateTooltip=(point,region,width,height)=>{
     if(!tooltip||!point||!region) return;
     const result=String(point?.record?.settlement?.result||'SETTLED').trim().toUpperCase()||'SETTLED';
@@ -134,6 +146,33 @@
     totalNode=chart.querySelector('[data-unit-total]');
     metaNode=chart.querySelector('[data-unit-meta]');
     tooltip=chart.querySelector('[data-unit-tooltip]');
+    canvas.addEventListener('pointermove',event=>{
+      if(event.pointerType&&event.pointerType!=='mouse') return;
+      if(!series.length||!hitRegions.length) return;
+      const rect=canvas.getBoundingClientRect();
+      const x=event.clientX-rect.left;
+      const y=event.clientY-rect.top;
+      const bounds=hitRegions[0];
+      const insidePlot=x>=bounds.plotLeft&&x<=bounds.plotRight&&y>=bounds.plotTop&&y<=bounds.plotBottom;
+      if(!insidePlot){
+        if(clearHover()) scheduleDraw();
+        return;
+      }
+      let nearest=hitRegions[0];
+      let distance=Math.abs(x-nearest.center);
+      for(let index=1;index<hitRegions.length;index+=1){
+        const region=hitRegions[index];
+        const next=Math.abs(x-region.center);
+        if(next<distance){nearest=region;distance=next;}
+      }
+      hoverKey=nearest.key;
+      hoverX=nearest.center;
+      hoverY=Math.max(bounds.plotTop,Math.min(bounds.plotBottom,y));
+      scheduleDraw();
+    },{passive:true});
+    canvas.addEventListener('pointerleave',()=>{
+      if(clearHover()) scheduleDraw();
+    },{passive:true});
     canvas.addEventListener('click',event=>{
       if(!series.length||!hitRegions.length) return;
       const rect=canvas.getBoundingClientRect();
@@ -172,6 +211,7 @@
   const clearCanvas=()=>{
     if(!canvas) return;
     hitRegions=[];
+    clearHover();
     const ctx=canvas.getContext('2d');
     if(!ctx) return;
     ctx.setTransform(1,0,0,1,0,0);
@@ -265,7 +305,7 @@
       const top=Math.min(openY,closeY);
       const bottom=Math.max(openY,closeY);
       const selected=point.key===selectedKey;
-      hitRegions.push({key:point.key,index,center,top,bottom,hitLeft:center-hitWidth/2,hitRight:center+hitWidth/2,plotTop:plot.top,plotBottom:plot.bottom});
+      hitRegions.push({key:point.key,index,center,top,bottom,hitLeft:center-hitWidth/2,hitRight:center+hitWidth/2,plotLeft:plot.left,plotRight:plot.right,plotTop:plot.top,plotBottom:plot.bottom});
       if(point.delta===0){
         ctx.beginPath();
         ctx.moveTo(center-barWidth/2,openY);
@@ -286,6 +326,51 @@
         ctx.strokeRect(center-barWidth/2+.5,top+.5,Math.max(0,barWidth-1),Math.max(0,barHeight-1));
       }
     });
+
+    if(hoverKey&&hoverX!==null&&hoverY!==null){
+      const hoveredIndex=series.findIndex(point=>point.key===hoverKey);
+      if(hoveredIndex>=0){
+        const guideColor='rgba(170,178,173,.44)';
+        ctx.save();
+        ctx.setLineDash([2,2]);
+        ctx.strokeStyle=guideColor;
+        ctx.lineWidth=.75;
+        ctx.beginPath();
+        ctx.moveTo(hoverX,plot.top);
+        ctx.lineTo(hoverX,plot.bottom);
+        ctx.moveTo(plot.left,hoverY);
+        ctx.lineTo(plot.right,hoverY);
+        ctx.stroke();
+        ctx.restore();
+
+        const hoverValue=high-((hoverY-plot.top)/plotHeight)*range;
+        const valueText=formatUnit(hoverValue);
+        ctx.font='700 8px Arial, sans-serif';
+        ctx.textBaseline='middle';
+        ctx.textAlign='left';
+        const valueWidth=Math.ceil(ctx.measureText(valueText).width)+8;
+        const valueHeight=14;
+        const valueX=Math.max(2,plot.left-valueWidth-4);
+        const valueY=Math.min(plot.bottom-valueHeight,Math.max(plot.top,hoverY-valueHeight/2));
+        ctx.fillStyle='rgba(18,20,19,.94)';
+        ctx.fillRect(valueX,valueY,valueWidth,valueHeight);
+        ctx.fillStyle='rgba(190,198,193,.92)';
+        ctx.fillText(valueText,valueX+4,valueY+valueHeight/2);
+
+        const dateText=formatHoverDate(series[hoveredIndex].settledAt);
+        ctx.font='700 8px Arial, sans-serif';
+        const dateWidth=Math.ceil(ctx.measureText(dateText).width)+10;
+        const dateHeight=14;
+        const dateX=Math.max(plot.left,Math.min(plot.right-dateWidth,hoverX-dateWidth/2));
+        const dateY=Math.max(plot.top,plot.bottom-dateHeight);
+        ctx.fillStyle='rgba(18,20,19,.94)';
+        ctx.fillRect(dateX,dateY,dateWidth,dateHeight);
+        ctx.fillStyle='rgba(190,198,193,.92)';
+        ctx.textBaseline='middle';
+        ctx.textAlign='center';
+        ctx.fillText(dateText,dateX+dateWidth/2,dateY+dateHeight/2);
+      }else clearHover();
+    }
 
     const currentLabel=formatUnit(currentValue);
     ctx.font='700 8px Arial, sans-serif';
@@ -328,6 +413,7 @@
     const built=buildSeries(records);
     series=built.points;
     if(selectedKey&&!series.some(point=>point.key===selectedKey)) selectedKey=null;
+    if(hoverKey&&!series.some(point=>point.key===hoverKey)) clearHover();
     totalNode.textContent=formatUnit(built.total);
     totalNode.classList.toggle('is-positive',built.total>0);
     totalNode.classList.toggle('is-negative',built.total<0);
