@@ -2,6 +2,8 @@
 'use strict';
 const SETTINGS_KEY='nomadSettings342';
 const LEDGER_KEY='nomadLedger342';
+const HISTORY_KEY='nomadEventHistory342';
+const HISTORY_TTL_MS=15*60*1000;
 const DEFAULTS={minuteFrom:55,minuteTo:88,rollingWindowMinutes:5,scoreDifferenceFilterEnabled:true,maxScoreDifference:1,attackWeight:1,dangerousAttackWeight:2,homePressureShareMinimum:55,trendConditionsRequired:2,homeEventRequired:true,sotEvidenceEnabled:true,sotDeltaMinimum:1,shotOffEvidenceEnabled:true,shotOffDeltaMinimum:1,cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY',allowedLinesMode:'ANY',allowedSelectionLines:[],oddsMinimum:1.80,oddsMaximumEnabled:false,oddsMaximum:2.40,maximumPriceAgeSeconds:30,oneSignalPerMatch:true};
 const runtime=window.NOMAD342_RUNTIME||{};
 const browserHistory=new Map();
@@ -21,10 +23,44 @@ function finite(v){
   return Number.isFinite(n)?n:null;
 }
 function fmtLine(n){const x=finite(n);if(x===null)return '—';const v=Number(x.toFixed(2));return `${v>0?'+':''}${v}`;}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));}
 function at(pair,index){return Array.isArray(pair)?finite(pair[index]):null;}
 function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[key],index);return a===null||b===null?null:b-a;}
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null;}
+
+function cleanHistoryRows(rows){
+  const cutoff=Date.now()-HISTORY_TTL_MS;
+  return (Array.isArray(rows)?rows:[])
+    .map(snapshot=>({...snapshot,minute:finite(snapshot?.minute),observedAt:finite(snapshot?.observedAt)}))
+    .filter(snapshot=>snapshot.minute!==null&&snapshot.observedAt!==null&&snapshot.observedAt>=cutoff)
+    .sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt)
+    .slice(-40);
+}
+
+function loadBrowserHistory(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(HISTORY_KEY)||'{}');
+    if(!saved||typeof saved!=='object'||Array.isArray(saved)) return;
+    for(const [id,rows] of Object.entries(saved)){
+      const clean=cleanHistoryRows(rows);
+      if(clean.length) browserHistory.set(String(id),clean);
+    }
+  }catch{
+    try{localStorage.removeItem(HISTORY_KEY);}catch{}
+  }
+}
+
+function persistBrowserHistory(){
+  const payload={};
+  for(const [id,rows] of [...browserHistory.entries()]){
+    const clean=cleanHistoryRows(rows);
+    if(clean.length){browserHistory.set(id,clean);payload[id]=clean;}
+    else browserHistory.delete(id);
+  }
+  try{localStorage.setItem(HISTORY_KEY,JSON.stringify(payload));}catch{}
+}
+
+loadBrowserHistory();
 
 function mergeFeedHistory(match){
   const id=String(match.id);
@@ -38,8 +74,7 @@ function mergeFeedHistory(match){
     const current=byMinute.get(minute);
     if(!current||next.observedAt>=current.observedAt) byMinute.set(minute,next);
   }
-  const cutoff=Date.now()-15*60*1000;
-  const rows=[...byMinute.values()].filter(s=>s.observedAt>=cutoff).sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt).slice(-40);
+  const rows=cleanHistoryRows([...byMinute.values()]);
   browserHistory.set(id,rows);
   return {...match,event:{...match.event,snapshots:rows}};
 }
@@ -97,7 +132,6 @@ function eventCheck(m,c){
   }
   return {pass,reasons,metrics};
 }
-
 function sameName(a,b){
   const norm=v=>String(v||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
   return Boolean(norm(a))&&norm(a)===norm(b);
@@ -211,6 +245,7 @@ async function cycle(){
     const feed=await getFeed();
     const c=settings();
     const live=feed.matches.filter(m=>!m.freshness?.stale).map(mergeFeedHistory);
+    persistBrowserHistory();
     const results=live.map(m=>evaluate(m,c));
     results.forEach(r=>saveLedger(r,c));
     const list=document.getElementById('matchList');
@@ -243,7 +278,7 @@ function start(){
   },true);
   cycle();
   timer=setInterval(cycle,Math.max(5000,Number(runtime.pollMs)||10000));
-  window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);},{once:true});
+  window.addEventListener('beforeunload',()=>{persistBrowserHistory();if(timer)clearInterval(timer);},{once:true});
 }
 
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
