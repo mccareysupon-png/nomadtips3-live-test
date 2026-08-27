@@ -26,6 +26,24 @@ test('today parser keeps live minute separate from numeric team names',()=>{
   assert.deepEqual(rows[0].stats.dangerous,{home:38,away:21});
 });
 
+test('today parser keeps attack and dangerous pairs when split across cells',()=>{
+  const html=`<table><tr>
+    <td><a href="/league/view/10">Test League</a></td>
+    <td class="match_status">59</td>
+    <td><a href="/team/view/11">Home FC</a></td>
+    <td>1 - 1</td>
+    <td><a href="/team/view/12">Away FC</a></td>
+    <td>(0 - 7)</td>
+    <td>29 - 65</td>
+    <td>25 - 47</td>
+    <td><a href="/live/home-fc-vs-away-fc/123457">Live</a></td>
+  </tr></table>`;
+  const rows=parseToday(html);
+  assert.equal(rows.length,1);
+  assert.deepEqual(rows[0].stats.attacks,{home:29,away:65});
+  assert.deepEqual(rows[0].stats.dangerous,{home:25,away:47});
+});
+
 test('live detail parser returns event evidence needed by NOMAD',()=>{
   const html=`<html><body>Live Events Status: 74, Score: 0 - 0, Corner: 3 - 2
     56 Attack 47
