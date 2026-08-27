@@ -1,0 +1,141 @@
+name: NOMAD 3.42 TotalCorner M88 Probe Worker
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - '.github/workflows/nomad342-totalcorner-m88-probe.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PROBE_NAME: nomadtips3-live-engine-342-m88-probe
+  PROBE_URL: https://nomadtips3-live-engine-342-m88-probe.mccarey-supon.workers.dev
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/342-totalcorner-inlet
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Build isolated probe Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/nomad342-m88-probe
+          mkdir -p /tmp/nomad342-m88-probe
+          cat > /tmp/nomad342-m88-probe/wrangler.toml <<'TOML'
+          name = "nomadtips3-live-engine-342-m88-probe"
+          main = "worker.js"
+          compatibility_date = "2026-08-27"
+          workers_dev = true
+          TOML
+          cat > /tmp/nomad342-m88-probe/worker.js <<'JS'
+          const TODAY='https://www.totalcorner.com/match/today/';
+          const UA='Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
+          const headers={
+            'user-agent':UA,
+            'accept':'text/html,application/xhtml+xml',
+            'accept-language':'en-US,en;q=0.9',
+            'cache-control':'no-cache, no-store',
+            'pragma':'no-cache'
+          };
+          const json=(body,status=200)=>new Response(JSON.stringify(body,null,2),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
+          const strip=s=>String(s||'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/\s+/g,' ').trim();
+          async function fetchText(url,referer){
+            const ac=new AbortController();
+            const t=setTimeout(()=>ac.abort(),9000);
+            try{
+              const r=await fetch(url,{signal:ac.signal,cache:'no-store',headers:{...headers,...(referer?{referer}:{})},redirect:'follow'});
+              return {status:r.status,url:r.url,text:await r.text()};
+            }finally{clearTimeout(t)}
+          }
+          function refsFromToday(html){
+            const out=[];
+            for(const m of String(html).matchAll(/href=["']([^"']*\/(?:live|stats|odds)\/([^"'?#/]+)\/(\d+)[^"']*)["']/gi)){
+              const [,href,slug,id]=m;
+              if(!out.some(x=>x.id===id)) out.push({id,slug,href});
+            }
+            return out;
+          }
+          function summarizeBookies(body){
+            const known=['M88','M88.com','Mansion88','Bet 365','Bet365','Pinnacle','1xBet','12bet','18Bet','10BET','Crown','Macauslot','Vcbet','William Hill','Interwetten'];
+            return known.filter(name=>new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(body));
+          }
+          function m88Excerpt(body){
+            const text=strip(body);
+            const m=/\bM\s*88\b|M88\.com|Mansion\s*88/i.exec(text);
+            if(!m)return null;
+            return text.slice(Math.max(0,m.index-220),Math.min(text.length,m.index+420));
+          }
+          export default {async fetch(req){
+            const u=new URL(req.url);
+            if(u.pathname!=='/probe')return json({ok:true,component:'nomad342-m88-probe'});
+            const result={ok:true,today:null,matches:[]};
+            try{
+              const todayUrl=`${TODAY}?_nomad342_probe=${Date.now()}`;
+              const today=await fetchText(todayUrl,null);
+              result.today={status:today.status,bytes:today.text.length,finalUrl:today.url};
+              if(today.status!==200)return json({...result,ok:false,reason:`today_http_${today.status}`});
+              const refs=refsFromToday(today.text).slice(0,8);
+              result.today.matchRefs=refs.length;
+              for(const x of refs){
+                const oddsUrl=`https://www.totalcorner.com/odds/${x.slug}/${x.id}`;
+                try{
+                  const odds=await fetchText(oddsUrl,TODAY);
+                  const hasM88=/\bM\s*88\b|M88\.com|Mansion\s*88/i.test(odds.text);
+                  result.matches.push({id:x.id,slug:x.slug,status:odds.status,bytes:odds.text.length,hasM88,hasHandicap:/handicap/i.test(odds.text),bookmakers:summarizeBookies(odds.text),excerpt:hasM88?m88Excerpt(odds.text):null});
+                }catch(e){
+                  result.matches.push({id:x.id,slug:x.slug,status:null,error:String(e?.message||e)});
+                }
+              }
+              result.m88Matches=result.matches.filter(x=>x.hasM88).length;
+              return json(result);
+            }catch(e){
+              return json({...result,ok:false,reason:String(e?.message||e)},200);
+            }
+          }};
+          JS
+          node --check /tmp/nomad342-m88-probe/worker.js
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated probe Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: /tmp/nomad342-m88-probe
+          wranglerVersion: '4.92.0'
+          command: deploy
+
+      - name: Probe TotalCorner from Cloudflare
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 30 "$PROBE_URL/probe?_=$RANDOM$RANDOM" -o /tmp/m88-probe.json; then ok=1; break; fi
+            sleep 4
+          done
+          test "$ok" = '1'
+          cat /tmp/m88-probe.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/m88-probe.json','utf8'));
+          if(!j.today||typeof j.today.status!=='number') process.exit(1);
+          NODE
