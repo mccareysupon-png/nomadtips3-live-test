@@ -116,7 +116,10 @@
         100%{stroke-dashoffset:-14;opacity:.22}
       }
       @media(prefers-reduced-motion:reduce){
-        .watch-pulse .pulse-run{animation:none;stroke-dasharray:none;opacity:.75}
+        .watch-pulse .pulse-run{
+          animation:watchPulseLine 3.3s linear infinite;
+          filter:none;
+        }
       }
       @media(max-width:820px){
         .score-live-head{font-size:5.8px;gap:1.5px}
