@@ -7,7 +7,15 @@
 .cumulative-unit-total.is-positive{color:#6fbd7d}
 .cumulative-unit-total.is-negative{color:#d47878}
 .cumulative-unit-surface{position:relative;min-height:0}
-.cumulative-unit-canvas{display:block;width:100%;height:100%}
+.cumulative-unit-canvas{display:block;width:100%;height:100%;cursor:crosshair;touch-action:pan-y}
+.cumulative-unit-tooltip{position:absolute;z-index:2;min-width:116px;max-width:164px;padding:7px 8px;background:rgba(18,21,19,.96);border:1px solid rgba(173,184,176,.18);box-shadow:0 5px 18px rgba(0,0,0,.24);color:#aeb6b0;font-size:8px;line-height:1.45;font-feature-settings:'tnum' 1;pointer-events:none}
+.cumulative-unit-tooltip[hidden]{display:none}
+.cumulative-unit-tooltip span,.cumulative-unit-tooltip strong{display:block}
+.cumulative-unit-tooltip-date{margin-bottom:3px;color:#89938c;font-weight:700}
+.cumulative-unit-tooltip-result{margin-bottom:2px;color:#c4cbc6;font-size:9px;letter-spacing:.04em}
+.cumulative-unit-tooltip-result.is-positive{color:#79c387}
+.cumulative-unit-tooltip-result.is-negative{color:#dc7d80}
+.cumulative-unit-tooltip b{color:#d2d7d3;font-weight:800}
 .cumulative-unit-empty{position:absolute;inset:0;display:grid;place-items:center;margin:0;padding:18px;color:#7f8a82;font-size:9px;text-align:center;pointer-events:none}
 .cumulative-unit-empty[hidden]{display:none}
 .cumulative-unit-explanation{padding:8px 10px 10px;border-top:1px solid rgba(128,136,131,.12);color:#858f88;font-size:8px;line-height:1.55}
@@ -18,4 +26,4 @@
 .cumulative-unit-explanation-key.is-positive{color:#6fbd7d}
 .cumulative-unit-explanation-key.is-negative{color:#d47878}
 @media(max-width:900px){.cumulative-unit-plot{height:252px}}
-@media(max-width:700px){.cumulative-unit-plot{height:224px}.cumulative-unit-head{padding:9px 7px 2px}.cumulative-unit-total{font-size:13px}.cumulative-unit-explanation{padding:8px 7px 9px;line-height:1.5}}
+@media(max-width:700px){.cumulative-unit-plot{height:224px}.cumulative-unit-head{padding:9px 7px 2px}.cumulative-unit-total{font-size:13px}.cumulative-unit-tooltip{min-width:108px;padding:6px 7px}.cumulative-unit-explanation{padding:8px 7px 9px;line-height:1.5}}
