@@ -61,10 +61,10 @@
 
 (()=>{
   const path=String(window.location.pathname||'');
-  if(!/\/(?:settings|statistics)\.html$/i.test(path))return;
+  if(!/\/(?:settings|statistics)(?:\.html)?\/?$/i.test(path))return;
   if(document.querySelector('script[data-match-scout-sidecar]'))return;
   const script=document.createElement('script');
-  script.src='match-scout-sidecar.js?v=20260828-sidecar-v1';
+  script.src='match-scout-sidecar.js?v=20260828-central-v2';
   script.dataset.matchScoutSidecar='1';
   script.onerror=()=>console.warn('Match Scouts sidecar unavailable; core page remains unchanged.');
   document.head.appendChild(script);
