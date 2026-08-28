@@ -49,9 +49,14 @@ function analystComment(p){
 
 function card(p){
   const m=model(p); const {home,draw,away}=m.probs;
-  const conic=`conic-gradient(var(--green) 0 ${home}%, #8a8f89 ${home}% ${home+draw}%, var(--blue) ${home+draw}% 100%)`;
+  const selectedColor='var(--selected-green)';
+  const opponentColor='var(--opponent-red)';
+  const homeColor=m.awayPick?opponentColor:selectedColor;
+  const awayColor=m.awayPick?selectedColor:opponentColor;
+  const conic=`conic-gradient(${homeColor} 0 ${home}%, #7d837e ${home}% ${home+draw}%, ${awayColor} ${home+draw}% 100%)`;
   const bars=m.metrics.map(x=>`<div class="compare-row"><div class="compare-label">${esc(x.label)}</div><div class="bar-wrap"><span class="bar-num">${x.home}%</span><div class="bar"><span class="bar-home" style="width:${x.home}%"></span><span class="bar-away" style="width:${x.away}%"></span></div><span class="bar-num">${x.away}%</span></div></div>`).join('');
-  return `<article class="prediction-card ${p.featured?'featured':''}" data-search="${esc((p.home+' '+p.away+' '+p.league).toLowerCase())}">
+  const sideClass=m.awayPick?'selected-away':'selected-home';
+  return `<article class="prediction-card ${p.featured?'featured':''} ${sideClass}" data-search="${esc((p.home+' '+p.away+' '+p.league).toLowerCase())}">
     <div class="card-head">
       <div>
         <div class="league-line"><span>${esc(p.league)}</span><span>•</span><span>${esc(p.kickoff)}</span><span class="badge">${esc(p.abc)}</span></div>
@@ -78,9 +83,9 @@ function card(p){
         <section class="panel">
           <div class="panel-title"><h3>WIN PROBABILITY</h3><span class="demo-tag">PREVIEW</span></div>
           <div class="prob-layout"><div class="donut" style="background:${conic}"><strong>${Math.max(home,away)}%</strong><small>TOP SIDE</small></div><div class="legend">
-            <div class="legend-row"><span>Home Win</span><strong>${home}%</strong></div>
-            <div class="legend-row"><span>Draw</span><strong>${draw}%</strong></div>
-            <div class="legend-row"><span>Away Win</span><strong>${away}%</strong></div>
+            <div class="legend-row ${m.awayPick?'opponent':'selected'}"><span>Home Win</span><strong>${home}%</strong></div>
+            <div class="legend-row neutral"><span>Draw</span><strong>${draw}%</strong></div>
+            <div class="legend-row ${m.awayPick?'selected':'opponent'}"><span>Away Win</span><strong>${away}%</strong></div>
           </div></div>
         </section>
         <div class="mini-grid">
