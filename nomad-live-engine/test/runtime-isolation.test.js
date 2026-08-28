@@ -47,14 +47,38 @@ function frontendFiles(directory=frontend){
   });
 }
 
-test('runtime config preserves Production Engine routing and gives TEST a same-origin API base',()=>{
-  const production=configuredRuntime('www.nomadtips3.com');
-  const testHost=configuredRuntime('nomadtips3-live-web-test.mccarey-supon.workers.dev');
+test('runtime routing contract keeps bound hosts on same-origin /api and GitHub Pages direct',()=>{
+  const boundProductionHosts=[
+    'www.nomadtips3.com',
+    'nomadtips3.com',
+    'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev',
+  ];
 
-  assert.equal(production.runtime.engineBase,PRODUCTION_ENGINE);
-  assert.equal(production.runtime.environment,'production');
-  assert.equal(testHost.runtime.engineBase,'/api');
+  for(const host of boundProductionHosts){
+    const configured=configuredRuntime(host);
+    assert.equal(configured.runtime.host,host);
+    assert.equal(configured.runtime.environment,'production');
+    assert.equal(configured.runtime.production,true);
+    assert.equal(configured.runtime.test,false);
+    assert.equal(configured.runtime.engineBase,'/api');
+    assert.equal(configured.runtime.transport,'service-binding');
+    assert.equal(configured.dataset.nomadEnvironment,'production');
+  }
+
+  const githubPages=configuredRuntime('mccareysupon-png.github.io');
+  assert.equal(githubPages.runtime.environment,'production');
+  assert.equal(githubPages.runtime.production,true);
+  assert.equal(githubPages.runtime.test,false);
+  assert.equal(githubPages.runtime.engineBase,PRODUCTION_ENGINE);
+  assert.equal(githubPages.runtime.transport,'direct');
+  assert.equal(githubPages.dataset.nomadEnvironment,'production');
+
+  const testHost=configuredRuntime('nomadtips3-live-web-test.mccarey-supon.workers.dev');
   assert.equal(testHost.runtime.environment,'test');
+  assert.equal(testHost.runtime.production,false);
+  assert.equal(testHost.runtime.test,true);
+  assert.equal(testHost.runtime.engineBase,'/api');
+  assert.equal(testHost.runtime.transport,'service-binding');
   assert.equal(testHost.dataset.nomadEnvironment,'test');
   assert.equal('engineUrl' in testHost.runtime,false);
 });
