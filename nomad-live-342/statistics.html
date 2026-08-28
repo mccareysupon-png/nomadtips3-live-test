@@ -1,30 +1,9 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · Statistics 3.42</title>
-  <link rel="stylesheet" href="styles.css?v=20260827-m88bot-v2">
-  <link rel="stylesheet" href="ui-signal-lock.css?v=20260827-341-shell-v3">
-</head>
-<body data-page="statistics">
-  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav></div></header>
-  <main class="shell">
-    <section class="hero"><div><p class="eyebrow">PERFORMANCE · 3.42</p><h1>Statistics</h1><p>Locked entry evidence and result history for every recorded 3.42 signal. This ledger is the base for paper-profit and ROI testing.</p></div><div class="mode"><span>RANGE</span><strong>ALL</strong><small>full signal archive</small></div></section>
-
-    <section class="summary-grid status-grid">
-      <article class="metric"><span>TOTAL SIGNALS</span><strong id="totalSignals">0</strong><small>all recorded</small></article>
-      <article class="metric signal"><span>WIN RATE</span><strong id="winRate">0.0%</strong><small>settled only</small></article>
-      <article class="metric"><span>AVG ODDS</span><strong id="avgOdds">—</strong><small>locked M88 price</small></article>
-      <article class="metric"><span>ROI</span><strong id="roi">+0.0%</strong><small>1 unit / signal</small></article>
-    </section>
-
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted" id="ledgerMeta">WIN 0 · LOSS 0 · PUSH 0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th>PICK</th><th>AH</th><th>ODDS</th><th>BOOKMAKER</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody id="statsBody"><tr><td colspan="10">No locked signals yet.</td></tr></tbody></table></div><nav class="stats-pagination" data-stats-pagination aria-label="Statistics pages" hidden></nav></section>
-
-    <div class="note">Up to 50 records are shown per page. Additional records remain in the archive and appear on numbered pages automatically.</div>
-  </main>
-  <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav>
-  <script src="ui-signal-lock.js?v=20260827-341-shell-v2" defer></script>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#123328"><title>nomadtips3 · Statistics 3.42</title><link rel="stylesheet" href="styles.css?v=20260827-m88bot-v2"><link rel="stylesheet" href="ui-signal-lock.css?v=20260827-341-shell-v3"><link rel="stylesheet" href="condition2.css?v=20260828-c2lab-v1"></head>
+<body data-page="statistics"><header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav></div></header>
+<main class="shell"><section class="hero"><div><p class="eyebrow">PERFORMANCE · 3.42</p><h1>Statistics · <span id="conditionStatsLabel">Condition 1</span></h1><p>Condition datasets are separated. Condition 1 keeps its existing archive; Condition 2 uses its own signal archive when C2 price decisions are later enabled.</p></div><div class="mode"><span>RANGE</span><strong>ALL</strong><small>selected condition only</small></div></section>
+<nav class="condition-subnav"><a data-condition-link="C1" href="statistics.html?condition=C1">Condition 1</a><a data-condition-link="C2" href="statistics.html?condition=C2">Condition 2</a></nav>
+<section class="summary-grid status-grid"><article class="metric"><span>TOTAL SIGNALS</span><strong id="totalSignals">0</strong><small>selected condition</small></article><article class="metric signal"><span>WIN RATE</span><strong id="winRate">0.0%</strong><small>settled only</small></article><article class="metric"><span>AVG ODDS</span><strong id="avgOdds">—</strong><small>locked price</small></article><article class="metric"><span>ROI</span><strong id="roi">+0.0%</strong><small>1 unit / signal</small></article></section>
+<section class="panel"><div class="panel-head"><div><p class="eyebrow">EQUITY</p><h2>Cumulative P/L</h2></div><span class="muted">same renderer · selected dataset</span></div><div class="equity-wrap"><canvas id="conditionEquityChart"></canvas></div></section>
+<section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted" id="ledgerMeta">WIN 0 · LOSS 0 · PUSH 0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th>PICK</th><th>AH</th><th>ODDS</th><th>BOOKMAKER</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody id="statsBody"><tr><td colspan="10">No locked signals yet.</td></tr></tbody></table></div><nav class="stats-pagination" data-stats-pagination aria-label="Statistics pages" hidden></nav></section><div class="note">C2 telemetry is not counted as a signal. Only a future C2 price-confirmed lock may enter the C2 result archive.</div></main>
+<nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><script src="ui-signal-lock.js?v=20260827-341-shell-v2" defer></script><script src="condition-statistics.js?v=20260828-c2lab-v1" defer></script></body></html>
