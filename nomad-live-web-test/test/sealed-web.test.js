@@ -92,21 +92,39 @@ test('the configured static asset directory contains every required 3.41 TEST pa
   }
 });
 
-test('TEST browser runtime uses same-origin /api while Production routing stays unchanged',()=>{
+test('TEST browser runtime uses same-origin /api while Production hosts honor the routing contract',()=>{
   const testRuntime=configuredRuntime(TEST_HOST);
-  const production=configuredRuntime('www.nomadtips3.com');
   const browserFeed=new URL(testRuntime.runtime.engineBase+'/feed','https://'+TEST_HOST+'/');
 
   assert.equal(testRuntime.runtime.environment,'test');
   assert.equal(testRuntime.runtime.production,false);
+  assert.equal(testRuntime.runtime.test,true);
   assert.equal(testRuntime.runtime.host,TEST_HOST);
   assert.equal(testRuntime.runtime.engineBase,'/api');
+  assert.equal(testRuntime.runtime.transport,'service-binding');
   assert.equal(browserFeed.origin,'https://'+TEST_HOST);
   assert.equal(browserFeed.pathname,'/api/feed');
   assert.equal(testRuntime.dataset.nomadEnvironment,'test');
-  assert.equal(production.runtime.environment,'production');
-  assert.equal(production.runtime.production,true);
-  assert.equal(production.runtime.engineBase,PRODUCTION_ENGINE);
+
+  for(const host of [
+    'www.nomadtips3.com',
+    'nomadtips3.com',
+    'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev',
+  ]){
+    const production=configuredRuntime(host);
+    assert.equal(production.runtime.environment,'production');
+    assert.equal(production.runtime.production,true);
+    assert.equal(production.runtime.test,false);
+    assert.equal(production.runtime.engineBase,'/api');
+    assert.equal(production.runtime.transport,'service-binding');
+  }
+
+  const githubPages=configuredRuntime('mccareysupon-png.github.io');
+  assert.equal(githubPages.runtime.environment,'production');
+  assert.equal(githubPages.runtime.production,true);
+  assert.equal(githubPages.runtime.test,false);
+  assert.equal(githubPages.runtime.engineBase,PRODUCTION_ENGINE);
+  assert.equal(githubPages.runtime.transport,'direct');
 });
 
 test('Live runtime initializes root aliases and the legacy path through same-origin /api/feed',()=>{
