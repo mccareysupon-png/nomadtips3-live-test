@@ -75,27 +75,85 @@ function card(p){
     </div>
 
     <div class="analysis"><strong>ANALYSIS · </strong>${esc(p.pick)} passes the current THE KING manual screen at ${Number(p.confidence).toFixed(2)}% confidence with locked odds ${Number(p.odds).toFixed(2)}. The detailed attack, shooting, recent-form and H2H values above are layout-preview values; production will replace them with fields approved in WEB_PREDICTIONS before publishing.</div>
-    <div class="source-line"><span>No live-score feed · manual pre-match card</span><a href="${esc(p.source)}" target="_blank" rel="noopener">Source reference</a></div>
+    <div class="source-line"><span>No live-score feed · pre-match analysis card</span><a href="${esc(p.source)}" target="_blank" rel="noopener">Source reference</a></div>
   </article>`;
 }
 
+function resultCard(r){
+  const state=String(r.result||'').toLowerCase();
+  return `<article class="result-card ${state}" data-search="${esc((r.home+' '+r.away+' '+r.league+' '+r.pick).toLowerCase())}">
+    <div class="result-main">
+      <div class="result-meta"><span>${esc(r.league)}</span><span>•</span><span>${esc(r.kickoff)}</span></div>
+      <div class="result-match"><span>${esc(r.home)}</span><span class="vs">VS</span><span>${esc(r.away)}</span></div>
+      <div class="result-pick">THE KING PICK · <strong>${esc(r.pick)}</strong></div>
+      <div class="result-summary">Yesterday's public result view keeps only the previous slate. Older history remains in the private Excel ledger.</div>
+    </div>
+    <div class="result-settle">
+      <div class="settle-box"><span>FINAL SCORE</span><strong>${esc(r.score)}</strong></div>
+      <div class="settle-box"><span>ODDS</span><strong>${Number(r.odds).toFixed(2)}</strong></div>
+      <div class="settle-box"><span>RESULT</span><strong class="settle-result ${state}">${esc(r.result)}</strong></div>
+    </div>
+  </article>`;
+}
+
+async function loadJson(path){
+  const res=await fetch(path,{cache:'no-store'});
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 async function boot(){
-  const list=document.getElementById('predictionList');
+  const predictionList=document.getElementById('predictionList');
+  const resultList=document.getElementById('resultList');
+  const input=document.getElementById('searchInput');
+  const notice=document.getElementById('previewNotice');
+  let activeView='today';
+  let picks=[];
+  let results=[];
+
   try{
-    const res=await fetch('data/predictions.json?v=20260828-preview-v1',{cache:'no-store'});
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data=await res.json();
-    const picks=Array.isArray(data.picks)?data.picks:[];
+    const [predictionData,resultData]=await Promise.all([
+      loadJson('data/predictions.json?v=20260828-daily-rotation-v1'),
+      loadJson('data/results.json?v=20260828-daily-rotation-v1')
+    ]);
+    picks=Array.isArray(predictionData.picks)?predictionData.picks:[];
+    results=Array.isArray(resultData.results)?resultData.results:[];
     document.getElementById('pickCount').textContent=picks.length;
-    list.innerHTML=picks.map(card).join('')||'<div class="empty">No picks available.</div>';
-    const input=document.getElementById('searchInput');
-    input.addEventListener('input',()=>{
-      const q=input.value.trim().toLowerCase();
-      [...list.querySelectorAll('.prediction-card')].forEach(el=>el.hidden=q&&!el.dataset.search.includes(q));
-    });
+    document.getElementById('todayCount').textContent=picks.length;
+    document.getElementById('yesterdayCount').textContent=results.length;
+    predictionList.innerHTML=picks.map(card).join('')||'<div class="empty">No predictions available.</div>';
+    resultList.innerHTML=results.map(resultCard).join('')||'<div class="empty">No previous results available.</div>';
   }catch(err){
-    list.innerHTML=`<div class="empty">Unable to load prediction data: ${esc(err.message)}</div>`;
+    predictionList.innerHTML=`<div class="empty">Unable to load daily data: ${esc(err.message)}</div>`;
+    resultList.innerHTML=`<div class="empty">Unable to load previous results: ${esc(err.message)}</div>`;
   }
+
+  function applySearch(){
+    const q=input.value.trim().toLowerCase();
+    const root=activeView==='today'?predictionList:resultList;
+    [...root.querySelectorAll('[data-search]')].forEach(el=>el.hidden=!!q&&!el.dataset.search.includes(q));
+  }
+
+  function setView(view){
+    activeView=view;
+    const today=view==='today';
+    predictionList.hidden=!today;
+    resultList.hidden=today;
+    notice.hidden=!today;
+    document.querySelectorAll('.day-tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.view===view));
+    document.getElementById('heroLabel').textContent=today?"TODAY'S PREDICTIONS":"YESTERDAY'S RESULTS";
+    document.getElementById('pickCount').textContent=today?picks.length:results.length;
+    document.getElementById('heroSmall').textContent=today?'qualified picks':'settled picks';
+    document.getElementById('sectionEyebrow').textContent=today?"TODAY'S SELECTIONS":"PREVIOUS SLATE";
+    document.getElementById('sectionTitle').textContent=today?'The King Picks':"Yesterday's Results";
+    input.placeholder=today?'team / league':'team / result';
+    input.value='';
+    applySearch();
+  }
+
+  document.querySelectorAll('.day-tab').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+  input.addEventListener('input',applySearch);
+  setView('today');
 }
 
 document.addEventListener('DOMContentLoaded',boot);
