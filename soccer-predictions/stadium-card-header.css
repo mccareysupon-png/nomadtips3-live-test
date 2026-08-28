@@ -1,30 +1,16 @@
 /* Stadium image treatment for the prediction-card header only. Image is public-domain Wikimedia Commons media. */
 .card-head{
   position:relative;
-  isolation:isolate;
   overflow:hidden;
   margin:-4px -4px 0;
   padding:11px 12px 14px;
   border-radius:7px 7px 5px 5px;
   border-bottom:1px solid rgba(150,158,151,.10);
   background-color:#151a16;
-  background-image:
-    linear-gradient(90deg,rgba(8,12,9,.90) 0%,rgba(8,12,9,.76) 48%,rgba(8,12,9,.90) 100%),
-    linear-gradient(180deg,rgba(5,9,6,.42) 0%,rgba(7,12,8,.72) 100%),
-    url("https://upload.wikimedia.org/wikipedia/commons/9/95/Adl_utd_stadium.jpg");
+  background-image:url("https://upload.wikimedia.org/wikipedia/commons/9/95/Adl_utd_stadium.jpg");
   background-size:cover;
   background-position:center 54%;
   background-repeat:no-repeat;
-}
-.card-head::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:-1;
-  pointer-events:none;
-  background:
-    radial-gradient(circle at 50% 38%,rgba(25,48,34,.05),rgba(3,7,5,.24) 72%),
-    linear-gradient(180deg,rgba(4,8,5,.12),rgba(3,7,5,.28));
 }
 .card-head .league-line,
 .card-head .team-name,
@@ -39,20 +25,20 @@
   filter:drop-shadow(0 3px 7px rgba(0,0,0,.52));
 }
 .card-head .team-name{
-  text-shadow:0 2px 6px rgba(0,0,0,.82);
+  text-shadow:0 2px 6px rgba(0,0,0,.88),0 0 3px rgba(0,0,0,.72);
 }
 .card-head .vs{
-  text-shadow:0 2px 8px rgba(0,0,0,.9);
+  text-shadow:0 2px 8px rgba(0,0,0,.94),0 0 3px rgba(0,0,0,.78);
 }
 .card-head .league-line{
-  color:#b8c0b8;
-  text-shadow:0 1px 5px rgba(0,0,0,.9);
+  color:#d0d5d0;
+  text-shadow:0 1px 5px rgba(0,0,0,.96),0 0 3px rgba(0,0,0,.78);
 }
 .card-head .badge{
   display:none!important;
 }
 .card-head .pick-box{
-  background:linear-gradient(135deg,rgba(10,15,11,.84),rgba(16,23,18,.76));
+  background:linear-gradient(135deg,rgba(10,15,11,.86),rgba(16,23,18,.78));
   backdrop-filter:blur(1.5px);
 }
 @media(max-width:680px){
