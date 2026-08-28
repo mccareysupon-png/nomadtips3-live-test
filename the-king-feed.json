@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-28T06:27:09Z",
+  "updated_at": "2026-08-28T21:55:16Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -16,8 +16,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8657,
       "edge": 74.1,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-4",
       "source_url": "https://www.goaloo.com/football/liga-portugal-1-rio-ave-vs-sporting-cp/h2h-3023466",
       "summary_url": "https://www.goaloo.com/football/liga-portugal-1-rio-ave-vs-sporting-cp/summary-3023466",
       "model": {
@@ -66,8 +66,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8653,
       "edge": 75.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "7-1",
       "source_url": "https://www.goaloo.com/football/northern-ireland-women-s-super-linfield-w-vs-crusaders-newtownabbey-strikers-w/h2h-3069586",
       "summary_url": "https://www.goaloo.com/football/northern-ireland-women-s-super-linfield-w-vs-crusaders-newtownabbey-strikers-w/summary-3069586",
       "model": {
@@ -116,8 +116,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8631,
       "edge": 74.1,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-5",
       "source_url": "https://www.goaloo.com/football/saudi-professional-league-al-khaleej-vs-al-hilal/h2h-3046959",
       "summary_url": "https://www.goaloo.com/football/saudi-professional-league-al-khaleej-vs-al-hilal/summary-3046959",
       "model": {
@@ -266,8 +266,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8252,
       "edge": 68.3,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-0",
       "source_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-pamba-sc/h2h-3064168",
       "summary_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-pamba-sc/summary-3064168",
       "model": {
@@ -1200,6 +1200,206 @@
       "data_quality": {
         "home_recent": 10,
         "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "c511946265da92a8",
+      "goaloo_id": "3023466",
+      "date": "2026-08-28",
+      "kickoff": "2026-08-28 19:15:00",
+      "league": "Liga Portugal 1",
+      "home": "Rio Ave",
+      "away": "Sporting CP",
+      "pick": "Rio Ave Win",
+      "side": "home",
+      "odds": 9.2,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8657,
+      "edge": 74.1,
+      "result": "LOSS",
+      "ft": "0-4",
+      "source_url": "https://www.goaloo.com/football/liga-portugal-1-rio-ave-vs-sporting-cp/h2h-3023466",
+      "summary_url": "https://www.goaloo.com/football/liga-portugal-1-rio-ave-vs-sporting-cp/summary-3023466",
+      "model": {
+        "lambda_home": 2.786,
+        "lambda_away": 0.561,
+        "home_win": 0.8657,
+        "draw": 0.1244,
+        "away_win": 0.0099,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.8683,
+          "gd_edge": 0.9329,
+          "clean_sheet_edge": 0.4,
+          "failed_to_score_edge": 0.722,
+          "bounded_adjustment": 0.0611,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "e5e2cc883a740b97",
+      "goaloo_id": "3069586",
+      "date": "2026-08-28",
+      "kickoff": "2026-08-28 18:45:00",
+      "league": "Northern Ireland Women's Super",
+      "home": "Linfield (W)",
+      "away": "Crusaders Newtownabbey Strikers (W)",
+      "pick": "Crusaders Newtownabbey Strikers (W) Win",
+      "side": "away",
+      "odds": 25.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8653,
+      "edge": 75.8,
+      "result": "LOSS",
+      "ft": "7-1",
+      "source_url": "https://www.goaloo.com/football/northern-ireland-women-s-super-linfield-w-vs-crusaders-newtownabbey-strikers-w/h2h-3069586",
+      "summary_url": "https://www.goaloo.com/football/northern-ireland-women-s-super-linfield-w-vs-crusaders-newtownabbey-strikers-w/summary-3069586",
+      "model": {
+        "lambda_home": 1.05,
+        "lambda_away": 3.6,
+        "home_win": 0.0274,
+        "draw": 0.1073,
+        "away_win": 0.8653,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.6341,
+          "gd_edge": -0.9784,
+          "clean_sheet_edge": -0.3317,
+          "failed_to_score_edge": -0.3463,
+          "bounded_adjustment": -0.0514,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "fbfa86f5575e85de",
+      "goaloo_id": "3046959",
+      "date": "2026-08-28",
+      "kickoff": "2026-08-28 18:00:00",
+      "league": "Saudi Professional League",
+      "home": "Al-Khaleej",
+      "away": "Al Hilal",
+      "pick": "Al-Khaleej Win",
+      "side": "home",
+      "odds": 10.8,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8631,
+      "edge": 74.1,
+      "result": "LOSS",
+      "ft": "1-5",
+      "source_url": "https://www.goaloo.com/football/saudi-professional-league-al-khaleej-vs-al-hilal/h2h-3046959",
+      "summary_url": "https://www.goaloo.com/football/saudi-professional-league-al-khaleej-vs-al-hilal/summary-3046959",
+      "model": {
+        "lambda_home": 3.084,
+        "lambda_away": 0.802,
+        "home_win": 0.8631,
+        "draw": 0.1226,
+        "away_win": 0.0143,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.7902,
+          "gd_edge": 0.9387,
+          "clean_sheet_edge": 0.2488,
+          "failed_to_score_edge": 0.7561,
+          "bounded_adjustment": 0.0575,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.01,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "7cf1737facf413c4",
+      "goaloo_id": "3064168",
+      "date": "2026-08-28",
+      "kickoff": "2026-08-28 18:00:00",
+      "league": "Tanzania Ligue 1",
+      "home": "Young Africans",
+      "away": "Pamba SC",
+      "pick": "Pamba SC Win",
+      "side": "away",
+      "odds": 24.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8252,
+      "edge": 68.3,
+      "result": "LOSS",
+      "ft": "2-0",
+      "source_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-pamba-sc/h2h-3064168",
+      "summary_url": "https://www.goaloo.com/football/tanzania-ligue-1-young-africans-vs-pamba-sc/summary-3064168",
+      "model": {
+        "lambda_home": 0.79,
+        "lambda_away": 2.805,
+        "home_win": 0.0324,
+        "draw": 0.1424,
+        "away_win": 0.8252,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.761,
+          "gd_edge": -0.9392,
+          "clean_sheet_edge": -0.3902,
+          "failed_to_score_edge": -0.5194,
+          "bounded_adjustment": -0.0563,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 5,
+        "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
       }
