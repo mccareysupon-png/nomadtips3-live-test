@@ -3,6 +3,7 @@
   if(!API){console.error('NOMAD runtime engine URL is unavailable');return;}
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const pair=p=>`${p?.home??'—'}–${p?.away??'—'}`;
+  const entry=r=>{const score=pair(r?.entryScore);const minute=r?.minute;return minute!==null&&minute!==undefined&&minute!==''&&Number.isFinite(Number(minute))?`${score} · ${Math.trunc(Number(minute))}'`:score;};
   const fmtLine=v=>v==null?'—':`${Number(v)>0?'+':''}${Number(v).toFixed(2)}`;
   const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
   const when=s=>{try{const d=new Date(s);if(Number.isNaN(d.getTime()))return '—';const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});const time=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});return `${date} · ${time}`;}catch{return '—'}};
@@ -33,7 +34,7 @@
     const fin=r.settlement?.finalScore;
     const res=r.settlement?.result||'PENDING';
     const c=clsResult(res);
-    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${pair(r.entryScore)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
+    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
   };
   const summarizeRecords=records=>{
     const settled=records.filter(item=>item?.settlement);
