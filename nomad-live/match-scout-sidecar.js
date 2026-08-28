@@ -7,11 +7,11 @@
   const DETACH_KEY=`nomad341:match-scouts:${env}:detached:v1`;
   const MAX_NAME=64;
   const EVENT='nomad:match-scouts-updated';
-  const detached=()=>safeGet(DETACH_KEY)==='1';
 
   function safeGet(key){try{return localStorage.getItem(key);}catch{return null;}}
   function safeSet(key,value){try{localStorage.setItem(key,value);return true;}catch{return false;}}
-  function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
+  function detached(){return safeGet(DETACH_KEY)==='1';}
+  function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function readRegistry(){
     try{
       const parsed=JSON.parse(safeGet(STORAGE_KEY)||'[]');
@@ -50,6 +50,7 @@
   function attach(){let ok=false;try{localStorage.removeItem(DETACH_KEY);ok=true;}catch{}emit();return ok;}
 
   window.NOMAD_MATCH_SCOUTS=Object.freeze({list,findByVersion,registerActive,isDetached:detached,detach,attach});
+  window.addEventListener('storage',event=>{if(event.key===STORAGE_KEY||event.key===DETACH_KEY)emit();});
 
   function installStyle(){
     if(document.getElementById('matchScoutSidecarStyle'))return;
@@ -62,7 +63,7 @@
   }
 
   function currentSettingsSnapshot(){
-    const ids=['minuteFrom','minuteTo','rollingWindowMinutes','maxScoreDifference','attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired','sotDeltaMinimum','shotOffEvidenceEnabled','cornerDeltaMinimum','evidenceMode','allowedLinesMode','oddsMinimum','oddsMaximum','maximumPriceAgeSeconds'];
+    const ids=['minuteFrom','minuteTo','rollingWindowMinutes','maxScoreDifference','attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired','sotDeltaMinimum','shotOffDeltaMinimum','cornerDeltaMinimum','evidenceMode','allowedLinesMode','oddsMinimum','oddsMaximum','maximumPriceAgeSeconds'];
     const checks=['scoreDifferenceFilterEnabled','homeEventRequired','sotEvidenceEnabled','shotOffEvidenceEnabled','cornerEvidenceEnabled','oddsMaximumEnabled','oneSignalPerMatch'];
     const snapshot={};
     for(const id of ids){const el=document.getElementById(id);if(el)snapshot[id]=el.type==='number'?Number(el.value):el.value;}
@@ -78,7 +79,6 @@
     const validation=document.getElementById('validationMessages');
     const saveStatus=document.getElementById('saveStatus');
     if(!form||!validation||!saveStatus)return;
-
     const section=document.createElement('section');
     section.className='panel setting-section ms-sidecar';
     section.id='matchScoutSidecar';
@@ -88,92 +88,44 @@
     const button=section.querySelector('button');
     const warning=section.querySelector('.ms-warning');
     let pending=null;
-
     const render=()=>{
       const off=detached();
       section.classList.toggle('is-detached',off);
       section.querySelector('.ms-state-text').textContent=off?'MATCH SCOUTS · DETACHED':'MATCH SCOUTS · CONNECTED';
-      button.className=off?'ms-attach':'ms-detach';
-      button.textContent=off?'RECONNECT':'EMERGENCY DETACH';
-      nameInput.disabled=off;
+      button.className=off?'ms-attach':'ms-detach';button.textContent=off?'RECONNECT':'EMERGENCY DETACH';nameInput.disabled=off;
       const items=list().slice().reverse();
       section.querySelector('.ms-boxes').innerHTML=items.length?items.map(item=>`<div class="ms-box"><span class="ms-box-id">${esc(item.scoutId)}</span><span class="ms-box-name">${esc(item.name)}</span><span class="ms-box-meta">CONFIG v${esc(item.configVersion)}${item.appliesFromCycle!=null?` · CYCLE ${esc(item.appliesFromCycle)}`:''}</span></div>`).join(''):'<div class="ms-empty">No named Match Scouts yet. Core Settings runs normally.</div>';
     };
-
     button.addEventListener('click',()=>{warning.hidden=true;if(detached())attach();else detach();render();});
-    form.addEventListener('submit',()=>{
-      const name=normalizeName(nameInput.value);
-      pending=!detached()&&name?{name,settingsSnapshot:currentSettingsSnapshot()}:null;
-      warning.hidden=true;
-    },true);
-
+    form.addEventListener('submit',()=>{const name=normalizeName(nameInput.value);pending=!detached()&&name?{name,settingsSnapshot:currentSettingsSnapshot()}:null;warning.hidden=true;},true);
     const observer=new MutationObserver(()=>{
       const text=String(saveStatus.textContent||'');
       if(/Save failed|Fix the highlighted fields/i.test(text)){pending=null;return;}
-      const match=text.match(/Version\s+(\d+)\s+is ACTIVE/i);
-      if(!match||!pending)return;
-      const configVersion=Number(match[1]);
-      const cycleText=String(document.getElementById('activeCycle')?.textContent||'');
-      const cycleMatch=cycleText.match(/(\d+)/);
-      const result=registerActive({...pending,configVersion,appliesFromCycle:cycleMatch?Number(cycleMatch[1]):null});
-      pending=null;
+      const match=text.match(/Version\s+(\d+)\s+is ACTIVE/i);if(!match||!pending)return;
+      const configVersion=Number(match[1]);const cycleText=String(document.getElementById('activeCycle')?.textContent||'');const cycleMatch=cycleText.match(/(\d+)/);
+      const result=registerActive({...pending,configVersion,appliesFromCycle:cycleMatch?Number(cycleMatch[1]):null});pending=null;
       if(result.ok){nameInput.value='';warning.textContent=`Filed ${result.item.scoutId} · ${result.item.name} · config v${result.item.configVersion}`;warning.hidden=false;}
       else if(!result.detached){warning.textContent='Core config is ACTIVE, but the Match Scout sidecar could not file this name. Core engine was not affected.';warning.hidden=false;}
       render();
     });
-    observer.observe(saveStatus,{childList:true,subtree:true,characterData:true});
-    window.addEventListener(EVENT,render);
-    render();
+    observer.observe(saveStatus,{childList:true,subtree:true,characterData:true});window.addEventListener(EVENT,render);render();
   }
 
   function summarize(records){
-    const settled=records.filter(item=>item?.settlement);
-    const wins=settled.filter(item=>/WIN/.test(item.settlement?.result||'')).length;
-    const losses=settled.filter(item=>/LOSS/.test(item.settlement?.result||'')).length;
-    const pushes=settled.filter(item=>item.settlement?.result==='PUSH').length;
-    const profit=settled.reduce((total,item)=>total+(Number(item.settlement?.profit)||0),0);
-    const avgOdds=records.length?records.reduce((total,item)=>total+(Number(item?.odds)||0),0)/records.length:0;
+    const settled=records.filter(item=>item?.settlement);const wins=settled.filter(item=>/WIN/.test(item.settlement?.result||'')).length;const losses=settled.filter(item=>/LOSS/.test(item.settlement?.result||'')).length;const pushes=settled.filter(item=>item.settlement?.result==='PUSH').length;const profit=settled.reduce((total,item)=>total+(Number(item.settlement?.profit)||0),0);const avgOdds=records.length?records.reduce((total,item)=>total+(Number(item?.odds)||0),0)/records.length:0;
     return {signals:records.length,settled,wins,losses,pushes,profit,avgOdds,winRate:settled.length?wins/settled.length*100:0,roi:settled.length?profit/settled.length*100:0};
   }
 
   function installStatistics(){
-    const main=document.querySelector('main');
-    if(!main)return;
-    const note=main.querySelector(':scope > .note');
-    const section=document.createElement('section');
-    section.className='panel ms-sidecar';
-    section.id='matchScoutStatistics';
-    section.innerHTML=`<div class="panel-head ms-sidecar-head"><div><p class="eyebrow">CONDITION ARCHIVE</p><h2>Match Scouts</h2></div><div class="ms-sidecar-control"><span class="ms-sidecar-state"><i class="ms-sidecar-dot"></i><span class="ms-state-text"></span></span></div></div><div class="ms-warning" hidden></div><div class="ms-cards"></div>`;
-    if(note)main.insertBefore(section,note);else main.appendChild(section);
-    let records=[];
-
+    const main=document.querySelector('main');const tbody=document.querySelector('.data-table tbody');if(!main||!tbody)return;
+    const note=main.querySelector(':scope > .note');const section=document.createElement('section');section.className='panel ms-sidecar';section.id='matchScoutStatistics';section.innerHTML=`<div class="panel-head ms-sidecar-head"><div><p class="eyebrow">CONDITION ARCHIVE</p><h2>Match Scouts</h2></div><div class="ms-sidecar-control"><span class="ms-sidecar-state"><i class="ms-sidecar-dot"></i><span class="ms-state-text"></span></span></div></div><div class="ms-warning" hidden></div><div class="ms-cards"></div>`;if(note)main.insertBefore(section,note);else main.appendChild(section);let records=[];
     const render=()=>{
-      const off=detached();
-      section.classList.toggle('is-detached',off);
-      section.querySelector('.ms-state-text').textContent=off?'MATCH SCOUTS · DETACHED':'MATCH SCOUTS · CONNECTED';
-      const warning=section.querySelector('.ms-warning');
-      const cards=section.querySelector('.ms-cards');
-      if(off){warning.textContent='Sidecar detached. Overall statistics above remain active and unchanged.';warning.hidden=false;cards.innerHTML='';return;}
-      warning.hidden=true;
-      const items=list();
-      if(!items.length){cards.innerHTML='<div class="ms-empty">No named Match Scouts yet. Overall statistics remain unchanged.</div>';return;}
-      cards.innerHTML=items.map(item=>{
-        const own=records.filter(record=>Number(record?.configSnapshot?.version)===Number(item.configVersion));
-        const s=summarize(own);
-        const profitClass=s.profit>0?'ms-positive':s.profit<0?'ms-negative':'';
-        const roiClass=s.roi>0?'ms-positive':s.roi<0?'ms-negative':'';
-        return `<article class="ms-card"><div class="ms-card-top"><div><small>${esc(item.scoutId)} · CONFIG v${esc(item.configVersion)}</small><h3>${esc(item.name)}</h3></div><small>${item.createdAt?esc(new Date(item.createdAt).toLocaleDateString()):''}</small></div><div class="ms-card-grid"><div class="ms-stat"><span>Signals</span><b>${s.signals}</b></div><div class="ms-stat"><span>W / L / P</span><b>${s.wins} / ${s.losses} / ${s.pushes}</b></div><div class="ms-stat"><span>Win Rate</span><b>${s.settled.length?s.winRate.toFixed(1)+'%':'—'}</b></div><div class="ms-stat"><span>Avg Odds</span><b>${s.signals?s.avgOdds.toFixed(2):'—'}</b></div><div class="ms-stat"><span>Profit</span><b class="${profitClass}">${s.settled.length?(s.profit>=0?'+':'')+s.profit.toFixed(2)+'u':'—'}</b></div><div class="ms-stat"><span>ROI</span><b class="${roiClass}">${s.settled.length?(s.roi>=0?'+':'')+s.roi.toFixed(1)+'%':'—'}</b></div></div></article>`;
-      }).join('');
+      const off=detached();section.classList.toggle('is-detached',off);section.querySelector('.ms-state-text').textContent=off?'MATCH SCOUTS · DETACHED':'MATCH SCOUTS · CONNECTED';const warning=section.querySelector('.ms-warning');const cards=section.querySelector('.ms-cards');
+      if(off){warning.textContent='Sidecar detached. Overall statistics above remain active and unchanged.';warning.hidden=false;cards.innerHTML='';return;}warning.hidden=true;const items=list();if(!items.length){cards.innerHTML='<div class="ms-empty">No named Match Scouts yet. Overall statistics remain unchanged.</div>';return;}
+      cards.innerHTML=items.map(item=>{const own=records.filter(record=>Number(record?.configSnapshot?.version)===Number(item.configVersion));const s=summarize(own);const profitClass=s.profit>0?'ms-positive':s.profit<0?'ms-negative':'';const roiClass=s.roi>0?'ms-positive':s.roi<0?'ms-negative':'';return `<article class="ms-card"><div class="ms-card-top"><div><small>${esc(item.scoutId)} · CONFIG v${esc(item.configVersion)}</small><h3>${esc(item.name)}</h3></div><small>${item.createdAt?esc(new Date(item.createdAt).toLocaleDateString()):''}</small></div><div class="ms-card-grid"><div class="ms-stat"><span>Signals</span><b>${s.signals}</b></div><div class="ms-stat"><span>W / L / P</span><b>${s.wins} / ${s.losses} / ${s.pushes}</b></div><div class="ms-stat"><span>Win Rate</span><b>${s.settled.length?s.winRate.toFixed(1)+'%':'—'}</b></div><div class="ms-stat"><span>Avg Odds</span><b>${s.signals?s.avgOdds.toFixed(2):'—'}</b></div><div class="ms-stat"><span>Profit</span><b class="${profitClass}">${s.settled.length?(s.profit>=0?'+':'')+s.profit.toFixed(2)+'u':'—'}</b></div><div class="ms-stat"><span>ROI</span><b class="${roiClass}">${s.settled.length?(s.roi>=0?'+':'')+s.roi.toFixed(1)+'%':'—'}</b></div></div></article>`;}).join('');
     };
-
-    window.addEventListener('nomad:statistics-records',event=>{records=Array.isArray(event.detail?.records)?event.detail.records:[];render();});
-    window.addEventListener(EVENT,render);
-    render();
-    const api=runtime.engineBase;
-    if(api)fetch(`${api}/statistics`,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(data&&Array.isArray(data.records)){records=data.records;render();}}).catch(()=>{});
+    window.addEventListener('nomad:statistics-records',event=>{records=Array.isArray(event.detail?.records)?event.detail.records:[];render();});window.addEventListener(EVENT,render);render();const api=runtime.engineBase;if(api)fetch(`${api}/statistics`,{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(data&&Array.isArray(data.records)){records=data.records;render();}}).catch(()=>{});
   }
 
-  installStyle();
-  const boot=()=>{try{installSettings();installStatistics();}catch(error){console.warn('Match Scouts sidecar detached after UI error',error);}};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  installStyle();const boot=()=>{try{installSettings();installStatistics();}catch(error){console.warn('Match Scouts sidecar detached after UI error',error);}};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
