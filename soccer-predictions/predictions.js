@@ -1,5 +1,5 @@
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
-const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
 const hash=s=>[...s].reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0);
 
 function model(p){
@@ -30,6 +30,22 @@ function model(p){
 
 function formPills(arr){return arr.map(x=>`<span class="form-pill ${x.toLowerCase()}">${x}</span>`).join('')}
 function statCell(label,val){return `<div class="stat"><span>${label}</span><strong>${val}</strong></div>`}
+
+function analystComment(p){
+  const confidence=Number(p.confidence);
+  const odds=Number(p.odds);
+  let confidenceView='This is a higher-variance selection, so the price needs to compensate for the added uncertainty.';
+  if(confidence>=55) confidenceView='The confidence rating places it among the stronger selections on the current slate, while still leaving normal match-day risk.';
+  else if(confidence>=50) confidenceView='The confidence rating points to a modest edge rather than a clear-cut advantage, so price discipline remains important.';
+  else if(confidence>=45) confidenceView='The matchup is relatively balanced, making this a selective value position rather than a low-risk pick.';
+
+  let priceView='At this price, the selection offers a balanced risk-to-return profile for a pre-match 1X2 position.';
+  if(odds>=3) priceView='The larger price increases the potential return, but it also reflects a materially higher level of market risk.';
+  else if(odds>=2.4) priceView='The price offers an attractive return profile, although the market is signalling meaningful uncertainty.';
+  else if(odds<1.9) priceView='The shorter price reflects a more conservative market position, with less room for error in the value assessment.';
+
+  return `${esc(p.pick)} is the preferred 1X2 selection at odds of ${odds.toFixed(2)}, with a ${confidence.toFixed(2)}% confidence rating. ${confidenceView} ${priceView}`;
+}
 
 function card(p){
   const m=model(p); const {home,draw,away}=m.probs;
@@ -74,8 +90,8 @@ function card(p){
       </div>
     </div>
 
-    <div class="analysis"><strong>ANALYSIS · </strong>${esc(p.pick)} passes the current THE KING manual screen at ${Number(p.confidence).toFixed(2)}% confidence with locked odds ${Number(p.odds).toFixed(2)}. The detailed attack, shooting, recent-form and H2H values above are layout-preview values; production will replace them with fields approved in WEB_PREDICTIONS before publishing.</div>
-    <div class="source-line"><span>No live-score feed · pre-match analysis card</span><a href="${esc(p.source)}" target="_blank" rel="noopener">Source reference</a></div>
+    <div class="analysis"><strong>ANALYSIS · </strong>${analystComment(p)}</div>
+    <div class="source-line"><a href="${esc(p.source)}" target="_blank" rel="noopener">Source reference</a></div>
   </article>`;
 }
 
@@ -118,7 +134,6 @@ async function boot(){
   const predictionList=document.getElementById('predictionList');
   const resultList=document.getElementById('resultList');
   const input=document.getElementById('searchInput');
-  const notice=document.getElementById('previewNotice');
   let activeView='today';
   let picks=[];
   let results=[];
@@ -151,7 +166,6 @@ async function boot(){
     const today=view==='today';
     predictionList.hidden=!today;
     resultList.hidden=today;
-    notice.hidden=!today;
     document.querySelectorAll('.day-tab').forEach(btn=>btn.classList.toggle('active',btn.dataset.view===view));
     document.getElementById('heroLabel').textContent=today?"TODAY'S PREDICTIONS":"YESTERDAY'S RESULTS";
     document.getElementById('pickCount').textContent=today?picks.length:results.length;
