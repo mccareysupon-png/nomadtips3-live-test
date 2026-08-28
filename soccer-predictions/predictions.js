@@ -96,6 +96,18 @@ function resultCard(r){
   </article>`;
 }
 
+function resultSummary(rows){
+  const win=rows.filter(r=>String(r.result||'').toUpperCase()==='WIN').length;
+  const loss=rows.filter(r=>String(r.result||'').toUpperCase()==='LOSS').length;
+  const odds=rows.map(r=>Number(r.odds)).filter(Number.isFinite);
+  const avgOdds=odds.length?(odds.reduce((sum,n)=>sum+n,0)/odds.length).toFixed(2):'—';
+  return `<section class="result-kpis" aria-label="Yesterday summary">
+    <div class="result-kpi win"><span>WIN</span><strong>${win}</strong></div>
+    <div class="result-kpi loss"><span>LOSS</span><strong>${loss}</strong></div>
+    <div class="result-kpi odds"><span>AVG ODDS</span><strong>${avgOdds}</strong></div>
+  </section>`;
+}
+
 async function loadJson(path){
   const res=await fetch(path,{cache:'no-store'});
   if(!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -122,7 +134,7 @@ async function boot(){
     document.getElementById('todayCount').textContent=picks.length;
     document.getElementById('yesterdayCount').textContent=results.length;
     predictionList.innerHTML=picks.map(card).join('')||'<div class="empty">No predictions available.</div>';
-    resultList.innerHTML=results.map(resultCard).join('')||'<div class="empty">No previous results available.</div>';
+    resultList.innerHTML=results.length?(resultSummary(results)+results.map(resultCard).join('')):'<div class="empty">No previous results available.</div>';
   }catch(err){
     predictionList.innerHTML=`<div class="empty">Unable to load daily data: ${esc(err.message)}</div>`;
     resultList.innerHTML=`<div class="empty">Unable to load previous results: ${esc(err.message)}</div>`;
