@@ -1,5 +1,5 @@
 /* Clean analytical presentation: keep meaningful graphics, remove decorative borders. */
-:root{--selected-green:#5f8f6b;--selected-green-strong:#4f795b;--opponent-red:#925858;--opponent-red-strong:#7e4848}
+:root{--selected-green:#79c487;--selected-green-strong:#63aa72;--opponent-red:#c87474;--opponent-red-strong:#aa5f5f}
 .prediction-card{border:0;border-radius:8px;background:linear-gradient(145deg,#20261f 0%,#181d18 54%,#141814 100%);box-shadow:0 16px 34px rgba(0,0,0,.16);padding:14px}
 .prediction-card.featured{border:0;box-shadow:0 16px 34px rgba(0,0,0,.16)}
 .card-head{border-bottom:1px solid rgba(150,158,151,.09);padding-bottom:13px}
@@ -23,7 +23,7 @@
 .bar-num:last-child{text-align:right;padding:0}
 .bar-num::before{display:none!important;content:none!important}
 
-/* Color means role, not home/away: selected team = green, opponent = muted red. */
+/* Color means role, not home/away: selected team = green, opponent = red. */
 .prediction-card.selected-home .bar-home{background:linear-gradient(90deg,var(--selected-green-strong),var(--selected-green))}
 .prediction-card.selected-home .bar-away{background:linear-gradient(90deg,var(--opponent-red-strong),var(--opponent-red))}
 .prediction-card.selected-away .bar-home{background:linear-gradient(90deg,var(--opponent-red),var(--opponent-red-strong))}
@@ -40,10 +40,10 @@
 
 .stats-grid{gap:5px;margin-top:9px;padding-top:8px;border-top:1px solid rgba(150,158,151,.06)}
 .stat{border:0;border-radius:4px;background:linear-gradient(145deg,#121712,#101410);padding:8px 6px}
-.prediction-card.selected-home .stat:nth-child(-n+5){background:linear-gradient(145deg,rgba(95,143,107,.08),#101410)}
-.prediction-card.selected-home .stat:nth-child(n+6){background:linear-gradient(145deg,rgba(146,88,88,.07),#101410)}
-.prediction-card.selected-away .stat:nth-child(-n+5){background:linear-gradient(145deg,rgba(146,88,88,.07),#101410)}
-.prediction-card.selected-away .stat:nth-child(n+6){background:linear-gradient(145deg,rgba(95,143,107,.08),#101410)}
+.prediction-card.selected-home .stat:nth-child(-n+5){background:linear-gradient(145deg,rgba(121,196,135,.09),#101410)}
+.prediction-card.selected-home .stat:nth-child(n+6){background:linear-gradient(145deg,rgba(200,116,116,.08),#101410)}
+.prediction-card.selected-away .stat:nth-child(-n+5){background:linear-gradient(145deg,rgba(200,116,116,.08),#101410)}
+.prediction-card.selected-away .stat:nth-child(n+6){background:linear-gradient(145deg,rgba(121,196,135,.09),#101410)}
 .right-stack{gap:9px}
 
 /* Probability graphic stays visible and uses the same selected/opponent roles. */
@@ -54,8 +54,8 @@
 .donut small{position:absolute;z-index:2;top:60%;font-size:7px;color:var(--muted)}
 .legend{display:grid;grid-template-columns:1fr;gap:6px}
 .legend-row{display:flex;justify-content:space-between;gap:10px;text-align:left;border:0;border-radius:4px;padding:7px 8px;background:rgba(255,255,255,.018)}
-.legend-row.selected{background:linear-gradient(90deg,rgba(95,143,107,.11),rgba(255,255,255,.012))}
-.legend-row.opponent{background:linear-gradient(90deg,rgba(146,88,88,.09),rgba(255,255,255,.012))}
+.legend-row.selected{background:linear-gradient(90deg,rgba(121,196,135,.12),rgba(255,255,255,.012))}
+.legend-row.opponent{background:linear-gradient(90deg,rgba(200,116,116,.10),rgba(255,255,255,.012))}
 .legend-row.neutral{background:linear-gradient(90deg,rgba(255,255,255,.028),rgba(255,255,255,.012))}
 .legend-row span:first-child{display:block;color:#7f887f;font-size:7px;font-weight:800;letter-spacing:.02em;text-transform:none;margin:0}
 .legend-row strong{display:block;font-size:10px}
