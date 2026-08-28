@@ -7,12 +7,12 @@
   <title>nomadtips3 · Soccer Predictions</title>
   <link rel="stylesheet" href="predictions.css?v=20260828-footer-nav-v1">
   <link rel="stylesheet" href="footer-nav.css?v=20260828-v1">
+  <link rel="stylesheet" href="daily-rotation.css?v=20260828-v1">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner">
+    <div class="topbar-inner topbar-brand-only">
       <a class="brand" href="../">nomad<span>tips</span>3</a>
-      <div class="mode-pill"><span class="dot"></span>MANUAL PICKS</div>
     </div>
   </header>
 
@@ -21,24 +21,29 @@
       <div>
         <p class="eyebrow">NOMAD · THE KING</p>
         <h1>Soccer Predictions</h1>
-        <p>Detailed pre-match analysis for manually selected 1X2 picks. No live-score feed is connected to this page.</p>
+        <p>Detailed pre-match analysis for the current selection slate, with the previous slate's settled results available alongside it.</p>
       </div>
       <div class="hero-badge">
-        <span>TODAY'S SCREEN</span>
+        <span id="heroLabel">TODAY'S PREDICTIONS</span>
         <strong id="pickCount">—</strong>
-        <small>qualified picks</small>
+        <small id="heroSmall">qualified picks</small>
       </div>
     </section>
 
-    <section class="notice">
+    <nav class="day-switch" aria-label="Prediction day views">
+      <button class="day-tab active" type="button" data-view="today">Today's Predictions <span id="todayCount">—</span></button>
+      <button class="day-tab" type="button" data-view="yesterday">Yesterday's Results <span id="yesterdayCount">—</span></button>
+    </nav>
+
+    <section id="previewNotice" class="notice">
       <strong>UI PREVIEW</strong>
       <span>The match, pick, odds and confidence values are from the current THE KING sheet. Detailed attack / shooting / H2H panels are preview metrics until the dedicated WEB_PREDICTIONS sheet is connected.</span>
     </section>
 
     <section class="toolbar">
       <div class="toolbar-copy">
-        <p class="eyebrow">TODAY'S SELECTIONS</p>
-        <h2>The King Picks</h2>
+        <p class="eyebrow" id="sectionEyebrow">TODAY'S SELECTIONS</p>
+        <h2 id="sectionTitle">The King Picks</h2>
       </div>
       <label class="search">Search <input id="searchInput" type="search" placeholder="team / league"></label>
     </section>
@@ -46,13 +51,17 @@
     <section id="predictionList" class="prediction-list">
       <div class="loading">Loading prediction cards…</div>
     </section>
+
+    <section id="resultList" class="result-list" hidden>
+      <div class="loading">Loading previous results…</div>
+    </section>
   </main>
 
   <footer class="footer">
     <div class="footer-inner">
       <div class="footer-brandline">
         <strong>nomad<span>tips</span>3</strong>
-        <span>Manual selection · Detailed pre-match analysis · No live-score dependency</span>
+        <span>Current predictions · Previous results · No live-score dependency</span>
       </div>
       <nav class="footer-nav" aria-label="Secondary navigation">
         <a class="active" href="./">Soccer Predictions</a>
@@ -66,6 +75,6 @@
     </div>
   </footer>
 
-  <script src="predictions.js?v=20260828-preview-v1" defer></script>
+  <script src="predictions.js?v=20260828-daily-rotation-v1" defer></script>
 </body>
 </html>
