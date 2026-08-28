@@ -41,7 +41,7 @@ jobs:
           test -f nomad-live/runtime-config.js
           grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
-          grep -Fq 'live-filter-lock.js?v=20260827-active-tab-v2' nomad-live/index.html
+          grep -Fq 'live-filter-lock.js?v=20260828-default-all-v1' nomad-live/index.html
           grep -Fq "'www.nomadtips3.com'" nomad-live/runtime-config.js
           grep -Fq "'nomadtips3.com'" nomad-live/runtime-config.js
           grep -Fq "'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev'" nomad-live/runtime-config.js
