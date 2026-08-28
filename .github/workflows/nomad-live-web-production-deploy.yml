@@ -39,10 +39,14 @@ jobs:
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
-          grep -Fq 'NOMAD LIVE 3.41' nomad-live/index.html
+          grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
           grep -Fq 'live-filter-lock.js?v=20260827-active-tab-v2' nomad-live/index.html
-          grep -Fq "'www.nomadtips3.com','nomadtips3.com'" nomad-live/runtime-config.js
+          grep -Fq "'www.nomadtips3.com'" nomad-live/runtime-config.js
+          grep -Fq "'nomadtips3.com'" nomad-live/runtime-config.js
+          grep -Fq "'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev'" nomad-live/runtime-config.js
+          grep -Fq "'mccareysupon-png.github.io'" nomad-live/runtime-config.js
+          grep -Fq "transport:directProduction?'direct':'service-binding'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
           grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
@@ -102,11 +106,13 @@ jobs:
           test "$ok" = 1 || { echo '::error::Production canary did not become healthy; Production Worker left untouched'; exit 1; }
 
           curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
-          grep -Fq 'NOMAD LIVE 3.41' /tmp/home.html
+          grep -Fq 'src="runtime-config.js' /tmp/home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
 
-          curl -fsS --max-time 20 "$CANARY_URL/api/health?t=$(date +%s)" -o /tmp/engine-health.json
-          test -s /tmp/engine-health.json
+          for endpoint in health feed statistics config; do
+            curl -fsS --max-time 20 "$CANARY_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/canary-$endpoint.json"
+            test -s "/tmp/canary-$endpoint.json"
+          done
           echo 'Canary + static assets + Production Engine binding passed before Production deploy.'
 
       - name: Deploy Production Worker with dashboard-managed www route
@@ -135,13 +141,15 @@ jobs:
           test "$ok" = 1 || { echo '::error::www route did not verify as NOMAD Live 3.41'; exit 1; }
 
           curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
-          grep -Fq 'NOMAD LIVE 3.41' /tmp/custom-home.html
+          grep -Fq 'src="runtime-config.js' /tmp/custom-home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
 
           curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
 
-          curl -fsS --max-time 20 "$CUSTOM_URL/api/health?t=$(date +%s)" -o /tmp/custom-engine-health.json
-          test -s /tmp/custom-engine-health.json
+          for endpoint in health feed statistics config; do
+            curl -fsS --max-time 20 "$CUSTOM_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/custom-$endpoint.json"
+            test -s "/tmp/custom-$endpoint.json"
+          done
           echo 'NOMAD Live 3.41 is active on www.nomadtips3.com.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
