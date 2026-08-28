@@ -33,6 +33,7 @@ jobs:
           node --check nomad-live/health-live.js
           node --check nomad-live/site-footer.js
           node --check nomad-live/match-scout-sidecar.js
+          node --test nomad-live/test/match-scout-sidecar.test.mjs
 
       - name: Reject Production engine URLs outside the centralized runtime config
         run: |
