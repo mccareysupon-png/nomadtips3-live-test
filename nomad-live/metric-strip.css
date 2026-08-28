@@ -31,21 +31,31 @@
   appearance:none;
   -webkit-appearance:none;
   display:inline-flex;
-  width:14px;
-  height:14px;
+  width:13px;
+  height:13px;
   margin:0 0 0 3px;
   padding:0;
   align-items:center;
   justify-content:center;
-  vertical-align:1px;
+  vertical-align:-2px;
   border:0;
   border-radius:50%;
   background:transparent;
   color:rgba(152,160,145,.72);
-  font-size:10px;
-  font-weight:700;
-  line-height:1;
+  line-height:0;
   cursor:help;
+  flex:0 0 auto;
+}
+
+.metric-info svg {
+  display:block;
+  width:100%;
+  height:100%;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linecap:round;
+  stroke-linejoin:round;
 }
 
 .metric-info:hover,
@@ -115,9 +125,8 @@
   }
 
   .metric-info {
-    width:16px;
-    height:16px;
-    font-size:11px;
+    width:15px;
+    height:15px;
   }
 
   /* Reset desktop dividers, then draw only the two vertical mobile dividers. */
