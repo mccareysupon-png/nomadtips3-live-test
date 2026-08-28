@@ -1,0 +1,63 @@
+/* Serious analytical polish. Existing card structure stays intact; this file only adds trend UI and tones down visual noise. */
+.prediction-card{background:linear-gradient(155deg,#1d231d 0%,#181d18 58%,#141814 100%);box-shadow:0 14px 30px rgba(0,0,0,.14)}
+.panel{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.012));box-shadow:none}
+.pick-box{background:linear-gradient(135deg,rgba(255,255,255,.024),rgba(33,42,35,.16));box-shadow:none}
+.mini-card{box-shadow:none}
+.bar{height:8px;background:rgba(7,10,8,.70);box-shadow:none}
+.bar-home,.bar-away{opacity:.88}
+.legend-row{background:rgba(255,255,255,.014)}
+
+/* Performance trend is an additional analytical layer; no existing graphic is removed. */
+.performance-trend{margin:10px 0 9px;padding:11px 12px 9px;border:0;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(9,13,10,.16));box-shadow:none}
+.trend-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}
+.trend-title-wrap h3{margin:0;color:var(--text);font-size:9px;line-height:1.2;letter-spacing:.055em;font-weight:900}
+.trend-title-wrap p{margin:4px 0 0;color:#7e877f;font-size:7px;line-height:1.35}
+.trend-index{flex:0 0 auto;color:#707970;font-size:6px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;padding-top:1px}
+.trend-legend{display:flex;align-items:center;gap:14px;min-width:0;margin-bottom:8px}
+.trend-legend-item{display:flex;align-items:center;gap:6px;min-width:0;color:#aeb6ae;font-size:7px;font-weight:800}
+.trend-legend-item strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px;color:#cfd5cf}
+.trend-legend-item.selected strong{color:var(--green)}
+.trend-legend-item.opponent strong{color:var(--blue)}
+.trend-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.trend-legend-item.selected .trend-dot{background:var(--green);box-shadow:0 0 0 2px rgba(131,223,137,.08)}
+.trend-legend-item.opponent .trend-dot{background:var(--blue);box-shadow:0 0 0 2px rgba(127,184,255,.07)}
+.trend-selected-tag{margin-left:2px;color:#6f796f;font-size:6px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.trend-chart-shell{display:grid;grid-template-columns:24px minmax(0,1fr);gap:5px;align-items:stretch}
+.trend-y-axis{position:relative;height:148px;color:#606960;font-size:6px;font-weight:800}
+.trend-y-axis span{position:absolute;right:0;transform:translateY(-50%)}
+.trend-y-axis span:nth-child(1){top:8%}.trend-y-axis span:nth-child(2){top:30%}.trend-y-axis span:nth-child(3){top:52%}.trend-y-axis span:nth-child(4){top:74%}
+.trend-plot{position:relative;height:148px;overflow:hidden;border-radius:4px;background:linear-gradient(180deg,rgba(255,255,255,.011),rgba(0,0,0,.075))}
+.trend-plot svg{display:block;width:100%;height:100%}
+.trend-grid-line{stroke:rgba(150,158,151,.075);stroke-width:1;vector-effect:non-scaling-stroke}
+.trend-fill{fill:var(--green);opacity:.035}
+.trend-line-selected{fill:none;stroke:var(--green);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.92}
+.trend-line-opponent{fill:none;stroke:var(--blue);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;opacity:.78}
+.trend-point-selected{fill:#182019;stroke:var(--green);stroke-width:2;vector-effect:non-scaling-stroke}
+.trend-point-opponent{fill:#182019;stroke:var(--blue);stroke-width:1.7;vector-effect:non-scaling-stroke}
+.trend-x-labels{display:grid;grid-template-columns:repeat(5,1fr);margin:5px 0 0 29px;color:#626b63;font-size:6px;font-weight:800;text-align:center}
+.trend-scale-note{margin-top:6px;color:#646d65;font-size:6px;line-height:1.3;text-align:right}
+
+/* Keep analytical graphics readable across desktop, tablet and phone. */
+@media(max-width:900px){
+  .performance-trend{margin-top:9px}
+  .trend-plot,.trend-y-axis{height:142px}
+}
+@media(max-width:680px){
+  .performance-trend{padding:9px 8px 8px;margin:8px 0}
+  .trend-head{gap:8px;margin-bottom:7px}
+  .trend-title-wrap h3{font-size:8px}
+  .trend-index{font-size:5.5px}
+  .trend-legend{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px;margin-bottom:7px}
+  .trend-legend-item{gap:5px;font-size:6px}
+  .trend-legend-item strong{font-size:7px}
+  .trend-selected-tag{display:none}
+  .trend-chart-shell{grid-template-columns:20px minmax(0,1fr);gap:4px}
+  .trend-plot,.trend-y-axis{height:128px}
+  .trend-x-labels{margin-left:24px;font-size:5.5px}
+  .trend-scale-note{font-size:5.5px}
+}
+@media(max-width:420px){
+  .trend-plot,.trend-y-axis{height:116px}
+  .trend-title-wrap p{font-size:6px}
+  .trend-legend-item strong{max-width:112px}
+}
