@@ -68,7 +68,7 @@ function card(p){
         <div class="match-title">${teamBlock(p.home,p.homeLogo)}<div class="vs">VS</div>${teamBlock(p.away,p.awayLogo,true)}</div>
       </div>
       <div class="pick-box">
-        <div class="pick-main"><span>THE KING PICK</span><strong>${esc(p.pick)}</strong></div>
+        <div class="pick-main"><strong>${esc(p.pick)}</strong></div>
         <div class="pick-stat"><span>ODDS</span><strong>${Number(p.odds).toFixed(2)}</strong></div>
         <div class="pick-stat conf"><span>CONFIDENCE</span><strong>${Number(p.confidence).toFixed(2)}%</strong></div>
       </div>
@@ -111,7 +111,7 @@ function resultCard(r){
     <div class="result-main">
       <div class="result-meta"><span>${esc(r.league)}</span><span>•</span><span>${esc(r.kickoff)}</span></div>
       <div class="result-match"><span>${esc(r.home)}</span><span class="vs">VS</span><span>${esc(r.away)}</span></div>
-      <div class="result-pick">THE KING PICK · <strong>${esc(r.pick)}</strong></div>
+      <div class="result-pick"><strong>${esc(r.pick)}</strong></div>
       <div class="result-summary">Yesterday's public result view keeps only the previous slate. Older history remains in the private Excel ledger.</div>
     </div>
     <div class="result-settle">
