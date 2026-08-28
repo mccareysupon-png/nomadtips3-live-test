@@ -9,8 +9,8 @@
   border-bottom:1px solid rgba(150,158,151,.10);
   background-color:#151a16;
   background-image:
-    linear-gradient(90deg,rgba(10,14,11,.88) 0%,rgba(10,14,11,.62) 48%,rgba(10,14,11,.86) 100%),
-    linear-gradient(180deg,rgba(5,8,6,.18) 0%,rgba(8,12,9,.62) 100%),
+    linear-gradient(90deg,rgba(8,12,9,.95) 0%,rgba(8,12,9,.88) 48%,rgba(8,12,9,.95) 100%),
+    linear-gradient(180deg,rgba(5,9,6,.72) 0%,rgba(7,12,8,.90) 100%),
     url("https://upload.wikimedia.org/wikipedia/commons/9/95/Adl_utd_stadium.jpg");
   background-size:cover;
   background-position:center 54%;
@@ -22,7 +22,9 @@
   inset:0;
   z-index:-1;
   pointer-events:none;
-  background:linear-gradient(180deg,rgba(255,255,255,.015),transparent 35%,rgba(0,0,0,.12));
+  background:
+    radial-gradient(circle at 50% 38%,rgba(25,48,34,.08),rgba(3,7,5,.38) 72%),
+    linear-gradient(180deg,rgba(4,8,5,.24),rgba(3,7,5,.46));
 }
 .card-head .league-line,
 .card-head .team-name,
@@ -46,8 +48,11 @@
   color:#b8c0b8;
   text-shadow:0 1px 5px rgba(0,0,0,.9);
 }
+.card-head .badge{
+  display:none!important;
+}
 .card-head .pick-box{
-  background:linear-gradient(135deg,rgba(13,18,14,.73),rgba(20,27,22,.60));
+  background:linear-gradient(135deg,rgba(10,15,11,.86),rgba(16,23,18,.78));
   backdrop-filter:blur(1.5px);
 }
 @media(max-width:680px){
