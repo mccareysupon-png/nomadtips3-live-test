@@ -1,0 +1,50 @@
+/* Clean nested-card presentation: no graph lines/bars, subtle internal dividers only. */
+.prediction-card{border:0;border-radius:8px;background:linear-gradient(145deg,#20261f 0%,#181d18 54%,#141814 100%);box-shadow:0 16px 34px rgba(0,0,0,.16);padding:14px}
+.prediction-card.featured{border:0;box-shadow:inset 3px 0 0 rgba(131,223,137,.58),0 18px 36px rgba(0,0,0,.18)}
+.card-head{border-bottom:1px solid rgba(150,158,151,.10);padding-bottom:13px}
+.pick-box{border:0;border-radius:6px;background:linear-gradient(135deg,rgba(131,223,137,.10),rgba(45,71,52,.08) 58%,rgba(255,255,255,.018));box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)}
+.pick-main{border-right:1px solid rgba(150,158,151,.10)}
+.card-grid{grid-template-columns:1.38fr .72fr;gap:9px}
+.panel{border:0;border-radius:6px;background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.014));box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);padding:11px}
+.panel-title{padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid rgba(150,158,151,.08)}
+.comparison-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.compare-row{display:block;background:linear-gradient(135deg,rgba(131,223,137,.055),rgba(127,184,255,.035));border-radius:5px;padding:9px 10px;min-height:60px}
+.compare-label{font-size:7px;font-weight:900;letter-spacing:.055em;text-transform:uppercase;color:#8f988f;margin-bottom:8px}
+.bar-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;align-items:center;background:transparent}
+.bar{display:none!important}
+.bar-num{font-size:15px;font-weight:900;padding:2px 8px 1px 0;line-height:1.1}
+.bar-num:first-child{color:var(--green);border-right:1px solid rgba(150,158,151,.09)}
+.bar-num:last-child{text-align:right;color:var(--blue);padding:2px 0 1px 8px}
+.bar-num:first-child::before,.bar-num:last-child::before{display:block;margin-bottom:3px;color:#6f776f;font-size:6px;font-weight:900;letter-spacing:.08em}
+.bar-num:first-child::before{content:"HOME"}
+.bar-num:last-child::before{content:"AWAY"}
+.stats-grid{gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(150,158,151,.07)}
+.stat{border-radius:4px;background:linear-gradient(145deg,#121712,#101410);padding:8px 6px}
+.stat:nth-child(-n+5){background:linear-gradient(145deg,rgba(131,223,137,.045),#101410)}
+.stat:nth-child(n+6){background:linear-gradient(145deg,rgba(127,184,255,.04),#101410)}
+.right-stack{gap:9px}
+.prob-layout{display:block}
+.donut{display:none!important}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.legend-row{display:block;text-align:center;border-radius:5px;padding:10px 6px;background:#121612}
+.legend-row:nth-child(1){background:linear-gradient(145deg,rgba(131,223,137,.09),rgba(17,22,17,.95))}
+.legend-row:nth-child(2){background:linear-gradient(145deg,rgba(255,255,255,.045),rgba(17,22,17,.95))}
+.legend-row:nth-child(3){background:linear-gradient(145deg,rgba(127,184,255,.075),rgba(17,22,17,.95))}
+.legend-row span:first-child{display:block;color:#7f887f;font-size:6px;font-weight:900;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+.legend-row strong{display:block;font-size:17px}
+.mini-grid{gap:6px}
+.mini-card{border-radius:5px;padding:9px;background:linear-gradient(145deg,rgba(255,255,255,.03),rgba(17,22,17,.92));box-shadow:inset 0 0 0 1px rgba(255,255,255,.015)}
+.mini-card:first-child{background:linear-gradient(145deg,rgba(131,223,137,.04),rgba(17,22,17,.95))}
+.mini-card:last-child{background:linear-gradient(145deg,rgba(242,210,27,.032),rgba(17,22,17,.95))}
+.form-pill{border-radius:3px}
+.analysis{border-top:1px solid rgba(150,158,151,.08);margin-top:9px;padding:11px 4px 3px}
+.source-line{padding-top:8px;border-top:1px solid rgba(150,158,151,.055)}
+.notice,.toolbar,.hero{border:0;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018)}
+.day-tab{border:0;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018)}
+.day-tab.active{border:0;box-shadow:inset 3px 0 0 rgba(242,210,27,.62),inset 0 0 0 1px rgba(242,210,27,.08)}
+.result-card{border:0;border-radius:7px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018)}
+.result-card.win{border-left:3px solid rgba(131,223,137,.64)}
+.result-card.loss{border-left:3px solid rgba(255,139,139,.58)}
+.settle-box{border-radius:4px;background:linear-gradient(145deg,rgba(255,255,255,.03),#101410)}
+@media(max-width:900px){.card-grid{grid-template-columns:1fr}.comparison-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.prediction-card{padding:10px}.comparison-list{grid-template-columns:1fr}.legend{grid-template-columns:repeat(3,1fr)}.bar-num{font-size:14px}.pick-main{border-right:0}.panel{padding:9px}}
