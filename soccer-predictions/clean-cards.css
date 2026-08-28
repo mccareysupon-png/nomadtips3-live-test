@@ -10,11 +10,13 @@
 .panel{border:0;border-radius:6px;background:linear-gradient(145deg,rgba(255,255,255,.036),rgba(255,255,255,.014));box-shadow:none;padding:11px}
 .panel-title{padding-bottom:7px;margin-bottom:9px;border-bottom:1px solid rgba(150,158,151,.065)}
 
-/* Team identity: logos stay compact and never replace the readable team name. */
-.match-title .team{display:flex;align-items:center;gap:9px;min-width:0}
-.match-title .team.away{justify-content:flex-end;text-align:right}
-.team-name{min-width:0;overflow-wrap:anywhere}
-.team-logo{width:34px;height:34px;object-fit:contain;flex:0 0 34px;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
+/* Team identity: balanced vertical lockup, sized for this card rather than copied from score apps. */
+.match-title{align-items:start}
+.match-title .team{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:5px;min-width:0;text-align:center}
+.match-title .team.away{justify-content:flex-start;text-align:center}
+.team-logo{order:1;width:44px;height:44px;object-fit:contain;flex:0 0 44px;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
+.team-name{order:2;display:flex;align-items:flex-start;justify-content:center;min-width:0;min-height:2.3em;max-width:100%;overflow-wrap:anywhere;text-align:center;line-height:1.15}
+.match-title .vs{align-self:start;margin-top:18px}
 
 /* Analytical comparison graphics stay visible. */
 .comparison-list{display:grid;gap:8px}
@@ -90,10 +92,13 @@
   .donut{width:92px;height:92px}
   .pick-main{border-right:0}
   .panel{padding:9px}
-  .match-title .team{gap:6px}
-  .team-logo{width:28px;height:28px;flex-basis:28px}
+  .match-title .team{gap:4px}
+  .team-logo{width:38px;height:38px;flex-basis:38px}
+  .team-name{min-height:2.3em}
+  .match-title .vs{margin-top:14px}
 }
 @media(max-width:420px){
-  .team-logo{width:25px;height:25px;flex-basis:25px}
-  .match-title .team{gap:5px}
+  .team-logo{width:34px;height:34px;flex-basis:34px}
+  .match-title .team{gap:4px}
+  .match-title .vs{margin-top:12px}
 }
