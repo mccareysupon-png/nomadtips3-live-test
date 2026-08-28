@@ -7,30 +7,33 @@
   <title>nomadtips3 · Live 3.42</title>
   <link rel="stylesheet" href="styles.css?v=20260827-m88bot-v2">
   <link rel="stylesheet" href="ui-signal-lock.css?v=20260827-341-shell-v3">
+  <link rel="stylesheet" href="condition2.css?v=20260828-c2lab-v1">
 </head>
 <body data-page="live">
   <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a class="active" href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>3.42 · TOTALCORNER LIVE</div></div></header>
   <main class="shell">
-    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · HOME ONLY</p><h1>Live Asian Handicap scanner</h1><p>TotalCorner live events are filtered by NOMAD conditions and sent to M88 for final HOME AH price validation. Signal evidence is locked for later profit testing.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>fail closed</small></div></section>
+    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · C1 ACTIVE / C2 LAB</p><h1>Live Asian Handicap scanner</h1><p>Condition 1 remains the active HOME signal engine. Condition 2 independently observes HOME / AWAY / BOTH field measurements without changing C1 decisions.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>C1 fail closed · C2 observe</small></div></section>
 
     <section class="status-grid">
       <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>TotalCorner input</small></article>
-      <article class="metric"><span>WATCHING</span><strong id="watchCount">—</strong><small>HOME detector</small></article>
+      <article class="metric"><span>WATCHING</span><strong id="watchCount">—</strong><small>C1 HOME detector</small></article>
       <article class="metric"><span>NEAR SIGNAL</span><strong id="candidateCount">—</strong><small>waiting M88</small></article>
-      <article class="metric signal"><span>SIGNAL</span><strong id="signalCount">—</strong><small>locked HOME AH</small></article>
+      <article class="metric signal"><span>SIGNAL</span><strong id="signalCount">—</strong><small>C1 locked HOME AH</small></article>
     </section>
 
-    <section class="toolbar nomad-toolbar"><div class="tabs"><button class="tab" type="button">All</button><button class="tab" type="button">Signal</button><button class="tab" type="button">Near</button><button class="tab" type="button">Watching</button></div><label class="search">Search <input type="search" placeholder="team / league"></label></section>
+    <section class="toolbar nomad-toolbar"><div class="tabs"><button class="tab" type="button">All</button><button class="tab" type="button">Signal</button><button class="tab" type="button">Near</button><button class="tab" type="button">Watching</button></div><div class="condition-filter"><span>CONDITION</span><a class="active" href="index.html">All</a><a href="index.html">C1</a><a href="condition2.html#live-telemetry">C2</a></div><label class="search">Search <input type="search" placeholder="team / league"></label></section>
 
     <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">PRIORITY SCANNER</p><h2>Monitored matches</h2></div><span class="muted" id="runStatus">Connecting live engine…</span></div><div class="match-list" id="matchList"><div class="note">Connecting live engine…</div></div></section>
 
-    <div class="note">3.42 keeps its own TotalCorner → NOMAD → M88 engine path. This page only adopts the proven 3.41 presentation pattern.</div>
+    <div class="note">C1 signal logic is unchanged. C2 reads copies of the live result objects and stores separate telemetry only; no C2 price signal is allowed in this lab stage.</div>
   </main>
   <nav class="mobile-nav"><a class="active" href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav>
 
   <script src="runtime-config.js?v=20260827-git-live-v1" defer></script>
   <script src="m88-observer.js" defer></script>
   <script src="totalcorner-live.js?v=20260827-totalcorner-live-v1" defer></script>
+  <script src="condition2-observer.js?v=20260828-c2lab-v1" defer></script>
   <script src="ui-signal-lock.js?v=20260827-341-shell-v2" defer></script>
+  <script src="condition-live-ui.js?v=20260828-c2lab-v1" defer></script>
 </body>
 </html>
