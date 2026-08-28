@@ -1,5 +1,5 @@
 name = "nomadtips3-live-engine"
-main = "src/index.js"
+main = "src/sidecar.js"
 compatibility_date = "2026-08-20"
 workers_dev = true
 
@@ -10,9 +10,17 @@ subrequests = 1000
 name = "ENGINE"
 class_name = "EngineState"
 
+[[durable_objects.bindings]]
+name = "MATCH_SCOUTS"
+class_name = "MatchScoutsState"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["EngineState"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["MatchScoutsState"]
 
 [env.test]
 name = "nomadtips3-live-engine-test"
@@ -26,6 +34,14 @@ ENGINE_CYCLE_MODE = "on_demand"
 name = "ENGINE"
 class_name = "EngineState"
 
+[[env.test.durable_objects.bindings]]
+name = "MATCH_SCOUTS"
+class_name = "MatchScoutsState"
+
 [[env.test.migrations]]
 tag = "v1"
 new_sqlite_classes = ["EngineState"]
+
+[[env.test.migrations]]
+tag = "v2"
+new_sqlite_classes = ["MatchScoutsState"]
