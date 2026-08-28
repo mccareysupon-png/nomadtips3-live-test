@@ -59,3 +59,16 @@
   setInterval(render,1000);
 })();
 
+(()=>{
+  const src=document.getElementById('settingsForm')
+    ?'match-scouts-settings.js?v=20260828-sidecar-v1'
+    :document.querySelector('.summary-grid')&&document.querySelector('.data-table')
+      ?'match-scouts-statistics.js?v=20260828-sidecar-v1'
+      :null;
+  if(!src||document.querySelector(`script[src^="${src.split('?')[0]}"]`))return;
+  const script=document.createElement('script');
+  script.src=src;
+  script.async=true;
+  document.body.appendChild(script);
+})();
+
