@@ -1,5 +1,5 @@
 /* NOMAD Live 3.41 metric strip.
-   Presentation-only: keeps the existing metric HTML/JS contract intact. */
+   Presentation-only: keeps metric values and data logic untouched. */
 
 .status-grid,
 .summary-grid {
@@ -18,8 +18,58 @@
   border-radius:0;
   background:transparent;
   box-shadow:none;
-  padding:12px 14px;
+  padding:8px 12px;
   text-align:center;
+}
+
+.status-grid > .metric strong,
+.summary-grid > .metric strong {
+  margin:3px 0 0;
+}
+
+.metric-info {
+  appearance:none;
+  -webkit-appearance:none;
+  display:inline-flex;
+  width:14px;
+  height:14px;
+  margin:0 0 0 3px;
+  padding:0;
+  align-items:center;
+  justify-content:center;
+  vertical-align:1px;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:rgba(152,160,145,.72);
+  font-size:10px;
+  font-weight:700;
+  line-height:1;
+  cursor:help;
+}
+
+.metric-info:hover,
+.metric-info:focus-visible {
+  color:var(--text);
+  outline:none;
+}
+
+.metric-tooltip-floating {
+  position:fixed;
+  z-index:1000;
+  max-width:min(240px,calc(100vw - 16px));
+  padding:6px 8px;
+  border:1px solid rgba(150,158,151,.18);
+  border-radius:7px;
+  background:#0f130f;
+  color:#e8ece7;
+  box-shadow:0 8px 22px rgba(0,0,0,.32);
+  font-size:10px;
+  font-weight:600;
+  line-height:1.35;
+  text-align:left;
+  white-space:normal;
+  pointer-events:none;
 }
 
 /* Inset dividers keep the strip feeling like one card rather than a table. */
@@ -48,9 +98,7 @@
 }
 
 .status-grid > .metric span,
-.status-grid > .metric small,
-.summary-grid > .metric span,
-.summary-grid > .metric small {
+.summary-grid > .metric span {
   text-align:center;
 }
 
@@ -63,7 +111,13 @@
 
   .status-grid > .metric,
   .summary-grid > .metric {
-    padding:11px 9px;
+    padding:8px 8px;
+  }
+
+  .metric-info {
+    width:16px;
+    height:16px;
+    font-size:11px;
   }
 
   /* Reset desktop dividers, then draw only the two vertical mobile dividers. */
