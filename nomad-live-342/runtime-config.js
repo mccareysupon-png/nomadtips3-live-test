@@ -8,6 +8,8 @@ window.NOMAD342_RUNTIME=Object.freeze({
   environment:'GIT',
   engineBase:String(override||DEFAULT_ENGINE).replace(/\/$/,''),
   feedPath:'/feed',
+  judgePath:'/judge/thscore',
+  judgeStatusPath:'/judge/thscore/status',
   pollMs:10000,
   requestTimeoutMs:9000,
 });
