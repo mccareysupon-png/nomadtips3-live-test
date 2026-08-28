@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <title>nomadtips3 · Soccer Predictions</title>
+  <link rel="stylesheet" href="predictions.css?v=20260828-preview-v1">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../">nomad<span>tips</span>3</a>
+      <nav class="topnav">
+        <a class="active" href="./">Soccer Predictions</a>
+        <a href="../nomad-live-342/index.html">Live</a>
+        <a href="../nomad-live-342/statistics.html">Statistics</a>
+      </nav>
+      <div class="mode-pill"><span class="dot"></span>MANUAL PICKS</div>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">NOMAD · THE KING</p>
+        <h1>Soccer Predictions</h1>
+        <p>Detailed pre-match analysis for manually selected 1X2 picks. No live-score feed is connected to this page.</p>
+      </div>
+      <div class="hero-badge">
+        <span>TODAY'S SCREEN</span>
+        <strong id="pickCount">—</strong>
+        <small>qualified picks</small>
+      </div>
+    </section>
+
+    <section class="notice">
+      <strong>UI PREVIEW</strong>
+      <span>The match, pick, odds and confidence values are from the current THE KING sheet. Detailed attack / shooting / H2H panels are preview metrics until the dedicated WEB_PREDICTIONS sheet is connected.</span>
+    </section>
+
+    <section class="toolbar">
+      <div class="toolbar-copy">
+        <p class="eyebrow">TODAY'S SELECTIONS</p>
+        <h2>The King Picks</h2>
+      </div>
+      <label class="search">Search <input id="searchInput" type="search" placeholder="team / league"></label>
+    </section>
+
+    <section id="predictionList" class="prediction-list">
+      <div class="loading">Loading prediction cards…</div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <strong>nomad<span>tips</span>3</strong>
+      <span>Manual selection · Detailed pre-match analysis · No live-score dependency</span>
+    </div>
+  </footer>
+
+  <script src="predictions.js?v=20260828-preview-v1" defer></script>
+</body>
+</html>
