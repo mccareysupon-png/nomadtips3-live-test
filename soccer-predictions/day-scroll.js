@@ -1,11 +1,13 @@
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.day-tab').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const target=btn.dataset.view==='yesterday'
+      const isYesterday=btn.dataset.view==='yesterday';
+      const target=isYesterday
         ? document.getElementById('resultList')
-        : document.getElementById('predictionList');
+        : document.querySelector('.day-switch');
+
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        if(target&&!target.hidden){
+        if(target){
           target.scrollIntoView({behavior:'smooth',block:'start'});
         }
       }));
