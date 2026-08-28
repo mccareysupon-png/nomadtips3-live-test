@@ -1,4 +1,4 @@
-/* Stadium image treatment for the prediction-card header only. Image is public-domain Wikimedia Commons media. */
+/* Stadium image treatment for the prediction-card header only. Distinct public-domain / CC0 Wikimedia Commons media is rotated across today's cards. */
 .card-head{
   position:relative;
   overflow:hidden;
@@ -7,11 +7,26 @@
   border-radius:7px 7px 5px 5px;
   border-bottom:1px solid rgba(150,158,151,.10);
   background-color:#151a16;
-  background-image:url("https://upload.wikimedia.org/wikipedia/commons/9/95/Adl_utd_stadium.jpg");
+  background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Adl%20utd%20stadium.jpg?width=1280");
   background-size:cover;
   background-position:center 54%;
   background-repeat:no-repeat;
 }
+
+/* One stadium image per matchup. These are visual football/stadium backgrounds, not claims about the actual venue of the fixture. */
+.prediction-list > .prediction-card:nth-of-type(1) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Adl%20utd%20stadium.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(2) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Wembley%20Stadium%20at%20night.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(3) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Heritage%20Stadium%20at%20Night.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(4) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/KC%20Stadium%20at%20night.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(5) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Football-stadium-berlin.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(6) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Pudong%20Football%20Stadium.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(7) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Nya%20Ullevi.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(8) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Wembley%20Association%20Football%20Stadium.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(9) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Drone%20aerial%20view%20of%20the%20soccer%20stadium%20%28Unsplash%29.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(10) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Kashima%20Soccer%20Stadium%20Interior%20View.jpg?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(11) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Incheon%20Soccer%20Stadium%201.JPG?width=1280")}
+.prediction-list > .prediction-card:nth-of-type(12) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Harstad%20stadion.jpg?width=1280")}
+
 .card-head .league-line,
 .card-head .team-name,
 .card-head .vs,
