@@ -30,6 +30,11 @@ function model(p){
 
 function formPills(arr){return arr.map(x=>`<span class="form-pill ${x.toLowerCase()}">${x}</span>`).join('')}
 function statCell(label,val){return `<div class="stat"><span>${label}</span><strong>${val}</strong></div>`}
+function teamBlock(name,logo,isAway=false){
+  const image=logo?`<img class="team-logo" src="${esc(logo)}" alt="${esc(name)} logo" loading="lazy" decoding="async" onerror="this.hidden=true">`:'';
+  const label=`<span class="team-name">${esc(name)}</span>`;
+  return `<div class="team${isAway?' away':''}">${isAway?label+image:image+label}</div>`;
+}
 
 function analystComment(p){
   const confidence=Number(p.confidence);
@@ -60,7 +65,7 @@ function card(p){
     <div class="card-head">
       <div>
         <div class="league-line"><span>${esc(p.league)}</span><span>•</span><span>${esc(p.kickoff)}</span><span class="badge">${esc(p.abc)}</span></div>
-        <div class="match-title"><div class="team">${esc(p.home)}</div><div class="vs">VS</div><div class="team away">${esc(p.away)}</div></div>
+        <div class="match-title">${teamBlock(p.home,p.homeLogo)}<div class="vs">VS</div>${teamBlock(p.away,p.awayLogo,true)}</div>
       </div>
       <div class="pick-box">
         <div class="pick-main"><span>THE KING PICK</span><strong>${esc(p.pick)}</strong></div>
@@ -145,7 +150,7 @@ async function boot(){
 
   try{
     const [predictionData,resultData]=await Promise.all([
-      loadJson('data/predictions.json?v=20260828-daily-rotation-v1'),
+      loadJson('data/predictions.json?v=20260828-team-logos-v1'),
       loadJson('data/results.json?v=20260828-daily-rotation-v1')
     ]);
     picks=Array.isArray(predictionData.picks)?predictionData.picks:[];
