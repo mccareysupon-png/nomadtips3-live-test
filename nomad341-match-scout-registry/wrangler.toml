@@ -1,0 +1,13 @@
+name = "nomad341-match-scout-registry"
+main = "src/index.js"
+compatibility_date = "2026-08-28"
+workers_dev = true
+preview_urls = false
+
+[[durable_objects.bindings]]
+name = "REGISTRY"
+class_name = "ScoutRegistry"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ScoutRegistry"]
