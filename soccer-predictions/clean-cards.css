@@ -10,6 +10,12 @@
 .panel{border:0;border-radius:6px;background:linear-gradient(145deg,rgba(255,255,255,.036),rgba(255,255,255,.014));box-shadow:none;padding:11px}
 .panel-title{padding-bottom:7px;margin-bottom:9px;border-bottom:1px solid rgba(150,158,151,.065)}
 
+/* Team identity: logos stay compact and never replace the readable team name. */
+.match-title .team{display:flex;align-items:center;gap:9px;min-width:0}
+.match-title .team.away{justify-content:flex-end;text-align:right}
+.team-name{min-width:0;overflow-wrap:anywhere}
+.team-logo{width:34px;height:34px;object-fit:contain;flex:0 0 34px;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.18))}
+
 /* Analytical comparison graphics stay visible. */
 .comparison-list{display:grid;gap:8px}
 .compare-row{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;background:transparent;border:0;border-radius:0;padding:0;min-height:0}
@@ -77,4 +83,17 @@
 .result-card.loss{border-left:3px solid rgba(255,139,139,.58)}
 .settle-box{border:0;border-radius:4px;background:linear-gradient(145deg,rgba(255,255,255,.03),#101410)}
 @media(max-width:900px){.card-grid{grid-template-columns:1fr}}
-@media(max-width:680px){.prediction-card{padding:10px}.compare-row{grid-template-columns:92px 1fr}.prob-layout{grid-template-columns:95px 1fr}.donut{width:92px;height:92px}.pick-main{border-right:0}.panel{padding:9px}}
+@media(max-width:680px){
+  .prediction-card{padding:10px}
+  .compare-row{grid-template-columns:92px 1fr}
+  .prob-layout{grid-template-columns:95px 1fr}
+  .donut{width:92px;height:92px}
+  .pick-main{border-right:0}
+  .panel{padding:9px}
+  .match-title .team{gap:6px}
+  .team-logo{width:28px;height:28px;flex-basis:28px}
+}
+@media(max-width:420px){
+  .team-logo{width:25px;height:25px;flex-basis:25px}
+  .match-title .team{gap:5px}
+}
