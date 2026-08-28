@@ -1,0 +1,33 @@
+name: NOMAD 3.42 THScore Frontend Check
+
+on:
+  push:
+    branches:
+      - 'feat/342-thscore-judge-20260828'
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Check 3.42 browser scripts
+        run: |
+          node --check nomad-live-342/runtime-config.js
+          node --check nomad-live-342/totalcorner-live.js
+          node --check nomad-live-342/app.js
+          node --check nomad-live-342/ui-signal-lock.js
+          node --check nomad-live-342/thscore-ui.js
+      - name: Assert THScore live wiring
+        run: |
+          grep -q "judgePath:'/judge/thscore'" nomad-live-342/runtime-config.js
+          grep -q "THSCORE PRICE CONFIRMED" nomad-live-342/totalcorner-live.js
+          ! grep -q 'src="m88-observer.js"' nomad-live-342/index.html
+          ! grep -q 'src="m88-observer.js"' nomad-live-342/settings.html
+          ! grep -q 'src="m88-observer.js"' nomad-live-342/health.html
