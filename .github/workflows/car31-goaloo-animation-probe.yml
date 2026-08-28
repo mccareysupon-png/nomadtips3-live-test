@@ -1,0 +1,64 @@
+name: CAR 3.1 Goaloo Animation Probe
+
+on:
+  push:
+    branches:
+      - research/car31-goaloo-animation-source-20260816
+    paths:
+      - car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-flashdata-probe.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.test.mjs
+      - car3-1-hybrid-live-engine/tools/goaloo-techmap-probe.mjs
+      - .github/workflows/car31-goaloo-animation-probe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test public Goaloo flashdata parser fixtures
+        run: |
+          node --test car3-1-hybrid-live-engine/tools/goaloo-flashdata-parser.test.mjs
+      - name: Probe public Goaloo animation sources for match 2930884
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-animation-probe.mjs 2930884 | tee /tmp/goaloo-animation-report.json
+      - name: Deep probe public Goaloo event protocol for match 2930884
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-animation-deep-probe.mjs 2930884 | tee /tmp/goaloo-animation-deep-report.json
+      - name: Extract public Goaloo websocket/detail protocol
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-protocol-extract.mjs 2930884 | tee /tmp/goaloo-protocol-report.json
+      - name: Probe public Goaloo flashdata feed and live animation matches
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-flashdata-probe.mjs 2930884 | tee /tmp/goaloo-flashdata-report.json
+      - name: Save public Goaloo flash parser for field mapping
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-save-flashlive.mjs 2930884 | tee /tmp/goaloo-flash-parser-meta.json
+      - name: Probe public Goaloo technical-stat labels
+        run: |
+          node car3-1-hybrid-live-engine/tools/goaloo-techmap-probe.mjs 2930884 | tee /tmp/goaloo-techmap-report.json
+      - name: Upload redacted research reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: goaloo-animation-probe-2930884
+          path: |
+            /tmp/goaloo-animation-report.json
+            /tmp/goaloo-animation-deep-report.json
+            /tmp/goaloo-protocol-report.json
+            /tmp/goaloo-flashdata-report.json
+            /tmp/goaloo-flash-parser-meta.json
+            /tmp/goaloo-flashlive.js
+            /tmp/goaloo-techmap-report.json
+          retention-days: 1
