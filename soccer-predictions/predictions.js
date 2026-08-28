@@ -171,7 +171,7 @@ async function boot(){
     document.getElementById('pickCount').textContent=today?picks.length:results.length;
     document.getElementById('heroSmall').textContent=today?'qualified picks':'settled picks';
     document.getElementById('sectionEyebrow').textContent=today?"TODAY'S SELECTIONS":"PREVIOUS SLATE";
-    document.getElementById('sectionTitle').textContent=today?'The King Picks':"Yesterday's Results";
+    document.getElementById('sectionTitle').textContent=today?'':"Yesterday's Results";
     input.placeholder=today?'team / league':'team / result';
     input.value='';
     applySearch();
