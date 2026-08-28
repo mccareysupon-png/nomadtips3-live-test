@@ -1,0 +1,9 @@
+/* Keep the section eyebrow vertically centered in the toolbar without moving Search or changing horizontal alignment. */
+.toolbar{align-items:center}
+.toolbar-copy{display:flex;align-items:center;min-height:34px}
+.toolbar-copy .eyebrow{line-height:1.2}
+.toolbar-copy h2:empty{display:none}
+@media(max-width:680px){
+  .toolbar{align-items:flex-start}
+  .toolbar-copy{min-height:32px}
+}
