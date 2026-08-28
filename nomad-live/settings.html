@@ -139,6 +139,6 @@
       defaultsButton.addEventListener('click',async()=>{setBusy(true);showErrors([]);status(`Restoring ${ENV} engine defaults…`,'wait');try{await postConfig({action:'restore_default'});}catch(error){status(`Restore failed: ${error.message}`,'bad');}finally{setBusy(false);}});
     })();
   </script>
-  <script src="site-footer.js?v=20260825-rail-v2" defer></script>
+  <script src="site-footer.js?v=20260828-sidecar-v1" defer></script>
 </body>
 </html>
