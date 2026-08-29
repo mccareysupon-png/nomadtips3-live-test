@@ -9,7 +9,7 @@ function valid(payload){return Boolean(payload&&payload.schema==='m88-msports-re
 function key(payload){return `${payload.event_id}|${payload.market_id}|${payload.selection_id}`}
 function dispatch(payload){
   if(!valid(payload)) return;
-  window.dispatchEvent(new CustomEvent(PAGE_EVENT,{detail:payload}));
+  window.dispatchEvent(new CustomEvent(PAGE_EVENT,{detail:JSON.stringify(payload)}));
 }
 function queueOrDispatch(payload){
   if(!valid(payload)) return;
@@ -41,7 +41,6 @@ chrome.runtime.onMessage.addListener(message=>{
   if(message?.type==='M88_REFEREE_PUSH') queueOrDispatch(message.payload);
 });
 
-// Fallback for reloads where the page-world ready event fired before this listener attached.
 function detectReady(){
   if(ready) return;
   try{
