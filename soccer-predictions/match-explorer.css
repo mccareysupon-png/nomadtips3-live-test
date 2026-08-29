@@ -1,0 +1,127 @@
+/* Match Explorer controls. Isolated from prediction card styling. */
+.scope-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:0 0 9px;
+}
+.scope-tab{
+  appearance:none;
+  border:0;
+  border-radius:6px;
+  padding:11px 13px;
+  background:#171b17;
+  color:#899188;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.035em;
+  text-align:left;
+  cursor:pointer;
+}
+.scope-tab span{
+  float:right;
+  min-width:26px;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#111511;
+  color:#707870;
+  text-align:center;
+}
+.scope-tab.active{
+  color:var(--yellow);
+  background:#1b1e18;
+  box-shadow:inset 3px 0 0 rgba(242,210,27,.58);
+}
+.scope-tab.active span{color:var(--yellow)}
+
+.match-explorer-tools{
+  display:grid;
+  gap:7px;
+  margin:0 0 10px;
+  padding:9px 10px;
+  border-radius:7px;
+  background:#161a16;
+}
+.match-explorer-tools[hidden]{display:none!important}
+.explorer-status{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+  color:#778077;
+  font-size:7px;
+  font-weight:800;
+  letter-spacing:.025em;
+}
+.explorer-status strong{
+  color:#aeb6ae;
+  font-size:7.5px;
+  white-space:nowrap;
+}
+.explorer-status.partial strong{color:#d9bd40}
+
+.league-strip,.command-strip{
+  display:flex;
+  gap:6px;
+  overflow-x:auto;
+  overscroll-behavior-inline:contain;
+  scrollbar-width:thin;
+  padding:1px 0 2px;
+}
+.league-chip,.command-chip{
+  appearance:none;
+  flex:0 0 auto;
+  border:0;
+  border-radius:999px;
+  background:#101410;
+  color:#818981;
+  padding:6px 9px;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.025em;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.league-chip span{
+  margin-left:4px;
+  color:#656d65;
+}
+.league-chip.active,.command-chip.active{
+  background:#20241a;
+  color:var(--yellow);
+  box-shadow:inset 0 0 0 1px rgba(242,210,27,.16);
+}
+.league-chip.active span{color:#b8a53f}
+.command-chip.nomad.active{color:var(--selected-green)}
+
+.explorer-foot{
+  display:flex;
+  justify-content:center;
+  margin:10px 0 2px;
+}
+.load-more-matches{
+  appearance:none;
+  border:0;
+  border-radius:999px;
+  padding:8px 14px;
+  background:#181d18;
+  color:#aeb6ae;
+  font-size:8px;
+  font-weight:900;
+  cursor:pointer;
+}
+.load-more-matches:hover{background:#1d231d}
+.load-more-matches[hidden]{display:none!important}
+
+/* All Matches uses its own controls; Yesterday remains part of NOMAD only. */
+body.all-matches-mode .day-switch{display:none!important}
+body.all-matches-mode .toolbar-copy .eyebrow{color:#8d968e}
+
+@media(max-width:680px){
+  .scope-switch{grid-template-columns:1fr 1fr;gap:6px}
+  .scope-tab{padding:10px 9px;font-size:9.5px}
+  .match-explorer-tools{padding:8px 8px}
+  .explorer-status{align-items:flex-start;flex-direction:column;gap:3px}
+  .league-chip,.command-chip{font-size:6.5px;padding:6px 8px}
+}
