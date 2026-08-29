@@ -1,6 +1,11 @@
-/* Reduce only the Soccer Predictions hero title by 50%. */
+/* Scale only the Soccer Predictions hero heading and the qualified-pick count. */
 .hero h1{
   font-size:14px;
+}
+
+/* Original 30px -> 18px: 40% smaller. */
+.hero-badge strong{
+  font-size:18px;
 }
 
 @media(max-width:680px){
