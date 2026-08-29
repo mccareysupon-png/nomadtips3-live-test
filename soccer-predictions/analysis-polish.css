@@ -61,3 +61,31 @@
   .trend-title-wrap p{display:none}
   .trend-legend-item strong{max-width:105px}
 }
+
+/* Ultra-thin luminous trend: no circular markers anywhere in the graph. */
+.trend-fill{opacity:.015}
+.trend-line-selected{
+  stroke-width:.60;
+  opacity:1;
+  filter:drop-shadow(0 0 2.4px var(--selected-green));
+}
+.trend-line-opponent{
+  stroke-width:.55;
+  opacity:.96;
+  filter:drop-shadow(0 0 2.2px var(--opponent-red));
+}
+.trend-point-selected,
+.trend-point-opponent{display:none!important}
+.trend-dot{
+  width:10px;
+  height:1px;
+  border-radius:0;
+}
+.trend-legend-item.selected .trend-dot{
+  background:var(--selected-green);
+  box-shadow:0 0 4px var(--selected-green);
+}
+.trend-legend-item.opponent .trend-dot{
+  background:var(--opponent-red);
+  box-shadow:0 0 4px var(--opponent-red);
+}
