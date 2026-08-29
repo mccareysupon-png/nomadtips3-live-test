@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="green-brightness.css?v=20260829-green-plus15-v2">
   <link rel="stylesheet" href="trend-film-sharp.css?v=20260829-sharp-film-v1">
   <link rel="stylesheet" href="selected-depth.css?v=20260829-selected-green-safe-v1">
-  <link rel="stylesheet" href="match-explorer.css?v=20260829-selected-matches-v1">
+  <link rel="stylesheet" href="match-explorer.css?v=20260829-menu-clean-v1">
 </head>
 <body>
   <header class="topbar">
@@ -33,20 +33,22 @@
         <p>NOMAD picks and manually curated match analysis, with the previous NOMAD slate's settled results kept separate.</p>
       </div>
       <div class="hero-badge">
-        <span id="heroLabel">TODAY'S PREDICTIONS</span>
+        <span id="heroLabel">NOMAD PICKS</span>
         <strong id="pickCount">—</strong>
         <small id="heroSmall">qualified picks</small>
       </div>
     </section>
 
-    <nav class="scope-switch" aria-label="Prediction coverage">
-      <button class="scope-tab active" type="button" data-scope="nomad">NOMAD Predictions <span id="nomadScopeCount">—</span></button>
-      <button class="scope-tab" type="button" data-scope="selected">Selected Matches <span id="selectedScopeCount">—</span></button>
+    <nav class="scope-switch" aria-label="Soccer prediction views">
+      <button class="scope-tab active" type="button" data-scope="nomad">NOMAD PICKS <span id="nomadScopeCount">—</span></button>
+      <button class="scope-tab" type="button" data-scope="selected">SELECTED MATCHES <span id="selectedScopeCount">—</span></button>
+      <button class="scope-tab" type="button" data-scope="results">RESULTS <span id="resultsScopeCount">—</span></button>
     </nav>
 
-    <nav class="day-switch" aria-label="Prediction day views">
-      <button class="day-tab active" type="button" data-view="today">Today's Predictions <span id="todayCount">—</span></button>
-      <button class="day-tab" type="button" data-view="yesterday">Yesterday's Results <span id="yesterdayCount">—</span></button>
+    <!-- Internal bridge retained for the existing today/results renderer. Hidden from the public menu. -->
+    <nav class="day-switch prediction-view-bridge" aria-hidden="true">
+      <button class="day-tab active" type="button" data-view="today" tabindex="-1">Today's Predictions <span id="todayCount">—</span></button>
+      <button class="day-tab" type="button" data-view="yesterday" tabindex="-1">Yesterday's Results <span id="yesterdayCount">—</span></button>
     </nav>
 
     <section id="matchExplorerTools" class="match-explorer-tools" hidden>
@@ -54,18 +56,23 @@
         <strong id="coverageLabel">CURATED MATCHES</strong>
         <span id="coverageNote">Loading curated match set…</span>
       </div>
-      <div id="leagueStrip" class="league-strip" aria-label="League filters"></div>
-      <div id="commandStrip" class="command-strip" aria-label="Quick match filters">
-        <button class="command-chip active" type="button" data-command="ALL">All</button>
-        <button class="command-chip nomad" type="button" data-command="NOMAD">NOMAD Pick</button>
-        <button class="command-chip" type="button" data-command="CONF55">Confidence ≥55%</button>
-        <button class="command-chip" type="button" data-command="ODDS2">Odds ≥2.00</button>
+      <div class="filter-group">
+        <span class="filter-label">LEAGUES</span>
+        <div id="leagueStrip" class="league-strip" aria-label="League filters"></div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">QUICK FILTERS</span>
+        <div id="commandStrip" class="command-strip" aria-label="Optional quick match filters">
+          <button class="command-chip nomad" type="button" data-command="NOMAD">NOMAD Pick</button>
+          <button class="command-chip" type="button" data-command="CONF55">Confidence ≥55%</button>
+          <button class="command-chip" type="button" data-command="ODDS2">Odds ≥2.00</button>
+        </div>
       </div>
     </section>
 
     <section class="toolbar">
       <div class="toolbar-copy">
-        <p class="eyebrow" id="sectionEyebrow">TODAY'S SELECTIONS</p>
+        <p class="eyebrow" id="sectionEyebrow">TODAY'S QUALIFIED PICKS</p>
         <h2 id="sectionTitle"></h2>
       </div>
       <label class="search">Search <input id="searchInput" type="search" placeholder="team / league"></label>
@@ -85,7 +92,7 @@
   </main>
 
   <script src="predictions.js?v=20260829-source-metrics-v1" defer></script>
-  <script src="match-explorer.js?v=20260829-enrichment-manifest-v1" defer></script>
+  <script src="match-explorer.js?v=20260829-menu-clean-v1" defer></script>
   <script src="selected-emphasis.js?v=20260829-selected-green-safe-v1" defer></script>
   <script src="local-time.js?v=20260829-local-time-v1" defer></script>
   <script src="performance-trend.js?v=20260829-smooth-sharp-film-v1" defer></script>
