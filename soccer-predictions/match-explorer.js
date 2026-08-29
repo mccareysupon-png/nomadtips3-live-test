@@ -271,6 +271,17 @@
         const id = String(match.id || '');
         const overlay = overlayById.get(id);
         const merged = overlay ? {...match, ...overlay} : {...match};
+        if(overlay?.analysisData?.form){
+          const form = overlay.analysisData.form;
+          merged.analysisData = {
+            ...overlay.analysisData,
+            form: {
+              ...form,
+              home: Array.isArray(form.home) ? form.home.slice(0,5) : [],
+              away: Array.isArray(form.away) ? form.away.slice(0,5) : []
+            }
+          };
+        }
         merged.nomadPick = match.nomadPick === true || overlay?.nomadPick === true || nomadIds.has(id);
         return merged;
       });
