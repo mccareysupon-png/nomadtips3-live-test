@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "NOMAD 3.42 M88 Referee Bridge",
+  "version": "0.1.0",
+  "description": "Read-only bridge from MSports live odds to NOMAD 3.42 referee adapter.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://msports.m88.com/*",
+    "https://mccareysupon-png.github.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://msports.m88.com/*"],
+      "js": ["m88-main-hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://msports.m88.com/*"],
+      "js": ["m88-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/*"],
+      "js": ["nomad-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
