@@ -25,6 +25,7 @@ jobs:
           node --check nomad-live-342/m88-referee-extension/m88-bridge.js
           node --check nomad-live-342/m88-referee-extension/background.js
           node --check nomad-live-342/m88-referee-extension/nomad-bridge.js
+          node --check nomad-live-342/m88-referee-extension/referee-bridge.test.cjs
 
       - name: Check manifest JSON
         run: python -m json.tool nomad-live-342/m88-referee-extension/manifest.json >/dev/null
@@ -84,3 +85,6 @@ jobs:
           if(document.documentElement.dataset.nomadM88ObserverReady!=='1') throw new Error('ready handshake marker missing');
           console.log('M88 observer smoke tests PASS');
           NODE
+
+      - name: Synthetic bridge end-to-end
+        run: node nomad-live-342/m88-referee-extension/referee-bridge.test.cjs
