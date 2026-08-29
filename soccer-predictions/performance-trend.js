@@ -11,12 +11,6 @@
     return scores.map((score, i) => `${i ? 'L' : 'M'} ${xs[i]} ${y(score).toFixed(1)}`).join(' ');
   };
 
-  const makePoints = (scores, cls) => {
-    const xs = [8, 144, 280, 416, 552];
-    const y = score => 12 + (100 - score) * 1.18;
-    return scores.map((score, i) => `<circle class="${cls}" cx="${xs[i]}" cy="${y(score).toFixed(1)}" r="4"><title>${score}</title></circle>`).join('');
-  };
-
   const enhanceCard = card => {
     if (card.querySelector('.performance-trend')) return;
 
@@ -66,8 +60,6 @@
             <path class="trend-fill" d="${areaPath}"></path>
             <path class="trend-line-opponent" d="${opponentPath}"></path>
             <path class="trend-line-selected" d="${selectedPath}"></path>
-            ${makePoints(opponentScores, 'trend-point-opponent')}
-            ${makePoints(selectedScores, 'trend-point-selected')}
           </svg>
         </div>
       </div>
