@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 const STORAGE_KEY='nomadM88Observation342';
+const POOL_KEY='nomadM88ObservationPool342';
 const VALID_STATES=new Set(['VALID','STALE','UNAVAILABLE','UNKNOWN','MISMATCH']);
 const COLLECTOR_SCHEMA='m88-msports-referee';
 
@@ -49,6 +50,10 @@ function scorePair(score){
   if(score&&typeof score==='object') return [finite(score.home),finite(score.away)];
   return null;
 }
+function sameName(a,b){
+  const norm=v=>String(v||'').toLowerCase().normalize('NFKD').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+  return Boolean(norm(a))&&norm(a)===norm(b);
+}
 function collectorToObservation(payload){
   if(!payload||String(payload.schema||'')!==COLLECTOR_SCHEMA){
     return {status:'MISMATCH',transport:'XHR-POLL',collectorSchema:String(payload?.schema||''),observedAt:Date.now()};
@@ -69,29 +74,11 @@ function collectorToObservation(payload){
   const selectionId=String(payload.selection_id??market.selection_id??'');
   const basicValid=Boolean(eventId&&marketId&&selectionId&&payload.home&&payload.away&&segment&&homeLine!==undefined&&awayLine!==undefined&&homeOdds!==undefined&&awayOdds!==undefined);
   return {
-    status:basicValid?'VALID':'MISMATCH',
-    matchId:eventId,
-    eventId,
-    leagueId:String(payload.league_id??''),
-    sportId:String(payload.sport_id??''),
-    home:String(payload.home??''),
-    away:String(payload.away??''),
-    minute:finite(payload.minute),
-    period:String(payload.period??''),
-    score:scorePair(payload.score),
-    rawHomeLine:String(homeLine??''),
-    rawAwayLine:String(awayLine??''),
-    homeOddsRaw:finite(homeOdds),
-    awayOddsRaw:finite(awayOdds),
-    oddsFormat,
-    segment,
-    marketId,
-    selectionId,
-    observedAt,
-    timestampSource,
-    transport:String(payload.transport||'XHR-POLL').toUpperCase(),
-    collectorSchema:COLLECTOR_SCHEMA,
-    rawCollector:payload
+    status:basicValid?'VALID':'MISMATCH',matchId:eventId,eventId,
+    leagueId:String(payload.league_id??''),sportId:String(payload.sport_id??''),
+    home:String(payload.home??''),away:String(payload.away??''),minute:finite(payload.minute),period:String(payload.period??''),score:scorePair(payload.score),
+    rawHomeLine:String(homeLine??''),rawAwayLine:String(awayLine??''),homeOddsRaw:finite(homeOdds),awayOddsRaw:finite(awayOdds),oddsFormat,
+    segment,marketId,selectionId,observedAt,timestampSource,transport:String(payload.transport||'XHR-POLL').toUpperCase(),collectorSchema:COLLECTOR_SCHEMA
   };
 }
 function normalizeObservation(input,maxAgeSeconds=30,now=Date.now()){
@@ -108,58 +95,41 @@ function normalizeObservation(input,maxAgeSeconds=30,now=Date.now()){
   const awayOddsDecimal=normalizeOdds(input?.awayOddsRaw,input?.oddsFormat||'HK');
   if(state==='VALID'&&(homeOddsDecimal===null||awayOddsDecimal===null))state='MISMATCH';
   return {
-    book:'M88',
-    status:state,
-    ageSeconds,
-    observedAt:Number.isFinite(observedAt)?observedAt:null,
-    timestampSource:String(input?.timestampSource||''),
-    matchId:String(input?.matchId||input?.eventId||''),
-    eventId:String(input?.eventId||input?.matchId||''),
-    leagueId:String(input?.leagueId||''),
-    sportId:String(input?.sportId||''),
-    home:String(input?.home||''),
-    away:String(input?.away||''),
-    minute:finite(input?.minute),
-    period:String(input?.period||''),
-    score:scorePair(input?.score),
-    rawHomeLine:String(input?.rawHomeLine??''),
-    rawAwayLine:String(input?.rawAwayLine??''),
-    decodedHomeLine:line.value,
-    decodeStatus:line.status,
-    decodeReason:line.reason,
-    homeOddsRaw:finite(input?.homeOddsRaw),
-    awayOddsRaw:finite(input?.awayOddsRaw),
-    oddsFormat:normalizeOddsFormat(input?.oddsFormat||'HK'),
-    homeOddsDecimal,
-    awayOddsDecimal,
-    segment:String(input?.segment||'').toUpperCase(),
-    marketId:String(input?.marketId||''),
-    selectionId:String(input?.selectionId||''),
-    transport:String(input?.transport||'DOM').toUpperCase(),
-    collectorSchema:String(input?.collectorSchema||''),
-    raw
+    book:'M88',status:state,ageSeconds,observedAt:Number.isFinite(observedAt)?observedAt:null,timestampSource:String(input?.timestampSource||''),
+    matchId:String(input?.matchId||input?.eventId||''),eventId:String(input?.eventId||input?.matchId||''),leagueId:String(input?.leagueId||''),sportId:String(input?.sportId||''),
+    home:String(input?.home||''),away:String(input?.away||''),minute:finite(input?.minute),period:String(input?.period||''),score:scorePair(input?.score),
+    rawHomeLine:String(input?.rawHomeLine??''),rawAwayLine:String(input?.rawAwayLine??''),decodedHomeLine:line.value,decodeStatus:line.status,decodeReason:line.reason,
+    homeOddsRaw:finite(input?.homeOddsRaw),awayOddsRaw:finite(input?.awayOddsRaw),oddsFormat:normalizeOddsFormat(input?.oddsFormat||'HK'),homeOddsDecimal,awayOddsDecimal,
+    segment:String(input?.segment||'').toUpperCase(),marketId:String(input?.marketId||''),selectionId:String(input?.selectionId||''),
+    transport:String(input?.transport||'DOM').toUpperCase(),collectorSchema:String(input?.collectorSchema||''),raw
   };
+}
+function readPool(){try{return JSON.parse(localStorage.getItem(POOL_KEY)||'{}')}catch{return {}}}
+function writePool(pool){
+  const rows=Object.entries(pool).sort((a,b)=>Number(b[1]?.receivedAt||0)-Number(a[1]?.receivedAt||0)).slice(0,200);
+  localStorage.setItem(POOL_KEY,JSON.stringify(Object.fromEntries(rows)));
 }
 function persist(snapshot){
   localStorage.setItem(STORAGE_KEY,JSON.stringify(snapshot));
-  try{window.dispatchEvent(new CustomEvent('nomad:m88-update',{detail:{matchId:snapshot.matchId||snapshot.eventId||'',receivedAt:snapshot.receivedAt}}));}catch{}
+  const id=String(snapshot.matchId||snapshot.eventId||'');
+  if(id){const pool=readPool();pool[id]=snapshot;writePool(pool);}
+  try{window.dispatchEvent(new CustomEvent('nomad:m88-update',{detail:{matchId:id,receivedAt:snapshot.receivedAt}}));}catch{}
   return snapshot;
 }
-function ingest(input){
-  const snapshot={...input,book:'M88',receivedAt:Date.now()};
-  return persist(snapshot);
-}
-function ingestCollector(payload){
-  const mapped=collectorToObservation(payload);
-  const snapshot={...mapped,book:'M88',receivedAt:Date.now()};
-  return persist(snapshot);
-}
+function ingest(input){return persist({...input,book:'M88',receivedAt:Date.now()})}
+function ingestCollector(payload){const mapped=collectorToObservation(payload);return persist({...mapped,book:'M88',receivedAt:Date.now()})}
 function read(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
-function clear(){localStorage.removeItem(STORAGE_KEY)}
+function readForMatch(matchId,home='',away=''){
+  const pool=readPool(),id=String(matchId||'');
+  if(id&&pool[id]) return pool[id];
+  const rows=Object.values(pool).sort((a,b)=>Number(b?.receivedAt||0)-Number(a?.receivedAt||0));
+  return rows.find(x=>sameName(x?.home,home)&&sameName(x?.away,away))||null;
+}
+function clear(){localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(POOL_KEY)}
 window.addEventListener('nomad:m88-collector-payload',event=>{
   const payload=event?.detail;
   if(!payload||typeof payload!=='object') return;
   ingestCollector(payload);
 });
-window.NOMADM88={STORAGE_KEY,COLLECTOR_SCHEMA,normalizeOdds,decodeHomeLine,collectorToObservation,normalizeObservation,ingest,ingestCollector,read,clear};
+window.NOMADM88={STORAGE_KEY,POOL_KEY,COLLECTOR_SCHEMA,normalizeOdds,decodeHomeLine,collectorToObservation,normalizeObservation,ingest,ingestCollector,read,readForMatch,clear};
 })();
