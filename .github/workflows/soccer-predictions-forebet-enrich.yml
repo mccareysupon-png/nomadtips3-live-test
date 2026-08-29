@@ -1,27 +1,22 @@
-name: Soccer Predictions Forebet Enrich
+name: Soccer Predictions Forebet Enrich (Manual Diagnostic)
 
+# Forebet returns HTTP 403 to GitHub-hosted runners. Keep this workflow manual-only
+# for diagnostics; normal Selected Matches enrichment is supplied through reviewed
+# source data and must never attempt to bypass Forebet access controls.
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/soccer-predictions-forebet-enrich.yml'
-      - 'soccer-predictions/data/selected-matches.json'
-      - 'soccer-predictions/semi-auto/enrich_selected.py'
-      - 'soccer-predictions/semi-auto/forebet_engine.py'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: soccer-predictions-forebet-enrich
   cancel-in-progress: true
 
 jobs:
-  enrich-selected:
-    if: github.actor != 'github-actions[bot]'
+  diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
 
@@ -32,39 +27,7 @@ jobs:
       - name: Install isolated dependencies
         run: python -m pip install -r soccer-predictions/semi-auto/requirements.txt
 
-      - name: Enrich current Selected Matches into review staging
+      - name: Diagnostic only — never publish
         run: |
-          python soccer-predictions/semi-auto/enrich_selected.py \
-            --selected soccer-predictions/data/selected-matches.json \
-            --output soccer-predictions/data/staging-forebet-all.json \
-            --resolved-queue soccer-predictions/data/forebet-queue-resolved.json \
-            --delay 3
-
-      - name: Validate staging contract
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('soccer-predictions/data/staging-forebet-all.json')
-          d=json.loads(p.read_text(encoding='utf-8'))
-          assert d.get('humanApprovalRequired') is True
-          assert d.get('liveScore') is False
-          assert d.get('selectedInputCount') == 42, d.get('selectedInputCount')
-          assert d.get('enrichedCount',0) > 0
-          for row in d.get('matches',[]):
-              assert row.get('reviewStatus') == 'review'
-              assert row.get('nomadPick') in (True,False)
-          print('staging OK:', d.get('enrichedCount'), 'enriched;', d.get('errorCount'), 'errors')
-          PY
-
-      - name: Commit review staging only
-        run: |
-          git config user.name "NOMAD Soccer Semi-Auto"
-          git config user.email "actions@users.noreply.github.com"
-          git add soccer-predictions/data/staging-forebet-all.json soccer-predictions/data/forebet-queue-resolved.json
-          if git diff --cached --quiet; then
-            echo "No staging changes"
-            exit 0
-          fi
-          git commit -m "Refresh Forebet review staging for Selected Matches"
-          git push
+          echo "Manual diagnostic only. Forebet returned HTTP 403 to GitHub-hosted runners on 2026-08-29."
+          echo "No Selected Matches, NOMAD Picks, Statistics, or Live files will be written."
