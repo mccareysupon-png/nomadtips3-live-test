@@ -1,0 +1,5 @@
+/* Selected-side stat tiles under TEAM COMPARISON: clearer green separation from neutral gray. UI-only. */
+.prediction-card.selected-home .stats-grid .stat:nth-child(-n+5),
+.prediction-card.selected-away .stats-grid .stat:nth-child(n+6){
+  background:linear-gradient(145deg,rgba(121,196,135,.16),#101410)!important;
+}
