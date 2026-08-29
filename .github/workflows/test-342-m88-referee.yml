@@ -1,0 +1,86 @@
+name: Test 3.42 M88 Referee Bridge
+
+on:
+  push:
+    branches:
+      - feat/342-m88-referee-adapter
+    paths:
+      - 'nomad-live-342/m88-observer.js'
+      - 'nomad-live-342/totalcorner-live.js'
+      - 'nomad-live-342/m88-referee-extension/**'
+      - '.github/workflows/test-342-m88-referee.yml'
+  workflow_dispatch:
+
+jobs:
+  syntax-and-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check nomad-live-342/m88-observer.js
+          node --check nomad-live-342/totalcorner-live.js
+          node --check nomad-live-342/m88-referee-extension/m88-main-hook.js
+          node --check nomad-live-342/m88-referee-extension/m88-bridge.js
+          node --check nomad-live-342/m88-referee-extension/background.js
+          node --check nomad-live-342/m88-referee-extension/nomad-bridge.js
+
+      - name: Check manifest JSON
+        run: python -m json.tool nomad-live-342/m88-referee-extension/manifest.json >/dev/null
+
+      - name: Smoke test observer normalization
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const vm=require('vm');
+          const store=new Map();
+          const listeners=new Map();
+          const window={
+            addEventListener:(name,fn)=>listeners.set(name,fn),
+            dispatchEvent:()=>true
+          };
+          const localStorage={
+            getItem:k=>store.has(k)?store.get(k):null,
+            setItem:(k,v)=>store.set(k,String(v)),
+            removeItem:k=>store.delete(k)
+          };
+          class CustomEvent{constructor(type,init={}){this.type=type;this.detail=init.detail}}
+          const document={documentElement:{dataset:{}}};
+          const context={window,localStorage,CustomEvent,document,Date,Number,String,JSON,Math,Set,Object,Array,Boolean,RegExp};
+          vm.createContext(context);
+          vm.runInContext(fs.readFileSync('nomad-live-342/m88-observer.js','utf8'),context);
+          const api=window.NOMADM88;
+          if(!api) throw new Error('NOMADM88 missing');
+
+          const base={
+            schema:'m88-msports-referee',event_id:'14682446',league_id:'100',sport_id:'10',
+            home:'Cadiz Mirandilla',away:'Club Atletico Central',segment:'FT',
+            market_id:'FTHDP_10_14682446_1',selection_id:'home-501|away-502',
+            home_line:0.25,away_line:-0.25,home_odds_raw:'0.75',away_odds_raw:'1.07',
+            odds_type:'Hong Kong',period:'1H',minute:18,received_at_utc:new Date().toISOString()
+          };
+          const mapped=api.collectorToObservation(base);
+          const good=api.normalizeObservation(mapped,30,Date.now());
+          if(good.status!=='VALID') throw new Error('trusted +0.25 collector line should be VALID: '+good.status);
+          if(good.decodedHomeLine!==0.25||good.decodedAwayLine!==-0.25) throw new Error('collector line decode mismatch');
+          if(good.homeOddsDecimal!==1.75||good.awayOddsDecimal!==2.07) throw new Error('HK conversion mismatch');
+
+          const badPair=api.collectorToObservation({...base,away_line:0.25});
+          const bad=api.normalizeObservation(badPair,30,Date.now());
+          if(bad.status!=='MISMATCH') throw new Error('non-opposite AH pair must fail closed');
+
+          const fh=api.collectorToObservation({...base,segment:'FH'});
+          const fhObs=api.normalizeObservation(fh,30,Date.now());
+          if(fhObs.status!=='MISMATCH') throw new Error('FH must fail closed for FT judge');
+
+          const legacy=api.normalizeObservation({status:'VALID',observedAt:Date.now(),rawHomeLine:'0.25',rawAwayLine:'',homeOddsRaw:0.75,awayOddsRaw:1.07,oddsFormat:'HK'},30,Date.now());
+          if(legacy.status!=='UNKNOWN') throw new Error('unsigned legacy DOM line must remain UNKNOWN');
+
+          api.ingestCollector(base);
+          const read=api.readForMatch('14682446','Cadiz Mirandilla','Club Atletico Central');
+          if(!read||read.marketId!=='FTHDP_10_14682446_1') throw new Error('event pool read failed');
+
+          if(document.documentElement.dataset.nomadM88ObserverReady!=='1') throw new Error('ready handshake marker missing');
+          console.log('M88 observer smoke tests PASS');
+          NODE
