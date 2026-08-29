@@ -1,6 +1,6 @@
-/* Premium selected-green depth only.
-   Green selected graphics receive the size/depth emphasis.
-   Red opponent and neutral gray stay at normal size and remain flat. */
+/* Premium selected-green depth.
+   Only selected-green graphics receive extra size/depth.
+   Opponent red, neutral gray and underlying data values are unchanged. */
 
 :root{
   --selected-green-hi:#c7ffd0;
@@ -62,80 +62,59 @@
   pointer-events:none;
 }
 
-/* ===== Win-probability donut: SVG arcs ===== */
-.donut.donut-svg-ready{
+/* ===== Win-probability donut: keep the original conic ring. ===== */
+.donut.green-emphasis-ready{
   isolation:isolate;
-  position:relative;
-  background:none!important;
-  box-shadow:none!important;
-  filter:none!important;
-}
-
-.donut.donut-svg-ready::before,
-.donut.donut-svg-ready::after{
-  content:none!important;
-  display:none!important;
-}
-
-.donut-svg{
-  position:absolute;
-  inset:-4px;
-  width:calc(100% + 8px);
-  height:calc(100% + 8px);
   overflow:visible;
-  pointer-events:none;
+}
+
+/* Selected green gets a 2% visual lift without scaling red or gray. */
+.donut.green-emphasis-ready::before{
+  content:"";
+  position:absolute;
+  inset:-1%;
   z-index:1;
+  border-radius:50%;
+  pointer-events:none;
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 17px),#000 calc(100% - 16px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 17px),#000 calc(100% - 16px));
+  filter:drop-shadow(0 0 2px rgba(199,255,208,.38)) drop-shadow(0 0 5px rgba(139,225,155,.38));
 }
 
-.donut-arc{
-  fill:none;
-  stroke-linecap:butt;
-  stroke-linejoin:round;
-  vector-effect:non-scaling-stroke;
+.prediction-card.selected-home .donut.green-emphasis-ready::before{
+  background:conic-gradient(
+    var(--selected-green-hi) 0 var(--home-end),
+    transparent var(--home-end) 100%
+  );
 }
 
-/* Red and gray keep normal geometry and no premium glow. */
-.donut-arc-opponent{
-  stroke:var(--opponent-red);
-  stroke-width:12;
-  opacity:.94;
-}
-.donut-arc-neutral{
-  stroke:#7d837e;
-  stroke-width:12;
-  opacity:.88;
+.prediction-card.selected-away .donut.green-emphasis-ready::before{
+  background:conic-gradient(
+    transparent 0 var(--away-start),
+    var(--selected-green-hi) var(--away-start) 100%
+  );
 }
 
-/* Selected green only: radius 46 vs 45 and stroke 12.24 vs 12 (~2%). */
-.donut-arc-selected-shadow{
-  stroke:var(--selected-green-edge);
-  stroke-width:12.5;
-  opacity:.42;
-  filter:drop-shadow(0 1px 1.2px rgba(0,0,0,.38));
+.donut.green-emphasis-ready::after{
+  content:"";
+  position:absolute;
+  inset:16px;
+  z-index:2;
+  border-radius:50%;
+  background:#161a16!important;
+  box-shadow:
+    inset 0 3px 5px rgba(0,0,0,.44),
+    inset 0 -1px 0 rgba(255,255,255,.035),
+    0 0 0 1px rgba(255,255,255,.02)!important;
 }
 
-.donut-arc-selected{
-  stroke-width:12.24!important;
-  opacity:1;
-  filter:
-    drop-shadow(0 0 1.4px rgba(199,255,208,.42))
-    drop-shadow(0 0 4.2px rgba(139,225,155,.48));
-}
-
-.donut-arc-selected-highlight{
-  stroke:rgba(232,255,236,.70);
-  stroke-width:1.05;
-  opacity:.42;
-}
-
-.donut.donut-svg-ready strong,
-.donut.donut-svg-ready small{
-  position:relative;
+.donut.green-emphasis-ready strong,
+.donut.green-emphasis-ready small{
   z-index:3!important;
 }
 
-.donut.donut-svg-ready strong{
-  text-shadow:0 1px 0 rgba(0,0,0,.46),0 0 7px rgba(139,225,155,.09);
+.donut.green-emphasis-ready strong{
+  text-shadow:0 1px 0 rgba(0,0,0,.42),0 0 7px rgba(139,225,155,.08);
 }
 
 @media(max-width:680px){
@@ -148,15 +127,9 @@
       0 0 5px rgba(139,225,155,.28)!important;
   }
 
-  .donut-svg{
-    inset:-3px;
-    width:calc(100% + 6px);
-    height:calc(100% + 6px);
-  }
-
-  .donut-arc-selected{
-    filter:
-      drop-shadow(0 0 1.1px rgba(199,255,208,.36))
-      drop-shadow(0 0 3.4px rgba(139,225,155,.40));
+  .donut.green-emphasis-ready::before{
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px));
+    mask:radial-gradient(farthest-side,transparent calc(100% - 15px),#000 calc(100% - 14px));
+    filter:drop-shadow(0 0 1.5px rgba(199,255,208,.32)) drop-shadow(0 0 4px rgba(139,225,155,.32));
   }
 }
