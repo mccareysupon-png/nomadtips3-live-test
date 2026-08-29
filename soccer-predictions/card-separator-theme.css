@@ -1,6 +1,7 @@
 /* Dark-green match identity treatment. UI-only: separates each Team VS Team header without touching analysis logic. */
 .prediction-list{gap:14px}
 .prediction-card{margin-bottom:2px}
+.card-grid{grid-template-columns:3fr 2fr}
 .prediction-card .card-head{
   margin:-2px -2px 12px;
   padding:10px 12px 12px;
@@ -20,6 +21,7 @@
   line-height:1;
   box-shadow:none;
 }
+@media(max-width:900px){.card-grid{grid-template-columns:1fr}}
 @media(max-width:680px){
   .prediction-list{gap:12px}
   .prediction-card .card-head{margin:-1px -1px 10px;padding:9px 9px 10px}
