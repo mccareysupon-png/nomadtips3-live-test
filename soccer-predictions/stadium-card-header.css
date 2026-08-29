@@ -27,14 +27,14 @@
 .prediction-list > .prediction-card:nth-of-type(11) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Incheon%20Soccer%20Stadium%201.JPG?width=1280")}
 .prediction-list > .prediction-card:nth-of-type(12) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Harstad%20stadion.jpg?width=1280")}
 
-/* Guardian overlay: NOMAD green at 30% opacity across every matchup stadium image. */
+/* Guardian overlay: NOMAD dark green at 55% opacity across every matchup stadium image. */
 .card-head::before{
   content:"";
   position:absolute;
   inset:0;
   z-index:0;
   pointer-events:none;
-  background:rgba(18,78,49,.30);
+  background:rgba(18,78,49,.55);
 }
 
 .card-head .league-line,
