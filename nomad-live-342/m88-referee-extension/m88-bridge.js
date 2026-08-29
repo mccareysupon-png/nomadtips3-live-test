@@ -2,7 +2,7 @@
 'use strict';
 const EVENT='m88:referee-update';
 const ALLOWED=new Set([
-  'schema','event_id','league_id','sport_id','home','away','score','period','minute','market','market_id','selection_id',
+  'schema','event_id','league_id','sport_id','home','away','score','period','minute','segment','market','market_id','selection_id',
   'home_line','away_line','home_odds_raw','away_odds_raw','odds_type','source_timestamp','received_at_utc','transport'
 ]);
 function decode(detail){
