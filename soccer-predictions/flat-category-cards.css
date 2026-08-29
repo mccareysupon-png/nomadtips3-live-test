@@ -1,0 +1,40 @@
+/* Flat category palette: subtle separation between card types, with no gradient fills inside prediction cards. */
+.prediction-card,
+.pick-box,
+.panel,
+.mini-card,
+.performance-trend,
+.stat,
+.legend-row,
+.settle-box{
+  background-image:none!important;
+}
+
+/* Match cards: very small hue shifts so adjacent fixtures are easy to distinguish without looking colorful. */
+.prediction-card{background:#181d18!important}
+.prediction-list > .prediction-card:nth-of-type(4n+1){background:#181d18!important}
+.prediction-list > .prediction-card:nth-of-type(4n+2){background:#181c1d!important}
+.prediction-list > .prediction-card:nth-of-type(4n+3){background:#1c1b18!important}
+.prediction-list > .prediction-card:nth-of-type(4n+4){background:#1b191c!important}
+
+/* Category surfaces: restrained solid tones only. */
+.pick-box{background:#172019!important}
+.card-grid > .panel:first-child{background:#181f1a!important} /* Team Comparison */
+.right-stack > .panel{background:#181d20!important} /* Win Probability */
+.performance-trend{background:#171d19!important} /* Performance Trend */
+.mini-card:first-child{background:#1b2019!important} /* Recent Form */
+.mini-card:last-child{background:#201d18!important} /* H2H */
+
+/* Small analytical cards stay flat as well. */
+.stat{background:#121612!important}
+.prediction-card.selected-home .stat:nth-child(-n+5),
+.prediction-card.selected-away .stat:nth-child(n+6){background:#142019!important}
+.prediction-card.selected-home .stat:nth-child(n+6),
+.prediction-card.selected-away .stat:nth-child(-n+5){background:#201717!important}
+
+.legend-row{background:#181c19!important}
+.legend-row.selected{background:#17221a!important}
+.legend-row.opponent{background:#211818!important}
+.legend-row.neutral{background:#191c19!important}
+
+.settle-box{background:#121612!important}
