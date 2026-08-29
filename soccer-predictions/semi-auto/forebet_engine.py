@@ -84,10 +84,11 @@ def h2h(t,h,a):
     m=re.search(rf"{re.escape(h)}\s+(\d+)\s+\d+%\s+Draw\s+(\d+)\s+\d+%\s+{re.escape(a)}\s+(\d+)\s+\d+%",z,re.I)
     return None if not m else {"home":int(m[1]),"draw":int(m[2]),"away":int(m[3])}
 def form_tokens(t,h,a):
-    m=re.search(rf"{re.escape(h)}\s+VS\s+{re.escape(a)}(.{{0,800}}?)\b(\d{{2}}/\d{{2}}/\d{{4}})",t,re.I)
-    if not m:return None
-    tok=re.findall(r"\b[WDL]\b",m[1])
-    if len(tok)>=12:return {"home":tok[:6],"away":tok[6:12]}
+    start=re.search(rf"{re.escape(h)}\s+VS\s+{re.escape(a)}",t,re.I)
+    if not start:return None
+    window=t[start.end():start.end()+1600]
+    tokens=re.findall(r"\b[WDL]\b",window)
+    if len(tokens)>=12:return {"home":tokens[:6],"away":tokens[6:12]}
     return None
 
 def derive(raw):
