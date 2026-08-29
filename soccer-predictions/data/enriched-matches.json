@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-29T12:05:00+07:00",
+  "generatedAt": "2026-08-29T12:25:00+07:00",
   "mode": "reviewed-enrichment-overlay",
   "liveScore": false,
   "humanReviewed": true,
@@ -135,6 +135,182 @@
         "dataQuality": {"status":"complete","missing":[]}
       },
       "analysis": "This is the clearest disagreement with the source forecast. Basel carry the higher Forebet 1X2 probability, while NOMAD's form, shot volume and attacking-strength inputs almost completely erase that gap and leave Young Boys narrowly ahead. The margin is only 0.33 percentage points, so this is effectively a high-uncertainty matchup."
+    },
+    {
+      "id":"liverpool-nottingham-forest",
+      "league":"England · Premier League",
+      "kickoff":"29 Aug · 20:30 TH",
+      "kickoffAt":"2026-08-29T13:30:00Z",
+      "home":"Liverpool",
+      "away":"Nottingham Forest",
+      "pick":"Liverpool Win",
+      "odds":1.44,
+      "confidence":55.19,
+      "abc":"REVIEWED · SOURCE",
+      "nomadPick":false,
+      "reviewStatus":"approved",
+      "metricsStatus":"source",
+      "source":"https://www.forebet.com/en/football/matches/liverpool-nottingham-forest-2495557",
+      "sourceMeta":{"provider":"Forebet","policy":"facts-only; NOMAD probability independently derived from source statistics"},
+      "sourceFacts":{
+        "forebetProbability":{"home":56,"draw":25,"away":19},
+        "odds1x2":{"home":1.44,"draw":4.75,"away":6.50},
+        "recentFormSummary":{"home":{"win":1,"draw":3,"loss":2},"away":{"win":0,"draw":2,"loss":4}},
+        "homeAwaySummary":{"home":{"win":1,"draw":2,"loss":0},"away":{"win":0,"draw":0,"loss":2}},
+        "goals":{"home":{"gf":1.83,"ga":2.00},"away":{"gf":0.67,"ga":2.00}},
+        "shots":{"home":{"shots":16.17,"onTargetPct":32},"away":{"shots":11.83,"onTargetPct":31}},
+        "possession":{"home":57,"away":50},
+        "h2h":{"home":3,"draw":1,"away":2}
+      },
+      "analysisData":{
+        "probability":{"home":55.19,"draw":23.19,"away":21.62},
+        "metrics":[
+          {"label":"Attack Strength","home":73,"away":27},
+          {"label":"Shot Volume","home":58,"away":42},
+          {"label":"Shots on Target","home":59,"away":41},
+          {"label":"Recent Form","home":33,"away":11},
+          {"label":"Home / Away Form","home":56,"away":0},
+          {"label":"Defense Stability","home":50,"away":50},
+          {"label":"Conversion Rate","home":67,"away":33}
+        ],
+        "form":{"home":["D","D","L","D","L","W"],"away":["L","L","D","L","D","L"]},
+        "h2h":{"home":3,"draw":1,"away":2},
+        "stats":{"home":{"gf":1.83,"ga":2.00,"sot":5.2,"pos":"57%"},"away":{"gf":0.67,"ga":2.00,"sot":3.7,"pos":"50%"}},
+        "dataQuality":{"status":"complete","missing":[]}
+      },
+      "analysis":"Liverpool's recent win rate is modest, but the underlying comparison is much stronger than Nottingham Forest's: higher scoring output, shot volume, shots on target and a clearly better home-versus-away sample. NOMAD therefore retains Liverpool as the leading side, close to the source model's probability."
+    },
+    {
+      "id":"coventry-city-hull-city",
+      "league":"England · Premier League",
+      "kickoff":"29 Aug · 23:00 TH",
+      "kickoffAt":"2026-08-29T16:00:00Z",
+      "home":"Coventry City",
+      "away":"Hull City",
+      "pick":"Hull City Win",
+      "odds":4.75,
+      "confidence":50.70,
+      "abc":"REVIEWED · SOURCE",
+      "nomadPick":false,
+      "reviewStatus":"approved",
+      "metricsStatus":"source",
+      "source":"https://www.forebet.com/en/football/matches/coventry-city-hull-city-2495558",
+      "sourceMeta":{"provider":"Forebet","policy":"facts-only; NOMAD probability independently derived from source statistics"},
+      "sourceFacts":{
+        "forebetProbability":{"home":14,"draw":24,"away":62},
+        "odds1x2":{"home":1.80,"draw":3.50,"away":4.75},
+        "recentFormSummary":{"home":{"win":4,"draw":1,"loss":1},"away":{"win":4,"draw":2,"loss":0}},
+        "homeAwaySummary":{"home":{"win":2,"draw":0,"loss":0},"away":{"win":1,"draw":1,"loss":0}},
+        "goals":{"home":{"gf":2.83,"ga":1.33},"away":{"gf":1.33,"ga":0.33}},
+        "shots":{"home":{"shots":12.67,"onTargetPct":34},"away":{"shots":10.50,"onTargetPct":41}},
+        "possession":{"home":60,"away":37},
+        "h2h":{"home":1,"draw":4,"away":1}
+      },
+      "analysisData":{
+        "probability":{"home":28.71,"draw":20.59,"away":50.70},
+        "metrics":[
+          {"label":"Attack Strength","home":68,"away":32},
+          {"label":"Shot Volume","home":55,"away":45},
+          {"label":"Shots on Target","home":50,"away":50},
+          {"label":"Recent Form","home":72,"away":78},
+          {"label":"Home / Away Form","home":100,"away":67},
+          {"label":"Defense Stability","home":22,"away":78},
+          {"label":"Conversion Rate","home":64,"away":36}
+        ],
+        "form":{"home":["W","L","W","W","W","D"],"away":["D","W","W","W","D","W"]},
+        "h2h":{"home":1,"draw":4,"away":1},
+        "stats":{"home":{"gf":2.83,"ga":1.33,"sot":4.3,"pos":"60%"},"away":{"gf":1.33,"ga":0.33,"sot":4.3,"pos":"37%"}},
+        "dataQuality":{"status":"complete","missing":[]}
+      },
+      "analysis":"Hull remain the top 1X2 side after NOMAD weighting, but the source's 62% away probability is reduced substantially. Coventry carry much stronger attacking volume and home results, while Hull's major counterweight is defensive stability and an unbeaten recent run."
+    },
+    {
+      "id":"bournemouth-everton",
+      "league":"England · Premier League",
+      "kickoff":"29 Aug · 23:00 TH",
+      "kickoffAt":"2026-08-29T16:00:00Z",
+      "home":"Bournemouth",
+      "away":"Everton",
+      "pick":"Everton Win",
+      "odds":3.60,
+      "confidence":42.62,
+      "abc":"REVIEWED · SOURCE",
+      "nomadPick":false,
+      "reviewStatus":"approved",
+      "metricsStatus":"source",
+      "source":"https://www.forebet.com/en/football/matches/bournemouth-everton-2495559",
+      "sourceMeta":{"provider":"Forebet","policy":"facts-only; NOMAD probability independently derived from source statistics"},
+      "sourceFacts":{
+        "forebetProbability":{"home":27,"draw":26,"away":46},
+        "odds1x2":{"home":2.05,"draw":3.50,"away":3.60},
+        "recentFormSummary":{"home":{"win":2,"draw":3,"loss":1},"away":{"win":2,"draw":2,"loss":2}},
+        "homeAwaySummary":{"home":{"win":1,"draw":2,"loss":0},"away":{"win":1,"draw":1,"loss":1}},
+        "goals":{"home":{"gf":1.50,"ga":1.00},"away":{"gf":2.00,"ga":1.50}},
+        "shots":{"home":{"shots":12.50,"onTargetPct":36},"away":{"shots":15.17,"onTargetPct":35}},
+        "possession":{"home":47,"away":46},
+        "h2h":{"home":5,"draw":0,"away":1}
+      },
+      "analysisData":{
+        "probability":{"home":33.85,"draw":23.53,"away":42.62},
+        "metrics":[
+          {"label":"Attack Strength","home":43,"away":57},
+          {"label":"Shot Volume","home":45,"away":55},
+          {"label":"Shots on Target","home":46,"away":54},
+          {"label":"Recent Form","home":50,"away":44},
+          {"label":"Home / Away Form","home":56,"away":44},
+          {"label":"Defense Stability","home":60,"away":40},
+          {"label":"Conversion Rate","home":48,"away":52}
+        ],
+        "form":{"home":["L","D","D","W","W","D"],"away":["W","W","L","L","D","D"]},
+        "h2h":{"home":5,"draw":0,"away":1},
+        "stats":{"home":{"gf":1.50,"ga":1.00,"sot":4.5,"pos":"47%"},"away":{"gf":2.00,"ga":1.50,"sot":5.3,"pos":"46%"}},
+        "dataQuality":{"status":"complete","missing":[]}
+      },
+      "analysis":"Everton keep the highest NOMAD probability through stronger goal production and greater shooting volume. Bournemouth's superior defensive rate, home sample and 5-0-1 recent H2H record pull the matchup much closer than the source forecast alone suggests."
+    },
+    {
+      "id":"tottenham-newcastle-united",
+      "league":"England · Premier League",
+      "kickoff":"30 Aug · 01:30 TH",
+      "kickoffAt":"2026-08-29T18:30:00Z",
+      "home":"Tottenham",
+      "away":"Newcastle United",
+      "pick":"Draw",
+      "odds":3.75,
+      "confidence":35.05,
+      "abc":"REVIEWED · SOURCE",
+      "nomadPick":false,
+      "reviewStatus":"approved",
+      "metricsStatus":"source",
+      "source":"https://www.forebet.com/en/football/matches/tottenham-newcastle-united-2495560",
+      "sourceMeta":{"provider":"Forebet","policy":"facts-only; NOMAD probability independently derived from source statistics"},
+      "sourceFacts":{
+        "forebetProbability":{"home":23,"draw":45,"away":32},
+        "odds1x2":{"home":2.20,"draw":3.75,"away":3.00},
+        "recentFormSummary":{"home":{"win":3,"draw":1,"loss":2},"away":{"win":3,"draw":2,"loss":1}},
+        "homeAwaySummary":{"home":{"win":2,"draw":1,"loss":0},"away":{"win":0,"draw":1,"loss":1}},
+        "goals":{"home":{"gf":1.67,"ga":1.33},"away":{"gf":2.00,"ga":1.50}},
+        "shots":{"home":{"shots":14.00,"onTargetPct":33},"away":{"shots":13.50,"onTargetPct":40}},
+        "possession":{"home":58,"away":49},
+        "h2h":{"home":0,"draw":1,"away":5}
+      },
+      "analysisData":{
+        "probability":{"home":30.56,"draw":35.05,"away":34.39},
+        "metrics":[
+          {"label":"Attack Strength","home":46,"away":54},
+          {"label":"Shot Volume","home":51,"away":49},
+          {"label":"Shots on Target","home":46,"away":54},
+          {"label":"Recent Form","home":56,"away":61},
+          {"label":"Home / Away Form","home":78,"away":17},
+          {"label":"Defense Stability","home":53,"away":47},
+          {"label":"Conversion Rate","home":45,"away":55}
+        ],
+        "form":{"home":["W","L","W","L","D","W"],"away":["W","D","L","W","D","W"]},
+        "h2h":{"home":0,"draw":1,"away":5},
+        "stats":{"home":{"gf":1.67,"ga":1.33,"sot":4.6,"pos":"58%"},"away":{"gf":2.00,"ga":1.50,"sot":5.4,"pos":"49%"}},
+        "dataQuality":{"status":"complete","missing":[]}
+      },
+      "analysis":"The source model favors a draw, and NOMAD also keeps the draw narrowly on top. However, Newcastle's 5-0-1 edge across the latest six H2H meetings plus stronger scoring and on-target output push the away side to within 0.66 percentage points of the draw, making this a highly balanced matchup."
     }
   ]
 }
