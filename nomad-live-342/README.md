@@ -6,7 +6,7 @@
 
 ## Active price path
 
-NOMAD Live 3.42 now uses the standalone external price adapter at:
+NOMAD Live 3.42 uses the standalone external price adapter at:
 
 `nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev`
 
@@ -24,7 +24,7 @@ The adapter reads **Bet365 Full Match LIVE Asian Handicap** prices from 5DollarF
 
 ## Event source
 
-TotalCorner remains the 3.42 Match/Event source. The event engine and its rolling-window HOME pressure/evidence logic are unchanged by this price-source swap.
+TotalCorner remains the 3.42 Match/Event source. The event engine and its rolling-window HOME pressure/evidence logic are unchanged by the price-source swap.
 
 ## Timestamp semantics
 
@@ -38,6 +38,6 @@ TotalCorner remains the 3.42 Match/Event source. The event engine and its rollin
 
 Locked signals store `source: Bet365` and `priceProvider: 5DollarFootballAPI`.
 
-## Retired browser-referee path
+## Price referee contract
 
-The old `m88-*` and direct `bet365-*` browser observer/extension files are retained only as rollback/archive material. They are **not loaded by the active 3.42 Live, Settings, or Health pages**.
+There is one active 3.42 price path only: **5DollarFootballAPI → Bet365 LIVE AH**. Browser-referee adapters are not part of the active 3.42 build.
