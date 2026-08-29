@@ -1,0 +1,61 @@
+/* Thin visible separators between distinct content groups. UI-only. */
+:root{--content-divider:rgba(150,158,151,.20);--content-divider-soft:rgba(150,158,151,.12)}
+
+/* TODAY: match identity | NOMAD pick/odds/confidence */
+.prediction-card .pick-box{position:relative}
+.prediction-card .pick-box::before{
+  content:"";
+  position:absolute;
+  left:-8px;
+  top:7%;
+  bottom:7%;
+  width:1px;
+  background:var(--content-divider);
+  pointer-events:none;
+}
+
+/* TODAY: TEAM COMPARISON | probability/form/H2H stack */
+.prediction-card .card-grid>.right-stack{
+  border-left:1px solid var(--content-divider);
+  padding-left:10px;
+}
+
+/* TODAY: RECENT FORM | H2H — softer divider */
+.prediction-card .mini-grid>.mini-card+ .mini-card{position:relative}
+.prediction-card .mini-grid>.mini-card+ .mini-card::before{
+  content:"";
+  position:absolute;
+  left:-4px;
+  top:10%;
+  bottom:10%;
+  width:1px;
+  background:var(--content-divider-soft);
+  pointer-events:none;
+}
+
+/* YESTERDAY: match information | settlement */
+.result-card .result-settle{
+  position:relative;
+  padding-left:12px;
+}
+.result-card .result-settle::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:6%;
+  bottom:6%;
+  width:1px;
+  background:var(--content-divider);
+  pointer-events:none;
+}
+
+/* When columns stack, vertical dividers are no longer useful. */
+@media(max-width:900px){
+  .prediction-card .card-grid>.right-stack{border-left:0;padding-left:0}
+}
+@media(max-width:680px){
+  .prediction-card .pick-box::before,
+  .prediction-card .mini-grid>.mini-card+ .mini-card::before,
+  .result-card .result-settle::before{display:none}
+  .result-card .result-settle{padding-left:0}
+}
