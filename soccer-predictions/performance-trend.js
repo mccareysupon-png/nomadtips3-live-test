@@ -88,8 +88,8 @@
             <line class="trend-grid-line vertical" x1="280" y1="0" x2="280" y2="150"></line>
             <line class="trend-grid-line vertical" x1="416" y1="0" x2="416" y2="150"></line>
             <line class="trend-grid-line vertical" x1="552" y1="0" x2="552" y2="150"></line>
-            <path class="trend-area-opponent" d="${opponentAreaPath}"></path>
             <path class="trend-area-selected" d="${selectedAreaPath}"></path>
+            <path class="trend-area-opponent" d="${opponentAreaPath}"></path>
             <path class="trend-line-opponent" d="${opponentPath}"></path>
             <path class="trend-line-selected" d="${selectedPath}"></path>
           </svg>
