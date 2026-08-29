@@ -27,6 +27,27 @@
     return res.json();
   }
 
+  function waitForBaseReady(timeoutMs = 3500){
+    const count = document.getElementById('todayCount');
+    if(count && count.textContent.trim() !== '—') return Promise.resolve();
+
+    return new Promise(resolve => {
+      let done = false;
+      const finish = () => {
+        if(done) return;
+        done = true;
+        observer.disconnect();
+        clearTimeout(timer);
+        resolve();
+      };
+      const observer = new MutationObserver(() => {
+        if(count && count.textContent.trim() !== '—') finish();
+      });
+      if(count) observer.observe(count, {childList:true, subtree:true, characterData:true});
+      const timer = setTimeout(finish, timeoutMs);
+    });
+  }
+
   function searchable(match){
     return [match.home, match.away, match.league, match.kickoff, match.pick]
       .filter(Boolean)
@@ -267,8 +288,14 @@
         loadJson('data/daily-matches.json?v=20260829-explorer-v1'),
         loadJson('data/predictions.json?v=20260828-team-logos-v1')
       ]);
-      state.daily = Array.isArray(dailyData.matches) ? dailyData.matches : [];
+
       state.nomad = Array.isArray(nomadData.picks) ? nomadData.picks : [];
+      const nomadIds = new Set(state.nomad.map(match => String(match.id || '')));
+      const dailyRows = Array.isArray(dailyData.matches) ? dailyData.matches : [];
+      state.daily = dailyRows.map(match => ({
+        ...match,
+        nomadPick: match.nomadPick === true || nomadIds.has(String(match.id || ''))
+      }));
       state.coverageComplete = dailyData.coverageComplete === true;
       state.coverageLabel = String(dailyData.coverageLabel || 'DAILY MATCHES');
       state.coverageNote = String(dailyData.coverageNote || '');
@@ -278,6 +305,8 @@
       state.coverageLabel = 'FEED UNAVAILABLE';
       state.coverageNote = `Unable to load daily match feed: ${err.message}`;
     }
+
+    await waitForBaseReady();
 
     const nomadCount = document.getElementById('nomadScopeCount');
     const allCount = document.getElementById('allScopeCount');
