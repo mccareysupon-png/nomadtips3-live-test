@@ -27,14 +27,29 @@
 .prediction-list > .prediction-card:nth-of-type(11) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Incheon%20Soccer%20Stadium%201.JPG?width=1280")}
 .prediction-list > .prediction-card:nth-of-type(12) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Harstad%20stadion.jpg?width=1280")}
 
-/* Guardian overlay: NOMAD dark green at 55% opacity across every matchup stadium image. */
+/* Keep only a subtle NOMAD green wash so the Guardian silhouette, not a flat tint, carries the visual identity. */
 .card-head::before{
   content:"";
   position:absolute;
   inset:0;
   z-index:0;
   pointer-events:none;
-  background:rgba(18,78,49,.55);
+  background:rgba(18,78,49,.22);
+}
+
+/* Guardian silhouette: visible in front of the stadium image, behind all matchup content. */
+.card-head::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background-image:url("./assets/guardian-silhouette.svg");
+  background-repeat:no-repeat;
+  background-position:right center;
+  background-size:auto 90%;
+  opacity:.65;
+  filter:drop-shadow(0 7px 16px rgba(0,0,0,.42));
 }
 
 .card-head .league-line,
@@ -42,11 +57,11 @@
 .card-head .vs,
 .card-head .pick-box{
   position:relative;
-  z-index:1;
+  z-index:2;
 }
 .card-head .team-logo{
   position:relative;
-  z-index:1;
+  z-index:2;
   filter:drop-shadow(0 3px 7px rgba(0,0,0,.52));
 }
 .card-head .team-name{
@@ -71,5 +86,9 @@
     margin:-2px -2px 0;
     padding:10px 9px 12px;
     background-position:center 50%;
+  }
+  .card-head::after{
+    background-position:right center;
+    background-size:auto 84%;
   }
 }
