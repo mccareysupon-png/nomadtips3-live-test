@@ -27,12 +27,13 @@
 .prediction-card.selected-away .stat:nth-child(n+6){background:#17251d!important}
 .legend-row.selected{background:#1a2720!important}
 
-/* Keep luminous green graph and legend keyed to the brighter selected green. */
+/* Graph green is explicitly locked at ~15% higher HSL lightness than opponent red (#c87474). */
 .trend-line-selected{
-  stroke:var(--selected-green)!important;
-  filter:drop-shadow(0 0 2.6px var(--selected-green))!important;
+  stroke:#8be19b!important;
+  opacity:1!important;
+  filter:drop-shadow(0 0 2.8px rgba(139,225,155,.88))!important;
 }
 .trend-legend-item.selected .trend-dot{
-  background:var(--selected-green)!important;
-  box-shadow:0 0 4.6px var(--selected-green)!important;
+  background:#8be19b!important;
+  box-shadow:0 0 4.8px rgba(139,225,155,.88)!important;
 }
