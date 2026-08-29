@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="green-brightness.css?v=20260829-green-plus15-v2">
   <link rel="stylesheet" href="trend-film-sharp.css?v=20260829-sharp-film-v1">
   <link rel="stylesheet" href="selected-depth.css?v=20260829-selected-green-safe-v1">
+  <link rel="stylesheet" href="match-explorer.css?v=20260829-match-explorer-v1">
 </head>
 <body>
   <header class="topbar">
@@ -38,10 +39,29 @@
       </div>
     </section>
 
+    <nav class="scope-switch" aria-label="Prediction coverage">
+      <button class="scope-tab active" type="button" data-scope="nomad">NOMAD Predictions <span id="nomadScopeCount">—</span></button>
+      <button class="scope-tab" type="button" data-scope="all">All Matches <span id="allScopeCount">—</span></button>
+    </nav>
+
     <nav class="day-switch" aria-label="Prediction day views">
       <button class="day-tab active" type="button" data-view="today">Today's Predictions <span id="todayCount">—</span></button>
       <button class="day-tab" type="button" data-view="yesterday">Yesterday's Results <span id="yesterdayCount">—</span></button>
     </nav>
+
+    <section id="matchExplorerTools" class="match-explorer-tools" hidden>
+      <div id="explorerStatus" class="explorer-status">
+        <strong id="coverageLabel">DAILY MATCHES</strong>
+        <span id="coverageNote">Loading coverage status…</span>
+      </div>
+      <div id="leagueStrip" class="league-strip" aria-label="League filters"></div>
+      <div id="commandStrip" class="command-strip" aria-label="Quick match filters">
+        <button class="command-chip active" type="button" data-command="ALL">All</button>
+        <button class="command-chip nomad" type="button" data-command="NOMAD">NOMAD Pick</button>
+        <button class="command-chip" type="button" data-command="CONF55">Confidence ≥55%</button>
+        <button class="command-chip" type="button" data-command="ODDS2">Odds ≥2.00</button>
+      </div>
+    </section>
 
     <section class="toolbar">
       <div class="toolbar-copy">
@@ -55,12 +75,17 @@
       <div class="loading">Loading prediction cards…</div>
     </section>
 
+    <div class="explorer-foot">
+      <button id="loadMoreMatches" class="load-more-matches" type="button" hidden>Load more</button>
+    </div>
+
     <section id="resultList" class="result-list" hidden>
       <div class="loading">Loading previous results…</div>
     </section>
   </main>
 
   <script src="predictions.js?v=20260828-pick-label-clean-v1" defer></script>
+  <script src="match-explorer.js?v=20260829-match-explorer-v1" defer></script>
   <script src="selected-emphasis.js?v=20260829-selected-green-safe-v1" defer></script>
   <script src="local-time.js?v=20260829-local-time-v1" defer></script>
   <script src="performance-trend.js?v=20260829-smooth-sharp-film-v1" defer></script>
