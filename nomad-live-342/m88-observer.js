@@ -67,7 +67,7 @@ function collectorToObservation(payload){
   const eventId=String(payload.event_id??payload.match_id??'');
   const marketId=String(payload.market_id??market.market_id??'');
   const selectionId=String(payload.selection_id??market.selection_id??'');
-  const basicValid=Boolean(eventId&&payload.home&&payload.away&&segment&&homeLine!==undefined&&awayLine!==undefined&&homeOdds!==undefined&&awayOdds!==undefined);
+  const basicValid=Boolean(eventId&&marketId&&selectionId&&payload.home&&payload.away&&segment&&homeLine!==undefined&&awayLine!==undefined&&homeOdds!==undefined&&awayOdds!==undefined);
   return {
     status:basicValid?'VALID':'MISMATCH',
     matchId:eventId,
@@ -103,6 +103,7 @@ function normalizeObservation(input,maxAgeSeconds=30,now=Date.now()){
   if(state==='VALID'&&ageSeconds>maxAgeSeconds)state='STALE';
   const line=decodeHomeLine(input?.rawHomeLine);
   if(state==='VALID'&&line.status!=='VALID')state=line.status;
+  if(state==='VALID'&&String(input?.collectorSchema||'')===COLLECTOR_SCHEMA&&String(input?.segment||'').toUpperCase()!=='FT')state='MISMATCH';
   const homeOddsDecimal=normalizeOdds(input?.homeOddsRaw,input?.oddsFormat||'HK');
   const awayOddsDecimal=normalizeOdds(input?.awayOddsRaw,input?.oddsFormat||'HK');
   if(state==='VALID'&&(homeOddsDecimal===null||awayOddsDecimal===null))state='MISMATCH';
