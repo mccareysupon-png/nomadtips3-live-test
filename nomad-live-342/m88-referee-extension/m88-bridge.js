@@ -5,6 +5,11 @@ const ALLOWED=new Set([
   'schema','event_id','league_id','sport_id','home','away','score','period','minute','market','market_id','selection_id',
   'home_line','away_line','home_odds_raw','away_odds_raw','odds_type','source_timestamp','received_at_utc','transport'
 ]);
+function decode(detail){
+  if(detail&&typeof detail==='object') return detail;
+  if(typeof detail==='string'){try{return JSON.parse(detail)}catch{return null}}
+  return null;
+}
 function sanitize(input){
   if(!input||typeof input!=='object'||input.schema!=='m88-msports-referee') return null;
   const segment=String(input.segment??input.market?.segment??'').toUpperCase();
@@ -16,7 +21,7 @@ function sanitize(input){
   return out;
 }
 window.addEventListener(EVENT,event=>{
-  const payload=sanitize(event?.detail);
+  const payload=sanitize(decode(event?.detail));
   if(!payload) return;
   try{chrome.runtime.sendMessage({type:'M88_REFEREE_UPDATE',payload});}catch{}
 });
