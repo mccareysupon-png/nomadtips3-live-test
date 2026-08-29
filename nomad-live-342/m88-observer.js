@@ -156,5 +156,10 @@ function ingestCollector(payload){
 }
 function read(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}}
 function clear(){localStorage.removeItem(STORAGE_KEY)}
+window.addEventListener('nomad:m88-collector-payload',event=>{
+  const payload=event?.detail;
+  if(!payload||typeof payload!=='object') return;
+  ingestCollector(payload);
+});
 window.NOMADM88={STORAGE_KEY,COLLECTOR_SCHEMA,normalizeOdds,decodeHomeLine,collectorToObservation,normalizeObservation,ingest,ingestCollector,read,clear};
 })();
