@@ -1,0 +1,38 @@
+/* Global green emphasis: make every semantic green state about 15% brighter while leaving red unchanged. */
+:root{
+  --green:#97ff9e;
+  --selected-green:#8be19b;
+  --selected-green-strong:#72c483;
+}
+
+/* System green accents that were previously hard-coded. */
+.dot{
+  background:var(--green)!important;
+  box-shadow:0 0 12px rgba(151,255,158,.72)!important;
+}
+.search input:focus{border-color:rgba(151,255,158,.58)!important}
+.badge{
+  background:rgba(151,255,158,.10)!important;
+  border-color:rgba(151,255,158,.22)!important;
+  color:var(--green)!important;
+}
+.form-pill.w{
+  background:rgba(151,255,158,.14)!important;
+  color:var(--green)!important;
+}
+.result-card.win{border-left-color:rgba(151,255,158,.74)!important}
+
+/* Selected-team green surfaces: brighten the green family only; opponent red remains unchanged. */
+.prediction-card.selected-home .stat:nth-child(-n+5),
+.prediction-card.selected-away .stat:nth-child(n+6){background:#17251d!important}
+.legend-row.selected{background:#1a2720!important}
+
+/* Keep luminous green graph and legend keyed to the brighter selected green. */
+.trend-line-selected{
+  stroke:var(--selected-green)!important;
+  filter:drop-shadow(0 0 2.6px var(--selected-green))!important;
+}
+.trend-legend-item.selected .trend-dot{
+  background:var(--selected-green)!important;
+  box-shadow:0 0 4.6px var(--selected-green)!important;
+}
