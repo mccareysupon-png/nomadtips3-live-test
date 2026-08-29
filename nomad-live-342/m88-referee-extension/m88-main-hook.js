@@ -28,6 +28,7 @@ const KEYS={
   oddsType:['odds_type','oddsType','priceType'],
   sourceTs:['timestamp','source_timestamp','client_time','match_date','DtMatch']
 };
+const CONTEXT_KEYS=new Set(Object.values(KEYS).flat().concat(['marketType','marketName','marketCode','market','segment']));
 
 function own(obj,key){return Object.prototype.hasOwnProperty.call(obj,key)}
 function pick(obj,names){for(const k of names){if(own(obj,k)&&obj[k]!==null&&obj[k]!==undefined&&obj[k]!=='') return obj[k]}return undefined}
@@ -100,15 +101,25 @@ function emit(payload){
   const fp=fingerprint(payload);
   if(lastFingerprint.get(key)===fp) return;
   lastFingerprint.set(key,fp);
-  // String detail crosses MAIN/isolated worlds without sharing object references.
   window.dispatchEvent(new CustomEvent(EVENT,{detail:JSON.stringify(payload)}));
 }
-function scan(value,depth=0,seen=new WeakSet()){
-  if(depth>12||value===null||typeof value!=='object') return;
+function extendContext(parent,obj){
+  const next={...parent};
+  for(const [k,v] of Object.entries(obj)){
+    if(!CONTEXT_KEYS.has(k)) continue;
+    if(v===null||v===undefined||v===''||typeof v==='object') continue;
+    next[k]=v;
+  }
+  return next;
+}
+function scan(value,depth=0,seen=new WeakSet(),context={},budget={count:0}){
+  if(depth>12||value===null||typeof value!=='object'||budget.count>50000) return;
+  budget.count++;
   if(seen.has(value)) return; seen.add(value);
-  if(Array.isArray(value)){for(const item of value) scan(item,depth+1,seen);return}
-  const payload=build(value); if(payload) emit(payload);
-  for(const v of Object.values(value)) if(v&&typeof v==='object') scan(v,depth+1,seen);
+  if(Array.isArray(value)){for(const item of value) scan(item,depth+1,seen,context,budget);return}
+  const nextContext=extendContext(context,value);
+  const payload=build(nextContext); if(payload) emit(payload);
+  for(const v of Object.values(value)) if(v&&typeof v==='object') scan(v,depth+1,seen,nextContext,budget);
 }
 function inspectText(text){if(typeof text!=='string'||text.length<2) return; try{scan(JSON.parse(text))}catch{}}
 
