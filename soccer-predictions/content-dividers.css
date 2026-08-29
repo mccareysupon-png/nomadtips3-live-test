@@ -49,6 +49,22 @@
   pointer-events:none;
 }
 
+/* Existing horizontal content separators now share the same visual language.
+   Major section break = primary divider; internal/subsection breaks = soft divider.
+   Chart grid lines are intentionally untouched. */
+.prediction-card .panel-title{
+  border-bottom:1px solid var(--content-divider-soft)!important;
+}
+.prediction-card .stats-grid{
+  border-top:1px solid var(--content-divider-soft)!important;
+}
+.prediction-card .analysis{
+  border-top:1px solid var(--content-divider)!important;
+}
+.prediction-card .source-line{
+  border-top:1px solid var(--content-divider-soft)!important;
+}
+
 /* When columns stack, vertical dividers are no longer useful. */
 @media(max-width:900px){
   .prediction-card .card-grid>.right-stack{border-left:0;padding-left:0}
