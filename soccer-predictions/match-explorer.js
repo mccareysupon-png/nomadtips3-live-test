@@ -12,7 +12,8 @@
     visible: PAGE_SIZE,
     coverageComplete: false,
     coverageLabel: 'CURATED MATCHES',
-    coverageNote: ''
+    coverageNote: '',
+    enrichedCount: 0
   };
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -100,6 +101,7 @@
   }
 
   function renderCard(match){
+    if(match?.analysisData && analysed(match) && typeof window.card === 'function') return window.card(match);
     if(match?.metricsStatus === 'source-summary' || match?.sourceProbability) return sourceSummaryCard(match);
     if(analysed(match) && typeof window.card === 'function') return window.card(match);
     return pendingCard(match);
@@ -225,7 +227,10 @@
     if(!box) return;
     box.classList.toggle('partial', !state.coverageComplete);
     if(label) label.textContent = state.coverageLabel || 'CURATED MATCHES';
-    if(note) note.textContent = state.coverageNote || 'Only manually shortlisted matches are included.';
+    if(note){
+      const base = state.coverageNote || 'Only manually shortlisted matches are included.';
+      note.textContent = `${base} · Detailed cards ${state.enrichedCount}/${state.selected.length}`;
+    }
   }
 
   function bind(){
@@ -252,19 +257,30 @@
 
   async function init(){
     try{
-      const [selectedData, nomadData] = await Promise.all([
+      const [selectedData, nomadData, enrichedData] = await Promise.all([
         loadJson('data/selected-matches.json?v=20260829-all-main-v1'),
-        loadJson('data/predictions.json?v=20260829-confidence40-v1')
+        loadJson('data/predictions.json?v=20260829-confidence40-v1'),
+        loadJson('data/enriched-matches.json?v=20260829-enrichment-v1').catch(() => ({matches:[]}))
       ]);
       state.nomad = Array.isArray(nomadData.picks) ? nomadData.picks : [];
       const nomadIds = new Set(state.nomad.map(match => String(match.id || '')));
+      const overlays = Array.isArray(enrichedData.matches) ? enrichedData.matches : [];
+      const overlayById = new Map(overlays.map(match => [String(match.id || ''), match]));
       const rows = Array.isArray(selectedData.matches) ? selectedData.matches : [];
-      state.selected = rows.map(match => ({...match, nomadPick: match.nomadPick === true || nomadIds.has(String(match.id || ''))}));
-      state.coverageComplete = selectedData.coverageComplete === true;
+      state.selected = rows.map(match => {
+        const id = String(match.id || '');
+        const overlay = overlayById.get(id);
+        const merged = overlay ? {...match, ...overlay} : {...match};
+        merged.nomadPick = match.nomadPick === true || overlay?.nomadPick === true || nomadIds.has(id);
+        return merged;
+      });
+      state.enrichedCount = state.selected.filter(match => Boolean(match.analysisData) && analysed(match)).length;
+      state.coverageComplete = selectedData.coverageComplete === true && state.enrichedCount === state.selected.length;
       state.coverageLabel = String(selectedData.coverageLabel || 'CURATED MATCHES');
       state.coverageNote = String(selectedData.coverageNote || '');
     }catch(err){
       state.selected = [];
+      state.enrichedCount = 0;
       state.coverageComplete = false;
       state.coverageLabel = 'SELECTED FEED UNAVAILABLE';
       state.coverageNote = `Unable to load Selected Matches: ${err.message}`;
