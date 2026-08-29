@@ -4,6 +4,7 @@ const STORAGE_KEY='nomadM88Observation342';
 const POOL_KEY='nomadM88ObservationPool342';
 const VALID_STATES=new Set(['VALID','STALE','UNAVAILABLE','UNKNOWN','MISMATCH']);
 const COLLECTOR_SCHEMA='m88-msports-referee';
+const READY_EVENT='nomad:m88-observer-ready';
 
 function finite(v){
   if(v===null||v===undefined||v===''||typeof v==='boolean') return null;
@@ -131,10 +132,19 @@ function readForMatch(matchId,home='',away=''){
   return rows.find(x=>sameName(x?.home,home)&&sameName(x?.away,away))||null;
 }
 function clear(){localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(POOL_KEY)}
+function eventPayload(detail){
+  if(detail&&typeof detail==='object') return detail;
+  if(typeof detail==='string'){try{return JSON.parse(detail)}catch{return null}}
+  return null;
+}
 window.addEventListener('nomad:m88-collector-payload',event=>{
-  const payload=event?.detail;
-  if(!payload||typeof payload!=='object') return;
+  const payload=eventPayload(event?.detail);
+  if(!payload) return;
   ingestCollector(payload);
 });
 window.NOMADM88={STORAGE_KEY,POOL_KEY,COLLECTOR_SCHEMA,normalizeOdds,decodeHomeLine,collectorToObservation,normalizeObservation,ingest,ingestCollector,read,readForMatch,clear};
+try{
+  if(document.documentElement) document.documentElement.dataset.nomadM88ObserverReady='1';
+  window.dispatchEvent(new CustomEvent(READY_EVENT,{detail:{schema:COLLECTOR_SCHEMA}}));
+}catch{}
 })();
