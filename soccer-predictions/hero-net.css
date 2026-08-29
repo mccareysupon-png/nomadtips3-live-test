@@ -21,17 +21,7 @@
     linear-gradient(100deg,rgba(5,13,9,.24) 0%,transparent 48%,rgba(38,111,75,.08) 100%),
     radial-gradient(circle at 18% 115%,rgba(29,93,61,.15),transparent 38%);
 }
-.hero.hero-net::after{
-  content:"";
-  position:absolute;
-  top:12%;
-  right:24%;
-  bottom:12%;
-  width:1px;
-  z-index:0;
-  pointer-events:none;
-  background:linear-gradient(180deg,transparent,rgba(150,158,151,.13),transparent);
-}
+.hero.hero-net::after{display:none}
 .hero.hero-net .hero-copy{
   position:relative;
   z-index:1;
@@ -56,9 +46,9 @@
   flex:0 0 auto;
   min-width:138px;
   padding:9px 12px 9px 14px;
-  border-left:1px solid rgba(150,158,151,.18);
+  border:0;
   border-radius:0;
-  background:linear-gradient(90deg,rgba(8,19,12,.16),rgba(8,19,12,.34));
+  background:transparent;
   backdrop-filter:none;
   -webkit-backdrop-filter:none;
   box-shadow:none;
@@ -73,7 +63,6 @@
     padding:12px 14px;
   }
   .hero.hero-net .hero-copy{max-width:70%}
-  .hero.hero-net::after{right:25%}
 }
 @media(max-width:680px){
   .hero.hero-net{
@@ -82,7 +71,6 @@
     gap:10px;
     align-items:center;
   }
-  .hero.hero-net::after{display:none}
   .hero.hero-net .hero-copy{
     max-width:68%;
     padding-right:0;
