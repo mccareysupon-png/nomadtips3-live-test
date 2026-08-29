@@ -4,7 +4,7 @@ function apply(){
   document.querySelectorAll('.market-label b').forEach(el=>{if(el.textContent!=='Bet365')el.textContent='Bet365';});
   document.querySelectorAll('.detail-card h3').forEach(el=>{
     const text=String(el.textContent||'').trim();
-    if(/^M88\b/i.test(text))el.textContent='5Dollar · Bet365 DECISION';
+    if(text!=='TOTALCORNER EVENT')el.textContent='5Dollar · Bet365 DECISION';
   });
   document.querySelectorAll('.price-selected-name').forEach(el=>{el.title='Bet365 price supplied by 5DollarFootballAPI';});
 }
