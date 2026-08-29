@@ -1,43 +1,50 @@
-# NOMAD Live 3.42 — M88 Single-Judge Test Build
+# NOMAD Live 3.42 — THScore Single-Judge Build
 
 ## Decision flow
 
-`TotalCorner → Event → Candidate → M88 Direct Observer → RAW HDP → Decode / Normalize → Freshness → เซียน K Final Judge → Signal / WAIT`
+`TotalCorner → NOMAD Event Gate → Candidate → THScore Match Mapper → Live AH Price Judge → Freshness / Line / Odds Gates → Signal / WAIT`
 
-## M88 observer evidence
+## Source roles
 
-The M88/MSports Live Soccer page was verified in a browser without login. The observer can identify:
+- **TotalCorner** remains the primary Match/Event source.
+- **THScore** is the price judge only and does not replace the TotalCorner event inlet.
+- THScore API credentials stay server-side in the isolated 3.42 Cloudflare Worker.
 
-- HOME / AWAY teams
-- live minute and score
-- FT HDP market
-- raw handicap line
-- two-sided Hong Kong odds
-- live price changes
-- JavaScript-rendered DOM structure
+## Match Mapper
 
-Example observation:
+The mapper is fail-closed and uses multiple independent checks rather than a raw team-name equality check:
 
-`Strommen IF vs Raufoss IL | 1H 16' | 0-0 | HOME RAW HDP 0.5 | HK 0.85 / 1.05`
+- normalized HOME and AWAY names, including common abbreviation cleanup
+- HOME/AWAY orientation guard
+- league similarity
+- estimated kickoff proximity
+- exact live-score cross-check before accepting a price
+- confidence threshold plus ambiguity gap
+
+Low-confidence, ambiguous, swapped, stale or score-mismatched records produce `WAIT`; they are never force-matched.
 
 ## Price rules
 
-- Preserve RAW HDP and RAW Hong Kong odds first.
-- Convert Hong Kong odds to decimal for the price gate (`0.85 HK → 1.85 decimal`).
-- HOME AH `0` is sign-safe.
-- Explicitly signed non-zero lines may be normalized from the visible sign.
-- Unsigned non-zero HDP remains `UNKNOWN` until its HOME/AWAY side-sign rule is proven.
-- `UNKNOWN`, `UNAVAILABLE`, `STALE`, and `MISMATCH` produce WAIT.
-- Empty line or price fields remain unavailable until their market state is known.
-- Allowed HOME AH lines can be set to ANY or a selected quarter-goal list.
-- Minimum odds, optional maximum odds, freshness age and one-signal-per-match are configurable.
+- THScore live Asian Handicap is normalized to NOMAD's HOME AH convention.
+- Only quarter-goal-compatible handicap lines are accepted.
+- RAW price evidence is retained together with normalized decimal price.
+- Unverified odds format, missing change time, stale price, closed market, unavailable bookmaker, mapper mismatch or API error all produce `WAIT`.
+- Allowed HOME AH lines can be ANY or a selected quarter-goal list.
+- Minimum odds, optional maximum odds, freshness age and one-signal-per-match remain configurable.
+
+## Worker contract
+
+- Event feed: `GET /feed`
+- THScore judge status: `GET /judge/thscore/status`
+- THScore batch judge: `POST /judge/thscore`
+- Batch maximum: 50 candidates
+
+If the server-side `THSCORE_API_KEY` is absent, the judge reports unconfigured and remains fail-closed.
 
 ## Browser storage
 
 - Settings: `nomadSettings342`
 - Signal ledger: `nomadLedger342`
-- M88 observation: `nomadM88Observation342`
+- Signal archive: `nomadSignalArchive342`
 
-## Test boundary
-
-The current page uses controlled event and M88 snapshots to test the complete decision logic. `m88-observer.js` validates source state, keeps raw evidence, normalizes Hong Kong odds and applies cautious HDP decoding before the price gate.
+The legacy `m88-observer.js` file may remain in the repository for rollback history, but the THScore live page does not load or use it.

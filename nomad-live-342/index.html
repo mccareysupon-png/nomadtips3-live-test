@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#123328">
   <title>nomadtips3 · Live 3.42</title>
-  <link rel="stylesheet" href="styles.css?v=20260827-m88bot-v2">
+  <link rel="stylesheet" href="styles.css?v=20260828-thscore-v1">
   <link rel="stylesheet" href="ui-signal-lock.css?v=20260827-341-shell-v3">
 </head>
 <body data-page="live">
   <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a class="active" href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>3.42 · TOTALCORNER LIVE</div></div></header>
   <main class="shell">
-    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · HOME ONLY</p><h1>Live Asian Handicap scanner</h1><p>TotalCorner live events are filtered by NOMAD conditions and sent to M88 for final HOME AH price validation. Signal evidence is locked for later profit testing.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>fail closed</small></div></section>
+    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · HOME ONLY</p><h1>Live Asian Handicap scanner</h1><p>TotalCorner live events are filtered by NOMAD conditions. Candidates are mapped and sent to THScore for final HOME AH price validation before a signal can lock.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>fail closed</small></div></section>
 
     <section class="status-grid">
       <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>TotalCorner input</small></article>
       <article class="metric"><span>WATCHING</span><strong id="watchCount">—</strong><small>HOME detector</small></article>
-      <article class="metric"><span>NEAR SIGNAL</span><strong id="candidateCount">—</strong><small>waiting M88</small></article>
+      <article class="metric"><span>NEAR SIGNAL</span><strong id="candidateCount">—</strong><small>waiting THScore</small></article>
       <article class="metric signal"><span>SIGNAL</span><strong id="signalCount">—</strong><small>locked HOME AH</small></article>
     </section>
 
@@ -24,13 +24,13 @@
 
     <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">PRIORITY SCANNER</p><h2>Monitored matches</h2></div><span class="muted" id="runStatus">Connecting live engine…</span></div><div class="match-list" id="matchList"><div class="note">Connecting live engine…</div></div></section>
 
-    <div class="note">3.42 keeps its own TotalCorner → NOMAD → M88 engine path. This page only adopts the proven 3.41 presentation pattern.</div>
+    <div class="note">3.42 keeps an isolated TotalCorner → NOMAD Event Gate → THScore Price Judge → Signal / WAIT path. Match mapping and price validation fail closed.</div>
   </main>
   <nav class="mobile-nav"><a class="active" href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav>
 
-  <script src="runtime-config.js?v=20260827-git-live-v1" defer></script>
-  <script src="m88-observer.js" defer></script>
-  <script src="totalcorner-live.js?v=20260827-totalcorner-live-v1" defer></script>
+  <script src="runtime-config.js?v=20260828-thscore-v1" defer></script>
+  <script src="totalcorner-live.js?v=20260828-thscore-v1" defer></script>
   <script src="ui-signal-lock.js?v=20260827-341-shell-v2" defer></script>
+  <script src="thscore-ui.js?v=20260828-thscore-v1" defer></script>
 </body>
 </html>
