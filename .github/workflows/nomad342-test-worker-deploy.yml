@@ -58,19 +58,22 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --env test
 
-      - name: Configure optional THScore TEST secret
+      - name: Configure optional 5Dollar adapter token
         working-directory: nomad-live-engine-342
         shell: bash
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          TEST_THSCORE_API_KEY: ${{ secrets.TEST_THSCORE_API_KEY }}
+          TEST_S8_ADAPTER_TOKEN: ${{ secrets.TEST_S8_ADAPTER_TOKEN }}
+          SHARED_S8_ADAPTER_TOKEN: ${{ secrets.S8_ADAPTER_TOKEN }}
         run: |
-          if [ -z "$TEST_THSCORE_API_KEY" ]; then
-            echo "TEST THSCORE_API_KEY not configured; THScore judge stays fail-closed."
+          token="$TEST_S8_ADAPTER_TOKEN"
+          if [ -z "$token" ]; then token="$SHARED_S8_ADAPTER_TOKEN"; fi
+          if [ -z "$token" ]; then
+            echo "No S8 adapter token secret configured; server rail will still work if the 5Dollar adapter has optional auth disabled."
           else
-            printf '%s' "$TEST_THSCORE_API_KEY" | npx --yes wrangler@4.92.0 secret put THSCORE_API_KEY --env test >/dev/null
-            echo "TEST THSCORE_API_KEY configured."
+            printf '%s' "$token" | npx --yes wrangler@4.92.0 secret put S8_ADAPTER_TOKEN --env test >/dev/null
+            echo "S8_ADAPTER_TOKEN configured on 3.42 TEST Worker."
           fi
 
       - name: Smoke TEST Worker contract
@@ -84,27 +87,24 @@ jobs:
           const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
           if(j.version!=='3.42'||j.ok!==true||j.source?.detailMode!=='TODAY_ONLY') process.exit(1);
           if(j.source?.capabilities?.attacks!==true||j.source?.capabilities?.dangerous!==true||j.source?.capabilities?.corner!==true) process.exit(1);
+          if(j.judge?.source!=='5DollarFootballAPI'||j.judge?.bookmaker!=='Bet365'||j.judge?.path!=='/judge/5dollar'||j.judge?.transport!=='SERVER_TO_SERVER') process.exit(1);
           NODE
             then ok=1; break; fi
             sleep 5
           done
           test "$ok" = '1'
-          node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
-          console.log('contract OK',j.version,j.source.detailMode,j.source.capabilities);
-          NODE
 
-      - name: Smoke THScore judge rail
+      - name: Smoke 5Dollar Bet365 judge rail
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 15 "$TEST_URL/judge/thscore/status?_=$RANDOM$RANDOM" -o /tmp/thscore-status.json
+          curl -fsS --max-time 15 "$TEST_URL/judge/5dollar/status?_=$RANDOM$RANDOM" -o /tmp/5dollar-status.json
           node - <<'NODE'
           const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/thscore-status.json','utf8'));
-          if(j.version!=='3.42'||j.source!=='THScore'||typeof j.configured!=='boolean') process.exit(1);
-          console.log('THScore judge rail',j.configured?'CONFIGURED':'FAIL-CLOSED');
+          const j=JSON.parse(fs.readFileSync('/tmp/5dollar-status.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.version!=='3.42'||j.source!=='5DollarFootballAPI'||j.bookmaker!=='Bet365') process.exit(1);
+          if(j.transport!=='SERVER_TO_SERVER'||j.authOk!==true||j.adapterKeyConfigured!==true||j.ready!==true) process.exit(1);
           NODE
 
       - name: Probe live TotalCorner feed
@@ -117,14 +117,10 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
           if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||j.source?.detailMode!=='TODAY_ONLY'||!Array.isArray(j.matches)) process.exit(1);
+          if(j.priceJudge?.source!=='5DollarFootballAPI'||j.priceJudge?.bookmaker!=='Bet365') process.exit(1);
           if(Number(j.counts?.detailAttempts||0)!==0||Number(j.counts?.detailFetchErrors||0)!==0) process.exit(1);
           NODE
             then ok=1; break; fi
             sleep 5
           done
           test "$ok" = '1'
-          node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
-          console.log(JSON.stringify({ok:j.ok,version:j.version,mode:j.mode,source:j.source?.name,detailMode:j.source?.detailMode,capabilities:j.source?.capabilities,counts:j.counts,lastError:j.lastError,updatedAt:j.updatedAt},null,2));
-          NODE
