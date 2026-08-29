@@ -7,7 +7,11 @@ on:
     paths:
       - 'nomad-live-342/bet365-observer.js'
       - 'nomad-live-342/totalcorner-live.js'
+      - 'nomad-live-342/app.js'
       - 'nomad-live-342/index.html'
+      - 'nomad-live-342/settings.html'
+      - 'nomad-live-342/health.html'
+      - 'nomad-live-342/statistics.html'
       - 'nomad-live-342/bet365-referee-extension/**'
       - '.github/workflows/test-342-bet365-referee.yml'
   workflow_dispatch:
@@ -21,6 +25,7 @@ jobs:
         run: |
           node --check nomad-live-342/bet365-observer.js
           node --check nomad-live-342/totalcorner-live.js
+          node --check nomad-live-342/app.js
           node --check nomad-live-342/bet365-referee-extension/bet365-main-hook.js
           node --check nomad-live-342/bet365-referee-extension/bet365-bridge.js
           node --check nomad-live-342/bet365-referee-extension/background.js
@@ -30,8 +35,16 @@ jobs:
         run: node -e "JSON.parse(require('fs').readFileSync('nomad-live-342/bet365-referee-extension/manifest.json','utf8')); console.log('manifest PASS')"
       - name: Synthetic Joe-protocol bridge
         run: node nomad-live-342/bet365-referee-extension/referee-bridge.test.cjs
-      - name: Verify live page uses Bet365 only
+      - name: Verify active 3.42 surfaces use Bet365
         run: |
           grep -q 'bet365-observer.js' nomad-live-342/index.html
           ! grep -q 'm88-observer.js' nomad-live-342/index.html
           grep -q 'window.NOMADBET365' nomad-live-342/totalcorner-live.js
+          grep -q 'Price Judge</label><input value="Bet365"' nomad-live-342/settings.html
+          grep -q 'Bet365 WebSocket price referee' nomad-live-342/health.html
+          grep -q 'locked Bet365 price' nomad-live-342/statistics.html
+          ! grep -qi 'M88' nomad-live-342/index.html
+          ! grep -qi 'M88' nomad-live-342/settings.html
+          ! grep -qi 'M88' nomad-live-342/health.html
+          ! grep -qi 'M88' nomad-live-342/statistics.html
+          ! grep -qi 'M88' nomad-live-342/app.js
