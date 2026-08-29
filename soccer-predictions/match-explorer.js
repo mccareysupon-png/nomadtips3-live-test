@@ -3,22 +3,12 @@
 
   const PAGE_SIZE = 24;
   const state = {
-    scope: 'nomad',
-    selected: [],
-    nomad: [],
-    league: 'ALL',
-    command: 'ALL',
-    query: '',
-    visible: PAGE_SIZE,
-    coverageComplete: false,
-    coverageLabel: 'CURATED MATCHES',
-    coverageNote: '',
-    enrichedCount: 0
+    scope: 'nomad', selected: [], nomad: [], league: 'ALL', command: 'ALL', query: '',
+    visible: PAGE_SIZE, coverageComplete: false, coverageLabel: 'CURATED MATCHES',
+    coverageNote: '', enrichedCount: 0
   };
 
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[ch]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
 
   async function loadJson(path){
@@ -27,29 +17,32 @@
     return res.json();
   }
 
+  async function loadOverlayFeeds(){
+    try{
+      const manifest = await loadJson('data/enriched-manifest.json?v=20260829-manifest-v1');
+      const feeds = Array.isArray(manifest.feeds) ? manifest.feeds.filter(Boolean) : [];
+      const payloads = await Promise.all(feeds.map(name => loadJson(`data/${name}?v=20260829-enrichment-feed-v1`).catch(() => ({matches:[]}))));
+      return payloads.flatMap(data => Array.isArray(data.matches) ? data.matches : []);
+    }catch(_err){
+      const legacy = await loadJson('data/enriched-matches.json?v=20260829-enrichment-v1').catch(() => ({matches:[]}));
+      return Array.isArray(legacy.matches) ? legacy.matches : [];
+    }
+  }
+
   function waitForBaseReady(timeoutMs = 3500){
     const count = document.getElementById('todayCount');
     if(count && count.textContent.trim() !== '—') return Promise.resolve();
     return new Promise(resolve => {
       let done = false;
-      const observer = new MutationObserver(() => {
-        if(count && count.textContent.trim() !== '—') finish();
-      });
+      const observer = new MutationObserver(() => { if(count && count.textContent.trim() !== '—') finish(); });
       const timer = setTimeout(finish, timeoutMs);
-      function finish(){
-        if(done) return;
-        done = true;
-        observer.disconnect();
-        clearTimeout(timer);
-        resolve();
-      }
+      function finish(){ if(done) return; done = true; observer.disconnect(); clearTimeout(timer); resolve(); }
       if(count) observer.observe(count, {childList:true, subtree:true, characterData:true});
     });
   }
 
   function searchable(match){
-    return [match.home, match.away, match.league, match.kickoff, match.pick, match.sourcePick]
-      .filter(Boolean).join(' ').toLowerCase();
+    return [match.home, match.away, match.league, match.kickoff, match.pick, match.sourcePick].filter(Boolean).join(' ').toLowerCase();
   }
 
   function analysed(match){
@@ -61,43 +54,20 @@
     const home = finite(prob.home) ? Number(prob.home) : null;
     const draw = finite(prob.draw) ? Number(prob.draw) : null;
     const away = finite(prob.away) ? Number(prob.away) : null;
-    const probabilityText = [
-      home === null ? null : `H ${home}%`,
-      draw === null ? null : `D ${draw}%`,
-      away === null ? null : `A ${away}%`
-    ].filter(Boolean).join(' · ');
+    const probabilityText = [home === null ? null : `H ${home}%`, draw === null ? null : `D ${draw}%`, away === null ? null : `A ${away}%`].filter(Boolean).join(' · ');
     const sourcePick = String(match.sourcePick || 'SOURCE SNAPSHOT');
     const odds = finite(match.odds) ? Number(match.odds).toFixed(2) : '—';
     const sourceUrl = typeof match.source === 'string' ? match.source : '';
-
     return `<article class="prediction-card fixture-pending source-summary" data-search="${esc(searchable(match))}">
-      <div class="card-head">
-        <div>
-          <div class="league-line"><span>${esc(match.league || '—')}</span><span>•</span><span>${esc(match.kickoff || '—')}</span><span class="badge">SOURCE</span></div>
-          <div class="match-title"><div class="team"><span class="team-name">${esc(match.home || '—')}</span></div><div class="vs">VS</div><div class="team away"><span class="team-name">${esc(match.away || '—')}</span></div></div>
-        </div>
-        <div class="pick-box fixture-wait-box">
-          <div class="pick-main"><strong>${esc(sourcePick)}</strong></div>
-          <div class="pick-stat"><span>SOURCE ODDS</span><strong>${odds}</strong></div>
-          <div class="pick-stat"><span>STATUS</span><strong>REVIEW</strong></div>
-        </div>
-      </div>
+      <div class="card-head"><div><div class="league-line"><span>${esc(match.league || '—')}</span><span>•</span><span>${esc(match.kickoff || '—')}</span><span class="badge">SOURCE</span></div><div class="match-title"><div class="team"><span class="team-name">${esc(match.home || '—')}</span></div><div class="vs">VS</div><div class="team away"><span class="team-name">${esc(match.away || '—')}</span></div></div></div>
+      <div class="pick-box fixture-wait-box"><div class="pick-main"><strong>${esc(sourcePick)}</strong></div><div class="pick-stat"><span>SOURCE ODDS</span><strong>${odds}</strong></div><div class="pick-stat"><span>STATUS</span><strong>REVIEW</strong></div></div></div>
       <div class="analysis"><strong>SOURCE SNAPSHOT · </strong>${esc(probabilityText || '1X2 probability unavailable')}. Forebet's source probability is shown only as input data; it is not NOMAD Confidence. Detailed form, H2H, shooting and NOMAD scoring remain pending enrichment.</div>
       ${sourceUrl ? `<div class="source-line"><a href="${esc(sourceUrl)}" target="_blank" rel="noopener">Source reference</a></div>` : ''}
     </article>`;
   }
 
   function pendingCard(match){
-    return `<article class="prediction-card fixture-pending" data-search="${esc(searchable(match))}">
-      <div class="card-head">
-        <div>
-          <div class="league-line"><span>${esc(match.league || '—')}</span><span>•</span><span>${esc(match.kickoff || '—')}</span></div>
-          <div class="match-title"><div class="team"><span class="team-name">${esc(match.home || '—')}</span></div><div class="vs">VS</div><div class="team away"><span class="team-name">${esc(match.away || '—')}</span></div></div>
-        </div>
-        <div class="pick-box fixture-wait-box"><div class="pick-main"><strong>ANALYSIS PENDING</strong></div><div class="pick-stat"><span>STATUS</span><strong>WAIT</strong></div></div>
-      </div>
-      <div class="analysis"><strong>ANALYSIS · </strong>This match was manually shortlisted, but the reviewed card data is not complete yet. No missing confidence, odds or analytical values are fabricated.</div>
-    </article>`;
+    return `<article class="prediction-card fixture-pending" data-search="${esc(searchable(match))}"><div class="card-head"><div><div class="league-line"><span>${esc(match.league || '—')}</span><span>•</span><span>${esc(match.kickoff || '—')}</span></div><div class="match-title"><div class="team"><span class="team-name">${esc(match.home || '—')}</span></div><div class="vs">VS</div><div class="team away"><span class="team-name">${esc(match.away || '—')}</span></div></div></div><div class="pick-box fixture-wait-box"><div class="pick-main"><strong>ANALYSIS PENDING</strong></div><div class="pick-stat"><span>STATUS</span><strong>WAIT</strong></div></div></div><div class="analysis"><strong>ANALYSIS · </strong>This match was manually shortlisted, but the reviewed card data is not complete yet. No missing confidence, odds or analytical values are fabricated.</div></article>`;
   }
 
   function renderCard(match){
@@ -169,10 +139,7 @@
     list.hidden = false;
     if(results) results.hidden = true;
     list.innerHTML = visible.length ? visible.map(renderCard).join('') : '<div class="empty">No selected matches found for this filter.</div>';
-    if(loadMore){
-      loadMore.hidden = visible.length >= rows.length;
-      loadMore.textContent = visible.length < rows.length ? `Load more · ${rows.length - visible.length} remaining` : 'Load more';
-    }
+    if(loadMore){ loadMore.hidden = visible.length >= rows.length; loadMore.textContent = visible.length < rows.length ? `Load more · ${rows.length - visible.length} remaining` : 'Load more'; }
     updateSelectedHeading(rows.length);
     renderLeagueStrip();
     updateCommandStrip();
@@ -188,13 +155,11 @@
     document.querySelectorAll('.scope-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.scope === scope));
     const tools = document.getElementById('matchExplorerTools');
     document.body.classList.toggle('selected-matches-mode', scope === 'selected');
-
     if(scope === 'selected'){
       if(tools) tools.hidden = false;
       renderSelected();
       return;
     }
-
     if(tools) tools.hidden = true;
     if(loadMore) loadMore.hidden = true;
     state.league = 'ALL';
@@ -203,10 +168,7 @@
     if(todayTab) todayTab.click();
     const list = document.getElementById('predictionList');
     const results = document.getElementById('resultList');
-    if(list){
-      list.hidden = false;
-      list.innerHTML = state.nomad.length ? state.nomad.map(renderCard).join('') : '<div class="empty">No NOMAD predictions available.</div>';
-    }
+    if(list){ list.hidden = false; list.innerHTML = state.nomad.length ? state.nomad.map(renderCard).join('') : '<div class="empty">No NOMAD predictions available.</div>'; }
     if(results) results.hidden = true;
     const label = document.getElementById('heroLabel');
     const count = document.getElementById('pickCount');
@@ -236,35 +198,30 @@
   function bind(){
     document.querySelectorAll('.scope-tab').forEach(btn => btn.addEventListener('click', () => setScope(btn.dataset.scope)));
     const leagueStrip = document.getElementById('leagueStrip');
-    if(leagueStrip) leagueStrip.addEventListener('click', event => {
-      const btn = event.target.closest('[data-league]'); if(!btn) return;
-      state.league = btn.dataset.league; state.visible = PAGE_SIZE; renderSelected();
-    });
+    if(leagueStrip) leagueStrip.addEventListener('click', event => { const btn = event.target.closest('[data-league]'); if(!btn) return; state.league = btn.dataset.league; state.visible = PAGE_SIZE; renderSelected(); });
     const commandStrip = document.getElementById('commandStrip');
-    if(commandStrip) commandStrip.addEventListener('click', event => {
-      const btn = event.target.closest('[data-command]'); if(!btn) return;
-      state.command = btn.dataset.command; state.visible = PAGE_SIZE; renderSelected();
-    });
+    if(commandStrip) commandStrip.addEventListener('click', event => { const btn = event.target.closest('[data-command]'); if(!btn) return; state.command = btn.dataset.command; state.visible = PAGE_SIZE; renderSelected(); });
     const loadMore = document.getElementById('loadMoreMatches');
     if(loadMore) loadMore.addEventListener('click', () => { state.visible += PAGE_SIZE; renderSelected(); });
     const input = document.getElementById('searchInput');
     if(input) input.addEventListener('input', event => {
       if(state.scope !== 'selected') return;
       event.stopImmediatePropagation();
-      state.query = input.value; state.visible = PAGE_SIZE; renderSelected();
+      state.query = input.value;
+      state.visible = PAGE_SIZE;
+      renderSelected();
     }, true);
   }
 
   async function init(){
     try{
-      const [selectedData, nomadData, enrichedData] = await Promise.all([
+      const [selectedData, nomadData, overlays] = await Promise.all([
         loadJson('data/selected-matches.json?v=20260829-all-main-v1'),
         loadJson('data/predictions.json?v=20260829-confidence40-v1'),
-        loadJson('data/enriched-matches.json?v=20260829-enrichment-v1').catch(() => ({matches:[]}))
+        loadOverlayFeeds()
       ]);
       state.nomad = Array.isArray(nomadData.picks) ? nomadData.picks : [];
       const nomadIds = new Set(state.nomad.map(match => String(match.id || '')));
-      const overlays = Array.isArray(enrichedData.matches) ? enrichedData.matches : [];
       const overlayById = new Map(overlays.map(match => [String(match.id || ''), match]));
       const rows = Array.isArray(selectedData.matches) ? selectedData.matches : [];
       state.selected = rows.map(match => {
@@ -273,14 +230,7 @@
         const merged = overlay ? {...match, ...overlay} : {...match};
         if(overlay?.analysisData?.form){
           const form = overlay.analysisData.form;
-          merged.analysisData = {
-            ...overlay.analysisData,
-            form: {
-              ...form,
-              home: Array.isArray(form.home) ? form.home.slice(0,5) : [],
-              away: Array.isArray(form.away) ? form.away.slice(0,5) : []
-            }
-          };
+          merged.analysisData = {...overlay.analysisData, form:{...form, home:Array.isArray(form.home)?form.home.slice(0,5):[], away:Array.isArray(form.away)?form.away.slice(0,5):[]}};
         }
         merged.nomadPick = match.nomadPick === true || overlay?.nomadPick === true || nomadIds.has(id);
         return merged;
@@ -302,7 +252,9 @@
     const selectedCount = document.getElementById('selectedScopeCount');
     if(nomadCount) nomadCount.textContent = state.nomad.length;
     if(selectedCount) selectedCount.textContent = state.selected.length;
-    updateCoverage(); renderLeagueStrip(); bind();
+    updateCoverage();
+    renderLeagueStrip();
+    bind();
   }
 
   document.addEventListener('DOMContentLoaded', init);
