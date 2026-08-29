@@ -1,15 +1,40 @@
 (() => {
   const SCORE = { w: 82, d: 55, l: 28 };
+  const XS = [8, 144, 280, 416, 552];
+  const Y = score => 12 + (100 - score) * 1.18;
 
   const getResults = row => [...row.querySelectorAll('.form-pill')]
     .map(el => String(el.textContent || '').trim().toLowerCase())
     .map(v => SCORE[v] ?? 50);
 
-  const makePath = scores => {
-    const xs = [8, 144, 280, 416, 552];
-    const y = score => 12 + (100 - score) * 1.18;
-    return scores.map((score, i) => `${i ? 'L' : 'M'} ${xs[i]} ${y(score).toFixed(1)}`).join(' ');
+  const makePoints = scores => scores.map((score, i) => ({
+    x: XS[i],
+    y: Number(Y(score).toFixed(1))
+  }));
+
+  /* Catmull-Rom style smoothing converted to cubic Bezier segments. */
+  const makeSmoothPath = points => {
+    if (!points.length) return '';
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i - 1] || points[i];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] || p2;
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)} ${cp2x.toFixed(1)} ${cp2y.toFixed(1)} ${p2.x} ${p2.y}`;
+    }
+    return d;
   };
+
+  const makeAreaPath = linePath => `${linePath} L 552 138 L 8 138 Z`;
 
   const enhanceCard = card => {
     if (card.querySelector('.performance-trend')) return;
@@ -30,9 +55,10 @@
     const selectedScores = selectedIsAway ? awayScores : homeScores;
     const opponentScores = selectedIsAway ? homeScores : awayScores;
 
-    const selectedPath = makePath(selectedScores);
-    const opponentPath = makePath(opponentScores);
-    const areaPath = `${selectedPath} L 552 138 L 8 138 Z`;
+    const selectedPath = makeSmoothPath(makePoints(selectedScores));
+    const opponentPath = makeSmoothPath(makePoints(opponentScores));
+    const selectedAreaPath = makeAreaPath(selectedPath);
+    const opponentAreaPath = makeAreaPath(opponentPath);
 
     const trend = document.createElement('section');
     trend.className = 'performance-trend';
@@ -57,7 +83,13 @@
             <line class="trend-grid-line" x1="0" y1="41.5" x2="560" y2="41.5"></line>
             <line class="trend-grid-line" x1="0" y1="71" x2="560" y2="71"></line>
             <line class="trend-grid-line" x1="0" y1="100.5" x2="560" y2="100.5"></line>
-            <path class="trend-fill" d="${areaPath}"></path>
+            <line class="trend-grid-line vertical" x1="8" y1="0" x2="8" y2="150"></line>
+            <line class="trend-grid-line vertical" x1="144" y1="0" x2="144" y2="150"></line>
+            <line class="trend-grid-line vertical" x1="280" y1="0" x2="280" y2="150"></line>
+            <line class="trend-grid-line vertical" x1="416" y1="0" x2="416" y2="150"></line>
+            <line class="trend-grid-line vertical" x1="552" y1="0" x2="552" y2="150"></line>
+            <path class="trend-area-opponent" d="${opponentAreaPath}"></path>
+            <path class="trend-area-selected" d="${selectedAreaPath}"></path>
             <path class="trend-line-opponent" d="${opponentPath}"></path>
             <path class="trend-line-selected" d="${selectedPath}"></path>
           </svg>
