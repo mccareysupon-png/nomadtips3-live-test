@@ -2,6 +2,11 @@
 'use strict';
 const STORE_KEY='nomadM88LatestByEvent';
 const MAX_EVENTS=100;
+const NOMAD_URLS=[
+  'https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/*',
+  'http://127.0.0.1/*',
+  'http://localhost/*'
+];
 
 function eventKey(p){return String(p?.event_id||'')}
 function valid(p){return Boolean(p&&p.schema==='m88-msports-referee'&&eventKey(p)&&p.market_id&&p.selection_id)}
@@ -14,7 +19,7 @@ async function writeStore(store){
 }
 async function broadcast(payload){
   try{
-    const tabs=await chrome.tabs.query({url:'https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/*'});
+    const tabs=await chrome.tabs.query({url:NOMAD_URLS});
     for(const tab of tabs){if(tab.id) chrome.tabs.sendMessage(tab.id,{type:'M88_REFEREE_PUSH',payload}).catch(()=>{})}
   }catch{}
 }
