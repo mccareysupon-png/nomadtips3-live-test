@@ -10,7 +10,7 @@ let rendering=false;
 
 function readRows(key){try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function writeRows(key,rows){try{localStorage.setItem(key,JSON.stringify(rows))}catch{}}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';const x=Number(n.toFixed(2));return `${x>0?'+':''}${x}`}
 function fmtOdds(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
@@ -23,7 +23,7 @@ function derivePick(row){if(row?.pick)return row.pick;const m=String(row?.match|
 function fallbackLock(r){
   if(!r?.signal||!r?.m)return null;
   const o=r.price?.obs||{};
-  return {id:String(r.m.id),ts:new Date().toISOString(),match:`${r.m.home} — ${r.m.away}`,pick:r.m.home,minute:r.m.minute,score:Array.isArray(r.m.score)?r.m.score.join('–'):'—',line:fmtLine(o.decodedHomeLine),rawLine:o.rawHomeLine||'',odds:o.homeOddsDecimal??null,rawOdds:o.homeOddsRaw??null,oddsFormat:o.oddsFormat||'HK',source:'M88',result:'PENDING',eventSource:'TotalCorner',reason:'TOTALCORNER EVENT PASS + M88 PRICE CONFIRMED'};
+  return {id:String(r.m.id),ts:new Date().toISOString(),match:`${r.m.home} — ${r.m.away}`,pick:r.m.home,minute:r.m.minute,score:Array.isArray(r.m.score)?r.m.score.join('–'):'—',line:fmtLine(o.decodedHomeLine),rawLine:o.rawHomeLine||'',odds:o.homeOddsDecimal??null,rawOdds:o.homeOddsRaw??null,oddsFormat:o.oddsFormat||'DECIMAL',source:'Bet365',priceProvider:'5DollarFootballAPI',result:'PENDING',eventSource:'TotalCorner',reason:'TOTALCORNER EVENT PASS + 5DOLLAR BET365 PRICE CONFIRMED'};
 }
 function normalizeRecord(row){return {...row,id:rowId(row),pick:derivePick(row),result:String(row?.result||'PENDING').toUpperCase()}}
 function mergeSignalRows(extra=[]){
@@ -39,7 +39,7 @@ function mergeSignalRows(extra=[]){
     const entry=rt<ct?raw:current;
     const settledRaw=raw.result&&raw.result!=='PENDING';
     const settledCurrent=current.result&&current.result!=='PENDING';
-    byId.set(id,{...current,...raw,ts:entry.ts,minute:entry.minute,score:entry.score,line:entry.line,rawLine:entry.rawLine,odds:entry.odds,rawOdds:entry.rawOdds,oddsFormat:entry.oddsFormat,source:entry.source||'M88',pick:entry.pick||current.pick||raw.pick,result:settledRaw?raw.result:settledCurrent?current.result:(raw.result||current.result||'PENDING'),finalScore:raw.finalScore??current.finalScore,pl:raw.pl??current.pl});
+    byId.set(id,{...current,...raw,ts:entry.ts,minute:entry.minute,score:entry.score,line:entry.line,rawLine:entry.rawLine,odds:entry.odds,rawOdds:entry.rawOdds,oddsFormat:entry.oddsFormat,source:entry.source||'Bet365',priceProvider:entry.priceProvider||'5DollarFootballAPI',pick:entry.pick||current.pick||raw.pick,result:settledRaw?raw.result:settledCurrent?current.result:(raw.result||current.result||'PENDING'),finalScore:raw.finalScore??current.finalScore,pl:raw.pl??current.pl});
   }
   const rows=[...byId.values()].sort((a,b)=>(Date.parse(b.ts||'')||0)-(Date.parse(a.ts||'')||0));
   writeRows(ARCHIVE_KEY,rows);
@@ -85,7 +85,7 @@ function cardHtml(r,lock){
   const entryMinute=lock?.minute??'—';
   const sigTime=lock?signalClock(lock.ts):'—';
   const pick=lock?.pick||m.home||'—';
-  const marketStatus=lock?'LOCKED':r.candidate?(r.price?.reason||'M88 WAIT'):'WAIT EVENT';
+  const marketStatus=lock?'LOCKED':r.candidate?(r.price?.reason||'5DOLLAR / BET365 WAIT'):'WAIT EVENT';
   const gateText=lock?'PASS':r.candidate?'NEAR':'WATCH';
   const reasons=(r.event?.reasons||[]).join(' · ')||'Waiting for live conditions';
   const search=`${m.home||''} ${m.away||''} ${m.league||''}`.toLowerCase();
@@ -95,12 +95,12 @@ function cardHtml(r,lock){
       <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'—')} — ${esc(m.away||'—')}</span></div>
       <div class="score score-live-stack"><span class="score-live-head">● LIVE · ${esc(phase(m.minute))}</span><span class="score-live-value">${esc(score)}</span><span class="score-live-time">◷ ${esc(minute)}′</span>${lock?`<span class="entry-score">ENTRY ${esc(entryScore)}</span><span class="signal-time">SIGNAL ${esc(sigTime)}</span>`:''}</div>
       <div class="quick"><div class="q"><span>PRESSURE</span><b>${pressure===null?'—':esc(pressure)+'%'}</b></div><div class="q"><span>ATT Δ H/A</span><b>${esc(attacks)}</b></div><div class="q"><span>DANGER Δ</span><b>${esc(dangerous)}</b></div></div>
-      <div class="market"><div class="market-label"><span>PRICE JUDGE</span><b>M88</b></div><div class="price-selected-row"><span class="price-selected-name">${lock?'LOCKED':'CURRENT'}</span><span class="price-selected-value">${esc(pick)} · HOME AH ${esc(line)} @ ${esc(odds)}</span></div></div>
+      <div class="market"><div class="market-label"><span>PRICE JUDGE</span><b>Bet365</b></div><div class="price-selected-row"><span class="price-selected-name">${lock?'LOCKED':'CURRENT'}</span><span class="price-selected-value">${esc(pick)} · HOME AH ${esc(line)} @ ${esc(odds)}</span></div></div>
       <div class="cond"><span>CONDITION</span><strong class="${lock?'pass':'warn'}">${esc(gateText)}</strong></div>
     </summary>
     <div class="match-detail">
       <section class="detail-card"><h3>TOTALCORNER EVENT</h3><div class="kv"><span>Rolling Window</span><b>${r.event?.metrics?`${esc(eventMetric(r,'from'))}'–${esc(eventMetric(r,'to'))}'`:'—'}</b></div><div class="kv"><span>HOME Pressure</span><b>${pressure===null?'—':esc(pressure)+'%'}</b></div><div class="kv"><span>Attack Δ H/A</span><b>${esc(attacks)}</b></div><div class="kv"><span>Dangerous Δ H/A</span><b>${esc(dangerous)}</b></div><div class="kv"><span>SOT / OFF / COR</span><b>${esc(sot)} / ${esc(off)} / ${esc(corner)}</b></div><div class="kv"><span>Event Gate</span><b class="${r.event?.pass?'oktxt':'waittxt'}">${r.event?.pass?'PASS':'WAIT'}</b></div></section>
-      <section class="detail-card"><h3>M88 · DECISION</h3><div class="kv"><span>Price Status</span><b>${esc(r.price?.obs?.status||'WAIT')}</b></div><div class="kv"><span>HOME AH</span><b>${esc(line)}</b></div><div class="kv"><span>Odds</span><b>${esc(odds)}</b></div><div class="kv"><span>Verdict</span><b>${esc(marketStatus)}</b></div><div class="detail-proof"><div><span>ENTRY MIN</span><b>${lock?esc(entryMinute)+"'":'—'}</b></div><div><span>ENTRY SCORE</span><b>${esc(entryScore)}</b></div><div><span>SIGNAL TIME</span><b>${esc(sigTime)}</b></div></div>${lock?`<div class="signal-lock-line"><strong>SIGNAL LOCKED</strong> · ${esc(pick)} · HOME AH ${esc(line)} @ ${esc(odds)} · Entry ${esc(entryMinute)}' ${esc(entryScore)}</div>`:''}</section>
+      <section class="detail-card"><h3>5Dollar · Bet365 DECISION</h3><div class="kv"><span>Price Status</span><b>${esc(r.price?.obs?.status||'WAIT')}</b></div><div class="kv"><span>HOME AH</span><b>${esc(line)}</b></div><div class="kv"><span>Odds</span><b>${esc(odds)}</b></div><div class="kv"><span>Verdict</span><b>${esc(marketStatus)}</b></div><div class="detail-proof"><div><span>ENTRY MIN</span><b>${lock?esc(entryMinute)+"'":'—'}</b></div><div><span>ENTRY SCORE</span><b>${esc(entryScore)}</b></div><div><span>SIGNAL TIME</span><b>${esc(sigTime)}</b></div></div>${lock?`<div class="signal-lock-line"><strong>SIGNAL LOCKED</strong> · ${esc(pick)} · HOME AH ${esc(line)} @ ${esc(odds)} · Entry ${esc(entryMinute)}' ${esc(entryScore)}</div>`:''}</section>
       <div class="reason-line" style="grid-column:1/-1">${esc(reasons)}</div>
     </div>
   </details>`;
@@ -175,7 +175,7 @@ function renderStats(){
   const params=new URL(window.location.href).searchParams;const fromUrl=Number(params.get('page'));if(Number.isInteger(fromUrl)&&fromUrl>0)currentStatsPage=fromUrl;
   const totalPages=Math.max(1,Math.ceil(rows.length/PAGE_SIZE));currentStatsPage=Math.min(Math.max(1,currentStatsPage),totalPages);
   const start=(currentStatsPage-1)*PAGE_SIZE;const pageRows=rows.slice(start,start+PAGE_SIZE);
-  tbody.innerHTML=pageRows.length?pageRows.map(r=>{const pl=resultPl(r);const res=String(r.result||'PENDING').toUpperCase();const cls=res==='WIN'?'win':res==='LOSS'?'loss':'waittxt';return `<tr><td>${esc(signalDateTime(r.ts))}</td><td>${esc(r.match||'—')}</td><td>${esc(r.pick||derivePick(r)||'—')}</td><td>HOME ${esc(r.line??'—')}</td><td>${esc(fmtOdds(r.odds))}</td><td>${esc(r.source||'M88')}</td><td>${esc(r.minute??'—')}' · ${esc(r.score||'—')}</td><td>${esc(r.finalScore||r.final||'—')}</td><td class="${cls}">${esc(res)}</td><td>${pl===null?'—':`${pl>=0?'+':''}${pl.toFixed(2)}`}</td></tr>`}).join(''):'<tr><td colspan="10">No locked signals yet.</td></tr>';
+  tbody.innerHTML=pageRows.length?pageRows.map(r=>{const pl=resultPl(r);const res=String(r.result||'PENDING').toUpperCase();const cls=res==='WIN'?'win':res==='LOSS'?'loss':'waittxt';return `<tr><td>${esc(signalDateTime(r.ts))}</td><td>${esc(r.match||'—')}</td><td>${esc(r.pick||derivePick(r)||'—')}</td><td>HOME ${esc(r.line??'—')}</td><td>${esc(fmtOdds(r.odds))}</td><td>${esc(r.source||'Bet365')}</td><td>${esc(r.minute??'—')}' · ${esc(r.score||'—')}</td><td>${esc(r.finalScore||r.final||'—')}</td><td class="${cls}">${esc(res)}</td><td>${pl===null?'—':`${pl>=0?'+':''}${pl.toFixed(2)}`}</td></tr>`}).join(''):'<tr><td colspan="10">No locked signals yet.</td></tr>';
   if(totalPages<=1){pager.hidden=true;pager.innerHTML='';return}
   pager.hidden=false;const from=rows.length?start+1:0;const to=Math.min(start+PAGE_SIZE,rows.length);
   const numbered=pageSequence(totalPages,currentStatsPage).map(x=>x==='…'?'<span class="stats-page-ellipsis">…</span>':statsButton(String(x),x,{active:x===currentStatsPage})).join('');
