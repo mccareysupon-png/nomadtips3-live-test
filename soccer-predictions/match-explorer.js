@@ -18,7 +18,7 @@
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[ch]));
-  const finite = value => Number.isFinite(Number(value));
+  const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
 
   async function loadJson(path){
     const res = await fetch(path, {cache:'no-store'});
@@ -47,12 +47,43 @@
   }
 
   function searchable(match){
-    return [match.home, match.away, match.league, match.kickoff, match.pick]
+    return [match.home, match.away, match.league, match.kickoff, match.pick, match.sourcePick]
       .filter(Boolean).join(' ').toLowerCase();
   }
 
   function analysed(match){
     return Boolean(match?.pick) && finite(match?.confidence) && finite(match?.odds);
+  }
+
+  function sourceSummaryCard(match){
+    const prob = match.sourceProbability || {};
+    const home = finite(prob.home) ? Number(prob.home) : null;
+    const draw = finite(prob.draw) ? Number(prob.draw) : null;
+    const away = finite(prob.away) ? Number(prob.away) : null;
+    const probabilityText = [
+      home === null ? null : `H ${home}%`,
+      draw === null ? null : `D ${draw}%`,
+      away === null ? null : `A ${away}%`
+    ].filter(Boolean).join(' · ');
+    const sourcePick = String(match.sourcePick || 'SOURCE SNAPSHOT');
+    const odds = finite(match.odds) ? Number(match.odds).toFixed(2) : '—';
+    const sourceUrl = typeof match.source === 'string' ? match.source : '';
+
+    return `<article class="prediction-card fixture-pending source-summary" data-search="${esc(searchable(match))}">
+      <div class="card-head">
+        <div>
+          <div class="league-line"><span>${esc(match.league || '—')}</span><span>•</span><span>${esc(match.kickoff || '—')}</span><span class="badge">SOURCE</span></div>
+          <div class="match-title"><div class="team"><span class="team-name">${esc(match.home || '—')}</span></div><div class="vs">VS</div><div class="team away"><span class="team-name">${esc(match.away || '—')}</span></div></div>
+        </div>
+        <div class="pick-box fixture-wait-box">
+          <div class="pick-main"><strong>${esc(sourcePick)}</strong></div>
+          <div class="pick-stat"><span>SOURCE ODDS</span><strong>${odds}</strong></div>
+          <div class="pick-stat"><span>STATUS</span><strong>REVIEW</strong></div>
+        </div>
+      </div>
+      <div class="analysis"><strong>SOURCE SNAPSHOT · </strong>${esc(probabilityText || '1X2 probability unavailable')}. Forebet's source probability is shown only as input data; it is not NOMAD Confidence. Detailed form, H2H, shooting and NOMAD scoring remain pending enrichment.</div>
+      ${sourceUrl ? `<div class="source-line"><a href="${esc(sourceUrl)}" target="_blank" rel="noopener">Source reference</a></div>` : ''}
+    </article>`;
   }
 
   function pendingCard(match){
@@ -69,6 +100,7 @@
   }
 
   function renderCard(match){
+    if(match?.metricsStatus === 'source-summary' || match?.sourceProbability) return sourceSummaryCard(match);
     if(analysed(match) && typeof window.card === 'function') return window.card(match);
     return pendingCard(match);
   }
@@ -119,8 +151,8 @@
     const input = document.getElementById('searchInput');
     if(label) label.textContent = 'SELECTED MATCHES';
     if(count) count.textContent = total;
-    if(small) small.textContent = 'curated matches in view';
-    if(eyebrow) eyebrow.textContent = 'CURATED MATCH EXPLORER';
+    if(small) small.textContent = 'selected matches in view';
+    if(eyebrow) eyebrow.textContent = 'MATCH EXPLORER';
     if(title) title.textContent = state.league === 'ALL' ? '' : state.league;
     if(input) input.placeholder = 'team / league';
   }
@@ -221,8 +253,8 @@
   async function init(){
     try{
       const [selectedData, nomadData] = await Promise.all([
-        loadJson('data/selected-matches.json?v=20260829-semi-auto-v1'),
-        loadJson('data/predictions.json?v=20260828-team-logos-v1')
+        loadJson('data/selected-matches.json?v=20260829-all-main-v1'),
+        loadJson('data/predictions.json?v=20260829-confidence40-v1')
       ]);
       state.nomad = Array.isArray(nomadData.picks) ? nomadData.picks : [];
       const nomadIds = new Set(state.nomad.map(match => String(match.id || '')));
