@@ -1,7 +1,7 @@
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const esc=s=>String(s??'').replace(/[&<>'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
 const hash=s=>[...String(s??'')].reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0);
-const finite=n=>Number.isFinite(Number(n));
+const finite=n=>n!==null&&n!==undefined&&n!==''&&Number.isFinite(Number(n));
 
 function pickSide(p){
   const pick=String(p.pick||'').toLowerCase();
@@ -40,7 +40,7 @@ function realModel(p){
   const d=p.analysisData||{};
   const prob=d.probability||{};
   const probs={home:Number(prob.home),draw:Number(prob.draw),away:Number(prob.away)};
-  const probabilityReady=['home','draw','away'].every(k=>finite(probs[k]));
+  const probabilityReady=['home','draw','away'].every(k=>finite(prob[k]));
   const metrics=Array.isArray(d.metrics)?d.metrics.filter(x=>x&&finite(x.home)&&finite(x.away)).map(x=>({label:String(x.label||'Metric'),home:clamp(Math.round(Number(x.home)),0,100),away:clamp(Math.round(Number(x.away)),0,100)})):[];
   const form=d.form||{};
   const homeForm=Array.isArray(form.home)?form.home.slice(-5):[];
