@@ -114,9 +114,9 @@
 .load-more-matches:hover{background:#1d231d}
 .load-more-matches[hidden]{display:none!important}
 
-/* All Matches uses its own controls; Yesterday remains part of NOMAD only. */
-body.all-matches-mode .day-switch{display:none!important}
-body.all-matches-mode .toolbar-copy .eyebrow{color:#8d968e}
+/* Selected Matches uses its own controls; Yesterday remains part of NOMAD only. */
+body.selected-matches-mode .day-switch{display:none!important}
+body.selected-matches-mode .toolbar-copy .eyebrow{color:#8d968e}
 
 @media(max-width:680px){
   .scope-switch{grid-template-columns:1fr 1fr;gap:6px}
