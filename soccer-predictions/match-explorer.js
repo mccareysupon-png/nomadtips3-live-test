@@ -105,7 +105,7 @@
     const host = document.getElementById('leagueStrip');
     if(!host) return;
     host.innerHTML = [
-      `<button class="league-chip ${state.league === 'ALL' ? 'active' : ''}" type="button" data-league="ALL">ALL <span>${state.selected.length}</span></button>`,
+      `<button class="league-chip ${state.league === 'ALL' ? 'active' : ''}" type="button" data-league="ALL">ALL LEAGUES <span>${state.selected.length}</span></button>`,
       ...leagueCounts().map(([league,count]) => `<button class="league-chip ${state.league === league ? 'active' : ''}" type="button" data-league="${esc(league)}">${esc(league)} <span>${count}</span></button>`)
     ].join('');
   }
@@ -155,15 +155,25 @@
     document.querySelectorAll('.scope-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.scope === scope));
     const tools = document.getElementById('matchExplorerTools');
     document.body.classList.toggle('selected-matches-mode', scope === 'selected');
+
     if(scope === 'selected'){
       if(tools) tools.hidden = false;
       renderSelected();
       return;
     }
+
     if(tools) tools.hidden = true;
     if(loadMore) loadMore.hidden = true;
     state.league = 'ALL';
     state.command = 'ALL';
+    updateCommandStrip();
+
+    if(scope === 'results'){
+      const yesterdayTab = document.querySelector('.day-tab[data-view="yesterday"]');
+      if(yesterdayTab) yesterdayTab.click();
+      return;
+    }
+
     const todayTab = document.querySelector('.day-tab[data-view="today"]');
     if(todayTab) todayTab.click();
     const list = document.getElementById('predictionList');
@@ -175,10 +185,10 @@
     const small = document.getElementById('heroSmall');
     const eyebrow = document.getElementById('sectionEyebrow');
     const title = document.getElementById('sectionTitle');
-    if(label) label.textContent = "TODAY'S PREDICTIONS";
+    if(label) label.textContent = 'NOMAD PICKS';
     if(count) count.textContent = state.nomad.length;
     if(small) small.textContent = 'qualified picks';
-    if(eyebrow) eyebrow.textContent = "TODAY'S SELECTIONS";
+    if(eyebrow) eyebrow.textContent = "TODAY'S QUALIFIED PICKS";
     if(title) title.textContent = '';
   }
 
@@ -198,9 +208,21 @@
   function bind(){
     document.querySelectorAll('.scope-tab').forEach(btn => btn.addEventListener('click', () => setScope(btn.dataset.scope)));
     const leagueStrip = document.getElementById('leagueStrip');
-    if(leagueStrip) leagueStrip.addEventListener('click', event => { const btn = event.target.closest('[data-league]'); if(!btn) return; state.league = btn.dataset.league; state.visible = PAGE_SIZE; renderSelected(); });
+    if(leagueStrip) leagueStrip.addEventListener('click', event => {
+      const btn = event.target.closest('[data-league]');
+      if(!btn) return;
+      state.league = btn.dataset.league;
+      state.visible = PAGE_SIZE;
+      renderSelected();
+    });
     const commandStrip = document.getElementById('commandStrip');
-    if(commandStrip) commandStrip.addEventListener('click', event => { const btn = event.target.closest('[data-command]'); if(!btn) return; state.command = btn.dataset.command; state.visible = PAGE_SIZE; renderSelected(); });
+    if(commandStrip) commandStrip.addEventListener('click', event => {
+      const btn = event.target.closest('[data-command]');
+      if(!btn) return;
+      state.command = state.command === btn.dataset.command ? 'ALL' : btn.dataset.command;
+      state.visible = PAGE_SIZE;
+      renderSelected();
+    });
     const loadMore = document.getElementById('loadMoreMatches');
     if(loadMore) loadMore.addEventListener('click', () => { state.visible += PAGE_SIZE; renderSelected(); });
     const input = document.getElementById('searchInput');
@@ -250,11 +272,15 @@
     await waitForBaseReady();
     const nomadCount = document.getElementById('nomadScopeCount');
     const selectedCount = document.getElementById('selectedScopeCount');
+    const resultsCount = document.getElementById('resultsScopeCount');
+    const yesterdayCount = document.getElementById('yesterdayCount');
     if(nomadCount) nomadCount.textContent = state.nomad.length;
     if(selectedCount) selectedCount.textContent = state.selected.length;
+    if(resultsCount) resultsCount.textContent = yesterdayCount?.textContent?.trim() || '—';
     updateCoverage();
     renderLeagueStrip();
     bind();
+    setScope('nomad');
   }
 
   document.addEventListener('DOMContentLoaded', init);
