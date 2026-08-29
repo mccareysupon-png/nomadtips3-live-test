@@ -100,7 +100,8 @@ function emit(payload){
   const fp=fingerprint(payload);
   if(lastFingerprint.get(key)===fp) return;
   lastFingerprint.set(key,fp);
-  window.dispatchEvent(new CustomEvent(EVENT,{detail:payload}));
+  // String detail crosses MAIN/isolated worlds without sharing object references.
+  window.dispatchEvent(new CustomEvent(EVENT,{detail:JSON.stringify(payload)}));
 }
 function scan(value,depth=0,seen=new WeakSet()){
   if(depth>12||value===null||typeof value!=='object') return;
