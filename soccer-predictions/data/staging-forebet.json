@@ -1,0 +1,94 @@
+{
+  "generatedAt": "2026-08-29T02:30:00Z",
+  "mode": "semi-auto-staging",
+  "provider": "Forebet",
+  "liveScore": false,
+  "humanApprovalRequired": true,
+  "matches": [
+    {
+      "id": "bournemouth-everton",
+      "league": "England · Premier League",
+      "kickoff": "29 Aug · 23:00 TH",
+      "kickoffAt": "2026-08-29T16:00:00Z",
+      "home": "Bournemouth",
+      "away": "Everton",
+      "homeLogo": null,
+      "awayLogo": null,
+      "pick": "Everton Win",
+      "odds": 3.60,
+      "confidence": 42.62,
+      "abc": "REVIEW",
+      "featured": false,
+      "nomadPick": false,
+      "reviewStatus": "review",
+      "metricsStatus": "source",
+      "source": "https://www.forebet.com/en/football/matches/bournemouth-everton-2495559",
+      "sourceMeta": {
+        "provider": "Forebet",
+        "url": "https://www.forebet.com/en/football/matches/bournemouth-everton-2495559",
+        "fetchedAt": "2026-08-29T02:30:00Z",
+        "policy": "facts-only; editorial text is not copied"
+      },
+      "sourceFacts": {
+        "forebet": {
+          "probability": {"home": 27.0, "draw": 26.0, "away": 46.0},
+          "prediction": "2",
+          "correctScore": "1-2",
+          "odds1x2": {"home": 2.05, "draw": 3.50, "away": 3.60}
+        },
+        "recentForm": {
+          "home": ["L", "D", "D", "W", "W", "D"],
+          "away": ["W", "W", "L", "L", "D", "D"]
+        },
+        "recentFormSummary": {
+          "home": {"win": 2, "draw": 3, "loss": 1},
+          "away": {"win": 2, "draw": 2, "loss": 2}
+        },
+        "homeAwaySummary": {
+          "home": {"win": 1, "draw": 2, "loss": 0},
+          "away": {"win": 1, "draw": 1, "loss": 1}
+        },
+        "goals": {
+          "home": {"gf": 1.5, "ga": 1.0},
+          "away": {"gf": 2.0, "ga": 1.5}
+        },
+        "shots": {
+          "home": {"shots": 12.5, "onTargetPct": 36.0},
+          "away": {"shots": 15.17, "onTargetPct": 35.0}
+        },
+        "possession": {"home": 47.0, "away": 46.0},
+        "h2h": {"home": 5, "draw": 0, "away": 1}
+      },
+      "analysisData": {
+        "probability": {"home": 33.85, "draw": 23.53, "away": 42.62},
+        "metrics": [
+          {"label": "Attack Strength", "home": 43, "away": 57},
+          {"label": "Shot Volume", "home": 45, "away": 55},
+          {"label": "Shots on Target", "home": 46, "away": 54},
+          {"label": "Recent Form", "home": 50, "away": 44},
+          {"label": "Home / Away Form", "home": 56, "away": 44},
+          {"label": "Defense Stability", "home": 60, "away": 40},
+          {"label": "Conversion Rate", "home": 48, "away": 52}
+        ],
+        "form": {
+          "home": ["L", "D", "D", "W", "W", "D"],
+          "away": ["W", "W", "L", "L", "D", "D"]
+        },
+        "h2h": {"home": 5, "draw": 0, "away": 1},
+        "stats": {
+          "home": {"gf": 1.5, "ga": 1.0, "sot": 4.5, "pos": "47%"},
+          "away": {"gf": 2.0, "ga": 1.5, "sot": 5.3, "pos": "46%"}
+        },
+        "dataQuality": {"status": "complete", "missing": []}
+      },
+      "analysis": null,
+      "engine": {
+        "name": "nomad-forebet-semi-auto",
+        "version": 1,
+        "suggestedSide": "away",
+        "humanApprovalRequired": true
+      }
+    }
+  ],
+  "errors": []
+}
