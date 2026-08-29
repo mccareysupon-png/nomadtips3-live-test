@@ -1,43 +1,43 @@
-# NOMAD Live 3.42 — M88 Single-Judge Test Build
+# NOMAD Live 3.42 — 5Dollar / Bet365 Price Build
 
 ## Decision flow
 
-`TotalCorner → Event → Candidate → M88 Direct Observer → RAW HDP → Decode / Normalize → Freshness → เซียน K Final Judge → Signal / WAIT`
+`TotalCorner → Event → Candidate → 5DollarFootballAPI → Bet365 LIVE AH → Validate / Normalize → Price Gate → Final Signal / WAIT`
 
-## M88 observer evidence
+## Active price path
 
-The M88/MSports Live Soccer page was verified in a browser without login. The observer can identify:
+NOMAD Live 3.42 now uses the standalone external price adapter at:
 
-- HOME / AWAY teams
-- live minute and score
-- FT HDP market
-- raw handicap line
-- two-sided Hong Kong odds
-- live price changes
-- JavaScript-rendered DOM structure
+`nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev`
 
-Example observation:
+The adapter reads **Bet365 Full Match LIVE Asian Handicap** prices from 5DollarFootballAPI and returns a fail-closed quote contract to the 3.42 browser runtime.
 
-`Strommen IF vs Raufoss IL | 1H 16' | 0-0 | HOME RAW HDP 0.5 | HK 0.85 / 1.05`
+- Provider: `5DollarFootballAPI`
+- Bookmaker: `Bet365`
+- Market: `FULL MATCH LIVE AH`
+- Side used by NOMAD: `HOME`
+- Maximum quote batch: `7` candidate matches per cycle
+- Low-confidence or ambiguous fixture mapping: `WAIT`
+- Missing/invalid price: `WAIT`
+- Adapter/API error or timeout: `WAIT`
+- Price outside configured line/odds limits: `WAIT`
 
-## Price rules
+## Event source
 
-- Preserve RAW HDP and RAW Hong Kong odds first.
-- Convert Hong Kong odds to decimal for the price gate (`0.85 HK → 1.85 decimal`).
-- HOME AH `0` is sign-safe.
-- Explicitly signed non-zero lines may be normalized from the visible sign.
-- Unsigned non-zero HDP remains `UNKNOWN` until its HOME/AWAY side-sign rule is proven.
-- `UNKNOWN`, `UNAVAILABLE`, `STALE`, and `MISMATCH` produce WAIT.
-- Empty line or price fields remain unavailable until their market state is known.
-- Allowed HOME AH lines can be set to ANY or a selected quarter-goal list.
-- Minimum odds, optional maximum odds, freshness age and one-signal-per-match are configurable.
+TotalCorner remains the 3.42 Match/Event source. The event engine and its rolling-window HOME pressure/evidence logic are unchanged by this price-source swap.
+
+## Timestamp semantics
+
+5Dollar currently does not expose an authoritative Bet365 upstream price-update timestamp in the quote snapshot used by this adapter. The adapter therefore marks the observation time as `adapter_observed_at`. NOMAD treats that timestamp as adapter observation age only; it must not be described as the Bet365 exchange/update time.
 
 ## Browser storage
 
 - Settings: `nomadSettings342`
 - Signal ledger: `nomadLedger342`
-- M88 observation: `nomadM88Observation342`
+- Signal archive: `nomadSignalArchive342`
 
-## Test boundary
+Locked signals store `source: Bet365` and `priceProvider: 5DollarFootballAPI`.
 
-The current page uses controlled event and M88 snapshots to test the complete decision logic. `m88-observer.js` validates source state, keeps raw evidence, normalizes Hong Kong odds and applies cautious HDP decoding before the price gate.
+## Retired browser-referee path
+
+The old `m88-*` and direct `bet365-*` browser observer/extension files are retained only as rollback/archive material. They are **not loaded by the active 3.42 Live, Settings, or Health pages**.
