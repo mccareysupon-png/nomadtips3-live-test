@@ -1,189 +1,197 @@
 {
   "engine": "the-king-v9-manual-set2-goaloo",
   "status": "OK",
-  "last_selection_run": "2026-08-28T06:27:09Z",
+  "last_selection_run": "2026-08-29T00:20:18Z",
   "last_settlement_run": "2026-08-28T21:55:16Z",
-  "selection_date": "2026-08-28",
-  "fixtures_seen": 442,
+  "selection_date": "2026-08-29",
+  "fixtures_seen": 672,
   "qualified": 6,
-  "pending": 2,
+  "pending": 6,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "rejected": 436,
+  "rejected": 666,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 21,
-    "WINNER_FIRST_GATE": 297,
-    "NO_GOALOO_1X2_ODDS": 21,
-    "DRAW_NOT_MAIN_PICK": 2,
-    "ODDS_GATE": 4
+    "GOALOO_FORM_SHORT": 9,
+    "WINNER_FIRST_GATE": 483,
+    "ODDS_GATE": 2,
+    "NO_GOALOO_1X2_ODDS": 2,
+    "DRAW_NOT_MAIN_PICK": 4
   },
   "rejection_samples": [
     {
-      "match": "Mawpat SC vs Marbisu SC",
+      "match": "CD INCA-Aruba vs CD Cacahuatique",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 5,
-      "away_n": 4
+      "home_n": 3,
+      "away_n": 9
     },
     {
-      "match": "Beitar Haifa Yakov vs Hapoel Bnei Arrara Ara",
+      "match": "Gotham FC (W) vs Portland Thorns FC (W)",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5781,
-      "edge": 0.3376,
+      "confidence": 0.3857,
+      "edge": 0.033,
+      "side": "home"
+    },
+    {
+      "match": "Mar de Fondo vs Artigas",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4321,
+      "edge": 0.1136,
+      "side": "home"
+    },
+    {
+      "match": "Chapulineros vs Jaguares Chiapas FC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4891,
+      "edge": 0.2317,
+      "side": "home"
+    },
+    {
+      "match": "Boca Juniors vs Lanus",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4869,
+      "edge": 0.2019,
       "side": "away"
     },
     {
-      "match": "Lokomotiv Kyiv vs FK Yarud Mariupol",
+      "match": "CA Piauiense(W) vs Vasco Da Gama(W)",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4305,
-      "edge": 0.1346,
+      "confidence": 0.4628,
+      "edge": 0.1826,
       "side": "home"
     },
     {
-      "match": "Thitsar Arman FC vs Mawyawadi",
+      "match": "Juticalpa vs Lobos UPNFM",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.3802,
-      "edge": 0.0074,
-      "side": "away"
-    },
-    {
-      "match": "Hapoel Azor vs Hapoel Mahane Yehuda",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5322,
-      "edge": 0.2702,
+      "confidence": 0.5361,
+      "edge": 0.2811,
       "side": "home"
     },
     {
-      "match": "Hapoel Marmorek lrony Rehovot vs Maccabi Yavne",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4399,
-      "edge": 0.1014,
-      "side": "home"
-    },
-    {
-      "match": "Coal India vs Mohammedan SC",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.403,
-      "edge": 0.0611,
-      "side": "home"
-    },
-    {
-      "match": "Aryan vs United SC Kolkata",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5211,
-      "edge": 0.2444,
-      "side": "home"
-    },
-    {
-      "match": "Saikhamakawn FC vs Ramthar Veng FC",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 10,
-      "away_n": 1
-    },
-    {
-      "match": "Hyundai Steel Red Angels (W) vs Gyeongju FC (W)",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5197,
-      "edge": 0.2366,
-      "side": "away"
-    },
-    {
-      "match": "Suwon FMC (W) vs Seoul Amazones (W)",
+      "match": "CF Atlante vs Club Leon",
       "reason": "WINNER_FIRST_GATE",
       "confidence": 0.521,
-      "edge": 0.2514,
-      "side": "away"
+      "edge": 0.2694,
+      "side": "home"
     },
     {
-      "match": "Sydney University vs Bonnyrigg White Eagles",
+      "match": "Gimnasia yTiro vs Chacarita juniors",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 6
+    },
+    {
+      "match": "CSyD Dorados de Sinaloa vs Atletico Morelia",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4241,
-      "edge": 0.072,
+      "confidence": 0.4715,
+      "edge": 0.1855,
+      "side": "home"
+    },
+    {
+      "match": "Union Magdalena vs Deportes Quindio",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4209,
+      "edge": 0.1285,
+      "side": "home"
+    },
+    {
+      "match": "Tauro FC vs CA Independente",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4563,
+      "edge": 0.1798,
       "side": "home"
     }
   ],
   "near_gate_top": [
     {
-      "match": "Slavia Praha (W) vs Horni Herspice (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.942,
-      "edge": 0.8935
-    },
-    {
-      "match": "FC Gomel (W) vs Dnepr Mogilev (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.9283,
-      "edge": 0.8661
-    },
-    {
-      "match": "Lisburn Rangers (W) vs Larne FC (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8499,
-      "edge": 0.737
-    },
-    {
-      "match": "Termez Surkhon vs Gulistan",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8447,
-      "edge": 0.7045
-    },
-    {
-      "match": "Smorgon (W) vs Naftan Novopolock(W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.829,
-      "edge": 0.711
-    },
-    {
-      "match": "EM Deportivo Binacional vs Comerciantes FC",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7997,
-      "edge": 0.6544
-    },
-    {
-      "match": "Gaborone United vs Prisons XI Gaborone",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7988,
-      "edge": 0.6389
-    },
-    {
-      "match": "Newport City vs Ynyshir Albions",
+      "match": "St Albans Saints vs Dandenong Thunder",
       "reason": "ODDS_GATE",
-      "odds": 1.64,
-      "confidence": 0.7619,
-      "edge": 0.577
+      "odds": 1.17,
+      "confidence": 0.7578,
+      "edge": 0.5904
     },
     {
-      "match": "FC Luzern (W) vs St Gallen (W)",
+      "match": "GKS Katowice (W) vs UKS Lodz (W)",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7408,
-      "edge": 0.5847
+      "confidence": 0.7299,
+      "edge": 0.5102
     },
     {
-      "match": "Torns IF vs IFK Trelleborg",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7329,
-      "edge": 0.5784
-    },
-    {
-      "match": "CD Buenos Aires FC vs Barrancas FC",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7218,
-      "edge": 0.5145
-    },
-    {
-      "match": "SK St Johann vs WSG Swarovski Tirol B",
+      "match": "Nordstrand vs Grei",
       "reason": "NO_GOALOO_1X2_ODDS",
       "confidence": 0.7157,
-      "edge": 0.5582
+      "edge": 0.5639
+    },
+    {
+      "match": "SV Wals-Grunau vs FC Pinzgau Saalfelden",
+      "reason": "ODDS_GATE",
+      "odds": 1.31,
+      "confidence": 0.6191,
+      "edge": 0.3716
+    },
+    {
+      "match": "Pioneros de Cancun vs Celaya FC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5798,
+      "edge": 0.3446,
+      "side": "home"
+    },
+    {
+      "match": "Jerv vs Pors Grenland",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5788,
+      "edge": 0.3442,
+      "side": "away"
+    },
+    {
+      "match": "Heidelberg United vs Bentleigh greens",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5777,
+      "edge": 0.3547,
+      "side": "away"
+    },
+    {
+      "match": "Rosario Central vs Gimnasia La Plata",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5777,
+      "edge": 0.3156,
+      "side": "away"
+    },
+    {
+      "match": "Lyon vs Le Havre",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5774,
+      "edge": 0.3193,
+      "side": "away"
+    },
+    {
+      "match": "FC Memmingen vs Unterhaching",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5766,
+      "edge": 0.3587,
+      "side": "home"
+    },
+    {
+      "match": "Cooma Tigers vs Canberra Juventus",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5761,
+      "edge": 0.3429,
+      "side": "away"
+    },
+    {
+      "match": "Elfsborg vs Degerfors IF",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5757,
+      "edge": 0.3511,
+      "side": "away"
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 741,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
-    "h2h_browser_fallback": 0,
+    "odds_ok": true,
+    "index_rows": 763,
+    "odds_rows": 753,
+    "h2h_static_ok": 671,
+    "h2h_browser_fallback": 1,
     "errors": []
-  },
-  "settled_this_run": 4
+  }
 }
