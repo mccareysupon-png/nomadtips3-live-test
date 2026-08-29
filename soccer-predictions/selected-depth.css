@@ -1,6 +1,6 @@
 /* Premium selected-green depth.
-   Adds dimensional polish only to selected green data graphics.
-   Card/panel backgrounds remain flat. */
+   Premium size/depth is applied only to selected-green data graphics.
+   Opponent red and neutral gray keep their normal size and flatter treatment. */
 
 :root{
   --selected-green-hi:#c7ffd0;
@@ -10,11 +10,16 @@
   --selected-green-halo:rgba(139,225,155,.34);
 }
 
-/* ===== Horizontal comparison bars ===== */
+/* ===== Horizontal comparison bars: selected green only ===== */
+.bar{overflow:visible!important}
+
 .prediction-card.selected-home .bar-home,
 .prediction-card.selected-away .bar-away{
   position:relative;
+  z-index:1;
   overflow:hidden;
+  transform:scaleY(1.02);
+  transform-origin:center;
   background:linear-gradient(
     to bottom,
     var(--selected-green-hi) 0%,
@@ -57,82 +62,82 @@
   pointer-events:none;
 }
 
-/* The track gets a shallow recess so the selected bar appears raised. */
-.bar{
-  box-shadow:
-    inset 0 1px 2px rgba(0,0,0,.34),
-    inset 0 -1px 0 rgba(255,255,255,.025)!important;
-}
-
-/* Opponent remains intentionally flatter. */
-.prediction-card.selected-home .bar-away,
-.prediction-card.selected-away .bar-home{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.055)!important;
-}
-
-/* ===== Win-probability donut ===== */
-.donut{
+/* ===== Win-probability donut: SVG arcs ===== */
+.donut.donut-svg-ready{
   isolation:isolate;
   position:relative;
-  box-shadow:
-    inset 0 2px 2px rgba(255,255,255,.11),
-    inset 0 -3px 5px rgba(0,0,0,.34),
-    0 3px 8px rgba(0,0,0,.24),
-    0 0 8px rgba(139,225,155,.13)!important;
-  filter:drop-shadow(0 0 4px rgba(139,225,155,.11));
+  background:none!important;
+  box-shadow:none!important;
+  filter:none!important;
 }
 
-/* Gloss + lower rim: gives the ring a premium rounded surface. */
-.donut::before{
-  content:"";
+.donut.donut-svg-ready::before,
+.donut.donut-svg-ready::after{
+  content:none!important;
+  display:none!important;
+}
+
+.donut-svg{
   position:absolute;
-  inset:0;
-  z-index:1;
-  border-radius:50%;
+  inset:-4px;
+  width:calc(100% + 8px);
+  height:calc(100% + 8px);
+  overflow:visible;
   pointer-events:none;
-  background:
-    radial-gradient(circle at 35% 22%,rgba(255,255,255,.24) 0%,rgba(255,255,255,.08) 19%,rgba(255,255,255,0) 38%),
-    radial-gradient(circle at 52% 86%,rgba(0,0,0,.20) 0%,rgba(0,0,0,0) 38%);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.18),
-    inset 0 -2px 4px rgba(0,0,0,.28),
-    0 0 10px rgba(139,225,155,.12);
+  z-index:1;
 }
 
-/* Keep the centre flat-dark, but recess it to make the ring feel thicker. */
-.donut::after{
-  content:"";
-  position:absolute;
-  inset:16px;
-  z-index:2;
-  border-radius:50%;
-  background:#161a16!important;
-  box-shadow:
-    inset 0 3px 5px rgba(0,0,0,.48),
-    inset 0 -1px 0 rgba(255,255,255,.04),
-    0 0 0 1px rgba(255,255,255,.025),
-    0 1px 2px rgba(0,0,0,.28)!important;
+.donut-arc{
+  fill:none;
+  stroke-linecap:butt;
+  stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
 }
 
-.donut strong,
-.donut small{
+/* Red and gray remain normal size and intentionally flat. */
+.donut-arc-opponent{
+  stroke:var(--opponent-red);
+  stroke-width:12;
+  opacity:.94;
+}
+.donut-arc-neutral{
+  stroke:#7d837e;
+  stroke-width:12;
+  opacity:.88;
+}
+
+/* Selected green only: radius and stroke are about 2% larger, with premium depth. */
+.donut-arc-selected-shadow{
+  stroke:var(--selected-green-edge);
+  stroke-width:13;
+  opacity:.50;
+  filter:drop-shadow(0 1.2px 1.3px rgba(0,0,0,.42));
+}
+
+.donut-arc-selected{
+  stroke-width:12.24!important;
+  opacity:1;
+  filter:
+    drop-shadow(0 0 1.4px rgba(199,255,208,.42))
+    drop-shadow(0 0 4.2px rgba(139,225,155,.48));
+}
+
+.donut-arc-selected-highlight{
+  stroke:rgba(232,255,236,.70);
+  stroke-width:1.05;
+  opacity:.58;
+  transform-origin:60px 60px;
+  transform:translateY(-1px);
+}
+
+.donut.donut-svg-ready strong,
+.donut.donut-svg-ready small{
+  position:relative;
   z-index:3!important;
 }
 
-.donut strong{
-  text-shadow:
-    0 1px 0 rgba(0,0,0,.46),
-    0 0 7px rgba(139,225,155,.09);
-}
-
-/* A restrained selected-green halo: green reads brighter than red without recoloring the other sectors. */
-.prediction-card.selected-home .donut,
-.prediction-card.selected-away .donut{
-  box-shadow:
-    inset 0 2px 2px rgba(255,255,255,.11),
-    inset 0 -3px 5px rgba(0,0,0,.34),
-    0 3px 8px rgba(0,0,0,.24),
-    0 0 11px rgba(139,225,155,.18)!important;
+.donut.donut-svg-ready strong{
+  text-shadow:0 1px 0 rgba(0,0,0,.46),0 0 7px rgba(139,225,155,.09);
 }
 
 @media(max-width:680px){
@@ -145,13 +150,15 @@
       0 0 5px rgba(139,225,155,.28)!important;
   }
 
-  .donut,
-  .prediction-card.selected-home .donut,
-  .prediction-card.selected-away .donut{
-    box-shadow:
-      inset 0 1px 2px rgba(255,255,255,.09),
-      inset 0 -2px 4px rgba(0,0,0,.31),
-      0 2px 6px rgba(0,0,0,.20),
-      0 0 8px rgba(139,225,155,.15)!important;
+  .donut-svg{
+    inset:-3px;
+    width:calc(100% + 6px);
+    height:calc(100% + 6px);
+  }
+
+  .donut-arc-selected{
+    filter:
+      drop-shadow(0 0 1.1px rgba(199,255,208,.36))
+      drop-shadow(0 0 3.4px rgba(139,225,155,.40));
   }
 }
