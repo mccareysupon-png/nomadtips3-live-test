@@ -17,7 +17,7 @@
   <link rel="stylesheet" href="green-brightness.css?v=20260829-green-plus15-v2">
   <link rel="stylesheet" href="trend-film-sharp.css?v=20260829-sharp-film-v1">
   <link rel="stylesheet" href="selected-depth.css?v=20260829-selected-green-safe-v1">
-  <link rel="stylesheet" href="match-explorer.css?v=20260829-match-explorer-v1">
+  <link rel="stylesheet" href="match-explorer.css?v=20260829-selected-matches-v1">
 </head>
 <body>
   <header class="topbar">
@@ -30,7 +30,7 @@
     <section class="hero">
       <div>
         <h1>Soccer Predictions</h1>
-        <p>Detailed pre-match analysis for the current selection slate, with the previous slate's settled results available alongside it.</p>
+        <p>NOMAD picks and manually curated match analysis, with the previous NOMAD slate's settled results kept separate.</p>
       </div>
       <div class="hero-badge">
         <span id="heroLabel">TODAY'S PREDICTIONS</span>
@@ -41,7 +41,7 @@
 
     <nav class="scope-switch" aria-label="Prediction coverage">
       <button class="scope-tab active" type="button" data-scope="nomad">NOMAD Predictions <span id="nomadScopeCount">—</span></button>
-      <button class="scope-tab" type="button" data-scope="all">All Matches <span id="allScopeCount">—</span></button>
+      <button class="scope-tab" type="button" data-scope="selected">Selected Matches <span id="selectedScopeCount">—</span></button>
     </nav>
 
     <nav class="day-switch" aria-label="Prediction day views">
@@ -51,8 +51,8 @@
 
     <section id="matchExplorerTools" class="match-explorer-tools" hidden>
       <div id="explorerStatus" class="explorer-status">
-        <strong id="coverageLabel">DAILY MATCHES</strong>
-        <span id="coverageNote">Loading coverage status…</span>
+        <strong id="coverageLabel">CURATED MATCHES</strong>
+        <span id="coverageNote">Loading curated match set…</span>
       </div>
       <div id="leagueStrip" class="league-strip" aria-label="League filters"></div>
       <div id="commandStrip" class="command-strip" aria-label="Quick match filters">
@@ -84,8 +84,8 @@
     </section>
   </main>
 
-  <script src="predictions.js?v=20260828-pick-label-clean-v1" defer></script>
-  <script src="match-explorer.js?v=20260829-match-explorer-v2" defer></script>
+  <script src="predictions.js?v=20260829-source-metrics-v1" defer></script>
+  <script src="match-explorer.js?v=20260829-selected-matches-v1" defer></script>
   <script src="selected-emphasis.js?v=20260829-selected-green-safe-v1" defer></script>
   <script src="local-time.js?v=20260829-local-time-v1" defer></script>
   <script src="performance-trend.js?v=20260829-smooth-sharp-film-v1" defer></script>
