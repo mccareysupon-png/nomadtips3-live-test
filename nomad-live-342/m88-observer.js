@@ -22,26 +22,27 @@ function normalizeOddsFormat(format='HK'){
   if(f==='HONG KONG'||f==='HONGKONG') return 'HK';
   return f;
 }
-function decodeComponent(raw){
+function decodeComponent(raw,trustedSource=false){
   const s=String(raw??'').trim().replaceAll('−','-').replaceAll('＋','+');
   if(!s)return {value:null,status:'UNAVAILABLE',reason:'empty HDP line'};
   const n=Number(s);
   if(n===0)return {value:0,status:'VALID',reason:'zero line is sign-safe'};
+  if(Number.isFinite(n)&&trustedSource)return {value:n,status:'VALID',reason:'trusted HOME/AWAY source field preserves side direction'};
   if(/^[+-]/.test(s)&&Number.isFinite(n))return {value:n,status:'VALID',reason:'explicit sign present'};
-  if(Number.isFinite(n))return {value:null,status:'UNKNOWN',reason:'non-zero M88 HDP has no explicit sign; hold for verified decode rule'};
+  if(Number.isFinite(n))return {value:null,status:'UNKNOWN',reason:'non-zero visible HDP has no explicit sign; hold for verified decode rule'};
   return {value:null,status:'MISMATCH',reason:'unrecognized HDP notation'};
 }
-function decodeHomeLine(raw){
+function decodeHomeLine(raw,trustedSource=false){
   const s=String(raw??'').trim().replaceAll('−','-').replaceAll('＋','+');
   if(s.includes('/')){
-    const parts=s.split('/').map(decodeComponent);
+    const parts=s.split('/').map(x=>decodeComponent(x,trustedSource));
     if(parts.some(p=>p.status!=='VALID')){
       const first=parts.find(p=>p.status!=='VALID');
       return {value:null,status:first.status,reason:first.reason,raw:s};
     }
-    return {value:Number((parts.reduce((a,p)=>a+p.value,0)/parts.length).toFixed(2)),status:'VALID',reason:'explicit split line normalized',raw:s};
+    return {value:Number((parts.reduce((a,p)=>a+p.value,0)/parts.length).toFixed(2)),status:'VALID',reason:trustedSource?'trusted split line normalized':'explicit split line normalized',raw:s};
   }
-  return {...decodeComponent(s),raw:s};
+  return {...decodeComponent(s,trustedSource),raw:s};
 }
 function parseTime(value){
   if(value===null||value===undefined||value==='') return null;
@@ -94,9 +95,13 @@ function normalizeObservation(input,maxAgeSeconds=30,now=Date.now()){
   const ageSeconds=Number.isFinite(observedAt)?Math.max(0,Math.round((now-observedAt)/1000)):null;
   if(state==='VALID'&&ageSeconds===null)state='UNKNOWN';
   if(state==='VALID'&&ageSeconds>maxAgeSeconds)state='STALE';
-  const line=decodeHomeLine(input?.rawHomeLine);
+  const trustedCollector=String(input?.collectorSchema||'')===COLLECTOR_SCHEMA;
+  const line=decodeHomeLine(input?.rawHomeLine,trustedCollector);
+  const awayLine=decodeHomeLine(input?.rawAwayLine,trustedCollector);
   if(state==='VALID'&&line.status!=='VALID')state=line.status;
-  if(state==='VALID'&&String(input?.collectorSchema||'')===COLLECTOR_SCHEMA&&String(input?.segment||'').toUpperCase()!=='FT')state='MISMATCH';
+  if(state==='VALID'&&trustedCollector&&awayLine.status!=='VALID')state=awayLine.status;
+  if(state==='VALID'&&trustedCollector&&String(input?.segment||'').toUpperCase()!=='FT')state='MISMATCH';
+  if(state==='VALID'&&trustedCollector&&line.value!==null&&awayLine.value!==null&&Math.abs(line.value+awayLine.value)>0.001)state='MISMATCH';
   const homeOddsDecimal=normalizeOdds(input?.homeOddsRaw,input?.oddsFormat||'HK');
   const awayOddsDecimal=normalizeOdds(input?.awayOddsRaw,input?.oddsFormat||'HK');
   if(state==='VALID'&&(homeOddsDecimal===null||awayOddsDecimal===null))state='MISMATCH';
@@ -104,7 +109,7 @@ function normalizeObservation(input,maxAgeSeconds=30,now=Date.now()){
     book:'M88',status:state,ageSeconds,observedAt:Number.isFinite(observedAt)?observedAt:null,timestampSource:String(input?.timestampSource||''),
     matchId:String(input?.matchId||input?.eventId||''),eventId:String(input?.eventId||input?.matchId||''),leagueId:String(input?.leagueId||''),sportId:String(input?.sportId||''),
     home:String(input?.home||''),away:String(input?.away||''),minute:finite(input?.minute),period:String(input?.period||''),score:scorePair(input?.score),
-    rawHomeLine:String(input?.rawHomeLine??''),rawAwayLine:String(input?.rawAwayLine??''),decodedHomeLine:line.value,decodeStatus:line.status,decodeReason:line.reason,
+    rawHomeLine:String(input?.rawHomeLine??''),rawAwayLine:String(input?.rawAwayLine??''),decodedHomeLine:line.value,decodedAwayLine:awayLine.value,decodeStatus:line.status,decodeReason:line.reason,
     homeOddsRaw:finite(input?.homeOddsRaw),awayOddsRaw:finite(input?.awayOddsRaw),oddsFormat:normalizeOddsFormat(input?.oddsFormat||'HK'),homeOddsDecimal,awayOddsDecimal,
     segment:String(input?.segment||'').toUpperCase(),marketId:String(input?.marketId||''),selectionId:String(input?.selectionId||''),
     transport:String(input?.transport||'DOM').toUpperCase(),collectorSchema:String(input?.collectorSchema||''),raw
