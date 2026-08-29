@@ -10,7 +10,7 @@ let rendering=false;
 
 function readRows(key){try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function writeRows(key,rows){try{localStorage.setItem(key,JSON.stringify(rows))}catch{}}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';const x=Number(n.toFixed(2));return `${x>0?'+':''}${x}`}
 function fmtOdds(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
