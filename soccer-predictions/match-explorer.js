@@ -158,6 +158,7 @@
     state.query = '';
     state.visible = PAGE_SIZE;
     const input = document.getElementById('searchInput');
+    const loadMore = document.getElementById('loadMoreMatches');
     if(input) input.value = '';
 
     document.querySelectorAll('.scope-tab').forEach(btn => {
@@ -174,6 +175,7 @@
     }
 
     if(tools) tools.hidden = true;
+    if(loadMore) loadMore.hidden = true;
     state.league = 'ALL';
     state.command = 'ALL';
 
