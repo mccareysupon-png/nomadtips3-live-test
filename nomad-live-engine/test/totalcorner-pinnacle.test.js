@@ -54,7 +54,7 @@ test('SOURCE 26 exposes TotalCorner Pinnacle while SOURCE 4 stays the legacy fin
   assert.equal(pinnacle.status,'PASS');
 });
 
-test('TotalCorner Pinnacle joins the primary judge consensus while duplicate Nowgoal Pinnacle has no second vote',()=>{
+test('TotalCorner Pinnacle joins approved Bet365 while 1xBet and duplicate Nowgoal Pinnacle have no vote',()=>{
   const source4=parseBet365Asian(panel(['1.82','-0.5','1.96']),observedAt-2_000);
   const source5=readyNowgoal(-.5,1.80,'1xBet',observedAt-4_000);
   source5.nowgoalPeers={
@@ -72,8 +72,10 @@ test('TotalCorner Pinnacle joins the primary judge consensus while duplicate Now
   assert.equal(selected.id,'source26');
   assert.equal(selected.bookmaker,'Pinnacle');
   assert.equal(selected.consensusLine,-.5);
-  assert.equal(selected.consensusCount,3);
-  assert.deepEqual([...selected.consensusBookmakers].sort(),['1xBet','Bet365','Pinnacle'].sort());
+  assert.equal(selected.consensusCount,2);
+  assert.deepEqual([...selected.consensusBookmakers].sort(),['Bet365','Pinnacle'].sort());
+  assert.equal(snapshots.find(item=>item.id==='source5').status,'OBSERVER');
+  assert.equal(snapshots.find(item=>item.id==='source25').status,'OBSERVER');
 });
 
 test('TotalCorner Pinnacle can decide alone while the attached TotalCorner Bet365 carrier remains non-voting',()=>{
