@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-29T00:20:18Z",
+  "updated_at": "2026-08-29T03:44:26Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -216,8 +216,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.9015,
       "edge": 81.3,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "source_url": "https://www.goaloo.com/football/new-zealand-central-league-wellington-olympic-vs-waterside-karori/h2h-3063968",
       "summary_url": "https://www.goaloo.com/football/new-zealand-central-league-wellington-olympic-vs-waterside-karori/summary-3063968",
       "model": {
@@ -1400,6 +1400,56 @@
       "data_quality": {
         "home_recent": 5,
         "away_recent": 9,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "76224c012d560ba0",
+      "goaloo_id": "3063968",
+      "date": "2026-08-29",
+      "kickoff": "2026-08-29 01:45:00",
+      "league": "New Zealand Central League",
+      "home": "Wellington Olympic",
+      "away": "Waterside Karori",
+      "pick": "Waterside Karori Win",
+      "side": "away",
+      "odds": 39.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9015,
+      "edge": 81.3,
+      "result": "LOSS",
+      "ft": "2-1",
+      "source_url": "https://www.goaloo.com/football/new-zealand-central-league-wellington-olympic-vs-waterside-karori/h2h-3063968",
+      "summary_url": "https://www.goaloo.com/football/new-zealand-central-league-wellington-olympic-vs-waterside-karori/summary-3063968",
+      "model": {
+        "lambda_home": 0.783,
+        "lambda_away": 3.6,
+        "home_win": 0.0098,
+        "draw": 0.0887,
+        "away_win": 0.9015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.8602,
+          "gd_edge": -0.9925,
+          "clean_sheet_edge": -0.4195,
+          "failed_to_score_edge": -0.4927,
+          "bounded_adjustment": -0.0608,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
       }
