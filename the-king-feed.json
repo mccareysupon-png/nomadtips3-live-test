@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-29T11:10:56Z",
+  "updated_at": "2026-08-29T15:40:20Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -16,8 +16,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.942,
       "edge": 89.3,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "9-0",
       "source_url": "https://www.goaloo.com/football/czech-republic-cambrinus-liga-women-s-slavia-praha-w-vs-horni-herspice-w/h2h-3059843",
       "summary_url": "https://www.goaloo.com/football/czech-republic-cambrinus-liga-women-s-slavia-praha-w-vs-horni-herspice-w/summary-3059843",
       "model": {
@@ -1440,6 +1440,56 @@
           "away_venue_n": 6
         },
         "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "3e42f060e6cb1082",
+      "goaloo_id": "3059843",
+      "date": "2026-08-29",
+      "kickoff": "2026-08-29 12:00:00",
+      "league": "Czech Republic Cambrinus Liga Women's",
+      "home": "Slavia Praha (W)",
+      "away": "Horni Herspice (W)",
+      "pick": "Horni Herspice (W) Win",
+      "side": "away",
+      "odds": 29.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.942,
+      "edge": 89.3,
+      "result": "LOSS",
+      "ft": "9-0",
+      "source_url": "https://www.goaloo.com/football/czech-republic-cambrinus-liga-women-s-slavia-praha-w-vs-horni-herspice-w/h2h-3059843",
+      "summary_url": "https://www.goaloo.com/football/czech-republic-cambrinus-liga-women-s-slavia-praha-w-vs-horni-herspice-w/summary-3059843",
+      "model": {
+        "lambda_home": 0.269,
+        "lambda_away": 3.6,
+        "home_win": 0.0094,
+        "draw": 0.0485,
+        "away_win": 0.942,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -1.0,
+          "gd_edge": -0.9999,
+          "clean_sheet_edge": -0.878,
+          "failed_to_score_edge": -0.7902,
+          "bounded_adjustment": -0.0725,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.015,
         "venue_fallback": {
           "home": true,
           "away": false,
