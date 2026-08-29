@@ -5,7 +5,10 @@ const POOL_KEY='nomadM88ObservationPool342';
 const VALID_STATES=new Set(['VALID','STALE','UNAVAILABLE','UNKNOWN','MISMATCH']);
 const COLLECTOR_SCHEMA='m88-msports-referee';
 
-function finite(v){const n=Number(v);return Number.isFinite(n)?n:null;}
+function finite(v){
+  if(v===null||v===undefined||v===''||typeof v==='boolean') return null;
+  const n=Number(v);return Number.isFinite(n)?n:null;
+}
 function normalizeOdds(raw,format='HK'){
   const n=finite(raw); if(n===null||n<0)return null;
   const f=String(format||'HK').toUpperCase();
@@ -41,7 +44,9 @@ function decodeHomeLine(raw){
 }
 function parseTime(value){
   if(value===null||value===undefined||value==='') return null;
-  if(typeof value==='number'&&Number.isFinite(value)) return value;
+  if(typeof value==='number'&&Number.isFinite(value)) return value<1e12?value*1000:value;
+  const numeric=Number(value);
+  if(Number.isFinite(numeric)&&String(value).trim()!=='') return numeric<1e12?numeric*1000:numeric;
   const ms=Date.parse(String(value));
   return Number.isFinite(ms)?ms:null;
 }
