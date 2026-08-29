@@ -12,11 +12,16 @@ function decode(detail){
 }
 function sanitize(input){
   if(!input||typeof input!=='object'||input.schema!=='m88-msports-referee') return null;
-  const segment=String(input.segment??input.market?.segment??'').toUpperCase();
+  const topSegment=String(input.segment??'').toUpperCase();
+  const marketSegment=String(input.market?.segment??'').toUpperCase();
+  if(topSegment&&marketSegment&&topSegment!==marketSegment) return null;
+  const segment=topSegment||marketSegment;
   const marketType=String(input.market?.type??'asian_handicap').toLowerCase();
   if(segment!=='FT'||marketType!=='asian_handicap') return null;
   const out={};
   for(const [k,v] of Object.entries(input)) if(ALLOWED.has(k)) out[k]=v;
+  out.segment='FT';
+  if(out.market&&typeof out.market==='object') out.market={...out.market,segment:'FT'};
   if(!out.event_id||!out.market_id||!out.selection_id) return null;
   return out;
 }
