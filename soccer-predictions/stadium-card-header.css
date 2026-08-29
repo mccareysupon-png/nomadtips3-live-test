@@ -1,4 +1,4 @@
-/* Stadium image treatment for the prediction-card header only. Distinct public-domain / CC0 Wikimedia Commons media is rotated across today's cards. */
+/* Clean prediction-card header: no stadium or decorative imagery. Team logos and text remain. */
 .card-head{
   position:relative;
   overflow:hidden;
@@ -6,64 +6,31 @@
   padding:11px 12px 14px;
   border-radius:7px 7px 5px 5px;
   border-bottom:1px solid rgba(150,158,151,.10);
-  background-color:#151a16;
-  background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Adl%20utd%20stadium.jpg?width=1280");
-  background-size:cover;
-  background-position:center 54%;
-  background-repeat:no-repeat;
+  background:#151a16;
 }
 
-/* One stadium image per matchup. These are visual football/stadium backgrounds, not claims about the actual venue of the fixture. */
-.prediction-list > .prediction-card:nth-of-type(1) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Adl%20utd%20stadium.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(2) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Wembley%20Stadium%20at%20night.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(3) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Heritage%20Stadium%20at%20Night.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(4) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/KC%20Stadium%20at%20night.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(5) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Football-stadium-berlin.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(6) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Pudong%20Football%20Stadium.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(7) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Nya%20Ullevi.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(8) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Wembley%20Association%20Football%20Stadium.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(9) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Drone%20aerial%20view%20of%20the%20soccer%20stadium%20%28Unsplash%29.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(10) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Kashima%20Soccer%20Stadium%20Interior%20View.jpg?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(11) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Incheon%20Soccer%20Stadium%201.JPG?width=1280")}
-.prediction-list > .prediction-card:nth-of-type(12) .card-head{background-image:url("https://commons.wikimedia.org/wiki/Special:FilePath/Harstad%20stadion.jpg?width=1280")}
-
-/* Keep only a subtle NOMAD green wash so the Guardian silhouette, not a flat tint, carries the visual identity. */
-.card-head::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  background:rgba(18,78,49,.22);
-}
-
-/* Guardian silhouette: visible in front of the stadium image, behind all matchup content. */
+/* No stadium image, Guardian silhouette, or decorative overlay. */
+.card-head::before,
 .card-head::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  z-index:1;
-  pointer-events:none;
-  background-image:url("./assets/guardian-silhouette.svg");
-  background-repeat:no-repeat;
-  background-position:right center;
-  background-size:auto 90%;
-  opacity:.65;
-  filter:drop-shadow(0 7px 16px rgba(0,0,0,.42));
+  content:none!important;
+  display:none!important;
 }
 
 .card-head .league-line,
 .card-head .team-name,
 .card-head .vs,
-.card-head .pick-box{
-  position:relative;
-  z-index:2;
-}
+.card-head .pick-box,
 .card-head .team-logo{
   position:relative;
-  z-index:2;
+  z-index:1;
+}
+
+/* Keep the actual team logos visible. */
+.card-head .team-logo{
+  display:block;
   filter:drop-shadow(0 3px 7px rgba(0,0,0,.52));
 }
+
 .card-head .team-name{
   text-shadow:0 2px 6px rgba(0,0,0,.88),0 0 3px rgba(0,0,0,.72);
 }
@@ -81,14 +48,10 @@
   background:linear-gradient(135deg,rgba(10,15,11,.86),rgba(16,23,18,.78));
   backdrop-filter:blur(1.5px);
 }
+
 @media(max-width:680px){
   .card-head{
     margin:-2px -2px 0;
     padding:10px 9px 12px;
-    background-position:center 50%;
-  }
-  .card-head::after{
-    background-position:right center;
-    background-size:auto 84%;
   }
 }
