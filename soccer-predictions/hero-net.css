@@ -1,11 +1,15 @@
-/* Soccer Predictions hero: generated net-goal artwork with responsive, text-safe composition. */
+/* Soccer Predictions hero: compact theme gradient, no artwork dependency. */
 .hero.hero-net{
   position:relative;
-  min-height:164px;
+  min-height:104px;
+  padding:13px 16px;
   overflow:hidden;
   isolation:isolate;
   border:0;
-  background:#132019;
+  background:
+    radial-gradient(circle at 82% 18%,rgba(48,145,96,.17),transparent 31%),
+    linear-gradient(135deg,#203026 0%,#193526 36%,#14271c 68%,#111812 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
 }
 .hero.hero-net::before{
   content:"";
@@ -13,88 +17,79 @@
   inset:0;
   z-index:0;
   pointer-events:none;
-  background-image:url("assets/hero-net-goal.webp");
-  background-repeat:no-repeat;
-  background-size:cover;
-  background-position:72% 49%;
-  transform:scale(1.01);
+  background:
+    linear-gradient(100deg,rgba(5,13,9,.24) 0%,transparent 48%,rgba(38,111,75,.08) 100%),
+    radial-gradient(circle at 18% 115%,rgba(29,93,61,.15),transparent 38%);
 }
 .hero.hero-net::after{
   content:"";
   position:absolute;
-  inset:0;
-  z-index:1;
+  top:12%;
+  right:24%;
+  bottom:12%;
+  width:1px;
+  z-index:0;
   pointer-events:none;
-  background:
-    linear-gradient(90deg,rgba(8,17,12,.96) 0%,rgba(9,20,13,.91) 33%,rgba(10,24,15,.64) 53%,rgba(8,14,10,.22) 74%,rgba(7,10,8,.10) 100%),
-    linear-gradient(0deg,rgba(7,12,9,.48),rgba(7,12,9,.04) 58%);
+  background:linear-gradient(180deg,transparent,rgba(150,158,151,.13),transparent);
 }
 .hero.hero-net .hero-copy{
   position:relative;
-  z-index:2;
+  z-index:1;
   flex:1 1 auto;
-  max-width:58%;
+  max-width:72%;
   min-width:0;
-  padding-right:8px;
+  padding-right:10px;
 }
 .hero.hero-net h1{
-  text-shadow:0 2px 12px rgba(0,0,0,.42);
+  margin-top:2px;
+  text-shadow:none;
 }
 .hero.hero-net p{
-  max-width:620px;
-  color:#aeb8b0;
-  text-shadow:0 1px 8px rgba(0,0,0,.52);
+  max-width:700px;
+  color:#aeb7af;
+  line-height:1.5;
+  text-shadow:none;
 }
 .hero.hero-net .hero-badge{
   position:relative;
-  z-index:2;
+  z-index:1;
   flex:0 0 auto;
-  min-width:150px;
-  padding:12px 14px;
-  border-left:0;
-  border-radius:9px;
-  background:rgba(8,18,12,.58);
-  backdrop-filter:blur(2px);
-  -webkit-backdrop-filter:blur(2px);
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.035);
+  min-width:138px;
+  padding:9px 12px 9px 14px;
+  border-left:1px solid rgba(150,158,151,.18);
+  border-radius:0;
+  background:linear-gradient(90deg,rgba(8,19,12,.16),rgba(8,19,12,.34));
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
+  box-shadow:none;
 }
 .hero.hero-net .hero-badge span,
 .hero.hero-net .hero-badge small{
-  color:#a8b2aa;
+  color:#a5aea6;
 }
 @media(max-width:900px){
   .hero.hero-net{
-    min-height:154px;
+    min-height:100px;
+    padding:12px 14px;
   }
-  .hero.hero-net::before{
-    background-position:76% 50%;
-  }
-  .hero.hero-net .hero-copy{
-    max-width:62%;
-  }
+  .hero.hero-net .hero-copy{max-width:70%}
+  .hero.hero-net::after{right:25%}
 }
 @media(max-width:680px){
   .hero.hero-net{
-    min-height:176px;
-    padding:16px;
-    align-items:flex-start;
+    min-height:112px;
+    padding:12px;
+    gap:10px;
+    align-items:center;
   }
-  .hero.hero-net::before{
-    background-size:cover;
-    background-position:70% 50%;
-    opacity:.70;
-  }
-  .hero.hero-net::after{
-    background:linear-gradient(90deg,rgba(7,16,11,.97) 0%,rgba(8,19,13,.92) 48%,rgba(8,16,11,.58) 74%,rgba(6,11,8,.34) 100%);
-  }
+  .hero.hero-net::after{display:none}
   .hero.hero-net .hero-copy{
-    max-width:66%;
+    max-width:68%;
     padding-right:0;
   }
   .hero.hero-net h1{
-    font-size:22px;
-    line-height:1.05;
-    margin-top:2px;
+    margin-top:1px;
+    line-height:1.08;
   }
   .hero.hero-net p{
     font-size:9px;
@@ -102,40 +97,25 @@
   }
   .hero.hero-net .hero-badge{
     min-width:82px;
-    padding:9px 8px;
-    background:rgba(8,18,12,.68);
-  }
-  .hero.hero-net .hero-badge strong{
-    font-size:26px;
+    padding:8px 7px 8px 9px;
   }
 }
 @media(max-width:420px){
   .hero.hero-net{
-    min-height:188px;
-    gap:10px;
+    min-height:118px;
+    gap:8px;
+    padding:11px;
   }
-  .hero.hero-net::before{
-    background-position:67% 50%;
-    opacity:.58;
-  }
-  .hero.hero-net .hero-copy{
-    max-width:67%;
-  }
-  .hero.hero-net h1{
-    font-size:20px;
-  }
+  .hero.hero-net .hero-copy{max-width:67%}
   .hero.hero-net p{
     font-size:8px;
+    line-height:1.42;
   }
   .hero.hero-net .hero-badge{
     min-width:76px;
-    padding:8px 7px;
+    padding:7px 6px 7px 8px;
   }
   .hero.hero-net .hero-badge span,
-  .hero.hero-net .hero-badge small{
-    font-size:6px;
-  }
-  .hero.hero-net .hero-badge strong{
-    font-size:23px;
-  }
+  .hero.hero-net .hero-badge small{font-size:6px}
+  .hero.hero-net .hero-badge strong{font-size:18px}
 }
