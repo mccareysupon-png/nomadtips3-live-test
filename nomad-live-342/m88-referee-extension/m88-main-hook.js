@@ -76,6 +76,7 @@ function build(obj){
     score:{home:hs,away:as},
     period:asString(pick(obj,KEYS.period)),
     minute:minuteFrom(pick(obj,KEYS.minute)),
+    segment,
     market:{
       type:'asian_handicap',segment,
       market_id:marketId,selection_id:selId,
