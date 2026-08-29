@@ -7,6 +7,9 @@ const ALLOWED=new Set([
 ]);
 function sanitize(input){
   if(!input||typeof input!=='object'||input.schema!=='m88-msports-referee') return null;
+  const segment=String(input.segment??input.market?.segment??'').toUpperCase();
+  const marketType=String(input.market?.type??'asian_handicap').toLowerCase();
+  if(segment!=='FT'||marketType!=='asian_handicap') return null;
   const out={};
   for(const [k,v] of Object.entries(input)) if(ALLOWED.has(k)) out[k]=v;
   if(!out.event_id||!out.market_id||!out.selection_id) return null;
