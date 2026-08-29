@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "NOMAD 3.42 Bet365 Referee Bridge",
+  "version": "0.1.0",
+  "description": "Read-only bridge from Bet365 in-play WebSocket data to NOMAD 3.42.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "https://*.bet365.com/*",
+    "https://*.bet365.co.uk/*",
+    "https://mccareysupon-png.github.io/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [
+    {
+      "matches": ["https://*.bet365.com/*", "https://*.bet365.co.uk/*"],
+      "js": ["bet365-main-hook.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://*.bet365.com/*", "https://*.bet365.co.uk/*"],
+      "js": ["bet365-bridge.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": [
+        "https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/*",
+        "http://127.0.0.1/*",
+        "http://localhost/*"
+      ],
+      "js": ["nomad-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}
