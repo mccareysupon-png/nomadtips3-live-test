@@ -21,7 +21,7 @@ function finite(v){
   return Number.isFinite(n)?n:null;
 }
 function fmtLine(n){const x=finite(n);if(x===null)return '—';const v=Number(x.toFixed(2));return `${v>0?'+':''}${v}`;}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));}
 function at(pair,index){return Array.isArray(pair)?finite(pair[index]):null;}
 function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[key],index);return a===null||b===null?null:b-a;}
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null;}
@@ -111,7 +111,7 @@ function lineAllowed(line,c){
 function m88Check(m,c){
   const api=window.NOMADM88;
   if(!api) return {pass:false,obs:null,reason:'M88 OBSERVER MODULE MISSING'};
-  const raw=api.read();
+  const raw=typeof api.readForMatch==='function'?api.readForMatch(m.id,m.home,m.away):api.read();
   if(!raw) return {pass:false,obs:null,reason:'M88 OBSERVATION WAIT'};
   const obs=api.normalizeObservation(raw,c.maximumPriceAgeSeconds);
   const idMatch=obs.matchId&&String(obs.matchId)===String(m.id);
