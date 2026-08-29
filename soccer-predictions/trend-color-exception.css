@@ -1,19 +1,19 @@
-/* PERFORMANCE TREND exception: keep opponent graph red while the rest of Soccer Predictions uses neutral gray. */
+/* PERFORMANCE TREND exception: use selected green vs the same dark opponent gray as comparison bars. UI-only. */
 .trend-area-selected{
   fill:#79c487!important;
-  opacity:.22!important;
+  opacity:.90!important;
 }
 .trend-line-opponent{
-  stroke:#c87474!important;
+  stroke:#626763!important;
   stroke-dasharray:2.2 1.45!important;
   opacity:1!important;
-  filter:drop-shadow(0 0 1.25px rgba(200,116,116,.72))!important;
+  filter:drop-shadow(0 0 1.25px rgba(98,103,99,.72))!important;
 }
 .trend-area-opponent{
-  fill:#c87474!important;
-  opacity:.40!important; /* 60% transparent */
+  fill:#626763!important;
+  opacity:.90!important;
 }
 .trend-legend-item.opponent .trend-dot{
-  background:repeating-linear-gradient(90deg,#c87474 0 2px,transparent 2px 3.4px)!important;
-  box-shadow:0 0 2.4px rgba(200,116,116,.38)!important;
+  background:repeating-linear-gradient(90deg,#626763 0 2px,transparent 2px 3.4px)!important;
+  box-shadow:0 0 2.4px rgba(98,103,99,.38)!important;
 }
