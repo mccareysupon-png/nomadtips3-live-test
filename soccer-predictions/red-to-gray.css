@@ -1,0 +1,55 @@
+/* Final Soccer Predictions color policy: all red/opponent/loss accents render as neutral gray. UI-only. */
+:root{
+  --red:#8c938d;
+  --opponent-red:#8c938d;
+  --opponent-red-strong:#666d67;
+}
+
+/* Opponent comparison surfaces */
+.prediction-card.selected-home .stat:nth-child(n+6),
+.prediction-card.selected-away .stat:nth-child(-n+5){
+  background:linear-gradient(145deg,rgba(140,147,141,.09),#101410)!important;
+}
+
+.legend-row.opponent{
+  background:linear-gradient(90deg,rgba(140,147,141,.11),rgba(255,255,255,.012))!important;
+}
+
+/* Loss / negative states use neutral gray instead of red. */
+.form-pill.l{
+  background:rgba(140,147,141,.12)!important;
+  color:var(--red)!important;
+}
+.result-card.loss{
+  border-left-color:rgba(140,147,141,.62)!important;
+}
+.result-kpi.loss{
+  background:linear-gradient(145deg,rgba(140,147,141,.08),rgba(17,22,17,.96))!important;
+}
+.result-kpi.loss strong,
+.settle-result.loss{
+  color:var(--red)!important;
+}
+
+/* Keep any opponent text and percentage values neutral gray. */
+.prediction-card.selected-home .bar-num:last-child,
+.prediction-card.selected-away .bar-num:first-child,
+.prediction-card.selected-home .match-title .team.away,
+.prediction-card.selected-away .match-title .team:first-child,
+.legend-row.opponent strong,
+.prediction-card.selected-home .vertical-value.away,
+.prediction-card.selected-away .vertical-value.home{
+  color:var(--opponent-red)!important;
+}
+
+/* Explicit gray fills so no previously hard-coded red can bleed through. */
+.prediction-card.selected-home .bar-away,
+.prediction-card.selected-away .bar-home{
+  background:linear-gradient(90deg,var(--opponent-red-strong),var(--opponent-red))!important;
+  box-shadow:none!important;
+}
+.prediction-card.selected-home .vertical-bar.away,
+.prediction-card.selected-away .vertical-bar.home{
+  background:linear-gradient(180deg,var(--opponent-red),var(--opponent-red-strong))!important;
+  box-shadow:none!important;
+}
