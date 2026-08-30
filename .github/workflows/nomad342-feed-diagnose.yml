@@ -1,0 +1,53 @@
+name: NOMAD 3.42 Feed Diagnose
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomad342-feed-diagnose.yml'
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe 3.42 worker health and feed
+        shell: bash
+        run: |
+          set -u
+          base='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev'
+          echo "TARGET=$base"
+          for path in /health '/feed?force=1'; do
+            echo "=== ${path} ==="
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 10 --max-time 35 -D "$headers" -o "$body" -w '%{http_code}' "${base}${path}" || true)"
+            echo "HTTP=$code"
+            sed -n '1,30p' "$headers" || true
+            echo '--- BODY ---'
+            head -c 30000 "$body" || true
+            echo
+            if [[ "$path" == /feed* ]]; then
+              BODY_PATH="$body" python - <<'PY'
+          import json, os
+          p=os.environ['BODY_PATH']
+          raw=open(p,'rb').read().decode('utf-8','replace')
+          try:
+              data=json.loads(raw)
+          except Exception as e:
+              print('JSON_PARSE_ERROR=',repr(e))
+              print('BODY_PREFIX=',raw[:1000])
+          else:
+              matches=data.get('matches') if isinstance(data,dict) else None
+              print('TOP_KEYS=', sorted(data.keys()) if isinstance(data,dict) else type(data).__name__)
+              print('MATCH_COUNT=', len(matches) if isinstance(matches,list) else 'NOT_LIST')
+              for k in ['ok','version','source','status','error','message','updatedAt','fetchedAt','cached','stale']:
+                  if isinstance(data,dict) and k in data:
+                      print(f'{k}={data[k]!r}')
+              if isinstance(matches,list) and matches:
+                  m=matches[0]
+                  if isinstance(m,dict): print('FIRST_MATCH_KEYS=',sorted(m.keys()))
+          PY
+            fi
+            rm -f "$headers" "$body"
+          done
