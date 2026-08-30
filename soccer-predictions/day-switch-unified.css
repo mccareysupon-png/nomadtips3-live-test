@@ -1,0 +1,44 @@
+/* Unified Today / Yesterday switch: one clean card with a thin divider. */
+.day-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  overflow:hidden;
+  margin-bottom:10px;
+  border:1px solid rgba(150,158,151,.12);
+  border-radius:8px;
+  background:linear-gradient(145deg,#1b201a,#151914);
+}
+.day-switch .day-tab{
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+  padding:11px 13px;
+}
+.day-switch .day-tab + .day-tab{
+  border-left:1px solid rgba(150,158,151,.12)!important;
+}
+.day-switch .day-tab.active{
+  color:var(--yellow);
+  background:rgba(131,223,137,.025)!important;
+}
+.day-switch .day-tab span{
+  background:transparent;
+  padding:2px 0 2px 8px;
+  min-width:auto;
+  border-radius:0;
+}
+@media(max-width:680px){
+  .day-switch{
+    grid-template-columns:1fr 1fr;
+  }
+  .day-switch .day-tab{
+    padding:10px 9px;
+    font-size:10.5px;
+  }
+  .day-switch .day-tab + .day-tab{
+    border-left:1px solid rgba(150,158,151,.12)!important;
+  }
+}
