@@ -1,4 +1,4 @@
-import {assessHomeMarket} from './detector.js';
+import {assessSideMarket,configuredSides} from './detector.js';
 import {mapMatchesToOddsEvents,normalizeTeamName} from './real-market.js';
 
 const BASE_URL='https://api.the-odds-api.com/v4';
@@ -36,10 +36,7 @@ async function fetchJson(apiKey,timeoutMs){
     if(!response.ok) throw new Error(`THE_ODDS_API_HTTP_${response.status}:${text.slice(0,180)}`);
     let data;
     try{data=JSON.parse(text);}catch{throw new Error('THE_ODDS_API_INVALID_JSON');}
-    return {
-      data:Array.isArray(data)?data:[],
-      quota:{remaining:num(response.headers.get('x-requests-remaining')),used:num(response.headers.get('x-requests-used')),last:num(response.headers.get('x-requests-last'))},
-    };
+    return {data:Array.isArray(data)?data:[],quota:{remaining:num(response.headers.get('x-requests-remaining')),used:num(response.headers.get('x-requests-used')),last:num(response.headers.get('x-requests-last'))}};
   }finally{clearTimeout(timer);}
 }
 
@@ -62,11 +59,11 @@ export function parseTheOddsApiAsianHandicaps(event,item={}){
       const outcomes=Array.isArray(market?.outcomes)?market.outcomes:[];
       const home=outcomes.find(outcome=>normalizeTeamName(outcome?.name)===homeName);
       const away=outcomes.find(outcome=>normalizeTeamName(outcome?.name)===awayName);
-      const line=num(home?.point),homeOdds=num(home?.price),awayOdds=num(away?.price);
+      const line=num(home?.point),awayLine=num(away?.point),homeOdds=num(home?.price),awayOdds=num(away?.price);
       const sourceUpdatedAt=Date.parse(market?.last_update||bookmaker?.last_update||'');
       if(line==null||homeOdds==null||awayOdds==null||!Number.isFinite(sourceUpdatedAt)) continue;
       candidates.push({
-        status:'AH READY',line,homeOdds,awayOdds,bookmaker:String(bookmaker?.title||bookmaker?.key||'Unknown'),
+        status:'AH READY',line,awayLine:awayLine??-line,homeOdds,awayOdds,bookmaker:String(bookmaker?.title||bookmaker?.key||'Unknown'),
         market:'FULL MATCH LIVE AH',source:SOURCE,sourceUpdatedAt,eventId:String(event?.id||''),sportKey:event?.sport_key||null,
         mappingConfidence:item.matchConfidence??null,mapping:item.matchBreakdown??null,
       });
@@ -75,34 +72,41 @@ export function parseTheOddsApiAsianHandicaps(event,item={}){
   return candidates;
 }
 
-function freshestThenBest(candidates=[]){
+function freshestThenBest(candidates=[],side='home'){
   if(!candidates.length) return null;
   return candidates.reduce((selected,candidate)=>{
     const freshnessDifference=Math.abs(candidate.sourceUpdatedAt-selected.sourceUpdatedAt);
     if(freshnessDifference>FRESHNESS_NEAR_MS) return candidate.sourceUpdatedAt>selected.sourceUpdatedAt?candidate:selected;
-    const sameLine=Math.abs(candidate.line-selected.line)<1e-9;
-    if(sameLine&&candidate.homeOdds!==selected.homeOdds) return candidate.homeOdds>selected.homeOdds?candidate:selected;
+    const selectedLine=side==='away'?(selected.awayLine??-selected.line):selected.line;
+    const candidateLine=side==='away'?(candidate.awayLine??-candidate.line):candidate.line;
+    const selectedOdds=side==='away'?selected.awayOdds:selected.homeOdds;
+    const candidateOdds=side==='away'?candidate.awayOdds:candidate.homeOdds;
+    const sameLine=Math.abs(candidateLine-selectedLine)<1e-9;
+    if(sameLine&&candidateOdds!==selectedOdds) return candidateOdds>selectedOdds?candidate:selected;
     return candidate.sourceUpdatedAt>selected.sourceUpdatedAt?candidate:selected;
   });
 }
 
 function mappedEvent(event){
-  return {
-    id:event?.id,home:event?.home_team,away:event?.away_team,league:{name:event?.sport_title||''},date:event?.commence_time,
-    providerEvent:event,
-  };
+  return {id:event?.id,home:event?.home_team,away:event?.away_team,league:{name:event?.sport_title||''},date:event?.commence_time,providerEvent:event};
+}
+
+function selectForSide(candidates,config,observedAt,side){
+  const passing=candidates.filter(candidate=>assessSideMarket(candidate,config,observedAt,side).passed);
+  return freshestThenBest(passing.length?passing:candidates,side);
 }
 
 export function buildTheOddsApiMarkets(matches=[],events=[],config,observedAt=Date.now()){
   const mapped=mapMatchesToOddsEvents(matches,events.map(mappedEvent));
+  const sides=configuredSides(config);
   const results=mapped.map(item=>{
     if(!item.event) return {matchId:item.match.id,matched:false,market:state('ODDS NOT MATCHED','no_matching_live_match')};
     const candidates=parseTheOddsApiAsianHandicaps(item.event.providerEvent,item);
-    if(!candidates.length){
-      return {matchId:item.match.id,matched:true,market:state('ODDS NOT READY','no_matching_live_ah',{eventId:String(item.event.id),mappingConfidence:item.matchConfidence})};
-    }
-    const passing=candidates.filter(candidate=>assessHomeMarket(candidate,config,observedAt).passed);
-    return {matchId:item.match.id,matched:true,market:freshestThenBest(passing.length?passing:candidates)};
+    if(!candidates.length) return {matchId:item.match.id,matched:true,market:state('ODDS NOT READY','no_matching_live_ah',{eventId:String(item.event.id),mappingConfidence:item.matchConfidence})};
+    const selected=Object.fromEntries(sides.map(side=>[side,selectForSide(candidates,config,observedAt,side)]));
+    if(sides.length===1) return {matchId:item.match.id,matched:true,market:selected[sides[0]]};
+    const preferred=selected.home||selected.away||candidates[0];
+    return {matchId:item.match.id,matched:true,market:{...preferred,sideMarkets:{home:selected.home||null,away:selected.away||null}}};
   });
   return {results,mapped:results.filter(item=>item.matched).length};
 }
