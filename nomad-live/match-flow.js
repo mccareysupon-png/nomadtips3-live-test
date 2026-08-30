@@ -50,7 +50,7 @@
   function organizeDetail(detail, match) {
     if (!detail || detail.dataset.flowLayout === '1') return;
     const cards = [...detail.querySelectorAll(':scope > .detail-card')];
-    const rolling = cards.find(card => cardTitle(card).startsWith('HOME ROLLING DELTA'));
+    const rolling = cards.find(card => /^(HOME|AWAY) ROLLING DELTA\b/.test(cardTitle(card)));
     const pressure = cards.find(card => cardTitle(card) === 'PRESSURE TREND');
     const detector = cards.find(card => cardTitle(card) === 'DETECTOR CHECK');
     const price = cards.find(card => cardTitle(card) === 'PRICE CHECK');
