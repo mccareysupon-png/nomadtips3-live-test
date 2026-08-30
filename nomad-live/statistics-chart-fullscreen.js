@@ -14,6 +14,7 @@
   const fullscreenElement=()=>document.fullscreenElement||document.webkitFullscreenElement||null;
   const nativeActive=()=>Boolean(chart&&fullscreenElement()===chart);
   const expanded=()=>fallback||nativeActive();
+  const waitFrame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
 
   function setButtonState(){
     if(!button)return;
@@ -39,7 +40,7 @@
   }
 
   function enterFallback(){
-    if(!chart||fallback)return;
+    if(!chart||fallback||nativeActive())return;
     savedScrollY=window.scrollY||window.pageYOffset||0;
     fallback=true;
     chart.classList.add('is-chart-fullscreen-fallback');
@@ -68,6 +69,10 @@
     try{
       const result=request.call(chart);
       if(result&&typeof result.then==='function')await result;
+      else{
+        await waitFrame();
+        await waitFrame();
+      }
       if(!nativeActive()){
         enterFallback();
         return;
@@ -104,6 +109,7 @@
   function syncNativeState(){
     if(!chart)return;
     const active=nativeActive();
+    if(active&&fallback)exitFallback();
     chart.classList.toggle('is-chart-fullscreen-native',active);
     setButtonState();
     redrawSafety();
