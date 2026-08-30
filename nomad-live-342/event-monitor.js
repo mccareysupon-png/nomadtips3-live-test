@@ -12,6 +12,7 @@ let regionCodeByName=null;
 let regionPrefixes=null;
 let timer=null;
 let running=false;
+let activeEngineBase=String(runtime.engineBase||runtime.defaultEngineBase||'').replace(/\/$/,'');
 
 function settings(){
   try{
@@ -206,10 +207,32 @@ function matchCard(r){
 
 function setMetric(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
 function clearOutput(message){['liveCount','freshCount','windowCount','eventCount'].forEach(id=>setMetric(id,'—'));const list=document.getElementById('matchList');if(list)list.innerHTML=`<div class="note">${esc(message)}</div>`}
-async function getFeed(){
-  if(!runtime.engineBase)throw new Error('3.42 engine base not configured');
+async function fetchFeedFrom(base){
+  if(!base)throw new Error('3.42 engine base not configured');
   const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.requestTimeoutMs)||9000);
-  try{const response=await fetch(`${runtime.engineBase}${runtime.feedPath||'/feed'}`,{cache:'no-store',signal:ac.signal});if(!response.ok)throw new Error(`engine_http_${response.status}`);const data=await response.json();if(String(data.version)!=='3.42'||!Array.isArray(data.matches))throw new Error('invalid_342_feed_contract');if(data.ok===false)throw new Error(data.lastError||'342_feed_not_ok');return data}finally{clearTimeout(timeout)}
+  try{
+    const response=await fetch(`${base}${runtime.feedPath||'/feed'}`,{cache:'no-store',signal:ac.signal});
+    if(!response.ok)throw new Error(`engine_http_${response.status}`);
+    const data=await response.json();
+    if(String(data.version)!=='3.42'||!Array.isArray(data.matches))throw new Error('invalid_342_feed_contract');
+    if(data.ok===false)throw new Error(data.lastError||'342_feed_not_ok');
+    return data;
+  }finally{clearTimeout(timeout)}
+}
+async function getFeed(){
+  const primary=activeEngineBase;
+  try{return await fetchFeedFrom(primary)}catch(primaryError){
+    const fallback=String(runtime.defaultEngineBase||'').replace(/\/$/,'');
+    if(!fallback||fallback===primary)throw primaryError;
+    try{
+      const data=await fetchFeedFrom(fallback);
+      activeEngineBase=fallback;
+      try{localStorage.removeItem('nomadEngine342Base')}catch{}
+      return data;
+    }catch(fallbackError){
+      throw new Error(`${String(primaryError?.message||primaryError)} · fallback ${String(fallbackError?.message||fallbackError)}`);
+    }
+  }
 }
 function renderResults(results){
   const list=document.getElementById('matchList');
