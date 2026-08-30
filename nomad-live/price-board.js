@@ -12,6 +12,12 @@
   const fmtOdds = value => finite(value) ? Number(value).toFixed(2) : '—';
   const fmtAge = value => finite(value) ? `${Math.max(0, Math.round(Number(value)))}s` : '—';
   const sideKey = value => String(value || 'home').toLowerCase() === 'away' ? 'away' : 'home';
+  const fmtReferenceLine = value => {
+    if (!finite(value)) return '—';
+    const numeric = Math.abs(Number(value)) < 1e-9 ? 0 : Number(value);
+    const compact = numeric.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+    return `${numeric > 0 ? '+' : ''}${compact}`;
+  };
 
   function sourceQuality(source) {
     const status = String(source?.status || '').toUpperCase();
@@ -99,6 +105,31 @@
     </div>`;
   }
 
+  function bet365Reference(match) {
+    const sources = Array.isArray(match?.priceSources) ? match.priceSources : [];
+    const source = sources.find(item => item?.id === 'source6' && bookmakerKey(item?.bookmaker) === 'bet365') || null;
+    const home = String(match?.home || 'HOME').trim() || 'HOME';
+    const away = String(match?.away || 'AWAY').trim() || 'AWAY';
+    const ready = source && finite(source.line) && finite(source.homeOdds) && finite(source.awayOdds);
+    if (!ready) {
+      return `<div class="bet365-reference is-no-odds" data-bet365-reference="1" title="Bet365 reference price">
+        <span class="bet365-reference-label">Asian Handicap</span><span class="bet365-reference-dot">•</span><strong>NO ODDS</strong>
+      </div>`;
+    }
+    const selectedSide = sideKey(source.side);
+    const selectedLine = Number(source.line);
+    const homeLine = selectedSide === 'away' ? -selectedLine : selectedLine;
+    const awayLine = -homeLine;
+    const title = `Asian Handicap • ${home} ${fmtReferenceLine(homeLine)} | Odds ${fmtOdds(source.homeOdds)} vs ${away} ${fmtReferenceLine(awayLine)} | Odds ${fmtOdds(source.awayOdds)}`;
+    return `<div class="bet365-reference has-odds" data-bet365-reference="1" title="${esc(title)}">
+      <span class="bet365-reference-label">Asian Handicap</span>
+      <span class="bet365-reference-dot">•</span>
+      <span class="bet365-reference-selection"><b>${esc(home)} ${fmtReferenceLine(homeLine)}</b><em>Odds ${fmtOdds(source.homeOdds)}</em></span>
+      <span class="bet365-reference-vs">vs</span>
+      <span class="bet365-reference-selection"><b>${esc(away)} ${fmtReferenceLine(awayLine)}</b><em>Odds ${fmtOdds(source.awayOdds)}</em></span>
+    </div>`;
+  }
+
   function board(match) {
     const rows = bookmakerRows(Array.isArray(match?.priceSources) ? match.priceSources : []);
     const body = rows.length
@@ -125,6 +156,8 @@
     const match = latestMatches.get(id);
     const detail = row.querySelector('.match-detail');
     if (!match || !detail) return;
+    const market = row.querySelector('.market');
+    if (market && !market.querySelector('[data-bet365-reference="1"]')) market.insertAdjacentHTML('beforeend', bet365Reference(match));
     const card = priceCard(detail);
     if (!card || card.querySelector('[data-price-board="1"]')) return;
     const heading = card.querySelector('h3');
