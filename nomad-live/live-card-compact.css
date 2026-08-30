@@ -12,6 +12,13 @@
 .teams {font-size:13px;line-height:1.25}
 .score {font-size:20px}
 
+/* Fine-pointer hover cue: the summary is clickable to expand/collapse. */
+@media (hover:hover) and (pointer:fine) {
+  .match-wrap > .match-row:hover {
+    box-shadow:inset 0 0 0 1px rgba(131,223,137,.75);
+  }
+}
+
 /* Make every currently expanded match unmistakable without changing layout. */
 .match-wrap[open] {
   box-shadow:
