@@ -1,0 +1,34 @@
+(()=>{
+'use strict';
+const defaults=Object.freeze({
+  minuteFrom:55,
+  minuteTo:88,
+  rollingWindowMinutes:5,
+  scoreDifferenceFilterEnabled:false,
+  maxScoreDifference:1,
+  attackWeight:1,
+  dangerousAttackWeight:2,
+  homePressureShareMinimum:54,
+  trendConditionsRequired:2,
+  homeEventRequired:true,
+  sotEvidenceEnabled:true,
+  sotDeltaMinimum:1,
+  shotOffEvidenceEnabled:true,
+  shotOffDeltaMinimum:1,
+  cornerEvidenceEnabled:true,
+  cornerDeltaMinimum:1,
+  evidenceMode:'ANY',
+  allowedLinesMode:'ANY',
+  allowedSelectionLines:Object.freeze([]),
+  oddsMinimum:1.80,
+  oddsMaximumEnabled:false,
+  oddsMaximum:2.40,
+  maximumPriceAgeSeconds:30,
+  oneSignalPerMatch:true
+});
+window.NOMAD342_CONFIG=Object.freeze({
+  version:'20260830-event-config-v1',
+  settingsKey:'nomadSettings342',
+  defaults
+});
+})();
