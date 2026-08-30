@@ -15,23 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Probe TotalCorner public hosts
+      - name: Probe deployed 3.42 Worker
         shell: bash
         run: |
           set -u
-          ua='Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36'
-          probe(){
-            name="$1"; url="$2"; file="/tmp/${name}.html"
-            echo "=== ${name} ${url} ==="
-            code="$(curl -sSL --compressed --max-time 30 -A "$ua" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: en-US,en;q=0.9' -o "$file" -w '%{http_code}' "$url" || true)"
-            echo "http=${code} bytes=$(wc -c <"$file" 2>/dev/null || echo 0)"
-            if [ -s "$file" ]; then
-              grep -Ein -m 8 'Live Events|Shoot on target|Shots on Target|Possession|Customize Columns|Access denied|Forbidden' "$file" || true
-              echo 'scripts:'
-              grep -Eio '<script[^>]+src=["'"'][^"'"']+["'"'][^>]*>' "$file" | head -n 40 || true
+          base='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev'
+          for path in '/health' '/contract' '/feed?force=1'; do
+            echo "=== WORKER ${path} ==="
+            body=/tmp/worker.json
+            code="$(curl -sS --max-time 40 -o "$body" -w '%{http_code}' "${base}${path}" || true)"
+            echo "http=${code} bytes=$(wc -c <"$body" 2>/dev/null || echo 0)"
+            if [ -s "$body" ]; then
+              node - "$path" "$body" <<'NODE' || { head -c 4000 "$body"; echo; }
+          const fs=require('fs');
+          const path=process.argv[2],file=process.argv[3];
+          const j=JSON.parse(fs.readFileSync(file,'utf8'));
+          if(path.startsWith('/feed')){
+            const matches=Array.isArray(j.matches)?j.matches:[];
+            const sample=matches.slice(0,5).map(m=>({id:m.id,home:m.home,away:m.away,minute:m.minute,score:m.score,source:m.source,last:m.event?.snapshots?.at?.(-1)}));
+            console.log(JSON.stringify({ok:j.ok,version:j.version,updatedAt:j.updatedAt,source:j.source,counts:j.counts,detailErrors:j.detailErrors,lastError:j.lastError,sample},null,2));
+          }else console.log(JSON.stringify(j,null,2).slice(0,12000));
+          NODE
             fi
-          }
-          probe www_today 'https://www.totalcorner.com/match/today/'
-          probe publift_today 'https://publift.totalcorner.com/match/today/'
-          probe www_stats 'https://www.totalcorner.com/stats/shelbourne-vs-ajax/198821835'
-          probe publift_stats 'https://publift.totalcorner.com/stats/shelbourne-vs-ajax/198821835'
+          done
