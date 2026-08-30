@@ -19,6 +19,19 @@
 .topnav a[href="health.html"],
 .mobile-nav a[href="settings.html"],
 .mobile-nav a[href="health.html"]{display:none!important}
+
+/* 3.41 public menu: hover/focus uses the exact same green as the active page. */
+.topnav a:hover,
+.topnav a:focus-visible,
+.mobile-nav a:hover,
+.mobile-nav a:focus-visible{
+  color:var(--green)!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  outline:none;
+}
+
 .hero h1{font-size:14.4px}
 .public-system-alert{display:none;align-items:center;gap:6px;margin-left:auto;font-size:8px;font-weight:900;letter-spacing:.04em;white-space:nowrap}
 .public-system-alert.is-visible{display:inline-flex}
