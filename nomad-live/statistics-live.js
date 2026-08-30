@@ -42,14 +42,15 @@
     const values=r?.configSnapshot?.values||r?.configSnapshot?.config;
     if(!values||typeof values!=='object')return '<span class="condition-empty">—</span>';
     const scoreDiff=values.scoreDifferenceFilterEnabled===true?`Score Diff ≤${compactNumber(values.maxScoreDifference)}`:'Score Diff OFF';
-    const homeEvent=values.homeEventRequired===false?'OFF':'ON';
+    const eventGate=values.homeEventRequired===false?'OFF':'ON';
     const evidenceMode=String(values.evidenceMode||'ANY').toUpperCase()==='ALL'?'ALL':'ANY';
     const oneSignal=values.oneSignalPerMatch===false?'OFF':'ON';
+    const sideMode=['HOME','AWAY','BOTH'].includes(String(values.targetSideMode||'HOME').toUpperCase())?String(values.targetSideMode||'HOME').toUpperCase():'HOME';
     const lines=[
       {text:`Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m · ${scoreDiff}`},
-      {text:`Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · H.P. ≥${compactNumber(values.homePressureShareMinimum)}% · Required ${compactNumber(values.trendConditionsRequired)}/3`},
-      {text:`HOME Event ${homeEvent} · Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Evidence ${evidenceMode}`},
-      {text:`${selectedAhText(values)} · ${oddsRangeText(values)}`,market:true},
+      {text:`Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · Side P. ≥${compactNumber(values.homePressureShareMinimum)}% · Required ${compactNumber(values.trendConditionsRequired)}/3`},
+      {text:`Event Gate ${eventGate} · Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Evidence ${evidenceMode}`},
+      {text:`Side ${sideMode} · ${selectedAhText(values)} · ${oddsRangeText(values)}`,market:true},
       {text:`Max Price Age ${compactNumber(values.maximumPriceAgeSeconds)}s · One Signal/Match ${oneSignal}`},
     ];
     return lines.map(line=>`<span class="condition-line${line.market?' condition-line-market':''}">${esc(line.text)}</span>`).join('');
