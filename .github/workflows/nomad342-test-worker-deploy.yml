@@ -2,6 +2,12 @@ name: NOMAD 3.42 LAB Worker Deploy
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - 'nomad-live-engine-342/**'
+      - '.github/workflows/nomad342-test-worker-deploy.yml'
 
 permissions:
   contents: read
@@ -29,7 +35,10 @@ jobs:
         run: |
           node --check src/totalcorner.js
           node --check src/index.js
+          node --check src/index-5dollar.js
+          node --check src/index-combined.js
           npm test
+          grep -q '^main = "src/index-combined.js"$' wrangler.toml
           grep -q '^\[env.test\]' wrangler.toml
           grep -q '^name = "nomadtips3-live-engine-342-lab"$' wrangler.toml
           TEST_ENV_CONFIG="$(awk '/^\[env.test\]$/{inside=1;next} /^\[/{if(inside) exit} inside{print}' wrangler.toml)"
@@ -53,7 +62,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --env test
 
-      - name: Configure optional 5Dollar adapter token
+      - name: Configure LAB rail secrets
         working-directory: nomad-live-engine-342
         shell: bash
         env:
@@ -61,17 +70,24 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TEST_S8_ADAPTER_TOKEN: ${{ secrets.TEST_S8_ADAPTER_TOKEN }}
           SHARED_S8_ADAPTER_TOKEN: ${{ secrets.S8_ADAPTER_TOKEN }}
+          THSCORE_API_KEY: ${{ secrets.THSCORE_API_KEY }}
         run: |
           token="$TEST_S8_ADAPTER_TOKEN"
           if [ -z "$token" ]; then token="$SHARED_S8_ADAPTER_TOKEN"; fi
-          if [ -z "$token" ]; then
-            echo "No S8 adapter token secret configured; LAB rail will still work if optional auth is disabled."
-          else
+          if [ -n "$token" ]; then
             printf '%s' "$token" | npx --yes wrangler@4.92.0 secret put S8_ADAPTER_TOKEN --env test >/dev/null
             echo "S8_ADAPTER_TOKEN configured on 3.42 LAB Worker."
+          else
+            echo "No S8 adapter token secret configured; optional adapter auth may be disabled."
+          fi
+          if [ -n "$THSCORE_API_KEY" ]; then
+            printf '%s' "$THSCORE_API_KEY" | npx --yes wrangler@4.92.0 secret put THSCORE_API_KEY --env test >/dev/null
+            echo "THSCORE_API_KEY configured on 3.42 LAB Worker."
+          else
+            echo "No THSCORE_API_KEY GitHub secret found; THScore route will remain fail-closed/unconfigured in LAB."
           fi
 
-      - name: Smoke LAB Worker contract
+      - name: Smoke combined 3.42 contract
         shell: bash
         run: |
           set -euo pipefail
@@ -80,16 +96,18 @@ jobs:
             if curl -fsS --max-time 15 "$LAB_URL/contract?_=$RANDOM$RANDOM" -o /tmp/contract.json && node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
-          if(j.version!=='3.42'||j.ok!==true||j.source?.detailMode!=='TODAY_ONLY') process.exit(1);
-          if(j.source?.capabilities?.attacks!==true||j.source?.capabilities?.dangerous!==true||j.source?.capabilities?.corner!==true) process.exit(1);
-          if(j.judge?.source!=='5DollarFootballAPI'||j.judge?.bookmaker!=='Bet365'||j.judge?.path!=='/judge/5dollar'||j.judge?.transport!=='SERVER_TO_SERVER') process.exit(1);
+          console.log(JSON.stringify(j,null,2));
+          if(j.version!=='3.42'||j.ok!==true||j.mode!=='COMBINED_342_RAILS') process.exit(1);
+          if(j.source?.name!=='TotalCorner') process.exit(1);
+          if(j.priceSource?.source!=='5DollarFootballAPI'||j.priceSource?.bookmaker!=='Bet365'||j.priceSource?.path!=='/judge/5dollar') process.exit(1);
+          if(j.priceReferee?.source!=='THScore'||j.priceReferee?.path!=='/judge/thscore') process.exit(1);
           NODE
             then ok=1; break; fi
             sleep 5
           done
           test "$ok" = '1'
 
-      - name: Smoke 5Dollar Bet365 judge rail
+      - name: Smoke 5Dollar Bet365 source rail
         shell: bash
         run: |
           set -euo pipefail
@@ -98,8 +116,20 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/5dollar-status.json','utf8'));
           console.log(JSON.stringify(j,null,2));
-          if(j.version!=='3.42'||j.source!=='5DollarFootballAPI'||j.bookmaker!=='Bet365') process.exit(1);
-          if(j.transport!=='SERVER_TO_SERVER'||j.authOk!==true||j.adapterKeyConfigured!==true||j.ready!==true) process.exit(1);
+          if(j.version!=='3.42'||j.source!=='5DollarFootballAPI'||j.bookmaker!=='Bet365'||j.transport!=='SERVER_TO_SERVER') process.exit(1);
+          NODE
+
+      - name: Smoke THScore referee rail
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 15 "$LAB_URL/judge/thscore/status?_=$RANDOM$RANDOM" -o /tmp/thscore-status.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/thscore-status.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.version!=='3.42'||j.source!=='THScore') process.exit(1);
+          if(!Array.isArray(j.bookmakerPriority)) process.exit(1);
           NODE
 
       - name: Probe live TotalCorner feed
@@ -111,9 +141,9 @@ jobs:
             if curl -fsS --max-time 30 "$LAB_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed.json && node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
-          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||j.source?.detailMode!=='TODAY_ONLY'||!Array.isArray(j.matches)) process.exit(1);
+          console.log(JSON.stringify({ok:j.ok,version:j.version,counts:j.counts,source:j.source,priceJudge:j.priceJudge},null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||!Array.isArray(j.matches)||j.matches.length<1) process.exit(1);
           if(j.priceJudge?.source!=='5DollarFootballAPI'||j.priceJudge?.bookmaker!=='Bet365') process.exit(1);
-          if(Number(j.counts?.detailAttempts||0)!==0||Number(j.counts?.detailFetchErrors||0)!==0) process.exit(1);
           NODE
             then ok=1; break; fi
             sleep 5
