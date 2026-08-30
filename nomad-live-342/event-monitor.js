@@ -1,14 +1,19 @@
 (()=>{
 'use strict';
-const SETTINGS_KEY='nomadSettings342';
-const DEFAULTS={minuteFrom:55,minuteTo:88,rollingWindowMinutes:5,scoreDifferenceFilterEnabled:true,maxScoreDifference:1,attackWeight:1,dangerousAttackWeight:2,homePressureShareMinimum:55,trendConditionsRequired:2,homeEventRequired:true,sotEvidenceEnabled:true,sotDeltaMinimum:1,shotOffEvidenceEnabled:true,shotOffDeltaMinimum:1,cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY'};
+const config=window.NOMAD342_CONFIG;
+if(!config?.defaults)throw new Error('NOMAD342_CONFIG missing');
+const SETTINGS_KEY=config.settingsKey;
+const DEFAULTS=config.defaults;
 const runtime=window.NOMAD342_RUNTIME||{};
 const browserHistory=new Map();
 let timer=null;
 let running=false;
 
 function settings(){
-  try{return {...DEFAULTS,...JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')}}catch{return {...DEFAULTS}}
+  try{
+    const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');
+    return {...DEFAULTS,...saved,allowedSelectionLines:Array.isArray(saved.allowedSelectionLines)?saved.allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]};
+  }catch{return {...DEFAULTS,allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]}}
 }
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
