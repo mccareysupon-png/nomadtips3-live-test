@@ -1,38 +1,26 @@
 const SOURCE='https://www.totalcorner.com';
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36';
 const json=(value,status=200)=>new Response(JSON.stringify(value,null,2),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','access-control-allow-origin':'*'}});
-
-async function fetchText(url,accept='*/*'){
-  const response=await fetch(url,{cache:'no-store',headers:{'user-agent':UA,accept,'accept-language':'en-US,en;q=0.9','referer':`${SOURCE}/match/today/`,'x-requested-with':'XMLHttpRequest'}});
-  return {url,status:response.status,contentType:response.headers.get('content-type'),text:await response.text()};
+const strip=s=>String(s||'').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,' ').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/&#39;/gi,"'").replace(/\s+/g,' ').trim();
+async function fetchToday(){
+  const response=await fetch(`${SOURCE}/match/today/?_nomad_probe=${Date.now()}`,{cache:'no-store',headers:{'user-agent':UA,'accept':'text/html,application/xhtml+xml','accept-language':'en-US,en;q=0.9'}});
+  return {status:response.status,text:await response.text()};
 }
-function parseJson(text){try{return JSON.parse(String(text).replace(/^\uFEFF/,'').trim())}catch{return null}}
-function pickFields(row){
-  const wanted=/^(id|sta|status|hg|ag|hc|ac|hyc|ayc|hrc|arc|att|attack|da|danger|shoot|shot|on|off|poss|possession|event|goal|corner|home|away)/i;
-  const out={};for(const [k,v] of Object.entries(row||{}))if(wanted.test(k))out[k]=v;return out;
+function cellShape(row){
+  return [...String(row).matchAll(/<td\b([^>]*)>([\s\S]*?)<\/td>/gi)].map((m,index)=>{
+    const attrs=m[1]||'',body=m[2]||'';
+    const cls=(attrs.match(/\bclass=["']([^"']*)["']/i)||[])[1]||'';
+    const title=(attrs.match(/\btitle=["']([^"']*)["']/i)||[])[1]||'';
+    const data=Object.fromEntries([...attrs.matchAll(/\bdata-([\w-]+)=["']([^"']*)["']/gi)].map(x=>[x[1],x[2]]));
+    const media=[...body.matchAll(/<(?:img|span|i)\b([^>]*)>/gi)].map(x=>({class:(x[1].match(/\bclass=["']([^"']*)["']/i)||[])[1]||'',title:(x[1].match(/\btitle=["']([^"']*)["']/i)||[])[1]||'',alt:(x[1].match(/\balt=["']([^"']*)["']/i)||[])[1]||'',data:Object.fromEntries([...x[1].matchAll(/\bdata-([\w-]+)=["']([^"']*)["']/gi)].map(y=>[y[1],y[2]]))})).filter(x=>x.class||x.title||x.alt||Object.keys(x.data).length);
+    return {index,class:cls,title,data,text:strip(body),media:media.slice(0,20),html:body.slice(0,1200)};
+  });
 }
-function shape(data){
-  const rows=Array.isArray(data)?data:Array.isArray(data?.data)?data.data:[];
-  const keys=[...new Set(rows.slice(0,50).flatMap(x=>Object.keys(x||{})))].sort();
-  const signalKeys=keys.filter(k=>/shoot|shot|poss|event|attack|danger|corner|goal|card|^h[gyrc]|^a[gyrc]|^on$|^off$/i.test(k));
-  return {rowCount:rows.length,keys,signalKeys,samples:rows.slice(0,12).map(pickFields)};
+function rows(html){
+  const found=[...String(html).matchAll(/<tr\b([^>]*)data-match_id=["']?(\d+)["']?([^>]*)>([\s\S]*?)<\/tr>/gi)];
+  return found.slice(0,12).map(m=>({id:m[2],attrs:`${m[1]} ${m[3]}`.trim(),cells:cellShape(m[4])}));
 }
-
 export default {async fetch(request){
-  const u=new URL(request.url);
-  if(!['/','/probe'].includes(u.pathname))return json({ok:false,error:'not_found'},404);
-  try{
-    const now=Date.now();
-    const paths=[
-      `/match/api_ongoing_matches?v=${now}`,
-      `/match/api_ongoing_matches?v=${now}&shoot_on=1&shoot_off=1&possession=1&events=1&simple_events=1`,
-    ];
-    const hits=[];
-    for(const path of paths){
-      const hit=await fetchText(`${SOURCE}${path}`,'application/json,text/plain,*/*');
-      const parsed=parseJson(hit.text);
-      hits.push({url:hit.url,status:hit.status,contentType:hit.contentType,length:hit.text.length,parsed:parsed!==null,shape:parsed!==null?shape(parsed):null,preview:parsed===null?hit.text.slice(0,1200):undefined});
-    }
-    return json({ok:true,observedAt:new Date().toISOString(),hits});
-  }catch(error){return json({ok:false,error:String(error?.stack||error)},500);}
+  const u=new URL(request.url);if(!['/','/probe'].includes(u.pathname))return json({ok:false},404);
+  try{const hit=await fetchToday();return json({ok:hit.status===200,observedAt:new Date().toISOString(),sourceStatus:hit.status,length:hit.text.length,rows:rows(hit.text)});}catch(error){return json({ok:false,error:String(error?.stack||error)},500);}
 }};
