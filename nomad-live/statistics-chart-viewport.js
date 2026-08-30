@@ -5,6 +5,7 @@
   const EVENT_NAME='nomad:statistics-records';
   const PRESETS=[50,100,200,500,'ALL'];
   const DRAG_THRESHOLD=6;
+  const WHEEL_THROTTLE_MS=110;
   let rawRecords=[];
   let series=[];
   let cache={ema:[],bb:[],rsi:[],dd:[]};
@@ -14,7 +15,7 @@
   let observer=null,resizeObserver=null,frame=0,mounted=false;
   let viewport={size:readSaved(),end:0,followLatest:true};
   let hitRegions=[],hoverKey=null,hoverX=null,hoverY=null,selectedKey=null;
-  let pointerDown=false,pointerId=null,dragStartX=0,dragStartEnd=0,dragMoved=false,suppressClick=false;
+  let pointerDown=false,pointerId=null,dragStartX=0,dragStartEnd=0,dragMoved=false,suppressClick=false,lastWheelAt=0;
 
   function normalizeSize(value){
     if(String(value).toUpperCase()==='ALL')return 'ALL';
@@ -38,6 +39,16 @@
     viewport.size=normalizeSize(value);viewport.end=series.length;viewport.followLatest=true;saveSize(viewport.size);
     clearHover();hideTooltip();syncControls();scheduleDraw();
   }
+  function setSizeAt(value,ratio=.5){
+    const next=normalizeSize(value),total=series.length,old=resolveViewport();
+    if(next==='ALL'||!total||total<=Number(next)){setSize(next);return;}
+    const nextCount=Math.min(Number(next),total),anchorRatio=Math.max(0,Math.min(1,Number(ratio)||0));
+    const anchorIndex=old.count?old.start+(anchorRatio*Math.max(0,old.count-1)):Math.max(0,total-1);
+    let start=Math.round(anchorIndex-(anchorRatio*Math.max(0,nextCount-1)));
+    start=Math.max(0,Math.min(total-nextCount,start));
+    viewport.size=next;viewport.end=start+nextCount;viewport.followLatest=viewport.end===total;saveSize(viewport.size);
+    clearHover();hideTooltip();syncControls();scheduleDraw();
+  }
   function setEnd(end){
     const view=resolveViewport();
     if(!view.canPan){viewport.end=series.length;viewport.followLatest=true;}
@@ -51,6 +62,15 @@
   function zoomStep(direction){
     const view=resolveViewport();let index=PRESETS.findIndex(item=>String(item)===String(view.size));if(index<0)index=PRESETS.length-1;
     const next=Math.max(0,Math.min(PRESETS.length-1,index+direction));if(next!==index)setSize(PRESETS[next]);
+  }
+  function wheelZoom(event){
+    if(pointerDown||!series.length||event.ctrlKey||event.metaKey||!Number.isFinite(Number(event.deltaY))||Number(event.deltaY)===0)return;
+    const view=resolveViewport(),index=PRESETS.findIndex(item=>String(item)===String(view.size));if(index<0)return;
+    const direction=Number(event.deltaY)<0?-1:1,next=Math.max(0,Math.min(PRESETS.length-1,index+direction));if(next===index)return;
+    const rect=canvas.getBoundingClientRect(),left=48,right=Math.max(58,rect.width-10),x=event.clientX-rect.left;if(x<left||x>right)return;
+    event.preventDefault();
+    const now=performance.now();if(now-lastWheelAt<WHEEL_THROTTLE_MS)return;lastWheelAt=now;
+    const ratio=(x-left)/Math.max(1,right-left);setSizeAt(PRESETS[next],ratio);
   }
 
   function buildFullSeries(){
@@ -176,7 +196,7 @@
     bbCanvas=document.createElement('canvas');bbCanvas.className='statistics-viewport-bollinger-overlay';bbCanvas.setAttribute('aria-hidden','true');surface.appendChild(bbCanvas);
     emaCanvas=document.createElement('canvas');emaCanvas.className='statistics-viewport-ema-overlay';emaCanvas.setAttribute('aria-hidden','true');surface.appendChild(emaCanvas);
     chart.classList.add('has-statistics-viewport-engine');createControl();
-    canvas.addEventListener('pointerdown',beginPan);canvas.addEventListener('pointermove',movePan);canvas.addEventListener('pointerup',endPan);canvas.addEventListener('pointercancel',endPan);canvas.addEventListener('mousemove',mouseMove,{passive:true});canvas.addEventListener('mouseleave',()=>{if(!pointerDown){clearHover();scheduleDraw();}},{passive:true});canvas.addEventListener('click',clickCanvas);
+    canvas.addEventListener('pointerdown',beginPan);canvas.addEventListener('pointermove',movePan);canvas.addEventListener('pointerup',endPan);canvas.addEventListener('pointercancel',endPan);canvas.addEventListener('mousemove',mouseMove,{passive:true});canvas.addEventListener('mouseleave',()=>{if(!pointerDown){clearHover();scheduleDraw();}},{passive:true});canvas.addEventListener('click',clickCanvas);canvas.addEventListener('wheel',wheelZoom,{passive:false});
     if('ResizeObserver'in window){resizeObserver=new ResizeObserver(scheduleDraw);resizeObserver.observe(surface);resizeObserver.observe(rsiPanel);resizeObserver.observe(ddPanel);}else window.addEventListener('resize',scheduleDraw,{passive:true});
     mounted=true;buildFullSeries();syncControls();return true;
   }
