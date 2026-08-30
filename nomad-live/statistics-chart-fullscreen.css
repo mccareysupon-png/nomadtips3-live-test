@@ -1,0 +1,20 @@
+.statistics-chart-fullscreen-control{display:flex;align-items:flex-start;justify-content:flex-end}
+.statistics-chart-fullscreen-button{width:30px;height:24px;padding:0;border:1px solid rgba(157,168,161,.18);background:#171a18;color:#aeb7b0;display:grid;place-items:center;cursor:pointer;border-radius:4px}
+.statistics-chart-fullscreen-button svg{width:12px;height:12px;display:block;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.statistics-chart-fullscreen-button:hover,.statistics-chart-fullscreen-button:focus-visible,.statistics-chart-fullscreen-button[aria-pressed="true"]{border-color:rgba(111,189,125,.55);color:#d8e2da;outline:none}
+body.chart-fullscreen-fallback-lock{overflow:hidden}
+.cumulative-unit-chart:fullscreen,.cumulative-unit-chart.is-chart-fullscreen-native,.cumulative-unit-chart.is-chart-fullscreen-fallback{box-sizing:border-box;width:100%;height:100%;max-width:none;margin:0;background:#111312;display:grid;grid-template-rows:minmax(0,1fr) auto auto;overflow:hidden}
+.cumulative-unit-chart:fullscreen,.cumulative-unit-chart.is-chart-fullscreen-native{padding:max(0px,env(safe-area-inset-top)) max(0px,env(safe-area-inset-right)) max(0px,env(safe-area-inset-bottom)) max(0px,env(safe-area-inset-left))}
+.cumulative-unit-chart.is-chart-fullscreen-fallback{position:fixed;inset:0;z-index:1000;width:100vw;height:100dvh;padding:max(0px,env(safe-area-inset-top)) max(0px,env(safe-area-inset-right)) max(0px,env(safe-area-inset-bottom)) max(0px,env(safe-area-inset-left))}
+.cumulative-unit-chart:fullscreen .cumulative-unit-plot,.cumulative-unit-chart.is-chart-fullscreen-native .cumulative-unit-plot,.cumulative-unit-chart.is-chart-fullscreen-fallback .cumulative-unit-plot{height:auto;min-height:0}
+.cumulative-unit-chart:fullscreen .cumulative-unit-explanation,.cumulative-unit-chart.is-chart-fullscreen-native .cumulative-unit-explanation,.cumulative-unit-chart.is-chart-fullscreen-fallback .cumulative-unit-explanation{display:none}
+.cumulative-unit-chart:fullscreen .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-native .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-fallback .statistics-indicator-subpanel{height:112px}
+.cumulative-unit-chart:fullscreen .cumulative-unit-head,.cumulative-unit-chart.is-chart-fullscreen-native .cumulative-unit-head,.cumulative-unit-chart.is-chart-fullscreen-fallback .cumulative-unit-head{padding:10px 12px 4px}
+@media(max-width:700px){
+  .statistics-chart-fullscreen-button{width:28px;height:22px}
+  .cumulative-unit-chart:fullscreen .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-native .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-fallback .statistics-indicator-subpanel{height:92px}
+  .cumulative-unit-chart:fullscreen .cumulative-unit-head,.cumulative-unit-chart.is-chart-fullscreen-native .cumulative-unit-head,.cumulative-unit-chart.is-chart-fullscreen-fallback .cumulative-unit-head{padding:8px 7px 3px}
+}
+@media(max-height:560px){
+  .cumulative-unit-chart:fullscreen .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-native .statistics-indicator-subpanel,.cumulative-unit-chart.is-chart-fullscreen-fallback .statistics-indicator-subpanel{height:76px}
+}
