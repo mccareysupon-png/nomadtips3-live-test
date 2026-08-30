@@ -6,7 +6,7 @@
   border-bottom:1px solid rgba(255,255,255,.04);
 }
 .topbar-inner.public-linked-nav{
-  max-width:1120px;
+  max-width:1180px;
   min-height:64px;
   margin:auto;
   padding:0 16px;
@@ -34,11 +34,11 @@
 @media(max-width:700px){
   .topbar-inner.public-linked-nav{
     min-height:58px;
-    padding:0 12px;
-    justify-content:center;
+    padding:0 8px;
+    justify-content:flex-start;
   }
   .topbar-inner.public-linked-nav .brand{
     font-size:20px;
-    text-align:center;
+    text-align:left;
   }
 }
