@@ -4,7 +4,7 @@ const KEY='nomad341OddsDisplayV1',MODES=new Set(['decimal','american','fractiona
 let mode=(()=>{try{const v=String(localStorage.getItem(KEY)||'').toLowerCase();return MODES.has(v)?v:'decimal'}catch{return'decimal'}})(),applying=false;
 const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
 const american=v=>{if(!finite(v)||Number(v)<=1)return'—';const d=Number(v),a=d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));return a>0?`+${a}`:String(a)};
-const gcd=(a,b)=>{a=Math.abs(Math.trunc(a));b=Math.abs(Math.trunc(b));while(b){const t=b;b;a=t}return a||1};
+const gcd=(a,b)=>{a=Math.abs(Math.trunc(a));b=Math.abs(Math.trunc(b));while(b){const t=b;b=a%b;a=t}return a||1};
 const fractional=v=>{if(!finite(v)||Number(v)<=1)return'—';const target=Number(v)-1;for(let den=1;den<=100;den++){const num=Math.round(target*den);if(num<=0)continue;if(Math.abs(num/den-target)<=0.0050000001){const g=gcd(num,den);return`${num/g}/${den/g}`}}const num=Math.max(1,Math.round(target*100)),g=gcd(num,100);return`${num/g}/${100/g}`};
 const decimal=v=>finite(v)?Number(v).toFixed(2):'—';
 const format=v=>mode==='american'?american(v):mode==='fractional'?fractional(v):decimal(v);
