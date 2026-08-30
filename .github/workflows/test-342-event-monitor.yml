@@ -101,3 +101,22 @@ jobs:
             rm -f "$headers" "$body"
           done
           exit 0
+      - name: Probe deployed Live page in Chrome
+        shell: bash
+        run: |
+          set +e
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          echo "chrome=${chrome:-missing}"
+          if [ -z "$chrome" ]; then exit 0; fi
+          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html'
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=16000 --enable-logging=stderr --dump-dom "$url" >/tmp/nomad342-dom.html 2>/tmp/nomad342-chrome.log
+          rc=$?
+          echo "chrome_rc=$rc"
+          echo '--- live status DOM ---'
+          grep -oE 'TotalCorner LIVE[^<]*|3\.42 EVENT FEED WAIT[^<]*|Waiting for isolated 3\.42 TotalCorner event engine\.|Connecting TotalCorner event feed…' /tmp/nomad342-dom.html | head -20 || true
+          echo '--- rendered cards ---'
+          count="$(grep -o 'class="signal-card event-compact' /tmp/nomad342-dom.html | wc -l)"
+          echo "rendered_cards=$count"
+          echo '--- browser errors ---'
+          grep -Ei 'error|failed|cors|uncaught|exception' /tmp/nomad342-chrome.log | tail -80 || true
+          exit 0
