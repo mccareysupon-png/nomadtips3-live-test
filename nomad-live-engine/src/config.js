@@ -130,7 +130,11 @@ export function validateEditableConfig(input={},options={}){
   }
   if(config.minuteFrom>config.minuteTo) errors.push('Minute From must not be later than Minute To');
   if(config.attackWeight===0&&config.dangerousAttackWeight===0) errors.push('Attack Weight and Dangerous Attack Weight cannot both be zero');
-  if(config.homeEventRequired&&!config.sotEvidenceEnabled&&!config.shotOffEvidenceEnabled&&!config.cornerEvidenceEnabled) errors.push('Enable at least one selected-side evidence type while New Event is required');
+  if(config.homeEventRequired&&!config.sotEvidenceEnabled&&!config.shotOffEvidenceEnabled&&!config.cornerEvidenceEnabled){
+    errors.push(config.targetSideMode==='HOME'
+      ? 'Enable at least one HOME evidence type while New HOME Event is required'
+      : 'Enable at least one selected-side evidence type while New Event is required');
+  }
   if(config.allowedLinesMode==='SELECTED'&&!config.allowedSelectionLines.length) errors.push('Choose at least one selected-side AH line or use ANY');
   if(config.oddsMaximumEnabled){
     if(config.oddsMaximum==null) errors.push('Maximum Odds is required when its switch is enabled');
