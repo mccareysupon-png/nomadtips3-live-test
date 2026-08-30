@@ -1,0 +1,35 @@
+name: NOMAD 3.42 Page Diagnose
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomad342-page-diagnose.yml'
+
+jobs:
+  diagnose-page:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open deployed 3.42 page in Chrome
+        shell: bash
+        run: |
+          set +e
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          echo "CHROME=${chrome:-missing}"
+          test -n "$chrome" || exit 0
+          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html'
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=26000 --enable-logging=stderr --dump-dom "$url" >/tmp/nomad342-dom.html 2>/tmp/nomad342-chrome.log
+          rc=$?
+          echo "CHROME_RC=$rc"
+          echo "EVENT_CARDS=$(grep -o 'class=\"signal-card event-compact' /tmp/nomad342-dom.html | wc -l)"
+          echo "SIGNAL_CARDS=$(grep -o 'class=\"signal-card' /tmp/nomad342-dom.html | wc -l)"
+          echo '--- STATUS TEXT ---'
+          grep -oE 'TotalCorner LIVE[^<]*|3\.42 EVENT FEED WAIT[^<]*|Waiting for isolated 3\.42 TotalCorner event engine\.|Connecting TotalCorner event feed…|[0-9]+ live matches[^<]*' /tmp/nomad342-dom.html | head -30 || true
+          echo '--- DOM DATA SAMPLE ---'
+          grep -oE 'Chelsea|Brighton|Rakow Czestochowa|Jagiellonia Bialystok|LNZ Cherkasy|Veres Rivne' /tmp/nomad342-dom.html | sort | uniq -c || true
+          echo '--- BROWSER ERRORS ---'
+          grep -Ei 'error|failed|cors|uncaught|exception|ERR_' /tmp/nomad342-chrome.log | tail -120 || true
+          echo '--- SCRIPT REFS ---'
+          grep -oE '<script[^>]+src="[^"]+"' /tmp/nomad342-dom.html | tail -30 || true
+          exit 0
