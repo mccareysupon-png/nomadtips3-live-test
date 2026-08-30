@@ -19,8 +19,8 @@
     0 0 12px rgba(131,223,137,.12);
 }
 
-/* Separate the expanded detail from its summary with a subtle green divider. */
-.match-wrap[open]:not(.signal) > .match-detail {
+/* Separate every expanded detail panel from its summary with the same subtle green divider. */
+.match-wrap[open] > .match-detail {
   border-top-color:rgba(131,223,137,.45);
 }
 
