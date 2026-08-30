@@ -47,7 +47,8 @@ jobs:
               await page.goto('https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html?toggle-regression=1',{waitUntil:'networkidle2',timeout:60000});
               await page.waitForSelector('.event-compact',{timeout:45000});
               const id=await page.$eval('.event-compact',el=>el.dataset.matchId);
-              const selector=`.event-compact[data-match-id="${CSS.escape(id)}"]`;
+              const safeId=String(id).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
+              const selector=`.event-compact[data-match-id="${safeId}"]`;
               await page.click(selector);
               await page.waitForFunction(sel=>document.querySelector(sel)?.classList.contains('expanded'),{},selector);
               const expandedAfterOpen=await page.$$eval('.event-compact.expanded',els=>els.length);
