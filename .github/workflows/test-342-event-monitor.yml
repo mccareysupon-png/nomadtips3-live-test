@@ -7,6 +7,8 @@ on:
       - 'nomad-live-342/runtime-config.js'
       - 'nomad-live-342/event-config.js'
       - 'nomad-live-342/event-monitor.js'
+      - 'nomad-live-342/event-analytics.js'
+      - 'nomad-live-342/event-analytics.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -17,6 +19,8 @@ on:
       - 'nomad-live-342/runtime-config.js'
       - 'nomad-live-342/event-config.js'
       - 'nomad-live-342/event-monitor.js'
+      - 'nomad-live-342/event-analytics.js'
+      - 'nomad-live-342/event-analytics.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -36,6 +40,7 @@ jobs:
           node --check nomad-live-342/runtime-config.js
           node --check nomad-live-342/event-config.js
           node --check nomad-live-342/event-monitor.js
+          node --check nomad-live-342/event-analytics.js
           node --check nomad-live-342/app.js
       - name: Event monitor contract
         run: |
@@ -62,16 +67,26 @@ jobs:
           const settings = fs.readFileSync('nomad-live-342/settings.html','utf8');
           const health = fs.readFileSync('nomad-live-342/health.html','utf8');
           const monitor = fs.readFileSync('nomad-live-342/event-monitor.js','utf8');
+          const analytics = fs.readFileSync('nomad-live-342/event-analytics.js','utf8');
+          const analyticsCss = fs.readFileSync('nomad-live-342/event-analytics.css','utf8');
           const app = fs.readFileSync('nomad-live-342/app.js','utf8');
 
           const indexConfig = index.indexOf('event-config.js');
           const indexMonitor = index.indexOf('event-monitor.js');
+          const indexAnalytics = index.indexOf('event-analytics.js');
           assert(indexConfig >= 0 && indexMonitor > indexConfig, 'Live must load shared config before event monitor');
+          assert(indexAnalytics > indexMonitor, 'expanded analytics layer must load after core event monitor');
+          assert(index.includes('event-analytics.css'), 'Live must load isolated expanded analytics styles');
           assert(!index.includes('fivedollar-live.js'), 'Live Event Monitor must not load 5Dollar evaluator');
           assert(!index.includes('ui-5dollar-source.js'), 'Live Event Monitor must not load 5Dollar UI');
           assert(!index.includes('bet365-observer.js'), 'Live Event Monitor must not load browser Bet365 observer');
           assert(!index.includes('m88-observer.js'), 'Live Event Monitor must not load M88 observer');
           assert(monitor.includes('NOMAD342_CONFIG'), 'event monitor must consume shared config');
+          assert(analytics.includes('nomad-analytics-layer'), 'analytics layer must remain isolated from core renderer');
+          assert(analytics.includes('MATCH PULSE'), 'analytics layer must expose Match Pulse');
+          assert(analytics.includes('MOMENTUM PULSE'), 'analytics layer must expose Momentum Pulse');
+          assert(analytics.includes('RADAR COMPARISON'), 'analytics layer must expose Radar Comparison');
+          assert(!analyticsCss.toLowerCase().includes('#f2d21b'), 'analytics layer must not use legacy yellow');
           assert(app.includes('NOMAD342_CONFIG'), 'settings/health app must consume shared config');
 
           for (const [name, html] of [['Settings',settings],['Health',health]]) {
