@@ -154,7 +154,6 @@
 .bet365-reference-vs {
   grid-column:2;
   grid-row:2;
-  flex:none;
   color:#6f7a71;
   font-size:7px;
   font-weight:900;
@@ -162,6 +161,7 @@
 }
 
 .bet365-reference-selection {
+  grid-row:2;
   display:grid;
   grid-template-columns:minmax(0,1fr) auto;
   align-items:baseline;
@@ -169,16 +169,6 @@
   min-width:0;
   max-width:100%;
   overflow:hidden;
-}
-
-.bet365-reference-selection:first-of-type {
-  grid-column:1;
-  grid-row:2;
-}
-
-.bet365-reference-selection:last-of-type {
-  grid-column:3;
-  grid-row:2;
 }
 
 .bet365-reference-selection b {
