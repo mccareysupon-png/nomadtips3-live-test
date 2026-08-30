@@ -54,7 +54,9 @@ const compactSourceRow=source=>{
 };
 const compactSelectedRow=(selected,side)=>{
   const position=selected?.position??(String(selected?.id||'').replace(/\D/g,'')||'—');
-  const value=selected?`${sideLabel(selected.side||side)} · ${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
+  const selectedSide=sideKey(selected?.side||side);
+  const sidePrefix=selectedSide==='away'?'AWAY · ':'';
+  const value=selected?`${sidePrefix}${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
   return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">SELECTED${selected?` · S${position}`:''}</span><span class="price-selected-value">${esc(value)}</span></span>`;
 };
 const signalLock=m=>m?.signalStatus==='LOCKED'&&m?.signalLock?.status==='LOCKED'?m.signalLock:null;
