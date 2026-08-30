@@ -1,14 +1,26 @@
-name: Test 3.42 5Dollar price path
+name: Test 3.42 Price Module
 
 on:
   push:
     branches: [main]
     paths:
-      - 'nomad-live-342/**'
+      - 'nomad-live-342/runtime-config.js'
+      - 'nomad-live-342/event-config.js'
+      - 'nomad-live-342/fivedollar-live.js'
+      - 'nomad-live-342/ui-5dollar-source.js'
+      - 'nomad-live-342/app.js'
+      - 'nomad-live-342/settings.html'
+      - 'nomad-live-342/health.html'
       - '.github/workflows/test-342-5dollar-price.yml'
   pull_request:
     paths:
-      - 'nomad-live-342/**'
+      - 'nomad-live-342/runtime-config.js'
+      - 'nomad-live-342/event-config.js'
+      - 'nomad-live-342/fivedollar-live.js'
+      - 'nomad-live-342/ui-5dollar-source.js'
+      - 'nomad-live-342/app.js'
+      - 'nomad-live-342/settings.html'
+      - 'nomad-live-342/health.html'
       - '.github/workflows/test-342-5dollar-price.yml'
 
 jobs:
@@ -22,28 +34,25 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check nomad-live-342/runtime-config.js
+          node --check nomad-live-342/event-config.js
           node --check nomad-live-342/fivedollar-live.js
           node --check nomad-live-342/ui-5dollar-source.js
           node --check nomad-live-342/app.js
-      - name: Active source contract
+      - name: Price module contract
         run: |
           node <<'NODE'
           const fs = require('fs');
           const assert = require('assert');
-          const index = fs.readFileSync('nomad-live-342/index.html','utf8');
           const runtime = fs.readFileSync('nomad-live-342/runtime-config.js','utf8');
           const live = fs.readFileSync('nomad-live-342/fivedollar-live.js','utf8');
           const settings = fs.readFileSync('nomad-live-342/settings.html','utf8');
           const health = fs.readFileSync('nomad-live-342/health.html','utf8');
-          assert(index.includes('fivedollar-live.js'), 'active Live page must load fivedollar-live.js');
-          assert(!index.includes('m88-observer.js'), 'active Live page must not load M88 observer');
-          assert(!index.includes('bet365-observer.js'), 'active Live page must not load browser Bet365 observer');
-          assert(!index.includes('totalcorner-live.js'), 'active Live page must not load old browser-referee evaluator');
-          assert(runtime.includes('nomadtips3-live-engine-5dollar'), 'runtime must point to 5Dollar adapter');
-          assert(live.includes("source:'5DollarFootballAPI'"), 'live evaluator must identify 5Dollar provider');
-          assert(live.includes("bookmaker:'Bet365'"), 'live evaluator must identify Bet365 bookmaker');
-          assert(settings.includes('5DollarFootballAPI') && settings.includes('Bet365'), 'settings must show provider and bookmaker');
+          assert(runtime.includes('nomadtips3-live-engine-5dollar'), 'runtime must retain the optional 5Dollar adapter endpoint');
+          assert(live.includes("source:'5DollarFootballAPI'"), 'price evaluator must identify 5Dollar provider');
+          assert(live.includes("bookmaker:'Bet365'"), 'price evaluator must identify Bet365 bookmaker');
+          assert(settings.includes('5DollarFootballAPI') && settings.includes('Bet365'), 'settings must retain the inactive price-module controls');
+          assert(health.includes('5DollarFootballAPI') && health.includes('Bet365'), 'health must retain price-module diagnostics');
           assert(!settings.includes('bet365-observer.js'), 'settings must not load browser Bet365 observer');
           assert(!health.includes('bet365-observer.js'), 'health must not load browser Bet365 observer');
-          console.log('3.42 5Dollar / Bet365 active contract OK');
+          console.log('3.42 optional price module contract OK');
           NODE
