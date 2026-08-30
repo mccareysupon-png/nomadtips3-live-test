@@ -1,4 +1,5 @@
 /* 3.42 Live Score & Event Monitor — compact scoreboard bars, expandable event detail. */
+body[data-page="live"] .hero,body[data-page="live"] .status-grid{display:none!important}
 .brand::after{display:none!important;content:none!important}.hero{border:0}.hero h1{font-size:24px}.hero p{max-width:760px}.mode{border-left:1px solid rgba(150,158,151,.10)}
 .status-grid{grid-template-columns:repeat(4,1fr)}.metric{border:0;border-radius:8px;background:linear-gradient(145deg,#1d231d,#151a15);box-shadow:none}.metric strong{color:#eef4ee}.metric.event-metric strong{color:var(--green)}
 .nomad-scanner-panel{border:0;background:transparent;padding:0}.nomad-scanner-panel .panel-head{padding:4px 2px 9px;margin-bottom:7px;border-color:rgba(150,158,151,.08)}.match-list{gap:5px}
