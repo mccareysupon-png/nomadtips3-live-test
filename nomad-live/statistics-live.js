@@ -9,6 +9,26 @@
   const when=s=>{try{const d=new Date(s);if(Number.isNaN(d.getTime()))return '—';const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});const time=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});return `${date} · ${time}`;}catch{return '—'}};
   const clsResult=r=>/WIN/.test(r||'')?'win':/LOSS/.test(r||'')?'loss':'';
   const recordBookmaker=r=>r?.bookmaker||'—';
+  const compactNumber=value=>{
+    const n=Number(value);
+    if(!Number.isFinite(n))return '—';
+    return Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
+  };
+  const conditionHtml=r=>{
+    const values=r?.configSnapshot?.values||r?.configSnapshot?.config;
+    if(!values||typeof values!=='object')return '<span class="condition-empty">—</span>';
+    const evidenceValue=(enabled,minimum)=>enabled===false?'0':compactNumber(minimum??1);
+    const enabledEvidence=[values.cornerEvidenceEnabled,values.sotEvidenceEnabled,values.shotOffEvidenceEnabled].filter(value=>value!==false).length;
+    const configuredMode=String(values.evidenceMode||'ANY').toUpperCase()==='ALL'?'ALL':'ANY';
+    const evidenceRequired=values.homeEventRequired===false?0:(configuredMode==='ALL'?enabledEvidence:1);
+    const evidenceMode=values.homeEventRequired===false?'OFF':configuredMode;
+    const lines=[
+      `Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m · H.P. ≥${compactNumber(values.homePressureShareMinimum)}%`,
+      `Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Required ${compactNumber(values.trendConditionsRequired)}/3`,
+      `Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · Evidence Required ${evidenceMode}=${evidenceRequired}`,
+    ];
+    return lines.map(line=>`<span class="condition-line">${esc(line)}</span>`).join('');
+  };
   const metrics=[...document.querySelectorAll('.summary-grid .metric strong')];
   const tbody=document.querySelector('.data-table tbody');
   const muted=document.querySelector('.panel-head .muted');
@@ -34,7 +54,7 @@
     const fin=r.settlement?.finalScore;
     const res=r.settlement?.result||'PENDING';
     const c=clsResult(res);
-    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
+    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td class="condition-cell">${conditionHtml(r)}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
   };
   const summarizeRecords=records=>{
     const settled=records.filter(item=>item?.settlement);
@@ -62,7 +82,7 @@
       const d=await r.json();
       const records=Array.isArray(d.records)?d.records:[];
       const publicStats=summarizeRecords(records);
-      const rowsHtml=records.length?records.map(rowHtml).join(''):'<tr><td colspan="10">No locked signals yet.</td></tr>';
+      const rowsHtml=records.length?records.map(rowHtml).join(''):'<tr><td colspan="11">No locked signals yet.</td></tr>';
       const summaryKey=JSON.stringify(publicStats);
 
       if(rowsHtml!==lastRowsHtml){
