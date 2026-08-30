@@ -1,0 +1,40 @@
+name: NOMAD 3.42 Stable Rails Diagnose
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - '.github/workflows/nomad342-stable-rails-diagnose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Compare stable 3.42 and price adapter routes
+        shell: bash
+        run: |
+          set +e
+          targets=(
+            'https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev/health'
+            'https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev/feed?force=1'
+            'https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev/judge/5dollar/status'
+            'https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev/judge/thscore/status'
+            'https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev/health'
+          )
+          for url in "${targets[@]}"; do
+            echo "===== ${url} ====="
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 10 --max-time 35 -o "$body" -w '%{http_code}' "$url")"
+            rc=$?
+            echo "curl_rc=${rc} http=${code}"
+            head -c 5000 "$body" || true
+            echo
+            rm -f "$body"
+          done
+          exit 0
