@@ -14,20 +14,45 @@
     if(!Number.isFinite(n))return '—';
     return Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
   };
+  const signedNumber=value=>{
+    const n=Number(value);
+    if(!Number.isFinite(n))return '—';
+    const text=compactNumber(n);
+    return n>0?`+${text}`:text;
+  };
+  const evidenceValue=(enabled,minimum)=>enabled===false?'OFF':compactNumber(minimum??1);
+  const selectedAhText=values=>{
+    const mode=String(values?.allowedLinesMode||'ANY').toUpperCase();
+    if(mode!=='SELECTED')return 'AH ANY';
+    const raw=Array.isArray(values?.allowedSelectionLines)?values.allowedSelectionLines:[];
+    const lines=[...new Set(raw.map(Number).filter(Number.isFinite))].sort((a,b)=>a-b);
+    if(!lines.length)return 'AH SELECTED';
+    if(lines.length===1)return `AH ${signedNumber(lines[0])}`;
+    const contiguous=lines.every((value,index)=>index===0||Math.abs(value-lines[index-1]-.25)<1e-9);
+    if(contiguous)return `AH ${signedNumber(lines[0])}–${signedNumber(lines.at(-1))}`;
+    return `AH ${lines.map(signedNumber).join(',')}`;
+  };
+  const oddsRangeText=values=>{
+    const min=compactNumber(values?.oddsMinimum);
+    const maxEnabled=values?.oddsMaximumEnabled===true;
+    const max=compactNumber(values?.oddsMaximum);
+    return maxEnabled&&max!=='—'?`Odds ${min}–${max}`:`Odds ≥${min}`;
+  };
   const conditionHtml=r=>{
     const values=r?.configSnapshot?.values||r?.configSnapshot?.config;
     if(!values||typeof values!=='object')return '<span class="condition-empty">—</span>';
-    const evidenceValue=(enabled,minimum)=>enabled===false?'0':compactNumber(minimum??1);
-    const enabledEvidence=[values.cornerEvidenceEnabled,values.sotEvidenceEnabled,values.shotOffEvidenceEnabled].filter(value=>value!==false).length;
-    const configuredMode=String(values.evidenceMode||'ANY').toUpperCase()==='ALL'?'ALL':'ANY';
-    const evidenceRequired=values.homeEventRequired===false?0:(configuredMode==='ALL'?enabledEvidence:1);
-    const evidenceMode=values.homeEventRequired===false?'OFF':configuredMode;
+    const scoreDiff=values.scoreDifferenceFilterEnabled===true?`Score Diff ≤${compactNumber(values.maxScoreDifference)}`:'Score Diff OFF';
+    const homeEvent=values.homeEventRequired===false?'OFF':'ON';
+    const evidenceMode=String(values.evidenceMode||'ANY').toUpperCase()==='ALL'?'ALL':'ANY';
+    const oneSignal=values.oneSignalPerMatch===false?'OFF':'ON';
     const lines=[
-      `Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m`,
-      `Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · H.P. ≥${compactNumber(values.homePressureShareMinimum)}% · Required ${compactNumber(values.trendConditionsRequired)}/3`,
-      `Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Evidence Required ${evidenceMode}=${evidenceRequired}`,
+      {text:`Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m · ${scoreDiff}`},
+      {text:`Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · H.P. ≥${compactNumber(values.homePressureShareMinimum)}% · Required ${compactNumber(values.trendConditionsRequired)}/3`},
+      {text:`HOME Event ${homeEvent} · Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Evidence ${evidenceMode}`},
+      {text:`${selectedAhText(values)} · ${oddsRangeText(values)}`,market:true},
+      {text:`Max Price Age ${compactNumber(values.maximumPriceAgeSeconds)}s · One Signal/Match ${oneSignal}`},
     ];
-    return lines.map(line=>`<span class="condition-line">${esc(line)}</span>`).join('');
+    return lines.map(line=>`<span class="condition-line${line.market?' condition-line-market':''}">${esc(line.text)}</span>`).join('');
   };
   const metrics=[...document.querySelectorAll('.summary-grid .metric strong')];
   const tbody=document.querySelector('.data-table tbody');
