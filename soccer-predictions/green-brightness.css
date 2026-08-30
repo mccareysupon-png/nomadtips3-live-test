@@ -22,13 +22,13 @@
 }
 .result-card.win{border-left-color:rgba(151,255,158,.74)!important}
 
-/* Navigation/link state: bright NOMAD green on hover and keep the current page bright green. */
+/* Navigation/link state: bright NOMAD green, clean text only — no side glow. */
 a[href],
 .topnav a,
 .footer-nav a,
 .day-tab,
 .scope-tab{
-  transition:color .16s ease,text-shadow .16s ease,border-color .16s ease,background-color .16s ease;
+  transition:color .16s ease,border-color .16s ease,background-color .16s ease;
 }
 
 .topnav a.active,
@@ -37,12 +37,12 @@ a[aria-current="page"],
 .day-tab.active,
 .scope-tab.active{
   color:#a8ffae!important;
-  text-shadow:0 0 6px rgba(151,255,158,.95),0 0 14px rgba(151,255,158,.68)!important;
+  text-shadow:none!important;
 }
 .day-tab.active span,
 .scope-tab.active span{
   color:#a8ffae!important;
-  text-shadow:0 0 6px rgba(151,255,158,.9),0 0 12px rgba(151,255,158,.58)!important;
+  text-shadow:none!important;
 }
 
 @media (hover:hover) and (pointer:fine){
@@ -52,12 +52,12 @@ a[aria-current="page"],
   .day-tab:hover,
   .scope-tab:hover{
     color:#b4ffb9!important;
-    text-shadow:0 0 6px rgba(151,255,158,1),0 0 16px rgba(151,255,158,.78)!important;
+    text-shadow:none!important;
   }
   .day-tab:hover span,
   .scope-tab:hover span{
     color:#b4ffb9!important;
-    text-shadow:0 0 6px rgba(151,255,158,.95),0 0 14px rgba(151,255,158,.68)!important;
+    text-shadow:none!important;
   }
 }
 
