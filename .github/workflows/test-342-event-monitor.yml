@@ -11,8 +11,6 @@ on:
       - 'nomad-live-342/event-analytics.css'
       - 'nomad-live-342/event-graph-live.js'
       - 'nomad-live-342/event-graph-live.css'
-      - 'nomad-live-342/event-market-1x2.js'
-      - 'nomad-live-342/event-market-1x2.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -27,8 +25,6 @@ on:
       - 'nomad-live-342/event-analytics.css'
       - 'nomad-live-342/event-graph-live.js'
       - 'nomad-live-342/event-graph-live.css'
-      - 'nomad-live-342/event-market-1x2.js'
-      - 'nomad-live-342/event-market-1x2.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -50,7 +46,6 @@ jobs:
           node --check nomad-live-342/event-monitor.js
           node --check nomad-live-342/event-analytics.js
           node --check nomad-live-342/event-graph-live.js
-          node --check nomad-live-342/event-market-1x2.js
           node --check nomad-live-342/app.js
       - name: Event monitor contract
         run: |
@@ -81,22 +76,17 @@ jobs:
           const analyticsCss = fs.readFileSync('nomad-live-342/event-analytics.css','utf8');
           const graphLive = fs.readFileSync('nomad-live-342/event-graph-live.js','utf8');
           const graphLiveCss = fs.readFileSync('nomad-live-342/event-graph-live.css','utf8');
-          const market1x2 = fs.readFileSync('nomad-live-342/event-market-1x2.js','utf8');
-          const market1x2Css = fs.readFileSync('nomad-live-342/event-market-1x2.css','utf8');
           const app = fs.readFileSync('nomad-live-342/app.js','utf8');
 
           const indexConfig = index.indexOf('event-config.js');
           const indexMonitor = index.indexOf('event-monitor.js');
           const indexAnalytics = index.indexOf('event-analytics.js');
           const indexGraphLive = index.indexOf('event-graph-live.js');
-          const indexMarket1x2 = index.indexOf('event-market-1x2.js');
           assert(indexConfig >= 0 && indexMonitor > indexConfig, 'Live must load shared config before event monitor');
           assert(indexAnalytics > indexMonitor, 'expanded analytics layer must load after core event monitor');
           assert(indexGraphLive > indexAnalytics, 'Attack Flow visual layer must load after analytics');
-          assert(indexMarket1x2 > indexGraphLive, 'LIVE 1X2 sidecar must load after existing graph layer');
           assert(index.includes('event-analytics.css'), 'Live must load isolated expanded analytics styles');
           assert(index.includes('event-graph-live.css'), 'Live must load isolated Attack Flow visual styles');
-          assert(index.includes('event-market-1x2.css'), 'Live must load isolated LIVE 1X2 styles');
           assert(!index.includes('fivedollar-live.js'), 'Live Event Monitor must not load 5Dollar evaluator');
           assert(!index.includes('ui-5dollar-source.js'), 'Live Event Monitor must not load 5Dollar UI');
           assert(!index.includes('bet365-observer.js'), 'Live Event Monitor must not load browser Bet365 observer');
@@ -112,16 +102,6 @@ jobs:
           assert(graphLiveCss.includes('background:#000'), 'Attack Flow live layer must keep graph background black');
           assert(graphLiveCss.includes('chart-grid-mid'), 'Attack Flow live layer must style a reference midline');
           assert(!index.includes('50%'), 'Live UI must not label the reference midline as 50%');
-
-          assert(market1x2.includes('/nomad-live-342-market/1x2'), 'LIVE 1X2 sidecar must use isolated market endpoint');
-          assert(market1x2.includes('LIVE 1X2'), 'LIVE 1X2 sidecar must render the approved compact strip');
-          assert(!market1x2.includes('eventCheck'), 'LIVE 1X2 sidecar must not enter Event Gate logic');
-          assert(!market1x2.includes('homePressureShareMinimum'), 'LIVE 1X2 sidecar must not alter pressure logic');
-          for(const selector of ['attack-line','attack-home','attack-away','chart-grid','chart-grid-mid']){
-            assert(!market1x2Css.includes(selector), `LIVE 1X2 CSS must not style graph selector ${selector}`);
-          }
-          const marketFontSizes=[...market1x2Css.matchAll(/font-size:\s*([0-9.]+)px/g)].map(m=>Number(m[1]));
-          assert(marketFontSizes.length>0 && Math.max(...marketFontSizes)<=11, 'LIVE 1X2 typography must never exceed 11px desktop team-name ceiling');
           assert(app.includes('NOMAD342_CONFIG'), 'settings/health app must consume shared config');
 
           for (const [name, html] of [['Settings',settings],['Health',health]]) {
@@ -150,23 +130,6 @@ jobs:
             echo
             rm -f "$headers" "$body"
           done
-          exit 0
-      - name: Probe deployed LIVE 1X2 market sidecar
-        shell: bash
-        run: |
-          set +e
-          url='https://www.nomadtips3.com/nomad-live-342-market/1x2?id=198120694&home=Shanghai%20Port&away=Shenzhen%20Xinpengcheng'
-          headers="$(mktemp)"
-          body="$(mktemp)"
-          code="$(curl -sS --connect-timeout 10 --max-time 25 -D "$headers" -o "$body" -w '%{http_code}' "$url")"
-          rc=$?
-          echo "1x2_probe curl_rc=${rc} http=${code}"
-          echo '--- 1x2 headers ---'
-          sed -n '1,40p' "$headers" || true
-          echo '--- 1x2 body ---'
-          cat "$body" || true
-          echo
-          rm -f "$headers" "$body"
           exit 0
       - name: Probe deployed Live page in Chrome
         shell: bash
