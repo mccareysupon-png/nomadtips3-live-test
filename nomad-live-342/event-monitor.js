@@ -6,6 +6,7 @@ const SETTINGS_KEY=config.settingsKey;
 const DEFAULTS=config.defaults;
 const runtime=window.NOMAD342_RUNTIME||{};
 const browserHistory=new Map();
+const expandedMatches=new Set();
 let timer=null;
 let running=false;
 
@@ -16,11 +17,12 @@ function settings(){
   }catch{return {...DEFAULTS,allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]}}
 }
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
 function at(pair,index){return Array.isArray(pair)?finite(pair[index]):null}
 function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[key],index);return a===null||b===null?null:b-a}
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null}
 function fmtDelta(v){return v===null?'—':`${v>=0?'+':''}${v}`}
+function fmtValue(v){return v===null||v===undefined?'—':String(v)}
 
 function mergeFeedHistory(match){
   const id=String(match.id),incoming=Array.isArray(match.event?.snapshots)?match.event.snapshots:[],previous=browserHistory.get(id)||[],byMinute=new Map();
@@ -62,6 +64,21 @@ function eventCheck(m,c){
   return {pass,reasons,metrics};
 }
 
+function latestSnapshot(m){
+  const rows=[...(m.event?.snapshots||[])].filter(s=>Number.isFinite(Number(s.minute))).sort((a,b)=>Number(a.minute)-Number(b.minute)||Number(a.observedAt||0)-Number(b.observedAt||0));
+  return rows[rows.length-1]||null;
+}
+function eventTotals(m){
+  const s=latestSnapshot(m);
+  return {
+    attacks:[at(s?.attacks,0),at(s?.attacks,1)],
+    dangerous:[at(s?.dangerous,0),at(s?.dangerous,1)],
+    sot:[at(s?.sot,0),at(s?.sot,1)],
+    off:[at(s?.off,0),at(s?.off,1)],
+    corner:[at(s?.corner,0),at(s?.corner,1)]
+  };
+}
+
 function graphSeries(m){
   const rows=[...(m.event?.snapshots||[])].filter(s=>Number.isFinite(Number(s.minute))&&at(s.attacks,0)!==null&&at(s.attacks,1)!==null).sort((a,b)=>a.minute-b.minute||Number(a.observedAt||0)-Number(b.observedAt||0)).slice(-12);
   if(rows.length<2)return null;
@@ -78,12 +95,16 @@ function attackGraph(m){
   return `<div class="attack-chart"><svg viewBox="0 0 100 42" preserveAspectRatio="none" role="img" aria-label="Recent attack flow"><line class="chart-grid" x1="4" y1="37" x2="96" y2="37"/><line class="chart-grid chart-grid-mid" x1="4" y1="22" x2="96" y2="22"/><polyline class="attack-line attack-home" points="${g.home}"/><polyline class="attack-line attack-away" points="${g.away}"/></svg><div class="chart-axis"><span>${esc(g.from)}'</span><span>ATTACK Δ ${esc(g.homeDelta)} / ${esc(g.awayDelta)}</span><span>${esc(g.to)}'</span></div></div>`;
 }
 
-function stat(label,home,away){return `<div class="event-stat"><span>${label}</span><div><b>${esc(home)}</b><i>H / A</i><b>${esc(away)}</b></div></div>`}
+function stat(label,totals,deltaPair){
+  const home=totals?.[0],away=totals?.[1],hd=deltaPair?.[0]??null,ad=deltaPair?.[1]??null;
+  return `<div class="event-stat"><span>${label}</span><div><b>${esc(fmtValue(home))}</b><i>H / A</i><b>${esc(fmtValue(away))}</b></div><small>ROLL ${esc(fmtDelta(hd))} / ${esc(fmtDelta(ad))}</small></div>`;
+}
 function matchCard(r){
-  const m=r.m,em=r.event.metrics,stale=Boolean(m.freshness?.stale),state=stale?'STALE':r.event.pass?'EVENT':em?'READY':'WATCH';
-  const cls=stale?'event-stale':r.event.pass?'event-hot':em?'event-ready':'event-watch';
-  const pressure=em?`${em.pressureShare}%`:'—',window=em?`${em.from}'–${em.to}'`:`${Math.max(0,m.minute-r.c.rollingWindowMinutes)}'–${m.minute}'`;
-  return `<article class="event-card ${cls}"><div class="event-top"><span class="event-league">${esc(m.league||'—')}</span><span class="live-minute">${esc(m.minute)}'</span><span class="live-score">${esc((m.score||[]).join('–'))}</span><span class="event-badge">${state}</span></div><div class="event-teams"><strong>${esc(m.home)}</strong><span>vs</span><strong>${esc(m.away)}</strong></div><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="home-dot"></span>${esc(m.home)}<span class="away-dot"></span>${esc(m.away)}</div></div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':'WATCH'}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACK',em?fmtDelta(em.hA):'—',em?fmtDelta(em.aA):'—')}${stat('DANGEROUS',em?fmtDelta(em.hD):'—',em?fmtDelta(em.aD):'—')}${stat('SOT',em?fmtDelta(em.hSot):'—',em?fmtDelta(em.aSot):'—')}${stat('SHOT OFF',em?fmtDelta(em.hOff):'—',em?fmtDelta(em.aOff):'—')}${stat('CORNER',em?fmtDelta(em.hCorner):'—',em?fmtDelta(em.aCorner):'—')}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></article>`;
+  const m=r.m,em=r.event.metrics,id=String(m.id),expanded=expandedMatches.has(id),stale=Boolean(m.freshness?.stale),state=stale?'STALE':r.event.pass?'EVENT':em?'READY':'WATCH';
+  const cls=stale?'signal-card-watch':r.event.pass?'signal-card-pass':em?'signal-card-wait':'signal-card-watch';
+  const badge=r.event.pass?'signal':'wait',pressure=em?`${em.pressureShare}%`:'—',window=em?`${em.from}'–${em.to}'`:`${Math.max(0,m.minute-r.c.rollingWindowMinutes)}'–${m.minute}'`,totals=eventTotals(m);
+  const deltas={attacks:em?[em.hA,em.aA]:null,dangerous:em?[em.hD,em.aD]:null,sot:em?[em.hSot,em.aSot]:null,off:em?[em.hOff,em.aOff]:null,corner:em?[em.hCorner,em.aCorner]:null};
+  return `<article class="signal-card event-compact ${cls}${expanded?' expanded':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="card-topline"><span class="event-league">${esc(m.league||'—')}</span><span class="live-minute">${esc(m.minute)}'</span><span class="live-score">${esc((m.score||[]).join('–'))}</span><span class="badge ${badge} event-status">${state}<b class="event-chevron" aria-hidden="true">⌄</b></span></div><div class="teams-line"><strong>${esc(m.home)}</strong><span>vs</span><strong>${esc(m.away)}</strong></div><div class="event-details" aria-hidden="${expanded?'false':'true'}"><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="home-dot"></span>${esc(m.home)}<span class="away-dot"></span>${esc(m.away)}</div></div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':'WATCH'}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACK',totals.attacks,deltas.attacks)}${stat('DANGEROUS',totals.dangerous,deltas.dangerous)}${stat('SOT',totals.sot,deltas.sot)}${stat('SHOT OFF',totals.off,deltas.off)}${stat('CORNER',totals.corner,deltas.corner)}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></div></article>`;
 }
 
 function setMetric(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
@@ -93,20 +114,35 @@ async function getFeed(){
   const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.requestTimeoutMs)||9000);
   try{const response=await fetch(`${runtime.engineBase}${runtime.feedPath||'/feed'}`,{cache:'no-store',signal:ac.signal});if(!response.ok)throw new Error(`engine_http_${response.status}`);const data=await response.json();if(String(data.version)!=='3.42'||!Array.isArray(data.matches))throw new Error('invalid_342_feed_contract');if(data.ok===false)throw new Error(data.lastError||'342_feed_not_ok');return data}finally{clearTimeout(timeout)}
 }
+function renderResults(results){
+  const list=document.getElementById('matchList');
+  if(list)list.innerHTML=results.length?results.map(matchCard).join(''):'<div class="note">No live TotalCorner matches right now.</div>';
+}
 async function cycle(){
   if(running)return;running=true;const runStatus=document.getElementById('runStatus');
   try{
     const feed=await getFeed(),c=settings(),matches=feed.matches.map(mergeFeedHistory),results=matches.map(m=>({m,event:eventCheck(m,c),c}));
     results.sort((a,b)=>Number(b.event.pass)-Number(a.event.pass)||Number(Boolean(a.m.freshness?.stale))-Number(Boolean(b.m.freshness?.stale))||Number(b.event.metrics?.pressureShare||0)-Number(a.event.metrics?.pressureShare||0)||Number(b.m.minute||0)-Number(a.m.minute||0));
     window.__nomad342EventResults=results;window.__nomad342Feed=feed;
-    const list=document.getElementById('matchList');if(list)list.innerHTML=results.length?results.map(matchCard).join(''):'<div class="note">No live TotalCorner matches right now.</div>';
+    renderResults(results);
     setMetric('liveCount',results.length);setMetric('freshCount',results.filter(x=>!x.m.freshness?.stale).length);setMetric('windowCount',results.filter(x=>x.event.metrics).length);setMetric('eventCount',results.filter(x=>x.event.pass).length);
     if(runStatus)runStatus.textContent=`TotalCorner LIVE · cycle ${feed.cycle??'—'} · ${results.length} matches · ${results.filter(r=>r.event.pass).length} event pass · ${new Date().toLocaleTimeString()}`;
   }catch(error){clearOutput('Waiting for isolated 3.42 TotalCorner event engine.');if(runStatus)runStatus.textContent=`3.42 EVENT FEED WAIT · ${String(error?.message||error)}`}finally{running=false}
 }
+function toggleCard(card){
+  const id=card?.dataset?.matchId;if(!id)return;
+  if(expandedMatches.has(id))expandedMatches.delete(id);else expandedMatches.add(id);
+  const results=window.__nomad342EventResults;if(Array.isArray(results))renderResults(results);
+  requestAnimationFrame(()=>document.querySelector(`.event-compact[data-match-id="${CSS.escape(id)}"]`)?.focus({preventScroll:true}));
+}
+function bindCardToggle(){
+  const list=document.getElementById('matchList');if(!list)return;
+  list.addEventListener('click',event=>{const card=event.target.closest('.event-compact');if(card)toggleCard(card)});
+  list.addEventListener('keydown',event=>{if(event.key!=='Enter'&&event.key!==' ')return;const card=event.target.closest('.event-compact');if(!card)return;event.preventDefault();toggleCard(card)});
+}
 function start(){
   if(document.body?.dataset?.page!=='live')return;
-  clearOutput('Connecting to TotalCorner live score and event feed…');cycle();timer=setInterval(cycle,Math.max(5000,Number(runtime.pollMs)||10000));window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)},{once:true});
+  bindCardToggle();clearOutput('Connecting to TotalCorner live score and event feed…');cycle();timer=setInterval(cycle,Math.max(5000,Number(runtime.pollMs)||10000));window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)},{once:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
