@@ -1,0 +1,108 @@
+name: NOMAD 3.42 Restore TotalCorner Stable
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - '.github/workflows/nomad342-restore-totalcorner-stable.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  STABLE_URL: https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev
+
+jobs:
+  restore-totalcorner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/342-totalcorner-inlet
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate TotalCorner runtime
+        working-directory: nomad-live-engine-342
+        run: |
+          set -euo pipefail
+          node --check src/totalcorner.js
+          node --check src/index.js
+          npm test
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler-stable-totalcorner.toml
+
+      - name: Confirm current stable feed before restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/pre.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/pre.json','utf8'));
+          const count=Array.isArray(j.matches)?j.matches.length:0;
+          console.log(JSON.stringify({ok:j.ok,count,source:j.source?.name||j.source,lastError:j.lastError},null,2));
+          if(j.ok!==true||count<1) process.exit(1);
+          NODE
+
+      - name: Deploy TotalCorner stable runtime
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine-342
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler-stable-totalcorner.toml
+
+      - name: Verify TotalCorner feed after restore
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            echo "feed attempt=$attempt"
+            if curl -fsS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/post.json; then
+              if node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/post.json','utf8'));
+          const count=Array.isArray(j.matches)?j.matches.length:0;
+          console.log(JSON.stringify({ok:j.ok,count,source:j.source?.name||j.source,lastError:j.lastError},null,2));
+          const source=(j.source&&typeof j.source==='object')?j.source.name:j.source;
+          if(j.ok!==true||source!=='TotalCorner'||count<1) process.exit(1);
+          NODE
+              then ok=1; break; fi
+            fi
+            sleep 5
+          done
+          test "$ok" = '1'
+
+      - name: Verify public Live Score Event page
+        shell: bash
+        run: |
+          set -euo pipefail
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$chrome"
+          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html?restore=totalcorner'
+          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=26000 --dump-dom "$url" >/tmp/page.html 2>/tmp/chrome.log
+          cards="$(grep -o 'class="signal-card event-compact' /tmp/page.html | wc -l)"
+          graphs="$(grep -o 'class="attack-chart"' /tmp/page.html | wc -l)"
+          echo "cards=$cards graphs=$graphs"
+          test "$cards" -gt 0
+
+      - name: Roll back only if TotalCorner feed itself fails
+        if: failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine-342
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler-stable-rollback.toml
