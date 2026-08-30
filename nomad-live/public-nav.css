@@ -32,6 +32,24 @@
   outline:none;
 }
 
+/* 3.41 toolbar controls: filters and odds formats share the same clean green interaction state. */
+.tabs .tab:hover,
+.tabs .tab:focus-visible,
+.tabs .tab[aria-pressed="true"],
+.tabs .tab[data-active="1"],
+.odds-display-control button:hover,
+.odds-display-control button:focus-visible,
+.odds-display-control button.is-active{
+  color:var(--green)!important;
+  text-shadow:none!important;
+  box-shadow:none!important;
+}
+.tabs .tab:focus-visible,
+.odds-display-control button:focus-visible{
+  outline:1px solid var(--green)!important;
+  outline-offset:2px;
+}
+
 .hero h1{font-size:14.4px}
 .public-system-alert{display:none;align-items:center;gap:6px;margin-left:auto;font-size:8px;font-weight:900;letter-spacing:.04em;white-space:nowrap}
 .public-system-alert.is-visible{display:inline-flex}
