@@ -1,4 +1,4 @@
-/* NOMADTIPS3 3.42 expanded-card visual polish v2.
+/* NOMADTIPS3 3.42 expanded-card visual polish v3.
    Display-only: no feed, event-gate or engine logic changes. */
 
 /* Put the primary live graphs first without moving or deleting the existing DOM. */
@@ -16,18 +16,7 @@ body[data-page="live"] .event-details>.event-stats{order:5}
 body[data-page="live"] .event-details>.nomad-analytics-bottom{order:6}
 body[data-page="live"] .event-details>.event-reason{order:7}
 
-/* Inside the added top layer, show Momentum immediately after the main Attack Flow graph. */
-body[data-page="live"] .nomad-analytics-top{
-  display:flex;
-  flex-direction:column;
-  gap:7px;
-}
-body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(2){order:0}
-body[data-page="live"] .nomad-analytics-top>.na-match-pulse{order:1}
-body[data-page="live"] .nomad-analytics-top>.na-shift{order:2}
-body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(4){order:3}
-
-/* Very thin graph strokes with only a restrained glow. */
+/* Keep the existing Attack Flow graph exactly as it is visually. */
 body[data-page="live"] .event-details .attack-line{
   stroke-width:.55;
   opacity:.96;
@@ -80,12 +69,149 @@ body[data-page="live"] .event-details .na-timeline-event span{font-size:8px}
 body[data-page="live"] .event-details .event-stat-row>b{font-size:9px}
 body[data-page="live"] .event-details .na-battle-row>strong{font-size:7px}
 
+/* Dense information layout below the unchanged Attack Flow graph. */
+body[data-page="live"] .nomad-analytics-layer{gap:4px}
+body[data-page="live"] .nomad-analytics-top{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  gap:4px;
+  margin-bottom:4px;
+  padding-bottom:4px;
+}
+body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(2){grid-column:span 7;order:0}
+body[data-page="live"] .nomad-analytics-top>.na-match-pulse{grid-column:span 5;order:1}
+body[data-page="live"] .nomad-analytics-top>.na-shift{grid-column:span 5;order:2}
+body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(4){grid-column:span 7;order:3}
+body[data-page="live"] .nomad-analytics-bottom{
+  display:grid;
+  grid-template-columns:repeat(12,minmax(0,1fr));
+  gap:4px;
+  margin-top:4px;
+  padding-top:4px;
+}
+body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(1){grid-column:1/-1}
+body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(2){grid-column:span 7}
+body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(3){grid-column:span 5}
+
+body[data-page="live"] .na-section{padding:5px;border-radius:5px}
+body[data-page="live"] .na-section-head{gap:6px;margin-bottom:4px}
+body[data-page="live"] .na-section-head small{margin-top:1px}
+body[data-page="live"] .na-empty{min-height:30px}
+
+/* Compact pressure block. */
+body[data-page="live"] .na-pulse-grid{grid-template-columns:78px minmax(0,1fr);gap:4px}
+body[data-page="live"] .na-pressure-wrap{padding:4px;border-radius:5px}
+body[data-page="live"] .na-pressure-ring{width:66px;height:66px}
+body[data-page="live"] .na-pressure-ring:after{inset:7px}
+body[data-page="live"] .na-pressure-ring span{margin-top:2px;font-size:5px}
+body[data-page="live"] .na-pressure-split{gap:2px;margin-top:3px}
+body[data-page="live"] .na-pressure-split span{font-size:5px}
+body[data-page="live"] .na-pressure-split b{font-size:5px;margin-bottom:1px}
+body[data-page="live"] .na-pulse-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:3px}
+body[data-page="live"] .na-pulse-summary>div{padding:5px;border-radius:4px}
+body[data-page="live"] .na-pulse-summary strong{margin-top:2px;font-size:9px}
+body[data-page="live"] .na-pulse-summary span{font-size:5px}
+
+/* Compact Momentum without changing the Attack Flow line graph. */
+body[data-page="live"] .na-momentum{grid-template-columns:30px minmax(0,1fr) 30px;gap:4px}
+body[data-page="live"] .na-momentum-columns{height:72px;gap:2px}
+body[data-page="live"] .na-momentum-columns:after{top:31px}
+body[data-page="live"] .na-momentum-col{grid-template-rows:30px 30px 10px;min-width:5px}
+body[data-page="live"] .na-momentum-half{height:30px}
+body[data-page="live"] .na-momentum-col>span{font-size:4.8px}
+
+/* Compact shift and timeline into shallow rows. */
+body[data-page="live"] .na-shift-bar{height:5px}
+body[data-page="live"] .na-shift-values{margin-top:3px;font-size:5.5px}
+body[data-page="live"] .na-timeline{gap:3px;padding:1px 0 2px}
+body[data-page="live"] .na-timeline-event{flex-basis:70px;min-height:42px;padding:4px;border-radius:4px}
+body[data-page="live"] .na-timeline-event span{font-size:7px}
+body[data-page="live"] .na-timeline-event i{width:12px;margin:3px 0;height:1.5px}
+body[data-page="live"] .na-timeline-event strong{font-size:5.8px}
+body[data-page="live"] .na-timeline-event small{margin-top:2px;font-size:5px}
+
+/* Old overview remains complete, but becomes one compact status strip. */
+body[data-page="live"] .event-overview{gap:3px;margin-top:4px}
+body[data-page="live"] .event-overview>div{padding:4px 5px;border-radius:4px}
+body[data-page="live"] .event-overview span{font-size:5.5px}
+body[data-page="live"] .event-overview strong{margin-top:2px;font-size:9px}
+
+/* Keep all five original stats visible in one dense row on desktop. */
+body[data-page="live"] .event-stats{gap:3px;margin-top:4px}
+body[data-page="live"] .event-stat{padding:5px;border-radius:4px}
+body[data-page="live"] .event-stat-title{min-height:11px;font-size:5.5px}
+body[data-page="live"] .event-stat-row{grid-template-columns:27px minmax(0,1fr) 22px;gap:3px;margin-top:3px}
+body[data-page="live"] .event-stat-row>span{font-size:5px}
+body[data-page="live"] .event-stat-row>b{font-size:8px}
+body[data-page="live"] .event-bar-track{height:4px}
+body[data-page="live"] .event-stat small{margin-top:4px;font-size:5px;line-height:1.25}
+
+/* Compact rolling battle bars. */
+body[data-page="live"] .na-battle-grid{gap:3px}
+body[data-page="live"] .na-battle-item{padding:4px;border-radius:4px}
+body[data-page="live"] .na-battle-title{min-height:10px;font-size:5px}
+body[data-page="live"] .na-battle-row{grid-template-columns:25px minmax(0,1fr) 24px;gap:3px;margin-top:3px}
+body[data-page="live"] .na-battle-row>div{height:4px}
+body[data-page="live"] .na-battle-row>strong{font-size:6.5px}
+
+/* Radar and evidence cards share one row instead of stacking wide empty panels. */
+body[data-page="live"] .na-radar{grid-template-columns:minmax(120px,165px) minmax(0,1fr);gap:6px}
+body[data-page="live"] .na-radar svg{max-height:150px}
+body[data-page="live"] .na-radar-values{gap:3px}
+body[data-page="live"] .na-radar-values span{padding:4px;border-radius:4px;font-size:5.5px}
+body[data-page="live"] .na-quality-grid{grid-template-columns:1fr 1fr;gap:4px}
+body[data-page="live"] .na-streak-card,
+body[data-page="live"] .na-quality-card{padding:5px;border-radius:4px}
+body[data-page="live"] .na-streak-card>strong{margin-top:2px;font-size:9px}
+body[data-page="live"] .na-streak-card>div{margin-top:3px;font-size:5.5px}
+body[data-page="live"] .na-quality-track{height:5px;margin-top:5px}
+body[data-page="live"] .na-quality-card small{margin-top:3px;font-size:5px}
+
+body[data-page="live"] .event-reason{margin-top:4px;padding-top:4px;font-size:6.5px;line-height:1.35}
+
+@media(max-width:900px){
+  body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(2),
+  body[data-page="live"] .nomad-analytics-top>.na-match-pulse,
+  body[data-page="live"] .nomad-analytics-top>.na-shift,
+  body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(4){grid-column:span 6}
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(2),
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(3){grid-column:span 6}
+}
+
 @media(max-width:760px){
   body[data-page="live"] .event-details .na-pressure-ring strong,
   body[data-page="live"] .event-details .na-pulse-summary strong,
   body[data-page="live"] .event-details .na-streak-card>strong,
   body[data-page="live"] .event-details .event-overview strong{font-size:10px}
+  body[data-page="live"] .nomad-analytics-top,
+  body[data-page="live"] .nomad-analytics-bottom{grid-template-columns:1fr 1fr}
+  body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(2),
+  body[data-page="live"] .nomad-analytics-top>.na-match-pulse,
+  body[data-page="live"] .nomad-analytics-top>.na-shift,
+  body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(4),
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(1),
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(2),
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(3){grid-column:auto}
+  body[data-page="live"] .nomad-analytics-bottom>.na-section:nth-child(1){grid-column:1/-1}
+  body[data-page="live"] .na-radar{grid-template-columns:1fr}
+  body[data-page="live"] .na-radar svg{max-height:140px}
 }
+
+@media(max-width:520px){
+  body[data-page="live"] .nomad-analytics-top,
+  body[data-page="live"] .nomad-analytics-bottom{grid-template-columns:1fr}
+  body[data-page="live"] .nomad-analytics-top>* ,
+  body[data-page="live"] .nomad-analytics-bottom>*{grid-column:1!important}
+  body[data-page="live"] .na-pulse-grid{grid-template-columns:68px minmax(0,1fr)}
+  body[data-page="live"] .na-pressure-ring{width:58px;height:58px}
+  body[data-page="live"] .na-momentum{grid-template-columns:1fr}
+  body[data-page="live"] .na-momentum-label{display:none}
+  body[data-page="live"] .event-overview{grid-template-columns:1fr 1fr}
+  body[data-page="live"] .event-stats{grid-template-columns:1fr 1fr}
+  body[data-page="live"] .event-stat:last-child{grid-column:1/-1}
+  body[data-page="live"] .na-battle-grid{grid-template-columns:1fr 1fr}
+}
+
 @media(max-width:420px){
   body[data-page="live"] .event-details .na-pressure-ring strong,
   body[data-page="live"] .event-details .na-pulse-summary strong,
