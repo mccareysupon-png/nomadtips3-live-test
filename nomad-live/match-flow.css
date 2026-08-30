@@ -118,13 +118,34 @@
   .detail-flow-card {order:4}
   .detail-price-card {order:5}
 
-  .flow-row {grid-template-columns:58px 21px minmax(36px,1fr) 1px minmax(36px,1fr) 21px;gap:4px}
-  .flow-legend {grid-template-columns:58px 1fr 1fr}
+  /* Balance the metric-label rail with an equal empty rail on the right.
+     This keeps the HOME/AWAY midpoint on the true card center on mobile. */
+  .flow-row {
+    grid-template-columns:58px 21px minmax(36px,1fr) 1px minmax(36px,1fr) 21px 58px;
+    gap:4px;
+  }
+  .flow-row::after {
+    content:"";
+    display:block;
+    min-width:0;
+  }
+
+  .flow-legend {
+    grid-template-columns:58px 1fr 1fr 58px;
+  }
+  .flow-legend::after {
+    content:"";
+    display:block;
+    min-width:0;
+  }
 }
 
 @media(max-width:420px) {
-  .flow-row {grid-template-columns:52px 19px minmax(30px,1fr) 1px minmax(30px,1fr) 19px;gap:3px}
-  .flow-legend {grid-template-columns:52px 1fr 1fr}
+  .flow-row {
+    grid-template-columns:52px 19px minmax(30px,1fr) 1px minmax(30px,1fr) 19px 52px;
+    gap:3px;
+  }
+  .flow-legend {grid-template-columns:52px 1fr 1fr 52px}
   .flow-label {font-size:6.5px}
   .flow-value {font-size:7.5px}
 }
