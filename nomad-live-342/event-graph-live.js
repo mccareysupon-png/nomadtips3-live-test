@@ -34,6 +34,48 @@ function enhanceAll(){
   });
 }
 
+function bindExpandedCardClickGuard(list){
+  let replaying=false;
+  let suppressUntil=0;
+
+  list.addEventListener('click',event=>{
+    if(replaying)return;
+
+    const now=performance.now();
+    if(now<suppressUntil){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+
+    const card=event.target.closest('.event-compact.expanded');
+    const details=event.target.closest('.event-details');
+    if(!card||!details||!list.contains(card))return;
+
+    const id=String(card.dataset.matchId||'');
+    if(!id)return;
+
+    // Consume the user's click before the expanded card collapses and the
+    // following card moves underneath the pointer. Replay one synthetic click
+    // after this native interaction has finished so event-monitor.js updates
+    // its private expandedMatches state without a click-through.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    suppressUntil=performance.now()+420;
+
+    requestAnimationFrame(()=>{
+      const current=list.querySelector(`.event-compact[data-match-id="${CSS.escape(id)}"]`);
+      if(!current)return;
+      replaying=true;
+      try{
+        current.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,view:window}));
+      }finally{
+        replaying=false;
+      }
+    });
+  },true);
+}
+
 let frame=0;
 const schedule=()=>{
   if(frame)return;
@@ -43,7 +85,10 @@ const schedule=()=>{
 function start(){
   if(document.body?.dataset?.page!=='live')return;
   const list=document.getElementById('matchList');
-  if(list)new MutationObserver(schedule).observe(list,{childList:true,subtree:true});
+  if(list){
+    bindExpandedCardClickGuard(list);
+    new MutationObserver(schedule).observe(list,{childList:true,subtree:true});
+  }
   window.addEventListener('resize',schedule,{passive:true});
   schedule();
 }
