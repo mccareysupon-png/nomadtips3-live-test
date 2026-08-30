@@ -19,6 +19,11 @@
     0 0 12px rgba(131,223,137,.12);
 }
 
+/* Separate the expanded detail from its summary with a subtle green divider. */
+.match-wrap[open]:not(.signal) > .match-detail {
+  border-top-color:rgba(131,223,137,.45);
+}
+
 /* Summary card = actionable referees only.
    N/A / FAIL / WAIT remain available in the expanded PRICE CHECK panel. */
 .market .price-stack {
