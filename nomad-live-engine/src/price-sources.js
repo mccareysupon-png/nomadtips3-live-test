@@ -1,4 +1,4 @@
-import {assessHomeMarket} from './detector.js';
+import {assessSideMarket,configuredSides} from './detector.js';
 import {NOWGOAL_BOOKMAKERS} from './nowgoal.js';
 
 export const PRICE_SOURCE_REGISTRY=Object.freeze([
@@ -18,9 +18,9 @@ const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite
 const nowgoalDefinitionBySource=new Map(NOWGOAL_BOOKMAKERS.map(item=>[item.sourceId,item]));
 
 function displayStatus(market,assessment){
-  if(assessment.passed) return 'PASS';
-  if(assessment.status==='AH STALE') return 'STALE';
-  if(['AH INVALID','AH LINE FAIL','AH ODDS FAIL'].includes(assessment.status)) return 'FAIL';
+  if(assessment?.passed) return 'PASS';
+  if(assessment?.status==='AH STALE') return 'STALE';
+  if(['AH INVALID','AH LINE FAIL','AH ODDS FAIL'].includes(assessment?.status)) return 'FAIL';
   if(!market||['ODDS NOT MATCHED','ODDS NOT READY','AH UNAVAILABLE'].includes(market.status)) return 'UNAVAILABLE';
   return 'WAIT';
 }
@@ -36,32 +36,66 @@ function peerMarket(definition,marketsBySource){
   const nowgoal=marketsBySource.get('source5')||null;
   const peer=nowgoal?.nowgoalPeers?.[definition.id]||null;
   if(peer) return peer;
-  // Preserve the 3.41 peer properties used by existing signals/tests.
   if(definition.id==='source6') return nowgoal?.nowgoalBet365Peer||null;
   if(definition.id==='source7') return nowgoal?.nowgoalM88Peer||null;
   return null;
 }
 
+function chosenAssessment(sideAssessments,sides){
+  const candidates=sides.map(side=>sideAssessments[side]).filter(Boolean);
+  const passing=candidates.filter(item=>item.passed);
+  const pool=passing.length?passing:candidates;
+  if(!pool.length) return null;
+  return [...pool].sort((a,b)=>{
+    if(Number(b.passed)!==Number(a.passed)) return Number(b.passed)-Number(a.passed);
+    const aAge=finite(a.ageSeconds)?Number(a.ageSeconds):Infinity,bAge=finite(b.ageSeconds)?Number(b.ageSeconds):Infinity;
+    if(aAge!==bAge) return aAge-bAge;
+    return Number(b.selectionOdds||0)-Number(a.selectionOdds||0);
+  })[0];
+}
+
 export function buildPriceSourceSnapshots(marketsBySource,config,observedAt=Date.now()){
+  const sides=configuredSides(config);
+  const mode=String(config?.targetSideMode||'HOME').toUpperCase();
   return PRICE_SOURCE_REGISTRY
     .filter(definition=>!(definition.id==='source5'&&marketsBySource.get(definition.id)?.reason==='source_removed'))
     .map(definition=>{
-    const market=peerMarket(definition,marketsBySource);
-    const assessed=assessHomeMarket(market,config,observedAt);
-    // Fail closed whenever the provider cannot identify the bookmaker behind its AH price.
-    const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
-    const assessment=requiresVerifiedBookmaker
-      ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
-      :assessed;
-    const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
-    return {
-      ...definition,enabled:true,status:displayStatus(market,assessment),reason:assessment.reason||market?.reason||null,
-      bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null,line:assessment.line??market?.line??null,
-      odds:assessment.homeOdds??market?.homeOdds??null,awayOdds:assessment.awayOdds??market?.awayOdds??null,
-      sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment.ageSeconds??null,
-      assessment,market,
-    };
-  });
+      const market=peerMarket(definition,marketsBySource);
+      const sideAssessments=Object.fromEntries(['home','away'].map(side=>[side,assessSideMarket(market,config,observedAt,side)]));
+      const assessed=chosenAssessment(sideAssessments,sides);
+      const requiresVerifiedBookmaker=market?.bookmakerVerified===false;
+      const assessment=requiresVerifiedBookmaker
+        ?{...assessed,status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'}
+        :assessed;
+      if(requiresVerifiedBookmaker){
+        for(const side of ['home','away']) sideAssessments[side]={...sideAssessments[side],status:'AH INVALID',passed:false,reason:'bookmaker_not_supplied'};
+      }
+      const nowgoalDefinition=nowgoalDefinitionBySource.get(definition.id)||null;
+      return {
+        ...definition,enabled:true,mode,side:assessment?.side||sides[0],
+        status:displayStatus(market,assessment),reason:assessment?.reason||market?.reason||null,
+        bookmaker:market?.bookmaker||nowgoalDefinition?.bookmaker||definition.bookmaker||null,
+        line:assessment?.line??market?.line??null,
+        odds:assessment?.selectionOdds??market?.homeOdds??null,
+        homeOdds:assessment?.homeOdds??market?.homeOdds??null,
+        awayOdds:assessment?.awayOdds??market?.awayOdds??null,
+        sourceUpdatedAt:market?.sourceUpdatedAt??null,priceAgeSeconds:assessment?.ageSeconds??null,
+        assessment,sideAssessments,market,
+      };
+    });
+}
+
+function projectSide(item,side){
+  if(!item) return null;
+  const assessment=item.sideAssessments?.[side]||item.assessment;
+  const market=item.market;
+  return {
+    ...item,mode:side.toUpperCase(),side,
+    status:displayStatus(market,assessment),reason:assessment?.reason||market?.reason||null,
+    line:assessment?.line??null,odds:assessment?.selectionOdds??null,
+    homeOdds:assessment?.homeOdds??market?.homeOdds??null,awayOdds:assessment?.awayOdds??market?.awayOdds??null,
+    priceAgeSeconds:assessment?.ageSeconds??null,assessment,
+  };
 }
 
 export function selectPriceSource(sources=[],freshnessNearMs=FRESHNESS_NEAR_MS){
@@ -88,8 +122,6 @@ function median(values=[]){
 }
 
 function consensusEligible(item){
-  // Pinnacle has one authoritative vote only: SOURCE 26 via TotalCorner.
-  // The duplicate Nowgoal Pinnacle socket (SOURCE 25) remains wired for compatibility/display diagnostics but cannot vote.
   if(item?.id==='source25') return false;
   const nowgoalJudge=item?.market?.source==='Nowgoal';
   const totalCornerPinnacle=item?.id==='source26'&&item?.bookmaker==='Pinnacle'&&/TotalCorner/i.test(String(item?.market?.source||''));
@@ -133,22 +165,36 @@ export function selectNowgoalConsensus(sources=[]){
   };
 }
 
-export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
-  // SOURCE 4 Bet365 via TotalCorner is retained as an internal compatibility socket only.
-  // SOURCE 25 Pinnacle via Nowgoal is retained but cannot duplicate Pinnacle's vote.
+function selectSingleSide(sources=[],fallbackId='source4'){
   const nonVoterIds=new Set([fallbackId,'source25']);
   const primary=sources.filter(item=>!nonVoterIds.has(item.id));
-  // Main judge pool: all eligible Nowgoal bookmakers plus Pinnacle from TotalCorner (SOURCE 26).
   const judgeSelected=selectNowgoalConsensus(primary);
   if(judgeSelected) return judgeSelected;
-  // Existing non-Nowgoal records remain secondary supplements; SOURCE 26 is judged only inside the consensus pool above.
   const legacySelected=selectPriceSource(primary.filter(item=>item?.market?.source!=='Nowgoal'&&item.id!=='source26'));
   if(legacySelected) return legacySelected;
   return null;
 }
 
+export function selectPriceSourceWithFallback(sources=[],fallbackId='source4'){
+  const mode=String(sources.find(Boolean)?.mode||'HOME').toUpperCase();
+  if(mode!=='BOTH') return selectSingleSide(sources,fallbackId);
+  const home=selectSingleSide(sources.map(item=>projectSide(item,'home')),fallbackId);
+  const away=selectSingleSide(sources.map(item=>projectSide(item,'away')),fallbackId);
+  if(!home&&!away) return null;
+  const preferred=!home?away:!away?home:Number(away.odds)>Number(home.odds)?away:home;
+  return {
+    ...preferred,mode:'BOTH',side:'both',
+    market:{
+      status:'AH READY',source:'SIDE-AWARE',bookmaker:null,market:'FULL MATCH LIVE AH',
+      sourceUpdatedAt:Math.max(Number(home?.sourceUpdatedAt)||0,Number(away?.sourceUpdatedAt)||0)||null,
+      sideMarkets:{home:home?.market||null,away:away?.market||null},
+      sideSelections:{home,away},
+    },
+  };
+}
+
 export function publicPriceSourceSnapshot(snapshot){
   if(!snapshot) return null;
-  const {assessment,market,...publicSnapshot}=snapshot;
+  const {assessment,market,sideAssessments,...publicSnapshot}=snapshot;
   return publicSnapshot;
 }
