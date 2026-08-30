@@ -24,6 +24,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   cornerEvidenceEnabled: true,
   cornerDeltaMinimum: 1,
   evidenceMode: 'ANY',
+  targetSideMode: 'HOME',
   allowedLinesMode: 'ANY',
   allowedSelectionLines: [],
   oddsMinimum: 1.50,
@@ -42,7 +43,7 @@ export const EDITABLE_KEYS = Object.freeze([
   'attackWeight','dangerousAttackWeight','homePressureShareMinimum','trendConditionsRequired',
   'homeEventRequired',
   'sotEvidenceEnabled','sotDeltaMinimum','shotOffEvidenceEnabled','shotOffDeltaMinimum',
-  'cornerEvidenceEnabled','cornerDeltaMinimum','evidenceMode',
+  'cornerEvidenceEnabled','cornerDeltaMinimum','evidenceMode','targetSideMode',
   'allowedLinesMode','allowedSelectionLines','oddsMinimum',
   'oddsMaximumEnabled','oddsMaximum','maximumPriceAgeSeconds','oneSignalPerMatch'
 ]);
@@ -58,11 +59,12 @@ const NUMBER_RULES = Object.freeze({
   sotDeltaMinimum:[1,20,true], shotOffDeltaMinimum:[1,20,true], cornerDeltaMinimum:[1,20,true],
   oddsMinimum:[HARD_ODDS_MINIMUM,HARD_ODDS_MAXIMUM,false], maximumPriceAgeSeconds:[1,3600,true],
 });
-const clone = value => JSON.parse(JSON.stringify(value));
+const clone = value => value===undefined?undefined:JSON.parse(JSON.stringify(value));
 const quarterGoal = value => Number.isFinite(value) && Math.abs(value * 4 - Math.round(value * 4)) < 1e-9;
 
 export function editableConfig(config=DEFAULT_CONFIG){
-  return Object.fromEntries(EDITABLE_KEYS.map(key=>[key,clone(config[key])]));
+  const merged={...DEFAULT_CONFIG,...(config||{})};
+  return Object.fromEntries(EDITABLE_KEYS.map(key=>[key,clone(merged[key])]));
 }
 
 function numericScalar(value){
@@ -90,7 +92,7 @@ export function validateEditableConfig(input={},options={}){
   const unknown=Object.keys(input).filter(key=>!EDITABLE_KEYS.includes(key));
   if(unknown.length) errors.push(`unknown settings: ${unknown.join(', ')}`);
   if(requireAll){
-    const missing=EDITABLE_KEYS.filter(key=>!(key in input));
+    const missing=EDITABLE_KEYS.filter(key=>key!=='targetSideMode'&&!(key in input));
     if(missing.length) errors.push(`missing settings: ${missing.join(', ')}`);
   }
   for(const key of Object.keys(NUMBER_RULES)) if(key in input) validateNumber(errors,config,input,key);
@@ -104,6 +106,11 @@ export function validateEditableConfig(input={},options={}){
     if(!['ANY','ALL'].includes(value)) errors.push('evidenceMode must be ANY or ALL');
     else config.evidenceMode=value;
   }
+  if('targetSideMode' in input){
+    const value=String(input.targetSideMode).trim().toUpperCase();
+    if(!['HOME','AWAY','BOTH'].includes(value)) errors.push('targetSideMode must be HOME, AWAY or BOTH');
+    else config.targetSideMode=value;
+  }
   if('allowedLinesMode' in input){
     const value=String(input.allowedLinesMode).trim().toUpperCase();
     if(!['ANY','SELECTED'].includes(value)) errors.push('allowedLinesMode must be ANY or SELECTED');
@@ -113,7 +120,7 @@ export function validateEditableConfig(input={},options={}){
     const raw=Array.isArray(input.allowedSelectionLines)?input.allowedSelectionLines:String(input.allowedSelectionLines??'').split(',').map(value=>value.trim()).filter(Boolean);
     const parsed=raw.map(numericScalar);
     if(parsed.some(value=>value==null||value < -10||value > 10||!quarterGoal(value))){
-      errors.push('allowedSelectionLines must contain only quarter-goal HOME lines from -10 to +10');
+      errors.push('allowedSelectionLines must contain only quarter-goal selected-side lines from -10 to +10');
     }else config.allowedSelectionLines=[...new Set(parsed)].sort((a,b)=>a-b);
   }
   if('oddsMaximum' in input){
@@ -123,8 +130,8 @@ export function validateEditableConfig(input={},options={}){
   }
   if(config.minuteFrom>config.minuteTo) errors.push('Minute From must not be later than Minute To');
   if(config.attackWeight===0&&config.dangerousAttackWeight===0) errors.push('Attack Weight and Dangerous Attack Weight cannot both be zero');
-  if(config.homeEventRequired&&!config.sotEvidenceEnabled&&!config.shotOffEvidenceEnabled&&!config.cornerEvidenceEnabled) errors.push('Enable at least one HOME evidence type while New HOME Event is required');
-  if(config.allowedLinesMode==='SELECTED'&&!config.allowedSelectionLines.length) errors.push('Choose at least one HOME AH line or use ANY');
+  if(config.homeEventRequired&&!config.sotEvidenceEnabled&&!config.shotOffEvidenceEnabled&&!config.cornerEvidenceEnabled) errors.push('Enable at least one selected-side evidence type while New Event is required');
+  if(config.allowedLinesMode==='SELECTED'&&!config.allowedSelectionLines.length) errors.push('Choose at least one selected-side AH line or use ANY');
   if(config.oddsMaximumEnabled){
     if(config.oddsMaximum==null) errors.push('Maximum Odds is required when its switch is enabled');
     else if(config.oddsMinimum>config.oddsMaximum) errors.push('Minimum Odds must not be greater than Maximum Odds');
@@ -133,5 +140,6 @@ export function validateEditableConfig(input={},options={}){
 }
 
 export function engineConfig(editable=DEFAULT_CONFIG){
-  return {...DEFAULT_CONFIG,...clone(editable),allowedSelectionLines:[...(editable.allowedSelectionLines||[])]};
+  const merged={...DEFAULT_CONFIG,...clone(editable)};
+  return {...merged,targetSideMode:String(merged.targetSideMode||'HOME').toUpperCase(),allowedSelectionLines:[...(merged.allowedSelectionLines||[])]};
 }
