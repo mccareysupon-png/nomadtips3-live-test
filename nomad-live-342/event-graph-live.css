@@ -1,0 +1,46 @@
+/* NOMADTIPS3 3.42 Attack Flow live visual layer.
+   Display-only: keeps graph scale/data/engine logic unchanged. */
+body[data-page="live"] .attack-chart{
+  position:relative;
+  background:#000;
+}
+
+/* Reference midline only — intentionally not labelled 50%. */
+body[data-page="live"] .attack-chart .chart-grid-mid{
+  stroke:rgba(104,119,109,.68);
+  stroke-width:.34;
+  stroke-dasharray:1.25 2.6;
+  opacity:.9;
+}
+
+/* Latest-point guides. Positioned by event-graph-live.js over the existing SVG. */
+body[data-page="live"] .attack-endpoint{
+  position:absolute;
+  z-index:3;
+  width:4px;
+  height:4px;
+  border-radius:50%;
+  pointer-events:none;
+  transform:translate(-50%,-50%) scale(.84);
+  animation:nomad-attack-endpoint-pulse 1.8s ease-in-out infinite;
+  will-change:transform,opacity,box-shadow;
+}
+body[data-page="live"] .attack-endpoint-home{
+  background:#83df89;
+  box-shadow:0 0 4px rgba(131,223,137,.55),0 0 8px rgba(131,223,137,.16);
+}
+body[data-page="live"] .attack-endpoint-away{
+  background:#9ba49d;
+  box-shadow:0 0 3px rgba(155,164,157,.38),0 0 7px rgba(155,164,157,.10);
+  animation-delay:.22s;
+}
+@keyframes nomad-attack-endpoint-pulse{
+  0%,100%{opacity:.66;transform:translate(-50%,-50%) scale(.78)}
+  50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
+}
+@media(max-width:760px){
+  body[data-page="live"] .attack-endpoint{width:3.5px;height:3.5px}
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-page="live"] .attack-endpoint{animation:none;opacity:.9;transform:translate(-50%,-50%)}
+}
