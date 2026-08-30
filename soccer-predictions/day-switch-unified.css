@@ -1,4 +1,4 @@
-/* Unified Today / Yesterday switch: one clean surface with a shallow center groove. */
+/* Unified Today / Yesterday switch: one clean surface with a narrow recessed center groove. */
 .day-switch{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -25,13 +25,13 @@
   position:absolute;
   left:0;
   top:50%;
-  width:16px;
-  height:30px;
+  width:8px;
+  height:28px;
   transform:translate(-50%,-50%);
   border:0;
-  border-radius:50%;
-  background:radial-gradient(ellipse at center,rgba(4,7,5,.30) 0%,rgba(4,7,5,.18) 34%,rgba(255,255,255,.018) 54%,rgba(4,7,5,.06) 66%,transparent 76%);
-  box-shadow:inset 0 0 7px rgba(0,0,0,.13);
+  border-radius:3px;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.018) 18%,rgba(4,7,5,.18) 36%,rgba(2,5,3,.30) 50%,rgba(4,7,5,.18) 64%,rgba(255,255,255,.018) 82%,transparent 100%);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.18),inset 0 -1px 2px rgba(255,255,255,.012);
   pointer-events:none;
 }
 .day-switch .day-tab.active{
@@ -56,7 +56,8 @@
     border-left:0!important;
   }
   .day-switch .day-tab + .day-tab::before{
-    width:14px;
-    height:26px;
+    width:7px;
+    height:24px;
+    border-radius:3px;
   }
 }
