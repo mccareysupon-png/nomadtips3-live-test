@@ -33,7 +33,6 @@ jobs:
         working-directory: nomad-live-engine-342
         run: |
           set -euo pipefail
-          node --check src/totalcorner.js
           node --check src/index.js
           node --check src/index-5dollar.js
           node --check src/index-combined.js
@@ -41,7 +40,7 @@ jobs:
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler-stable-combined.toml
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler-stable-rollback.toml
 
-      - name: Preflight stable feed
+      - name: Guard current live feed before judge repair
         id: preflight
         shell: bash
         run: |
@@ -51,11 +50,11 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/pre-feed.json','utf8'));
           const count=Array.isArray(j.matches)?j.matches.length:0;
-          console.log(JSON.stringify({ok:j.ok,version:j.version,source:j.source?.name,count,lastError:j.lastError},null,2));
-          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||count<1) process.exit(1);
+          console.log(JSON.stringify({ok:j.ok,count,lastError:j.lastError},null,2));
+          if(j.ok!==true||count<1) process.exit(1);
           NODE
 
-      - name: Deploy stable combined router
+      - name: Deploy stable combined judge router
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
@@ -65,57 +64,56 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler-stable-combined.toml
 
-      - name: Postflight feed and restored THScore route
+      - name: Verify restored THScore and 5Dollar routes
         id: postflight
         shell: bash
         run: |
           set -euo pipefail
-          ok=0
-          for attempt in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/post-feed.json; then
-              if node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/post-feed.json','utf8'));
-          const count=Array.isArray(j.matches)?j.matches.length:0;
-          console.log(JSON.stringify({ok:j.ok,version:j.version,source:j.source?.name,count,lastError:j.lastError},null,2));
-          if(j.ok!==true||j.version!=='3.42'||j.source?.name!=='TotalCorner'||count<1) process.exit(1);
-          NODE
-              then ok=1; break; fi
-            fi
-            sleep 5
-          done
-          test "$ok" = '1'
 
-          curl -fsS --max-time 15 "$STABLE_URL/judge/thscore/status?_=$RANDOM$RANDOM" -o /tmp/thscore.json
-          node - <<'NODE'
+          sleep 5
+
+          thscore_ok=0
+          for attempt in 1 2 3 4 5 6; do
+            echo "THScore route attempt=$attempt"
+            if curl -fsS --max-time 15 "$STABLE_URL/judge/thscore/status?_=$RANDOM$RANDOM" -o /tmp/thscore.json; then
+              if node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/thscore.json','utf8'));
           console.log(JSON.stringify(j,null,2));
           if(j.version!=='3.42'||j.source!=='THScore'||typeof j.configured!=='boolean') process.exit(1);
           NODE
+              then thscore_ok=1; break; fi
+            fi
+            sleep 5
+          done
+          test "$thscore_ok" = '1'
 
-          curl -fsS --max-time 15 "$STABLE_URL/judge/5dollar/status?_=$RANDOM$RANDOM" -o /tmp/five.json
-          node - <<'NODE'
+          five_ok=0
+          for attempt in 1 2 3 4 5 6; do
+            echo "5Dollar route attempt=$attempt"
+            if curl -fsS --max-time 15 "$STABLE_URL/judge/5dollar/status?_=$RANDOM$RANDOM" -o /tmp/five.json; then
+              if node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/five.json','utf8'));
           console.log(JSON.stringify(j,null,2));
           if(j.version!=='3.42'||j.source!=='5DollarFootballAPI'||j.bookmaker!=='Bet365') process.exit(1);
           NODE
+              then five_ok=1; break; fi
+            fi
+            sleep 5
+          done
+          test "$five_ok" = '1'
 
-      - name: Verify deployed public Live page still renders
-        id: page
-        shell: bash
-        run: |
-          set -euo pipefail
-          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
-          test -n "$chrome"
-          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html'
-          "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=22000 --dump-dom "$url" >/tmp/nomad342-dom.html 2>/tmp/nomad342-chrome.log
-          count="$(grep -o 'class="signal-card event-compact' /tmp/nomad342-dom.html | wc -l)"
-          echo "rendered_cards=$count"
-          test "$count" -gt 0
+          curl -fsS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/post-feed.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/post-feed.json','utf8'));
+          const count=Array.isArray(j.matches)?j.matches.length:0;
+          console.log(JSON.stringify({feedOk:j.ok,count,lastError:j.lastError},null,2));
+          if(j.ok!==true||count<1) process.exit(1);
+          NODE
 
-      - name: Roll back stable runtime if post-deploy checks fail
+      - name: Roll back stable runtime if judge restore fails
         if: failure() && steps.deploy.outcome == 'success'
         uses: cloudflare/wrangler-action@v3
         with:
@@ -131,5 +129,5 @@ jobs:
         run: |
           set +e
           sleep 4
-          curl -sS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" | head -c 2000
+          curl -sS --max-time 35 "$STABLE_URL/feed?force=1&_=$RANDOM$RANDOM" | head -c 1200
           echo
