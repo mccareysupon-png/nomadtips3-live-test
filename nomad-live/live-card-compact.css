@@ -12,6 +12,13 @@
 .teams {font-size:13px;line-height:1.25}
 .score {font-size:20px}
 
+/* Make the currently expanded non-SIGNAL match unmistakable without changing layout. */
+.match-wrap[open]:not(.signal) {
+  box-shadow:
+    0 0 0 2px rgba(131,223,137,.90),
+    0 0 12px rgba(131,223,137,.12);
+}
+
 /* Summary card = actionable referees only.
    N/A / FAIL / WAIT remain available in the expanded PRICE CHECK panel. */
 .market .price-stack {
