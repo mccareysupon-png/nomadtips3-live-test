@@ -101,7 +101,7 @@ jobs:
           assert(graphLive.includes('attack-endpoint-away'), 'Attack Flow live layer must add AWAY endpoint guide');
           assert(graphLiveCss.includes('background:#000'), 'Attack Flow live layer must keep graph background black');
           assert(graphLiveCss.includes('chart-grid-mid'), 'Attack Flow live layer must style a reference midline');
-          assert(!graphLiveCss.includes('50%'), 'reference midline must not be labelled as 50%');
+          assert(!index.includes('50%'), 'Live UI must not label the reference midline as 50%');
           assert(app.includes('NOMAD342_CONFIG'), 'settings/health app must consume shared config');
 
           for (const [name, html] of [['Settings',settings],['Health',health]]) {
