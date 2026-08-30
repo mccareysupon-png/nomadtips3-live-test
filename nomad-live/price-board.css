@@ -115,6 +115,72 @@
   text-align:center;
 }
 
+/* Read-only Source 6 / Bet365 reference. Compact summary-only card. */
+.market .bet365-reference {
+  grid-column:1 / -1;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  min-width:0;
+  margin-top:5px;
+  padding:6px 7px;
+  border:1px solid rgba(131,223,137,.14);
+  border-radius:7px;
+  background:rgba(255,255,255,.025);
+  font-variant-numeric:tabular-nums;
+  line-height:1.15;
+}
+
+.bet365-reference-label {
+  flex:none;
+  color:#aab2ab;
+  font-size:6.8px;
+  font-weight:900;
+  letter-spacing:.045em;
+  text-transform:none;
+}
+
+.bet365-reference-dot,
+.bet365-reference-vs {
+  flex:none;
+  color:#6f7a71;
+  font-size:7px;
+  font-weight:900;
+}
+
+.bet365-reference-selection {
+  display:flex;
+  align-items:baseline;
+  gap:4px;
+  min-width:0;
+  flex:1 1 0;
+}
+
+.bet365-reference-selection b {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#eef2ee;
+  font-size:8px;
+  font-weight:900;
+}
+
+.bet365-reference-selection em {
+  flex:none;
+  color:var(--green);
+  font-size:7.2px;
+  font-style:normal;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.bet365-reference.is-no-odds strong {
+  color:var(--muted);
+  font-size:7px;
+  letter-spacing:.04em;
+}
+
 @media(max-width:700px) {
   .price-board-grid {
     grid-template-columns:minmax(78px,1.45fr) 46px 46px 34px 54px;
@@ -124,6 +190,30 @@
   .price-board-row {font-size:7.6px;padding:6px 0}
   .price-board-row > strong {font-size:6.7px}
   .price-board-selected-title strong {font-size:7.6px}
+  .market .bet365-reference {gap:4px;padding:6px}
+  .bet365-reference-label {font-size:6.4px}
+  .bet365-reference-selection {gap:3px}
+  .bet365-reference-selection b {font-size:7.5px}
+  .bet365-reference-selection em {font-size:6.8px}
+}
+
+@media(max-width:520px) {
+  .market .bet365-reference {
+    display:grid;
+    grid-template-columns:auto auto minmax(0,1fr) auto minmax(0,1fr);
+    gap:3px;
+    margin-top:4px;
+    padding:5px 6px;
+  }
+  .bet365-reference-label {font-size:6px}
+  .bet365-reference-dot,.bet365-reference-vs {font-size:6.2px}
+  .bet365-reference-selection {
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    gap:1px;
+  }
+  .bet365-reference-selection b {font-size:7px}
+  .bet365-reference-selection em {font-size:6.3px}
 }
 
 @media(max-width:420px) {
@@ -137,4 +227,8 @@
   .price-board-selected-title {gap:5px}
   .price-board-selected-title span {font-size:6.2px}
   .price-board-selected-title strong {font-size:7.2px}
+  .market .bet365-reference {grid-template-columns:auto auto minmax(0,1fr) auto minmax(0,1fr);padding:5px}
+  .bet365-reference-label {font-size:5.7px}
+  .bet365-reference-selection b {font-size:6.6px}
+  .bet365-reference-selection em {font-size:6px}
 }
