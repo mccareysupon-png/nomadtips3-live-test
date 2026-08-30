@@ -1,15 +1,15 @@
-/* Unified Today / Yesterday switch: one clean card with a thin divider. */
+/* Unified Today / Yesterday switch: one clean surface with only a short center divider. */
 .day-switch{
   display:grid;
   grid-template-columns:1fr 1fr;
   gap:0;
-  overflow:hidden;
   margin-bottom:10px;
-  border:1px solid rgba(150,158,151,.12);
+  border:0;
   border-radius:8px;
-  background:linear-gradient(145deg,#1b201a,#151914);
+  background:linear-gradient(145deg,rgba(27,32,26,.72),rgba(21,25,20,.72));
 }
 .day-switch .day-tab{
+  position:relative;
   border:0!important;
   border-radius:0!important;
   background:transparent!important;
@@ -18,11 +18,22 @@
   padding:11px 13px;
 }
 .day-switch .day-tab + .day-tab{
-  border-left:1px solid rgba(150,158,151,.12)!important;
+  border-left:0!important;
+}
+.day-switch .day-tab + .day-tab::before{
+  content:"";
+  position:absolute;
+  left:0;
+  top:50%;
+  width:1px;
+  height:24px;
+  transform:translateY(-50%);
+  background:rgba(150,158,151,.20);
+  pointer-events:none;
 }
 .day-switch .day-tab.active{
   color:var(--yellow);
-  background:rgba(131,223,137,.025)!important;
+  background:rgba(131,223,137,.018)!important;
 }
 .day-switch .day-tab span{
   background:transparent;
@@ -39,6 +50,9 @@
     font-size:10.5px;
   }
   .day-switch .day-tab + .day-tab{
-    border-left:1px solid rgba(150,158,151,.12)!important;
+    border-left:0!important;
+  }
+  .day-switch .day-tab + .day-tab::before{
+    height:20px;
   }
 }
