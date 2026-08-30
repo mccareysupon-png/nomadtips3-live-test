@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#123328">
+  <title>nomadtips3 · คู่มือ Settings 3.41</title>
+  <link rel="stylesheet" href="styles.css?v=20260830-scrollbar-stable-v1">
+  <link rel="stylesheet" href="site-footer.css">
+  <style>
+    :root{--g:#86e7a4;--fg:#e6ece7;--muted:#929c94;--card:#171c18;--soft:#111512;--line:rgba(255,255,255,.055)}
+    html{scroll-behavior:smooth}.guide-shell{width:min(1120px,calc(100% - 28px));margin:0 auto;padding:24px 0 84px}.guide-hero{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:end;margin:10px 0 18px}.guide-hero h1{font-size:clamp(26px,4vw,44px);margin:5px 0 8px;letter-spacing:-.04em}.guide-hero p{margin:0;max-width:830px;color:var(--muted);font-size:12px;line-height:1.75}.guide-badge{background:var(--soft);border-radius:9px;padding:9px 11px;color:#a4aea6;font-size:9px;white-space:nowrap}.guide-nav{position:sticky;top:6px;z-index:20;display:flex;gap:6px;flex-wrap:wrap;padding:8px;margin-bottom:12px;border-radius:10px;background:rgba(15,18,15,.94);backdrop-filter:blur(8px)}.guide-nav a{text-decoration:none;color:#9ba59d;background:rgba(255,255,255,.025);border-radius:7px;padding:8px 10px;font-size:9px;font-weight:850}.guide-nav a:hover{color:var(--g);background:rgba(134,231,164,.07)}.panel-guide{background:linear-gradient(145deg,#181d19,#121613);border-radius:14px;padding:18px;margin:12px 0}.panel-guide h2{font-size:18px;margin:4px 0 6px}.panel-guide>.intro{font-size:10px;line-height:1.7;color:#929d94;margin:0 0 12px}.setting{padding:13px;margin:8px 0;border-radius:10px;background:rgba(255,255,255,.025)}.head{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.head h3{font-size:13px;margin:0;color:#edf2ee}.tag{font-size:8px;border-radius:5px;padding:3px 6px;background:rgba(134,231,164,.07);color:#8bd9a1}.range{font-size:8px;color:#808a82}.setting p{font-size:10px;line-height:1.7;color:#aab4ac;margin:7px 0 0}.setting b,.callout b{color:#e4ebe6}.effects{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:9px}.effects div{background:var(--soft);border-radius:7px;padding:8px;color:#929d94;font-size:9px;line-height:1.55}.effects strong{display:block;color:#d4dcd5;font-size:8px;margin-bottom:3px}.example{margin-top:8px;padding:8px 9px;border-radius:7px;background:rgba(134,231,164,.05);color:#a9b5ac;font-size:9px;line-height:1.6}.formula{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:#bfe2c8}.fixed-grid,.actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.fixed-item,.action{background:var(--soft);border-radius:9px;padding:11px}.fixed-item span{display:block;font-size:8px;color:#7f8981}.fixed-item b,.action b{display:block;margin-top:3px;font-size:10px;color:#dde5df}.action p{margin:5px 0 0;color:#929d94;font-size:9px;line-height:1.6}.callout{margin:10px 0;padding:12px;border-radius:10px;background:rgba(134,231,164,.055);color:#9faaa2;font-size:10px;line-height:1.7}.quick{width:100%;border-collapse:collapse;margin-top:7px;font-size:9px}.quick th,.quick td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}.quick th{font-size:8px;color:#808a82}.quick td{color:#aeb8b0}.quick td:first-child{color:#e3eae4;font-weight:800}.back{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:18px}.back a{text-decoration:none;color:#9fe5b4;background:var(--soft);padding:9px 11px;border-radius:8px;font-size:9px}@media(max-width:760px){.guide-hero{grid-template-columns:1fr}.guide-badge{justify-self:start}.effects,.fixed-grid,.actions{grid-template-columns:1fr}.guide-shell{width:min(1120px,calc(100% - 18px))}.panel-guide{padding:13px}.guide-nav{top:4px}}
+  </style>
+</head>
+<body>
+  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="index.html">Live</a><a href="statistics.html">Statistics</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>SETTINGS GUIDE · TH</div></div></header>
+
+  <main class="guide-shell">
+    <section class="guide-hero">
+      <div><p class="eyebrow">NOMAD LIVE 3.41 · OWNER MANUAL</p><h1>คู่มือการตั้งค่า Settings 3.41</h1><p>คู่มือนี้เรียงตามหน้า Settings จริงจากบนลงล่าง อธิบายว่าค่าแต่ละตัวคืออะไร เพิ่มหรือลดแล้วเกิดผลอย่างไร ระบบใช้ค่าตรงไหน และมีตัวอย่างช่วยอ่านค่าให้เข้าใจเร็ว</p></div>
+      <div class="guide-badge">ภาษาไทย · เรียงตามหน้า Settings 1:1</div>
+    </section>
+
+    <nav class="guide-nav"><a href="#truth">ENGINE TRUTH</a><a href="#a">A · DETECTION WINDOW</a><a href="#b">B · HOME EVIDENCE</a><a href="#c">C · HOME ASIAN HANDICAP</a><a href="#actions">SAVE / RELOAD / DEFAULT</a><a href="#quick">สรุปเร็ว</a></nav>
+
+    <section class="panel-guide" id="truth">
+      <p class="eyebrow">ENGINE TRUTH</p><h2>Active Settings</h2><p class="intro">ส่วนนี้ใช้ดูว่า engine กำลังใช้ Settings ชุดใดอยู่จริง ไม่ใช่ค่าที่กำลังพิมพ์ในฟอร์มก่อนกด Save</p>
+      <div class="setting"><div class="head"><h3>Active Version</h3></div><p>หมายเลขเวอร์ชันของชุด Settings ที่ใช้งานอยู่ เมื่อบันทึกค่าใหม่ระบบจะสร้างเวอร์ชันใหม่ ทำให้รู้ว่า signal แต่ละตัวเกิดจากกติกาชุดไหน</p></div>
+      <div class="setting"><div class="head"><h3>Last Updated</h3></div><p>เวลาที่ Settings เวอร์ชันนั้นถูกบันทึก ใช้เช็กว่าค่าที่ Active เป็นค่าที่แก้เมื่อไร</p></div>
+      <div class="setting"><div class="head"><h3>Applies From Cycle</h3></div><p>รอบ engine ที่ Settings เวอร์ชันนั้นเริ่มมีผล การ Save จะไม่เปลี่ยนกติกากลางรอบ แต่จะมีผลตั้งแต่ cycle ถัดไป</p></div>
+      <div class="callout"><b>สิ่งสำคัญ:</b> เมื่อเกิด SIGNAL ใหม่ ระบบเก็บ snapshot ของ Settings ที่ Active ณ เวลานั้นไว้กับ SIGNAL ดังนั้นเปลี่ยน Settings วันหลัง ประวัติ SIGNAL เดิมจะไม่ถูกเขียนทับ</div>
+    </section>
+
+    <section class="panel-guide" id="a">
+      <p class="eyebrow">A · DETECTION WINDOW</p><h2>Time and score gate</h2><p class="intro">ด่านแรกใช้กำหนดช่วงเวลาที่อนุญาตให้หา SIGNAL และเงื่อนไขเรื่องผลต่างสกอร์</p>
+
+      <div class="setting"><div class="head"><h3>1. Minute From</h3><span class="tag">Default 55</span><span class="range">0–120 นาที</span></div><p>นาทีแรกที่อนุญาตให้เกมผ่านด่านเวลา หากนาทีปัจจุบันต่ำกว่าค่านี้ engine จะยังเฝ้าดู แต่ยังไม่ถือว่าผ่าน Detection Window</p><div class="effects"><div><strong>ตั้งต่ำลง</strong>เริ่มหาเร็วขึ้น เกมเข้ากระบวนการมากขึ้น</div><div><strong>ตั้งสูงขึ้น</strong>รอให้เกมพัฒนาไปมากขึ้นก่อน</div><div><strong>ตัวอย่าง</strong>ตั้ง 55 → นาที 54 ไม่ผ่าน แต่นาที 55 เริ่มมีสิทธิ์ผ่าน</div></div></div>
+
+      <div class="setting"><div class="head"><h3>2. Minute To</h3><span class="tag">Default 88</span><span class="range">0–120 นาที</span></div><p>นาทีสุดท้ายที่ยังยอมให้เกมผ่านด่านเวลา ค่า Minute From ต้องไม่มากกว่า Minute To</p><div class="effects"><div><strong>ตั้งต่ำลง</strong>ตัดช่วงท้ายเกมออกเร็วขึ้น</div><div><strong>ตั้งสูงขึ้น</strong>เปิดโอกาสให้เกมช่วงท้ายมากขึ้น</div><div><strong>ตัวอย่าง</strong>ตั้ง 88 → นาที 88 ยังผ่านได้ แต่นาที 89 ไม่ผ่าน</div></div></div>
+
+      <div class="setting"><div class="head"><h3>3. Rolling Window Minutes</h3><span class="tag">Default 5</span><span class="range">1–15 นาที</span></div><p>จำนวน “นาทีล่าสุด” ที่ใช้วัดโมเมนตัม แล้วนำไปเทียบกับหน้าต่างก่อนหน้าที่มีขนาดเท่ากัน ระบบจึงดูการเปลี่ยนแปลง ไม่ใช่ดูยอดสถิติทั้งเกมอย่างเดียว</p><p class="formula">ตัวอย่าง Window 5: ช่วง 65–70 นาที เทียบกับช่วง 60–65 นาที</p><div class="effects"><div><strong>ตั้งสั้น</strong>ตอบสนองไว เห็นแรงเร่งเร็ว แต่แกว่งง่าย</div><div><strong>ตั้งยาว</strong>นิ่งขึ้น แต่ตอบสนองต่อการเปลี่ยนเกมช้ากว่า</div><div><strong>หลักอ่าน</strong>Latest N minutes เทียบ Immediately Previous N minutes</div></div></div>
+
+      <div class="setting"><div class="head"><h3>4. Score Difference Filter</h3><span class="tag">Default OFF</span></div><p>สวิตช์เปิด/ปิดด่านผลต่างประตู ถ้า OFF ระบบไม่ใช้ผลต่างสกอร์เป็นตัวตัด ถ้า ON จะใช้ค่า Max Score Difference ด้านล่าง</p><div class="effects"><div><strong>OFF</strong>ไม่สนว่าคะแนนห่างกี่ลูก</div><div><strong>ON</strong>ต้องผ่านเพดานผลต่างสกอร์</div><div><strong>ข้อควรจำ</strong>Max Score Difference มีผลจริงเมื่อ Filter = ON</div></div></div>
+
+      <div class="setting"><div class="head"><h3>5. Max Score Difference</h3><span class="tag">Default 1</span><span class="range">0–20 ลูก</span></div><p>ผลต่างประตูสูงสุดที่ยอมรับเมื่อ Score Difference Filter เปิด ระบบใช้ค่าผลต่างแบบค่าสัมบูรณ์ จึงใช้ทั้งกรณี HOME นำหรือ HOME ตาม</p><div class="example"><b>ตัวอย่าง:</b> ตั้ง 1 → 1-0, 0-1, 2-1 ผ่าน; 2-0 หรือ 0-2 ไม่ผ่าน</div></div>
+    </section>
+
+    <section class="panel-guide" id="b">
+      <p class="eyebrow">B · HOME EVIDENCE</p><h2>Pressure, hunger and new events</h2><p class="intro">ส่วนนี้เป็นหัวใจของการดูว่า HOME กำลังเร่งเกมจริงหรือไม่ โดยใช้แรงกดดัน การเปลี่ยน trend และ event ใหม่</p>
+
+      <div class="setting"><div class="head"><h3>1. Attack Weight</h3><span class="tag">Default 1</span><span class="range">0–10</span></div><p>น้ำหนักของค่า Attack ในสูตร Pressure ยิ่งมาก Attack ปกติยิ่งมีอิทธิพลต่อคะแนนแรงกดดันมากขึ้น</p><p class="formula">Pressure = Attack Weight × Attack Delta + Dangerous Attack Weight × Dangerous Attack Delta</p><div class="effects"><div><strong>เพิ่ม</strong>ให้ความสำคัญกับ Attack ปกติมากขึ้น</div><div><strong>ลด</strong>ลดบทบาท Attack ปกติ</div><div><strong>ข้อจำกัด</strong>Attack Weight และ Dangerous Attack Weight ห้ามเป็น 0 พร้อมกัน</div></div></div>
+
+      <div class="setting"><div class="head"><h3>2. Dangerous Attack Weight</h3><span class="tag">Default 2</span><span class="range">0–10</span></div><p>น้ำหนักของ Dangerous Attack ในสูตร Pressure ค่า default สูงกว่า Attack ปกติ ทำให้การบุกอันตรายมีผลต่อแรงกดดันมากกว่า</p><div class="effects"><div><strong>เพิ่ม</strong>ระบบไวต่อ Dangerous Attack มากขึ้น</div><div><strong>ลด</strong>ลดอิทธิพลของ Dangerous Attack</div><div><strong>ตัวอย่าง</strong>Weight 2 → Dangerous Attack เพิ่ม 3 ครั้ง มีน้ำหนัก 6 คะแนน</div></div></div>
+
+      <div class="setting"><div class="head"><h3>3. HOME Pressure Share %</h3><span class="tag">Default 54%</span><span class="range">0–100%</span></div><p>สัดส่วนแรงกดดันของ HOME เทียบกับแรงกดดันรวมใน rolling window ล่าสุด</p><p class="formula">HOME Pressure Share = HOME Pressure ÷ (HOME Pressure + AWAY Pressure) × 100</p><div class="effects"><div><strong>ตั้งสูง</strong>คัดเข้ม ต้องเป็นฝ่ายกดเกมชัดเจน</div><div><strong>ตั้งต่ำ</strong>ผ่านง่ายขึ้น แม้เกมสูสีกว่า</div><div><strong>ตัวอย่าง</strong>ตั้ง 60% → HOME ต้องมี Pressure Share อย่างน้อย 60%</div></div></div>
+
+      <div class="setting"><div class="head"><h3>4. Trend Conditions Required</h3><span class="tag">Default 2 / 3</span><span class="range">1/3 · 2/3 · 3/3</span></div><p>กำหนดว่าจาก 3 Trend Conditions ต้องผ่านอย่างน้อยกี่ข้อ ได้แก่ <b>Home Pressure Trend</b>, <b>Home Pressure Share</b> และ <b>Match Tempo Trend</b></p><div class="effects"><div><strong>1 / 3</strong>ผ่อนที่สุด ผ่านเพียงหนึ่งเงื่อนไขก็พอ</div><div><strong>2 / 3</strong>สมดุล ต้องเห็นภาพกดเกมมากกว่าหนึ่งมิติ</div><div><strong>3 / 3</strong>เข้มที่สุด ต้องผ่านทุก trend</div></div></div>
+
+      <div class="setting"><div class="head"><h3>5. New HOME Event Gate</h3><span class="tag">Default ON</span></div><p>กำหนดว่าต้องมี event ใหม่ของ HOME ใน rolling window ล่าสุดหรือไม่ โดย event มาจาก SOT, Shot Off และ Corner ที่เปิดใช้งาน</p><div class="effects"><div><strong>ON</strong>ต้องมี event ใหม่ตาม Evidence rule</div><div><strong>OFF</strong>bypass ด่าน event ใหม่ แม้ค่า SOT / Shot Off / Corner จะยังถูกเก็บไว้</div><div><strong>ผล</strong>OFF ทำให้เกมผ่านง่ายขึ้นเพราะไม่บังคับ fresh event</div></div></div>
+
+      <div class="setting"><div class="head"><h3>6. SOT enabled</h3><span class="tag">Default ON</span></div><p>เปิดให้ Shots On Target เป็นหนึ่งใน evidence ที่ใช้ตรวจเหตุการณ์ใหม่ของ HOME</p></div>
+
+      <div class="setting"><div class="head"><h3>7. SOT Delta Minimum</h3><span class="tag">Default 1</span><span class="range">1–20</span></div><p>จำนวน SOT ใหม่ขั้นต่ำของ HOME ใน rolling window ล่าสุดที่ถือว่า evidence ตัวนี้ผ่าน</p><div class="example"><b>ตัวอย่าง:</b> ตั้ง 1 → ช่วงล่าสุดมี SOT เพิ่มจาก 2 เป็น 3 ถือว่า Delta = 1 และผ่าน</div></div>
+
+      <div class="setting"><div class="head"><h3>8. Shot Off enabled</h3><span class="tag">Default ON</span></div><p>เปิดให้การยิงไม่ตรงกรอบของ HOME เป็นหนึ่งใน evidence ที่ใช้ตรวจ event ใหม่</p></div>
+
+      <div class="setting"><div class="head"><h3>9. Shot Off Delta Minimum</h3><span class="tag">Default 1</span><span class="range">1–20</span></div><p>จำนวน Shot Off ใหม่ขั้นต่ำใน rolling window ล่าสุดที่ต้องเกิดจึงถือว่า evidence ตัวนี้ผ่าน</p></div>
+
+      <div class="setting"><div class="head"><h3>10. Corner enabled</h3><span class="tag">Default ON</span></div><p>เปิดให้ Corner ของ HOME เป็นหนึ่งใน evidence ที่ใช้ตรวจ event ใหม่</p></div>
+
+      <div class="setting"><div class="head"><h3>11. Corner Delta Minimum</h3><span class="tag">Default 1</span><span class="range">1–20</span></div><p>จำนวน Corner ใหม่ขั้นต่ำใน rolling window ล่าสุดที่ถือว่า evidence ตัวนี้ผ่าน</p></div>
+
+      <div class="setting"><div class="head"><h3>12. Evidence Required</h3><span class="tag">Default ANY</span><span class="range">ANY / ALL</span></div><p>กำหนดความสัมพันธ์ของ evidence ที่ “เปิดใช้งาน” อยู่</p><div class="effects"><div><strong>ANY</strong>มีอย่างน้อยหนึ่ง evidence ผ่านก็พอ</div><div><strong>ALL</strong>evidence ทุกตัวที่เปิดต้องผ่านพร้อมกัน</div><div><strong>กรณี Event Gate OFF</strong>ด่านนี้ถูก bypass เพราะไม่บังคับ event ใหม่</div></div><div class="example"><b>ตัวอย่าง:</b> เปิด SOT + Shot Off + Corner และเลือก ANY → มี Corner ใหม่อย่างเดียวก็ผ่าน evidence ได้ หากถึง minimum ที่ตั้งไว้</div></div>
+    </section>
+
+    <section class="panel-guide" id="c">
+      <p class="eyebrow">C · HOME ASIAN HANDICAP</p><h2>Live market and price gate</h2><p class="intro">หลัง Detection และ Evidence ผ่าน ระบบจึงตรวจตลาด Asian Handicap, line, odds และความสดของราคา</p>
+
+      <div class="fixed-grid">
+        <div class="fixed-item"><span>Market</span><b>Full Match Live AH</b></div>
+        <div class="fixed-item"><span>Side</span><b>HOME</b></div>
+        <div class="fixed-item"><span>Bookmaker</span><b>ตามที่แสดงในหน้า Settings</b></div>
+      </div>
+
+      <div class="setting"><div class="head"><h3>1. Allowed Lines</h3><span class="tag">Default ANY</span><span class="range">ANY / SELECTED</span></div><p>กำหนดว่าจะยอมรับ HOME Asian Handicap line แบบใด</p><div class="effects"><div><strong>ANY</strong>ยอมรับ AH line ที่ valid ทุก line</div><div><strong>SELECTED</strong>ยอมรับเฉพาะ line ที่เลือกไว้ในช่อง Selected HOME Lines</div><div><strong>ผล</strong>SELECTED ช่วยจำกัดช่วงต่อรองให้ตรงกลยุทธ์มากขึ้น</div></div></div>
+
+      <div class="setting"><div class="head"><h3>2. Selected HOME Lines</h3><span class="range">หน้า Settings เลือก +5 ถึง -5 ทีละ 0.25</span></div><p>รายการ HOME AH line ที่อนุญาตเมื่อ Allowed Lines = SELECTED สามารถเลือกหลายค่าได้ เช่น 0, -0.25, -0.5 หรือช่วงอื่นตามต้องการ</p><div class="example"><b>ตัวอย่าง:</b> เลือก 0, -0.25, -0.50 → ถ้าราคาปัจจุบัน HOME อยู่ -0.75 จะไม่ผ่าน AH line gate</div></div>
+
+      <div class="setting"><div class="head"><h3>3. Minimum Odds</h3><span class="tag">Default 1.50</span><span class="range">1.01–6.00</span></div><p>ราคาขั้นต่ำของ HOME ที่ยอมรับ ถ้า HOME odds ต่ำกว่าค่านี้จะไม่ผ่านราคา</p><div class="effects"><div><strong>ตั้งสูง</strong>คัดราคาต่ำออกมากขึ้น</div><div><strong>ตั้งต่ำ</strong>ยอมรับราคากว้างขึ้น</div><div><strong>ตัวอย่าง</strong>ตั้ง 1.70 → ราคา 1.69 ไม่ผ่าน; 1.70 ขึ้นไปผ่านด้าน minimum</div></div></div>
+
+      <div class="setting"><div class="head"><h3>4. Maximum enabled</h3><span class="tag">Default OFF</span></div><p>สวิตช์เปิดเพดาน Odds สูงสุด ถ้า OFF จะตรวจเพียง Minimum Odds; ถ้า ON จะใช้ Maximum Odds ด้านล่างร่วมด้วย</p></div>
+
+      <div class="setting"><div class="head"><h3>5. Maximum Odds</h3><span class="range">1.01–6.00 เมื่อเปิดใช้งาน</span></div><p>ราคาสูงสุดที่ยอมรับเมื่อ Maximum enabled = ON และค่า Minimum Odds ต้องไม่สูงกว่า Maximum Odds</p><div class="example"><b>ตัวอย่าง:</b> Minimum 1.70 + Maximum 2.50 → HOME odds ต้องอยู่ระหว่าง 1.70 ถึง 2.50</div></div>
+
+      <div class="setting"><div class="head"><h3>6. Maximum Price Age (seconds)</h3><span class="tag">Default 90s</span><span class="range">1–3600 วินาที</span></div><p>อายุสูงสุดของ “ราคาล่าสุด” ที่ระบบยอมรับ วัดจากเวลาที่ source อัปเดตราคาจนถึงเวลาที่ engine ตรวจ ถ้าเกินค่านี้ถือว่าราคาเก่าเกินไปและไม่ใช้ล็อก SIGNAL</p><div class="effects"><div><strong>ตั้งต่ำ</strong>บังคับราคาสดมากขึ้น แต่ถ้า source มาช้าก็อาจตกหล่นง่ายขึ้น</div><div><strong>ตั้งสูง</strong>ยอมรับราคาที่เก่ากว่าได้ แต่เสี่ยงใช้ราคาไม่ทันสถานการณ์มากขึ้น</div><div><strong>ค่าปัจจุบันที่เหมาะ</strong>90 วินาที = 1 นาที 30 วินาที เป็นจุดสมดุลที่ดี</div></div><div class="example"><b>ตัวอย่าง:</b> ราคาอัปเดต 12:00:00 ตรวจ 12:01:10 → อายุ 70s ผ่าน; ตรวจ 12:01:40 → อายุ 100s เกิน 90s จึงเป็น STALE</div></div>
+
+      <div class="setting"><div class="head"><h3>7. One Signal Per Match</h3><span class="tag">Default ON</span></div><p>ควบคุมว่าคู่เดียวกันสามารถล็อก SIGNAL ได้กี่ครั้ง</p><div class="effects"><div><strong>ON</strong>คู่หนึ่งล็อกได้ครั้งเดียว</div><div><strong>OFF</strong>คู่เดิมสามารถล็อก SIGNAL ใหม่ได้อีก หากกลับมาผ่านเงื่อนไข</div><div><strong>ข้อสังเกต</strong>ON ช่วยกัน signal ซ้ำในแมตช์เดียวกัน</div></div></div>
+    </section>
+
+    <section class="panel-guide" id="actions">
+      <p class="eyebrow">SETTINGS ACTIONS</p><h2>ปุ่มด้านล่างหน้า Settings</h2><p class="intro">ค่าต่าง ๆ จะยังไม่เปลี่ยน engine จนกว่าจะสั่ง Save ตามขั้นตอนของระบบ</p>
+      <div class="actions">
+        <div class="action"><b>SAVE & APPLY NEXT CYCLE</b><p>ตรวจความถูกต้องของ Settings ทั้งชุด หากมีค่าใดไม่ผ่าน validation จะไม่บันทึกทั้งชุด หากผ่านจะ staging เป็นเวอร์ชันใหม่และเริ่มใช้ cycle ถัดไป</p></div>
+        <div class="action"><b>RELOAD ACTIVE</b><p>โหลด Settings ที่ Active อยู่จริงกลับมาใส่ฟอร์ม เหมาะเมื่อแก้ค่าในหน้าจอไปแล้วแต่ยังไม่ต้องการ Save</p></div>
+        <div class="action"><b>RESTORE DEFAULT</b><p>นำค่า default ของระบบกลับมาเป็นชุดที่จะ Apply ตามกลไกการบันทึกของ Settings</p></div>
+      </div>
+      <div class="callout"><b>หลักการจำง่าย:</b> Save = เปลี่ยนอนาคตตั้งแต่ cycle ถัดไป ไม่ย้อนแก้ SIGNAL หรือ Settlement ที่เกิดไปแล้ว</div>
+    </section>
+
+    <section class="panel-guide" id="quick">
+      <p class="eyebrow">QUICK REFERENCE</p><h2>สรุปผลของการปรับค่าหลัก</h2>
+      <table class="quick"><thead><tr><th>ค่า</th><th>เพิ่ม / เข้มขึ้น</th><th>ลด / ผ่อนลง</th></tr></thead><tbody>
+        <tr><td>Minute From</td><td>เริ่มตรวจช้าขึ้น</td><td>เริ่มตรวจเร็วขึ้น</td></tr>
+        <tr><td>Minute To</td><td>เปิดช่วงท้ายเกมมากขึ้น</td><td>ตัดเกมช่วงท้ายเร็วขึ้น</td></tr>
+        <tr><td>Rolling Window</td><td>นิ่งขึ้น มองช่วงยาวขึ้น</td><td>ไวขึ้น แกว่งมากขึ้น</td></tr>
+        <tr><td>HOME Pressure Share</td><td>คัดเข้ม HOME ต้องกดชัด</td><td>ผ่านง่ายขึ้น</td></tr>
+        <tr><td>Trend Required</td><td>3/3 เข้มที่สุด</td><td>1/3 ผ่อนที่สุด</td></tr>
+        <tr><td>Evidence Delta</td><td>ต้องเกิด event ใหม่มากขึ้น</td><td>ผ่าน evidence ง่ายขึ้น</td></tr>
+        <tr><td>Evidence ALL</td><td>ต้องผ่านทุก event ที่เปิด</td><td>ANY ผ่านเพียงหนึ่ง event</td></tr>
+        <tr><td>Minimum Odds</td><td>ตัดราคาต่ำออกมากขึ้น</td><td>รับราคาต่ำลง</td></tr>
+        <tr><td>Maximum Price Age</td><td>ยอมรับราคาที่เก่ากว่า</td><td>บังคับราคาสดขึ้น</td></tr>
+      </tbody></table>
+    </section>
+
+    <div class="back"><a href="settings.html">← กลับหน้า Settings 3.41</a><a href="#top" onclick="window.scrollTo({top:0,behavior:'smooth'});return false">กลับขึ้นด้านบน ↑</a></div>
+  </main>
+</body>
+</html>
