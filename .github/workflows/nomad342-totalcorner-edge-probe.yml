@@ -1,0 +1,56 @@
+name: NOMAD 3.42 TotalCorner Edge Probe
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - 'nomad-live-engine-342-probe/**'
+      - '.github/workflows/nomad342-totalcorner-edge-probe.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PROBE_URL: https://nomadtips3-totalcorner-edge-probe-test.mccarey-supon.workers.dev/probe
+
+jobs:
+  deploy-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/342-totalcorner-inlet
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate probe
+        run: node --check nomad-live-engine-342-probe/src/index.js
+      - name: Deploy isolated probe Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-engine-342-probe
+          wranglerVersion: '4.92.0'
+          command: deploy
+      - name: Inspect TotalCorner transport from Cloudflare edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            if curl -fsS --max-time 55 "$PROBE_URL?_=$RANDOM$RANDOM" -o /tmp/probe.json; then ok=1; break; fi
+            sleep 3
+          done
+          test "$ok" = 1
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8'));
+          const compact={ok:j.ok,observedAt:j.observedAt,hits:(j.hits||[]).map(h=>({url:h.url,status:h.status,length:h.length,has:h.has,inputs:h.inputs,table:h.table,context:h.context})),scripts:j.scripts};
+          console.log(JSON.stringify(compact,null,2));
+          if(j.ok!==true)process.exit(1);
+          NODE
