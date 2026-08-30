@@ -1,10 +1,12 @@
 (()=>{
 'use strict';
-const SETTINGS_KEY='nomadSettings342';
+const config=window.NOMAD342_CONFIG;
+if(!config?.defaults)throw new Error('NOMAD342_CONFIG missing');
+const SETTINGS_KEY=config.settingsKey;
+const DEFAULTS=config.defaults;
 const LEDGER_KEY='nomadLedger342';
-const DEFAULTS={minuteFrom:55,minuteTo:88,rollingWindowMinutes:5,scoreDifferenceFilterEnabled:true,maxScoreDifference:1,attackWeight:1,dangerousAttackWeight:2,homePressureShareMinimum:55,trendConditionsRequired:2,homeEventRequired:true,sotEvidenceEnabled:true,sotDeltaMinimum:1,shotOffEvidenceEnabled:true,shotOffDeltaMinimum:1,cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY',allowedLinesMode:'ANY',allowedSelectionLines:[],oddsMinimum:1.80,oddsMaximumEnabled:false,oddsMaximum:2.40,maximumPriceAgeSeconds:30,oneSignalPerMatch:true};
 const runtime=window.NOMAD342_RUNTIME||{};
-function settings(){try{const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');return {...DEFAULTS,...saved,allowedSelectionLines:Array.isArray(saved.allowedSelectionLines)?saved.allowedSelectionLines:[]};}catch{return {...DEFAULTS,allowedSelectionLines:[]};}}
+function settings(){try{const saved=JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}');return {...DEFAULTS,...saved,allowedSelectionLines:Array.isArray(saved.allowedSelectionLines)?saved.allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]};}catch{return {...DEFAULTS,allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]};}}
 function saveSettings(v){localStorage.setItem(SETTINGS_KEY,JSON.stringify(v));}
 function fmtLine(n){if(n===null||n===undefined||!Number.isFinite(Number(n)))return '—';const x=Number(Number(n).toFixed(2));return `${x>0?'+':''}${x}`;}
 function fillLineOptions(select){if(!select||select.options.length)return;for(let v=-5;v<=5.0001;v+=.25){const n=Number(v.toFixed(2)),op=document.createElement('option');op.value=String(n);op.textContent=fmtLine(n);select.appendChild(op);}}
@@ -12,7 +14,7 @@ function bindSettings(){
   const form=document.getElementById('settingsForm');if(!form)return;const lines=form.elements.allowedSelectionLines;fillLineOptions(lines);const c=settings();
   Object.entries(c).forEach(([k,v])=>{const e=form.elements[k];if(!e)return;if(k==='allowedSelectionLines'){[...e.options].forEach(op=>op.selected=(v||[]).map(Number).includes(Number(op.value)));return;}if(e.type==='checkbox')e.checked=Boolean(v);else e.value=v;});
   form.addEventListener('submit',event=>{event.preventDefault();const v={...c};for(const [k,d] of Object.entries(DEFAULTS)){const x=form.elements[k];if(!x)continue;if(k==='allowedSelectionLines'){v[k]=[...x.selectedOptions].map(o=>Number(o.value));continue;}if(typeof d==='boolean')v[k]=x.checked;else if(typeof d==='number')v[k]=Number(x.value);else v[k]=x.value;}saveSettings(v);const status=document.getElementById('saveStatus');if(status)status.textContent='Saved';});
-  document.getElementById('defaultsButton')?.addEventListener('click',()=>{saveSettings(DEFAULTS);location.reload();});
+  document.getElementById('defaultsButton')?.addEventListener('click',()=>{saveSettings({...DEFAULTS,allowedSelectionLines:[...(DEFAULTS.allowedSelectionLines||[])]});location.reload();});
 }
 async function fetchJson(url,timeoutMs=6000){
   const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),timeoutMs);
