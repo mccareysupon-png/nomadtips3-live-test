@@ -4,7 +4,7 @@ const KEY='nomad341OddsDisplayV1',MODES=new Set(['decimal','american','fractiona
 let mode=(()=>{try{const v=String(localStorage.getItem(KEY)||'').toLowerCase();return MODES.has(v)?v:'decimal'}catch{return'decimal'}})(),applying=false;
 const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
 const american=v=>{if(!finite(v)||Number(v)<=1)return'—';const d=Number(v),a=d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));return a>0?`+${a}`:String(a)};
-const gcd=(a,b)=>{a=Math.abs(Math.trunc(a));b=Math.abs(Math.trunc(b));while(b){const t=b;b=a%b;a=t}return a||1};
+const gcd=(a,b)=>{a=Math.abs(Math.trunc(a));b=Math.abs(Math.trunc(b));while(b){const t=b;b;a=t}return a||1};
 const fractional=v=>{if(!finite(v)||Number(v)<=1)return'—';const target=Number(v)-1;for(let den=1;den<=100;den++){const num=Math.round(target*den);if(num<=0)continue;if(Math.abs(num/den-target)<=0.0050000001){const g=gcd(num,den);return`${num/g}/${den/g}`}}const num=Math.max(1,Math.round(target*100)),g=gcd(num,100);return`${num/g}/${100/g}`};
 const decimal=v=>finite(v)?Number(v).toFixed(2):'—';
 const format=v=>mode==='american'?american(v):mode==='fractional'?fractional(v):decimal(v);
@@ -17,7 +17,7 @@ function apply(){if(applying)return;applying=true;try{
  document.querySelectorAll('.price-board-row').forEach(r=>{const c=r.querySelectorAll(':scope > span');if(c.length>=3)exact(c[2])});
  document.querySelectorAll('.price-source-value,.price-selected-value').forEach(text);
  document.querySelectorAll('.detail-card').forEach(c=>{const h=String(c.querySelector('h3')?.textContent||'').trim().toUpperCase();if(h==='PRICE CHECK'||h==='SIGNAL LOCK · LOCKED')c.querySelectorAll('.check b').forEach(text)});
- document.querySelectorAll('.data-table tbody tr').forEach(r=>{const c=r.querySelectorAll(':scope > td');if(c.length>=5)exact(c[4])});
+ document.querySelectorAll('.data-table tbody tr').forEach(r=>{const oddsCell=r.querySelector(':scope > td.odds-cell');if(oddsCell){exact(oddsCell);return}const c=r.querySelectorAll(':scope > td');if(c.length>=5)exact(c[4])});
  document.querySelectorAll('.summary-grid .metric').forEach(m=>{if(String(m.querySelector('span')?.textContent||'').trim().toUpperCase()==='AVG ODDS')exact(m.querySelector('strong'))});
  document.querySelectorAll('[data-odds-mode]').forEach(b=>{const on=b.dataset.oddsMode===mode;b.classList.toggle('is-active',on);b.setAttribute('aria-pressed',on?'true':'false')});
  document.documentElement.dataset.oddsDisplay=mode;
