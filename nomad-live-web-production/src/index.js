@@ -5,6 +5,9 @@ const API_ROUTES=new Map([
   ['/api/health','/health'],
 ]);
 
+const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
+const PREDICTIONS_BASE='/nomadtips3-live-test';
+
 function unavailable(message,status=503){
   return new Response(message,{status,headers:{
     'cache-control':'no-store',
@@ -21,6 +24,32 @@ async function proxyApi(request,env,url){
   }
   const internalUrl=new URL(enginePath+url.search,'https://nomadtips3-live-engine.internal');
   return env.PROD_ENGINE.fetch(new Request(internalUrl,request));
+}
+
+function legacyLiveRedirect(url){
+  if(url.pathname==='/nomad-live/index.html'){
+    return Response.redirect(new URL('/'+url.search,url.origin).toString(),302);
+  }
+  if(url.pathname==='/nomad-live/statistics.html'){
+    return Response.redirect(new URL('/statistics.html'+url.search,url.origin).toString(),302);
+  }
+  return null;
+}
+
+async function proxyPredictions(request,url){
+  if(url.pathname==='/soccer-predictions'){
+    return Response.redirect(new URL('/soccer-predictions/'+url.search,url.origin).toString(),302);
+  }
+  if(!url.pathname.startsWith('/soccer-predictions/')) return null;
+  if(request.method!=='GET'&&request.method!=='HEAD'){
+    return unavailable('Soccer Predictions route supports GET/HEAD only',405);
+  }
+  const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
+  const upstreamRequest=new Request(upstreamUrl.toString(),request);
+  const response=await fetch(upstreamRequest);
+  const headers=new Headers(response.headers);
+  headers.set('x-nomad-web','soccer-predictions-bridge');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
 function releaseResponse(){
@@ -42,6 +71,10 @@ export default {
     if(url.pathname==='/api'||url.pathname.startsWith('/api/')){
       return proxyApi(request,env,url);
     }
+    const liveRedirect=legacyLiveRedirect(url);
+    if(liveRedirect) return liveRedirect;
+    const predictionsResponse=await proxyPredictions(request,url);
+    if(predictionsResponse) return predictionsResponse;
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
       return unavailable('Static assets unavailable');
     }
