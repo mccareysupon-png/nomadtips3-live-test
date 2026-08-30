@@ -1,0 +1,19 @@
+.cumulative-unit-plot.has-chart-viewport{grid-template-rows:auto minmax(0,1fr) auto}
+.statistics-chart-viewport-control{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-height:25px;padding:3px 9px 4px;border-top:1px solid rgba(128,136,131,.09);color:#7d8880;font-size:7px;font-weight:800;letter-spacing:.02em}
+.statistics-chart-viewport-step,.statistics-chart-latest,.statistics-chart-viewport-select{height:20px;border:1px solid rgba(157,168,161,.16);background:#151815;color:#aeb7b0;border-radius:4px;font:800 7px/1 Arial,sans-serif;outline:none}
+.statistics-chart-viewport-step{width:23px;padding:0;font-size:11px;cursor:pointer}
+.statistics-chart-viewport-select{min-width:50px;padding:0 5px;cursor:pointer}
+.statistics-chart-latest{padding:0 7px;color:#8fc89a;cursor:pointer;letter-spacing:.04em}
+.statistics-chart-viewport-step:hover:not(:disabled),.statistics-chart-viewport-step:focus-visible,.statistics-chart-viewport-select:hover,.statistics-chart-viewport-select:focus-visible,.statistics-chart-latest:hover,.statistics-chart-latest:focus-visible{border-color:rgba(111,189,125,.55);color:#d8e2da}
+.statistics-chart-viewport-step:disabled,.statistics-chart-latest:disabled{opacity:.35;cursor:default}
+.statistics-chart-latest[hidden]{display:none}
+.statistics-chart-viewport-status{margin-left:3px;color:#68736b;white-space:nowrap}
+.cumulative-unit-chart.has-chart-pan .cumulative-unit-canvas{cursor:grab;touch-action:pan-y}
+.cumulative-unit-chart.has-chart-pan .cumulative-unit-canvas.is-panning{cursor:grabbing;user-select:none}
+@media(max-width:700px){
+  .statistics-chart-viewport-control{min-height:23px;gap:2px;padding:2px 6px 3px}
+  .statistics-chart-viewport-step{width:21px;height:19px}
+  .statistics-chart-viewport-select{height:19px;min-width:46px;padding:0 3px}
+  .statistics-chart-latest{height:19px;padding:0 5px}
+  .statistics-chart-viewport-status{display:none}
+}
