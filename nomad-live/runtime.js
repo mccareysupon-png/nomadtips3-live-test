@@ -6,13 +6,14 @@ const fmtLine=v=>v==null?'—':`${v>0?'+':''}${Number(v).toFixed(2)}`;
 const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
 const when=s=>{try{return new Date(s).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});}catch{return '—'}};
 const pill=(ok,text)=>`<b class="${ok?'ok':'wait'}">${esc(text)}</b>`;
+const sideKey=value=>String(value||'home').toLowerCase()==='away'?'away':'home';
+const sideLabel=value=>sideKey(value).toUpperCase();
+const sidePressureKey=value=>sideKey(value)==='away'?'awayPressure':'homePressure';
+const sideTeam=(m,side=m?.side)=>sideKey(side)==='away'?(m?.away||'Away'):(m?.home||'Home');
 const priceLabel=status=>({
   'AH READY':'Price pass','AH LINE FAIL':'Line fail','AH ODDS FAIL':'Odds fail','AH STALE':'Price stale','AH INVALID':'Ah invalid',
   'ODDS NOT MATCHED':'Not matched','ODDS NOT READY':'Odds not ready','AH CHECKING':'Price checking','AH WAIT':'Price checking'
 }[status]||'Price checking');
-const bookmakerPriceLine=(market,label)=>market?.status==='AH READY'&&n(market.line)!=null&&n(market.homeOdds)!=null
-  ?`${esc(label)} · Ah ${fmtLine(market.line)} · Odds ${fmtOdds(market.homeOdds)}`
-  :`${esc(label)} · ${esc(priceLabel(market?.status||'ODDS NOT READY'))}`;
 const sourceReason=reason=>({
   no_matching_live_match:'no matching live match',no_matching_live_ah:'no matching live AH',the_odds_api_key_missing:'API key unavailable',
   api_football_key_missing:'API key unavailable',api_football_live_ah_bet_not_found:'live Asian Handicap market not found',
@@ -23,20 +24,24 @@ const sourceReason=reason=>({
   'source_blocked:http_403':'source blocked · HTTP 403','source_blocked:http_429':'source blocked · HTTP 429',
   'source_blocked:challenge_page':'source blocked · challenge page',source_timeout:'source timeout',
 }[reason]||String(reason||'no valid live AH').replace(/^price_fetch_failed:/,'').replace(/_/g,' '));
+const fallbackOdds=m=>{
+  const side=sideKey(m?.side);
+  return m?.marketCheck?.selectionOdds??(side==='away'?m?.market?.awayOdds:m?.market?.homeOdds);
+};
 const priceSources=m=>Array.isArray(m.priceSources)&&m.priceSources.length?m.priceSources:[{
   id:'source1',position:1,source:'Odds-API.io',status:m.marketCheck?.passed?'PASS':m.priceStatus==='AH STALE'?'STALE':'WAIT',
-  reason:m.marketCheck?.reason||m.market?.reason||null,bookmaker:m.market?.bookmaker||'1xBet',line:m.marketCheck?.line??m.market?.line,
-  odds:m.marketCheck?.homeOdds??m.market?.homeOdds,sourceUpdatedAt:m.market?.sourceUpdatedAt,priceAgeSeconds:m.marketCheck?.ageSeconds,
+  reason:m.marketCheck?.reason||m.market?.reason||null,bookmaker:m.market?.bookmaker||'1xBet',line:m.marketCheck?.line??m.selectionLine??m.market?.line,
+  odds:fallbackOdds(m),sourceUpdatedAt:m.market?.sourceUpdatedAt,priceAgeSeconds:m.marketCheck?.ageSeconds,side:sideKey(m?.side),
 }];
 const sourceUnavailableValue=source=>source?.id==='source5'&&source?.reason
   ?`${source.status||'UNAVAILABLE'} · ${sourceReason(source.reason)}`
   :'N/A';
-const sourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
-  ?`${source.status} · ${source.bookmaker||'—'} · HOME ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
+const sourceValue=(source,side)=>source.status==='PASS'||source.line!=null||source.odds!=null
+  ?`${source.status} · ${source.bookmaker||'—'} · ${sideLabel(source.side||side)} ${fmtLine(source.line)} @ ${fmtOdds(source.odds)} · age ${source.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—'}`
   :sourceUnavailableValue(source);
-const sourceRow=source=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source))}</b></div>`;
-const selectedValue=selected=>selected
-  ?`${selected.source} · ${selected.bookmaker||'—'} · HOME ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
+const sourceRow=(source,side)=>`<div class="check"><span>SOURCE ${source.position} · ${esc(source.source)}</span><b class="${source.status==='PASS'?'ok':'wait'}">${esc(sourceValue(source,side))}</b></div>`;
+const selectedValue=(selected,side)=>selected
+  ?`${selected.source} · ${selected.bookmaker||'—'} · ${sideLabel(selected.side||side)} ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · age ${selected.priceAgeSeconds!=null?`${Number(selected.priceAgeSeconds).toFixed(0)}s`:'—'}`
   :'N/A';
 const compactAge=source=>source?.priceAgeSeconds!=null?`${Number(source.priceAgeSeconds).toFixed(0)}s`:'—';
 const compactSourceValue=source=>source.status==='PASS'||source.line!=null||source.odds!=null
@@ -47,9 +52,9 @@ const compactSourceRow=source=>{
   const rowState=source.status==='PASS'?'is-pass':value==='N/A'?'is-na':'is-wait';
   return `<span class="price-source-row ${rowState}"><span class="price-source-name">S${source.position} · ${esc(source.source)}</span><span class="price-source-value">${esc(value)}</span></span>`;
 };
-const compactSelectedRow=selected=>{
+const compactSelectedRow=(selected,side)=>{
   const position=selected?.position??(String(selected?.id||'').replace(/\D/g,'')||'—');
-  const value=selected?`${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
+  const value=selected?`${sideLabel(selected.side||side)} · ${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
   return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">SELECTED${selected?` · S${position}`:''}</span><span class="price-selected-value">${esc(value)}</span></span>`;
 };
 const signalLock=m=>m?.signalStatus==='LOCKED'&&m?.signalLock?.status==='LOCKED'?m.signalLock:null;
@@ -58,48 +63,46 @@ function setSource(text,ok=true){
   const el=document.querySelector('.source-pill'); if(!el)return;
   el.innerHTML=`<span class="dot" style="${ok?'':'background:#f2d21b;box-shadow:none'}"></span>${esc(text)}`;
 }
-function renderChecks(checks={},evidence={}){
-  const labels={homeOnly:'HOME only',minute:'Minute window',score:'Score filter',hunger:'HOME hunger trend',evidence:evidence.required===false?'New HOME event (optional)':'New HOME event',market:'Full Match Live AH'};
+function renderChecks(checks={},evidence={},side='home'){
+  const label=sideLabel(side);
+  const labels={homeOnly:'HOME selected',awayOnly:'AWAY selected',minute:'Minute window',score:'Score filter',hunger:`${label} hunger trend`,evidence:evidence.required===false?`New ${label} event (optional)`:`New ${label} event`,market:'Full Match Live AH'};
   return Object.entries(checks).map(([k,v])=>`<div class="check"><span>${esc(labels[k]||k)}</span>${pill(Boolean(v),v?'PASS':'WAIT')}</div>`).join('');
 }
 function detail(m){
-  const s=m.stats||{};
+  const side=sideKey(m.side),label=sideLabel(side),pressureKey=sidePressureKey(side),s=m.stats||{};
   const rolling=m.rolling||{},recent=rolling.recent||{},previous=rolling.previous||{},eventDelta=recent.delta||{};
-  const comparison=m.marketComparison||{};
-  const bet365=comparison.bet365||{};
-  const sources=priceSources(m);
-  const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
-  const sourceRows=sources.map(sourceRow).join('');
-  const sourceOneComparison='';
-  const locked=signalLock(m);
-  const lockSection=locked?`<section class="detail-card"><h3>SIGNAL LOCK · LOCKED</h3><div class="check"><span>Entry minute / score</span><b>${locked.minute??'—'}′ · ${pair(locked.entryScore)}</b></div><div class="check"><span>Locked HOME AH / odds</span><b>${fmtLine(locked.line)} @ ${fmtOdds(locked.odds)}</b></div><div class="check"><span>Bookmaker / source</span><b>${esc(locked.bookmaker||'—')} · ${esc(locked.oddsSource||'—')}</b></div><div class="check"><span>Locked at</span><b>${locked.lockedAt?when(locked.lockedAt):'—'}</b></div></section>`:'';
+  const sources=priceSources(m),selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
+  const sourceRows=sources.map(source=>sourceRow(source,side)).join('');
+  const locked=signalLock(m),lockedSide=sideKey(locked?.selection||side),lockedLabel=sideLabel(lockedSide);
+  const lockSection=locked?`<section class="detail-card"><h3>SIGNAL LOCK · LOCKED</h3><div class="check"><span>Entry minute / score</span><b>${locked.minute??'—'}′ · ${pair(locked.entryScore)}</b></div><div class="check"><span>Locked ${lockedLabel} AH / odds</span><b>${fmtLine(locked.line)} @ ${fmtOdds(locked.odds)}</b></div><div class="check"><span>Bookmaker / source</span><b>${esc(locked.bookmaker||'—')} · ${esc(locked.oddsSource||'—')}</b></div><div class="check"><span>Locked at</span><b>${locked.lockedAt?when(locked.lockedAt):'—'}</b></div></section>`:'';
+  const share=m.sidePressureShare??rolling.sides?.[side]?.pressureShare??rolling[side==='away'?'awayPressureShare':'homePressureShare'];
   return `<div class="match-detail">
     ${lockSection}
-    <section class="detail-card"><h3>HOME ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
+    <section class="detail-card"><h3>${label} ROLLING DELTA · ${rolling.windowMinutes??'—'} MIN</h3><div class="evidence">
       <div><span>ATTACK</span><b>${pair(s.attacks)}</b></div><div><span>DANGER</span><b>${pair(s.dangerousAttack)}</b></div>
       <div><span>SHOT OFF</span><b>${pair(s.shotsOff)}</b></div><div><span>SHOT ON</span><b>${pair(s.shotsOn)}</b></div>
       <div><span>CORNERS</span><b>${pair(s.corners)}</b></div><div><span>POSSESSION</span><b>${pair(s.possession)}</b></div>
-      <div><span>Δ SOT / OFF / COR</span><b>${eventDelta.shotsOn?.home??'—'} / ${eventDelta.shotsOff?.home??'—'} / ${eventDelta.corners?.home??'—'}</b></div><div><span>HUNGER</span><b>${m.hunger?.passedCount??0} / ${m.hunger?.total??3}</b></div>
+      <div><span>Δ SOT / OFF / COR</span><b>${eventDelta.shotsOn?.[side]??'—'} / ${eventDelta.shotsOff?.[side]??'—'} / ${eventDelta.corners?.[side]??'—'}</b></div><div><span>HUNGER</span><b>${m.hunger?.passedCount??0} / ${m.hunger?.total??3}</b></div>
     </div></section>
-    <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>HOME pressure · recent / previous</span><b>${recent.homePressure??'—'} / ${previous.homePressure??'—'}</b></div><div class="check"><span>HOME pressure share</span><b>${rolling.available?`${Number(rolling.homePressureShare).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
-    <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks,m.evidence)}</section>
-    <section class="detail-card"><h3>PRICE CHECK</h3>${sourceRows}${sourceOneComparison}<div class="check"><span>SELECTED PRICE</span><b class="${selected?'ok':'wait'}">${esc(selectedValue(selected))}</b></div></section>
+    <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>${label} pressure · recent / previous</span><b>${recent[pressureKey]??'—'} / ${previous[pressureKey]??'—'}</b></div><div class="check"><span>${label} pressure share</span><b>${rolling.available&&n(share)!=null?`${Number(share).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
+    <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks,m.evidence,side)}</section>
+    <section class="detail-card"><h3>PRICE CHECK</h3>${sourceRows}<div class="check"><span>SELECTED PRICE · ${label}</span><b class="${selected?'ok':'wait'}">${esc(selectedValue(selected,side))}</b></div></section>
   </div>`;
 }
 function matchRow(m){
-  const state=m.state||'WATCHING';
-  const locked=Boolean(signalLock(m));
+  const side=sideKey(m.side),state=m.state||'WATCHING',locked=Boolean(signalLock(m));
   const detectorStyle=state==='SIGNAL'?'signal':state==='NEAR SIGNAL'?'near':'';
   const rowStyle=locked||state==='SIGNAL'?'signal':detectorStyle;
-  const sources=priceSources(m);
-  const selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
+  const sources=priceSources(m),selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const matchId=String(m.id??`${m.home}|${m.away}|${m.league}`);
-  const currentPrice=`<span class="price-stack">${sources.map(compactSourceRow).join('')}${compactSelectedRow(selected)}</span>`;
-  return `<details class="match-wrap ${rowStyle}" data-match-id="${esc(matchId)}" data-state="${esc(state)}" data-signal-status="${locked?'LOCKED':''}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
+  const currentPrice=`<span class="price-stack">${sources.map(compactSourceRow).join('')}${compactSelectedRow(selected,side)}</span>`;
+  const pressure=m.rolling?.recent?.[sidePressureKey(side)]??'—';
+  const sot=m.rolling?.recent?.delta?.shotsOn?.[side]??0;
+  return `<details class="match-wrap ${rowStyle}" data-match-id="${esc(matchId)}" data-side="${esc(side)}" data-state="${esc(state)}" data-signal-status="${locked?'LOCKED':''}" data-search="${esc(`${m.home} ${m.away} ${m.league}`.toLowerCase())}">
     <summary class="match-row"><div class="statebox"><span class="state ${detectorStyle}">● ${esc(state)}</span>${locked?'<span class="state signal">◆ LOCKED</span>':''}<span class="minute">${m.minute??'—'}′</span></div>
     <div class="match-main"><span class="league">${esc(m.league||'—')}</span><span class="teams">${esc(m.home||'Home')} — ${esc(m.away||'Away')}</span></div>
     <div class="score">${pair(m.score)}</div>
-    <div class="quick"><div class="q"><span>PRESS</span><b>${m.rolling?.recent?.homePressure??'—'}</b></div><div class="q"><span>SOT</span><b>+${m.rolling?.recent?.delta?.shotsOn?.home??0}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div></div>
+    <div class="quick"><div class="q"><span>${sideLabel(side)} PRESS</span><b>${pressure}</b></div><div class="q"><span>SOT</span><b>+${sot}</b></div><div class="q"><span>HUNGER</span><b>${m.hunger?.passedCount??0}/3</b></div></div>
     <div class="market">${currentPrice}</div>
     <div class="cond"><span>CHECKS</span><strong class="${m.passed===m.total?'pass':m.detectionPassed?'warn':''}">${m.passed??0}/${m.total??6}</strong></div></summary>${detail(m)}</details>`;
 }
@@ -110,13 +113,12 @@ function setupFilters(){
     const active=tabs.find(x=>x.dataset.active==='1')?.textContent?.trim().toUpperCase()||'ALL';
     const q=(search?.value||'').trim().toLowerCase();
     document.querySelectorAll('.match-wrap').forEach(row=>{
-      const state=row.dataset.state||'';
-      const locked=row.dataset.signalStatus==='LOCKED';
+      const state=row.dataset.state||'',locked=row.dataset.signalStatus==='LOCKED';
       const stateOk=active==='ALL'||(active==='SIGNAL'?(locked||state==='SIGNAL'):active==='NEAR'?state==='NEAR SIGNAL':state===active);
       row.style.display=stateOk&&(!q||row.dataset.search.includes(q))?'':'none';
     });
   };
-  tabs.forEach((b,i)=>b.addEventListener('click',()=>{tabs.forEach(x=>x.dataset.active='0');b.dataset.active='1';apply();}));
+  tabs.forEach(b=>b.addEventListener('click',()=>{tabs.forEach(x=>x.dataset.active='0');b.dataset.active='1';apply();}));
   if(tabs[0])tabs[0].dataset.active='1'; if(search)search.addEventListener('input',apply);
 }
 async function get(path){if(!API)throw new Error('Runtime engine URL unavailable');const r=await fetch(API+path,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
@@ -160,13 +162,12 @@ async function healthPage(){
     <article class="health-item"><header><b>Primary feed</b><span class="${s.today?'win':'loss'}">● ${s.today?'READY':'WAIT'}</span></header><div class="rows"><div><span>Matches</span><strong>${c.matches||0}</strong></div><div><span>Last cycle</span><strong>${d.lastCycle?when(d.lastCycle):'—'}</strong></div><div><span>Cycle</span><strong>${d.cycle||0}</strong></div><div><span>Source</span><strong>TotalCorner · ${s.today?'FRESH':'WAIT'}</strong></div></div></article>
     <article class="health-item"><header><b>Live statistics</b><span class="${c.liveStats?'win':''}">● ${c.liveStats?'READY':'WAIT'}</span></header><div class="rows"><div><span>Watching</span><strong>${c.watching||0}</strong></div><div><span>Near signal</span><strong>${c.near||0}</strong></div><div><span>Stats available</span><strong>${c.liveStats||0}</strong></div><div><span>Freshness</span><strong>${d.config?.freshnessSec||'—'} sec</strong></div></div></article>
     <article class="health-item"><header><b>Market feed</b><span class="${o.status==='READY'?'win':o.status==='ERROR'||o.status==='KEY_MISSING'?'loss':''}">● ${esc(o.status||'IDLE')}</span></header><div class="rows"><div><span>Source</span><strong>Odds-API.io</strong></div><div><span>Bookmaker</span><strong>1xBet + Bet365</strong></div><div><span>Checked / mapped</span><strong>${o.checked??o.eligible??0} / ${o.mapped||0}</strong></div><div><span>AH ready · 1x / 365</span><strong>${rb['1xBet']??o.ready??c.market??0} / ${rb['Bet365']??0}</strong></div></div></article>
-    <article class="health-item"><header><b>Detector</b><span class="${d.ok?'win':'loss'}">● ${d.ok?'READY':'ERROR'}</span></header><div class="rows"><div><span>Minute window</span><strong>${esc(d.config?.minute||'—')}</strong></div><div><span>Poll</span><strong>${d.config?.pollSec||'—'} sec</strong></div><div><span>Ended feed</span><strong>${s.ended?'READY':'WAIT'}</strong></div><div><span>Error</span><strong>${esc(d.lastError||'none')}</strong></div></div></article>`;
+    <article class="health-item"><header><b>Detector</b><span class="${d.ok?'win':'loss'}">● ${d.ok?'READY':'ERROR'}</span></header><div class="rows"><div><span>Side mode</span><strong>${esc(d.config?.side||'HOME')}</strong></div><div><span>Minute window</span><strong>${esc(d.config?.minute||'—')}</strong></div><div><span>Poll</span><strong>${d.config?.pollSec||'—'} sec</strong></div><div><span>Error</span><strong>${esc(d.lastError||'none')}</strong></div></div></article>`;
     const mode=document.querySelector('.mode strong');if(mode){mode.textContent=d.ok?'READY':'WAIT';mode.className=d.ok?'win':'warn';}setSource(d.ok?'SYSTEM HEALTH · LIVE':'SYSTEM HEALTH · SOURCE WAIT',d.ok);
   }catch(e){setSource('SYSTEM HEALTH · OFFLINE',false);}};await load();setInterval(load,10000);
 }
 
 const path=location.pathname.toLowerCase();
-// TEST Web serves Live at root; retain the legacy subdirectory aliases.
 const LIVE_ROOT_PATHS=new Set(['/','/index.html','/live','/live/']);
 if(LIVE_ROOT_PATHS.has(path)||path.endsWith('/nomad-live/')||path.endsWith('/nomad-live/index.html')) livePage();
 else if(path.endsWith('/nomad-live/statistics.html')) statsPage();
