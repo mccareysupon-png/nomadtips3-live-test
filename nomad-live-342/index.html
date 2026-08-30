@@ -4,33 +4,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · Live 3.42</title>
+  <title>nomadtips3 · Live Score & Event 3.42</title>
   <link rel="stylesheet" href="styles.css?v=20260829-5dollar-v1">
-  <link rel="stylesheet" href="ui-signal-lock.css?v=20260827-341-shell-v3">
+  <link rel="stylesheet" href="event-monitor.css?v=20260830-event-monitor-v1">
 </head>
 <body data-page="live">
   <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a class="active" href="index.html">Live</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>3.42 · TOTALCORNER LIVE</div></div></header>
   <main class="shell">
-    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · HOME ONLY</p><h1>Live Asian Handicap scanner</h1><p>TotalCorner live events pass through NOMAD Event Gate, then Bet365 prices from 5DollarFootballAPI are checked before the final HOME AH signal. Signal evidence is locked for later profit testing.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>fail closed</small></div></section>
+    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · TOTALCORNER EVENT</p><h1>Live Score & Event Monitor</h1><p>Live score, rolling event pressure and recent attack flow from the isolated TotalCorner 3.42 feed. Price and bookmaker checks are intentionally hidden from this live view.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>event monitor</small></div></section>
 
     <section class="status-grid">
-      <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>TotalCorner input</small></article>
-      <article class="metric"><span>WATCHING</span><strong id="watchCount">—</strong><small>HOME detector</small></article>
-      <article class="metric"><span>NEAR SIGNAL</span><strong id="candidateCount">—</strong><small>waiting 5Dollar / Bet365</small></article>
-      <article class="metric signal"><span>SIGNAL</span><strong id="signalCount">—</strong><small>locked HOME AH</small></article>
+      <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>TotalCorner feed</small></article>
+      <article class="metric"><span>FRESH FEED</span><strong id="freshCount">—</strong><small>not stale</small></article>
+      <article class="metric"><span>WINDOW READY</span><strong id="windowCount">—</strong><small>rolling event data</small></article>
+      <article class="metric event-metric"><span>EVENT PASS</span><strong id="eventCount">—</strong><small>NOMAD event gate</small></article>
     </section>
 
-    <section class="toolbar nomad-toolbar"><div class="tabs"><button class="tab" type="button">All</button><button class="tab" type="button">Signal</button><button class="tab" type="button">Near</button><button class="tab" type="button">Watching</button></div><label class="search">Search <input type="search" placeholder="team / league"></label></section>
+    <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">LIVE SCORE & EVENT</p><h2>Monitored matches</h2></div><span class="muted" id="runStatus">Connecting TotalCorner event feed…</span></div><div class="match-list" id="matchList"><div class="note">Connecting TotalCorner event feed…</div></div></section>
 
-    <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">PRIORITY SCANNER</p><h2>Monitored matches</h2></div><span class="muted" id="runStatus">Connecting live engine…</span></div><div class="match-list" id="matchList"><div class="note">Connecting live engine…</div></div></section>
-
-    <div class="note">3.42 engine path: TotalCorner → Event Gate → 5DollarFootballAPI → Bet365 LIVE AH → Final Signal.</div>
+    <div class="note event-footnote">3.42 live view: TotalCorner → Live score → Event snapshots → Rolling attack analysis. Bet365 / 5Dollar price logic remains separate and is not called by this page.</div>
   </main>
   <nav class="mobile-nav"><a class="active" href="index.html">Live</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav>
 
   <script src="runtime-config.js?v=20260829-5dollar-v1" defer></script>
-  <script src="fivedollar-live.js?v=20260829-5dollar-v1" defer></script>
-  <script src="ui-signal-lock.js?v=20260827-341-shell-v2" defer></script>
-  <script src="ui-5dollar-source.js?v=20260829-5dollar-v1" defer></script>
+  <script src="event-monitor.js?v=20260830-event-monitor-v1" defer></script>
 </body>
 </html>
