@@ -64,7 +64,8 @@ function leagueName(m){
   return String(m?.league??m?.competition??m?.tournament??'—');
 }
 function leagueId(m){
-  const value=m?.leagueId??m?.league_id??m?.l_id??(m?.league&&typeof m.league==='object'?m.league.id??m.league.leagueId??m.league.league_id:null:null);
+  let value=m?.leagueId??m?.league_id??m?.l_id??null;
+  if((value===null||value===undefined||value==='')&&m?.league&&typeof m.league==='object')value=m.league.id??m.league.leagueId??m.league.league_id??null;
   return value===null||value===undefined||value===''?'':String(value);
 }
 function countryFromLeagueName(name){
