@@ -151,6 +151,23 @@ jobs:
             rm -f "$headers" "$body"
           done
           exit 0
+      - name: Probe deployed LIVE 1X2 market sidecar
+        shell: bash
+        run: |
+          set +e
+          url='https://www.nomadtips3.com/nomad-live-342-market/1x2?id=198120694&home=Shanghai%20Port&away=Shenzhen%20Xinpengcheng'
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          code="$(curl -sS --connect-timeout 10 --max-time 25 -D "$headers" -o "$body" -w '%{http_code}' "$url")"
+          rc=$?
+          echo "1x2_probe curl_rc=${rc} http=${code}"
+          echo '--- 1x2 headers ---'
+          sed -n '1,40p' "$headers" || true
+          echo '--- 1x2 body ---'
+          cat "$body" || true
+          echo
+          rm -f "$headers" "$body"
+          exit 0
       - name: Probe deployed Live page in Chrome
         shell: bash
         run: |
