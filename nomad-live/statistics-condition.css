@@ -1,0 +1,37 @@
+.data-table th.condition-head,
+.data-table td.condition-cell{
+  width:148px;
+  min-width:148px;
+  max-width:148px;
+}
+.data-table th.condition-head{
+  font-size:7px;
+  letter-spacing:.035em;
+  white-space:nowrap;
+}
+.data-table td.condition-cell{
+  padding:3px 6px;
+  color:#7f8982;
+  font-size:6px;
+  font-weight:650;
+  line-height:1.05;
+  vertical-align:middle;
+  white-space:normal;
+}
+.condition-line{
+  display:block;
+  white-space:nowrap;
+}
+.condition-empty{
+  color:#69726c;
+  font-size:7px;
+}
+@media(max-width:700px){
+  .data-table th.condition-head,
+  .data-table td.condition-cell{
+    width:142px;
+    min-width:142px;
+    max-width:142px;
+  }
+  .data-table td.condition-cell{font-size:5.8px}
+}
