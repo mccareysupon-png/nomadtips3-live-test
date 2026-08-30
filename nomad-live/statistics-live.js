@@ -54,7 +54,7 @@
     const fin=r.settlement?.finalScore;
     const res=r.settlement?.result||'PENDING';
     const c=clsResult(res);
-    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td>${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td class="condition-cell">${conditionHtml(r)}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
+    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td class="condition-cell">${conditionHtml(r)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td class="odds-cell">${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
   };
   const summarizeRecords=records=>{
     const settled=records.filter(item=>item?.settlement);
