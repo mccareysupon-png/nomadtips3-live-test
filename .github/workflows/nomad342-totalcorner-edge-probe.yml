@@ -50,7 +50,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/probe.json','utf8'));
-          const compact={ok:j.ok,observedAt:j.observedAt,hits:(j.hits||[]).map(h=>({url:h.url,status:h.status,length:h.length,has:h.has,inputs:h.inputs,table:h.table,context:h.context})),scripts:j.scripts};
+          const compact={ok:j.ok,observedAt:j.observedAt,hits:(j.hits||[]).map(h=>({url:h.url,status:h.status,contentType:h.contentType,length:h.length,parsed:h.parsed,shape:h.shape,preview:h.preview}))};
           console.log(JSON.stringify(compact,null,2));
           if(j.ok!==true)process.exit(1);
           NODE
