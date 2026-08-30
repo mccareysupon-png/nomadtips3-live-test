@@ -7,6 +7,9 @@ const DEFAULTS=config.defaults;
 const runtime=window.NOMAD342_RUNTIME||{};
 const browserHistory=new Map();
 const expandedMatches=new Set();
+const leagueCountryCache=new Map();
+let regionCodeByName=null;
+let regionPrefixes=null;
 let timer=null;
 let running=false;
 
@@ -23,6 +26,84 @@ function delta(first,last,key,index){const a=at(first?.[key],index),b=at(last?.[
 function addKnown(...values){return values.every(v=>v!==null)?values.reduce((a,b)=>a+b,0):null}
 function fmtDelta(v){return v===null?'—':`${v>=0?'+':''}${v}`}
 function fmtValue(v){return v===null||v===undefined?'—':String(v)}
+function countryKey(v){return String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()}
+function regionIndex(){
+  if(regionCodeByName)return regionCodeByName;
+  const map=new Map([
+    ['england','GB'],['scotland','GB'],['wales','GB'],['northern ireland','GB'],['uk','GB'],['great britain','GB'],
+    ['usa','US'],['united states of america','US'],['south korea','KR'],['korea republic','KR'],['republic of korea','KR'],['north korea','KP'],
+    ['czech republic','CZ'],['ivory coast','CI'],['cote d ivoire','CI'],['uae','AE'],['viet nam','VN'],['vietnam','VN'],
+    ['russia','RU'],['iran','IR'],['syria','SY'],['palestine','PS'],['moldova','MD'],['bolivia','BO'],['venezuela','VE'],['tanzania','TZ'],
+    ['macao','MO'],['macau','MO'],['kosovo','XK']
+  ]);
+  try{
+    const names=new Intl.DisplayNames(['en'],{type:'region'});
+    for(let a=65;a<=90;a++)for(let b=65;b<=90;b++){
+      const code=String.fromCharCode(a,b),name=names.of(code);
+      if(name&&name!==code)map.set(countryKey(name),code);
+    }
+  }catch{}
+  regionCodeByName=map;
+  regionPrefixes=[...map.entries()].filter(([name])=>name.length>2).sort((a,b)=>b[0].length-a[0].length);
+  return map;
+}
+function countryCode(raw){
+  if(raw===null||raw===undefined||raw==='')return '';
+  if(typeof raw==='object'){
+    const values=[raw.code,raw.countryCode,raw.country_code,raw.iso2,raw.iso_2,raw.alpha2,raw.alpha_2,raw.iso,raw.name,raw.country];
+    for(const value of values){const code=countryCode(value);if(code)return code}
+    return '';
+  }
+  const value=String(raw).trim(),key=countryKey(value),mapped=regionIndex().get(key);
+  if(mapped)return mapped;
+  if(/^[A-Za-z]{2}$/.test(value))return value.toUpperCase();
+  return '';
+}
+function leagueName(m){
+  if(m?.league&&typeof m.league==='object')return String(m.league.name??m.league.title??m.league.label??'—');
+  return String(m?.league??m?.competition??m?.tournament??'—');
+}
+function leagueId(m){
+  const value=m?.leagueId??m?.league_id??m?.l_id??(m?.league&&typeof m.league==='object'?m.league.id??m.league.leagueId??m.league.league_id:null:null);
+  return value===null||value===undefined||value===''?'':String(value);
+}
+function countryFromLeagueName(name){
+  const key=countryKey(name);
+  if(!key||/^(world|international|esoccer|e soccer|friendly|club friendly)(\s|$)/.test(key))return '';
+  regionIndex();
+  for(const [country,code] of regionPrefixes||[]){
+    if(key===country||key.startsWith(`${country} `))return code;
+  }
+  return '';
+}
+function leagueCountryCode(m){
+  const id=leagueId(m);
+  const candidates=[
+    m?.countryCode,m?.country_code,m?.country,m?.leagueCountryCode,m?.league_country_code,m?.leagueCountry,m?.league_country,
+    m?.league&&typeof m.league==='object'?m.league.countryCode:null,
+    m?.league&&typeof m.league==='object'?m.league.country_code:null,
+    m?.league&&typeof m.league==='object'?m.league.country:null,
+    m?.competition&&typeof m.competition==='object'?m.competition.country:null,
+    m?.tournament&&typeof m.tournament==='object'?m.tournament.country:null
+  ];
+  for(const candidate of candidates){
+    const code=countryCode(candidate);
+    if(code){if(id)leagueCountryCache.set(id,code);return code}
+  }
+  if(id&&leagueCountryCache.has(id))return leagueCountryCache.get(id);
+  const fallback=countryFromLeagueName(leagueName(m));
+  if(fallback&&id)leagueCountryCache.set(id,fallback);
+  return fallback;
+}
+function flagEmoji(code){
+  const value=String(code||'').toUpperCase();
+  if(!/^[A-Z]{2}$/.test(value))return '';
+  return [...value].map(ch=>String.fromCodePoint(127397+ch.charCodeAt(0))).join('');
+}
+function leagueLabel(m){
+  const name=leagueName(m),flag=flagEmoji(leagueCountryCode(m));
+  return `${flag?`${flag} `:''}${esc(name)}`;
+}
 
 function mergeFeedHistory(match){
   const id=String(match.id),incoming=Array.isArray(match.event?.snapshots)?match.event.snapshots:[],previous=browserHistory.get(id)||[],byMinute=new Map();
@@ -119,7 +200,7 @@ function matchCard(r){
   const cls=stale?'signal-card-watch':r.event.pass?'signal-card-pass':em?'signal-card-wait':'signal-card-watch';
   const pressure=em?`${em.pressureShare}%`:'—',window=em?`${em.from}'–${em.to}'`:`${Math.max(0,m.minute-r.c.rollingWindowMinutes)}'–${m.minute}'`,totals=eventTotals(m),minuteLabel=phase||`${m.minute}'`;
   const deltas={attacks:em?[em.hA,em.aA]:null,dangerous:em?[em.hD,em.aD]:null,sot:em?[em.hSot,em.aSot]:null,off:em?[em.hOff,em.aOff]:null,corner:em?[em.hCorner,em.aCorner]:null};
-  return `<article class="signal-card event-compact ${cls}${expanded?' expanded':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="card-topline"><span class="event-league">${esc(m.league||'—')}</span><span class="live-minute">${esc(minuteLabel)}</span><span class="live-score">${esc((m.score||[]).join('–'))}</span></div><div class="teams-line"><strong>${esc(m.home)}</strong><span>VS</span><strong>${esc(m.away)}</strong></div><div class="event-details" aria-hidden="${expanded?'false':'true'}"><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="legend-team"><span class="home-dot"></span><b>HOME</b> · ${esc(m.home)}</span><span class="legend-team"><span class="away-dot"></span><b>AWAY</b> · ${esc(m.away)}</span></div></div><div class="attack-color-note">GREEN = HOME · GRAY = AWAY</div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':'WAIT'}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACKS',totals.attacks,deltas.attacks)}${stat('DANGEROUS ATTACKS',totals.dangerous,deltas.dangerous)}${stat('SHOTS ON TARGET',totals.sot,deltas.sot)}${stat('SHOTS OFF TARGET',totals.off,deltas.off)}${stat('CORNERS',totals.corner,deltas.corner)}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></div></article>`;
+  return `<article class="signal-card event-compact ${cls}${expanded?' expanded':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="card-topline"><span class="event-league">${leagueLabel(m)}</span><span class="live-minute">${esc(minuteLabel)}</span><span class="live-score">${esc((m.score||[]).join('–'))}</span></div><div class="teams-line"><strong>${esc(m.home)}</strong><span>VS</span><strong>${esc(m.away)}</strong></div><div class="event-details" aria-hidden="${expanded?'false':'true'}"><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="legend-team"><span class="home-dot"></span><b>HOME</b> · ${esc(m.home)}</span><span class="legend-team"><span class="away-dot"></span><b>AWAY</b> · ${esc(m.away)}</span></div></div><div class="attack-color-note">GREEN = HOME · GRAY = AWAY</div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':'WAIT'}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACKS',totals.attacks,deltas.attacks)}${stat('DANGEROUS ATTACKS',totals.dangerous,deltas.dangerous)}${stat('SHOTS ON TARGET',totals.sot,deltas.sot)}${stat('SHOTS OFF TARGET',totals.off,deltas.off)}${stat('CORNERS',totals.corner,deltas.corner)}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></div></article>`;
 }
 
 function setMetric(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
