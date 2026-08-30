@@ -78,6 +78,17 @@ function eventTotals(m){
     corner:[at(s?.corner,0),at(s?.corner,1)]
   };
 }
+function matchPhase(m){
+  const s=latestSnapshot(m);
+  const candidates=[m.status,m.matchStatus,m.match_status,m.fixtureStatus,m.fixture_status,m.phase,m.period,m.state,m.event?.status,m.event?.phase,m.event?.period,s?.status,s?.phase,s?.period,typeof m.minute==='string'?m.minute:null];
+  for(const raw of candidates){
+    if(raw===null||raw===undefined||raw==='')continue;
+    const value=String(raw).trim().toUpperCase().replace(/_/g,' ').replace(/\s+/g,' ');
+    if(value==='HT'||value==='HALF TIME'||value==='HALFTIME'||value==='HALF-TIME')return 'HT';
+    if(value==='FT'||value==='FULL TIME'||value==='FULLTIME'||value==='FULL-TIME'||value==='FINISHED'||value==='FINAL'||value==='ENDED'||value==='MATCH ENDED')return 'FT';
+  }
+  return '';
+}
 
 function graphSeries(m){
   const rows=[...(m.event?.snapshots||[])].filter(s=>Number.isFinite(Number(s.minute))&&at(s.attacks,0)!==null&&at(s.attacks,1)!==null).sort((a,b)=>a.minute-b.minute||Number(a.observedAt||0)-Number(b.observedAt||0)).slice(-12);
@@ -104,11 +115,11 @@ function stat(label,totals,deltaPair){
   return `<div class="event-stat"><span class="event-stat-title">${label}</span><div class="event-stat-row"><span>HOME</span><div class="event-bar-track"><i class="event-bar event-bar-home" style="width:${homeWidth.toFixed(1)}%"></i></div><b>${esc(fmtValue(home))}</b></div><div class="event-stat-row"><span>AWAY</span><div class="event-bar-track"><i class="event-bar event-bar-away" style="width:${awayWidth.toFixed(1)}%"></i></div><b>${esc(fmtValue(away))}</b></div><small>ROLLING CHANGE · HOME ${esc(fmtDelta(hd))} · AWAY ${esc(fmtDelta(ad))}</small></div>`;
 }
 function matchCard(r){
-  const m=r.m,em=r.event.metrics,id=String(m.id),expanded=expandedMatches.has(id),stale=Boolean(m.freshness?.stale),state=stale?'STALE':r.event.pass?'EVENT':'';
+  const m=r.m,em=r.event.metrics,id=String(m.id),expanded=expandedMatches.has(id),stale=Boolean(m.freshness?.stale),phase=matchPhase(m);
   const cls=stale?'signal-card-watch':r.event.pass?'signal-card-pass':em?'signal-card-wait':'signal-card-watch';
-  const badge=r.event.pass?'signal':'wait',pressure=em?`${em.pressureShare}%`:'—',window=em?`${em.from}'–${em.to}'`:`${Math.max(0,m.minute-r.c.rollingWindowMinutes)}'–${m.minute}'`,totals=eventTotals(m);
+  const pressure=em?`${em.pressureShare}%`:'—',window=em?`${em.from}'–${em.to}'`:`${Math.max(0,m.minute-r.c.rollingWindowMinutes)}'–${m.minute}'`,totals=eventTotals(m),minuteLabel=phase||`${m.minute}'`;
   const deltas={attacks:em?[em.hA,em.aA]:null,dangerous:em?[em.hD,em.aD]:null,sot:em?[em.hSot,em.aSot]:null,off:em?[em.hOff,em.aOff]:null,corner:em?[em.hCorner,em.aCorner]:null};
-  return `<article class="signal-card event-compact ${cls}${expanded?' expanded':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="card-topline"><span class="event-league">${esc(m.league||'—')}</span><span class="live-minute">${esc(m.minute)}'</span><span class="live-score">${esc((m.score||[]).join('–'))}</span><span class="badge ${badge} event-status">${state}<b class="event-chevron" aria-hidden="true">⌄</b></span></div><div class="teams-line"><strong>${esc(m.home)}</strong><span>VS</span><strong>${esc(m.away)}</strong></div><div class="event-details" aria-hidden="${expanded?'false':'true'}"><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="legend-team"><span class="home-dot"></span><b>HOME</b> · ${esc(m.home)}</span><span class="legend-team"><span class="away-dot"></span><b>AWAY</b> · ${esc(m.away)}</span></div></div><div class="attack-color-note">GREEN = HOME · GRAY = AWAY</div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':''}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACKS',totals.attacks,deltas.attacks)}${stat('DANGEROUS ATTACKS',totals.dangerous,deltas.dangerous)}${stat('SHOTS ON TARGET',totals.sot,deltas.sot)}${stat('SHOTS OFF TARGET',totals.off,deltas.off)}${stat('CORNERS',totals.corner,deltas.corner)}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></div></article>`;
+  return `<article class="signal-card event-compact ${cls}${expanded?' expanded':''}" data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="card-topline"><span class="event-league">${esc(m.league||'—')}</span><span class="live-minute">${esc(minuteLabel)}</span><span class="live-score">${esc((m.score||[]).join('–'))}</span></div><div class="teams-line"><strong>${esc(m.home)}</strong><span>VS</span><strong>${esc(m.away)}</strong></div><div class="event-details" aria-hidden="${expanded?'false':'true'}"><div class="attack-head"><div><span>ATTACK FLOW</span><small>${esc(window)} rolling view</small></div><div class="attack-legend"><span class="legend-team"><span class="home-dot"></span><b>HOME</b> · ${esc(m.home)}</span><span class="legend-team"><span class="away-dot"></span><b>AWAY</b> · ${esc(m.away)}</span></div></div><div class="attack-color-note">GREEN = HOME · GRAY = AWAY</div>${attackGraph(m)}<div class="event-overview"><div><span>HOME PRESSURE</span><strong>${esc(pressure)}</strong></div><div><span>TREND</span><strong>${em?`${em.trendPass}/3`:'—'}</strong></div><div><span>EVENT GATE</span><strong class="${r.event.pass?'oktxt':'waittxt'}">${r.event.pass?'PASS':'WAIT'}</strong></div><div><span>FEED</span><strong class="${stale?'redtxt':'oktxt'}">${stale?'STALE':'LIVE'}</strong></div></div><div class="event-stats">${stat('ATTACKS',totals.attacks,deltas.attacks)}${stat('DANGEROUS ATTACKS',totals.dangerous,deltas.dangerous)}${stat('SHOTS ON TARGET',totals.sot,deltas.sot)}${stat('SHOTS OFF TARGET',totals.off,deltas.off)}${stat('CORNERS',totals.corner,deltas.corner)}</div><div class="event-reason">${r.event.reasons.map(esc).join(' · ')}</div></div></article>`;
 }
 
 function setMetric(id,value){const el=document.getElementById(id);if(el)el.textContent=value}
