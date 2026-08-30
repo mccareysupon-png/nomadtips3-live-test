@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="event-monitor.css?v=20260830-hide-live-summary-v8">
 </head>
 <body data-page="live">
-  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a class="active" href="index.html">Live</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>3.42 · TOTALCORNER LIVE</div></div></header>
+  <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a class="active" href="index.html">Live</a><a href="settings.html">Settings</a><a href="health.html">Health</a></nav><div class="source-pill"><span class="dot"></span>3.42 · NOMADTIPS3 LIVE</div></div></header>
   <main class="shell">
     <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · TOTALCORNER EVENT</p><h1>Live Score & Event Monitor</h1><p>Live score, rolling event pressure and recent attack flow from the isolated TotalCorner 3.42 feed.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>event monitor</small></div></section>
 
@@ -20,7 +20,7 @@
       <article class="metric event-metric"><span>EVENT PASS</span><strong id="eventCount">—</strong><small>NOMAD event gate</small></article>
     </section>
 
-    <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">LIVE SCORE & EVENT</p><h2>Monitored matches</h2></div><span class="muted" id="runStatus">Connecting TotalCorner event feed…</span></div><div class="match-list" id="matchList"><div class="note">Connecting TotalCorner event feed…</div></div></section>
+    <section class="panel nomad-scanner-panel"><div class="panel-head"><div><p class="eyebrow">LIVE SCORE & EVENT</p></div><span class="muted" id="runStatus">Connecting TotalCorner event feed…</span></div><div class="match-list" id="matchList"><div class="note">Connecting TotalCorner event feed…</div></div></section>
 
     <div class="note event-footnote">TotalCorner → Live score → Event snapshots → Rolling attack analysis.</div>
   </main>
@@ -29,5 +29,20 @@
   <script src="runtime-config.js?v=20260830-event-worker-lock-v3" defer></script>
   <script src="event-config.js?v=20260830-event-config-v1" defer></script>
   <script src="event-monitor.js?v=20260830-event-feed-repair-v9" defer></script>
+  <script>
+    (()=>{
+      const rebrandStatus=()=>{
+        const el=document.getElementById('runStatus');
+        if(!el)return;
+        const sync=()=>{
+          const text=el.textContent||'';
+          if(/^TotalCorner LIVE\b/i.test(text))el.textContent=text.replace(/^TotalCorner LIVE\b/i,'NOMADTIPS3 LIVE');
+        };
+        sync();
+        new MutationObserver(sync).observe(el,{childList:true,characterData:true,subtree:true});
+      };
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',rebrandStatus,{once:true});else rebrandStatus();
+    })();
+  </script>
 </body>
 </html>
