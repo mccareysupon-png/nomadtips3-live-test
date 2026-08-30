@@ -1,0 +1,94 @@
+/* NOMADTIPS3 3.42 expanded-card visual polish v2.
+   Display-only: no feed, event-gate or engine logic changes. */
+
+/* Put the primary live graphs first without moving or deleting the existing DOM. */
+body[data-page="live"] .event-compact.expanded .event-details{
+  display:flex;
+  flex-direction:column;
+}
+body[data-page="live"] .event-details>.attack-head{order:0}
+body[data-page="live"] .event-details>.attack-color-note{order:1}
+body[data-page="live"] .event-details>.attack-chart,
+body[data-page="live"] .event-details>.attack-empty{order:2}
+body[data-page="live"] .event-details>.nomad-analytics-top{order:3}
+body[data-page="live"] .event-details>.event-overview{order:4}
+body[data-page="live"] .event-details>.event-stats{order:5}
+body[data-page="live"] .event-details>.nomad-analytics-bottom{order:6}
+body[data-page="live"] .event-details>.event-reason{order:7}
+
+/* Inside the added top layer, show Momentum immediately after the main Attack Flow graph. */
+body[data-page="live"] .nomad-analytics-top{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(2){order:0}
+body[data-page="live"] .nomad-analytics-top>.na-match-pulse{order:1}
+body[data-page="live"] .nomad-analytics-top>.na-shift{order:2}
+body[data-page="live"] .nomad-analytics-top>.na-section:nth-child(4){order:3}
+
+/* Very thin graph strokes with only a restrained glow. */
+body[data-page="live"] .event-details .attack-line{
+  stroke-width:.55;
+  opacity:.96;
+}
+body[data-page="live"] .event-details .attack-home{
+  filter:drop-shadow(0 0 .8px rgba(131,223,137,.42));
+}
+body[data-page="live"] .event-details .attack-away{
+  filter:drop-shadow(0 0 .65px rgba(155,164,157,.26));
+}
+body[data-page="live"] .event-details .chart-grid{
+  stroke-width:.3;
+  opacity:.82;
+}
+body[data-page="live"] .event-details .chart-grid-mid{
+  opacity:.55;
+}
+
+/* Radar follows the same thin-line language. */
+body[data-page="live"] .na-radar-grid{stroke-width:.38}
+body[data-page="live"] .na-radar-home{
+  stroke-width:.6;
+  fill:rgba(131,223,137,.075);
+  filter:drop-shadow(0 0 .65px rgba(131,223,137,.28));
+}
+body[data-page="live"] .na-radar-away{
+  stroke-width:.52;
+  fill:rgba(155,164,157,.045);
+  filter:drop-shadow(0 0 .5px rgba(155,164,157,.18));
+}
+
+/* Momentum bars stay narrow and lightly illuminated instead of looking heavy. */
+body[data-page="live"] .na-momentum-half i{width:min(7px,48%)}
+body[data-page="live"] .na-momentum-home i{box-shadow:0 0 3px rgba(131,223,137,.18)}
+body[data-page="live"] .na-momentum-away i{box-shadow:0 0 2px rgba(155,164,157,.12)}
+
+/* Expanded-card number ceiling = collapsed team-name size (desktop 11px). */
+body[data-page="live"] .event-details .na-pressure-ring strong,
+body[data-page="live"] .event-details .na-pulse-summary strong,
+body[data-page="live"] .event-details .na-streak-card>strong,
+body[data-page="live"] .event-details .event-overview strong{
+  font-size:11px;
+  line-height:1.15;
+}
+body[data-page="live"] .event-details .na-pressure-ring strong{letter-spacing:0}
+
+/* Keep supporting numbers subordinate to the 11px ceiling. */
+body[data-page="live"] .event-details .na-quality-card strong{font-size:9px}
+body[data-page="live"] .event-details .na-timeline-event span{font-size:8px}
+body[data-page="live"] .event-details .event-stat-row>b{font-size:9px}
+body[data-page="live"] .event-details .na-battle-row>strong{font-size:7px}
+
+@media(max-width:760px){
+  body[data-page="live"] .event-details .na-pressure-ring strong,
+  body[data-page="live"] .event-details .na-pulse-summary strong,
+  body[data-page="live"] .event-details .na-streak-card>strong,
+  body[data-page="live"] .event-details .event-overview strong{font-size:10px}
+}
+@media(max-width:420px){
+  body[data-page="live"] .event-details .na-pressure-ring strong,
+  body[data-page="live"] .event-details .na-pulse-summary strong,
+  body[data-page="live"] .event-details .na-streak-card>strong,
+  body[data-page="live"] .event-details .event-overview strong{font-size:9px}
+}
