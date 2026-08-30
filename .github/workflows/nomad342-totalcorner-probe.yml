@@ -15,23 +15,23 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Fetch raw Today HTML
+      - name: Probe TotalCorner public hosts
         shell: bash
         run: |
-          set -euo pipefail
-          curl -fsSL --compressed --max-time 30 \
-            -A 'Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36' \
-            -H 'Accept: text/html,application/xhtml+xml' \
-            -H 'Accept-Language: en-US,en;q=0.9' \
-            'https://www.totalcorner.com/match/today/' -o /tmp/today.html
-          echo "bytes=$(wc -c </tmp/today.html)"
-          echo '--- CUSTOM COLUMN CONTEXT ---'
-          grep -Ein -C 6 'Shots on Target|Shots off Target|Possession|Events with chart|Customize Columns|Save Default' /tmp/today.html | head -n 260 || true
-          echo '--- INPUTS / COLUMN NAMES ---'
-          grep -Eio '<input[^>]+>|<select[^>]+>|<option[^>]+>' /tmp/today.html | grep -Ei 'shot|possession|event|column|custom|display|show' | head -n 240 || true
-          echo '--- FORM TAGS ---'
-          grep -Eio '<form[^>]*>' /tmp/today.html | head -n 120 || true
-          echo '--- SCRIPT SRCS ---'
-          grep -Eio '<script[^>]+src=["'"'][^"'"']+["'"'][^>]*>' /tmp/today.html | head -n 120 || true
-          echo '--- AJAX / STORAGE HINTS ---'
-          grep -Ein -C 3 'ajax|XMLHttpRequest|fetch\(|localStorage|cookie|column|customize' /tmp/today.html | tail -n 320 || true
+          set -u
+          ua='Mozilla/5.0 (Windows NT 10.0; Win64 x64) AppleWebKit/537.36 Chrome/151 Safari/537.36'
+          probe(){
+            name="$1"; url="$2"; file="/tmp/${name}.html"
+            echo "=== ${name} ${url} ==="
+            code="$(curl -sSL --compressed --max-time 30 -A "$ua" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: en-US,en;q=0.9' -o "$file" -w '%{http_code}' "$url" || true)"
+            echo "http=${code} bytes=$(wc -c <"$file" 2>/dev/null || echo 0)"
+            if [ -s "$file" ]; then
+              grep -Ein -m 8 'Live Events|Shoot on target|Shots on Target|Possession|Customize Columns|Access denied|Forbidden' "$file" || true
+              echo 'scripts:'
+              grep -Eio '<script[^>]+src=["'"'][^"'"']+["'"'][^>]*>' "$file" | head -n 40 || true
+            fi
+          }
+          probe www_today 'https://www.totalcorner.com/match/today/'
+          probe publift_today 'https://publift.totalcorner.com/match/today/'
+          probe www_stats 'https://www.totalcorner.com/stats/shelbourne-vs-ajax/198821835'
+          probe publift_stats 'https://publift.totalcorner.com/stats/shelbourne-vs-ajax/198821835'
