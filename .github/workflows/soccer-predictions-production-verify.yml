@@ -1,0 +1,82 @@
+name: Verify Soccer Predictions Production Sync
+
+on:
+  workflow_run:
+    workflows:
+      - Deploy NOMADTIPS3 Live Scores Beta
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: soccer-predictions-production-verify
+  cancel-in-progress: true
+
+jobs:
+  verify-production-sync:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify Soccer Predictions reached production
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PAGES_BASE="https://mccareysupon-png.github.io/nomadtips3-live-test/soccer-predictions"
+          PROD_BASE="https://www.nomadtips3.com/soccer-predictions"
+          FILES=(
+            "index.html"
+            "data/predictions.json"
+            "data/results.json"
+            "data/daily-matches.json"
+            "data/selected-matches.json"
+          )
+
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+
+          for attempt in $(seq 1 12); do
+            echo "Production sync check attempt $attempt/12"
+            synced=1
+
+            for file in "${FILES[@]}"; do
+              token="${GITHUB_RUN_ID}-${attempt}-$(date +%s)"
+              pages_file="$work/pages-$(basename "$file")"
+              prod_file="$work/prod-$(basename "$file")"
+
+              if ! curl -fsSL --retry 2 --max-time 20 \
+                "$PAGES_BASE/$file?sync=$token" -o "$pages_file"; then
+                echo "GitHub Pages fetch failed: $file"
+                synced=0
+                break
+              fi
+
+              if ! curl -fsSL --retry 2 --max-time 20 \
+                "$PROD_BASE/$file?sync=$token" -o "$prod_file"; then
+                echo "Production fetch failed: $file"
+                synced=0
+                break
+              fi
+
+              if ! cmp -s "$pages_file" "$prod_file"; then
+                echo "Not synced yet: $file"
+                synced=0
+                break
+              fi
+            done
+
+            if [ "$synced" -eq 1 ]; then
+              grep -Fq 'Soccer Predictions' "$work/prod-index.html"
+              echo "Soccer Predictions is synchronized through www.nomadtips3.com"
+              exit 0
+            fi
+
+            sleep 5
+          done
+
+          echo "::error::Soccer Predictions did not synchronize to production"
+          exit 1
