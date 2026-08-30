@@ -11,6 +11,7 @@
   const fmtLine = value => finite(value) ? `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(2)}` : '—';
   const fmtOdds = value => finite(value) ? Number(value).toFixed(2) : '—';
   const fmtAge = value => finite(value) ? `${Math.max(0, Math.round(Number(value)))}s` : '—';
+  const sideKey = value => String(value || 'home').toLowerCase() === 'away' ? 'away' : 'home';
 
   function sourceQuality(source) {
     const status = String(source?.status || '').toUpperCase();
@@ -82,11 +83,12 @@
 
   function selectedBlock(match) {
     const selected = match?.selectedPrice || null;
-    const team = String(match?.home || 'HOME').trim() || 'HOME';
+    const side = sideKey(selected?.side || match?.side);
+    const team = String(side === 'away' ? (match?.away || 'AWAY') : (match?.home || 'HOME')).trim() || side.toUpperCase();
     const bookmaker = selected?.bookmaker || '—';
     const status = selected ? 'BEST' : 'NO ODDS';
     return `<div class="price-board-selected">
-      <div class="price-board-selected-title"><span>SELECTED</span><strong title="${esc(team)}">${esc(team)}</strong></div>
+      <div class="price-board-selected-title"><span>SELECTED · ${side.toUpperCase()}</span><strong title="${esc(team)}">${esc(team)}</strong></div>
       <div class="price-board-grid price-board-row is-selected ${statusClass(status)}">
         <span class="price-board-book" title="${esc(bookmaker)}">${esc(bookmaker)}</span>
         <span>${fmtLine(selected?.line)}</span>
