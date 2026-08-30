@@ -39,9 +39,11 @@ jobs:
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
+          test -f nomad-live-342/index.html
           grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
           grep -Fq 'live-filter-lock.js?v=20260828-default-all-v1' nomad-live/index.html
+          grep -Fq 'Live Score & Event 3.42' nomad-live-342/index.html
           grep -Fq "'www.nomadtips3.com'" nomad-live/runtime-config.js
           grep -Fq "'nomadtips3.com'" nomad-live/runtime-config.js
           grep -Fq "'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev'" nomad-live/runtime-config.js
@@ -55,7 +57,7 @@ jobs:
             echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
             exit 1
           fi
-          echo '3.41 production web source validated'
+          echo '3.41 production web source + 3.42 bridge target validated'
 
       - name: Validate Cloudflare credentials
         run: |
@@ -113,7 +115,11 @@ jobs:
             curl -fsS --max-time 20 "$CANARY_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/canary-$endpoint.json"
             test -s "/tmp/canary-$endpoint.json"
           done
-          echo 'Canary + static assets + Production Engine binding passed before Production deploy.'
+
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/canary-342.html
+          grep -Fq 'Live Score & Event 3.42' /tmp/canary-342.html
+          grep -Fq 'event-monitor.js?v=' /tmp/canary-342.html
+          echo 'Canary + 3.41 assets/API + 3.42 web bridge passed before Production deploy.'
 
       - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
@@ -124,7 +130,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.production.jsonc
 
-      - name: Verify www now serves 3.41
+      - name: Verify www now serves 3.41 and isolated 3.42 route
         shell: bash
         run: |
           set -euo pipefail
@@ -151,5 +157,10 @@ jobs:
             curl -fsS --max-time 20 "$CUSTOM_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/custom-$endpoint.json"
             test -s "/tmp/custom-$endpoint.json"
           done
-          echo 'NOMAD Live 3.41 is active on www.nomadtips3.com.'
+
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/custom-342.html
+          grep -Fq 'Live Score & Event 3.42' /tmp/custom-342.html
+          grep -Fq 'event-monitor.js?v=' /tmp/custom-342.html
+          echo 'NOMAD Live 3.41 remains active on www.nomadtips3.com.'
+          echo 'NOMAD Live 3.42 is available at /nomad-live-342/ without a main-site link.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
