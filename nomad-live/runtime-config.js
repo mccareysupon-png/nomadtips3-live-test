@@ -43,6 +43,7 @@
   select.innerHTML='<option value="HOME">HOME</option><option value="AWAY">AWAY</option><option value="BOTH">BOTH</option>';
   select.value='HOME';
   if(oldInput) oldInput.replaceWith(select); else sideField.append(select);
+  let activeSide='HOME';
 
   const replaceText=(selector,from,to)=>{
     document.querySelectorAll(selector).forEach(node=>{
@@ -65,23 +66,21 @@
   const linesHint=document.getElementById('linesHint');
   if(linesHint) linesHint.textContent='Use Ctrl/Cmd or Shift to select multiple quarter-goal lines for the selected side.';
 
-  const syncSide=data=>{
-    const value=String(data?.activeConfig?.targetSideMode??data?.config?.targetSideMode??data?.pending?.config?.targetSideMode??'HOME').toUpperCase();
-    if(['HOME','AWAY','BOTH'].includes(value)) select.value=value;
-  };
+  const validSide=value=>['HOME','AWAY','BOTH'].includes(String(value||'').toUpperCase())?String(value).toUpperCase():null;
   const syncActiveTile=()=>{
     const item=[...document.querySelectorAll('#activeSettings .active-item')].find(card=>String(card.querySelector('span')?.textContent||'').trim().toLowerCase()==='side');
-    if(item?.querySelector('b')) item.querySelector('b').textContent=select.value;
+    if(item?.querySelector('b')) item.querySelector('b').textContent=activeSide;
   };
-  select.addEventListener('change',syncActiveTile);
   const active=document.getElementById('activeSettings');
   if(active) new MutationObserver(syncActiveTile).observe(active,{childList:true,subtree:true});
 
   const nativeFetch=window.fetch.bind(window);
   window.fetch=async(input,init={})=>{
     const url=typeof input==='string'?input:(input?.url||'');
+    const isConfig=/\/config(?:\?|$)/.test(url);
+    const method=String(init?.method||'GET').toUpperCase();
     let nextInit=init;
-    if(/\/config(?:\?|$)/.test(url)&&String(init?.method||'GET').toUpperCase()==='POST'&&typeof init?.body==='string'){
+    if(isConfig&&method==='POST'&&typeof init?.body==='string'){
       try{
         const body=JSON.parse(init.body);
         if(body?.config&&typeof body.config==='object'){
@@ -91,7 +90,18 @@
       }catch{}
     }
     const response=await nativeFetch(input,nextInit);
-    if(/\/config(?:\?|$)/.test(url)) response.clone().json().then(data=>{syncSide(data);queueMicrotask(syncActiveTile);}).catch(()=>{});
+    if(isConfig){
+      response.clone().json().then(data=>{
+        if(method==='GET'){
+          const current=validSide(data?.activeConfig?.targetSideMode??data?.config?.targetSideMode);
+          if(current){activeSide=current;select.value=current;}
+        }else{
+          const current=validSide(data?.active?.config?.targetSideMode);
+          if(current) activeSide=current;
+        }
+        queueMicrotask(syncActiveTile);
+      }).catch(()=>{});
+    }
     return response;
   };
 })();
