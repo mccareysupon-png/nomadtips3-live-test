@@ -1,0 +1,51 @@
+name: NOMAD 3.42 LAB Rails Diagnose
+
+on:
+  push:
+    branches:
+      - 'feat/342-totalcorner-inlet'
+    paths:
+      - '.github/workflows/nomad342-lab-rails-diagnose.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe every LAB rail without short-circuiting
+        shell: bash
+        run: |
+          set +e
+          base='https://nomadtips3-live-engine-342-lab.mccarey-supon.workers.dev'
+          for path in '/contract' '/health' '/health/combined' '/feed?force=1' '/judge/5dollar/status' '/judge/thscore/status'; do
+            echo "===== ${path} ====="
+            headers="$(mktemp)"
+            body="$(mktemp)"
+            code="$(curl -sS --connect-timeout 10 --max-time 35 -D "$headers" -o "$body" -w '%{http_code}' "${base}${path}")"
+            rc=$?
+            echo "curl_rc=${rc} http=${code}"
+            sed -n '1,20p' "$headers" || true
+            echo '--- BODY ---'
+            head -c 12000 "$body" || true
+            echo
+            if [[ "$path" == /feed* ]]; then
+              BODY_PATH="$body" python - <<'PY'
+          import json, os
+          raw=open(os.environ['BODY_PATH'],'rb').read().decode('utf-8','replace')
+          try:
+              j=json.loads(raw)
+              matches=j.get('matches') if isinstance(j,dict) else None
+              print('MATCH_COUNT=', len(matches) if isinstance(matches,list) else 'NOT_LIST')
+              print('COUNTS=', j.get('counts') if isinstance(j,dict) else None)
+              print('LAST_ERROR=', j.get('lastError') if isinstance(j,dict) else None)
+          except Exception as e:
+              print('JSON_PARSE_ERROR=',repr(e))
+          PY
+            fi
+            rm -f "$headers" "$body"
+          done
+          exit 0
