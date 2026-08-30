@@ -9,6 +9,8 @@ on:
       - 'nomad-live-342/event-monitor.js'
       - 'nomad-live-342/event-analytics.js'
       - 'nomad-live-342/event-analytics.css'
+      - 'nomad-live-342/event-graph-live.js'
+      - 'nomad-live-342/event-graph-live.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -21,6 +23,8 @@ on:
       - 'nomad-live-342/event-monitor.js'
       - 'nomad-live-342/event-analytics.js'
       - 'nomad-live-342/event-analytics.css'
+      - 'nomad-live-342/event-graph-live.js'
+      - 'nomad-live-342/event-graph-live.css'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/app.js'
       - 'nomad-live-342/settings.html'
@@ -41,6 +45,7 @@ jobs:
           node --check nomad-live-342/event-config.js
           node --check nomad-live-342/event-monitor.js
           node --check nomad-live-342/event-analytics.js
+          node --check nomad-live-342/event-graph-live.js
           node --check nomad-live-342/app.js
       - name: Event monitor contract
         run: |
@@ -69,14 +74,19 @@ jobs:
           const monitor = fs.readFileSync('nomad-live-342/event-monitor.js','utf8');
           const analytics = fs.readFileSync('nomad-live-342/event-analytics.js','utf8');
           const analyticsCss = fs.readFileSync('nomad-live-342/event-analytics.css','utf8');
+          const graphLive = fs.readFileSync('nomad-live-342/event-graph-live.js','utf8');
+          const graphLiveCss = fs.readFileSync('nomad-live-342/event-graph-live.css','utf8');
           const app = fs.readFileSync('nomad-live-342/app.js','utf8');
 
           const indexConfig = index.indexOf('event-config.js');
           const indexMonitor = index.indexOf('event-monitor.js');
           const indexAnalytics = index.indexOf('event-analytics.js');
+          const indexGraphLive = index.indexOf('event-graph-live.js');
           assert(indexConfig >= 0 && indexMonitor > indexConfig, 'Live must load shared config before event monitor');
           assert(indexAnalytics > indexMonitor, 'expanded analytics layer must load after core event monitor');
+          assert(indexGraphLive > indexAnalytics, 'Attack Flow visual layer must load after analytics');
           assert(index.includes('event-analytics.css'), 'Live must load isolated expanded analytics styles');
+          assert(index.includes('event-graph-live.css'), 'Live must load isolated Attack Flow visual styles');
           assert(!index.includes('fivedollar-live.js'), 'Live Event Monitor must not load 5Dollar evaluator');
           assert(!index.includes('ui-5dollar-source.js'), 'Live Event Monitor must not load 5Dollar UI');
           assert(!index.includes('bet365-observer.js'), 'Live Event Monitor must not load browser Bet365 observer');
@@ -87,6 +97,11 @@ jobs:
           assert(analytics.includes('MOMENTUM PULSE'), 'analytics layer must expose Momentum Pulse');
           assert(analytics.includes('RADAR COMPARISON'), 'analytics layer must expose Radar Comparison');
           assert(!analyticsCss.toLowerCase().includes('#f2d21b'), 'analytics layer must not use legacy yellow');
+          assert(graphLive.includes('attack-endpoint-home'), 'Attack Flow live layer must add HOME endpoint guide');
+          assert(graphLive.includes('attack-endpoint-away'), 'Attack Flow live layer must add AWAY endpoint guide');
+          assert(graphLiveCss.includes('background:#000'), 'Attack Flow live layer must keep graph background black');
+          assert(graphLiveCss.includes('chart-grid-mid'), 'Attack Flow live layer must style a reference midline');
+          assert(!graphLiveCss.includes('50%'), 'reference midline must not be labelled as 50%');
           assert(app.includes('NOMAD342_CONFIG'), 'settings/health app must consume shared config');
 
           for (const [name, html] of [['Settings',settings],['Health',health]]) {
