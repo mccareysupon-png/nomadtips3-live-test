@@ -23,9 +23,9 @@
     const evidenceRequired=values.homeEventRequired===false?0:(configuredMode==='ALL'?enabledEvidence:1);
     const evidenceMode=values.homeEventRequired===false?'OFF':configuredMode;
     const lines=[
-      `Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m · H.P. ≥${compactNumber(values.homePressureShareMinimum)}%`,
-      `Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Required ${compactNumber(values.trendConditionsRequired)}/3`,
-      `Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · Evidence Required ${evidenceMode}=${evidenceRequired}`,
+      `Minute R. ${compactNumber(values.minuteFrom)}–${compactNumber(values.minuteTo)} · R.Window ${compactNumber(values.rollingWindowMinutes)}m`,
+      `Attack W. ${compactNumber(values.attackWeight)} · Danger.AT ${compactNumber(values.dangerousAttackWeight)} · H.P. ≥${compactNumber(values.homePressureShareMinimum)}% · Required ${compactNumber(values.trendConditionsRequired)}/3`,
+      `Shot On ${evidenceValue(values.sotEvidenceEnabled,values.sotDeltaMinimum)} · Shot Off ${evidenceValue(values.shotOffEvidenceEnabled,values.shotOffDeltaMinimum)} · Corner ${evidenceValue(values.cornerEvidenceEnabled,values.cornerDeltaMinimum)} · Evidence Required ${evidenceMode}=${evidenceRequired}`,
     ];
     return lines.map(line=>`<span class="condition-line">${esc(line)}</span>`).join('');
   };
