@@ -26,6 +26,26 @@ test('detector card renders every enabled source and the selected whole price',(
   assert.doesNotMatch(context.__output,/Price pass · Selected|>SIDE</);
 });
 
+test('AWAY detector card labels the selected mirrored AH price without changing HOME compact output',()=>{
+  const runtime=readFileSync(new URL('../../nomad-live/runtime.js',import.meta.url),'utf8');
+  const match={
+    id:'m-away',side:'away',state:'SIGNAL',home:'Home FC',away:'Away FC',league:'Example',minute:68,score:{home:0,away:1},
+    passed:6,total:6,detectionPassed:true,checks:{awayOnly:true,market:true},marketCheck:{passed:true,selectionOdds:2.00},priceStatus:'AH READY',
+    rolling:{available:true,recent:{delta:{shotsOn:{home:0,away:1},shotsOff:{home:0,away:1},corners:{home:0,away:0}},homePressure:3,awayPressure:14},previous:{homePressure:4,awayPressure:8},awayPressureShare:82},hunger:{passedCount:3,total:3},
+    priceSources:[
+      {id:'source1',position:1,source:'Odds-API.io',status:'PASS',bookmaker:'1xBet',line:.50,odds:2.00,priceAgeSeconds:11,side:'away'},
+    ],
+    selectedPrice:{id:'source1',position:1,source:'Odds-API.io',status:'PASS',bookmaker:'1xBet',line:.50,odds:2.00,priceAgeSeconds:11,side:'away'},
+  };
+  const context={window:{NOMAD_RUNTIME:{engineBase:'https://test.invalid'}},location:{pathname:'/noop'},document:{},setInterval(){},fetch(){},console,__match:match,__output:null};
+  vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
+  assert.match(context.__output,/data-side="away"/);
+  assert.match(context.__output,/<span>AWAY PRESS<\/span><b>14<\/b>/);
+  assert.match(context.__output,/<span class="price-selected-name">SELECTED · S1<\/span><span class="price-selected-value">AWAY · 1xBet · \+0\.50 @ 2\.00 · 11s<\/span>/);
+  assert.match(context.__output,/SELECTED PRICE · AWAY/);
+  assert.match(context.__output,/Odds-API\.io · 1xBet · AWAY \+0\.50 @ 2\.00/);
+});
+
 test('detector card collapses missing legacy source and selected prices to N/A',()=>{
   const runtime=readFileSync(new URL('../../nomad-live/runtime.js',import.meta.url),'utf8');
   const match={
