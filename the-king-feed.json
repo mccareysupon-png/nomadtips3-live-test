@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-30T12:58:49Z",
+  "updated_at": "2026-08-30T17:35:15Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8776,
       "edge": 76.5,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-2",
       "source_url": "https://www.goaloo.com/football/luxembourg-national-division-fc-wiltz-71-vs-f91-dudelange/h2h-3046725",
       "summary_url": "https://www.goaloo.com/football/luxembourg-national-division-fc-wiltz-71-vs-f91-dudelange/summary-3046725",
       "model": {
@@ -266,8 +266,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8691,
       "edge": 74.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-3",
       "source_url": "https://www.goaloo.com/football/norway-adeccoligaen-sogndal-vs-stromsgodset/h2h-2913129",
       "summary_url": "https://www.goaloo.com/football/norway-adeccoligaen-sogndal-vs-stromsgodset/summary-2913129",
       "model": {
@@ -1490,6 +1490,106 @@
           "away_venue_n": 6
         },
         "h2h_adjustment": 0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "2ed00ec300f2c901",
+      "goaloo_id": "3046725",
+      "date": "2026-08-30",
+      "kickoff": "2026-08-30 14:00:00",
+      "league": "Luxembourg National Division",
+      "home": "FC Wiltz 71",
+      "away": "F91 Dudelange",
+      "pick": "FC Wiltz 71 Win",
+      "side": "home",
+      "odds": 2.93,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8776,
+      "edge": 76.5,
+      "result": "LOSS",
+      "ft": "1-2",
+      "source_url": "https://www.goaloo.com/football/luxembourg-national-division-fc-wiltz-71-vs-f91-dudelange/h2h-3046725",
+      "summary_url": "https://www.goaloo.com/football/luxembourg-national-division-fc-wiltz-71-vs-f91-dudelange/summary-3046725",
+      "model": {
+        "lambda_home": 3.232,
+        "lambda_away": 0.796,
+        "home_win": 0.8776,
+        "draw": 0.1124,
+        "away_win": 0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.7837,
+          "gd_edge": 0.9541,
+          "clean_sheet_edge": 0.7902,
+          "failed_to_score_edge": 0.0293,
+          "bounded_adjustment": 0.0577,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "c5afa579e78826e6",
+      "goaloo_id": "2913129",
+      "date": "2026-08-30",
+      "kickoff": "2026-08-30 15:00:00",
+      "league": "Norway Adeccoligaen",
+      "home": "Sogndal",
+      "away": "Stromsgodset",
+      "pick": "Sogndal Win",
+      "side": "home",
+      "odds": 4.26,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8691,
+      "edge": 74.8,
+      "result": "LOSS",
+      "ft": "2-3",
+      "source_url": "https://www.goaloo.com/football/norway-adeccoligaen-sogndal-vs-stromsgodset/h2h-2913129",
+      "summary_url": "https://www.goaloo.com/football/norway-adeccoligaen-sogndal-vs-stromsgodset/summary-2913129",
+      "model": {
+        "lambda_home": 2.783,
+        "lambda_away": 0.524,
+        "home_win": 0.8691,
+        "draw": 0.1211,
+        "away_win": 0.0099,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.7512,
+          "gd_edge": 0.9425,
+          "clean_sheet_edge": 0.5415,
+          "failed_to_score_edge": 0.4195,
+          "bounded_adjustment": 0.0568,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.0125,
         "venue_fallback": {
           "home": true,
           "away": false,
