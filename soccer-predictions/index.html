@@ -25,11 +25,17 @@
   <link rel="stylesheet" href="trend-color-exception.css?v=20260829-trend-gray-fill90-v2">
   <link rel="stylesheet" href="content-dividers.css?v=20260829-content-dividers-v2">
   <link rel="stylesheet" href="nomad-edge.css?v=20260829-edge-meter-v1">
+  <link rel="stylesheet" href="public-bridge.css?v=20260830-v1">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner topbar-brand-only">
+    <div class="topbar-inner public-linked-nav">
       <span class="brand">nomad<span>tips3</span></span>
+      <nav class="topnav" aria-label="NOMAD public navigation">
+        <a href="../nomad-live/index.html">Live</a>
+        <a href="../nomad-live/statistics.html">Statistics</a>
+        <a class="active" href="index.html" aria-current="page">Predictions</a>
+      </nav>
     </div>
   </header>
 
@@ -90,6 +96,12 @@
       <div class="loading">Loading previous results…</div>
     </section>
   </main>
+
+  <nav class="public-mobile-nav" aria-label="NOMAD mobile navigation">
+    <a href="../nomad-live/index.html">Live</a>
+    <a href="../nomad-live/statistics.html">Statistics</a>
+    <a class="active" href="index.html" aria-current="page">Predictions</a>
+  </nav>
 
   <script src="predictions.js?v=20260829-source-metrics-v1" defer></script>
   <script src="match-explorer.js?v=20260829-selected-matches-v1" defer></script>
