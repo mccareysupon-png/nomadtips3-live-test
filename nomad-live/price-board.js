@@ -113,16 +113,16 @@
     const ready = source && finite(source.line) && finite(source.homeOdds) && finite(source.awayOdds);
     if (!ready) {
       return `<div class="bet365-reference is-no-odds" data-bet365-reference="1" title="Bet365 reference price">
-        <span class="bet365-reference-label">Asian Handicap</span><span class="bet365-reference-dot">•</span><strong>NO ODDS</strong>
+        <span class="bet365-reference-label">Bet365 Reference · Asian Handicap</span><span class="bet365-reference-dot">•</span><strong>NO ODDS</strong>
       </div>`;
     }
     const selectedSide = sideKey(source.side);
     const selectedLine = Number(source.line);
     const homeLine = selectedSide === 'away' ? -selectedLine : selectedLine;
     const awayLine = -homeLine;
-    const title = `Asian Handicap • ${home} ${fmtReferenceLine(homeLine)} | Odds ${fmtOdds(source.homeOdds)} vs ${away} ${fmtReferenceLine(awayLine)} | Odds ${fmtOdds(source.awayOdds)}`;
+    const title = `Bet365 Reference · Asian Handicap • ${home} ${fmtReferenceLine(homeLine)} | Odds ${fmtOdds(source.homeOdds)} vs ${away} ${fmtReferenceLine(awayLine)} | Odds ${fmtOdds(source.awayOdds)}`;
     return `<div class="bet365-reference has-odds" data-bet365-reference="1" title="${esc(title)}">
-      <span class="bet365-reference-label">Asian Handicap</span>
+      <span class="bet365-reference-label">Bet365 Reference · Asian Handicap</span>
       <span class="bet365-reference-dot">•</span>
       <span class="bet365-reference-selection"><b>${esc(home)} ${fmtReferenceLine(homeLine)}</b><em>Odds ${fmtOdds(source.homeOdds)}</em></span>
       <span class="bet365-reference-vs">vs</span>
