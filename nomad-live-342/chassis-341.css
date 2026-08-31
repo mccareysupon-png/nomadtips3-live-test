@@ -2,13 +2,23 @@
    Presentation only: no feed, gate, signal, odds, prediction or analytics logic. */
 
 body[data-page="live"] .shell{
-  max-width:1120px;
-  margin:auto;
-  padding:10px 16px 76px;
+  width:100%!important;
+  max-width:1120px!important;
+  margin:0 auto!important;
+  padding:10px 16px 76px!important;
+  box-sizing:border-box!important;
+}
+body[data-page="live"] .nomad-scanner-panel{
+  width:100%!important;
+  margin-left:0!important;
+  margin-right:0!important;
 }
 
 @media(max-width:700px){
   body[data-page="live"] .shell{
-    padding:8px 8px 78px;
+    width:100%!important;
+    max-width:1120px!important;
+    margin:0 auto!important;
+    padding:8px 8px 78px!important;
   }
 }
