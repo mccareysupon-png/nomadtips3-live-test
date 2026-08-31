@@ -5,12 +5,14 @@ on:
     paths:
       - 'workers/nomadtips3-market-engine/**'
       - 'nomad-live-342/market-runtime.js'
+      - 'nomad-live-342/api-football-candidate-layer.js'
       - '.github/workflows/nomad342-market-engine-deploy.yml'
   push:
     branches: [main]
     paths:
       - 'workers/nomadtips3-market-engine/**'
       - 'nomad-live-342/market-runtime.js'
+      - 'nomad-live-342/api-football-candidate-layer.js'
       - '.github/workflows/nomad342-market-engine-deploy.yml'
 
 permissions:
@@ -19,6 +21,7 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
   MARKET_URL: https://nomadtips3-market-engine.mccarey-supon.workers.dev
 
 jobs:
@@ -35,8 +38,10 @@ jobs:
           set -euo pipefail
           node --check nomad-live-342/market-runtime.js
           node --check nomad-live-342/market-layer.js
+          node --check nomad-live-342/api-football-candidate-layer.js
           node --check workers/nomadtips3-market-engine/src/index.js
           node --check workers/nomadtips3-market-engine/src/asianbookie.js
+          node --check workers/nomadtips3-market-engine/src/api-football-candidate.js
           node --check workers/nomadtips3-market-engine/src/normalize.js
           node --check workers/nomadtips3-market-engine/src/settle.js
           cd workers/nomadtips3-market-engine
@@ -47,6 +52,8 @@ jobs:
           grep -Fq "const DEFAULT_BASE='https://nomadtips3-market-engine.mccarey-supon.workers.dev'" nomad-live-342/market-runtime.js
           grep -Fq 'blocksEventRender:false' nomad-live-342/market-runtime.js
           grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
+          grep -Fq "url.pathname === '/candidate'" workers/nomadtips3-market-engine/src/index.js
+          grep -Fq "fetchApiFootballCandidate" workers/nomadtips3-market-engine/src/api-football-candidate.js
           grep -Fq "/api/poll/tipsterMatchOdds" workers/nomadtips3-market-engine/src/asianbookie.js
           if grep -Fq '"MARKET_PROVIDER_KIND": "asianbookie"' workers/nomadtips3-market-engine/wrangler.jsonc; then
             echo '::error::AsianBookie direct Worker polling is intentionally disabled after empty non-JSON production responses'; exit 1
@@ -61,7 +68,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
           fi
-          echo '3.41 sealed; AsianBookie adapter retained dormant; market layer remains isolated and fail-open.'
+          echo '3.41 sealed; API-Football candidate referee isolated; Event Worker unchanged.'
 
   deploy:
     needs: validate
@@ -70,10 +77,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Validate Cloudflare credentials
+      - name: Validate Cloudflare credentials and API-Football secret
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo '::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY'; exit 1; }
       - name: Deploy isolated Market Worker
         uses: cloudflare/wrangler-action@v3
         with:
@@ -82,7 +90,11 @@ jobs:
           workingDirectory: workers/nomadtips3-market-engine
           wranglerVersion: '4.92.0'
           command: deploy
-      - name: Smoke-test Market Worker
+          secrets: |
+            API_FOOTBALL_KEY
+        env:
+          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
+      - name: Smoke-test Market Worker without spending API quota
         shell: bash
         run: |
           set -euo pipefail
@@ -90,21 +102,20 @@ jobs:
           for attempt in $(seq 1 12); do
             if curl -fsS --max-time 20 "$MARKET_URL/health?t=$(date +%s)" -o /tmp/market-health.json \
               && grep -Fq 'nomadtips3-market-engine' /tmp/market-health.json \
-              && grep -Fq '"version":"market-v1"' /tmp/market-health.json; then
+              && grep -Fq '"version":"market-v1"' /tmp/market-health.json \
+              && grep -Fq '"apiFootballCandidate":{"enabled":true,"configured":true' /tmp/market-health.json; then
               ok=1; break
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::Market Worker health check failed'; exit 1; }
+          test "$ok" = 1 || { echo '::error::Market Worker health check failed or API-Football secret not configured'; cat /tmp/market-health.json || true; exit 1; }
           cat /tmp/market-health.json
           code="$(curl -sS --max-time 20 -o /tmp/markets.json -w '%{http_code}' "$MARKET_URL/markets?t=$(date +%s)" || true)"
           if [ "$code" = '200' ]; then
             grep -Fq '"version":"market-v1"' /tmp/markets.json
-            cat /tmp/markets.json
-            echo 'MARKET DATA ONLINE: /markets returned live normalized payload.'
+            echo 'MARKET DATA ONLINE: /markets returned normalized payload.'
           elif [ "$code" = '503' ] || [ "$code" = '502' ]; then
-            cat /tmp/markets.json || true
-            echo 'MARKET DATA OFFLINE/UNCONFIGURED: fail-open behavior confirmed; Live Score remains independent.'
+            echo 'MARKET BULK FEED OFFLINE/UNCONFIGURED: fail-open confirmed; one-shot /candidate remains independent.'
           else
             echo "::error::Unexpected /markets HTTP status: $code"; cat /tmp/markets.json || true; exit 1
           fi
