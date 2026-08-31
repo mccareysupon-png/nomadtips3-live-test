@@ -9,12 +9,11 @@ const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
 const PREDICTIONS_BASE='/nomadtips3-live-test';
 const NOMAD342_PREFIX='/nomad-live-342';
 const PUBLIC_INFO_PREFIXES=['/about','/privacy','/terms','/user-guide','/disclaimer'];
+const ROOT_SHARED_FOOTER_ASSETS=new Set(['/site-footer.css','/site-footer.js']);
 const PUBLIC_INFO_ASSETS=new Set([
   '/info-pages.css',
   '/public-info-footer.css',
   '/public-info-footer.js',
-  '/site-footer.css',
-  '/site-footer.js',
   '/nomad-live/styles.css',
   '/nomad-live/public-site-nav.css',
   '/nomad-live/site-footer.css',
@@ -71,6 +70,46 @@ async function proxyPredictions(request,url){
 function isPublicInfoPath(pathname){
   if(PUBLIC_INFO_ASSETS.has(pathname))return true;
   return PUBLIC_INFO_PREFIXES.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+}
+
+function isInfoOrPredictionsReferer(request){
+  const raw=String(request.headers.get('referer')||'');
+  if(!raw)return false;
+  try{
+    const pathname=new URL(raw).pathname;
+    if(pathname==='/soccer-predictions'||pathname.startsWith('/soccer-predictions/'))return true;
+    return PUBLIC_INFO_PREFIXES.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+  }catch{
+    return false;
+  }
+}
+
+async function routeSharedFooterAsset(request,env,url){
+  if(!ROOT_SHARED_FOOTER_ASSETS.has(url.pathname))return null;
+  if(request.method!=='GET'&&request.method!=='HEAD'){
+    return unavailable('Footer assets support GET/HEAD only',405);
+  }
+
+  /* Signal and Statistics historically load /site-footer.* from the local
+     3.41 asset bundle. Only the information pages and Soccer Predictions
+     need the repository-root legacy asset. Keeping this split prevents the
+     public-info bridge from replacing the original 3.41 footer. */
+  if(!isInfoOrPredictionsReferer(request)){
+    if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
+      return unavailable('Static assets unavailable');
+    }
+    return env.ASSETS.fetch(request);
+  }
+
+  const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
+  const upstreamRequest=new Request(upstreamUrl.toString(),request);
+  const response=await fetch(upstreamRequest);
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','no-store, max-age=0');
+  headers.set('pragma','no-cache');
+  headers.set('expires','0');
+  headers.set('x-nomad-web','root-footer-bridge');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
 async function proxyPublicInfo(request,url){
@@ -146,6 +185,8 @@ export default {
     if(predictionsResponse) return predictionsResponse;
     const nomad342Response=await proxyNomad342(request,env,url);
     if(nomad342Response) return nomad342Response;
+    const sharedFooterResponse=await routeSharedFooterAsset(request,env,url);
+    if(sharedFooterResponse) return sharedFooterResponse;
     const publicInfoResponse=await proxyPublicInfo(request,url);
     if(publicInfoResponse) return publicInfoResponse;
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
