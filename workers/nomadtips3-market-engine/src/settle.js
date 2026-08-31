@@ -1,12 +1,13 @@
 function finite(value){const n=Number(value);return Number.isFinite(n)?n:null}
+function cleanZero(value){return Object.is(value,-0)?0:value}
 
 export function splitQuarterLine(line){
   const n=finite(line);if(n===null)return [];
-  const q=Math.round(n*4)/4;
+  const q=cleanZero(Math.round(n*4)/4);
   const frac=Math.abs(q*4)%2;
   if(frac===0)return [q];
-  const lower=Math.floor(q*2)/2;
-  const upper=Math.ceil(q*2)/2;
+  const lower=cleanZero(Math.floor(q*2)/2);
+  const upper=cleanZero(Math.ceil(q*2)/2);
   return lower===upper?[q]:[lower,upper];
 }
 
