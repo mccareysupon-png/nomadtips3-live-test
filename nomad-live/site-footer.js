@@ -38,9 +38,9 @@
       <div class="site-footer-bottom">
         <span>© 2026 nomadtips3. Information and entertainment use only.</span>
         <div class="site-socials" aria-label="Social channels">
-          <span class="site-social facebook" role="img" aria-label="Facebook" title="Facebook">f</span>
-          <span class="site-social" role="img" aria-label="X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4l14 16M19 4L5 20"/></svg></span>
-          <span class="site-social" role="img" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.2" cy="6.8" r=".7" fill="currentColor" stroke="none"/></svg></span>
+          <span class="site-social facebook" role="img" aria-label="Facebook" title="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.7 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.7-1.6H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.6H8.2v3.2h2.6V22h2.9Z"/></svg></span>
+          <span class="site-social x" role="img" aria-label="X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.2-8.3L3.2 3h6.3l4.3 5.7L18.9 3Zm-1.1 16.2h1.7L8.6 4.7H6.8l11 14.5Z"/></svg></span>
+          <span class="site-social instagram" role="img" aria-label="Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3.5"/><circle cx="17.2" cy="6.8" r=".7" class="instagram-dot"/></svg></span>
         </div>
       </div>
     </div>`;
