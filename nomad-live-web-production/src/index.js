@@ -8,6 +8,7 @@ const API_ROUTES=new Map([
 const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
 const PREDICTIONS_BASE='/nomadtips3-live-test';
 const NOMAD342_PREFIX='/nomad-live-342';
+const NOMAD342_ENGINE_ORIGIN='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
 
 function unavailable(message,status=503){
   return new Response(message,{status,headers:{
@@ -63,6 +64,17 @@ async function proxyNomad342(request,url){
   if(!url.pathname.startsWith(NOMAD342_PREFIX+'/')) return null;
   if(request.method!=='GET'&&request.method!=='HEAD'){
     return unavailable('NOMAD Live 3.42 route supports GET/HEAD only',405);
+  }
+  if(url.pathname===NOMAD342_PREFIX+'/feed'){
+    const upstreamUrl=new URL('/feed'+url.search,NOMAD342_ENGINE_ORIGIN);
+    const upstreamRequest=new Request(upstreamUrl.toString(),request);
+    const response=await fetch(upstreamRequest);
+    const headers=new Headers(response.headers);
+    headers.set('cache-control','no-store, max-age=0');
+    headers.set('pragma','no-cache');
+    headers.set('expires','0');
+    headers.set('x-nomad-web','nomad-live-342-feed-proxy');
+    return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   }
   const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
   const upstreamRequest=new Request(upstreamUrl.toString(),request);
