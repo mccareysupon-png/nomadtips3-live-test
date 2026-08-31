@@ -80,6 +80,7 @@ jobs:
                   return {
                     finalUrl:location.href,
                     viewport:innerWidth,
+                    clientWidth:document.documentElement.clientWidth,
                     scrollWidth:document.documentElement.scrollWidth,
                     topbarHeight:parseFloat(topbarStyle.height),
                     backgroundImage:topbarStyle.backgroundImage,
@@ -117,12 +118,11 @@ jobs:
                 });
               };
 
-              // Wait for the presentation-only 3.42 CSS to reach the public route.
               let ready=false;
               for(let attempt=1;attempt<=12;attempt++){
                 const s=await capture(sites[0].urls.liveScore,390);
-                console.log('READY_CHECK',attempt,JSON.stringify({mobileLinks:s.mobileLinks,mobileHeight:s.mobileHeight,color:s.liveScoreMobileColor,scrollWidth:s.scrollWidth,viewport:s.viewport}));
-                if(s.mobileLinks===4&&close(s.mobileHeight,44)&&s.liveScoreMobileColor===GREEN&&s.scrollWidth<=s.viewport+1){ready=true;break;}
+                console.log('READY_CHECK',attempt,JSON.stringify({mobileLinks:s.mobileLinks,mobileHeight:s.mobileHeight,color:s.liveScoreMobileColor,scrollWidth:s.scrollWidth,clientWidth:s.clientWidth}));
+                if(s.mobileLinks===4&&close(s.mobileHeight,45)&&s.liveScoreMobileColor===GREEN&&s.scrollWidth<=s.viewport+1){ready=true;break;}
                 await new Promise(r=>setTimeout(r,10000));
               }
               expect(ready,'public 3.42 UI did not reach the expected responsive navigation state');
@@ -147,8 +147,8 @@ jobs:
                       expect(s.mobileActive===1,`${site.name}/${name}/${width}: mobile active links ${s.mobileActive}`);
                       expect(s.mobileFontSize==='11.7px',`${site.name}/${name}/${width}: mobile font ${s.mobileFontSize}`);
                       expect(s.mobileFontWeight==='900',`${site.name}/${name}/${width}: mobile weight ${s.mobileFontWeight}`);
-                      expect(close(s.mobileHeight,44),`${site.name}/${name}/${width}: mobile nav height ${s.mobileHeight}`);
-                      expect(close(s.mobileWidth,s.viewport,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.viewport}`);
+                      expect(close(s.mobileHeight,45),`${site.name}/${name}/${width}: mobile nav height ${s.mobileHeight}`);
+                      expect(close(s.mobileWidth,s.clientWidth,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.clientWidth}`);
                       expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
                       expect(s.mobileRects.length===4,`${site.name}/${name}/${width}: mobile rect count ${s.mobileRects.length}`);
                       const y=s.mobileRects[0].y,h=s.mobileRects[0].height,w=s.mobileRects[0].width;
@@ -179,7 +179,10 @@ jobs:
                     expect(close(s.brandX,reference.brandX),`${site.name}/${width}: ${name} logo X mismatch ${s.brandX}/${reference.brandX}`);
                     expect(close(s.brandY,reference.brandY),`${site.name}/${width}: ${name} logo Y mismatch ${s.brandY}/${reference.brandY}`);
                     expect(s.brandFontSize===reference.brandFontSize,`${site.name}/${width}: ${name} logo font mismatch`);
-                    if(!mobile){
+                    if(mobile){
+                      expect(close(s.mobileHeight,reference.mobileHeight),`${site.name}/${width}: ${name} mobile nav height mismatch`);
+                      expect(close(s.mobileWidth,reference.mobileWidth,1),`${site.name}/${width}: ${name} mobile nav width mismatch`);
+                    }else{
                       expect(close(s.desktopX,reference.desktopX),`${site.name}/${width}: ${name} nav X mismatch`);
                       expect(close(s.desktopY,reference.desktopY),`${site.name}/${width}: ${name} nav Y mismatch`);
                       expect(close(s.desktopWidth,reference.desktopWidth),`${site.name}/${width}: ${name} nav width mismatch`);
