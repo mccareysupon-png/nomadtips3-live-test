@@ -1,0 +1,13 @@
+{
+  "name": "nomadtips3-market-engine",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --check src/index.js && node --check src/normalize.js && node test/normalize.test.mjs",
+    "test": "node test/normalize.test.mjs",
+    "deploy": "npx wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.68.0"
+  }
+}
