@@ -5,6 +5,13 @@ body[data-page="live"] .attack-chart{
   background:#000;
 }
 
+/* Desktop readability: double only the Attack Flow vertical canvas.
+   Width, SVG viewBox, data points, polling and graph logic remain unchanged. */
+@media(min-width:761px){
+  body[data-page="live"] .attack-chart svg{height:176px}
+  body[data-page="live"] .attack-empty{height:196px}
+}
+
 /* Reference midline only. */
 body[data-page="live"] .attack-chart .chart-grid-mid{
   stroke:rgba(104,119,109,.68);
