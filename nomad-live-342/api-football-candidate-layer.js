@@ -9,7 +9,7 @@ let busy=false;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
 function load(){try{return JSON.parse(sessionStorage.getItem(STORE_KEY)||'{}')||{}}catch{return {}}}
 function save(store){try{sessionStorage.setItem(STORE_KEY,JSON.stringify(store))}catch{}}
 function lockedFor(id){const row=load()[String(id)];return row?.status==='PREDICTED'?row:null}
@@ -22,7 +22,7 @@ function prediction(r,market){
   const [mh,md,ma]=implied([one.home,one.draw,one.away]);
   const pressure=clamp((finite(em.pressureShare)??50)/100,.35,.80),trend=clamp((finite(em.trendPass)??0)/3,0,1),scoreH=finite(m?.score?.[0])??0,scoreA=finite(m?.score?.[1])??0;
   const homeBoost=clamp((pressure-.5)*.45+trend*.035+(scoreH-scoreA)*.025,0,.18);
-  const drawBoost=scoreH===scoreA?.018:0;
+  const drawBoost=scoreH===scoreA ? .018 : 0;
   const [homePct,drawPct,awayPct]=normalize3(mh+homeBoost,md+drawBoost,ma);
   const onePick=[['HOME',homePct],['DRAW',drawPct],['AWAY',awayPct]].sort((a,b)=>b[1]-a[1])[0][0];
 
@@ -31,7 +31,7 @@ function prediction(r,market){
   const activity=clamp((hSot+aSot+hOff+aOff)*.018+(hD+aD)*.005+(hC+aC)*.01,0,.16),minute=finite(m.minute)??60,currentGoals=scoreH+scoreA,line=finite(tot.line)??2.5;
   let over=mo,under=mu;
   if(currentGoals>line){over=.99;under=.01}else{
-    const remaining=clamp((95-minute)/40,0,1),near=currentGoals>=line-.5?.055:0;
+    const remaining=clamp((95-minute)/40,0,1),near=currentGoals>=line-.5 ? .055 : 0;
     over=clamp(mo+activity*remaining+near,.05,.95);under=clamp(mu-activity*remaining-near,.05,.95);
   }
   const [overPct,underPct]=normalize2(over,under),ouPick=overPct>=underPct?'OVER':'UNDER';
