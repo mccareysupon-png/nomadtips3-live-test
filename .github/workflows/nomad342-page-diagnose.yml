@@ -7,35 +7,38 @@ on:
     paths:
       - 'nomad-live-342/event-graph-live.js'
       - 'nomad-live-342/index.html'
-      - 'nomad-live-342/live-score.html'
       - '.github/workflows/nomad342-page-diagnose.yml'
 
 jobs:
   diagnose-page:
     runs-on: ubuntu-latest
     steps:
-      - name: Open deployed fresh 3.42 page in Chrome
+      - name: Open deployed standalone 3.42 page in Chrome
         shell: bash
         run: |
           set -e
           chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
           echo "CHROME=${chrome:-missing}"
           test -n "$chrome" || exit 0
-          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/live-score.html?v=20260831-fresh-window-v1'
+          url='https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html?v=20260831-standalone342-v2'
           "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=26000 --enable-logging=stderr --dump-dom "$url" >/tmp/nomad342-dom.html 2>/tmp/nomad342-chrome.log
           rc=$?
           echo "CHROME_RC=$rc"
           cards="$(grep -o 'class=\"signal-card event-compact' /tmp/nomad342-dom.html | wc -l)"
           echo "EVENT_CARDS=$cards"
           echo "SIGNAL_CARDS=$(grep -o 'class=\"signal-card' /tmp/nomad342-dom.html | wc -l)"
+          echo "TOPNAV_COUNT=$(grep -o 'class=\"topnav' /tmp/nomad342-dom.html | wc -l)"
+          echo "MOBILE_NAV_COUNT=$(grep -o '<nav class=\"mobile-nav' /tmp/nomad342-dom.html | wc -l)"
           echo '--- BROWSER ERRORS ---'
           grep -Ei 'error|failed|cors|uncaught|exception|ERR_' /tmp/nomad342-chrome.log | tail -120 || true
           echo '--- SCRIPT REFS ---'
           grep -oE '<script[^>]+src="[^"]+"' /tmp/nomad342-dom.html | tail -30 || true
           test "$rc" -eq 0
           test "$cards" -gt 0
+          test "$(grep -o 'class=\"topnav' /tmp/nomad342-dom.html | wc -l)" -eq 0
+          test "$(grep -o '<nav class=\"mobile-nav' /tmp/nomad342-dom.html | wc -l)" -eq 0
 
-      - name: Verify expanded card collapses without opening another card
+      - name: Verify standalone header and card interaction
         shell: bash
         run: |
           set -euo pipefail
@@ -47,8 +50,20 @@ jobs:
             const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
             try{
               const page=await browser.newPage();
-              await page.goto('https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/live-score.html?toggle-regression=1&v=20260831-fresh-window-v1',{waitUntil:'networkidle2',timeout:60000});
+              await page.goto('https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html?toggle-regression=1&v=20260831-standalone342-v2',{waitUntil:'networkidle2',timeout:60000});
               await page.waitForSelector('.event-compact',{timeout:45000});
+              const ui=await page.evaluate(()=>({
+                topbarLinks:document.querySelectorAll('.topbar a').length,
+                mobileNavs:document.querySelectorAll('.mobile-nav').length,
+                topbarBackground:getComputedStyle(document.querySelector('.topbar')).backgroundColor,
+                cards:document.querySelectorAll('.event-compact').length
+              }));
+              console.log('STANDALONE_UI',JSON.stringify(ui));
+              if(ui.topbarLinks!==0)throw new Error(`expected no topbar links, got ${ui.topbarLinks}`);
+              if(ui.mobileNavs!==0)throw new Error(`expected no mobile nav, got ${ui.mobileNavs}`);
+              if(ui.cards<1)throw new Error('expected live TotalCorner cards');
+              if(ui.topbarBackground!=='rgb(22, 24, 23)')throw new Error(`unexpected topbar background ${ui.topbarBackground}`);
+
               const id=await page.$eval('.event-compact',el=>el.dataset.matchId);
               const safeId=String(id).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
               const selector=`.event-compact[data-match-id="${safeId}"]`;
