@@ -17,6 +17,8 @@ const PUBLIC_INFO_ASSETS=new Set([
   '/site-footer.js',
   '/nomad-live/styles.css',
   '/nomad-live/public-site-nav.css',
+  '/nomad-live/site-footer.css',
+  '/nomad-live/site-footer.js',
 ]);
 
 function unavailable(message,status=503){
