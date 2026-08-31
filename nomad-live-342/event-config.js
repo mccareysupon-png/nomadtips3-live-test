@@ -27,8 +27,51 @@ const defaults=Object.freeze({
   oneSignalPerMatch:true
 });
 window.NOMAD342_CONFIG=Object.freeze({
-  version:'20260830-event-config-v1',
+  version:'20260831-k-live-net-v1',
   settingsKey:'nomadSettings342',
   defaults
+});
+window.NOMAD342_K_LIVE_PRESET=Object.freeze({
+  version:'k-live-net-v1',
+  name:'K LIVE',
+  locked:true,
+  scope:'ALL_LIVE_MATCHES',
+  event:Object.freeze({
+    minuteFrom:defaults.minuteFrom,
+    minuteTo:defaults.minuteTo,
+    rollingWindowMinutes:defaults.rollingWindowMinutes,
+    homePressureShareMinimum:defaults.homePressureShareMinimum,
+    trendConditionsRequired:defaults.trendConditionsRequired,
+    evidenceMode:defaults.evidenceMode,
+    sotDeltaMinimum:defaults.sotDeltaMinimum,
+    shotOffDeltaMinimum:defaults.shotOffDeltaMinimum,
+    cornerDeltaMinimum:defaults.cornerDeltaMinimum
+  }),
+  market:Object.freeze({
+    ah:'AUTO_MAIN_LINE',
+    oneXtwo:'AUTO',
+    totals:'AUTO_MAIN_LINE',
+    maxAgeMs:30000,
+    minReferees:3,
+    moderateShare:0.58,
+    strongShare:0.65,
+    directionalMarkets:Object.freeze(['AH','1X2']),
+    totalsRole:'CONTEXT'
+  }),
+  grading:Object.freeze({
+    eventPassRequired:true,
+    strongRequiresBothDirectional:true,
+    strongRequiresAtLeastOneStrong:true,
+    awayAhIsConflict:true,
+    away1X2StrongIsConflict:true,
+    draw1X2IsNeutral:true
+  }),
+  behavior:Object.freeze({
+    failOpen:true,
+    blocksLiveScore:false,
+    blocksEventGate:false,
+    changesPrediction:false,
+    marketOfflineStatus:'EVENT ONLY'
+  })
 });
 })();
