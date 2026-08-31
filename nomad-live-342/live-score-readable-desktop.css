@@ -1,0 +1,325 @@
+/* NOMADTIPS3 3.42 Live Score desktop readability pass.
+   Display-only override: no feed, runtime, polling, engine or event logic changes. */
+
+@media (min-width:761px) {
+  /* Read the expanded card as a vertical analysis story instead of a dense 12-column dashboard. */
+  body[data-page="live"] .nomad-analytics-top,
+  body[data-page="live"] .nomad-analytics-bottom {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+  body[data-page="live"] .nomad-analytics-top > .na-section,
+  body[data-page="live"] .nomad-analytics-bottom > .na-section {
+    grid-column:1 / -1 !important;
+  }
+
+  /* Pressure Shift repeats the same rolling pressure share already shown in Match Pulse.
+     Keep its DOM/logic intact, but remove the duplicate desktop presentation. */
+  body[data-page="live"] .nomad-analytics-top > .na-shift {
+    display:none;
+  }
+
+  /* General analytical typography: keep the compact aesthetic, remove unreadable 5–7px labels. */
+  body[data-page="live"] .na-section {
+    padding:10px;
+  }
+  body[data-page="live"] .na-section-head {
+    gap:10px;
+    margin-bottom:8px;
+  }
+  body[data-page="live"] .na-section-head > div:first-child > span {
+    font-size:11px;
+    line-height:1.2;
+    letter-spacing:.055em;
+  }
+  body[data-page="live"] .na-section-head small {
+    margin-top:2px;
+    font-size:9px;
+    line-height:1.35;
+  }
+  body[data-page="live"] .na-section-head > strong {
+    font-size:11px;
+  }
+  body[data-page="live"] .na-section-tag,
+  body[data-page="live"] .na-legend {
+    font-size:8px;
+  }
+  body[data-page="live"] .na-empty {
+    min-height:44px;
+    font-size:9px;
+  }
+
+  /* Attack Flow stays full-width; only make its labels readable. */
+  body[data-page="live"] .attack-head > div:first-child span {
+    font-size:11px;
+  }
+  body[data-page="live"] .attack-head small {
+    font-size:9px;
+  }
+  body[data-page="live"] .attack-legend,
+  body[data-page="live"] .attack-legend .legend-team b {
+    font-size:9px;
+  }
+  body[data-page="live"] .attack-color-note {
+    font-size:8px;
+  }
+  body[data-page="live"] .chart-axis {
+    font-size:9px;
+  }
+
+  /* Prediction remains one full-width card, with desktop-readable labels and values. */
+  body[data-page="live"] .nomad-live-prediction {
+    padding:9px 10px;
+  }
+  body[data-page="live"] .nlp-head {
+    margin-bottom:7px;
+  }
+  body[data-page="live"] .nlp-head span {
+    font-size:10px;
+  }
+  body[data-page="live"] .nlp-head small,
+  body[data-page="live"] .nlp-head > strong {
+    font-size:8.5px;
+  }
+  body[data-page="live"] .nlp-values {
+    gap:7px;
+  }
+  body[data-page="live"] .nlp-values > div {
+    padding:8px 9px;
+  }
+  body[data-page="live"] .nlp-values span {
+    font-size:9px;
+  }
+  body[data-page="live"] .nlp-values b {
+    margin-top:4px;
+    font-size:15px;
+  }
+  body[data-page="live"] .nlp-track {
+    height:7px;
+    margin-top:7px;
+  }
+  body[data-page="live"] .nlp-note {
+    margin-top:6px;
+    font-size:8px;
+  }
+
+  /* Momentum gets the full row and enough room for time labels. */
+  body[data-page="live"] .na-momentum {
+    grid-template-columns:48px minmax(0,1fr) 48px;
+    gap:8px;
+  }
+  body[data-page="live"] .na-momentum-label {
+    font-size:9px;
+  }
+  body[data-page="live"] .na-momentum-columns {
+    height:104px;
+    gap:4px;
+  }
+  body[data-page="live"] .na-momentum-col > span {
+    font-size:8px;
+  }
+
+  /* Match Pulse becomes the single rolling-pressure summary card. */
+  body[data-page="live"] .na-pulse-grid {
+    grid-template-columns:180px minmax(0,1fr);
+    gap:10px;
+  }
+  body[data-page="live"] .na-pressure-wrap {
+    padding:9px;
+  }
+  body[data-page="live"] .na-pressure-ring {
+    width:126px;
+    height:126px;
+  }
+  body[data-page="live"] .na-pressure-ring:after {
+    inset:11px;
+  }
+  body[data-page="live"] .event-details .na-pressure-ring strong {
+    font-size:18px;
+    line-height:1.05;
+  }
+  body[data-page="live"] .na-pressure-ring span,
+  body[data-page="live"] .na-pressure-split span,
+  body[data-page="live"] .na-pressure-split b {
+    font-size:8.5px;
+  }
+  body[data-page="live"] .na-pressure-split {
+    margin-top:7px;
+    gap:6px;
+  }
+  body[data-page="live"] .na-pulse-summary {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+  body[data-page="live"] .na-pulse-summary > div {
+    padding:10px;
+  }
+  body[data-page="live"] .na-pulse-summary span {
+    font-size:9px;
+  }
+  body[data-page="live"] .event-details .na-pulse-summary strong {
+    margin-top:4px;
+    font-size:15px;
+  }
+
+  /* Event timeline uses the full horizontal row. */
+  body[data-page="live"] .na-timeline {
+    gap:7px;
+    padding:2px 1px 5px;
+  }
+  body[data-page="live"] .na-timeline-event {
+    flex-basis:112px;
+    min-height:72px;
+    padding:8px;
+  }
+  body[data-page="live"] .event-details .na-timeline-event span {
+    font-size:10px;
+  }
+  body[data-page="live"] .na-timeline-event strong {
+    font-size:9.5px;
+  }
+  body[data-page="live"] .na-timeline-event small {
+    font-size:8px;
+  }
+
+  /* Four status tiles -> two per row. */
+  body[data-page="live"] .event-overview {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-top:8px;
+  }
+  body[data-page="live"] .event-overview > div {
+    padding:9px 10px;
+  }
+  body[data-page="live"] .event-overview span {
+    font-size:9px;
+  }
+  body[data-page="live"] .event-details .event-overview strong {
+    margin-top:4px;
+    font-size:15px;
+  }
+
+  /* Five full-match stat cards -> two per row; final card spans the row. */
+  body[data-page="live"] .event-stats {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+    margin-top:8px;
+  }
+  body[data-page="live"] .event-stat:last-child {
+    grid-column:1 / -1;
+  }
+  body[data-page="live"] .event-stat {
+    padding:9px 10px;
+  }
+  body[data-page="live"] .event-stat-title {
+    min-height:0;
+    font-size:9.5px;
+  }
+  body[data-page="live"] .event-stat-row {
+    grid-template-columns:46px minmax(0,1fr) 34px;
+    gap:7px;
+    margin-top:6px;
+  }
+  body[data-page="live"] .event-stat-row > span {
+    font-size:8.5px;
+  }
+  body[data-page="live"] .event-details .event-stat-row > b {
+    font-size:13px;
+  }
+  body[data-page="live"] .event-bar-track {
+    height:6px;
+  }
+  body[data-page="live"] .event-stat small {
+    margin-top:6px;
+    font-size:8px;
+    line-height:1.35;
+  }
+
+  /* Last-N-minute comparison follows the same two-card rhythm. */
+  body[data-page="live"] .na-battle-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+  }
+  body[data-page="live"] .na-battle-item:last-child {
+    grid-column:1 / -1;
+  }
+  body[data-page="live"] .na-battle-item {
+    padding:9px 10px;
+  }
+  body[data-page="live"] .na-battle-title {
+    min-height:0;
+    font-size:9.5px;
+  }
+  body[data-page="live"] .na-battle-row {
+    grid-template-columns:46px minmax(0,1fr) 34px;
+    gap:7px;
+    margin-top:6px;
+  }
+  body[data-page="live"] .na-battle-row > b {
+    font-size:8.5px;
+  }
+  body[data-page="live"] .event-details .na-battle-row > strong {
+    font-size:12px;
+  }
+  body[data-page="live"] .na-battle-row > div {
+    height:6px;
+  }
+
+  /* Radar gets a full outer row; keep its internal chart/value split. */
+  body[data-page="live"] .na-radar {
+    grid-template-columns:minmax(240px,320px) minmax(0,1fr);
+    gap:14px;
+  }
+  body[data-page="live"] .na-radar svg {
+    max-height:260px;
+  }
+  body[data-page="live"] .na-radar text {
+    font-size:6.5px;
+  }
+  body[data-page="live"] .na-radar-values {
+    gap:7px;
+  }
+  body[data-page="live"] .na-radar-values span {
+    padding:8px 9px;
+    font-size:9px;
+  }
+
+  /* Pressure streak + quality keeps two useful inner blocks inside one full-width section. */
+  body[data-page="live"] .na-quality-grid {
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  body[data-page="live"] .na-streak-card,
+  body[data-page="live"] .na-quality-card {
+    padding:10px;
+  }
+  body[data-page="live"] .na-streak-card > span,
+  body[data-page="live"] .na-quality-card span {
+    font-size:9px;
+  }
+  body[data-page="live"] .event-details .na-streak-card > strong {
+    margin-top:4px;
+    font-size:15px;
+  }
+  body[data-page="live"] .na-streak-card > div {
+    margin-top:5px;
+    font-size:9px;
+  }
+  body[data-page="live"] .na-quality-card strong {
+    font-size:12px;
+  }
+  body[data-page="live"] .na-quality-card small {
+    margin-top:5px;
+    font-size:8.5px;
+  }
+  body[data-page="live"] .na-quality-track {
+    height:7px;
+  }
+
+  body[data-page="live"] .event-reason {
+    font-size:9px;
+    line-height:1.45;
+  }
+}
