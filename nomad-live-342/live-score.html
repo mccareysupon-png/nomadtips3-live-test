@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>nomadtips3 · Live Score</title>
+  <link rel="stylesheet" href="styles.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="event-monitor.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="event-analytics.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="event-analytics-polish.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="event-graph-live.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="event-prediction.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="match-pulse-solid.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="../nomad-live/public-site-nav.css?v=20260831-fresh-window-v1">
+  <link rel="stylesheet" href="chassis-341.css?v=20260831-fresh-window-v1">
+</head>
+<body data-page="live">
+  <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="live-score.html">Live Score</a><a href="../soccer-predictions/" target="_blank" rel="noopener noreferrer">Picks</a></nav></div></header>
+  <main class="shell">
+    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · EVENT</p><h1>Live Score & Event Monitor</h1><p>Live score, rolling event pressure and recent attack flow from the isolated 3.42 event feed.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>event monitor</small></div></section>
+
+    <section class="status-grid">
+      <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>Live event feed</small></article>
+      <article class="metric"><span>FRESH FEED</span><strong id="freshCount">—</strong><small>not stale</small></article>
+      <article class="metric"><span>ROLLING WINDOW</span><strong id="windowCount">—</strong><small>event data available</small></article>
+      <article class="metric event-metric"><span>EVENT PASS</span><strong id="eventCount">—</strong><small>NOMAD event gate</small></article>
+    </section>
+
+    <section class="panel nomad-scanner-panel">
+      <div class="panel-head"><div><p class="eyebrow">LIVE SCORE & EVENT</p></div><span class="muted" id="runStatus">Connecting NOMADTIPS3 live event feed…</span></div>
+      <div class="match-search" role="search">
+        <div class="match-search-box">
+          <input class="match-search-input" id="matchSearch" type="search" placeholder="Search team or league…" autocomplete="off" spellcheck="false" aria-label="Search live team or league">
+          <button class="match-search-clear" id="matchSearchClear" type="button" aria-label="Clear search" hidden>×</button>
+        </div>
+        <span class="match-search-count" id="matchSearchCount">—</span>
+      </div>
+      <div class="match-search-empty" id="matchSearchEmpty" hidden>No matches found</div>
+      <div class="match-list" id="matchList"><div class="note">Connecting NOMADTIPS3 live event feed…</div></div>
+    </section>
+
+    <div class="note event-footnote">NOMADTIPS3 → Live score → Event snapshots → Rolling attack analysis.</div>
+  </main>
+  <nav class="mobile-nav public-four-nav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="live-score.html">Live Score</a><a href="../soccer-predictions/" target="_blank" rel="noopener noreferrer">Picks</a></nav>
+
+  <script src="runtime-config.js?v=20260831-fresh-window-v1" defer></script>
+  <script src="event-config.js?v=20260831-fresh-window-v1" defer></script>
+  <script src="event-monitor.js?v=20260831-fresh-window-v1" defer></script>
+  <script src="event-analytics.js?v=20260831-fresh-window-v1" defer></script>
+  <script src="event-prediction.js?v=20260831-fresh-window-v1" defer></script>
+  <script src="event-graph-live.js?v=20260831-fresh-window-v1" defer></script>
+  <script>
+    (()=>{
+      const rebrandText=node=>{
+        if(!node)return;
+        const sync=()=>{
+          const text=node.textContent||'';
+          if(/TotalCorner/i.test(text))node.textContent=text.replace(/TotalCorner/gi,'NOMADTIPS3');
+        };
+        sync();
+        new MutationObserver(sync).observe(node,{childList:true,characterData:true,subtree:true});
+      };
+      const start=()=>{
+        rebrandText(document.getElementById('runStatus'));
+        rebrandText(document.getElementById('matchList'));
+      };
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+    })();
+  </script>
+  <script>
+    (()=>{
+      const start=()=>{
+        const input=document.getElementById('matchSearch');
+        const clear=document.getElementById('matchSearchClear');
+        const count=document.getElementById('matchSearchCount');
+        const empty=document.getElementById('matchSearchEmpty');
+        const list=document.getElementById('matchList');
+        if(!input||!clear||!count||!empty||!list)return;
+        const normalize=value=>String(value??'').toLocaleLowerCase().trim();
+        const apply=()=>{
+          const query=normalize(input.value);
+          const cards=[...list.querySelectorAll('.event-compact')];
+          let visible=0;
+          for(const card of cards){
+            const teams=card.querySelectorAll('.teams-line strong');
+            const home=teams[0]?.textContent||'';
+            const away=teams[teams.length-1]?.textContent||'';
+            const league=card.querySelector('.event-league')?.textContent||'';
+            const show=!query||normalize(`${home} ${away} ${league}`).includes(query);
+            card.style.display=show?'':'none';
+            if(show)visible++;
+          }
+          count.textContent=cards.length?(query?`${visible} / ${cards.length}`:`${cards.length}`):'—';
+          clear.hidden=!input.value;
+          empty.hidden=!(query&&cards.length>0&&visible===0);
+        };
+        input.addEventListener('input',apply);
+        input.addEventListener('search',apply);
+        clear.addEventListener('click',()=>{input.value='';apply();input.focus()});
+        new MutationObserver(apply).observe(list,{childList:true});
+        apply();
+      };
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+    })();
+  </script>
+</body>
+</html>
