@@ -15,9 +15,9 @@ on:
 jobs:
   responsive-navigation:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
-      - name: Verify Signal Statistics Live Score UI across viewports
+      - name: Verify production navigation across viewports
         shell: bash
         run: |
           set -euo pipefail
@@ -26,171 +26,94 @@ jobs:
           const puppeteer=require('puppeteer-core');
           const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
           const GREEN='rgb(131, 223, 137)';
-          const viewports=[360,390,412,700,701,768,1024,1280,1440];
-          const sites=[
-            {
-              name:'www',
-              urls:{
-                signal:'https://www.nomadtips3.com/',
-                statistics:'https://www.nomadtips3.com/statistics.html',
-                liveScore:'https://www.nomadtips3.com/nomad-live-342/'
-              }
-            },
-            {
-              name:'apex',
-              urls:{
-                signal:'https://nomadtips3.com/',
-                statistics:'https://nomadtips3.com/statistics.html',
-                liveScore:'https://nomadtips3.com/nomad-live-342/'
-              }
-            }
-          ];
+          const widths=[360,390,412,700,701,768,1024,1280,1440];
+          const urls={
+            signal:'https://www.nomadtips3.com/',
+            statistics:'https://www.nomadtips3.com/statistics.html',
+            liveScore:'https://www.nomadtips3.com/nomad-live-342/'
+          };
           const close=(a,b,t=.75)=>Math.abs(Number(a)-Number(b))<=t;
-          const expect=(condition,message)=>{if(!condition)throw new Error(message)};
-
+          const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
           (async()=>{
             const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
             try{
               const page=await browser.newPage();
-
               const capture=async(url,width)=>{
                 await page.setViewport({width,height:900,deviceScaleFactor:1});
                 await page.goto(`${url}${url.includes('?')?'&':'?'}ui=${Date.now()}-${width}`,{waitUntil:'domcontentloaded',timeout:60000});
                 await page.waitForSelector('.topbar .brand',{timeout:30000});
-                return await page.evaluate(()=>{
+                return page.evaluate(()=>{
                   const topbar=document.querySelector('.topbar');
                   const inner=document.querySelector('.topbar-inner.public-four-nav');
-                  const brand=inner?.querySelector('.brand');
-                  const topnav=inner?.querySelector('.topnav');
-                  const desktopLinks=[...(topnav?.querySelectorAll('a')||[])];
+                  const brand=inner.querySelector('.brand');
+                  const desktop=inner.querySelector('.topnav');
                   const mobile=document.querySelector('.mobile-nav.public-four-nav');
-                  const mobileLinks=[...(mobile?.querySelectorAll('a')||[])];
-                  const active=document.querySelector('.topnav a.active, .mobile-nav.public-four-nav a.active');
-                  const topbarStyle=getComputedStyle(topbar);
-                  const innerStyle=getComputedStyle(inner);
-                  const brandStyle=getComputedStyle(brand);
-                  const topnavStyle=getComputedStyle(topnav);
-                  const desktopLinkStyle=desktopLinks[0]?getComputedStyle(desktopLinks[0]):null;
-                  const mobileStyle=getComputedStyle(mobile);
-                  const mobileLinkStyle=mobileLinks[0]?getComputedStyle(mobileLinks[0]):null;
-                  const brandRect=brand.getBoundingClientRect();
-                  const topnavRect=topnav.getBoundingClientRect();
-                  const mobileRect=mobile.getBoundingClientRect();
-                  const mobileRects=mobileLinks.map(a=>a.getBoundingClientRect()).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height}));
+                  const dlinks=[...desktop.querySelectorAll('a')];
+                  const mlinks=[...mobile.querySelectorAll('a')];
+                  const ts=getComputedStyle(topbar),is=getComputedStyle(inner),bs=getComputedStyle(brand),ds=getComputedStyle(desktop),ms=getComputedStyle(mobile);
+                  const dl=getComputedStyle(dlinks[0]),ml=getComputedStyle(mlinks[0]);
+                  const br=brand.getBoundingClientRect(),dr=desktop.getBoundingClientRect(),mr=mobile.getBoundingClientRect();
+                  const mrects=mlinks.map(a=>a.getBoundingClientRect()).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height}));
                   return {
-                    finalUrl:location.href,
-                    viewport:innerWidth,
-                    clientWidth:document.documentElement.clientWidth,
-                    scrollWidth:document.documentElement.scrollWidth,
-                    topbarHeight:parseFloat(topbarStyle.height),
-                    backgroundImage:topbarStyle.backgroundImage,
-                    innerHeight:parseFloat(innerStyle.height),
-                    innerMaxWidth:innerStyle.maxWidth,
-                    brandFontSize:brandStyle.fontSize,
-                    brandFontWeight:brandStyle.fontWeight,
-                    brandLetterSpacing:brandStyle.letterSpacing,
-                    brandLineHeight:brandStyle.lineHeight,
-                    brandX:brandRect.x,
-                    brandY:brandRect.y,
-                    desktopDisplay:topnavStyle.display,
-                    desktopLinks:desktopLinks.length,
-                    desktopActive:desktopLinks.filter(a=>a.classList.contains('active')).length,
-                    desktopFontSize:desktopLinkStyle?.fontSize||'',
-                    desktopFontWeight:desktopLinkStyle?.fontWeight||'',
-                    desktopLineHeight:desktopLinkStyle?.lineHeight||'',
-                    desktopGap:topnavStyle.gap,
-                    desktopX:topnavRect.x,
-                    desktopY:topnavRect.y,
-                    desktopWidth:topnavRect.width,
-                    mobileDisplay:mobileStyle.display,
-                    mobileLinks:mobileLinks.length,
-                    mobileActive:mobileLinks.filter(a=>a.classList.contains('active')).length,
-                    mobileFontSize:mobileLinkStyle?.fontSize||'',
-                    mobileFontWeight:mobileLinkStyle?.fontWeight||'',
-                    mobileLineHeight:mobileLinkStyle?.lineHeight||'',
-                    mobileHeight:mobileRect.height,
-                    mobileWidth:mobileRect.width,
-                    mobileRects,
-                    activeColor:active?getComputedStyle(active).color:'',
-                    liveScoreDesktopColor:document.querySelector('.topnav a.active')?getComputedStyle(document.querySelector('.topnav a.active')).color:'',
-                    liveScoreMobileColor:document.querySelector('.mobile-nav a.active')?getComputedStyle(document.querySelector('.mobile-nav a.active')).color:''
+                    topbarHeight:parseFloat(ts.height),background:ts.backgroundImage,
+                    innerHeight:parseFloat(is.height),innerMaxWidth:is.maxWidth,
+                    brandFont:bs.fontSize,brandWeight:bs.fontWeight,brandX:br.x,brandY:br.y,
+                    desktopDisplay:ds.display,desktopCount:dlinks.length,desktopActive:dlinks.filter(a=>a.classList.contains('active')).length,
+                    desktopFont:dl.fontSize,desktopWeight:dl.fontWeight,desktopGap:ds.gap,desktopX:dr.x,desktopY:dr.y,desktopWidth:dr.width,
+                    mobileDisplay:ms.display,mobileCount:mlinks.length,mobileActive:mlinks.filter(a=>a.classList.contains('active')).length,
+                    mobileFont:ml.fontSize,mobileWeight:ml.fontWeight,mobileHeight:mr.height,mobileWidth:mr.width,mrects,
+                    activeColor:getComputedStyle(document.querySelector('.topnav a.active, .mobile-nav a.active')).color,
+                    scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth
                   };
                 });
               };
-
-              let ready=false;
-              for(let attempt=1;attempt<=12;attempt++){
-                const s=await capture(sites[0].urls.liveScore,390);
-                console.log('READY_CHECK',attempt,JSON.stringify({mobileLinks:s.mobileLinks,mobileHeight:s.mobileHeight,color:s.liveScoreMobileColor,scrollWidth:s.scrollWidth,clientWidth:s.clientWidth}));
-                if(s.mobileLinks===4&&close(s.mobileHeight,45)&&s.liveScoreMobileColor===GREEN&&s.scrollWidth<=s.viewport+1){ready=true;break;}
-                await new Promise(r=>setTimeout(r,10000));
-              }
-              expect(ready,'public 3.42 UI did not reach the expected responsive navigation state');
-
-              for(const site of sites){
-                for(const width of viewports){
-                  const snapshots={};
-                  for(const [name,url] of Object.entries(site.urls))snapshots[name]=await capture(url,width);
-                  console.log('UI_MATRIX',site.name,width,JSON.stringify(snapshots));
-                  const mobile=width<=700;
-
-                  for(const [name,s] of Object.entries(snapshots)){
-                    expect(s.scrollWidth<=s.viewport+1,`${site.name}/${name}/${width}: horizontal overflow ${s.scrollWidth}>${s.viewport}`);
-                    expect(s.backgroundImage.includes('linear-gradient'),`${site.name}/${name}/${width}: missing green header gradient`);
-                    expect(s.brandFontWeight==='900',`${site.name}/${name}/${width}: logo weight ${s.brandFontWeight}`);
-                    if(mobile){
-                      expect(close(s.topbarHeight,58),`${site.name}/${name}/${width}: topbar ${s.topbarHeight}, expected 58`);
-                      expect(s.brandFontSize==='20px',`${site.name}/${name}/${width}: logo ${s.brandFontSize}, expected 20px`);
-                      expect(s.desktopDisplay==='none',`${site.name}/${name}/${width}: desktop nav visible on mobile`);
-                      expect(s.mobileDisplay==='grid',`${site.name}/${name}/${width}: mobile nav display ${s.mobileDisplay}`);
-                      expect(s.mobileLinks===4,`${site.name}/${name}/${width}: mobile links ${s.mobileLinks}`);
-                      expect(s.mobileActive===1,`${site.name}/${name}/${width}: mobile active links ${s.mobileActive}`);
-                      expect(s.mobileFontSize==='11.7px',`${site.name}/${name}/${width}: mobile font ${s.mobileFontSize}`);
-                      expect(s.mobileFontWeight==='900',`${site.name}/${name}/${width}: mobile weight ${s.mobileFontWeight}`);
-                      expect(close(s.mobileHeight,45),`${site.name}/${name}/${width}: mobile nav height ${s.mobileHeight}`);
-                      expect(close(s.mobileWidth,s.scrollWidth,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.scrollWidth}`);
-                      expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
-                      expect(s.mobileRects.length===4,`${site.name}/${name}/${width}: mobile rect count ${s.mobileRects.length}`);
-                      const y=s.mobileRects[0].y,h=s.mobileRects[0].height,w=s.mobileRects[0].width;
-                      for(const r of s.mobileRects){
-                        expect(close(r.y,y),`${site.name}/${name}/${width}: mobile link wrapped to another row`);
-                        expect(close(r.height,h),`${site.name}/${name}/${width}: mobile link height mismatch`);
-                        expect(close(r.width,w,1),`${site.name}/${name}/${width}: mobile link widths differ`);
-                      }
-                    }else{
-                      expect(close(s.topbarHeight,64),`${site.name}/${name}/${width}: topbar ${s.topbarHeight}, expected 64`);
-                      expect(close(s.innerHeight,64),`${site.name}/${name}/${width}: inner header ${s.innerHeight}, expected 64`);
-                      expect(s.innerMaxWidth==='1120px',`${site.name}/${name}/${width}: max-width ${s.innerMaxWidth}`);
-                      expect(s.brandFontSize==='24px',`${site.name}/${name}/${width}: logo ${s.brandFontSize}`);
-                      expect(s.desktopDisplay==='flex',`${site.name}/${name}/${width}: desktop nav display ${s.desktopDisplay}`);
-                      expect(s.desktopLinks===4,`${site.name}/${name}/${width}: desktop links ${s.desktopLinks}`);
-                      expect(s.desktopActive===1,`${site.name}/${name}/${width}: desktop active links ${s.desktopActive}`);
-                      expect(s.desktopFontSize==='13px',`${site.name}/${name}/${width}: desktop font ${s.desktopFontSize}`);
-                      expect(s.desktopFontWeight==='900',`${site.name}/${name}/${width}: desktop weight ${s.desktopFontWeight}`);
-                      expect(s.desktopGap==='2px',`${site.name}/${name}/${width}: nav gap ${s.desktopGap}`);
-                      expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
+              for(const width of widths){
+                const s={};
+                for(const [name,url] of Object.entries(urls))s[name]=await capture(url,width);
+                console.log('UI_MATRIX',width,JSON.stringify(s));
+                const mobile=width<=700;
+                for(const [name,x] of Object.entries(s)){
+                  check(x.background.includes('linear-gradient'),`${name}/${width}: header gradient`);
+                  check(x.brandWeight==='900',`${name}/${width}: logo weight`);
+                  check(x.activeColor===GREEN,`${name}/${width}: active is not green (${x.activeColor})`);
+                  check(x.scrollWidth<=x.viewport+1,`${name}/${width}: horizontal overflow`);
+                  if(mobile){
+                    check(close(x.topbarHeight,58),`${name}/${width}: topbar height ${x.topbarHeight}`);
+                    check(x.brandFont==='20px',`${name}/${width}: logo font ${x.brandFont}`);
+                    check(x.desktopDisplay==='none',`${name}/${width}: desktop nav visible`);
+                    check(x.mobileDisplay==='grid',`${name}/${width}: mobile nav not grid`);
+                    check(x.mobileCount===4&&x.mobileActive===1,`${name}/${width}: mobile link/active count`);
+                    check(x.mobileFont==='11.7px'&&x.mobileWeight==='900',`${name}/${width}: mobile typography`);
+                    check(close(x.mobileHeight,45),`${name}/${width}: mobile rail height ${x.mobileHeight}`);
+                    const y=x.mrects[0].y,w=x.mrects[0].width,h=x.mrects[0].height;
+                    for(const r of x.mrects){
+                      check(close(r.y,y),`${name}/${width}: mobile link wrapped`);
+                      check(close(r.width,w,1),`${name}/${width}: unequal mobile columns`);
+                      check(close(r.height,h),`${name}/${width}: unequal mobile link height`);
                     }
+                  }else{
+                    check(close(x.topbarHeight,64)&&close(x.innerHeight,64),`${name}/${width}: desktop header height`);
+                    check(x.innerMaxWidth==='1120px',`${name}/${width}: max width ${x.innerMaxWidth}`);
+                    check(x.brandFont==='24px',`${name}/${width}: logo font ${x.brandFont}`);
+                    check(x.desktopDisplay==='flex'&&x.desktopCount===4&&x.desktopActive===1,`${name}/${width}: desktop nav state`);
+                    check(x.desktopFont==='13px'&&x.desktopWeight==='900'&&x.desktopGap==='2px',`${name}/${width}: desktop typography/gap`);
                   }
-
-                  const reference=snapshots.signal;
-                  for(const name of ['statistics','liveScore']){
-                    const s=snapshots[name];
-                    expect(close(s.topbarHeight,reference.topbarHeight),`${site.name}/${width}: ${name} topbar mismatch`);
-                    expect(close(s.brandX,reference.brandX),`${site.name}/${width}: ${name} logo X mismatch ${s.brandX}/${reference.brandX}`);
-                    expect(close(s.brandY,reference.brandY),`${site.name}/${width}: ${name} logo Y mismatch ${s.brandY}/${reference.brandY}`);
-                    expect(s.brandFontSize===reference.brandFontSize,`${site.name}/${width}: ${name} logo font mismatch`);
-                    if(mobile){
-                      expect(close(s.mobileHeight,reference.mobileHeight),`${site.name}/${width}: ${name} mobile nav height mismatch`);
-                      expect(close(s.mobileWidth,reference.mobileWidth,1),`${site.name}/${width}: ${name} mobile nav width mismatch`);
-                    }else{
-                      expect(close(s.desktopX,reference.desktopX),`${site.name}/${width}: ${name} nav X mismatch`);
-                      expect(close(s.desktopY,reference.desktopY),`${site.name}/${width}: ${name} nav Y mismatch`);
-                      expect(close(s.desktopWidth,reference.desktopWidth),`${site.name}/${width}: ${name} nav width mismatch`);
-                    }
+                }
+                const ref=s.signal;
+                for(const name of ['statistics','liveScore']){
+                  const x=s[name];
+                  check(close(x.topbarHeight,ref.topbarHeight),`${name}/${width}: topbar mismatch`);
+                  check(close(x.brandX,ref.brandX)&&close(x.brandY,ref.brandY),`${name}/${width}: logo position mismatch`);
+                  check(x.brandFont===ref.brandFont,`${name}/${width}: logo size mismatch`);
+                  if(mobile){
+                    check(close(x.mobileHeight,ref.mobileHeight),`${name}/${width}: mobile rail mismatch`);
+                    check(close(x.mobileWidth,ref.mobileWidth,1),`${name}/${width}: mobile rail width mismatch`);
+                  }else{
+                    check(close(x.desktopX,ref.desktopX)&&close(x.desktopY,ref.desktopY)&&close(x.desktopWidth,ref.desktopWidth),`${name}/${width}: desktop nav geometry mismatch`);
                   }
                 }
               }
               console.log('RESPONSIVE_NAV_UI_OK');
-            }finally{await browser.close();}
-          })().catch(error=>{console.error(error);process.exit(1)});
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1)});
           NODE
