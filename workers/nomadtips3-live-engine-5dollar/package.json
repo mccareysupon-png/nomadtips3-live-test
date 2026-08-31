@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node --check src/index.js",
+    "build": "node --check src/index.js && node --check src/oddstorm-referee.js && node --check src/index-oddstorm.js && node test/oddstorm-referee.test.mjs",
+    "test": "node test/oddstorm-referee.test.mjs",
     "deploy": "npx wrangler deploy"
   },
   "devDependencies": {
