@@ -48,6 +48,15 @@
     document.body.appendChild(footer);
   };
 
+  const removeLegacyFooterStyle=()=>{
+    [...document.querySelectorAll('link[rel="stylesheet"]')].forEach(node=>{
+      const href=String(node.href||'');
+      const isLegacy=/\/site-footer\.css(?:\?|$)/i.test(href);
+      const isOriginal=/\/nomad-live\/site-footer\.css(?:\?|$)/i.test(href);
+      if(isLegacy&&!isOriginal)node.remove();
+    });
+  };
+
   const restoreOriginal341Footer=()=>{
     const current=document.querySelector('.site-footer');
     if(current?.querySelector('.site-footer-certrow')){
@@ -56,11 +65,12 @@
     }
 
     /* Information pages briefly receive the root legacy footer from their
-       older page shell. Remove only that temporary renderer and load the
-       real NOMAD Live 3.41 footer source unchanged. */
+       older page shell. Remove only that temporary renderer/style and load
+       the real NOMAD Live 3.41 footer source unchanged. */
     if(current)current.remove();
+    removeLegacyFooterStyle();
 
-    const cssHref=new URL('nomad-live/site-footer.css?v=20260831-info-restore-v1',root).href;
+    const cssHref=new URL('nomad-live/site-footer.css?v=20260831-info-restore-v2',root).href;
     if(!document.querySelector('link[data-nomad-original-footer]')){
       const style=document.createElement('link');
       style.rel='stylesheet';
@@ -73,7 +83,7 @@
     if(existingScript)return;
 
     const original=document.createElement('script');
-    original.src=new URL('nomad-live/site-footer.js?v=20260831-info-restore-v1',root).href;
+    original.src=new URL('nomad-live/site-footer.js?v=20260831-info-restore-v2',root).href;
     original.defer=true;
     original.dataset.nomadOriginalFooter='3.41';
     original.onload=()=>attachToExisting(document.querySelector('.site-footer'));
