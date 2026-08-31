@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node --check src/index.js && node --check src/asianbookie.js && node --check src/normalize.js && node --check src/settle.js && node --check tools/backtest.mjs && node test/normalize.test.mjs && node test/candidate-bookmakers.test.mjs && node test/asianbookie-adapter.test.mjs && node test/settle-backtest.test.mjs",
-    "test": "node test/normalize.test.mjs && node test/candidate-bookmakers.test.mjs && node test/asianbookie-adapter.test.mjs && node test/settle-backtest.test.mjs",
+    "build": "node --check src/index.js && node --check src/asianbookie.js && node --check src/api-football-candidate.js && node --check src/normalize.js && node --check src/settle.js && node --check tools/backtest.mjs && node test/normalize.test.mjs && node test/candidate-bookmakers.test.mjs && node test/asianbookie-adapter.test.mjs && node test/api-football-candidate.test.mjs && node test/settle-backtest.test.mjs",
+    "test": "node test/normalize.test.mjs && node test/candidate-bookmakers.test.mjs && node test/asianbookie-adapter.test.mjs && node test/api-football-candidate.test.mjs && node test/settle-backtest.test.mjs",
     "backtest": "node tools/backtest.mjs",
     "deploy": "npx wrangler deploy"
   },
