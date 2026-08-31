@@ -14,7 +14,179 @@ body[data-page="live"] .nomad-scanner-panel{
   margin-right:0!important;
 }
 
+/* Final 3.41 header/navigation lock for the isolated 3.42 page.
+   This intentionally duplicates only presentation metrics so the custom-domain
+   3.42 bridge remains visually stable even if an older base stylesheet is cached. */
+body[data-page="live"] .topbar{
+  position:sticky!important;
+  top:0!important;
+  z-index:20!important;
+  width:100%!important;
+  height:64px!important;
+  min-height:64px!important;
+  background:linear-gradient(90deg,#123328,#125c45,#123328)!important;
+  box-shadow:0 9px 24px rgba(0,0,0,.28)!important;
+  border-bottom:0!important;
+}
+body[data-page="live"] .topbar-inner.public-four-nav{
+  position:relative!important;
+  width:100%!important;
+  max-width:1120px!important;
+  height:64px!important;
+  min-height:64px!important;
+  margin:0 auto!important;
+  padding:0 16px!important;
+  display:grid!important;
+  grid-template-columns:auto 1fr auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  box-sizing:border-box!important;
+}
+body[data-page="live"] .topbar-inner.public-four-nav>.brand{
+  display:block!important;
+  margin:0!important;
+  padding:0!important;
+  color:var(--text)!important;
+  text-decoration:none!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:24px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  transform:none!important;
+}
+body[data-page="live"] .topbar-inner.public-four-nav>.brand span{color:var(--yellow)!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.brand::after{display:none!important;content:none!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.source-pill{display:none!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav{
+  position:absolute!important;
+  top:50%!important;
+  left:50%!important;
+  transform:translate(-50%,-50%)!important;
+  margin:0!important;
+  padding:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:2px!important;
+  white-space:nowrap!important;
+}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  box-sizing:border-box!important;
+  height:40px!important;
+  margin:0!important;
+  padding:0!important;
+  text-align:center!important;
+  text-decoration:none!important;
+  color:rgba(255,255,255,.75)!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  letter-spacing:0!important;
+  line-height:1!important;
+  transition:color .14s ease!important;
+}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:nth-child(1){width:72px!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:nth-child(2){width:104px!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:nth-child(3){width:104px!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:nth-child(4){width:72px!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:hover,
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a:focus-visible,
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a.active{
+  color:#83df89!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+  outline:none!important;
+}
+body[data-page="live"] .mobile-nav.public-four-nav{display:none!important}
+
 @media(max-width:700px){
+  body[data-page="live"] .topbar{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  body[data-page="live"] .topbar-inner.public-four-nav{
+    width:100%!important;
+    max-width:1120px!important;
+    height:58px!important;
+    min-height:58px!important;
+    padding:0 12px!important;
+    display:flex!important;
+    justify-content:center!important;
+    align-items:center!important;
+  }
+  body[data-page="live"] .topbar-inner.public-four-nav>.brand{
+    font-size:20px!important;
+    text-align:center!important;
+  }
+  body[data-page="live"] .topbar-inner.public-four-nav>.topnav{display:none!important}
+  body[data-page="live"] .mobile-nav.public-four-nav{
+    display:grid!important;
+    position:fixed!important;
+    bottom:0!important;
+    left:0!important;
+    right:0!important;
+    z-index:30!important;
+    width:100%!important;
+    height:44px!important;
+    min-height:44px!important;
+    max-height:44px!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-rows:44px!important;
+    grid-auto-flow:column!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    background:#111711!important;
+    border-top:1px solid var(--line)!important;
+    box-shadow:0 -8px 20px rgba(0,0,0,.18)!important;
+    box-sizing:border-box!important;
+  }
+  body[data-page="live"] .mobile-nav.public-four-nav a{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    height:44px!important;
+    margin:0!important;
+    padding:0 3px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    text-decoration:none!important;
+    color:#aab1ab!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    text-shadow:none!important;
+    font-family:Arial,Helvetica,sans-serif!important;
+    font-size:11.7px!important;
+    font-weight:900!important;
+    letter-spacing:0!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    transition:color .14s ease!important;
+    box-sizing:border-box!important;
+  }
+  body[data-page="live"] .mobile-nav.public-four-nav a:hover,
+  body[data-page="live"] .mobile-nav.public-four-nav a:focus-visible,
+  body[data-page="live"] .mobile-nav.public-four-nav a.active{
+    color:#83df89!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    text-shadow:none!important;
+    outline:none!important;
+  }
   body[data-page="live"] .shell{
     width:100%!important;
     max-width:1120px!important;
