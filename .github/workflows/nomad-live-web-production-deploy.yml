@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'nomad-live/**'
+      - 'nomad-live-342/runtime-config.js'
       - 'nomad-live-web-production/**'
       - '.github/workflows/nomad-live-web-production-deploy.yml'
 
@@ -36,6 +37,7 @@ jobs:
           node --check nomad-live-web-production/src/index.js
           node --check nomad-live/runtime.js
           node --check nomad-live/live-filter-lock.js
+          node --check nomad-live-342/runtime-config.js
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
@@ -50,6 +52,11 @@ jobs:
           grep -Fq "'mccareysupon-png.github.io'" nomad-live/runtime-config.js
           grep -Fq "transport:directProduction?'direct':'service-binding'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          grep -Fq "'www.nomadtips3.com'" nomad-live-342/runtime-config.js
+          grep -Fq "'nomadtips3.com'" nomad-live-342/runtime-config.js
+          grep -Fq "transport:sameOriginProduction?'same-origin':'direct-worker'" nomad-live-342/runtime-config.js
+          grep -Fq "NOMAD342_PREFIX+'/feed'" nomad-live-web-production/src/index.js
+          grep -Fq 'nomadtips3-live-engine-342-test.mccarey-supon.workers.dev' nomad-live-web-production/src/index.js
           grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
           grep -Fq '"workers_dev": false' nomad-live-web-production/wrangler.production.jsonc
@@ -57,7 +64,7 @@ jobs:
             echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
             exit 1
           fi
-          echo '3.41 production web source + 3.42 bridge target validated'
+          echo '3.41 production web + isolated 3.42 same-origin feed transport validated'
 
       - name: Validate Cloudflare credentials
         run: |
@@ -119,7 +126,17 @@ jobs:
           curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/canary-342.html
           grep -Fq 'Live Score & Event Monitor' /tmp/canary-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/canary-342.html
-          echo 'Canary + 3.41 assets/API + 3.42 web bridge passed before Production deploy.'
+
+          curl -fsS --max-time 35 "$CANARY_URL/nomad-live-342/feed?force=1&t=$(date +%s)" -o /tmp/canary-342-feed.json
+          FEED_FILE=/tmp/canary-342-feed.json python - <<'PY'
+          import json, os
+          data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
+          assert str(data.get('version'))=='3.42', data.get('version')
+          assert isinstance(data.get('matches'),list), type(data.get('matches')).__name__
+          assert data.get('ok') is not False, data.get('lastError') or data.get('error')
+          print('CANARY_342_FEED_OK matches=',len(data['matches']))
+          PY
+          echo 'Canary + 3.41 assets/API + 3.42 same-origin feed passed before Production deploy.'
 
       - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
@@ -161,6 +178,48 @@ jobs:
           curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/custom-342.html
           grep -Fq 'Live Score & Event Monitor' /tmp/custom-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/custom-342.html
+
+          feed_ok=0
+          for attempt in $(seq 1 8); do
+            if curl -fsS --max-time 35 "$CUSTOM_URL/nomad-live-342/feed?force=1&t=$(date +%s)" -o /tmp/custom-342-feed.json; then
+              if FEED_FILE=/tmp/custom-342-feed.json python - <<'PY'
+          import json, os, sys
+          try:
+              data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
+          except Exception as e:
+              print('FEED_JSON_ERROR',repr(e)); sys.exit(1)
+          if str(data.get('version'))!='3.42' or not isinstance(data.get('matches'),list) or data.get('ok') is False:
+              print('FEED_CONTRACT_BAD',data.get('version'),type(data.get('matches')).__name__,data.get('lastError') or data.get('error')); sys.exit(1)
+          print('WWW_342_FEED_OK matches=',len(data['matches']))
+          PY
+              then
+                feed_ok=1
+                break
+              fi
+            fi
+            sleep 5
+          done
+          test "$feed_ok" = 1 || { echo '::error::www 3.42 same-origin feed did not become healthy'; exit 1; }
+
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          test -n "$chrome" || { echo '::error::Chrome missing for 3.42 browser transport verification'; exit 1; }
+          browser_ok=0
+          for attempt in $(seq 1 8); do
+            "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=18000 --dump-dom "$CUSTOM_URL/nomad-live-342/?transport=$(date +%s)" >/tmp/custom-342-dom.html 2>/tmp/custom-342-browser.log || true
+            if grep -Fq 'event pass' /tmp/custom-342-dom.html && ! grep -Fq '3.42 EVENT FEED WAIT' /tmp/custom-342-dom.html; then
+              browser_ok=1
+              break
+            fi
+            sleep 5
+          done
+          if [ "$browser_ok" != 1 ]; then
+            echo '--- 3.42 BROWSER ERRORS ---'
+            grep -Ei 'error|failed|cors|uncaught|exception|ERR_' /tmp/custom-342-browser.log | tail -120 || true
+            echo '::error::www browser did not consume the 3.42 same-origin feed'
+            exit 1
+          fi
+
           echo 'NOMAD Live 3.41 remains active on www.nomadtips3.com.'
-          echo 'NOMAD Live 3.42 is available at /nomad-live-342/ as a standalone destination.'
+          echo 'NOMAD Live 3.42 same-origin feed transport is healthy at /nomad-live-342/feed.'
+          echo 'NOMAD Live 3.42 browser consumed the production feed without EVENT FEED WAIT.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
