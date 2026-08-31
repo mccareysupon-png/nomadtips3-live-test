@@ -5,35 +5,43 @@ const ODDS_PATH = '/api/poll/tipsterMatchOdds';
 let matchCache = { at: 0, payload: null };
 let oddsCache = { at: 0, payload: null };
 
+const ID_KEYS = ['matchId','match_id','eventId','event_id','fixtureId','fixture_id','gameId','game_id','mid','id'];
+const HOME_KEYS = ['homeTeam','home_team','homeName','home_name','teamHome','team_home','hteam','home'];
+const AWAY_KEYS = ['awayTeam','away_team','awayName','away_name','teamAway','team_away','ateam','away'];
+
 function finite(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
 
-function object(value) {
+function isObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeKey(value) {
+  return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 function keyMap(row = {}) {
   const out = new Map();
-  for (const [key, value] of Object.entries(row || {})) out.set(String(key).toLowerCase().replace(/[^a-z0-9]/g, ''), value);
+  for (const [key, value] of Object.entries(row || {})) out.set(normalizeKey(key), value);
   return out;
 }
 
 function pick(row, names) {
   const map = keyMap(row);
   for (const name of names) {
-    const key = String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const key = normalizeKey(name);
     if (map.has(key)) return map.get(key);
   }
   return null;
 }
 
-function scalarText(value) {
+function text(value) {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
-  if (object(value)) return scalarText(value.name ?? value.teamName ?? value.title ?? value.label ?? value.value);
+  if (isObject(value)) return text(value.name ?? value.teamName ?? value.title ?? value.label ?? value.value);
   return '';
 }
 
@@ -61,66 +69,70 @@ function toTimestamp(value, fallback = null) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function arraysOfObjects(root, maxDepth = 5) {
-  const found = [];
-  const seen = new Set();
-  function walk(value, path, depth) {
-    if (depth > maxDepth || value === null || value === undefined) return;
-    if (Array.isArray(value)) {
-      if (value.some(object)) found.push({ path, rows: value.filter(object) });
-      for (let i = 0; i < Math.min(value.length, 3); i += 1) walk(value[i], `${path}[${i}]`, depth + 1);
-      return;
-    }
-    if (!object(value) || seen.has(value)) return;
-    seen.add(value);
-    for (const [key, child] of Object.entries(value)) walk(child, path ? `${path}.${key}` : key, depth + 1);
-  }
-  walk(root, '$', 0);
-  return found;
-}
-
-const ID_KEYS = ['matchId','match_id','eventId','event_id','fixtureId','fixture_id','gameId','game_id','mid','id'];
-const HOME_KEYS = ['homeTeam','home_team','homeName','home_name','teamHome','team_home','hteam','home'];
-const AWAY_KEYS = ['awayTeam','away_team','awayName','away_name','teamAway','team_away','ateam','away'];
-
 function extractId(row) {
   const value = pick(row, ID_KEYS);
   return value === null || value === undefined || value === '' ? '' : String(value).trim();
 }
 
-function extractHome(row) { return scalarText(pick(row, HOME_KEYS)); }
-function extractAway(row) { return scalarText(pick(row, AWAY_KEYS)); }
+function extractHome(row) { return text(pick(row, HOME_KEYS)); }
+function extractAway(row) { return text(pick(row, AWAY_KEYS)); }
 
-function keys(row) { return Object.keys(row || {}).map(k => k.toLowerCase().replace(/[^a-z0-9]/g, '')); }
+function collectArrays(root, maxDepth = 5) {
+  const found = [];
+  const seen = new Set();
+  function walk(value, path, depth) {
+    if (depth > maxDepth || value === null || value === undefined) return;
+    if (Array.isArray(value)) {
+      const rows = value.filter(isObject);
+      if (rows.length) found.push({ path, rows });
+      for (let i = 0; i < Math.min(value.length, 3); i += 1) walk(value[i], `${path}[${i}]`, depth + 1);
+      return;
+    }
+    if (!isObject(value) || seen.has(value)) return;
+    seen.add(value);
+    for (const [key, child] of Object.entries(value)) walk(child, `${path}.${key}`, depth + 1);
+  }
+  walk(root, '$', 0);
+  return found;
+}
+
+function rowKeys(row) {
+  return Object.keys(row || {}).map(normalizeKey);
+}
 
 function matchScore(row) {
-  const ks = new Set(keys(row));
-  let score = extractId(row) ? 4 : 0;
-  if (extractHome(row)) score += 4;
-  if (extractAway(row)) score += 4;
-  if ([...ks].some(k => k.includes('league') || k.includes('competition'))) score += 1;
-  if ([...ks].some(k => k.includes('minute') || k.includes('status'))) score += 1;
+  let score = extractId(row) ? 12 : 0;
+  if (extractHome(row)) score += 6;
+  if (extractAway(row)) score += 6;
+  const keys = rowKeys(row);
+  if (keys.some(k => k.includes('league') || k.includes('competition'))) score += 1;
+  if (keys.some(k => k.includes('minute') || k.includes('status'))) score += 1;
   return score;
 }
 
 function oddsScore(row) {
-  const ks = new Set(keys(row));
-  let score = extractId(row) ? 4 : 0;
-  const probes = ['odds','price','handicap','hdp','asian','over','under','draw','1x2','bookmaker','bookie','company'];
-  for (const probe of probes) if ([...ks].some(k => k.includes(probe))) score += 1;
-  if (Object.values(row || {}).some(Array.isArray)) score += 1;
+  let score = extractId(row) ? 20 : 0;
+  const keys = rowKeys(row);
+  for (const probe of ['odds','price','handicap','hdp','asian','over','under','draw','1x2','bookmaker','bookie','company']) {
+    if (keys.some(k => k.includes(probe))) score += 1;
+  }
+  if (Object.values(row || {}).some(Array.isArray)) score += 3;
   return score;
 }
 
 function chooseArray(payload, scorer) {
-  const ranked = arraysOfObjects(payload).map(entry => ({ ...entry, score: entry.rows.reduce((s, row) => s + scorer(row), 0) / Math.max(1, entry.rows.length) }))
-    .sort((a, b) => b.score - a.score || b.rows.length - a.rows.length);
-  return ranked[0] || { path: null, rows: [], score: 0 };
+  const ranked = collectArrays(payload)
+    .map(entry => ({
+      ...entry,
+      score: entry.rows.reduce((sum, row) => sum + scorer(row), 0) / Math.max(1, entry.rows.length),
+      idCoverage: entry.rows.filter(row => extractId(row)).length / Math.max(1, entry.rows.length),
+    }))
+    .sort((a, b) => b.idCoverage - a.idCoverage || b.score - a.score || b.rows.length - a.rows.length);
+  return ranked[0] || { path: null, rows: [], score: 0, idCoverage: 0 };
 }
 
 function bookmakerName(row, fallback = '') {
-  const value = pick(row, ['bookmakerName','bookmaker','bookieName','bookie','companyName','company','operator','sportsbook','sourceName','source']);
-  return scalarText(value) || fallback;
+  return text(pick(row, ['bookmakerName','bookmaker','bookieName','bookie','companyName','company','operator','sportsbook','sourceName','source'])) || fallback;
 }
 
 function observedAt(row, fallback) {
@@ -129,7 +141,7 @@ function observedAt(row, fallback) {
 
 function ahMarket(row) {
   const nested = pick(row, ['asianHandicap','asian_handicap','ah']);
-  if (object(nested)) return ahMarket(nested);
+  if (isObject(nested)) return ahMarket(nested);
   const line = lineValue(pick(row, ['handicap','hdp','ahLine','asianLine','line']));
   const homeOdds = decimal(pick(row, ['homeOdds','homePrice','home_odds','homeRate','home_rate','hOdds','hPrice']));
   const awayOdds = decimal(pick(row, ['awayOdds','awayPrice','away_odds','awayRate','away_rate','aOdds','aPrice']));
@@ -138,7 +150,7 @@ function ahMarket(row) {
 
 function oneXtwoMarket(row) {
   const nested = pick(row, ['oneXtwo','one_x_two','1x2','moneyline']);
-  if (object(nested)) return oneXtwoMarket(nested);
+  if (isObject(nested)) return oneXtwoMarket(nested);
   const home = decimal(pick(row, ['home1x2','homeWin','home_win','one','1','homeMl','home_ml']));
   const draw = decimal(pick(row, ['draw1x2','drawOdds','draw_odds','draw','x']));
   const away = decimal(pick(row, ['away1x2','awayWin','away_win','two','2','awayMl','away_ml']));
@@ -147,7 +159,7 @@ function oneXtwoMarket(row) {
 
 function totalsMarket(row) {
   const nested = pick(row, ['overUnder','over_under','totals','ou']);
-  if (object(nested)) return totalsMarket(nested);
+  if (isObject(nested)) return totalsMarket(nested);
   const line = lineValue(pick(row, ['total','totalLine','ouLine','goals','line']));
   const overOdds = decimal(pick(row, ['overOdds','overPrice','over_odds','overRate','over_rate','oOdds','oPrice']));
   const underOdds = decimal(pick(row, ['underOdds','underPrice','under_odds','underRate','under_rate','uOdds','uPrice']));
@@ -166,24 +178,21 @@ function quoteFromRow(row, fallbackBookmaker, fallbackObservedAt) {
   };
 }
 
-function nestedQuoteRows(row) {
-  const candidates = [];
+function quotesForOddsRow(row, fallbackObservedAt) {
+  const quotes = [];
+  const direct = quoteFromRow(row, bookmakerName(row), fallbackObservedAt);
+  if (direct) quotes.push(direct);
+
   for (const [key, value] of Object.entries(row || {})) {
     if (!Array.isArray(value)) continue;
-    for (const child of value.filter(object)) {
-      const quote = quoteFromRow(child, bookmakerName(child, scalarText(key)), Date.now());
-      if (quote) candidates.push(quote);
+    for (const child of value.filter(isObject)) {
+      const quote = quoteFromRow(child, bookmakerName(child, text(key)), fallbackObservedAt);
+      if (quote) quotes.push(quote);
     }
   }
-  return candidates;
-}
 
-function quotesForOddsRow(row, fallbackObservedAt) {
-  const nested = nestedQuoteRows(row);
-  const direct = quoteFromRow(row, bookmakerName(row), fallbackObservedAt);
-  const out = direct ? [direct, ...nested] : nested;
   const dedupe = new Map();
-  for (const quote of out) {
+  for (const quote of quotes) {
     const signature = JSON.stringify([quote.name, quote.markets]);
     if (!dedupe.has(signature)) dedupe.set(signature, quote);
   }
@@ -197,9 +206,15 @@ function scoreValue(row) {
 }
 
 function summarizePayload(payload) {
-  const topLevelKeys = object(payload) ? Object.keys(payload).slice(0, 40) : [];
-  const arrays = arraysOfObjects(payload).slice(0, 12).map(entry => ({ path: entry.path, rows: entry.rows.length, sampleKeys: Object.keys(entry.rows[0] || {}).slice(0, 40) }));
-  return { topLevelType: Array.isArray(payload) ? 'array' : typeof payload, topLevelKeys, arrays };
+  return {
+    topLevelType: Array.isArray(payload) ? 'array' : typeof payload,
+    topLevelKeys: isObject(payload) ? Object.keys(payload).slice(0, 40) : [],
+    arrays: collectArrays(payload).slice(0, 12).map(entry => ({
+      path: entry.path,
+      rows: entry.rows.length,
+      sampleKeys: Object.keys(entry.rows[0] || {}).slice(0, 40),
+    })),
+  };
 }
 
 class AsianBookieError extends Error {
@@ -210,26 +225,28 @@ class AsianBookieError extends Error {
   }
 }
 
-function fetchHeaders() {
-  return {
-    accept: 'application/json, text/plain, */*',
-    referer: 'https://beta.asianbookie.org/en/tipster',
-    'user-agent': 'NOMADTIPS3/3.42 market-adapter',
-  };
-}
-
 async function fetchJson(base, path, timeoutMs) {
   const url = new URL(path, base);
   url.searchParams.set('t', String(Date.now()));
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort('asianbookie_timeout'), timeoutMs);
   try {
-    const response = await fetch(url, { method: 'GET', headers: fetchHeaders(), signal: controller.signal, cache: 'no-store', redirect: 'follow' });
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: 'application/json, text/plain, */*',
+        referer: 'https://beta.asianbookie.org/en/tipster',
+        'user-agent': 'NOMADTIPS3/3.42 market-adapter',
+      },
+      signal: controller.signal,
+      cache: 'no-store',
+      redirect: 'follow',
+    });
     const contentType = response.headers.get('content-type') || '';
     if (!response.ok) throw new AsianBookieError(`asianbookie_http_${response.status}`, { path, status: response.status, contentType });
     if (!contentType.toLowerCase().includes('json')) {
-      const text = (await response.text()).slice(0, 120);
-      throw new AsianBookieError('asianbookie_non_json', { path, contentType, preview: text.replace(/\s+/g, ' ') });
+      const preview = (await response.text()).slice(0, 120).replace(/\s+/g, ' ');
+      throw new AsianBookieError('asianbookie_non_json', { path, contentType, preview });
     }
     return await response.json();
   } catch (error) {
@@ -250,11 +267,12 @@ async function cachedFetch(cache, ttlMs, base, path, timeoutMs) {
 }
 
 export function asianBookieConfig(env = {}) {
-  const base = String(env.ASIANBOOKIE_BASE_URL || DEFAULT_BASE).trim();
-  const matchCacheMs = Math.max(15_000, Math.min(300_000, Number(env.ASIANBOOKIE_MATCH_CACHE_MS) || 60_000));
-  const oddsCacheMs = Math.max(5_000, Math.min(30_000, Number(env.ASIANBOOKIE_ODDS_CACHE_MS) || 7_500));
-  const timeoutMs = Math.max(1_000, Math.min(12_000, Number(env.MARKET_PROVIDER_TIMEOUT_MS) || 6_000));
-  return { base, matchCacheMs, oddsCacheMs, timeoutMs };
+  return {
+    base: String(env.ASIANBOOKIE_BASE_URL || DEFAULT_BASE).trim(),
+    matchCacheMs: Math.max(15_000, Math.min(300_000, Number(env.ASIANBOOKIE_MATCH_CACHE_MS) || 60_000)),
+    oddsCacheMs: Math.max(5_000, Math.min(30_000, Number(env.ASIANBOOKIE_ODDS_CACHE_MS) || 7_500)),
+    timeoutMs: Math.max(1_000, Math.min(12_000, Number(env.MARKET_PROVIDER_TIMEOUT_MS) || 6_000)),
+  };
 }
 
 export async function fetchAsianBookiePayload(env = {}) {
@@ -264,15 +282,17 @@ export async function fetchAsianBookiePayload(env = {}) {
     cachedFetch(matchCache, config.matchCacheMs, config.base, MATCH_PATH, config.timeoutMs),
     cachedFetch(oddsCache, config.oddsCacheMs, config.base, ODDS_PATH, config.timeoutMs),
   ]);
+
   const matchChoice = chooseArray(matchResult.payload, matchScore);
   const oddsChoice = chooseArray(oddsResult.payload, oddsScore);
-  if (!matchChoice.rows.length || matchChoice.score < 4) {
+
+  if (!matchChoice.rows.length || matchChoice.idCoverage === 0) {
     throw new AsianBookieError('asianbookie_match_schema_unrecognized', {
       matches: summarizePayload(matchResult.payload),
       odds: summarizePayload(oddsResult.payload),
     });
   }
-  if (!oddsChoice.rows.length || oddsChoice.score < 4) {
+  if (!oddsChoice.rows.length || oddsChoice.idCoverage === 0) {
     throw new AsianBookieError('asianbookie_odds_schema_unrecognized', {
       matches: summarizePayload(matchResult.payload),
       odds: summarizePayload(oddsResult.payload),
@@ -284,38 +304,35 @@ export async function fetchAsianBookiePayload(env = {}) {
     const id = extractId(row);
     if (id) matchById.set(id, row);
   }
-  const grouped = new Map();
+
+  const oddsById = new Map();
   for (const row of oddsChoice.rows) {
     const id = extractId(row);
     if (!id) continue;
     const quotes = quotesForOddsRow(row, fetchedAt);
     if (!quotes.length) continue;
-    if (!grouped.has(id)) grouped.set(id, []);
-    grouped.get(id).push(...quotes);
+    if (!oddsById.has(id)) oddsById.set(id, []);
+    oddsById.get(id).push(...quotes);
   }
 
   const matches = [];
   const bookmakerNames = new Set();
-  for (const [id, quotes] of grouped.entries()) {
+  for (const [id, quotes] of oddsById.entries()) {
     const match = matchById.get(id);
     if (!match) continue;
-    const home = extractHome(match) || extractHome(oddsChoice.rows.find(row => extractId(row) === id));
-    const away = extractAway(match) || extractAway(oddsChoice.rows.find(row => extractId(row) === id));
+    const home = extractHome(match);
+    const away = extractAway(match);
     if (!home || !away) continue;
-    const books = [];
-    for (const quote of quotes) {
-      bookmakerNames.add(quote.name);
-      books.push(quote);
-    }
+    for (const quote of quotes) bookmakerNames.add(quote.name);
     matches.push({
       matchKey: id,
       home,
       away,
-      league: scalarText(pick(match, ['leagueName','league','competitionName','competition','tournament'])),
+      league: text(pick(match, ['leagueName','league','competitionName','competition','tournament'])),
       minute: finite(pick(match, ['minute','matchMinute','liveMinute','mins'])),
       score: scoreValue(match),
       observedAt: fetchedAt,
-      bookmakers: books,
+      bookmakers: quotes,
     });
   }
 
@@ -326,7 +343,7 @@ export async function fetchAsianBookiePayload(env = {}) {
       matchRows: matchChoice.rows.length,
       oddsRows: oddsChoice.rows.length,
       matchIds: matchById.size,
-      oddsIds: grouped.size,
+      oddsIds: oddsById.size,
       matches: summarizePayload(matchResult.payload),
       odds: summarizePayload(oddsResult.payload),
     });
