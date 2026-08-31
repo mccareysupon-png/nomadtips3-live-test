@@ -3,7 +3,6 @@ name: NOMAD 3.42 OddStorm Referee Adapter
 on:
   pull_request:
     paths:
-      - 'workers/nomadtips3-live-engine-5dollar/src/index.js'
       - 'workers/nomadtips3-live-engine-5dollar/src/index-oddstorm.js'
       - 'workers/nomadtips3-live-engine-5dollar/src/oddstorm-referee.js'
       - 'workers/nomadtips3-live-engine-5dollar/test/**'
@@ -13,7 +12,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'workers/nomadtips3-live-engine-5dollar/src/index.js'
       - 'workers/nomadtips3-live-engine-5dollar/src/index-oddstorm.js'
       - 'workers/nomadtips3-live-engine-5dollar/src/oddstorm-referee.js'
       - 'workers/nomadtips3-live-engine-5dollar/test/**'
@@ -46,14 +44,16 @@ jobs:
           const wrapper = fs.readFileSync('workers/nomadtips3-live-engine-5dollar/src/index-oddstorm.js','utf8');
           const referee = fs.readFileSync('workers/nomadtips3-live-engine-5dollar/src/oddstorm-referee.js','utf8');
           const wrangler = fs.readFileSync('workers/nomadtips3-live-engine-5dollar/wrangler.jsonc','utf8');
-          assert(wrapper.includes("import baseWorker from './index.js'"), 'existing 5Dollar adapter must remain the base worker');
+          assert(wrapper.includes('nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev'), 'existing 5Dollar adapter must remain the upstream primary');
           assert(wrapper.includes("referee?.decision === 'REJECT'"), 'strong OddStorm disagreement must be able to reject');
-          assert(referee.includes("failOpen: true"), 'OddStorm outage must be fail-open');
+          assert(wrapper.includes('failOpenAtClient'), 'gateway failure must be explicit for client fallback');
+          assert(referee.includes('failOpen: true'), 'OddStorm outage must be fail-open');
           for (const book of ['Unibet','Stake','Pinnacle','Ladbrokes','BWin','BetWay']) assert(referee.includes(`'${book}'`), `missing referee ${book}`);
-          assert(referee.includes('ODDSTORM_HTTP_403') || referee.includes('response.status === 403'), '403 circuit breaker missing');
+          assert(referee.includes('response.status === 403'), '403 circuit breaker missing');
           assert(referee.includes('response.status === 429'), '429 circuit breaker missing');
-          assert(wrangler.includes('src/index-oddstorm.js'), 'OddStorm wrapper must be the deployed entrypoint');
-          console.log('OddStorm fail-open isolation contract PASS');
+          assert(wrangler.includes('nomadtips3-oddstorm-referee'), 'dedicated worker name missing');
+          assert(wrangler.includes('src/index-oddstorm.js'), 'OddStorm gateway entrypoint missing');
+          console.log('OddStorm dedicated fail-open gateway contract PASS');
           NODE
 
   deploy:
@@ -63,7 +63,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy isolated 5Dollar + OddStorm referee adapter
+      - name: Deploy dedicated OddStorm referee gateway
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -73,18 +73,20 @@ jobs:
       - name: Verify deployed health contract
         run: |
           node --input-type=module <<'NODE'
-          const url = 'https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev/health';
+          const url = 'https://nomadtips3-oddstorm-referee.mccarey-supon.workers.dev/health';
           let lastError = null;
           for (let attempt = 1; attempt <= 6; attempt += 1) {
             try {
               const response = await fetch(`${url}?verify=${Date.now()}`, { headers: { accept: 'application/json' } });
               const body = await response.json();
               if (!response.ok) throw new Error(`HTTP ${response.status}`);
-              if (body?.service !== 'nomadtips3-s8-external') throw new Error('base 5Dollar service missing');
+              if (body?.service !== 'nomadtips3-s8-external') throw new Error('upstream 5Dollar health missing');
+              if (body?.gateway?.service !== 'nomadtips3-oddstorm-referee') throw new Error('OddStorm gateway identity missing');
+              if (body?.gateway?.failOpen !== true) throw new Error('gateway fail-open flag missing');
               if (body?.oddStormReferee?.mode !== 'fail-open') throw new Error('OddStorm fail-open health contract missing');
               const books = body?.oddStormReferee?.selectedBookmakers || [];
               if (books.length !== 6) throw new Error(`expected 6 OddStorm bookmakers, got ${books.length}`);
-              console.log(JSON.stringify({ deployed: true, service: body.service, oddStormReferee: body.oddStormReferee }, null, 2));
+              console.log(JSON.stringify({ deployed: true, upstream: body.service, gateway: body.gateway, oddStormReferee: body.oddStormReferee }, null, 2));
               process.exit(0);
             } catch (error) {
               lastError = error;
@@ -92,5 +94,5 @@ jobs:
               if (attempt < 6) await new Promise(resolve => setTimeout(resolve, 5000));
             }
           }
-          throw lastError || new Error('OddStorm referee deploy verification failed');
+          throw lastError || new Error('OddStorm referee gateway deploy verification failed');
           NODE
