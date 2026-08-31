@@ -47,8 +47,13 @@ jobs:
           grep -Fq "const DEFAULT_BASE='https://nomadtips3-market-engine.mccarey-supon.workers.dev'" nomad-live-342/market-runtime.js
           grep -Fq 'blocksEventRender:false' nomad-live-342/market-runtime.js
           grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
-          grep -Fq "MARKET_PROVIDER_KIND\": \"asianbookie" workers/nomadtips3-market-engine/wrangler.jsonc
           grep -Fq "/api/poll/tipsterMatchOdds" workers/nomadtips3-market-engine/src/asianbookie.js
+          if grep -Fq '"MARKET_PROVIDER_KIND": "asianbookie"' workers/nomadtips3-market-engine/wrangler.jsonc; then
+            echo '::error::AsianBookie direct Worker polling is intentionally disabled after empty non-JSON production responses'; exit 1
+          fi
+          if grep -Rni '/api/ads/impression' workers/nomadtips3-market-engine 2>/dev/null; then
+            echo '::error::AsianBookie ad-impression endpoint must never be called'; exit 1
+          fi
           if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src 2>/dev/null; then
             echo '::error::Public OddStorm HTML source detected in Market Worker'; exit 1
           fi
@@ -56,7 +61,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
           fi
-          echo '3.41 sealed; AsianBookie market adapter remains isolated and fail-open.'
+          echo '3.41 sealed; AsianBookie adapter retained dormant; market layer remains isolated and fail-open.'
 
   deploy:
     needs: validate
