@@ -10,6 +10,7 @@
     ['Terms of Service',new URL('terms/',root).href],
     ['Disclaimer',new URL('disclaimer/',root).href]
   ];
+  const infoPath=/\/(?:about|privacy|terms|user-guide|disclaimer)(?:\/|$)/i.test(String(window.location.pathname||''));
 
   const rail=()=>{
     const nav=document.createElement('nav');
@@ -19,20 +20,15 @@
     return nav;
   };
 
-  const replaceLegacyLinks=footer=>{
-    const legacy=footer.querySelector('.site-footer__links');
-    if(!legacy)return false;
-    legacy.setAttribute('aria-label','NOMADTIPS3 information pages');
-    legacy.innerHTML=links.map(([label,href],index)=>`${index?'<span class="site-footer__divider" aria-hidden="true"></span>':''}<a href="${href}">${label}</a>`).join('');
-    return true;
-  };
-
   const attachToExisting=footer=>{
-    if(replaceLegacyLinks(footer))return;
-    if(footer.querySelector('.nomad-info-linkrail'))return;
+    if(!footer||footer.querySelector('.nomad-info-linkrail'))return;
     const bottom=footer.querySelector('.site-footer-bottom');
-    if(bottom)bottom.insertAdjacentElement('beforebegin',rail());
-    else footer.appendChild(rail());
+    if(bottom){
+      bottom.insertAdjacentElement('beforebegin',rail());
+      return;
+    }
+    const inner=footer.querySelector('.site-footer__inner,.site-footer-inner');
+    (inner||footer).appendChild(rail());
   };
 
   const createStandalone=()=>{
@@ -52,7 +48,47 @@
     document.body.appendChild(footer);
   };
 
+  const restoreOriginal341Footer=()=>{
+    const current=document.querySelector('.site-footer');
+    if(current?.querySelector('.site-footer-certrow')){
+      attachToExisting(current);
+      return;
+    }
+
+    /* Information pages briefly receive the root legacy footer from their
+       older page shell. Remove only that temporary renderer and load the
+       real NOMAD Live 3.41 footer source unchanged. */
+    if(current)current.remove();
+
+    const cssHref=new URL('nomad-live/site-footer.css?v=20260831-info-restore-v1',root).href;
+    if(!document.querySelector('link[data-nomad-original-footer]')){
+      const style=document.createElement('link');
+      style.rel='stylesheet';
+      style.href=cssHref;
+      style.dataset.nomadOriginalFooter='3.41';
+      document.head.appendChild(style);
+    }
+
+    const existingScript=document.querySelector('script[data-nomad-original-footer]');
+    if(existingScript)return;
+
+    const original=document.createElement('script');
+    original.src=new URL('nomad-live/site-footer.js?v=20260831-info-restore-v1',root).href;
+    original.defer=true;
+    original.dataset.nomadOriginalFooter='3.41';
+    original.onload=()=>attachToExisting(document.querySelector('.site-footer'));
+    original.onerror=()=>{
+      console.warn('Original NOMAD 3.41 footer unavailable; using safe fallback.');
+      if(!document.querySelector('.site-footer,.nomad-info-footer'))createStandalone();
+    };
+    document.body.appendChild(original);
+  };
+
   const mount=()=>{
+    if(infoPath){
+      restoreOriginal341Footer();
+      return;
+    }
     const existing=document.querySelector('.site-footer');
     if(existing)attachToExisting(existing);else createStandalone();
   };
