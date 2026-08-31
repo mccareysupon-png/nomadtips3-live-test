@@ -6,48 +6,50 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/nomad342-feed-diagnose.yml'
+      - 'nomad-live-342/runtime-config.js'
+      - 'nomad-live-web-production/src/index.js'
 
 jobs:
   diagnose:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe 3.42 worker health and feed
+      - name: Compare upstream worker and canary same-origin feed
         shell: bash
         run: |
           set -u
-          base='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev'
-          echo "TARGET=$base"
-          for path in /health '/feed?force=1'; do
-            echo "=== ${path} ==="
+          targets=(
+            'https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev/feed?force=1'
+            'https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev/nomad-live-342/feed?force=1'
+          )
+          rc=0
+          for target in "${targets[@]}"; do
+            echo "=== TARGET $target ==="
             headers="$(mktemp)"
             body="$(mktemp)"
-            code="$(curl -sS --connect-timeout 10 --max-time 35 -D "$headers" -o "$body" -w '%{http_code}' "${base}${path}" || true)"
+            code="$(curl -sS --connect-timeout 10 --max-time 35 -D "$headers" -o "$body" -w '%{http_code}' "$target" || true)"
             echo "HTTP=$code"
-            sed -n '1,30p' "$headers" || true
-            echo '--- BODY ---'
-            head -c 30000 "$body" || true
+            sed -n '1,40p' "$headers" || true
+            echo '--- BODY PREFIX ---'
+            head -c 3000 "$body" || true
             echo
-            if [[ "$path" == /feed* ]]; then
-              BODY_PATH="$body" python - <<'PY'
-          import json, os
-          p=os.environ['BODY_PATH']
-          raw=open(p,'rb').read().decode('utf-8','replace')
-          try:
-              data=json.loads(raw)
+            TARGET="$target" CODE="$code" BODY_PATH="$body" python - <<'PY'
+          import json, os, sys
+          target=os.environ['TARGET']; code=os.environ['CODE']; path=os.environ['BODY_PATH']
+          raw=open(path,'rb').read().decode('utf-8','replace')
+          print('TARGET=',target)
+          print('HTTP_CODE=',code)
+          try: data=json.loads(raw)
           except Exception as e:
-              print('JSON_PARSE_ERROR=',repr(e))
-              print('BODY_PREFIX=',raw[:1000])
-          else:
-              matches=data.get('matches') if isinstance(data,dict) else None
-              print('TOP_KEYS=', sorted(data.keys()) if isinstance(data,dict) else type(data).__name__)
-              print('MATCH_COUNT=', len(matches) if isinstance(matches,list) else 'NOT_LIST')
-              for k in ['ok','version','source','status','error','message','updatedAt','fetchedAt','cached','stale']:
-                  if isinstance(data,dict) and k in data:
-                      print(f'{k}={data[k]!r}')
-              if isinstance(matches,list) and matches:
-                  m=matches[0]
-                  if isinstance(m,dict): print('FIRST_MATCH_KEYS=',sorted(m.keys()))
+              print('JSON_PARSE_ERROR=',repr(e)); sys.exit(1)
+          matches=data.get('matches') if isinstance(data,dict) else None
+          print('VERSION=',data.get('version') if isinstance(data,dict) else None)
+          print('OK=',data.get('ok') if isinstance(data,dict) else None)
+          print('MATCH_COUNT=',len(matches) if isinstance(matches,list) else 'NOT_LIST')
+          if code!='200' or not isinstance(data,dict) or str(data.get('version'))!='3.42' or not isinstance(matches,list) or data.get('ok') is False:
+              sys.exit(1)
           PY
-            fi
+            status=$?
+            if [ "$status" -ne 0 ]; then rc=1; fi
             rm -f "$headers" "$body"
           done
+          exit "$rc"
