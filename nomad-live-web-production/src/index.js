@@ -8,6 +8,16 @@ const API_ROUTES=new Map([
 const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
 const PREDICTIONS_BASE='/nomadtips3-live-test';
 const NOMAD342_PREFIX='/nomad-live-342';
+const PUBLIC_INFO_PREFIXES=['/about','/privacy','/terms','/user-guide','/disclaimer'];
+const PUBLIC_INFO_ASSETS=new Set([
+  '/info-pages.css',
+  '/public-info-footer.css',
+  '/public-info-footer.js',
+  '/site-footer.css',
+  '/site-footer.js',
+  '/nomad-live/styles.css',
+  '/nomad-live/public-site-nav.css',
+]);
 
 function unavailable(message,status=503){
   return new Response(message,{status,headers:{
@@ -53,6 +63,27 @@ async function proxyPredictions(request,url){
   headers.set('pragma','no-cache');
   headers.set('expires','0');
   headers.set('x-nomad-web','soccer-predictions-bridge');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+
+function isPublicInfoPath(pathname){
+  if(PUBLIC_INFO_ASSETS.has(pathname))return true;
+  return PUBLIC_INFO_PREFIXES.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
+}
+
+async function proxyPublicInfo(request,url){
+  if(!isPublicInfoPath(url.pathname))return null;
+  if(request.method!=='GET'&&request.method!=='HEAD'){
+    return unavailable('NOMADTIPS3 information routes support GET/HEAD only',405);
+  }
+  const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
+  const upstreamRequest=new Request(upstreamUrl.toString(),request);
+  const response=await fetch(upstreamRequest);
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','no-store, max-age=0');
+  headers.set('pragma','no-cache');
+  headers.set('expires','0');
+  headers.set('x-nomad-web','public-info-bridge');
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -113,6 +144,8 @@ export default {
     if(predictionsResponse) return predictionsResponse;
     const nomad342Response=await proxyNomad342(request,env,url);
     if(nomad342Response) return nomad342Response;
+    const publicInfoResponse=await proxyPublicInfo(request,url);
+    if(publicInfoResponse) return publicInfoResponse;
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
       return unavailable('Static assets unavailable');
     }
