@@ -148,7 +148,7 @@ jobs:
                       expect(s.mobileFontSize==='11.7px',`${site.name}/${name}/${width}: mobile font ${s.mobileFontSize}`);
                       expect(s.mobileFontWeight==='900',`${site.name}/${name}/${width}: mobile weight ${s.mobileFontWeight}`);
                       expect(close(s.mobileHeight,45),`${site.name}/${name}/${width}: mobile nav height ${s.mobileHeight}`);
-                      expect(close(s.mobileWidth,s.clientWidth,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.clientWidth}`);
+                      expect(close(s.mobileWidth,s.scrollWidth,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.scrollWidth}`);
                       expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
                       expect(s.mobileRects.length===4,`${site.name}/${name}/${width}: mobile rect count ${s.mobileRects.length}`);
                       const y=s.mobileRects[0].y,h=s.mobileRects[0].height,w=s.mobileRects[0].width;
