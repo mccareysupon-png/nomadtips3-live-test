@@ -36,6 +36,7 @@ jobs:
           node --check nomad-live-342/market-runtime.js
           node --check nomad-live-342/market-layer.js
           node --check workers/nomadtips3-market-engine/src/index.js
+          node --check workers/nomadtips3-market-engine/src/asianbookie.js
           node --check workers/nomadtips3-market-engine/src/normalize.js
           node --check workers/nomadtips3-market-engine/src/settle.js
           cd workers/nomadtips3-market-engine
@@ -46,6 +47,8 @@ jobs:
           grep -Fq "const DEFAULT_BASE='https://nomadtips3-market-engine.mccarey-supon.workers.dev'" nomad-live-342/market-runtime.js
           grep -Fq 'blocksEventRender:false' nomad-live-342/market-runtime.js
           grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
+          grep -Fq "MARKET_PROVIDER_KIND\": \"asianbookie" workers/nomadtips3-market-engine/wrangler.jsonc
+          grep -Fq "/api/poll/tipsterMatchOdds" workers/nomadtips3-market-engine/src/asianbookie.js
           if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src 2>/dev/null; then
             echo '::error::Public OddStorm HTML source detected in Market Worker'; exit 1
           fi
@@ -53,7 +56,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
           fi
-          echo '3.41 sealed; market layer remains isolated and fail-open.'
+          echo '3.41 sealed; AsianBookie market adapter remains isolated and fail-open.'
 
   deploy:
     needs: validate
@@ -92,8 +95,10 @@ jobs:
           code="$(curl -sS --max-time 20 -o /tmp/markets.json -w '%{http_code}' "$MARKET_URL/markets?t=$(date +%s)" || true)"
           if [ "$code" = '200' ]; then
             grep -Fq '"version":"market-v1"' /tmp/markets.json
+            cat /tmp/markets.json
             echo 'MARKET DATA ONLINE: /markets returned live normalized payload.'
           elif [ "$code" = '503' ] || [ "$code" = '502' ]; then
+            cat /tmp/markets.json || true
             echo 'MARKET DATA OFFLINE/UNCONFIGURED: fail-open behavior confirmed; Live Score remains independent.'
           else
             echo "::error::Unexpected /markets HTTP status: $code"; cat /tmp/markets.json || true; exit 1
