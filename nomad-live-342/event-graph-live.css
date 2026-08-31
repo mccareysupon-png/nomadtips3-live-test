@@ -1,21 +1,19 @@
 /* NOMADTIPS3 3.42 Attack Flow live visual layer.
-   Display-only: reads the already-exposed 3.42 event results and maps the
-   chart to the same rolling pressure formula without changing Event Gate,
-   prediction, feed, polling or engine state. */
+   Display-only: keeps graph scale/data/engine logic unchanged. */
 body[data-page="live"] .attack-chart{
   position:relative;
   background:#000;
 }
 
-/* Desktop readability: keep the enlarged Attack Flow vertical canvas. */
+/* Desktop readability: double only the Attack Flow vertical canvas.
+   Width, SVG viewBox, data points, polling and graph logic remain unchanged. */
 @media(min-width:761px){
   body[data-page="live"] .attack-chart svg{height:176px}
   body[data-page="live"] .attack-empty{height:196px}
 }
 
-/* Keep the legacy reference midline as a safe fallback until a valid rolling
-   pressure series is available. */
-body[data-page="live"] .attack-chart:not([data-pressure-scale="0-100"]) .chart-grid-mid{
+/* Reference midline only. */
+body[data-page="live"] .attack-chart .chart-grid-mid{
   stroke:rgba(104,119,109,.68);
   stroke-width:.28;
   stroke-dasharray:.35 .55;
@@ -23,57 +21,7 @@ body[data-page="live"] .attack-chart:not([data-pressure-scale="0-100"]) .chart-g
   opacity:.9;
 }
 
-/* The original attack-change guide lines are hidden only after the pressure
-   overlay has successfully built a real 0–100% series. */
-body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-grid{
-  opacity:0;
-}
-
-/* Fixed pressure reference grid: 0 / 25 / 50 / 75 / 100. */
-body[data-page="live"] .attack-chart .pressure-grid-line{
-  stroke:rgba(104,119,109,.22);
-  stroke-width:.24;
-  stroke-dasharray:.45 .65;
-  stroke-linecap:round;
-  vector-effect:non-scaling-stroke;
-}
-body[data-page="live"] .attack-chart .pressure-grid-balance{
-  stroke:rgba(126,142,130,.68);
-  stroke-width:.34;
-  stroke-dasharray:.5 .55;
-}
-
-body[data-page="live"] .pressure-y-axis{
-  position:absolute;
-  inset:0;
-  z-index:2;
-  pointer-events:none;
-}
-body[data-page="live"] .pressure-y-label{
-  position:absolute;
-  transform:translateY(-50%);
-  min-width:22px;
-  color:#687269;
-  font-size:6px;
-  font-weight:700;
-  line-height:1;
-  letter-spacing:-.02em;
-  text-align:left;
-  white-space:nowrap;
-  text-shadow:0 1px 2px #000;
-}
-body[data-page="live"] .pressure-y-label-balance{
-  color:#8d978f;
-}
-
-/* The chart footer now reports the current rolling pressure split. */
-body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-axis span:nth-child(2){
-  color:#969f97;
-  font-weight:700;
-  letter-spacing:.01em;
-}
-
-/* Latest-point guides. Positioned by event-graph-live.js over the SVG. */
+/* Latest-point guides. Positioned by event-graph-live.js over the existing SVG. */
 body[data-page="live"] .attack-endpoint{
   position:absolute;
   z-index:3;
@@ -98,16 +46,8 @@ body[data-page="live"] .attack-endpoint-away{
   0%,100%{opacity:.66;transform:translate(-50%,-50%) scale(.78)}
   50%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
 }
-
 @media(max-width:760px){
   body[data-page="live"] .attack-endpoint{width:3.5px;height:3.5px}
-  body[data-page="live"] .pressure-y-label{font-size:5.5px;min-width:20px}
-  body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-axis span:nth-child(2){font-size:6.5px}
-}
-@media(max-width:420px){
-  body[data-page="live"] .pressure-y-label{font-size:5px;min-width:18px}
-  body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-axis{gap:5px}
-  body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-axis span:nth-child(2){font-size:5.8px}
 }
 @media(prefers-reduced-motion:reduce){
   body[data-page="live"] .attack-endpoint{animation:none;opacity:.9;transform:translate(-50%,-50%)}
