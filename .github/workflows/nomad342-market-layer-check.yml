@@ -1,0 +1,58 @@
+name: NOMAD 3.42 Market Layer Check
+
+on:
+  push:
+    branches:
+      - work/market-layer-authorized-20260831
+  pull_request:
+    paths:
+      - 'nomad-live-342/**'
+      - 'workers/nomadtips3-market-engine/**'
+      - 'workers/nomadtips3-live-engine-5dollar/**'
+      - '.github/workflows/nomad342-market-layer-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  market-layer-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test market normalizer and backtest helpers
+        working-directory: workers/nomadtips3-market-engine
+        run: npm test
+      - name: Syntax check market worker and browser layer
+        run: |
+          node --check workers/nomadtips3-market-engine/src/index.js
+          node --check workers/nomadtips3-market-engine/src/normalize.js
+          node --check workers/nomadtips3-market-engine/src/settle.js
+          node --check workers/nomadtips3-market-engine/tools/backtest.mjs
+          node --check nomad-live-342/market-runtime.js
+          node --check nomad-live-342/market-layer.js
+          node --check nomad-live-342/market-settings.js
+      - name: Block public OddStorm HTML scraping
+        run: |
+          if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src workers/nomadtips3-live-engine-5dollar/src 2>/dev/null; then
+            echo 'Public OddStorm scraper detected'
+            exit 1
+          fi
+      - name: Verify 5Dollar standalone entrypoint
+        run: |
+          grep -q '"name": "nomadtips3-live-engine-5dollar"' workers/nomadtips3-live-engine-5dollar/wrangler.jsonc
+          grep -q '"main": "src/index.js"' workers/nomadtips3-live-engine-5dollar/wrangler.jsonc
+      - name: Seal NOMAD 3.41
+        run: |
+          git fetch origin main
+          changed="$(git diff --name-only origin/main...HEAD | grep -E '^nomad-live/' || true)"
+          if [ -n "$changed" ]; then
+            echo 'NOMAD 3.41 files changed unexpectedly:'
+            echo "$changed"
+            exit 1
+          fi
+          echo 'NOMAD 3.41 untouched'
