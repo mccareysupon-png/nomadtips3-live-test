@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-08-31T14:04:38Z",
+  "updated_at": "2026-08-31T20:11:14Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7645,
       "edge": 58.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-0",
       "source_url": "https://www.goaloo.com/football/faroe-islands-formuladeildin-ki-klaksvik-vs-eb-streymur/h2h-2922074",
       "summary_url": "https://www.goaloo.com/football/faroe-islands-formuladeildin-ki-klaksvik-vs-eb-streymur/summary-2922074",
       "model": {
@@ -1590,6 +1590,56 @@
           "away_venue_n": 6
         },
         "h2h_adjustment": -0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "5fe11e4bdd804c8c",
+      "goaloo_id": "2922074",
+      "date": "2026-08-31",
+      "kickoff": "2026-08-31 17:30:00",
+      "league": "Faroe Islands Formuladeildin",
+      "home": "KI Klaksvik",
+      "away": "EB Streymur",
+      "pick": "EB Streymur Win",
+      "side": "away",
+      "odds": 11.2,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7645,
+      "edge": 58.8,
+      "result": "LOSS",
+      "ft": "3-0",
+      "source_url": "https://www.goaloo.com/football/faroe-islands-formuladeildin-ki-klaksvik-vs-eb-streymur/h2h-2922074",
+      "summary_url": "https://www.goaloo.com/football/faroe-islands-formuladeildin-ki-klaksvik-vs-eb-streymur/summary-2922074",
+      "model": {
+        "lambda_home": 0.839,
+        "lambda_away": 2.448,
+        "home_win": 0.0587,
+        "draw": 0.1768,
+        "away_win": 0.7645,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.8033,
+          "gd_edge": -0.8921,
+          "clean_sheet_edge": -0.8244,
+          "failed_to_score_edge": -0.0244,
+          "bounded_adjustment": -0.057,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
         "venue_fallback": {
           "home": true,
           "away": false,
