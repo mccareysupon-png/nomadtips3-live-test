@@ -3,12 +3,21 @@
 
   const script=document.currentScript;
   const root=new URL('./',script?.src||window.location.href);
-  const infoPath=/\/(?:about|privacy|terms|user-guide|disclaimer)(?:\/|$)/i.test(String(window.location.pathname||''));
+  const path=String(window.location.pathname||'');
 
-  /* IMPORTANT: this module belongs to the information pages only.
-     Signal and Statistics keep their original NOMAD Live 3.41 footer.
-     Live Score 3.42 and Soccer Predictions must not receive this footer/rail. */
-  if(!infoPath)return;
+  const infoPath=/\/(?:about|privacy|terms|user-guide|disclaimer)(?:\/|$)/i.test(path);
+  const signalPath=path==='/'||/\/nomad-live\/(?:index\.html)?\/?$/i.test(path);
+  const statisticsPath=path==='/statistics.html'||/\/nomad-live\/statistics\.html\/?$/i.test(path);
+  const picksPath=/\/soccer-predictions(?:\/index\.html)?\/?$/i.test(path);
+  const publicRailPath=signalPath||statisticsPath||picksPath;
+
+  /* Scope lock:
+     Page 1 Signal      -> add link rail only, below original 3.41 footer content.
+     Page 2 Statistics  -> add link rail only, below original 3.41 footer content.
+     Page 3 Live Score  -> never touched by this module.
+     Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
+     Information pages  -> retain their existing information-page footer behavior. */
+  if(!infoPath&&!publicRailPath)return;
 
   const links=[
     ['About Us',new URL('about/',root).href],
@@ -18,13 +27,41 @@
     ['Disclaimer',new URL('disclaimer/',root).href]
   ];
 
-  const rail=()=>{
+  const rail=(standalone=false)=>{
     const nav=document.createElement('nav');
-    nav.className='nomad-info-linkrail';
+    nav.className=`nomad-info-linkrail${standalone?' nomad-info-linkrail--standalone':''}`;
     nav.setAttribute('aria-label','NOMADTIPS3 information pages');
     nav.innerHTML=links.map(([label,href])=>`<a href="${href}">${label}</a>`).join('');
     return nav;
   };
+
+  const attachPublicRail=()=>{
+    if(document.querySelector('.nomad-info-linkrail'))return;
+
+    if(picksPath){
+      document.body.appendChild(rail(true));
+      return;
+    }
+
+    let attempts=0;
+    const mount=()=>{
+      const footer=document.querySelector('.site-footer');
+      if(!footer){
+        if(attempts++<40)setTimeout(mount,50);
+        return;
+      }
+      if(footer.querySelector('.nomad-info-linkrail'))return;
+      const inner=footer.querySelector('.site-footer-inner,.site-footer__inner')||footer;
+      /* Append after every original footer section, including copyright/social. */
+      inner.appendChild(rail(false));
+    };
+    mount();
+  };
+
+  if(publicRailPath){
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attachPublicRail,{once:true});else attachPublicRail();
+    return;
+  }
 
   const attachToExisting=footer=>{
     if(!footer||footer.querySelector('.nomad-info-linkrail'))return;
