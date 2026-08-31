@@ -10,13 +10,13 @@
     const binary=atob(clean);
     const bytes=new Uint8Array(binary.length);
     for(let i=0;i<binary.length;i+=1) bytes[i]=binary.charCodeAt(i);
-    return new Blob([bytes],{type:'image/webp'});
+    return new Blob([bytes],{type:'image/jpeg'});
   };
   Promise.all(targets.map(async ([selector,path])=>{
     const image=document.querySelector(selector);
     if(!image) return;
     try{
-      const response=await fetch(`${path}?v=20260831-team-preview-v1`,{cache:'force-cache'});
+      const response=await fetch(`${path}?v=20260831-team-portrait-v2`,{cache:'force-cache'});
       if(!response.ok) throw new Error(`Asset unavailable: ${path}`);
       const blob=decode(await response.text());
       const url=URL.createObjectURL(blob);
