@@ -2,5 +2,14 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "nomadtips3-market-engine",
   "main": "src/index.js",
-  "compatibility_date": "2026-08-31"
+  "compatibility_date": "2026-08-31",
+  "vars": {
+    "MARKET_PROVIDER_KIND": "asianbookie",
+    "MARKET_PROVIDER_NAME": "AsianBookie Tipster",
+    "ASIANBOOKIE_BASE_URL": "https://beta.asianbookie.org",
+    "ASIANBOOKIE_MATCH_CACHE_MS": "60000",
+    "ASIANBOOKIE_ODDS_CACHE_MS": "7500",
+    "MAX_MARKET_AGE_MS": "30000",
+    "MARKET_PROVIDER_TIMEOUT_MS": "6000"
+  }
 }
