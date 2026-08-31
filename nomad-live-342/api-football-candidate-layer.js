@@ -9,7 +9,7 @@ let busy=false;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function load(){try{return JSON.parse(sessionStorage.getItem(STORE_KEY)||'{}')||{}}catch{return {}}}
 function save(store){try{sessionStorage.setItem(STORE_KEY,JSON.stringify(store))}catch{}}
 function lockedFor(id){const row=load()[String(id)];return row?.status==='PREDICTED'?row:null}
