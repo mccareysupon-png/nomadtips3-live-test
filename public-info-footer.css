@@ -1,0 +1,30 @@
+/* NOMADTIPS3 public information footer module.
+   Loaded only where explicitly requested. Does not touch Live Score 3.42. */
+.nomad-info-linkrail{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin:16px 0 0;padding:14px 0 0;border-top:1px solid rgba(255,255,255,.07)}
+.nomad-info-linkrail a{position:relative;padding:3px 12px;color:#929792;text-decoration:none;font:800 9px/1.35 Arial,Helvetica,sans-serif;letter-spacing:.015em;transition:color .14s ease}
+.nomad-info-linkrail a+a::before{content:"";position:absolute;left:0;top:50%;width:1px;height:10px;transform:translateY(-50%);background:rgba(255,255,255,.16)}
+.nomad-info-linkrail a:hover,.nomad-info-linkrail a:focus-visible{color:#00f0a8;outline:none}
+.nomad-info-linkrail a:focus-visible{text-decoration:underline;text-underline-offset:3px}
+
+/* Standalone footer used by Picks and information pages when no existing
+   3.41 footer is present. */
+.nomad-info-footer{margin-top:28px;background:#0f100f;border-top:1px solid rgba(255,255,255,.08);color:#8f928f}
+.nomad-info-footer *{box-sizing:border-box}
+.nomad-info-footer-inner{max-width:1120px;margin:0 auto;padding:22px 16px 20px}
+.nomad-info-footer-brand{font:950 25px/1 Arial,Helvetica,sans-serif;letter-spacing:-.025em;color:#b7b9b7}
+.nomad-info-footer-brand span{color:#9ea19e}
+.nomad-info-footer-lead{max-width:900px;margin:10px 0 0;color:#a9ada9;font:600 10.5px/1.6 Arial,Helvetica,sans-serif}
+.nomad-info-footer-meta{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.065)}
+.nomad-info-footer-contact,.nomad-info-footer-copy{color:#7f837f;font:600 9px/1.55 Arial,Helvetica,sans-serif}
+.nomad-info-footer-contact a{color:#b6b8b6;text-decoration:none}.nomad-info-footer-contact a:hover,.nomad-info-footer-contact a:focus-visible{color:#00f0a8}
+.nomad-info-footer-copy{text-align:right}
+
+@media(max-width:700px){
+  .nomad-info-linkrail{row-gap:6px;padding-top:12px}
+  .nomad-info-linkrail a{padding:4px 9px;font-size:8.5px}
+  .nomad-info-linkrail a+a::before{height:9px}
+  .nomad-info-footer{margin-bottom:52px}
+  .nomad-info-footer-inner{padding:18px 12px 20px}
+  .nomad-info-footer-meta{align-items:flex-start;flex-direction:column;gap:7px}
+  .nomad-info-footer-copy{text-align:left}
+}
