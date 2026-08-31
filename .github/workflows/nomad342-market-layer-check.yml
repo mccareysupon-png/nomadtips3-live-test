@@ -38,8 +38,9 @@ jobs:
           node --check nomad-live-342/market-settings.js
       - name: Block public OddStorm HTML scraping
         run: |
-          if grep -RniE 'fetch\([^\n]*(oddstorm\.com)|ODDSTORM_BASE[[:space:]]*=[[:space:]]*["'"']https://www\.oddstorm\.com' workers/nomadtips3-market-engine/src workers/nomadtips3-live-engine-5dollar/src 2>/dev/null; then
-            echo 'Public OddStorm scraper detected'; exit 1
+          if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src workers/nomadtips3-live-engine-5dollar/src 2>/dev/null; then
+            echo 'Public OddStorm scraper detected'
+            exit 1
           fi
       - name: Verify 5Dollar standalone entrypoint
         run: |
