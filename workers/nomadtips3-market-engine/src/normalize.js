@@ -1,7 +1,7 @@
 const DEFAULT_MAX_AGE_MS = 30_000;
 
 const TIER_A = new Set(['pinnacle','bet365','sbobet','188bet','betfairexchange']);
-const TIER_B = new Set(['bwin','unibet','betway','10bet','betano','ladbrokes','marathonbet','winamax','tipico','stake']);
+const TIER_B = new Set(['bwin','unibet','betway','10bet','betano','ladbrokes','marathonbet','winamax','tipico','stake','fun88','m88']);
 
 export function finite(value) {
   if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
@@ -28,7 +28,7 @@ export function canonicalBookmaker(value = '') {
     ['betfairexchange','Betfair Exchange'],['betfair','Betfair Exchange'],['bwin','Bwin'],
     ['unibet','Unibet'],['betway','Betway'],['10bet','10Bet'],['betano','Betano'],
     ['ladbrokes','Ladbrokes'],['marathonbet','Marathonbet'],['winamax','Winamax'],
-    ['tipico','Tipico'],['stake','Stake']
+    ['tipico','Tipico'],['stake','Stake'],['fun88','FUN88'],['m88','M88']
   ];
   for (const [needle, label] of aliases) if (key.includes(needle)) return label;
   return String(value || '').trim() || 'Unknown';
