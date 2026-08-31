@@ -34,6 +34,22 @@
     line-height:1.05;
   }
 
+  /* Center only the three newly added breakdown metrics.
+     Existing four metrics keep their current alignment. */
+  .statistics-summary-grid > .stats-breakdown-metric {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+  }
+
+  .statistics-summary-grid > .stats-breakdown-metric span,
+  .statistics-summary-grid > .stats-breakdown-metric strong {
+    width:100%;
+    text-align:center;
+  }
+
   .statistics-summary-grid .metric-info {
     width:11px;
     height:11px;
