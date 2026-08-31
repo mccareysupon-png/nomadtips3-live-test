@@ -3,6 +3,13 @@
 
   const script=document.currentScript;
   const root=new URL('./',script?.src||window.location.href);
+  const infoPath=/\/(?:about|privacy|terms|user-guide|disclaimer)(?:\/|$)/i.test(String(window.location.pathname||''));
+
+  /* IMPORTANT: this module belongs to the information pages only.
+     Signal and Statistics keep their original NOMAD Live 3.41 footer.
+     Live Score 3.42 and Soccer Predictions must not receive this footer/rail. */
+  if(!infoPath)return;
+
   const links=[
     ['About Us',new URL('about/',root).href],
     ['User Guide',new URL('user-guide/',root).href],
@@ -10,7 +17,6 @@
     ['Terms of Service',new URL('terms/',root).href],
     ['Disclaimer',new URL('disclaimer/',root).href]
   ];
-  const infoPath=/\/(?:about|privacy|terms|user-guide|disclaimer)(?:\/|$)/i.test(String(window.location.pathname||''));
 
   const rail=()=>{
     const nav=document.createElement('nav');
@@ -64,9 +70,6 @@
       return;
     }
 
-    /* Information pages briefly receive the root legacy footer from their
-       older page shell. Remove only that temporary renderer/style and load
-       the real NOMAD Live 3.41 footer source unchanged. */
     if(current)current.remove();
     removeLegacyFooterStyle();
 
@@ -94,14 +97,7 @@
     document.body.appendChild(original);
   };
 
-  const mount=()=>{
-    if(infoPath){
-      restoreOriginal341Footer();
-      return;
-    }
-    const existing=document.querySelector('.site-footer');
-    if(existing)attachToExisting(existing);else createStandalone();
-  };
+  const mount=()=>restoreOriginal341Footer();
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
 })();
