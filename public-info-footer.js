@@ -19,7 +19,16 @@
     return nav;
   };
 
+  const replaceLegacyLinks=footer=>{
+    const legacy=footer.querySelector('.site-footer__links');
+    if(!legacy)return false;
+    legacy.setAttribute('aria-label','NOMADTIPS3 information pages');
+    legacy.innerHTML=links.map(([label,href],index)=>`${index?'<span class="site-footer__divider" aria-hidden="true"></span>':''}<a href="${href}">${label}</a>`).join('');
+    return true;
+  };
+
   const attachToExisting=footer=>{
+    if(replaceLegacyLinks(footer))return;
     if(footer.querySelector('.nomad-info-linkrail'))return;
     const bottom=footer.querySelector('.site-footer-bottom');
     if(bottom)bottom.insertAdjacentElement('beforebegin',rail());
