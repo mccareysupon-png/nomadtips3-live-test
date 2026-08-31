@@ -1,7 +1,8 @@
 import { normalizeProviderPayload } from './normalize.js';
+import { fetchAsianBookiePayload, asianBookieConfig } from './asianbookie.js';
 
 const CACHE_MS = 5_000;
-let memoryCache = { at: 0, payload: null };
+let memoryCache = { at: 0, payload: null, providerKey: '' };
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('origin') || '';
@@ -30,17 +31,19 @@ function json(request, payload, status = 200, env = {}) {
 }
 
 function providerConfig(env) {
+  const kind = String(env.MARKET_PROVIDER_KIND || '').trim().toLowerCase();
   const endpoint = String(env.MARKET_PROVIDER_ENDPOINT || '').trim();
   const token = String(env.MARKET_PROVIDER_TOKEN || '').trim();
-  const providerName = String(env.MARKET_PROVIDER_NAME || 'authorized-market-feed').trim();
+  const providerName = String(env.MARKET_PROVIDER_NAME || (kind === 'asianbookie' ? 'AsianBookie Tipster' : 'authorized-market-feed')).trim();
   const maxAgeMsRaw = Number(env.MAX_MARKET_AGE_MS);
   const maxAgeMs = Number.isFinite(maxAgeMsRaw) ? Math.max(5_000, Math.min(120_000, maxAgeMsRaw)) : 30_000;
   const timeoutRaw = Number(env.MARKET_PROVIDER_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(timeoutRaw) ? Math.max(1_000, Math.min(12_000, timeoutRaw)) : 6_000;
-  return { endpoint, token, providerName, maxAgeMs, timeoutMs };
+  const configured = kind === 'asianbookie' || Boolean(endpoint);
+  return { kind, endpoint, token, providerName, maxAgeMs, timeoutMs, configured };
 }
 
-async function fetchProvider(config) {
+async function fetchGenericProvider(config) {
   if (!config.endpoint) {
     const error = new Error('provider_not_configured');
     error.code = 'provider_not_configured';
@@ -64,11 +67,23 @@ async function fetchProvider(config) {
   }
 }
 
-async function markets(config) {
+async function fetchProvider(config, env) {
+  if (config.kind === 'asianbookie') {
+    const raw = await fetchAsianBookiePayload(env);
+    const normalized = normalizeProviderPayload(raw, { providerName: config.providerName, maxAgeMs: config.maxAgeMs });
+    return { ...normalized, sourceDiagnostics: raw.sourceDiagnostics };
+  }
+  return fetchGenericProvider(config);
+}
+
+async function markets(config, env) {
   const now = Date.now();
-  if (memoryCache.payload && now - memoryCache.at < CACHE_MS) return { ...memoryCache.payload, cache: 'memory' };
-  const payload = await fetchProvider(config);
-  memoryCache = { at: Date.now(), payload };
+  const providerKey = `${config.kind}|${config.endpoint}|${config.providerName}`;
+  if (memoryCache.payload && memoryCache.providerKey === providerKey && now - memoryCache.at < CACHE_MS) {
+    return { ...memoryCache.payload, cache: 'memory' };
+  }
+  const payload = await fetchProvider(config, env);
+  memoryCache = { at: Date.now(), payload, providerKey };
   return { ...payload, cache: 'fresh' };
 }
 
@@ -79,21 +94,29 @@ export default {
     const config = providerConfig(env);
 
     if (url.pathname === '/' || url.pathname === '/health') {
+      const asian = config.kind === 'asianbookie' ? asianBookieConfig(env) : null;
       return json(request, {
         ok: true,
         service: 'nomadtips3-market-engine',
         version: 'market-v1',
         mode: 'isolated-optional',
-        providerConfigured: Boolean(config.endpoint),
+        providerConfigured: config.configured,
+        providerKind: config.kind || 'generic',
         providerName: config.providerName,
         maxMarketAgeMs: config.maxAgeMs,
+        asianBookie: asian ? {
+          enabled: true,
+          base: asian.base,
+          matchCacheMs: asian.matchCacheMs,
+          oddsCacheMs: asian.oddsCacheMs,
+        } : { enabled: false },
         eventDependency: false,
         oddStormPublicScraping: false,
       }, 200, env);
     }
 
     if (url.pathname === '/markets' && request.method === 'GET') {
-      if (!config.endpoint) {
+      if (!config.configured) {
         return json(request, {
           ok: false,
           version: 'market-v1',
@@ -103,13 +126,15 @@ export default {
         }, 503, env);
       }
       try {
-        return json(request, await markets(config), 200, env);
+        return json(request, await markets(config, env), 200, env);
       } catch (error) {
         const reason = error?.name === 'AbortError' ? 'provider_timeout' : String(error?.code || error?.message || 'provider_unavailable');
         return json(request, {
           ok: false,
           version: 'market-v1',
+          provider: config.providerName,
           error: reason,
+          details: error?.details || null,
           optional: true,
           matches: [],
         }, 502, env);
