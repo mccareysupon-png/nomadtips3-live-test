@@ -1,0 +1,14 @@
+/* NOMAD Live 3.42 public chassis alignment to 3.41.
+   Presentation only: no feed, gate, signal, odds, prediction or analytics logic. */
+
+body[data-page="live"] .shell{
+  max-width:1120px;
+  margin:auto;
+  padding:10px 16px 76px;
+}
+
+@media(max-width:700px){
+  body[data-page="live"] .shell{
+    padding:8px 8px 78px;
+  }
+}
