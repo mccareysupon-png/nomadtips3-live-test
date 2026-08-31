@@ -1,46 +1,23 @@
-name: NOMAD 3.42 Page Diagnose
+name: NOMAD Public Navigation UI Diagnose
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - 'nomad-live-342/event-graph-live.js'
+      - 'nomad-live/public-site-nav.css'
+      - 'nomad-live/index.html'
+      - 'nomad-live/statistics.html'
       - 'nomad-live-342/index.html'
+      - 'nomad-live-342/chassis-341.css'
       - '.github/workflows/nomad342-page-diagnose.yml'
 
 jobs:
-  diagnose-page:
+  responsive-navigation:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Open deployed 3.42 page in Chrome
-        shell: bash
-        run: |
-          set -e
-          chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
-          echo "CHROME=${chrome:-missing}"
-          test -n "$chrome" || exit 0
-          url="https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/index.html?v=${GITHUB_SHA}"
-          ready=0
-          for attempt in $(seq 1 12); do
-            "$chrome" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=26000 --enable-logging=stderr --dump-dom "$url" >/tmp/nomad342-dom.html 2>/tmp/nomad342-chrome.log || true
-            cards="$(grep -o 'class=\"signal-card event-compact' /tmp/nomad342-dom.html | wc -l)"
-            topnav="$(grep -o 'class=\"topnav' /tmp/nomad342-dom.html | wc -l)"
-            mobile="$(grep -o '<nav class=\"mobile-nav' /tmp/nomad342-dom.html | wc -l)"
-            echo "ATTEMPT=$attempt EVENT_CARDS=$cards TOPNAV_COUNT=$topnav MOBILE_NAV_COUNT=$mobile"
-            if [ "$cards" -gt 0 ] && [ "$topnav" -eq 1 ] && [ "$mobile" -eq 1 ]; then
-              ready=1
-              break
-            fi
-            sleep 10
-          done
-          echo '--- BROWSER ERRORS ---'
-          grep -Ei 'error|failed|cors|uncaught|exception|ERR_' /tmp/nomad342-chrome.log | tail -120 || true
-          echo '--- SCRIPT REFS ---'
-          grep -oE '<script[^>]+src="[^"]+"' /tmp/nomad342-dom.html | tail -30 || true
-          test "$ready" -eq 1
-
-      - name: Verify unified header and card interaction
+      - name: Verify Signal Statistics Live Score UI across viewports
         shell: bash
         run: |
           set -euo pipefail
@@ -48,118 +25,169 @@ jobs:
           node - <<'NODE'
           const puppeteer=require('puppeteer-core');
           const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
-          const base='https://mccareysupon-png.github.io/nomadtips3-live-test';
-          const urls={
-            signal:`${base}/nomad-live/index.html?v=${Date.now()}`,
-            statistics:`${base}/nomad-live/statistics.html?v=${Date.now()}`,
-            liveScore:`${base}/nomad-live-342/index.html?v=${Date.now()}`
-          };
-          const comparableKeys=[
-            'topbarHeight','innerHeight','innerMaxWidth','innerPaddingLeft','innerPaddingRight',
-            'brandFontSize','brandFontWeight','brandLetterSpacing','brandLineHeight',
-            'brandX','brandY','navFontSize','navFontWeight','navLineHeight','navGap',
-            'navX','navY','navWidth','backgroundImage'
+          const GREEN='rgb(131, 223, 137)';
+          const viewports=[360,390,412,700,701,768,1024,1280,1440];
+          const sites=[
+            {
+              name:'www',
+              urls:{
+                signal:'https://www.nomadtips3.com/',
+                statistics:'https://www.nomadtips3.com/statistics.html',
+                liveScore:'https://www.nomadtips3.com/nomad-live-342/'
+              }
+            },
+            {
+              name:'apex',
+              urls:{
+                signal:'https://nomadtips3.com/',
+                statistics:'https://nomadtips3.com/statistics.html',
+                liveScore:'https://nomadtips3.com/nomad-live-342/'
+              }
+            }
           ];
-          const closeEnough=(a,b)=>typeof a==='number'&&typeof b==='number'?Math.abs(a-b)<=0.5:a===b;
+          const close=(a,b,t=.75)=>Math.abs(Number(a)-Number(b))<=t;
+          const expect=(condition,message)=>{if(!condition)throw new Error(message)};
+
           (async()=>{
             const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
             try{
               const page=await browser.newPage();
-              await page.setViewport({width:1280,height:900,deviceScaleFactor:1});
-              const capture=async(url,waitForCards=false)=>{
-                await page.goto(url,{waitUntil:'domcontentloaded',timeout:60000});
+
+              const capture=async(url,width)=>{
+                await page.setViewport({width,height:900,deviceScaleFactor:1});
+                await page.goto(`${url}${url.includes('?')?'&':'?'}ui=${Date.now()}-${width}`,{waitUntil:'domcontentloaded',timeout:60000});
                 await page.waitForSelector('.topbar .brand',{timeout:30000});
-                await page.waitForSelector('.topbar .topnav',{timeout:30000});
-                if(waitForCards)await page.waitForSelector('.event-compact',{timeout:45000});
                 return await page.evaluate(()=>{
                   const topbar=document.querySelector('.topbar');
                   const inner=document.querySelector('.topbar-inner.public-four-nav');
                   const brand=inner?.querySelector('.brand');
-                  const nav=inner?.querySelector('.topnav');
-                  const link=nav?.querySelector('a');
+                  const topnav=inner?.querySelector('.topnav');
+                  const desktopLinks=[...(topnav?.querySelectorAll('a')||[])];
+                  const mobile=document.querySelector('.mobile-nav.public-four-nav');
+                  const mobileLinks=[...(mobile?.querySelectorAll('a')||[])];
+                  const active=document.querySelector('.topnav a.active, .mobile-nav.public-four-nav a.active');
                   const topbarStyle=getComputedStyle(topbar);
                   const innerStyle=getComputedStyle(inner);
                   const brandStyle=getComputedStyle(brand);
-                  const navStyle=getComputedStyle(nav);
-                  const linkStyle=getComputedStyle(link);
+                  const topnavStyle=getComputedStyle(topnav);
+                  const desktopLinkStyle=desktopLinks[0]?getComputedStyle(desktopLinks[0]):null;
+                  const mobileStyle=getComputedStyle(mobile);
+                  const mobileLinkStyle=mobileLinks[0]?getComputedStyle(mobileLinks[0]):null;
                   const brandRect=brand.getBoundingClientRect();
-                  const navRect=nav.getBoundingClientRect();
+                  const topnavRect=topnav.getBoundingClientRect();
+                  const mobileRect=mobile.getBoundingClientRect();
+                  const mobileRects=mobileLinks.map(a=>a.getBoundingClientRect()).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height}));
                   return {
-                    topbarLinks:document.querySelectorAll('.topbar .topnav a').length,
-                    mobileNavs:document.querySelectorAll('.mobile-nav.public-four-nav').length,
-                    activeLinks:document.querySelectorAll('.topnav a.active').length,
-                    cards:document.querySelectorAll('.event-compact').length,
+                    finalUrl:location.href,
+                    viewport:innerWidth,
+                    scrollWidth:document.documentElement.scrollWidth,
                     topbarHeight:parseFloat(topbarStyle.height),
+                    backgroundImage:topbarStyle.backgroundImage,
                     innerHeight:parseFloat(innerStyle.height),
                     innerMaxWidth:innerStyle.maxWidth,
-                    innerPaddingLeft:innerStyle.paddingLeft,
-                    innerPaddingRight:innerStyle.paddingRight,
                     brandFontSize:brandStyle.fontSize,
                     brandFontWeight:brandStyle.fontWeight,
                     brandLetterSpacing:brandStyle.letterSpacing,
                     brandLineHeight:brandStyle.lineHeight,
                     brandX:brandRect.x,
                     brandY:brandRect.y,
-                    navFontSize:linkStyle.fontSize,
-                    navFontWeight:linkStyle.fontWeight,
-                    navLineHeight:linkStyle.lineHeight,
-                    navGap:navStyle.gap,
-                    navX:navRect.x,
-                    navY:navRect.y,
-                    navWidth:navRect.width,
-                    backgroundImage:topbarStyle.backgroundImage
+                    desktopDisplay:topnavStyle.display,
+                    desktopLinks:desktopLinks.length,
+                    desktopActive:desktopLinks.filter(a=>a.classList.contains('active')).length,
+                    desktopFontSize:desktopLinkStyle?.fontSize||'',
+                    desktopFontWeight:desktopLinkStyle?.fontWeight||'',
+                    desktopLineHeight:desktopLinkStyle?.lineHeight||'',
+                    desktopGap:topnavStyle.gap,
+                    desktopX:topnavRect.x,
+                    desktopY:topnavRect.y,
+                    desktopWidth:topnavRect.width,
+                    mobileDisplay:mobileStyle.display,
+                    mobileLinks:mobileLinks.length,
+                    mobileActive:mobileLinks.filter(a=>a.classList.contains('active')).length,
+                    mobileFontSize:mobileLinkStyle?.fontSize||'',
+                    mobileFontWeight:mobileLinkStyle?.fontWeight||'',
+                    mobileLineHeight:mobileLinkStyle?.lineHeight||'',
+                    mobileHeight:mobileRect.height,
+                    mobileWidth:mobileRect.width,
+                    mobileRects,
+                    activeColor:active?getComputedStyle(active).color:'',
+                    liveScoreDesktopColor:document.querySelector('.topnav a.active')?getComputedStyle(document.querySelector('.topnav a.active')).color:'',
+                    liveScoreMobileColor:document.querySelector('.mobile-nav a.active')?getComputedStyle(document.querySelector('.mobile-nav a.active')).color:''
                   };
                 });
               };
 
-              const snapshots={};
-              snapshots.signal=await capture(urls.signal,false);
-              snapshots.statistics=await capture(urls.statistics,false);
-              snapshots.liveScore=await capture(urls.liveScore,true);
-              console.log('HEADER_SNAPSHOTS',JSON.stringify(snapshots,null,2));
-
-              for(const [name,snapshot] of Object.entries(snapshots)){
-                if(snapshot.topbarLinks!==4)throw new Error(`${name}: expected 4 topbar links, got ${snapshot.topbarLinks}`);
-                if(snapshot.mobileNavs!==1)throw new Error(`${name}: expected 1 mobile nav, got ${snapshot.mobileNavs}`);
-                if(snapshot.activeLinks!==1)throw new Error(`${name}: expected 1 active topbar link, got ${snapshot.activeLinks}`);
-                if(snapshot.topbarHeight!==64)throw new Error(`${name}: expected 64px topbar, got ${snapshot.topbarHeight}`);
-                if(snapshot.innerHeight!==64)throw new Error(`${name}: expected 64px inner header, got ${snapshot.innerHeight}`);
-                if(snapshot.innerMaxWidth!=='1120px')throw new Error(`${name}: expected 1120px max-width, got ${snapshot.innerMaxWidth}`);
-                if(snapshot.brandFontSize!=='24px')throw new Error(`${name}: expected 24px logo, got ${snapshot.brandFontSize}`);
-                if(snapshot.navFontSize!=='13px')throw new Error(`${name}: expected 13px menu text, got ${snapshot.navFontSize}`);
-                if(snapshot.navFontWeight!=='900')throw new Error(`${name}: expected menu weight 900, got ${snapshot.navFontWeight}`);
-                if(snapshot.navGap!=='2px')throw new Error(`${name}: expected 2px nav gap, got ${snapshot.navGap}`);
-                if(!snapshot.backgroundImage.includes('linear-gradient'))throw new Error(`${name}: expected shared green gradient topbar`);
+              // Wait for the presentation-only 3.42 CSS to reach the public route.
+              let ready=false;
+              for(let attempt=1;attempt<=12;attempt++){
+                const s=await capture(sites[0].urls.liveScore,390);
+                console.log('READY_CHECK',attempt,JSON.stringify({mobileLinks:s.mobileLinks,mobileHeight:s.mobileHeight,color:s.liveScoreMobileColor,scrollWidth:s.scrollWidth,viewport:s.viewport}));
+                if(s.mobileLinks===4&&close(s.mobileHeight,44)&&s.liveScoreMobileColor===GREEN&&s.scrollWidth<=s.viewport+1){ready=true;break;}
+                await new Promise(r=>setTimeout(r,10000));
               }
-              if(snapshots.liveScore.cards<1)throw new Error('liveScore: expected live TotalCorner cards');
+              expect(ready,'public 3.42 UI did not reach the expected responsive navigation state');
 
-              for(const key of comparableKeys){
-                const a=snapshots.signal[key];
-                for(const name of ['statistics','liveScore']){
-                  const b=snapshots[name][key];
-                  if(!closeEnough(a,b))throw new Error(`${key} mismatch: signal=${a}, ${name}=${b}`);
+              for(const site of sites){
+                for(const width of viewports){
+                  const snapshots={};
+                  for(const [name,url] of Object.entries(site.urls))snapshots[name]=await capture(url,width);
+                  console.log('UI_MATRIX',site.name,width,JSON.stringify(snapshots));
+                  const mobile=width<=700;
+
+                  for(const [name,s] of Object.entries(snapshots)){
+                    expect(s.scrollWidth<=s.viewport+1,`${site.name}/${name}/${width}: horizontal overflow ${s.scrollWidth}>${s.viewport}`);
+                    expect(s.backgroundImage.includes('linear-gradient'),`${site.name}/${name}/${width}: missing green header gradient`);
+                    expect(s.brandFontWeight==='900',`${site.name}/${name}/${width}: logo weight ${s.brandFontWeight}`);
+                    if(mobile){
+                      expect(close(s.topbarHeight,58),`${site.name}/${name}/${width}: topbar ${s.topbarHeight}, expected 58`);
+                      expect(s.brandFontSize==='20px',`${site.name}/${name}/${width}: logo ${s.brandFontSize}, expected 20px`);
+                      expect(s.desktopDisplay==='none',`${site.name}/${name}/${width}: desktop nav visible on mobile`);
+                      expect(s.mobileDisplay==='grid',`${site.name}/${name}/${width}: mobile nav display ${s.mobileDisplay}`);
+                      expect(s.mobileLinks===4,`${site.name}/${name}/${width}: mobile links ${s.mobileLinks}`);
+                      expect(s.mobileActive===1,`${site.name}/${name}/${width}: mobile active links ${s.mobileActive}`);
+                      expect(s.mobileFontSize==='11.7px',`${site.name}/${name}/${width}: mobile font ${s.mobileFontSize}`);
+                      expect(s.mobileFontWeight==='900',`${site.name}/${name}/${width}: mobile weight ${s.mobileFontWeight}`);
+                      expect(close(s.mobileHeight,44),`${site.name}/${name}/${width}: mobile nav height ${s.mobileHeight}`);
+                      expect(close(s.mobileWidth,s.viewport,1),`${site.name}/${name}/${width}: mobile nav width ${s.mobileWidth}/${s.viewport}`);
+                      expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
+                      expect(s.mobileRects.length===4,`${site.name}/${name}/${width}: mobile rect count ${s.mobileRects.length}`);
+                      const y=s.mobileRects[0].y,h=s.mobileRects[0].height,w=s.mobileRects[0].width;
+                      for(const r of s.mobileRects){
+                        expect(close(r.y,y),`${site.name}/${name}/${width}: mobile link wrapped to another row`);
+                        expect(close(r.height,h),`${site.name}/${name}/${width}: mobile link height mismatch`);
+                        expect(close(r.width,w,1),`${site.name}/${name}/${width}: mobile link widths differ`);
+                      }
+                    }else{
+                      expect(close(s.topbarHeight,64),`${site.name}/${name}/${width}: topbar ${s.topbarHeight}, expected 64`);
+                      expect(close(s.innerHeight,64),`${site.name}/${name}/${width}: inner header ${s.innerHeight}, expected 64`);
+                      expect(s.innerMaxWidth==='1120px',`${site.name}/${name}/${width}: max-width ${s.innerMaxWidth}`);
+                      expect(s.brandFontSize==='24px',`${site.name}/${name}/${width}: logo ${s.brandFontSize}`);
+                      expect(s.desktopDisplay==='flex',`${site.name}/${name}/${width}: desktop nav display ${s.desktopDisplay}`);
+                      expect(s.desktopLinks===4,`${site.name}/${name}/${width}: desktop links ${s.desktopLinks}`);
+                      expect(s.desktopActive===1,`${site.name}/${name}/${width}: desktop active links ${s.desktopActive}`);
+                      expect(s.desktopFontSize==='13px',`${site.name}/${name}/${width}: desktop font ${s.desktopFontSize}`);
+                      expect(s.desktopFontWeight==='900',`${site.name}/${name}/${width}: desktop weight ${s.desktopFontWeight}`);
+                      expect(s.desktopGap==='2px',`${site.name}/${name}/${width}: nav gap ${s.desktopGap}`);
+                      expect(s.activeColor===GREEN,`${site.name}/${name}/${width}: active color ${s.activeColor}`);
+                    }
+                  }
+
+                  const reference=snapshots.signal;
+                  for(const name of ['statistics','liveScore']){
+                    const s=snapshots[name];
+                    expect(close(s.topbarHeight,reference.topbarHeight),`${site.name}/${width}: ${name} topbar mismatch`);
+                    expect(close(s.brandX,reference.brandX),`${site.name}/${width}: ${name} logo X mismatch ${s.brandX}/${reference.brandX}`);
+                    expect(close(s.brandY,reference.brandY),`${site.name}/${width}: ${name} logo Y mismatch ${s.brandY}/${reference.brandY}`);
+                    expect(s.brandFontSize===reference.brandFontSize,`${site.name}/${width}: ${name} logo font mismatch`);
+                    if(!mobile){
+                      expect(close(s.desktopX,reference.desktopX),`${site.name}/${width}: ${name} nav X mismatch`);
+                      expect(close(s.desktopY,reference.desktopY),`${site.name}/${width}: ${name} nav Y mismatch`);
+                      expect(close(s.desktopWidth,reference.desktopWidth),`${site.name}/${width}: ${name} nav width mismatch`);
+                    }
+                  }
                 }
               }
-
-              await page.goto(urls.liveScore,{waitUntil:'domcontentloaded',timeout:60000});
-              await page.waitForSelector('.event-compact',{timeout:45000});
-              const id=await page.$eval('.event-compact',el=>el.dataset.matchId);
-              const safeId=String(id).replace(/\\/g,'\\\\').replace(/"/g,'\\"');
-              const selector=`.event-compact[data-match-id="${safeId}"]`;
-              await page.click(selector);
-              await page.waitForFunction(sel=>document.querySelector(sel)?.classList.contains('expanded'),{},selector);
-              const expandedAfterOpen=await page.$$eval('.event-compact.expanded',els=>els.length);
-              if(expandedAfterOpen!==1)throw new Error(`expected 1 expanded card after open, got ${expandedAfterOpen}`);
-              await page.click(`${selector} .event-details`);
-              await page.waitForFunction(sel=>!document.querySelector(sel)?.classList.contains('expanded'),{},selector);
-              await new Promise(r=>setTimeout(r,550));
-              const result=await page.evaluate(sel=>({
-                originalExpanded:document.querySelector(sel)?.classList.contains('expanded')||false,
-                expandedIds:[...document.querySelectorAll('.event-compact.expanded')].map(el=>el.dataset.matchId)
-              }),selector);
-              console.log(JSON.stringify({testedMatchId:id,...result},null,2));
-              if(result.originalExpanded)throw new Error('original card stayed expanded');
-              if(result.expandedIds.length!==0)throw new Error(`click-through opened another card: ${result.expandedIds.join(',')}`);
+              console.log('RESPONSIVE_NAV_UI_OK');
             }finally{await browser.close();}
           })().catch(error=>{console.error(error);process.exit(1)});
           NODE
