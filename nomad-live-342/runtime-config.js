@@ -2,9 +2,16 @@
 'use strict';
 const DEFAULT_ENGINE='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
 const DEFAULT_PRICE='https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev';
+const PRODUCTION_HOSTS=new Set([
+  'www.nomadtips3.com',
+  'nomadtips3.com',
+  'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev',
+]);
 const FEED_PATH='/feed';
 const FEED_LKG_KEY='nomad342FeedLastGoodV1';
 const FEED_LKG_MAX_AGE_MS=3*60*1000;
+const sameOriginProduction=typeof location!=='undefined'&&PRODUCTION_HOSTS.has(location.hostname);
+const ACTIVE_ENGINE=sameOriginProduction?`${location.origin}/nomad-live-342`:DEFAULT_ENGINE;
 let priceOverride='';
 try{
   localStorage.removeItem('nomadEngine342Base');
@@ -95,12 +102,13 @@ function installFeedResilience(engineBase,feedPath){
   window.__nomad342FeedResilience=Object.freeze({target,maxAgeMs:FEED_LKG_MAX_AGE_MS,storageKey:FEED_LKG_KEY});
 }
 
-installFeedResilience(DEFAULT_ENGINE,FEED_PATH);
+installFeedResilience(ACTIVE_ENGINE,FEED_PATH);
 
 window.NOMAD342_RUNTIME=Object.freeze({
   version:'3.42',
-  environment:'GIT',
-  engineBase:DEFAULT_ENGINE,
+  environment:sameOriginProduction?'PRODUCTION':'GIT',
+  transport:sameOriginProduction?'same-origin':'direct-worker',
+  engineBase:cleanBase(ACTIVE_ENGINE),
   defaultEngineBase:DEFAULT_ENGINE,
   feedPath:FEED_PATH,
   priceBase:cleanBase(priceOverride||DEFAULT_PRICE),
