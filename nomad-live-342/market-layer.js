@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
 const runtime=window.NOMAD342_MARKET_RUNTIME||{};
+const preset=window.NOMAD342_K_LIVE_PRESET||{};
+const kMarket=preset.market||{};
 const list=()=>document.getElementById('matchList');
 let timer=null,running=false,lastPayload=null,lastError=null;
 
@@ -50,19 +52,44 @@ function previousSnapshot(m){const rows=historyStore()[historyKey(m)]||[];if(row
 function movement(current,previous){const a=finite(current),b=finite(previous);if(a===null||b===null)return {arrow:'',label:''};const d=a-b;if(Math.abs(d)<.005)return {arrow:'→',label:'steady'};return d<0?{arrow:'↓',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}:{arrow:'↑',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}}
 function moveHtml(label,current,previous){const m=movement(current,previous);return !m.arrow?'':`<span class="market-move"><b>${esc(label)}</b> ${esc(m.label||fmtOdds(current))} <i class="${m.arrow==='↓'?'down':m.arrow==='↑'?'up':'flat'}">${m.arrow}</i></span>`}
 
+function consensusUsable(data){
+  const strength=String(data?.strength||'MIXED').toUpperCase();
+  const share=finite(data?.weightedShare),minimum=Number(kMarket.moderateShare)||.58;
+  return ['MODERATE','STRONG'].includes(strength)&&(share===null||share>=minimum);
+}
+function kLiveNet(r,m){
+  const eventPass=Boolean(r?.event?.pass),books=Array.isArray(m?.bookmakers)?m.bookmakers:[],cons=m?.consensus||{};
+  const at=observedAt(m),age=Number.isFinite(at)?Date.now()-at:Infinity;
+  const maxAge=Math.min(Number(runtime.maxDisplayAgeMs)||30000,Number(kMarket.maxAgeMs)||30000);
+  const minRefs=Math.max(1,Number(kMarket.minReferees)||3);
+  if(!eventPass)return {status:'WATCH',label:'EVENT WAIT',css:'observe',detail:'Event Gate has not passed'};
+  if(age>maxAge||books.length<minRefs)return {status:'EVENT_ONLY',label:'EVENT ONLY',css:'observe',detail:`Market net needs ${minRefs}+ fresh referees`};
+
+  const ah=cons.ah||{},one=cons.oneXtwo||{},tot=cons.totals||{};
+  const ahOk=consensusUsable(ah),oneOk=consensusUsable(one),totOk=consensusUsable(tot);
+  const ahSide=String(ah.side||'MIXED').toUpperCase(),oneSide=String(one.side||'MIXED').toUpperCase(),totSide=String(tot.side||'MIXED').toUpperCase();
+  const conflict=(ahOk&&ahSide==='AWAY')||(oneOk&&oneSide==='AWAY');
+  if(conflict)return {status:'CONFLICT',label:'MARKET CONFLICT',css:'conflict',detail:`AH ${ahSide} · 1X2 ${oneSide}`};
+
+  const ahHome=ahOk&&ahSide==='HOME',oneHome=oneOk&&oneSide==='HOME';
+  const strongHome=(ahHome&&String(ah.strength).toUpperCase()==='STRONG')||(oneHome&&String(one.strength).toUpperCase()==='STRONG');
+  const context=totOk&&['OVER','UNDER'].includes(totSide)?` / ${totSide}`:'';
+  if(ahHome&&oneHome&&strongHome)return {status:'STRONG',label:`STRONG HOME${context}`,css:'confirm',detail:`AH ${ah.strength} · 1X2 ${one.strength}${totOk?` · O/U ${tot.strength}`:''}`};
+  if(ahHome||oneHome)return {status:'CONFIRM',label:`CONFIRM HOME${context}`,css:'confirm',detail:`AH ${ahOk?ahSide:'MIXED'} · 1X2 ${oneOk?oneSide:'MIXED'}${totOk?` · O/U ${totSide}`:''}`};
+  return {status:'WATCH',label:`WATCH${context}`,css:'mixed',detail:`AH ${ahOk?ahSide:'MIXED'} · 1X2 ${oneOk?oneSide:'MIXED'}${totOk?` · O/U ${totSide}`:''}`};
+}
+
 function consensusBlock(label,data,cls){
   const side=String(data?.side||'MIXED'),strength=String(data?.strength||'MIXED'),agree=finite(data?.agree),total=finite(data?.total);
   return `<div class="market-consensus-item ${cls}"><span>${esc(label)}</span><strong>${esc(side)}</strong><small>${agree!==null&&total!==null?`${agree}/${total} · `:''}${esc(strength)}</small></div>`;
 }
 function marketHtml(m,r){
-  const main=m?.main||{},prev=previousSnapshot(m),age=Date.now()-(observedAt(m)||Date.now()),books=Array.isArray(m?.bookmakers)?m.bookmakers:[],cons=m?.consensus||{};
+  const main=m?.main||{},prev=previousSnapshot(m),age=Date.now()-(observedAt(m)||Date.now()),books=Array.isArray(m?.bookmakers)?m.bookmakers:[],cons=m?.consensus||{},k=kLiveNet(r,m);
   const ah=main.ah,one=main.oneXtwo,tot=main.totals;
   const ahMove=moveHtml('HOME AH',ah?.homeOdds,prev?.ah?.line===ah?.line?prev?.ah?.homeOdds:null);
   const oneMove=moveHtml('HOME 1X2',one?.home,prev?.oneXtwo?.home);
   const ouMove=moveHtml('OVER',tot?.overOdds,prev?.totals?.line===tot?.line?prev?.totals?.overOdds:null);
-  const eventPass=Boolean(r?.event?.pass),homeMarket=[cons?.ah?.side,cons?.oneXtwo?.side].filter(Boolean);
-  const confirm=eventPass&&homeMarket.includes('HOME')&&!homeMarket.includes('AWAY')?'CONFIRM':eventPass&&homeMarket.includes('AWAY')?'CONFLICT':eventPass?'MIXED':'OBSERVE';
-  return `<section class="nomad-market-card" data-market-match="${esc(m.matchKey||historyKey(m))}">
+  return `<section class="nomad-market-card" data-market-match="${esc(m.matchKey||historyKey(m))}" data-k-live="${esc(k.status)}">
     <div class="market-head"><div><span>MARKET REFEREES</span><small>AH · 1X2 · OVER/UNDER</small></div><div class="market-health"><strong>${books.length}</strong><span>ONLINE</span><small>${esc(ageText(age))} old</small></div></div>
     <div class="market-grid">
       <article class="market-tile market-ah"><div class="market-title"><span>AH</span><b>ASIAN HANDICAP</b></div>${ah?`<div class="market-pair"><div><small>HOME</small><strong>${esc(fmtLine(ah.line))}</strong><b>@ ${esc(fmtOdds(ah.homeOdds))}</b></div><div><small>AWAY</small><strong>${esc(fmtLine(inverseLine(ah.line)))}</strong><b>@ ${esc(fmtOdds(ah.awayOdds))}</b></div></div>${ahMove}`:'<div class="market-empty">NO FRESH MAIN LINE</div>'}</article>
@@ -70,7 +97,7 @@ function marketHtml(m,r){
       <article class="market-tile market-ou"><div class="market-title"><span>O/U</span><b>TOTAL ${esc(fmtLine(tot?.line))}</b></div>${tot?`<div class="market-pair"><div><small>OVER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.overOdds))}</b></div><div><small>UNDER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.underOdds))}</b></div></div>${ouMove}`:'<div class="market-empty">NO FRESH TOTAL</div>'}</article>
     </div>
     <div class="market-consensus">${consensusBlock('AH',cons.ah,'ah')}${consensusBlock('1X2',cons.oneXtwo,'one')}${consensusBlock('O/U',cons.totals,'ou')}<div class="market-consensus-overall"><span>MARKET CONSENSUS</span><strong>${esc(cons?.overall?.label||'MIXED')}</strong><small>${esc(cons?.overall?.strength||'MIXED')}</small></div></div>
-    <div class="market-confirm market-confirm-${confirm.toLowerCase()}"><span>NOMAD MARKET CHECK</span><strong>${esc(confirm)}</strong><small>${esc(String(runtime.mode||'DISPLAY'))} MODE · does not alter Event Gate</small></div>
+    <div class="market-confirm market-confirm-${esc(k.css)}"><span>K LIVE NET</span><strong>${esc(k.label)}</strong><small>${esc(k.detail)} · AUTO ALL MATCHES · Event Gate unchanged</small></div>
     <div class="market-bookmakers"><span>REFEREES</span>${books.slice(0,12).map(b=>`<b>${esc(b.name)}</b>`).join('')}${books.length>12?`<i>+${books.length-12}</i>`:''}</div>
   </section>`;
 }
@@ -81,13 +108,13 @@ function hydrateCard(card,r,marketMatches){
   removeMarket(card);
   const market=mapMarket(r.m,marketMatches);
   if(!market)return;
-  const at=observedAt(market),maxAge=Number(runtime.maxDisplayAgeMs)||45000;
+  const at=observedAt(market),maxAge=Math.min(Number(runtime.maxDisplayAgeMs)||30000,Number(kMarket.maxAgeMs)||30000);
   if(!Number.isFinite(at)||Date.now()-at>maxAge)return;
   const details=card.querySelector('.event-details');
   if(!details)return;
   const wrap=document.createElement('div');wrap.innerHTML=marketHtml(market,r);const node=wrap.firstElementChild;if(!node)return;
   details.insertBefore(node,details.firstChild);
-  const badge=document.createElement('span');badge.className='market-mini-badge';badge.textContent=`MARKET ${market.refereesOnline||market.bookmakers?.length||0}`;
+  const badge=document.createElement('span');badge.className='market-mini-badge';badge.textContent=`K LIVE · ${market.refereesOnline||market.bookmakers?.length||0}`;
   const topline=card.querySelector('.card-topline');if(topline)topline.appendChild(badge);
 }
 function hydrateAll(){
@@ -115,7 +142,7 @@ async function cycle(){
     if(!data){lastPayload=null;lastError=runtime.base?'market_off':'market_unconfigured';clearAll();return}
     lastPayload=data;lastError=null;remember(data);hydrateAll();
   }catch(error){lastError=String(error?.message||error);lastPayload=null;clearAll()}finally{
-    window.__nomad342MarketState={ok:Boolean(lastPayload),error:lastError,mode:runtime.mode,provider:lastPayload?.provider||null,updatedAt:Date.now()};
+    window.__nomad342MarketState={ok:Boolean(lastPayload),error:lastError,mode:runtime.mode,provider:lastPayload?.provider||null,updatedAt:Date.now(),preset:preset.version||null};
     running=false;
   }
 }
