@@ -13,6 +13,16 @@ body[data-page="live"] .attack-chart{
   body[data-page="live"] .attack-empty{height:196px}
 }
 
+/* Keep the legacy reference midline as a safe fallback until a valid rolling
+   pressure series is available. */
+body[data-page="live"] .attack-chart:not([data-pressure-scale="0-100"]) .chart-grid-mid{
+  stroke:rgba(104,119,109,.68);
+  stroke-width:.28;
+  stroke-dasharray:.35 .55;
+  stroke-linecap:round;
+  opacity:.9;
+}
+
 /* The original attack-change guide lines are hidden only after the pressure
    overlay has successfully built a real 0–100% series. */
 body[data-page="live"] .attack-chart[data-pressure-scale="0-100"] .chart-grid{
