@@ -6,8 +6,13 @@
 .nomad-info-linkrail a:hover,.nomad-info-linkrail a:focus-visible{color:#00f0a8;outline:none}
 .nomad-info-linkrail a:focus-visible{text-decoration:underline;text-underline-offset:3px}
 
+/* Legacy root footer compatibility for Picks: the renderer replaces the old
+   three-link rail with the current five-link information rail. */
+.site-footer .site-footer__links .site-footer__divider{width:1px;height:10px;background:rgba(255,255,255,.16)}
+.site-footer .site-footer__links a:hover,.site-footer .site-footer__links a:focus-visible{color:#00f0a8!important;outline:none}
+
 /* Standalone footer used by Picks and information pages when no existing
-   3.41 footer is present. */
+   footer is present. */
 .nomad-info-footer{margin-top:28px;background:#0f100f;border-top:1px solid rgba(255,255,255,.08);color:#8f928f}
 .nomad-info-footer *{box-sizing:border-box}
 .nomad-info-footer-inner{max-width:1120px;margin:0 auto;padding:22px 16px 20px}
