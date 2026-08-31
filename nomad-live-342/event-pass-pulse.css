@@ -1,0 +1,22 @@
+/* 3.42 Live Score — isolated visual pulse for matches that pass the Event Gate. */
+@keyframes nomad342EventPassPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(131,223,137,.08),0 0 10px rgba(131,223,137,.12)}
+  50%{box-shadow:0 0 0 2px rgba(131,223,137,.16),0 0 22px rgba(131,223,137,.30)}
+}
+
+body[data-page="live"] .event-compact.signal-card-pass{
+  border-color:rgba(131,223,137,.72)!important;
+  animation:nomad342EventPassPulse 1.8s ease-in-out infinite;
+}
+
+body[data-page="live"] .event-compact.signal-card-pass:hover,
+body[data-page="live"] .event-compact.signal-card-pass.expanded{
+  border-color:rgba(131,223,137,.88)!important;
+}
+
+@media (prefers-reduced-motion:reduce){
+  body[data-page="live"] .event-compact.signal-card-pass{
+    animation:none;
+    box-shadow:0 0 0 1px rgba(131,223,137,.16),0 0 14px rgba(131,223,137,.18);
+  }
+}
