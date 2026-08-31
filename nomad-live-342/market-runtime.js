@@ -13,14 +13,14 @@ if(typeof window.NOMAD342_MARKET_BASE==='string'&&window.NOMAD342_MARKET_BASE.tr
   base=window.NOMAD342_MARKET_BASE.trim().replace(/\/$/,'');
 }
 window.NOMAD342_MARKET_RUNTIME=Object.freeze({
-  version:'market-v1',
+  version:'market-v1-k-live',
   base,
   path:'/markets',
   healthPath:'/health',
   mode,
   pollMs:15000,
   timeoutMs:6500,
-  maxDisplayAgeMs:45000,
+  maxDisplayAgeMs:30000,
   historyKey:'nomad342MarketHistoryV1',
   historyMaxRows:24,
   optional:true,
