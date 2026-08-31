@@ -1,0 +1,24 @@
+/* NOMADTIPS3 3.42 RADAR premium dark background override.
+   Display-only: does not change feed, analytics metrics, Event Gate, odds or signals. */
+body[data-page="live"] .na-radar-grid{
+  fill:rgba(18,20,19,.92);
+  stroke:rgba(120,130,123,.20);
+  stroke-width:.65;
+}
+
+body[data-page="live"] .na-radar-mid{
+  fill:rgba(28,32,30,.50);
+  stroke:rgba(120,130,123,.10);
+}
+
+body[data-page="live"] .na-radar-home{
+  fill:rgba(131,223,137,.14);
+  stroke:var(--na-green);
+  stroke-width:1.1;
+}
+
+body[data-page="live"] .na-radar-away{
+  fill:rgba(155,164,157,.08);
+  stroke:#9ba49d;
+  stroke-width:1;
+}
