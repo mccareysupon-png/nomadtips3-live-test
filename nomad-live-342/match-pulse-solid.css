@@ -1,0 +1,64 @@
+/* NOMADTIPS3 3.42 Match Pulse solid-pie override.
+   Display-only: keeps live pressure calculation and analytics logic unchanged. */
+
+body[data-page="live"] .na-pressure-ring{
+  background:conic-gradient(var(--na-green) 0 var(--na-home),#343b35 var(--na-home) 100%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.025);
+}
+
+/* Solid pie: remove donut hole and all center copy/numbers. */
+body[data-page="live"] .na-pressure-ring::after{
+  display:none!important;
+  content:none!important;
+}
+body[data-page="live"] .na-pressure-ring>div{
+  display:none!important;
+}
+
+/* Keep dynamic HOME / AWAY labels and percentages below the pie. */
+body[data-page="live"] .na-pressure-split{
+  width:100%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:6px;
+  margin-top:6px;
+}
+body[data-page="live"] .na-pressure-split span{
+  display:flex;
+  align-items:baseline;
+  justify-content:center;
+  gap:3px;
+  min-width:0;
+  font-size:5.5px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+}
+body[data-page="live"] .na-pressure-split b{
+  display:inline;
+  margin:0;
+  font-size:5.5px;
+  line-height:1.15;
+}
+body[data-page="live"] .na-pressure-split span:first-child,
+body[data-page="live"] .na-pressure-split span:first-child b{
+  color:var(--na-green);
+}
+body[data-page="live"] .na-pressure-split span:last-child,
+body[data-page="live"] .na-pressure-split span:last-child b{
+  color:#9ba49d;
+}
+
+/* Keep labels below the circle on narrow screens too. */
+@media(max-width:480px){
+  body[data-page="live"] .na-pressure-wrap{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+  }
+  body[data-page="live"] .na-pressure-split{
+    margin-top:6px!important;
+  }
+}
