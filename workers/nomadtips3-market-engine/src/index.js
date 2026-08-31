@@ -1,5 +1,6 @@
 import { normalizeProviderPayload } from './normalize.js';
 import { fetchAsianBookiePayload, asianBookieConfig } from './asianbookie.js';
+import { fetchApiFootballCandidate } from './api-football-candidate.js';
 
 const CACHE_MS = 5_000;
 let memoryCache = { at: 0, payload: null, providerKey: '' };
@@ -104,6 +105,13 @@ export default {
         providerKind: config.kind || 'generic',
         providerName: config.providerName,
         maxMarketAgeMs: config.maxAgeMs,
+        apiFootballCandidate: {
+          enabled: true,
+          configured: Boolean(env.API_FOOTBALL_KEY),
+          trigger: 'EVENT_PASS_ONLY',
+          markets: ['1X2', 'OVER_UNDER'],
+          fixtureCacheMs: 180000,
+        },
         asianBookie: asian ? {
           enabled: true,
           base: asian.base,
@@ -113,6 +121,38 @@ export default {
         eventDependency: false,
         oddStormPublicScraping: false,
       }, 200, env);
+    }
+
+    if (url.pathname === '/candidate' && request.method === 'GET') {
+      if (!env.API_FOOTBALL_KEY) {
+        return json(request, {
+          ok: false,
+          version: 'api-football-candidate-v1',
+          error: 'api_football_key_not_configured',
+          optional: true,
+        }, 503, env);
+      }
+      const scoreHome = Number(url.searchParams.get('scoreHome'));
+      const scoreAway = Number(url.searchParams.get('scoreAway'));
+      const query = {
+        home: url.searchParams.get('home') || '',
+        away: url.searchParams.get('away') || '',
+        minute: url.searchParams.get('minute'),
+        score: Number.isFinite(scoreHome) && Number.isFinite(scoreAway) ? [scoreHome, scoreAway] : null,
+      };
+      try {
+        const result = await fetchApiFootballCandidate(env.API_FOOTBALL_KEY, query, config.timeoutMs);
+        return json(request, { ...result, optional: true }, result.ok ? 200 : 404, env);
+      } catch (error) {
+        const reason = error?.name === 'AbortError' ? 'api_football_timeout' : String(error?.message || error || 'api_football_candidate_failed');
+        return json(request, {
+          ok: false,
+          version: 'api-football-candidate-v1',
+          provider: 'API-Football',
+          error: reason,
+          optional: true,
+        }, 502, env);
+      }
     }
 
     if (url.pathname === '/markets' && request.method === 'GET') {
