@@ -7,7 +7,6 @@
     'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev',
   ]);
   const GITHUB_HOST='mccareysupon-png.github.io';
-  const PROD_342_BASE='https://nomadtips3-live-engine-342.mccarey-supon.workers.dev';
   const TEST_342_BASE='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
   const POLL_MS=10000;
   const REQUEST_TIMEOUT_MS=12000;
@@ -30,6 +29,10 @@
   const minuteText=value=>finite(value)?`${Math.max(0,Math.trunc(Number(value)))}'`:'';
   const isSettled=record=>Boolean(record?.settlement&&record.settlement?.result&&record.settlement.result!=='PENDING');
   const isUsableLive=match=>Boolean(match&&!match?.freshness?.stale&&scorePair(match.score)&&finite(match.minute));
+  const setCellText=(cell,value)=>{
+    const next=String(value);
+    if(cell&&cell.textContent!==next)cell.textContent=next;
+  };
 
   function feedUrl(){
     const host=String(location.hostname||'').toLowerCase();
@@ -64,7 +67,7 @@
 
   function restoreFinalCell(cell,record){
     const fin=record?.settlement?.finalScore;
-    cell.textContent=fin?`${fin.home??'—'}–${fin.away??'—'}`:'—';
+    setCellText(cell,fin?`${fin.home??'—'}–${fin.away??'—'}`:'—');
     cell.removeAttribute('data-live-score-mirror');
   }
 
@@ -95,8 +98,8 @@
         return;
       }
 
-      finalCell.textContent=`${score} · ${minute}`;
-      finalCell.setAttribute('data-live-score-mirror','1');
+      setCellText(finalCell,`${score} · ${minute}`);
+      if(finalCell.getAttribute('data-live-score-mirror')!=='1')finalCell.setAttribute('data-live-score-mirror','1');
     });
   }
 
