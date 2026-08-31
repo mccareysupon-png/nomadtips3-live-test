@@ -8,7 +8,6 @@ const API_ROUTES=new Map([
 const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
 const PREDICTIONS_BASE='/nomadtips3-live-test';
 const NOMAD342_PREFIX='/nomad-live-342';
-const NOMAD342_ENGINE_ORIGIN='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
 
 function unavailable(message,status=503){
   return new Response(message,{status,headers:{
@@ -57,7 +56,7 @@ async function proxyPredictions(request,url){
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
-async function proxyNomad342(request,url){
+async function proxyNomad342(request,env,url){
   if(url.pathname===NOMAD342_PREFIX){
     return Response.redirect(new URL(NOMAD342_PREFIX+'/'+url.search,url.origin).toString(),302);
   }
@@ -66,14 +65,16 @@ async function proxyNomad342(request,url){
     return unavailable('NOMAD Live 3.42 route supports GET/HEAD only',405);
   }
   if(url.pathname===NOMAD342_PREFIX+'/feed'){
-    const upstreamUrl=new URL('/feed'+url.search,NOMAD342_ENGINE_ORIGIN);
-    const upstreamRequest=new Request(upstreamUrl.toString(),request);
-    const response=await fetch(upstreamRequest);
+    if(!env?.EVENT_ENGINE||typeof env.EVENT_ENGINE.fetch!=='function'){
+      return unavailable('NOMAD Live 3.42 Event Engine binding unavailable');
+    }
+    const internalUrl=new URL('/feed'+url.search,'https://nomadtips3-live-engine-342.internal');
+    const response=await env.EVENT_ENGINE.fetch(new Request(internalUrl,request));
     const headers=new Headers(response.headers);
     headers.set('cache-control','no-store, max-age=0');
     headers.set('pragma','no-cache');
     headers.set('expires','0');
-    headers.set('x-nomad-web','nomad-live-342-feed-proxy');
+    headers.set('x-nomad-web','nomad-live-342-feed-binding');
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   }
   const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
@@ -110,7 +111,7 @@ export default {
     if(liveRedirect) return liveRedirect;
     const predictionsResponse=await proxyPredictions(request,url);
     if(predictionsResponse) return predictionsResponse;
-    const nomad342Response=await proxyNomad342(request,url);
+    const nomad342Response=await proxyNomad342(request,env,url);
     if(nomad342Response) return nomad342Response;
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
       return unavailable('Static assets unavailable');
