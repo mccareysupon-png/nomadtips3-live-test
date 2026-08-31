@@ -3,6 +3,11 @@
 
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
+
+  /* Soccer Predictions did not have this legacy footer before the
+     information-page work. Keep the original page footer-free. */
+  if (/\/soccer-predictions(?:\/|$)/i.test(String(window.location.pathname || ''))) return;
+
   const liveSignalsUrl = 'https://www.nomadtips3.com/livesignal';
 
   const ensureLiveSignalsNav = () => {
