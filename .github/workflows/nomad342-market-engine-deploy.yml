@@ -1,0 +1,100 @@
+name: Deploy NOMAD 3.42 Market Engine
+
+on:
+  pull_request:
+    paths:
+      - 'workers/nomadtips3-market-engine/**'
+      - 'nomad-live-342/market-runtime.js'
+      - '.github/workflows/nomad342-market-engine-deploy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'workers/nomadtips3-market-engine/**'
+      - 'nomad-live-342/market-runtime.js'
+      - '.github/workflows/nomad342-market-engine-deploy.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  MARKET_URL: https://nomadtips3-market-engine.mccarey-supon.workers.dev
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Test market engine and K LIVE browser runtime
+        run: |
+          set -euo pipefail
+          node --check nomad-live-342/market-runtime.js
+          node --check nomad-live-342/market-layer.js
+          node --check workers/nomadtips3-market-engine/src/index.js
+          node --check workers/nomadtips3-market-engine/src/normalize.js
+          node --check workers/nomadtips3-market-engine/src/settle.js
+          cd workers/nomadtips3-market-engine
+          npm test
+      - name: Verify isolation contract
+        run: |
+          set -euo pipefail
+          grep -Fq "const DEFAULT_BASE='https://nomadtips3-market-engine.mccarey-supon.workers.dev'" nomad-live-342/market-runtime.js
+          grep -Fq 'blocksEventRender:false' nomad-live-342/market-runtime.js
+          grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
+          if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src 2>/dev/null; then
+            echo '::error::Public OddStorm HTML source detected in Market Worker'; exit 1
+          fi
+          changed="$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^nomad-live/' || true)"
+          if [ -n "$changed" ]; then
+            echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
+          fi
+          echo '3.41 sealed; market layer remains isolated and fail-open.'
+
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+      - name: Deploy isolated Market Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-market-engine
+          wranglerVersion: '4.92.0'
+          command: deploy
+      - name: Smoke-test Market Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 20 "$MARKET_URL/health?t=$(date +%s)" -o /tmp/market-health.json \
+              && grep -Fq 'nomadtips3-market-engine' /tmp/market-health.json \
+              && grep -Fq '"version":"market-v1"' /tmp/market-health.json; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { echo '::error::Market Worker health check failed'; exit 1; }
+          cat /tmp/market-health.json
+          code="$(curl -sS --max-time 20 -o /tmp/markets.json -w '%{http_code}' "$MARKET_URL/markets?t=$(date +%s)" || true)"
+          if [ "$code" = '200' ]; then
+            grep -Fq '"version":"market-v1"' /tmp/markets.json
+            echo 'MARKET DATA ONLINE: /markets returned live normalized payload.'
+          elif [ "$code" = '503' ] || [ "$code" = '502' ]; then
+            echo 'MARKET DATA OFFLINE/UNCONFIGURED: fail-open behavior confirmed; Live Score remains independent.'
+          else
+            echo "::error::Unexpected /markets HTTP status: $code"; cat /tmp/markets.json || true; exit 1
+          fi
