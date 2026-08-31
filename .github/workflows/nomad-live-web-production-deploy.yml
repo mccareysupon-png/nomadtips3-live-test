@@ -56,9 +56,13 @@ jobs:
           grep -Fq "'nomadtips3.com'" nomad-live-342/runtime-config.js
           grep -Fq "transport:sameOriginProduction?'same-origin':'direct-worker'" nomad-live-342/runtime-config.js
           grep -Fq "NOMAD342_PREFIX+'/feed'" nomad-live-web-production/src/index.js
-          grep -Fq 'nomadtips3-live-engine-342-test.mccarey-supon.workers.dev' nomad-live-web-production/src/index.js
+          grep -Fq 'env.EVENT_ENGINE.fetch' nomad-live-web-production/src/index.js
           grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
+          grep -Fq '"binding": "EVENT_ENGINE"' nomad-live-web-production/wrangler.preview.jsonc
+          grep -Fq '"service": "nomadtips3-live-engine-342-test"' nomad-live-web-production/wrangler.preview.jsonc
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"binding": "EVENT_ENGINE"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"service": "nomadtips3-live-engine-342-test"' nomad-live-web-production/wrangler.production.jsonc
           grep -Fq '"workers_dev": false' nomad-live-web-production/wrangler.production.jsonc
           if grep -Fq '"routes"' nomad-live-web-production/wrangler.production.jsonc; then
             echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
