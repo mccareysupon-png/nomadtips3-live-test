@@ -13,14 +13,13 @@
 .site-platform-time{text-align:right;white-space:nowrap}.site-platform-time small{display:block;color:#6f726f;font-size:7px;text-transform:uppercase;letter-spacing:.09em}.site-platform-time b{display:block;margin-top:4px;color:#b9bbb9;font-size:11px;font-variant-numeric:tabular-nums}
 .site-footer-bottom{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 0 0;border-top:1px solid rgba(255,255,255,.07)}.site-footer-bottom span{font-size:9px;color:#747774}
 
-/* Social icon rail — one visual system, equal hit areas and optical size. Existing footer markup stays untouched. */
+/* Social icon rail — one clean SVG system with equal boxes and optical size. */
 .site-socials{display:flex;align-items:center;gap:6px}
-.site-social{width:30px;height:30px;display:grid;place-items:center;color:#8b8e8b;font-size:0;line-height:0;transition:color .16s ease,transform .16s ease}
-.site-social svg{display:none!important}
-.site-social::before{content:"";display:block;width:17px;height:17px;background:currentColor;mask-repeat:no-repeat;mask-position:center;mask-size:contain;-webkit-mask-repeat:no-repeat;-webkit-mask-position:center;-webkit-mask-size:contain}
-.site-social.facebook::before{mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M13.7 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.7-1.6H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.6H8.2v3.2h2.6V22h2.9Z'/%3E%3C/svg%3E");-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M13.7 22v-8.2h2.8l.4-3.2h-3.2V8.5c0-.9.3-1.6 1.7-1.6H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.6H8.2v3.2h2.6V22h2.9Z'/%3E%3C/svg%3E")}
-.site-social:nth-child(2)::before{mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.2-8.3L3.2 3h6.3l4.3 5.7L18.9 3Zm-1.1 16.2h1.7L8.6 4.7H6.8l11 14.5Z'/%3E%3C/svg%3E");-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23000' d='M18.9 3H22l-6.8 7.8L23 21h-6.1l-4.8-6.3L6.6 21H3.5l7.2-8.3L3.2 3h6.3l4.3 5.7L18.9 3Zm-1.1 16.2h1.7L8.6 4.7H6.8l11 14.5Z'/%3E%3C/svg%3E")}
-.site-social:nth-child(3)::before{mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='16' height='16' rx='4' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3Ccircle cx='12' cy='12' r='3.6' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3Ccircle cx='17.25' cy='6.75' r='1' fill='%23000'/%3E%3C/svg%3E");-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='4' y='4' width='16' height='16' rx='4' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3Ccircle cx='12' cy='12' r='3.6' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3Ccircle cx='17.25' cy='6.75' r='1' fill='%23000'/%3E%3C/svg%3E")}
+.site-social{width:30px;height:30px;display:grid;place-items:center;color:#8b8e8b;line-height:0;transition:color .16s ease,transform .16s ease}
+.site-social svg{width:17px;height:17px;display:block}
+.site-social.facebook svg,.site-social.x svg{fill:currentColor;stroke:none}
+.site-social.instagram svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.site-social.instagram .instagram-dot{fill:currentColor;stroke:none}
 .site-social:hover{color:#00f0a8;transform:translateY(-1px)}
 
 @media(max-width:820px){.site-footer-inner{padding-left:12px;padding-right:12px}.site-footer-certrow{grid-template-columns:repeat(2,minmax(0,1fr))}.site-footer-meta{grid-template-columns:1fr}.site-platform-time{text-align:left}.site-footer-brand{font-size:24px}}
