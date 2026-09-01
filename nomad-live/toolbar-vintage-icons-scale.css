@@ -1,0 +1,8 @@
+/* Desktop/Laptop only: enlarge vintage toolbar icons by exactly 20% (18px -> 21.6px). */
+.toolbar .tabs .tab::before,
+.toolbar .odds-display-control button::before,
+.toolbar .odds-display-label::before{
+  width:21.6px!important;
+  height:21.6px!important;
+  flex:0 0 21.6px!important;
+}
