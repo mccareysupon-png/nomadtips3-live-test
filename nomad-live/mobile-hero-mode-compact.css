@@ -1,0 +1,40 @@
+/* Shared compact hero status treatment for Signal + Statistics on mobile/nearby devices.
+   Presentation only: no runtime, data, navigation, chart or odds logic changes.
+   Rollback marker: rollback/pre-mobile-mode-live-compact-20260901 */
+
+@media(max-width:900px){
+  .hero .mode{
+    width:auto!important;
+    min-width:0!important;
+    min-height:0!important;
+    padding:0!important;
+    margin:0!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:0!important;
+    border-left:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  .hero .mode>span,
+  .hero .mode>small{
+    display:none!important;
+  }
+
+  .hero .mode>strong{
+    display:block!important;
+    margin:0!important;
+    padding:0!important;
+    color:rgba(131,223,137,.78)!important;
+    font-size:7.2px!important;
+    font-weight:800!important;
+    line-height:1!important;
+    letter-spacing:.07em!important;
+    text-transform:none!important;
+    text-align:center!important;
+    text-shadow:0 0 5px rgba(131,223,137,.18)!important;
+  }
+}
