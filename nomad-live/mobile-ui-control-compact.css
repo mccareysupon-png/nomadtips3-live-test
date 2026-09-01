@@ -60,4 +60,46 @@
     -webkit-mask-size:18px 18px!important;
     mask-size:18px 18px!important;
   }
+
+  /* 2026-09-01 mobile filter readability pass.
+     Keep the tray height/4-column layout intact; only raise label/icon hierarchy above Odds. */
+  .toolbar .tabs .tab{
+    font-size:10px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    letter-spacing:.01em!important;
+    color:#c6cec8!important;
+  }
+  .toolbar .tabs .tab:nth-child(n+2){
+    font-size:11px!important;
+  }
+  .toolbar .tabs .tab::before{
+    width:18px!important;
+    height:18px!important;
+    flex-basis:18px!important;
+    -webkit-mask-size:18px 18px!important;
+    mask-size:18px 18px!important;
+    opacity:1!important;
+    filter:drop-shadow(0 0 1px rgba(218,232,221,.35));
+  }
+  .toolbar .tabs .tab:nth-child(n+2)::before{
+    width:21px!important;
+    height:21px!important;
+    flex-basis:21px!important;
+    -webkit-mask-size:21px 21px!important;
+    mask-size:21px 21px!important;
+  }
+  .toolbar .tabs .tab:hover,
+  .toolbar .tabs .tab:focus-visible,
+  .toolbar .tabs .tab[aria-pressed="true"],
+  .toolbar .tabs .tab[data-active="1"]{
+    color:var(--green)!important;
+    text-shadow:0 0 7px rgba(131,223,137,.28)!important;
+  }
+  .toolbar .tabs .tab:hover::before,
+  .toolbar .tabs .tab:focus-visible::before,
+  .toolbar .tabs .tab[aria-pressed="true"]::before,
+  .toolbar .tabs .tab[data-active="1"]::before{
+    filter:drop-shadow(0 0 4px rgba(131,223,137,.55));
+  }
 }
