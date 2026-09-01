@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-01T14:57:45Z",
+  "updated_at": "2026-09-01T18:37:36Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -66,8 +66,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8522,
       "edge": 72.5,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-7",
       "source_url": "https://www.goaloo.com/football/slovenia-cup-smartno-vs-nk-rudar-velenje/h2h-3082633",
       "summary_url": "https://www.goaloo.com/football/slovenia-cup-smartno-vs-nk-rudar-velenje/summary-3082633",
       "model": {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7387,
       "edge": 56.4,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-1",
       "source_url": "https://www.goaloo.com/football/women-norwegian-toppserien-lsk-kvinner-w-vs-bodo-glimt-w/h2h-2913941",
       "summary_url": "https://www.goaloo.com/football/women-norwegian-toppserien-lsk-kvinner-w-vs-bodo-glimt-w/summary-2913941",
       "model": {
@@ -1650,6 +1650,106 @@
       "data_quality": {
         "home_recent": 10,
         "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "7de744e2767ec1ba",
+      "goaloo_id": "3082633",
+      "date": "2026-09-01",
+      "kickoff": "2026-09-01 15:00:00",
+      "league": "Slovenia Cup",
+      "home": "Smartno",
+      "away": "NK Rudar Velenje",
+      "pick": "Smartno Win",
+      "side": "home",
+      "odds": 6.97,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8522,
+      "edge": 72.5,
+      "result": "LOSS",
+      "ft": "1-7",
+      "source_url": "https://www.goaloo.com/football/slovenia-cup-smartno-vs-nk-rudar-velenje/h2h-3082633",
+      "summary_url": "https://www.goaloo.com/football/slovenia-cup-smartno-vs-nk-rudar-velenje/summary-3082633",
+      "model": {
+        "lambda_home": 2.892,
+        "lambda_away": 0.683,
+        "home_win": 0.8522,
+        "draw": 0.1276,
+        "away_win": 0.0202,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.6488,
+          "gd_edge": 0.9349,
+          "clean_sheet_edge": 0.439,
+          "failed_to_score_edge": 0.2537,
+          "bounded_adjustment": 0.0511,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 4,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "6fd1ddce2ce00ed1",
+      "goaloo_id": "2913941",
+      "date": "2026-09-01",
+      "kickoff": "2026-09-01 15:30:00",
+      "league": "Women Norwegian Toppserien",
+      "home": "LSK Kvinner (W)",
+      "away": "Bodo Glimt (W)",
+      "pick": "Bodo Glimt (W) Win",
+      "side": "away",
+      "odds": 14.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7387,
+      "edge": 56.4,
+      "result": "LOSS",
+      "ft": "1-1",
+      "source_url": "https://www.goaloo.com/football/women-norwegian-toppserien-lsk-kvinner-w-vs-bodo-glimt-w/h2h-2913941",
+      "summary_url": "https://www.goaloo.com/football/women-norwegian-toppserien-lsk-kvinner-w-vs-bodo-glimt-w/summary-2913941",
+      "model": {
+        "lambda_home": 0.999,
+        "lambda_away": 2.58,
+        "home_win": 0.0871,
+        "draw": 0.1742,
+        "away_win": 0.7387,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.4,
+          "gd_edge": -0.8646,
+          "clean_sheet_edge": -0.4098,
+          "failed_to_score_edge": -0.3512,
+          "bounded_adjustment": -0.042,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.01,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
       }
