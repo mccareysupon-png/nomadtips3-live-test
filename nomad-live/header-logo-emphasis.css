@@ -1,0 +1,24 @@
+/* Signal + Statistics header brand emphasis.
+   Presentation only; keeps navigation geometry and runtime untouched.
+   Rollback marker: rollback/pre-header-logo-emphasis-20260901 */
+
+.topbar-inner.public-four-nav>.brand{
+  font-size:30px!important; /* +25% from 24px */
+  font-weight:900!important;
+  -webkit-text-stroke:.22px currentColor;
+  text-rendering:geometricPrecision;
+}
+.topbar-inner.public-four-nav>.brand span{
+  -webkit-text-stroke:.22px currentColor;
+}
+
+@media(max-width:700px){
+  .topbar-inner.public-four-nav>.brand{
+    font-size:25px!important; /* +25% from 20px */
+    font-weight:900!important;
+    -webkit-text-stroke:.24px currentColor;
+  }
+  .topbar-inner.public-four-nav>.brand span{
+    -webkit-text-stroke:.24px currentColor;
+  }
+}
