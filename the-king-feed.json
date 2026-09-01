@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-01T18:37:36Z",
+  "updated_at": "2026-09-01T21:50:45Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -266,8 +266,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7227,
       "edge": 57.7,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "4-1",
       "source_url": "https://www.goaloo.com/football/netherlands-knvb-beker-afc-34-vs-vv-scherpenzeel/h2h-3063419",
       "summary_url": "https://www.goaloo.com/football/netherlands-knvb-beker-afc-34-vs-vv-scherpenzeel/summary-3063419",
       "model": {
@@ -1751,6 +1751,56 @@
         "home_recent": 9,
         "away_recent": 9,
         "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "c022adc0a57c30c2",
+      "goaloo_id": "3063419",
+      "date": "2026-09-01",
+      "kickoff": "2026-09-01 18:00:00",
+      "league": "Netherlands KNVB Beker",
+      "home": "AFC 34",
+      "away": "VV Scherpenzeel",
+      "pick": "AFC 34 Win",
+      "side": "home",
+      "odds": 3.92,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7227,
+      "edge": 57.7,
+      "result": "WIN",
+      "ft": "4-1",
+      "source_url": "https://www.goaloo.com/football/netherlands-knvb-beker-afc-34-vs-vv-scherpenzeel/h2h-3063419",
+      "summary_url": "https://www.goaloo.com/football/netherlands-knvb-beker-afc-34-vs-vv-scherpenzeel/summary-3063419",
+      "model": {
+        "lambda_home": 3.6,
+        "lambda_away": 1.88,
+        "home_win": 0.7227,
+        "draw": 0.1453,
+        "away_win": 0.132,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4232,
+          "gd_edge": 0.8766,
+          "clean_sheet_edge": -0.122,
+          "failed_to_score_edge": 0.1756,
+          "bounded_adjustment": 0.0361,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 5,
+        "away_recent": 8,
+        "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
       }
     }
