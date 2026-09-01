@@ -33,6 +33,18 @@ body[data-page="live"] .event-stat-row:nth-of-type(2)>b{
   color:#eaffff!important;
 }
 
+/* NOMAD Live Prediction: DRAW stays neutral, AWAY gets the AWAY identity color. */
+body[data-page="live"] .nomad-live-prediction .nlp-away span,
+body[data-page="live"] .nomad-live-prediction .nlp-away b{
+  color:var(--na-away)!important;
+}
+body[data-page="live"] .nomad-live-prediction .nlp-away{
+  background:rgba(var(--na-away-rgb),.045)!important;
+}
+body[data-page="live"] .nomad-live-prediction .nlp-track-away{
+  background:var(--na-away)!important;
+}
+
 /* Analytics legends, momentum, shift and timeline. */
 body[data-page="live"] .na-dot-away,
 body[data-page="live"] .na-shift-away,
