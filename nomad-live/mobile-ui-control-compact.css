@@ -1,6 +1,6 @@
 /* Signal mobile control-tray compaction.
    Presentation-only layer loaded after mobile-ui-visual.css.
-   Keeps icons, colors and control width while reducing vertical footprint. */
+   Keeps colors, labels and control width while refining vertical hierarchy. */
 
 @media(max-width:700px){
   .toolbar{
@@ -15,15 +15,29 @@
   .tab{
     min-height:30px!important;
     padding:4px 6px!important;
+    gap:6px!important;
+  }
+  .tab::before{
+    width:16px!important;
+    height:16px!important;
+    flex-basis:16px!important;
+    -webkit-mask-size:16px 16px!important;
+    mask-size:16px 16px!important;
   }
 
+  /* Odds are a secondary control row: keep labels readable, reduce only the tray height. */
   .toolbar .odds-display-control{
-    gap:2px!important;
-    padding:2px!important;
+    gap:1px!important;
+    padding:1px!important;
+  }
+  .toolbar .odds-display-label{
+    font-weight:700!important;
+    opacity:.72!important;
   }
   .toolbar .odds-display-control button{
-    min-height:30px!important;
-    padding:4px 6px!important;
+    min-height:26px!important;
+    padding:2px 5px!important;
+    line-height:1.05!important;
   }
 
   .search{
@@ -33,5 +47,17 @@
   .search input{
     min-height:32px!important;
     padding:5px 9px!important;
+  }
+
+  /* KPI icons lead the hierarchy; info buttons and numbers keep their existing size. */
+  .status-grid>.metric>span{
+    gap:7px!important;
+  }
+  .status-grid>.metric>span::before{
+    width:18px!important;
+    height:18px!important;
+    flex-basis:18px!important;
+    -webkit-mask-size:18px 18px!important;
+    mask-size:18px 18px!important;
   }
 }
