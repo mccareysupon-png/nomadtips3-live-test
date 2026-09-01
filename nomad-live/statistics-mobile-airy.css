@@ -1,0 +1,223 @@
+@import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:900px);
+
+/* Statistics mobile / nearby-device polish.
+   Presentation only: keeps DOM order, data bindings, odds logic, chart anchor and ledger structure untouched.
+   Rollback marker: rollback/pre-statistics-mobile-airy-20260901 */
+
+@media(max-width:900px){
+  /* Primary KPI strip: one compact row, four equal columns, no decorative icons. */
+  .statistics-summary-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:0!important;
+    overflow:hidden!important;
+    border:1px solid rgba(131,223,137,.10)!important;
+    border-radius:11px!important;
+    background:linear-gradient(145deg,#142b22 0%,#102019 58%,#0d1712 100%)!important;
+    box-shadow:0 6px 16px rgba(0,0,0,.17)!important;
+  }
+  .statistics-summary-grid>.stats-breakdown-metric{
+    display:none!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4){
+    min-width:0!important;
+    min-height:44px!important;
+    padding:6px 2px 5px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    text-align:center!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .statistics-summary-grid>.metric.signal{
+    background:radial-gradient(ellipse 92% 82% at 50% 54%,rgba(36,93,52,.34),rgba(20,46,30,.12) 60%,transparent 100%)!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span{
+    width:100%!important;
+    display:block!important;
+    color:#aeb8b0!important;
+    font-size:7.5px!important;
+    font-weight:800!important;
+    line-height:1!important;
+    letter-spacing:.025em!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span::before{
+    content:none!important;
+    display:none!important;
+  }
+  .statistics-summary-grid .metric-info{
+    display:none!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4)>strong{
+    margin:4px 0 0!important;
+    font-size:16.5px!important;
+    line-height:1!important;
+    text-align:center!important;
+  }
+  .statistics-summary-grid>.metric::before,
+  .statistics-summary-grid>.metric::after{
+    content:none!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(2)::before,
+  .statistics-summary-grid>.metric:nth-child(3)::before,
+  .statistics-summary-grid>.metric:nth-child(4)::before{
+    content:""!important;
+    position:absolute!important;
+    left:0!important;
+    top:18%!important;
+    bottom:18%!important;
+    width:1px!important;
+    background:rgba(150,158,151,.13)!important;
+    pointer-events:none!important;
+  }
+
+  /* Settled breakdown: a lightweight secondary strip, not another card. */
+  .mobile-settled-summary{
+    display:block!important;
+    margin:6px 0 9px!important;
+    overflow:hidden!important;
+    border:0!important;
+    border-top:1px solid rgba(131,223,137,.09)!important;
+    border-bottom:1px solid rgba(0,0,0,.28)!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .mobile-settled-head{
+    display:none!important;
+  }
+  .mobile-settled-grid{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    padding:5px 0!important;
+  }
+  .mobile-settled-metric{
+    position:relative!important;
+    min-width:0!important;
+    padding:3px 4px!important;
+    text-align:center!important;
+  }
+  .mobile-settled-metric+.mobile-settled-metric::before{
+    content:""!important;
+    position:absolute!important;
+    left:0!important;
+    top:14%!important;
+    bottom:14%!important;
+    width:1px!important;
+    background:rgba(150,158,151,.13)!important;
+  }
+  .mobile-settled-metric span{
+    display:inline!important;
+    font-size:8px!important;
+    font-weight:850!important;
+    line-height:1!important;
+    letter-spacing:.025em!important;
+    white-space:nowrap!important;
+  }
+  .mobile-settled-metric strong{
+    display:inline!important;
+    margin:0 0 0 5px!important;
+    font-size:14px!important;
+    line-height:1!important;
+  }
+
+  /* Odds row: reuse the exact vintage artwork from PC, four equal transparent columns. */
+  .odds-display-toolbar.toolbar{
+    display:block!important;
+    width:100%!important;
+    margin:7px 0 12px!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    align-items:stretch!important;
+    gap:0!important;
+    padding:0 0 8px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(131,223,137,.10)!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:0 1px 0 rgba(0,0,0,.25)!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-label,
+  .odds-display-toolbar.toolbar .odds-display-control button{
+    min-width:0!important;
+    min-height:38px!important;
+    margin:0!important;
+    padding:3px 1px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:2px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:#aab1ab!important;
+    font-size:8px!important;
+    font-weight:800!important;
+    line-height:1!important;
+    letter-spacing:.01em!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-label{
+    color:#91a49a!important;
+    opacity:.92!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-label::before,
+  .odds-display-toolbar.toolbar .odds-display-control button::before{
+    content:""!important;
+    display:block!important;
+    width:21px!important;
+    height:21px!important;
+    flex:0 0 21px!important;
+    background-image:var(--nomad-toolbar-icon)!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    opacity:.92!important;
+    -webkit-mask:none!important;
+    mask:none!important;
+    filter:brightness(.94) saturate(.99)!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button:hover,
+  .odds-display-toolbar.toolbar .odds-display-control button:focus-visible{
+    color:#f3fff5!important;
+    background:transparent!important;
+    border-color:transparent!important;
+    text-shadow:0 0 8px rgba(255,255,255,.18)!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button:hover::before,
+  .odds-display-toolbar.toolbar .odds-display-control button:focus-visible::before{
+    opacity:1!important;
+    filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button.is-active,
+  .odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]{
+    color:var(--green)!important;
+    background:transparent!important;
+    border-color:transparent!important;
+    text-shadow:0 0 9px rgba(131,223,137,.42)!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button.is-active::before,
+  .odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]::before{
+    opacity:1!important;
+    filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
+  }
+
+  /* WIN / LOSS / PUSH already live in the compact strip above on these widths. */
+  .statistics-results-summary{
+    display:none!important;
+  }
+}
