@@ -1,0 +1,57 @@
+/* PC-only hero live indicator. Presentation only; status is driven by pc-live-indicator.js. */
+@media (min-width:1025px){
+  .hero .mode.pc-live-indicator{
+    min-width:auto!important;
+    padding-left:0!important;
+    border-left:0!important;
+    text-align:right!important;
+  }
+
+  .hero .mode.pc-live-indicator > span,
+  .hero .mode.pc-live-indicator > small{
+    display:none!important;
+  }
+
+  .hero .mode.pc-live-indicator > strong{
+    display:block!important;
+    margin:0!important;
+    font-size:16px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    letter-spacing:.01em!important;
+    white-space:nowrap!important;
+  }
+
+  .hero .mode.pc-live-indicator.is-live > strong{
+    color:var(--green)!important;
+    text-shadow:0 0 7px rgba(131,223,137,.40)!important;
+    animation:nomadPcLiveBlink 1.25s ease-in-out infinite!important;
+  }
+
+  .hero .mode.pc-live-indicator.is-offline > strong{
+    color:#ff6868!important;
+    text-shadow:0 0 5px rgba(255,104,104,.22)!important;
+    animation:none!important;
+    opacity:1!important;
+  }
+
+  .hero .mode.pc-live-indicator.is-connecting > strong{
+    color:#a9b1aa!important;
+    text-shadow:none!important;
+    animation:none!important;
+    opacity:.82!important;
+  }
+
+  @keyframes nomadPcLiveBlink{
+    0%,100%{opacity:1;filter:brightness(1.08)}
+    50%{opacity:.42;filter:brightness(.80)}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .hero .mode.pc-live-indicator.is-live > strong{
+      animation:none!important;
+      opacity:1!important;
+      filter:none!important;
+    }
+  }
+}
