@@ -1,0 +1,75 @@
+/* NOMADTIPS3 3.42 AWAY identity color.
+   UI-only override: HOME remains #83DF89, AWAY becomes #2FD5C4.
+   Neutral gray, layout, feed, prediction and Event Gate behavior are unchanged. */
+
+body[data-page="live"]{
+  --na-away:#2fd5c4;
+  --na-away-rgb:47,213,196;
+}
+
+/* Core comparison bars + Attack Flow */
+body[data-page="live"] .away-dot,
+body[data-page="live"] .event-bar-away{
+  background:var(--na-away)!important;
+}
+body[data-page="live"] .attack-away{
+  stroke:var(--na-away)!important;
+}
+body[data-page="live"] .event-details .attack-away{
+  filter:drop-shadow(0 0 .8px rgba(var(--na-away-rgb),.42))!important;
+}
+body[data-page="live"] .attack-endpoint-away{
+  background:var(--na-away)!important;
+  box-shadow:0 0 4px rgba(var(--na-away-rgb),.55),0 0 8px rgba(var(--na-away-rgb),.16)!important;
+}
+
+/* HOME/AWAY labels on core and rolling comparison cards. */
+body[data-page="live"] .event-stat-row:nth-of-type(2)>span,
+body[data-page="live"] .na-battle-row:nth-of-type(2)>b,
+body[data-page="live"] .na-away-label{
+  color:var(--na-away)!important;
+}
+body[data-page="live"] .event-stat-row:nth-of-type(2)>b{
+  color:#eaffff!important;
+}
+
+/* Analytics legends, momentum, shift and timeline. */
+body[data-page="live"] .na-dot-away,
+body[data-page="live"] .na-shift-away,
+body[data-page="live"] .na-timeline-event.away i,
+body[data-page="live"] .na-battle-row i.away{
+  background:var(--na-away)!important;
+}
+body[data-page="live"] .na-momentum-away i{
+  background:linear-gradient(180deg,rgba(var(--na-away-rgb),.96),rgba(var(--na-away-rgb),.55))!important;
+}
+body[data-page="live"] .na-shift-values span:last-child b,
+body[data-page="live"] .na-timeline-event.away small{
+  color:var(--na-away)!important;
+}
+
+/* Match Pulse: the remainder of the pie is AWAY, not neutral gray. */
+body[data-page="live"] .na-pressure-ring{
+  background:conic-gradient(var(--na-green) 0 var(--na-home),var(--na-away) var(--na-home) 100%)!important;
+}
+body[data-page="live"] .na-pressure-split span:last-child,
+body[data-page="live"] .na-pressure-split span:last-child b{
+  color:var(--na-away)!important;
+}
+
+/* Radar: equal visual weight for HOME and AWAY. */
+body[data-page="live"] .na-radar-away{
+  fill:rgba(var(--na-away-rgb),.13)!important;
+  stroke:var(--na-away)!important;
+  stroke-width:1.1!important;
+}
+
+/* Tablet/desktop comparison halves get a subtle AWAY tint.
+   Narrow phones keep their proven layout; only the identity color changes. */
+@media(min-width:641px){
+  body[data-page="live"] .event-stat-row:nth-of-type(2),
+  body[data-page="live"] .na-battle-row:nth-of-type(2){
+    background:rgba(var(--na-away-rgb),.06)!important;
+    border-left-color:rgba(var(--na-away-rgb),.72)!important;
+  }
+}
