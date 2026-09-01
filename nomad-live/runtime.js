@@ -136,7 +136,7 @@ async function livePage(){
       const d=await get('/feed');
       if(metric[0])metric[0].textContent=d.counts?.live??0;if(metric[1])metric[1].textContent=d.counts?.watching??0;if(metric[2])metric[2].textContent=d.counts?.near??0;if(metric[3])metric[3].textContent=d.counts?.signal??0;
       const openMatchIds=new Set([...list.querySelectorAll('.match-wrap[open]')].map(row=>row.dataset.matchId).filter(Boolean));
-      list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class="note">Engine online · no monitored matches currently meet the watch window.</div>';
+      list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class="note">No matches are currently in the monitoring window.</div>';
       list.querySelectorAll('.match-wrap').forEach(row=>{if(openMatchIds.has(row.dataset.matchId))row.open=true;});
       const muted=document.querySelector('.panel-head .muted');if(muted)muted.textContent=`cycle ${d.cycle??0} · ${d.updatedAt?when(d.updatedAt):'waiting first cycle'}`;
       const note=document.querySelector('main > .note');if(note)note.textContent=d.lastError?`Engine source error: ${d.lastError}`:`Live engine connected · last update ${d.updatedAt?when(d.updatedAt):'pending'}.`;
