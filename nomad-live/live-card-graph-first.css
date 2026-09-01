@@ -1,0 +1,151 @@
+/* NOMAD Live 3.41 · graph-first expanded match card
+   Presentation only. Keeps runtime/feed/detector/market logic untouched. */
+
+.match-wrap[open] > .match-detail.graph-first-ready{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:stretch;
+}
+
+.match-detail.graph-first-ready .graph-first-stage,
+.match-detail.graph-first-ready .graph-first-stats,
+.match-detail.graph-first-ready .graph-first-events,
+.match-detail.graph-first-ready .graph-first-footer{
+  width:100%;
+  min-width:0;
+}
+
+/* Graph is the primary visual block. Existing graph element is moved here, never redrawn. */
+.graph-first-stage{
+  order:1;
+  padding:10px 10px 8px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;
+  background:rgba(8,14,18,.64);
+}
+.graph-first-stage .momentum-panel,
+.graph-first-stage .momentum-chart,
+.graph-first-stage [data-m="chart"]{
+  width:100%!important;
+  max-width:none!important;
+}
+.graph-first-stage .momentum-chart,
+.graph-first-stage [data-m="chart"]{
+  min-height:210px;
+}
+
+/* Key comparison: HOME | metric | AWAY. */
+.graph-first-stats{
+  order:2;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:10px;
+  background:rgba(255,255,255,.018);
+}
+.graph-first-stats-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(120px,.72fr) minmax(0,1fr);
+  align-items:center;
+  min-height:34px;
+  padding:0 12px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+  background:linear-gradient(90deg,rgba(238,63,79,.16),rgba(255,255,255,.01) 48%,rgba(51,149,255,.15));
+}
+.graph-first-stats-head b{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.graph-first-stats-head .home{color:#ff6977;text-align:left}
+.graph-first-stats-head .away{color:#61b0ff;text-align:right}
+.graph-first-stats-head span{color:#87918b;text-align:center;font-size:7px;font-weight:900;letter-spacing:.08em}
+
+.graph-first-stat-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(120px,.72fr) minmax(0,1fr);
+  align-items:center;
+  min-height:34px;
+  padding:5px 12px;
+  border-top:1px solid rgba(255,255,255,.045);
+}
+.graph-first-stat-row:first-of-type{border-top:0}
+.graph-first-side{
+  display:grid;
+  grid-template-columns:36px minmax(40px,1fr);
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.graph-first-side.away{grid-template-columns:minmax(40px,1fr) 36px}
+.graph-first-value{
+  color:#fff;
+  font-size:12px;
+  font-weight:900;
+  text-align:left;
+}
+.graph-first-side.away .graph-first-value{text-align:right;order:2}
+.graph-first-label{
+  color:#a7b0aa;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.04em;
+  text-align:center;
+}
+.graph-first-track{
+  position:relative;
+  display:block;
+  height:6px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.06);
+}
+.graph-first-track i{
+  position:absolute;
+  top:0;
+  bottom:0;
+  display:block;
+  border-radius:999px;
+}
+.graph-first-side.home .graph-first-track i{right:0;background:linear-gradient(90deg,#ff4052,#ff7a55)}
+.graph-first-side.away .graph-first-track i{left:0;background:linear-gradient(90deg,#3a8fff,#64c4ff)}
+
+.graph-first-events{order:3}
+.graph-first-footer{order:4;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.graph-first-footer > *{min-width:0}
+
+/* Existing technical cards remain available but visually secondary. */
+.match-detail.graph-first-ready .detail-rolling-card,
+.match-detail.graph-first-ready .detail-pressure-card,
+.match-detail.graph-first-ready .detail-detector-card{
+  display:none!important;
+}
+.match-detail.graph-first-ready .detail-price-card{
+  margin:0;
+}
+
+@media(max-width:700px){
+  .match-wrap[open] > .match-detail.graph-first-ready{gap:7px}
+  .graph-first-stage{padding:8px}
+  .graph-first-stage .momentum-chart,
+  .graph-first-stage [data-m="chart"]{min-height:180px}
+  .graph-first-stats-head,
+  .graph-first-stat-row{grid-template-columns:minmax(0,1fr) 94px minmax(0,1fr);padding-left:8px;padding-right:8px}
+  .graph-first-side{grid-template-columns:28px minmax(26px,1fr);gap:5px}
+  .graph-first-side.away{grid-template-columns:minmax(26px,1fr) 28px}
+  .graph-first-value{font-size:11px}
+  .graph-first-label{font-size:7px;letter-spacing:.01em}
+  .graph-first-track{height:5px}
+  .graph-first-footer{grid-template-columns:1fr}
+}
+
+@media(max-width:420px){
+  .graph-first-stage .momentum-chart,
+  .graph-first-stage [data-m="chart"]{min-height:165px}
+  .graph-first-stats-head,
+  .graph-first-stat-row{grid-template-columns:minmax(0,1fr) 82px minmax(0,1fr);padding-left:6px;padding-right:6px}
+  .graph-first-side{grid-template-columns:26px minmax(22px,1fr);gap:4px}
+  .graph-first-side.away{grid-template-columns:minmax(22px,1fr) 26px}
+  .graph-first-value{font-size:10px}
+  .graph-first-label{font-size:6.5px}
+}
