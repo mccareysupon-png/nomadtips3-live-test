@@ -1,0 +1,62 @@
+/* Mobile spacing layer for public Signal + Statistics only.
+   Presentation only. Loaded after the existing page styles on pages 1-2.
+   Live Score 3.42 does not load this file. */
+
+@media(max-width:700px){
+  /* Page rhythm: keep major blocks visually separated without changing order. */
+  .shell>.hero{margin-bottom:10px!important}
+  .shell>.status-grid,
+  .shell>.summary-grid{margin-bottom:10px!important}
+  .shell>.toolbar{margin-bottom:10px!important}
+  .shell>.panel{margin-bottom:10px!important}
+  .shell>.note{margin-top:0!important}
+
+  /* Cards: slightly more breathing room while preserving existing dimensions. */
+  .hero{padding:12px!important;gap:14px!important}
+  .metric{padding:11px 12px!important}
+  .panel{padding:9px!important}
+  .panel-head{padding-bottom:10px!important;margin-bottom:9px!important}
+  .match-list{gap:8px!important}
+  .note{padding:10px 11px!important;line-height:1.5!important}
+
+  /* Signal controls: separate rows and keep touch targets comfortable. */
+  .toolbar{padding:9px!important;gap:9px!important}
+  .tabs{gap:6px!important}
+  .tab{min-height:36px!important;padding:8px 9px!important}
+  .search{gap:8px!important}
+  .search input{min-height:36px!important;padding:8px 10px!important}
+
+  /* Statistics section rhythm. Avoid double margins from older overrides. */
+  .mobile-settled-summary{margin:0 0 10px!important}
+  .mobile-settled-head{padding:10px 12px 3px!important}
+  .mobile-settled-grid{padding:7px 0 10px!important}
+  .mobile-settled-metric{padding:6px 8px 4px!important}
+  .odds-display-toolbar{margin:0 0 10px!important}
+
+  /* Ledger rows: prevent dense condition text from visually touching adjacent rows. */
+  .data-table th,
+  .data-table td{padding-top:10px!important;padding-bottom:10px!important;line-height:1.3!important}
+  .data-table td.condition-cell{padding-top:8px!important;padding-bottom:8px!important;line-height:1.25!important}
+  .stats-pagination{margin-top:8px!important}
+
+  /* Chart/indicator controls: add a small spacing floor without changing graph size. */
+  .cumulative-unit-chart{margin-bottom:10px!important}
+  .statistics-ema-legend{gap:6px 10px!important;margin-top:6px!important}
+  .statistics-ema-rows{gap:6px!important}
+  .statistics-ema-row{min-height:32px!important;padding-top:5px!important;padding-bottom:5px!important}
+  .statistics-indicator-settings{gap:7px!important}
+  .statistics-indicator-settings section{padding:8px!important}
+  .statistics-indicator-settings section>div{margin-top:7px!important}
+  .statistics-indicator-panel-actions,
+  .statistics-ema-panel-actions{padding-top:8px!important;margin-top:8px!important}
+}
+
+@media(min-width:431px) and (max-width:700px){
+  /* Large phones / small tablets can breathe a little more without changing columns. */
+  .shell>.hero,
+  .shell>.status-grid,
+  .shell>.summary-grid,
+  .shell>.toolbar,
+  .shell>.panel{margin-bottom:12px!important}
+  .panel{padding:10px!important}
+}
