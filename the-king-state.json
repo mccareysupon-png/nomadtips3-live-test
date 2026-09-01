@@ -1,195 +1,187 @@
 {
   "engine": "the-king-v9-manual-set2-goaloo",
   "status": "OK",
-  "last_selection_run": "2026-08-31T03:45:17Z",
+  "last_selection_run": "2026-09-01T03:42:02Z",
   "last_settlement_run": "2026-08-31T23:54:52Z",
-  "selection_date": "2026-08-31",
-  "fixtures_seen": 273,
+  "selection_date": "2026-09-01",
+  "fixtures_seen": 207,
   "qualified": 6,
-  "pending": 5,
+  "pending": 6,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "rejected": 267,
+  "rejected": 201,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 7,
-    "WINNER_FIRST_GATE": 207,
-    "NO_GOALOO_1X2_ODDS": 4,
-    "DRAW_NOT_MAIN_PICK": 5
+    "WINNER_FIRST_GATE": 147,
+    "GOALOO_FORM_SHORT": 15,
+    "NO_GOALOO_1X2_ODDS": 10,
+    "DRAW_NOT_MAIN_PICK": 1,
+    "ODDS_GATE": 2
   },
   "rejection_samples": [
     {
-      "match": "FC Altai Semey (W) vs Okzhetpes (W)",
+      "match": "Dinthar FC vs Saikhamakawn FC",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.5688,
+      "edge": 0.339,
+      "side": "away"
+    },
+    {
+      "match": "Lawsohtun SC vs Umrynjah SCC",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 4,
-      "away_n": 9
+      "home_n": 7,
+      "away_n": 2
     },
     {
-      "match": "ZNK Osijek (W) vs ZNK Donat Zadar (W)",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5711,
-      "edge": 0.3462,
-      "side": "away"
-    },
-    {
-      "match": "Okinawa SV vs Azul Claro Numazu",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5297,
-      "edge": 0.2678,
-      "side": "away"
-    },
-    {
-      "match": "United SC Kolkata vs Suruchi Sangha",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4954,
-      "edge": 0.2335,
-      "side": "away"
-    },
-    {
-      "match": "Measures Club vs Wari AC",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4824,
-      "edge": 0.2184,
-      "side": "away"
-    },
-    {
-      "match": "Kalighat Sports Lovers vs Mohammedan SC",
+      "match": "UM-Damansara United vs Johor Darul Takzim",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6511,
-      "edge": 0.4155
+      "confidence": 0.765,
+      "edge": 0.6287
     },
     {
-      "match": "Kairat Almaty (W) vs BIIK Shymkent  (W)",
+      "match": "Bidhannagar MSA vs Kalighat FC",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7289,
+      "edge": 0.5381
+    },
+    {
+      "match": "BSS Sporting Club vs Mohun Bagan SG II",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.46,
-      "edge": 0.1258,
+      "confidence": 0.5756,
+      "edge": 0.3614,
       "side": "home"
     },
     {
-      "match": "Sherdor Samarqand vs Ahmedov",
+      "match": "Bengal Nagpur Railway FC vs Kidderpore SC",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4527,
-      "edge": 0.1591,
+      "confidence": 0.5165,
+      "edge": 0.2465,
       "side": "home"
     },
     {
-      "match": "Gulistan vs Lokomotiv BFK",
+      "match": "Meghalaya Police vs Shillong Lajong Reserves",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4659,
-      "edge": 0.1249,
+      "confidence": 0.5658,
+      "edge": 0.3153,
       "side": "away"
     },
     {
-      "match": "Nangkiew Irat vs Mylliem SC",
+      "match": "FC Metalist 1925 (W) vs KFF Mitrovica (W)",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5523,
-      "edge": 0.2973,
+      "confidence": 0.5684,
+      "edge": 0.3465,
       "side": "home"
     },
     {
-      "match": "Zhuzhou Football Team vs Shaoyang Football Team",
+      "match": "Shandong Taishan vs Shanghai Port",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4622,
-      "edge": 0.157,
+      "confidence": 0.3796,
+      "edge": 0.0324,
       "side": "away"
     },
     {
-      "match": "Persib Bandung vs Manila Digger FC",
+      "match": "Dalian Zhixing vs Shanghai Shenhua",
       "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4476,
-      "edge": 0.1549,
+      "confidence": 0.5541,
+      "edge": 0.3091,
       "side": "home"
+    },
+    {
+      "match": "Beijing Guoan vs Lanzhou Longyuan Athletics",
+      "reason": "WINNER_FIRST_GATE",
+      "confidence": 0.4105,
+      "edge": 0.0951,
+      "side": "away"
+    },
+    {
+      "match": "Olympia Yerevan vs Araks Ararat",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 8
     }
   ],
   "near_gate_top": [
     {
-      "match": "Fountain Gate FC vs Young Africans",
+      "match": "Juventud de Bernal vs Estrella de Berisso",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7878,
-      "edge": 0.6276
+      "confidence": 0.8231,
+      "edge": 0.6798
     },
     {
-      "match": "Bossekop vs Stromsgodset B",
+      "match": "UM-Damansara United vs Johor Darul Takzim",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7702,
-      "edge": 0.6245
+      "confidence": 0.765,
+      "edge": 0.6287
     },
     {
-      "match": "Kagera Sugar vs Azam",
+      "match": "Bidhannagar MSA vs Kalighat FC",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7313,
-      "edge": 0.5471
+      "confidence": 0.7289,
+      "edge": 0.5381
     },
     {
-      "match": "Kalighat Sports Lovers vs Mohammedan SC",
+      "match": "Victoria Bardar vs Flacara Falesti",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6511,
-      "edge": 0.4155
+      "confidence": 0.7096,
+      "edge": 0.545
     },
     {
-      "match": "Estudiantes La Plata vs Newells Old Boys",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5797,
-      "edge": 0.3278,
-      "side": "away"
+      "match": "Rot-Weiss Oberhausen vs SV Westfalia Rhynern",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.6941,
+      "edge": 0.5293
     },
     {
-      "match": "Llanuwchllyn vs Gresford",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5781,
-      "edge": 0.3289,
-      "side": "away"
+      "match": "SV Horn vs Parndorf",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.6739,
+      "edge": 0.4889
     },
     {
-      "match": "Shepshed Dynamo vs Carlton Town",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.577,
-      "edge": 0.3533,
-      "side": "away"
+      "match": "HEBC Hamburg vs Borussia Dortmund",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.6683,
+      "edge": 0.456
     },
     {
-      "match": "Dagenham Redbridge vs Slough Town",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5764,
-      "edge": 0.3155,
-      "side": "away"
+      "match": "Kelantan Red Warrior vs Kuching FA",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.663,
+      "edge": 0.4562
     },
     {
-      "match": "Maccabi Tel Aviv vs Maccabi Haifa",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5737,
-      "edge": 0.3409,
-      "side": "away"
+      "match": "Trelleborgs FF (W) vs Malmo (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.6555,
+      "edge": 0.437
     },
     {
-      "match": "Racing Club Montevideo vs Albion FC",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5737,
-      "edge": 0.2997,
-      "side": "away"
+      "match": "FK Minija vs DFK Dainava Alytus",
+      "reason": "ODDS_GATE",
+      "odds": 1.48,
+      "confidence": 0.6166,
+      "edge": 0.4129
     },
     {
-      "match": "FC Bacau vs CSM Slatina",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5736,
-      "edge": 0.3407,
-      "side": "home"
+      "match": "Lafnitz vs SC Kalsdorf",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.5897,
+      "edge": 0.3182
     },
     {
-      "match": "HNK Gorica vs Rijeka",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5716,
-      "edge": 0.2967,
-      "side": "home"
+      "match": "MKS Kluczbork vs Lechia Gdansk",
+      "reason": "ODDS_GATE",
+      "odds": 1.46,
+      "confidence": 0.5831,
+      "edge": 0.3571
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 241,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 264,
+    "odds_rows": 219,
+    "h2h_static_ok": 207,
     "h2h_browser_fallback": 0,
     "errors": []
-  },
-  "settled_this_run": 0
+  }
 }
