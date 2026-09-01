@@ -1,0 +1,42 @@
+/* Desktop/PC only: replace the WATCHING pulse-line ornament with the vintage white-face life meter.
+   Presentation only. live-score-status.js continues to own WATCHING detection and state logic. */
+
+.statebox.has-watch-pulse .watch-pulse{
+  display:block!important;
+  width:24px!important;
+  height:24px!important;
+  flex:0 0 24px!important;
+  margin:2px 0 0 5px!important;
+  line-height:0!important;
+  background-image:url("data:image/webp;base64,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")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+  opacity:.92;
+  filter:brightness(.94) saturate(.98) drop-shadow(0 0 2px rgba(131,223,137,.16));
+  animation:watchVintageMeterGlow 2.2s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.statebox.has-watch-pulse .watch-pulse svg{
+  display:none!important;
+}
+
+@keyframes watchVintageMeterGlow{
+  0%,100%{
+    opacity:.88;
+    filter:brightness(.92) saturate(.96) drop-shadow(0 0 1px rgba(131,223,137,.12));
+  }
+  45%{
+    opacity:1;
+    filter:brightness(1.08) saturate(1.04) drop-shadow(0 0 4px rgba(131,223,137,.34));
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  .statebox.has-watch-pulse .watch-pulse{
+    animation:none!important;
+    opacity:.94;
+    filter:brightness(.98) saturate(1) drop-shadow(0 0 2px rgba(131,223,137,.18));
+  }
+}
