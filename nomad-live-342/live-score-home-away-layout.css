@@ -1,0 +1,130 @@
+/* NOMADTIPS3 3.42 Live Score grouping + HOME/AWAY clarity.
+   UI-only override. No feed, prediction, Event Gate or engine logic changes. */
+
+body[data-page="live"] .nomad-analytics-top,
+body[data-page="live"] .nomad-analytics-bottom{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+}
+body[data-page="live"] .nomad-analytics-top>.na-section,
+body[data-page="live"] .nomad-analytics-bottom>.na-section{
+  grid-column:1/-1!important;
+  order:initial!important;
+}
+
+/* The requested reading order keeps Pressure Shift visible on tablet/desktop too. */
+@media(min-width:761px){
+  body[data-page="live"] .nomad-analytics-top>.na-shift{display:block}
+}
+
+/* Visual group labels. They add structure without changing data or card sizes. */
+body[data-page="live"] .nomad-analytics-top[data-ui-group="pressure-signals"]::before,
+body[data-page="live"] .event-stats[data-ui-group="team-comparison"]::before,
+body[data-page="live"] .nomad-analytics-bottom[data-ui-group="comparison-context"]::before{
+  display:block;
+  grid-column:1/-1;
+  margin:3px 1px 0;
+  color:#83df89;
+  font-size:10px;
+  font-weight:900;
+  line-height:1.25;
+  letter-spacing:.055em;
+}
+body[data-page="live"] .nomad-analytics-top[data-ui-group="pressure-signals"]::before{content:"GAME PRESSURE & SIGNALS"}
+body[data-page="live"] .event-stats[data-ui-group="team-comparison"]::before{content:"TEAM COMPARISON · HOME / AWAY"}
+body[data-page="live"] .nomad-analytics-bottom[data-ui-group="comparison-context"]::before{content:"ROLLING FORM & MATCH CONTEXT"}
+
+/* HOME/AWAY semantics remain visible even where narrow mobile keeps the old layout. */
+body[data-page="live"] .event-stat-row:first-of-type>span,
+body[data-page="live"] .na-battle-row:first-of-type>b{color:var(--na-green,#83df89)}
+body[data-page="live"] .event-stat-row:nth-of-type(2)>span,
+body[data-page="live"] .na-battle-row:nth-of-type(2)>b{color:#aab2ac}
+
+/* Tablet/desktop: split each comparable metric into explicit HOME and AWAY halves.
+   Mobile <=640px deliberately keeps the proven original stacking. */
+@media(min-width:641px){
+  body[data-page="live"] .event-stats{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  body[data-page="live"] .event-stat:last-child{grid-column:1/-1}
+  body[data-page="live"] .event-stat{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    column-gap:8px;
+    row-gap:6px;
+    padding:10px;
+  }
+  body[data-page="live"] .event-stat-title,
+  body[data-page="live"] .event-stat>small{
+    grid-column:1/-1;
+  }
+  body[data-page="live"] .event-stat-row{
+    grid-template-columns:44px minmax(0,1fr) 34px;
+    gap:6px;
+    margin-top:0;
+    padding:8px;
+    border-radius:6px;
+    min-width:0;
+  }
+  body[data-page="live"] .event-stat-row:first-of-type{
+    grid-column:1;
+    background:rgba(131,223,137,.065);
+    border-left:2px solid rgba(131,223,137,.72);
+  }
+  body[data-page="live"] .event-stat-row:nth-of-type(2){
+    grid-column:2;
+    background:rgba(155,164,157,.055);
+    border-left:2px solid rgba(155,164,157,.55);
+  }
+  body[data-page="live"] .event-stat-row:first-of-type>b{color:#eaffec}
+  body[data-page="live"] .event-stat-row:nth-of-type(2)>b{color:#f0f2f0}
+
+  body[data-page="live"] .na-battle-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+  }
+  body[data-page="live"] .na-battle-item:last-child{grid-column:1/-1}
+  body[data-page="live"] .na-battle-item{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    column-gap:8px;
+    row-gap:6px;
+    padding:10px;
+  }
+  body[data-page="live"] .na-battle-title{grid-column:1/-1}
+  body[data-page="live"] .na-battle-row{
+    grid-template-columns:44px minmax(0,1fr) 34px;
+    gap:6px;
+    margin-top:0;
+    padding:8px;
+    border-radius:6px;
+    min-width:0;
+  }
+  body[data-page="live"] .na-battle-row:first-of-type{
+    grid-column:1;
+    background:rgba(131,223,137,.065);
+    border-left:2px solid rgba(131,223,137,.72);
+  }
+  body[data-page="live"] .na-battle-row:nth-of-type(2){
+    grid-column:2;
+    background:rgba(155,164,157,.055);
+    border-left:2px solid rgba(155,164,157,.55);
+  }
+
+  /* Context cards remain full-width; no graph or typography reduction. */
+  body[data-page="live"] .nomad-analytics-bottom>.na-section{width:100%}
+}
+
+/* Narrow phones: preserve the existing responsive layout rather than force a cramped split. */
+@media(max-width:640px){
+  body[data-page="live"] .nomad-analytics-top,
+  body[data-page="live"] .nomad-analytics-bottom{gap:7px}
+  body[data-page="live"] .nomad-analytics-top[data-ui-group="pressure-signals"]::before,
+  body[data-page="live"] .event-stats[data-ui-group="team-comparison"]::before,
+  body[data-page="live"] .nomad-analytics-bottom[data-ui-group="comparison-context"]::before{
+    font-size:8px;
+    margin-top:2px;
+  }
+}
