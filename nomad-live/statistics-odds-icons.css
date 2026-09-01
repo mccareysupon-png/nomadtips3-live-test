@@ -1,90 +1,83 @@
 /* Statistics page desktop-only vintage odds icons.
-   Presentation only. Loaded from statistics.html only at min-width:1025px.
-   Mobile/tablet, odds conversion logic, ledger data and charts remain untouched. */
+   Reuses the exact ODDS / DECIMAL / AMERICAN / FRACTION artwork from toolbar-vintage-icons.css.
+   Presentation only. statistics.html loads this layer only at min-width:1025px. */
 
-.odds-display-toolbar{
-  justify-content:flex-end;
-}
-
-.odds-display-toolbar .odds-display-control{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:2px 4px;
+.odds-display-toolbar.toolbar{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:0!important;
+  padding:0!important;
+  margin:-2px 0 12px!important;
   border:0!important;
   background:transparent!important;
   box-shadow:none!important;
 }
 
-.odds-display-toolbar .odds-display-label,
-.odds-display-toolbar .odds-display-control button{
-  position:relative;
-  display:inline-flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:3px;
-  min-height:40px;
+.odds-display-toolbar.toolbar .odds-display-control{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:2px 4px!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+
+.odds-display-toolbar.toolbar .odds-display-label,
+.odds-display-toolbar.toolbar .odds-display-control button{
+  min-height:40px!important;
+  gap:3px!important;
   padding:4px 8px!important;
-  border:0!important;
+  border-color:transparent!important;
   background:transparent!important;
   box-shadow:none!important;
-  line-height:1;
 }
 
-.odds-display-toolbar .odds-display-label::before,
-.odds-display-toolbar .odds-display-control button::before{
-  content:"";
-  display:block;
-  width:24px;
-  height:24px;
-  flex:0 0 24px;
-  background-repeat:no-repeat;
-  background-position:center;
-  background-size:contain;
+/* Statistics is denser than Signal: 24px is the desktop target here. */
+.odds-display-toolbar.toolbar .odds-display-label::before,
+.odds-display-toolbar.toolbar .odds-display-control button::before{
+  width:24px!important;
+  height:24px!important;
+  flex:0 0 24px!important;
   opacity:.92;
   filter:brightness(.92) saturate(.98);
-  transition:filter .15s ease,opacity .15s ease;
-  pointer-events:none;
 }
 
-.odds-display-toolbar .odds-display-label::before{background-image:url("assets/toolbar-icons/odds.png")}
-.odds-display-toolbar button[data-odds-mode="decimal"]::before{background-image:url("assets/toolbar-icons/decimal.png")}
-.odds-display-toolbar button[data-odds-mode="american"]::before{background-image:url("assets/toolbar-icons/american.png")}
-.odds-display-toolbar button[data-odds-mode="fractional"]::before{background-image:url("assets/toolbar-icons/fraction.png")}
-
-.odds-display-toolbar .odds-display-label{
-  min-width:50px;
+.odds-display-toolbar.toolbar .odds-display-label{
+  min-width:50px!important;
   color:#91a49a!important;
 }
-.odds-display-toolbar .odds-display-control button{
-  min-width:64px;
+.odds-display-toolbar.toolbar .odds-display-control button{
+  min-width:64px!important;
   color:#aab1ab!important;
   text-shadow:none!important;
 }
 
-.odds-display-toolbar .odds-display-control button:hover,
-.odds-display-toolbar .odds-display-control button:focus-visible{
+/* Stealth default: no cards or borders. Hover lights text + icon only. */
+.odds-display-toolbar.toolbar .odds-display-control button:hover,
+.odds-display-toolbar.toolbar .odds-display-control button:focus-visible{
   color:#f3fff5!important;
   background:transparent!important;
   border-color:transparent!important;
   text-shadow:0 0 8px rgba(255,255,255,.18)!important;
 }
-.odds-display-toolbar .odds-display-control button:hover::before,
-.odds-display-toolbar .odds-display-control button:focus-visible::before{
-  opacity:1;
-  filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22));
+.odds-display-toolbar.toolbar .odds-display-control button:hover::before,
+.odds-display-toolbar.toolbar .odds-display-control button:focus-visible::before{
+  opacity:1!important;
+  filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
 }
 
-.odds-display-toolbar .odds-display-control button.is-active,
-.odds-display-toolbar .odds-display-control button[aria-pressed="true"]{
+/* Active: green text + brighter icon, still no card. */
+.odds-display-toolbar.toolbar .odds-display-control button.is-active,
+.odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]{
   color:var(--green)!important;
   background:transparent!important;
   border-color:transparent!important;
   text-shadow:0 0 9px rgba(131,223,137,.42)!important;
 }
-.odds-display-toolbar .odds-display-control button.is-active::before,
-.odds-display-toolbar .odds-display-control button[aria-pressed="true"]::before{
-  opacity:1;
-  filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48));
+.odds-display-toolbar.toolbar .odds-display-control button.is-active::before,
+.odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]::before{
+  opacity:1!important;
+  filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
 }
