@@ -1,0 +1,243 @@
+/* NOMAD Live Score · graph-first card layout
+   Presentation-only override. Feed, Event Gate, prediction and market logic are untouched. */
+
+body[data-page="live"] .event-compact.expanded .event-details.graph-first-v1{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  align-items:stretch!important;
+}
+
+/* 1) Graph stays the primary visual. */
+body[data-page="live"] .event-details.graph-first-v1>.attack-head{order:0!important}
+body[data-page="live"] .event-details.graph-first-v1>.attack-color-note{display:none!important}
+body[data-page="live"] .event-details.graph-first-v1>.attack-chart,
+body[data-page="live"] .event-details.graph-first-v1>.attack-empty{
+  order:1!important;
+  width:100%!important;
+  margin:0!important;
+}
+
+/* 2) Clear HOME | metric | AWAY comparison block. */
+body[data-page="live"] .gf-stats-head{
+  order:2!important;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(118px,.72fr) minmax(0,1fr);
+  align-items:center;
+  min-height:34px;
+  margin:0;
+  padding:0 11px;
+  border:1px solid rgba(255,255,255,.075);
+  border-bottom:0;
+  border-radius:9px 9px 0 0;
+  background:linear-gradient(90deg,rgba(238,63,79,.17),rgba(255,255,255,.012) 49%,rgba(32,158,224,.17));
+}
+body[data-page="live"] .gf-stats-head b{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.075em;
+}
+body[data-page="live"] .gf-stats-head .gf-home{color:#ff6977;text-align:left}
+body[data-page="live"] .gf-stats-head .gf-away{color:#38bff2;text-align:right}
+body[data-page="live"] .gf-stats-head span{
+  color:#a7b0aa;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.07em;
+  text-align:center;
+}
+
+body[data-page="live"] .event-details.graph-first-v1>.event-stats{
+  order:3!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:0!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:0 0 9px 9px;
+  background:rgba(255,255,255,.018);
+}
+body[data-page="live"] .event-details.graph-first-v1>.event-stats[data-ui-group="team-comparison"]::before{
+  display:none!important;
+}
+
+body[data-page="live"] .event-details.graph-first-v1 .event-stat{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(118px,.72fr) minmax(0,1fr)!important;
+  grid-template-rows:auto!important;
+  gap:0!important;
+  align-items:center!important;
+  min-height:38px!important;
+  margin:0!important;
+  padding:6px 11px!important;
+  border:0!important;
+  border-top:1px solid rgba(255,255,255,.045)!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat:first-child{border-top:0!important}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat:last-child{grid-column:auto!important}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-title{
+  grid-column:2!important;
+  grid-row:1!important;
+  align-self:center!important;
+  min-height:0!important;
+  padding:0 5px!important;
+  color:#b8c0ba!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+  letter-spacing:.025em!important;
+  text-align:center!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat>small{display:none!important}
+
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row{
+  display:grid!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row>span{display:none!important}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type{
+  grid-column:1!important;
+  grid-row:1!important;
+  grid-template-columns:34px minmax(34px,1fr)!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2){
+  grid-column:3!important;
+  grid-row:1!important;
+  grid-template-columns:minmax(34px,1fr) 34px!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type>b{
+  grid-column:1!important;
+  grid-row:1!important;
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type>.event-bar-track{
+  grid-column:2!important;
+  grid-row:1!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2)>.event-bar-track{
+  grid-column:1!important;
+  grid-row:1!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2)>b{
+  grid-column:2!important;
+  grid-row:1!important;
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  text-align:right!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-bar-track{
+  height:6px!important;
+  overflow:hidden!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.06)!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-bar-home{
+  float:right;
+  background:linear-gradient(90deg,#ff3f55,#ff765b)!important;
+  box-shadow:0 0 4px rgba(255,63,85,.16)!important;
+}
+body[data-page="live"] .event-details.graph-first-v1 .event-bar-away{
+  float:left;
+  background:linear-gradient(90deg,#238fe2,#4cc9f0)!important;
+  box-shadow:0 0 4px rgba(76,201,240,.14)!important;
+}
+
+/* 3) Keep only high-value supporting evidence. */
+body[data-page="live"] .event-details.graph-first-v1>.event-overview{
+  order:4!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:5px!important;
+  margin:0!important;
+}
+body[data-page="live"] .event-details.graph-first-v1>.event-overview>div{
+  min-width:0;
+  padding:7px 8px!important;
+  border-radius:6px!important;
+}
+body[data-page="live"] .event-details.graph-first-v1>.event-overview span{font-size:6.5px!important}
+body[data-page="live"] .event-details.graph-first-v1>.event-overview strong{font-size:11px!important}
+
+body[data-page="live"] .event-details.graph-first-v1>.nomad-analytics-top{
+  order:5!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin:0!important;
+  padding:0!important;
+}
+body[data-page="live"] .event-details.graph-first-v1>.nomad-analytics-bottom{
+  order:6!important;
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:6px!important;
+  margin:0!important;
+  padding:0!important;
+}
+body[data-page="live"] .event-details.graph-first-v1>.nomad-analytics-top::before,
+body[data-page="live"] .event-details.graph-first-v1>.nomad-analytics-bottom::before{display:none!important}
+body[data-page="live"] .event-details.graph-first-v1 .na-section.gf-secondary{display:none!important}
+body[data-page="live"] .event-details.graph-first-v1 .na-section.gf-keep{
+  display:block!important;
+  grid-column:1!important;
+  width:100%!important;
+  margin:0!important;
+}
+
+/* Prediction and market stay, but after the graph and essential match evidence. */
+body[data-page="live"] .event-details.graph-first-v1>.nomad-live-prediction{order:7!important;margin:0!important}
+body[data-page="live"] .event-details.graph-first-v1>.nomad-market-card{order:8!important;margin:0!important}
+body[data-page="live"] .event-details.graph-first-v1>.api-football-candidate-card{order:9!important}
+body[data-page="live"] .event-details.graph-first-v1>.event-reason{display:none!important}
+
+/* Market: keep actionable prices and final market net; hide diagnostic bulk. */
+body[data-page="live"] .event-details.graph-first-v1 .nomad-market-card .market-consensus,
+body[data-page="live"] .event-details.graph-first-v1 .nomad-market-card .market-bookmakers{display:none!important}
+body[data-page="live"] .event-details.graph-first-v1 .nomad-market-card .market-grid{margin-bottom:6px!important}
+
+@media(max-width:760px){
+  body[data-page="live"] .gf-stats-head,
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat{
+    grid-template-columns:minmax(0,1fr) 94px minmax(0,1fr)!important;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type{grid-template-columns:30px minmax(24px,1fr)!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2){grid-template-columns:minmax(24px,1fr) 30px!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type>b,
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2)>b{font-size:11px!important}
+  body[data-page="live"] .event-details.graph-first-v1>.event-overview{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+
+@media(max-width:420px){
+  body[data-page="live"] .gf-stats-head,
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat{
+    grid-template-columns:minmax(0,1fr) 82px minmax(0,1fr)!important;
+    padding-left:6px!important;
+    padding-right:6px!important;
+  }
+  body[data-page="live"] .gf-stats-head b{font-size:9px}
+  body[data-page="live"] .gf-stats-head span{font-size:6.5px;letter-spacing:.02em}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-title{font-size:6.8px!important;padding:0 3px!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row{gap:4px!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type{grid-template-columns:27px minmax(18px,1fr)!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2){grid-template-columns:minmax(18px,1fr) 27px!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:first-of-type>b,
+  body[data-page="live"] .event-details.graph-first-v1 .event-stat-row:nth-of-type(2)>b{font-size:10px!important}
+  body[data-page="live"] .event-details.graph-first-v1 .event-bar-track{height:5px!important}
+}
