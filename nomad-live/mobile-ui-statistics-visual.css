@@ -1,0 +1,159 @@
+/* Statistics mobile visual layer.
+   Presentation only. Loaded after mobile-ui-spacing.css on Statistics only.
+   Keeps DOM order, ledger/chart anchors, JS, data and Live Score 3.42 untouched. */
+
+@media(max-width:700px){
+  :root{
+    --stats-brand-deep:#123328;
+    --stats-brand-mid:#125c45;
+    --stats-hero:#153429;
+    --stats-card-mid:#12281f;
+    --stats-card-low:#0f1d17;
+    --stats-card-deep:#0c1712;
+  }
+
+  /* Hero: same NOMAD family as Signal, with Statistics remaining denser. */
+  .hero{
+    border:1px solid rgba(131,223,137,.16)!important;
+    border-radius:14px!important;
+    background:
+      radial-gradient(circle at 84% 20%,rgba(131,223,137,.10),transparent 36%),
+      linear-gradient(145deg,#17392d 0%,var(--stats-hero) 43%,#10231a 73%,#0e1913 100%)!important;
+    box-shadow:0 10px 24px rgba(0,0,0,.24)!important;
+  }
+  .hero .mode{
+    border:1px solid rgba(131,223,137,.20)!important;
+    border-radius:10px!important;
+    background:linear-gradient(145deg,rgba(18,92,69,.42),rgba(18,51,40,.72))!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  }
+  .hero .mode span,
+  .hero .mode small{color:rgba(202,218,207,.66)!important}
+  .hero .mode strong{color:var(--green)!important}
+
+  /* Four primary KPIs: preserve the existing 2x2 structure, only change surface and cues. */
+  .statistics-summary-grid{
+    border-color:rgba(131,223,137,.13)!important;
+    border-radius:14px!important;
+    background:linear-gradient(145deg,#153027 0%,var(--stats-card-mid) 48%,#101e18 100%)!important;
+    box-shadow:0 9px 22px rgba(0,0,0,.22)!important;
+  }
+  .statistics-summary-grid>.metric{
+    background:linear-gradient(180deg,rgba(18,92,69,.04),rgba(0,0,0,.025))!important;
+  }
+  .statistics-summary-grid>.metric.signal{
+    background:radial-gradient(ellipse 98% 96% at 50% 54%,rgba(38,103,58,.56) 0%,rgba(22,70,39,.36) 48%,rgba(15,35,24,.07) 100%)!important;
+  }
+  .statistics-summary-grid>.metric>span{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span::before{
+    content:"";
+    display:inline-block;
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    background:currentColor;
+    opacity:.88;
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-position:center;
+    mask-position:center;
+    -webkit-mask-size:18px 18px;
+    mask-size:18px 18px;
+  }
+  .statistics-summary-grid>.metric:nth-child(1)>span::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 19V9M10 19V5M16 19v-7M22 19V3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M2 19h22' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 19V9M10 19V5M16 19v-7M22 19V3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M2 19h22' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  .statistics-summary-grid>.metric:nth-child(2)>span::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='m7.5 12 3 3 6-7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='m7.5 12 3 3 6-7' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .statistics-summary-grid>.metric:nth-child(3)>span::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M9.2 9.2c.8-1 1.8-1.5 3.1-1.5 1.8 0 3 1 3 2.4 0 1.3-.8 2-2.8 2.7-2 .7-3 1.5-3 3.1 0 1.5 1.3 2.5 3.2 2.5 1.2 0 2.2-.4 3.1-1.3M12 5.5v13' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8.5' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M9.2 9.2c.8-1 1.8-1.5 3.1-1.5 1.8 0 3 1 3 2.4 0 1.3-.8 2-2.8 2.7-2 .7-3 1.5-3 3.1 0 1.5 1.3 2.5 3.2 2.5 1.2 0 2.2-.4 3.1-1.3M12 5.5v13' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  .statistics-summary-grid>.metric:nth-child(4)>span::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 17 9 12l3 3 7-8' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 7h4v4' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 17 9 12l3 3 7-8' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 7h4v4' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .statistics-summary-grid>.metric.signal>span::before{color:var(--green)!important;opacity:1}
+  .statistics-summary-grid .metric-info{margin-left:0!important}
+
+  /* Settled breakdown is a secondary strip, deliberately lighter and shorter than the KPI card. */
+  .mobile-settled-summary{
+    border-color:rgba(131,223,137,.09)!important;
+    border-radius:12px!important;
+    background:linear-gradient(145deg,#11241d 0%,#0f1e18 56%,#0c1712 100%)!important;
+    box-shadow:0 7px 18px rgba(0,0,0,.18)!important;
+  }
+  .mobile-settled-head{padding:8px 11px 1px!important}
+  .mobile-settled-head span{color:rgba(184,201,189,.72)!important}
+  .mobile-settled-head small{margin-top:2px!important;color:rgba(207,218,210,.58)!important}
+  .mobile-settled-grid{padding:4px 0 7px!important}
+  .mobile-settled-metric{padding:3px 8px 2px!important}
+  .mobile-settled-metric strong{margin-top:3px!important;font-size:19px!important}
+
+  /* Odds format remains in its exact DOM position because the equity chart mounts against it. */
+  .odds-display-toolbar{
+    border:1px solid rgba(131,223,137,.08)!important;
+    border-radius:10px!important;
+    background:linear-gradient(145deg,#102119 0%,#0d1913 100%)!important;
+    box-shadow:0 6px 15px rgba(0,0,0,.15)!important;
+  }
+  .odds-display-control{
+    gap:1px!important;
+    padding:2px!important;
+    border-color:rgba(131,223,137,.07)!important;
+    background:#0c1712!important;
+  }
+  .odds-display-label{
+    font-weight:700!important;
+    opacity:.68!important;
+  }
+  .odds-display-control button{
+    min-height:26px!important;
+    padding:2px 6px!important;
+    line-height:1.05!important;
+  }
+  .odds-display-control button:hover,
+  .odds-display-control button:focus-visible,
+  .odds-display-control button.is-active,
+  .odds-display-control button[aria-pressed="true"]{
+    border-color:rgba(131,223,137,.17)!important;
+    background:linear-gradient(145deg,rgba(18,92,69,.46),rgba(18,51,40,.42))!important;
+    color:#dce8df!important;
+  }
+
+  /* Result ledger surface only. Table widths, CONDITION width and horizontal scrolling stay unchanged. */
+  .shell>.panel{
+    border-color:rgba(131,223,137,.10)!important;
+    border-radius:13px!important;
+    background:linear-gradient(145deg,#12271f 0%,var(--stats-card-low) 58%,var(--stats-card-deep) 100%)!important;
+    box-shadow:0 9px 22px rgba(0,0,0,.20)!important;
+  }
+  .shell>.panel>.panel-head{
+    border-bottom-color:rgba(131,223,137,.08)!important;
+  }
+  .shell>.panel .table-wrap{
+    border-radius:8px!important;
+    background:rgba(7,14,10,.34)!important;
+  }
+  .shell>.panel .data-table th{
+    background:rgba(18,51,40,.36)!important;
+    border-bottom-color:rgba(131,223,137,.09)!important;
+  }
+  .shell>.panel .data-table td{
+    border-bottom-color:rgba(131,223,137,.055)!important;
+  }
+
+  .shell>.note{
+    border:1px solid rgba(131,223,137,.06)!important;
+    border-radius:10px!important;
+    background:linear-gradient(145deg,rgba(18,92,69,.028),rgba(255,255,255,.006))!important;
+  }
+}
