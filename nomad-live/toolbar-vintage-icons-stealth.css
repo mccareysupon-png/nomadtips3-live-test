@@ -1,0 +1,63 @@
+/* Desktop/PC only. Stealth treatment for vintage toolbar controls.
+   Presentation only: transparent cards/borders; hover and active rely on text/icon light.
+   Loaded only at min-width:1025px from nomad-live/index.html. */
+
+.toolbar .tabs,
+.toolbar .odds-display-control{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+.toolbar .tabs .tab,
+.toolbar .odds-display-control button,
+.toolbar .odds-display-label{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+
+.toolbar .tabs .tab,
+.toolbar .odds-display-control button{
+  color:#aab1ab!important;
+}
+.toolbar .odds-display-label{
+  color:#91a49a!important;
+}
+
+.toolbar .tabs .tab:hover,
+.toolbar .tabs .tab:focus-visible,
+.toolbar .odds-display-control button:hover,
+.toolbar .odds-display-control button:focus-visible{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:#f3fff5!important;
+  text-shadow:0 0 8px rgba(255,255,255,.18)!important;
+}
+
+.toolbar .tabs .tab[aria-pressed="true"],
+.toolbar .tabs .tab[data-active="1"],
+.toolbar .odds-display-control button.is-active,
+.toolbar .odds-display-control button[aria-pressed="true"]{
+  background:transparent!important;
+  border-color:transparent!important;
+  color:var(--green)!important;
+  text-shadow:0 0 9px rgba(131,223,137,.42)!important;
+}
+
+.toolbar .tabs .tab:hover::before,
+.toolbar .tabs .tab:focus-visible::before,
+.toolbar .odds-display-control button:hover::before,
+.toolbar .odds-display-control button:focus-visible::before{
+  opacity:1!important;
+  filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+}
+
+.toolbar .tabs .tab[aria-pressed="true"]::before,
+.toolbar .tabs .tab[data-active="1"]::before,
+.toolbar .odds-display-control button.is-active::before,
+.toolbar .odds-display-control button[aria-pressed="true"]::before{
+  opacity:1!important;
+  filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
+}
