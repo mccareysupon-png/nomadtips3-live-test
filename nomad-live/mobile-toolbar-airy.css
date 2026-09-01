@@ -1,0 +1,160 @@
+/* Mobile Signal toolbar: airy transparent 4-column layout.
+   Presentation only; no filter/odds/feed/engine logic changes.
+   Rollback marker: rollback/pre-mobile-toolbar-airy-icons-20260901 */
+
+@media(max-width:700px){
+  .toolbar{
+    padding:4px 0!important;
+    gap:10px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+
+  /* Row 1: four equal filter columns, icons retained. */
+  .toolbar .tabs{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:0!important;
+    padding:0 0 10px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(131,223,137,.11)!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:0 1px 0 rgba(0,0,0,.28)!important;
+  }
+  .toolbar .tabs .tab{
+    width:100%!important;
+    min-height:32px!important;
+    padding:4px 3px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:6px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+  .toolbar .tabs .tab:hover,
+  .toolbar .tabs .tab:focus-visible,
+  .toolbar .tabs .tab[aria-pressed="true"],
+  .toolbar .tabs .tab[data-active="1"]{
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:var(--green)!important;
+    text-shadow:0 0 7px rgba(131,223,137,.30)!important;
+  }
+
+  /* Row 2: ODDS / DECIMAL / AMERICAN / FRACTION align exactly to row 1. */
+  .toolbar .odds-display-control{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    align-items:stretch!important;
+    gap:0!important;
+    padding:0 0 10px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(131,223,137,.11)!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:0 1px 0 rgba(0,0,0,.28)!important;
+  }
+  .toolbar .odds-display-label,
+  .toolbar .odds-display-control button{
+    min-width:0!important;
+    min-height:32px!important;
+    margin:0!important;
+    padding:4px 3px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:6px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:#aab1ab!important;
+    font-size:10px!important;
+    font-weight:800!important;
+    line-height:1!important;
+    letter-spacing:.01em!important;
+    text-align:center!important;
+  }
+  .toolbar .odds-display-label{
+    opacity:.88!important;
+  }
+  .toolbar .odds-display-control button:hover,
+  .toolbar .odds-display-control button:focus-visible,
+  .toolbar .odds-display-control button.is-active{
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    color:var(--green)!important;
+    text-shadow:0 0 7px rgba(131,223,137,.30)!important;
+  }
+
+  /* Matching monochrome outline icons for the four odds columns. */
+  .toolbar .odds-display-label::before,
+  .toolbar .odds-display-control button::before{
+    content:"";
+    width:18px;
+    height:18px;
+    flex:0 0 18px;
+    display:inline-block;
+    background:currentColor;
+    opacity:.95;
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-position:center;
+    mask-position:center;
+    -webkit-mask-size:18px 18px;
+    mask-size:18px 18px;
+  }
+  .toolbar .odds-display-label::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 7h14M5 12h14M5 17h14' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='7' r='2' fill='black'/%3E%3Ccircle cx='15.5' cy='12' r='2' fill='black'/%3E%3Ccircle cx='11' cy='17' r='2' fill='black'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 7h14M5 12h14M5 17h14' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='7' r='2' fill='black'/%3E%3Ccircle cx='15.5' cy='12' r='2' fill='black'/%3E%3Ccircle cx='11' cy='17' r='2' fill='black'/%3E%3C/svg%3E");
+  }
+  .toolbar .odds-display-control button[data-odds-mode="decimal"]::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='3.5' width='14' height='17' rx='2' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M8 8h8M8 12h2M14 12h2M8 16h2M14 16h2' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='16' r='1' fill='black'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='5' y='3.5' width='14' height='17' rx='2' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M8 8h8M8 12h2M14 12h2M8 16h2M14 16h2' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='16' r='1' fill='black'/%3E%3C/svg%3E");
+  }
+  .toolbar .odds-display-control button[data-odds-mode="american"]::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M8 9h4M10 7v4M13.5 15h3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='8' fill='none' stroke='black' stroke-width='2'/%3E%3Cpath d='M8 9h4M10 7v4M13.5 15h3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+  .toolbar .odds-display-control button[data-odds-mode="fraction"]::before{
+    -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 17L16 7M7 8h3M14 16h3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8.5' cy='8' r='2.3' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='15.5' cy='16' r='2.3' fill='none' stroke='black' stroke-width='1.8'/%3E%3C/svg%3E");
+    mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 17L16 7M7 8h3M14 16h3' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'/%3E%3Ccircle cx='8.5' cy='8' r='2.3' fill='none' stroke='black' stroke-width='1.8'/%3E%3Ccircle cx='15.5' cy='16' r='2.3' fill='none' stroke='black' stroke-width='1.8'/%3E%3C/svg%3E");
+  }
+  .toolbar .odds-display-control button:hover::before,
+  .toolbar .odds-display-control button:focus-visible::before,
+  .toolbar .odds-display-control button.is-active::before{
+    filter:drop-shadow(0 0 4px rgba(131,223,137,.55));
+  }
+
+  /* Row 3: search stays quiet and transparent, with a recessed divider feel. */
+  .toolbar .search{
+    width:100%!important;
+    gap:8px!important;
+    padding:0 1px!important;
+    background:transparent!important;
+  }
+  .toolbar .search input{
+    min-height:32px!important;
+    padding:5px 4px!important;
+    border:0!important;
+    border-bottom:1px solid rgba(131,223,137,.10)!important;
+    border-radius:0!important;
+    background:transparent!important;
+    box-shadow:0 1px 0 rgba(0,0,0,.22)!important;
+  }
+  .toolbar .search input:focus{
+    border-color:rgba(131,223,137,.34)!important;
+    background:transparent!important;
+    box-shadow:0 1px 0 rgba(131,223,137,.18)!important;
+  }
+}
