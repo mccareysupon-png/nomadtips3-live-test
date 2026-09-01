@@ -1,54 +1,9 @@
-/* Mobile Signal search: stealth treatment.
-   Presentation only; keeps search DOM and filter logic untouched.
+/* Mobile Signal search: hidden on mobile/nearby devices.
+   Presentation only; keeps desktop search and all filter/runtime logic untouched.
    Rollback marker: rollback/pre-mobile-search-stealth-20260901 */
 
 @media(max-width:900px){
   .toolbar .search{
-    width:100%!important;
-    gap:7px!important;
-    padding:0 1px!important;
-    border:0!important;
-    background:transparent!important;
-    box-shadow:none!important;
-    color:rgba(174,184,176,.52)!important;
-    font-size:8.5px!important;
-    font-weight:700!important;
-    letter-spacing:.035em!important;
-  }
-
-  .toolbar .search input{
-    min-height:30px!important;
-    padding:4px 2px!important;
-    border:0!important;
-    border-radius:0!important;
-    outline:0!important;
-    background:transparent!important;
-    box-shadow:none!important;
-    color:rgba(232,236,231,.88)!important;
-    caret-color:rgba(131,223,137,.78)!important;
-    font-size:10px!important;
-  }
-
-  .toolbar .search input::placeholder{
-    color:rgba(170,177,171,.36)!important;
-    opacity:1!important;
-  }
-
-  .toolbar .search input:hover{
-    background:transparent!important;
-    box-shadow:none!important;
-  }
-
-  .toolbar .search input:focus,
-  .toolbar .search input:focus-visible{
-    border:0!important;
-    outline:0!important;
-    background:transparent!important;
-    box-shadow:inset 0 -1px 0 rgba(131,223,137,.18)!important;
-    color:#eef6f0!important;
-  }
-
-  .toolbar .search input::-webkit-search-cancel-button{
-    opacity:.42!important;
+    display:none!important;
   }
 }
