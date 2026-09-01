@@ -1,0 +1,73 @@
+/* NOMAD Live 3.41 mobile collapsed-card team layout.
+   Presentation only: hides quick PRESS/SOT/HUNGER in collapsed cards and adds
+   two compact vertical team rows with shirt icons. Expanded detail and engine logic stay unchanged. */
+
+@media (max-width:520px){
+  .match-main .teams.mobile-team-shirts-ready{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    gap:4px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:48px!important;
+    margin:0!important;
+    line-height:1.15!important;
+  }
+
+  .mobile-team-line{
+    display:grid!important;
+    grid-template-columns:22px minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:6px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .mobile-team-shirt-icon{
+    display:block!important;
+    width:22px!important;
+    height:22px!important;
+    min-width:22px!important;
+    object-fit:contain!important;
+    opacity:.97!important;
+    filter:brightness(1) saturate(.98) drop-shadow(0 1px 2px rgba(0,0,0,.40))!important;
+    pointer-events:none!important;
+    user-select:none!important;
+  }
+
+  .mobile-team-name{
+    display:block!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    color:inherit!important;
+    font-size:11.5px!important;
+    font-weight:800!important;
+    line-height:1.15!important;
+    text-align:left!important;
+  }
+
+  /* Collapsed only: free the PRESS / SOT / HUNGER row for the two team lines. */
+  .match-wrap:not([open]) > .match-row .quick{
+    display:none!important;
+  }
+
+  /* Remove the now-empty stats grid row so the card grows only where the team block needs it. */
+  .match-wrap:not([open]) > .match-row{
+    grid-template-areas:'state match score cond' 'market market market market'!important;
+    row-gap:7px!important;
+  }
+
+  .match-wrap.signal .mobile-team-shirt-icon{
+    filter:brightness(1.04) saturate(1) drop-shadow(0 1px 2px rgba(0,0,0,.40)) drop-shadow(0 0 3px rgba(131,223,137,.12))!important;
+  }
+}
+
+@media (max-width:360px){
+  .match-main .teams.mobile-team-shirts-ready{gap:3px!important;min-height:44px!important}
+  .mobile-team-line{grid-template-columns:20px minmax(0,1fr)!important;gap:5px!important}
+  .mobile-team-shirt-icon{width:20px!important;height:20px!important;min-width:20px!important}
+  .mobile-team-name{font-size:11px!important}
+}
