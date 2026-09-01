@@ -1,5 +1,6 @@
 /* Statistics-only seven-metric desktop strip.
-   Keeps the existing 2x2 mobile summary untouched. */
+   Keeps the existing 2x2 mobile summary untouched and adds a separate
+   mobile-only settled-results card below it. */
 
 .stats-win-metric strong {
   color:var(--green);
@@ -11,6 +12,10 @@
 
 .stats-push-metric strong {
   color:var(--muted);
+}
+
+.mobile-settled-summary {
+  display:none;
 }
 
 @media (min-width:701px) {
@@ -78,4 +83,82 @@
   .statistics-summary-grid > .stats-breakdown-metric {
     display:none!important;
   }
+
+  /* Mobile-only settled-result breakdown. It is deliberately outside
+     .statistics-summary-grid so the existing 2x2 KPI card remains untouched. */
+  .mobile-settled-summary {
+    display:block;
+    margin:8px 0 0;
+    overflow:hidden;
+    border:1px solid rgba(150,158,151,.10);
+    border-radius:12px;
+    background:linear-gradient(145deg,#20251f,#191d17 52%,#141712);
+    box-shadow:var(--shadow);
+  }
+
+  .mobile-settled-head {
+    padding:9px 12px 2px;
+  }
+
+  .mobile-settled-head span {
+    display:block;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.08em;
+    line-height:1.15;
+    text-transform:uppercase;
+  }
+
+  .mobile-settled-head small {
+    display:block;
+    margin-top:3px;
+    color:rgba(232,236,231,.78);
+    font-size:10px;
+    line-height:1.2;
+  }
+
+  .mobile-settled-grid {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    padding:5px 0 9px;
+  }
+
+  .mobile-settled-metric {
+    position:relative;
+    min-width:0;
+    padding:4px 8px 3px;
+    text-align:center;
+  }
+
+  .mobile-settled-metric + .mobile-settled-metric::before {
+    content:"";
+    position:absolute;
+    left:0;
+    top:12%;
+    bottom:12%;
+    width:1px;
+    background:rgba(150,158,151,.14);
+  }
+
+  .mobile-settled-metric span {
+    display:block;
+    color:var(--muted);
+    font-size:10px;
+    font-weight:800;
+    line-height:1.1;
+    white-space:nowrap;
+  }
+
+  .mobile-settled-metric strong {
+    display:block;
+    margin-top:4px;
+    color:var(--text);
+    font-size:20px;
+    line-height:1;
+  }
+
+  .mobile-settled-win span { color:var(--green); }
+  .mobile-settled-loss span { color:#ff6f74; }
+  .mobile-settled-push span { color:var(--muted); }
 }
