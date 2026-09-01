@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const MQ = window.matchMedia('(min-width:1025px)');
+  /* Shared shirt renderer: CSS decides the desktop/mobile layout. */
+  const MQ = window.matchMedia('(min-width:0px)');
   const SETS = [
     {home:{base:'#721b24',secondary:'#c99a3f',accent:'#f1d58b',pattern:'pinstripe'},away:{base:'#17263c',secondary:'#e9dfbf',accent:'#d0ad62',pattern:'vertical'}},
     {home:{base:'#193d2c',secondary:'#e7dec1',accent:'#d8bd76',pattern:'sash'},away:{base:'#1d1d1b',secondary:'#b56b2b',accent:'#e4a35b',pattern:'hoops'}},
