@@ -1,0 +1,79 @@
+@import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:700px);
+@import url("toolbar-all-football.css?v=20260901-v1") screen and (max-width:700px);
+
+/* Mobile-only bridge: reuse the exact desktop/PC vintage toolbar artwork.
+   Layout stays the airy transparent 4-column mobile layout.
+   Presentation only; no filter/odds/feed/engine logic changes.
+   Rollback marker: rollback/pre-mobile-pc-icons-20260901 */
+@media(max-width:700px){
+  /* Keep every filter + odds icon the same visual footprint on mobile. */
+  .toolbar .tabs .tab::before,
+  .toolbar .odds-display-control button::before,
+  .toolbar .odds-display-label::before{
+    content:""!important;
+    display:block!important;
+    width:21px!important;
+    height:21px!important;
+    flex:0 0 21px!important;
+    -webkit-mask-image:none!important;
+    mask-image:none!important;
+    -webkit-mask:none!important;
+    mask:none!important;
+    background:transparent var(--nomad-toolbar-icon) center/contain no-repeat!important;
+    opacity:.94!important;
+  }
+
+  /* PC artwork assignments, including the desktop football icon for ALL. */
+  .toolbar .tabs .tab:nth-child(1){--nomad-toolbar-icon:var(--nomad-icon-all)!important}
+  .toolbar .tabs .tab:nth-child(2){--nomad-toolbar-icon:var(--nomad-icon-signal)!important}
+  .toolbar .tabs .tab:nth-child(3){--nomad-toolbar-icon:var(--nomad-icon-near)!important}
+  .toolbar .tabs .tab:nth-child(4){--nomad-toolbar-icon:var(--nomad-icon-watching)!important}
+  .toolbar .odds-display-label{--nomad-toolbar-icon:var(--nomad-icon-odds)!important}
+  .toolbar .odds-display-control button[data-odds-mode="decimal"]{--nomad-toolbar-icon:var(--nomad-icon-decimal)!important}
+  .toolbar .odds-display-control button[data-odds-mode="american"]{--nomad-toolbar-icon:var(--nomad-icon-american)!important}
+  .toolbar .odds-display-control button[data-odds-mode="fractional"]{--nomad-toolbar-icon:var(--nomad-icon-fraction)!important}
+
+  /* Match the PC icon-over-label treatment while preserving equal 25% columns. */
+  .toolbar .tabs .tab,
+  .toolbar .odds-display-control button,
+  .toolbar .odds-display-label{
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:3px!important;
+    min-height:42px!important;
+    background:transparent!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+
+  /* Do not bring the desktop button/card surfaces onto mobile. */
+  .toolbar .tabs .tab:hover,
+  .toolbar .tabs .tab:focus-visible,
+  .toolbar .tabs .tab[aria-pressed="true"],
+  .toolbar .tabs .tab[data-active="1"],
+  .toolbar .odds-display-control button:hover,
+  .toolbar .odds-display-control button:focus-visible,
+  .toolbar .odds-display-control button.is-active,
+  .toolbar .odds-display-control button[aria-pressed="true"]{
+    background:transparent!important;
+    border-color:transparent!important;
+    box-shadow:none!important;
+  }
+
+  /* Preserve the desktop-style light response on the artwork itself. */
+  .toolbar .tabs .tab:hover::before,
+  .toolbar .tabs .tab:focus-visible::before,
+  .toolbar .odds-display-control button:hover::before,
+  .toolbar .odds-display-control button:focus-visible::before{
+    opacity:1!important;
+    filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+  }
+  .toolbar .tabs .tab[aria-pressed="true"]::before,
+  .toolbar .tabs .tab[data-active="1"]::before,
+  .toolbar .odds-display-control button.is-active::before,
+  .toolbar .odds-display-control button[aria-pressed="true"]::before{
+    opacity:1!important;
+    filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
+  }
+}
