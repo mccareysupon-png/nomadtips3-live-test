@@ -1,0 +1,203 @@
+/* Mobile visual polish for public Signal only.
+   Presentation-only layer. Loaded after mobile-ui-spacing.css on nomad-live/index.html.
+   No feed, engine, signal, odds, statistics or Live Score logic is changed. */
+
+@media(max-width:700px){
+  :root{
+    --mobile-surface:#171d18;
+    --mobile-surface-2:#1b221c;
+    --mobile-edge:rgba(131,223,137,.12);
+    --mobile-edge-soft:rgba(150,158,151,.12);
+    --mobile-shadow:0 8px 22px rgba(0,0,0,.20);
+  }
+
+  /* App-like top bar: flatter and quieter than the desktop header. */
+  .topbar{
+    background:linear-gradient(180deg,#16392d 0%,#112b21 100%)!important;
+    border-bottom:1px solid rgba(131,223,137,.10)!important;
+    box-shadow:0 5px 16px rgba(0,0,0,.20)!important;
+  }
+  .topbar-inner.public-four-nav>.brand{
+    letter-spacing:-.035em!important;
+    text-shadow:0 1px 0 rgba(0,0,0,.24)!important;
+  }
+
+  /* Hero: premium mobile card with a compact status block on the right. */
+  .hero{
+    position:relative;
+    overflow:hidden;
+    border:1px solid var(--mobile-edge)!important;
+    border-radius:14px!important;
+    background:
+      radial-gradient(circle at 84% 22%,rgba(131,223,137,.08),transparent 34%),
+      linear-gradient(145deg,#202820 0%,#182019 56%,#141914 100%)!important;
+    box-shadow:var(--mobile-shadow)!important;
+  }
+  .hero::after{
+    content:"";
+    position:absolute;
+    left:12px;
+    right:12px;
+    bottom:0;
+    height:1px;
+    background:linear-gradient(90deg,transparent,rgba(131,223,137,.24),transparent);
+    pointer-events:none;
+  }
+  .hero>div:first-child{min-width:0;flex:1 1 auto}
+  .hero .eyebrow{color:#aeb8b0!important}
+  .hero h1{margin-top:4px!important;margin-bottom:6px!important;letter-spacing:-.015em}
+  .hero>div:first-child>p:last-child{max-width:290px;line-height:1.5!important}
+  .hero .mode{
+    min-width:92px!important;
+    padding:8px 9px!important;
+    border-left:0!important;
+    border:1px solid rgba(131,223,137,.14)!important;
+    border-radius:11px!important;
+    background:linear-gradient(145deg,rgba(37,72,43,.48),rgba(21,39,25,.55))!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  }
+  .hero .mode span{letter-spacing:.08em!important}
+  .hero .mode strong{
+    color:var(--green)!important;
+    margin:3px 0!important;
+    text-shadow:0 0 12px rgba(131,223,137,.12)!important;
+  }
+  .hero .mode small{line-height:1.25!important}
+
+  /* KPI strip: preserve the existing 2x2 structure, refine only the surface. */
+  .status-grid{
+    border-color:var(--mobile-edge-soft)!important;
+    background:linear-gradient(145deg,#1d241e 0%,#171d18 60%,#141814 100%)!important;
+    box-shadow:var(--mobile-shadow)!important;
+  }
+  .status-grid>.metric{
+    background:linear-gradient(180deg,rgba(255,255,255,.012),rgba(0,0,0,.025))!important;
+  }
+  .status-grid>.metric.signal{
+    background:radial-gradient(ellipse 95% 92% at 50% 54%,rgba(40,91,49,.55) 0%,rgba(25,58,31,.34) 52%,rgba(18,27,20,.06) 100%)!important;
+  }
+  .status-grid>.metric span{color:#98a59b!important}
+  .status-grid>.metric strong{letter-spacing:-.02em}
+  .status-grid>.metric.signal strong{text-shadow:0 0 13px rgba(131,223,137,.12)}
+
+  /* Controls: one consistent touch surface for filters, odds and search. */
+  .toolbar{
+    border:1px solid var(--mobile-edge-soft)!important;
+    border-radius:13px!important;
+    background:linear-gradient(145deg,rgba(31,39,32,.94),rgba(20,25,21,.94))!important;
+    box-shadow:0 6px 18px rgba(0,0,0,.16)!important;
+  }
+  .tabs{
+    padding:3px!important;
+    border:1px solid rgba(150,158,151,.09)!important;
+    border-radius:10px!important;
+    background:#141a15!important;
+  }
+  .tab{
+    min-width:0!important;
+    border:1px solid transparent!important;
+    border-radius:8px!important;
+    background:transparent!important;
+    color:#aab1ab!important;
+    transition:background .14s ease,color .14s ease,border-color .14s ease!important;
+  }
+  .tab:hover,
+  .tab:focus-visible,
+  .tab[aria-pressed="true"],
+  .tab[data-active="1"]{
+    color:var(--green)!important;
+    border-color:rgba(131,223,137,.12)!important;
+    background:linear-gradient(145deg,rgba(45,103,56,.38),rgba(23,57,30,.28))!important;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+  }
+
+  .toolbar .odds-display-control{
+    width:100%!important;
+    display:grid!important;
+    grid-template-columns:auto repeat(3,minmax(0,1fr))!important;
+    align-items:center!important;
+    gap:3px!important;
+    padding:3px!important;
+    border:1px solid rgba(150,158,151,.09)!important;
+    border-radius:10px!important;
+    background:#141a15!important;
+  }
+  .toolbar .odds-display-label{padding:0 7px!important;color:#91a49a!important}
+  .toolbar .odds-display-control button{
+    min-height:34px!important;
+    border:1px solid transparent!important;
+    border-radius:8px!important;
+    color:#aab1ab!important;
+    background:transparent!important;
+  }
+  .toolbar .odds-display-control button:hover,
+  .toolbar .odds-display-control button:focus-visible,
+  .toolbar .odds-display-control button.is-active{
+    color:var(--green)!important;
+    border-color:rgba(131,223,137,.12)!important;
+    background:linear-gradient(145deg,rgba(45,103,56,.38),rgba(23,57,30,.28))!important;
+  }
+
+  .search{
+    width:100%!important;
+    padding:0 2px!important;
+    color:#9aa69d!important;
+    letter-spacing:.035em!important;
+  }
+  .search input{
+    width:min(76%,320px)!important;
+    border:1px solid rgba(150,158,151,.16)!important;
+    border-radius:10px!important;
+    background:linear-gradient(180deg,#121713,#101411)!important;
+    color:var(--text)!important;
+    box-shadow:inset 0 1px 5px rgba(0,0,0,.22)!important;
+    outline:none!important;
+  }
+  .search input::placeholder{color:#687269!important}
+  .search input:focus{
+    border-color:rgba(131,223,137,.42)!important;
+    box-shadow:0 0 0 2px rgba(131,223,137,.06),inset 0 1px 5px rgba(0,0,0,.22)!important;
+  }
+
+  /* Scanner panel and empty/loading state. */
+  .panel{
+    border:1px solid var(--mobile-edge-soft)!important;
+    border-radius:14px!important;
+    background:linear-gradient(145deg,#1d241e 0%,#171d18 58%,#141814 100%)!important;
+    box-shadow:var(--mobile-shadow)!important;
+  }
+  .panel-head{border-bottom-color:rgba(150,158,151,.11)!important}
+  .panel-head .muted{color:#8e9a91!important}
+  .match-list>.note{
+    min-height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    border:1px solid rgba(150,158,151,.08)!important;
+    border-radius:10px!important;
+    background:linear-gradient(145deg,rgba(255,255,255,.018),rgba(255,255,255,.008))!important;
+  }
+  .shell>.note{
+    border:1px solid rgba(150,158,151,.07)!important;
+    background:rgba(255,255,255,.018)!important;
+  }
+
+  /* Bottom app navigation: retain existing icons and add a restrained active cue. */
+  .mobile-nav.public-four-nav{
+    background:rgba(15,21,16,.97)!important;
+    border-top-color:rgba(131,223,137,.10)!important;
+    box-shadow:0 -9px 22px rgba(0,0,0,.24)!important;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .mobile-nav.public-four-nav a{
+    position:relative!important;
+    transition:color .14s ease,background .14s ease!important;
+  }
+  .mobile-nav.public-four-nav a.active{
+    color:var(--green)!important;
+    background:linear-gradient(180deg,rgba(131,223,137,.07),rgba(131,223,137,0) 68%)!important;
+    box-shadow:inset 0 2px 0 rgba(131,223,137,.88)!important;
+  }
+}
