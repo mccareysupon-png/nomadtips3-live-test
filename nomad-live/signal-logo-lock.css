@@ -1,0 +1,26 @@
+/* Signal page header logo lock: match Statistics / Live Score exactly.
+   Loaded last on page 1 so no earlier Signal-only layer can resize the wordmark. */
+.topbar-inner.public-four-nav>.brand{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:30px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  -webkit-text-stroke:.22px currentColor!important;
+  text-rendering:geometricPrecision!important;
+}
+.topbar-inner.public-four-nav>.brand span{
+  color:var(--yellow)!important;
+  -webkit-text-stroke:.22px currentColor!important;
+}
+@media(max-width:700px){
+  .topbar-inner.public-four-nav>.brand{
+    font-size:25px!important;
+    font-weight:900!important;
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  .topbar-inner.public-four-nav>.brand span{
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+}
