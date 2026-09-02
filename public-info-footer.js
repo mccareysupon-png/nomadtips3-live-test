@@ -11,15 +11,25 @@
   const picksPath=/\/soccer-predictions(?:\/index\.html)?\/?$/i.test(path);
   const publicRailPath=signalPath||statisticsPath||picksPath;
 
+  const stripPicksNavigation=()=>{
+    document.querySelectorAll('.topnav a,.mobile-nav a').forEach(link=>{
+      const href=String(link.getAttribute('href')||'');
+      if(/soccer-predictions/i.test(href))link.remove();
+    });
+  };
+  stripPicksNavigation();
+
   /* Scope lock:
      Page 1 Signal      -> add link rail only, below original 3.41 footer content.
      Page 2 Statistics  -> add link rail only, below original 3.41 footer content.
-     Page 3 Live Score  -> never touched by this module.
+     Page 3 Live Score  -> handled by the isolated 3.42 UI-only footer layer.
      Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
-     Information pages  -> retain their existing information-page footer behavior. */
+     Information pages  -> retain their existing information-page footer behavior.
+     Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
 
   const links=[
+    ['Soccer Precictions',new URL('soccer-predictions/',root).href],
     ['About Us',new URL('about/',root).href],
     ['User Guide',new URL('user-guide/',root).href],
     ['Privacy Policy',new URL('privacy/',root).href],
@@ -36,6 +46,7 @@
   };
 
   const attachPublicRail=()=>{
+    stripPicksNavigation();
     if(document.querySelector('.nomad-info-linkrail'))return;
 
     if(picksPath){
@@ -64,6 +75,7 @@
   }
 
   const attachToExisting=footer=>{
+    stripPicksNavigation();
     if(!footer||footer.querySelector('.nomad-info-linkrail'))return;
     const bottom=footer.querySelector('.site-footer-bottom');
     if(bottom){
@@ -101,6 +113,7 @@
   };
 
   const restoreOriginal341Footer=()=>{
+    stripPicksNavigation();
     const current=document.querySelector('.site-footer');
     if(current?.querySelector('.site-footer-certrow')){
       attachToExisting(current);
