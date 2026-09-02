@@ -1,0 +1,24 @@
+/* Soccer Predictions team identity placement override.
+   Presentation only: keep existing logos and prediction data unchanged,
+   but move each logo to the inner edge next to VS. */
+
+.match-title .team:first-child{
+  justify-content:flex-end!important;
+  text-align:right!important;
+}
+.match-title .team:first-child .team-name{
+  order:1!important;
+}
+.match-title .team:first-child .team-logo{
+  order:2!important;
+}
+.match-title .team.away{
+  justify-content:flex-start!important;
+  text-align:left!important;
+}
+.match-title .team.away .team-logo{
+  order:1!important;
+}
+.match-title .team.away .team-name{
+  order:2!important;
+}
