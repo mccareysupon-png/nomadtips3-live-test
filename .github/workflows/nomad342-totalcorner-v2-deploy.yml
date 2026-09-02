@@ -1,0 +1,107 @@
+name: Deploy TotalCorner Live Score V2
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'work/totalcorner-live-score-v2-20260902'
+    paths:
+      - 'nomad-live-score-feed-v2/**'
+      - '.github/workflows/nomad342-totalcorner-v2-deploy.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  V2_URL: https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: work/totalcorner-live-score-v2-20260902
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate isolated V2 source
+        working-directory: nomad-live-score-feed-v2
+        run: |
+          node --check src/totalcorner.js
+          node --check src/index.js
+          npm test
+          grep -q '^name = "nomadtips3-live-score-feed-v2"$' wrangler.toml
+          grep -q '^main = "src/index.js"$' wrangler.toml
+          grep -q '^workers_dev = true$' wrangler.toml
+
+      - name: Dry-run V2 Worker bundle
+        working-directory: nomad-live-score-feed-v2
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated V2 Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-score-feed-v2
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.toml
+
+      - name: Smoke V2 contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 15 "$V2_URL/contract?_=$RANDOM$RANDOM" -o /tmp/contract.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v2'||j.transport!=='DIRECT_WORKER_V2'||j.mode!=='LIVE_EVENT_FEED') process.exit(1);
+          if(j.source?.name!=='TotalCorner'||j.source?.detailMode!=='TODAY_ONLY') process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 4
+          done
+          test "$ok" = '1'
+
+      - name: Probe V2 live TotalCorner feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 30 "$V2_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,version:j.version,component:j.component,transport:j.transport,updatedAt:j.updatedAt,counts:j.counts,lastError:j.lastError},null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v2'||j.transport!=='DIRECT_WORKER_V2'||!Array.isArray(j.matches)) process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
+
+      - name: Recheck V2 feed after cache window
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 11
+          curl -fsS --max-time 30 "$V2_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed2.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed2.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,cycle:j.cycle,updatedAt:j.updatedAt,sourceAgeMs:j.sourceAgeMs,sourceStale:j.sourceStale,counts:j.counts,lastError:j.lastError},null,2));
+          if(j.ok!==true||j.version!=='3.42'||!Array.isArray(j.matches)) process.exit(1);
+          NODE
