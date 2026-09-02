@@ -5,6 +5,11 @@ body[data-page="live"] .attack-chart{
   background:#000;
 }
 
+/* Keep the Attack Flow plot black even when vintage HOME/AWAY palette layers load later. */
+html body[data-page="live"] .event-compact.vintage-theme-ready .event-details.graph-first-v1 .attack-chart{
+  background:#000!important;
+}
+
 /* Desktop readability: double only the Attack Flow vertical canvas.
    Width, SVG viewBox, data points, polling and graph logic remain unchanged. */
 @media(min-width:761px){
