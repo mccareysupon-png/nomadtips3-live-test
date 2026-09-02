@@ -1,15 +1,15 @@
 @import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:900px);
 
 /* Statistics mobile / nearby-device polish.
-   Presentation only: keeps DOM order, data bindings, odds logic, chart anchor and ledger structure untouched.
+   Presentation only: keeps data bindings, odds logic, chart anchor and ledger structure untouched.
    Rollback marker: rollback/pre-statistics-mobile-airy-20260901
    Brightness rollback note: rollback-notes/icon-brightness-20260902.md
    Size rollback: 27.7px -> 23.1px (pre +20% request, 2026-09-02). */
 
 @media(max-width:900px){
-  /* Primary KPI strip: one compact row, four equal columns, no decorative icons. */
+  /* Primary KPI strip: five compact columns: TOTAL, DAY, WIN RATE, AVG ODDS, ROI. */
   .statistics-summary-grid{
-    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
     gap:0!important;
     overflow:hidden!important;
     border:1px solid rgba(131,223,137,.10)!important;
@@ -20,10 +20,12 @@
   .statistics-summary-grid>.stats-breakdown-metric{
     display:none!important;
   }
-  .statistics-summary-grid>.metric:nth-child(-n+4){
+  .statistics-summary-grid>.metric:nth-child(-n+4),
+  .statistics-summary-grid>.stats-day-metric{
+    position:relative!important;
     min-width:0!important;
-    min-height:44px!important;
-    padding:6px 2px 5px!important;
+    min-height:42px!important;
+    padding:5px 1px 4px!important;
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
@@ -32,30 +34,39 @@
     background:transparent!important;
     box-shadow:none!important;
   }
+  .statistics-summary-grid>.metric:nth-child(1){order:1!important}
+  .statistics-summary-grid>.stats-day-metric{order:2!important}
+  .statistics-summary-grid>.metric:nth-child(2){order:3!important}
+  .statistics-summary-grid>.metric:nth-child(3){order:4!important}
+  .statistics-summary-grid>.metric:nth-child(4){order:5!important}
+
   .statistics-summary-grid>.metric.signal{
     background:radial-gradient(ellipse 92% 82% at 50% 54%,rgba(36,93,52,.34),rgba(20,46,30,.12) 60%,transparent 100%)!important;
   }
-  .statistics-summary-grid>.metric:nth-child(-n+4)>span{
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span,
+  .statistics-summary-grid>.stats-day-metric>span{
     width:100%!important;
     display:block!important;
     color:#aeb8b0!important;
-    font-size:7.5px!important;
+    font-size:6.8px!important;
     font-weight:800!important;
     line-height:1!important;
-    letter-spacing:.025em!important;
+    letter-spacing:.015em!important;
     text-align:center!important;
     white-space:nowrap!important;
   }
-  .statistics-summary-grid>.metric:nth-child(-n+4)>span::before{
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span::before,
+  .statistics-summary-grid>.stats-day-metric>span::before{
     content:none!important;
     display:none!important;
   }
   .statistics-summary-grid .metric-info{
     display:none!important;
   }
-  .statistics-summary-grid>.metric:nth-child(-n+4)>strong{
-    margin:4px 0 0!important;
-    font-size:16.5px!important;
+  .statistics-summary-grid>.metric:nth-child(-n+4)>strong,
+  .statistics-summary-grid>.stats-day-metric>strong{
+    margin:3px 0 0!important;
+    font-size:15px!important;
     line-height:1!important;
     text-align:center!important;
   }
@@ -63,6 +74,7 @@
   .statistics-summary-grid>.metric::after{
     content:none!important;
   }
+  .statistics-summary-grid>.stats-day-metric::before,
   .statistics-summary-grid>.metric:nth-child(2)::before,
   .statistics-summary-grid>.metric:nth-child(3)::before,
   .statistics-summary-grid>.metric:nth-child(4)::before{
@@ -76,7 +88,7 @@
     pointer-events:none!important;
   }
 
-  /* Settled breakdown: a lightweight secondary strip, not another card. */
+  /* Settled breakdown stays as a lightweight secondary row. */
   .mobile-settled-summary{
     display:block!important;
     margin:6px 0 9px!important;
@@ -218,8 +230,19 @@
     filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
   }
 
-  /* WIN / LOSS / PUSH already live in the compact strip above on these widths. */
   .statistics-results-summary{
     display:none!important;
+  }
+}
+
+@media(max-width:360px){
+  .statistics-summary-grid>.metric:nth-child(-n+4)>span,
+  .statistics-summary-grid>.stats-day-metric>span{
+    font-size:6.2px!important;
+    letter-spacing:0!important;
+  }
+  .statistics-summary-grid>.metric:nth-child(-n+4)>strong,
+  .statistics-summary-grid>.stats-day-metric>strong{
+    font-size:13.5px!important;
   }
 }
