@@ -1,6 +1,7 @@
 /* NOMAD Live 3.41 mobile collapsed-card team layout.
    Presentation only: hides quick PRESS/SOT/HUNGER in collapsed cards and adds
-   two compact vertical team rows with shirt icons. Expanded detail and engine logic stay unchanged. */
+   two compact vertical team rows with shirt icons. Expanded detail and engine logic stay unchanged.
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 @media (max-width:520px){
   .match-main .teams.mobile-team-shirts-ready{
@@ -30,8 +31,8 @@
     height:22px!important;
     min-width:22px!important;
     object-fit:contain!important;
-    opacity:.97!important;
-    filter:brightness(1) saturate(.98) drop-shadow(0 1px 2px rgba(0,0,0,.40))!important;
+    opacity:1!important;
+    filter:brightness(1.07) saturate(1.04) drop-shadow(0 1px 2px rgba(0,0,0,.40))!important;
     pointer-events:none!important;
     user-select:none!important;
   }
@@ -61,7 +62,8 @@
   }
 
   .match-wrap.signal .mobile-team-shirt-icon{
-    filter:brightness(1.04) saturate(1) drop-shadow(0 1px 2px rgba(0,0,0,.40)) drop-shadow(0 0 3px rgba(131,223,137,.12))!important;
+    opacity:1!important;
+    filter:brightness(1.10) saturate(1.06) drop-shadow(0 1px 2px rgba(0,0,0,.40)) drop-shadow(0 0 3px rgba(131,223,137,.16))!important;
   }
 }
 
