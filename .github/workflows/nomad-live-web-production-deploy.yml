@@ -29,6 +29,7 @@ env:
   CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
   CUSTOM_URL: https://www.nomadtips3.com
   BACKUP_URL: https://mccareysupon-png.github.io/nomadtips3-live-test
+  LIVE_SCORE_V2_URL: https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev
 
 jobs:
   validate-canary-cutover:
@@ -47,6 +48,7 @@ jobs:
           node --check nomad-live-web-production/src/index.js
           node --check nomad-live/runtime.js
           node --check nomad-live/live-filter-lock.js
+          node --check nomad-live/statistics-live-score-mirror.js
           node --check nomad-live-342/runtime-config.js
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
@@ -59,36 +61,35 @@ jobs:
           test -f disclaimer/index.html
           test -f public-info-footer.js
           test -f public-info-footer.css
+
+          # Page 1 remains on its established production engine path.
           grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
           grep -Fq 'live-filter-lock.js?v=20260828-default-all-v1' nomad-live/index.html
-          grep -Fq 'Live Score & Event Monitor' nomad-live-342/index.html
-          grep -Fq "'www.nomadtips3.com'" nomad-live/runtime-config.js
-          grep -Fq "'nomadtips3.com'" nomad-live/runtime-config.js
-          grep -Fq "'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev'" nomad-live/runtime-config.js
-          grep -Fq "'mccareysupon-png.github.io'" nomad-live/runtime-config.js
           grep -Fq "transport:directProduction?'direct':'service-binding'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
-          grep -Fq "'www.nomadtips3.com'" nomad-live-342/runtime-config.js
-          grep -Fq "'nomadtips3.com'" nomad-live-342/runtime-config.js
-          grep -Fq "transport:sameOriginProduction?'same-origin':'direct-worker'" nomad-live-342/runtime-config.js
-          grep -Fq "NOMAD342_PREFIX+'/feed'" nomad-live-web-production/src/index.js
-          grep -Fq 'env.EVENT_ENGINE.fetch' nomad-live-web-production/src/index.js
+          grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
+
+          # Page 3 is direct TotalCorner V2; do not require the retired browser same-origin transport.
+          grep -Fq 'Live Score & Event Monitor' nomad-live-342/index.html
+          grep -Fq "transport:'direct-worker-v2'" nomad-live-342/runtime-config.js
+          grep -Fq 'https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' nomad-live-342/runtime-config.js
+
+          # Page 2 FINAL mirrors the same direct V2 feed without touching Page 1 runtime.
+          grep -Fq "LIVE_SCORE_V2_BASE='https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev'" nomad-live/statistics-live-score-mirror.js
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' nomad-live/statistics.html
+
+          # Preserve existing public bridges and dashboard-managed production route.
           grep -Fq 'proxyPublicInfo' nomad-live-web-production/src/index.js
           grep -Fq "'/user-guide'" nomad-live-web-production/src/index.js
           grep -Fq "'/disclaimer'" nomad-live-web-production/src/index.js
           grep -Fq '"name": "nomadtips3-live-web-production-canary"' nomad-live-web-production/wrangler.preview.jsonc
-          grep -Fq '"binding": "EVENT_ENGINE"' nomad-live-web-production/wrangler.preview.jsonc
-          grep -Fq '"service": "nomadtips3-live-engine-342-test"' nomad-live-web-production/wrangler.preview.jsonc
-          grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
-          grep -Fq '"binding": "EVENT_ENGINE"' nomad-live-web-production/wrangler.production.jsonc
-          grep -Fq '"service": "nomadtips3-live-engine-342-test"' nomad-live-web-production/wrangler.production.jsonc
           grep -Fq '"workers_dev": false' nomad-live-web-production/wrangler.production.jsonc
           if grep -Fq '"routes"' nomad-live-web-production/wrangler.production.jsonc; then
             echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
             exit 1
           fi
-          echo '3.41 production web + public information bridge + isolated 3.42 transport validated'
+          echo '3.41 production web + Page2 FINAL direct V2 mirror + Page3 direct V2 transport validated'
 
       - name: Validate Cloudflare credentials
         run: |
@@ -142,6 +143,11 @@ jobs:
           grep -Fq 'src="runtime-config.js' /tmp/home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
 
+          curl -fsSL --max-time 20 "$CANARY_URL/statistics.html?t=$(date +%s)" -o /tmp/canary-statistics.html
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/canary-statistics.html
+          curl -fsSL --max-time 20 "$CANARY_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/canary-final-mirror.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/canary-final-mirror.js
+
           for page in about privacy terms user-guide disclaimer; do
             curl -fsSL --max-time 20 "$CANARY_URL/$page/?t=$(date +%s)" -o "/tmp/canary-info-$page.html"
             grep -Fq 'NOMADTIPS3' "/tmp/canary-info-$page.html"
@@ -159,17 +165,21 @@ jobs:
           curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/canary-342.html
           grep -Fq 'Live Score & Event Monitor' /tmp/canary-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/canary-342.html
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/canary-342-runtime.js
+          grep -Fq "transport:'direct-worker-v2'" /tmp/canary-342-runtime.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/canary-342-runtime.js
 
-          curl -fsS --max-time 35 "$CANARY_URL/nomad-live-342/feed?force=1&t=$(date +%s)" -o /tmp/canary-342-feed.json
-          FEED_FILE=/tmp/canary-342-feed.json python - <<'PY'
+          curl -fsS -D /tmp/v2-headers.txt --max-time 35 "$LIVE_SCORE_V2_URL/feed?force=1&t=$(date +%s)" -o /tmp/v2-feed.json
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*\*' /tmp/v2-headers.txt
+          FEED_FILE=/tmp/v2-feed.json python - <<'PY'
           import json, os
           data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
           assert str(data.get('version'))=='3.42', data.get('version')
           assert isinstance(data.get('matches'),list), type(data.get('matches')).__name__
           assert data.get('ok') is not False, data.get('lastError') or data.get('error')
-          print('CANARY_342_FEED_OK matches=',len(data['matches']))
+          print('DIRECT_V2_FEED_OK matches=',len(data['matches']))
           PY
-          echo 'Canary + 3.41 + information routes + API + 3.42 feed passed before Production deploy.'
+          echo 'Canary + Page1 API + Page2 FINAL V2 mirror assets + Page3 direct V2 contract passed before Production deploy.'
 
       - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
@@ -180,7 +190,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.production.jsonc
 
-      - name: Verify www now serves 3.41, information pages and isolated 3.42 route
+      - name: Verify www now serves 3.41, FINAL V2 mirror and direct-V2 3.42 page
         shell: bash
         run: |
           set -euo pipefail
@@ -202,6 +212,9 @@ jobs:
 
           curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/custom-statistics.html
+          curl -fsSL --max-time 20 "$CUSTOM_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/custom-final-mirror.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/custom-final-mirror.js
 
           for page in about privacy terms user-guide disclaimer; do
             curl -fsSL --max-time 20 "$CUSTOM_URL/$page/?t=$(date +%s)" -o "/tmp/custom-info-$page.html"
@@ -220,28 +233,20 @@ jobs:
           curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/custom-342.html
           grep -Fq 'Live Score & Event Monitor' /tmp/custom-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/custom-342.html
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/custom-342-runtime.js
+          grep -Fq "transport:'direct-worker-v2'" /tmp/custom-342-runtime.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/custom-342-runtime.js
 
-          feed_ok=0
-          for attempt in $(seq 1 8); do
-            if curl -fsS --max-time 35 "$CUSTOM_URL/nomad-live-342/feed?force=1&t=$(date +%s)" -o /tmp/custom-342-feed.json; then
-              if FEED_FILE=/tmp/custom-342-feed.json python - <<'PY'
-          import json, os, sys
-          try:
-              data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
-          except Exception as e:
-              print('FEED_JSON_ERROR',repr(e)); sys.exit(1)
-          if str(data.get('version'))!='3.42' or not isinstance(data.get('matches'),list) or data.get('ok') is False:
-              print('FEED_CONTRACT_BAD',data.get('version'),type(data.get('matches')).__name__,data.get('lastError') or data.get('error')); sys.exit(1)
-          print('WWW_342_FEED_OK matches=',len(data['matches']))
+          curl -fsS -D /tmp/custom-v2-headers.txt --max-time 35 "$LIVE_SCORE_V2_URL/feed?force=1&t=$(date +%s)" -o /tmp/custom-v2-feed.json
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*\*' /tmp/custom-v2-headers.txt
+          FEED_FILE=/tmp/custom-v2-feed.json python - <<'PY'
+          import json, os
+          data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
+          assert str(data.get('version'))=='3.42', data.get('version')
+          assert isinstance(data.get('matches'),list), type(data.get('matches')).__name__
+          assert data.get('ok') is not False, data.get('lastError') or data.get('error')
+          print('WWW_DIRECT_V2_FEED_OK matches=',len(data['matches']))
           PY
-              then
-                feed_ok=1
-                break
-              fi
-            fi
-            sleep 5
-          done
-          test "$feed_ok" = 1 || { echo '::error::www 3.42 same-origin feed did not become healthy'; exit 1; }
 
           chrome="$(command -v google-chrome-stable || command -v google-chrome || command -v chromium || command -v chromium-browser)"
           test -n "$chrome" || { echo '::error::Chrome missing for 3.42 browser transport verification'; exit 1; }
@@ -257,12 +262,11 @@ jobs:
           if [ "$browser_ok" != 1 ]; then
             echo '--- 3.42 BROWSER ERRORS ---'
             grep -Ei 'error|failed|cors|uncaught|exception|ERR_' /tmp/custom-342-browser.log | tail -120 || true
-            echo '::error::www browser did not consume the 3.42 same-origin feed'
+            echo '::error::www browser did not consume the direct V2 3.42 feed'
             exit 1
           fi
 
-          echo 'NOMAD Live 3.41 remains active on www.nomadtips3.com.'
-          echo 'NOMADTIPS3 About / User Guide / Privacy / Terms / Disclaimer routes are healthy on www.nomadtips3.com.'
-          echo 'NOMAD Live 3.42 same-origin feed transport is healthy at /nomad-live-342/feed.'
-          echo 'NOMAD Live 3.42 browser consumed the production feed without EVENT FEED WAIT.'
+          echo 'NOMAD Live 3.41 remains active on www.nomadtips3.com with its original Page1 engine path.'
+          echo 'Statistics FINAL mirror asset is deployed and points directly to V2.'
+          echo 'NOMAD Live 3.42 runtime points directly to the V2 Worker.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
