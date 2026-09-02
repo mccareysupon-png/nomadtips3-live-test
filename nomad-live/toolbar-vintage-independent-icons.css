@@ -1,7 +1,8 @@
 /* NOMADTIPS3 independent-color vintage toolbar icon set.
    Presentation only: artwork + icon light response. No layout/filter/odds/feed/engine logic.
    Rollback: rollback/pre-toolbar-vintage-independent-icons-20260902
-   Size rollback: rollback/pre-toolbar-icon-size-plus15-20260902 */
+   Size rollback: rollback/pre-toolbar-icon-size-plus15-20260902
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 .toolbar .tabs .tab::before,
 .toolbar .odds-display-control button::before,
@@ -9,8 +10,8 @@
   background-image:url("assets/icons/vintage-toolbar-independent.webp")!important;
   background-repeat:no-repeat!important;
   background-size:800% 100%!important;
-  opacity:.94!important;
-  filter:brightness(.96) saturate(1)!important;
+  opacity:1!important;
+  filter:brightness(1.12) saturate(1.07)!important;
   transform:translateY(0) scale(1);
   transition:filter .16s ease,opacity .16s ease,transform .16s ease!important;
 }
@@ -46,16 +47,21 @@
 .toolbar .odds-display-control button[data-odds-mode="american"]::before{background-position:85.7143% 50%!important}
 .toolbar .odds-display-control button[data-odds-mode="fractional"]::before{background-position:100% 50%!important}
 
-/* Hover and active intentionally use the exact same artwork response. */
+/* Hover remains above the brighter default; active remains the strongest state. */
 .toolbar .tabs .tab:hover::before,
 .toolbar .tabs .tab:focus-visible::before,
+.toolbar .odds-display-control button:hover::before,
+.toolbar .odds-display-control button:focus-visible::before{
+  opacity:1!important;
+  filter:brightness(1.27) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24))!important;
+  transform:translateY(-1px) scale(1.04)!important;
+}
+
 .toolbar .tabs .tab[aria-pressed="true"]::before,
 .toolbar .tabs .tab[data-active="1"]::before,
-.toolbar .odds-display-control button:hover::before,
-.toolbar .odds-display-control button:focus-visible::before,
 .toolbar .odds-display-control button.is-active::before,
 .toolbar .odds-display-control button[aria-pressed="true"]::before{
   opacity:1!important;
-  filter:brightness(1.24) saturate(1.08) drop-shadow(0 0 5px rgba(255,255,255,.24))!important;
+  filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
   transform:translateY(-1px) scale(1.04)!important;
 }
