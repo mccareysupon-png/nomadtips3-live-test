@@ -77,3 +77,61 @@ jobs:
           assert(css.includes('var(--vt-draw)'),'DRAW CSS must consume per-card --vt-draw');
           console.log('DRAW_ASSET_ORDER_OK');
           NODE
+
+      - name: Validate all 12 DRAW palettes in browser
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          cat > nomad-live-342/__draw_guard.html <<'HTML'
+          <!doctype html><html><head>
+          <link rel="stylesheet" href="vintage-draw-theme.css">
+          </head><body data-page="live"><div id="matchList"></div>
+          <script>
+          const homes=['#d86f78','#72c28b','#6e9ed8','#d16c76','#cd6b7d','#df7c34','#a882bd','#c95d64','#d0a43e','#6fb6bc','#9ca65e','#6c92df'];
+          const aways=['#e6d7b3','#e5dcc0','#d8ae4b','#8eb9c5','#62b7bf','#b8b9b4','#d7c397','#a7cfad','#6d8fc5','#b8676d','#e7dfc8','#cc676d'];
+          document.getElementById('matchList').innerHTML=homes.map((home,i)=>`<article class="event-compact vintage-theme-ready" data-vintage-palette="${String(i+1).padStart(2,'0')}" style="--vt-home:${home};--vt-away:${aways[i]}"><div class="nlp-draw"><span>DRAW</span><b>${30+i}%</b></div><div class="nlp-track"><i class="nlp-track-draw"></i></div></article>`).join('');
+          </script>
+          <script src="vintage-draw-theme.js"></script>
+          </body></html>
+          HTML
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/nomad342-draw-guard.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true; rm -f nomad-live-342/__draw_guard.html' EXIT
+          for i in {1..20}; do
+            if curl -fsS http://127.0.0.1:8080/nomad-live-342/__draw_guard.html >/dev/null; then break; fi
+            sleep .2
+          done
+          node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
+          const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
+          (async()=>{
+            const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              await page.goto('http://127.0.0.1:8080/nomad-live-342/__draw_guard.html',{waitUntil:'domcontentloaded',timeout:30000});
+              await page.waitForFunction(()=>document.querySelectorAll('.event-compact.vintage-draw-theme-ready').length===12,{timeout:10000});
+              const result=await page.evaluate(()=>[...document.querySelectorAll('.event-compact')].map(card=>{
+                const probe=document.createElement('i');
+                probe.style.color='var(--vt-draw)';card.appendChild(probe);
+                const draw=getComputedStyle(probe).color;probe.remove();
+                return {
+                  palette:card.dataset.vintagePalette,
+                  drawVar:card.style.getPropertyValue('--vt-draw').trim().toLowerCase(),
+                  draw,
+                  label:getComputedStyle(card.querySelector('.nlp-draw b')).color,
+                  track:getComputedStyle(card.querySelector('.nlp-track-draw')).backgroundColor
+                };
+              }));
+              console.log('DRAW_BROWSER',JSON.stringify(result));
+              check(result.length===12,'expected 12 DRAW cards');
+              check(new Set(result.map(x=>x.drawVar)).size===12,'browser DRAW variables must stay unique');
+              result.forEach(x=>{
+                check(x.drawVar,`palette ${x.palette}: missing --vt-draw`);
+                check(x.label===x.draw,`palette ${x.palette}: DRAW label escaped palette`);
+                check(x.track===x.draw,`palette ${x.palette}: DRAW track escaped palette`);
+              });
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
