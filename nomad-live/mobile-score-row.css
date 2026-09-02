@@ -16,6 +16,7 @@
     overflow:visible!important;
   }
 
+  /* Original mobile score size restored. */
   .mobile-team-score{
     grid-column:3!important;
     display:flex!important;
@@ -28,7 +29,7 @@
     margin:0!important;
     overflow:visible!important;
     color:var(--green)!important;
-    font-size:19.5px!important;
+    font-size:15px!important;
     font-weight:900!important;
     line-height:1!important;
     text-align:center!important;
@@ -54,6 +55,15 @@
     margin-right:0!important;
     text-align:center!important;
   }
+
+  /* Live time enlarged 30% from the original 6.2px; clock stays proportional. */
+  .score.score-live-stack.mobile-score-layout-ready > .score-live-time{
+    font-size:8.06px!important;
+  }
+  .score.score-live-stack.mobile-score-layout-ready > .score-live-time svg{
+    width:9.1px!important;
+    height:9.1px!important;
+  }
 }
 
 @media (max-width:360px){
@@ -70,6 +80,6 @@
     width:30px!important;
     min-width:30px!important;
     min-height:22px!important;
-    font-size:18.2px!important;
+    font-size:14px!important;
   }
 }
