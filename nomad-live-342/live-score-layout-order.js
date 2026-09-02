@@ -8,13 +8,19 @@
     const details=card.querySelector('.event-details');
     const top=details?.querySelector(':scope > .nomad-analytics-top');
     const bottom=details?.querySelector(':scope > .nomad-analytics-bottom');
-    if(!top||!bottom)return;
+    if(!details||!top||!bottom)return;
 
-    const timeline=[...top.children].find(section=>headingText(section)==='EVENT TIMELINE');
+    /* Presentation only: promote EVENT TIMELINE to the first row of the expanded card.
+       Keep the existing section intact so feed/event-gate logic and timeline enhancement stay untouched. */
+    const sections=[
+      ...top.querySelectorAll(':scope > .na-section'),
+      ...bottom.querySelectorAll(':scope > .na-section'),
+      ...details.querySelectorAll(':scope > .na-section')
+    ];
+    const timeline=sections.find(section=>headingText(section)==='EVENT TIMELINE');
     if(timeline){
-      const firstBottomSection=bottom.querySelector(':scope > .na-section');
-      if(firstBottomSection?.nextSibling)bottom.insertBefore(timeline,firstBottomSection.nextSibling);
-      else bottom.append(timeline);
+      timeline.dataset.uiGroup='primary-timeline';
+      details.prepend(timeline);
     }
 
     top.dataset.uiGroup='pressure-signals';
