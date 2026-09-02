@@ -1,5 +1,6 @@
 /* Desktop/PC only NOMAD vintage team-shirt layer.
-   Presentation only: no feed, match, odds, filter, signal, or engine logic. */
+   Presentation only: no feed, match, odds, filter, signal, or engine logic.
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 .match-main .teams.team-shirts-ready{
   display:grid!important;
@@ -26,8 +27,8 @@
   height:24px!important;
   flex:0 0 24px!important;
   object-fit:contain!important;
-  opacity:.95!important;
-  filter:brightness(.96) saturate(.96) drop-shadow(0 2px 2px rgba(0,0,0,.38))!important;
+  opacity:1!important;
+  filter:brightness(1.10) saturate(1.06) drop-shadow(0 2px 2px rgba(0,0,0,.38))!important;
   transition:filter .15s ease,opacity .15s ease!important;
   pointer-events:none!important;
   user-select:none!important;
@@ -57,9 +58,10 @@
 .match-row:hover .team-shirt-icon,
 .match-row:focus-visible .team-shirt-icon{
   opacity:1!important;
-  filter:brightness(1.08) saturate(1.02) drop-shadow(0 2px 3px rgba(0,0,0,.38)) drop-shadow(0 0 3px rgba(255,255,255,.10))!important;
+  filter:brightness(1.16) saturate(1.08) drop-shadow(0 2px 3px rgba(0,0,0,.38)) drop-shadow(0 0 3px rgba(255,255,255,.12))!important;
 }
 
 .match-wrap.signal .team-shirt-icon{
-  filter:brightness(1.02) saturate(1.00) drop-shadow(0 2px 2px rgba(0,0,0,.38)) drop-shadow(0 0 3px rgba(131,223,137,.12))!important;
+  opacity:1!important;
+  filter:brightness(1.14) saturate(1.06) drop-shadow(0 2px 2px rgba(0,0,0,.38)) drop-shadow(0 0 4px rgba(131,223,137,.18))!important;
 }
