@@ -1,0 +1,13 @@
+/* NOMAD 3.42 — isolated DRAW identity layer. Presentation only. */
+body[data-page="live"] .event-compact.vintage-theme-ready.vintage-draw-theme-ready .nlp-draw{
+  background:linear-gradient(145deg,color-mix(in srgb,var(--vt-draw) 12%,transparent),rgba(255,255,255,.012))!important;
+  border-color:color-mix(in srgb,var(--vt-draw) 24%,transparent)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready.vintage-draw-theme-ready .nlp-draw span,
+body[data-page="live"] .event-compact.vintage-theme-ready.vintage-draw-theme-ready .nlp-draw b{
+  color:var(--vt-draw)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready.vintage-draw-theme-ready .nlp-track-draw{
+  background:var(--vt-draw)!important;
+  box-shadow:0 0 5px color-mix(in srgb,var(--vt-draw) 24%,transparent);
+}
