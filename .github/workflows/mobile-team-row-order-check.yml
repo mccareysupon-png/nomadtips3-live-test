@@ -80,3 +80,4 @@ jobs:
             } finally { await browser.close(); }
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
+          # one-shot geometry verification
