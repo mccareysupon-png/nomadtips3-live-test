@@ -1,13 +1,13 @@
 (()=>{
 'use strict';
 const defaults=Object.freeze({
-  minuteFrom:55,
+  minuteFrom:30,
   minuteTo:88,
   rollingWindowMinutes:5,
   scoreDifferenceFilterEnabled:false,
   maxScoreDifference:1,
   attackWeight:1,
-  dangerousAttackWeight:2,
+  dangerousAttackWeight:1,
   homePressureShareMinimum:54,
   trendConditionsRequired:2,
   homeEventRequired:true,
@@ -20,19 +20,19 @@ const defaults=Object.freeze({
   evidenceMode:'ANY',
   allowedLinesMode:'ANY',
   allowedSelectionLines:Object.freeze([]),
-  oddsMinimum:1.80,
+  oddsMinimum:1.40,
   oddsMaximumEnabled:false,
   oddsMaximum:2.40,
-  maximumPriceAgeSeconds:30,
+  maximumPriceAgeSeconds:90,
   oneSignalPerMatch:true
 });
 window.NOMAD342_CONFIG=Object.freeze({
-  version:'20260831-k-live-net-v1',
+  version:'20260902-k-live-net-v2',
   settingsKey:'nomadSettings342',
   defaults
 });
 window.NOMAD342_K_LIVE_PRESET=Object.freeze({
-  version:'k-live-net-v1',
+  version:'k-live-net-v2',
   name:'K LIVE',
   locked:true,
   scope:'ALL_LIVE_MATCHES',
@@ -51,10 +51,10 @@ window.NOMAD342_K_LIVE_PRESET=Object.freeze({
     ah:'AUTO_MAIN_LINE',
     oneXtwo:'AUTO',
     totals:'AUTO_MAIN_LINE',
-    maxAgeMs:30000,
+    maxAgeMs:90000,
     minReferees:3,
     moderateShare:0.58,
-    strongShare:0.65,
+    strongShare:0.60,
     directionalMarkets:Object.freeze(['AH','1X2']),
     totalsRole:'CONTEXT'
   }),
