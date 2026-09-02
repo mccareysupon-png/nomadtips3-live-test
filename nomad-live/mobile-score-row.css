@@ -1,105 +1,70 @@
-/* NOMAD Live 3.41 — mobile match identity / score alignment.
-   Presentation only. Keeps live data, score source, clock updater, market and engine logic untouched.
-   HOME/AWAY score values are visually aligned with the existing two mobile team rows;
-   the existing LIVE/clock block stays a single block immediately to their right. */
+/* NOMAD Live 3.41 — mobile team-row score alignment.
+   Presentation only. The real live score node remains owned by live-score-status.js.
+   Mobile mirrors HOME/AWAY score values into the same visual rows as shirt + team name. */
 
 @media (max-width:520px){
-  /* Give the existing score cell just enough room for score + one live-time block. */
+  /* Preserve the existing four card columns while giving the team block a little more room. */
   .match-row{
-    grid-template-columns:56px minmax(0,1fr) 64px 54px!important;
+    grid-template-columns:56px minmax(0,1fr) 58px 54px!important;
   }
 
-  .score.score-live-stack.mobile-score-layout-ready{
-    display:grid!important;
-    grid-template-columns:16px minmax(0,1fr)!important;
-    grid-template-rows:auto auto!important;
-    column-gap:3px!important;
-    row-gap:1px!important;
-    align-content:center!important;
+  /* This is the required mobile row: shirt | team name | that team's score. */
+  .mobile-team-line.mobile-team-score-ready{
+    grid-template-columns:22px minmax(0,1fr) 20px!important;
+    column-gap:6px!important;
     align-items:center!important;
-    justify-items:center!important;
-    min-width:0!important;
-    min-height:48px!important;
-    line-height:1!important;
   }
 
-  /* Two score rows mirror HOME/AWAY team rows without changing the source value. */
-  .score.score-live-stack .score-live-value.mobile-score-pair{
-    grid-column:1!important;
-    grid-row:1 / 3!important;
-    display:grid!important;
-    grid-template-rows:22px 22px!important;
-    row-gap:4px!important;
-    align-items:center!important;
-    justify-items:center!important;
-    width:16px!important;
-    min-width:16px!important;
-    height:48px!important;
-    margin:0!important;
-    font-size:0!important;
-    line-height:1!important;
-  }
-
-  .mobile-score-home,
-  .mobile-score-away{
+  .mobile-team-score{
+    grid-column:3!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    width:16px!important;
+    width:20px!important;
+    min-width:20px!important;
     height:22px!important;
+    margin:0!important;
     color:var(--green)!important;
     font-size:15px!important;
     font-weight:900!important;
     line-height:1!important;
+    text-align:center!important;
     white-space:nowrap!important;
   }
 
-  /* Keep the existing LIVE phase and the single existing clock/minute together to the right. */
-  .score.score-live-stack.mobile-score-layout-ready > .score-live-head{
-    grid-column:2!important;
-    grid-row:1!important;
-    align-self:end!important;
-    margin:0!important;
-    width:100%!important;
+  /* Keep the live source node exactly where the updater expects it; hide only its visual copy. */
+  .score.score-live-stack.mobile-score-layout-ready > .score-live-value.mobile-score-source-hidden{
+    display:none!important;
   }
 
+  /* LIVE/phase + the single existing clock stay in the next horizontal card column. */
+  .score.score-live-stack.mobile-score-layout-ready{
+    min-width:0!important;
+    align-self:center!important;
+  }
+
+  .score.score-live-stack.mobile-score-layout-ready > .score-live-head,
   .score.score-live-stack.mobile-score-layout-ready > .score-live-time{
-    grid-column:2!important;
-    grid-row:2!important;
-    align-self:start!important;
-    margin:0!important;
     width:100%!important;
-  }
-
-  /* Locked-signal annotations keep their content and simply span the score block. */
-  .score.score-live-stack.mobile-score-layout-ready > .entry-score,
-  .score.score-live-stack.mobile-score-layout-ready > .signal-time{
-    grid-column:1 / 3!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    text-align:center!important;
   }
 }
 
 @media (max-width:360px){
   .match-row{
-    grid-template-columns:56px minmax(0,1fr) 60px 54px!important;
+    grid-template-columns:56px minmax(0,1fr) 54px 54px!important;
   }
 
-  .score.score-live-stack.mobile-score-layout-ready{
-    grid-template-columns:15px minmax(0,1fr)!important;
-    column-gap:2px!important;
-    min-height:44px!important;
+  .mobile-team-line.mobile-team-score-ready{
+    grid-template-columns:20px minmax(0,1fr) 18px!important;
+    column-gap:5px!important;
   }
 
-  .score.score-live-stack .score-live-value.mobile-score-pair{
-    grid-template-rows:20px 20px!important;
-    row-gap:4px!important;
-    width:15px!important;
-    min-width:15px!important;
-    height:44px!important;
-  }
-
-  .mobile-score-home,
-  .mobile-score-away{
-    width:15px!important;
+  .mobile-team-score{
+    width:18px!important;
+    min-width:18px!important;
     height:20px!important;
     font-size:14px!important;
   }
