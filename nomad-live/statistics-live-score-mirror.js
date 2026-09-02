@@ -1,13 +1,7 @@
 (()=>{
   'use strict';
 
-  const PROD_HOSTS=new Set([
-    'www.nomadtips3.com',
-    'nomadtips3.com',
-    'nomadtips3-live-web-production-canary.mccarey-supon.workers.dev',
-  ]);
-  const GITHUB_HOST='mccareysupon-png.github.io';
-  const TEST_342_BASE='https://nomadtips3-live-engine-342-test.mccarey-supon.workers.dev';
+  const LIVE_SCORE_V2_BASE='https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev';
   const POLL_MS=10000;
   const REQUEST_TIMEOUT_MS=12000;
 
@@ -35,10 +29,7 @@
   };
 
   function feedUrl(){
-    const host=String(location.hostname||'').toLowerCase();
-    if(PROD_HOSTS.has(host))return `${location.origin}/nomad-live-342/feed`;
-    if(host===GITHUB_HOST)return `${TEST_342_BASE}/feed`;
-    return `${TEST_342_BASE}/feed`;
+    return `${LIVE_SCORE_V2_BASE}/feed`;
   }
 
   function indexLive(matches=[]){
