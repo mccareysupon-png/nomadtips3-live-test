@@ -20,4 +20,16 @@
     border:0!important;
     box-shadow:none!important;
   }
+
+  /* Search field: borderless, darker surface, same size and behavior. */
+  .shell>.toolbar .search input{
+    background:#0b0f0c!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+
+  .shell>.toolbar .search input:focus{
+    outline:1px solid rgba(131,223,137,.24)!important;
+    outline-offset:1px!important;
+  }
 }
