@@ -1,7 +1,8 @@
 /* Statistics page desktop-only vintage odds icons.
    Reuses the exact ODDS / DECIMAL / AMERICAN / FRACTION artwork from toolbar-vintage-icons.css.
    Presentation only. statistics.html loads this layer only at min-width:1025px.
-   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md
+   Size rollback: 31.7px -> 26.4px (pre +20% request, 2026-09-02). */
 
 .odds-display-toolbar.toolbar{
   display:flex!important;
@@ -35,12 +36,12 @@
   box-shadow:none!important;
 }
 
-/* Statistics desktop icon footprint: +10% from 24px to 26.4px. */
+/* Statistics desktop icon footprint: +20% from 26.4px -> 31.7px. */
 .odds-display-toolbar.toolbar .odds-display-label::before,
 .odds-display-toolbar.toolbar .odds-display-control button::before{
-  width:26.4px!important;
-  height:26.4px!important;
-  flex:0 0 26.4px!important;
+  width:31.7px!important;
+  height:31.7px!important;
+  flex:0 0 31.7px!important;
   opacity:1;
   filter:brightness(1.10) saturate(1.06);
 }
