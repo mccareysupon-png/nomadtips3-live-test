@@ -1,6 +1,7 @@
 /* Statistics-only eight-metric desktop strip.
    Keeps the mobile summary compact and adds a separate mobile-only
-   settled-results row below it. DAY is the unique recorded lockedAt date count. */
+   settled-results row below it. DAY is the unique recorded lockedAt date count.
+   Desktop type/card sizing restored to the pre-DAY baseline on 2026-09-02. */
 
 .stats-win-metric strong {
   color:var(--green);
@@ -29,7 +30,7 @@
 
   .statistics-summary-grid > .metric {
     min-width:0;
-    padding:6px 6px;
+    padding:6.75px 8px;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -39,8 +40,8 @@
 
   .statistics-summary-grid > .metric span {
     width:100%;
-    font-size:7px;
-    line-height:1.08;
+    font-size:7.5px;
+    line-height:1.1;
     text-align:center;
     white-space:nowrap;
   }
@@ -48,14 +49,14 @@
   .statistics-summary-grid > .metric strong {
     width:100%;
     margin:2px 0 0;
-    font-size:13.6px;
-    line-height:1.04;
+    font-size:14.4px;
+    line-height:1.05;
     text-align:center;
   }
 
   .statistics-summary-grid .metric-info {
-    width:10px;
-    height:10px;
+    width:11px;
+    height:11px;
     margin-left:2px;
     vertical-align:-1px;
   }
