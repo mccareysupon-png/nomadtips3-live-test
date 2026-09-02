@@ -1,0 +1,206 @@
+/* NOMADTIPS3 3.42 · MATCH PULSE industrial vintage gauge.
+   Presentation only: feed, pressureShare, Event Gate, K LIVE and signal logic remain untouched. */
+
+body[data-page="live"] .na-match-pulse.vg-ready .na-pulse-grid{
+  grid-template-columns:minmax(150px,180px) minmax(0,1fr)!important;
+  align-items:stretch!important;
+  gap:8px!important;
+}
+body[data-page="live"] .na-match-pulse.vg-ready .na-pressure-wrap{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  min-width:0!important;
+  padding:3px!important;
+  background:transparent!important;
+}
+body[data-page="live"] .na-match-pulse.vg-ready .na-pressure-ring,
+body[data-page="live"] .na-match-pulse.vg-ready .na-pressure-split{
+  display:none!important;
+}
+
+body[data-page="live"] .na-match-pulse .na-vg{
+  --vg-angle:0deg;
+  width:100%;
+  max-width:188px;
+  min-width:0;
+  margin:0 auto;
+  font-family:Arial,Helvetica,sans-serif;
+}
+body[data-page="live"] .na-match-pulse .na-vg-instrument{
+  position:relative;
+  height:132px;
+  overflow:hidden;
+  border:1px solid #3a2818;
+  border-radius:11px 11px 8px 8px;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(255,245,210,.12),transparent 36%),
+    linear-gradient(180deg,#5a4026 0%,#2b2017 42%,#15110e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,235,184,.20),
+    inset 0 -12px 22px rgba(0,0,0,.30),
+    0 2px 7px rgba(0,0,0,.34);
+}
+body[data-page="live"] .na-match-pulse .na-vg-instrument::before{
+  content:"";
+  position:absolute;
+  inset:5px;
+  z-index:0;
+  border:1px solid rgba(222,174,95,.42);
+  border-radius:8px 8px 6px 6px;
+  box-shadow:inset 0 0 0 2px rgba(20,14,10,.38);
+  pointer-events:none;
+}
+body[data-page="live"] .na-match-pulse .na-vg-instrument::after{
+  content:"";
+  position:absolute;
+  z-index:5;
+  left:14px;
+  right:14px;
+  top:9px;
+  height:38px;
+  border-radius:50%;
+  background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0));
+  opacity:.55;
+  transform:rotate(-3deg);
+  pointer-events:none;
+}
+body[data-page="live"] .na-match-pulse .na-vg-face{
+  position:absolute;
+  inset:5px;
+  z-index:1;
+  display:block;
+  width:calc(100% - 10px);
+  height:calc(100% - 10px);
+}
+body[data-page="live"] .na-match-pulse .na-vg-nameplate{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  top:8px;
+  transform:translateX(-50%);
+  min-width:82px;
+  padding:2px 7px 1px;
+  border:1px solid rgba(54,37,23,.72);
+  border-radius:999px;
+  background:rgba(33,24,17,.82);
+  color:#e7cc91;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 1px 2px rgba(0,0,0,.28);
+  font-size:5.5px;
+  font-weight:900;
+  line-height:1.15;
+  letter-spacing:.12em;
+  text-align:center;
+  white-space:nowrap;
+}
+body[data-page="live"] .na-match-pulse .na-vg-state{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  top:25px;
+  transform:translateX(-50%);
+  color:#5b4328;
+  font-size:5.5px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:.06em;
+  text-align:center;
+  white-space:nowrap;
+}
+body[data-page="live"] .na-match-pulse .na-vg-needle{
+  position:absolute;
+  z-index:3;
+  left:50%;
+  bottom:22.8%;
+  width:3px;
+  height:54%;
+  margin-left:-1.5px;
+  border-radius:999px 999px 1px 1px;
+  transform:rotate(var(--vg-angle));
+  transform-origin:50% 100%;
+  transition:transform .72s cubic-bezier(.22,1,.36,1);
+  background:linear-gradient(180deg,#9b2b20 0%,#7c1e18 16%,#191512 48%,#37281d 100%);
+  border:1px solid rgba(78,45,25,.72);
+  box-shadow:1px 1px 2px rgba(0,0,0,.50),0 0 1px rgba(111,28,20,.34);
+  will-change:transform;
+  pointer-events:none;
+}
+body[data-page="live"] .na-match-pulse .na-vg-cap{
+  position:absolute;
+  z-index:4;
+  left:50%;
+  bottom:17.2%;
+  width:15px;
+  height:15px;
+  margin-left:-7.5px;
+  border:1px solid #4d2d14;
+  border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#f1c573 0%,#bb762c 43%,#6a3e19 72%,#2c1c10 100%);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.24),0 1px 3px rgba(0,0,0,.46);
+  pointer-events:none;
+}
+body[data-page="live"] .na-match-pulse .na-vg-readout{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:4px;
+  margin-top:4px;
+}
+body[data-page="live"] .na-match-pulse .na-vg-readout span{
+  min-width:0;
+  padding:4px 5px;
+  border:1px solid #3c2c20;
+  border-radius:5px;
+  background:linear-gradient(180deg,#221a15,#15110f);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  font-size:5.8px;
+  font-weight:900;
+  line-height:1.15;
+  letter-spacing:.025em;
+  white-space:nowrap;
+}
+body[data-page="live"] .na-match-pulse .na-vg-readout .away{
+  color:#a9b6b2;
+  text-align:left;
+}
+body[data-page="live"] .na-match-pulse .na-vg-readout .home{
+  color:#e2ad55;
+  text-align:right;
+}
+body[data-page="live"] .na-match-pulse.vg-ready .na-section-tag{
+  font-size:0!important;
+  color:#c79a51!important;
+}
+body[data-page="live"] .na-match-pulse.vg-ready .na-section-tag::after{
+  content:"ANALOG PRESSURE · LIVE DATA"!important;
+  font-size:5.5px!important;
+  font-weight:900!important;
+  letter-spacing:.05em!important;
+}
+
+@media(max-width:760px){
+  body[data-page="live"] .na-match-pulse.vg-ready .na-pulse-grid{
+    grid-template-columns:minmax(145px,170px) minmax(0,1fr)!important;
+  }
+  body[data-page="live"] .na-match-pulse .na-vg-instrument{height:126px}
+}
+
+@media(max-width:520px){
+  body[data-page="live"] .na-match-pulse.vg-ready .na-pulse-grid{
+    grid-template-columns:1fr!important;
+    gap:6px!important;
+  }
+  body[data-page="live"] .na-match-pulse .na-vg{
+    width:min(100%,250px);
+    max-width:250px;
+  }
+  body[data-page="live"] .na-match-pulse .na-vg-instrument{height:148px}
+  body[data-page="live"] .na-match-pulse .na-vg-nameplate{font-size:6px;min-width:92px}
+  body[data-page="live"] .na-match-pulse .na-vg-state{top:27px;font-size:6px}
+  body[data-page="live"] .na-match-pulse .na-vg-readout span{font-size:6.2px;padding:5px 6px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  body[data-page="live"] .na-match-pulse .na-vg-needle{transition:none!important}
+}
