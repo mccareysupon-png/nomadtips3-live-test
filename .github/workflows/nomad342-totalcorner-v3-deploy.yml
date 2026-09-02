@@ -1,0 +1,117 @@
+name: Deploy TotalCorner Live Score V3
+
+on:
+  push:
+    branches:
+      - work/totalcorner-v3-rewire-20260902
+      - main
+    paths:
+      - 'nomad-live-score-feed-v3/**'
+      - '.github/workflows/nomad342-totalcorner-v3-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  V3_URL: https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate V3 source
+        run: |
+          node --check nomad-live-score-feed-v3/src/totalcorner.js
+          node --check nomad-live-score-feed-v3/src/index.js
+          grep -q '^name = "nomadtips3-live-score-feed-v3"$' nomad-live-score-feed-v3/wrangler.toml
+          grep -q '^main = "src/index.js"$' nomad-live-score-feed-v3/wrangler.toml
+
+      - name: Parser contract smoke
+        run: |
+          node --input-type=module - <<'NODE'
+          import {parseToday} from './nomad-live-score-feed-v3/src/totalcorner.js';
+          const html=`<table><tr><td><a href="/league/test/1">Test League</a></td><td class="match_status">67</td><td><a href="/team/view/11">Home FC</a></td><td>2 - 1</td><td><a href="/team/view/22">Away FC</a></td><td>5 - 3 (2-1)</td><td>44 - 31</td><td>28 - 17</td><td><a href="/stats/home-fc-vs-away-fc/123456">Stats</a><a href="/live/home-fc-vs-away-fc/123456">Live</a></td></tr></table>`;
+          const rows=parseToday(html);
+          if(rows.length!==1)throw new Error('parser_count');
+          const m=rows[0];
+          if(m.id!=='123456'||m.home!=='Home FC'||m.away!=='Away FC'||m.minute!==67)throw new Error('parser_identity');
+          if(m.score.home!==2||m.score.away!==1)throw new Error('parser_score');
+          if(m.stats.attacks.home!==44||m.stats.attacks.away!==31)throw new Error('parser_attacks');
+          if(m.stats.dangerous.home!==28||m.stats.dangerous.away!==17)throw new Error('parser_dangerous');
+          console.log(JSON.stringify(m,null,2));
+          NODE
+
+      - name: Dry-run Worker bundle
+        working-directory: nomad-live-score-feed-v3
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated V3 Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-score-feed-v3
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.toml
+
+      - name: Smoke V3 contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 15 "$V3_URL/contract?_=$RANDOM$RANDOM" -o /tmp/contract.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||j.mode!=='LIVE_EVENT_FEED') process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 4
+          done
+          test "$ok" = '1'
+
+      - name: Probe V3 live TotalCorner feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 35 "$V3_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,version:j.version,component:j.component,transport:j.transport,updatedAt:j.updatedAt,counts:j.counts,degraded:j.degraded,servingLastGood:j.servingLastGood,lastError:j.lastError,source:j.source},null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||!Array.isArray(j.matches)) process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
+
+      - name: Recheck V3 feed after cache window
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 11
+          curl -fsS --max-time 35 "$V3_URL/feed?force=1&_=$RANDOM$RANDOM" -o /tmp/feed2.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed2.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,cycle:j.cycle,updatedAt:j.updatedAt,sourceAgeMs:j.sourceAgeMs,sourceStale:j.sourceStale,degraded:j.degraded,servingLastGood:j.servingLastGood,counts:j.counts,lastError:j.lastError},null,2));
+          if(j.ok!==true||j.version!=='3.42'||!Array.isArray(j.matches)) process.exit(1);
+          NODE
