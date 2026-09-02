@@ -11,7 +11,8 @@
     if(!details||!top||!bottom)return;
 
     /* Presentation only: promote EVENT TIMELINE to the first row of the expanded card.
-       Keep the existing section intact so feed/event-gate logic and timeline enhancement stay untouched. */
+       Keep the existing section intact so feed/event-gate logic and timeline enhancement stay untouched.
+       Only move it when placement is actually wrong; this avoids observer-driven layout churn. */
     const sections=[
       ...top.querySelectorAll(':scope > .na-section'),
       ...bottom.querySelectorAll(':scope > .na-section'),
@@ -20,7 +21,9 @@
     const timeline=sections.find(section=>headingText(section)==='EVENT TIMELINE');
     if(timeline){
       timeline.dataset.uiGroup='primary-timeline';
-      details.prepend(timeline);
+      if(timeline.parentElement!==details||details.firstElementChild!==timeline){
+        details.prepend(timeline);
+      }
     }
 
     top.dataset.uiGroup='pressure-signals';
