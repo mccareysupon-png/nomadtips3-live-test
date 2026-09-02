@@ -3,7 +3,8 @@
 
   const STYLE_ID='nomad-live-score-status-style';
   const CLOCK_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.25"></circle><path d="M12 7.5v5l3.25 1.9"></path></svg>';
-  const PULSE_SVG='<svg viewBox="0 0 36 8" aria-hidden="true" focusable="false"><path class="pulse-track" d="M0 4H8L11 4L13 1L16 7L19 2L21 4H36"></path><path class="pulse-run" d="M0 4H8L11 4L13 1L16 7L19 2L21 4H36"></path></svg>';
+  const METER_FACE='assets/icons/vintage-meter-base.svg?v=20260902-v1';
+  const METER_NEEDLE='assets/icons/vintage-meter-needle.svg?v=20260902-v1';
 
   function ensureStyle(){
     if(document.getElementById(STYLE_ID))return;
@@ -67,7 +68,7 @@
       }
       .score.score-live-stack .entry-score{margin-top:2px}
 
-      .statebox.has-watch-pulse{
+      .statebox.has-status-meter{
         display:flex;
         flex-direction:column;
         align-items:flex-start;
@@ -75,65 +76,85 @@
         gap:3px;
         min-width:0;
       }
-      .statebox.has-watch-pulse .minute{
-        display:none;
-      }
-      .watch-pulse{
+      .statebox.has-status-meter .minute{display:none}
+      .status-meter-icon{
+        position:relative;
         display:block;
-        width:36px;
-        height:8px;
+        width:24px;
+        height:24px;
+        flex:0 0 24px;
+        margin:2px 0 0 5px;
         line-height:0;
         pointer-events:none;
+        filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.38));
       }
-      .watch-pulse svg{
+      .status-meter-icon img{
+        position:absolute;
+        inset:0;
         display:block;
-        width:36px;
-        height:8px;
-        overflow:visible;
+        width:100%;
+        height:100%;
+        object-fit:contain;
+        user-select:none;
+        pointer-events:none;
       }
-      .watch-pulse .pulse-track{
-        fill:none;
-        stroke:rgba(131,223,137,.18);
-        stroke-width:1.15;
-        stroke-linecap:round;
-        stroke-linejoin:round;
+      .status-meter-face{z-index:1}
+      .status-meter-needle{
+        z-index:2;
+        transform-origin:50% 50%;
+        will-change:transform;
       }
-      .watch-pulse .pulse-run{
-        fill:none;
-        stroke:var(--green);
-        stroke-width:1.25;
-        stroke-linecap:round;
-        stroke-linejoin:round;
-        stroke-dasharray:11 45;
-        stroke-dashoffset:42;
-        filter:drop-shadow(0 0 1.4px rgba(131,223,137,.42));
-        animation:watchPulseLine 1.65s linear infinite;
+
+      .statebox.meter-watching .status-meter-needle{
+        animation:meterWatching 2.4s ease-in-out infinite;
       }
-      @keyframes watchPulseLine{
-        0%{stroke-dashoffset:42;opacity:.22}
-        12%{opacity:.95}
-        78%{opacity:.95}
-        100%{stroke-dashoffset:-14;opacity:.22}
+      .statebox.meter-near .status-meter-needle{
+        animation:meterNear 1.15s ease-in-out infinite;
       }
+      .statebox.meter-signal .status-meter-needle{
+        animation:meterSignal .52s linear infinite;
+      }
+
+      @keyframes meterWatching{
+        0%,100%{transform:rotate(-7deg)}
+        50%{transform:rotate(7deg)}
+      }
+      @keyframes meterNear{
+        0%,100%{transform:rotate(-12deg)}
+        50%{transform:rotate(12deg)}
+      }
+      @keyframes meterSignal{
+        0%{transform:rotate(-18deg)}
+        25%{transform:rotate(13deg)}
+        50%{transform:rotate(-11deg)}
+        75%{transform:rotate(18deg)}
+        100%{transform:rotate(-18deg)}
+      }
+
       @media(prefers-reduced-motion:reduce){
-        .watch-pulse .pulse-run{
-          animation:watchPulseLine 3.3s linear infinite;
-          filter:none;
+        .statebox.meter-watching .status-meter-needle,
+        .statebox.meter-near .status-meter-needle,
+        .statebox.meter-signal .status-meter-needle{
+          animation:none!important;
         }
+        .statebox.meter-watching .status-meter-needle{transform:rotate(-3deg)}
+        .statebox.meter-near .status-meter-needle{transform:rotate(8deg)}
+        .statebox.meter-signal .status-meter-needle{transform:rotate(16deg)}
       }
+
       @media(max-width:820px){
         .score-live-head{font-size:5.8px;gap:1.5px}
         .score-live-value{font-size:16px}
         .score-live-time{font-size:6.7px}
         .score-live-time svg{width:7.5px;height:7.5px}
-        .watch-pulse,.watch-pulse svg{width:32px;height:8px}
+        .status-meter-icon{width:22px;height:22px;flex-basis:22px;margin-left:4px}
       }
       @media(max-width:520px){
         .score-live-head{font-size:5.1px;gap:1px;letter-spacing:0}
         .score-live-value{font-size:15px}
         .score-live-time{font-size:6.2px}
         .score-live-time svg{width:7px;height:7px}
-        .watch-pulse,.watch-pulse svg{width:28px;height:7px}
+        .status-meter-icon{width:20px;height:20px;flex-basis:20px;margin-left:3px}
       }
     `;
     document.head.appendChild(style);
@@ -161,26 +182,53 @@
       .trim();
   }
 
+  function meterKind(text){
+    const value=String(text||'').trim().toUpperCase();
+    if(value.includes('NEAR'))return 'near';
+    if(value==='SIGNAL'||value.startsWith('SIGNAL '))return 'signal';
+    if(value.includes('WATCH'))return 'watching';
+    return '';
+  }
+
   function decorateStatebox(row){
     const statebox=row.querySelector('.statebox');
     const state=row.querySelector('.state');
     if(!statebox||!state)return;
 
-    const isWatching=/watching/i.test(state.textContent||'');
-    let pulse=statebox.querySelector('.watch-pulse');
+    const kind=meterKind(state.textContent);
+    let meter=statebox.querySelector('.status-meter-icon');
 
-    if(isWatching){
-      statebox.classList.add('has-watch-pulse');
-      if(!pulse){
-        pulse=document.createElement('span');
-        pulse.className='watch-pulse';
-        pulse.setAttribute('aria-hidden','true');
-        pulse.innerHTML=PULSE_SVG;
-        statebox.appendChild(pulse);
-      }
-    }else{
-      statebox.classList.remove('has-watch-pulse');
-      if(pulse)pulse.remove();
+    statebox.classList.remove('has-watch-pulse','meter-watching','meter-near','meter-signal');
+    const legacyPulse=statebox.querySelector('.watch-pulse');
+    if(legacyPulse)legacyPulse.remove();
+
+    if(!kind){
+      statebox.classList.remove('has-status-meter');
+      if(meter)meter.remove();
+      return;
+    }
+
+    statebox.classList.add('has-status-meter',`meter-${kind}`);
+
+    if(!meter){
+      meter=document.createElement('span');
+      meter.className='status-meter-icon';
+      meter.setAttribute('aria-hidden','true');
+
+      const face=document.createElement('img');
+      face.className='status-meter-face';
+      face.src=METER_FACE;
+      face.alt='';
+      face.decoding='async';
+
+      const needle=document.createElement('img');
+      needle.className='status-meter-needle';
+      needle.src=METER_NEEDLE;
+      needle.alt='';
+      needle.decoding='async';
+
+      meter.append(face,needle);
+      statebox.appendChild(meter);
     }
   }
 
@@ -238,5 +286,5 @@
   ensureStyle();
   apply();
   const list=document.querySelector('.match-list');
-  if(list)new MutationObserver(queue).observe(list,{childList:true,subtree:true});
+  if(list)new MutationObserver(queue).observe(list,{childList:true,subtree:true,characterData:true});
 })();
