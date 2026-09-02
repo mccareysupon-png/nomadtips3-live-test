@@ -39,11 +39,12 @@ function cells(row){
   return out;
 }
 function getMatchLink(row,kind='live'){
-  const re=new RegExp(`href=["']([^"']*\\/${kind}\\/[^"']*?\\/(\\d+)(?:[?"'#]|$))`,'i');
+  const re=new RegExp(`href=["']([^"']*\\/${kind}\\/[^"']*?\\/(\\d+)(?:\\?[^"']*)?)["']`,'i');
   const m=String(row).match(re);
   if(!m)return null;
   const href=decode(m[1]);
-  const slug=(href.match(new RegExp(`/${kind}/([^/]+)/\\d+`,'i'))||[])[1]||'';
+  const cleanHref=href.split(/[?#]/)[0];
+  const slug=(cleanHref.match(new RegExp(`/${kind}/([^/]+)/\\d+$`,'i'))||[])[1]||'';
   return {href,id:m[2],slug};
 }
 function statusCellText(row){
