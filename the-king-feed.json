@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02T18:47:10Z",
+  "updated_at": "2026-09-02T21:52:49Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -116,8 +116,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.8576,
       "edge": 73.7,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-0",
       "source_url": "https://www.goaloo.com/football/scottish-premiership-celtic-fc-vs-aberdeen/h2h-3002058",
       "summary_url": "https://www.goaloo.com/football/scottish-premiership-celtic-fc-vs-aberdeen/summary-3002058",
       "model": {
@@ -216,8 +216,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7657,
       "edge": 61.5,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-2",
       "source_url": "https://www.goaloo.com/football/scottish-premiership-falkirk-vs-glasgow-rangers/h2h-3002060",
       "summary_url": "https://www.goaloo.com/football/scottish-premiership-falkirk-vs-glasgow-rangers/summary-3002060",
       "model": {
@@ -266,8 +266,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7627,
       "edge": 60.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "source_url": "https://www.goaloo.com/football/copa-lfpb-san-jose-de-oruro-vs-bolivar/h2h-3061629",
       "summary_url": "https://www.goaloo.com/football/copa-lfpb-san-jose-de-oruro-vs-bolivar/summary-3061629",
       "model": {
@@ -1901,6 +1901,156 @@
         "home_recent": 7,
         "away_recent": 10,
         "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "cd4b1769f275fbb9",
+      "goaloo_id": "3002058",
+      "date": "2026-09-02",
+      "kickoff": "2026-09-02 18:45:00",
+      "league": "Scottish Premiership",
+      "home": "Celtic FC",
+      "away": "Aberdeen",
+      "pick": "Aberdeen Win",
+      "side": "away",
+      "odds": 11.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8576,
+      "edge": 73.7,
+      "result": "LOSS",
+      "ft": "3-0",
+      "source_url": "https://www.goaloo.com/football/scottish-premiership-celtic-fc-vs-aberdeen/h2h-3002058",
+      "summary_url": "https://www.goaloo.com/football/scottish-premiership-celtic-fc-vs-aberdeen/summary-3002058",
+      "model": {
+        "lambda_home": 0.858,
+        "lambda_away": 3.167,
+        "home_win": 0.0215,
+        "draw": 0.1209,
+        "away_win": 0.8576,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.7659,
+          "gd_edge": -0.9639,
+          "clean_sheet_edge": -0.3317,
+          "failed_to_score_edge": -0.4,
+          "bounded_adjustment": -0.0555,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0125,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "70fe8245a9b79763",
+      "goaloo_id": "3002060",
+      "date": "2026-09-02",
+      "kickoff": "2026-09-02 19:00:00",
+      "league": "Scottish Premiership",
+      "home": "Falkirk",
+      "away": "Glasgow Rangers",
+      "pick": "Falkirk Win",
+      "side": "home",
+      "odds": 5.16,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7657,
+      "edge": 61.5,
+      "result": "LOSS",
+      "ft": "1-2",
+      "source_url": "https://www.goaloo.com/football/scottish-premiership-falkirk-vs-glasgow-rangers/h2h-3002060",
+      "summary_url": "https://www.goaloo.com/football/scottish-premiership-falkirk-vs-glasgow-rangers/summary-3002060",
+      "model": {
+        "lambda_home": 3.005,
+        "lambda_away": 1.181,
+        "home_win": 0.7657,
+        "draw": 0.1512,
+        "away_win": 0.0831,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5366,
+          "gd_edge": 0.8596,
+          "clean_sheet_edge": -0.0976,
+          "failed_to_score_edge": 0.522,
+          "bounded_adjustment": 0.0421,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.01,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "362592c6f741e2af",
+      "goaloo_id": "3061629",
+      "date": "2026-09-02",
+      "kickoff": "2026-09-02 19:00:00",
+      "league": "Copa LFPB",
+      "home": "San Jose de Oruro",
+      "away": "Bolivar",
+      "pick": "San Jose de Oruro Win",
+      "side": "home",
+      "odds": 4.62,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7627,
+      "edge": 60.6,
+      "result": "LOSS",
+      "ft": "0-1",
+      "source_url": "https://www.goaloo.com/football/copa-lfpb-san-jose-de-oruro-vs-bolivar/h2h-3061629",
+      "summary_url": "https://www.goaloo.com/football/copa-lfpb-san-jose-de-oruro-vs-bolivar/summary-3061629",
+      "model": {
+        "lambda_home": 2.911,
+        "lambda_away": 1.16,
+        "home_win": 0.7627,
+        "draw": 0.1568,
+        "away_win": 0.0805,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4878,
+          "gd_edge": 0.8782,
+          "clean_sheet_edge": 0.3122,
+          "failed_to_score_edge": 0.278,
+          "bounded_adjustment": 0.0435,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.005,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
       }
     }
