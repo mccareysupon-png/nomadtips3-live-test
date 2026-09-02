@@ -1,0 +1,81 @@
+/* Cross-page navigation/hero geometry lock for Signal / Statistics / Live Score.
+   Presentation only: no runtime, feed, signal, odds, settlement or analytics logic. */
+
+html{
+  scrollbar-gutter:stable;
+}
+@media(min-width:701px){
+  html{overflow-y:scroll}
+}
+
+.topbar{
+  height:64px!important;
+  min-height:64px!important;
+}
+.topbar-inner.public-four-nav{
+  width:100%!important;
+  max-width:1120px!important;
+  height:64px!important;
+  min-height:64px!important;
+  margin:0 auto!important;
+  padding:0 16px!important;
+  box-sizing:border-box!important;
+}
+.topbar-inner.public-four-nav>.brand{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:30px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  transform:none!important;
+  -webkit-text-stroke:.22px currentColor!important;
+  text-rendering:geometricPrecision!important;
+}
+.topbar-inner.public-four-nav>.brand span{
+  -webkit-text-stroke:.22px currentColor!important;
+}
+.topbar-inner.public-four-nav>.topnav{
+  left:50%!important;
+  transform:translate(-50%,-50%)!important;
+  gap:2px!important;
+}
+.topbar-inner.public-four-nav>.topnav a:nth-child(1){width:72px!important}
+.topbar-inner.public-four-nav>.topnav a:nth-child(2){width:104px!important}
+.topbar-inner.public-four-nav>.topnav a:nth-child(3){width:104px!important}
+
+/* Keep the first content block on the same typography rhythm across pages. */
+.hero h1{
+  font-size:14.4px!important;
+  line-height:1.2!important;
+  margin-top:3px!important;
+  margin-bottom:5px!important;
+}
+
+@media(max-width:700px){
+  .topbar{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  .topbar-inner.public-four-nav{
+    height:58px!important;
+    min-height:58px!important;
+    padding:0 12px!important;
+  }
+  .topbar-inner.public-four-nav>.brand{
+    font-size:25px!important;
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  .topbar-inner.public-four-nav>.brand span{
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  .mobile-nav.public-four-nav{
+    height:58px!important;
+    min-height:58px!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .hero h1{
+    font-size:12.8px!important;
+    line-height:1.2!important;
+  }
+}
