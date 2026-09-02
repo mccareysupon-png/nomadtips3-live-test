@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-telegram-alerts-test",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-02",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "vars": {
+    "ENVIRONMENT": "test",
+    "TELEGRAM_PUBLIC_WEBHOOK_URL": "https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/telegram/webhook"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nomadtips3-paper-db",
+      "database_id": "7f2f1bb8-c40c-477d-b82a-ea284291f239"
+    }
+  ]
+}
