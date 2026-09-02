@@ -3,8 +3,8 @@
 
   const STYLE_ID='nomad-live-score-status-style';
   const CLOCK_SVG='<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.25"></circle><path d="M12 7.5v5l3.25 1.9"></path></svg>';
-  const METER_FACE='assets/icons/vintage-meter-base.svg?v=20260902-v1';
-  const METER_NEEDLE='assets/icons/vintage-meter-needle.svg?v=20260902-v1';
+  const METER_FACE='assets/icons/vintage-meter-base.svg?v=20260902-v2';
+  const METER_NEEDLE='assets/icons/vintage-meter-needle.svg?v=20260902-v2';
 
   function ensureStyle(){
     if(document.getElementById(STYLE_ID))return;
@@ -103,32 +103,34 @@
         z-index:2;
         transform-origin:50% 50%;
         will-change:transform;
+        backface-visibility:hidden;
+        filter:contrast(1.12) drop-shadow(0 0 .45px rgba(20,12,8,.72));
       }
 
       .statebox.meter-watching .status-meter-needle{
-        animation:meterWatching 2.4s ease-in-out infinite;
+        animation:meterWatching 2.2s ease-in-out infinite;
       }
       .statebox.meter-near .status-meter-needle{
-        animation:meterNear 1.15s ease-in-out infinite;
+        animation:meterNear .95s ease-in-out infinite;
       }
       .statebox.meter-signal .status-meter-needle{
-        animation:meterSignal .52s linear infinite;
+        animation:meterSignal .42s linear infinite;
       }
 
       @keyframes meterWatching{
-        0%,100%{transform:rotate(-7deg)}
-        50%{transform:rotate(7deg)}
-      }
-      @keyframes meterNear{
         0%,100%{transform:rotate(-12deg)}
         50%{transform:rotate(12deg)}
       }
+      @keyframes meterNear{
+        0%,100%{transform:rotate(-20deg)}
+        50%{transform:rotate(20deg)}
+      }
       @keyframes meterSignal{
-        0%{transform:rotate(-18deg)}
-        25%{transform:rotate(13deg)}
-        50%{transform:rotate(-11deg)}
-        75%{transform:rotate(18deg)}
-        100%{transform:rotate(-18deg)}
+        0%{transform:rotate(-28deg)}
+        25%{transform:rotate(22deg)}
+        50%{transform:rotate(-20deg)}
+        75%{transform:rotate(28deg)}
+        100%{transform:rotate(-28deg)}
       }
 
       @media(prefers-reduced-motion:reduce){
@@ -137,9 +139,9 @@
         .statebox.meter-signal .status-meter-needle{
           animation:none!important;
         }
-        .statebox.meter-watching .status-meter-needle{transform:rotate(-3deg)}
-        .statebox.meter-near .status-meter-needle{transform:rotate(8deg)}
-        .statebox.meter-signal .status-meter-needle{transform:rotate(16deg)}
+        .statebox.meter-watching .status-meter-needle{transform:rotate(-4deg)}
+        .statebox.meter-near .status-meter-needle{transform:rotate(10deg)}
+        .statebox.meter-signal .status-meter-needle{transform:rotate(18deg)}
       }
 
       @media(max-width:820px){
