@@ -14,6 +14,7 @@ permissions:
 
 env:
   CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
+  CUSTOM_URL: https://www.nomadtips3.com
   LIVE_SCORE_V2_URL: https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev
 
 jobs:
@@ -70,7 +71,6 @@ jobs:
         run: |
           set -euo pipefail
           for page in about privacy terms user-guide disclaimer; do
-            echo "checking $page"
             curl -fsSL --max-time 20 "$CANARY_URL/$page/?t=$(date +%s)" -o "/tmp/$page.html"
             grep -Fq 'NOMADTIPS3' "/tmp/$page.html"
           done
@@ -117,3 +117,73 @@ jobs:
           assert data.get('ok') is not False, data.get('lastError') or data.get('error')
           print('DIRECT_V2_OK matches=',len(data['matches']))
           PY
+
+  www-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www release route
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$CUSTOM_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json
+          grep -Fq 'nomadtips3-live-web-production' /tmp/release.json
+          grep -Fq '"version":"3.41"' /tmp/release.json
+
+  www-page1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www Page1 shell and API
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/home.html
+          grep -Fq 'src="runtime-config.js' /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          for endpoint in health feed statistics config; do
+            curl -fsS --max-time 20 "$CUSTOM_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/$endpoint.json"
+            test -s "/tmp/$endpoint.json"
+          done
+
+  www-final-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www Page2 FINAL V2 assets
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/statistics.html
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/statistics.html
+          curl -fsSL --max-time 20 "$CUSTOM_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/mirror.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/mirror.js
+
+  www-public-info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www public information bridges
+        run: |
+          set -euo pipefail
+          for page in about privacy terms user-guide disclaimer; do
+            curl -fsSL --max-time 20 "$CUSTOM_URL/$page/?t=$(date +%s)" -o "/tmp/$page.html"
+            grep -Fq 'NOMADTIPS3' "/tmp/$page.html"
+          done
+          curl -fsSL --max-time 20 "$CUSTOM_URL/public-info-footer.js?t=$(date +%s)" -o /tmp/footer.js
+          grep -Fq 'User Guide' /tmp/footer.js
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live/styles.css?t=$(date +%s)" -o /tmp/styles.css
+          grep -Fq ':root' /tmp/styles.css
+
+  www-page3-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www Page3 shell
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/page3.html
+          grep -Fq 'Live Score & Event Monitor' /tmp/page3.html
+          grep -Fq 'event-monitor.js?v=' /tmp/page3.html
+
+  www-page3-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify www Page3 direct V2 runtime
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/runtime.js
+          grep -Fq "transport:'direct-worker-v2'" /tmp/runtime.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/runtime.js
