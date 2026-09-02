@@ -1,0 +1,16 @@
+/* NOMAD Live Score 3.42 team identity placement override.
+   Presentation only: keep existing per-match Vintage palette and shirt assets,
+   but place shirts on the inner edge next to VS. */
+
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-home .vintage-team-name{
+  order:1!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-home .vintage-team-shirt{
+  order:2!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-away .vintage-team-shirt{
+  order:1!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-away .vintage-team-name{
+  order:2!important;
+}
