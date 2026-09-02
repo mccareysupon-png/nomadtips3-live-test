@@ -1,0 +1,62 @@
+name: Mobile Page1 Production Diagnose
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mobile-page1-prod-diag.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-mobile-page1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify production assets and mobile DOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://www.nomadtips3.com'
+          stamp="$(date +%s)"
+          curl -fsSL --max-time 30 "$BASE/?diag=$stamp" -o /tmp/home.html
+          grep -F 'mobile-score-row.css?v=20260903-v1' /tmp/home.html
+          grep -F 'mobile-score-row.js?v=20260903-v1' /tmp/home.html
+          curl -fsSL --max-time 30 "$BASE/mobile-score-row.css?v=20260903-v1&diag=$stamp" -o /tmp/mobile-score-row.css
+          grep -F 'mobile-score-layout-ready' /tmp/mobile-score-row.css
+          curl -fsSL --max-time 30 "$BASE/mobile-score-row.js?v=20260903-v1&diag=$stamp" -o /tmp/mobile-score-row.js
+          grep -F 'mobile-score-home' /tmp/mobile-score-row.js
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
+          (async()=>{
+            const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              await page.setViewport({width:390,height:844,deviceScaleFactor:1});
+              const errors=[];
+              page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
+              page.on('pageerror',e=>errors.push('pageerror:'+e.message));
+              await page.goto('https://www.nomadtips3.com/?mobile-diag='+Date.now(),{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('.match-list',{timeout:30000});
+              await new Promise(r=>setTimeout(r,12000));
+              const out=await page.evaluate(()=>({
+                width:innerWidth,
+                matchCount:document.querySelectorAll('.match-wrap[data-match-id]').length,
+                teamReady:document.querySelectorAll('.mobile-team-line').length,
+                scoreReady:document.querySelectorAll('.score.mobile-score-layout-ready').length,
+                scoreHome:document.querySelectorAll('.mobile-score-home').length,
+                scoreAway:document.querySelectorAll('.mobile-score-away').length,
+                scoreTimes:document.querySelectorAll('.score-live-time').length,
+                first:document.querySelector('.match-wrap[data-match-id] summary')?.innerText||''
+              }));
+              console.log('MOBILE_PAGE1',JSON.stringify(out));
+              console.log('BROWSER_ERRORS',JSON.stringify(errors));
+              if(out.matchCount>0 && out.scoreReady===0) throw new Error('Matches exist but mobile score layout never activated');
+              if(out.scoreReady>0 && (out.scoreHome!==out.scoreReady || out.scoreAway!==out.scoreReady)) throw new Error('HOME/AWAY split count mismatch');
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
