@@ -1,0 +1,139 @@
+/* NOMAD Live Score 3.42 · Vintage 12-theme presentation layer.
+   Presentation only. No feed, engine, runtime, market or signal logic. */
+
+body[data-page="live"] .event-compact.vintage-theme-ready{
+  background:
+    radial-gradient(circle at 10% 0,var(--vt-home-soft),transparent 34%),
+    radial-gradient(circle at 90% 0,var(--vt-away-soft),transparent 34%),
+    linear-gradient(180deg,rgba(255,255,255,.008),rgba(0,0,0,.018));
+}
+body[data-page="live"] .event-compact.vintage-theme-ready:hover{
+  background:
+    radial-gradient(circle at 10% 0,var(--vt-home-glow),transparent 36%),
+    radial-gradient(circle at 90% 0,var(--vt-away-glow),transparent 36%),
+    linear-gradient(180deg,rgba(255,255,255,.012),rgba(0,0,0,.024));
+}
+body[data-page="live"] .event-compact.vintage-theme-ready.expanded .event-details{
+  border-top-color:var(--vt-line)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-league{
+  color:#a5aa9f!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .live-score{
+  color:var(--vt-accent)!important;
+  text-shadow:0 0 10px color-mix(in srgb,var(--vt-accent) 24%,transparent);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .live-minute{
+  color:#edf0e8!important;
+}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  min-width:0!important;
+  overflow:hidden!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-home{
+  justify-content:flex-end!important;
+  color:var(--vt-home)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-away{
+  justify-content:flex-start!important;
+  color:var(--vt-away)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-name{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:inherit;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-shirt{
+  display:block;
+  width:25px;
+  height:25px;
+  flex:0 0 25px;
+  object-fit:contain;
+  opacity:.98;
+  filter:brightness(.99) saturate(.96) drop-shadow(0 2px 2px rgba(0,0,0,.42));
+  pointer-events:none;
+  user-select:none;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready:hover .vintage-team-shirt,
+body[data-page="live"] .event-compact.vintage-theme-ready.expanded .vintage-team-shirt{
+  filter:brightness(1.06) saturate(1.01) drop-shadow(0 2px 2px rgba(0,0,0,.42));
+}
+
+/* HOME/AWAY identity flows through graph and evidence bars. */
+body[data-page="live"] .event-compact.vintage-theme-ready .home-dot{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .away-dot{background:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-home{stroke:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-away{stroke:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .chart-grid{stroke:var(--vt-grid)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .chart-grid-mid{stroke:color-mix(in srgb,var(--vt-grid) 58%,transparent)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-chart{
+  background:
+    linear-gradient(90deg,var(--vt-home-soft),transparent 28%,transparent 72%,var(--vt-away-soft)),
+    linear-gradient(180deg,rgba(255,255,255,.012),rgba(0,0,0,.06))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .legend-team:first-child b{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .legend-team:last-child b{color:var(--vt-away)!important}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .gf-stats-head{
+  background:linear-gradient(90deg,var(--vt-home-soft),rgba(255,255,255,.012) 49%,var(--vt-away-soft))!important;
+  border-color:var(--vt-line)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .gf-stats-head .gf-home{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .gf-stats-head .gf-away{color:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-details.graph-first-v1>.event-stats{
+  border-color:var(--vt-line)!important;
+  background:linear-gradient(90deg,var(--vt-home-soft),rgba(255,255,255,.012) 48%,rgba(255,255,255,.012) 52%,var(--vt-away-soft))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-bar-home{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--vt-home) 76%,#fff),var(--vt-home))!important;
+  box-shadow:0 0 5px var(--vt-home-glow)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-bar-away{
+  background:linear-gradient(90deg,var(--vt-away),color-mix(in srgb,var(--vt-away) 76%,#fff))!important;
+  box-shadow:0 0 5px var(--vt-away-glow)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-bar-track{
+  background:rgba(255,255,255,.055)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div{
+  background:linear-gradient(145deg,rgba(255,255,255,.023),rgba(255,255,255,.011))!important;
+  border:1px solid color-mix(in srgb,var(--vt-line) 66%,transparent);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:first-child{
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--vt-home) 54%,transparent);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nth-child(2){
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--vt-accent) 46%,transparent);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nth-child(3),
+body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nth-child(4){
+  box-shadow:inset 2px 0 0 rgba(255,255,255,.08);
+}
+
+/* Status semantics are intentionally untouched: PASS/LIVE green, WAIT amber, STALE/ERROR red. */
+
+@media(max-width:900px){
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-shirt{
+    width:22px;height:22px;flex-basis:22px;
+  }
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team{gap:5px!important}
+}
+@media(max-width:760px){
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-shirt{
+    width:20px;height:20px;flex-basis:20px;
+  }
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team{gap:4px!important}
+}
+@media(max-width:420px){
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team-shirt{
+    width:18px;height:18px;flex-basis:18px;
+  }
+  body[data-page="live"] .event-compact.vintage-theme-ready .vintage-team{gap:3px!important}
+}

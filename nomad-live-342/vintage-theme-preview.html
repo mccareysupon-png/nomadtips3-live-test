@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NOMAD 3.42 Vintage Theme Lab</title>
+  <link rel="stylesheet" href="styles.css?v=20260831-standalone342-v2">
+  <link rel="stylesheet" href="event-monitor.css?v=20260831-standalone342-v2">
+  <link rel="stylesheet" href="live-score-graph-first.css?v=20260901-v1">
+  <link rel="stylesheet" href="vintage-card-theme.css?v=20260902-lab-v1">
+  <style>
+    body{background:#0e120f;color:#eef2ed}.preview-shell{width:min(1120px,calc(100% - 24px));margin:24px auto 60px}.preview-head{margin-bottom:18px}.preview-head h1{font-size:24px;margin:0}.preview-head p{color:#8f988f;font-size:12px}.preview-label{display:inline-flex;margin:0 0 5px;padding:3px 7px;border:1px solid rgba(255,255,255,.08);border-radius:999px;color:#9ba49c;font-size:8px;font-weight:900;letter-spacing:.06em}.preview-block{margin-bottom:10px}
+  </style>
+  <script src="vintage-card-theme.js?v=20260902-lab-v1" defer></script>
+</head>
+<body data-page="live">
+  <main class="preview-shell">
+    <header class="preview-head"><h1>Vintage 12 Theme Lab</h1><p>Static presentation-only preview. No live data connection.</p></header>
+    <div class="match-list" id="matchList"></div>
+  </main>
+  <script>
+    (()=>{
+      const names=['Burgundy / Cream','Forest / Ivory','Navy / Gold','Maroon / Powder Blue','Wine / Teal','Burnt Orange / Silver','Plum / Beige','Oxblood / Sage','Mustard / Royal','Dusty Cyan / Wine','Olive / Ivory','Royal / Brick'];
+      const clubs=[['Kingsport Athletic','Albion Rovers'],['Forest Town','Ivory United'],['Royal Navy FC','Golden City'],['Maroon Athletic','Powder Blue'],['Wine County','Teal Wanderers'],['Orange Borough','Silver Athletic'],['Plum City','Beige County'],['Oxblood FC','Sage United'],['Mustard Town','Royal Borough'],['Dusty Cyan','Wine Rovers'],['Olive Athletic','Ivory City'],['Royal Stars','Brick County']];
+      const stat=(label,h,a)=>`<div class="event-stat"><span class="event-stat-title">${label}</span><div class="event-stat-row"><span>HOME</span><div class="event-bar-track"><i class="event-bar event-bar-home" style="width:${Math.min(100,h)}%"></i></div><b>${h}</b></div><div class="event-stat-row"><span>AWAY</span><div class="event-bar-track"><i class="event-bar event-bar-away" style="width:${Math.min(100,a)}%"></i></div><b>${a}</b></div></div>`;
+      const card=(i)=>{
+        const n=i+1,[home,away]=clubs[i];
+        return `<section class="preview-block"><span class="preview-label">PALETTE ${String(n).padStart(2,'0')} · ${names[i]}</span><article class="signal-card event-compact signal-card-wait expanded" data-match-id="preview-${n}" data-vintage-palette="${n}" tabindex="0"><div class="card-topline"><span class="event-league">Vintage Test League</span><span class="live-minute">68'</span><span class="live-score">2–1</span></div><div class="teams-line"><strong>${home}</strong><span>VS</span><strong>${away}</strong></div><div class="event-details graph-first-v1"><div class="attack-head"><div><span>ATTACK FLOW</span><small>63'–68' rolling view</small></div><div class="attack-legend"><span class="legend-team"><span class="home-dot"></span><b>HOME</b> · ${home}</span><span class="legend-team"><span class="away-dot"></span><b>AWAY</b> · ${away}</span></div></div><div class="attack-chart"><svg viewBox="0 0 100 42" preserveAspectRatio="none"><line class="chart-grid" x1="4" y1="37" x2="96" y2="37"/><line class="chart-grid chart-grid-mid" x1="4" y1="22" x2="96" y2="22"/><polyline class="attack-line attack-home" points="4,36 20,31 38,29 55,19 74,16 96,8"/><polyline class="attack-line attack-away" points="4,36 20,34 38,28 55,27 74,24 96,21"/></svg><div class="chart-axis"><span>63'</span><span>ATTACK CHANGE · HOME 18 · AWAY 9</span><span>68'</span></div></div><div class="gf-stats-head"><b class="gf-home">HOME</b><span>LIVE KEY STATS</span><b class="gf-away">AWAY</b></div><div class="event-stats" data-ui-group="team-comparison">${stat('ATTACKS',68,52)}${stat('DANGEROUS ATTACKS',41,29)}${stat('SHOTS ON TARGET',5,3)}${stat('SHOTS OFF TARGET',7,5)}${stat('CORNERS',8,4)}</div><div class="event-overview"><div><span>HOME PRESSURE</span><strong>61%</strong></div><div><span>TREND</span><strong>2/3</strong></div><div><span>EVENT GATE</span><strong class="waittxt">WAIT</strong></div><div><span>FEED</span><strong class="oktxt">LIVE</strong></div></div></div></article></section>`;
+      };
+      document.getElementById('matchList').innerHTML=Array.from({length:12},(_,i)=>card(i)).join('');
+    })();
+  </script>
+</body>
+</html>

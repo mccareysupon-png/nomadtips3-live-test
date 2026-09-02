@@ -1,0 +1,130 @@
+name: NOMAD 3.42 Presentation Guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nomad-live-342/vintage-card-theme.js'
+      - 'nomad-live-342/vintage-card-theme.css'
+      - 'nomad-live-342/vintage-theme-preview.html'
+      - 'nomad-live-342/index.html'
+      - '.github/workflows/nomad342-presentation-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  presentation-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Enforce presentation-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-342/vintage-card-theme.js
+          test -s nomad-live-342/vintage-card-theme.css
+          test -s nomad-live-342/vintage-theme-preview.html
+          if grep -Ein 'fetch[[:space:]]*\(|NOMAD342_RUNTIME|engineBase|/feed|totalcorner\.com|localStorage' nomad-live-342/vintage-card-theme.js nomad-live-342/vintage-card-theme.css; then
+            echo '::error::Presentation layer crossed the data/runtime boundary.'
+            exit 1
+          fi
+          changed="$(git diff --name-only HEAD^ HEAD || true)"
+          echo "$changed"
+          if echo "$changed" | grep -Eq '^(nomad-live-342/runtime-config\.js|nomad-live-342/event-monitor\.js|nomad-live-score-feed-v2/)'; then
+            echo '::error::Presentation commit touched a protected live-data file.'
+            exit 1
+          fi
+
+      - name: Validate 12 palettes on responsive static lab
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          python3 -m http.server 8080 --bind 127.0.0.1 >/tmp/nomad342-theme-lab.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
+          const widths=[360,390,412,700,768,1024,1280,1440];
+          const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
+          (async()=>{
+            const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
+            try{
+              const page=await browser.newPage();
+              for(const width of widths){
+                await page.setViewport({width,height:1000,deviceScaleFactor:1});
+                await page.goto(`http://127.0.0.1:8080/nomad-live-342/vintage-theme-preview.html?w=${width}`,{waitUntil:'domcontentloaded',timeout:30000});
+                await page.waitForFunction(()=>document.querySelectorAll('.event-compact.vintage-theme-ready').length===12,{timeout:10000});
+                const x=await page.evaluate(()=>{
+                  const cards=[...document.querySelectorAll('.event-compact.vintage-theme-ready')];
+                  const palettes=cards.map(c=>c.dataset.vintagePalette);
+                  const shirts=[...document.querySelectorAll('.vintage-team-shirt')];
+                  return {cards:cards.length,palettes:[...new Set(palettes)],shirts:shirts.length,shirtWidth:shirts[0]?.getBoundingClientRect().width||0,scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
+                });
+                console.log('THEME_LAB',width,JSON.stringify(x));
+                check(x.cards===12,`lab/${width}: expected 12 cards`);
+                check(x.palettes.length===12,`lab/${width}: expected 12 unique palettes`);
+                check(x.shirts===24,`lab/${width}: expected 24 team shirts`);
+                check(x.shirtWidth>=17&&x.shirtWidth<=26,`lab/${width}: shirt width ${x.shirtWidth}`);
+                check(x.scrollWidth<=x.viewport+1,`lab/${width}: horizontal overflow ${x.scrollWidth}/${x.viewport}`);
+              }
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Validate live-card integration when enabled
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -Fq 'vintage-card-theme.js' nomad-live-342/index.html; then
+            echo 'Theme assets are not enabled on the live page yet; lab validation only.'
+            exit 0
+          fi
+          node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
+          const widths=[360,412,700,1024,1440];
+          const sample={ok:true,version:'3.42',mode:'LIVE_EVENT_FEED',updatedAt:new Date().toISOString(),cycle:7,counts:{live:2,stale:0},matches:[
+            {id:'guard-101',league:'Presentation Guard League',home:'Kingsport Athletic Long Name',away:'Albion Rovers Long Name',minute:68,score:[2,1],event:{snapshots:[{minute:63,observedAt:Date.now()-300000,attacks:[40,36],dangerous:[21,20],sot:[null,null],off:[null,null],corner:[4,3]},{minute:68,observedAt:Date.now(),attacks:[58,45],dangerous:[34,25],sot:[null,null],off:[null,null],corner:[6,4]}]},freshness:{stale:false}},
+            {id:'guard-202',league:'Responsive Test League',home:'Forest Town United',away:'Ivory City Wanderers',minute:75,score:[0,0],event:{snapshots:[{minute:70,observedAt:Date.now()-300000,attacks:[31,35],dangerous:[16,18],sot:[null,null],off:[null,null],corner:[2,4]},{minute:75,observedAt:Date.now(),attacks:[48,46],dangerous:[29,26],sot:[null,null],off:[null,null],corner:[5,5]}]},freshness:{stale:false}}
+          ]};
+          const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
+          (async()=>{
+            const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
+            try{
+              for(const width of widths){
+                const page=await browser.newPage();
+                await page.setRequestInterception(true);
+                page.on('request',req=>{
+                  const u=req.url();
+                  if(u.startsWith('https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev/feed'))return req.respond({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:JSON.stringify(sample)});
+                  if(u.includes('mccarey-supon.workers.dev'))return req.respond({status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},body:'{"ok":false}'});
+                  return req.continue();
+                });
+                await page.setViewport({width,height:1000,deviceScaleFactor:1});
+                await page.goto(`http://127.0.0.1:8080/nomad-live-342/index.html?guard=${width}`,{waitUntil:'domcontentloaded',timeout:30000});
+                await page.waitForFunction(()=>document.querySelectorAll('.event-compact').length===2,{timeout:15000});
+                await page.waitForFunction(()=>document.querySelectorAll('.event-compact.vintage-theme-ready').length===2,{timeout:10000});
+                const x=await page.evaluate(()=>({cards:document.querySelectorAll('.event-compact').length,themed:document.querySelectorAll('.event-compact.vintage-theme-ready').length,shirts:document.querySelectorAll('.vintage-team-shirt').length,connecting:(document.getElementById('matchList')?.textContent||'').includes('Connecting'),scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth}));
+                console.log('LIVE_THEME',width,JSON.stringify(x));
+                check(x.cards===2&&x.themed===2,`live/${width}: cards not themed`);
+                check(x.shirts===4,`live/${width}: expected 4 shirts`);
+                check(!x.connecting,`live/${width}: still connecting`);
+                check(x.scrollWidth<=x.viewport+1,`live/${width}: horizontal overflow ${x.scrollWidth}/${x.viewport}`);
+                await page.close();
+              }
+            }finally{await browser.close()}
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
