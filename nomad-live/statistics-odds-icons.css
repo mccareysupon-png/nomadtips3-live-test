@@ -1,6 +1,7 @@
 /* Statistics page desktop-only vintage odds icons.
    Reuses the exact ODDS / DECIMAL / AMERICAN / FRACTION artwork from toolbar-vintage-icons.css.
-   Presentation only. statistics.html loads this layer only at min-width:1025px. */
+   Presentation only. statistics.html loads this layer only at min-width:1025px.
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 .odds-display-toolbar.toolbar{
   display:flex!important;
@@ -40,8 +41,8 @@
   width:26.4px!important;
   height:26.4px!important;
   flex:0 0 26.4px!important;
-  opacity:.92;
-  filter:brightness(.92) saturate(.98);
+  opacity:1;
+  filter:brightness(1.10) saturate(1.06);
 }
 
 .odds-display-toolbar.toolbar .odds-display-label{
@@ -65,10 +66,10 @@
 .odds-display-toolbar.toolbar .odds-display-control button:hover::before,
 .odds-display-toolbar.toolbar .odds-display-control button:focus-visible::before{
   opacity:1!important;
-  filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+  filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
 }
 
-/* Active: green text + brighter icon, still no card. */
+/* Active: green text + brightest icon, still no card. */
 .odds-display-toolbar.toolbar .odds-display-control button.is-active,
 .odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]{
   color:var(--green)!important;
