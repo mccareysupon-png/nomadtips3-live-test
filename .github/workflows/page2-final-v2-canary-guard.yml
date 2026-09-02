@@ -63,6 +63,32 @@ jobs:
           curl -fsSL --max-time 20 "$CANARY_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/mirror.js
           grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/mirror.js
 
+  canary-public-info:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify public information bridges
+        run: |
+          set -euo pipefail
+          for page in about privacy terms user-guide disclaimer; do
+            echo "checking $page"
+            curl -fsSL --max-time 20 "$CANARY_URL/$page/?t=$(date +%s)" -o "/tmp/$page.html"
+            grep -Fq 'NOMADTIPS3' "/tmp/$page.html"
+          done
+          curl -fsSL --max-time 20 "$CANARY_URL/public-info-footer.js?t=$(date +%s)" -o /tmp/footer.js
+          grep -Fq 'User Guide' /tmp/footer.js
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live/styles.css?t=$(date +%s)" -o /tmp/styles.css
+          grep -Fq ':root' /tmp/styles.css
+
+  page3-shell:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Page3 shell markers
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/page3.html
+          grep -Fq 'Live Score & Event Monitor' /tmp/page3.html
+          grep -Fq 'event-monitor.js?v=' /tmp/page3.html
+
   page3-runtime:
     runs-on: ubuntu-latest
     steps:
