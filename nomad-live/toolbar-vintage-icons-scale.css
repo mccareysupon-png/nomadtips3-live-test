@@ -25,11 +25,21 @@
   .shell>.toolbar .search input{
     background:#0b0f0c!important;
     border:0!important;
+    outline:0!important;
     box-shadow:none!important;
   }
 
-  .shell>.toolbar .search input:focus{
-    outline:1px solid rgba(131,223,137,.24)!important;
-    outline-offset:1px!important;
+  /* No visible default text inside the field. */
+  .shell>.toolbar .search input::placeholder{
+    color:transparent!important;
+    opacity:0!important;
+  }
+
+  /* Keep focus visually identical: no border, outline or glow. */
+  .shell>.toolbar .search input:focus,
+  .shell>.toolbar .search input:focus-visible{
+    border:0!important;
+    outline:0!important;
+    box-shadow:none!important;
   }
 }
