@@ -4,6 +4,7 @@
 
   const style=document.createElement('style');
   style.textContent=`
+    .site-footer .site-footer-certrow .site-cert{background:transparent!important;border:0!important;box-shadow:none!important;border-radius:0!important}
     .site-footer .site-cert-mark.nomad-standard-icon{flex:0 0 42px!important;width:42px!important;height:42px!important;border:0!important;border-radius:0!important;padding:0!important;color:#8f928f!important;background:transparent!important;display:grid!important;place-items:center!important}
     .site-footer .site-cert-mark.nomad-standard-icon svg{display:block;width:42px;height:42px;overflow:visible}
     .site-footer .site-cert-mark.nomad-standard-icon .ring{fill:none;stroke:currentColor;stroke-width:2.2}
