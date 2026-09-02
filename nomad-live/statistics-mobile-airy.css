@@ -2,7 +2,8 @@
 
 /* Statistics mobile / nearby-device polish.
    Presentation only: keeps DOM order, data bindings, odds logic, chart anchor and ledger structure untouched.
-   Rollback marker: rollback/pre-statistics-mobile-airy-20260901 */
+   Rollback marker: rollback/pre-statistics-mobile-airy-20260901
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 @media(max-width:900px){
   /* Primary KPI strip: one compact row, four equal columns, no decorative icons. */
@@ -186,10 +187,10 @@
     background-repeat:no-repeat!important;
     background-position:center!important;
     background-size:contain!important;
-    opacity:.92!important;
+    opacity:1!important;
     -webkit-mask:none!important;
     mask:none!important;
-    filter:brightness(.94) saturate(.99)!important;
+    filter:brightness(1.10) saturate(1.06)!important;
   }
   .odds-display-toolbar.toolbar .odds-display-control button:hover,
   .odds-display-toolbar.toolbar .odds-display-control button:focus-visible{
@@ -201,7 +202,7 @@
   .odds-display-toolbar.toolbar .odds-display-control button:hover::before,
   .odds-display-toolbar.toolbar .odds-display-control button:focus-visible::before{
     opacity:1!important;
-    filter:brightness(1.22) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+    filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
   }
   .odds-display-toolbar.toolbar .odds-display-control button.is-active,
   .odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]{
