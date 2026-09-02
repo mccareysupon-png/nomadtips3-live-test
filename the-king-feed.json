@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02T14:33:07Z",
+  "updated_at": "2026-09-02T18:47:10Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -166,8 +166,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.7803,
       "edge": 63.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-0",
       "source_url": "https://www.goaloo.com/football/finland-kolmonen-tpv-2-vs-fish-united/h2h-3083900",
       "summary_url": "https://www.goaloo.com/football/finland-kolmonen-tpv-2-vs-fish-united/summary-3083900",
       "model": {
@@ -1851,6 +1851,56 @@
         "home_recent": 10,
         "away_recent": 10,
         "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "2f35f36ab227dc5e",
+      "goaloo_id": "3083900",
+      "date": "2026-09-02",
+      "kickoff": "2026-09-02 16:45:00",
+      "league": "Finland Kolmonen",
+      "home": "TPV/2",
+      "away": "Fish United",
+      "pick": "Fish United Win",
+      "side": "away",
+      "odds": 26.0,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7803,
+      "edge": 63.6,
+      "result": "LOSS",
+      "ft": "2-0",
+      "source_url": "https://www.goaloo.com/football/finland-kolmonen-tpv-2-vs-fish-united/h2h-3083900",
+      "summary_url": "https://www.goaloo.com/football/finland-kolmonen-tpv-2-vs-fish-united/summary-3083900",
+      "model": {
+        "lambda_home": 1.384,
+        "lambda_away": 3.257,
+        "home_win": 0.075,
+        "draw": 0.1447,
+        "away_win": 0.7803,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.722,
+          "gd_edge": -0.9159,
+          "clean_sheet_edge": -0.1659,
+          "failed_to_score_edge": -0.3317,
+          "bounded_adjustment": -0.0507,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": 0.0,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 7,
+        "away_recent": 10,
+        "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
       }
     }
