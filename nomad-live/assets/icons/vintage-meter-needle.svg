@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true">
+  <defs>
+    <linearGradient id="needle" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#241f1b"/>
+      <stop offset=".62" stop-color="#090909"/>
+      <stop offset="1" stop-color="#3e342b"/>
+    </linearGradient>
+    <filter id="ns" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx=".6" dy=".9" stdDeviation=".8" flood-color="#000" flood-opacity=".55"/>
+    </filter>
+  </defs>
+  <g filter="url(#ns)">
+    <path d="M47.8 51.7 L49.1 21.2 L50 16 L50.9 21.2 L52.2 51.7 Z" fill="url(#needle)" stroke="#d6aa63" stroke-width=".45"/>
+    <circle cx="50" cy="50" r="4.7" fill="#1a1714" stroke="#d6aa63" stroke-width=".8"/>
+    <circle cx="50" cy="50" r="2.5" fill="#b87526" stroke="#f3cb79" stroke-width=".55"/>
+  </g>
+</svg>
