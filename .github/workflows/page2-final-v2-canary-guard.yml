@@ -1,0 +1,93 @@
+name: Page2 FINAL V2 Canary Guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'nomad-live/statistics.html'
+      - 'nomad-live/statistics-live-score-mirror.js'
+      - '.github/workflows/page2-final-v2-canary-guard.yml'
+
+permissions:
+  contents: read
+
+env:
+  CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
+  LIVE_SCORE_V2_URL: https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev
+
+jobs:
+  source-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate FINAL mirror source
+        run: |
+          set -euo pipefail
+          node --check nomad-live/statistics-live-score-mirror.js
+          grep -Fq "LIVE_SCORE_V2_BASE='https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev'" nomad-live/statistics-live-score-mirror.js
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' nomad-live/statistics.html
+
+  canary-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify canary release
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$CANARY_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json
+          grep -Fq 'nomadtips3-live-web-production' /tmp/release.json
+          grep -Fq '"version":"3.41"' /tmp/release.json
+
+  canary-page1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Page1 shell and API
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
+          grep -Fq 'src="runtime-config.js' /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          for endpoint in health feed statistics config; do
+            curl -fsS --max-time 20 "$CANARY_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/$endpoint.json"
+            test -s "/tmp/$endpoint.json"
+          done
+
+  canary-final-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Page2 FINAL assets
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CANARY_URL/statistics.html?t=$(date +%s)" -o /tmp/statistics.html
+          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/statistics.html
+          curl -fsSL --max-time 20 "$CANARY_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/mirror.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/mirror.js
+
+  page3-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify Page3 direct V2 runtime
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/page3.html
+          grep -Fq 'Live Score & Event Monitor' /tmp/page3.html
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/runtime.js
+          grep -Fq "transport:'direct-worker-v2'" /tmp/runtime.js
+          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/runtime.js
+
+  direct-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify direct V2 feed and CORS
+        run: |
+          set -euo pipefail
+          curl -fsS -D /tmp/headers.txt --max-time 35 "$LIVE_SCORE_V2_URL/feed?force=1&t=$(date +%s)" -o /tmp/feed.json
+          grep -Eiq '^access-control-allow-origin:[[:space:]]*\*' /tmp/headers.txt
+          FEED_FILE=/tmp/feed.json python - <<'PY'
+          import json, os
+          data=json.load(open(os.environ['FEED_FILE'],encoding='utf-8'))
+          assert str(data.get('version'))=='3.42', data.get('version')
+          assert isinstance(data.get('matches'),list), type(data.get('matches')).__name__
+          assert data.get('ok') is not False, data.get('lastError') or data.get('error')
+          print('DIRECT_V2_OK matches=',len(data['matches']))
+          PY
