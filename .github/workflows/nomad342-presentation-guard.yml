@@ -109,7 +109,7 @@ jobs:
           const widths=[360,412,700,1024,1440];
           const sample={ok:true,version:'3.42',mode:'LIVE_EVENT_FEED',updatedAt:new Date().toISOString(),cycle:7,counts:{live:2,stale:0},matches:[
             {id:'guard-101',league:'Presentation Guard League',home:'Kingsport Athletic Long Name',away:'Albion Rovers Long Name',minute:68,score:[2,1],event:{snapshots:[{minute:63,observedAt:Date.now()-300000,attacks:[40,36],dangerous:[21,20],sot:[null,null],off:[null,null],corner:[4,3]},{minute:68,observedAt:Date.now(),attacks:[58,45],dangerous:[34,25],sot:[null,null],off:[null,null],corner:[6,4]}]},freshness:{stale:false}},
-            {id:'guard-202',league:'Responsive Test League',home:'Forest Town United',away:'Ivory City Wanderers',minute:75,score:[0,0],event:{snapshots:[{minute:70,observedAt:Date.now()-300000,attacks:[31,35],dangerous:[16,18],sot:[null,null],off:[null,null],corner:[2,4]},{minute:75,observedAt:Date.now(),attacks:[48,46],dangerous:[29,26],sot:[null,null],off:[null,null],corner:[5,5]}]},freshness:{stale:false}}
+            {id:'guard-200',league:'Responsive Test League',home:'Forest Town United',away:'Ivory City Wanderers',minute:75,score:[0,0],event:{snapshots:[{minute:70,observedAt:Date.now()-300000,attacks:[31,35],dangerous:[16,18],sot:[null,null],off:[null,null],corner:[2,4]},{minute:75,observedAt:Date.now(),attacks:[48,46],dangerous:[29,26],sot:[null,null],off:[null,null],corner:[5,5]}]},freshness:{stale:false}}
           ]};
           const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
           (async()=>{
@@ -128,12 +128,57 @@ jobs:
                 await page.goto(`http://127.0.0.1:8080/nomad-live-342/index.html?guard=${width}`,{waitUntil:'domcontentloaded',timeout:30000});
                 await page.waitForFunction(()=>document.querySelectorAll('.event-compact').length===2,{timeout:15000});
                 await page.waitForFunction(()=>document.querySelectorAll('.event-compact.vintage-theme-ready').length===2,{timeout:10000});
-                const x=await page.evaluate(()=>({cards:document.querySelectorAll('.event-compact').length,themed:document.querySelectorAll('.event-compact.vintage-theme-ready').length,shirts:document.querySelectorAll('.vintage-team-shirt').length,connecting:(document.getElementById('matchList')?.textContent||'').includes('Connecting'),scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth}));
+                const x=await page.evaluate(()=>{
+                  const cards=[...document.querySelectorAll('.event-compact.vintage-theme-ready')];
+                  const resolveColor=(card,varName)=>{
+                    const probe=document.createElement('i');
+                    probe.style.color=`var(${varName})`;
+                    card.appendChild(probe);
+                    const value=getComputedStyle(probe).color;
+                    probe.remove();
+                    return value;
+                  };
+                  const color=el=>el?getComputedStyle(el).color:'';
+                  const stroke=el=>el?getComputedStyle(el).stroke:'';
+                  const first=cards[0];
+                  return {
+                    cards:cards.length,
+                    themed:cards.length,
+                    shirts:document.querySelectorAll('.vintage-team-shirt').length,
+                    connecting:(document.getElementById('matchList')?.textContent||'').includes('Connecting'),
+                    scrollWidth:document.documentElement.scrollWidth,
+                    viewport:innerWidth,
+                    palettes:cards.map(c=>c.dataset.vintagePalette),
+                    homeVar:resolveColor(first,'--vt-home'),
+                    awayVar:resolveColor(first,'--vt-away'),
+                    statusGreen:resolveColor(first,'--na-green'),
+                    predHome:color(first.querySelector('.nlp-home b')),
+                    predAway:color(first.querySelector('.nlp-away b')),
+                    pulseHome:color(first.querySelector('.na-pressure-split span:first-child b')),
+                    pulseAway:color(first.querySelector('.na-pressure-split span:last-child b')),
+                    timelineHome:color(first.querySelector('.na-timeline-event.home small')),
+                    timelineAway:color(first.querySelector('.na-timeline-event.away small')),
+                    battleHome:color(first.querySelector('.na-battle-row:first-of-type>b')),
+                    battleAway:color(first.querySelector('.na-battle-row:nth-of-type(2)>b')),
+                    radarHome:stroke(first.querySelector('.na-radar-home')),
+                    radarAway:stroke(first.querySelector('.na-radar-away')),
+                    feedLive:color(first.querySelector('.na-pulse-summary>div:nth-child(4) strong'))
+                  };
+                });
                 console.log('LIVE_THEME',width,JSON.stringify(x));
                 check(x.cards===2&&x.themed===2,`live/${width}: cards not themed`);
                 check(x.shirts===4,`live/${width}: expected 4 shirts`);
                 check(!x.connecting,`live/${width}: still connecting`);
                 check(x.scrollWidth<=x.viewport+1,`live/${width}: horizontal overflow ${x.scrollWidth}/${x.viewport}`);
+                check(x.palettes.length===2&&x.palettes[0]!==x.palettes[1],`live/${width}: test cards must use isolated palettes`);
+                check(x.predHome===x.homeVar&&x.predAway===x.awayVar,`live/${width}: prediction colors escaped card palette`);
+                check(x.pulseHome===x.homeVar&&x.pulseAway===x.awayVar,`live/${width}: match pulse colors escaped card palette`);
+                check(x.timelineHome===x.homeVar&&x.timelineAway===x.awayVar,`live/${width}: timeline colors escaped card palette`);
+                check(x.battleHome===x.homeVar&&x.battleAway===x.awayVar,`live/${width}: battle colors escaped card palette`);
+                if(x.radarHome&&x.radarAway){
+                  check(x.radarHome===x.homeVar&&x.radarAway===x.awayVar,`live/${width}: radar colors escaped card palette`);
+                }
+                check(x.feedLive===x.statusGreen,`live/${width}: LIVE status semantic color was overwritten by palette`);
                 await page.close();
               }
             }finally{await browser.close()}
