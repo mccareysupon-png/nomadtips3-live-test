@@ -38,7 +38,7 @@ npx wrangler secret put TELEGRAM_TEST_CHAT_ID
 
 ## Safe test sequence
 
-1. Configure the four secrets.
+1. Configure the three required secrets; `TELEGRAM_TEST_CHAT_ID` is optional.
 2. Deploy the TEST Worker.
 3. Check `/health` and confirm DB/bot/webhook/admin are configured.
 4. Call `POST /admin/set-webhook` with header `X-NOMAD-ADMIN-TOKEN`.
