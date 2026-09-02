@@ -1,6 +1,6 @@
-/* Statistics-only seven-metric desktop strip.
-   Keeps the existing 2x2 mobile summary untouched and adds a separate
-   mobile-only settled-results card below it. */
+/* Statistics-only eight-metric desktop strip.
+   Keeps the mobile summary compact and adds a separate mobile-only
+   settled-results row below it. DAY is the unique recorded lockedAt date count. */
 
 .stats-win-metric strong {
   color:var(--green);
@@ -14,34 +14,22 @@
   color:var(--muted);
 }
 
+.stats-day-metric strong {
+  color:#d9e3d9;
+}
+
 .mobile-settled-summary {
   display:none;
 }
 
 @media (min-width:701px) {
   .statistics-summary-grid {
-    grid-template-columns:1.12fr .82fr .82fr .82fr 1fr 1fr 1fr;
+    grid-template-columns:1.05fr .62fr .78fr .78fr .78fr .98fr .98fr .92fr;
   }
 
   .statistics-summary-grid > .metric {
-    padding:6.75px 8px;
-  }
-
-  .statistics-summary-grid > .metric span {
-    font-size:7.5px;
-    line-height:1.1;
-    white-space:nowrap;
-  }
-
-  .statistics-summary-grid > .metric strong {
-    margin:2px 0 0;
-    font-size:14.4px;
-    line-height:1.05;
-  }
-
-  /* Center only the three newly added breakdown metrics.
-     Existing four metrics keep their current alignment. */
-  .statistics-summary-grid > .stats-breakdown-metric {
+    min-width:0;
+    padding:6px 6px;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -49,28 +37,39 @@
     text-align:center;
   }
 
-  .statistics-summary-grid > .stats-breakdown-metric span,
-  .statistics-summary-grid > .stats-breakdown-metric strong {
+  .statistics-summary-grid > .metric span {
     width:100%;
+    font-size:7px;
+    line-height:1.08;
+    text-align:center;
+    white-space:nowrap;
+  }
+
+  .statistics-summary-grid > .metric strong {
+    width:100%;
+    margin:2px 0 0;
+    font-size:13.6px;
+    line-height:1.04;
     text-align:center;
   }
 
   .statistics-summary-grid .metric-info {
-    width:11px;
-    height:11px;
+    width:10px;
+    height:10px;
     margin-left:2px;
     vertical-align:-1px;
   }
 
-  /* Keep the original four metrics in DOM order so statistics-live.js stays untouched.
-     CSS order only changes their desktop presentation. */
+  /* Preserve the original first four DOM positions for statistics-live.js.
+     DAY is appended in DOM and visually moved to slot two only with CSS order. */
   .statistics-summary-grid > .metric:nth-child(1) { order:1; }
-  .statistics-summary-grid > .stats-win-metric { order:2; }
-  .statistics-summary-grid > .stats-loss-metric { order:3; }
-  .statistics-summary-grid > .stats-push-metric { order:4; }
-  .statistics-summary-grid > .metric:nth-child(2) { order:5; }
-  .statistics-summary-grid > .metric:nth-child(3) { order:6; }
-  .statistics-summary-grid > .metric:nth-child(4) { order:7; }
+  .statistics-summary-grid > .stats-day-metric { order:2; }
+  .statistics-summary-grid > .stats-win-metric { order:3; }
+  .statistics-summary-grid > .stats-loss-metric { order:4; }
+  .statistics-summary-grid > .stats-push-metric { order:5; }
+  .statistics-summary-grid > .metric:nth-child(2) { order:6; }
+  .statistics-summary-grid > .metric:nth-child(3) { order:7; }
+  .statistics-summary-grid > .metric:nth-child(4) { order:8; }
 
   /* Desktop gets the breakdown in the metric strip, so avoid duplicate text. */
   .statistics-results-summary {
@@ -79,13 +78,10 @@
 }
 
 @media (max-width:700px) {
-  /* Preserve the existing four-metric 2x2 mobile layout exactly. */
   .statistics-summary-grid > .stats-breakdown-metric {
     display:none!important;
   }
 
-  /* Mobile-only settled-result breakdown. It is deliberately outside
-     .statistics-summary-grid so the existing 2x2 KPI card remains untouched. */
   .mobile-settled-summary {
     display:block;
     margin:8px 0 0;
