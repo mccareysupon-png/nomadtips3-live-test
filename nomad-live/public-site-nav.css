@@ -48,6 +48,11 @@ html{scrollbar-gutter:stable}
 .topbar-inner.public-four-nav>.brand::after{display:none!important;content:none!important}
 .topbar-inner.public-four-nav>.source-pill{display:none!important}
 
+/* Public navigation now has three destinations only. Keep any legacy Picks
+   anchors out of layout so older cached HTML cannot widen or shake the header. */
+.topbar-inner.public-four-nav>.topnav a[href*="soccer-predictions"],
+.mobile-nav.public-four-nav a[href*="soccer-predictions"]{display:none!important}
+
 .topbar-inner.public-four-nav>.topnav{
   position:absolute!important;
   top:50%!important;
@@ -133,7 +138,7 @@ html{scrollbar-gutter:stable}
     width:100%!important;
     height:58px!important;
     min-height:58px!important;
-    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
     margin:0!important;
     padding:0!important;
     background:#111711!important;
