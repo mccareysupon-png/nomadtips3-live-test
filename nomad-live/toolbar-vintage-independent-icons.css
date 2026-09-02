@@ -1,6 +1,7 @@
 /* NOMADTIPS3 independent-color vintage toolbar icon set.
    Presentation only: artwork + icon light response. No layout/filter/odds/feed/engine logic.
-   Rollback: rollback/pre-toolbar-vintage-independent-icons-20260902 */
+   Rollback: rollback/pre-toolbar-vintage-independent-icons-20260902
+   Size rollback: rollback/pre-toolbar-icon-size-plus15-20260902 */
 
 .toolbar .tabs .tab::before,
 .toolbar .odds-display-control button::before,
@@ -12,6 +13,27 @@
   filter:brightness(.96) saturate(1)!important;
   transform:translateY(0) scale(1);
   transition:filter .16s ease,opacity .16s ease,transform .16s ease!important;
+}
+
+/* +15% icon footprint, rounded to crisp whole pixels: PC 26->30, mobile 21->24. */
+@media(min-width:1025px){
+  .toolbar .tabs .tab::before,
+  .toolbar .odds-display-control button::before,
+  .toolbar .odds-display-label::before{
+    width:30px!important;
+    height:30px!important;
+    flex:0 0 30px!important;
+  }
+}
+
+@media(max-width:700px){
+  .toolbar .tabs .tab::before,
+  .toolbar .odds-display-control button::before,
+  .toolbar .odds-display-label::before{
+    width:24px!important;
+    height:24px!important;
+    flex:0 0 24px!important;
+  }
 }
 
 /* Sprite order: All, Signal, Near, Watching, ODDS, Decimal, American, Fraction. */
