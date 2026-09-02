@@ -1,0 +1,81 @@
+/* Page 2 / Statistics — bookmaker logo presentation only.
+   Uses the exact user-supplied bookmaker logo artwork, cropped into a single embedded sprite.
+   No statistics, settlement, odds, pagination, feed or engine logic is changed.
+   Rollback baseline: fb38bee0fb876cee686c7b6fdd28844ca5e239d4
+*/
+:root{
+  --nomad-bookmaker-sprite:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAGgCAYAAAB4HCzpAAEAAElEQVR42uz9B5hldZXvC/6fc84955w6M5mZkZlJQkIIKIoIioqiaIEiRo0xJhpRiY0JpqgxoPgViQURwQIKgqgggoAiiFiQ3ZnOeZyz95zvH35f1r1rb88Z5z7nPZfveT0f5sPnnHX3WVv7W1trrXVWAAAAAElFTkSuQmCC");
+}
+
+.data-table td.bookmaker-logo-cell{
+  min-width:132px;
+  height:44px;
+  padding-top:5px!important;
+  padding-bottom:5px!important;
+  font-size:0!important;
+  color:transparent!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+
+.data-table td.bookmaker-logo-cell::before{
+  content:"";
+  display:block;
+  width:120px;
+  height:36px;
+  margin:0 auto;
+  box-sizing:border-box;
+  border:1px solid rgba(190,166,102,.42);
+  border-radius:8px;
+  background-color:#121713;
+  background-image:var(--nomad-bookmaker-sprite);
+  background-repeat:no-repeat;
+  background-size:120px 224px;
+  background-position-x:center;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -1px 0 rgba(0,0,0,.55),
+    0 1px 3px rgba(0,0,0,.34);
+  filter:brightness(1.10) saturate(1.04) contrast(1.03);
+  opacity:1;
+  transition:filter .16s ease,box-shadow .16s ease,transform .16s ease,border-color .16s ease;
+}
+
+.data-table td.bookmaker-logo-cell:hover::before{
+  border-color:rgba(231,211,142,.68);
+  filter:brightness(1.25) saturate(1.10) contrast(1.05) drop-shadow(0 0 6px rgba(244,230,172,.26));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.18),
+    inset 0 -1px 0 rgba(0,0,0,.44),
+    0 0 9px rgba(231,211,142,.18);
+  transform:translateY(-1px);
+}
+
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:2px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-30px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-62px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-94px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-126px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-158px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-190px}
+
+@media(max-width:900px){
+  .data-table td.bookmaker-logo-cell{
+    min-width:118px;
+    height:42px;
+    padding-top:4px!important;
+    padding-bottom:4px!important;
+  }
+  .data-table td.bookmaker-logo-cell::before{
+    width:112px;
+    height:34px;
+    background-size:112px 209.0667px;
+  }
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:2px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-27.8667px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-57.7334px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-87.6001px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-117.4668px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-147.3335px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-177.2002px}
+}
