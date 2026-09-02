@@ -12,6 +12,13 @@ body[data-page="live"] .event-compact.vintage-theme-ready:hover{
     radial-gradient(circle at 10% 0,var(--vt-home-glow),transparent 36%),
     radial-gradient(circle at 90% 0,var(--vt-away-glow),transparent 36%),
     linear-gradient(180deg,rgba(255,255,255,.012),rgba(0,0,0,.024));
+  border-color:color-mix(in srgb,var(--vt-accent) 68%,transparent)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready.expanded{
+  border-color:color-mix(in srgb,var(--vt-accent) 76%,transparent)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready.expanded:hover{
+  border-color:color-mix(in srgb,var(--vt-accent) 88%,transparent)!important;
 }
 body[data-page="live"] .event-compact.vintage-theme-ready.expanded .event-details{
   border-top-color:var(--vt-line)!important;
@@ -71,6 +78,14 @@ body[data-page="live"] .event-compact.vintage-theme-ready .home-dot{background:v
 body[data-page="live"] .event-compact.vintage-theme-ready .away-dot{background:var(--vt-away)!important}
 body[data-page="live"] .event-compact.vintage-theme-ready .attack-home{stroke:var(--vt-home)!important}
 body[data-page="live"] .event-compact.vintage-theme-ready .attack-away{stroke:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-endpoint-home{
+  background:var(--vt-home)!important;
+  box-shadow:0 0 4px var(--vt-home-glow),0 0 8px color-mix(in srgb,var(--vt-home-glow) 58%,transparent)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-endpoint-away{
+  background:var(--vt-away)!important;
+  box-shadow:0 0 4px var(--vt-away-glow),0 0 8px color-mix(in srgb,var(--vt-away-glow) 58%,transparent)!important;
+}
 body[data-page="live"] .event-compact.vintage-theme-ready .chart-grid{stroke:var(--vt-grid)!important}
 body[data-page="live"] .event-compact.vintage-theme-ready .chart-grid-mid{stroke:color-mix(in srgb,var(--vt-grid) 58%,transparent)!important}
 body[data-page="live"] .event-compact.vintage-theme-ready .attack-chart{
@@ -99,6 +114,8 @@ body[data-page="live"] .event-compact.vintage-theme-ready .event-bar-away{
   background:linear-gradient(90deg,var(--vt-away),color-mix(in srgb,var(--vt-away) 76%,#fff))!important;
   box-shadow:0 0 5px var(--vt-away-glow)!important;
 }
+body[data-page="live"] .event-compact.vintage-theme-ready .event-stat-row:first-of-type>span{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-stat-row:nth-of-type(2)>span{color:var(--vt-away)!important}
 body[data-page="live"] .event-compact.vintage-theme-ready .event-bar-track{
   background:rgba(255,255,255,.055)!important;
 }
@@ -115,6 +132,124 @@ body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nt
 body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nth-child(3),
 body[data-page="live"] .event-compact.vintage-theme-ready .event-overview>div:nth-child(4){
   box-shadow:inset 2px 0 0 rgba(255,255,255,.08);
+}
+
+/* Expanded analytics: preserve state semantics, recolor only HOME/AWAY identity. */
+body[data-page="live"] .event-compact.vintage-theme-ready .na-section{
+  border-color:color-mix(in srgb,var(--vt-line) 72%,transparent)!important;
+  background:
+    linear-gradient(90deg,var(--vt-home-soft),transparent 24%,transparent 76%,var(--vt-away-soft)),
+    linear-gradient(180deg,rgba(255,255,255,.018),rgba(0,0,0,.025))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-dot-home{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-dot-away{background:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-home-label{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-away-label{color:var(--vt-away)!important}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .na-pressure-ring{
+  background:conic-gradient(var(--vt-home) 0 var(--na-home),var(--vt-away) var(--na-home) 100%)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-pressure-split span:first-child,
+body[data-page="live"] .event-compact.vintage-theme-ready .na-pressure-split span:first-child b{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-pressure-split span:last-child,
+body[data-page="live"] .event-compact.vintage-theme-ready .na-pressure-split span:last-child b{color:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-match-pulse .na-section-tag{
+  font-size:0!important;
+  color:var(--vt-accent)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-match-pulse .na-section-tag::after{
+  content:"HOME · AWAY MATCH PALETTE";
+  font-size:5.5px;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .na-momentum-home i{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--vt-home) 96%,#fff),color-mix(in srgb,var(--vt-home) 58%,transparent))!important;
+  box-shadow:0 0 4px var(--vt-home-glow);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-momentum-away i{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--vt-away) 96%,#fff),color-mix(in srgb,var(--vt-away) 58%,transparent))!important;
+  box-shadow:0 0 4px var(--vt-away-glow);
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-shift-home{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-shift-away{background:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-shift-values span:first-child b{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-shift-values span:last-child b{color:var(--vt-away)!important}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.home{
+  border-color:color-mix(in srgb,var(--vt-home) 22%,transparent)!important;
+  background:linear-gradient(145deg,var(--vt-home-soft),rgba(255,255,255,.012))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.away{
+  border-color:color-mix(in srgb,var(--vt-away) 22%,transparent)!important;
+  background:linear-gradient(145deg,var(--vt-away-soft),rgba(255,255,255,.012))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.home i{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.away i{background:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.home small{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-timeline-event.away small{color:var(--vt-away)!important}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .na-battle-row:first-of-type>b{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-battle-row:nth-of-type(2)>b{color:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-battle-row i.home{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-battle-row i.away{background:var(--vt-away)!important}
+
+body[data-page="live"] .event-compact.vintage-theme-ready .na-radar-home{
+  fill:color-mix(in srgb,var(--vt-home) 14%,transparent)!important;
+  stroke:var(--vt-home)!important;
+  stroke-width:1.1!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-radar-away{
+  fill:color-mix(in srgb,var(--vt-away) 14%,transparent)!important;
+  stroke:var(--vt-away)!important;
+  stroke-width:1.1!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-radar-values span{
+  border:1px solid color-mix(in srgb,var(--vt-line) 55%,transparent);
+  background:linear-gradient(90deg,var(--vt-home-soft),rgba(255,255,255,.012) 48%,var(--vt-away-soft))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .na-radar-values b{color:var(--vt-home)!important}
+
+/* NOMAD Live Prediction: HOME/AWAY follow the match palette; DRAW remains neutral. */
+body[data-page="live"] .event-compact.vintage-theme-ready .nomad-live-prediction{
+  border-color:color-mix(in srgb,var(--vt-line) 82%,transparent)!important;
+  background:
+    linear-gradient(90deg,var(--vt-home-soft),transparent 34%,transparent 66%,var(--vt-away-soft)),
+    linear-gradient(145deg,rgba(255,255,255,.015),rgba(0,0,0,.025))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-home{
+  background:linear-gradient(145deg,var(--vt-home-soft),rgba(255,255,255,.012))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-away{
+  background:linear-gradient(145deg,var(--vt-away-soft),rgba(255,255,255,.012))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-home span,
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-home b{color:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-away span,
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-away b{color:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-track-home{background:var(--vt-home)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-track-away{background:var(--vt-away)!important}
+body[data-page="live"] .event-compact.vintage-theme-ready .nlp-track-draw{background:#c7cec8!important}
+
+/* Market and candidate containers inherit the match identity without changing market/status semantics. */
+body[data-page="live"] .event-compact.vintage-theme-ready .nomad-market-card{
+  border-color:color-mix(in srgb,var(--vt-line) 82%,transparent)!important;
+  background:
+    radial-gradient(circle at 0 0,var(--vt-home-soft),transparent 30%),
+    radial-gradient(circle at 100% 0,var(--vt-away-soft),transparent 30%),
+    linear-gradient(145deg,rgba(8,13,18,.98),rgba(16,22,31,.96))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .nomad-market-card::before{
+  background:linear-gradient(90deg,var(--vt-home),var(--vt-accent),var(--vt-away))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .api-football-candidate-card{
+  border-color:color-mix(in srgb,var(--vt-accent) 34%,transparent)!important;
+  background:linear-gradient(145deg,var(--vt-home-soft),rgba(18,24,19,.82) 50%,var(--vt-away-soft))!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .api-candidate-mini,
+body[data-page="live"] .event-compact.vintage-theme-ready .afc-head strong{
+  color:var(--vt-accent)!important;
 }
 
 /* Status semantics are intentionally untouched: PASS/LIVE green, WAIT amber, STALE/ERROR red. */
