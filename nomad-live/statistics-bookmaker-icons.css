@@ -1,15 +1,16 @@
 /* Page 2 / Statistics — bookmaker logo presentation only.
-   Uses the exact user-supplied bookmaker logo artwork, cropped into a single embedded sprite.
+   Exact user-supplied logos, cropped only to remove excess background and packed into a lightweight sprite.
+   Vintage treatment is frame/light only: original logo lettering and brand colors stay unchanged.
    No statistics, settlement, odds, pagination, feed or engine logic is changed.
    Rollback baseline: fb38bee0fb876cee686c7b6fdd28844ca5e239d4
 */
 :root{
-  --nomad-bookmaker-sprite:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAAGgCAYAAAB4HCzpAAEAAElEQVR42uz9B5hldZXvC/6fc84955w6M5mZkZlJQkIIKIoIioqiaIEiRo0xJhpRiY0JpqgxoPgViQURwQIKgqgggoAiiFiQ3ZnOeZyz95zvH35f1r1rb88Z5z7nPZfveT0f5sPnnHX3WVv7W1trrXVWAAAAAElFTkSuQmCC");
+  --nomad-bookmaker-sprite:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAAE0CAMAAACckcj+AAABgFBMVEVwn53NZFYpi9IkUWDf2diUdVxgUhxkXWtYotus0dfboaGglCbPySg2knSojmtdbZiyKSyattbJSjfHNCcNH1a4wSubx7rWqiAnIQuYbBKJeJ1EOQ+Luqj/4FL33KG6PUN9qT1jnkTekWfLfokAAAD9/f1GK2kCeloBAQIIEBgBeMsiKTkALFwBKGgJM2vm5+j3AwT32xwAbsf+4hjP2OT4qwHJydHT1dmpprCttsn6yTDX5OwAHVIbIjFKZ5TUCAk5HWA9IWMWGytlZmmzCAuWw+hONXBxh6p4eHH+tgNue5OMmrG4xdMwMza21u+WoreaqsRqCAltreD5zUSSCAg1VojXmAb81U1HSlAoS4KHio/y0yhrVoalmLEvJgdRl0mId5tbRHqQaQSVhqUzOEUtiVETgWQoSHeUl5ooi3BcpNwtBQZ0suH+5GkCdGBXcpu0tbj9whIYgldQBwhrokK1FhZTVlpUWWR4ZY+XszapuzHEu8hvaFM0F1wBMF9ifKMKWMyuAAAAgHRSTlP///////////////////////////////////////////////8A/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////+wWYUwAABXHSURBVHja7Z2JXxNJ04ADiXILrOh67Pl+78DEITMq4xyEhFwkIYdBFzQEkLCARHEB5VRk+de/qu6eKxAQTAi779RvnZnunuOZ6qrq6k7Iev57zcXjArqA/x1qnLiALqAL6AK6gPUDvNuRy3V4Ls+y0WDAtxxKx1kI734i/Is7n0F2Vs36VVLx2+InaLOk7oDS2YDvPCrH/QQHn0eoPOnuoXhfnrCanY1PxiE0f7pawHdEwajBLyNPqIw8QS2tzpllAJx7YshcEwGJgpBobmjoE+EzNUgAG6pB71BPz1sLq6fnHT3qYYCfhrq+7CwufqY6W9z4TPjuQNXOncUhCtj95c6dO18aA3i3xwfbHEHc8OAxFwTDexcMEkAuGHxL3HWDdPTI4hDh/Lzh3djAagq42hgvJoCMQ0XtsWPs93ecKVSjFPDJp0Wy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");
 }
 
 .data-table td.bookmaker-logo-cell{
   min-width:132px;
-  height:44px;
+  height:46px;
   padding-top:5px!important;
   padding-bottom:5px!important;
   font-size:0!important;
@@ -30,12 +31,9 @@
   background-color:#121713;
   background-image:var(--nomad-bookmaker-sprite);
   background-repeat:no-repeat;
-  background-size:120px 224px;
+  background-size:120px 231px;
   background-position-x:center;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.11),
-    inset 0 -1px 0 rgba(0,0,0,.55),
-    0 1px 3px rgba(0,0,0,.34);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.11),inset 0 -1px 0 rgba(0,0,0,.55),0 1px 3px rgba(0,0,0,.34);
   filter:brightness(1.10) saturate(1.04) contrast(1.03);
   opacity:1;
   transition:filter .16s ease,box-shadow .16s ease,transform .16s ease,border-color .16s ease;
@@ -44,38 +42,35 @@
 .data-table td.bookmaker-logo-cell:hover::before{
   border-color:rgba(231,211,142,.68);
   filter:brightness(1.25) saturate(1.10) contrast(1.05) drop-shadow(0 0 6px rgba(244,230,172,.26));
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.18),
-    inset 0 -1px 0 rgba(0,0,0,.44),
-    0 0 9px rgba(231,211,142,.18);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 -1px 0 rgba(0,0,0,.44),0 0 9px rgba(231,211,142,.18);
   transform:translateY(-1px);
 }
 
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:2px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-30px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-62px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-94px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-126px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-158px}
-.data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-190px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:1.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-31.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-64.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-97.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-130.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-163.5px}
+.data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-196.5px}
 
 @media(max-width:900px){
   .data-table td.bookmaker-logo-cell{
-    min-width:118px;
-    height:42px;
+    min-width:122px;
+    height:44px;
     padding-top:4px!important;
     padding-bottom:4px!important;
   }
   .data-table td.bookmaker-logo-cell::before{
     width:112px;
     height:34px;
-    background-size:112px 209.0667px;
+    background-size:112px 215.6px;
   }
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:2px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-27.8667px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-57.7334px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-87.6001px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-117.4668px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-147.3335px}
-  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-177.2002px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="bet365"]::before{background-position-y:1.6px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="m88"]::before{background-position-y:-29.2px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="crown"]::before{background-position-y:-60px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="18bet"]::before{background-position-y:-90.8px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="sbobet"]::before{background-position-y:-121.6px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-y:-152.4px}
+  .data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-y:-183.2px}
 }
