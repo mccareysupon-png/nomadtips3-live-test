@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02T04:47:16Z",
+  "updated_at": "2026-09-02T09:42:43Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -16,8 +16,8 @@
       "odds_source": "1xBet / Goaloo goal50.xml",
       "confidence": 0.9035,
       "edge": 81.7,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-2",
       "source_url": "https://www.goaloo.com/football/new-zealand-northern-league-bay-olympic-vs-birkenhead-united/h2h-3081020",
       "summary_url": "https://www.goaloo.com/football/new-zealand-northern-league-bay-olympic-vs-birkenhead-united/summary-3081020",
       "model": {
@@ -1801,6 +1801,56 @@
         "home_recent": 5,
         "away_recent": 8,
         "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      }
+    },
+    {
+      "id": "5099914376b27363",
+      "goaloo_id": "3081020",
+      "date": "2026-09-02",
+      "kickoff": "2026-09-02 07:15:00",
+      "league": "New Zealand Northern League",
+      "home": "Bay Olympic",
+      "away": "Birkenhead United",
+      "pick": "Bay Olympic Win",
+      "side": "home",
+      "odds": 11.2,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9035,
+      "edge": 81.7,
+      "result": "LOSS",
+      "ft": "2-2",
+      "source_url": "https://www.goaloo.com/football/new-zealand-northern-league-bay-olympic-vs-birkenhead-united/h2h-3081020",
+      "summary_url": "https://www.goaloo.com/football/new-zealand-northern-league-bay-olympic-vs-birkenhead-united/summary-3081020",
+      "model": {
+        "lambda_home": 3.6,
+        "lambda_away": 0.752,
+        "home_win": 0.9035,
+        "draw": 0.0866,
+        "away_win": 0.0098,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.9512,
+          "gd_edge": 0.9846,
+          "clean_sheet_edge": 0.078,
+          "failed_to_score_edge": 0.6,
+          "bounded_adjustment": 0.0608,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "h2h_adjustment": -0.015,
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
       }
     }
