@@ -128,6 +128,11 @@ jobs:
                 await page.goto(`http://127.0.0.1:8080/nomad-live-342/index.html?guard=${width}`,{waitUntil:'domcontentloaded',timeout:30000});
                 await page.waitForFunction(()=>document.querySelectorAll('.event-compact').length===2,{timeout:15000});
                 await page.waitForFunction(()=>document.querySelectorAll('.event-compact.vintage-theme-ready').length===2,{timeout:10000});
+                await page.evaluate(()=>document.querySelector('.event-compact.vintage-theme-ready')?.click());
+                await page.waitForFunction(()=>{
+                  const card=document.querySelector('.event-compact.vintage-theme-ready.expanded');
+                  return Boolean(card&&card.querySelector('.nomad-live-prediction')&&card.querySelector('.na-match-pulse'));
+                },{timeout:10000});
                 const x=await page.evaluate(()=>{
                   const cards=[...document.querySelectorAll('.event-compact.vintage-theme-ready')];
                   const resolveColor=(card,varName)=>{
