@@ -64,6 +64,8 @@ body[data-page="live"] .topbar-inner.public-four-nav>.brand span{
 }
 body[data-page="live"] .topbar-inner.public-four-nav>.brand::after{display:none!important;content:none!important}
 body[data-page="live"] .topbar-inner.public-four-nav>.source-pill{display:none!important}
+body[data-page="live"] .topbar-inner.public-four-nav>.topnav a[href*="soccer-predictions"],
+body[data-page="live"] .mobile-nav.public-four-nav a[href*="soccer-predictions"]{display:none!important}
 body[data-page="live"] .topbar-inner.public-four-nav>.topnav{
   position:absolute!important;
   top:50%!important;
@@ -150,7 +152,7 @@ body[data-page="live"] .mobile-nav.public-four-nav{display:none!important}
     height:58px!important;
     min-height:58px!important;
     max-height:58px!important;
-    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
     grid-template-rows:57px!important;
     grid-auto-flow:column!important;
     margin:0!important;
