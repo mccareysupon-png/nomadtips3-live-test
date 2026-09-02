@@ -43,8 +43,8 @@ body[data-page="live"] .na-dual-legend img{
   filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));
 }
 body[data-page="live"] .na-dual-stage{
-  --na-rail-home:#68ce86;
-  --na-rail-away:#62b7bf;
+  --na-rail-home:var(--vt-home,#68ce86);
+  --na-rail-away:var(--vt-away,#62b7bf);
   position:relative;
   min-height:154px;
   padding:9px 12px 28px 82px;
