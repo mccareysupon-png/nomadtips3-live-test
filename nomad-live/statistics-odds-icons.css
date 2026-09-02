@@ -34,12 +34,12 @@
   box-shadow:none!important;
 }
 
-/* Statistics is denser than Signal: 24px is the desktop target here. */
+/* Statistics desktop icon footprint: +10% from 24px to 26.4px. */
 .odds-display-toolbar.toolbar .odds-display-label::before,
 .odds-display-toolbar.toolbar .odds-display-control button::before{
-  width:24px!important;
-  height:24px!important;
-  flex:0 0 24px!important;
+  width:26.4px!important;
+  height:26.4px!important;
+  flex:0 0 26.4px!important;
   opacity:.92;
   filter:brightness(.92) saturate(.98);
 }
