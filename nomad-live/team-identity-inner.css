@@ -27,11 +27,12 @@
   }
 }
 
-/* Mobile: both shirts are column 1, both team names are column 2, scores stay column 3. */
+/* Mobile: shirt | team name | score. HOME/AWAY shirts share the same vertical axis. */
 @media (max-width:520px){
   .match-main .teams.mobile-team-shirts-ready .mobile-team-home,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away{
-    grid-template-columns:22px minmax(0,1fr) 20px!important;
+    grid-template-columns:22px minmax(0,1fr) 34px!important;
+    overflow:visible!important;
   }
 
   .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-shirt-icon,
@@ -46,11 +47,18 @@
     grid-row:1!important;
     text-align:left!important;
   }
+
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-score,
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-away .mobile-team-score{
+    grid-column:3!important;
+    grid-row:1!important;
+    overflow:visible!important;
+  }
 }
 
 @media (max-width:360px){
   .match-main .teams.mobile-team-shirts-ready .mobile-team-home,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away{
-    grid-template-columns:20px minmax(0,1fr) 18px!important;
+    grid-template-columns:20px minmax(0,1fr) 30px!important;
   }
 }
