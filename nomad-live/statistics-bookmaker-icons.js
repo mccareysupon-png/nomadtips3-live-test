@@ -4,7 +4,7 @@
   const tbody=document.querySelector('.data-table tbody');
   if(!tbody)return;
 
-  const SPRITE='assets/bookmakers/vintage-sprite.webp?v=20260902-v2';
+  const SPRITE='assets/bookmakers/vintage-sprite-exact.webp?v=20260902-v3';
   let spriteReady=false;
 
   const aliases=new Map([
