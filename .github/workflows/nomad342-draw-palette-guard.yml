@@ -1,0 +1,79 @@
+name: NOMAD 3.42 DRAW Palette Guard
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'nomad-live-342/vintage-draw-theme.js'
+      - 'nomad-live-342/vintage-draw-theme.css'
+      - 'nomad-live-342/index.html'
+      - '.github/workflows/nomad342-draw-palette-guard.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  draw-palette-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Enforce presentation-only boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-342/vintage-draw-theme.js
+          test -s nomad-live-342/vintage-draw-theme.css
+          if grep -Ein 'fetch[[:space:]]*\(|NOMAD342_RUNTIME|engineBase|/feed|totalcorner\.com|localStorage' nomad-live-342/vintage-draw-theme.js nomad-live-342/vintage-draw-theme.css; then
+            echo '::error::DRAW presentation layer crossed the data/runtime boundary.'
+            exit 1
+          fi
+
+      - name: Validate 12 DRAW colors and 36-color uniqueness
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const vm=require('vm');
+          const assert=require('assert');
+          const context={
+            window:{},
+            document:{readyState:'loading',addEventListener(){}},
+            console
+          };
+          vm.runInNewContext(fs.readFileSync('nomad-live-342/vintage-draw-theme.js','utf8'),context);
+          const theme=context.window.NOMAD342_DRAW_THEME;
+          assert(theme,'DRAW theme must initialize');
+          assert.strictEqual(theme.colors.length,12,'DRAW must contain exactly 12 colors');
+          assert.strictEqual(new Set(theme.colors.map(v=>v.toLowerCase())).size,12,'DRAW colors must be unique');
+          assert.strictEqual(theme.exactUnique,true,'HOME/AWAY/DRAW 36 colors must not contain exact duplicates');
+          assert.strictEqual(theme.localDistinct,true,'Each DRAW color must be visually separated from HOME/AWAY');
+          console.log('DRAW_PALETTE_OK',JSON.stringify(theme));
+          NODE
+
+      - name: Validate live asset order
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const assert=require('assert');
+          const html=fs.readFileSync('nomad-live-342/index.html','utf8');
+          const baseCss=html.indexOf('vintage-card-theme.css');
+          const drawCss=html.indexOf('vintage-draw-theme.css');
+          const baseJs=html.indexOf('vintage-card-theme.js');
+          const drawJs=html.indexOf('vintage-draw-theme.js');
+          assert(baseCss>=0&&drawCss>baseCss,'DRAW CSS must load after base Vintage CSS');
+          assert(baseJs>=0&&drawJs>baseJs,'DRAW JS must load after base Vintage JS');
+          const css=fs.readFileSync('nomad-live-342/vintage-draw-theme.css','utf8');
+          assert(css.includes('var(--vt-draw)'),'DRAW CSS must consume per-card --vt-draw');
+          console.log('DRAW_ASSET_ORDER_OK');
+          NODE
