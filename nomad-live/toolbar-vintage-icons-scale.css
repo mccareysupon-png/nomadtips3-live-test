@@ -10,3 +10,14 @@
   height:26px!important;
   flex:0 0 26px!important;
 }
+
+/* Desktop/Laptop toolbar shell: fully transparent over the page background.
+   Presentation only: keep icon/filter/odds/search layout and behavior untouched.
+   Rollback point before this change: f6d33c0a6affa8a8a9ed3209ab0a06c5c8e58f01 */
+@media(min-width:1025px){
+  .shell>.toolbar{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+}
