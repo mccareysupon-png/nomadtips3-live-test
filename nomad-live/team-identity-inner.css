@@ -1,5 +1,6 @@
 /* NOMAD team identity placement override.
-   Presentation only: move existing team-shirt icons toward the matchup center.
+   Presentation only: move existing team-shirt icons toward the matchup center on desktop.
+   Mobile keeps both HOME/AWAY shirt icons in the same left column.
    No feed, runtime, odds, signal, match parsing, or engine behavior changes. */
 
 /* Desktop: HOME [shirt] — [shirt] AWAY */
@@ -26,27 +27,20 @@
   }
 }
 
-/* Mobile keeps the existing two-row layout, but each shirt faces inward. */
+/* Mobile: both shirts are column 1, both team names are column 2, scores stay column 3. */
 @media (max-width:520px){
-  .match-main .teams.mobile-team-shirts-ready .mobile-team-home{
-    grid-template-columns:minmax(0,1fr) 22px!important;
-  }
-  .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-name{
-    grid-column:1!important;
-    grid-row:1!important;
-    text-align:right!important;
-  }
-  .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-shirt-icon{
-    grid-column:2!important;
-    grid-row:1!important;
-  }
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-home,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away{
-    grid-template-columns:22px minmax(0,1fr)!important;
+    grid-template-columns:22px minmax(0,1fr) 20px!important;
   }
+
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-shirt-icon,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away .mobile-team-shirt-icon{
     grid-column:1!important;
     grid-row:1!important;
   }
+
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-home .mobile-team-name,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away .mobile-team-name{
     grid-column:2!important;
     grid-row:1!important;
@@ -55,10 +49,8 @@
 }
 
 @media (max-width:360px){
-  .match-main .teams.mobile-team-shirts-ready .mobile-team-home{
-    grid-template-columns:minmax(0,1fr) 20px!important;
-  }
+  .match-main .teams.mobile-team-shirts-ready .mobile-team-home,
   .match-main .teams.mobile-team-shirts-ready .mobile-team-away{
-    grid-template-columns:20px minmax(0,1fr)!important;
+    grid-template-columns:20px minmax(0,1fr) 18px!important;
   }
 }
