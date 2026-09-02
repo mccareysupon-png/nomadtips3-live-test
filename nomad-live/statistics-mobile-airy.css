@@ -3,7 +3,8 @@
 /* Statistics mobile / nearby-device polish.
    Presentation only: keeps DOM order, data bindings, odds logic, chart anchor and ledger structure untouched.
    Rollback marker: rollback/pre-statistics-mobile-airy-20260901
-   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
+   Brightness rollback note: rollback-notes/icon-brightness-20260902.md
+   Size rollback: 27.7px -> 23.1px (pre +20% request, 2026-09-02). */
 
 @media(max-width:900px){
   /* Primary KPI strip: one compact row, four equal columns, no decorative icons. */
@@ -180,9 +181,9 @@
   .odds-display-toolbar.toolbar .odds-display-control button::before{
     content:""!important;
     display:block!important;
-    width:23.1px!important;
-    height:23.1px!important;
-    flex:0 0 23.1px!important;
+    width:27.7px!important;
+    height:27.7px!important;
+    flex:0 0 27.7px!important;
     background-image:var(--nomad-toolbar-icon)!important;
     background-repeat:no-repeat!important;
     background-position:center!important;
