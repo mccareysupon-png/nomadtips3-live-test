@@ -3,6 +3,20 @@
 
 html{
   scrollbar-gutter:stable;
+  scroll-behavior:auto!important;
+  overflow-anchor:none!important;
+}
+body,
+.topbar,
+.shell,
+.hero,
+.status-grid,
+.summary-grid,
+.panel,
+.match-list,
+.table-wrap,
+.mobile-nav{
+  overflow-anchor:none!important;
 }
 @media(min-width:701px){
   html{overflow-y:scroll}
