@@ -1,0 +1,44 @@
+name: Telegram Step 2 Diagnostics
+
+on:
+  push:
+    branches: ['work/telegram-alerts-step2-mainline-20260903']
+    paths: ['.github/workflows/telegram-alerts-step2-diagnostics.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check NOMAD source contract
+        run: |
+          set -euo pipefail
+          curl -sS -o /tmp/source.json -w 'SOURCE_HTTP=%{http_code}\n' 'https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev/history?page=1&limit=25'
+          python - <<'PY'
+          import json
+          raw=open('/tmp/source.json',encoding='utf-8').read()
+          d=json.loads(raw)
+          records=d.get('records') or []
+          print('SOURCE_RECORDS',len(records))
+          assert isinstance(records,list)
+          if records:
+              print('FIRST_SELECTED_AT',records[0].get('selectedAt'))
+          PY
+      - name: Check deployed bridge status after cron recovery
+        run: |
+          set -euo pipefail
+          BRIDGE=$(curl -fsS 'https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/bridge/status')
+          echo "$BRIDGE"
+          printf '%s' "$BRIDGE" | python -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] is True; print('INITIALIZED',d.get('initialized')); print('LAST_ERROR',d.get('lastError')); print('SUBSCRIBERS',d.get('subscribers')); print('SIGNALS',d.get('signals')); print('LAST_POLL',d.get('lastPollAt'))"
+      - name: Check entitlement from public bridge status
+        run: |
+          set -euo pipefail
+          BRIDGE=$(curl -fsS 'https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/bridge/status')
+          printf '%s' "$BRIDGE" | python -c "import json,sys; d=json.load(sys.stdin); s=d['subscribers']; assert int(s.get('pending_payment') or 0) >= 1; assert int(s.get('active') or 0) == 0; print('ENTITLEMENT_SAFE pending=',s.get('pending_payment'),'active=',s.get('active'))"
+
+# live recheck: 2026-09-03T18:36+07:00

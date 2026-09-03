@@ -1,0 +1,12 @@
+{
+  "name": "nomadtips3-telegram-alerts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/index.js && node --check src/signal-bridge.mjs && node --check src/signal-bridge-core.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.34.0"
+  }
+}
