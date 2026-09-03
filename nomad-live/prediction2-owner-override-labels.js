@@ -1,6 +1,15 @@
 (() => {
   'use strict';
 
+  // Load the isolated display-only KING live-score adapter without rewriting prediction2.html.
+  if (!document.querySelector('script[data-king-live-score-adapter]')) {
+    const script = document.createElement('script');
+    script.src = 'prediction2-live-score.js?v=20260904-display-v1';
+    script.defer = true;
+    script.dataset.kingLiveScoreAdapter = '1';
+    document.head.appendChild(script);
+  }
+
   const drawer = document.getElementById('kingAnalysisDrawer');
   if (!drawer) return;
 
