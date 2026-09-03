@@ -1,0 +1,60 @@
+/* Page 1 PC collapsed-card state icon.
+   Presentation only: reuse the existing toolbar sprite and real row state.
+   Scope: desktop/PC >=1025px only. No feed/detector/odds/signal logic changes.
+   Rollback: rollback-notes/page1-pc-state-icon-scan2-20260903.md */
+
+@media (min-width:1025px){
+  .match-wrap:not([open]) > .match-row .statebox::before{
+    content:"";
+    display:none;
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    background-image:url("assets/icons/vintage-toolbar-independent.webp");
+    background-repeat:no-repeat;
+    background-size:800% 100%;
+    background-position:center;
+    opacity:.90;
+    filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 2px rgba(255,255,255,.10));
+    animation:nomadCardStateSlowPulse 3.4s ease-in-out infinite;
+    pointer-events:none;
+  }
+
+  /* Same sprite positions used by the Page 1 submenu icons:
+     Signal 14.2857%, Near 28.5714%, Watching 42.8571%. */
+  .match-wrap:not([open])[data-state="WATCHING"] > .match-row .statebox::before{
+    display:block;
+    background-position:42.8571% 50%;
+  }
+
+  .match-wrap:not([open])[data-state="NEAR SIGNAL"] > .match-row .statebox::before{
+    display:block;
+    background-position:28.5714% 50%;
+  }
+
+  .match-wrap:not([open])[data-state="SIGNAL"] > .match-row .statebox::before,
+  .match-wrap:not([open])[data-signal-status="LOCKED"] > .match-row .statebox::before{
+    display:block;
+    background-position:14.2857% 50%;
+  }
+
+  @keyframes nomadCardStateSlowPulse{
+    0%,100%{
+      opacity:.82;
+      filter:brightness(.98) saturate(1.02) drop-shadow(0 0 1px rgba(255,255,255,.08));
+      transform:scale(1);
+    }
+    50%{
+      opacity:1;
+      filter:brightness(1.20) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24));
+      transform:scale(1.035);
+    }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .match-wrap:not([open]) > .match-row .statebox::before{
+      animation-duration:5.2s;
+      transform:none;
+    }
+  }
+}
