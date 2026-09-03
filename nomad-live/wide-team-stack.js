@@ -84,6 +84,7 @@
       const awaySrc = oldAwaySrc || fallbackShirt(awayDef[0],awayDef[1]);
 
       teamsEl.classList.remove('mobile-team-shirts-ready');
+      delete teamsEl.dataset.mobileTeamShirtsReady;
       teamsEl.classList.add('wide-team-stacked');
       teamsEl.dataset.wideTeamReady = '1';
       teamsEl.dataset.teamHome = teams.home;
