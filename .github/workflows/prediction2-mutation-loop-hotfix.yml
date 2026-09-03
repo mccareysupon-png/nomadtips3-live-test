@@ -1,0 +1,58 @@
+name: Prediction2 — Mutation Loop Hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/prediction2-mutation-loop-hotfix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Patch observer loop safely
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('nomad-live/prediction2-inline-analysis.js')
+          s = p.read_text(encoding='utf-8')
+          old_toggle = """    if (label) label.textContent = open ? 'CLOSE' : 'ANALYSIS';
+              if (arrow) arrow.textContent = open ? '▴' : '▾';"""
+          new_toggle = """    const nextLabel = open ? 'CLOSE' : 'ANALYSIS';
+              const nextArrow = open ? '▴' : '▾';
+              if (label && label.textContent !== nextLabel) label.textContent = nextLabel;
+              if (arrow && arrow.textContent !== nextArrow) arrow.textContent = nextArrow;"""
+          if old_toggle not in s:
+              raise SystemExit('toggle anchor not found; aborting')
+          s = s.replace(old_toggle, new_toggle, 1)
+          old_observer = "observer.observe(grid, {childList:true, subtree:true});"
+          new_observer = "observer.observe(grid, {childList:true, subtree:false});"
+          if old_observer not in s:
+              raise SystemExit('observer anchor not found; aborting')
+          s = s.replace(old_observer, new_observer, 1)
+          p.write_text(s, encoding='utf-8')
+          print('Prediction2 mutation loop hotfix applied.')
+      - name: Verify JavaScript syntax
+        run: node --check nomad-live/prediction2-inline-analysis.js
+      - name: Commit hotfix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live/prediction2-inline-analysis.js
+          git commit -m 'Fix Prediction2 card observer load loop'
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
