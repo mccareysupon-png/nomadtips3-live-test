@@ -1,0 +1,123 @@
+name: The King — Record V2 Reset 2026-09-03
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/the-king-record-v2-reset-20260903.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: the-king-record-v2-reset-20260903
+  cancel-in-progress: false
+
+jobs:
+  reset-record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Reset active record from 2026-09-03 without touching today's picks
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python3 - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          RESET_DATE = '2026-09-03'
+          RECORD_VERSION = 'KING_RECORD_V2'
+          feed_path = Path('the-king-feed.json')
+          state_path = Path('the-king-state.json')
+          archive_dir = Path('the-king-archive')
+          archive_dir.mkdir(exist_ok=True)
+
+          feed = json.loads(feed_path.read_text(encoding='utf-8'))
+          state = json.loads(state_path.read_text(encoding='utf-8'))
+          today = feed.get('today') or []
+          if not today:
+              raise SystemExit('Refusing reset: today list is empty')
+          if any(str(x.get('date') or '') != RESET_DATE for x in today):
+              raise SystemExit('Refusing reset: today contains a record outside reset date')
+
+          feed_backup = archive_dir / 'the-king-feed-pre-record-v2-20260903.json'
+          state_backup = archive_dir / 'the-king-state-pre-record-v2-20260903.json'
+          if not feed_backup.exists():
+              feed_backup.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          if not state_backup.exists():
+              state_backup.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          old_history = feed.get('history') or []
+          kept_history = [x for x in old_history if str(x.get('date') or '') >= RESET_DATE]
+          removed = len(old_history) - len(kept_history)
+          now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+
+          feed['history'] = kept_history
+          feed['record_version'] = RECORD_VERSION
+          feed['stats_since'] = RESET_DATE
+          feed['record_reset_at'] = now
+          feed['record_reset_removed_history'] = removed
+          feed_path.write_text(json.dumps(feed, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          state['record_version'] = RECORD_VERSION
+          state['stats_since'] = RESET_DATE
+          state['record_reset_at'] = now
+          state['record_reset_removed_history'] = removed
+          state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
+          # Repair the stale one-day self-test without rerunning selection today.
+          override_path = Path('.github/scripts/the_king_owner_override_20260903.py')
+          text = override_path.read_text(encoding='utf-8')
+          stale = 'assert v10.MAX_PICKS == 2'
+          current = 'assert v10.MAX_PICKS is None'
+          if stale in text:
+              text = text.replace(stale, current, 1)
+              override_path.write_text(text, encoding='utf-8')
+          elif current not in text:
+              raise SystemExit('Refusing reset: unexpected MAX_PICKS self-test shape')
+
+          print(json.dumps({
+              'record_version': RECORD_VERSION,
+              'stats_since': RESET_DATE,
+              'today_count': len(today),
+              'old_history_count': len(old_history),
+              'kept_history_count': len(kept_history),
+              'removed_history_count': removed,
+              'pending_state': state.get('pending'),
+          }))
+          PY
+
+            git add the-king-feed.json the-king-state.json the-king-archive/ \
+              .github/scripts/the_king_owner_override_20260903.py
+
+            if git diff --cached --quiet; then
+              echo 'KING Record V2 reset already applied.'
+              exit 0
+            fi
+
+            git commit -m 'Reset The King active record from 2026-09-03'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            echo "Push race on attempt ${attempt}; reloading latest settlement state and retrying."
+            sleep $((attempt * 3))
+          done
+
+          echo 'Failed to publish KING Record V2 reset after retries.' >&2
+          exit 1
