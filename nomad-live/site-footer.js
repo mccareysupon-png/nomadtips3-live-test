@@ -47,24 +47,25 @@
 
   document.body.appendChild(footer);
 
-  if(!document.querySelector('style[data-footer-info-links]')){
-    const style=document.createElement('style');
-    style.dataset.footerInfoLinks='1';
-    style.textContent=`
-      .site-footer .nomad-info-linkrail{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin:14px 0 0;padding:14px 0 2px;border-top:1px solid rgba(255,255,255,.07)}
-      .site-footer .nomad-info-linkrail a{color:#929792;text-decoration:none;font:800 9px/1.35 Arial,Helvetica,sans-serif;padding:3px 10px;transition:color .14s ease}
-      .site-footer .nomad-info-linkrail a:hover,.site-footer .nomad-info-linkrail a:focus-visible{color:#00f0a8;outline:none}
-      .site-footer .nomad-info-linkrail .sep{color:rgba(255,255,255,.18);font:700 9px/1 Arial,Helvetica,sans-serif}
-      @media(max-width:700px){.site-footer .nomad-info-linkrail{row-gap:6px;padding-top:12px}.site-footer .nomad-info-linkrail a{font-size:8.5px;padding:4px 7px}}
-    `;
-    document.head.appendChild(style);
-  }
-
-  if(!footer.querySelector('.nomad-info-linkrail')){
+  const pagePath=String(window.location.pathname||'');
+  const isStatistics=pagePath==='/statistics.html'||/\/nomad-live\/statistics\.html\/?$/i.test(pagePath);
+  if(isStatistics&&!footer.querySelector('.nomad-info-linkrail')){
+    if(!document.querySelector('style[data-statistics-info-links]')){
+      const style=document.createElement('style');
+      style.dataset.statisticsInfoLinks='1';
+      style.textContent=`
+        .site-footer .nomad-info-linkrail{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin:14px 0 0;padding:14px 0 2px;border-top:1px solid rgba(255,255,255,.07)}
+        .site-footer .nomad-info-linkrail a{color:#929792;text-decoration:none;font:800 9px/1.35 Arial,Helvetica,sans-serif;padding:3px 10px;transition:color .14s ease}
+        .site-footer .nomad-info-linkrail a:hover,.site-footer .nomad-info-linkrail a:focus-visible{color:#00f0a8;outline:none}
+        .site-footer .nomad-info-linkrail .sep{color:rgba(255,255,255,.18);font:700 9px/1 Arial,Helvetica,sans-serif}
+        @media(max-width:700px){.site-footer .nomad-info-linkrail{row-gap:6px;padding-top:12px}.site-footer .nomad-info-linkrail a{font-size:8.5px;padding:4px 7px}}
+      `;
+      document.head.appendChild(style);
+    }
     const nav=document.createElement('nav');
     nav.className='nomad-info-linkrail';
     nav.setAttribute('aria-label','NOMADTIPS3 information pages');
-    nav.innerHTML='<a href="https://www.nomadtips3.com/soccer-predictions/">Soccer Precictions</a><span class="sep">|</span><a href="https://www.nomadtips3.com/about/">About Us</a><span class="sep">|</span><a href="https://www.nomadtips3.com/user-guide/">User Guide</a><span class="sep">|</span><a href="https://www.nomadtips3.com/privacy/">Privacy Policy</a><span class="sep">|</span><a href="https://www.nomadtips3.com/terms/">Terms of Service</a><span class="sep">|</span><a href="https://www.nomadtips3.com/disclaimer/">Disclaimer</a>';
+    nav.innerHTML='<a href="/about/">About Us</a><span class="sep">|</span><a href="/user-guide/">User Guide</a><span class="sep">|</span><a href="/privacy/">Privacy Policy</a><span class="sep">|</span><a href="/terms/">Terms of Service</a><span class="sep">|</span><a href="/disclaimer/">Disclaimer</a>';
     footer.querySelector('.site-footer-inner')?.appendChild(nav);
   }
 
