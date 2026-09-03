@@ -1,0 +1,48 @@
+name: Telegram Worker Discovery
+
+on:
+  push:
+    branches:
+      - work/telegram-worker-discovery-20260903
+    paths:
+      - '.github/workflows/telegram-worker-discovery.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate Cloudflare credentials
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+      - name: Find Telegram or membership workers
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          curl -fsS -H "Authorization: Bearer $CF_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts" \
+            -o /tmp/workers.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/workers.json',encoding='utf-8'))
+          if not data.get('success'):
+              raise SystemExit('Cloudflare worker listing failed')
+          names=[]
+          for row in data.get('result') or []:
+              name=str(row.get('id') or '')
+              low=name.lower()
+              if any(term in low for term in ('telegram','member','alert','nomadtips3')):
+                  names.append(name)
+          print('MATCHING_WORKERS')
+          for name in sorted(names):
+              print(name)
+          print('MATCH_COUNT',len(names))
+          PY
