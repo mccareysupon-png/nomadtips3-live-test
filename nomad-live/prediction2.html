@@ -84,7 +84,7 @@
       <div class="king-updated" id="kingUpdated">Waiting for feed</div>
     </section>
 
-    <section class="king-preview-grid" aria-label="Prediction2 preview picks">
+    <section class="king-preview-grid" aria-label="Prediction2 auto picks" hidden>
       <article class="king-preview-card" data-analysis-id="pick1" role="button" tabindex="0" aria-expanded="false" aria-controls="kingAnalysisDrawer">
         <div class="king-preview-top"><span class="king-preview-rank">TOP PICK · 01</span><span class="king-preview-market">FULL-TIME · 1X2</span></div>
         <div class="king-preview-match">
@@ -217,6 +217,7 @@
       fetch(`${FEED}?t=${Date.now()}`,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('feed unavailable');return r.json()}).then(render).catch(()=>{$('#kingUpdated').textContent='Verified feed unavailable';$('#todayEmpty').hidden=false;});
     })();
   </script>
+  <script src="prediction2-feed-cards.js?v=20260903-auto-v1"></script>
   <script src="site-footer.js?v=20260825-rail-v2"></script>
   <script src="standard-footer-icons.js?v=20260902-v2"></script>
   <script>
