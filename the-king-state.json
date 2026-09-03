@@ -3,7 +3,7 @@
   "policy": "OWNER_ONE_DAY_THRESHOLD_OVERRIDE",
   "status": "OK",
   "last_selection_run": "2026-09-03T10:02:05Z",
-  "last_settlement_run": "2026-09-03T05:54:41Z",
+  "last_settlement_run": "2026-09-03T11:24:56Z",
   "selection_date": "2026-09-03",
   "fixtures_seen": 149,
   "qualified": 18,
@@ -376,10 +376,10 @@
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": true,
-    "index_rows": 234,
-    "odds_rows": 205,
-    "h2h_static_ok": 149,
+    "odds_ok": false,
+    "index_rows": 231,
+    "odds_rows": 0,
+    "h2h_static_ok": 0,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -403,5 +403,6 @@
     "Current structural guards stay active: >=8 recent matches per team, valid Goaloo 1X2, non-draw side and beta odds safety ceiling <=3.00.",
     "KING V2 underlying/market-edge/EV hard gates and legacy v9 58%/12pt eligibility are bypassed for this date only.",
     "Scheduled selections on all other dates continue through the normal KING V2 engine."
-  ]
+  ],
+  "settled_this_run": 0
 }
