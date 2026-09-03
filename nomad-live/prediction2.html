@@ -41,7 +41,7 @@
     .king-prob-row{display:grid;grid-template-columns:44px minmax(0,1fr) 38px;align-items:center;gap:7px;margin-top:7px;color:#9ba39d;font-size:8px;font-weight:800}.king-prob-track{height:4px;border-radius:99px;background:#252b27;overflow:hidden}.king-prob-fill{height:100%;border-radius:inherit;background:#68716b}.king-prob-row.selected .king-prob-fill{background:var(--green)}.king-prob-row strong{text-align:right;color:#dfe4e0;font-size:9px;font-variant-numeric:tabular-nums}
     .king-gate-list{display:grid;grid-template-columns:1fr 1fr;gap:5px 9px}.king-gate{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#979f99;font-size:8px}.king-gate em{font-style:normal;font-size:7px;font-weight:900;letter-spacing:.05em}.king-gate em.pass{color:var(--green)}.king-gate em.pending{color:#8e9690}
     .king-analysis-foot{display:flex;flex-wrap:wrap;gap:6px 16px;padding:10px 0 0;color:#747d77;font-size:8px;font-weight:800;letter-spacing:.035em}.king-analysis-foot b{color:#b8c0ba;font-weight:900}.king-analysis-source{margin-left:auto;color:#68716b}
-    .king-scorebar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid rgba(255,255,255,.035);border-radius:10px;overflow:hidden;margin-bottom:8px}
+    .king-scorebar{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid rgba(255,255,255,.035);border-radius:10px;overflow:hidden;margin-bottom:8px}
     .king-scorebar .metric{background:#16191c;padding:8px 7px;min-width:0;text-align:left;border-radius:0;box-shadow:none}
     .king-scorebar span{display:block;color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.045em;white-space:nowrap}.king-scorebar b{display:block;margin-top:3px;font-size:17px;letter-spacing:-.25px;font-variant-numeric:tabular-nums;white-space:nowrap}
     .king-scorebar .win b{color:var(--green)}.king-scorebar .loss b{color:var(--red)}
@@ -125,6 +125,7 @@
       <div class="metric"><span>PICKS</span><b id="sumPicks">—</b></div>
       <div class="metric win"><span>WIN</span><b id="sumWin">—</b></div>
       <div class="metric loss"><span>LOSS</span><b id="sumLoss">—</b></div>
+      <div class="metric draw"><span>DRAW</span><b id="sumDraw">—</b></div>
       <div class="metric"><span>WIN RATE</span><b id="sumRate">—</b></div>
       <div class="metric"><span>AVG ODDS</span><b id="sumOdds">—</b></div>
       <div class="metric"><span>NET</span><b id="sumNet">—</b></div>
@@ -202,9 +203,10 @@
       function render(data){
         const settled=(data.history||[]).filter(x=>x.result==='WIN'||x.result==='LOSS');
         const wins=settled.filter(x=>x.result==='WIN').length, losses=settled.filter(x=>x.result==='LOSS').length;
+        const draws=(data.history||[]).filter(x=>x.result==='DRAW'||x.result==='PUSH').length;
         const avg=settled.length?settled.reduce((a,x)=>a+Number(x.odds||0),0)/settled.length:NaN;
         const net=settled.reduce((a,x)=>a+rowPL(x),0), roi=settled.length?net/(settled.length*100):NaN;
-        $('#sumPicks').textContent=settled.length;$('#sumWin').textContent=wins;$('#sumLoss').textContent=losses;$('#sumRate').textContent=pct(settled.length?wins/settled.length:NaN);$('#sumOdds').textContent=odds(avg);$('#sumNet').textContent=money(net);$('#sumRoi').textContent=pct(roi);
+        $('#sumPicks').textContent=settled.length;$('#sumWin').textContent=wins;$('#sumLoss').textContent=losses;$('#sumDraw').textContent=draws;$('#sumRate').textContent=pct(settled.length?wins/settled.length:NaN);$('#sumOdds').textContent=odds(avg);$('#sumNet').textContent=money(net);$('#sumRoi').textContent=pct(roi);
         $('#kingUpdated').textContent=data.updated_at?`Updated ${data.updated_at}`:'Verified feed';
         const today=data.today||[];$('#todayCount').textContent=`${today.length} pick${today.length===1?'':'s'}`;$('#todayEmpty').hidden=today.length>0;
         $('#todayRows').innerHTML=today.map(x=>`<tr><td>${x.home} <span class="king-vs">vs</span> ${x.away}</td><td>${x.pick}</td><td>${Number.isFinite(Number(x.confidence))?Math.round(Number(x.confidence)*100)+'%':'—'}</td><td>${Number.isFinite(Number(x.edge))?'+'+x.edge:'—'}</td><td>${odds(Number(x.odds))}</td><td><span class="king-result ${resultClass(x.result||'PENDING')}">${x.result||'PENDING'}</span></td></tr>`).join('');
