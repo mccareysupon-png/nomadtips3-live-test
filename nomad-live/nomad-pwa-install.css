@@ -1,0 +1,49 @@
+/* NOMADTIPS3 PWA install rail — brand-only, footer presentation. */
+.site-app-promo{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  margin:0 0 18px;
+  padding:14px 16px;
+  border:1px solid rgba(242,210,27,.16);
+  border-radius:10px;
+  background:#121512;
+}
+.site-app-promo-brand{
+  font-family:Arial,Helvetica,sans-serif;
+  font-size:25px;
+  font-weight:900;
+  letter-spacing:-.03em;
+  line-height:1;
+  color:#f1f3f4;
+  white-space:nowrap;
+  -webkit-text-stroke:.20px currentColor;
+}
+.site-app-promo-brand span{color:#f2d21b}
+.site-app-promo-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.site-app-install-button{
+  appearance:none;
+  border:1px solid rgba(242,210,27,.70);
+  border-radius:8px;
+  background:transparent;
+  color:#f2d21b;
+  padding:9px 15px;
+  font:900 10px/1 Arial,Helvetica,sans-serif;
+  letter-spacing:.025em;
+  cursor:pointer;
+}
+.site-app-install-button:hover,.site-app-install-button:focus-visible{
+  border-color:#f2d21b;
+  outline:none;
+}
+.site-app-install-button:disabled{opacity:.52;cursor:default}
+.site-app-install-hint{display:none;color:#8f928f;font:700 8px/1.35 Arial,Helvetica,sans-serif}
+.site-app-install-hint.is-visible{display:block}
+@media(max-width:700px){
+  .site-app-promo{align-items:flex-start;flex-direction:column;gap:11px;padding:13px 14px}
+  .site-app-promo-brand{font-size:23px}
+  .site-app-promo-actions{width:100%;flex-wrap:wrap}
+  .site-app-install-button{min-height:36px;padding:10px 14px}
+  .site-app-install-hint{flex:1 1 160px}
+}
