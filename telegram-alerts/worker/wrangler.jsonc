@@ -10,6 +10,12 @@
     "TELEGRAM_PUBLIC_WEBHOOK_URL": "https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/telegram/webhook",
     "NOMAD_SIGNAL_SOURCE_URL": "https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev"
   },
+  "services": [
+    {
+      "binding": "NOMAD_SIGNAL_SOURCE",
+      "service": "nomadtips3-car34-real-market-audit"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
