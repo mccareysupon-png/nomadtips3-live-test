@@ -62,7 +62,7 @@ jobs:
           echo "$HEALTH"
           printf '%s' "$HEALTH" | python -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] is True; assert d['service']=='nomadtips3-telegram-alerts'; assert d['phase']=='STEP_2_SIGNAL_BRIDGE'; c=d['configured']; assert c['db'] and c['signalBridgeDb'] and c['botToken'] and c['webhookSecret'] and c['adminToken'] and c['publicWebhookUrl'] and c['signalSourceUrl']"
 
-      - name: Verify scheduled baseline and Signal Bridge status
+      - name: Verify service-bound baseline and membership safety
         run: |
           set -euo pipefail
           BRIDGE=''
@@ -74,21 +74,20 @@ jobs:
             sleep 5
           done
           echo "$BRIDGE"
-          printf '%s' "$BRIDGE" | python -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] is True; assert d['phase']=='STEP_2_SIGNAL_BRIDGE'; assert d['initialized'] is True; assert d['source'].startswith('https://nomadtips3-car34-real-market-audit.'); assert not d.get('lastError')"
-
-      - name: Verify D1 membership gate and ledger counts
-        working-directory: telegram-alerts/worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          echo 'Subscriber state counts (no chat IDs):'
-          npx --yes wrangler@4 d1 execute nomadtips3-paper-db --remote --command="SELECT status, active, COUNT(*) AS total FROM telegram_subscribers GROUP BY status, active ORDER BY status, active;"
-          echo 'Signal ledger state counts:'
-          npx --yes wrangler@4 d1 execute nomadtips3-paper-db --remote --command="SELECT status, COUNT(*) AS total FROM telegram_signal_ledger GROUP BY status ORDER BY status;"
-          echo 'Real Signal delivery counts by status:'
-          npx --yes wrangler@4 d1 execute nomadtips3-paper-db --remote --command="SELECT status, COUNT(*) AS total FROM telegram_deliveries WHERE event_type='SIGNAL' GROUP BY status ORDER BY status;"
-          PENDING_SENT=$(npx --yes wrangler@4 d1 execute nomadtips3-paper-db --remote --json --command="SELECT COUNT(*) AS total FROM telegram_deliveries d JOIN telegram_subscribers s ON s.chat_id=d.chat_id WHERE d.event_type='SIGNAL' AND d.status='SENT' AND (s.status!='ACTIVE' OR s.active!=1);" | python -c "import json,sys; d=json.load(sys.stdin); print(d[0]['results'][0]['total'])")
-          test "$PENDING_SENT" = '0' || { echo "::error::Non-active subscriber received a real Signal"; exit 1; }
-          echo 'Entitlement gate verified: zero real Signal sends to non-active subscribers.'
+          printf '%s' "$BRIDGE" | python - <<'PY'
+          import json,sys
+          d=json.load(sys.stdin)
+          assert d['ok'] is True
+          assert d['phase']=='STEP_2_SIGNAL_BRIDGE'
+          assert d['initialized'] is True
+          assert d['sourceTransport']=='SERVICE_BINDING'
+          assert int(d.get('sourceRecordCount') or 0) > 0
+          assert not d.get('lastError')
+          s=d['subscribers']
+          assert int(s.get('pending_payment') or 0) >= 1
+          assert int(s.get('active') or 0) == 0
+          signals=d['signals']
+          assert int(signals.get('baseline') or 0) > 0
+          assert int(signals.get('delivered') or 0) == 0
+          print('STEP2_LIVE_SAFE', {'transport':d['sourceTransport'],'baseline':signals.get('baseline'),'pending':s.get('pending_payment'),'active':s.get('active'),'delivered':signals.get('delivered')})
+          PY
