@@ -157,8 +157,10 @@
   function setToggle(card, open) {
     const label = card.querySelector('.king-preview-toggle span');
     const arrow = card.querySelector('.king-preview-toggle i');
-    if (label) label.textContent = open ? 'CLOSE' : 'ANALYSIS';
-    if (arrow) arrow.textContent = open ? '▴' : '▾';
+    const nextLabel = open ? 'CLOSE' : 'ANALYSIS';
+    const nextArrow = open ? '▴' : '▾';
+    if (label && label.textContent !== nextLabel) label.textContent = nextLabel;
+    if (arrow && arrow.textContent !== nextArrow) arrow.textContent = nextArrow;
   }
 
   function contextLabel(pick) {
@@ -259,7 +261,7 @@
   }, true);
 
   const observer = new MutationObserver(decorateCards);
-  observer.observe(grid, {childList:true, subtree:true});
+  observer.observe(grid, {childList:true, subtree:false});
 
   fetch(`${FEED}?t=${Date.now()}`, {cache:'no-store'})
     .then(response => {
