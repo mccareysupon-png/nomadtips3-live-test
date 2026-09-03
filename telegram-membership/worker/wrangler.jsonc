@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-telegram-alerts",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "nomadtips3-paper-db",
+      "database_id": "7f2f1bb8-c40c-477d-b82a-ea284291f239"
+    }
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "PLAN_USD": "3",
+    "NOMAD_SIGNAL_SOURCE_URL": "https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev"
+  }
+}
