@@ -1,170 +1,365 @@
 {
-  "engine": "the-king-v10-king-v2-goaloo-transition",
-  "policy": "KING_V2_BETA",
+  "engine": "the-king-owner-override-20260903-goaloo-composite",
+  "policy": "OWNER_ONE_DAY_THRESHOLD_OVERRIDE",
   "status": "OK",
-  "last_selection_run": "2026-09-03T09:46:18Z",
+  "last_selection_run": "2026-09-03T09:52:47Z",
   "last_settlement_run": "2026-09-03T05:54:41Z",
   "selection_date": "2026-09-03",
-  "fixtures_seen": 148,
-  "qualified": 0,
-  "pending": 0,
+  "fixtures_seen": 149,
+  "qualified": 91,
+  "pending": 91,
   "max_daily_picks": null,
-  "no_pick": true,
+  "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "decision_layer": "KING V2 + owner one-day override",
+  "decision_layer": "Owner one-day Goaloo composite threshold override",
   "selection_override": {
     "name": "OWNER_ONE_DAY_2026-09-03",
     "date": "2026-09-03",
     "minimum_confidence": 0.4,
     "minimum_odds": 1.88,
     "max_picks": null,
-    "scope": "ONE_DAY_ONLY"
+    "scope": "ONE_DAY_ONLY",
+    "normal_engine_after_date": "the-king-v10-king-v2-goaloo-transition"
   },
-  "rejected": 148,
+  "rejected": 58,
   "rejection_reasons": {
-    "UNDERLYING_PERFORMANCE": 104,
-    "DATA_QUALITY_RECENT_SAMPLE": 44
+    "OWNER_MIN_CONFIDENCE": 27,
+    "GOALOO_FORM_SHORT": 12,
+    "OWNER_MIN_ODDS": 7,
+    "NO_GOALOO_1X2_ODDS": 10,
+    "DRAW_NOT_MAIN_PICK": 2
   },
   "rejection_samples": [
     {
-      "match": "Sawmer SC vs Nangkiew Irat",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "Akademiya Ontustik vs FK Aktobe II",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "FK Arys vs Ekibastuzets",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "FC Shakhtyor Karagandy vs Khan Tengri FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 6,
-      "away_n": 9
-    },
-    {
-      "match": "Guria Lanchkhuti vs FC Gonio",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "FC Iberia 2010 vs Orbi",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 6,
-      "away_n": 9
-    },
-    {
       "match": "Margveti 2006 vs FC Merani Tbilisi",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "Kolkheti 1913 Poti vs FC Didube",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "Sabutaroti billisse B vs Dinamo Tbilisi II",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.398,
+      "required": 0.4,
+      "odds": 2.48
     },
     {
       "match": "Avia Swidnik vs KS Wieczysta Krakow",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "CD Maxaquene vs Ferroviario Beira",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3898,
+      "required": 0.4,
+      "odds": 5.03
     },
     {
       "match": "Salam Al Qarfa vs Al-Ahli Aden",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 9,
-      "away_n": 1
+      "away_n": 1,
+      "required_each": 5
     },
     {
       "match": "Astana B vs FK Taraz",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3981,
+      "required": 0.4,
+      "odds": 2.16
     },
     {
       "match": "FK MOIK Baku vs Shahdagh Qusar",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3712,
+      "required": 0.4,
+      "odds": 2.38
     },
     {
       "match": "Baku Sporting vs Karvan Evlakh",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3595,
+      "required": 0.4,
+      "odds": 2.87
     },
     {
       "match": "Qarabag Khankendi vs Sabail",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 1,
-      "away_n": 8
-    },
-    {
-      "match": "Kataka FC vs BUL FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 6,
-      "away_n": 8
+      "away_n": 8,
+      "required_each": 5
     },
     {
       "match": "Uhamiaji FC vs Chipukizi FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 8,
-      "away_n": 6
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.79,
+      "required": 1.88,
+      "confidence": 0.4498
     },
     {
       "match": "Black Sailor FC vs Wembe FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 5,
-      "away_n": 0
+      "away_n": 0,
+      "required_each": 5
     },
     {
       "match": "URA Kampala vs SC Villa",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "El Sekka El Hadid vs Maleyat Kafr El Zayat",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 7,
-      "away_n": 5
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.5039
     },
     {
       "match": "Dayrot vs Telecom Egypt",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 6,
-      "away_n": 9
-    },
-    {
-      "match": "El Mansoura vs Kahraba Ismailia",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 6,
-      "away_n": 9
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3679,
+      "required": 0.4,
+      "odds": 4.05
     },
     {
       "match": "Haras El Hedoud vs El Entag Al Harby",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.76,
+      "required": 1.88,
+      "confidence": 0.4944
+    },
+    {
+      "match": "Raviena vs Team FC Cairo",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3832,
+      "required": 0.4,
+      "odds": 4.62
+    },
+    {
+      "match": "Baladiyet El Mahallah vs Delta United",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3675,
+      "required": 0.4,
+      "odds": 2.33
+    },
+    {
+      "match": "FK Isloch Minsk vs BATE Borisov",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3505,
+      "required": 0.4,
+      "odds": 6.11
+    },
+    {
+      "match": "Tobol Kostanai B vs Kairat Almaty II",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.8044
+    },
+    {
+      "match": "FC Bacau vs CS Universitatea Craiova",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3614,
+      "required": 0.4,
+      "odds": 7.02
+    },
+    {
+      "match": "Ovce Pole vs FC Vardar Skopje",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 0,
+      "away_n": 10,
+      "required_each": 5
+    },
+    {
+      "match": "Amman FC vs AL-Karmel",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.3844
+    },
+    {
+      "match": "Kufer Soom vs Jerash Club",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.4211
+    },
+    {
+      "match": "Fajr Sepasi vs Mes Shahr-e Babak",
+      "reason": "DRAW_NOT_MAIN_PICK",
+      "model_probability": 0.4408
+    },
+    {
+      "match": "Sokol Bozepole Wielkie vs Stoczniowiec Gdansk",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 5,
+      "away_n": 0,
+      "required_each": 5
+    },
+    {
+      "match": "HIFK vs HPS",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.38,
+      "required": 1.88,
+      "confidence": 0.4531
+    },
+    {
+      "match": "Rakow Czestochowa vs Gornik Zabrze",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3819,
+      "required": 0.4,
+      "odds": 2.39
+    },
+    {
+      "match": "FK Banga Gargzdai vs FK Panevezys",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.81,
+      "required": 1.88,
+      "confidence": 0.5635
+    },
+    {
+      "match": "Palermo vs Mantova",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3927,
+      "required": 0.4,
+      "odds": 1.63
+    },
+    {
+      "match": "Thisted FC vs Sonderjyske",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3836,
+      "required": 0.4,
+      "odds": 10.0
+    },
+    {
+      "match": "Colo Colo (W) vs Deportes Iquique (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7912
+    },
+    {
+      "match": "Bursaspor vs Istanbulspor",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.35,
+      "required": 1.88,
+      "confidence": 0.5214
+    },
+    {
+      "match": "TuPS vs FC Lahti II",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 4,
+      "required_each": 5
     }
   ],
-  "near_gate_top": [],
+  "near_gate_top": [
+    {
+      "match": "Tobol Kostanai B vs Kairat Almaty II",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.8044
+    },
+    {
+      "match": "Colo Colo (W) vs Deportes Iquique (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7912
+    },
+    {
+      "match": "Tzeirey Tira vs Sderot",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7531
+    },
+    {
+      "match": "UMF Vidir vs KV Reykjavik",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7271
+    },
+    {
+      "match": "FK Banga Gargzdai vs FK Panevezys",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.81,
+      "required": 1.88,
+      "confidence": 0.5635
+    },
+    {
+      "match": "UMF Sindri Hofn vs Tindastoll Sauda",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.5282
+    },
+    {
+      "match": "Bursaspor vs Istanbulspor",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.35,
+      "required": 1.88,
+      "confidence": 0.5214
+    },
+    {
+      "match": "URA Kampala vs SC Villa",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.5039
+    },
+    {
+      "match": "Haras El Hedoud vs El Entag Al Harby",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.76,
+      "required": 1.88,
+      "confidence": 0.4944
+    },
+    {
+      "match": "FC Arbaer vs KF Fjallabyggdar",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.466
+    },
+    {
+      "match": "HIFK vs HPS",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.38,
+      "required": 1.88,
+      "confidence": 0.4531
+    },
+    {
+      "match": "Uhamiaji FC vs Chipukizi FC",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.79,
+      "required": 1.88,
+      "confidence": 0.4498
+    },
+    {
+      "match": "Vinotinto de Ecuador vs San Antonio(ECU)",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.66,
+      "required": 1.88,
+      "confidence": 0.4383
+    },
+    {
+      "match": "FC Schwaig vs FC Ismaning",
+      "reason": "OWNER_MIN_ODDS",
+      "odds": 1.83,
+      "required": 1.88,
+      "confidence": 0.4242
+    },
+    {
+      "match": "Kufer Soom vs Jerash Club",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.4211
+    },
+    {
+      "match": "KA Asvellir vs HotturHuginn",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.4179
+    },
+    {
+      "match": "Astana B vs FK Taraz",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3981,
+      "required": 0.4,
+      "odds": 2.16
+    },
+    {
+      "match": "Margveti 2006 vs FC Merani Tbilisi",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.398,
+      "required": 0.4,
+      "odds": 2.48
+    },
+    {
+      "match": "Nautico (PE) vs Botafogo SP",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.3978,
+      "required": 0.4,
+      "odds": 3.87
+    },
+    {
+      "match": "Duhok vs Al Quwa Al Jawiya",
+      "reason": "OWNER_MIN_CONFIDENCE",
+      "confidence": 0.397,
+      "required": 0.4,
+      "odds": 2.71
+    }
+  ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
     "odds_ok": true,
-    "index_rows": 232,
+    "index_rows": 233,
     "odds_rows": 204,
-    "h2h_static_ok": 148,
+    "h2h_static_ok": 149,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -172,16 +367,20 @@
     "confidence_min": 0.4,
     "minimum_odds": 1.88,
     "max_daily_picks": null,
-    "market_edge_min": 0.05,
-    "ev_min": 0.05,
-    "odds_max": 3.0,
-    "underlying_required": "3/4",
-    "recent_sample_min_each": 8
+    "recent_sample_min_each": 5,
+    "draw_main_pick": "REJECT",
+    "goaloo_1x2_required": true,
+    "king_v2_underlying_gate": "BYPASSED_TODAY",
+    "king_v2_market_edge_gate": "BYPASSED_TODAY",
+    "king_v2_ev_gate": "BYPASSED_TODAY",
+    "legacy_58pct_12pt_gate": "BYPASSED_TODAY"
   },
   "transition_notes": [
     "Owner one-day override applies only on 2026-09-03.",
-    "Confidence >= 40%, odds >= 1.88, no daily pick cap.",
-    "All existing KING V2 data-quality, competition, underlying 3/4, market-edge, EV and beta max-odds gates remain active.",
-    "Scheduled selections on other dates continue through the normal KING V2 engine."
+    "Active publication gates today: selected winner probability >=40% and selected-side odds >=1.88.",
+    "No daily pick-count cap today.",
+    "Goaloo source identity, minimum model sample and a valid selected-side 1X2 price remain required so settlement can stay automatic.",
+    "KING V2 underlying/market-edge/EV hard gates and legacy v9 58%/12pt eligibility are bypassed for this date only.",
+    "Scheduled selections on all other dates continue through the normal KING V2 engine."
   ]
 }
