@@ -55,16 +55,39 @@ function sourceBase(env) {
   return String(env.NOMAD_SIGNAL_SOURCE_URL || DEFAULT_SOURCE).trim().replace(/\/$/, '');
 }
 
-export async function fetchLockedSignals(env) {
-  const response = await fetch(`${sourceBase(env)}/history?page=1&limit=${SIGNAL_LIMIT}`, {
-    headers: { accept: 'application/json' },
-    cf: { cacheTtl: 0, cacheEverything: false }
+function historyPath() {
+  return `/history?page=1&limit=${SIGNAL_LIMIT}`;
+}
+
+async function fetchHistoryResponse(env) {
+  let serviceStatus = null;
+  if (env.NOMAD_SIGNAL_SOURCE && typeof env.NOMAD_SIGNAL_SOURCE.fetch === 'function') {
+    const request = new Request(`https://nomad.internal${historyPath()}`, {
+      method: 'GET',
+      headers: { accept: 'application/json' }
+    });
+    const response = await env.NOMAD_SIGNAL_SOURCE.fetch(request);
+    serviceStatus = response.status;
+    if (response.ok) return { response, transport: 'SERVICE_BINDING' };
+  }
+
+  const response = await fetch(`${sourceBase(env)}${historyPath()}`, {
+    headers: { accept: 'application/json' }
   });
-  if (!response.ok) throw new Error(`NOMAD_HISTORY_HTTP_${response.status}`);
-  const body = await response.json();
-  const records = Array.isArray(body?.records) ? body.records : [];
-  const normalized = records.map(normalizeSignal).filter(Boolean);
+  if (response.ok) return { response, transport: 'PUBLIC_HTTP' };
+
+  const servicePart = serviceStatus === null ? 'NO_SERVICE_BINDING' : `SERVICE_${serviceStatus}`;
+  throw new Error(`NOMAD_HISTORY_${servicePart}_PUBLIC_${response.status}`);
+}
+
+export async function fetchLockedSignals(env) {
+  const { response, transport } = await fetchHistoryResponse(env);
+  const body = await response.json().catch(() => null);
+  if (!body || !Array.isArray(body.records)) throw new Error('NOMAD_HISTORY_INVALID_PAYLOAD');
+  const normalized = body.records.map(normalizeSignal).filter(Boolean);
   normalized.sort((a, b) => Date.parse(a.selectedAt) - Date.parse(b.selectedAt));
+  await runtimeSet(env, 'last_source_transport', transport);
+  await runtimeSet(env, 'last_source_record_count', normalized.length);
   return normalized;
 }
 
@@ -297,6 +320,8 @@ export async function signalBridgeStatus(env) {
     ok: true,
     phase: 'STEP_2_SIGNAL_BRIDGE',
     source: sourceBase(env),
+    sourceTransport: await runtimeGet(env, 'last_source_transport'),
+    sourceRecordCount: Number(await runtimeGet(env, 'last_source_record_count') || 0),
     initialized: (await runtimeGet(env, 'bridge_initialized')) === '1',
     subscribers,
     signals,
