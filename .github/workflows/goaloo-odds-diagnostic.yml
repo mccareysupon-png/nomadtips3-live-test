@@ -1,0 +1,34 @@
+name: Goaloo Odds Mapping Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/goaloo-odds-diagnostic.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect raw goal50 rows
+        shell: python
+        run: |
+          import re, requests
+          url='https://live10.goaloo28.com/gf/data/odds/en/goal50.xml'
+          text=requests.get(url,timeout=20,headers={'User-Agent':'Mozilla/5.0'}).text
+          print('length',len(text))
+          ids={'3083985','3084753','3046969','3072777','3084010'}
+          found=0
+          for m in re.finditer(r'<m>([^<]+)</m>',text):
+              row=[x.strip() for x in m.group(1).split(',')]
+              if row and row[0] in ids:
+                  found+=1
+                  print('ID',row[0],'FIELDS',len(row))
+                  for i,v in enumerate(row):
+                      print(f'  [{i}]={v}')
+          print('found',found)
