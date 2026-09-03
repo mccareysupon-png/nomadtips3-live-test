@@ -1,10 +1,13 @@
 @import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:700px);
 @import url("toolbar-all-football.css?v=20260901-v1") screen and (max-width:700px);
+@import url("card-status-icons.css?v=20260903-all-device-v1") screen and (max-width:1024px);
 
 /* Mobile-only bridge: reuse the exact desktop/PC vintage toolbar artwork.
+   The shared match-state icon mapping is also imported through 1024px so
+   tablet/mobile use the same Watching / Near / Signal artwork as PC.
    Layout stays the airy transparent 4-column mobile layout.
    Presentation only; no filter/odds/feed/engine logic changes.
-   Rollback marker: rollback/pre-mobile-pc-icons-20260901 */
+   Rollback blob before all-device status bridge: 9ce761c75615cd4621fd505d645e5c8294032bc8 */
 @media(max-width:700px){
   /* Keep every filter + odds icon the same visual footprint on mobile. */
   .toolbar .tabs .tab::before,
