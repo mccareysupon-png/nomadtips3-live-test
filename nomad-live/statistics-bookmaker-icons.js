@@ -22,7 +22,7 @@
 
   const clean=value=>String(value||'').trim().replace(/\s+/g,' ');
   const keyOf=value=>clean(value).toLowerCase().replace(/[^a-z0-9]/g,'');
-  const bookmakerIndex=()=>[...document.querySelectorAll('.data-table thead th')].findIndex(th=>/BOOKMAKER/i.test(th.textContent||''));
+  const bookmakerIndex=()=>[...document.querySelectorAll('.data-table thead th')].findIndex(th=>/(?:BOOKMAKER|ODDS\s+SOURCE)/i.test(th.textContent||''));
 
   const clearCell=cell=>{
     cell.classList.remove('bookmaker-logo-cell');
