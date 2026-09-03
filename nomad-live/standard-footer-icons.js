@@ -10,7 +10,63 @@
     .site-footer .site-cert-mark.nomad-standard-icon .ring{fill:none;stroke:currentColor;stroke-width:2.2}
     .site-footer .site-cert-mark.nomad-standard-icon .stroke{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
     .site-footer .site-cert-mark.nomad-standard-icon .fill{fill:currentColor;stroke:none}
-    @media(max-width:700px){.site-footer .site-cert-mark.nomad-standard-icon{flex-basis:40px!important;width:40px!important;height:40px!important}.site-footer .site-cert-mark.nomad-standard-icon svg{width:40px;height:40px}}
+    @media(max-width:700px){
+      .site-footer .site-footer-certrow{
+        display:grid!important;
+        grid-template-columns:repeat(4,minmax(0,1fr))!important;
+        gap:6px!important;
+        align-items:start!important;
+        width:100%!important;
+      }
+      .site-footer .site-footer-certrow .site-cert{
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        gap:4px!important;
+        min-width:0!important;
+        padding:7px 2px!important;
+        margin:0!important;
+        text-align:center!important;
+      }
+      .site-footer .site-cert-mark.nomad-standard-icon{
+        flex:0 0 28px!important;
+        width:28px!important;
+        height:28px!important;
+      }
+      .site-footer .site-cert-mark.nomad-standard-icon svg{width:28px!important;height:28px!important}
+      .site-footer .site-cert-copy{
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:center!important;
+        gap:2px!important;
+        min-width:0!important;
+        width:100%!important;
+        text-align:center!important;
+      }
+      .site-footer .site-cert-copy b{
+        display:block!important;
+        font-size:10px!important;
+        line-height:1.12!important;
+        letter-spacing:.01em!important;
+        white-space:normal!important;
+        overflow-wrap:anywhere!important;
+      }
+      .site-footer .site-cert-copy span{
+        display:block!important;
+        font-size:8px!important;
+        line-height:1.15!important;
+        white-space:normal!important;
+        overflow-wrap:anywhere!important;
+      }
+      .site-footer .site-cert-copy small{
+        display:block!important;
+        font-size:7px!important;
+        line-height:1.1!important;
+        letter-spacing:.06em!important;
+        white-space:normal!important;
+      }
+    }
   `;
   document.head.appendChild(style);
 
