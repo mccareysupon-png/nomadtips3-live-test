@@ -67,7 +67,7 @@
       const officialSync = document.createElement('script');
       officialSync.src = new URL('test-system/stats/official-final-sync.js?v=202608060735', root).href;
       officialSync.async = false;
-      officialSync.dataset.nomadOfficialSync = 'true';
+      officialSync.dataset.nomadOfficialFinalSync = 'true';
       document.head.appendChild(officialSync);
     }
   }
