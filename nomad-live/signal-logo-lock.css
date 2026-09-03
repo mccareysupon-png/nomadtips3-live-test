@@ -1,12 +1,11 @@
-/* Signal page header logo lock + homepage-only vintage accent.
-   Presentation only: preserve shared header geometry and all runtime/feed logic. */
+/* Signal page header logo lock + homepage-only vintage topbar.
+   Presentation only: keep logo/menu colors, typography, geometry and runtime behavior unchanged. */
 .topbar{
   background:linear-gradient(90deg,#0d2119 0%,#123429 32%,#173f31 50%,#123429 68%,#0d2119 100%)!important;
   border-bottom:1px solid rgba(198,171,103,.18)!important;
   box-shadow:0 9px 24px rgba(0,0,0,.30),inset 0 -1px 0 rgba(255,255,255,.025)!important;
 }
 .topbar-inner.public-four-nav>.brand{
-  color:#b7beb8!important;
   font-family:Arial,Helvetica,sans-serif!important;
   font-size:30px!important;
   font-weight:900!important;
@@ -15,48 +14,10 @@
   white-space:nowrap!important;
   -webkit-text-stroke:.22px currentColor!important;
   text-rendering:geometricPrecision!important;
-  text-shadow:0 1px 0 rgba(255,255,255,.025),0 2px 7px rgba(0,0,0,.36)!important;
 }
 .topbar-inner.public-four-nav>.brand span{
-  color:#c9ad67!important;
+  color:var(--yellow)!important;
   -webkit-text-stroke:.22px currentColor!important;
-  text-shadow:0 0 8px rgba(201,173,103,.13),0 1px 0 rgba(0,0,0,.45)!important;
-}
-.topbar-inner.public-four-nav>.topnav a{
-  position:relative!important;
-  color:#9ea7a0!important;
-  transition:color .16s ease,text-shadow .16s ease!important;
-}
-.topbar-inner.public-four-nav>.topnav a::after{
-  content:""!important;
-  position:absolute!important;
-  left:50%!important;
-  bottom:6px!important;
-  width:0!important;
-  height:1px!important;
-  transform:translateX(-50%)!important;
-  background:linear-gradient(90deg,transparent,#c5a75f,transparent)!important;
-  opacity:0!important;
-  transition:width .16s ease,opacity .16s ease!important;
-}
-.topbar-inner.public-four-nav>.topnav a:hover,
-.topbar-inner.public-four-nav>.topnav a:focus-visible{
-  color:#e2d8bd!important;
-  text-shadow:0 0 8px rgba(197,167,95,.16)!important;
-}
-.topbar-inner.public-four-nav>.topnav a:hover::after,
-.topbar-inner.public-four-nav>.topnav a:focus-visible::after{
-  width:46%!important;
-  opacity:.62!important;
-}
-.topbar-inner.public-four-nav>.topnav a.active{
-  color:#9bc696!important;
-  text-shadow:0 0 7px rgba(117,167,112,.16)!important;
-}
-.topbar-inner.public-four-nav>.topnav a.active::after{
-  width:54%!important;
-  opacity:.78!important;
-  background:linear-gradient(90deg,transparent,#b9a263,transparent)!important;
 }
 @media(max-width:700px){
   .topbar-inner.public-four-nav>.brand{
