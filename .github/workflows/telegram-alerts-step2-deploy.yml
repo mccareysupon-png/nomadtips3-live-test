@@ -74,20 +74,4 @@ jobs:
             sleep 5
           done
           echo "$BRIDGE"
-          printf '%s' "$BRIDGE" | python - <<'PY'
-          import json,sys
-          d=json.load(sys.stdin)
-          assert d['ok'] is True
-          assert d['phase']=='STEP_2_SIGNAL_BRIDGE'
-          assert d['initialized'] is True
-          assert d['sourceTransport']=='SERVICE_BINDING'
-          assert int(d.get('sourceRecordCount') or 0) > 0
-          assert not d.get('lastError')
-          s=d['subscribers']
-          assert int(s.get('pending_payment') or 0) >= 1
-          assert int(s.get('active') or 0) == 0
-          signals=d['signals']
-          assert int(signals.get('baseline') or 0) > 0
-          assert int(signals.get('delivered') or 0) == 0
-          print('STEP2_LIVE_SAFE', {'transport':d['sourceTransport'],'baseline':signals.get('baseline'),'pending':s.get('pending_payment'),'active':s.get('active'),'delivered':signals.get('delivered')})
-          PY
+          printf '%s' "$BRIDGE" | python -c "import json,sys; d=json.load(sys.stdin); assert d['ok'] is True; assert d['phase']=='STEP_2_SIGNAL_BRIDGE'; assert d['initialized'] is True; assert d['sourceTransport']=='SERVICE_BINDING'; assert int(d.get('sourceRecordCount') or 0)>0; assert not d.get('lastError'); s=d['subscribers']; assert int(s.get('pending_payment') or 0)>=1; assert int(s.get('active') or 0)==0; signals=d['signals']; assert int(signals.get('baseline') or 0)>0; assert int(signals.get('delivered') or 0)==0; print('STEP2_LIVE_SAFE', {'transport':d['sourceTransport'],'baseline':signals.get('baseline'),'pending':s.get('pending_payment'),'active':s.get('active'),'delivered':signals.get('delivered')})"
