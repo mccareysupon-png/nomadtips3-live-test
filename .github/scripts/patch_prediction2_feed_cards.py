@@ -4,6 +4,7 @@ from pathlib import Path
 PATH = Path('nomad-live/prediction2.html')
 SCRIPT_TAG = '  <script src="prediction2-feed-cards.js?v=20260903-auto-v1"></script>\n'
 OWNER_LABELS_TAG = '  <script src="prediction2-owner-override-labels.js?v=20260903-owner-v1"></script>\n'
+INLINE_ANALYSIS_TAG = '  <script src="prediction2-inline-analysis.js?v=20260903-inline-v1"></script>\n'
 SCRIPT_MARKER = '  <script src="site-footer.js?v=20260825-rail-v2"></script>\n'
 GRID_OLD = '<section class="king-preview-grid" aria-label="Prediction2 preview picks">'
 GRID_NEW = '<section class="king-preview-grid" aria-label="Prediction2 auto picks" hidden>'
@@ -26,9 +27,14 @@ def main():
             raise SystemExit('site-footer script marker not found for owner labels')
         text = text.replace(SCRIPT_MARKER, OWNER_LABELS_TAG + SCRIPT_MARKER, 1)
 
+    if INLINE_ANALYSIS_TAG not in text:
+        if SCRIPT_MARKER not in text:
+            raise SystemExit('site-footer script marker not found for inline analysis')
+        text = text.replace(SCRIPT_MARKER, INLINE_ANALYSIS_TAG + SCRIPT_MARKER, 1)
+
     if text != original:
         PATH.write_text(text, encoding='utf-8')
-        print('Prediction2 patched for feed-driven cards and owner-threshold labels.')
+        print('Prediction2 patched for feed-driven cards, owner labels and inline analysis.')
     else:
         print('Prediction2 feed-card patch already applied.')
 
