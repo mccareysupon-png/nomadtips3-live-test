@@ -1,8 +1,8 @@
 (() => {
   'use strict';
 
-  const MQ = window.matchMedia('(min-width:521px)');
-  const PC_MQ = window.matchMedia('(min-width:1025px)');
+  // Page 1 desktop/PC only. Do not alter tablet/mobile behavior.
+  const MQ = window.matchMedia('(min-width:1025px)');
   const SCORE_RE = /^(\d+)\s*[–-]\s*(\d+)$/;
   const FALLBACK = [
     ['#214f35','#d5b557'],['#1d3d6f','#d2b14f'],['#7a2428','#e6d4a6'],['#e1d8bf','#315a8e'],
@@ -85,20 +85,12 @@
 
       teamsEl.classList.remove('mobile-team-shirts-ready');
       delete teamsEl.dataset.mobileTeamShirtsReady;
-      teamsEl.classList.add('wide-team-stacked');
+      teamsEl.classList.add('team-shirts-ready','wide-team-stacked');
+      teamsEl.dataset.teamShirtsReady = '1';
       teamsEl.dataset.wideTeamReady = '1';
       teamsEl.dataset.teamHome = teams.home;
       teamsEl.dataset.teamAway = teams.away;
       teamsEl.dataset.teamPlain = `${teams.home} — ${teams.away}`;
-
-      /* On desktop, mark the existing PC decorator as satisfied so it cannot rewrite this stack. */
-      if (PC_MQ.matches) {
-        teamsEl.classList.add('team-shirts-ready');
-        teamsEl.dataset.teamShirtsReady = '1';
-      } else {
-        teamsEl.classList.remove('team-shirts-ready');
-        delete teamsEl.dataset.teamShirtsReady;
-      }
 
       teamsEl.innerHTML = `<span class="team-shirt-side team-shirt-home wide-team-home"><img class="team-shirt-icon" alt="" aria-hidden="true" draggable="false" src="${homeSrc}"><span class="team-shirt-name" title="${escAttr(teams.home)}">${escText(teams.home)}</span></span><span class="team-shirt-side team-shirt-away wide-team-away"><img class="team-shirt-icon" alt="" aria-hidden="true" draggable="false" src="${awaySrc}"><span class="team-shirt-name" title="${escAttr(teams.away)}">${escText(teams.away)}</span></span>`;
     }
@@ -113,7 +105,6 @@
     const teamsEl = row?.querySelector(':scope > summary .teams');
     if (!teamsEl || teamsEl.dataset.wideTeamReady !== '1') return;
 
-    /* If the mobile decorator has already taken ownership, only clear wide markers. */
     if (teamsEl.classList.contains('mobile-team-shirts-ready')) {
       teamsEl.classList.remove('wide-team-stacked');
       delete teamsEl.dataset.wideTeamReady;
@@ -128,10 +119,8 @@
     delete teamsEl.dataset.teamShirtsReady;
   };
 
-  const syncRow = row => MQ.matches ? decorate(row) : restore(row);
-
   const renderAll = () => {
-    document.querySelectorAll('.match-wrap[data-match-id]').forEach(syncRow);
+    document.querySelectorAll('.match-wrap[data-match-id]').forEach(row => MQ.matches ? decorate(row) : restore(row));
   };
 
   let queued = false;
@@ -150,8 +139,6 @@
     if (list) new MutationObserver(queue).observe(list,{childList:true,subtree:true,characterData:true});
     if (typeof MQ.addEventListener === 'function') MQ.addEventListener('change',queue);
     else if (typeof MQ.addListener === 'function') MQ.addListener(queue);
-    if (typeof PC_MQ.addEventListener === 'function') PC_MQ.addEventListener('change',queue);
-    else if (typeof PC_MQ.addListener === 'function') PC_MQ.addListener(queue);
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',start,{once:true});
