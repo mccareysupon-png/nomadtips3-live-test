@@ -56,9 +56,13 @@
     text-align:center!important;
   }
 
-  /* Live time enlarged 30% from the original 6.2px; clock stays proportional. */
+  /* Live time is +30% from original, then visually enlarged another 10%.
+     transform does not participate in layout, so card height stays unchanged. */
   .score.score-live-stack.mobile-score-layout-ready > .score-live-time{
     font-size:8.06px!important;
+    transform:scale(1.10)!important;
+    transform-origin:center center!important;
+    line-height:1!important;
   }
   .score.score-live-stack.mobile-score-layout-ready > .score-live-time svg{
     width:9.1px!important;
