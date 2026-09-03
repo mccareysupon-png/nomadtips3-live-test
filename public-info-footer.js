@@ -34,7 +34,8 @@
     ['User Guide',new URL('user-guide/',root).href],
     ['Privacy Policy',new URL('privacy/',root).href],
     ['Terms of Service',new URL('terms/',root).href],
-    ['Disclaimer',new URL('disclaimer/',root).href]
+    ['Disclaimer',new URL('disclaimer/',root).href],
+    ['Mobile App',new URL('?install=app',root).href]
   ];
 
   const rail=(standalone=false)=>{
