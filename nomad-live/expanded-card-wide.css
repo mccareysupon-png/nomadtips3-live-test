@@ -1,0 +1,277 @@
+/* Page 1 PC expanded-card summary parity.
+   Scope: desktop/PC >=1025px only. Presentation only.
+   Goal: expanded summary bar matches collapsed summary bar exactly.
+   No feed, detector, odds, signal, or detail-content logic changes. */
+
+@media (min-width:1025px){
+  .match-wrap[open]{
+    background:#121512!important;
+    box-shadow:none!important;
+  }
+
+  .match-wrap[open] > .match-row{
+    grid-template-columns:58px minmax(260px,1.25fr) 76px minmax(180px,.78fr) minmax(250px,1.05fr) 58px!important;
+    grid-template-rows:auto!important;
+    grid-template-areas:'state match score stats market cond'!important;
+    column-gap:10px!important;
+    row-gap:0!important;
+    align-items:stretch!important;
+    padding:14px!important;
+    background:#121512!important;
+  }
+
+  .match-wrap[open] > .match-row .statebox,
+  .match-wrap[open] > .match-row .match-main,
+  .match-wrap[open] > .match-row .score,
+  .match-wrap[open] > .match-row .quick,
+  .match-wrap[open] > .match-row .market,
+  .match-wrap[open] > .match-row .cond{
+    position:relative!important;
+    align-self:stretch!important;
+    min-height:62px!important;
+    border-right:0!important;
+    border-radius:7px!important;
+  }
+
+  .match-wrap[open] > .match-row .statebox{
+    grid-area:state!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    min-width:0!important;
+    padding:0!important;
+    background:transparent!important;
+  }
+
+  .match-wrap[open] > .match-row .statebox .state{
+    position:absolute!important;
+    width:1px!important;
+    height:1px!important;
+    padding:0!important;
+    margin:-1px!important;
+    overflow:hidden!important;
+    clip:rect(0,0,0,0)!important;
+    white-space:nowrap!important;
+    border:0!important;
+  }
+
+  .match-wrap[open] > .match-row .statebox .minute,
+  .match-wrap[open] > .match-row .statebox .status-meter-icon,
+  .match-wrap[open] > .match-row .statebox .watch-pulse{
+    display:none!important;
+  }
+
+  .match-wrap[open] > .match-row .statebox::before{
+    content:"";
+    display:none;
+    width:30px;
+    height:30px;
+    flex:0 0 30px;
+    background-color:transparent!important;
+    background-image:url("assets/icons/vintage-toolbar-independent.webp");
+    background-repeat:no-repeat;
+    background-size:800% 100%;
+    background-position:center;
+    opacity:.90;
+    filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 2px rgba(255,255,255,.10));
+    animation:nomadCardStateSlowPulse 3.4s ease-in-out infinite;
+    pointer-events:none;
+  }
+
+  .match-wrap[open][data-state="WATCHING"] > .match-row .statebox::before{
+    display:block;
+    background-position:42.8571% 50%;
+  }
+
+  .match-wrap[open][data-state="NEAR SIGNAL"] > .match-row .statebox::before{
+    display:block;
+    background-position:28.5714% 50%;
+  }
+
+  .match-wrap[open][data-state="SIGNAL"] > .match-row .statebox::before,
+  .match-wrap[open][data-signal-status="LOCKED"] > .match-row .statebox::before{
+    display:block;
+    background-position:14.2857% 50%;
+  }
+
+  .match-wrap[open] > .match-row .match-main{
+    grid-area:match!important;
+    min-width:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    padding:0 10px 0 0!important;
+    background:transparent!important;
+  }
+
+  .match-wrap[open] > .match-row .league{
+    display:block!important;
+    margin:0 0 8px!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:62px!important;
+    line-height:1!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-side{
+    display:grid!important;
+    grid-template-columns:28px minmax(0,1fr) 34px!important;
+    align-items:center!important;
+    justify-content:stretch!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-icon{
+    grid-column:1!important;
+    grid-row:1!important;
+    order:initial!important;
+    display:block!important;
+    width:25px!important;
+    height:25px!important;
+    min-width:25px!important;
+    object-fit:contain!important;
+    opacity:1!important;
+    filter:brightness(1.10) saturate(1.06) drop-shadow(0 2px 2px rgba(0,0,0,.38))!important;
+    pointer-events:none!important;
+    user-select:none!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-name{
+    grid-column:2!important;
+    grid-row:1!important;
+    order:initial!important;
+    display:block!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    color:inherit!important;
+    font-size:12px!important;
+    font-weight:800!important;
+    line-height:1.15!important;
+    text-align:left!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .wide-team-score{
+    grid-column:3!important;
+    grid-row:1!important;
+    order:initial!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:34px!important;
+    min-width:34px!important;
+    color:var(--green)!important;
+    font-size:16px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+
+  .match-wrap[open] > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-divider{
+    display:none!important;
+  }
+
+  .match-wrap[open] > .match-row .score{
+    grid-area:score!important;
+    min-width:0!important;
+    padding:0 8px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:rgba(255,255,255,.012)!important;
+  }
+
+  .match-wrap[open] > .match-row .score .score-live-head,
+  .match-wrap[open] > .match-row .score .score-live-value,
+  .match-wrap[open] > .match-row .score .entry-score{
+    display:none!important;
+  }
+
+  .match-wrap[open] > .match-row .score .score-live-time{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:4px!important;
+    width:100%!important;
+    color:var(--green)!important;
+    font-size:10px!important;
+    font-weight:900!important;
+    white-space:nowrap!important;
+  }
+
+  .match-wrap[open] > .match-row .score .score-live-time svg{
+    width:11px!important;
+    height:11px!important;
+  }
+
+  .match-wrap[open] > .match-row .quick{
+    grid-area:stats!important;
+    min-width:0!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    align-items:center!important;
+    gap:6px!important;
+    padding:0 8px!important;
+    background:rgba(255,255,255,.022)!important;
+  }
+
+  .match-wrap[open] > .match-row .quick .q{
+    background:rgba(255,255,255,.025)!important;
+  }
+
+  .match-wrap[open] > .match-row .market{
+    grid-area:market!important;
+    min-width:0!important;
+    display:flex!important;
+    align-items:center!important;
+    padding:0 8px!important;
+    background:rgba(255,255,255,.032)!important;
+  }
+
+  .match-wrap[open] > .match-row .market .price-stack{
+    width:100%!important;
+  }
+
+  .match-wrap[open] > .match-row .cond{
+    grid-area:cond!important;
+    justify-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:58px!important;
+    margin:0!important;
+    padding:0 6px!important;
+    border:0!important;
+    background:rgba(0,0,0,.035)!important;
+    text-align:center!important;
+  }
+
+  .match-wrap[open] > .match-detail{
+    border-top-color:var(--line)!important;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .match-wrap[open] > .match-row .statebox::before{
+      animation-duration:5.2s;
+      transform:none;
+    }
+  }
+}
