@@ -1,0 +1,48 @@
+name: Prediction2 — Wire Auto Feed Cards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'nomad-live/prediction2-feed-cards.js'
+      - '.github/scripts/patch_prediction2_feed_cards.py'
+      - '.github/workflows/prediction2-feed-card-wire.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prediction2-feed-card-wire
+  cancel-in-progress: true
+
+jobs:
+  wire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+
+      - name: Patch Prediction2 to consume auto-feed cards
+        run: python3 .github/scripts/patch_prediction2_feed_cards.py
+
+      - name: Commit Prediction2 wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live/prediction2.html
+          if git diff --cached --quiet; then
+            echo 'Prediction2 wiring already current.'
+            exit 0
+          fi
+          git commit -m 'Wire Prediction2 cards to The King auto feed'
+          for attempt in 1 2 3; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
