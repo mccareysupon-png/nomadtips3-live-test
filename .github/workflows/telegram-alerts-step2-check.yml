@@ -1,0 +1,50 @@
+name: Telegram Alerts Step 2 Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'telegram-alerts/**'
+      - '.github/workflows/telegram-alerts-step2-check.yml'
+  push:
+    branches:
+      - 'work/telegram-alerts-step2-mainline-20260903'
+    paths:
+      - 'telegram-alerts/**'
+      - '.github/workflows/telegram-alerts-step2-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  signal-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: telegram-alerts/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: npm run check
+      - name: Signal Bridge contract tests
+        run: npm test
+      - name: Verify Step 1 contract remains intact
+        run: |
+          grep -q "PENDING_PAYMENT" src/index.js
+          grep -q "X-Telegram-Bot-Api-Secret-Token" src/index.js
+          grep -q "X-NOMAD-ADMIN-TOKEN" src/index.js
+          grep -q "telegram_subscribers" src/index.js
+          grep -q "telegram_deliveries" src/index.js
+          grep -q "telegram_updates" src/index.js
+      - name: Verify Step 2 safety contract
+        run: |
+          grep -q "status = 'ACTIVE' AND active = 1" src/signal-bridge.mjs
+          grep -q "BASELINE" src/signal-bridge.mjs
+          grep -q "telegram_signal_ledger" src/signal-bridge.mjs
+          grep -q "SIGNAL:" src/signal-bridge.mjs
+          grep -q "/history?page=1&limit=" src/signal-bridge.mjs
+          ! grep -RInE 'bot[0-9]{8,}:[A-Za-z0-9_-]{20,}' .
