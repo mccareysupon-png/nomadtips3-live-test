@@ -18,6 +18,8 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - name: Install self-test dependencies
+        run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4
       - name: Unlock KING V2 daily pick cap only
         shell: python
         run: |
