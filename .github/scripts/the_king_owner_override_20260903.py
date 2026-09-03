@@ -306,7 +306,7 @@ def self_test():
     assert MAX_ODDS == 3.00
     assert MAX_PICKS is None
     assert MIN_RECENT == 8
-    assert v10.MAX_PICKS == 2
+    assert v10.MAX_PICKS is None
     print("the-king-owner-override-20260903 self-test OK")
 
 
