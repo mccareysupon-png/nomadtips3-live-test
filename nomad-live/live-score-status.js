@@ -16,33 +16,34 @@
         flex-direction:column;
         align-items:center;
         justify-content:center;
-        gap:1px;
+        gap:3px;
         min-width:0;
         line-height:1;
+        text-align:center;
       }
       .score-live-head{
         display:flex;
         align-items:center;
         justify-content:center;
-        gap:2px;
         width:100%;
         min-width:0;
         white-space:nowrap;
+        color:#a7b3aa;
         font-size:6.3px;
         font-weight:900;
         letter-spacing:.01em;
-        line-height:1;
+        line-height:1.05;
+        text-align:center;
       }
-      .score-live-head .live-dot,
-      .score-live-head .live-label{color:var(--green)}
-      .score-live-head .live-sep,
       .score-live-head .live-phase{color:#a7b3aa}
       .score-live-value{
         display:block;
+        width:100%;
         color:var(--green);
         font-size:18px;
         font-weight:900;
-        line-height:1.05;
+        line-height:1;
+        text-align:center;
         white-space:nowrap;
       }
       .score-live-time{
@@ -50,10 +51,12 @@
         align-items:center;
         justify-content:center;
         gap:2px;
+        width:100%;
         color:var(--green);
         font-size:7px;
         font-weight:900;
         line-height:1;
+        text-align:center;
         white-space:nowrap;
       }
       .score-live-time svg{
@@ -145,14 +148,16 @@
       }
 
       @media(max-width:820px){
-        .score-live-head{font-size:5.8px;gap:1.5px}
+        .score.score-live-stack{gap:2.5px}
+        .score-live-head{font-size:5.8px}
         .score-live-value{font-size:16px}
         .score-live-time{font-size:6.7px}
         .score-live-time svg{width:7.5px;height:7.5px}
         .status-meter-icon{width:22px;height:22px;flex-basis:22px;margin-left:4px}
       }
       @media(max-width:520px){
-        .score-live-head{font-size:5.1px;gap:1px;letter-spacing:0}
+        .score.score-live-stack{gap:2px}
+        .score-live-head{font-size:5.1px;letter-spacing:0}
         .score-live-value{font-size:15px}
         .score-live-time{font-size:6.2px}
         .score-live-time svg{width:7px;height:7px}
@@ -250,7 +255,7 @@
       const head=document.createElement('span');
       head.className='score-live-head';
       head.setAttribute('aria-hidden','true');
-      head.innerHTML='<span class="live-dot">●</span><span class="live-label">LIVE</span><span class="live-sep">·</span><span class="live-phase"></span>';
+      head.innerHTML='<span class="live-phase"></span>';
 
       value=document.createElement('span');
       value.className='score-live-value';
@@ -265,6 +270,11 @@
       score.insertBefore(value,time);
       score.insertBefore(head,value);
       score.classList.add('score-live-stack');
+    }
+
+    const head=score.querySelector('.score-live-head');
+    if(head){
+      head.querySelectorAll('.live-dot,.live-label,.live-sep').forEach(node=>node.remove());
     }
 
     setText(score.querySelector('.live-phase'),phaseFor(minute));
