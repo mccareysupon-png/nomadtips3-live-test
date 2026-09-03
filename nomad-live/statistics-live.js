@@ -87,13 +87,14 @@
     const wins=settled.filter(item=>/WIN/.test(item.settlement?.result||'')).length;
     const losses=settled.filter(item=>/LOSS/.test(item.settlement?.result||'')).length;
     const pushes=settled.filter(item=>item.settlement?.result==='PUSH').length;
+    const decided=wins+losses;
     const profit=settled.reduce((total,item)=>total+(Number(item.settlement?.profit)||0),0);
     const avgOdds=records.length?records.reduce((total,item)=>total+(Number(item?.odds)||0),0)/records.length:0;
     return {
       totalSignals:records.length,
       settled:settled.length,
       wins,losses,pushes,
-      winRate:settled.length?wins/settled.length*100:0,
+      winRate:decided?wins/decided*100:0,
       avgOdds,
       profit,
       roi:settled.length?profit/settled.length*100:0
