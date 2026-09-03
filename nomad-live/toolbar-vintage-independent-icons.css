@@ -1,22 +1,24 @@
-/* NOMADTIPS3 independent-color vintage toolbar icon set.
+/* NOMADTIPS3 independent-color vintage cartoon toolbar icon set.
    Presentation only: artwork + icon light response. No layout/filter/odds/feed/engine logic.
-   Rollback: rollback/pre-toolbar-vintage-independent-icons-20260902
-   Size rollback: rollback/pre-toolbar-icon-size-plus15-20260902
-   Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
+   Rollback: rollback/pre-vintage-cartoon-icons-20260903
+   Exact icon boxes remain unchanged: PC 30px, mobile 24px. */
 
 .toolbar .tabs .tab::before,
 .toolbar .odds-display-control button::before,
 .toolbar .odds-display-label::before{
-  background-image:url("assets/icons/vintage-toolbar-independent.webp")!important;
   background-repeat:no-repeat!important;
-  background-size:800% 100%!important;
+  background-position:center!important;
+  background-size:contain!important;
+  background-color:transparent!important;
+  -webkit-mask:none!important;
+  mask:none!important;
   opacity:1!important;
   filter:brightness(1.12) saturate(1.07)!important;
   transform:translateY(0) scale(1);
   transition:filter .16s ease,opacity .16s ease,transform .16s ease!important;
 }
 
-/* +15% icon footprint, rounded to crisp whole pixels: PC 26->30, mobile 21->24. */
+/* Preserve the exact established icon footprint: PC 30px, mobile 24px. */
 @media(min-width:1025px){
   .toolbar .tabs .tab::before,
   .toolbar .odds-display-control button::before,
@@ -37,15 +39,15 @@
   }
 }
 
-/* Sprite order: All, Signal, Near, Watching, ODDS, Decimal, American, Fraction. */
-.toolbar .tabs .tab:nth-child(1)::before{background-position:0% 50%!important}
-.toolbar .tabs .tab:nth-child(2)::before{background-position:14.2857% 50%!important}
-.toolbar .tabs .tab:nth-child(3)::before{background-position:28.5714% 50%!important}
-.toolbar .tabs .tab:nth-child(4)::before{background-position:42.8571% 50%!important}
-.toolbar .odds-display-label::before{background-position:57.1429% 50%!important}
-.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{background-position:71.4286% 50%!important}
-.toolbar .odds-display-control button[data-odds-mode="american"]::before{background-position:85.7143% 50%!important}
-.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{background-position:100% 50%!important}
+/* Independent transparent artwork: All, Signal, Near, Watching, ODDS, Decimal, American, Fraction. */
+.toolbar .tabs .tab:nth-child(1)::before{background-image:url("assets/icons/vintage-cartoon/all.webp?v=20260903-v1")!important}
+.toolbar .tabs .tab:nth-child(2)::before{background-image:url("assets/icons/vintage-cartoon/signal.webp?v=20260903-v1")!important}
+.toolbar .tabs .tab:nth-child(3)::before{background-image:url("assets/icons/vintage-cartoon/near.webp?v=20260903-v1")!important}
+.toolbar .tabs .tab:nth-child(4)::before{background-image:url("assets/icons/vintage-cartoon/watching.webp?v=20260903-v1")!important}
+.toolbar .odds-display-label::before{background-image:url("assets/icons/vintage-cartoon/odds.webp?v=20260903-v1")!important}
+.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{background-image:url("assets/icons/vintage-cartoon/decimal.webp?v=20260903-v1")!important}
+.toolbar .odds-display-control button[data-odds-mode="american"]::before{background-image:url("assets/icons/vintage-cartoon/american.webp?v=20260903-v1")!important}
+.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{background-image:url("assets/icons/vintage-cartoon/fraction.webp?v=20260903-v1")!important}
 
 /* Hover remains above the brighter default; active remains the strongest state. */
 .toolbar .tabs .tab:hover::before,

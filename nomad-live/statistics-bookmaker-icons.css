@@ -49,3 +49,20 @@
   .data-table td.bookmaker-logo-cell[data-bookmaker-icon="1xbet"]::before{background-position-x:-200px}
   .data-table td.bookmaker-logo-cell[data-bookmaker-icon="12bet"]::before{background-position-x:-240px}
 }
+
+/* Page 2 odds-format toolbar — artwork only.
+   Exact desktop/mobile icon boxes remain owned by statistics-odds-icons.css
+   and statistics-mobile-airy.css. No layout or odds logic changes. */
+.odds-display-toolbar.toolbar .odds-display-label::before,
+.odds-display-toolbar.toolbar .odds-display-control button::before{
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+  background-color:transparent!important;
+  -webkit-mask:none!important;
+  mask:none!important;
+}
+.odds-display-toolbar.toolbar .odds-display-label::before{background-image:url("assets/icons/vintage-cartoon/odds.webp?v=20260903-v1")!important}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{background-image:url("assets/icons/vintage-cartoon/decimal.webp?v=20260903-v1")!important}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="american"]::before{background-image:url("assets/icons/vintage-cartoon/american.webp?v=20260903-v1")!important}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{background-image:url("assets/icons/vintage-cartoon/fraction.webp?v=20260903-v1")!important}
