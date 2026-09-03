@@ -138,7 +138,7 @@ async function livePage(){
       const openMatchIds=new Set([...list.querySelectorAll('.match-wrap[open]')].map(row=>row.dataset.matchId).filter(Boolean));
       list.innerHTML=(d.matches||[]).length?(d.matches||[]).map(matchRow).join(''):'<div class="note">No matches are currently in the monitoring window.</div>';
       list.querySelectorAll('.match-wrap').forEach(row=>{if(openMatchIds.has(row.dataset.matchId))row.open=true;});
-      const muted=document.querySelector('.panel-head .muted');if(muted)muted.textContent=`cycle ${d.cycle??0} · ${d.updatedAt?when(d.updatedAt):'waiting first cycle'}`;
+      const muted=document.querySelector('.panel-head .muted');if(muted)muted.textContent=d.updatedAt?`updated ${when(d.updatedAt)}`:'waiting live update';
       const note=document.querySelector('main > .note');if(note)note.textContent=d.lastError?`Engine source error: ${d.lastError}`:`Live engine connected · last update ${d.updatedAt?when(d.updatedAt):'pending'}.`;
       setSource(d.lastError?'LIVE DATA · SOURCE WAIT':'LIVE DATA · LIVE',!d.lastError);
     }catch(e){setSource('LIVE DATA · ENGINE OFFLINE',false);const note=document.querySelector('main > .note');if(note)note.textContent=`Engine connection unavailable: ${e.message}`;}
