@@ -1,0 +1,252 @@
+/* NOMAD Live 3.41 — tablet/desktop collapsed-card layout overlay.
+   Presentation only. Mobile <=520px and expanded detail data remain untouched.
+   Rollback: rollback-notes/page1-wide-collapsed-card-20260903.md */
+
+@media (min-width:521px){
+  .match-main .teams.wide-team-stacked{
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+    gap:6px!important;
+    width:100%!important;
+    min-width:0!important;
+    min-height:58px!important;
+    line-height:1!important;
+  }
+
+  .wide-team-stacked .team-shirt-side{
+    display:grid!important;
+    grid-template-columns:26px minmax(0,1fr) 32px!important;
+    align-items:center!important;
+    gap:7px!important;
+    width:100%!important;
+    min-width:0!important;
+    justify-content:stretch!important;
+  }
+
+  .wide-team-stacked .team-shirt-icon{
+    display:block!important;
+    width:24px!important;
+    height:24px!important;
+    min-width:24px!important;
+    object-fit:contain!important;
+    opacity:1!important;
+    filter:brightness(1.10) saturate(1.06) drop-shadow(0 2px 2px rgba(0,0,0,.38))!important;
+    pointer-events:none!important;
+    user-select:none!important;
+  }
+
+  .wide-team-stacked .team-shirt-name{
+    display:block!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    color:inherit!important;
+    font-size:11px!important;
+    font-weight:800!important;
+    line-height:1.15!important;
+    text-align:left!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .wide-team-stacked .team-shirt-divider{display:none!important}
+
+  .wide-team-score{
+    grid-column:3!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:32px!important;
+    min-width:32px!important;
+    color:var(--green)!important;
+    font-size:15px!important;
+    font-weight:900!important;
+    line-height:1!important;
+    text-align:center!important;
+    white-space:nowrap!important;
+    font-variant-numeric:tabular-nums!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .minute{display:none!important}
+
+  .match-wrap:not([open]) > .match-row .match-main{
+    min-width:0!important;
+    align-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+    justify-content:center!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .league{
+    display:block!important;
+    margin:0 0 7px!important;
+    min-width:0!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .score.score-live-stack{
+    min-width:0!important;
+    align-self:stretch!important;
+    justify-content:center!important;
+    text-align:center!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox.has-status-meter{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    min-width:0!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox.has-status-meter .status-meter-icon{
+    order:-1!important;
+    margin:0!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .quick{
+    min-width:0!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:5px!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .market{
+    min-width:0!important;
+    align-self:stretch!important;
+    display:flex!important;
+    align-items:center!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .market .price-stack{width:100%!important}
+}
+
+/* Wide desktop: four visual zones — MATCH | STATUS | DETECTOR | MARKET. */
+@media (min-width:1025px){
+  .match-wrap:not([open]) > .match-row{
+    grid-template-columns:minmax(260px,1.18fr) minmax(112px,.50fr) minmax(230px,.92fr) minmax(300px,1.10fr)!important;
+    grid-template-rows:auto auto auto!important;
+    grid-template-areas:
+      'match score state market'
+      'match score stats market'
+      'match score cond market'!important;
+    column-gap:14px!important;
+    row-gap:5px!important;
+    align-items:center!important;
+    padding:14px 14px!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .match-main{
+    grid-area:match!important;
+    padding-right:14px!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .score{
+    grid-area:score!important;
+    min-height:76px!important;
+    padding:0 14px!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox{
+    grid-area:state!important;
+    padding-right:12px!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .quick{
+    grid-area:stats!important;
+    padding-right:12px!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .cond{
+    grid-area:cond!important;
+    justify-self:start!important;
+    align-self:start!important;
+    min-width:58px!important;
+    margin:0!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .market{
+    grid-area:market!important;
+    padding-left:2px!important;
+  }
+}
+
+/* Medium tablet / small notebook: preserve the same hierarchy without forcing four narrow columns. */
+@media (min-width:821px) and (max-width:1024px){
+  .match-wrap:not([open]) > .match-row{
+    grid-template-columns:minmax(0,1.28fr) minmax(230px,.82fr)!important;
+    grid-template-rows:auto auto auto auto!important;
+    grid-template-areas:
+      'match score'
+      'state market'
+      'stats market'
+      'cond market'!important;
+    column-gap:12px!important;
+    row-gap:7px!important;
+    align-items:center!important;
+    padding:12px 11px!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .match-main{grid-area:match!important}
+  .match-wrap:not([open]) > .match-row .score{grid-area:score!important}
+  .match-wrap:not([open]) > .match-row .statebox{grid-area:state!important}
+  .match-wrap:not([open]) > .match-row .quick{grid-area:stats!important}
+  .match-wrap:not([open]) > .match-row .market{
+    grid-area:market!important;
+    padding:8px!important;
+    border-radius:8px!important;
+    background:rgba(255,255,255,.025)!important;
+  }
+  .match-wrap:not([open]) > .match-row .cond{
+    grid-area:cond!important;
+    justify-self:start!important;
+  }
+}
+
+/* Small tablet: stack detector and market under the match identity/status pair. */
+@media (min-width:521px) and (max-width:820px){
+  .match-wrap:not([open]) > .match-row{
+    grid-template-columns:minmax(0,1fr) 92px!important;
+    grid-template-rows:auto auto auto auto auto!important;
+    grid-template-areas:
+      'match score'
+      'state state'
+      'stats stats'
+      'market market'
+      'cond cond'!important;
+    column-gap:8px!important;
+    row-gap:7px!important;
+    align-items:center!important;
+    padding:10px 9px!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .match-main{grid-area:match!important}
+  .match-wrap:not([open]) > .match-row .score{grid-area:score!important}
+  .match-wrap:not([open]) > .match-row .statebox{grid-area:state!important}
+  .match-wrap:not([open]) > .match-row .quick{grid-area:stats!important}
+  .match-wrap:not([open]) > .match-row .market{
+    grid-area:market!important;
+    padding:8px!important;
+    border-radius:8px!important;
+    background:rgba(255,255,255,.025)!important;
+  }
+  .match-wrap:not([open]) > .match-row .cond{
+    grid-area:cond!important;
+    justify-self:start!important;
+  }
+
+  .wide-team-stacked .team-shirt-side{
+    grid-template-columns:24px minmax(0,1fr) 30px!important;
+    gap:6px!important;
+  }
+  .wide-team-stacked .team-shirt-icon{width:22px!important;height:22px!important;min-width:22px!important}
+  .wide-team-stacked .team-shirt-name{font-size:10.8px!important}
+  .wide-team-score{width:30px!important;min-width:30px!important;font-size:14px!important}
+}
