@@ -7,7 +7,8 @@
   "observability": { "enabled": true },
   "vars": {
     "ENVIRONMENT": "test",
-    "TELEGRAM_PUBLIC_WEBHOOK_URL": "https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/telegram/webhook"
+    "TELEGRAM_PUBLIC_WEBHOOK_URL": "https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev/telegram/webhook",
+    "NOMAD_SIGNAL_SOURCE_URL": "https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev"
   },
   "d1_databases": [
     {
@@ -15,5 +16,8 @@
       "database_name": "nomadtips3-paper-db",
       "database_id": "7f2f1bb8-c40c-477d-b82a-ea284291f239"
     }
-  ]
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  }
 }
