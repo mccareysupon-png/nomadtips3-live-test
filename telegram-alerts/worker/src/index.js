@@ -1,3 +1,10 @@
+import {
+  ensureSignalBridgeSchema,
+  pollSignals,
+  recordBridgeError,
+  signalBridgeStatus
+} from './signal-bridge.mjs';
+
 const TELEGRAM_API = 'https://api.telegram.org';
 const WEBHOOK_PATH = '/telegram/webhook';
 
@@ -266,35 +273,72 @@ async function handleSetWebhook(request, env) {
 
 async function handleHealth(env) {
   let db = false;
+  let signalBridgeDb = false;
   try {
     await ensureSchema(env);
     db = true;
   } catch {
     db = false;
   }
+  if (db) {
+    try {
+      await ensureSignalBridgeSchema(env);
+      signalBridgeDb = true;
+    } catch {
+      signalBridgeDb = false;
+    }
+  }
   return json({
-    ok: db,
+    ok: db && signalBridgeDb,
     service: 'nomadtips3-telegram-alerts',
-    phase: 'STEP_1_TELEGRAM_CORE',
+    phase: 'STEP_2_SIGNAL_BRIDGE',
     environment: String(env.ENVIRONMENT || 'test'),
     configured: {
       db,
+      signalBridgeDb,
       botToken: Boolean(String(env.TELEGRAM_BOT_TOKEN || '').trim()),
       webhookSecret: validWebhookSecret(env.TELEGRAM_WEBHOOK_SECRET),
       adminToken: Boolean(String(env.TELEGRAM_ADMIN_TOKEN || '').trim()),
       publicWebhookUrl: /^https:\/\//i.test(String(env.TELEGRAM_PUBLIC_WEBHOOK_URL || '').trim()),
+      signalSourceUrl: /^https:\/\//i.test(String(env.NOMAD_SIGNAL_SOURCE_URL || '').trim()),
       testChatId: Boolean(String(env.TELEGRAM_TEST_CHAT_ID || '').trim())
     }
-  }, db ? 200 : 503);
+  }, db && signalBridgeDb ? 200 : 503);
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/health' && request.method === 'GET') return handleHealth(env);
-    if (url.pathname === WEBHOOK_PATH && request.method === 'POST') return handleWebhook(request, env);
-    if (url.pathname === '/admin/test' && request.method === 'POST') return handleAdminTest(request, env);
-    if (url.pathname === '/admin/set-webhook' && request.method === 'POST') return handleSetWebhook(request, env);
-    return json({ ok: false, error: 'Not found' }, 404);
+    try {
+      if (url.pathname === '/health' && request.method === 'GET') return handleHealth(env);
+      if (url.pathname === WEBHOOK_PATH && request.method === 'POST') return handleWebhook(request, env);
+      if (url.pathname === '/admin/test' && request.method === 'POST') return handleAdminTest(request, env);
+      if (url.pathname === '/admin/set-webhook' && request.method === 'POST') return handleSetWebhook(request, env);
+      if (url.pathname === '/bridge/status' && request.method === 'GET') {
+        await ensureSchema(env);
+        return json(await signalBridgeStatus(env));
+      }
+      if (url.pathname === '/admin/poll' && request.method === 'POST') {
+        if (!isAdmin(request, env)) return json({ ok: false, error: 'Unauthorized' }, 401);
+        await ensureSchema(env);
+        return json(await pollSignals(env));
+      }
+      return json({ ok: false, error: 'Not found' }, 404);
+    } catch (error) {
+      await recordBridgeError(env, error);
+      return json({ ok: false, error: error?.message || 'Internal error' }, 500);
+    }
+  },
+
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil((async () => {
+      try {
+        await ensureSchema(env);
+        await pollSignals(env);
+      } catch (error) {
+        await recordBridgeError(env, error);
+        throw error;
+      }
+    })());
   }
 };
