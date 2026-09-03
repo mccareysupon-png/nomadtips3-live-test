@@ -19,7 +19,7 @@ import the_king_engine_v9 as v9
 
 ENGINE = "the-king-v10-king-v2-goaloo-transition"
 POLICY = "KING_V2_BETA"
-MAX_PICKS = 2
+MAX_PICKS = None
 MIN_MARKET_EDGE = 0.05
 MIN_EV = 0.05
 MAX_ODDS = 3.00
@@ -215,7 +215,7 @@ def selection(date_str):
                 near.append({"match": f"{row['home']} vs {row['away']}", **err})
 
     qualified.sort(key=lambda x: (x["ev"], x["market_edge"], x["model_probability"]), reverse=True)
-    qualified = qualified[:MAX_PICKS]
+    # Publish every candidate that passes all KING V2 gates; no daily count cap.
 
     feed = core.load_json(core.FEED_PATH, {"today": [], "history": []})
     feed.update({
@@ -259,6 +259,7 @@ def selection(date_str):
             "recent_sample_min_each": MIN_RECENT,
         },
         "transition_notes": [
+            "No daily pick-count cap: every candidate passing all KING V2 gates is published.",
             "Legacy confidence>=58%, edge>=12pt and odds>=1.70 gates retired for selection.",
             "Goaloo-equivalent underlying form is used until xG/SoT feeds are proven.",
             "Lineup/rest-rotation enrichment is not yet proven in the Goaloo collector and is explicitly flagged, not fabricated.",
@@ -277,7 +278,7 @@ def selection(date_str):
 def self_test():
     priced = fair_market({"home": 2.0, "draw": 3.5, "away": 4.0})
     assert priced and abs(sum(priced["fair"].values()) - 1.0) < 1e-9
-    assert MAX_PICKS == 2 and MIN_MARKET_EDGE == 0.05 and MIN_EV == 0.05 and MAX_ODDS == 3.0
+    assert MAX_PICKS is None and MIN_MARKET_EDGE == 0.05 and MIN_EV == 0.05 and MAX_ODDS == 3.0
     assert 1.25 <= MAX_ODDS
     print("the-king-v10-king-v2-goaloo-transition self-test OK")
 
