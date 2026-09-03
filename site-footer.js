@@ -100,10 +100,6 @@
 
   if (document.querySelector('.site-footer')) return;
 
-  const termsUrl = new URL('terms/', root).href;
-  const privacyUrl = new URL('privacy/', root).href;
-  const aboutUrl = new URL('about/', root).href;
-
   const socialUrls = {
     facebook: 'https://www.facebook.com/',
     x: 'https://x.com/'
@@ -120,12 +116,18 @@
       </div>
 
       <div class="site-footer__right">
-        <nav class="site-footer__links" aria-label="Legal and company information">
-          <a href="${termsUrl}">Copyright &amp; Terms</a>
+        <nav class="site-footer__links" aria-label="NOMADTIPS3 information pages">
+          <a href="https://www.nomadtips3.com/soccer-predictions/">Soccer Precictions</a>
           <span class="site-footer__divider" aria-hidden="true"></span>
-          <a href="${privacyUrl}">Privacy Policy</a>
+          <a href="https://www.nomadtips3.com/about/">About Us</a>
           <span class="site-footer__divider" aria-hidden="true"></span>
-          <a href="${aboutUrl}">About Us</a>
+          <a href="https://www.nomadtips3.com/user-guide/">User Guide</a>
+          <span class="site-footer__divider" aria-hidden="true"></span>
+          <a href="https://www.nomadtips3.com/privacy/">Privacy Policy</a>
+          <span class="site-footer__divider" aria-hidden="true"></span>
+          <a href="https://www.nomadtips3.com/terms/">Terms of Service</a>
+          <span class="site-footer__divider" aria-hidden="true"></span>
+          <a href="https://www.nomadtips3.com/disclaimer/">Disclaimer</a>
         </nav>
 
         <nav class="site-footer__socials" aria-label="NOMADTIPS3 social media">
