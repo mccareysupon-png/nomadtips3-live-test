@@ -31,6 +31,9 @@ jobs:
       - name: Settle verified pending picks — Goaloo direct index
         run: python3 .github/scripts/the_king_engine_v9.py settle
 
+      - name: Settle remaining verified picks — Goaloo page fallback
+        run: python3 .github/scripts/the_king_settlement_fallback.py
+
       - name: Publish verified results
         shell: bash
         run: |
