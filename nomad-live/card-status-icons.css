@@ -1,60 +1,105 @@
-/* Page 1 PC collapsed-card state icon.
-   Presentation only: reuse the existing toolbar sprite and real row state.
-   Scope: desktop/PC >=1025px only. No feed/detector/odds/signal logic changes.
-   Rollback: rollback-notes/page1-pc-state-icon-scan2-20260903.md */
+/* Page 1 match-card state icons — all devices.
+   Presentation only: reuse the exact toolbar sprite and real row state.
+   Mapping is shared everywhere: WATCHING -> Watching, NEAR SIGNAL -> Near,
+   SIGNAL / LOCKED -> Signal. ALL remains a filter only, never a match state.
+   No feed, detector, odds, signal, or engine logic changes.
+   Rollback blob before all-device pass: 10e0e52a7bf44fd84c660f7f3fdbb320731622e1 */
 
+.match-wrap > .match-row .statebox::before{
+  content:"";
+  display:none;
+  width:26px;
+  height:26px;
+  flex:0 0 26px;
+  background-color:transparent!important;
+  background-image:url("assets/icons/vintage-toolbar-independent.webp");
+  background-repeat:no-repeat;
+  background-size:800% 100%;
+  background-position:center;
+  opacity:.90;
+  filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 2px rgba(255,255,255,.10));
+  animation:nomadCardStateSlowPulse 3.4s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* Keep the real state text in the DOM for runtime/accessibility, but use one visual icon only. */
+.match-wrap > .match-row .statebox .state{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  padding:0!important;
+  margin:-1px!important;
+  overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;
+  border:0!important;
+}
+
+.match-wrap > .match-row .statebox .minute,
+.match-wrap > .match-row .statebox .status-meter-icon,
+.match-wrap > .match-row .statebox .watch-pulse{
+  display:none!important;
+}
+
+/* Exact sprite order shared with the toolbar:
+   All 0%, Signal 14.2857%, Near 28.5714%, Watching 42.8571%. */
+.match-wrap[data-state="WATCHING"] > .match-row .statebox::before{
+  display:block;
+  background-position:42.8571% 50%;
+}
+
+.match-wrap[data-state="NEAR SIGNAL"] > .match-row .statebox::before{
+  display:block;
+  background-position:28.5714% 50%;
+}
+
+.match-wrap[data-state="SIGNAL"] > .match-row .statebox::before,
+.match-wrap[data-signal-status="LOCKED"] > .match-row .statebox::before{
+  display:block;
+  background-position:14.2857% 50%;
+}
+
+/* Device-fit only; artwork and mapping never change. */
 @media (min-width:1025px){
-  .match-wrap:not([open]) > .match-row .statebox::before{
-    content:"";
-    display:none;
+  .match-wrap > .match-row .statebox::before{
     width:30px;
     height:30px;
-    flex:0 0 30px;
-    background-image:url("assets/icons/vintage-toolbar-independent.webp");
-    background-repeat:no-repeat;
-    background-size:800% 100%;
-    background-position:center;
-    opacity:.90;
-    filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 2px rgba(255,255,255,.10));
-    animation:nomadCardStateSlowPulse 3.4s ease-in-out infinite;
-    pointer-events:none;
+    flex-basis:30px;
   }
+}
 
-  /* Same sprite positions used by the Page 1 submenu icons:
-     Signal 14.2857%, Near 28.5714%, Watching 42.8571%. */
-  .match-wrap:not([open])[data-state="WATCHING"] > .match-row .statebox::before{
-    display:block;
-    background-position:42.8571% 50%;
+@media (max-width:700px){
+  .match-wrap > .match-row .statebox::before{
+    width:24px;
+    height:24px;
+    flex-basis:24px;
   }
+}
 
-  .match-wrap:not([open])[data-state="NEAR SIGNAL"] > .match-row .statebox::before{
-    display:block;
-    background-position:28.5714% 50%;
+@media (max-width:360px){
+  .match-wrap > .match-row .statebox::before{
+    width:22px;
+    height:22px;
+    flex-basis:22px;
   }
+}
 
-  .match-wrap:not([open])[data-state="SIGNAL"] > .match-row .statebox::before,
-  .match-wrap:not([open])[data-signal-status="LOCKED"] > .match-row .statebox::before{
-    display:block;
-    background-position:14.2857% 50%;
+@keyframes nomadCardStateSlowPulse{
+  0%,100%{
+    opacity:.82;
+    filter:brightness(.98) saturate(1.02) drop-shadow(0 0 1px rgba(255,255,255,.08));
+    transform:scale(1);
   }
-
-  @keyframes nomadCardStateSlowPulse{
-    0%,100%{
-      opacity:.82;
-      filter:brightness(.98) saturate(1.02) drop-shadow(0 0 1px rgba(255,255,255,.08));
-      transform:scale(1);
-    }
-    50%{
-      opacity:1;
-      filter:brightness(1.20) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24));
-      transform:scale(1.035);
-    }
+  50%{
+    opacity:1;
+    filter:brightness(1.20) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24));
+    transform:scale(1.035);
   }
+}
 
-  @media (prefers-reduced-motion:reduce){
-    .match-wrap:not([open]) > .match-row .statebox::before{
-      animation-duration:5.2s;
-      transform:none;
-    }
+@media (prefers-reduced-motion:reduce){
+  .match-wrap > .match-row .statebox::before{
+    animation-duration:5.2s;
+    transform:none;
   }
 }
