@@ -1,0 +1,66 @@
+name: Build NOMADTIPS3 Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'android-app/**'
+      - '.github/workflows/build-nomadtips3-android.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Ensure Android SDK 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+
+      - name: Build signed debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p android-app :app:assembleDebug --stacktrace
+          cp android-app/app/build/outputs/apk/debug/app-debug.apk NOMADTIPS3-v1.0.0.apk
+          test -s NOMADTIPS3-v1.0.0.apk
+          sha256sum NOMADTIPS3-v1.0.0.apk > NOMADTIPS3-v1.0.0.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NOMADTIPS3-Android-v1.0.0
+          path: |
+            NOMADTIPS3-v1.0.0.apk
+            NOMADTIPS3-v1.0.0.apk.sha256
+          retention-days: 30
+
+      - name: Publish Android APK release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-v1.0.0
+          name: NOMADTIPS3 Android v1.0.0
+          body: |
+            NOMADTIPS3 Android direct-install build.
+            Opens the official https://www.nomadtips3.com/ interface in a dedicated Android app shell.
+          files: |
+            NOMADTIPS3-v1.0.0.apk
+            NOMADTIPS3-v1.0.0.apk.sha256
+          make_latest: true
+          fail_on_unmatched_files: true
