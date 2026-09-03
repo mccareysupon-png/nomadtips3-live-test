@@ -1,0 +1,37 @@
+name: Telegram Signal Bridge CI
+
+on:
+  push:
+    branches:
+      - work/telegram-signal-bridge-20260903
+    paths:
+      - 'telegram-membership/**'
+      - '.github/workflows/telegram-signal-bridge-ci.yml'
+  pull_request:
+    paths:
+      - 'telegram-membership/**'
+      - '.github/workflows/telegram-signal-bridge-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signal-bridge-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test Signal Bridge contract
+        working-directory: telegram-membership/worker
+        run: npm test
+      - name: Verify no Telegram secret is committed
+        run: |
+          ! grep -RInE 'bot[0-9]{8,}:[A-Za-z0-9_-]{20,}' telegram-membership
+      - name: Verify PENDING_PAYMENT delivery guard exists
+        run: |
+          grep -q "PENDING_PAYMENT" telegram-membership/worker/src/index.js
+          grep -q "status = 'ACTIVE'" telegram-membership/worker/src/index.js
