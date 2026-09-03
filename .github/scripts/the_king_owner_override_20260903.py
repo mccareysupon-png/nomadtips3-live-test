@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """Owner one-day threshold override for 2026-09-03.
 
-For this date only, use the proven Goaloo fixture/H2H/1X2 collector and the
-Goaloo composite probability model, but make the owner's requested thresholds
-the active publication gates:
+For this date only, use the Goaloo fixture/H2H/1X2 collector and composite
+probability model, with the owner's requested publication thresholds:
 
 - selected 1X2 winner probability >= 40%
 - selected-side decimal odds >= 1.88
 - no daily pick-count cap
 
-The normal KING V2 hard value/underlying gates and the legacy v9 58%/12pt gate
-are NOT publication gates for this one-day run. Structural source checks remain
-so every published record is measurable and keeps a Goaloo id for the normal
-settlement/history flow. Other dates continue through the normal KING V2 engine.
+Keep the current structural safety guards: at least 8 recent matches per side,
+a valid Goaloo 1X2 price, non-draw winner side, and the existing beta odds
+safety ceiling of 3.00. KING V2 underlying/market-edge/EV hard gates and the
+legacy v9 58%/12pt gate are not publication gates for this one-day run.
+Other dates continue through the normal KING V2 engine.
 """
 import argparse
 import json
@@ -26,8 +26,9 @@ import the_king_engine_v10 as v10
 OVERRIDE_DATE = "2026-09-03"
 MIN_CONFIDENCE = 0.40
 MIN_ODDS = 1.88
+MAX_ODDS = v10.MAX_ODDS
 MAX_PICKS = None
-MIN_RECENT = 5
+MIN_RECENT = v10.MIN_RECENT
 ENGINE = "the-king-owner-override-20260903-goaloo-composite"
 POLICY = "OWNER_ONE_DAY_THRESHOLD_OVERRIDE"
 OVERRIDE_NAME = "OWNER_ONE_DAY_2026-09-03"
@@ -39,6 +40,8 @@ def _override_meta():
         "date": OVERRIDE_DATE,
         "minimum_confidence": MIN_CONFIDENCE,
         "minimum_odds": MIN_ODDS,
+        "maximum_odds_safety": MAX_ODDS,
+        "recent_sample_min_each": MIN_RECENT,
         "max_picks": MAX_PICKS,
         "scope": "ONE_DAY_ONLY",
         "normal_engine_after_date": v10.ENGINE,
@@ -108,6 +111,13 @@ def analyse_owner(row, date_str, odds_map):
             "required": MIN_ODDS,
             "confidence": round(confidence, 4),
         }
+    if locked > MAX_ODDS:
+        return None, {
+            "reason": "ODDS_SAFETY_MAX",
+            "odds": round(locked, 2),
+            "maximum": MAX_ODDS,
+            "confidence": round(confidence, 4),
+        }
 
     priced = v10.fair_market(market)
     market_fair_probability = None
@@ -149,6 +159,7 @@ def analyse_owner(row, date_str, odds_map):
             "goaloo_1x2_market": "PASS",
             "owner_confidence_min": "PASS",
             "owner_odds_min": "PASS",
+            "odds_safety_max": "PASS",
             "owner_daily_cap": "UNLIMITED",
             "king_v2_underlying": "NOT_A_GATE_TODAY",
             "king_v2_market_edge": "INFO_ONLY_TODAY",
@@ -202,7 +213,7 @@ def selection(date_str):
         key=lambda x: (float(x.get("confidence") or 0), float(x.get("odds") or 0)),
         reverse=True,
     )
-    # No slice here: the owner explicitly requested unlimited qualified picks.
+    # No slice: owner explicitly requested unlimited qualified picks today.
     near.sort(
         key=lambda x: (float(x.get("confidence") or 0), float(x.get("odds") or 0)),
         reverse=True,
@@ -236,7 +247,7 @@ def selection(date_str):
         "max_daily_picks": MAX_PICKS,
         "no_pick": len(qualified) == 0,
         "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-        "decision_layer": "Owner one-day Goaloo composite threshold override",
+        "decision_layer": "Owner one-day Goaloo composite threshold override with current safety guards",
         "selection_override": _override_meta(),
         "rejected": max(0, len(fixtures) - len(qualified)),
         "rejection_reasons": dict(reasons),
@@ -246,6 +257,7 @@ def selection(date_str):
         "policy_limits": {
             "confidence_min": MIN_CONFIDENCE,
             "minimum_odds": MIN_ODDS,
+            "maximum_odds_safety": MAX_ODDS,
             "max_daily_picks": MAX_PICKS,
             "recent_sample_min_each": MIN_RECENT,
             "draw_main_pick": "REJECT",
@@ -257,9 +269,9 @@ def selection(date_str):
         },
         "transition_notes": [
             "Owner one-day override applies only on 2026-09-03.",
-            "Active publication gates today: selected winner probability >=40% and selected-side odds >=1.88.",
+            "Active owner publication thresholds today: selected winner probability >=40% and selected-side odds >=1.88.",
             "No daily pick-count cap today.",
-            "Goaloo source identity, minimum model sample and a valid selected-side 1X2 price remain required so settlement can stay automatic.",
+            "Current structural guards stay active: >=8 recent matches per team, valid Goaloo 1X2, non-draw side and beta odds safety ceiling <=3.00.",
             "KING V2 underlying/market-edge/EV hard gates and legacy v9 58%/12pt eligibility are bypassed for this date only.",
             "Scheduled selections on all other dates continue through the normal KING V2 engine.",
         ],
@@ -291,8 +303,9 @@ def self_test():
     assert OVERRIDE_DATE == "2026-09-03"
     assert MIN_CONFIDENCE == 0.40
     assert MIN_ODDS == 1.88
+    assert MAX_ODDS == 3.00
     assert MAX_PICKS is None
-    assert MIN_RECENT == 5
+    assert MIN_RECENT == 8
     assert v10.MAX_PICKS == 2
     print("the-king-owner-override-20260903 self-test OK")
 
@@ -300,8 +313,8 @@ def self_test():
 def main():
     p = argparse.ArgumentParser()
     sp = p.add_subparsers(dest="cmd", required=True)
-    s = sp.add_parser("select")
-    s.add_argument("--date", required=True)
+    select_parser = sp.add_parser("select")
+    select_parser.add_argument("--date", required=True)
     sp.add_parser("self-test")
     args = p.parse_args()
     if args.cmd == "select":
