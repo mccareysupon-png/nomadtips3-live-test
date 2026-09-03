@@ -32,9 +32,14 @@
     .king-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;align-items:stretch!important;}
     .king-preview-card.king-full-card{cursor:default!important;padding:14px!important;display:flex!important;flex-direction:column!important;min-height:100%;overflow:hidden!important;}
     .king-preview-card.king-full-card:after{opacity:1;border-color:rgba(255,255,255,.045);box-shadow:none;}
-    .king-full-card .king-preview-top{margin-bottom:10px!important;}
-    .king-full-context{display:block;margin-top:3px;color:#69736c;font-size:7px;font-weight:800;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
-    .king-full-card .king-preview-match{min-height:58px!important;}
+    .king-full-card .king-preview-top{margin-bottom:8px!important;}
+    .king-full-meta{display:grid;grid-template-columns:110px 82px minmax(0,1fr);gap:1px;margin-bottom:11px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;}
+    .king-full-meta>div{background:#151a16;padding:7px 8px;min-width:0;}
+    .king-full-meta span{display:block;color:#717b74;font-size:7px;font-weight:900;letter-spacing:.05em;}
+    .king-full-meta b{display:block;margin-top:3px;color:#d8ddd9;font-size:9px;line-height:1.25;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .king-full-meta .league b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+    .king-full-card .king-preview-match{min-height:62px!important;}
+    .king-full-card .king-preview-shirt{width:42px!important;height:42px!important;flex:0 0 42px!important;}
     .king-full-card .king-preview-pick{margin-top:10px!important;padding-top:9px!important;border-top:1px solid rgba(255,255,255,.05);}
     .king-full-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:10px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;}
     .king-full-summary>div{background:#151a16;padding:8px 7px;min-width:0;}
@@ -61,6 +66,9 @@
     @media(max-width:699px){
       .king-preview-grid{grid-template-columns:1fr!important;gap:8px!important;}
       .king-preview-card.king-full-card{padding:12px!important;}
+      .king-full-meta{grid-template-columns:1fr 1fr;}
+      .king-full-meta .league{grid-column:1/-1;}
+      .king-full-card .king-preview-shirt{width:38px!important;height:38px!important;flex-basis:38px!important;}
       .king-full-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
       .king-full-details{grid-template-columns:repeat(2,minmax(0,1fr));}
       .king-full-qualified{padding-top:9px;}
@@ -103,7 +111,7 @@
   };
 
   const shirtSvg = (def, seed) => {
-    const shape = 'M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z';
+    const shape = 'M21 7 27 4h10l6 3 14 8-5 12-7 4v37H19V23l-7 4-5-12Z';
     const a = (seed % 13) + 2;
     const b = (seed % 7) + 3;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="c"><path d="${shape}"/></clipPath><linearGradient id="shade" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".20"/><stop offset=".45" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#000" stop-opacity=".30"/></linearGradient><pattern id="grain" width="${a}" height="${b}" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".45" fill="#fff" opacity=".055"/></pattern></defs><g clip-path="url(#c)"><rect width="64" height="64" fill="${def.base}"/>${patternMarkup(def.pattern,def.secondary,def.accent)}<rect width="64" height="64" fill="url(#shade)"/><rect width="64" height="64" fill="url(#grain)"/></g><path d="${shape}" fill="none" stroke="#090a08" stroke-width="1.8" stroke-linejoin="round"/><path d="${shape}" fill="none" stroke="${def.accent}" stroke-opacity=".52" stroke-width=".72"/><path d="M27 5 32 12 37 5" fill="#11130f" stroke="${def.accent}" stroke-width="1.05"/></svg>`;
@@ -111,11 +119,12 @@
 
   const shirtUri = (def, seed) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(shirtSvg(def,seed))}`;
 
-  const kickoffLabel = value => {
+  const kickoffParts = value => {
     const raw = String(value || '').trim();
-    if (!raw) return '';
+    if (!raw) return {date:'—', time:'—'};
     const m = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
-    return m ? `${m[1]} · ${m[2]}` : raw;
+    if (!m) return {date:raw, time:'—'};
+    return {date:m[1], time:m[2]};
   };
 
   const probRow = (label, value, selected) => {
@@ -136,12 +145,19 @@
     const quality = pick.data_quality || {};
     const selectedProb = pick.model_probability ?? (selected === 'AWAY' ? model.away_win : model.home_win);
     const status = String(pick.result || 'PENDING').toUpperCase();
-    const context = [clean(pick.league), kickoffLabel(pick.kickoff)].filter(Boolean).join(' · ');
+    const kickoff = kickoffParts(pick.kickoff);
+    const league = clean(pick.league) || '—';
 
     return `<article class="king-preview-card king-full-card">
       <div class="king-preview-top">
-        <div><span class="king-preview-rank">TOP PICK · ${String(index+1).padStart(2,'0')}</span><span class="king-full-context">${esc(context || 'FULL-TIME 1X2')}</span></div>
+        <span class="king-preview-rank">TOP PICK · ${String(index+1).padStart(2,'0')}</span>
         <span class="king-preview-market">FULL-TIME · 1X2</span>
+      </div>
+
+      <div class="king-full-meta">
+        <div><span>DATE</span><b>${esc(kickoff.date)}</b></div>
+        <div><span>TIME</span><b>${esc(kickoff.time)}</b></div>
+        <div class="league"><span>LEAGUE</span><b>${esc(league)}</b></div>
       </div>
 
       <div class="king-preview-match">
