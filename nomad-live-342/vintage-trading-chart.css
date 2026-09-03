@@ -1,0 +1,42 @@
+/* NOMADTIPS3 Page 2 Vintage Trading Chart.
+   Display-only layer: does not change feed, graph points, scale, Event Gate or engine logic. */
+body[data-vintage-chart-page="page2"] .event-compact.vtc-host{position:relative}
+
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-grid-extra{pointer-events:none}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-grid-extra line{stroke:rgba(126,132,128,.24);stroke-width:.18;vector-effect:non-scaling-stroke;shape-rendering:crispEdges}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-grid-extra .vtc-grid-major{stroke:rgba(137,143,139,.31);stroke-width:.22}
+
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-area{pointer-events:none;opacity:.86}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-line{stroke-width:.48!important;opacity:.98!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-home{filter:drop-shadow(0 0 .9px color-mix(in srgb,var(--vtc-home,#8fb783) 58%,transparent))!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-away{filter:drop-shadow(0 0 .8px color-mix(in srgb,var(--vtc-away,#c1a56d) 52%,transparent))!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .vtc-area,
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .vtc-candles,
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .vtc-candles{display:none}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-candle .vtc-area,
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-candle .attack-line,
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-candle .attack-endpoint{opacity:0!important}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-candles{pointer-events:none}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-candle-wick{stroke-width:.32;vector-effect:non-scaling-stroke;opacity:.9}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-candle-body{stroke-width:.28;vector-effect:non-scaling-stroke}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-candle-body.is-rise{fill-opacity:.72}
+body[data-vintage-chart-page="page2"] .attack-chart .vtc-candle-body.is-fall{fill-opacity:.12}
+
+body[data-vintage-chart-page="page2"] .vtc-control{position:absolute;z-index:12;display:flex;justify-content:flex-end;pointer-events:auto}
+body[data-vintage-chart-page="page2"] .vtc-settings-toggle{width:24px;height:22px;padding:0;border:1px solid rgba(139,148,142,.34);border-radius:4px;background:rgba(5,8,7,.86);color:#9ea69f;font:700 11px/1 Arial,sans-serif;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.28)}
+body[data-vintage-chart-page="page2"] .vtc-settings-toggle:hover,
+body[data-vintage-chart-page="page2"] .vtc-settings-toggle[aria-expanded="true"]{color:#d0b97c;border-color:rgba(192,165,109,.58)}
+body[data-vintage-chart-page="page2"] .vtc-settings-panel{position:absolute;top:26px;right:0;width:172px;padding:6px;border:1px solid rgba(139,148,142,.34);border-radius:5px;background:rgba(7,10,9,.96);box-shadow:0 7px 20px rgba(0,0,0,.42);color:#9ba39d}
+body[data-vintage-chart-page="page2"] .vtc-settings-panel[hidden]{display:none}
+body[data-vintage-chart-page="page2"] .vtc-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+body[data-vintage-chart-page="page2"] .vtc-mode-button{min-width:0;padding:4px 2px;border:1px solid rgba(124,134,127,.27);border-radius:3px;background:#0b0f0d;color:#7f8982;font:800 6px/1 Arial,sans-serif;letter-spacing:.04em;cursor:pointer}
+body[data-vintage-chart-page="page2"] .vtc-mode-button.is-active{color:#d2bd82;border-color:rgba(194,168,108,.55);background:rgba(92,77,42,.20)}
+body[data-vintage-chart-page="page2"] .vtc-color-row{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
+body[data-vintage-chart-page="page2"] .vtc-color-field{display:grid;grid-template-columns:auto 22px;align-items:center;gap:4px;font:800 6px/1 Arial,sans-serif;letter-spacing:.04em;color:#768079}
+body[data-vintage-chart-page="page2"] .vtc-color-field input{width:22px;height:16px;padding:0;border:0;background:transparent;cursor:pointer}
+body[data-vintage-chart-page="page2"] .vtc-settings-note{margin-top:5px;font:700 5.5px/1.25 Arial,sans-serif;color:#616b64}
+
+@media(max-width:760px){
+  body[data-vintage-chart-page="page2"] .vtc-settings-toggle{width:22px;height:20px;font-size:10px}
+  body[data-vintage-chart-page="page2"] .vtc-settings-panel{top:24px;width:160px}
+}
