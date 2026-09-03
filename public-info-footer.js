@@ -28,8 +28,9 @@
      Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
 
+  const predictionsHref=signalPath?'https://www.nomadtips3.com/prediction2':new URL('soccer-predictions/',root).href;
   const links=[
-    ['Soccer Precictions',new URL('soccer-predictions/',root).href],
+    ['Soccer Precictions',predictionsHref],
     ['About Us',new URL('about/',root).href],
     ['User Guide',new URL('user-guide/',root).href],
     ['Privacy Policy',new URL('privacy/',root).href],
