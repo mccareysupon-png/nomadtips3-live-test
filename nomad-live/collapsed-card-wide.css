@@ -1,7 +1,7 @@
 /* NOMAD Live 3.41 — Page 1 desktop collapsed-card repair.
    Scope: PC only (>=1025px). Presentation only.
    Do not alter tablet/mobile, feed, odds, detector, signal, or engine logic.
-   Rollback: rollback-notes/page1-pc-human-layout-fix-20260903.md */
+   Rollback: rollback-notes/page1-pc-state-icon-scan2-20260903.md */
 
 @media (min-width:1025px){
   /* Human-readable team block: shirt | name | score, same order for HOME and AWAY. */
@@ -84,17 +84,50 @@
     display:none!important;
   }
 
-  /* Four clean reading zones: MATCH | TIME | DETECTOR | MARKET. */
+  /* Original reading order restored: STATUS | MATCH | TIME | STATS | MARKET | CHECKS.
+     Widths are sized to fit the lower edge of PC range without forcing the team block to clip. */
   .match-wrap:not([open]) > .match-row{
-    grid-template-columns:minmax(340px,1.28fr) 92px minmax(240px,.88fr) minmax(330px,1.12fr)!important;
-    grid-template-rows:auto auto!important;
-    grid-template-areas:
-      'match score stats market'
-      'match score cond market'!important;
-    column-gap:16px!important;
-    row-gap:6px!important;
+    grid-template-columns:58px minmax(260px,1.25fr) 76px minmax(180px,.78fr) minmax(250px,1.05fr) 58px!important;
+    grid-template-rows:auto!important;
+    grid-template-areas:'state match score stats market cond'!important;
+    column-gap:10px!important;
+    row-gap:0!important;
     align-items:center!important;
     padding:14px!important;
+  }
+
+  /* Far-left status zone. The real text stays in the DOM for semantics,
+     while the visible status is the matching submenu icon from card-status-icons.css. */
+  .match-wrap:not([open]) > .match-row .statebox{
+    grid-area:state!important;
+    position:relative!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    min-width:0!important;
+    min-height:62px!important;
+    padding-right:10px!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox .state{
+    position:absolute!important;
+    width:1px!important;
+    height:1px!important;
+    padding:0!important;
+    margin:-1px!important;
+    overflow:hidden!important;
+    clip:rect(0,0,0,0)!important;
+    white-space:nowrap!important;
+    border:0!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox .minute,
+  .match-wrap:not([open]) > .match-row .statebox .status-meter-icon,
+  .match-wrap:not([open]) > .match-row .statebox .watch-pulse{
+    display:none!important;
   }
 
   .match-wrap:not([open]) > .match-row .match-main{
@@ -104,7 +137,7 @@
     display:flex!important;
     flex-direction:column!important;
     justify-content:center!important;
-    padding-right:14px!important;
+    padding-right:10px!important;
     border-right:1px solid rgba(255,255,255,.08)!important;
   }
 
@@ -117,12 +150,12 @@
     white-space:nowrap!important;
   }
 
-  /* Team rows already carry the score, so central block shows time only. */
+  /* Per-team rows already carry 1 / 1, so this column is time only. */
   .match-wrap:not([open]) > .match-row .score{
     grid-area:score!important;
     min-width:0!important;
     min-height:62px!important;
-    padding:0 12px!important;
+    padding:0 8px!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
@@ -152,27 +185,13 @@
     height:11px!important;
   }
 
-  /* Redundant WATCHING label/meter is hidden only in this collapsed PC card.
-     State logic remains in the DOM and continues to drive detector behavior. */
-  .match-wrap:not([open]) > .match-row .statebox{
-    display:none!important;
-  }
-
   .match-wrap:not([open]) > .match-row .quick{
     grid-area:stats!important;
     min-width:0!important;
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
     gap:6px!important;
-    padding-right:14px!important;
+    padding-right:10px!important;
     border-right:1px solid rgba(255,255,255,.08)!important;
-  }
-
-  .match-wrap:not([open]) > .match-row .cond{
-    grid-area:cond!important;
-    justify-self:start!important;
-    align-self:start!important;
-    min-width:58px!important;
-    margin:0!important;
   }
 
   .match-wrap:not([open]) > .match-row .market{
@@ -181,10 +200,18 @@
     align-self:stretch!important;
     display:flex!important;
     align-items:center!important;
-    padding-left:2px!important;
+    padding:0 2px 0 0!important;
   }
 
   .match-wrap:not([open]) > .match-row .market .price-stack{
     width:100%!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .cond{
+    grid-area:cond!important;
+    justify-self:end!important;
+    align-self:center!important;
+    min-width:58px!important;
+    margin:0!important;
   }
 }
