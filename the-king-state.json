@@ -2,40 +2,30 @@
   "engine": "the-king-v10-king-v2-goaloo-transition",
   "policy": "KING_V2_BETA",
   "status": "OK",
-  "last_selection_run": "2026-09-03T06:18:41Z",
+  "last_selection_run": "2026-09-03T09:46:18Z",
   "last_settlement_run": "2026-09-03T05:54:41Z",
   "selection_date": "2026-09-03",
   "fixtures_seen": 148,
   "qualified": 0,
   "pending": 0,
-  "max_daily_picks": 2,
+  "max_daily_picks": null,
   "no_pick": true,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "decision_layer": "KING V2 value-first transition",
+  "decision_layer": "KING V2 + owner one-day override",
+  "selection_override": {
+    "name": "OWNER_ONE_DAY_2026-09-03",
+    "date": "2026-09-03",
+    "minimum_confidence": 0.4,
+    "minimum_odds": 1.88,
+    "max_picks": null,
+    "scope": "ONE_DAY_ONLY"
+  },
   "rejected": 148,
   "rejection_reasons": {
-    "DATA_QUALITY_RECENT_SAMPLE": 44,
-    "UNDERLYING_PERFORMANCE": 104
+    "UNDERLYING_PERFORMANCE": 104,
+    "DATA_QUALITY_RECENT_SAMPLE": 44
   },
   "rejection_samples": [
-    {
-      "match": "Howlers SC vs Sikkim Himalayan SC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 7,
-      "away_n": 8
-    },
-    {
-      "match": "Coal India vs Suruchi Sangha",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 9,
-      "away_n": 7
-    },
-    {
-      "match": "Kalighat Sports Lovers vs Aryan",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
-      "home_n": 7,
-      "away_n": 7
-    },
     {
       "match": "Sawmer SC vs Nangkiew Irat",
       "reason": "UNDERLYING_PERFORMANCE",
@@ -103,6 +93,68 @@
       "match": "Astana B vs FK Taraz",
       "reason": "UNDERLYING_PERFORMANCE",
       "underlying": null
+    },
+    {
+      "match": "FK MOIK Baku vs Shahdagh Qusar",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "Baku Sporting vs Karvan Evlakh",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "Qarabag Khankendi vs Sabail",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 1,
+      "away_n": 8
+    },
+    {
+      "match": "Kataka FC vs BUL FC",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 6,
+      "away_n": 8
+    },
+    {
+      "match": "Uhamiaji FC vs Chipukizi FC",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 8,
+      "away_n": 6
+    },
+    {
+      "match": "Black Sailor FC vs Wembe FC",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 5,
+      "away_n": 0
+    },
+    {
+      "match": "URA Kampala vs SC Villa",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "El Sekka El Hadid vs Maleyat Kafr El Zayat",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 7,
+      "away_n": 5
+    },
+    {
+      "match": "Dayrot vs Telecom Egypt",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 6,
+      "away_n": 9
+    },
+    {
+      "match": "El Mansoura vs Kahraba Ismailia",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 6,
+      "away_n": 9
+    },
+    {
+      "match": "Haras El Hedoud vs El Entag Al Harby",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     }
   ],
   "near_gate_top": [],
@@ -110,23 +162,26 @@
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
     "odds_ok": true,
-    "index_rows": 221,
-    "odds_rows": 193,
+    "index_rows": 232,
+    "odds_rows": 204,
     "h2h_static_ok": 148,
     "h2h_browser_fallback": 0,
     "errors": []
   },
   "policy_limits": {
+    "confidence_min": 0.4,
+    "minimum_odds": 1.88,
+    "max_daily_picks": null,
     "market_edge_min": 0.05,
     "ev_min": 0.05,
     "odds_max": 3.0,
-    "minimum_odds": null,
     "underlying_required": "3/4",
     "recent_sample_min_each": 8
   },
   "transition_notes": [
-    "Legacy confidence>=58%, edge>=12pt and odds>=1.70 gates retired for selection.",
-    "Goaloo-equivalent underlying form is used until xG/SoT feeds are proven.",
-    "Lineup/rest-rotation enrichment is not yet proven in the Goaloo collector and is explicitly flagged, not fabricated."
+    "Owner one-day override applies only on 2026-09-03.",
+    "Confidence >= 40%, odds >= 1.88, no daily pick cap.",
+    "All existing KING V2 data-quality, competition, underlying 3/4, market-edge, EV and beta max-odds gates remain active.",
+    "Scheduled selections on other dates continue through the normal KING V2 engine."
   ]
 }
