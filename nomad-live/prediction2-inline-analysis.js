@@ -14,51 +14,14 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    .king-preview-grid{grid-template-columns:1fr!important;gap:7px!important;}
-    .king-preview-card{display:grid!important;grid-template-columns:112px minmax(0,1fr) 210px 116px;align-items:center;column-gap:14px;row-gap:0;min-height:76px;padding:10px 12px!important;border-radius:10px!important;}
-    .king-preview-card:before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:0 3px 3px 0;background:transparent;box-shadow:none;transition:background-color .18s ease,box-shadow .18s ease;pointer-events:none;}
-    .king-preview-card.is-active:before{background:var(--green);box-shadow:0 0 13px rgba(80,220,143,.52);}
-    .king-preview-top{margin:0!important;display:flex!important;flex-direction:column;align-items:flex-start!important;justify-content:center!important;gap:4px!important;min-width:0;}
-    .king-preview-rank{font-size:8px!important;white-space:nowrap;}
-    .king-preview-market{font-size:7px!important;white-space:nowrap;}
-    .king-row-context{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#68736b;font-size:7px;font-weight:800;letter-spacing:.035em;}
-    .king-preview-match{min-height:0!important;margin:0!important;gap:12px!important;}
-    .king-preview-side{gap:8px!important;}
-    .king-preview-shirt{width:34px!important;height:34px!important;flex-basis:34px!important;}
-    .king-preview-team{font-size:12px!important;}
-    .king-preview-pick{margin:0!important;padding:0 0 0 14px!important;border-left:1px solid rgba(255,255,255,.055);display:grid!important;grid-template-columns:minmax(0,1fr) 76px;align-items:center!important;gap:12px!important;}
-    .king-preview-pick b{font-size:13px!important;}
-    .king-preview-odds{min-width:70px;}
-    .king-preview-toggle{margin:0!important;padding:0 0 0 12px!important;border-top:0!important;border-left:1px solid rgba(255,255,255,.055);min-height:46px;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;color:#7f8982!important;font-size:8px!important;}
-    .king-preview-card.is-active .king-preview-toggle{color:var(--green)!important;}
-    .king-preview-card.is-active .king-preview-toggle i{transform:none!important;}
-    .king-preview-card.is-inline-expanded{overflow:hidden;background:linear-gradient(180deg,rgba(27,36,30,.995),rgba(15,21,17,.995));}
-    .king-inline-analysis{grid-column:1/-1;margin-top:10px;padding-top:12px;border-top:1px solid rgba(80,220,143,.20);cursor:default;animation:kingInlineIn .16s ease-out;}
-    .king-inline-analysis .king-analysis-head{padding-top:1px;}
+    .king-preview-card.is-inline-expanded{grid-column:1/-1;overflow:hidden;background:linear-gradient(180deg,rgba(27,36,30,.995),rgba(15,21,17,.995));}
+    .king-inline-analysis{margin-top:11px;padding-top:11px;border-top:1px solid rgba(80,220,143,.18);cursor:default;animation:kingInlineIn .16s ease-out;}
     .king-inline-analysis .king-analysis-grid{margin-top:2px;}
-    .king-inline-close{display:flex;align-items:center;justify-content:center;width:100%;margin:10px 0 0;padding:9px 10px;border:0;border-top:1px solid rgba(255,255,255,.05);background:transparent;color:var(--green);font:900 8px Arial,Helvetica,sans-serif;letter-spacing:.07em;cursor:pointer;}
+    .king-inline-close{display:flex;align-items:center;justify-content:center;width:100%;margin:10px 0 0;padding:8px 10px;border:0;border-top:1px solid rgba(255,255,255,.05);background:transparent;color:var(--green);font:900 8px Arial,Helvetica,sans-serif;letter-spacing:.07em;cursor:pointer;}
     .king-inline-close:hover{background:rgba(80,220,143,.035);}
     .king-inline-mode{color:var(--green);font-weight:900;}
     @keyframes kingInlineIn{from{opacity:.35;transform:translateY(-3px)}to{opacity:1;transform:translateY(0)}}
-    @media(hover:hover) and (pointer:fine){
-      .king-preview-card:hover .king-preview-toggle{color:var(--green)!important;}
-    }
-    @media(max-width:699px){
-      .king-preview-grid{gap:6px!important;}
-      .king-preview-card{grid-template-columns:minmax(0,1fr) 86px;column-gap:10px;row-gap:7px;min-height:0;padding:10px!important;}
-      .king-preview-card:before{top:8px;bottom:8px;}
-      .king-preview-top{grid-column:1/-1;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:7px!important;padding-bottom:6px;border-bottom:1px solid rgba(255,255,255,.045);}
-      .king-row-context{margin-left:auto;max-width:42%;text-align:right;}
-      .king-preview-market{display:none;}
-      .king-preview-match{grid-column:1/-1;gap:7px!important;}
-      .king-preview-shirt{width:32px!important;height:32px!important;flex-basis:32px!important;}
-      .king-preview-team{font-size:12px!important;}
-      .king-preview-pick{grid-column:1;padding:0!important;border-left:0!important;grid-template-columns:minmax(0,1fr) 66px;gap:8px!important;}
-      .king-preview-pick b{font-size:12px!important;}
-      .king-preview-toggle{grid-column:2;padding-left:8px!important;min-height:38px;font-size:7px!important;}
-      .king-inline-analysis{grid-column:1/-1;margin-top:2px;padding-top:10px;}
-      .king-inline-close{padding-bottom:7px;}
-    }
+    @media(max-width:699px){.king-preview-card.is-inline-expanded{grid-column:auto}.king-inline-analysis{margin-top:9px;padding-top:9px}.king-inline-close{padding-bottom:6px}}
     @media(prefers-reduced-motion:reduce){.king-inline-analysis{animation:none}}
   `;
   document.head.appendChild(style);
@@ -157,32 +120,8 @@
   function setToggle(card, open) {
     const label = card.querySelector('.king-preview-toggle span');
     const arrow = card.querySelector('.king-preview-toggle i');
-    const nextLabel = open ? 'CLOSE' : 'ANALYSIS';
-    const nextArrow = open ? '▴' : '▾';
-    if (label && label.textContent !== nextLabel) label.textContent = nextLabel;
-    if (arrow && arrow.textContent !== nextArrow) arrow.textContent = nextArrow;
-  }
-
-  function contextLabel(pick) {
-    const parts = [];
-    if (pick.league) parts.push(String(pick.league));
-    if (pick.kickoff) parts.push(String(pick.kickoff));
-    return parts.join(' · ');
-  }
-
-  function decorateCards() {
-    grid.querySelectorAll('.king-preview-card[data-auto-pick-index]').forEach(card => {
-      const index = Number(card.dataset.autoPickIndex);
-      const pick = picks[index];
-      if (!pick) return;
-      if (!card.querySelector('.king-row-context')) {
-        const context = document.createElement('span');
-        context.className = 'king-row-context';
-        context.textContent = contextLabel(pick) || 'FULL-TIME 1X2';
-        card.querySelector('.king-preview-top')?.appendChild(context);
-      }
-      if (activeIndex !== index) setToggle(card, false);
-    });
+    if (label) label.textContent = open ? 'CLOSE ANALYSIS' : 'VIEW ANALYSIS';
+    if (arrow) arrow.textContent = open ? '⌃' : '⌄';
   }
 
   function mutateWithAnchor(anchor, fn) {
@@ -260,17 +199,11 @@
     toggleCard(card);
   }, true);
 
-  const observer = new MutationObserver(decorateCards);
-  observer.observe(grid, {childList:true, subtree:false});
-
   fetch(`${FEED}?t=${Date.now()}`, {cache:'no-store'})
     .then(response => {
       if (!response.ok) throw new Error('feed unavailable');
       return response.json();
     })
-    .then(data => {
-      picks = Array.isArray(data.today) ? data.today : [];
-      decorateCards();
-    })
+    .then(data => { picks = Array.isArray(data.today) ? data.today : []; })
     .catch(() => { picks = []; });
 })();
