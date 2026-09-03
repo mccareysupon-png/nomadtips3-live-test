@@ -1,7 +1,7 @@
 /* NOMAD Live 3.41 — Page 1 desktop collapsed-card repair.
    Scope: PC only (>=1025px). Presentation only.
    Do not alter tablet/mobile, feed, odds, detector, signal, or engine logic.
-   Rollback: rollback-notes/page1-pc-state-icon-scan2-20260903.md */
+   Rollback blob before column-rhythm pass: 39e0522a8f4258c895858c4391ef9c9114313228 */
 
 @media (min-width:1025px){
   /* Human-readable team block: shirt | name | score, same order for HOME and AWAY. */
@@ -84,32 +84,58 @@
     display:none!important;
   }
 
-  /* Original reading order restored: STATUS | MATCH | TIME | STATS | MARKET | CHECKS.
-     Widths are sized to fit the lower edge of PC range without forcing the team block to clip. */
+  /* Reading order: STATUS | MATCH | TIME | STATS | MARKET | CHECKS. */
   .match-wrap:not([open]) > .match-row{
     grid-template-columns:58px minmax(260px,1.25fr) 76px minmax(180px,.78fr) minmax(250px,1.05fr) 58px!important;
     grid-template-rows:auto!important;
     grid-template-areas:'state match score stats market cond'!important;
     column-gap:10px!important;
     row-gap:0!important;
-    align-items:center!important;
+    align-items:stretch!important;
     padding:14px!important;
   }
 
-  /* Far-left status zone. The real text stays in the DOM for semantics,
-     while the visible status is the matching submenu icon from card-status-icons.css. */
+  /* Equal-height zones. Shading is intentionally subtle so the card reads as one surface,
+     not six separate boxes. Separators are drawn in the center of each grid gap. */
+  .match-wrap:not([open]) > .match-row .statebox,
+  .match-wrap:not([open]) > .match-row .match-main,
+  .match-wrap:not([open]) > .match-row .score,
+  .match-wrap:not([open]) > .match-row .quick,
+  .match-wrap:not([open]) > .match-row .market,
+  .match-wrap:not([open]) > .match-row .cond{
+    position:relative!important;
+    align-self:stretch!important;
+    min-height:62px!important;
+    border-right:0!important;
+    border-radius:7px!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox::after,
+  .match-wrap:not([open]) > .match-row .match-main::after,
+  .match-wrap:not([open]) > .match-row .score::after,
+  .match-wrap:not([open]) > .match-row .quick::after,
+  .match-wrap:not([open]) > .match-row .market::after{
+    content:"";
+    position:absolute;
+    top:9px;
+    bottom:9px;
+    right:-6px;
+    width:1px;
+    background:rgba(255,255,255,.07);
+    pointer-events:none;
+  }
+
+  /* STATUS — darkest quiet zone; the live state icon carries the emphasis. */
   .match-wrap:not([open]) > .match-row .statebox{
     grid-area:state!important;
-    position:relative!important;
     display:flex!important;
     flex-direction:column!important;
     align-items:center!important;
     justify-content:center!important;
     gap:0!important;
     min-width:0!important;
-    min-height:62px!important;
-    padding-right:10px!important;
-    border-right:1px solid rgba(255,255,255,.08)!important;
+    padding:0!important;
+    background:rgba(0,0,0,.045)!important;
   }
 
   .match-wrap:not([open]) > .match-row .statebox .state{
@@ -130,15 +156,15 @@
     display:none!important;
   }
 
+  /* MATCH — cleanest zone because team identity is the primary information. */
   .match-wrap:not([open]) > .match-row .match-main{
     grid-area:match!important;
     min-width:0!important;
-    align-self:stretch!important;
     display:flex!important;
     flex-direction:column!important;
     justify-content:center!important;
-    padding-right:10px!important;
-    border-right:1px solid rgba(255,255,255,.08)!important;
+    padding:0 10px 0 0!important;
+    background:transparent!important;
   }
 
   .match-wrap:not([open]) > .match-row .league{
@@ -150,16 +176,15 @@
     white-space:nowrap!important;
   }
 
-  /* Per-team rows already carry 1 / 1, so this column is time only. */
+  /* TIME — a slightly lifted gray lane. Per-team rows already carry the score. */
   .match-wrap:not([open]) > .match-row .score{
     grid-area:score!important;
     min-width:0!important;
-    min-height:62px!important;
     padding:0 8px!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
-    border-right:1px solid rgba(255,255,255,.08)!important;
+    background:rgba(255,255,255,.012)!important;
   }
 
   .match-wrap:not([open]) > .match-row .score .score-live-head,
@@ -185,33 +210,48 @@
     height:11px!important;
   }
 
+  /* STATS — medium gray grouping, still quieter than the market. */
   .match-wrap:not([open]) > .match-row .quick{
     grid-area:stats!important;
     min-width:0!important;
     grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    align-items:center!important;
     gap:6px!important;
-    padding-right:10px!important;
-    border-right:1px solid rgba(255,255,255,.08)!important;
+    padding:0 8px!important;
+    background:rgba(255,255,255,.022)!important;
   }
 
+  .match-wrap:not([open]) > .match-row .quick .q{
+    background:rgba(255,255,255,.025)!important;
+  }
+
+  /* MARKET — lightest gray lane, only enough to guide the eye toward price data. */
   .match-wrap:not([open]) > .match-row .market{
     grid-area:market!important;
     min-width:0!important;
-    align-self:stretch!important;
     display:flex!important;
     align-items:center!important;
-    padding:0 2px 0 0!important;
+    padding:0 8px!important;
+    background:rgba(255,255,255,.032)!important;
   }
 
   .match-wrap:not([open]) > .match-row .market .price-stack{
     width:100%!important;
   }
 
+  /* CHECKS — darker terminal zone to close the reading line. */
   .match-wrap:not([open]) > .match-row .cond{
     grid-area:cond!important;
-    justify-self:end!important;
-    align-self:center!important;
+    justify-self:stretch!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
     min-width:58px!important;
     margin:0!important;
+    padding:0 6px!important;
+    border:0!important;
+    background:rgba(0,0,0,.035)!important;
+    text-align:center!important;
   }
 }
