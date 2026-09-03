@@ -1,189 +1,132 @@
 {
-  "engine": "the-king-v9-manual-set2-goaloo",
+  "engine": "the-king-v10-king-v2-goaloo-transition",
+  "policy": "KING_V2_BETA",
   "status": "OK",
-  "last_selection_run": "2026-09-03T03:00:18Z",
+  "last_selection_run": "2026-09-03T06:18:41Z",
   "last_settlement_run": "2026-09-03T05:54:41Z",
   "selection_date": "2026-09-03",
-  "fixtures_seen": 157,
-  "qualified": 6,
-  "pending": 6,
+  "fixtures_seen": 148,
+  "qualified": 0,
+  "pending": 0,
+  "max_daily_picks": 2,
+  "no_pick": true,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "rejected": 151,
+  "decision_layer": "KING V2 value-first transition",
+  "rejected": 148,
   "rejection_reasons": {
-    "WINNER_FIRST_GATE": 103,
-    "NO_GOALOO_1X2_ODDS": 9,
-    "GOALOO_FORM_SHORT": 9,
-    "DRAW_NOT_MAIN_PICK": 2
+    "DATA_QUALITY_RECENT_SAMPLE": 44,
+    "UNDERLYING_PERFORMANCE": 104
   },
   "rejection_samples": [
     {
-      "match": "Club America<font color=#880000>(N)</font> vs Monterrey",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4249,
-      "edge": 0.1278,
-      "side": "home"
+      "match": "Howlers SC vs Sikkim Himalayan SC",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 7,
+      "away_n": 8
     },
     {
       "match": "Coal India vs Suruchi Sangha",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.534,
-      "edge": 0.2737,
-      "side": "away"
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 9,
+      "away_n": 7
     },
     {
       "match": "Kalighat Sports Lovers vs Aryan",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7628,
-      "edge": 0.5678
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 7,
+      "away_n": 7
     },
     {
       "match": "Sawmer SC vs Nangkiew Irat",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5018,
-      "edge": 0.2264,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "Akademiya Ontustik vs FK Aktobe II",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6155,
-      "edge": 0.4192
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "FK Arys vs Ekibastuzets",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5131,
-      "edge": 0.2604,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "FC Shakhtyor Karagandy vs Khan Tengri FC",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7499,
-      "edge": 0.5689
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 6,
+      "away_n": 9
     },
     {
       "match": "Guria Lanchkhuti vs FC Gonio",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.4602,
-      "edge": 0.1773,
-      "side": "away"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "FC Iberia 2010 vs Orbi",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 6,
+      "away_n": 9
     },
     {
       "match": "Margveti 2006 vs FC Merani Tbilisi",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.398,
-      "edge": 0.0573,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "Kolkheti 1913 Poti vs FC Didube",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.557,
-      "edge": 0.3342,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "Sabutaroti billisse B vs Dinamo Tbilisi II",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "Avia Swidnik vs KS Wieczysta Krakow",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.3898,
-      "edge": 0.0335,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     },
     {
       "match": "CD Maxaquene vs Ferroviario Beira",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5028,
-      "edge": 0.162,
-      "side": "home"
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
+    },
+    {
+      "match": "Salam Al Qarfa vs Al-Ahli Aden",
+      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "home_n": 9,
+      "away_n": 1
+    },
+    {
+      "match": "Astana B vs FK Taraz",
+      "reason": "UNDERLYING_PERFORMANCE",
+      "underlying": null
     }
   ],
-  "near_gate_top": [
-    {
-      "match": "Tobol Kostanai B vs Kairat Almaty II",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8044,
-      "edge": 0.673
-    },
-    {
-      "match": "Colo Colo (W) vs Deportes Iquique (W)",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7912,
-      "edge": 0.6453
-    },
-    {
-      "match": "Kalighat Sports Lovers vs Aryan",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7628,
-      "edge": 0.5678
-    },
-    {
-      "match": "Tzeirey Tira vs Sderot",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7531,
-      "edge": 0.5666
-    },
-    {
-      "match": "FC Shakhtyor Karagandy vs Khan Tengri FC",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7499,
-      "edge": 0.5689
-    },
-    {
-      "match": "UMF Vidir vs KV Reykjavik",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7271,
-      "edge": 0.5739
-    },
-    {
-      "match": "Ymir vs Reynir Sandgerdi",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.7135,
-      "edge": 0.5551
-    },
-    {
-      "match": "KH Hlidarendi vs Augnablik Kopavogur",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6761,
-      "edge": 0.4924
-    },
-    {
-      "match": "Akademiya Ontustik vs FK Aktobe II",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.6155,
-      "edge": 0.4192
-    },
-    {
-      "match": "El Sekka El Hadid vs Maleyat Kafr El Zayat",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5726,
-      "edge": 0.2737,
-      "side": "home"
-    },
-    {
-      "match": "Al Ahly SC vs Smouha SC",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5695,
-      "edge": 0.3116,
-      "side": "away"
-    },
-    {
-      "match": "FK Banga Gargzdai vs FK Panevezys",
-      "reason": "WINNER_FIRST_GATE",
-      "confidence": 0.5635,
-      "edge": 0.2955,
-      "side": "home"
-    }
-  ],
+  "near_gate_top": [],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 220,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 221,
+    "odds_rows": 193,
+    "h2h_static_ok": 148,
     "h2h_browser_fallback": 0,
     "errors": []
   },
-  "settled_this_run": 0
+  "policy_limits": {
+    "market_edge_min": 0.05,
+    "ev_min": 0.05,
+    "odds_max": 3.0,
+    "minimum_odds": null,
+    "underlying_required": "3/4",
+    "recent_sample_min_each": 8
+  },
+  "transition_notes": [
+    "Legacy confidence>=58%, edge>=12pt and odds>=1.70 gates retired for selection.",
+    "Goaloo-equivalent underlying form is used until xG/SoT feeds are proven.",
+    "Lineup/rest-rotation enrichment is not yet proven in the Goaloo collector and is explicitly flagged, not fabricated."
+  ]
 }
