@@ -1,4 +1,4 @@
-# KING_V2_ACTIVATED_2026-09-03
+# KING_DEFAULT_40_188_ACTIVATED_2026-09-04
 name: The King — 07:00 Selection Wheel
 
 on:
@@ -6,9 +6,8 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/scripts/the_king_engine_default.py'
       - '.github/scripts/the_king_engine_v10.py'
-      - '.github/scripts/the_king_owner_override_20260903.py'
-      - 'soccer-predictions/KING_V2_BETA_POLICY.md'
       - '.github/workflows/the-king-selection.yml'
       - '.github/workflows/the-king-settlement.yml'
   schedule:
@@ -18,7 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: the-king-selection-wheel-v10
+  group: the-king-selection-wheel-default-40-188
   cancel-in-progress: true
 
 jobs:
@@ -34,22 +33,18 @@ jobs:
       - name: Install scraper dependencies
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
-      - name: KING V2 engine self-test
+      - name: Default engine self-test
         run: |
           python3 .github/scripts/the_king_engine_v10.py self-test
-          python3 .github/scripts/the_king_owner_override_20260903.py self-test
+          python3 .github/scripts/the_king_engine_default.py self-test
 
-      - name: Run Thailand selection — Goaloo + KING V2
+      - name: Run Thailand selection — Goaloo default 40% / 1.88
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          if [ "$TARGET_DATE" = "2026-09-03" ]; then
-            echo 'Using owner one-day override: confidence>=40%, odds>=1.88, unlimited qualified picks.'
-            python3 .github/scripts/the_king_owner_override_20260903.py select --date "$TARGET_DATE"
-          else
-            python3 .github/scripts/the_king_engine_v10.py select --date "$TARGET_DATE"
-          fi
+          echo 'Using persistent owner default: confidence>=40%, odds>=1.88, odds<=3.00, recent>=8/team, non-draw, unlimited qualified picks.'
+          python3 .github/scripts/the_king_engine_default.py select --date "$TARGET_DATE"
 
       - name: Publish The King feed and health state
         shell: bash
@@ -59,10 +54,10 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add the-king-feed.json the-king-state.json
           if git diff --cached --quiet; then
-            echo 'No KING V2 selection-state change.'
+            echo 'No The King default selection-state change.'
             exit 0
           fi
-          git commit -m "The King KING V2 Goaloo selection $(TZ=Asia/Bangkok date +%F)"
+          git commit -m "The King default 40-188 Goaloo selection $(TZ=Asia/Bangkok date +%F)"
           for attempt in 1 2 3; do
             if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
             git rebase --abort 2>/dev/null || true
