@@ -1,0 +1,12 @@
+{
+  "name": "nomadtips3-telegram-signal-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "deploy": "wrangler deploy --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "4.120.0"
+  }
+}
