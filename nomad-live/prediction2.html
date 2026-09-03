@@ -22,14 +22,12 @@
     .king-verified{padding:3px 6px;border:1px solid rgba(243,198,35,.24);border-radius:5px;color:var(--yellow);font-size:8px;font-weight:900;letter-spacing:.06em;white-space:nowrap}
     .king-updated{color:var(--muted);font-size:9px;white-space:nowrap;padding-bottom:2px}
     .king-preview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 10px}
-    .king-preview-card{position:relative;overflow:hidden;min-width:0;background:linear-gradient(180deg,rgba(25,31,27,.98),rgba(17,21,18,.98));border:1px solid rgba(86,199,136,.16);border-radius:12px;padding:13px 13px 12px;box-shadow:0 10px 26px rgba(0,0,0,.16)}
-    .king-preview-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:rgba(86,199,136,.72)}
+    .king-preview-card{position:relative;overflow:hidden;min-width:0;background:linear-gradient(180deg,rgba(25,31,27,.98),rgba(17,21,18,.98));border:0;border-radius:12px;padding:13px 13px 12px;box-shadow:0 10px 26px rgba(0,0,0,.14)}
     .king-preview-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
-    .king-preview-rank{color:var(--yellow);font-size:8px;font-weight:900;letter-spacing:.08em}.king-preview-market{color:#7f8982;font-size:8px;font-weight:800;letter-spacing:.06em}
-    .king-preview-match{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px}.king-preview-team{flex:1;min-width:0;font-size:13px;font-weight:800;line-height:1.25;color:#f2f4f2}.king-preview-team.away{text-align:right}.king-preview-vs{color:#68716b;font-size:8px;font-weight:900;letter-spacing:.06em}
-    .king-preview-pick{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055)}
+    .king-preview-rank{color:#b8beb9;font-size:8px;font-weight:900;letter-spacing:.08em}.king-preview-market{color:#7f8982;font-size:8px;font-weight:800;letter-spacing:.06em}
+    .king-preview-match{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:54px}.king-preview-side{display:flex;align-items:center;gap:8px;flex:1;min-width:0}.king-preview-side.away{justify-content:flex-end}.king-preview-shirt{display:block;width:38px;height:38px;flex:0 0 38px}.king-preview-teamstack{min-width:0}.king-preview-teamstack.away{text-align:right}.king-preview-role{display:block;margin-bottom:2px;color:#69736c;font-size:7px;font-weight:900;letter-spacing:.08em}.king-preview-team{min-width:0;font-size:13px;font-weight:800;line-height:1.22;color:#f2f4f2}.king-preview-team.away{text-align:right}.king-preview-vs{color:#68716b;font-size:8px;font-weight:900;letter-spacing:.06em;flex:0 0 auto}
+    .king-preview-pick{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px;padding-top:6px}
     .king-preview-pick span{display:block;color:#77817a;font-size:8px;font-weight:800;letter-spacing:.06em}.king-preview-pick b{display:block;margin-top:3px;color:var(--green);font-size:14px;line-height:1.1}.king-preview-odds{text-align:right}.king-preview-odds b{color:#e7ebe8;font-variant-numeric:tabular-nums}
-    .king-preview-note{margin-top:9px;color:#717a74;font-size:8px;line-height:1.4}
     .king-scorebar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid rgba(255,255,255,.035);border-radius:10px;overflow:hidden;margin-bottom:8px}
     .king-scorebar .metric{background:#16191c;padding:8px 7px;min-width:0;text-align:left;border-radius:0;box-shadow:none}
     .king-scorebar span{display:block;color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.045em;white-space:nowrap}.king-scorebar b{display:block;margin-top:3px;font-size:17px;letter-spacing:-.25px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -40,7 +38,7 @@
     .king-panel-head{min-height:39px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}.king-panel-head>div{display:flex;align-items:baseline;gap:8px;min-width:0}.king-panel-head b{font-size:11px;letter-spacing:.025em}.king-panel-head small,.king-panel-head>span{color:var(--muted);font-size:9px;white-space:nowrap}
     .king-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.king-table{width:100%;min-width:640px;border-collapse:collapse;font-size:11px}.king-table th,.king-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}.king-table th{background:#171a1e;color:#858c95;font-size:8px;font-weight:800;letter-spacing:.045em}.king-table tbody tr:last-child td{border-bottom:0}.king-table td:first-child{font-weight:700}.king-vs{color:var(--muted);font-weight:400}.king-result{font-weight:900;letter-spacing:.02em}.king-result.win{color:var(--green)}.king-result.loss{color:var(--red)}.king-result.pending{color:var(--yellow)}.king-pl.positive{color:var(--green);font-weight:800}.king-pl.negative{color:var(--red);font-weight:800}
     .king-empty{padding:30px 12px;text-align:center;color:#717982;font-size:9px;font-weight:800;letter-spacing:.08em}.king-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}.king-rules div{background:#171a1e;padding:10px}.king-rules span{display:block;color:#7e858e;font-size:8px;font-weight:700;letter-spacing:.045em}.king-rules b{display:block;margin-top:4px;font-size:11px}.king-note{margin:0;padding:9px 10px;border-top:1px solid var(--line);color:#7f8790;font-size:9px;line-height:1.45}
-    @media(max-width:699px){.king-shell{padding:8px 8px 28px}.king-hero{align-items:flex-start;gap:10px}.king-hero h1{font-size:21px}.king-heading-line{align-items:flex-start;flex-direction:column;gap:5px}.king-updated{padding-top:4px}.king-preview-grid{grid-template-columns:1fr;gap:7px}.king-preview-card{padding:11px 11px 10px}.king-preview-match{min-height:42px}.king-preview-team{font-size:12px}.king-scorebar{grid-template-columns:repeat(4,1fr)}.king-scorebar .metric{padding:8px 6px}.king-scorebar b{font-size:15px}.king-tabs{gap:15px}.king-panel-head{padding:8px}.king-panel-head>div{display:block}.king-panel-head small{display:block;margin-top:2px}.king-table th,.king-table td{padding:8px 7px}.king-rules{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:699px){.king-shell{padding:8px 8px 28px}.king-hero{align-items:flex-start;gap:10px}.king-hero h1{font-size:21px}.king-heading-line{align-items:flex-start;flex-direction:column;gap:5px}.king-updated{padding-top:4px}.king-preview-grid{grid-template-columns:1fr;gap:7px}.king-preview-card{padding:11px 11px 10px}.king-preview-match{min-height:48px}.king-preview-side{gap:7px}.king-preview-shirt{width:34px;height:34px;flex-basis:34px}.king-preview-team{font-size:12px}.king-scorebar{grid-template-columns:repeat(4,1fr)}.king-scorebar .metric{padding:8px 6px}.king-scorebar b{font-size:15px}.king-tabs{gap:15px}.king-panel-head{padding:8px}.king-panel-head>div{display:block}.king-panel-head small{display:block;margin-top:2px}.king-table th,.king-table td{padding:8px 7px}.king-rules{grid-template-columns:repeat(2,1fr)}}
     @media(min-width:700px){.king-scorebar .metric{padding:9px 8px}.king-table{font-size:12px}}
     @media(min-width:1024px){.king-shell{padding-top:74px}.king-scorebar b{font-size:18px}.king-panel-head{padding-left:12px;padding-right:12px}.king-table th,.king-table td{padding-left:11px;padding-right:11px}}
   </style>
@@ -73,22 +71,31 @@
 
     <section class="king-preview-grid" aria-label="Prediction2 preview picks">
       <article class="king-preview-card">
-        <div class="king-preview-top"><span class="king-preview-rank">K PICK · 01</span><span class="king-preview-market">1X2 · PREVIEW</span></div>
-        <div class="king-preview-match"><div class="king-preview-team">Anderlecht</div><div class="king-preview-vs">VS</div><div class="king-preview-team away">KV Kortrijk</div></div>
+        <div class="king-preview-top"><span class="king-preview-rank">TOP PICK · 01</span><span class="king-preview-market">FULL-TIME · 1X2</span></div>
+        <div class="king-preview-match">
+          <div class="king-preview-side"><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#4d2a68"/><rect x="22" y="22" width="20" height="7" rx="1" fill="#e8dfc6" opacity=".9"/><rect x="30" y="29" width="4" height="29" fill="#c9ad72" opacity=".7"/></svg><div class="king-preview-teamstack"><span class="king-preview-role">HOME</span><div class="king-preview-team">Anderlecht</div></div></div>
+          <div class="king-preview-vs">VS</div>
+          <div class="king-preview-side away"><div class="king-preview-teamstack away"><span class="king-preview-role">AWAY</span><div class="king-preview-team away">KV Kortrijk</div></div><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#d7c397"/><rect x="29" y="9" width="7" height="49" fill="#4f274d" opacity=".88"/><rect x="22" y="18" width="20" height="3" fill="#b99a6b" opacity=".85"/></svg></div>
+        </div>
         <div class="king-preview-pick"><div><span>PICK</span><b>Anderlecht · 1</b></div><div class="king-preview-odds"><span>ODDS RANGE</span><b>1.47–1.53</b></div></div>
-        <div class="king-preview-note">Static card for Prediction2 UI work · isolated from automatic selection.</div>
       </article>
       <article class="king-preview-card">
-        <div class="king-preview-top"><span class="king-preview-rank">K PICK · 02</span><span class="king-preview-market">1X2 · PREVIEW</span></div>
-        <div class="king-preview-match"><div class="king-preview-team">Palermo</div><div class="king-preview-vs">VS</div><div class="king-preview-team away">Mantova</div></div>
+        <div class="king-preview-top"><span class="king-preview-rank">TOP PICK · 02</span><span class="king-preview-market">FULL-TIME · 1X2</span></div>
+        <div class="king-preview-match">
+          <div class="king-preview-side"><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#173f7a"/><path d="M21 12h22v9H21z" fill="#d8ae4b" opacity=".88"/><rect x="25" y="21" width="3" height="37" fill="#efd58d" opacity=".72"/><rect x="35" y="21" width="3" height="37" fill="#efd58d" opacity=".72"/></svg><div class="king-preview-teamstack"><span class="king-preview-role">HOME</span><div class="king-preview-team">Palermo</div></div></div>
+          <div class="king-preview-vs">VS</div>
+          <div class="king-preview-side away"><div class="king-preview-teamstack away"><span class="king-preview-role">AWAY</span><div class="king-preview-team away">Mantova</div></div><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#e8e1cf"/><rect x="30" y="8" width="5" height="50" fill="#274d83" opacity=".9"/><rect x="23" y="30" width="19" height="3" fill="#b8a171" opacity=".82"/></svg></div>
+        </div>
         <div class="king-preview-pick"><div><span>PICK</span><b>Palermo · 1</b></div><div class="king-preview-odds"><span>ODDS RANGE</span><b>1.61–1.67</b></div></div>
-        <div class="king-preview-note">Static card for Prediction2 UI work · isolated from automatic selection.</div>
       </article>
       <article class="king-preview-card">
-        <div class="king-preview-top"><span class="king-preview-rank">K PICK · 03</span><span class="king-preview-market">1X2 · PREVIEW</span></div>
-        <div class="king-preview-match"><div class="king-preview-team">Toulouse</div><div class="king-preview-vs">VS</div><div class="king-preview-team away">Lille</div></div>
+        <div class="king-preview-top"><span class="king-preview-rank">TOP PICK · 03</span><span class="king-preview-market">FULL-TIME · 1X2</span></div>
+        <div class="king-preview-match">
+          <div class="king-preview-side"><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#5fa3aa"/><rect x="32" y="9" width="11" height="49" fill="#e3dcc8" opacity=".9"/><rect x="20" y="31" width="24" height="4" fill="#d4b777" opacity=".8"/></svg><div class="king-preview-teamstack"><span class="king-preview-role">HOME</span><div class="king-preview-team">Toulouse</div></div></div>
+          <div class="king-preview-vs">VS</div>
+          <div class="king-preview-side away"><div class="king-preview-teamstack away"><span class="king-preview-role">AWAY</span><div class="king-preview-team away">Lille</div></div><svg class="king-preview-shirt" viewBox="0 0 64 64" aria-hidden="true"><path d="M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z" fill="#6c2529"/><rect x="22" y="20" width="21" height="6" fill="#e7dfc8" opacity=".9"/><rect x="22" y="34" width="21" height="3" fill="#c69f61" opacity=".85"/></svg></div>
+        </div>
         <div class="king-preview-pick"><div><span>PICK</span><b>Lille · 2</b></div><div class="king-preview-odds"><span>ODDS RANGE</span><b>2.00–2.10</b></div></div>
-        <div class="king-preview-note">Static card for Prediction2 UI work · isolated from automatic selection.</div>
       </article>
     </section>
 
