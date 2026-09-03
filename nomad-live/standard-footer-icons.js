@@ -25,4 +25,19 @@
     mark.classList.add('nomad-standard-icon');
     mark.innerHTML=icons[index];
   });
+
+  const base=new URL('./',document.currentScript?.src||window.location.href);
+  if(!document.querySelector('link[data-nomad-pwa-install]')){
+    const pwaStyle=document.createElement('link');
+    pwaStyle.rel='stylesheet';
+    pwaStyle.href=new URL('nomad-pwa-install.css?v=20260903-v1',base).href;
+    pwaStyle.dataset.nomadPwaInstall='1';
+    document.head.appendChild(pwaStyle);
+  }
+  if(!document.querySelector('script[data-nomad-pwa-install]')){
+    const pwaScript=document.createElement('script');
+    pwaScript.src=new URL('nomad-pwa-install.js?v=20260903-v1',base).href;
+    pwaScript.dataset.nomadPwaInstall='1';
+    document.head.appendChild(pwaScript);
+  }
 })();
