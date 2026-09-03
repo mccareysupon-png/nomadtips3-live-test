@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/the_king_engine_v10.py'
+      - '.github/scripts/the_king_owner_override_20260903.py'
       - 'soccer-predictions/KING_V2_BETA_POLICY.md'
       - '.github/workflows/the-king-selection.yml'
       - '.github/workflows/the-king-settlement.yml'
@@ -34,14 +35,21 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
       - name: KING V2 engine self-test
-        run: python3 .github/scripts/the_king_engine_v10.py self-test
+        run: |
+          python3 .github/scripts/the_king_engine_v10.py self-test
+          python3 .github/scripts/the_king_owner_override_20260903.py self-test
 
-      - name: Run 07:00 Thailand selection — Goaloo + KING V2
+      - name: Run Thailand selection — Goaloo + KING V2
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          python3 .github/scripts/the_king_engine_v10.py select --date "$TARGET_DATE"
+          if [ "$TARGET_DATE" = "2026-09-03" ]; then
+            echo 'Using owner one-day override: confidence>=40%, odds>=1.88, unlimited qualified picks.'
+            python3 .github/scripts/the_king_owner_override_20260903.py select --date "$TARGET_DATE"
+          else
+            python3 .github/scripts/the_king_engine_v10.py select --date "$TARGET_DATE"
+          fi
 
       - name: Publish The King feed and health state
         shell: bash
