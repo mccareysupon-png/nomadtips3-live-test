@@ -1,7 +1,7 @@
 /* NOMAD Live 3.41 — Page 1 desktop collapsed-card repair.
    Scope: PC only (>=1025px). Presentation only.
    Do not alter tablet/mobile, feed, odds, detector, signal, or engine logic.
-   Rollback blob before column-rhythm pass: 39e0522a8f4258c895858c4391ef9c9114313228 */
+   Rollback blob before separator removal: a5c3bf7795935017f70564c5e346c64081f67759 */
 
 @media (min-width:1025px){
   /* Human-readable team block: shirt | name | score, same order for HOME and AWAY. */
@@ -95,8 +95,7 @@
     padding:14px!important;
   }
 
-  /* Equal-height zones. Shading is intentionally subtle so the card reads as one surface,
-     not six separate boxes. Separators are drawn in the center of each grid gap. */
+  /* Equal-height zones. Separation now comes from spacing and subtle tone only — no vertical rules. */
   .match-wrap:not([open]) > .match-row .statebox,
   .match-wrap:not([open]) > .match-row .match-main,
   .match-wrap:not([open]) > .match-row .score,
@@ -110,22 +109,7 @@
     border-radius:7px!important;
   }
 
-  .match-wrap:not([open]) > .match-row .statebox::after,
-  .match-wrap:not([open]) > .match-row .match-main::after,
-  .match-wrap:not([open]) > .match-row .score::after,
-  .match-wrap:not([open]) > .match-row .quick::after,
-  .match-wrap:not([open]) > .match-row .market::after{
-    content:"";
-    position:absolute;
-    top:9px;
-    bottom:9px;
-    right:-6px;
-    width:1px;
-    background:rgba(255,255,255,.07);
-    pointer-events:none;
-  }
-
-  /* STATUS — darkest quiet zone; the live state icon carries the emphasis. */
+  /* STATUS — transparent behind the state icon. */
   .match-wrap:not([open]) > .match-row .statebox{
     grid-area:state!important;
     display:flex!important;
@@ -135,7 +119,11 @@
     gap:0!important;
     min-width:0!important;
     padding:0!important;
-    background:rgba(0,0,0,.045)!important;
+    background:transparent!important;
+  }
+
+  .match-wrap:not([open]) > .match-row .statebox::before{
+    background-color:transparent!important;
   }
 
   .match-wrap:not([open]) > .match-row .statebox .state{
@@ -225,7 +213,7 @@
     background:rgba(255,255,255,.025)!important;
   }
 
-  /* MARKET — lightest gray lane, only enough to guide the eye toward price data. */
+  /* MARKET — light gray lane, enough to guide the eye toward price data. */
   .match-wrap:not([open]) > .match-row .market{
     grid-area:market!important;
     min-width:0!important;
