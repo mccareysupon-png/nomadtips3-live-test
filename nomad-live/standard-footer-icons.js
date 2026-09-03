@@ -25,28 +25,28 @@
         justify-content:flex-start!important;
         gap:4px!important;
         min-width:0!important;
-        padding:7px 2px!important;
+        padding:6px 2px!important;
         margin:0!important;
         text-align:center!important;
       }
       .site-footer .site-cert-mark.nomad-standard-icon{
-        flex:0 0 28px!important;
-        width:28px!important;
-        height:28px!important;
+        flex:0 0 26px!important;
+        width:26px!important;
+        height:26px!important;
       }
-      .site-footer .site-cert-mark.nomad-standard-icon svg{width:28px!important;height:28px!important}
+      .site-footer .site-cert-mark.nomad-standard-icon svg{width:26px!important;height:26px!important}
       .site-footer .site-cert-copy{
         display:flex!important;
         flex-direction:column!important;
         align-items:center!important;
-        gap:2px!important;
+        gap:1px!important;
         min-width:0!important;
         width:100%!important;
         text-align:center!important;
       }
       .site-footer .site-cert-copy b{
         display:block!important;
-        font-size:10px!important;
+        font-size:8.2px!important;
         line-height:1.12!important;
         letter-spacing:.01em!important;
         white-space:normal!important;
@@ -54,16 +54,18 @@
       }
       .site-footer .site-cert-copy span{
         display:block!important;
-        font-size:8px!important;
+        margin-top:1px!important;
+        font-size:6.6px!important;
         line-height:1.15!important;
         white-space:normal!important;
         overflow-wrap:anywhere!important;
       }
       .site-footer .site-cert-copy small{
         display:block!important;
-        font-size:7px!important;
+        margin-top:2px!important;
+        font-size:5.8px!important;
         line-height:1.1!important;
-        letter-spacing:.06em!important;
+        letter-spacing:.05em!important;
         white-space:normal!important;
       }
     }
