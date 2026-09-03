@@ -1,10 +1,5 @@
-/* Signal page header logo lock + homepage-only vintage topbar.
-   Presentation only: keep logo/menu colors, typography, geometry and runtime behavior unchanged. */
-.topbar{
-  background:linear-gradient(90deg,#0d2119 0%,#123429 32%,#173f31 50%,#123429 68%,#0d2119 100%)!important;
-  border-bottom:1px solid rgba(198,171,103,.18)!important;
-  box-shadow:0 9px 24px rgba(0,0,0,.30),inset 0 -1px 0 rgba(255,255,255,.025)!important;
-}
+/* Signal page header logo lock: match Statistics / Live Score exactly.
+   Loaded last on page 1 so no earlier Signal-only layer can resize the wordmark. */
 .topbar-inner.public-four-nav>.brand{
   font-family:Arial,Helvetica,sans-serif!important;
   font-size:30px!important;
