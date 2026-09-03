@@ -173,12 +173,13 @@ async function boot(){
   const predictionList=document.getElementById('predictionList');
   const resultList=document.getElementById('resultList');
   const input=document.getElementById('searchInput');
-  let activeView='today',picks=[],results=[];
+  let activeView='today',picks=[],results=[],noPickMessage='No predictions available.';
   try{
     const [predictionData,resultData]=await Promise.all([loadJson('data/predictions.json?v=20260828-team-logos-v1'),loadJson('data/results.json?v=20260828-daily-rotation-v1')]);
     picks=Array.isArray(predictionData.picks)?predictionData.picks:[];results=Array.isArray(resultData.results)?resultData.results:[];
+    noPickMessage=typeof predictionData.noPickMessage==='string'&&predictionData.noPickMessage.trim()?predictionData.noPickMessage.trim():noPickMessage;
     document.getElementById('pickCount').textContent=picks.length;document.getElementById('todayCount').textContent=picks.length;document.getElementById('yesterdayCount').textContent=results.length;
-    predictionList.innerHTML=picks.map(card).join('')||'<div class="empty">No predictions available.</div>';
+    predictionList.innerHTML=picks.map(card).join('')||`<div class="empty">${esc(noPickMessage)}</div>`;
     resultList.innerHTML=results.length?(resultSummary(results)+results.map(resultCard).join('')):'<div class="empty">No previous results available.</div>';
   }catch(err){predictionList.innerHTML=`<div class="empty">Unable to load daily data: ${esc(err.message)}</div>`;resultList.innerHTML=`<div class="empty">Unable to load previous results: ${esc(err.message)}</div>`;}
   function applySearch(){const q=input.value.trim().toLowerCase();const root=activeView==='today'?predictionList:resultList;[...root.querySelectorAll('[data-search]')].forEach(el=>el.hidden=!!q&&!el.dataset.search.includes(q));}

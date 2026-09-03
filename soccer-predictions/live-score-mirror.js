@@ -79,11 +79,15 @@
   let picks=[];
   let picksLoadedAt=0;
   async function loadPicks(force=false){
-    if(!force&&picks.length&&Date.now()-picksLoadedAt<PICKS_REFRESH_MS)return picks;
+    if(!force&&picksLoadedAt&&Date.now()-picksLoadedAt<PICKS_REFRESH_MS)return picks;
     const data=await fetchJson(PREDICTIONS);
     picks=Array.isArray(data?.picks)?data.picks:[];
     picksLoadedAt=Date.now();
     return picks;
+  }
+
+  function resultsViewActive(){
+    return document.querySelector('.day-tab[data-view="yesterday"]')?.classList.contains('active')===true;
   }
 
   function mirrorKey(pick){
@@ -159,11 +163,18 @@
 
   async function sync(){
     const list=document.getElementById('resultList');
-    if(!list)return;
+    if(!list||!resultsViewActive())return;
 
     let currentPicks;
     try{currentPicks=await loadPicks()}
     catch(_){return}
+
+    // A NO_PICK day has nothing to mirror. Avoid keeping the page busy with
+    // live-feed requests that cannot update any result card.
+    if(!currentPicks.length){
+      updateCounts(list);
+      return;
+    }
 
     // Page 2 must always have a visible PENDING row for today's picks.
     // The FINAL field becomes a live mirror only when the 3.42 feed finds the match.
@@ -205,13 +216,14 @@
   function start(){
     const list=document.getElementById('resultList');
     if(!list)return;
-    // predictions.js renders the settled result list after DOMContentLoaded; wait for that render,
-    // then prepend current PENDING rows without altering predictions.js or results.json.
-    new MutationObserver(()=>{if(!busy)queueMicrotask(tick)}).observe(list,{childList:true});
-    setTimeout(tick,0);
-    timer=setInterval(tick,POLL_MS);
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
-    document.querySelectorAll('.day-tab').forEach(btn=>btn.addEventListener('click',()=>setTimeout(()=>updateCounts(list),0)));
+    // Keep the Today view idle. Live mirroring starts only when the visitor
+    // opens Yesterday's Results, where the pending/live rows are displayed.
+    timer=setInterval(()=>{if(resultsViewActive()&&!document.hidden)tick()},POLL_MS);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&resultsViewActive())tick()});
+    document.querySelectorAll('.day-tab').forEach(btn=>btn.addEventListener('click',()=>setTimeout(()=>{
+      if(btn.dataset.view==='yesterday')tick();
+      else updateCounts(list);
+    },0)));
     window.addEventListener('pagehide',()=>{if(timer)clearInterval(timer)},{once:true});
   }
 

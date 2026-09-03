@@ -12,7 +12,8 @@
     visible: PAGE_SIZE,
     coverageComplete: false,
     coverageLabel: 'CURATED MATCHES',
-    coverageNote: ''
+    coverageNote: '',
+    noPickMessage: 'No NOMAD predictions available.'
   };
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
@@ -171,7 +172,7 @@
     const results = document.getElementById('resultList');
     if(list){
       list.hidden = false;
-      list.innerHTML = state.nomad.length ? state.nomad.map(renderCard).join('') : '<div class="empty">No NOMAD predictions available.</div>';
+      list.innerHTML = state.nomad.length ? state.nomad.map(renderCard).join('') : `<div class="empty">${esc(state.noPickMessage)}</div>`;
     }
     if(results) results.hidden = true;
     const label = document.getElementById('heroLabel');
@@ -225,6 +226,9 @@
         loadJson('data/predictions.json?v=20260828-team-logos-v1')
       ]);
       state.nomad = Array.isArray(nomadData.picks) ? nomadData.picks : [];
+      state.noPickMessage = typeof nomadData.noPickMessage === 'string' && nomadData.noPickMessage.trim()
+        ? nomadData.noPickMessage.trim()
+        : state.noPickMessage;
       const nomadIds = new Set(state.nomad.map(match => String(match.id || '')));
       const rows = Array.isArray(selectedData.matches) ? selectedData.matches : [];
       state.selected = rows.map(match => ({...match, nomadPick: match.nomadPick === true || nomadIds.has(String(match.id || ''))}));
