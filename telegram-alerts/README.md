@@ -1,75 +1,105 @@
-# NOMADTIPS3 Telegram Alerts — Step 1 Core
+# NOMADTIPS3 Telegram Alerts — Step 2 Signal Bridge
 
-Status: **TEST ONLY / NOT CONNECTED TO STRIPE / NOT CONNECTED TO NOMAD SIGNALS**
+Status: **TEST WORKER / SIGNAL BRIDGE IMPLEMENTED / PAYMENT STILL DEFERRED**
 
-This directory is an isolated Telegram delivery service. Step 1 deliberately does not modify NOMAD 3.41/3.42 detection, public pages, Stripe, LINE, or member settings.
+This package continues the verified Telegram Core from 2026-09-02 on the same TEST Worker and D1 database. Step 2 connects locked NOMAD signals to Telegram delivery without changing NOMAD detection logic, public pages, Stripe/payment logic, or the legacy LINE system.
 
-## Step 1 scope
+## Step 1 preserved
 
-- Cloudflare Worker dedicated to Telegram alerts.
-- Telegram webhook endpoint: `POST /telegram/webhook`.
-- Webhook verification with Telegram `secret_token` header.
-- D1 subscriber table with default state `PENDING_PAYMENT` and `active=0`.
-- D1 update ledger to ignore duplicate webhook updates.
-- D1 delivery ledger for TEST/SENT/FAILED records.
-- Admin-only test alert endpoint: `POST /admin/test`.
-- Admin-only webhook setup endpoint: `POST /admin/set-webhook`.
-- Health endpoint: `GET /health`.
+- TEST Worker: `nomadtips3-telegram-alerts-test`
+- Webhook: `POST /telegram/webhook`
+- `/start`, `/status`, `/help`
+- Admin TEST ALERT: `POST /admin/test`
+- Admin webhook setup: `POST /admin/set-webhook`
+- D1 tables: `telegram_subscribers`, `telegram_deliveries`, `telegram_updates`
+- New registration: `PENDING_PAYMENT`, `active=0`
+- Price: **$3/month**
+- No `/start` command can activate paid delivery.
 
-No `/start` command can activate paid delivery in Step 1. `/start` only records the Telegram chat as `PENDING_PAYMENT`. Payment entitlement is a later phase.
+## Step 2 Signal Bridge
 
-## Private Worker secrets
+Signal source:
 
-Never commit these values:
+`https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev/history?page=1&limit=25`
 
-- `TELEGRAM_BOT_TOKEN` — from BotFather.
-- `TELEGRAM_WEBHOOK_SECRET` — 1–256 chars using A-Z, a-z, 0-9, `_`, `-`.
-- `TELEGRAM_ADMIN_TOKEN` — protects admin endpoints.
-- `TELEGRAM_TEST_CHAT_ID` — optional; lets `/admin/test` omit `chatId`.
+Flow:
 
-Example setup from `telegram-alerts/worker`:
+1. Worker polls the locked-signal history every minute.
+2. Only records with `selectedAt` or compatible `lockedAt` are eligible.
+3. The first successful poll is a **BASELINE ONLY**. Existing historical signals are recorded but never sent.
+4. Every later locked signal receives a stable SHA-256 key.
+5. `telegram_signal_ledger` prevents reprocessing the same signal.
+6. Existing `telegram_deliveries` adds a per-recipient duplicate key: `SIGNAL:<signal-key>:<chat-id>`.
+7. Real Signal delivery requires **both** `status='ACTIVE'` **and** `active=1`.
+8. `PENDING_PAYMENT`, `active=0`, paused, or canceled subscribers cannot receive a real Signal.
+9. Delivery result is recorded as `SENT`, `FAILED`, `DELIVERED`, `PARTIAL`, or `NO_ACTIVE_RECIPIENTS` as appropriate.
+
+Step 2 adds:
+
+- `GET /bridge/status`
+- Admin-only `POST /admin/poll`
+- Cloudflare scheduled poll every minute
+- D1 `telegram_signal_ledger`
+- D1 `telegram_signal_runtime`
+- Signal normalization and Telegram message formatting
+- Two-attempt Telegram send path for transient send failures
+
+## Safety contract
+
+- No payment code is added in Step 2.
+- No subscriber is auto-activated.
+- `PENDING_PAYMENT` remains blocked from real live-signal delivery.
+- First deployment cannot flood old historical alerts because the first poll is baseline-only.
+- Telegram bot token, webhook secret, and admin token remain Cloudflare Worker secrets and are never committed.
+- NOMAD detector/source is read-only from this service.
+- Existing LINE membership code is untouched.
+
+## Worker secrets
+
+These remain the same as Step 1:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `TELEGRAM_ADMIN_TOKEN`
+- optional `TELEGRAM_TEST_CHAT_ID`
+
+Admin routes use header `X-NOMAD-ADMIN-TOKEN`.
+Telegram webhook verification uses `X-Telegram-Bot-Api-Secret-Token`.
+
+## CI
+
+From `telegram-alerts/worker`:
 
 ```bash
-npx wrangler secret put TELEGRAM_BOT_TOKEN
-npx wrangler secret put TELEGRAM_WEBHOOK_SECRET
-npx wrangler secret put TELEGRAM_ADMIN_TOKEN
-npx wrangler secret put TELEGRAM_TEST_CHAT_ID
+npm run check
+npm test
 ```
 
-## Safe test sequence
+CI verifies both the original Step 1 safety contract and the Step 2 Signal Bridge contract, including the `ACTIVE + active=1` entitlement gate, baseline protection, duplicate ledger, locked history source, and secret scan.
 
-1. Configure the three required secrets; `TELEGRAM_TEST_CHAT_ID` is optional.
-2. Deploy the TEST Worker.
-3. Check `/health` and confirm DB/bot/webhook/admin are configured.
-4. Call `POST /admin/set-webhook` with header `X-NOMAD-ADMIN-TOKEN`.
-5. Open the bot in Telegram and send `/start`.
-6. Send `/status`; it must report `PENDING_PAYMENT / NOT ACTIVE`.
-7. Call `POST /admin/test`; verify one TEST ALERT is received and a delivery row is recorded.
+## Step 1 live checkpoint — 2026-09-02
 
-## Isolation / rollback
+- TEST Worker deployment: PASS
+- Worker secret bindings: PASS
+- Telegram webhook registration: PASS
+- `/start`: PASS — subscriber created `PENDING_PAYMENT`, `active=0`
+- `/status`: PASS — `PENDING_PAYMENT / NOT ACTIVE`
+- TEST alert: PASS
+- Delivery ledger: PASS
+- Duplicate Telegram update guard: PASS
 
-Rollback for Step 1 is simply disabling or deleting `nomadtips3-telegram-alerts-test`. No NOMAD engine route or public page is changed. The new D1 tables are namespace-isolated by the `telegram_` prefix and are not read by existing NOMAD code.
+## Step 2 checkpoint — 2026-09-03
 
-## Checkpoint
+Code/CI scope:
 
-- Base: `main` at the start of Step 1 on 2026-09-02.
-- Branch: `feature/telegram-alerts-step1-20260902`.
-- Completed in code: Telegram Worker core, webhook security, pending subscriber registration, duplicate-update guard, delivery ledger, admin test-send route, health route.
-- Completed live verification: TEST Worker deployment, Worker secret bindings, webhook registration, real Telegram `/start` and `/status`, TEST alert, delivery ledger, and duplicate-update guard.
-- Not completed / explicitly deferred: Stripe $3, Signal Bridge, retries, and paid entitlement.
-- Next step after Step 1 live verification: **Step 2 — Signal Bridge**.
+- Same TEST Worker contract preserved
+- NOMAD locked-signal source connected
+- First-poll baseline guard implemented
+- SHA-256 signal duplicate guard implemented
+- Existing subscriber table reused; no duplicate membership database
+- Real delivery gate fixed at `status='ACTIVE' AND active=1`
+- `PENDING_PAYMENT` remains blocked
+- Scheduled every-minute polling configured
+- `/bridge/status` and `/admin/poll` implemented
 
-## STEP 1 LIVE CHECKPOINT
-
-- Date: 2026-09-02
-- TEST Worker URL: `https://nomadtips3-telegram-alerts-test.mccarey-supon.workers.dev`
-- Health: PASS (`db`, `botToken`, `webhookSecret`, `adminToken`, and `publicWebhookUrl` configured)
-- Webhook: PASS (`setWebhook` confirmed by Telegram)
-- `/start`: PASS (subscriber created as `PENDING_PAYMENT`, `active=0`)
-- `/status`: PASS (`PENDING_PAYMENT` / `NOT ACTIVE`)
-- Test alert: PASS (received in Telegram)
-- Delivery ledger: PASS (`event_type=TEST`, `status=SENT`)
-- Duplicate guard: PASS (replayed update returned `duplicate=true`; no duplicate processing)
-- `TELEGRAM_TEST_CHAT_ID`: not set; the test used the admin request body `chatId` directly.
-- No secrets are recorded in this checkpoint or repository.
-
+Live deployment verification is completed separately on the TEST Worker before Step 2 is marked fully live.
