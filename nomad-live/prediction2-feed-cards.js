@@ -2,15 +2,12 @@
   'use strict';
 
   const FEED = 'https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/the-king-feed.json';
-  const grid = document.querySelector('.king-preview-grid');
-  const drawer = document.getElementById('kingAnalysisDrawer');
-  if (!grid) return;
+  const tbody = document.getElementById('todayRows');
+  if (!tbody) return;
 
-  if (drawer) {
-    drawer.hidden = true;
-    drawer.classList.remove('is-open');
-    drawer.setAttribute('aria-hidden', 'true');
-  }
+  // The large preview-card rail is retired. Keep only the compact TODAY list.
+  document.querySelector('.king-preview-grid')?.remove();
+  document.getElementById('kingAnalysisDrawer')?.remove();
 
   const SETS = [
     {home:{base:'#721b24',secondary:'#c99a3f',accent:'#f1d58b',pattern:'pinstripe'},away:{base:'#17263c',secondary:'#e9dfbf',accent:'#d0ad62',pattern:'vertical'}},
@@ -29,60 +26,63 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    .king-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;align-items:stretch!important;}
-    .king-preview-card.king-full-card{cursor:default!important;padding:14px!important;display:flex!important;flex-direction:column!important;min-height:100%;overflow:hidden!important;}
-    .king-preview-card.king-full-card:after{opacity:1;border-color:rgba(255,255,255,.045);box-shadow:none;}
-    .king-full-card .king-preview-top{margin-bottom:8px!important;}
-    .king-full-meta{display:grid;grid-template-columns:110px 82px minmax(0,1fr);gap:1px;margin-bottom:11px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;}
-    .king-full-meta>div{background:#151a16;padding:7px 8px;min-width:0;}
-    .king-full-meta span{display:block;color:#717b74;font-size:7px;font-weight:900;letter-spacing:.05em;}
-    .king-full-meta b{display:block;margin-top:3px;color:#d8ddd9;font-size:9px;line-height:1.25;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .king-full-meta .league b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-    .king-full-card .king-preview-match{min-height:62px!important;}
-    .king-full-card .king-preview-shirt{width:42px!important;height:42px!important;flex:0 0 42px!important;}
-    .king-full-card .king-preview-pick{margin-top:10px!important;padding-top:9px!important;border-top:1px solid rgba(255,255,255,.05);}
-    .king-full-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:10px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;}
-    .king-full-summary>div{background:#151a16;padding:8px 7px;min-width:0;}
-    .king-full-summary span,.king-full-section-title{display:block;color:#727d76;font-size:7px;font-weight:900;letter-spacing:.055em;}
-    .king-full-summary b{display:block;margin-top:3px;color:#eef2ef;font-size:11px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .king-full-summary b.positive,.king-full-summary b.pick{color:var(--green);}
-    .king-full-section{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.05);}
-    .king-full-probs{margin-top:7px;}
-    .king-full-prob{display:grid;grid-template-columns:40px minmax(0,1fr) 42px;align-items:center;gap:7px;margin-top:6px;color:#959e97;font-size:8px;font-weight:800;}
-    .king-full-track{height:4px;background:#262c28;border-radius:99px;overflow:hidden;}
-    .king-full-fill{height:100%;background:#68716b;border-radius:99px;}
-    .king-full-prob.selected .king-full-fill{background:var(--green);}
-    .king-full-prob strong{text-align:right;color:#dfe4e0;font-size:9px;font-variant-numeric:tabular-nums;}
-    .king-full-details{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:8px;background:rgba(255,255,255,.045);border-radius:8px;overflow:hidden;}
-    .king-full-detail{background:#151a16;padding:8px;min-width:0;}
-    .king-full-detail span{display:block;color:#717b74;font-size:7px;font-weight:900;letter-spacing:.045em;}
-    .king-full-detail b{display:block;margin-top:3px;color:#c9cfca;font-size:10px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-    .king-full-qualified{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto;padding-top:10px;color:#7d8780;font-size:8px;font-weight:800;letter-spacing:.045em;}
-    .king-full-qualified strong{color:var(--green);font-size:8px;letter-spacing:.06em;}
-    @media(hover:hover) and (pointer:fine){
-      .king-preview-card.king-full-card:hover{background:linear-gradient(180deg,rgba(26,34,29,.99),rgba(17,22,18,.99));box-shadow:0 10px 28px rgba(0,0,0,.16);}
-      .king-preview-card.king-full-card:hover:after{border-color:rgba(80,220,143,.34);box-shadow:0 0 14px rgba(80,220,143,.11),inset 0 0 10px rgba(80,220,143,.03);}
-    }
+    #todayRows > tr:not(.king-expand-row){cursor:pointer;transition:background-color .16s ease;}
+    #todayRows > tr:not(.king-expand-row):hover,
+    #todayRows > tr.king-row-open{background:rgba(77,208,132,.045);}
+    #todayRows > tr:not(.king-expand-row) td:first-child{position:relative;padding-right:27px!important;}
+    #todayRows > tr:not(.king-expand-row) td:first-child::after{content:'⌄';position:absolute;right:9px;top:50%;transform:translateY(-52%);color:#657169;font-size:12px;line-height:1;transition:transform .16s ease,color .16s ease;}
+    #todayRows > tr.king-row-open td:first-child::after{transform:translateY(-48%) rotate(180deg);color:var(--green);}
+    .king-expand-row td{padding:0!important;border-top:0!important;background:#101411!important;}
+    .king-expand-shell{padding:15px 18px 17px;border-top:1px solid rgba(80,220,143,.20);border-bottom:1px solid rgba(255,255,255,.045);box-shadow:inset 0 10px 18px rgba(0,0,0,.09);}
+    .king-expand-match{display:grid;grid-template-columns:minmax(0,1fr) 44px 34px 44px minmax(0,1fr);align-items:center;gap:8px;max-width:760px;margin:0 auto;}
+    .king-expand-team{min-width:0;color:#eef2ef;font-size:13px;font-weight:900;line-height:1.22;}
+    .king-expand-team.home{text-align:right;}
+    .king-expand-team.away{text-align:left;}
+    .king-expand-team span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;}
+    .king-expand-shirt{display:block;width:42px;height:42px;object-fit:contain;}
+    .king-expand-vs{text-align:center;color:#818c84;font-size:9px;font-weight:950;letter-spacing:.12em;}
+    .king-expand-meta{text-align:center;margin-top:7px;color:#737e77;font-size:8px;font-weight:850;letter-spacing:.045em;line-height:1.45;}
+    .king-expand-meta b{color:#aeb7b0;font-weight:850;}
+    .king-expand-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;margin-top:13px;background:rgba(255,255,255,.05);border-radius:8px;overflow:hidden;}
+    .king-expand-summary>div{min-width:0;padding:9px 10px;background:#151a16;}
+    .king-expand-summary span,.king-expand-title{display:block;color:#727d76;font-size:7px;font-weight:950;letter-spacing:.055em;}
+    .king-expand-summary b{display:block;margin-top:4px;color:#e8ede9;font-size:11px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
+    .king-expand-summary b.primary,.king-expand-positive{color:var(--green)!important;}
+    .king-expand-section{margin-top:13px;padding-top:11px;border-top:1px solid rgba(255,255,255,.05);}
+    .king-expand-probs{margin-top:7px;}
+    .king-expand-prob{display:grid;grid-template-columns:42px minmax(0,1fr) 45px;align-items:center;gap:8px;margin-top:7px;color:#909a93;font-size:8px;font-weight:850;}
+    .king-expand-track{height:5px;border-radius:99px;background:#252b27;overflow:hidden;}
+    .king-expand-fill{height:100%;border-radius:99px;background:#68736c;}
+    .king-expand-prob.selected .king-expand-fill{background:var(--green);}
+    .king-expand-prob strong{text-align:right;color:#dfe5e0;font-size:9px;font-variant-numeric:tabular-nums;}
+    .king-expand-lower{display:grid;grid-template-columns:1fr 1.25fr;gap:10px;margin-top:13px;}
+    .king-expand-block{min-width:0;padding:11px 12px;background:#151a16;border:1px solid rgba(255,255,255,.045);border-radius:8px;}
+    .king-expand-kv{display:flex;justify-content:space-between;gap:12px;margin-top:8px;color:#7f8982;font-size:8px;font-weight:800;}
+    .king-expand-kv b{color:#d3d9d4;font-size:9px;text-align:right;font-variant-numeric:tabular-nums;}
+    .king-expand-status{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05);color:#727c75;font-size:8px;font-weight:850;letter-spacing:.045em;}
+    .king-expand-status strong{color:var(--green);font-size:8px;letter-spacing:.07em;}
     @media(max-width:699px){
-      .king-preview-grid{grid-template-columns:1fr!important;gap:8px!important;}
-      .king-preview-card.king-full-card{padding:12px!important;}
-      .king-full-meta{grid-template-columns:1fr 1fr;}
-      .king-full-meta .league{grid-column:1/-1;}
-      .king-full-card .king-preview-shirt{width:38px!important;height:38px!important;flex-basis:38px!important;}
-      .king-full-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
-      .king-full-details{grid-template-columns:repeat(2,minmax(0,1fr));}
-      .king-full-qualified{padding-top:9px;}
+      .king-expand-shell{padding:13px 10px 15px;}
+      .king-expand-match{grid-template-columns:minmax(0,1fr) 34px 26px 34px minmax(0,1fr);gap:5px;}
+      .king-expand-team{font-size:10px;}
+      .king-expand-shirt{width:32px;height:32px;}
+      .king-expand-vs{font-size:8px;letter-spacing:.08em;}
+      .king-expand-meta{font-size:7px;margin-top:6px;}
+      .king-expand-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .king-expand-lower{grid-template-columns:1fr;gap:8px;}
+      .king-expand-prob{grid-template-columns:38px minmax(0,1fr) 42px;gap:6px;}
     }
   `;
   document.head.appendChild(style);
 
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
   const clean = value => String(value ?? '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-  const n = value => Number.isFinite(Number(value)) ? Number(value) : null;
-  const pct = value => n(value) === null ? '—' : `${(Number(value) * 100).toFixed(1)}%`;
-  const signedPct = value => n(value) === null ? '—' : `${Number(value) >= 0 ? '+' : ''}${(Number(value) * 100).toFixed(1)}%`;
-  const odds = value => n(value) === null ? '—' : Number(value).toFixed(2);
-  const fixed = (value, digits=2) => n(value) === null ? '—' : Number(value).toFixed(digits);
+  const num = value => Number.isFinite(Number(value)) ? Number(value) : null;
+  const pct = value => num(value) === null ? '—' : `${(Number(value) * 100).toFixed(1)}%`;
+  const signedPct = value => num(value) === null ? '—' : `${Number(value) >= 0 ? '+' : ''}${(Number(value) * 100).toFixed(1)}%`;
+  const odds = value => num(value) === null ? '—' : Number(value).toFixed(2);
+  const fixed = (value, digits=2) => num(value) === null ? '—' : Number(value).toFixed(digits);
+  const edgeLabel = pick => num(pick.market_edge) !== null ? signedPct(pick.market_edge) : num(pick.edge) !== null ? `${Number(pick.edge) >= 0 ? '+' : ''}${Number(pick.edge).toFixed(1)}%` : '—';
 
   const hash = value => {
     let h = 2166136261;
@@ -111,7 +111,7 @@
   };
 
   const shirtSvg = (def, seed) => {
-    const shape = 'M21 7 27 4h10l6 3 14 8-5 12-7 4v37H19V23l-7 4-5-12Z';
+    const shape = 'M21 7 27 4h10l6 3 14 8-5 12-7-4v37H19V23l-7 4-5-12Z';
     const a = (seed % 13) + 2;
     const b = (seed % 7) + 3;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><defs><clipPath id="c"><path d="${shape}"/></clipPath><linearGradient id="shade" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".20"/><stop offset=".45" stop-color="#fff" stop-opacity=".03"/><stop offset="1" stop-color="#000" stop-opacity=".30"/></linearGradient><pattern id="grain" width="${a}" height="${b}" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".45" fill="#fff" opacity=".055"/></pattern></defs><g clip-path="url(#c)"><rect width="64" height="64" fill="${def.base}"/>${patternMarkup(def.pattern,def.secondary,def.accent)}<rect width="64" height="64" fill="url(#shade)"/><rect width="64" height="64" fill="url(#grain)"/></g><path d="${shape}" fill="none" stroke="#090a08" stroke-width="1.8" stroke-linejoin="round"/><path d="${shape}" fill="none" stroke="${def.accent}" stroke-opacity=".52" stroke-width=".72"/><path d="M27 5 32 12 37 5" fill="#11130f" stroke="${def.accent}" stroke-width="1.05"/></svg>`;
@@ -119,108 +119,156 @@
 
   const shirtUri = (def, seed) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(shirtSvg(def,seed))}`;
 
-  const kickoffParts = value => {
-    const raw = String(value || '').trim();
-    if (!raw) return {date:'—', time:'—'};
-    const m = raw.match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
-    if (!m) return {date:raw, time:'—'};
-    return {date:m[1], time:m[2]};
+  const kickoffParts = pick => {
+    const date = clean(pick.date) || '—';
+    const raw = String(pick.kickoff || '').trim();
+    const m = raw.match(/(?:\d{4}-\d{2}-\d{2}[ T])?(\d{2}:\d{2})/);
+    return {date, time:m ? m[1] : (raw || '—')};
   };
 
   const probRow = (label, value, selected) => {
-    const p = n(value) === null ? 0 : Math.max(0, Math.min(1, Number(value)));
-    return `<div class="king-full-prob ${selected ? 'selected' : ''}"><span>${label}</span><div class="king-full-track"><div class="king-full-fill" style="width:${(p*100).toFixed(1)}%"></div></div><strong>${pct(p)}</strong></div>`;
+    const p = num(value) === null ? 0 : Math.max(0, Math.min(1, Number(value)));
+    return `<div class="king-expand-prob ${selected ? 'selected' : ''}"><span>${label}</span><div class="king-expand-track"><div class="king-expand-fill" style="width:${(p*100).toFixed(1)}%"></div></div><strong>${pct(p)}</strong></div>`;
   };
 
-  const cardMarkup = (pick, index) => {
+  const detailsMarkup = (pick, index) => {
     const home = clean(pick.home);
     const away = clean(pick.away);
     const key = `${home}|${away}|${pick.goaloo_id || pick.id || index}`;
     const set = SETS[hash(key) % SETS.length];
     const seed = hash(key);
-    const selected = String(pick.side || '').toUpperCase();
-    const pickName = clean(String(pick.pick || '').replace(/\s+Win$/i, '')) || (selected === 'AWAY' ? away : home);
-    const sideNo = selected === 'AWAY' ? '2' : selected === 'DRAW' ? 'X' : '1';
     const model = pick.model || {};
     const quality = pick.data_quality || {};
-    const selectedProb = pick.model_probability ?? (selected === 'AWAY' ? model.away_win : model.home_win);
-    const status = String(pick.result || 'PENDING').toUpperCase();
-    const kickoff = kickoffParts(pick.kickoff);
-    const league = clean(pick.league) || '—';
+    const selected = String(pick.side || '').toUpperCase();
+    const pickName = clean(pick.pick) || '—';
+    const selectedProb = pick.model_probability ?? pick.confidence ?? (selected === 'AWAY' ? model.away_win : model.home_win);
+    const meta = kickoffParts(pick);
+    const status = clean(pick.result || 'PENDING').toUpperCase();
 
-    return `<article class="king-preview-card king-full-card">
-      <div class="king-preview-top">
-        <span class="king-preview-rank">TOP PICK · ${String(index+1).padStart(2,'0')}</span>
-        <span class="king-preview-market">FULL-TIME · 1X2</span>
+    return `<div class="king-expand-shell">
+      <div class="king-expand-match">
+        <div class="king-expand-team home"><span>${esc(home)}</span></div>
+        <img class="king-expand-shirt" src="${shirtUri(set.home,seed)}" alt="" aria-hidden="true">
+        <div class="king-expand-vs">VS</div>
+        <img class="king-expand-shirt" src="${shirtUri(set.away,seed+17)}" alt="" aria-hidden="true">
+        <div class="king-expand-team away"><span>${esc(away)}</span></div>
+      </div>
+      <div class="king-expand-meta"><b>${esc(clean(pick.league) || '—')}</b> · ${esc(meta.date)} · ${esc(meta.time)}</div>
+
+      <div class="king-expand-summary">
+        <div><span>PICK</span><b class="primary">${esc(pickName)}</b></div>
+        <div><span>ODDS</span><b>${odds(pick.odds)}</b></div>
+        <div><span>CONFIDENCE</span><b>${pct(selectedProb)}</b></div>
+        <div><span>EDGE</span><b class="king-expand-positive">${edgeLabel(pick)}</b></div>
       </div>
 
-      <div class="king-full-meta">
-        <div><span>DATE</span><b>${esc(kickoff.date)}</b></div>
-        <div><span>TIME</span><b>${esc(kickoff.time)}</b></div>
-        <div class="league"><span>LEAGUE</span><b>${esc(league)}</b></div>
-      </div>
-
-      <div class="king-preview-match">
-        <div class="king-preview-side"><img class="king-preview-shirt" src="${shirtUri(set.home,seed)}" alt="" aria-hidden="true"><div class="king-preview-teamstack"><span class="king-preview-role">HOME</span><div class="king-preview-team">${esc(home)}</div></div></div>
-        <div class="king-preview-vs">VS</div>
-        <div class="king-preview-side away"><div class="king-preview-teamstack away"><span class="king-preview-role">AWAY</span><div class="king-preview-team away">${esc(away)}</div></div><img class="king-preview-shirt" src="${shirtUri(set.away,seed+17)}" alt="" aria-hidden="true"></div>
-      </div>
-
-      <div class="king-preview-pick">
-        <div><span>PICK</span><b>${esc(pickName)} · ${sideNo}</b></div>
-        <div class="king-preview-odds"><span>ODDS</span><b>${odds(pick.odds)}</b></div>
-      </div>
-
-      <div class="king-full-summary">
-        <div><span>CONFIDENCE</span><b class="pick">${pct(selectedProb)}</b></div>
-        <div><span>MARKET FAIR</span><b>${pct(pick.market_fair_probability)}</b></div>
-        <div><span>EDGE</span><b class="positive">${signedPct(pick.market_edge)}</b></div>
-        <div><span>VALUE</span><b class="positive">${signedPct(pick.ev)}</b></div>
-      </div>
-
-      <div class="king-full-section">
-        <span class="king-full-section-title">MATCH PROBABILITY</span>
-        <div class="king-full-probs">
+      <div class="king-expand-section">
+        <span class="king-expand-title">MATCH PROBABILITY</span>
+        <div class="king-expand-probs">
           ${probRow('HOME', model.home_win, selected === 'HOME')}
           ${probRow('DRAW', model.draw, selected === 'DRAW')}
           ${probRow('AWAY', model.away_win, selected === 'AWAY')}
         </div>
       </div>
 
-      <div class="king-full-details">
-        <div class="king-full-detail"><span>RECENT HOME</span><b>${esc(quality.home_recent ?? '—')} matches</b></div>
-        <div class="king-full-detail"><span>RECENT AWAY</span><b>${esc(quality.away_recent ?? '—')} matches</b></div>
-        <div class="king-full-detail"><span>H2H SAMPLE</span><b>${esc(quality.h2h_n ?? '—')} matches</b></div>
-        <div class="king-full-detail"><span>GOAL PROJECTION · HOME</span><b>${fixed(model.lambda_home)}</b></div>
-        <div class="king-full-detail"><span>GOAL PROJECTION · AWAY</span><b>${fixed(model.lambda_away)}</b></div>
-        <div class="king-full-detail"><span>H2H TREND</span><b>${signedPct(model.h2h_adjustment)}</b></div>
+      <div class="king-expand-lower">
+        <div class="king-expand-block">
+          <span class="king-expand-title">RECENT FORM</span>
+          <div class="king-expand-kv"><span>HOME recent</span><b>${esc(quality.home_recent ?? '—')} matches</b></div>
+          <div class="king-expand-kv"><span>AWAY recent</span><b>${esc(quality.away_recent ?? '—')} matches</b></div>
+          <div class="king-expand-kv"><span>H2H sample</span><b>${esc(quality.h2h_n ?? '—')} matches</b></div>
+        </div>
+        <div class="king-expand-block">
+          <span class="king-expand-title">MATCH OUTLOOK</span>
+          <div class="king-expand-kv"><span>Fair probability</span><b>${pct(pick.market_fair_probability)}</b></div>
+          <div class="king-expand-kv"><span>Value</span><b class="king-expand-positive">${signedPct(pick.ev)}</b></div>
+          <div class="king-expand-kv"><span>Goal projection HOME</span><b>${fixed(model.lambda_home)}</b></div>
+          <div class="king-expand-kv"><span>Goal projection AWAY</span><b>${fixed(model.lambda_away)}</b></div>
+          <div class="king-expand-kv"><span>H2H trend</span><b>${signedPct(model.h2h_adjustment)}</b></div>
+        </div>
       </div>
 
-      <div class="king-full-qualified"><span>Pre-match selection · verified result tracking</span><strong>${esc(status === 'PENDING' ? 'QUALIFIED' : status)}</strong></div>
-    </article>`;
+      <div class="king-expand-status"><span>Pre-match selection · verified result tracking</span><strong>${esc(status)}</strong></div>
+    </div>`;
   };
 
-  const renderCards = list => {
-    const picks = Array.isArray(list) ? list : [];
-    grid.hidden = false;
-    if (!picks.length) {
-      grid.innerHTML = '<article class="king-preview-card king-full-card"><div class="king-empty">NO KING PICK TODAY</div></article>';
+  let today = [];
+  let openSummaryRow = null;
+
+  const summaryRows = () => [...tbody.children].filter(row => !row.classList.contains('king-expand-row'));
+
+  const syncRows = () => {
+    summaryRows().forEach((row, index) => {
+      row.dataset.kingIndex = String(index);
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('role', 'button');
+      row.setAttribute('aria-expanded', row === openSummaryRow ? 'true' : 'false');
+    });
+  };
+
+  const closeOpen = () => {
+    tbody.querySelector('.king-expand-row')?.remove();
+    if (openSummaryRow?.isConnected) {
+      openSummaryRow.classList.remove('king-row-open');
+      openSummaryRow.setAttribute('aria-expanded', 'false');
+    }
+    openSummaryRow = null;
+  };
+
+  const openRow = row => {
+    const index = Number(row.dataset.kingIndex ?? summaryRows().indexOf(row));
+    const pick = today[index];
+    if (!pick) return;
+    if (row === openSummaryRow) {
+      closeOpen();
       return;
     }
-    grid.innerHTML = picks.map(cardMarkup).join('');
+    closeOpen();
+    const detailRow = document.createElement('tr');
+    detailRow.className = 'king-expand-row';
+    detailRow.innerHTML = `<td colspan="6">${detailsMarkup(pick,index)}</td>`;
+    row.after(detailRow);
+    row.classList.add('king-row-open');
+    row.setAttribute('aria-expanded', 'true');
+    openSummaryRow = row;
   };
 
-  grid.innerHTML = '<article class="king-preview-card king-full-card"><div class="king-empty">LOADING TODAY\'S PICKS…</div></article>';
-  grid.hidden = false;
+  tbody.addEventListener('click', event => {
+    const row = event.target.closest('tr');
+    if (!row || row.classList.contains('king-expand-row') || row.parentElement !== tbody) return;
+    if (!today.length) return;
+    syncRows();
+    openRow(row);
+  });
 
-  fetch(`${FEED}?t=${Date.now()}`, {cache:'no-store'})
+  tbody.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const row = event.target.closest('tr');
+    if (!row || row.classList.contains('king-expand-row') || row.parentElement !== tbody) return;
+    if (!today.length) return;
+    event.preventDefault();
+    syncRows();
+    openRow(row);
+  });
+
+  const feedReady = fetch(`${FEED}?t=${Date.now()}`, {cache:'no-store'})
     .then(response => {
       if (!response.ok) throw new Error('feed unavailable');
       return response.json();
     })
-    .then(data => renderCards(data.today || []))
+    .then(data => {
+      today = Array.isArray(data.today) ? data.today : [];
+      syncRows();
+      return today;
+    })
     .catch(() => {
-      grid.hidden = false;
-      grid.innerHTML = '<article class="king-preview-card king-full-card"><div class="king-empty">PICKS TEMPORARILY UNAVAILABLE</div></article>';
+      today = [];
+      return today;
     });
+
+  // The page's original table renderer may finish just after this script.
+  // Re-apply only row accessibility metadata; no observer and no extra rendering loop.
+  feedReady.finally(() => {
+    [0, 180, 600].forEach(delay => setTimeout(syncRows, delay));
+  });
 })();
