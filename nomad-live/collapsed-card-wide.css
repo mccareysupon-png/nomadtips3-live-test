@@ -1,7 +1,7 @@
 /* NOMAD Live 3.41 — Page 1 desktop collapsed-card repair.
    Scope: PC only (>=1025px). Presentation only.
    Do not alter tablet/mobile, feed, odds, detector, signal, or engine logic.
-   Rollback blob before separator removal: a5c3bf7795935017f70564c5e346c64081f67759 */
+   Rollback blob before dark-card separation pass: f41878488aa799b6c1fd311e479172f3e1dba27a */
 
 @media (min-width:1025px){
   /* Human-readable team block: shirt | name | score, same order for HOME and AWAY. */
@@ -84,6 +84,16 @@
     display:none!important;
   }
 
+  /* Match-to-match separation: solid darker surface plus spacing only.
+     No bright border, glow, or additional gradient. */
+  .match-list{
+    gap:9px!important;
+  }
+
+  .match-wrap{
+    background:#121512!important;
+  }
+
   /* Reading order: STATUS | MATCH | TIME | STATS | MARKET | CHECKS. */
   .match-wrap:not([open]) > .match-row{
     grid-template-columns:58px minmax(260px,1.25fr) 76px minmax(180px,.78fr) minmax(250px,1.05fr) 58px!important;
@@ -93,6 +103,7 @@
     row-gap:0!important;
     align-items:stretch!important;
     padding:14px!important;
+    background:#121512!important;
   }
 
   /* Equal-height zones. Separation now comes from spacing and subtle tone only — no vertical rules. */
