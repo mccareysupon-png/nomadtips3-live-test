@@ -1,135 +1,410 @@
 {
-  "engine": "the-king-v10-king-v2-goaloo-transition",
-  "policy": "KING_V2_BETA",
+  "engine": "the-king-default-goaloo-composite-40pct-188",
+  "policy": "KING_DEFAULT_40_188",
   "status": "OK",
-  "last_selection_run": "2026-09-03T22:53:38Z",
+  "last_selection_run": "2026-09-03T23:25:10Z",
   "last_settlement_run": "2026-09-03T22:38:59Z",
   "selection_date": "2026-09-04",
-  "fixtures_seen": 411,
-  "qualified": 0,
-  "pending": 0,
+  "fixtures_seen": 417,
+  "qualified": 78,
+  "pending": 78,
   "max_daily_picks": null,
-  "no_pick": true,
+  "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-  "decision_layer": "KING V2 value-first transition",
-  "rejected": 411,
+  "decision_layer": "Persistent owner default Goaloo composite thresholds",
+  "selection_profile": {
+    "name": "OWNER_DEFAULT_40_188",
+    "date": "2026-09-04",
+    "minimum_confidence": 0.4,
+    "minimum_odds": 1.88,
+    "maximum_odds_safety": 3.0,
+    "recent_sample_min_each": 8,
+    "max_picks": null,
+    "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+    "king_v2_underlying_gate": "BYPASSED",
+    "king_v2_market_edge_gate": "BYPASSED",
+    "king_v2_ev_gate": "BYPASSED"
+  },
+  "rejected": 339,
   "rejection_reasons": {
-    "DATA_QUALITY_RECENT_SAMPLE": 118,
-    "UNDERLYING_PERFORMANCE": 291,
-    "DRAW_NOT_MAIN_PICK": 2
+    "GOALOO_FORM_SHORT": 121,
+    "ODDS_SAFETY_MAX": 118,
+    "NO_GOALOO_1X2_ODDS": 40,
+    "DEFAULT_MIN_CONFIDENCE": 28,
+    "DRAW_NOT_MAIN_PICK": 2,
+    "DEFAULT_MIN_ODDS": 30
   },
   "rejection_samples": [
     {
       "match": "Libertad FC vs Club Sport Emelec",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 8,
-      "away_n": 7
-    },
-    {
-      "match": "Cavalier FC vs Portmore United",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "away_n": 7,
+      "required_each": 8
     },
     {
       "match": "Nacional FC de Sonsonate vs CD Vendaval",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 0,
-      "away_n": 9
+      "away_n": 9,
+      "required_each": 8
     },
     {
       "match": "Don Orione vs Deportivo Guiraldes",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 4.59,
+      "maximum": 3.0,
+      "confidence": 0.6566
     },
     {
       "match": "Deportivo Santo Domingo vs Cumbaya FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 9,
-      "away_n": 7
+      "away_n": 7,
+      "required_each": 8
     },
     {
       "match": "Guaynabo Gol SC vs PR San Juan",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 6.63,
+      "maximum": 3.0,
+      "confidence": 0.5769
     },
     {
       "match": "Deportivo Pereira vs Dep.Independiente Medellin",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 5.99,
+      "maximum": 3.0,
+      "confidence": 0.536
     },
     {
       "match": "CD Olimpia vs Platense",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 7.09,
+      "maximum": 3.0,
+      "confidence": 0.835
     },
     {
       "match": "Tepatitlan de Morelos vs CSyD Dorados de Sinaloa",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.2,
+      "maximum": 3.0,
+      "confidence": 0.5183
     },
     {
       "match": "Matagalpa FC vs UNAN Managua",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
-    },
-    {
-      "match": "Veraguas FC Reserves vs SD Atletico Nacional",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.45,
+      "maximum": 3.0,
+      "confidence": 0.4627
     },
     {
       "match": "Toin Yokohama University vs Hosei University",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 8,
-      "away_n": 5
+      "away_n": 5,
+      "required_each": 8
     },
     {
       "match": "Kyoto Sangyo University vs Kyushu Sangyo University SC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 3,
-      "away_n": 1
+      "away_n": 1,
+      "required_each": 8
     },
     {
       "match": "Sang Mustang FC vs Sikkim Police",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
-      "away_n": 9
+      "away_n": 9,
+      "required_each": 8
     },
     {
       "match": "MLS FC Lawngtlai vs Kanan FC",
-      "reason": "DATA_QUALITY_RECENT_SAMPLE",
+      "reason": "GOALOO_FORM_SHORT",
       "home_n": 6,
-      "away_n": 10
+      "away_n": 10,
+      "required_each": 8
     },
     {
       "match": "Tzeirey Kafr Kana vs Ihud Bnei Avtin",
-      "reason": "UNDERLYING_PERFORMANCE",
-      "underlying": null
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 8.1,
+      "maximum": 3.0,
+      "confidence": 0.5427
+    },
+    {
+      "match": "Beitar Tel Aviv Ramla vs Ironi Beit Dagan",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 6,
+      "required_each": 8
+    },
+    {
+      "match": "Arema FC vs Isenmulang Kalteng",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 8,
+      "required_each": 8
+    },
+    {
+      "match": "Imigresen FC II vs Bunga Raya",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
+      "away_n": 7,
+      "required_each": 8
+    },
+    {
+      "match": "Chinland vs YANGON UNITED",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 15.0,
+      "maximum": 3.0,
+      "confidence": 0.9008
+    },
+    {
+      "match": "Yangon City vs Yadanabon FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 5,
+      "away_n": 9,
+      "required_each": 8
+    },
+    {
+      "match": "Dzongri FC vs Red Panda FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 8,
+      "required_each": 8
+    },
+    {
+      "match": "Karbon Cherkasy vs Lozova",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 3,
+      "away_n": 4,
+      "required_each": 8
+    },
+    {
+      "match": "Measures Club vs Calcutta Polica Club",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 5,
+      "required_each": 8
+    },
+    {
+      "match": "Peerless SC vs Mohammedan SC",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.3676
+    },
+    {
+      "match": "United Sports Club vs Wari AC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 0,
+      "away_n": 10,
+      "required_each": 8
+    },
+    {
+      "match": "Dinaz Vyshgorod vs FC Vilkhivtsi",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 7,
+      "required_each": 8
+    },
+    {
+      "match": "Chernomorets Odessa vs FC Livyi Bereh",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.36,
+      "maximum": 3.0,
+      "confidence": 0.4252
+    },
+    {
+      "match": "Salisbury Inter (W) vs West Adelaide (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.16,
+      "maximum": 3.0,
+      "confidence": 0.5535
+    },
+    {
+      "match": "Salgueiros vs Machico",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 7,
+      "required_each": 8
+    },
+    {
+      "match": "Chungbuk Cheongju vs Seoul E-Land FC",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 4.02,
+      "maximum": 3.0,
+      "confidence": 0.4242
+    },
+    {
+      "match": "Paju Frontier FC vs Daegu FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9,
+      "required_each": 8
     }
   ],
-  "near_gate_top": [],
+  "near_gate_top": [
+    {
+      "match": "Lincoln Red Imps FC vs Europa Point",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 10.7,
+      "maximum": 3.0,
+      "confidence": 0.9346
+    },
+    {
+      "match": "Lisburn Ladies (W) vs Glentoran (W)",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.9262
+    },
+    {
+      "match": "Derry City (W) vs Cliftonville LFC (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 30.0,
+      "maximum": 3.0,
+      "confidence": 0.9252
+    },
+    {
+      "match": "DPMM FC vs Johor Darul Takzim",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.9233
+    },
+    {
+      "match": "Fleury 91 (W) vs Lyon (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 23.0,
+      "maximum": 3.0,
+      "confidence": 0.903
+    },
+    {
+      "match": "Chinland vs YANGON UNITED",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 15.0,
+      "maximum": 3.0,
+      "confidence": 0.9008
+    },
+    {
+      "match": "FC Noah vs Gandzasar Kapan",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 27.0,
+      "maximum": 3.0,
+      "confidence": 0.8767
+    },
+    {
+      "match": "Crusaders Newtownabbey Strikers (W) vs Larne FC (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 10.7,
+      "maximum": 3.0,
+      "confidence": 0.8633
+    },
+    {
+      "match": "Livingston vs Stenhousemuir",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 7.5,
+      "maximum": 3.0,
+      "confidence": 0.8526
+    },
+    {
+      "match": "CD Olimpia vs Platense",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 7.09,
+      "maximum": 3.0,
+      "confidence": 0.835
+    },
+    {
+      "match": "Prishtina vs KF Vushtrria",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.8333
+    },
+    {
+      "match": "FC Porto vs Moreirense",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 18.0,
+      "maximum": 3.0,
+      "confidence": 0.8
+    },
+    {
+      "match": "FBC Melgar (W) vs Killas W",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7977
+    },
+    {
+      "match": "Three Bridges vs Kingstonian",
+      "reason": "DEFAULT_MIN_ODDS",
+      "odds": 1.5,
+      "required": 1.88,
+      "confidence": 0.7906
+    },
+    {
+      "match": "Istanbul Basaksehir vs Galatasaray",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 4.94,
+      "maximum": 3.0,
+      "confidence": 0.784
+    },
+    {
+      "match": "Maccabi Nujeidat Ahmed vs Moadon Sport Tira",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 6.09,
+      "maximum": 3.0,
+      "confidence": 0.7768
+    },
+    {
+      "match": "Bregalnica Stip vs Shkendija Haracine",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 4.23,
+      "maximum": 3.0,
+      "confidence": 0.7738
+    },
+    {
+      "match": "Tinex Sencur vs NK Ziri",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 8.3,
+      "maximum": 3.0,
+      "confidence": 0.7728
+    },
+    {
+      "match": "Bray Wanderers vs Cork City",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.48,
+      "maximum": 3.0,
+      "confidence": 0.7685
+    },
+    {
+      "match": "Al-Ittifaq vs Al-Muharraq",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 10.0,
+      "maximum": 3.0,
+      "confidence": 0.7645
+    }
+  ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
     "odds_ok": true,
     "index_rows": 518,
-    "odds_rows": 419,
-    "h2h_static_ok": 411,
+    "odds_rows": 416,
+    "h2h_static_ok": 417,
     "h2h_browser_fallback": 0,
     "errors": []
   },
   "policy_limits": {
-    "market_edge_min": 0.05,
-    "ev_min": 0.05,
-    "odds_max": 3.0,
-    "minimum_odds": null,
-    "underlying_required": "3/4",
-    "recent_sample_min_each": 8
+    "confidence_min": 0.4,
+    "minimum_odds": 1.88,
+    "maximum_odds_safety": 3.0,
+    "max_daily_picks": null,
+    "recent_sample_min_each": 8,
+    "draw_main_pick": "REJECT",
+    "goaloo_1x2_required": true,
+    "king_v2_underlying_gate": "BYPASSED",
+    "king_v2_market_edge_gate": "BYPASSED",
+    "king_v2_ev_gate": "BYPASSED"
   },
   "transition_notes": [
-    "No daily pick-count cap: every candidate passing all KING V2 gates is published.",
-    "Legacy confidence>=58%, edge>=12pt and odds>=1.70 gates retired for selection.",
-    "Goaloo-equivalent underlying form is used until xG/SoT feeds are proven.",
-    "Lineup/rest-rotation enrichment is not yet proven in the Goaloo collector and is explicitly flagged, not fabricated."
+    "Owner default profile is active until the owner explicitly changes it.",
+    "Publication thresholds: selected winner probability >=40% and selected-side odds >=1.88.",
+    "No daily pick-count cap.",
+    "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw side, odds <=3.00.",
+    "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
   ]
 }
