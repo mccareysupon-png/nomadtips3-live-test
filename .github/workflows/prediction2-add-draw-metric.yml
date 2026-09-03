@@ -25,14 +25,11 @@ jobs:
           p = Path('nomad-live/prediction2.html')
           s = p.read_text()
 
-          s2 = s.replace(
-            '.king-scorebar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));',
-            '.king-scorebar{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));',
-            1,
-          )
-          if s2 == s:
+          old = '.king-scorebar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));'
+          new = '.king-scorebar{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));'
+          if old not in s:
             raise SystemExit('scorebar 7-column selector not found')
-          s = s2
+          s = s.replace(old, new, 1)
 
           old = '<div class="metric loss"><span>LOSS</span><b id="sumLoss">—</b></div>\n      <div class="metric"><span>WIN RATE</span><b id="sumRate">—</b></div>'
           new = '<div class="metric loss"><span>LOSS</span><b id="sumLoss">—</b></div>\n      <div class="metric draw"><span>DRAW</span><b id="sumDraw">—</b></div>\n      <div class="metric"><span>WIN RATE</span><b id="sumRate">—</b></div>'
@@ -40,10 +37,10 @@ jobs:
             raise SystemExit('scorebar LOSS/WIN RATE block not found')
           s = s.replace(old, new, 1)
 
-          old = "const losses=settled.filter(x=>x.result==='LOSS').length;"
-          new = "const losses=settled.filter(x=>x.result==='LOSS').length;\n        const draws=(data.history||[]).filter(x=>x.result==='DRAW'||x.result==='PUSH').length;"
+          old = "const wins=settled.filter(x=>x.result==='WIN').length, losses=settled.filter(x=>x.result==='LOSS').length;"
+          new = "const wins=settled.filter(x=>x.result==='WIN').length, losses=settled.filter(x=>x.result==='LOSS').length;\n        const draws=(data.history||[]).filter(x=>x.result==='DRAW'||x.result==='PUSH').length;"
           if old not in s:
-            raise SystemExit('loss counter not found')
+            raise SystemExit('win/loss counter not found')
           s = s.replace(old, new, 1)
 
           old = "$('#sumPicks').textContent=settled.length;$('#sumWin').textContent=wins;$('#sumLoss').textContent=losses;$('#sumRate').textContent=pct(settled.length?wins/settled.length:NaN);"
