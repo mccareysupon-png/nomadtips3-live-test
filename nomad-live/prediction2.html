@@ -3,18 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111315">
+  <meta name="theme-color" content="#123328">
   <meta name="robots" content="noindex,nofollow">
   <meta name="description" content="NOMADTIPS3 Prediction2 full-time pre-match picks and verified performance record.">
   <title>NOMADTIPS3 — Prediction2</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="site-footer.css">
+  <link rel="stylesheet" href="../public-info-footer.css">
+  <link rel="stylesheet" href="public-site-nav.css?v=20260902-three-nav-v1">
   <style>
     :root{--king-max:1180px;--red:#ff8b8b;--surface:#171b16}
     .king-page{background:radial-gradient(circle at 50% -22%,rgba(243,198,35,.045),transparent 30rem),var(--bg);min-height:100vh}
-    .king-topbar{height:58px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-    .king-topbar .brand{font-size:22px}.king-topbar .brand .brand-tips{color:var(--yellow)}
-    .king-mode{display:flex;align-items:center;gap:7px;color:#c9ced3;font-size:10px;font-weight:800;letter-spacing:.07em}
-    .king-mode-dot{width:7px;height:7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 0 4px rgba(243,198,35,.08)}
     .king-shell{max-width:var(--king-max);margin:auto;padding:18px 18px 28px}
     .king-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin:4px 2px 12px}
     .king-hero-main{min-width:0}.kicker{color:#9aa29a;font-size:8px;font-weight:900;letter-spacing:.08em}
@@ -31,16 +30,23 @@
     .king-panel{display:none;background:var(--surface);border:1px solid rgba(255,255,255,.045);border-radius:10px;overflow:hidden;margin-bottom:8px}.king-panel.active{display:block}
     .king-panel-head{min-height:39px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}.king-panel-head>div{display:flex;align-items:baseline;gap:8px;min-width:0}.king-panel-head b{font-size:11px;letter-spacing:.025em}.king-panel-head small,.king-panel-head>span{color:var(--muted);font-size:9px;white-space:nowrap}
     .king-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.king-table{width:100%;min-width:640px;border-collapse:collapse;font-size:11px}.king-table th,.king-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}.king-table th{background:#171a1e;color:#858c95;font-size:8px;font-weight:800;letter-spacing:.045em}.king-table tbody tr:last-child td{border-bottom:0}.king-table td:first-child{font-weight:700}.king-vs{color:var(--muted);font-weight:400}.king-result{font-weight:900;letter-spacing:.02em}.king-result.win{color:var(--green)}.king-result.loss{color:var(--red)}.king-result.pending{color:var(--yellow)}.king-pl.positive{color:var(--green);font-weight:800}.king-pl.negative{color:var(--red);font-weight:800}
-    .king-empty{padding:30px 12px;text-align:center;color:#717982;font-size:9px;font-weight:800;letter-spacing:.08em}.king-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}.king-rules div{background:#171a1e;padding:10px}.king-rules span{display:block;color:#7e858e;font-size:8px;font-weight:700;letter-spacing:.045em}.king-rules b{display:block;margin-top:4px;font-size:11px}.king-note{margin:0;padding:9px 10px;border-top:1px solid var(--line);color:#7f8790;font-size:9px;line-height:1.45}.king-footer{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 2px 2px;color:#59616a;font-size:8px;font-weight:700;letter-spacing:.065em}.king-footer i{width:3px;height:3px;border-radius:50%;background:#4c535b}
-    @media(max-width:699px){.king-topbar{padding:0 12px}.king-shell{padding:8px 8px 28px}.king-hero{align-items:flex-start;gap:10px}.king-hero h1{font-size:21px}.king-heading-line{align-items:flex-start;flex-direction:column;gap:5px}.king-updated{padding-top:4px}.king-scorebar{grid-template-columns:repeat(4,1fr)}.king-scorebar .metric{padding:8px 6px}.king-scorebar b{font-size:15px}.king-tabs{gap:15px}.king-panel-head{padding:8px}.king-panel-head>div{display:block}.king-panel-head small{display:block;margin-top:2px}.king-table th,.king-table td{padding:8px 7px}.king-rules{grid-template-columns:repeat(2,1fr)}}
+    .king-empty{padding:30px 12px;text-align:center;color:#717982;font-size:9px;font-weight:800;letter-spacing:.08em}.king-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line)}.king-rules div{background:#171a1e;padding:10px}.king-rules span{display:block;color:#7e858e;font-size:8px;font-weight:700;letter-spacing:.045em}.king-rules b{display:block;margin-top:4px;font-size:11px}.king-note{margin:0;padding:9px 10px;border-top:1px solid var(--line);color:#7f8790;font-size:9px;line-height:1.45}
+    @media(max-width:699px){.king-shell{padding:8px 8px 28px}.king-hero{align-items:flex-start;gap:10px}.king-hero h1{font-size:21px}.king-heading-line{align-items:flex-start;flex-direction:column;gap:5px}.king-updated{padding-top:4px}.king-scorebar{grid-template-columns:repeat(4,1fr)}.king-scorebar .metric{padding:8px 6px}.king-scorebar b{font-size:15px}.king-tabs{gap:15px}.king-panel-head{padding:8px}.king-panel-head>div{display:block}.king-panel-head small{display:block;margin-top:2px}.king-table th,.king-table td{padding:8px 7px}.king-rules{grid-template-columns:repeat(2,1fr)}}
     @media(min-width:700px){.king-scorebar .metric{padding:9px 8px}.king-table{font-size:12px}}
     @media(min-width:1024px){.king-shell{padding-top:74px}.king-scorebar b{font-size:18px}.king-panel-head{padding-left:12px;padding-right:12px}.king-table th,.king-table td{padding-left:11px;padding-right:11px}}
   </style>
 </head>
 <body class="king-page" data-page="prediction2">
-  <header class="topbar king-topbar">
-    <div class="brand" aria-label="nomadtips3"><span class="brand-nomad">nomad</span><span class="brand-tips">tips3</span></div>
-    <div class="king-mode"><span class="king-mode-dot"></span><span>FULL-TIME · THE KING</span></div>
+  <header class="topbar">
+    <div class="topbar-inner public-four-nav">
+      <div class="brand" aria-label="nomadtips3">nomad<span>tips3</span></div>
+      <nav class="topnav" aria-label="NOMADTIPS3 public navigation">
+        <a href="index.html">Signal</a>
+        <a href="statistics.html?v=20260830-side-aware-v1">Statistics</a>
+        <a href="../nomad-live-342/index.html?v=20260831-standalone342-v1">Live Score</a>
+      </nav>
+      <div class="source-pill"><span class="dot"></span>FULL-TIME · THE KING</div>
+    </div>
   </header>
 
   <main class="king-shell">
@@ -94,9 +100,13 @@
       <div class="king-rules"><div><span>CORE</span><b>Winner First</b></div><div><span>MARKET</span><b>1X2 Full-Time</b></div><div><span>RECORD</span><b>Verified Only</b></div><div><span>STAKE MODEL</span><b>฿100 / pick</b></div><div><span>DATA</span><b>Goaloo Transition</b></div><div><span>STATUS</span><b>KING V2</b></div></div>
       <p class="king-note">Prediction2 is currently a standalone production page and is intentionally not linked from the main navigation.</p>
     </section>
-
-    <footer class="king-footer"><span>NOMADTIPS3 · PREDICTION2</span><i></i><span>FULL-TIME PRE-MATCH</span></footer>
   </main>
+
+  <nav class="mobile-nav public-four-nav" aria-label="NOMADTIPS3 mobile navigation">
+    <a href="index.html">Signal</a>
+    <a href="statistics.html?v=20260830-side-aware-v1">Statistics</a>
+    <a href="../nomad-live-342/index.html?v=20260831-standalone342-v1">Live Score</a>
+  </nav>
 
   <script>
     (()=>{
@@ -125,6 +135,20 @@
         if(today.length===0&&settled.length>0)activateTab('history');
       }
       fetch(`${FEED}?t=${Date.now()}`,{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('feed unavailable');return r.json()}).then(render).catch(()=>{$('#kingUpdated').textContent='Verified feed unavailable';$('#todayEmpty').hidden=false;});
+    })();
+  </script>
+  <script src="site-footer.js?v=20260825-rail-v2"></script>
+  <script src="standard-footer-icons.js?v=20260902-v2"></script>
+  <script>
+    (()=>{
+      const footer=document.querySelector('.site-footer');
+      const inner=footer?.querySelector('.site-footer-inner');
+      if(!inner||inner.querySelector('.nomad-info-linkrail'))return;
+      const nav=document.createElement('nav');
+      nav.className='nomad-info-linkrail';
+      nav.setAttribute('aria-label','NOMADTIPS3 information pages');
+      nav.innerHTML='<a href="../soccer-predictions/">Soccer Predictions</a><a href="../about/">About Us</a><a href="../user-guide/">User Guide</a><a href="../privacy/">Privacy Policy</a><a href="../terms/">Terms of Service</a><a href="../disclaimer/">Disclaimer</a>';
+      inner.appendChild(nav);
     })();
   </script>
 </body>
