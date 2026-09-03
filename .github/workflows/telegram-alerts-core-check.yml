@@ -1,0 +1,38 @@
+name: Telegram Alerts Core Check
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'telegram-alerts/**'
+      - '.github/workflows/telegram-alerts-core-check.yml'
+  push:
+    branches:
+      - 'feature/telegram-alerts-step1-20260902'
+    paths:
+      - 'telegram-alerts/**'
+      - '.github/workflows/telegram-alerts-core-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  telegram-core:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: telegram-alerts/worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check Telegram Worker
+        run: node --check src/index.js
+      - name: Verify Step 1 safety contract
+        run: |
+          grep -q "PENDING_PAYMENT" src/index.js
+          grep -q "X-Telegram-Bot-Api-Secret-Token" src/index.js
+          grep -q "telegram_deliveries" src/index.js
+          grep -q "telegram_updates" src/index.js
+          ! grep -qi "stripe" src/index.js
