@@ -216,3 +216,41 @@ html{scrollbar-gutter:stable}
     outline-offset:-2px!important;
   }
 }
+
+/* Prediction2-only layout alignment. Keep this isolated from the main pages. */
+body[data-page="prediction2"] .kicker{display:none!important}
+body[data-page="prediction2"] .king-shell{
+  width:100%!important;
+  max-width:1120px!important;
+  margin:0 auto!important;
+  padding:10px 16px 28px!important;
+  box-sizing:border-box!important;
+}
+body[data-page="prediction2"] .king-hero{
+  margin:0 0 12px!important;
+}
+body[data-page="prediction2"] .topbar-inner.public-four-nav>.brand{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:30px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  -webkit-text-stroke:.22px currentColor!important;
+  text-rendering:geometricPrecision!important;
+}
+body[data-page="prediction2"] .topbar-inner.public-four-nav>.brand span{
+  -webkit-text-stroke:.22px currentColor!important;
+}
+@media(max-width:700px){
+  body[data-page="prediction2"] .king-shell{
+    padding:8px 12px 28px!important;
+  }
+  body[data-page="prediction2"] .topbar-inner.public-four-nav>.brand{
+    font-size:25px!important;
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  body[data-page="prediction2"] .topbar-inner.public-four-nav>.brand span{
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+}
