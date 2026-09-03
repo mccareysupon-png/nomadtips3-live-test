@@ -1,0 +1,132 @@
+{
+  "date": "2026-09-03",
+  "timezone": "Asia/Bangkok",
+  "policy": "KING V2 BETA",
+  "decision": "NO KING PICK TODAY",
+  "screened": 14,
+  "qualified": 0,
+  "note": "V1 selections published earlier on 2026-09-03 are preserved separately for audit and are not treated as V2-qualified picks.",
+  "modelNote": "For finalists only, beta fair probability used a conservative Poisson/xG pricing check with longer-horizon and venue context. It is a beta model probability, not a calibrated Confidence score.",
+  "finalists": [
+    {
+      "match": "Mjallby AIF vs Djurgarden",
+      "selection": "Djurgarden Win",
+      "marketOddsRange": "1.75-1.82",
+      "marketFairProbabilityPct": 55.11,
+      "betaModelProbabilityPct": 54.3,
+      "edgePctPoints": -0.81,
+      "evPctAtReferenceOdds": -4.98,
+      "referenceOdds": 1.75,
+      "performanceGate": "PASS",
+      "lineupGate": "PENDING confirmed lineup",
+      "decision": "NO PICK",
+      "reason": "Underlying performance is strongly superior, but the market has already priced most of the advantage. Current price fails both +5pp market edge and +5% EV.",
+      "sources": [
+        "https://www.fotmob.com/leagues/67/stats/season/30261/teams/_xg_diff_team/allsvenskan-trophies-teams",
+        "https://www.fotmob.com/en-GB/leagues/67/stats/season/30261/teams/expected_goals_conceded_team/allsvenskan-trophies-teams",
+        "https://fbref.com/en/squads/9423c05a/Djurgarden-Stats",
+        "https://fbref.com/en/squads/b1a7a7b9/",
+        "https://www.oddschecker.com/football/sweden/allsvenskan/mjallby-aif-v-djurgarden/winner",
+        "https://www.dif.se/nyheter/2026/infor-mjallby-djurgarden"
+      ]
+    },
+    {
+      "match": "FC Basel vs FC Sion",
+      "selection": "FC Sion Win",
+      "referenceOdds": 2.55,
+      "marketFairProbabilityPct": 36.54,
+      "betaModelProbabilityPct": 40.2,
+      "edgePctPoints": 3.66,
+      "evPctAtReferenceOdds": 2.51,
+      "performanceGate": "PASS / near-value finalist",
+      "lineupGate": "PENDING confirmed lineup",
+      "decision": "NO PICK",
+      "reason": "Closest value case of the screen, but still below both V2 hard thresholds. Re-evaluate only if price/lineup materially improves the edge; do not auto-pick on price drift alone.",
+      "sources": [
+        "https://matchcenter-sfl.football.ch/",
+        "https://www.oddsportal.com/football/switzerland/super-league/",
+        "https://tickets.fcb.ch/spiele/fcb-fc-sion-0deb936e"
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "match": "FC Lugano vs Servette",
+      "decision": "NO PICK",
+      "failedGate": "VALUE / LINEUP",
+      "reason": "Only modest underlying edge, multiple Lugano absences, and price around 1.95 requires a materially higher fair-win estimate than evidence supports."
+    },
+    {
+      "match": "Anderlecht vs Kortrijk",
+      "decision": "NO PICK",
+      "failedGate": "VALUE",
+      "reason": "Excellent underlying matchup but price compressed to about 1.48. EV +5% requires roughly 70.95% model win probability, too high for the conservative beta pricing check."
+    },
+    {
+      "match": "Gent vs OH Leuven",
+      "decision": "NO PICK",
+      "failedGate": "VALUE",
+      "reason": "Gent underlying profile is better, but odds around 1.62 require roughly 64.8% win probability for EV +5%; conservative pricing remains below that threshold."
+    },
+    {
+      "match": "Hibernian vs Hearts",
+      "decision": "NO PICK",
+      "failedGate": "UNDERLYING / VALUE",
+      "reason": "Current xG and defensive profiles are close; longer home/away evidence does not create a >=5pp market edge. Both squads also carry defensive absences."
+    },
+    {
+      "match": "Real Sociedad vs Celta Vigo",
+      "decision": "NO PICK",
+      "failedGate": "VALUE / SQUAD CONTEXT",
+      "reason": "Sociedad current xG trend is better but Celta's longer baseline is stronger and Sociedad have important goalkeeper/defensive availability concerns. Evidence does not justify the required fair probability at ~1.94."
+    },
+    {
+      "match": "Toulouse vs Lille",
+      "decision": "NO PICK",
+      "failedGate": "UNDERLYING",
+      "reason": "Lille's longer baseline is stronger, but current xG differential is not superior enough for 3/4 underlying tests and there are material absences."
+    },
+    {
+      "match": "FC Copenhagen vs FC Nordsjaelland",
+      "decision": "NO PICK",
+      "failedGate": "UNDERLYING / ODDS CAP",
+      "reason": "Copenhagen fails the underlying comparison; Nordsjaelland are substantially better on current xG. Nordsjaelland price is also above the V2 beta 3.00 odds cap."
+    },
+    {
+      "match": "Rakow Czestochowa vs Gornik Zabrze",
+      "decision": "NO PICK",
+      "failedGate": "UNDERLYING / ODDS CAP",
+      "reason": "Rakow current xG differential is negative and Gornik's away price is above the beta odds cap."
+    },
+    {
+      "match": "Lech Poznan vs Jagiellonia",
+      "decision": "NO PICK",
+      "failedGate": "VALUE",
+      "reason": "Lech have a modest underlying edge but Jagiellonia are also strong; ~1.62 does not leave enough value margin."
+    },
+    {
+      "match": "Cagliari vs Hellas Verona",
+      "decision": "NO PICK",
+      "failedGate": "ROTATION / LINEUP",
+      "reason": "Coppa Italia rotation is unresolved at morning screen; V2 forbids forcing a cup pick before material rotation is assessed."
+    },
+    {
+      "match": "Palermo vs Mantova",
+      "decision": "NO PICK",
+      "failedGate": "ROTATION / VALUE",
+      "reason": "Coppa Italia rotation is unresolved and favorite price is already short."
+    },
+    {
+      "match": "FC Rouen vs Valenciennes",
+      "decision": "NO PICK",
+      "failedGate": "DATA QUALITY",
+      "reason": "Insufficient standardized xG/long-horizon source coverage for the required V2 calculations."
+    }
+  ],
+  "marketSources": [
+    "https://www.oddsportal.com/football/belgium/jupiler-pro-league/",
+    "https://www.oddsportal.com/football/switzerland/super-league/",
+    "https://www.oddschecker.com/football/sweden/allsvenskan/mjallby-aif-v-djurgarden/winner",
+    "https://www.oddschecker.com/football/european-elite"
+  ]
+}
