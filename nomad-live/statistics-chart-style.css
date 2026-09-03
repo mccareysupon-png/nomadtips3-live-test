@@ -1,0 +1,32 @@
+/* NOMADTIPS3 Statistics chart style layer.
+   Display-only: consumes the existing cumulative-unit series and viewport state. */
+.cumulative-unit-chart.has-statistics-chart-style .cumulative-unit-surface{isolation:isolate}
+.cumulative-unit-chart.has-statistics-chart-style .cumulative-unit-canvas{position:relative;z-index:1;transition:opacity .12s ease}
+.cumulative-unit-chart.has-statistics-chart-style[data-statistics-chart-mode="glow"] .cumulative-unit-canvas,
+.cumulative-unit-chart.has-statistics-chart-style[data-statistics-chart-mode="candle"] .cumulative-unit-canvas{opacity:0}
+.statistics-chart-style-overlay{position:absolute;inset:0;z-index:0;display:block;width:100%;height:100%;pointer-events:none}
+.cumulative-unit-chart.has-statistics-chart-style .statistics-viewport-bollinger-overlay{z-index:2}
+.cumulative-unit-chart.has-statistics-chart-style .statistics-viewport-ema-overlay{z-index:3}
+.cumulative-unit-chart.has-statistics-chart-style .cumulative-unit-tooltip{z-index:6}
+
+.statistics-chart-style-control{display:flex;align-items:center;align-self:flex-start}
+.statistics-chart-style-button{height:20px;padding:0 7px;border:1px solid rgba(155,165,158,.18);border-radius:4px;background:#151815;color:#9aa49d;font:900 7px/1 Arial,sans-serif;letter-spacing:.045em;cursor:pointer}
+.statistics-chart-style-button:hover,.statistics-chart-style-button:focus-visible,.statistics-chart-style-button[aria-expanded="true"]{border-color:rgba(184,164,107,.58);color:#d5c58f;outline:none}
+
+.statistics-chart-style-panel{position:absolute;z-index:24;top:34px;right:9px;width:214px;padding:8px;border:1px solid rgba(151,158,153,.24);border-radius:5px;background:rgba(10,12,11,.97);box-shadow:0 9px 26px rgba(0,0,0,.44);color:#8e9891}
+.statistics-chart-style-panel[hidden]{display:none}
+.statistics-chart-style-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;color:#b3bbb5;font:900 8px/1 Arial,sans-serif;letter-spacing:.08em}
+.statistics-chart-style-panel-head button{width:20px;height:18px;padding:0;border:0;background:transparent;color:#717a74;font:900 13px/1 Arial,sans-serif;cursor:pointer}
+.statistics-chart-style-modes{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:4px}
+.statistics-chart-style-modes button{height:23px;padding:0 4px;border:1px solid rgba(135,144,138,.18);border-radius:3px;background:#111411;color:#7f8982;font:900 6.5px/1 Arial,sans-serif;letter-spacing:.035em;cursor:pointer}
+.statistics-chart-style-modes button:hover,.statistics-chart-style-modes button:focus-visible{border-color:rgba(184,164,107,.42);color:#c5b783;outline:none}
+.statistics-chart-style-modes button.is-active{border-color:rgba(184,164,107,.62);background:rgba(90,76,40,.20);color:#d1c18b}
+.statistics-chart-style-color{display:grid;grid-template-columns:1fr 28px;align-items:center;gap:8px;margin-top:7px;color:#77817a;font:800 7px/1 Arial,sans-serif;letter-spacing:.04em}
+.statistics-chart-style-color input{width:28px;height:19px;padding:0;border:0;background:transparent;cursor:pointer}
+.statistics-chart-style-panel p{margin:7px 0 0;color:#606963;font:700 6.3px/1.35 Arial,sans-serif}
+
+@media(max-width:700px){
+  .statistics-chart-style-button{height:19px;padding:0 6px;font-size:6.5px}
+  .statistics-chart-style-panel{top:31px;right:6px;width:196px;padding:7px}
+  .statistics-chart-style-modes button{height:22px;font-size:6px}
+}
