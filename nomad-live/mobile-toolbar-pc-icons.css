@@ -1,5 +1,5 @@
 @import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:700px);
-@import url("card-status-icons.css?v=20260903-all-device-v1") screen and (max-width:1024px);
+@import url("card-status-icons.css?v=20260904-statepulse-v1") screen and (max-width:1024px);
 
 /* Mobile-only bridge: reuse the desktop/PC vintage toolbar artwork.
    ALL artwork is intentionally NOT assigned here; it is owned only by
@@ -9,7 +9,7 @@
    tablet/mobile use the same Watching / Near / Signal artwork as PC.
    Layout stays the airy transparent 4-column mobile layout.
    Presentation only; no filter/odds/feed/engine logic changes.
-   Rollback: rollback/pre-all-single-owner-20260904 */
+   Rollback: rollback/pre-card-state-icons-pulse-20260904 */
 @media(max-width:700px){
   /* Keep every filter + odds icon the same visual footprint on mobile. */
   .toolbar .tabs .tab::before,
