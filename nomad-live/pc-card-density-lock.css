@@ -1,0 +1,95 @@
+/* NOMAD Live 3.41 — Page 1 desktop card density lock.
+   Scope: desktop/PC only (>=1025px), presentation only.
+   Purpose: recover horizontal breathing room after the score/time lane was added,
+   while keeping team shirts, team names, score typography and live data unchanged.
+   This file is intentionally loaded after the existing collapsed/expanded card CSS
+   so one final owner controls density and the hover/open outline. */
+
+@media (min-width:1025px){
+  /* One geometry for both collapsed and expanded summaries. */
+  .match-wrap > .match-row{
+    grid-template-columns:54px minmax(250px,1.25fr) 70px minmax(174px,.78fr) minmax(240px,1.05fr) 54px!important;
+    column-gap:8px!important;
+    row-gap:0!important;
+    padding:12px!important;
+  }
+
+  /* Recover space from internal lanes instead of shrinking primary content. */
+  .match-wrap > .match-row .match-main{
+    padding-right:8px!important;
+  }
+
+  .match-wrap > .match-row .score,
+  .match-wrap > .match-row .quick,
+  .match-wrap > .match-row .market{
+    padding-left:6px!important;
+    padding-right:6px!important;
+  }
+
+  .match-wrap > .match-row .cond{
+    min-width:54px!important;
+    padding-left:4px!important;
+    padding-right:4px!important;
+  }
+
+  .match-wrap > .match-row .league{
+    margin-bottom:6px!important;
+  }
+
+  /* Keep primary identity/readability values untouched. */
+  .match-wrap > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked{
+    min-height:62px!important;
+  }
+
+  .match-wrap > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-icon{
+    width:25px!important;
+    height:25px!important;
+    min-width:25px!important;
+  }
+
+  .match-wrap > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .team-shirt-name{
+    font-size:12px!important;
+  }
+
+  .match-wrap > .match-row .match-main .teams.team-shirts-ready.wide-team-stacked .wide-team-score{
+    width:34px!important;
+    min-width:34px!important;
+    font-size:16px!important;
+  }
+
+  /* Final visual owner for the clickable outline.
+     Pseudo overlay sits above score/stats/market lane backgrounds and cannot intercept clicks. */
+  .match-wrap{
+    position:relative!important;
+  }
+
+  .match-wrap::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    z-index:8;
+    border:1px solid transparent;
+    border-radius:10px;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity .14s ease,border-color .14s ease,box-shadow .14s ease;
+  }
+
+  @media (hover:hover) and (pointer:fine){
+    .match-wrap:hover::after{
+      opacity:1;
+      border-color:rgba(131,223,137,.78);
+      box-shadow:inset 0 0 0 1px rgba(131,223,137,.10);
+    }
+  }
+
+  .match-wrap[open]::after{
+    opacity:1;
+    border-color:rgba(131,223,137,.82);
+    box-shadow:inset 0 0 0 1px rgba(131,223,137,.12);
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .match-wrap::after{transition:none!important}
+  }
+}
