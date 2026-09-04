@@ -27,6 +27,12 @@ TODAY_ONLY_STYLE = '''  <style id="prediction2-today-only-hardlock">
     body[data-page="prediction2"] .king-panel[data-panel="daily"]{display:none!important}
   </style>
 '''
+EXPANDED_STATS_ONLY_STYLE = '''  <style id="prediction2-expanded-stats-only-v1">
+    body[data-page="prediction2"] .king-expand-row .king-expand-match,
+    body[data-page="prediction2"] .king-expand-row .king-expand-meta{display:none!important}
+    body[data-page="prediction2"] .king-expand-row .king-expand-summary{margin-top:0!important}
+  </style>
+'''
 
 
 def main():
@@ -69,11 +75,18 @@ def main():
     if TODAY_ONLY_STYLE in text:
         text = text.replace(TODAY_ONLY_STYLE, '', 1)
 
+    # Expanded Prediction2 cards should show analysis/statistics only. The compact
+    # default row already owns team names, shirts, league/date/time and match identity.
+    if 'id="prediction2-expanded-stats-only-v1"' not in text:
+        if '</head>' not in text:
+            raise SystemExit('head marker not found for expanded-card stats-only style')
+        text = text.replace('</head>', EXPANDED_STATS_ONLY_STYLE + '</head>', 1)
+
     if text != original:
         PATH.write_text(text, encoding='utf-8')
-        print('Prediction2 patched: Statistics V3 retained and default-card asset cache-busted.')
+        print('Prediction2 patched: expanded cards are statistics-only; default rows unchanged.')
     else:
-        print('Prediction2 default-card wiring already current.')
+        print('Prediction2 expanded-card stats-only wiring already current.')
 
 
 if __name__ == '__main__':
