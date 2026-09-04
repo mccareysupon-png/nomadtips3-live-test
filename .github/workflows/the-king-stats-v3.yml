@@ -1,0 +1,59 @@
+name: The King — Statistics V3 Wheel
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/the_king_stats_v3.py'
+      - '.github/workflows/the-king-stats-v3.yml'
+  schedule:
+    # Existing KING settlement runs at :20. V3 follows at :35 every hour.
+    # At 06:35 Asia/Bangkok this also snapshots the outgoing day before the
+    # existing 07:00 Thailand selection wheel replaces `today`.
+    - cron: '35 * * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: the-king-statistics-v3-wheel
+  cancel-in-progress: false
+
+jobs:
+  statistics-v3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install conservative settlement dependencies
+        run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
+
+      - name: Statistics V3 self-test
+        run: python3 .github/scripts/the_king_stats_v3.py self-test
+
+      - name: Sync KING Statistics V3
+        run: python3 .github/scripts/the_king_stats_v3.py sync
+
+      - name: Publish Statistics V3 ledger and rollback archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add the-king-stats-v3.json the-king-archive/
+          if git diff --cached --quiet; then
+            echo 'No KING Statistics V3 state change.'
+            exit 0
+          fi
+          git commit -m "KING Statistics V3 sync $(TZ=Asia/Bangkok date +%F-%H%M)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
