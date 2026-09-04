@@ -1,0 +1,42 @@
+/* NOMAD LIVE 3.42 — HOME/AWAY graph identity lock.
+   Presentation-only: do not alter feed, snapshots, graph points, rolling windows or Event Gate logic. */
+body[data-page="live"]{
+  --na-graph-home:#83df89;
+  --na-graph-away:#2fd5c4;
+  --na-graph-home-rgb:131,223,137;
+  --na-graph-away-rgb:47,213,196;
+}
+
+/* ATTACK FLOW — lock side identity after Vintage palette layers. */
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-chart .attack-home{
+  stroke:var(--na-graph-home)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-chart .attack-away{
+  stroke:var(--na-graph-away)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-details .attack-endpoint-home{
+  background:var(--na-graph-home)!important;
+  box-shadow:0 0 4px rgba(var(--na-graph-home-rgb),.55),0 0 8px rgba(var(--na-graph-home-rgb),.16)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .event-details .attack-endpoint-away{
+  background:var(--na-graph-away)!important;
+  box-shadow:0 0 4px rgba(var(--na-graph-away-rgb),.55),0 0 8px rgba(var(--na-graph-away-rgb),.16)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .home-dot{
+  background:var(--na-graph-home)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .away-dot{
+  background:var(--na-graph-away)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .legend-team:first-child b{
+  color:var(--na-graph-home)!important;
+}
+body[data-page="live"] .event-compact.vintage-theme-ready .attack-legend .legend-team:last-child b{
+  color:var(--na-graph-away)!important;
+}
+
+/* EVENT TIMELINE — keep rails, side labels and event stems on the same fixed identity colors. */
+body[data-page="live"] .event-compact.vintage-theme-ready .na-dual-stage{
+  --na-rail-home:var(--na-graph-home)!important;
+  --na-rail-away:var(--na-graph-away)!important;
+}
