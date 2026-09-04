@@ -37,14 +37,14 @@
     ['Terms of Service',new URL('terms/',root).href],
     ['Disclaimer',new URL('disclaimer/',root).href],
     ['Mobile App',new URL('?install=app',root).href],
-    ['Betting Outlook',new URL('news.html',root).href]
+    ['Betting Outlook',new URL('news.html',root).href,true]
   ];
 
   const rail=(standalone=false)=>{
     const nav=document.createElement('nav');
     nav.className=`nomad-info-linkrail${standalone?' nomad-info-linkrail--standalone':''}`;
     nav.setAttribute('aria-label','NOMADTIPS3 information pages');
-    nav.innerHTML=links.map(([label,href])=>`<a href="${href}">${label}</a>`).join('');
+    nav.innerHTML=links.map(([label,href,newTab])=>`<a href="${href}"${newTab?' target="_blank" rel="noopener noreferrer"':''}>${label}</a>`).join('');
     return nav;
   };
 
