@@ -2,9 +2,9 @@
 
 /* Statistics mobile / nearby-device polish.
    Presentation only: keeps data bindings, odds logic, chart anchor and ledger structure untouched.
-   Rollback marker: rollback/pre-statistics-mobile-airy-20260901
+   Rollback marker: rollback/pre-odds-retro-icons-pages1-2-20260904
    Brightness rollback note: rollback-notes/icon-brightness-20260902.md
-   Size rollback: 27.7px -> 23.1px (pre +20% request, 2026-09-02). */
+   Previous odds icon size: 27.7px. */
 
 @media(max-width:900px){
   /* Primary KPI strip: five compact columns: TOTAL, DAY, WIN RATE, AVG ODDS, ROI. */
@@ -138,7 +138,7 @@
     line-height:1!important;
   }
 
-  /* Odds row: reuse the exact vintage artwork from PC, four equal transparent columns. */
+  /* Odds row: approved retro artwork, four equal transparent columns. */
   .odds-display-toolbar.toolbar{
     display:block!important;
     width:100%!important;
@@ -193,9 +193,9 @@
   .odds-display-toolbar.toolbar .odds-display-control button::before{
     content:""!important;
     display:block!important;
-    width:27.7px!important;
-    height:27.7px!important;
-    flex:0 0 27.7px!important;
+    width:29px!important;
+    height:29px!important;
+    flex:0 0 29px!important;
     background-image:var(--nomad-toolbar-icon)!important;
     background-repeat:no-repeat!important;
     background-position:center!important;
@@ -204,6 +204,18 @@
     -webkit-mask:none!important;
     mask:none!important;
     filter:brightness(1.10) saturate(1.06)!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-label::before{
+    background-image:url("assets/icons/toolbar-odds-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{
+    background-image:url("assets/icons/toolbar-decimal-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="american"]::before{
+    background-image:url("assets/icons/toolbar-american-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{
+    background-image:url("assets/icons/toolbar-fraction-retro-vintage.webp?v=20260904-retro-v1")!important;
   }
   .odds-display-toolbar.toolbar .odds-display-control button:hover,
   .odds-display-toolbar.toolbar .odds-display-control button:focus-visible{
