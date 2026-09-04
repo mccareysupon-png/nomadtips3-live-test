@@ -1,5 +1,5 @@
 /* NOMADTIPS3 Page 2 Vintage Trading Chart.
-   Display-only layer: does not change feed, graph points, scale, Event Gate or engine logic. */
+   Display-only layer: chart mode may change, but HOME/AWAY colors always inherit the match-card palette. */
 body[data-vintage-chart-page="page2"] .event-compact.vtc-host{position:relative}
 
 body[data-vintage-chart-page="page2"] .attack-chart .vtc-grid-extra{pointer-events:none}
@@ -8,8 +8,10 @@ body[data-vintage-chart-page="page2"] .attack-chart .vtc-grid-extra .vtc-grid-ma
 
 body[data-vintage-chart-page="page2"] .attack-chart .vtc-area{pointer-events:none;opacity:.86}
 body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-line{stroke-width:.48!important;opacity:.98!important}
-body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-home{filter:drop-shadow(0 0 .9px color-mix(in srgb,var(--vtc-home,#8fb783) 58%,transparent))!important}
-body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-away{filter:drop-shadow(0 0 .8px color-mix(in srgb,var(--vtc-away,#c1a56d) 52%,transparent))!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-home{filter:drop-shadow(0 0 .9px color-mix(in srgb,var(--vtc-home,var(--vt-home,#8fb783)) 58%,transparent))!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .attack-away{filter:drop-shadow(0 0 .8px color-mix(in srgb,var(--vtc-away,var(--vt-away,#c1a56d)) 52%,transparent))!important}
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .attack-home,
+body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .attack-away{filter:none!important}
 body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .vtc-area,
 body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-normal .vtc-candles,
 body[data-vintage-chart-page="page2"] .attack-chart.vtc-mode-glow .vtc-candles{display:none}
@@ -31,10 +33,7 @@ body[data-vintage-chart-page="page2"] .vtc-settings-panel[hidden]{display:none}
 body[data-vintage-chart-page="page2"] .vtc-mode-row{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
 body[data-vintage-chart-page="page2"] .vtc-mode-button{min-width:0;padding:4px 2px;border:1px solid rgba(124,134,127,.27);border-radius:3px;background:#0b0f0d;color:#7f8982;font:800 6px/1 Arial,sans-serif;letter-spacing:.04em;cursor:pointer}
 body[data-vintage-chart-page="page2"] .vtc-mode-button.is-active{color:#d2bd82;border-color:rgba(194,168,108,.55);background:rgba(92,77,42,.20)}
-body[data-vintage-chart-page="page2"] .vtc-color-row{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
-body[data-vintage-chart-page="page2"] .vtc-color-field{display:grid;grid-template-columns:auto 22px;align-items:center;gap:4px;font:800 6px/1 Arial,sans-serif;letter-spacing:.04em;color:#768079}
-body[data-vintage-chart-page="page2"] .vtc-color-field input{width:22px;height:16px;padding:0;border:0;background:transparent;cursor:pointer}
-body[data-vintage-chart-page="page2"] .vtc-settings-note{margin-top:5px;font:700 5.5px/1.25 Arial,sans-serif;color:#616b64}
+body[data-vintage-chart-page="page2"] .vtc-settings-note{margin-top:5px;font:700 5.5px/1.25 Arial,sans-serif;color:#7a857e;text-align:center}
 
 @media(max-width:760px){
   body[data-vintage-chart-page="page2"] .vtc-settings-toggle{width:22px;height:20px;font-size:10px}
