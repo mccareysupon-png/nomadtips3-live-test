@@ -36,7 +36,8 @@
     ['Privacy Policy',new URL('privacy/',root).href],
     ['Terms of Service',new URL('terms/',root).href],
     ['Disclaimer',new URL('disclaimer/',root).href],
-    ['Mobile App',new URL('?install=app',root).href]
+    ['Mobile App',new URL('?install=app',root).href],
+    ['Betting Outlook',new URL('news.html',root).href]
   ];
 
   const rail=(standalone=false)=>{
