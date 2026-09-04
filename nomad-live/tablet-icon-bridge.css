@@ -1,0 +1,100 @@
+/* NOMADTIPS3 tablet / nearby-device icon bridge.
+   Presentation only. Closes the responsive gaps between mobile and desktop icon layers.
+   No odds conversion, filter, feed, runtime, statistics data, or engine logic changes.
+   Rollback: rollback/pre-tablet-icon-breakpoints-20260904 */
+
+/* Page 1 Signal: 701-1024px.
+   The final independent icon layer already owns the artwork; this bridge only makes
+   the pseudo-elements explicit at tablet widths and gives them a continuous footprint. */
+@media (min-width:701px) and (max-width:1024px){
+  .toolbar:not(.odds-display-toolbar) .tabs .tab::before{
+    content:""!important;
+    display:inline-block!important;
+    width:26px!important;
+    height:26px!important;
+    flex:0 0 26px!important;
+    margin-right:5px!important;
+    vertical-align:middle!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    -webkit-mask:none!important;
+    mask:none!important;
+  }
+
+  .toolbar:not(.odds-display-toolbar) .odds-display-label::before,
+  .toolbar:not(.odds-display-toolbar) .odds-display-control button::before{
+    content:""!important;
+    display:inline-block!important;
+    width:28px!important;
+    height:28px!important;
+    flex:0 0 28px!important;
+    margin-right:4px!important;
+    vertical-align:middle!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    -webkit-mask:none!important;
+    mask:none!important;
+  }
+}
+
+/* Keep 701-900px from becoming crowded when the restored icons take their real width.
+   This mirrors the existing small-screen control ordering without changing the page itself. */
+@media (min-width:701px) and (max-width:900px){
+  .toolbar:not(.odds-display-toolbar){
+    flex-wrap:wrap!important;
+  }
+  .toolbar:not(.odds-display-toolbar) .odds-display-control{
+    order:3!important;
+  }
+  .toolbar:not(.odds-display-toolbar) .search{
+    order:4!important;
+    flex:1 1 100%!important;
+  }
+}
+
+/* Page 2 Statistics: 901-1024px.
+   Mobile Statistics ends at 900px and desktop artwork starts at 1025px, so use the
+   approved retro assets directly in this narrow bridge only. */
+@media (min-width:901px) and (max-width:1024px){
+  .odds-display-toolbar.toolbar .odds-display-label::before,
+  .odds-display-toolbar.toolbar .odds-display-control button::before{
+    content:""!important;
+    display:inline-block!important;
+    width:29px!important;
+    height:29px!important;
+    flex:0 0 29px!important;
+    margin-right:4px!important;
+    vertical-align:middle!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    opacity:1!important;
+    -webkit-mask:none!important;
+    mask:none!important;
+    filter:brightness(1.10) saturate(1.06)!important;
+  }
+
+  .odds-display-toolbar.toolbar .odds-display-label::before{
+    background-image:url("assets/icons/toolbar-odds-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{
+    background-image:url("assets/icons/toolbar-decimal-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="american"]::before{
+    background-image:url("assets/icons/toolbar-american-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{
+    background-image:url("assets/icons/toolbar-fraction-retro-vintage.webp?v=20260904-retro-v1")!important;
+  }
+
+  .odds-display-toolbar.toolbar .odds-display-control button:hover::before,
+  .odds-display-toolbar.toolbar .odds-display-control button:focus-visible::before{
+    filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22))!important;
+  }
+  .odds-display-toolbar.toolbar .odds-display-control button.is-active::before,
+  .odds-display-toolbar.toolbar .odds-display-control button[aria-pressed="true"]::before{
+    filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;
+  }
+}
