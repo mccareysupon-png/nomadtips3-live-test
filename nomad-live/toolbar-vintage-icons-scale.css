@@ -1,8 +1,8 @@
 @import url("toolbar-vintage-icons-stealth.css?v=20260901-v1") screen and (min-width:1025px);
-@import url("toolbar-all-football.css?v=20260901-v1") screen and (min-width:1025px);
 @import url("watching-vintage-meter.css?v=20260901-v1") screen and (min-width:1025px);
 
-/* Desktop/Laptop only: enlarge vintage toolbar icons another 20% (21.6px -> 26px). */
+/* Desktop/Laptop only: enlarge vintage toolbar icons another 20% (21.6px -> 26px).
+   ALL artwork is owned only by toolbar-vintage-independent-icons.css. */
 .toolbar .tabs .tab::before,
 .toolbar .odds-display-control button::before,
 .toolbar .odds-display-label::before{
@@ -13,7 +13,7 @@
 
 /* Desktop/Laptop toolbar shell: fully transparent over the page background.
    Presentation only: keep icon/filter/odds/search layout and behavior untouched.
-   Rollback point before this change: f6d33c0a6affa8a8a9ed3209ab0a06c5c8e58f01 */
+   Rollback point before this change: rollback/pre-all-single-owner-20260904 */
 @media(min-width:1025px){
   .shell>.toolbar{
     background:transparent!important;
