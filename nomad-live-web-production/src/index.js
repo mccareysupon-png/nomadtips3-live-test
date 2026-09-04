@@ -72,6 +72,7 @@ async function proxyPredictions(request,url){
 
 function isPublicInfoPath(pathname){
   if(PUBLIC_INFO_ASSETS.has(pathname))return true;
+  if(pathname.startsWith('/nomad-live/assets/icons/'))return true;
   return PUBLIC_INFO_PREFIXES.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
 }
 
