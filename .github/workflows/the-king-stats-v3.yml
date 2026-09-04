@@ -9,7 +9,7 @@ on:
       - '.github/workflows/the-king-stats-v3.yml'
   schedule:
     # Existing KING settlement runs at :20. V3 follows at :35 every hour.
-    # At 06:35 Asia/Bangkok this also snapshots the outgoing day before the
+    # At 06:35 Asia/Bangkok this snapshots the outgoing day before the
     # existing 07:00 Thailand selection wheel replaces `today`.
     - cron: '35 * * * *'
 
@@ -23,15 +23,15 @@ concurrency:
 jobs:
   statistics-v3:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Install conservative settlement dependencies
-        run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
+      - name: Install direct Goaloo feed dependencies
+        run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4
 
       - name: Statistics V3 self-test
         run: python3 .github/scripts/the_king_stats_v3.py self-test
