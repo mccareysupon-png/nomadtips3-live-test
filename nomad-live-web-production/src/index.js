@@ -70,6 +70,25 @@ async function proxyPredictions(request,url){
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
+async function proxyPrediction3(request,url){
+  if(url.pathname==='/prediction3'){
+    return Response.redirect(new URL('/prediction3/'+url.search,url.origin).toString(),302);
+  }
+  if(!url.pathname.startsWith('/prediction3/')) return null;
+  if(request.method!=='GET'&&request.method!=='HEAD'){
+    return unavailable('Prediction3 route supports GET/HEAD only',405);
+  }
+  const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
+  const upstreamRequest=new Request(upstreamUrl.toString(),request);
+  const response=await fetch(upstreamRequest);
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','no-store, max-age=0');
+  headers.set('pragma','no-cache');
+  headers.set('expires','0');
+  headers.set('x-nomad-web','prediction3-manual-bridge');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+
 function isPublicInfoPath(pathname){
   if(PUBLIC_INFO_ASSETS.has(pathname))return true;
   if(pathname.startsWith('/nomad-live/assets/icons/'))return true;
@@ -82,6 +101,7 @@ function isInfoOrPredictionsReferer(request){
   try{
     const pathname=new URL(raw).pathname;
     if(pathname==='/soccer-predictions'||pathname.startsWith('/soccer-predictions/'))return true;
+    if(pathname==='/prediction3'||pathname.startsWith('/prediction3/'))return true;
     return PUBLIC_INFO_PREFIXES.some(prefix=>pathname===prefix||pathname.startsWith(prefix+'/'));
   }catch{
     return false;
@@ -95,7 +115,7 @@ async function routeSharedFooterAsset(request,env,url){
   }
 
   /* Signal and Statistics historically load /site-footer.* from the local
-     3.41 asset bundle. Only the information pages and Soccer Predictions
+     3.41 asset bundle. Only the information pages and prediction pages
      need the repository-root legacy asset. Keeping this split prevents the
      public-info bridge from replacing the original 3.41 footer. */
   if(!isInfoOrPredictionsReferer(request)){
@@ -187,6 +207,8 @@ export default {
     if(liveRedirect) return liveRedirect;
     const predictionsResponse=await proxyPredictions(request,url);
     if(predictionsResponse) return predictionsResponse;
+    const prediction3Response=await proxyPrediction3(request,url);
+    if(prediction3Response) return prediction3Response;
     const nomad342Response=await proxyNomad342(request,env,url);
     if(nomad342Response) return nomad342Response;
     const sharedFooterResponse=await routeSharedFooterAsset(request,env,url);
