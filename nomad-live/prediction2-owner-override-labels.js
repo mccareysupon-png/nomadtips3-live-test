@@ -13,6 +13,11 @@
     document.querySelector('.king-preview-grid')?.remove();
     document.getElementById('kingAnalysisDrawer')?.remove();
 
+    // Prediction2 is a standalone KING surface. Do not route its navigation into
+    // the unrelated NOMAD LIVE result ledger, which legitimately contains prior
+    // live-signal records such as yesterday's settled matches.
+    document.querySelectorAll('body[data-page="prediction2"] a[href^="statistics.html"]').forEach(node => node.remove());
+
     // Prediction2 public surface is TODAY only. Keep legacy nodes available to old
     // inline code so it cannot crash, but never expose settled/history data here.
     let style = document.getElementById(STYLE_ID);
