@@ -10,6 +10,12 @@
     document.head.appendChild(script);
   }
 
+  // Prediction2 now uses the latest TODAY auto-feed rows as the single public pick surface.
+  // Quarantine the retired preview rail / drawer so the legacy sample picks cannot reappear
+  // or conflict with the current TODAY count, feed state, history, and verified metrics.
+  document.querySelector('.king-preview-grid')?.remove();
+  document.getElementById('kingAnalysisDrawer')?.remove();
+
   const drawer = document.getElementById('kingAnalysisDrawer');
   if (!drawer) return;
 
