@@ -1,9 +1,10 @@
 /* Page 1 match-card state icons — all devices.
-   Presentation only: reuse the exact toolbar sprite and real row state.
-   Mapping is shared everywhere: WATCHING -> Watching, NEAR SIGNAL -> Near,
-   SIGNAL / LOCKED -> Signal. ALL remains a filter only, never a match state.
-   No feed, detector, odds, signal, or engine logic changes.
-   Rollback blob before all-device pass: 10e0e52a7bf44fd84c660f7f3fdbb320731622e1 */
+   Presentation only: real row state selects the matching bright-vintage toolbar artwork.
+   Mapping: WATCHING -> Watching eye, NEAR SIGNAL -> Near target,
+   SIGNAL / LOCKED -> Signal bell. ALL remains a filter only, never a match state.
+   Pulse cadence: WATCHING 2.2s, NEAR .95s, SIGNAL .42s.
+   No feed, detector, odds, signal, runtime, or engine logic changes.
+   Rollback: rollback/pre-card-state-icons-pulse-20260904 */
 
 .match-wrap > .match-row .statebox::before{
   content:"";
@@ -12,14 +13,14 @@
   height:26px;
   flex:0 0 26px;
   background-color:transparent!important;
-  background-image:url("assets/icons/vintage-toolbar-independent.webp");
-  background-repeat:no-repeat;
-  background-size:800% 100%;
-  background-position:center;
+  background-repeat:no-repeat!important;
+  background-size:contain!important;
+  background-position:center!important;
   opacity:.90;
   filter:brightness(1.08) saturate(1.05) drop-shadow(0 0 2px rgba(255,255,255,.10));
-  animation:nomadCardStateSlowPulse 3.4s ease-in-out infinite;
+  transform:scale(1);
   pointer-events:none;
+  will-change:opacity,filter,transform;
 }
 
 /* Keep the real state text in the DOM for runtime/accessibility, but use one visual icon only. */
@@ -35,31 +36,36 @@
   border:0!important;
 }
 
+/* Legacy meter/pulse visuals remain suppressed; runtime state ownership is unchanged. */
 .match-wrap > .match-row .statebox .minute,
 .match-wrap > .match-row .statebox .status-meter-icon,
 .match-wrap > .match-row .statebox .watch-pulse{
   display:none!important;
 }
 
-/* Exact sprite order shared with the toolbar:
-   All 0%, Signal 14.2857%, Near 28.5714%, Watching 42.8571%. */
+/* WATCHING: slow, calm pulse. */
 .match-wrap[data-state="WATCHING"] > .match-row .statebox::before{
   display:block;
-  background-position:42.8571% 50%;
+  background-image:url("assets/icons/toolbar-watching-bright-vintage.svg?v=20260904-cardpulse-v1")!important;
+  animation:nomadCardWatchingPulse 2.2s ease-in-out infinite;
 }
 
+/* NEAR SIGNAL: clearly faster pulse. */
 .match-wrap[data-state="NEAR SIGNAL"] > .match-row .statebox::before{
   display:block;
-  background-position:28.5714% 50%;
+  background-image:url("assets/icons/toolbar-near-bright-vintage.svg?v=20260904-cardpulse-v1")!important;
+  animation:nomadCardNearPulse .95s ease-in-out infinite;
 }
 
+/* SIGNAL / LOCKED: fastest alert pulse. LOCKED deliberately wins over any stale row state. */
 .match-wrap[data-state="SIGNAL"] > .match-row .statebox::before,
 .match-wrap[data-signal-status="LOCKED"] > .match-row .statebox::before{
   display:block;
-  background-position:14.2857% 50%;
+  background-image:url("assets/icons/toolbar-signal-bright-vintage.svg?v=20260904-cardpulse-v1")!important;
+  animation:nomadCardSignalPulse .42s linear infinite;
 }
 
-/* Device-fit only; artwork and mapping never change. */
+/* Device-fit only; artwork mapping never changes. */
 @media (min-width:1025px){
   .match-wrap > .match-row .statebox::before{
     width:30px;
@@ -84,7 +90,7 @@
   }
 }
 
-@keyframes nomadCardStateSlowPulse{
+@keyframes nomadCardWatchingPulse{
   0%,100%{
     opacity:.82;
     filter:brightness(.98) saturate(1.02) drop-shadow(0 0 1px rgba(255,255,255,.08));
@@ -92,14 +98,41 @@
   }
   50%{
     opacity:1;
-    filter:brightness(1.20) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24));
-    transform:scale(1.035);
+    filter:brightness(1.18) saturate(1.08) drop-shadow(0 0 4px rgba(255,255,255,.20));
+    transform:scale(1.025);
+  }
+}
+
+@keyframes nomadCardNearPulse{
+  0%,100%{
+    opacity:.78;
+    filter:brightness(1.00) saturate(1.04) drop-shadow(0 0 2px rgba(255,255,255,.10));
+    transform:scale(1);
+  }
+  50%{
+    opacity:1;
+    filter:brightness(1.28) saturate(1.14) drop-shadow(0 0 6px rgba(255,220,110,.30));
+    transform:scale(1.045);
+  }
+}
+
+@keyframes nomadCardSignalPulse{
+  0%,100%{
+    opacity:.72;
+    filter:brightness(1.02) saturate(1.06) drop-shadow(0 0 2px rgba(255,255,255,.12));
+    transform:scale(1);
+  }
+  50%{
+    opacity:1;
+    filter:brightness(1.42) saturate(1.20) drop-shadow(0 0 8px rgba(131,223,137,.52));
+    transform:scale(1.065);
   }
 }
 
 @media (prefers-reduced-motion:reduce){
   .match-wrap > .match-row .statebox::before{
-    animation-duration:5.2s;
+    animation:none!important;
+    opacity:1;
     transform:none;
   }
 }
