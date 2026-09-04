@@ -3,8 +3,8 @@ from pathlib import Path
 
 PATH = Path('nomad-live/prediction2.html')
 SCRIPT_TAG = '  <script src="prediction2-feed-cards.js?v=20260903-auto-v1"></script>\n'
-OWNER_LABELS_OLD = '  <script src="prediction2-owner-override-labels.js?v=20260903-owner-v1"></script>\n'
-OWNER_LABELS_TAG = '  <script src="prediction2-owner-override-labels.js?v=20260904-stats-v3"></script>\n'
+OWNER_LABELS_OLD = '  <script src="prediction2-owner-override-labels.js?v=20260904-stats-v3"></script>\n'
+OWNER_LABELS_TAG = '  <script src="prediction2-owner-override-labels.js?v=20260904-default-card-v2"></script>\n'
 INLINE_ANALYSIS_TAG = '  <script src="prediction2-inline-analysis.js?v=20260903-inline-v1"></script>\n'
 STATS_V3_TAG = '  <script src="prediction2-stats-v3.js?v=20260904-v3"></script>\n'
 SCRIPT_MARKER = '  <script src="site-footer.js?v=20260825-rail-v2"></script>\n'
@@ -71,9 +71,9 @@ def main():
 
     if text != original:
         PATH.write_text(text, encoding='utf-8')
-        print('Prediction2 patched: KING Statistics V3 owns scorebar, HISTORY and DAILY.')
+        print('Prediction2 patched: Statistics V3 retained and default-card asset cache-busted.')
     else:
-        print('Prediction2 Statistics V3 wiring already current.')
+        print('Prediction2 default-card wiring already current.')
 
 
 if __name__ == '__main__':
