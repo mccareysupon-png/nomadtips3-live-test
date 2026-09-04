@@ -1,8 +1,9 @@
-/* Statistics page desktop-only vintage odds icons.
-   Reuses the exact ODDS / DECIMAL / AMERICAN / FRACTION artwork from toolbar-vintage-icons.css.
+/* Statistics page desktop-only retro odds icons.
+   Uses the approved dedicated ODDS / DECIMAL / AMERICAN / FRACTION artwork.
    Presentation only. statistics.html loads this layer only at min-width:1025px.
+   Rollback: rollback/pre-odds-retro-icons-pages1-2-20260904
    Brightness rollback note: rollback-notes/icon-brightness-20260902.md
-   Size rollback: 31.7px -> 26.4px (pre +20% request, 2026-09-02). */
+   Previous size: 31.7px. */
 
 .odds-display-toolbar.toolbar{
   display:flex!important;
@@ -36,12 +37,38 @@
   box-shadow:none!important;
 }
 
-/* Statistics desktop icon footprint: +20% from 26.4px -> 31.7px. */
+/* Dedicated approved artwork; logic and active state remain owned by odds-display.js. */
+.odds-display-toolbar.toolbar .odds-display-label::before{
+  background-image:url("assets/icons/toolbar-odds-retro-vintage.webp?v=20260904-retro-v1")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="decimal"]::before{
+  background-image:url("assets/icons/toolbar-decimal-retro-vintage.webp?v=20260904-retro-v1")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="american"]::before{
+  background-image:url("assets/icons/toolbar-american-retro-vintage.webp?v=20260904-retro-v1")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+}
+.odds-display-toolbar.toolbar .odds-display-control button[data-odds-mode="fractional"]::before{
+  background-image:url("assets/icons/toolbar-fraction-retro-vintage.webp?v=20260904-retro-v1")!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:contain!important;
+}
+
+/* Slight optical increase only; row/columns remain unchanged. */
 .odds-display-toolbar.toolbar .odds-display-label::before,
 .odds-display-toolbar.toolbar .odds-display-control button::before{
-  width:31.7px!important;
-  height:31.7px!important;
-  flex:0 0 31.7px!important;
+  width:33px!important;
+  height:33px!important;
+  flex:0 0 33px!important;
   opacity:1;
   filter:brightness(1.10) saturate(1.06);
 }
