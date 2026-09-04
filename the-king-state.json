@@ -3,7 +3,7 @@
   "policy": "KING_DEFAULT_40_188",
   "status": "OK",
   "last_selection_run": "2026-09-04T10:29:45Z",
-  "last_settlement_run": "2026-09-04T05:59:51Z",
+  "last_settlement_run": "2026-09-04T10:30:02Z",
   "selection_date": "2026-09-04",
   "fixtures_seen": 437,
   "qualified": 76,
@@ -406,5 +406,23 @@
     "No daily pick-count cap.",
     "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw side, odds <=3.00.",
     "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
-  ]
+  ],
+  "settled_this_run": 0,
+  "settlement_fallback": {
+    "mode": "DISABLED",
+    "reason": "Goaloo direct index is authoritative",
+    "last_run": "2026-09-04T10:30:02Z"
+  },
+  "direct_reconcile": {
+    "source": "goaloo-bf_us-direct-index",
+    "index_ok": true,
+    "index_rows": 599,
+    "trusted_settled": 0,
+    "reset_untrusted": 0,
+    "missing_ids": 0,
+    "team_mismatch": 0,
+    "invalid_scores": 0,
+    "non_terminal": 76,
+    "last_run": "2026-09-04T10:30:02Z"
+  }
 }
