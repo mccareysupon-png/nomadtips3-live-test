@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-04T10:32:24Z",
+  "updated_at": "2026-09-04T11:27:39Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2288,8 +2288,8 @@
       "market_edge": 0.1966,
       "ev": 0.416,
       "edge": 19.7,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-1",
       "source_url": "https://www.goaloo.com/football/israel-c-league-maccabi-lroni-amishav-petah-tikva-vs-ms-hapoel-lod/h2h-3085571",
       "summary_url": "https://www.goaloo.com/football/israel-c-league-maccabi-lroni-amishav-petah-tikva-vs-ms-hapoel-lod/summary-3085571",
       "policy": "KING_DEFAULT_40_188",
@@ -2352,7 +2352,10 @@
         "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-04T11:27:39Z"
     },
     {
       "id": "e72d5344ff21df35",
@@ -5564,8 +5567,8 @@
       "market_edge": 0.0075,
       "ev": -0.077,
       "edge": 0.8,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "source_url": "https://www.goaloo.com/football/india-mizoram-premier-league-mizoram-police-fc-vs-saikhamakawn-fc/h2h-3085472",
       "summary_url": "https://www.goaloo.com/football/india-mizoram-premier-league-mizoram-police-fc-vs-saikhamakawn-fc/summary-3085472",
       "policy": "KING_DEFAULT_40_188",
@@ -5628,7 +5631,10 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-04T11:27:39Z"
     },
     {
       "id": "978025902011ad73",
@@ -8635,6 +8641,180 @@
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
       }
+    },
+    {
+      "id": "034872487dc48c68",
+      "goaloo_id": "3085571",
+      "date": "2026-09-04",
+      "kickoff": "2026-09-04 09:30:00",
+      "league": "Israel C League",
+      "home": "Maccabi Lroni Amishav Petah Tikva",
+      "away": "MS Hapoel Lod",
+      "pick": "MS Hapoel Lod Win",
+      "side": "away",
+      "odds": 2.63,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.5384,
+      "model_probability": 0.5384,
+      "market_fair_probability": 0.3418,
+      "market_edge": 0.1966,
+      "ev": 0.416,
+      "edge": 19.7,
+      "result": "LOSS",
+      "ft": "3-1",
+      "source_url": "https://www.goaloo.com/football/israel-c-league-maccabi-lroni-amishav-petah-tikva-vs-ms-hapoel-lod/h2h-3085571",
+      "summary_url": "https://www.goaloo.com/football/israel-c-league-maccabi-lroni-amishav-petah-tikva-vs-ms-hapoel-lod/summary-3085571",
+      "policy": "KING_DEFAULT_40_188",
+      "engine": "the-king-default-goaloo-composite-40pct-188",
+      "selection_profile": {
+        "name": "OWNER_DEFAULT_40_188",
+        "date": "2026-09-04",
+        "minimum_confidence": 0.4,
+        "minimum_odds": 1.88,
+        "maximum_odds_safety": 3.0,
+        "recent_sample_min_each": 8,
+        "max_picks": null,
+        "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "king_v2_underlying_gate": "BYPASSED",
+        "king_v2_market_edge_gate": "BYPASSED",
+        "king_v2_ev_gate": "BYPASSED"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_1x2_market": "PASS",
+        "default_confidence_min": "PASS",
+        "default_odds_min": "PASS",
+        "odds_safety_max": "PASS",
+        "daily_cap": "UNLIMITED",
+        "king_v2_underlying": "NOT_A_GATE",
+        "king_v2_market_edge": "INFO_ONLY",
+        "king_v2_ev": "INFO_ONLY",
+        "lineup": "NOT_A_GATE",
+        "market_movement": "NOT_A_GATE",
+        "rest_rotation": "NOT_A_GATE"
+      },
+      "model": {
+        "lambda_home": 1.482,
+        "lambda_away": 2.121,
+        "home_win": 0.2386,
+        "draw": 0.223,
+        "away_win": 0.5384,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3512,
+          "gd_edge": -0.5405,
+          "clean_sheet_edge": 0.0,
+          "failed_to_score_edge": -0.0195,
+          "bounded_adjustment": -0.0252,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-04T11:27:39Z"
+    },
+    {
+      "id": "e5e1aa86eae32e7a",
+      "goaloo_id": "3085472",
+      "date": "2026-09-04",
+      "kickoff": "2026-09-04 09:00:00",
+      "league": "India Mizoram Premier League",
+      "home": "Mizoram Police FC",
+      "away": "Saikhamakawn FC",
+      "pick": "Mizoram Police FC Win",
+      "side": "home",
+      "odds": 2.03,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.4547,
+      "model_probability": 0.4547,
+      "market_fair_probability": 0.4472,
+      "market_edge": 0.0075,
+      "ev": -0.077,
+      "edge": 0.8,
+      "result": "WIN",
+      "ft": "2-1",
+      "source_url": "https://www.goaloo.com/football/india-mizoram-premier-league-mizoram-police-fc-vs-saikhamakawn-fc/h2h-3085472",
+      "summary_url": "https://www.goaloo.com/football/india-mizoram-premier-league-mizoram-police-fc-vs-saikhamakawn-fc/summary-3085472",
+      "policy": "KING_DEFAULT_40_188",
+      "engine": "the-king-default-goaloo-composite-40pct-188",
+      "selection_profile": {
+        "name": "OWNER_DEFAULT_40_188",
+        "date": "2026-09-04",
+        "minimum_confidence": 0.4,
+        "minimum_odds": 1.88,
+        "maximum_odds_safety": 3.0,
+        "recent_sample_min_each": 8,
+        "max_picks": null,
+        "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "king_v2_underlying_gate": "BYPASSED",
+        "king_v2_market_edge_gate": "BYPASSED",
+        "king_v2_ev_gate": "BYPASSED"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_1x2_market": "PASS",
+        "default_confidence_min": "PASS",
+        "default_odds_min": "PASS",
+        "odds_safety_max": "PASS",
+        "daily_cap": "UNLIMITED",
+        "king_v2_underlying": "NOT_A_GATE",
+        "king_v2_market_edge": "INFO_ONLY",
+        "king_v2_ev": "INFO_ONLY",
+        "lineup": "NOT_A_GATE",
+        "market_movement": "NOT_A_GATE",
+        "rest_rotation": "NOT_A_GATE"
+      },
+      "model": {
+        "lambda_home": 2.175,
+        "lambda_away": 1.817,
+        "home_win": 0.4547,
+        "draw": 0.2166,
+        "away_win": 0.3287,
+        "h2h_adjustment": -0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0569,
+          "gd_edge": 0.1908,
+          "clean_sheet_edge": -0.1463,
+          "failed_to_score_edge": -0.0878,
+          "bounded_adjustment": 0.0045,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-04T11:27:39Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
