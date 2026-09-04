@@ -1,0 +1,54 @@
+name: The King — Direct Settlement Repair Once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/the-king-direct-repair-once.yml'
+
+permissions:
+  contents: write
+
+# Deliberately share the selection concurrency group so this repair cannot run
+# until any in-flight selection has finished publishing TODAY.
+concurrency:
+  group: the-king-selection-wheel-default-40-188
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install direct-feed dependencies
+        run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
+
+      - name: Direct reconciler self-test
+        run: python3 .github/scripts/the_king_direct_reconcile.py self-test
+
+      - name: Reconcile TODAY from Goaloo direct index only
+        run: python3 .github/scripts/the_king_direct_reconcile.py reconcile
+
+      - name: Publish repaired KING feed and state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add the-king-feed.json the-king-state.json
+          if git diff --cached --quiet; then
+            echo 'No KING repair change.'
+            exit 0
+          fi
+          git commit -m "Repair KING results from Goaloo direct index $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin main; then exit 0; fi
+            git rebase --abort 2>/dev/null || true
+            sleep $((attempt * 3))
+          done
+          exit 1
