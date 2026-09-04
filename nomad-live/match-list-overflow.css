@@ -1,0 +1,85 @@
+/* NOMADTIPS3 Page 1 monitored-match overflow controls.
+   Presentation/controller companion only. No feed, detector, odds, signal or engine logic. */
+
+.match-list-overflow-controls{
+  display:none;
+}
+
+@media (min-width:701px){
+  .match-list[data-overflow-scroll="1"]{
+    max-height:min(620px,65vh);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding-right:5px;
+    scrollbar-width:thin;
+    scrollbar-color:#2e332f #080a08;
+  }
+
+  .match-list[data-overflow-scroll="1"]::-webkit-scrollbar{
+    width:6px;
+  }
+  .match-list[data-overflow-scroll="1"]::-webkit-scrollbar-track{
+    background:#080a08;
+    border-radius:8px;
+  }
+  .match-list[data-overflow-scroll="1"]::-webkit-scrollbar-thumb{
+    background:#2e332f;
+    border:1px solid #080a08;
+    border-radius:8px;
+  }
+  .match-list[data-overflow-scroll="1"]::-webkit-scrollbar-thumb:hover{
+    background:#414742;
+  }
+}
+
+@media (min-width:701px) and (max-width:1024px){
+  .match-list[data-overflow-scroll="1"]{
+    max-height:min(560px,65vh);
+  }
+}
+
+@media (max-width:700px){
+  .match-list{
+    max-height:none!important;
+    overflow:visible!important;
+    padding-right:0!important;
+  }
+
+  .match-list>.match-wrap.match-list-mobile-hidden{
+    display:none!important;
+  }
+
+  .match-list-overflow-controls:not([hidden]){
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:9px 0 1px;
+  }
+
+  .match-list-overflow-toggle{
+    appearance:none;
+    -webkit-appearance:none;
+    min-height:34px;
+    padding:7px 13px;
+    border:1px solid rgba(255,255,255,.055);
+    border-radius:8px;
+    background:#0d100d;
+    color:#aeb6ae;
+    font:800 9px/1 Arial,Helvetica,sans-serif;
+    letter-spacing:.035em;
+    cursor:pointer;
+    box-shadow:none;
+  }
+
+  .match-list-overflow-toggle:hover,
+  .match-list-overflow-toggle:focus-visible{
+    background:#121612;
+    color:#d7ddd7;
+    border-color:rgba(255,255,255,.09);
+    outline:none;
+  }
+
+  .match-list-overflow-toggle:active{
+    transform:translateY(1px);
+  }
+}
