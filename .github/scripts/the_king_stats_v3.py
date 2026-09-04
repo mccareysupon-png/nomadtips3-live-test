@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """KING Statistics V3 — isolated Prediction2 ledger starting 2026-09-04.
 
-This ledger is deliberately independent from NOMAD LIVE /statistics and from the
-legacy KING history presentation. It snapshots official KING picks, keeps PENDING
-records across the 07:00 Thailand day rotation, and settles archived PENDING picks
-conservatively from explicit Goaloo FT markers.
+V3 never trusts legacy page-level FT text. It snapshots official KING picks and
+settles them only when Goaloo's direct bf_us.js index reports terminal state -1
+with numeric home/away scores for the same goaloo_id. This keeps PENDING records
+alive across the 07:00 Thailand selection rollover without importing stale or
+misparsed legacy HISTORY values.
 """
 from __future__ import annotations
 
@@ -13,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import the_king_engine as core
+import the_king_engine_v8 as v8
 
 ROOT = Path(__file__).resolve().parents[2]
 FEED_PATH = ROOT / "the-king-feed.json"
@@ -21,6 +23,7 @@ STATS_PATH = ROOT / "the-king-stats-v3.json"
 ARCHIVE_DIR = ROOT / "the-king-archive"
 START_DATE = "2026-09-04"
 VERSION = "KING_STATS_V3"
+DIRECT_SOURCE = "goaloo-bf_us-direct-index"
 STAKE = 100.0
 FINAL_RESULTS = {"WIN", "LOSS", "PUSH"}
 
@@ -58,6 +61,7 @@ def blank_ledger():
     return {
         "record_version": VERSION,
         "stats_since": START_DATE,
+        "settlement_contract": DIRECT_SOURCE,
         "stake_model": {"currency": "THB", "stake_per_pick": int(STAKE)},
         "records": [],
         "summary": {
@@ -91,8 +95,6 @@ def canonical_key(rec: dict) -> str:
 
 def result_of(rec: dict) -> str:
     result = str(rec.get("result") or "PENDING").upper().strip()
-    if result == "DRAW" and str(rec.get("side") or "").lower() in {"home", "away"}:
-        return "LOSS"
     return result if result in FINAL_RESULTS else "PENDING"
 
 
@@ -109,8 +111,22 @@ def profit_for(result: str, odds) -> float | None:
     return None
 
 
+def safe_score(value):
+    try:
+        score = int(float(value))
+    except Exception:
+        return None
+    return score if 0 <= score <= 30 else None
+
+
 def project_record(source: dict, existing: dict | None = None) -> dict:
+    """Copy pick identity/price fields, but never import legacy settlement text."""
     base = dict(existing or {})
+    trusted_final = (
+        base.get("settlement_source") == DIRECT_SOURCE
+        and result_of(base) in FINAL_RESULTS
+        and base.get("ft")
+    )
     fields = (
         "id", "goaloo_id", "date", "kickoff", "league", "home", "away", "pick", "side",
         "odds", "odds_source", "confidence", "edge", "source_url", "summary_url", "policy", "engine",
@@ -120,70 +136,65 @@ def project_record(source: dict, existing: dict | None = None) -> dict:
         if value is not None and value != "":
             base[field] = value
 
-    incoming = result_of(source)
-    previous = result_of(base)
-    final = incoming if incoming in FINAL_RESULTS else previous
-    if previous in FINAL_RESULTS and incoming == "PENDING":
-        final = previous
-    base["result"] = final
-
-    ft = source.get("ft")
-    if ft:
-        base["ft"] = ft
-    elif "ft" not in base:
-        base["ft"] = None
-
     base["record_version"] = VERSION
     base["stats_since"] = START_DATE
-    base["profit"] = profit_for(final, base.get("odds"))
-    if final in FINAL_RESULTS and not base.get("settled_at"):
-        base["settled_at"] = now_iso()
+    if not trusted_final:
+        # Hard reset any legacy/page-parser result such as minute ranges that were
+        # previously mistaken for FT scores. V3 will re-settle from the direct index.
+        base["result"] = "PENDING"
+        base["ft"] = None
+        base["profit"] = None
+        base.pop("settled_at", None)
+        base.pop("settlement_source", None)
+        base.pop("goaloo_terminal_state", None)
     return base
 
 
-def settle_archived_pending(records: list[dict], current_today_keys: set[str]) -> tuple[int, list[str]]:
-    """Settle only PENDING records no longer present in today's feed.
+def settle_from_direct_index(records: list[dict]) -> tuple[int, dict]:
+    """Settle every V3 PENDING record using Goaloo direct terminal state only."""
+    rows = v8.load_index()
+    status = {
+        "source": DIRECT_SOURCE,
+        "index_ok": bool(rows),
+        "index_rows": len(rows),
+        "settled": 0,
+        "matched_pending": 0,
+        "invalid_scores": 0,
+    }
+    if not rows:
+        return 0, status
 
-    Current-day settlement remains owned by the existing KING settlement wheel.
-    This fallback exists solely so late matches survive the next 07:00 rotation.
-    """
-    try:
-        import the_king_engine_v7 as v7
-        from the_king_settlement_fallback import explicit_goaloo_ft
-    except Exception as exc:
-        return 0, [f"import:{type(exc).__name__}"]
-
+    direct = {str(row.get("id") or ""): row for row in rows}
     changed = 0
-    errors = []
     for rec in records:
-        if result_of(rec) != "PENDING" or canonical_key(rec) in current_today_keys:
+        if result_of(rec) != "PENDING":
             continue
-        if str(rec.get("date") or "") < START_DATE:
+        gid = str(rec.get("goaloo_id") or "").strip()
+        row = direct.get(gid)
+        if not row:
             continue
-
-        ft = None
-        for url in (rec.get("summary_url"), rec.get("source_url"), rec.get("live_url")):
-            if not url:
-                continue
-            try:
-                ft = explicit_goaloo_ft(v7.render(url, 500))
-            except Exception as exc:
-                errors.append(f"{rec.get('id') or rec.get('goaloo_id') or 'unknown'}:{type(exc).__name__}")
-                continue
-            if ft:
-                break
-        if not ft:
+        status["matched_pending"] += 1
+        if row.get("state") != -1:
+            continue
+        hg = safe_score(row.get("score_home"))
+        ag = safe_score(row.get("score_away"))
+        if hg is None or ag is None:
+            status["invalid_scores"] += 1
             continue
 
-        hg, ag = ft
         side = str(rec.get("side") or "").lower()
+        # Prediction2 is 1X2 home/away only: any draw is a LOSS for either side.
         won = (side == "home" and hg > ag) or (side == "away" and ag > hg)
         rec["ft"] = f"{hg}-{ag}"
         rec["result"] = "WIN" if won else "LOSS"
         rec["profit"] = profit_for(rec["result"], rec.get("odds"))
         rec["settled_at"] = now_iso()
+        rec["settlement_source"] = DIRECT_SOURCE
+        rec["goaloo_terminal_state"] = -1
         changed += 1
-    return changed, errors[:20]
+
+    status["settled"] = changed
+    return changed, status
 
 
 def build_summary(records: list[dict]) -> dict:
@@ -206,6 +217,7 @@ def build_summary(records: list[dict]) -> dict:
         "wins": wins,
         "losses": losses,
         "pushes": pushes,
+        # Mathematical contract: PUSH and PENDING are excluded from the denominator.
         "win_rate": None if decided == 0 else round(wins / decided * 100.0, 2),
         "avg_odds": None if not odds_values else round(sum(odds_values) / len(odds_values), 3),
         "net": net,
@@ -221,10 +233,13 @@ def sync() -> dict:
 
     ledger["record_version"] = VERSION
     ledger["stats_since"] = START_DATE
+    ledger["settlement_contract"] = DIRECT_SOURCE
     ledger["stake_model"] = {"currency": "THB", "stake_per_pick": int(STAKE)}
     records = [r for r in (ledger.get("records") or []) if str(r.get("date") or "") >= START_DATE]
     index = {canonical_key(r): i for i, r in enumerate(records)}
 
+    # Import pick identity from both current and historical KING containers so a
+    # pick already rotated out of `today` is not lost. Settlement values are ignored.
     incoming = []
     incoming.extend(feed.get("today") or [])
     incoming.extend(feed.get("history") or [])
@@ -238,15 +253,12 @@ def sync() -> dict:
             index[key] = len(records)
             records.append(project_record(source))
 
-    current_today_keys = {
-        canonical_key(r) for r in (feed.get("today") or [])
-        if str(r.get("date") or "") >= START_DATE
-    }
-    fallback_settled, fallback_errors = settle_archived_pending(records, current_today_keys)
+    direct_settled, settlement_status = settle_from_direct_index(records)
 
     records.sort(key=lambda r: (str(r.get("date") or ""), str(r.get("kickoff") or ""), canonical_key(r)))
     ledger["records"] = records
     ledger["summary"] = build_summary(records)
+    ledger["settlement_status"] = settlement_status
 
     after_without_time = json.dumps(ledger, sort_keys=True, ensure_ascii=False)
     changed = before != after_without_time
@@ -261,8 +273,8 @@ def sync() -> dict:
         "stats_since": START_DATE,
         "records": len(records),
         "summary": ledger["summary"],
-        "fallback_settled": fallback_settled,
-        "fallback_errors": fallback_errors,
+        "direct_settled": direct_settled,
+        "settlement_status": settlement_status,
         "backups_created": backups,
         "changed": changed,
         "selection_date": feed.get("selection_date"),
@@ -272,10 +284,18 @@ def sync() -> dict:
 
 
 def self_test() -> None:
-    assert result_of({"result": "WIN"}) == "WIN"
-    assert result_of({"result": "DRAW", "side": "home"}) == "LOSS"
     assert profit_for("WIN", 2.0) == 100.0
     assert profit_for("LOSS", 2.0) == -100.0
+    assert safe_score("2") == 2
+    assert safe_score("81") is None
+    dirty = project_record({"id": "x", "date": START_DATE, "result": "WIN", "ft": "81-90"})
+    assert dirty["result"] == "PENDING" and dirty["ft"] is None
+    trusted = project_record(
+        {"id": "x", "date": START_DATE, "result": "PENDING"},
+        {"id": "x", "date": START_DATE, "result": "WIN", "ft": "2-0",
+         "profit": 100.0, "settlement_source": DIRECT_SOURCE},
+    )
+    assert trusted["result"] == "WIN" and trusted["ft"] == "2-0"
     sample = build_summary([
         {"result": "WIN", "odds": 2.0, "profit": 100.0},
         {"result": "LOSS", "odds": 2.0, "profit": -100.0},
@@ -284,7 +304,7 @@ def self_test() -> None:
     assert sample["win_rate"] == 50.0
     assert sample["settled"] == 3
     assert sample["pushes"] == 1
-    print("KING Statistics V3 self-test OK")
+    print("KING Statistics V3 direct-index self-test OK")
 
 
 if __name__ == "__main__":
