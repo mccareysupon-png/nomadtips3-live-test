@@ -1,13 +1,15 @@
 @import url("toolbar-vintage-icons.css?v=20260901-v2") screen and (max-width:700px);
-@import url("toolbar-all-football.css?v=20260901-v1") screen and (max-width:700px);
 @import url("card-status-icons.css?v=20260903-all-device-v1") screen and (max-width:1024px);
 
-/* Mobile-only bridge: reuse the exact desktop/PC vintage toolbar artwork.
+/* Mobile-only bridge: reuse the desktop/PC vintage toolbar artwork.
+   ALL artwork is intentionally NOT assigned here; it is owned only by
+   toolbar-vintage-independent-icons.css so legacy football artwork cannot
+   overwrite the repaired ALL icon.
    The shared match-state icon mapping is also imported through 1024px so
    tablet/mobile use the same Watching / Near / Signal artwork as PC.
    Layout stays the airy transparent 4-column mobile layout.
    Presentation only; no filter/odds/feed/engine logic changes.
-   Rollback blob before all-device status bridge: 9ce761c75615cd4621fd505d645e5c8294032bc8 */
+   Rollback: rollback/pre-all-single-owner-20260904 */
 @media(max-width:700px){
   /* Keep every filter + odds icon the same visual footprint on mobile. */
   .toolbar .tabs .tab::before,
@@ -26,8 +28,7 @@
     opacity:.94!important;
   }
 
-  /* PC artwork assignments, including the desktop football icon for ALL. */
-  .toolbar .tabs .tab:nth-child(1){--nomad-toolbar-icon:var(--nomad-icon-all)!important}
+  /* PC artwork assignments. ALL is owned by the final independent icon layer. */
   .toolbar .tabs .tab:nth-child(2){--nomad-toolbar-icon:var(--nomad-icon-signal)!important}
   .toolbar .tabs .tab:nth-child(3){--nomad-toolbar-icon:var(--nomad-icon-near)!important}
   .toolbar .tabs .tab:nth-child(4){--nomad-toolbar-icon:var(--nomad-icon-watching)!important}
