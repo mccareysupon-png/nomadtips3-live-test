@@ -1,0 +1,24 @@
+{
+  "record_version": "PREDICTION3_MANUAL_V1",
+  "mode": "manual-owner-command",
+  "created_at": "2026-09-05",
+  "selection": {
+    "analyst": "Add K",
+    "owner_command_required": true,
+    "automatic_engine": false,
+    "automatic_scheduler": false,
+    "automatic_settlement": false,
+    "market_default": "1X2 Team Win",
+    "principle": "quality over quantity; NO PICK is valid"
+  },
+  "settlement": {
+    "reviewer": "Add K",
+    "owner_command_required": true,
+    "result_states": ["WIN", "LOSS", "PUSH"],
+    "win_rate_formula": "WIN / (WIN + LOSS) * 100",
+    "push_excluded_from_win_rate_denominator": true,
+    "prediction2_statistics_imported": false
+  },
+  "today": [],
+  "results": []
+}
