@@ -1,0 +1,40 @@
+/* Prediction3 manual-only presentation layer.
+   UI clone of the Soccer Predictions visual system; no engine/runtime behavior. */
+.prediction3-hero{margin-bottom:14px}
+.prediction3-kicker{margin:0 0 7px;color:var(--green,#33d17a);font-size:11px;font-weight:800;letter-spacing:.12em}
+.prediction3-status,.prediction3-kpis{display:grid;gap:8px;margin:0 0 14px}
+.prediction3-status{grid-template-columns:repeat(4,minmax(0,1fr));padding:10px 12px;border:1px solid rgba(115,145,120,.16);background:rgba(18,24,20,.62);border-radius:10px}
+.prediction3-status>div{min-width:0;padding:3px 8px;border-right:1px solid rgba(115,145,120,.12)}
+.prediction3-status>div:last-child{border-right:0}
+.prediction3-status span,.p3-kpi span{display:block;color:#8f9892;font-size:10px;font-weight:800;letter-spacing:.09em}
+.prediction3-status strong{display:block;margin-top:4px;color:#e8eee9;font-size:12px}
+.prediction3-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
+.p3-kpi{padding:11px 10px;background:#171b18;border:1px solid rgba(255,255,255,.055);border-radius:9px;text-align:center}
+.p3-kpi strong{display:block;margin-top:4px;color:#f1f5f2;font-size:18px}
+.p3-kpi.win strong{color:var(--green,#33d17a)}
+.p3-kpi.loss strong{color:#9aa09c}
+.p3-empty{padding:42px 18px;text-align:center;background:#151915;border:1px solid rgba(255,255,255,.055);border-radius:10px}
+.p3-empty strong{display:block;color:#e8eee9;font-size:15px;margin-bottom:8px}
+.p3-empty span{color:#8e9791;font-size:12px;line-height:1.6}
+.prediction3-card-note{margin-top:10px;color:#8d9690;font-size:11px}
+.prediction3-linkrail{margin-top:24px}
+.prediction3-source-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.prediction3-source-list a{font-size:11px;color:#9bc5a5;text-decoration:none;border-bottom:1px dotted rgba(155,197,165,.4)}
+.prediction3-source-list a:hover{color:#c8e7cf}
+.p3-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.p3-metric{padding:9px 10px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05);border-radius:8px}
+.p3-metric span{display:block;color:#8f9892;font-size:10px;letter-spacing:.06em}
+.p3-metric strong{display:block;margin-top:4px;font-size:13px;color:#e6ece7}
+
+@media (max-width:900px){
+  .prediction3-status{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .prediction3-status>div{border-right:0}
+  .prediction3-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:600px){
+  .prediction3-status{grid-template-columns:1fr 1fr;padding:9px}
+  .prediction3-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+  .p3-kpi{padding:9px 7px}
+  .p3-kpi strong{font-size:16px}
+  .p3-metrics{grid-template-columns:1fr}
+}
