@@ -2,12 +2,12 @@
   "engine": "the-king-default-goaloo-composite-40pct-188",
   "policy": "KING_DEFAULT_40_188",
   "status": "OK",
-  "last_selection_run": "2026-09-03T23:25:10Z",
+  "last_selection_run": "2026-09-04T03:03:34Z",
   "last_settlement_run": "2026-09-04T01:03:40Z",
   "selection_date": "2026-09-04",
-  "fixtures_seen": 417,
-  "qualified": 78,
-  "pending": 22,
+  "fixtures_seen": 459,
+  "qualified": 93,
+  "pending": 93,
   "max_daily_picks": null,
   "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
@@ -25,86 +25,16 @@
     "king_v2_market_edge_gate": "BYPASSED",
     "king_v2_ev_gate": "BYPASSED"
   },
-  "rejected": 339,
+  "rejected": 366,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 121,
-    "ODDS_SAFETY_MAX": 118,
-    "NO_GOALOO_1X2_ODDS": 40,
-    "DEFAULT_MIN_CONFIDENCE": 28,
+    "GOALOO_FORM_SHORT": 133,
+    "ODDS_SAFETY_MAX": 127,
+    "NO_GOALOO_1X2_ODDS": 41,
+    "DEFAULT_MIN_CONFIDENCE": 32,
     "DRAW_NOT_MAIN_PICK": 2,
-    "DEFAULT_MIN_ODDS": 30
+    "DEFAULT_MIN_ODDS": 31
   },
   "rejection_samples": [
-    {
-      "match": "Libertad FC vs Club Sport Emelec",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 8,
-      "away_n": 7,
-      "required_each": 8
-    },
-    {
-      "match": "Nacional FC de Sonsonate vs CD Vendaval",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 0,
-      "away_n": 9,
-      "required_each": 8
-    },
-    {
-      "match": "Don Orione vs Deportivo Guiraldes",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.59,
-      "maximum": 3.0,
-      "confidence": 0.6566
-    },
-    {
-      "match": "Deportivo Santo Domingo vs Cumbaya FC",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 9,
-      "away_n": 7,
-      "required_each": 8
-    },
-    {
-      "match": "Guaynabo Gol SC vs PR San Juan",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 6.63,
-      "maximum": 3.0,
-      "confidence": 0.5769
-    },
-    {
-      "match": "Deportivo Pereira vs Dep.Independiente Medellin",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 5.99,
-      "maximum": 3.0,
-      "confidence": 0.536
-    },
-    {
-      "match": "CD Olimpia vs Platense",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 7.09,
-      "maximum": 3.0,
-      "confidence": 0.835
-    },
-    {
-      "match": "Tepatitlan de Morelos vs CSyD Dorados de Sinaloa",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.2,
-      "maximum": 3.0,
-      "confidence": 0.5183
-    },
-    {
-      "match": "Matagalpa FC vs UNAN Managua",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.45,
-      "maximum": 3.0,
-      "confidence": 0.4627
-    },
-    {
-      "match": "Toin Yokohama University vs Hosei University",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 8,
-      "away_n": 5,
-      "required_each": 8
-    },
     {
       "match": "Kyoto Sangyo University vs Kyushu Sangyo University SC",
       "reason": "GOALOO_FORM_SHORT",
@@ -127,9 +57,16 @@
       "required_each": 8
     },
     {
+      "match": "Lumshyiap SC vs Jongksha SC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 3,
+      "required_each": 8
+    },
+    {
       "match": "Tzeirey Kafr Kana vs Ihud Bnei Avtin",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 8.1,
+      "odds": 10.1,
       "maximum": 3.0,
       "confidence": 0.5427
     },
@@ -196,10 +133,8 @@
     },
     {
       "match": "United Sports Club vs Wari AC",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 0,
-      "away_n": 10,
-      "required_each": 8
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7826
     },
     {
       "match": "Dinaz Vyshgorod vs FC Vilkhivtsi",
@@ -209,18 +144,18 @@
       "required_each": 8
     },
     {
+      "match": "Mawpat SC vs Tynring Sports Club",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 3,
+      "required_each": 8
+    },
+    {
       "match": "Chernomorets Odessa vs FC Livyi Bereh",
       "reason": "ODDS_SAFETY_MAX",
       "odds": 3.36,
       "maximum": 3.0,
       "confidence": 0.4252
-    },
-    {
-      "match": "Salisbury Inter (W) vs West Adelaide (W)",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.16,
-      "maximum": 3.0,
-      "confidence": 0.5535
     },
     {
       "match": "Salgueiros vs Machico",
@@ -242,6 +177,69 @@
       "home_n": 7,
       "away_n": 9,
       "required_each": 8
+    },
+    {
+      "match": "Hapoel Marmorek lrony Rehovot vs Hapoel Hadera",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.37,
+      "maximum": 3.0,
+      "confidence": 0.4673
+    },
+    {
+      "match": "Atlet Kiev vs Oleksandriya B",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 6,
+      "required_each": 8
+    },
+    {
+      "match": "Wiliete vs Foresters FC A",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 1,
+      "required_each": 8
+    },
+    {
+      "match": "Truong Tuoi Dong Nai vs Viettel FC",
+      "reason": "DEFAULT_MIN_CONFIDENCE",
+      "confidence": 0.3986,
+      "required": 0.4,
+      "odds": 3.6
+    },
+    {
+      "match": "Bayswater City vs Olympic Kingsway SC",
+      "reason": "DEFAULT_MIN_CONFIDENCE",
+      "confidence": 0.3958,
+      "required": 0.4,
+      "odds": 2.12
+    },
+    {
+      "match": "Perth RedStar vs Perth SC",
+      "reason": "DEFAULT_MIN_CONFIDENCE",
+      "confidence": 0.3921,
+      "required": 0.4,
+      "odds": 2.41
+    },
+    {
+      "match": "Manila Digger FC vs Kasuka FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 10,
+      "required_each": 8
+    },
+    {
+      "match": "Ironi Nesher vs FC Tzeirey Tamra",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9,
+      "required_each": 8
+    },
+    {
+      "match": "Bnei Yehud vs Beitar Kfar Saba Shlomi",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 9,
+      "required_each": 8
     }
   ],
   "near_gate_top": [
@@ -260,19 +258,21 @@
     {
       "match": "Derry City (W) vs Cliftonville LFC (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 30.0,
+      "odds": 19.0,
       "maximum": 3.0,
       "confidence": 0.9252
     },
     {
       "match": "DPMM FC vs Johor Darul Takzim",
-      "reason": "NO_GOALOO_1X2_ODDS",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 60.0,
+      "maximum": 3.0,
       "confidence": 0.9233
     },
     {
       "match": "Fleury 91 (W) vs Lyon (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 23.0,
+      "odds": 27.0,
       "maximum": 3.0,
       "confidence": 0.903
     },
@@ -286,7 +286,7 @@
     {
       "match": "FC Noah vs Gandzasar Kapan",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 27.0,
+      "odds": 25.0,
       "maximum": 3.0,
       "confidence": 0.8767
     },
@@ -307,7 +307,7 @@
     {
       "match": "CD Olimpia vs Platense",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 7.09,
+      "odds": 6.76,
       "maximum": 3.0,
       "confidence": 0.835
     },
@@ -319,7 +319,7 @@
     {
       "match": "FC Porto vs Moreirense",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 18.0,
+      "odds": 18.5,
       "maximum": 3.0,
       "confidence": 0.8
     },
@@ -343,6 +343,18 @@
       "confidence": 0.784
     },
     {
+      "match": "NOPS vs FC Leki",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 9.95,
+      "maximum": 3.0,
+      "confidence": 0.7837
+    },
+    {
+      "match": "United Sports Club vs Wari AC",
+      "reason": "NO_GOALOO_1X2_ODDS",
+      "confidence": 0.7826
+    },
+    {
       "match": "Maccabi Nujeidat Ahmed vs Moadon Sport Tira",
       "reason": "ODDS_SAFETY_MAX",
       "odds": 6.09,
@@ -362,29 +374,15 @@
       "odds": 8.3,
       "maximum": 3.0,
       "confidence": 0.7728
-    },
-    {
-      "match": "Bray Wanderers vs Cork City",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.48,
-      "maximum": 3.0,
-      "confidence": 0.7685
-    },
-    {
-      "match": "Al-Ittifaq vs Al-Muharraq",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 10.0,
-      "maximum": 3.0,
-      "confidence": 0.7645
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 545,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 561,
+    "odds_rows": 465,
+    "h2h_static_ok": 459,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -406,13 +404,5 @@
     "No daily pick-count cap.",
     "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw side, odds <=3.00.",
     "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
-  ],
-  "settled_this_run": 0,
-  "settlement_fallback": {
-    "checked": 78,
-    "settled": 56,
-    "errors": [],
-    "mode": "Goaloo page explicit-FT only",
-    "last_run": "2026-09-04T01:10:20Z"
-  }
+  ]
 }
