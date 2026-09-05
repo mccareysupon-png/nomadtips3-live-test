@@ -51,8 +51,8 @@
   function teamName(card,side){
     const home=side==='HOME';
     const selectors=home?
-      ['[data-home-name]','.team-home .team-name','.home-team .team-name','.team.home strong','.p3-team:not(.away) strong']:
-      ['[data-away-name]','.team-away .team-name','.away-team .team-name','.team.away strong','.p3-team.away strong'];
+      ['.teams-line > strong:first-child','[data-home-name]','.team-home .team-name','.home-team .team-name','.team.home strong','.p3-team:not(.away) strong']:
+      ['.teams-line > strong:last-child','[data-away-name]','.team-away .team-name','.away-team .team-name','.team.away strong','.p3-team.away strong'];
     const scope=card.closest('.event-compact,.prediction-card,.p3-featured,article')||document;
     for(const selector of selectors){
       const value=text(scope.querySelector(selector));
