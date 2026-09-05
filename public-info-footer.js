@@ -9,7 +9,8 @@
   const signalPath=path==='/'||/\/nomad-live\/(?:index\.html)?\/?$/i.test(path);
   const statisticsPath=path==='/statistics.html'||/\/nomad-live\/statistics\.html\/?$/i.test(path);
   const picksPath=/\/soccer-predictions(?:\/index\.html)?\/?$/i.test(path);
-  const publicRailPath=signalPath||statisticsPath||picksPath;
+  const prediction3Path=/\/prediction3(?:\/index\.html)?\/?$/i.test(path);
+  const publicRailPath=signalPath||statisticsPath||picksPath||prediction3Path;
 
   const stripPicksNavigation=()=>{
     document.querySelectorAll('.topnav a,.mobile-nav a').forEach(link=>{
@@ -24,6 +25,7 @@
      Page 2 Statistics  -> add link rail only, below original 3.41 footer content.
      Page 3 Live Score  -> handled by the isolated 3.42 UI-only footer layer.
      Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
+     Prediction3        -> add link rail below the original 3.41 footer content.
      Information pages  -> retain their existing information-page footer behavior.
      Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
@@ -141,7 +143,7 @@
     const original=document.createElement('script');
     original.src=new URL('nomad-live/site-footer.js?v=20260831-info-restore-v2',root).href;
     original.defer=true;
-    original.dataset.nomadOriginalFooter='3.41';
+    original.dataset.nomadOriginal-footer='3.41';
     original.onload=()=>attachToExisting(document.querySelector('.site-footer'));
     original.onerror=()=>{
       console.warn('Original NOMAD 3.41 footer unavailable; using safe fallback.');
