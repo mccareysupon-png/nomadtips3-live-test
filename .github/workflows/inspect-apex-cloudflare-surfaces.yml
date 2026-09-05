@@ -1,0 +1,41 @@
+name: Inspect Apex Cloudflare Surfaces
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-apex-cloudflare-surfaces.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ZONE_ID: 35badb923b6451ed5109276f20b6c749
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Probe account and zone surfaces
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          probe(){
+            label="$1"; url="$2"
+            code="$(curl -sS "${auth[@]}" -o "/tmp/${label}.json" -w '%{http_code}' "$url")"
+            echo "===== $label HTTP=$code ====="
+            cat "/tmp/${label}.json"
+            echo
+          }
+
+          probe beta-workers "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/workers?per_page=100"
+          probe dns-apex "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=nomadtips3.com&per_page=100"
+          probe dns-www "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=www.nomadtips3.com&per_page=100"
+          probe zone-rulesets "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/rulesets"
+          probe account-rulesets "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/rulesets"
+          probe snippets "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/snippets"
