@@ -74,6 +74,15 @@ function parseMinute(row,c){
   }
   return null;
 }
+function parseStatus(row,c){
+  const raw=statusCellText(row);
+  const value=String(raw??'').trim();
+  if(/^(?:full|ft|full\s*time|finished|final|ended)$/i.test(value))return {state:'FT',raw:value};
+  if(/^(?:half|half\s*time|ht|break)$/i.test(value))return {state:'HT',raw:value};
+  if(/^(?:postponed|postp\.?|ppd)$/i.test(value))return {state:'POSTPONED',raw:value};
+  if(/^(?:cancelled|canceled|abandoned)$/i.test(value))return {state:'CANCELLED',raw:value};
+  return {state:parseMinute(row,c)!==null?'LIVE':'UNKNOWN',raw:value||null};
+}
 function parseScore(c){
   for(const x of c){
     const p=pair(x);
@@ -131,12 +140,15 @@ export function parseToday(html,sourceHost='https://www.totalcorner.com'){
     const slug=ref.slug||stats?.slug||odds?.slug||'';
     const fallbackNames=slug.split('-vs-').map(s=>s.replace(/-/g,' ').replace(/\b\w/g,ch=>ch.toUpperCase()));
     const full=p=>!p?null:(p.startsWith('http')?p:`${sourceHost}${p.startsWith('/')?'':'/'}${p}`);
+    const minute=parseMinute(row,c),status=parseStatus(row,c);
     found.push({
       id:String(ref.id),
       league:leagueName(row),
       home:names[0]||fallbackNames[0]||null,
       away:names[1]||fallbackNames[1]||null,
-      minute:parseMinute(row,c),
+      minute,
+      status:status.state,
+      statusRaw:status.raw,
       score:score?{home:score[0],away:score[1]}:{home:null,away:null},
       stats:{
         attacks:ad.attacks?{home:ad.attacks[0],away:ad.attacks[1]}:{home:null,away:null},
