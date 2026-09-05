@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#101711">
+  <title>NOMAD CONTROL CENTER</title>
+  <link rel="stylesheet" href="control-center.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">NOMADTIPS3 · OWNER OPERATIONS</div>
+      <h1>NOMAD CONTROL CENTER</h1>
+      <p>Read-only executive monitor · engines · data sources · website · incidents</p>
+    </div>
+    <div class="top-actions">
+      <div class="live-pill"><span class="pulse"></span><span id="liveText">MONITOR LIVE</span></div>
+      <button id="refreshBtn" type="button">REFRESH NOW</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="summary-grid" aria-label="System summary">
+      <article class="summary-card overall"><span>OVERALL HEALTH</span><strong id="overallHealth">—</strong><small id="overallNote">Starting monitor…</small></article>
+      <article class="summary-card"><span>ACTIVE / READY</span><strong id="activeCount">0</strong><small>healthy or reachable</small></article>
+      <article class="summary-card"><span>STANDBY / UNLINKED</span><strong id="standbyCount">0</strong><small>not currently carrying live telemetry</small></article>
+      <article class="summary-card warning"><span>ATTENTION</span><strong id="warningCount">0</strong><small>degraded · stale · drift</small></article>
+      <article class="summary-card danger"><span>OFFLINE / ERROR</span><strong id="offlineCount">0</strong><small>failed health contact</small></article>
+      <article class="summary-card"><span>LAST UPDATE</span><strong id="lastUpdate">—</strong><small>automatic refresh every 10 seconds</small></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><span class="section-kicker">LIVE OPERATIONS</span><h2>Engine & Source Capacity</h2></div>
+        <div class="legend"><span><i class="dot ok"></i>READY</span><span><i class="dot warn"></i>ATTENTION</span><span><i class="dot bad"></i>OFFLINE</span><span><i class="dot muted"></i>UNLINKED</span></div>
+      </div>
+      <div id="systemsGrid" class="systems-grid"></div>
+    </section>
+
+    <section class="two-col">
+      <article class="panel">
+        <div class="panel-head compact"><div><span class="section-kicker">WEB</span><h2>Website Reachability</h2></div></div>
+        <div id="webGrid" class="web-grid"></div>
+      </article>
+      <article class="panel">
+        <div class="panel-head compact"><div><span class="section-kicker">INCIDENTS</span><h2>Recent State Changes</h2></div><button id="clearIncidents" class="ghost" type="button">CLEAR LOCAL LOG</button></div>
+        <div id="incidentList" class="incident-list"></div>
+      </article>
+    </section>
+
+    <section class="panel inventory-panel">
+      <div class="panel-head compact"><div><span class="section-kicker">INVENTORY</span><h2>Registered / Reserve Components</h2></div></div>
+      <div id="inventoryGrid" class="inventory-grid"></div>
+    </section>
+
+    <footer>
+      <span>READ ONLY · no Signal, Scout, Odds, Config or Scheduler writes</span>
+      <span id="monitorVersion">CONTROL CENTER v1</span>
+    </footer>
+  </main>
+
+  <script src="control-center.js"></script>
+</body>
+</html>
