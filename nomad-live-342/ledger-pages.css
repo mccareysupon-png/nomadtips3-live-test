@@ -2,6 +2,7 @@
 body[data-page="signal342"],body[data-page="statistics342"]{background:#0b0f0c;color:var(--text)}
 body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{padding-bottom:92px}
 .ledger-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+.statistics-summary{grid-template-columns:repeat(7,minmax(0,1fr))}
 .ledger-summary .metric strong{font-size:22px}
 .ledger-panel{margin-top:14px}
 .ledger-panel .panel-head{align-items:flex-end}
@@ -47,10 +48,12 @@ body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{paddin
 .stats342-table .result-pending{color:#8f9991;font-weight:900}
 .stats342-table .pl-positive{color:#41d99a;font-weight:900}
 .stats342-table .pl-negative{color:#ff7777;font-weight:900}
+.stats342-table .live-minute{color:#41d99a;font-weight:900}
 
-@media(max-width:900px){.ledger-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.signal-lock-grid{grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr)}}
+@media(max-width:1050px){.statistics-summary{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:900px){.ledger-summary,.statistics-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.signal-lock-grid{grid-template-columns:minmax(0,1fr) 92px minmax(0,1fr)}}
 @media(max-width:700px){
-  .ledger-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .ledger-summary,.statistics-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
   .ledger-summary .metric{min-height:72px}
   .ledger-summary .metric strong{font-size:19px}
   .signal-lock-card{padding:13px 12px}
