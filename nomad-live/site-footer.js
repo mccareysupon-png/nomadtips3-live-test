@@ -91,3 +91,19 @@
   script.onerror=()=>console.warn('Match Scouts sidecar unavailable; core page remains unchanged.');
   document.head.appendChild(script);
 })();
+
+(()=>{
+  const target='https://www.nomadtips3.com/prediction2';
+  const fix=()=>{
+    document.querySelectorAll('.nomad-info-linkrail a').forEach(link=>{
+      const label=String(link.textContent||'').trim();
+      if(/^Soccer\s+Pre/i.test(label)){
+        link.textContent='Soccer Predictions';
+        link.href=target;
+      }
+    });
+  };
+  fix();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix,{once:true});
+  [100,500,1500,2500].forEach(ms=>setTimeout(fix,ms));
+})();
