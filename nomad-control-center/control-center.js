@@ -7,12 +7,12 @@ const INCIDENT_KEY='nomadControlCenterIncidentsV1';
 const STATE_KEY='nomadControlCenterStatesV1';
 
 const HEALTH_SYSTEMS=[
-  {id:'tc-v3',name:'TotalCorner · Live Feed V3',role:'MAIN LIVE SCORE / EVENT SOURCE',endpoint:'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning cap 60 live matches'},
-  {id:'tc-v2',name:'TotalCorner · Live Feed V2',role:'FALLBACK LIVE SCORE SOURCE',endpoint:'https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning cap 60 live matches'},
-  {id:'live-engine',name:'NOMAD Live Engine',role:'SIGNAL / PRICE SOURCE REGISTRY',endpoint:'https://nomadtips3-live-engine.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning activity cap 60 matches'},
-  {id:'market-engine',name:'Market Engine',role:'ASIANBOOKIE + API-FOOTBALL CANDIDATE',endpoint:'https://nomadtips3-market-engine.mccarey-supon.workers.dev/health'},
-  {id:'price-5d',name:'5Dollar Price Adapter',role:'3.42 PRICE RUNTIME · CONFIG DRIFT WATCH',endpoint:'https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev/health',drift:true,capacity:9,capacityLabel:'internal upstream ceiling 9 req/min'},
-  {id:'car34',name:'Goaloo / CAR 3.4',role:'SHADOW / REAL-MARKET AUDIT',endpoint:'https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev/health',shadow:true,capacity:24,capacityLabel:'MAX_MATCHES_PER_CYCLE 24'}
+  {id:'tc-v3',name:'TotalCorner · Live Feed V3',role:'MAIN LIVE SCORE / EVENT SOURCE',endpoint:'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning cap 60 live matches',purpose:'บอลสด + เหตุการณ์การแข่งขัน',displayPage:'Live Score 3.42',displayUrl:'https://www.nomadtips3.com/nomad-live-342/index.html',relation:'แหล่ง Live Score / Event หลักของหน้า 3.42'},
+  {id:'tc-v2',name:'TotalCorner · Live Feed V2',role:'FALLBACK LIVE SCORE SOURCE',endpoint:'https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning cap 60 live matches',purpose:'แหล่งบอลสดสำรอง',displayPage:'Live Score 3.42 · Fallback',displayUrl:'https://www.nomadtips3.com/nomad-live-342/index.html',relation:'สำรองของ V3 · ไม่ใช่แหล่งหลักขณะ V3 ปกติ'},
+  {id:'live-engine',name:'NOMAD Live Engine',role:'SIGNAL / PRICE SOURCE REGISTRY',endpoint:'https://nomadtips3-live-engine.mccarey-supon.workers.dev/health',capacity:60,capacityLabel:'planning activity cap 60 matches',purpose:'Signal + Price Source Registry',displayPage:'NOMADTIPS3 Home / Live',displayUrl:'https://www.nomadtips3.com/',relation:'NOWGOAL · AH referee · 20 bookmaker identities · ทำงานภายใน Engine นี้'},
+  {id:'market-engine',name:'Market Engine',role:'ASIANBOOKIE + API-FOOTBALL CANDIDATE',endpoint:'https://nomadtips3-market-engine.mccarey-supon.workers.dev/health',purpose:'AsianBookie + API-Football candidate / market layer',displayPage:'Live Score 3.42',displayUrl:'https://www.nomadtips3.com/nomad-live-342/index.html',relation:'เชื่อมหน้า 3.42 ในโหมด DISPLAY · optional · ไม่ block event render'},
+  {id:'price-5d',name:'5Dollar Price Adapter',role:'3.42 PRICE RUNTIME · CONFIG DRIFT WATCH',endpoint:'https://nomadtips3-live-engine-5dollar.mccarey-supon.workers.dev/health',drift:true,capacity:9,capacityLabel:'internal upstream ceiling 9 req/min',purpose:'ราคา AH สำหรับ runtime 3.42',displayPage:'Live Score 3.42 · Price Runtime',displayUrl:'https://www.nomadtips3.com/nomad-live-342/index.html',relation:'Runtime 3.42 ยังอ้างถึง adapter นี้ · source8 ใน registry ถูก retire → CONFIG DRIFT'},
+  {id:'car34',name:'Goaloo / CAR 3.4',role:'SHADOW / REAL-MARKET AUDIT',endpoint:'https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev/health',shadow:true,capacity:24,capacityLabel:'MAX_MATCHES_PER_CYCLE 24',purpose:'Goaloo live stats + real-market AH audit',displayPage:'CAR 3.4 Detector · SHADOW',displayUrl:'https://mccareysupon-png.github.io/nomadtips3-live-test/car3-4-real-market-audit/web/index.html',relation:'SHADOW / ทดลอง · ไม่ใช่ Production หลัก',extraLinks:[{label:'ดู Statistics',url:'https://mccareysupon-png.github.io/nomadtips3-live-test/car3-4-real-market-audit/web/statistics.html'}]}
 ];
 
 const WEB_TARGETS=[
@@ -159,6 +159,21 @@ function systemNote(system){
   return 'Health endpoint connected. Read-only monitoring.';
 }
 
+function renderDisplayMap(system){
+  if(!system.purpose&&!system.displayPage&&!system.displayUrl)return '';
+  const extra=(Array.isArray(system.extraLinks)?system.extraLinks:[]).map(link=>`<a class="system-link" href="${esc(link.url)}" target="_blank" rel="noopener noreferrer">${esc(link.label)}</a>`).join('');
+  return `<div class="display-map">
+    <div class="display-row"><span>หน้าที่</span><b>${esc(system.purpose||'—')}</b></div>
+    <div class="display-row"><span>แสดงผลที่</span><b>${esc(system.displayPage||'—')}</b></div>
+    <div class="system-links">
+      ${system.displayUrl?`<a class="system-link" href="${esc(system.displayUrl)}" target="_blank" rel="noopener noreferrer">เปิดหน้าแสดงผล</a>`:''}
+      <a class="system-link health" href="${esc(system.endpoint)}" target="_blank" rel="noopener noreferrer">ตรวจสุขภาพ</a>
+      ${extra}
+    </div>
+    ${system.relation?`<div class="system-relation">${esc(system.relation)}</div>`:''}
+  </div>`;
+}
+
 function renderSystems(systems){
   const root=$('systemsGrid');
   root.innerHTML=systems.map(system=>{
@@ -167,7 +182,7 @@ function renderSystems(systems){
     return `<article class="system-card">
       <div class="card-top"><div><div class="system-name">${esc(system.name)}</div><div class="role">${esc(system.role)}</div></div><span class="state-badge ${statusClass(system.state)}">${esc(system.state)}</span></div>
       <div class="load-row"><div class="load-head"><span>WORKLOAD</span><b>${load.percent==null?'—':`${load.percent}%`}</b></div><div class="bar"><i style="width:${width}%"></i></div><div class="load-head"><span>${esc(load.label)}</span><span>${esc(system.capacityLabel||'telemetry only')}</span></div></div>
-      <div class="metrics">${metrics}</div><div class="note">${esc(systemNote(system))}</div>
+      <div class="metrics">${metrics}</div>${renderDisplayMap(system)}<div class="note">${esc(systemNote(system))}</div>
     </article>`;
   }).join('');
 }
