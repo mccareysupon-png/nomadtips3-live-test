@@ -132,6 +132,18 @@
         border-bottom:1px solid rgba(255,255,255,.055)!important;
       }
 
+      body[data-page="prediction2"] .king-preview-card,
+      body[data-page="prediction2"] .king-preview-card::after,
+      body[data-page="prediction2"] .king-scorebar,
+      body[data-page="prediction2"] .king-panel,
+      body[data-page="prediction2"] .king-analysis-drawer,
+      body[data-page="prediction2"] .king-analysis-grid,
+      body[data-page="prediction2"] .king-expand-summary,
+      body[data-page="prediction2"] .king-expand-lower,
+      body[data-page="prediction2"] .king-expand-block{
+        border-radius:0!important;
+      }
+
       @media(max-width:699px){
         body[data-page="prediction2"] .king-scorebar .metric:nth-child(4n){border-right:0!important;}
         body[data-page="prediction2"] .king-scorebar .metric:nth-child(-n+4){border-bottom:1px solid rgba(255,255,255,.055)!important;}
