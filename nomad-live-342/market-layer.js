@@ -7,7 +7,7 @@ const list=()=>document.getElementById('matchList');
 let timer=null,running=false,lastPayload=null,lastError=null;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function norm(v=''){return String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()}
 function compact(v=''){return norm(v).replace(/\s/g,'')}
 function teamScore(a,b){const x=norm(a),y=norm(b);if(!x||!y)return 0;if(x===y)return 1;if(compact(x)===compact(y))return .99;if(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)))return .9;const aa=new Set(x.split(' ').filter(Boolean)),bb=new Set(y.split(' ').filter(Boolean));let hit=0;for(const t of aa)if(bb.has(t))hit++;const union=aa.size+bb.size-hit;return union?hit/union:0}
