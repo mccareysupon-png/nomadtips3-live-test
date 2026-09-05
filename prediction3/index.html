@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="clean-unified-cards.css?v=20260905-v1">
   <link rel="stylesheet" href="square-corners.css?v=20260905-v2">
   <link rel="stylesheet" href="no-icons.css?v=20260905-v1">
+  <link rel="stylesheet" href="live-pitch.css?v=20260905-p3-pitch-v1">
 </head>
 <body data-page="prediction3">
   <header class="topbar">
@@ -58,6 +59,55 @@
       <div><span>OWNER COMMAND</span><strong>REQUIRED</strong></div>
       <div><span>AUTO ENGINE</span><strong>OFF</strong></div>
       <div><span>AUTO SETTLEMENT</span><strong>OFF</strong></div>
+    </section>
+
+    <section class="p3-live-board" data-p3-live-pitch aria-label="Prediction3 2D live match visualization demo">
+      <header class="p3-live-head">
+        <div class="p3-live-team home"><span>HOME</span><strong data-home-name>Home Team</strong></div>
+        <div class="p3-live-score">
+          <div class="p3-live-clock"><i></i><span>LIVE VIEW</span></div>
+          <strong data-score>1 — 0</strong>
+          <small data-clock>68:04</small>
+        </div>
+        <div class="p3-live-team away"><span>AWAY</span><strong data-away-name>Away Team</strong></div>
+      </header>
+      <div class="p3-live-demo-note">
+        <strong>VISUAL DEMO · DATA FEED NOT CONNECTED</strong>
+        <span>2D pitch layer ready for live score, events, ball coordinates and attack momentum.</span>
+      </div>
+
+      <div class="p3-pitch-shell">
+        <div class="p3-pitch" role="img" aria-label="Interactive two-dimensional football pitch visualization">
+          <span class="p3-pitch-side-label home">HOME</span><span class="p3-pitch-side-label away">AWAY</span>
+          <span class="p3-center-circle"></span>
+          <span class="p3-box home"></span><span class="p3-box away"></span>
+          <span class="p3-six home"></span><span class="p3-six away"></span>
+          <span class="p3-penalty-dot home"></span><span class="p3-penalty-dot away"></span>
+          <span class="p3-goal home"></span><span class="p3-goal away"></span>
+
+          <span class="p3-zone attack home" data-zone-home></span>
+          <span class="p3-zone attack away" data-zone-away></span>
+          <span class="p3-zone danger home" data-danger-home></span>
+          <span class="p3-zone danger away" data-danger-away></span>
+
+          <div data-player-layer></div>
+          <span class="p3-ball-trail" data-p3-trail></span>
+          <span class="p3-ball" data-p3-ball aria-hidden="true"></span>
+          <span class="p3-event-pin attack" data-p3-event-pin><span class="p3-event-chip" data-p3-event-chip><b>→</b><span>Attack</span></span></span>
+        </div>
+      </div>
+
+      <div class="p3-live-bottom">
+        <section class="p3-event-strip" aria-label="Recent visual events">
+          <h3>EVENT FLOW</h3>
+          <div class="p3-event-line" data-event-line><span class="active">Visual demo ready</span></div>
+        </section>
+        <section class="p3-live-stats" aria-label="Demo match momentum statistics">
+          <h3>LIVE MOMENTUM</h3>
+          <div class="p3-stat-row"><strong data-home-poss>55%</strong><span class="p3-stat-bar"><i data-home-poss-bar style="width:55%"></i></span><span>HOME · <b data-home-attack>15</b></span></div>
+          <div class="p3-stat-row away"><strong data-away-poss>45%</strong><span class="p3-stat-bar"><i data-away-poss-bar style="width:45%"></i></span><span>AWAY · <b data-away-attack>10</b></span></div>
+        </section>
+      </div>
     </section>
 
     <section class="prediction3-kpis" aria-label="Prediction3 statistics">
@@ -99,6 +149,7 @@
 
   <script src="../nomad-live/site-footer.js?v=20260905-p3-main-chassis-v1" defer></script>
   <script src="../public-info-footer.js?v=20260905-p3-main-chassis-v1" defer></script>
+  <script src="live-pitch.js?v=20260905-p3-pitch-v1" defer></script>
   <script src="prediction3.js?v=20260905-solo-premium-v1" defer></script>
 </body>
 </html>
