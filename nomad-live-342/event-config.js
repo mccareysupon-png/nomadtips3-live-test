@@ -1,15 +1,15 @@
 (()=>{
 'use strict';
 const defaults=Object.freeze({
-  minuteFrom:30,
-  minuteTo:88,
-  rollingWindowMinutes:5,
-  scoreDifferenceFilterEnabled:false,
+  minuteFrom:55,
+  minuteTo:80,
+  rollingWindowMinutes:8,
+  scoreDifferenceFilterEnabled:true,
   maxScoreDifference:1,
   attackWeight:1,
-  dangerousAttackWeight:1,
-  homePressureShareMinimum:54,
-  trendConditionsRequired:2,
+  dangerousAttackWeight:2.5,
+  homePressureShareMinimum:62,
+  trendConditionsRequired:3,
   homeEventRequired:true,
   sotEvidenceEnabled:true,
   sotDeltaMinimum:1,
@@ -17,23 +17,23 @@ const defaults=Object.freeze({
   shotOffDeltaMinimum:1,
   cornerEvidenceEnabled:true,
   cornerDeltaMinimum:1,
-  evidenceMode:'ANY',
+  evidenceMode:'ALL',
   allowedLinesMode:'ANY',
   allowedSelectionLines:Object.freeze([]),
-  oddsMinimum:1.40,
-  oddsMaximumEnabled:false,
-  oddsMaximum:2.40,
-  maximumPriceAgeSeconds:90,
+  oddsMinimum:1.45,
+  oddsMaximumEnabled:true,
+  oddsMaximum:2.10,
+  maximumPriceAgeSeconds:30,
   oneSignalPerMatch:true
 });
 window.NOMAD342_CONFIG=Object.freeze({
-  version:'20260902-k-live-net-v2',
-  settingsKey:'nomadSettings342',
+  version:'20260905-k-ultra-selective-v1',
+  settingsKey:'nomadSettings342KUltraV1',
   defaults
 });
 window.NOMAD342_K_LIVE_PRESET=Object.freeze({
-  version:'k-live-net-v2',
-  name:'K LIVE',
+  version:'k-ultra-selective-v1',
+  name:'K ULTRA SELECTIVE',
   locked:true,
   scope:'ALL_LIVE_MATCHES',
   event:Object.freeze({
@@ -51,10 +51,10 @@ window.NOMAD342_K_LIVE_PRESET=Object.freeze({
     ah:'AUTO_MAIN_LINE',
     oneXtwo:'AUTO',
     totals:'AUTO_MAIN_LINE',
-    maxAgeMs:90000,
+    maxAgeMs:30000,
     minReferees:3,
-    moderateShare:0.58,
-    strongShare:0.60,
+    moderateShare:0.62,
+    strongShare:0.66,
     directionalMarkets:Object.freeze(['AH','1X2']),
     totalsRole:'CONTEXT'
   }),
@@ -67,7 +67,7 @@ window.NOMAD342_K_LIVE_PRESET=Object.freeze({
     draw1X2IsNeutral:true
   }),
   behavior:Object.freeze({
-    failOpen:true,
+    failOpen:false,
     blocksLiveScore:false,
     blocksEventGate:false,
     changesPrediction:false,
