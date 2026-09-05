@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-05T03:09:49Z",
+  "updated_at": "2026-09-05T05:51:09Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -104,8 +104,8 @@
       "market_edge": 0.3499,
       "ev": 0.6341,
       "edge": 35.0,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-0",
       "source_url": "https://www.goaloo.com/football/liga-de-expansion-mx-atletico-la-paz-vs-mineros-de-zacatecas/h2h-3024441",
       "summary_url": "https://www.goaloo.com/football/liga-de-expansion-mx-atletico-la-paz-vs-mineros-de-zacatecas/summary-3024441",
       "policy": "KING_DEFAULT_40_188",
@@ -168,7 +168,10 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-05T05:51:09Z"
     },
     {
       "id": "a75c4935733c658d",
@@ -15961,6 +15964,93 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settlement_verified_at": "2026-09-05T01:04:28Z"
+    },
+    {
+      "id": "641826125950da25",
+      "goaloo_id": "3024441",
+      "date": "2026-09-05",
+      "kickoff": "2026-09-05 03:00:00",
+      "league": "Liga de Expansion MX",
+      "home": "Atletico La Paz",
+      "away": "Mineros de Zacatecas",
+      "pick": "Atletico La Paz Win",
+      "side": "home",
+      "odds": 2.07,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7894,
+      "model_probability": 0.7894,
+      "market_fair_probability": 0.4395,
+      "market_edge": 0.3499,
+      "ev": 0.6341,
+      "edge": 35.0,
+      "result": "WIN",
+      "ft": "3-0",
+      "source_url": "https://www.goaloo.com/football/liga-de-expansion-mx-atletico-la-paz-vs-mineros-de-zacatecas/h2h-3024441",
+      "summary_url": "https://www.goaloo.com/football/liga-de-expansion-mx-atletico-la-paz-vs-mineros-de-zacatecas/summary-3024441",
+      "policy": "KING_DEFAULT_40_188",
+      "engine": "the-king-default-goaloo-composite-40pct-188",
+      "selection_profile": {
+        "name": "OWNER_DEFAULT_40_188",
+        "date": "2026-09-05",
+        "minimum_confidence": 0.4,
+        "minimum_odds": 1.88,
+        "maximum_odds_safety": 3.0,
+        "recent_sample_min_each": 8,
+        "max_picks": null,
+        "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "king_v2_underlying_gate": "BYPASSED",
+        "king_v2_market_edge_gate": "BYPASSED",
+        "king_v2_ev_gate": "BYPASSED"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_1x2_market": "PASS",
+        "default_confidence_min": "PASS",
+        "default_odds_min": "PASS",
+        "odds_safety_max": "PASS",
+        "daily_cap": "UNLIMITED",
+        "king_v2_underlying": "NOT_A_GATE",
+        "king_v2_market_edge": "INFO_ONLY",
+        "king_v2_ev": "INFO_ONLY",
+        "lineup": "NOT_A_GATE",
+        "market_movement": "NOT_A_GATE",
+        "rest_rotation": "NOT_A_GATE"
+      },
+      "model": {
+        "lambda_home": 2.357,
+        "lambda_away": 0.635,
+        "home_win": 0.7894,
+        "draw": 0.1711,
+        "away_win": 0.0395,
+        "h2h_adjustment": -0.0125,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.7285,
+          "gd_edge": 0.8565,
+          "clean_sheet_edge": -0.0341,
+          "failed_to_score_edge": 0.6293,
+          "bounded_adjustment": 0.0495,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settlement_verified_at": "2026-09-05T05:51:09Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
