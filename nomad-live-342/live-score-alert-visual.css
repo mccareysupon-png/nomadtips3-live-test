@@ -1,0 +1,29 @@
+/* NOMADTIPS3 Live Score 3.42 — compact alert visual tune
+   2026-09-06 · presentation only · all devices
+   Scope:
+   - compact bookmaker label under league
+   - compact 1X2 · O/U LOCK detection badge
+   No feed, market, detector, prediction, ledger or engine logic changes.
+   Rollback: remove this stylesheet link from nomad-live-342/index.html and delete this file. */
+
+body[data-page="live"] .event-compact .market-mini-badge{
+  font-size:8.1px!important; /* 10% smaller than the previous 9px */
+  color:#fff!important;
+  font-weight:500!important;
+  letter-spacing:0!important;
+  opacity:.94;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+
+body[data-page="live"] .event-compact .api-candidate-mini{
+  color:#83df89!important;
+  background:rgba(55,130,70,.24)!important;
+  border:1px solid rgba(131,223,137,.28)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+
+body[data-page="live"] .event-compact .api-candidate-mini *{
+  color:#83df89!important;
+}
