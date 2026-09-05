@@ -50,8 +50,8 @@ jobs:
             code="$(curl -sS "${auth[@]}" -o /tmp/versions.json -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/versions?per_page=20")"
             echo "versions HTTP=$code"
             if [ "$code" != 200 ]; then cat /tmp/versions.json; continue; fi
-            jq -r '.result[]? | [.id,.created_on] | @tsv' /tmp/versions.json | head -10
-            mapfile -t vids < <(jq -r '.result[]?.id' /tmp/versions.json | head -3)
+            jq -r '.result.items[]? | [.id,(.metadata.created_on // ""),(.number // "")] | @tsv' /tmp/versions.json | head -10
+            mapfile -t vids < <(jq -r '.result.items[]?.id' /tmp/versions.json | head -3)
             for vid in "${vids[@]}"; do
               [ -n "$vid" ] || continue
               fingerprint "${script}-${vid}" -H "Cloudflare-Workers-Version-Overrides: ${script}=\"${vid}\""
