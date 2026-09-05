@@ -75,11 +75,7 @@ jobs:
             jq '[.result[]? | {name,subdomain,domains,created_on,production_branch}]' /tmp/apex-diag/pages-projects.json | tee /tmp/apex-diag/pages-projects-summary.json
             jq -r '.result[]?.name' /tmp/apex-diag/pages-projects.json | while IFS= read -r project; do
               [ -n "$project" ] || continue
-              enc="$(PROJECT="$project" python - <<'PY'
-import os, urllib.parse
-print(urllib.parse.quote(os.environ['PROJECT'], safe=''))
-PY
-)"
+              enc="$(python -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1],safe=""))' "$project")"
               safe="$(printf '%s' "$project" | tr -c 'A-Za-z0-9._-' '_')"
               code="$(curl -sS "${auth[@]}" -o "/tmp/apex-diag/pages-domains-${safe}.json" -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/${enc}/domains")"
               echo "pages-domains project=$project HTTP=$code"
