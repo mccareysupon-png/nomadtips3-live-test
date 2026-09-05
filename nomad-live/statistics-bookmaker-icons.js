@@ -22,7 +22,11 @@
 
   const clean=value=>String(value||'').trim().replace(/\s+/g,' ');
   const keyOf=value=>clean(value).toLowerCase().replace(/[^a-z0-9]/g,'');
-  const bookmakerIndex=()=>[...document.querySelectorAll('.data-table thead th')].findIndex(th=>/(?:BOOKMAKER|ODDS\s+SOURCE)/i.test(th.textContent||''));
+  const bookmakerFromReference=value=>{
+    const parts=clean(value).split('·').map(clean).filter(Boolean);
+    return parts.length>1?parts[parts.length-1]:(parts[0]||'');
+  };
+  const bookmakerIndex=()=>[...document.querySelectorAll('.data-table thead th')].findIndex(th=>/(?:BOOKMAKER|ODDS\s+SOURCE|PRICE\s+REFERENCE)/i.test(th.textContent||''));
 
   const clearCell=cell=>{
     cell.classList.remove('bookmaker-logo-cell');
@@ -38,7 +42,8 @@
       const cell=row.children[index];
       if(!cell)return;
       const label=clean(cell.textContent);
-      const icon=aliases.get(keyOf(label));
+      const bookmaker=bookmakerFromReference(label);
+      const icon=aliases.get(keyOf(bookmaker));
       if(!spriteReady||!icon){clearCell(cell);return;}
       cell.classList.add('bookmaker-logo-cell');
       cell.dataset.bookmakerIcon=icon;

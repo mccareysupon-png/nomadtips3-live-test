@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - 'nomad-live-342/**'
+      - 'nomad-live/runtime.js'
+      - 'nomad-live/statistics-live.js'
+      - 'nomad-live/statistics-bookmaker-icons.js'
       - 'workers/nomadtips3-market-engine/**'
       - 'workers/nomadtips3-live-engine-5dollar/**'
       - '.github/workflows/nomad342-market-layer-check.yml'
@@ -36,6 +39,9 @@ jobs:
           node --check nomad-live-342/market-runtime.js
           node --check nomad-live-342/market-layer.js
           node --check nomad-live-342/market-settings.js
+          node --check nomad-live/runtime.js
+          node --check nomad-live/statistics-live.js
+          node --check nomad-live/statistics-bookmaker-icons.js
       - name: Block public OddStorm HTML scraping
         run: |
           if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src workers/nomadtips3-live-engine-5dollar/src 2>/dev/null; then
@@ -46,13 +52,18 @@ jobs:
         run: |
           grep -q '"name": "nomadtips3-live-engine-5dollar"' workers/nomadtips3-live-engine-5dollar/wrangler.jsonc
           grep -q '"main": "src/index.js"' workers/nomadtips3-live-engine-5dollar/wrangler.jsonc
-      - name: Seal NOMAD 3.41
+      - name: Seal NOMAD 3.41 except approved price-reference presentation files
         run: |
           git fetch origin main
           changed="$(git diff --name-only origin/main...HEAD | grep -E '^nomad-live/' || true)"
-          if [ -n "$changed" ]; then
-            echo 'NOMAD 3.41 files changed unexpectedly:'
-            echo "$changed"
+          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^(nomad-live/runtime\.js|nomad-live/statistics-live\.js|nomad-live/statistics-bookmaker-icons\.js)$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Unexpected NOMAD 3.41 files changed:'
+            echo "$unexpected"
             exit 1
           fi
-          echo 'NOMAD 3.41 untouched'
+          if [ -n "$changed" ]; then
+            echo 'Approved price-reference presentation files changed:'
+            echo "$changed"
+          fi
+          echo 'NOMAD 3.41 engine/AH logic sealed; approved presentation files only.'
