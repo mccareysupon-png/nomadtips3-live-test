@@ -1,0 +1,114 @@
+/* Prediction3 main-site chassis lock.
+   Presentation only. Keeps the Golden Prediction3 analysis card untouched while
+   matching NOMADTIPS3 public header/footer geometry and preventing cross-page shake. */
+
+html{
+  scrollbar-gutter:stable;
+  scroll-behavior:auto!important;
+  overflow-anchor:none!important;
+}
+@media(min-width:701px){html{overflow-y:scroll}}
+
+body[data-page="prediction3"],
+body[data-page="prediction3"] .topbar,
+body[data-page="prediction3"] .shell,
+body[data-page="prediction3"] .hero,
+body[data-page="prediction3"] .prediction3-status,
+body[data-page="prediction3"] .prediction3-kpis,
+body[data-page="prediction3"] .day-switch,
+body[data-page="prediction3"] .toolbar,
+body[data-page="prediction3"] .prediction-list,
+body[data-page="prediction3"] .result-list,
+body[data-page="prediction3"] .site-footer,
+body[data-page="prediction3"] .mobile-nav{
+  overflow-anchor:none!important;
+}
+
+body[data-page="prediction3"]{
+  background:#10120f!important;
+}
+
+/* Same public topbar geometry as Signal / Statistics / Live Score. */
+body[data-page="prediction3"] .topbar{
+  height:64px!important;
+  min-height:64px!important;
+  background:linear-gradient(90deg,#123328,#125c45,#123328)!important;
+  box-shadow:0 9px 24px rgba(0,0,0,.28)!important;
+  border-bottom:0!important;
+}
+body[data-page="prediction3"] .topbar-inner.public-four-nav{
+  width:100%!important;
+  max-width:1120px!important;
+  height:64px!important;
+  min-height:64px!important;
+  margin:0 auto!important;
+  padding:0 16px!important;
+  box-sizing:border-box!important;
+}
+body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand{
+  font-family:Arial,Helvetica,sans-serif!important;
+  font-size:30px!important;
+  font-weight:900!important;
+  letter-spacing:-.03em!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  transform:none!important;
+  -webkit-text-stroke:.22px currentColor!important;
+  text-rendering:geometricPrecision!important;
+}
+body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand span{
+  -webkit-text-stroke:.22px currentColor!important;
+}
+
+/* Same 1120px public content rail. Golden Prediction3 internals remain unchanged. */
+body[data-page="prediction3"] main.shell{
+  width:100%!important;
+  max-width:1120px!important;
+  margin:0 auto!important;
+  padding:10px 16px 76px!important;
+  box-sizing:border-box!important;
+}
+body[data-page="prediction3"] .site-footer-inner{
+  max-width:1120px!important;
+}
+
+/* No motion/layout shift on the public chassis. */
+body[data-page="prediction3"] .topbar,
+body[data-page="prediction3"] .topbar-inner,
+body[data-page="prediction3"] .brand,
+body[data-page="prediction3"] .topnav,
+body[data-page="prediction3"] .topnav a,
+body[data-page="prediction3"] .mobile-nav,
+body[data-page="prediction3"] .mobile-nav a{
+  animation:none!important;
+}
+body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand{
+  transition:none!important;
+}
+
+@media(max-width:700px){
+  body[data-page="prediction3"] .topbar{
+    height:58px!important;
+    min-height:58px!important;
+  }
+  body[data-page="prediction3"] .topbar-inner.public-four-nav{
+    height:58px!important;
+    min-height:58px!important;
+    padding:0 12px!important;
+  }
+  body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand{
+    font-size:25px!important;
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand span{
+    -webkit-text-stroke:.24px currentColor!important;
+  }
+  body[data-page="prediction3"] main.shell{
+    padding:8px 8px 78px!important;
+  }
+  body[data-page="prediction3"] .mobile-nav.public-four-nav{
+    height:58px!important;
+    min-height:58px!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
