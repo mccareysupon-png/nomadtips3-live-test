@@ -1,9 +1,11 @@
 (()=>{
 'use strict';
 const runtime=window.NOMAD342_MARKET_RUNTIME||{};
+const ledgerRuntime=window.NOMAD342_LEDGER_RUNTIME||{};
 const STORE_KEY='nomad342ApiFootballPredictionsV1';
 const MAX_ATTEMPTS=3;
 const RETRY_DELAYS=[0,45000,120000];
+const LEDGER_RETRY_DELAYS=[0,15000,45000,120000,300000];
 const state=new Map();
 let busy=false;
 
@@ -44,8 +46,28 @@ function hydrateCard(card,row){if(!card||!row)return;remove(card);const badge=do
 function hydrateAll(){const store=load();document.querySelectorAll('.event-compact').forEach(card=>{const row=store[String(card.dataset.matchId)];if(row?.status==='PREDICTED')hydrateCard(card,row)})}
 function resultById(){const rows=window.__nomad342EventResults;return new Map(Array.isArray(rows)?rows.map(r=>[String(r?.m?.id),r]):[])}
 async function fetchCandidate(r){const base=String(runtime.base||'').replace(/\/$/,'');if(!base)throw new Error('market_base_missing');const m=r.m,url=new URL(`${base}/candidate`);url.searchParams.set('home',m.home||'');url.searchParams.set('away',m.away||'');url.searchParams.set('minute',String(m.minute??''));if(Array.isArray(m.score)){url.searchParams.set('scoreHome',String(m.score[0]??''));url.searchParams.set('scoreAway',String(m.score[1]??''))}const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),7000);try{const response=await fetch(url.toString(),{cache:'no-store',signal:ac.signal});let data={};try{data=await response.json()}catch{}if(!response.ok||!data?.ok)throw Object.assign(new Error(data?.error||`candidate_http_${response.status}`),{data});return data}finally{clearTimeout(timer)}}
+function ledgerPayload(id,r,row){
+  const m=r?.m||{},event=r?.event||{},market=row?.market||{};
+  return {
+    schemaVersion:1,matchId:String(id),fixtureId:String(market?.fixture?.id||''),league:m.league||'',home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,eventPass:event.pass===true,eventMetrics:event.metrics||null,
+    configVersion:window.NOMAD342_CONFIG?.version||null,presetVersion:window.NOMAD342_K_LIVE_PRESET?.version||null,prediction:row.prediction,
+    market:{provider:market.provider||'API-Football',observedAt:market.observedAt||Date.now(),oneXtwo:market.oneXtwo||null,totals:market.totals||null}
+  };
+}
+async function postLedger(payload,attempt=0){
+  const base=String(ledgerRuntime.base||'').replace(/\/$/,'');if(!base||!payload?.fixtureId)return;
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),Number(ledgerRuntime.timeoutMs)||6500);
+  try{
+    const response=await fetch(`${base}${ledgerRuntime.lockPath||'/lock'}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),cache:'no-store',signal:ac.signal});
+    let data={};try{data=await response.json()}catch{}
+    if(!response.ok||data?.ok===false)throw new Error(data?.error||`ledger_http_${response.status}`);
+  }catch(error){
+    const next=attempt+1;
+    if(next<LEDGER_RETRY_DELAYS.length){const delay=LEDGER_RETRY_DELAYS[next];setTimeout(()=>{postLedger(payload,next)},delay)}
+  }finally{clearTimeout(timer)}
+}
 function scheduleFailure(id,error){const current=state.get(id)||{attempts:0,nextAt:0},attempts=current.attempts+1;state.set(id,{attempts,nextAt:attempts>=MAX_ATTEMPTS?Infinity:Date.now()+RETRY_DELAYS[Math.min(attempts,RETRY_DELAYS.length-1)],error:String(error?.message||error)})}
-async function runOne(id,r){busy=true;try{const market=await fetchCandidate(r);if(!market.oneXtwo||!market.totals)throw new Error('markets_incomplete');const row={market,prediction:prediction(r,market)};remember(id,row);state.set(id,{attempts:0,nextAt:Infinity,done:true});hydrateAll()}catch(error){scheduleFailure(id,error)}finally{busy=false;setTimeout(scan,900)}}
+async function runOne(id,r){busy=true;try{const market=await fetchCandidate(r);if(!market.oneXtwo||!market.totals)throw new Error('markets_incomplete');const row={market,prediction:prediction(r,market)};remember(id,row);state.set(id,{attempts:0,nextAt:Infinity,done:true});hydrateAll();postLedger(ledgerPayload(id,r,row))}catch(error){scheduleFailure(id,error)}finally{busy=false;setTimeout(scan,900)}}
 function scan(){hydrateAll();if(busy)return;const byId=resultById(),now=Date.now();for(const [id,r] of byId){if(!r?.event?.pass||lockedFor(id))continue;const s=state.get(id)||{attempts:0,nextAt:0};if(s.attempts>=MAX_ATTEMPTS||now<s.nextAt)continue;runOne(id,r);return}}
 function start(){if(document.body?.dataset?.page!=='live')return;const list=document.getElementById('matchList');if(!list)return;let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan()})};new MutationObserver(queue).observe(list,{childList:true});list.addEventListener('click',()=>setTimeout(hydrateAll,0));setInterval(scan,15000);queue();window.__nomad342ApiFootballCandidate={scan,storeKey:STORE_KEY,maxAttempts:MAX_ATTEMPTS}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();

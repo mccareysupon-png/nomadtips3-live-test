@@ -1,0 +1,54 @@
+/* NOMAD Live 3.42 Signal + Statistics presentation only. */
+body[data-page="signal342"],body[data-page="statistics342"]{background:#0b0f0c;color:var(--text)}
+body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{padding-bottom:92px}
+.ledger-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+.ledger-summary .metric strong{font-size:22px}
+.ledger-panel{margin-top:14px}
+.ledger-panel .panel-head{align-items:flex-end}
+.ledger-status{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.03em}
+.signal-lock-list{display:grid;gap:12px}
+.signal-lock-card{position:relative;padding:16px;border:1px solid rgba(215,190,104,.18);background:linear-gradient(180deg,rgba(23,30,24,.94),rgba(13,18,14,.96));box-shadow:0 9px 22px rgba(0,0,0,.18)}
+.signal-lock-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(#d4bd63,#48735d,#d4bd63);opacity:.7}
+.signal-lock-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.07)}
+.signal-lock-kicker{display:flex;align-items:center;gap:8px;color:#d9c46d;font:900 10px/1 Arial,Helvetica,sans-serif;letter-spacing:.08em;text-transform:uppercase}
+.signal-lock-kicker::before{content:"";width:7px;height:7px;border:1px solid currentColor;border-radius:50%;box-shadow:0 0 0 2px rgba(217,196,109,.08)}
+.signal-lock-teams{margin-top:6px;font:900 18px/1.25 Arial,Helvetica,sans-serif;color:#f2f4ed}
+.signal-lock-league{margin-top:4px;color:#8f9991;font-size:11px;font-weight:800}
+.signal-lock-meta{text-align:right;color:#abb2ac;font-size:11px;font-weight:800;line-height:1.6}
+.signal-lock-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.signal-market{padding:12px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.018)}
+.signal-market-head{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#9fa9a1;font-size:10px;font-weight:900;letter-spacing:.07em;text-transform:uppercase}
+.signal-market strong{display:block;margin-top:7px;color:#f0f1e9;font:900 20px/1 Arial,Helvetica,sans-serif}
+.signal-market .signal-odds{color:#d9c46d;font-size:12px;font-weight:900}
+.signal-market small{display:block;margin-top:7px;color:#8f9991;font-size:10px;font-weight:800;line-height:1.5}
+.signal-result{margin-top:9px;display:inline-flex;align-items:center;min-height:23px;padding:0 8px;border:1px solid rgba(255,255,255,.08);font-size:10px;font-weight:900;letter-spacing:.05em}
+.signal-result.win{color:#41d99a;border-color:rgba(65,217,154,.25)}
+.signal-result.loss{color:#ff7777;border-color:rgba(255,119,119,.25)}
+.signal-result.push{color:#e5ce78;border-color:rgba(229,206,120,.25)}
+.signal-result.pending{color:#aab1ab}
+.ledger-empty{padding:30px 18px;text-align:center;color:#8f9991;font-weight:800}
+
+.stats-table-wrap{overflow:auto;border-top:1px solid rgba(255,255,255,.06)}
+.stats342-table{width:100%;border-collapse:collapse;min-width:900px}
+.stats342-table th,.stats342-table td{padding:11px 10px;border-bottom:1px solid rgba(255,255,255,.055);text-align:left;vertical-align:middle;font-size:11px}
+.stats342-table th{position:sticky;top:0;background:#121812;color:#8f9991;font-size:9px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;z-index:1}
+.stats342-table td{color:#d9ddd7;font-weight:700}
+.stats342-table .market-cell{color:#d9c46d;font-weight:900}
+.stats342-table .result-win{color:#41d99a;font-weight:900}
+.stats342-table .result-loss{color:#ff7777;font-weight:900}
+.stats342-table .result-push{color:#e5ce78;font-weight:900}
+.stats342-table .result-pending{color:#8f9991;font-weight:900}
+.stats342-table .pl-positive{color:#41d99a;font-weight:900}
+.stats342-table .pl-negative{color:#ff7777;font-weight:900}
+
+@media(max-width:900px){.ledger-summary{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){
+  .ledger-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .ledger-summary .metric{min-height:72px}
+  .ledger-summary .metric strong{font-size:19px}
+  .signal-lock-card{padding:13px 12px}
+  .signal-lock-head{grid-template-columns:1fr}
+  .signal-lock-meta{text-align:left;display:flex;gap:12px;flex-wrap:wrap}
+  .signal-lock-grid{grid-template-columns:1fr}
+  .signal-lock-teams{font-size:16px}
+}

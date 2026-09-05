@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#123328">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>nomadtips3 · Statistics 3.42</title>
+  <link rel="canonical" href="https://www.nomadtips3.com/nomad-live-342/statistics.html">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20260831-nomad-v1">
+  <link rel="stylesheet" href="styles.css?v=20260831-standalone342-v2">
+  <link rel="stylesheet" href="../nomad-live/public-site-nav.css?v=20260902-three-nav-v1">
+  <link rel="stylesheet" href="chassis-341.css?v=20260902-three-nav-v1">
+  <link rel="stylesheet" href="../nomad-live/nav-stability-lock.css?v=20260902-v2">
+  <link rel="stylesheet" href="../site-footer.css?v=202608040844">
+  <link rel="stylesheet" href="nomad342-tabs.css?v=20260905-v1">
+  <link rel="stylesheet" href="ledger-pages.css?v=20260905-v1">
+</head>
+<body data-page="statistics342" data-nomad342-nav="1">
+  <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav nomad342-nav" aria-label="NOMAD Live 3.42">
+    <a href="index.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span></a>
+    <a href="signal.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span></a>
+    <a class="active" href="statistics.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span></a>
+  </nav></div></header>
+
+  <main class="shell">
+    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42</p><h1>Statistics</h1><p>Combined prediction results for 1X2 and Over/Under. PUSH is recorded but excluded from the Win Rate denominator.</p></div><div class="mode"><span>LEDGER</span><strong>ALL</strong><small>1X2 + O/U</small></div></section>
+
+    <section class="status-grid ledger-summary" aria-label="Statistics summary">
+      <article class="metric"><span>TOTAL PREDICTIONS</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
+      <article class="metric signal"><span>WIN</span><strong id="statsWin">—</strong><small>settled</small></article>
+      <article class="metric"><span>LOSS</span><strong id="statsLoss">—</strong><small>settled</small></article>
+      <article class="metric"><span>PUSH</span><strong id="statsPush">—</strong><small>excluded from win rate</small></article>
+      <article class="metric"><span>WIN RATE</span><strong id="statsWinRate">—</strong><small>WIN ÷ (WIN + LOSS)</small></article>
+    </section>
+
+    <section class="panel ledger-panel">
+      <div class="panel-head"><div><p class="eyebrow">PREDICTION LEDGER</p><h2>1X2 + Over/Under</h2></div><span class="ledger-status" id="statsStatus">Connecting 3.42 ledger…</span></div>
+      <div class="stats-table-wrap"><table class="stats342-table"><thead><tr><th>TIME</th><th>MATCH</th><th>MARKET</th><th>PICK</th><th>ODDS</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody id="statsRows"><tr><td colspan="9">Connecting NOMAD 3.42 statistics ledger…</td></tr></tbody></table></div>
+    </section>
+    <div class="note">Statistics are generated from locked 3.42 Signal records only.</div>
+  </main>
+
+  <nav class="mobile-nav public-four-nav nomad342-nav" aria-label="NOMAD Live 3.42 mobile navigation">
+    <a href="index.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span></a>
+    <a href="signal.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span></a>
+    <a class="active" href="statistics.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span></a>
+  </nav>
+
+  <script src="ledger-runtime.js?v=20260905-v1"></script>
+  <script src="statistics-ledger.js?v=20260905-v1" defer></script>
+  <script src="../site-footer.js?v=202608040844"></script>
+</body>
+</html>

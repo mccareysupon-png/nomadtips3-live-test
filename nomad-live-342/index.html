@@ -35,9 +35,14 @@
   <link rel="stylesheet" href="../nomad-live/nav-stability-lock.css?v=20260902-v2">
   <link rel="stylesheet" href="event-timeline-dual-rail.css?v=20260902-v2">
   <link rel="stylesheet" href="vintage-trading-chart.css?v=20260904-card-palette-v1">
+  <link rel="stylesheet" href="nomad342-tabs.css?v=20260905-v1">
 </head>
-<body data-page="live" data-vintage-chart-page="page2">
-  <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="index.html">Live Score</a></nav><div class="source-pill"><span class="dot"></span>LIVE SCORE</div></div></header>
+<body data-page="live" data-vintage-chart-page="page2" data-nomad342-nav="1">
+  <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav nomad342-nav" aria-label="NOMAD Live 3.42">
+    <a class="active" href="index.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span></a>
+    <a href="signal.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span></a>
+    <a href="statistics.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span></a>
+  </nav><div class="source-pill"><span class="dot"></span>LIVE SCORE</div></div></header>
   <main class="shell">
     <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · EVENT</p><h1>Live Score & Event Monitor</h1><p>Live score, rolling event pressure and recent attack flow from the isolated 3.42 event feed.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>event monitor</small></div></section>
 
@@ -63,10 +68,15 @@
 
     <div class="note event-footnote">NOMADTIPS3 → Live score → Event snapshots → Rolling attack analysis.</div>
   </main>
-  <nav class="mobile-nav public-four-nav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="index.html">Live Score</a></nav>
+  <nav class="mobile-nav public-four-nav nomad342-nav" aria-label="NOMAD Live 3.42 mobile navigation">
+    <a class="active" href="index.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span></a>
+    <a href="signal.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span></a>
+    <a href="statistics.html"><span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span></a>
+  </nav>
 
   <script src="runtime-config.js?v=20260902-totalcorner-v2" defer></script>
   <script src="market-runtime.js?v=20260831-market-v1" defer></script>
+  <script src="ledger-runtime.js?v=20260905-v1" defer></script>
   <script src="event-config.js?v=20260902-k-live-v2" defer></script>
   <script src="event-monitor.js?v=20260831-standalone342-v2" defer></script>
   <script src="league-flag-images.js?v=20260901-v1" defer></script>
@@ -75,7 +85,7 @@
   <script src="event-graph-live.js?v=20260831-standalone342-v2" defer></script>
   <script src="live-score-layout-order.js?v=20260902-timeline-stable-v1" defer></script>
   <script src="market-layer.js?v=20260831-market-v1" defer></script>
-  <script src="api-football-candidate-layer.js?v=20260831-one-shot-v1" defer></script>
+  <script src="api-football-candidate-layer.js?v=20260905-ledger-v1" defer></script>
   <script src="live-score-graph-first.js?v=20260901-v1" defer></script>
   <script src="vintage-card-theme.js?v=20260902-v1" defer></script>
   <script src="vintage-draw-theme.js?v=20260902-v1" defer></script>
