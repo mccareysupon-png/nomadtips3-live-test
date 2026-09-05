@@ -12,6 +12,7 @@ const ALLOWED_WRITE_ORIGINS=new Set([
 const MAX_SIGNAL_LIMIT=500;
 const SETTLEMENT_RETRY_MS=10*60*1000;
 const SETTLEMENT_ERROR_RETRY_MS=15*60*1000;
+const SCHEDULED_SETTLEMENT_PATH='/__scheduled_settlement';
 
 const finite=value=>{
   if(value===null||value===undefined||value===''||typeof value==='boolean')return null;
@@ -158,38 +159,45 @@ export class PredictionLedger{
     return json(request,{ok:true,locked:true,duplicate:false,record},201);
   }
   async signal(request,url){
+    await this.settleDue();
     const requested=Math.trunc(finite(url.searchParams.get('limit'))||200),limit=Math.max(1,Math.min(MAX_SIGNAL_LIMIT,requested));
     const records=(await this.records()).slice(0,limit),summary=summarize(records);
     return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,records});
   }
   async statistics(request,url){
+    await this.settleDue();
     const requested=Math.trunc(finite(url.searchParams.get('limit'))||500),limit=Math.max(1,Math.min(MAX_SIGNAL_LIMIT,requested));
     const all=await this.records(),records=all.slice(0,limit),summary=summarize(all),rows=rowsFromRecords(records);
     return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,rows});
   }
   async health(request){
-    const records=await this.records(),summary=summarize(records);
-    return json(request,{ok:true,service:SERVICE,version:VERSION,storage:'durable-object',apiFootballConfigured:Boolean(this.env.API_FOOTBALL_KEY),summary,alarmAt:iso(await this.state.storage.getAlarm())});
+    await this.settleDue();
+    const records=await this.records(),summary=summarize(records),settlementMeta=await this.state.storage.get('meta:settlement');
+    return json(request,{ok:true,service:SERVICE,version:VERSION,storage:'durable-object',apiFootballConfigured:Boolean(this.env.API_FOOTBALL_KEY),autoSettlement:'alarm+cron+read-repair',summary,alarmAt:iso(await this.state.storage.getAlarm()),settlementMeta:settlementMeta||null});
   }
-  async settleDue(){
-    const records=await this.records(),now=Date.now(),due=records.filter(record=>!record.settlement&&Number(record.nextSettlementCheckAt)<=now).slice(0,8);
+  async settleDue(records=null,reason='runtime'){
+    const list=records||await this.records(),now=Date.now(),due=list.filter(record=>!record.settlement&&Number.isFinite(Number(record.nextSettlementCheckAt))&&Number(record.nextSettlementCheckAt)<=now).slice(0,8);
+    let settled=0,errors=0;
     for(const record of due){
       const key=`record:${record.matchId}`;
       try{
         const fixture=await apiFixture(this.env.API_FOOTBALL_KEY,record.fixtureId),checkedAt=Date.now();
         if(FINAL_STATUSES.has(fixture.status)&&fixture.finalScore.home!==null&&fixture.finalScore.away!==null){
-          await this.state.storage.put(key,settleRecord(record,fixture.finalScore,fixture.status,checkedAt));
+          await this.state.storage.put(key,settleRecord(record,fixture.finalScore,fixture.status,checkedAt));settled++;
         }else{
-          await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS});
+          await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS,settlementError:null});
         }
       }catch(error){
+        errors++;
         const checkedAt=Date.now();
         await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_ERROR_RETRY_MS,settlementError:clean(error?.message||error,180)});
       }
     }
+    await this.state.storage.put('meta:settlement',{reason,ranAt:Date.now(),due:due.length,settled,errors});
     await this.scheduleNext();
+    return {due:due.length,settled,errors};
   }
-  async alarm(){await this.settleDue();}
+  async alarm(){await this.settleDue(null,'durable-object-alarm');}
   async fetch(request){
     if(request.method==='OPTIONS')return json(request,{},204);
     const url=new URL(request.url);
@@ -197,6 +205,10 @@ export class PredictionLedger{
     if(url.pathname==='/signal'&&request.method==='GET')return this.signal(request,url);
     if(url.pathname==='/statistics'&&request.method==='GET')return this.statistics(request,url);
     if((url.pathname==='/'||url.pathname==='/health')&&request.method==='GET')return this.health(request);
+    if(url.pathname===SCHEDULED_SETTLEMENT_PATH&&request.method==='POST'){
+      const sweep=await this.settleDue(null,'worker-cron');
+      return json(request,{ok:true,version:VERSION,sweep});
+    }
     return json(request,{ok:false,error:'not_found'},404);
   }
 }
@@ -206,5 +218,14 @@ export default{
     if(request.method==='OPTIONS')return json(request,{},204);
     const id=env.LEDGER.idFromName('primary');
     return env.LEDGER.get(id).fetch(request);
+  },
+  async scheduled(_controller,env,ctx){
+    const id=env.LEDGER.idFromName('primary');
+    const request=new Request(`https://nomadtips3.internal${SCHEDULED_SETTLEMENT_PATH}`,{method:'POST'});
+    const task=(async()=>{
+      const response=await env.LEDGER.get(id).fetch(request);
+      if(!response.ok)throw new Error(`LEDGER_SCHEDULED_SETTLEMENT_HTTP_${response.status}`);
+    })();
+    ctx.waitUntil(task);
   }
 };

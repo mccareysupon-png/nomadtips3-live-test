@@ -6,6 +6,9 @@ workers_dev = true
 [observability]
 enabled = true
 
+[triggers]
+crons = ["*/5 * * * *"]
+
 [[durable_objects.bindings]]
 name = "LEDGER"
 class_name = "PredictionLedger"
