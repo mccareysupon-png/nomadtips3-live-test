@@ -1,6 +1,7 @@
 import { normalizeProviderPayload } from './normalize.js';
 import { fetchAsianBookiePayload, asianBookieConfig } from './asianbookie.js';
 import { fetchApiFootballCandidate } from './api-football-candidate.js';
+import { fetchNowgoalPayload, nowgoalConfig } from './nowgoal.js';
 
 const CACHE_MS = 5_000;
 let memoryCache = { at: 0, payload: null, providerKey: '' };
@@ -35,12 +36,12 @@ function providerConfig(env) {
   const kind = String(env.MARKET_PROVIDER_KIND || '').trim().toLowerCase();
   const endpoint = String(env.MARKET_PROVIDER_ENDPOINT || '').trim();
   const token = String(env.MARKET_PROVIDER_TOKEN || '').trim();
-  const providerName = String(env.MARKET_PROVIDER_NAME || (kind === 'asianbookie' ? 'AsianBookie Tipster' : 'authorized-market-feed')).trim();
+  const providerName = String(env.MARKET_PROVIDER_NAME || (kind === 'asianbookie' ? 'AsianBookie Tipster' : kind === 'nowgoal' ? 'Nowgoal' : 'authorized-market-feed')).trim();
   const maxAgeMsRaw = Number(env.MAX_MARKET_AGE_MS);
   const maxAgeMs = Number.isFinite(maxAgeMsRaw) ? Math.max(5_000, Math.min(120_000, maxAgeMsRaw)) : 30_000;
   const timeoutRaw = Number(env.MARKET_PROVIDER_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(timeoutRaw) ? Math.max(1_000, Math.min(12_000, timeoutRaw)) : 6_000;
-  const configured = kind === 'asianbookie' || Boolean(endpoint);
+  const configured = kind === 'asianbookie' || kind === 'nowgoal' || Boolean(endpoint);
   return { kind, endpoint, token, providerName, maxAgeMs, timeoutMs, configured };
 }
 
@@ -74,6 +75,11 @@ async function fetchProvider(config, env) {
     const normalized = normalizeProviderPayload(raw, { providerName: config.providerName, maxAgeMs: config.maxAgeMs });
     return { ...normalized, sourceDiagnostics: raw.sourceDiagnostics };
   }
+  if (config.kind === 'nowgoal') {
+    const raw = await fetchNowgoalPayload(env);
+    const normalized = normalizeProviderPayload(raw, { providerName: config.providerName, maxAgeMs: config.maxAgeMs });
+    return { ...normalized, sourceDiagnostics: raw.sourceDiagnostics };
+  }
   return fetchGenericProvider(config);
 }
 
@@ -96,6 +102,7 @@ export default {
 
     if (url.pathname === '/' || url.pathname === '/health') {
       const asian = config.kind === 'asianbookie' ? asianBookieConfig(env) : null;
+      const nowgoal = config.kind === 'nowgoal' ? nowgoalConfig(env) : null;
       return json(request, {
         ok: true,
         service: 'nomadtips3-market-engine',
@@ -117,6 +124,13 @@ export default {
           base: asian.base,
           matchCacheMs: asian.matchCacheMs,
           oddsCacheMs: asian.oddsCacheMs,
+        } : { enabled: false },
+        nowgoal: nowgoal ? {
+          enabled: true,
+          base: nowgoal.base,
+          bookmakers: nowgoal.bookmakers,
+          markets: ['1X2', 'OVER_UNDER'],
+          asianHandicap: false,
         } : { enabled: false },
         eventDependency: false,
         oddStormPublicScraping: false,
