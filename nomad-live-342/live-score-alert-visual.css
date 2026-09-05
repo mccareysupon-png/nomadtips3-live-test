@@ -4,6 +4,7 @@
    - compact bookmaker label under league
    - compact 1X2 · O/U LOCK detection badge
    - hide expanded candidate referee helper labels
+   - unify Live Score summary metrics into one centered strip
    No feed, market, detector, prediction, ledger or engine logic changes.
    Rollback: remove this stylesheet link from nomad-live-342/index.html and delete this file. */
 
@@ -35,4 +36,63 @@ body[data-page="live"] .event-compact .api-candidate-mini *{
    Keep PREDICTION LOCKED and the prediction data visible. */
 body[data-page="live"] .event-compact .api-football-candidate-card .afc-head>div{
   display:none!important;
+}
+
+/* Live Score summary: one card, four equal centered cells.
+   Existing 22px values are reduced exactly 30% to 15.4px. */
+body[data-page="live"] #nomad342PanelLive>.status-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:0!important;
+  overflow:hidden;
+  border-radius:12px;
+  background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);
+}
+
+body[data-page="live"] #nomad342PanelLive>.status-grid>.metric{
+  min-width:0;
+  min-height:66px;
+  padding:10px 8px!important;
+  border-radius:0!important;
+  background:transparent!important;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  box-shadow:none!important;
+}
+
+body[data-page="live"] #nomad342PanelLive>.status-grid>.metric:not(:last-child){
+  border-right:1px solid var(--line);
+}
+
+body[data-page="live"] #nomad342PanelLive>.status-grid>.metric>span{
+  width:100%;
+  text-align:center;
+}
+
+body[data-page="live"] #nomad342PanelLive>.status-grid>.metric>strong{
+  margin:4px 0 0!important;
+  font-size:15.4px!important;
+  line-height:1!important;
+  text-align:center;
+}
+
+body[data-page="live"] #nomad342PanelLive>.status-grid>.metric>small{
+  display:none!important;
+}
+
+@media(max-width:650px){
+  body[data-page="live"] #nomad342PanelLive>.status-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body[data-page="live"] #nomad342PanelLive>.status-grid>.metric{
+    min-height:60px;
+  }
+  body[data-page="live"] #nomad342PanelLive>.status-grid>.metric:nth-child(2){
+    border-right:0;
+  }
+  body[data-page="live"] #nomad342PanelLive>.status-grid>.metric:nth-child(-n+2){
+    border-bottom:1px solid var(--line);
+  }
 }
