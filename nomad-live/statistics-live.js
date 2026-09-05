@@ -8,7 +8,7 @@
   const fmtOdds=v=>v==null?'—':Number(v).toFixed(2);
   const when=s=>{try{const d=new Date(s);if(Number.isNaN(d.getTime()))return '—';const date=d.toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'});const time=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});return `${date} · ${time}`;}catch{return '—'}};
   const clsResult=r=>/WIN/.test(r||'')?'win':/LOSS/.test(r||'')?'loss':'';
-  const recordBookmaker=r=>r?.bookmaker||'—';
+  const recordReference=r=>`${r?.oddsSource||'—'} · ${r?.bookmaker||'—'}`;
   const compactNumber=value=>{
     const n=Number(value);
     if(!Number.isFinite(n))return '—';
@@ -80,7 +80,7 @@
     const fin=r.settlement?.finalScore;
     const res=r.settlement?.result||'PENDING';
     const c=clsResult(res);
-    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td class="condition-cell">${conditionHtml(r)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td class="odds-cell">${fmtOdds(r.odds)}</td><td>${esc(recordBookmaker(r))}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
+    return `<tr><td>${r.lockedAt?when(r.lockedAt):'—'}</td><td>${esc(r.home)} — ${esc(r.away)}</td><td class="condition-cell">${conditionHtml(r)}</td><td>${esc((r.selection||'').toUpperCase())}</td><td>${fmtLine(r.line)}</td><td class="odds-cell">${fmtOdds(r.odds)}</td><td>${esc(recordReference(r))}</td><td>${entry(r)}</td><td>${fin?pair(fin):'—'}</td><td class="${c}">${esc(res)}</td><td class="${c}">${r.settlement?`${r.settlement.profit>=0?'+':''}${Number(r.settlement.profit).toFixed(2)}u`:'—'}</td></tr>`;
   };
   const summarizeRecords=records=>{
     const settled=records.filter(item=>item?.settlement);
