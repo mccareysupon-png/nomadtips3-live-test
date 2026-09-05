@@ -30,7 +30,7 @@ jobs:
           while IFS= read -r script; do
             [ -n "$script" ] || continue
             safe="$(printf '%s' "$script" | tr -c 'A-Za-z0-9._-' '_')"
-            code="$(curl -sS "${auth[@]}" -o "/tmp/scan/${safe}.content" -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/content")"
+            code="$(curl -sS "${auth[@]}" -o "/tmp/scan/${safe}.content" -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/content/v2")"
             if [ "$code" != 200 ]; then
               echo "$script content HTTP=$code"
               continue
