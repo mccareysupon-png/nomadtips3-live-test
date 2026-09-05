@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="no-icons.css?v=20260905-v1">
   <link rel="stylesheet" href="live-pitch.css?v=20260905-p3-pitch-v1">
   <link rel="stylesheet" href="live-pitch-broadcast.css?v=20260905-p3-broadcast-v1">
+  <link rel="stylesheet" href="live-pitch-broadcast-v2.css?v=20260905-p3-broadcast-v2">
   <link rel="stylesheet" href="locked-picks-ui.css?v=20260905-p3-locked-picks-v1">
 </head>
 <body data-page="prediction3">
@@ -63,13 +64,13 @@
       <div><span>AUTO SETTLEMENT</span><strong>OFF</strong></div>
     </section>
 
-    <section class="p3-live-board" data-p3-live-pitch aria-label="Prediction3 2D live match visualization demo">
+    <section class="p3-live-board" data-p3-live-pitch aria-label="Prediction3 premium 2D live match visualization demo">
       <header class="p3-live-head">
         <div class="p3-live-team home"><span>HOME</span><strong data-home-name>Home Team</strong></div>
         <div class="p3-live-score">
           <div class="p3-live-clock"><i></i><span>LIVE VIEW</span></div>
           <strong data-score>1 — 0</strong>
-          <small data-clock>68:04</small>
+          <small data-clock>67:24</small>
         </div>
         <div class="p3-live-team away"><span>AWAY</span><strong data-away-name>Away Team</strong></div>
       </header>
@@ -100,14 +101,36 @@
       </div>
 
       <div class="p3-live-bottom">
+        <div class="p3-broadcast-deck" aria-label="Demo match broadcast statistics">
+          <section class="p3-metric-card">
+            <h3>Attack</h3>
+            <div class="p3-metric-values"><strong data-home-attack>48</strong><strong data-away-attack>32</strong></div>
+            <div class="p3-dual-bar"><i data-home-attack-bar style="width:60%"></i><b data-away-attack-bar style="width:40%"></b></div>
+          </section>
+          <section class="p3-metric-card">
+            <h3>Dangerous Attack</h3>
+            <div class="p3-metric-values"><strong data-home-danger>28</strong><strong data-away-danger>14</strong></div>
+            <div class="p3-dual-bar"><i data-home-danger-bar style="width:67%"></i><b data-away-danger-bar style="width:33%"></b></div>
+          </section>
+          <section class="p3-metric-card">
+            <h3>Shots</h3>
+            <div class="p3-metric-values"><strong data-home-shots>6</strong><strong data-away-shots>3</strong></div>
+            <div class="p3-dual-bar"><i data-home-shots-bar style="width:67%"></i><b data-away-shots-bar style="width:33%"></b></div>
+          </section>
+          <section class="p3-metric-card">
+            <h3>Possession</h3>
+            <div class="p3-metric-values"><strong data-home-poss>62%</strong><strong data-away-poss>38%</strong></div>
+            <div class="p3-dual-bar"><i data-home-poss-bar style="width:62%"></i><b data-away-poss-bar style="width:38%"></b></div>
+          </section>
+          <section class="p3-flow-card">
+            <h3>Event Flow</h3>
+            <div class="p3-flow-plot" data-flow-bars><span class="p3-flow-now"></span></div>
+            <div class="p3-flow-scale"><span>0′</span><span>15′</span><span>30′</span><span>45′</span><span>60′</span><span>90′</span></div>
+          </section>
+        </div>
         <section class="p3-event-strip" aria-label="Recent visual events">
-          <h3>EVENT FLOW</h3>
+          <h3>RECENT EVENTS</h3>
           <div class="p3-event-line" data-event-line><span class="active">Visual demo ready</span></div>
-        </section>
-        <section class="p3-live-stats" aria-label="Demo match momentum statistics">
-          <h3>LIVE MOMENTUM</h3>
-          <div class="p3-stat-row"><strong data-home-poss>55%</strong><span class="p3-stat-bar"><i data-home-poss-bar style="width:55%"></i></span><span>HOME · <b data-home-attack>15</b></span></div>
-          <div class="p3-stat-row away"><strong data-away-poss>45%</strong><span class="p3-stat-bar"><i data-away-poss-bar style="width:45%"></i></span><span>AWAY · <b data-away-attack>10</b></span></div>
         </section>
       </div>
     </section>
@@ -151,7 +174,7 @@
 
   <script src="../nomad-live/site-footer.js?v=20260905-p3-main-chassis-v1" defer></script>
   <script src="../public-info-footer.js?v=20260905-p3-main-chassis-v1" defer></script>
-  <script src="live-pitch.js?v=20260905-p3-pitch-v1" defer></script>
+  <script src="live-pitch.js?v=20260905-p3-pitch-v2" defer></script>
   <script src="prediction3.js?v=20260905-solo-premium-v1" defer></script>
   <script src="locked-picks-ui.js?v=20260905-p3-locked-picks-v1" defer></script>
 </body>
