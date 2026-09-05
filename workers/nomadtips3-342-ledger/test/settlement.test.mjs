@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{gradeOneXtwo,gradeTotals,settleRecord,summarize,parseTotalCornerFinalPayload,matchTotalCornerFinal} from '../src/index.js';
+import worker,{gradeOneXtwo,gradeTotals,settleRecord,summarize,parseTotalCornerFinalPayload,matchTotalCornerFinal,settlementNeedsRevision,settlementIsDue} from '../src/index.js';
 
 test('1X2 settlement follows full-time result',()=>{
   assert.equal(gradeOneXtwo('HOME',2,1),'WIN');
@@ -28,6 +28,7 @@ test('summary excludes PUSH from win-rate denominator',()=>{
   assert.equal(summary.winRate,100);
   assert.equal(winPush.settlement.source,'totalcorner-live-score-v3');
   assert.equal(winPush.settlement.sourceMatchId,'123456');
+  assert.equal(winPush.settlementRevision,'totalcorner-final-v1');
 });
 
 test('TotalCorner final payload accepts FT scores from V3 final endpoint',()=>{
@@ -48,6 +49,28 @@ test('TotalCorner settlement matches the exact live-score matchId, not team alia
 test('TotalCorner final matcher waits when the exact matchId is not final yet',()=>{
   const rows=[{id:'999999',status:'FT',score:{home:1,away:0}}];
   assert.equal(matchTotalCornerFinal({matchId:'123456'},rows),null);
+});
+
+test('legacy pending record is immediately due once after settlement revision change',()=>{
+  const now=1000;
+  const legacy={settlement:null,nextSettlementCheckAt:now+3600000};
+  assert.equal(settlementNeedsRevision(legacy),true);
+  assert.equal(settlementIsDue(legacy,now),true);
+});
+
+test('current settlement revision respects its scheduled retry time',()=>{
+  const now=1000;
+  const future={settlement:null,settlementRevision:'totalcorner-final-v1',nextSettlementCheckAt:now+5000};
+  const past={settlement:null,settlementRevision:'totalcorner-final-v1',nextSettlementCheckAt:now-1};
+  assert.equal(settlementNeedsRevision(future),false);
+  assert.equal(settlementIsDue(future,now),false);
+  assert.equal(settlementIsDue(past,now),true);
+});
+
+test('settled records never become due for migration or retry',()=>{
+  const settled={settlement:{status:'SETTLED'},nextSettlementCheckAt:0};
+  assert.equal(settlementNeedsRevision(settled),false);
+  assert.equal(settlementIsDue(settled,Date.now()),false);
 });
 
 test('scheduled fallback wakes primary ledger settlement',async()=>{

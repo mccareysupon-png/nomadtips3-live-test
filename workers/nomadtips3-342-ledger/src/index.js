@@ -12,6 +12,7 @@ const ALLOWED_WRITE_ORIGINS=new Set([
   'http://127.0.0.1:8787',
 ]);
 const MAX_SIGNAL_LIMIT=500;
+const SETTLEMENT_SWEEP_LIMIT=25;
 const SETTLEMENT_RETRY_MS=5*60*1000;
 const SETTLEMENT_ERROR_RETRY_MS=5*60*1000;
 const SCHEDULED_SETTLEMENT_PATH='/__scheduled_settlement';
@@ -99,13 +100,21 @@ export function gradeTotals(pick,line,home,away){
   if(p==='OVER')return total>l?'WIN':'LOSS';
   return total<l?'WIN':'LOSS';
 }
+export function settlementNeedsRevision(record){
+  return Boolean(record&&!record.settlement&&record.settlementRevision!==SETTLEMENT_REVISION);
+}
+export function settlementIsDue(record,now=Date.now()){
+  if(!record||record.settlement)return false;
+  if(settlementNeedsRevision(record))return true;
+  return Number.isFinite(Number(record.nextSettlementCheckAt))&&Number(record.nextSettlementCheckAt)<=Number(now);
+}
 export function settleRecord(record,finalScore,status,settledAt=Date.now(),sourceMeta=null){
   const score=pair(finalScore);
   if(score.home===null||score.away===null)return record;
   const oneResult=gradeOneXtwo(record?.prediction?.oneXtwo?.pick,score.home,score.away);
   const totalsResult=gradeTotals(record?.prediction?.totals?.pick,record?.prediction?.totals?.line,score.home,score.away);
   const oneOdds=finite(record?.prediction?.oneXtwo?.odds),totalsOdds=finite(record?.prediction?.totals?.odds);
-  return {...record,settlement:{status:'SETTLED',fixtureStatus:status,finalScore:score,settledAt,
+  return {...record,settlementRevision:SETTLEMENT_REVISION,settlement:{status:'SETTLED',fixtureStatus:status,finalScore:score,settledAt,
     source:sourceMeta?.source||null,sourceMatchId:sourceMeta?.sourceMatchId||null,matchMode:sourceMeta?.matchMode||null,
     oneXtwo:{result:oneResult,profit:profitFor(oneResult,oneOdds)},
     totals:{result:totalsResult,profit:profitFor(totalsResult,totalsOdds)},
@@ -165,9 +174,12 @@ export class PredictionLedger{
   constructor(state,env){this.state=state;this.env=env;}
   async records(){return [...(await this.state.storage.list({prefix:'record:'})).values()].filter(Boolean).sort((a,b)=>Number(b.lockedAt)-Number(a.lockedAt));}
   async scheduleNext(records=null){
-    const list=records||await this.records(),pending=list.filter(record=>!record.settlement&&Number.isFinite(Number(record.nextSettlementCheckAt)));
+    const list=records||await this.records(),now=Date.now();
+    const pending=list.filter(record=>!record.settlement);
     if(!pending.length){const alarm=await this.state.storage.getAlarm();if(alarm!==null)await this.state.storage.deleteAlarm();return;}
-    const next=Math.max(Date.now()+1000,Math.min(...pending.map(record=>Number(record.nextSettlementCheckAt))));
+    const candidates=pending.map(record=>settlementNeedsRevision(record)?now+1000:Number(record.nextSettlementCheckAt)).filter(Number.isFinite);
+    if(!candidates.length){const alarm=await this.state.storage.getAlarm();if(alarm!==null)await this.state.storage.deleteAlarm();return;}
+    const next=Math.max(now+1000,Math.min(...candidates));
     const current=await this.state.storage.getAlarm();if(current===null||Math.abs(current-next)>1000)await this.state.storage.setAlarm(next);
   }
   async lock(request){
@@ -178,7 +190,7 @@ export class PredictionLedger{
     const value=checked.value,key=`record:${value.matchId}`,existing=await this.state.storage.get(key);
     if(existing)return json(request,{ok:true,locked:true,duplicate:true,record:existing},200);
     const lockedAt=Date.now(),minutesUntilCheck=Math.max(3,92-(value.minute||0));
-    const record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'};
+    const record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,settlementRevision:SETTLEMENT_REVISION,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'};
     await this.state.storage.put(key,record);await this.scheduleNext();
     return json(request,{ok:true,locked:true,duplicate:false,record},201);
   }
@@ -205,31 +217,33 @@ export class PredictionLedger{
     return json(request,{ok:sourceProbe?.ok===false?false:true,service:SERVICE,version:VERSION,settlementRevision:SETTLEMENT_REVISION,storage:'durable-object',settlementSource:SETTLEMENT_SOURCE,settlementEndpoint:TOTALCORNER_FINALS_URL,autoSettlement:'alarm+cron+read-repair',summary,alarmAt:iso(await this.state.storage.getAlarm()),settlementMeta:settlementMeta||null,sourceProbe});
   }
   async settleDue(records=null,reason='runtime'){
-    const list=records||await this.records(),now=Date.now(),due=list.filter(record=>!record.settlement&&Number.isFinite(Number(record.nextSettlementCheckAt))&&Number(record.nextSettlementCheckAt)<=now).slice(0,8);
-    let settled=0,waiting=0,errors=0;
+    const list=records||await this.records(),now=Date.now(),due=list.filter(record=>settlementIsDue(record,now)).slice(0,SETTLEMENT_SWEEP_LIMIT);
+    let settled=0,waiting=0,errors=0,migrated=0;
     let source=null,sourceError=null;
     if(due.length){try{source=await totalCornerFinalIndex();}catch(error){sourceError=error;}}
     for(const record of due){
-      const key=`record:${record.matchId}`;
+      const key=`record:${record.matchId}`,legacy=settlementNeedsRevision(record);
       try{
         if(sourceError)throw sourceError;
         const final=matchTotalCornerFinal(record,source?.rows||[]),checkedAt=Date.now();
         if(final){
-          const traced={...record,settlementSource:SETTLEMENT_SOURCE,settlementSourceMatchId:final.id,settlementMatchMode:'MATCH_ID'};
+          const traced={...record,settlementRevision:SETTLEMENT_REVISION,settlementSource:SETTLEMENT_SOURCE,settlementSourceMatchId:final.id,settlementMatchMode:'MATCH_ID'};
           await this.state.storage.put(key,settleRecord(traced,final.score,'FT',checkedAt,{source:SETTLEMENT_SOURCE,sourceMatchId:final.id,matchMode:'MATCH_ID'}));settled++;
         }else{
           waiting++;
-          await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS,settlementError:null,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
+          await this.state.storage.put(key,{...record,settlementRevision:SETTLEMENT_REVISION,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS,settlementError:null,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
         }
+        if(legacy)migrated++;
       }catch(error){
         errors++;
         const checkedAt=Date.now();
-        await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_ERROR_RETRY_MS,settlementError:clean(error?.message||error,240),settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
+        await this.state.storage.put(key,{...record,settlementRevision:SETTLEMENT_REVISION,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_ERROR_RETRY_MS,settlementError:clean(error?.message||error,240),settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
+        if(legacy)migrated++;
       }
     }
-    await this.state.storage.put('meta:settlement',{source:SETTLEMENT_SOURCE,endpoint:TOTALCORNER_FINALS_URL,reason,ranAt:Date.now(),due:due.length,settled,waiting,errors});
+    await this.state.storage.put('meta:settlement',{source:SETTLEMENT_SOURCE,revision:SETTLEMENT_REVISION,endpoint:TOTALCORNER_FINALS_URL,reason,ranAt:Date.now(),due:due.length,migrated,settled,waiting,errors});
     await this.scheduleNext();
-    return {source:SETTLEMENT_SOURCE,due:due.length,settled,waiting,errors};
+    return {source:SETTLEMENT_SOURCE,revision:SETTLEMENT_REVISION,due:due.length,migrated,settled,waiting,errors};
   }
   async alarm(){await this.settleDue(null,'durable-object-alarm');}
   async fetch(request){
