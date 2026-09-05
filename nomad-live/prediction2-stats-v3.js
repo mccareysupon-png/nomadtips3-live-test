@@ -12,6 +12,144 @@
   };
   const cls = result => result === 'WIN' ? 'win' : result === 'LOSS' ? 'loss' : 'pending';
 
+  function ensurePresentationStyle() {
+    if (document.getElementById('prediction2-borderless-gradient-v1')) return;
+    const style = document.createElement('style');
+    style.id = 'prediction2-borderless-gradient-v1';
+    style.textContent = `
+      body[data-page="prediction2"] .king-scorebar{
+        gap:0!important;
+        border:0!important;
+        background:linear-gradient(115deg,rgba(28,40,33,.98),rgba(20,29,24,.99) 48%,rgba(15,22,18,.995))!important;
+        border-radius:12px!important;
+        box-shadow:0 12px 30px rgba(0,0,0,.15)!important;
+        overflow:hidden!important;
+      }
+      body[data-page="prediction2"] .king-scorebar .metric{
+        background:transparent!important;
+        border:0!important;
+        border-right:1px solid rgba(255,255,255,.055)!important;
+        box-shadow:none!important;
+      }
+      body[data-page="prediction2"] .king-scorebar .metric:last-child{border-right:0!important;}
+
+      body[data-page="prediction2"] .king-panel{
+        border:0!important;
+        background:linear-gradient(160deg,rgba(24,33,28,.985),rgba(18,25,21,.992) 55%,rgba(14,20,17,.997))!important;
+        border-radius:12px!important;
+        box-shadow:0 12px 30px rgba(0,0,0,.13)!important;
+        overflow:hidden!important;
+      }
+      body[data-page="prediction2"] .king-panel-head{
+        border-bottom:1px solid rgba(255,255,255,.06)!important;
+        background:linear-gradient(90deg,rgba(255,255,255,.018),transparent 72%)!important;
+      }
+      body[data-page="prediction2"] .king-table th,
+      body[data-page="prediction2"] .king-table td{
+        border-bottom:1px solid rgba(255,255,255,.055)!important;
+      }
+      body[data-page="prediction2"] .king-table th{
+        background:rgba(255,255,255,.018)!important;
+      }
+      body[data-page="prediction2"] .king-table tbody tr:last-child td{border-bottom:0!important;}
+      body[data-page="prediction2"] .king-table tbody tr:not(.king-expand-row){transition:background-color .16s ease;}
+      body[data-page="prediction2"] .king-table tbody tr:not(.king-expand-row):hover{background:rgba(80,220,143,.025)!important;}
+
+      body[data-page="prediction2"] .king-rules{
+        gap:0!important;
+        background:transparent!important;
+      }
+      body[data-page="prediction2"] .king-rules div{
+        background:transparent!important;
+        border:0!important;
+        border-right:1px solid rgba(255,255,255,.055)!important;
+        border-bottom:1px solid rgba(255,255,255,.055)!important;
+      }
+      body[data-page="prediction2"] .king-rules div:nth-child(3n){border-right:0!important;}
+      body[data-page="prediction2"] .king-rules div:nth-last-child(-n+3){border-bottom:0!important;}
+      body[data-page="prediction2"] .king-note{border-top:1px solid rgba(255,255,255,.055)!important;}
+
+      body[data-page="prediction2"] .king-analysis-drawer{
+        border:0!important;
+        background:linear-gradient(160deg,rgba(23,32,27,.99),rgba(14,20,17,.997))!important;
+        box-shadow:0 12px 30px rgba(0,0,0,.13)!important;
+      }
+      body[data-page="prediction2"] .king-analysis-drawer.is-open{border:0!important;}
+      body[data-page="prediction2"] .king-analysis-grid{
+        gap:0!important;
+        background:linear-gradient(140deg,rgba(255,255,255,.018),rgba(80,220,143,.012))!important;
+      }
+      body[data-page="prediction2"] .king-analysis-block{
+        background:transparent!important;
+        border:0!important;
+        border-right:1px solid rgba(255,255,255,.055)!important;
+      }
+      body[data-page="prediction2"] .king-analysis-block:last-child{border-right:0!important;}
+
+      body[data-page="prediction2"] .king-expand-row td{
+        background:linear-gradient(160deg,rgba(21,30,25,.995),rgba(13,19,16,.998))!important;
+        border-bottom:1px solid rgba(255,255,255,.045)!important;
+      }
+      body[data-page="prediction2"] .king-expand-shell{
+        background:linear-gradient(145deg,rgba(27,38,31,.66),rgba(15,22,18,.22))!important;
+        border-top:1px solid rgba(80,220,143,.14)!important;
+        border-bottom:0!important;
+        box-shadow:none!important;
+      }
+      body[data-page="prediction2"] .king-expand-summary{
+        gap:0!important;
+        background:linear-gradient(135deg,rgba(255,255,255,.022),rgba(80,220,143,.012))!important;
+        border:0!important;
+        box-shadow:none!important;
+      }
+      body[data-page="prediction2"] .king-expand-summary>div{
+        background:transparent!important;
+        border:0!important;
+        border-right:1px solid rgba(255,255,255,.055)!important;
+      }
+      body[data-page="prediction2"] .king-expand-summary>div:last-child{border-right:0!important;}
+      body[data-page="prediction2"] .king-expand-lower{
+        gap:0!important;
+        background:linear-gradient(135deg,rgba(255,255,255,.018),rgba(80,220,143,.01))!important;
+        border-radius:8px!important;
+        overflow:hidden!important;
+      }
+      body[data-page="prediction2"] .king-expand-block{
+        background:transparent!important;
+        border:0!important;
+        border-radius:0!important;
+        box-shadow:none!important;
+      }
+      body[data-page="prediction2"] .king-expand-block + .king-expand-block{
+        border-left:1px solid rgba(255,255,255,.055)!important;
+      }
+      body[data-page="prediction2"] .king-expand-section,
+      body[data-page="prediction2"] .king-expand-status{
+        border-top:1px solid rgba(255,255,255,.055)!important;
+      }
+
+      body[data-page="prediction2"] .king-tabs{
+        border-bottom:1px solid rgba(255,255,255,.055)!important;
+      }
+
+      @media(max-width:699px){
+        body[data-page="prediction2"] .king-scorebar .metric:nth-child(4n){border-right:0!important;}
+        body[data-page="prediction2"] .king-scorebar .metric:nth-child(-n+4){border-bottom:1px solid rgba(255,255,255,.055)!important;}
+        body[data-page="prediction2"] .king-rules div{border-right:1px solid rgba(255,255,255,.055)!important;border-bottom:1px solid rgba(255,255,255,.055)!important;}
+        body[data-page="prediction2"] .king-rules div:nth-child(3n){border-right:1px solid rgba(255,255,255,.055)!important;}
+        body[data-page="prediction2"] .king-rules div:nth-child(even){border-right:0!important;}
+        body[data-page="prediction2"] .king-rules div:nth-last-child(-n+2){border-bottom:0!important;}
+        body[data-page="prediction2"] .king-analysis-block{border-right:0!important;border-bottom:1px solid rgba(255,255,255,.055)!important;}
+        body[data-page="prediction2"] .king-analysis-block:last-child{border-bottom:0!important;}
+        body[data-page="prediction2"] .king-expand-summary>div{border-right:1px solid rgba(255,255,255,.055)!important;border-bottom:1px solid rgba(255,255,255,.055)!important;}
+        body[data-page="prediction2"] .king-expand-summary>div:nth-child(even){border-right:0!important;}
+        body[data-page="prediction2"] .king-expand-summary>div:nth-last-child(-n+2){border-bottom:0!important;}
+        body[data-page="prediction2"] .king-expand-block + .king-expand-block{border-left:0!important;border-top:1px solid rgba(255,255,255,.055)!important;}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function resultOrder(a, b) {
     const aa = `${a.date || ''} ${a.kickoff || ''} ${a.settled_at || ''}`;
     const bb = `${b.date || ''} ${b.kickoff || ''} ${b.settled_at || ''}`;
@@ -86,6 +224,7 @@
     }
   }
 
+  ensurePresentationStyle();
   window.NOMAD_KING_STATS_V3_ACTIVE = true;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', load, {once: true});
   else load();
