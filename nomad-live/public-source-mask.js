@@ -4,6 +4,7 @@
   const PRICE_ERROR_RE=/(?:http\s*\d{3}|parser|endpoint|source[_ -]?(?:blocked|error|timeout)|challenge page|api key|price_fetch_failed|waiting_api)/i;
   const PRIVATE_NOTE_RE=/(?:source[_ -]?error|provider|fallback|http\s*\d{3}|parser|endpoint|api key|price_fetch_failed|waiting_api|odds[- ]?api|api[- ]?football|totalcorner|nowgoal|goaloo|oddspedia)/i;
   const STATUS_RE=/^(?:PASS|WAIT|STALE|FAIL|UNAVAILABLE)$/i;
+  const INTERNAL_PROVIDER_RE=/^(?:Nowgoal|Goaloo|TotalCorner|Odds-API\.io|The Odds API|API-Football|Oddspedia|5Dollar(?:FootballAPI)?|SOURCE\s*\d+|S\d+)$/i;
 
   const setText=(node,value)=>{
     if(!node)return;
@@ -11,27 +12,26 @@
     if(node.textContent!==next)node.textContent=next;
   };
   const parts=value=>String(value||'').trim().replace(/\s+/g,' ').split(/\s*·\s*/).map(item=>item.trim()).filter(Boolean);
+  const publicParts=value=>{
+    const list=parts(value);
+    if(STATUS_RE.test(list[0]))list.shift();
+    while(list.length&&INTERNAL_PROVIDER_RE.test(list[0]))list.shift();
+    return list;
+  };
 
   function bookmakerFromPrice(value){
-    const list=parts(value);
+    const list=publicParts(value);
     if(!list.length)return '';
-    if(STATUS_RE.test(list[0]))list.shift();
-    const homeIndex=list.findIndex(item=>/^HOME\b/i.test(item));
-    if(homeIndex>0)return list[homeIndex-1];
+    const sideIndex=list.findIndex(item=>/^(?:HOME|AWAY)\b/i.test(item));
+    if(sideIndex>0)return list[sideIndex-1];
     return list[0]||'';
   }
 
   function cleanPriceText(value){
     const raw=String(value||'').trim().replace(/\s+/g,' ');
     if(!raw)return raw;
-    const list=parts(raw);
-    if(STATUS_RE.test(list[0]))list.shift();
-    const homeIndex=list.findIndex(item=>/^HOME\b/i.test(item));
-    if(homeIndex>0){
-      list.splice(0,homeIndex-1);
-      return list.join(' · ')||'UNAVAILABLE';
-    }
     if(PRICE_ERROR_RE.test(raw))return 'UNAVAILABLE';
+    const list=publicParts(raw);
     return list.join(' · ')||'UNAVAILABLE';
   }
 
@@ -44,7 +44,7 @@
       setText(value,cleanPriceText(value?.textContent));
     });
 
-    document.querySelectorAll('.price-selected-name').forEach(node=>setText(node,'SELECTED'));
+    document.querySelectorAll('.price-selected-name').forEach(node=>setText(node,'PRICE REFERENCE'));
     document.querySelectorAll('.price-selected-value').forEach(node=>setText(node,cleanPriceText(node.textContent)));
 
     document.querySelectorAll('.detail-card').forEach(card=>{
@@ -54,8 +54,9 @@
           const label=row.querySelector('span');
           const value=row.querySelector('b');
           if(!label||!value)return;
-          if(/^BOOKMAKER\s*\/\s*SOURCE$/i.test(String(label.textContent||'').trim())){
-            const book=parts(value.textContent)[0]||'—';
+          const labelText=String(label.textContent||'').trim();
+          if(/^(?:BOOKMAKER\s*\/\s*SOURCE|PRICE REFERENCE)$/i.test(labelText)){
+            const book=bookmakerFromPrice(value.textContent)||'—';
             setText(label,'Bookmaker');
             setText(value,book);
           }
@@ -68,12 +69,14 @@
         const value=row.querySelector('b');
         if(!label||!value)return;
         const labelText=String(label.textContent||'').trim();
-        const sourceRow=/^SOURCE\s*\d+/i.test(labelText)||/^BOOKMAKER$/i.test(labelText)||(!/^SELECTED PRICE$/i.test(labelText)&&/^(?:Bet|Pinnacle|SBO|M88|188|12|1x)/i.test(labelText));
+        const isReference=/^(?:SELECTED PRICE|PRICE REFERENCE)(?:\s*·.*)?$/i.test(labelText);
+        const sourceRow=/^SOURCE\s*\d+/i.test(labelText)||/^BOOKMAKER$/i.test(labelText)||(!isReference&&/^(?:Bet|Pinnacle|SBO|M88|188|12|1x)/i.test(labelText));
         if(sourceRow){
           const book=bookmakerFromPrice(value.textContent)||(!/^SOURCE\s*\d+/i.test(labelText)&&!/^BOOKMAKER$/i.test(labelText)?labelText:'BOOKMAKER');
           setText(label,book);
           setText(value,cleanPriceText(value.textContent));
-        }else if(/^SELECTED PRICE$/i.test(labelText)){
+        }else if(isReference){
+          setText(label,labelText.replace(/^SELECTED PRICE/i,'PRICE REFERENCE'));
           setText(value,cleanPriceText(value.textContent));
         }
       });
@@ -82,13 +85,13 @@
 
   function maskStatistics(){
     const head=[...document.querySelectorAll('.data-table thead th')];
-    const bookIndex=head.findIndex(th=>/BOOK\s*\/\s*SOURCE|BOOKMAKER/i.test(th.textContent||''));
+    const bookIndex=head.findIndex(th=>/BOOK\s*\/\s*SOURCE|BOOKMAKER|PRICE REFERENCE/i.test(th.textContent||''));
     if(bookIndex>=0){
       setText(head[bookIndex],'BOOKMAKER');
       document.querySelectorAll('.data-table tbody tr').forEach(row=>{
         const cell=row.children[bookIndex];
         if(!cell)return;
-        const book=parts(cell.textContent)[0]||'—';
+        const book=bookmakerFromPrice(cell.textContent)||'—';
         setText(cell,book);
       });
     }
