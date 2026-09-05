@@ -13,6 +13,8 @@ on:
       - 'nomad-live-342/signal-ledger.js'
       - 'nomad-live-342/statistics-ledger.js'
       - 'nomad-live-342/api-football-candidate-layer.js'
+      - 'nomad-live-score-feed-v3/src/index.js'
+      - 'nomad-live-score-feed-v3/src/totalcorner.js'
       - 'workers/nomadtips3-342-ledger/**'
       - '.github/workflows/nomad342-ledger-deploy.yml'
   push:
@@ -28,6 +30,8 @@ on:
       - 'nomad-live-342/signal-ledger.js'
       - 'nomad-live-342/statistics-ledger.js'
       - 'nomad-live-342/api-football-candidate-layer.js'
+      - 'nomad-live-score-feed-v3/src/index.js'
+      - 'nomad-live-score-feed-v3/src/totalcorner.js'
       - 'workers/nomadtips3-342-ledger/**'
       - '.github/workflows/nomad342-ledger-deploy.yml'
 
@@ -50,10 +54,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Validate isolated 3.42 ledger and tabs
+      - name: Validate isolated 3.42 ledger and TotalCorner final contract
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-342-ledger/src/index.js
+          node --check nomad-live-score-feed-v3/src/index.js
+          node --check nomad-live-score-feed-v3/src/totalcorner.js
           node --check nomad-live-342/ledger-runtime.js
           node --check nomad-live-342/api-football-candidate-layer.js
           node --check nomad-live-342/signal-ledger.js
@@ -61,38 +67,36 @@ jobs:
           node --check nomad-live-342/nomad342-tabs.js
           cd workers/nomadtips3-342-ledger
           npm test
-      - name: Verify real-tab, Goaloo settlement, and isolation contract
+      - name: Verify TotalCorner score settlement and isolation contract
         run: |
           set -euo pipefail
           grep -Fq 'role="tablist"' nomad-live-342/index.html
           grep -Fq 'data-tab="live-score"' nomad-live-342/index.html
           grep -Fq 'data-tab="signal"' nomad-live-342/index.html
           grep -Fq 'data-tab="statistics"' nomad-live-342/index.html
-          grep -Fq 'data-panel="live-score"' nomad-live-342/index.html
-          grep -Fq 'data-panel="signal"' nomad-live-342/index.html
-          grep -Fq 'data-panel="statistics"' nomad-live-342/index.html
           grep -Fq 'WIN ÷ (WIN + LOSS)' nomad-live-342/index.html
-          grep -Fq "location.replace('./#signal')" nomad-live-342/signal.html
-          grep -Fq "location.replace('./#statistics')" nomad-live-342/statistics.html
           grep -Fq "base:'https://nomadtips3-342-ledger.mccarey-supon.workers.dev'" nomad-live-342/ledger-runtime.js
           grep -Fq "postLedger(ledgerPayload(id,r,row))" nomad-live-342/api-football-candidate-layer.js
           grep -Fq 'oneSignalPerMatch:true' nomad-live-342/event-config.js
-          grep -Fq "const SETTLEMENT_SOURCE='goaloo-bf_us-direct-index'" workers/nomadtips3-342-ledger/src/index.js
-          grep -Fq 'https://live10.goaloo28.com/gf/data/bf_us.js' workers/nomadtips3-342-ledger/src/index.js
-          if grep -Eq 'API_FOOTBALL|api-sports\.io' workers/nomadtips3-342-ledger/src/index.js; then
-            echo '::error::API-Football is still wired into 3.42 settlement'; exit 1
+          grep -Fq "const SETTLEMENT_SOURCE='totalcorner-live-score-v3'" workers/nomadtips3-342-ledger/src/index.js
+          grep -Fq 'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals' workers/nomadtips3-342-ledger/src/index.js
+          grep -Fq "finalEndpoint:'/finals'" nomad-live-score-feed-v3/src/index.js
+          grep -Fq "'/match/today/ended'" nomad-live-score-feed-v3/src/index.js
+          if grep -Eqi 'goaloo|bf_us|api-sports\.io|API_FOOTBALL' workers/nomadtips3-342-ledger/src/index.js; then
+            echo '::error::3.42 settlement must use TotalCorner score/final only'; exit 1
           fi
           changed="$(git diff --name-only origin/main...HEAD 2>/dev/null || true)"
           if echo "$changed" | grep -Eq '^nomad-live/'; then
             echo '::error::Legacy NOMAD files changed; 3.42 isolation violated'; echo "$changed"; exit 1
           fi
-          if echo "$changed" | grep -Eq '^nomad-live-score-feed-v3/'; then
-            echo '::error::Live-score V3 feed changed; 3.42 tabs must not touch it'; echo "$changed"; exit 1
+          unexpected_v3="$(echo "$changed" | grep -E '^nomad-live-score-feed-v3/' | grep -Ev '^nomad-live-score-feed-v3/src/(index|totalcorner)\.js$' || true)"
+          if [ -n "$unexpected_v3" ]; then
+            echo '::error::Unexpected Live-score V3 files changed'; echo "$unexpected_v3"; exit 1
           fi
           if echo "$changed" | grep -Eq '^workers/nomadtips3-market-engine/'; then
-            echo '::error::Market Engine changed; tabs/ledger must remain isolated'; echo "$changed"; exit 1
+            echo '::error::Market Engine changed; Goaloo/bookmaker price path must remain isolated'; echo "$changed"; exit 1
           fi
-          echo '3.42 ledger uses Goaloo direct settlement; live feed, legacy pages, and market engine sealed.'
+          echo '3.42 settlement uses TotalCorner FINAL by the same live-score matchId; market price engine remains sealed.'
 
   deploy:
     needs: validate
@@ -106,6 +110,20 @@ jobs:
           set -euo pipefail
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+      - name: Wait for TotalCorner V3 FINAL endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 18); do
+            if curl -fsS --max-time 25 "https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals?force=1&t=$(date +%s)" -o /tmp/tc-finals.json \
+              && grep -Fq '"mode":"FINAL_SCORE_FEED"' /tmp/tc-finals.json \
+              && grep -Fq '"component":"totalcorner-live-score-v3"' /tmp/tc-finals.json; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { echo '::error::TotalCorner V3 FINAL endpoint not ready'; cat /tmp/tc-finals.json || true; exit 1; }
       - name: Deploy isolated 3.42 prediction ledger
         uses: cloudflare/wrangler-action@v3
         with:
@@ -114,7 +132,7 @@ jobs:
           workingDirectory: workers/nomadtips3-342-ledger
           wranglerVersion: '4.92.0'
           command: deploy
-      - name: Smoke-test Goaloo settlement source and ledger read contract
+      - name: Smoke-test TotalCorner settlement source and ledger read contract
         shell: bash
         run: |
           set -euo pipefail
@@ -123,15 +141,15 @@ jobs:
             if curl -fsS --max-time 25 "$LEDGER_URL/health?probe=1&t=$(date +%s)" -o /tmp/ledger-health.json \
               && grep -Fq '"service":"nomadtips3-342-ledger"' /tmp/ledger-health.json \
               && grep -Fq '"version":"ledger-v1"' /tmp/ledger-health.json \
-              && grep -Fq '"settlementSource":"goaloo-bf_us-direct-index"' /tmp/ledger-health.json \
+              && grep -Fq '"settlementSource":"totalcorner-live-score-v3"' /tmp/ledger-health.json \
               && grep -Fq '"sourceProbe":{"ok":true' /tmp/ledger-health.json; then
               ok=1; break
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::3.42 Goaloo settlement source probe failed'; cat /tmp/ledger-health.json || true; exit 1; }
+          test "$ok" = 1 || { echo '::error::3.42 TotalCorner settlement source probe failed'; cat /tmp/ledger-health.json || true; exit 1; }
           curl -fsS --max-time 20 "$LEDGER_URL/signal?limit=2&t=$(date +%s)" -o /tmp/ledger-signal.json
           curl -fsS --max-time 20 "$LEDGER_URL/statistics?limit=2&t=$(date +%s)" -o /tmp/ledger-statistics.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-signal.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-statistics.json
-          echo 'NOMAD 3.42 ledger deployed with Goaloo direct settlement; no synthetic lock record was written during smoke test.'
+          echo 'NOMAD 3.42 ledger deployed: Goaloo/bookmaker remains price-only; TotalCorner Live Score V3 supplies FINAL settlement.'
