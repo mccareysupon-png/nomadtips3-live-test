@@ -1,0 +1,70 @@
+/* NOMAD Live 3.42 navigation only. No feed, event, market, or prediction logic. */
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a{
+  position:relative!important;
+  width:116px!important;
+  gap:7px!important;
+  color:rgba(239,239,222,.72)!important;
+}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a:nth-child(n){width:116px!important}
+body[data-nomad342-nav="1"] .nomad342-tab-icon{
+  display:inline-flex;
+  width:21px;
+  height:21px;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 21px;
+  color:currentColor;
+  opacity:.88;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.5));
+}
+body[data-nomad342-nav="1"] .nomad342-tab-icon svg{
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.65;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+body[data-nomad342-nav="1"] .nomad342-tab-label{display:inline-block}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a::after{
+  content:"";
+  position:absolute;
+  left:20px;
+  right:20px;
+  bottom:1px;
+  height:1px;
+  background:transparent;
+  box-shadow:none;
+}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a:hover,
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a:focus-visible{
+  color:#d8c98e!important;
+}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active{
+  color:var(--green)!important;
+}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active::after{
+  background:rgba(215,190,104,.72);
+  box-shadow:0 0 7px rgba(215,190,104,.16);
+}
+body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active .nomad342-tab-icon{
+  color:#e0c970;
+  opacity:1;
+}
+
+@media(max-width:700px){
+  body[data-nomad342-nav="1"] .mobile-nav.public-four-nav a::before{display:none!important;content:none!important}
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a{
+    gap:3px!important;
+    color:#9ca49b!important;
+  }
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a.active{color:var(--green)!important}
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a.active .nomad342-tab-icon{color:#dfc86d}
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-icon,
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-icon svg{
+    width:18px;
+    height:18px;
+  }
+  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-label{font-size:11px;line-height:1}
+}
