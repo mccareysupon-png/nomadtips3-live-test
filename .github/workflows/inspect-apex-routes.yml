@@ -1,0 +1,39 @@
+name: Inspect NOMADTIPS3 Apex Routes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-apex-routes.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  APEX_HOST: nomadtips3.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Resolve known zone id and list Workers Routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains.json
+          ZONE_ID="$(jq -r --arg zone "$APEX_HOST" '.result[]? | select(.zone_name==$zone) | .zone_id' /tmp/domains.json | head -1)"
+          test -n "$ZONE_ID" || { echo '::error::No known zone id found from Workers Domains metadata'; exit 1; }
+          echo "Resolved zone id from account metadata: $ZONE_ID"
+
+          code="$(curl -sS "${auth[@]}" -o /tmp/routes.json -w '%{http_code}' "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes")"
+          echo "Workers Routes HTTP=$code"
+          cat /tmp/routes.json
+          test "$code" = 200 || exit 1
+          test "$(jq -r '.success' /tmp/routes.json)" = true
+          echo '=== ROUTES ==='
+          jq -r '.result[]? | [.id,.pattern,(.script // "<none>")] | @tsv' /tmp/routes.json
