@@ -1,0 +1,67 @@
+/* Prediction3 corner continuity fix — UI only.
+   Outer cards keep a subtle 4px radius. All merged inner panels are square
+   so gradient surfaces meet cleanly with no curved-corner gaps. */
+
+:root{--p3-corner-outer:4px;--p3-corner-inner:0px}
+
+/* subtle outer corners only */
+.prediction3-status,
+.prediction3-kpis,
+.p3-featured,
+.p3-empty,
+.result-card{
+  border-radius:var(--p3-corner-outer)!important;
+}
+
+/* every merged/internal surface is square */
+.p3-pick-grid,
+.p3-pick-hero,
+.p3-value-box,
+.p3-analysis-grid,
+.p3-analysis-grid>.p3-panel,
+.p3-support-grid,
+.p3-support-card,
+.p3-three-grid,
+.p3-three-grid>.p3-panel,
+.p3-final-call,
+.result-settle,
+.result-settle .settle-box{
+  border-radius:var(--p3-corner-inner)!important;
+}
+
+/* prevent nested clipping from exposing background wedges */
+.p3-pick-grid,
+.p3-analysis-grid,
+.p3-support-grid,
+.p3-three-grid,
+.result-settle{
+  background-clip:border-box!important;
+}
+
+/* outer featured card owns the only clip boundary */
+.p3-featured,
+.result-card,
+.prediction3-status,
+.prediction3-kpis{
+  overflow:hidden!important;
+}
+
+/* keep thin dividers crisp at square joins */
+.p3-pick-hero::before,
+.p3-analysis-grid>.p3-panel::after,
+.p3-support-card::after,
+.p3-three-grid>.p3-panel::after,
+.result-settle .settle-box::after{
+  border-radius:0!important;
+}
+
+@media (max-width:900px){
+  .p3-pick-grid,
+  .p3-analysis-grid,
+  .p3-support-grid,
+  .p3-three-grid,
+  .p3-final-call,
+  .result-settle{
+    border-radius:0!important;
+  }
+}
