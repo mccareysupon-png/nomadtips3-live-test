@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {gradeOneXtwo,gradeTotals,settleRecord,summarize} from '../src/index.js';
+import worker,{gradeOneXtwo,gradeTotals,settleRecord,summarize} from '../src/index.js';
 
 test('1X2 settlement follows full-time result',()=>{
   assert.equal(gradeOneXtwo('HOME',2,1),'WIN');
@@ -26,4 +26,20 @@ test('summary excludes PUSH from win-rate denominator',()=>{
   assert.equal(summary.pushes,1);
   assert.equal(summary.losses,0);
   assert.equal(summary.winRate,100);
+});
+
+test('scheduled fallback wakes primary ledger settlement',async()=>{
+  let requestedName=null,requestedId=null,requestedRequest=null,waited=null;
+  const env={LEDGER:{
+    idFromName(name){requestedName=name;return 'primary-id';},
+    get(id){requestedId=id;return {async fetch(request){requestedRequest=request;return new Response('{}',{status:200});}};},
+  }};
+  const ctx={waitUntil(promise){waited=promise;}};
+  await worker.scheduled({},env,ctx);
+  assert.equal(requestedName,'primary');
+  assert.equal(requestedId,'primary-id');
+  assert.ok(waited instanceof Promise);
+  await waited;
+  assert.equal(requestedRequest.method,'POST');
+  assert.equal(new URL(requestedRequest.url).pathname,'/__scheduled_settlement');
 });
