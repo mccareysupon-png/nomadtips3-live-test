@@ -1,0 +1,76 @@
+name: Attach NOMADTIPS3 Apex Redirect Domain
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/attach-apex-redirect-domain.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ZONE_ID: 35badb923b6451ed5109276f20b6c749
+  ZONE_NAME: nomadtips3.com
+  APEX_HOST: nomadtips3.com
+  REDIRECT_SCRIPT: nomadtips3-apex-redirect
+
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Snapshot current custom-domain state
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains-before.json
+          jq --arg h "$APEX_HOST" '{captured_at:(now|todate),apex:([.result[]? | select(.hostname==$h)][0] // null)}' /tmp/domains-before.json > /tmp/apex-before.json
+          cat /tmp/apex-before.json
+
+      - name: Attach apex to isolated redirect Worker using full zone identity
+        id: attach
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          payload="$(jq -nc --arg hostname "$APEX_HOST" --arg service "$REDIRECT_SCRIPT" --arg zone_id "$ZONE_ID" --arg zone_name "$ZONE_NAME" '{hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
+          code="$(curl -sS "${auth[@]}" -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" \
+            --data "$payload" -o /tmp/attach.json -w '%{http_code}')"
+          echo "HTTP=$code"
+          cat /tmp/attach.json
+          echo "http_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = 200 ] && [ "$(jq -r '.success' /tmp/attach.json)" = true ]; then
+            echo 'attached=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'attached=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify if attachment succeeded
+        if: steps.attach.outputs.attached == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            code="$(curl -sS --max-time 20 -o /dev/null -D /tmp/h -w '%{http_code}' "https://nomadtips3.com/?domain_attach_probe=${GITHUB_RUN_ID}-${n}" || true)"
+            loc="$(awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/\r$/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
+            marker="$(grep -Ei '^x-nomad-apex-redirect:' /tmp/h | tr -d '\r' | head -1 || true)"
+            echo "attempt=$n code=$code location=$loc marker=$marker"
+            if [ "$code" = 308 ] && [[ "$loc" == https://www.nomadtips3.com/* ]]; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = 1
+
+      - name: Fail with exact Cloudflare conflict when not attached
+        if: steps.attach.outputs.attached != 'true'
+        shell: bash
+        run: |
+          echo '::error::Cloudflare did not attach the apex custom domain. Exact API response follows:'
+          cat /tmp/attach.json
+          exit 1
