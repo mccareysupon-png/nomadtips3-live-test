@@ -296,7 +296,7 @@ def selection(date_str):
             "max_daily_picks": MAX_PICKS,
             "recent_sample_min_each": MIN_RECENT,
             "draw_main_pick": "REJECT",
-            "goaloo_1x2_required": true,
+            "goaloo_1x2_required": True,
             "reverse_prediction": REVERSE_PREDICTION,
             "reverse_rule": "HOME_TO_AWAY__AWAY_TO_HOME",
             "king_v2_underlying_gate": "BYPASSED",
