@@ -1,0 +1,41 @@
+name: Probe Apex Behind Cache
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-apex-behind-cache.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe uncached paths and cache-bypass request shapes
+        shell: bash
+        run: |
+          set +e
+          probe(){
+            label="$1"; method="$2"; url="$3"; shift 3
+            rm -f /tmp/h /tmp/b
+            code="$(curl -sS --max-time 20 -X "$method" "$@" -D /tmp/h -o /tmp/b -w '%{http_code}' "$url")"
+            echo "===== $label ====="
+            echo "METHOD=$method HTTP=$code BYTES=$(wc -c </tmp/b 2>/dev/null || echo 0)"
+            grep -Ei '^(HTTP/|cf-cache-status:|cache-control:|age:|etag:|last-modified:|location:|x-nomadtips3-source:|server:)' /tmp/h | tr -d '\r' || true
+            grep -Eio '<title>[^<]*|Live Asian Handicap scanner|Live soccer analysis|NOMAD LIVE 3\.[0-9]+' /tmp/b 2>/dev/null | head -8 || true
+            echo '--- HEAD ---'
+            head -c 700 /tmp/b 2>/dev/null || true
+            echo
+          }
+
+          id="${GITHUB_RUN_ID}-$(date +%s%N)"
+          probe root-normal GET "https://nomadtips3.com/?probe=$id"
+          probe root-no-cache GET "https://nomadtips3.com/?probe_nc=$id" -H 'Cache-Control: no-cache, no-store, max-age=0' -H 'Pragma: no-cache'
+          probe unique-path GET "https://nomadtips3.com/__nomad_uncached_probe_${id}.txt"
+          probe unique-path-no-cache GET "https://nomadtips3.com/__nomad_uncached_probe_nc_${id}.txt" -H 'Cache-Control: no-cache, no-store, max-age=0' -H 'Pragma: no-cache'
+          probe post-root POST "https://nomadtips3.com/__nomad_post_probe_${id}" -H 'Content-Type: text/plain' --data 'probe'
+          probe options-root OPTIONS "https://nomadtips3.com/__nomad_options_probe_${id}"
