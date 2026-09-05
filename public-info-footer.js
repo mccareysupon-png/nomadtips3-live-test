@@ -143,7 +143,7 @@
     const original=document.createElement('script');
     original.src=new URL('nomad-live/site-footer.js?v=20260831-info-restore-v2',root).href;
     original.defer=true;
-    original.dataset.nomadOriginal-footer='3.41';
+    original.dataset.nomadOriginalFooter='3.41';
     original.onload=()=>attachToExisting(document.querySelector('.site-footer'));
     original.onerror=()=>{
       console.warn('Original NOMAD 3.41 footer unavailable; using safe fallback.');
