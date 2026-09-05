@@ -9,7 +9,8 @@
     "automatic_scheduler": false,
     "automatic_settlement": false,
     "market_default": "1X2 Team Win",
-    "principle": "quality over quantity; NO PICK is valid"
+    "minimum_decimal_odds": 1.9,
+    "principle": "quality over quantity; NO PICK is valid; strategy may change daily"
   },
   "settlement": {
     "reviewer": "Add K",
@@ -19,6 +20,102 @@
     "push_excluded_from_win_rate_denominator": true,
     "prediction2_statistics_imported": false
   },
-  "today": [],
+  "today": [
+    {
+      "id": "p3-2026-09-05-scp-scf",
+      "date": "2026-09-05",
+      "league": "Bundesliga",
+      "round": "Matchday 2",
+      "kickoff": "20:30 Thailand Time",
+      "home": "SC Paderborn 07",
+      "homeShort": "SCP",
+      "away": "SC Freiburg",
+      "awayShort": "SCF",
+      "homeColors": {
+        "base": "#16191d",
+        "stripe": "#1f6db2",
+        "accent": "#d7b46a",
+        "pattern": "sleeve"
+      },
+      "awayColors": {
+        "base": "#151515",
+        "stripe": "#c72f37",
+        "accent": "#d7b46a",
+        "pattern": "stripe"
+      },
+      "pick": "Freiburg to Win",
+      "market": "1X2",
+      "referenceOdds": 2.04,
+      "bestOddsObserved": 2.09,
+      "oddsCapturedAt": "2026-09-05 06:56 ICT",
+      "confidenceLabel": "High / Controlled",
+      "currentView": "Provisional",
+      "finalCheck": "Starting XI",
+      "nomadView": "Positive",
+      "risk": "Moderate",
+      "grade": "A",
+      "why": [
+        "Freiburg opened the Bundesliga season with a 4-1 win over Werder Bremen, while Paderborn opened with a 0-0 draw at Mainz.",
+        "The official probable-team update lists five Paderborn absences versus two for Freiburg.",
+        "Paderborn are newly promoted and had nine Bundesliga debutants in their opening league match, increasing early-season top-flight uncertainty.",
+        "The away-win market was still available above the Prediction3 minimum price at the morning review.",
+        "Freiburg's projected 4-2-3-1 gives a clearer attacking structure against Paderborn's projected 3-3-2-2, especially in wide and transition phases."
+      ],
+      "support": {
+        "form": "SCP: 0-0 at Mainz · SCF: 4-1 vs Bremen",
+        "squad": "SCP: 5 listed out · SCF: 2 listed out",
+        "level": "Promoted home side vs established Bundesliga team",
+        "price": "Ref 2.04 · best observed 2.09 · floor 1.90"
+      },
+      "tactical": [
+        "Freiburg's projected 4-2-3-1 should provide cleaner spacing between the double pivot and three attacking midfield lanes.",
+        "Paderborn's 3-3-2-2 can press aggressively, but space behind the first pressure line could suit Freiburg's transition game.",
+        "An early Freiburg lead would likely force Paderborn to open the game and increase transition opportunities.",
+        "If Paderborn control second balls and pin Freiburg's wide defenders, the edge narrows quickly."
+      ],
+      "riskFactors": [
+        "Away-match variance",
+        "Confirmed starting XI not yet published",
+        "Paderborn showed defensive resistance in a 0-0 opening draw at Mainz",
+        "Only one Bundesliga matchday of current-season sample is available"
+      ],
+      "noBetIf": [
+        "Freiburg price drops below 1.90",
+        "Key Freiburg absences worsen before kick-off",
+        "Confirmed XI shows unexpected rotation in core attacking or midfield roles",
+        "Late market movement turns materially negative alongside adverse team news"
+      ],
+      "finalCall": "FOLLOW — AFTER LINEUP CHECK",
+      "finalNote": "Current evidence supports Freiburg, but final confirmation depends on the confirmed starting XI and late market stability.",
+      "disciplineNote": "No forced second pick. If the conditions weaken, NO PICK remains valid.",
+      "sources": [
+        {
+          "label": "Bundesliga Line-ups",
+          "type": "squad",
+          "url": "https://www.bundesliga.com/en/bundesliga/news/team-news-line-ups-2026-27-bayern-dortmund-fantasy-20707"
+        },
+        {
+          "label": "Freiburg 4-1 Bremen",
+          "type": "form",
+          "url": "https://www.bundesliga.com/en/bundesliga/news/freiburg-werder-bremen-match-report-highlights-matchday-1-suzuki-38905"
+        },
+        {
+          "label": "Mainz 0-0 Paderborn",
+          "type": "form",
+          "url": "https://www.bundesliga.com/en/bundesliga/news/mainz-paderborn-match-report-highlights-matchday-1-38866"
+        },
+        {
+          "label": "Market Check",
+          "type": "price",
+          "url": "https://www.sportytrader.de/quoten/paderborn-freiburg-8595838/"
+        },
+        {
+          "label": "Best Odds Review",
+          "type": "document",
+          "url": "https://sportspundit.com/soccer/teams/h2h/freiburg-vs-paderborn/"
+        }
+      ]
+    }
+  ],
   "results": []
 }
