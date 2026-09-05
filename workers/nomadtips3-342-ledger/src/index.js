@@ -17,6 +17,7 @@ const SETTLEMENT_RETRY_MS=5*60*1000;
 const SETTLEMENT_ERROR_RETRY_MS=5*60*1000;
 const SCHEDULED_SETTLEMENT_PATH='/__scheduled_settlement';
 const TOTALCORNER_TIMEOUT_MS=10000;
+const BANGKOK_OFFSET_MS=7*60*60*1000;
 
 const finite=value=>{
   if(value===null||value===undefined||value===''||typeof value==='boolean')return null;
@@ -24,6 +25,12 @@ const finite=value=>{
 };
 const clean=(value,max=160)=>String(value??'').trim().slice(0,max);
 const iso=value=>Number.isFinite(Number(value))?new Date(Number(value)).toISOString():null;
+const bangkokDayKey=value=>{
+  const n=finite(value);
+  if(n===null)return null;
+  const d=new Date(n+BANGKOK_OFFSET_MS);
+  return Number.isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+};
 const pair=value=>{
   if(Array.isArray(value))return {home:finite(value[0]),away:finite(value[1])};
   return {home:finite(value?.home),away:finite(value?.away)};
@@ -133,7 +140,10 @@ export function summarize(records){
   const rows=rowsFromRecords(records),settled=rows.filter(row=>row.result!=='PENDING');
   const wins=settled.filter(row=>row.result==='WIN').length,losses=settled.filter(row=>row.result==='LOSS').length,pushes=settled.filter(row=>row.result==='PUSH').length;
   const decided=wins+losses,profit=settled.reduce((sum,row)=>sum+(finite(row.profit)||0),0);
-  return {lockedMatches:records.length,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,winRate:decided?wins/decided*100:0,profit:Number(profit.toFixed(4))};
+  const priced=settled.map(row=>finite(row.odds)).filter(value=>value!==null);
+  const avgOdds=priced.length?Number((priced.reduce((sum,value)=>sum+value,0)/priced.length).toFixed(4)):null;
+  const days=new Set((Array.isArray(records)?records:[]).map(record=>bangkokDayKey(record?.lockedAt)).filter(Boolean)).size;
+  return {lockedMatches:records.length,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,days,avgOdds,winRate:decided?wins/decided*100:0,profit:Number(profit.toFixed(4))};
 }
 
 export function parseTotalCornerFinalPayload(payload){
