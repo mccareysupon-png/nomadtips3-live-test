@@ -1,0 +1,37 @@
+/* Prediction3 vintage icon layer. Presentation only; no data/engine behavior. */
+.p3-vintage-icon{display:inline-grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:50%;border:1px solid rgba(215,180,106,.58);background:radial-gradient(circle at 30% 24%,#244334 0,#153126 46%,#0e1b15 100%);color:#dfbd72;box-shadow:inset 0 0 0 2px rgba(255,255,255,.022),0 2px 7px rgba(0,0,0,.22);vertical-align:middle}
+.p3-vintage-icon svg{width:17px;height:17px;display:block}
+.p3-vintage-icon.sm{width:23px;height:23px;flex-basis:23px}.p3-vintage-icon.sm svg{width:14px;height:14px}
+.p3-vintage-icon.lg{width:34px;height:34px;flex-basis:34px}.p3-vintage-icon.lg svg{width:20px;height:20px}
+.p3-vintage-inline{display:inline-flex;align-items:center;gap:7px;min-width:0}
+
+/* Remove meaningless team-initial medallions (e.g. SCP/SCF); keep shirt + full team name. */
+.p3-team-badge{display:none!important}
+
+.prediction3-hero .hero-badge{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:8px}
+.prediction3-hero .hero-badge>.p3-vintage-icon{grid-row:1/4}
+.prediction3-status>div{display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:8px;align-items:center}
+.prediction3-status>div>.p3-vintage-icon{grid-row:1/3}
+.prediction3-kpis .p3-kpi{display:grid;grid-template-columns:30px minmax(0,1fr);column-gap:8px;align-items:center;text-align:left}
+.prediction3-kpis .p3-kpi>.p3-vintage-icon{grid-row:1/3}
+.prediction3-kpis .p3-kpi span,.prediction3-kpis .p3-kpi strong{min-width:0}
+.day-switch .day-tab{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.toolbar .toolbar-copy .eyebrow{display:flex;align-items:center;gap:7px}
+.toolbar .toolbar-copy h2{display:flex;align-items:center;gap:8px}
+.search{display:flex;align-items:center;gap:7px}
+.topnav a,.mobile-nav a{display:inline-flex;align-items:center;gap:6px}
+.topnav .p3-vintage-icon,.mobile-nav .p3-vintage-icon{transform:translateY(-.5px)}
+
+@media (max-width:1060px){
+  .p3-team,.p3-team.away{gap:8px}
+}
+@media (max-width:680px){
+  .prediction3-status>div{grid-template-columns:25px minmax(0,1fr);column-gap:6px}
+  .prediction3-kpis .p3-kpi{grid-template-columns:25px minmax(0,1fr);column-gap:6px}
+  .prediction3-status .p3-vintage-icon,.prediction3-kpis .p3-vintage-icon{width:23px;height:23px;flex-basis:23px}
+  .prediction3-status .p3-vintage-icon svg,.prediction3-kpis .p3-vintage-icon svg{width:14px;height:14px}
+  .p3-team,.p3-team.away{display:grid!important;grid-template-columns:32px!important;justify-content:center!important;gap:4px!important;text-align:center}
+  .p3-team strong{grid-column:1/-1}
+  .day-switch .p3-vintage-icon{display:none}
+  .topnav .p3-vintage-icon{display:none}
+}
