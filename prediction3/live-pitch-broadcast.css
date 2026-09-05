@@ -1,0 +1,226 @@
+/* Prediction3 broadcast-depth skin — presentation only.
+   Adds visual depth/texture to the existing engine-neutral 2D pitch.
+   No feed, prediction, settlement or event logic is changed here. */
+
+.p3-live-board{
+  position:relative;
+  isolation:isolate;
+  border-color:rgba(93,210,129,.34);
+  background:
+    radial-gradient(circle at 50% -12%,rgba(63,185,104,.16),transparent 32%),
+    linear-gradient(180deg,#07100b 0%,#0a120d 42%,#07100b 100%);
+  box-shadow:
+    0 28px 70px rgba(0,0,0,.48),
+    0 0 0 1px rgba(255,255,255,.018) inset,
+    0 18px 60px rgba(27,95,49,.08);
+}
+.p3-live-board:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:20;
+  box-shadow:inset 0 1px rgba(255,255,255,.045),inset 0 -38px 80px rgba(0,0,0,.24);
+}
+
+.p3-live-head{
+  position:relative;
+  overflow:hidden;
+  padding:16px 20px;
+  background:
+    radial-gradient(circle at 50% -40%,rgba(72,174,108,.18),transparent 46%),
+    linear-gradient(180deg,#101c15 0%,#08110c 100%);
+  box-shadow:inset 0 -1px rgba(255,255,255,.03),0 12px 28px rgba(0,0,0,.30);
+}
+.p3-live-head:before{
+  content:"";
+  position:absolute;
+  left:7%;right:7%;bottom:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(83,224,132,.62),transparent);
+  box-shadow:0 0 16px rgba(83,224,132,.22);
+}
+.p3-live-team{position:relative;padding:0 14px}
+.p3-live-team.home:before,.p3-live-team.away:after{
+  content:"";position:absolute;top:2px;bottom:2px;width:3px;
+  box-shadow:0 0 16px currentColor;
+}
+.p3-live-team.home{color:#4d93ff}.p3-live-team.home:before{left:0;background:#4d93ff}
+.p3-live-team.away{color:#ff5d68}.p3-live-team.away:after{right:0;background:#ff5d68}
+.p3-live-team strong{color:#eef6f0;text-shadow:0 2px 8px rgba(0,0,0,.65)}
+.p3-live-team span{color:#8da095}
+.p3-live-score strong{font-size:34px;letter-spacing:.035em;text-shadow:0 4px 16px rgba(0,0,0,.72)}
+.p3-live-score small{color:#a7b8ac}
+
+.p3-live-demo-note{
+  background:linear-gradient(90deg,#0b130e,#101a13 50%,#0b130e);
+  box-shadow:inset 0 -1px rgba(255,255,255,.025);
+}
+
+.p3-pitch-shell{
+  position:relative;
+  padding:25px 28px 28px;
+  overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(179,225,190,.20) 0,rgba(67,145,87,.08) 30%,transparent 55%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 2px,transparent 2px 34px),
+    linear-gradient(180deg,#111a15 0 9%,#07100b 24%,#050a07 100%);
+  box-shadow:inset 0 22px 42px rgba(0,0,0,.38),inset 0 -18px 32px rgba(0,0,0,.45);
+  perspective:1200px;
+}
+.p3-pitch-shell:before{
+  content:"";
+  position:absolute;
+  inset:7px 10px 9px;
+  pointer-events:none;
+  border:1px solid rgba(201,226,207,.11);
+  background:
+    repeating-linear-gradient(90deg,rgba(162,190,170,.10) 0 5px,rgba(8,14,10,.15) 5px 10px) top/100% 10px no-repeat,
+    repeating-linear-gradient(90deg,rgba(162,190,170,.08) 0 5px,rgba(8,14,10,.18) 5px 10px) bottom/100% 10px no-repeat,
+    linear-gradient(90deg,rgba(0,0,0,.34),transparent 8%,transparent 92%,rgba(0,0,0,.34));
+  box-shadow:0 20px 45px rgba(0,0,0,.50),inset 0 0 26px rgba(0,0,0,.24);
+}
+.p3-pitch-shell:after{
+  content:"";
+  position:absolute;
+  left:12%;right:12%;top:8px;height:54px;
+  pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0,rgba(241,255,242,.18),transparent 68%);
+  filter:blur(8px);
+  opacity:.72;
+}
+
+.p3-pitch{
+  z-index:1;
+  border:1px solid rgba(226,246,228,.52);
+  outline:7px solid rgba(3,9,5,.75);
+  transform:translateZ(0) rotateX(.7deg);
+  transform-origin:50% 55%;
+  background:
+    radial-gradient(circle at 22% 16%,rgba(255,255,255,.055),transparent 24%),
+    radial-gradient(circle at 78% 84%,rgba(0,0,0,.10),transparent 28%),
+    repeating-radial-gradient(circle at 50% 50%,rgba(255,255,255,.018) 0 1px,transparent 1px 3px),
+    linear-gradient(90deg,rgba(255,255,255,.028) 50%,transparent 50%) 0 0/12.5% 100%,
+    repeating-linear-gradient(90deg,#1e7439 0 8.5%,#268344 8.5% 17%);
+  box-shadow:
+    0 30px 54px rgba(0,0,0,.55),
+    0 9px 18px rgba(0,0,0,.34),
+    inset 0 0 70px rgba(0,0,0,.25),
+    inset 0 1px rgba(255,255,255,.10);
+}
+.p3-pitch:before{
+  border-color:rgba(247,255,248,.92);
+  box-shadow:0 0 0 1px rgba(0,0,0,.12),0 0 12px rgba(255,255,255,.045);
+}
+.p3-pitch:after{
+  background:rgba(247,255,248,.91);
+  box-shadow:0 0 8px rgba(255,255,255,.08);
+}
+.p3-center-circle,.p3-box,.p3-six{border-color:rgba(247,255,248,.92);filter:drop-shadow(0 1px rgba(0,0,0,.18))}
+.p3-center-circle:after,.p3-penalty-dot{background:#f7fff8;box-shadow:0 1px 2px rgba(0,0,0,.32)}
+
+.p3-goal{
+  width:2.25%;
+  border-color:rgba(247,255,248,.88);
+  background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.22) 0 1px,transparent 1px 5px),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.20) 0 1px,transparent 1px 5px),
+    rgba(226,243,230,.055);
+  box-shadow:inset 0 0 10px rgba(255,255,255,.06),0 6px 10px rgba(0,0,0,.40);
+}
+.p3-goal.home{left:2.2%;transform:skewY(-3deg)}
+.p3-goal.away{right:2.2%;transform:skewY(3deg)}
+.p3-goal:before{
+  content:"";position:absolute;inset:2px;
+  border-top:1px solid rgba(255,255,255,.28);border-bottom:1px solid rgba(0,0,0,.18);
+}
+
+.p3-pitch-side-label{
+  padding:4px 7px;
+  border:1px solid rgba(255,255,255,.13);
+  background:rgba(3,9,5,.34);
+  box-shadow:0 4px 12px rgba(0,0,0,.24);
+  backdrop-filter:blur(3px);
+}
+.p3-pitch-side-label.home{color:#8db9ff;border-color:rgba(77,147,255,.34)}
+.p3-pitch-side-label.away{color:#ff9ba2;border-color:rgba(255,93,104,.34)}
+
+.p3-zone.attack.home{
+  background:linear-gradient(90deg,rgba(45,224,108,0),rgba(45,224,108,.27));
+  filter:drop-shadow(0 0 14px rgba(45,224,108,.15));
+}
+.p3-zone.attack.away{
+  background:linear-gradient(270deg,rgba(255,82,91,0),rgba(255,82,91,.22));
+  filter:drop-shadow(0 0 14px rgba(255,82,91,.14));
+}
+.p3-zone.danger{
+  border-color:rgba(255,153,72,.52);
+  background:
+    radial-gradient(ellipse at center,rgba(255,73,55,.30),rgba(255,146,53,.14) 46%,rgba(255,112,55,.03) 72%,transparent 100%);
+  box-shadow:inset 0 0 28px rgba(255,99,47,.16),0 0 28px rgba(255,93,44,.10);
+  filter:blur(.2px);
+}
+
+.p3-player-dot{
+  width:15px;height:15px;margin:-7.5px;
+  border:2px solid rgba(255,255,255,.78);
+  box-shadow:0 4px 8px rgba(0,0,0,.52),0 0 0 2px rgba(0,0,0,.18);
+}
+.p3-player-dot:before{
+  content:"";position:absolute;left:2px;top:2px;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.42);
+}
+.p3-player-dot.home{background:radial-gradient(circle at 34% 28%,#70b5ff 0 10%,#1767d2 36%,#073c93 100%);border-color:#b6d6ff}
+.p3-player-dot.away{background:radial-gradient(circle at 34% 28%,#ff9a9f 0 10%,#d9313b 36%,#861b24 100%);border-color:#ffd2d5}
+.p3-player-dot.ref{background:radial-gradient(circle at 34% 28%,#fff2a0 0 10%,#dfb42f 40%,#836300 100%);border-color:#fff1a5}
+
+.p3-ball{
+  width:19px;height:19px;margin:-9.5px 0 0 -9.5px;
+  border:1px solid rgba(5,8,6,.88);
+  background:
+    radial-gradient(circle at 33% 27%,rgba(255,255,255,.98) 0 25%,rgba(240,243,241,.98) 26% 49%,#131815 50% 59%,#f9fbfa 60% 100%);
+  box-shadow:0 7px 10px rgba(0,0,0,.52),0 0 0 3px rgba(255,255,255,.10),0 0 15px rgba(255,255,255,.12);
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,.40));
+}
+.p3-ball-trail{
+  height:3px;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(244,255,247,.18) 20%,rgba(244,255,247,.82));
+  box-shadow:0 0 9px rgba(231,255,236,.18);
+}
+
+.p3-event-chip{
+  padding:6px 9px;
+  border-color:currentColor;
+  background:linear-gradient(180deg,rgba(15,27,19,.95),rgba(4,10,6,.94));
+  box-shadow:0 8px 24px rgba(0,0,0,.50),inset 0 1px rgba(255,255,255,.05);
+  backdrop-filter:blur(5px);
+}
+.p3-event-pin.show{filter:drop-shadow(0 7px 10px rgba(0,0,0,.38))}
+
+.p3-live-bottom{
+  background:linear-gradient(180deg,#09110c,#07100a);
+  box-shadow:inset 0 1px rgba(255,255,255,.025);
+}
+.p3-event-line span,.p3-stat-bar{
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 2px 8px rgba(0,0,0,.20);
+}
+.p3-stat-bar{height:7px;background:linear-gradient(180deg,#26352c,#18231d)}
+.p3-stat-bar i{box-shadow:0 0 12px rgba(62,220,113,.18)}
+.p3-stat-row.away .p3-stat-bar i{background:linear-gradient(90deg,#b83a45,#ff6972);box-shadow:0 0 12px rgba(255,82,91,.15)}
+
+@media (max-width:760px){
+  .p3-pitch-shell{padding:14px 13px 16px}
+  .p3-pitch-shell:before{inset:5px 5px 6px}
+  .p3-pitch{outline-width:4px;transform:none}
+  .p3-player-dot{width:12px;height:12px;margin:-6px}
+  .p3-ball{width:16px;height:16px;margin:-8px 0 0 -8px}
+  .p3-live-team{padding:0 7px}
+}
+
+@media (max-width:430px){
+  .p3-pitch-shell{padding:11px 9px 12px}
+  .p3-live-head{padding:12px 9px}
+  .p3-live-score strong{font-size:26px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .p3-pitch{transform:none}
+}
