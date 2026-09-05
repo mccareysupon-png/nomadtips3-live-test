@@ -5,6 +5,30 @@
 .p3-vintage-icon.lg{width:34px;height:34px;flex-basis:34px}.p3-vintage-icon.lg svg{width:20px;height:20px}
 .p3-vintage-inline{display:inline-flex;align-items:center;gap:7px;min-width:0}
 
+/* Generated-image atlas replaces the SVG fallback after all four chunks are loaded. */
+.p3-vintage-ready .p3-vintage-icon{background-image:var(--p3-vintage-atlas);background-repeat:no-repeat;background-size:400% 500%;background-color:transparent;border:0;border-radius:0;box-shadow:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.38))}
+.p3-vintage-ready .p3-vintage-icon svg{display:none}
+.p3-vintage-ready .vi-signal{background-position:0% 0%}
+.p3-vintage-ready .vi-statistics{background-position:33.333% 0%}
+.p3-vintage-ready .vi-live{background-position:66.667% 0%}
+.p3-vintage-ready .vi-search{background-position:100% 0%}
+.p3-vintage-ready .vi-manual{background-position:0% 25%}
+.p3-vintage-ready .vi-owner{background-position:33.333% 25%}
+.p3-vintage-ready .vi-engine-off{background-position:66.667% 25%}
+.p3-vintage-ready .vi-settlement-off{background-position:100% 25%}
+.p3-vintage-ready .vi-add-selection{background-position:0% 50%}
+.p3-vintage-ready .vi-manual-desk{background-position:33.333% 50%}
+.p3-vintage-ready .vi-settled{background-position:66.667% 50%}
+.p3-vintage-ready .vi-win{background-position:100% 50%}
+.p3-vintage-ready .vi-loss{background-position:0% 75%}
+.p3-vintage-ready .vi-push{background-position:33.333% 75%}
+.p3-vintage-ready .vi-win-rate{background-position:66.667% 75%}
+.p3-vintage-ready .vi-avg-odds{background-position:100% 75%}
+.p3-vintage-ready .vi-predictions{background-position:0% 100%}
+.p3-vintage-ready .vi-results{background-position:33.333% 100%}
+.p3-vintage-ready .vi-selections{background-position:66.667% 100%}
+.p3-vintage-ready .vi-published{background-position:100% 100%}
+
 /* Remove meaningless team-initial medallions (e.g. SCP/SCF); keep shirt + full team name. */
 .p3-team-badge{display:none!important}
 
