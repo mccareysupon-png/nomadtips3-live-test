@@ -40,6 +40,7 @@ jobs:
           node --check nomad-live-342/market-layer.js
           node --check nomad-live-342/api-football-candidate-layer.js
           node --check workers/nomadtips3-market-engine/src/index.js
+          node --check workers/nomadtips3-market-engine/src/nowgoal.js
           node --check workers/nomadtips3-market-engine/src/asianbookie.js
           node --check workers/nomadtips3-market-engine/src/api-football-candidate.js
           node --check workers/nomadtips3-market-engine/src/normalize.js
@@ -54,6 +55,9 @@ jobs:
           grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
           grep -Fq "url.pathname === '/candidate'" workers/nomadtips3-market-engine/src/index.js
           grep -Fq "fetchApiFootballCandidate" workers/nomadtips3-market-engine/src/api-football-candidate.js
+          grep -Fq '"MARKET_PROVIDER_KIND": "nowgoal"' workers/nomadtips3-market-engine/wrangler.jsonc
+          grep -Fq "markets: ['1X2', 'OVER_UNDER']" workers/nomadtips3-market-engine/src/nowgoal.js
+          grep -Fq 'asianHandicap: false' workers/nomadtips3-market-engine/src/nowgoal.js
           grep -Fq "/api/poll/tipsterMatchOdds" workers/nomadtips3-market-engine/src/asianbookie.js
           if grep -Fq '"MARKET_PROVIDER_KIND": "asianbookie"' workers/nomadtips3-market-engine/wrangler.jsonc; then
             echo '::error::AsianBookie direct Worker polling is intentionally disabled after empty non-JSON production responses'; exit 1
@@ -68,7 +72,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
           fi
-          echo '3.41 sealed; API-Football candidate referee isolated; Event Worker unchanged.'
+          echo '3.41 sealed; Nowgoal market provider restricted to 1X2/O-U; AH/Event Worker unchanged.'
 
   deploy:
     needs: validate
@@ -94,28 +98,37 @@ jobs:
             API_FOOTBALL_KEY
         env:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
-      - name: Smoke-test Market Worker without spending API quota
+      - name: Smoke-test Nowgoal 1X2/O-U production provider
         shell: bash
         run: |
           set -euo pipefail
-          ok=0
+          health_ok=0
           for attempt in $(seq 1 12); do
-            if curl -fsS --max-time 20 "$MARKET_URL/health?t=$(date +%s)" -o /tmp/market-health.json \
+            if curl -fsS --max-time 20 "$MARKET_URL/health?t=$(date +%s)-$attempt" -o /tmp/market-health.json \
               && grep -Fq 'nomadtips3-market-engine' /tmp/market-health.json \
               && grep -Fq '"version":"market-v1"' /tmp/market-health.json \
-              && grep -Fq '"apiFootballCandidate":{"enabled":true,"configured":true' /tmp/market-health.json; then
-              ok=1; break
+              && grep -Fq '"providerConfigured":true' /tmp/market-health.json \
+              && grep -Fq '"providerKind":"nowgoal"' /tmp/market-health.json \
+              && grep -Fq '"providerName":"Nowgoal"' /tmp/market-health.json \
+              && grep -Fq '"nowgoal":{"enabled":true' /tmp/market-health.json \
+              && grep -Fq '"markets":["1X2","OVER_UNDER"]' /tmp/market-health.json \
+              && grep -Fq '"asianHandicap":false' /tmp/market-health.json; then
+              health_ok=1; break
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::Market Worker health check failed or API-Football secret not configured'; cat /tmp/market-health.json || true; exit 1; }
+          test "$health_ok" = 1 || { echo '::error::Production health is not serving the Nowgoal 1X2/O-U provider'; cat /tmp/market-health.json || true; exit 1; }
           cat /tmp/market-health.json
-          code="$(curl -sS --max-time 20 -o /tmp/markets.json -w '%{http_code}' "$MARKET_URL/markets?t=$(date +%s)" || true)"
-          if [ "$code" = '200' ]; then
-            grep -Fq '"version":"market-v1"' /tmp/markets.json
-            echo 'MARKET DATA ONLINE: /markets returned normalized payload.'
-          elif [ "$code" = '503' ] || [ "$code" = '502' ]; then
-            echo 'MARKET BULK FEED OFFLINE/UNCONFIGURED: fail-open confirmed; one-shot /candidate remains independent.'
-          else
-            echo "::error::Unexpected /markets HTTP status: $code"; cat /tmp/markets.json || true; exit 1
-          fi
+
+          markets_ok=0
+          for attempt in $(seq 1 6); do
+            code="$(curl -sS --max-time 20 -o /tmp/markets.json -w '%{http_code}' "$MARKET_URL/markets?t=$(date +%s)-$attempt" || true)"
+            if [ "$code" = '200' ] \
+              && grep -Fq '"version":"market-v1"' /tmp/markets.json \
+              && grep -Fq '"provider":"Nowgoal"' /tmp/markets.json; then
+              markets_ok=1; break
+            fi
+            sleep 5
+          done
+          test "$markets_ok" = 1 || { echo '::error::Nowgoal /markets did not return a normalized market-v1 payload'; cat /tmp/markets.json || true; exit 1; }
+          echo 'NOWGOAL MARKET DATA ONLINE: 1X2 + O/U provider confirmed.'
