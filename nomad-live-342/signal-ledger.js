@@ -6,7 +6,7 @@ const list=document.getElementById('signalList');
 const status=document.getElementById('signalStatus');
 const metrics={locked:document.getElementById('signalLocked'),predictions:document.getElementById('signalPredictions'),settled:document.getElementById('signalSettled'),pending:document.getElementById('signalPending'),winRate:document.getElementById('signalWinRate')};
 let timer=null,busy=false;
-const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const finite=value=>{if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null};
 const fmtOdds=value=>finite(value)===null?'—':finite(value).toFixed(2);
 const fmtPct=value=>finite(value)===null?'—':`${Math.round(finite(value))}%`;
