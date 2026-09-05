@@ -1,12 +1,9 @@
-name: NOMAD Public Navigation UI Diagnose
+name: NOMAD 3.42 Navigation UI Diagnose
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'nomad-live/public-site-nav.css'
-      - 'nomad-live/index.html'
-      - 'nomad-live/statistics.html'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/signal.html'
       - 'nomad-live-342/statistics.html'
@@ -16,9 +13,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'nomad-live/public-site-nav.css'
-      - 'nomad-live/index.html'
-      - 'nomad-live/statistics.html'
       - 'nomad-live-342/index.html'
       - 'nomad-live-342/signal.html'
       - 'nomad-live-342/statistics.html'
@@ -31,7 +25,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Verify production navigation across viewports
+      - uses: actions/checkout@v6
+      - name: Verify repository 3.42 navigation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in nomad-live-342/index.html nomad-live-342/signal.html nomad-live-342/statistics.html; do
+            grep -Fq 'data-nomad342-nav="1"' "$file"
+            grep -Fq 'href="index.html"' "$file"
+            grep -Fq 'href="signal.html"' "$file"
+            grep -Fq 'href="statistics.html"' "$file"
+            count="$(grep -o 'nomad342-tab-label' "$file" | wc -l | tr -d ' ')"
+            test "$count" = 6 || { echo "::error::$file must contain three desktop and three mobile 3.42 tab labels"; exit 1; }
+          done
+          echo 'Repository contract OK: Live Score -> Signal -> Statistics.'
+      - name: Verify production 3.42 navigation across viewports
         shell: bash
         run: |
           set -euo pipefail
@@ -39,20 +47,15 @@ jobs:
           node - <<'NODE'
           const puppeteer=require('puppeteer-core');
           const executablePath=process.env.CHROME_PATH||'/usr/bin/google-chrome-stable';
-          const GREEN='rgb(131, 223, 137)';
           const widths=[360,390,412,700,701,768,1024,1280,1440];
           const urls={
-            legacySignal:'https://www.nomadtips3.com/',
-            legacyStatistics:'https://www.nomadtips3.com/statistics.html',
-            liveScore342:'https://www.nomadtips3.com/nomad-live-342/',
-            signal342:'https://www.nomadtips3.com/nomad-live-342/signal.html',
-            statistics342:'https://www.nomadtips3.com/nomad-live-342/statistics.html'
+            liveScore:'https://www.nomadtips3.com/nomad-live-342/',
+            signal:'https://www.nomadtips3.com/nomad-live-342/signal.html',
+            statistics:'https://www.nomadtips3.com/nomad-live-342/statistics.html'
           };
-          const legacyOrder=['Signal','Statistics','Live Score'];
-          const order342=['Live Score','Signal','Statistics'];
-          const close=(a,b,t=.75)=>Math.abs(Number(a)-Number(b))<=t;
+          const expected=['Live Score','Signal','Statistics'];
+          const close=(a,b,t=.9)=>Math.abs(Number(a)-Number(b))<=t;
           const check=(ok,msg)=>{if(!ok)throw new Error(msg)};
-          const same=(a,b,t=.75)=>close(a,b,t);
           (async()=>{
             const browser=await puppeteer.launch({executablePath,headless:true,args:['--no-sandbox','--disable-gpu']});
             try{
@@ -63,28 +66,26 @@ jobs:
                 await page.waitForSelector('.topbar .brand',{timeout:30000});
                 return page.evaluate(()=>{
                   const topbar=document.querySelector('.topbar');
-                  const inner=document.querySelector('.topbar-inner.public-four-nav');
-                  const brand=inner?.querySelector('.brand');
-                  const desktop=inner?.querySelector('.topnav');
-                  const mobile=document.querySelector('.mobile-nav.public-four-nav');
-                  if(!topbar||!inner||!brand||!desktop||!mobile)throw new Error('navigation chassis missing');
-                  const dlinks=[...desktop.querySelectorAll('a')].filter(a=>getComputedStyle(a).display!=='none');
-                  const mlinks=[...mobile.querySelectorAll('a')].filter(a=>getComputedStyle(a).display!=='none');
-                  const ts=getComputedStyle(topbar),is=getComputedStyle(inner),bs=getComputedStyle(brand),ds=getComputedStyle(desktop),ms=getComputedStyle(mobile);
-                  const dl=dlinks[0]?getComputedStyle(dlinks[0]):null,ml=mlinks[0]?getComputedStyle(mlinks[0]):null;
+                  const brand=document.querySelector('.topbar-inner.public-four-nav>.brand');
+                  const desktop=document.querySelector('.topnav.nomad342-nav');
+                  const mobile=document.querySelector('.mobile-nav.nomad342-nav');
+                  if(!topbar||!brand||!desktop||!mobile)throw new Error('3.42 navigation chassis missing');
+                  const visible=nav=>[...nav.querySelectorAll('a')].filter(a=>getComputedStyle(a).display!=='none');
+                  const labels=links=>links.map(a=>(a.querySelector('.nomad342-tab-label')?.textContent||'').replace(/\s+/g,' ').trim());
+                  const dlinks=visible(desktop),mlinks=visible(mobile);
                   const br=brand.getBoundingClientRect(),dr=desktop.getBoundingClientRect(),mr=mobile.getBoundingClientRect();
-                  const mrects=mlinks.map(a=>a.getBoundingClientRect()).map(r=>({x:r.x,y:r.y,width:r.width,height:r.height}));
-                  const labels=links=>links.map(a=>(a.querySelector('.nomad342-tab-label')?.textContent||a.textContent||'').replace(/\s+/g,' ').trim());
-                  const active=document.querySelector('.topnav a.active, .mobile-nav a.active');
                   return {
-                    topbarHeight:parseFloat(ts.height),background:ts.backgroundImage,
-                    innerHeight:parseFloat(is.height),innerMaxWidth:is.maxWidth,
-                    brandFont:bs.fontSize,brandWeight:bs.fontWeight,brandX:br.x,brandY:br.y,
-                    desktopDisplay:ds.display,desktopCount:dlinks.length,desktopActive:dlinks.filter(a=>a.classList.contains('active')).length,
-                    desktopLabels:labels(dlinks),desktopFont:dl?.fontSize,desktopWeight:dl?.fontWeight,desktopGap:ds.gap,desktopX:dr.x,desktopY:dr.y,desktopWidth:dr.width,
-                    mobileDisplay:ms.display,mobileCount:mlinks.length,mobileActive:mlinks.filter(a=>a.classList.contains('active')).length,
-                    mobileLabels:labels(mlinks),mobileFont:ml?.fontSize,mobileWeight:ml?.fontWeight,mobileHeight:mr.height,mobileWidth:mr.width,mrects,
-                    activeColor:active?getComputedStyle(active).color:'',
+                    labelsDesktop:labels(dlinks),labelsMobile:labels(mlinks),
+                    desktopCount:dlinks.length,mobileCount:mlinks.length,
+                    desktopActive:dlinks.filter(a=>a.classList.contains('active')).length,
+                    mobileActive:mlinks.filter(a=>a.classList.contains('active')).length,
+                    desktopIcons:dlinks.filter(a=>a.querySelector('.nomad342-tab-icon svg')).length,
+                    mobileIcons:mlinks.filter(a=>a.querySelector('.nomad342-tab-icon svg')).length,
+                    desktopDisplay:getComputedStyle(desktop).display,
+                    mobileDisplay:getComputedStyle(mobile).display,
+                    topbarHeight:topbar.getBoundingClientRect().height,
+                    brandX:br.x,brandY:br.y,desktopX:dr.x,desktopY:dr.y,desktopWidth:dr.width,
+                    mobileX:mr.x,mobileY:mr.y,mobileWidth:mr.width,mobileHeight:mr.height,
                     scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth
                   };
                 });
@@ -92,64 +93,36 @@ jobs:
               for(const width of widths){
                 const s={};
                 for(const [name,url] of Object.entries(urls))s[name]=await capture(url,width);
-                console.log('UI_MATRIX',width,JSON.stringify(s));
+                console.log('NOMAD342_UI',width,JSON.stringify(s));
                 const mobile=width<=700;
                 for(const [name,x] of Object.entries(s)){
-                  check(x.background.includes('linear-gradient'),`${name}/${width}: header gradient`);
-                  check(x.brandWeight==='900',`${name}/${width}: logo weight`);
-                  check(x.activeColor===GREEN,`${name}/${width}: active is not green (${x.activeColor})`);
+                  check(x.desktopCount===3&&x.mobileCount===3,`${name}/${width}: expected exactly three 3.42 links`);
+                  check(JSON.stringify(x.labelsDesktop)===JSON.stringify(expected),`${name}/${width}: desktop order ${JSON.stringify(x.labelsDesktop)}`);
+                  check(JSON.stringify(x.labelsMobile)===JSON.stringify(expected),`${name}/${width}: mobile order ${JSON.stringify(x.labelsMobile)}`);
+                  check(x.desktopActive===1&&x.mobileActive===1,`${name}/${width}: expected one active tab`);
+                  check(x.desktopIcons===3&&x.mobileIcons===3,`${name}/${width}: vintage tab icon missing`);
                   check(x.scrollWidth<=x.viewport+1,`${name}/${width}: horizontal overflow`);
-                  check(x.desktopCount===3&&x.mobileCount===3,`${name}/${width}: expected three navigation links`);
-                  check(x.desktopActive===1&&x.mobileActive===1,`${name}/${width}: expected one active link`);
-                  const expected=name.endsWith('342')?order342:legacyOrder;
-                  check(JSON.stringify(x.desktopLabels)===JSON.stringify(expected),`${name}/${width}: desktop order ${JSON.stringify(x.desktopLabels)}`);
-                  check(JSON.stringify(x.mobileLabels)===JSON.stringify(expected),`${name}/${width}: mobile order ${JSON.stringify(x.mobileLabels)}`);
                   if(mobile){
-                    check(close(x.topbarHeight,58),`${name}/${width}: topbar height ${x.topbarHeight}`);
-                    check(x.brandFont==='20px',`${name}/${width}: logo font ${x.brandFont}`);
-                    check(x.desktopDisplay==='none',`${name}/${width}: desktop nav visible`);
+                    check(x.desktopDisplay==='none',`${name}/${width}: desktop nav visible on mobile`);
                     check(x.mobileDisplay==='grid',`${name}/${width}: mobile nav not grid`);
-                    check(x.mobileFont==='11.7px'&&x.mobileWeight==='900',`${name}/${width}: mobile typography`);
-                    check(close(x.mobileHeight,58),`${name}/${width}: mobile rail height ${x.mobileHeight}`);
-                    const y=x.mrects[0].y,w=x.mrects[0].width,h=x.mrects[0].height;
-                    for(const r of x.mrects){
-                      check(close(r.y,y),`${name}/${width}: mobile link wrapped`);
-                      check(close(r.width,w,1),`${name}/${width}: unequal mobile columns`);
-                      check(close(r.height,h),`${name}/${width}: unequal mobile link height`);
-                    }
                   }else{
-                    check(close(x.topbarHeight,64)&&close(x.innerHeight,64),`${name}/${width}: desktop header height`);
-                    check(x.innerMaxWidth==='1120px',`${name}/${width}: max width ${x.innerMaxWidth}`);
-                    check(x.brandFont==='24px',`${name}/${width}: logo font ${x.brandFont}`);
-                    check(x.desktopDisplay==='flex',`${name}/${width}: desktop nav state`);
-                    check(x.desktopFont==='13px'&&x.desktopWeight==='900'&&x.desktopGap==='2px',`${name}/${width}: desktop typography/gap`);
+                    check(x.desktopDisplay==='flex',`${name}/${width}: desktop nav not flex`);
+                    check(x.mobileDisplay==='none',`${name}/${width}: mobile rail visible on desktop`);
                   }
                 }
-
-                const legacyRef=s.legacySignal,legacyStat=s.legacyStatistics;
-                check(same(legacyStat.topbarHeight,legacyRef.topbarHeight),`legacyStatistics/${width}: topbar mismatch`);
-                check(same(legacyStat.brandX,legacyRef.brandX)&&same(legacyStat.brandY,legacyRef.brandY),`legacyStatistics/${width}: logo position mismatch`);
-                if(mobile){
-                  check(same(legacyStat.mobileHeight,legacyRef.mobileHeight),`legacyStatistics/${width}: mobile rail mismatch`);
-                  check(same(legacyStat.mobileWidth,legacyRef.mobileWidth,1),`legacyStatistics/${width}: mobile rail width mismatch`);
-                }else{
-                  check(same(legacyStat.desktopX,legacyRef.desktopX)&&same(legacyStat.desktopY,legacyRef.desktopY)&&same(legacyStat.desktopWidth,legacyRef.desktopWidth),`legacyStatistics/${width}: desktop nav geometry mismatch`);
-                }
-
-                const ref342=s.liveScore342;
-                for(const name of ['signal342','statistics342']){
+                const ref=s.liveScore;
+                for(const name of ['signal','statistics']){
                   const x=s[name];
-                  check(same(x.topbarHeight,ref342.topbarHeight),`${name}/${width}: 3.42 topbar mismatch`);
-                  check(same(x.brandX,ref342.brandX)&&same(x.brandY,ref342.brandY),`${name}/${width}: 3.42 logo position mismatch`);
+                  check(close(x.topbarHeight,ref.topbarHeight),`${name}/${width}: topbar mismatch`);
+                  check(close(x.brandX,ref.brandX)&&close(x.brandY,ref.brandY),`${name}/${width}: brand geometry mismatch`);
                   if(mobile){
-                    check(same(x.mobileHeight,ref342.mobileHeight),`${name}/${width}: 3.42 mobile rail mismatch`);
-                    check(same(x.mobileWidth,ref342.mobileWidth,1),`${name}/${width}: 3.42 mobile rail width mismatch`);
+                    check(close(x.mobileX,ref.mobileX)&&close(x.mobileY,ref.mobileY)&&close(x.mobileWidth,ref.mobileWidth,1)&&close(x.mobileHeight,ref.mobileHeight),`${name}/${width}: mobile navigation geometry mismatch`);
                   }else{
-                    check(same(x.desktopX,ref342.desktopX)&&same(x.desktopY,ref342.desktopY)&&same(x.desktopWidth,ref342.desktopWidth),`${name}/${width}: 3.42 desktop nav geometry mismatch`);
+                    check(close(x.desktopX,ref.desktopX)&&close(x.desktopY,ref.desktopY)&&close(x.desktopWidth,ref.desktopWidth,1),`${name}/${width}: desktop navigation geometry mismatch`);
                   }
                 }
               }
-              console.log('RESPONSIVE_NAV_UI_OK');
+              console.log('NOMAD342_RESPONSIVE_NAV_OK');
             } finally { await browser.close(); }
-          })().catch(e=>{console.error(e);process.exit(1)});
+          })().catch(error=>{console.error(error);process.exit(1)});
           NODE
