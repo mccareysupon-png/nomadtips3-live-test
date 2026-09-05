@@ -40,7 +40,7 @@ async function load(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json(),summary=data?.summary||{},records=Array.isArray(data?.records)?data.records:[];
     set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??records.length*2);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
-    list.innerHTML=records.length?records.map(card).join(''):'<div class="ledger-empty">No locked 3.42 signals yet.</div>';
+    list.innerHTML=records.length?records.map(card).join(''):'<div class="ledger-empty">No qualifying picks yet.</div>';
     set(status,`LEDGER ONLINE · ${records.length} locked matches`);
   }catch(error){
     set(status,'LEDGER TEMPORARILY UNAVAILABLE');
