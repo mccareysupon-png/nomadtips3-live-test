@@ -149,7 +149,26 @@ jobs:
           done
           test "$ok" = 1 || { echo '::error::3.42 TotalCorner settlement source probe failed'; cat /tmp/ledger-health.json || true; exit 1; }
           curl -fsS --max-time 20 "$LEDGER_URL/signal?limit=2&t=$(date +%s)" -o /tmp/ledger-signal.json
-          curl -fsS --max-time 20 "$LEDGER_URL/statistics?limit=2&t=$(date +%s)" -o /tmp/ledger-statistics.json
+          curl -fsS --max-time 20 "$LEDGER_URL/statistics?limit=500&t=$(date +%s)" -o /tmp/ledger-statistics.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-signal.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/ledger-health.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/ledger-statistics.json','utf8'));
+          const rows=Array.isArray(s.rows)?s.rows:[];
+          const counts=rows.reduce((a,r)=>{const k=String(r.result||'PENDING').toUpperCase();a[k]=(a[k]||0)+1;return a;},{});
+          console.log('LEDGER SETTLEMENT OBSERVABILITY');
+          console.log(JSON.stringify({
+            settlementSource:h.settlementSource,
+            settlementRevision:h.settlementRevision,
+            sourceProbe:h.sourceProbe,
+            settlementMeta:h.settlementMeta,
+            alarmAt:h.alarmAt,
+            summary:s.summary,
+            rowResultCounts:counts,
+            rowsReturned:rows.length,
+          },null,2));
+          if(h.settlementSource!=='totalcorner-live-score-v3'||h.sourceProbe?.ok!==true)process.exit(1);
+          NODE
           echo 'NOMAD 3.42 ledger deployed: Goaloo/bookmaker remains price-only; TotalCorner Live Score V3 supplies FINAL settlement.'
