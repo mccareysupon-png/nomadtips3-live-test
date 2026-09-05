@@ -95,6 +95,11 @@ async function load(){
     if(!tbody.children.length||/Connecting|No picks|unavailable/i.test(tbody.textContent||''))tbody.innerHTML='<tr><td colspan="9">Statistics ledger connection temporarily unavailable.</td></tr>';
   }finally{busy=false;}
 }
-load();timer=setInterval(load,Math.max(10000,Number(runtime.pollMs)||15000));
+const refresh=()=>setTimeout(load,0);
+load();timer=setInterval(load,Math.max(3000,Number(runtime.pollMs)||5000));
+document.addEventListener('nomad342:ledgerlocked',refresh);
+document.addEventListener('nomad342:ledgerrefresh',refresh);
+window.addEventListener('focus',refresh);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)});
 })();
