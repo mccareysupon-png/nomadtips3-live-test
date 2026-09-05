@@ -1,0 +1,59 @@
+name: Probe Apex Worker Version Overrides
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-apex-worker-version-overrides.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Get candidate Worker versions and probe apex overrides
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          candidates=(
+            nomadtips3-car35-preview
+            nomadtips3-live-web-production
+            nomadtips3-car341-preview
+            nomadtips3-car34-real-market-audit
+          )
+
+          fingerprint(){
+            label="$1"; shift
+            rm -f /tmp/h /tmp/b
+            code="$(curl -sS --max-time 20 "$@" -D /tmp/h -o /tmp/b -w '%{http_code}' "https://nomadtips3.com/__nomad_override_probe_${GITHUB_RUN_ID}?label=${label}")"
+            source="$(grep -Ei '^x-nomadtips3-source:' /tmp/h | tr -d '\r' | head -1)"
+            cferr="$(grep -Ei '^cf-' /tmp/h | tr -d '\r' | tr '\n' ' ' | head -c 500)"
+            title="$(grep -Eio '<title>[^<]*' /tmp/b | head -1)"
+            echo "FP label=$label code=$code bytes=$(wc -c </tmp/b) hash=$(sha256sum /tmp/b | awk '{print $1}') source='$source' title='$title' cf='$cferr'"
+            head -c 240 /tmp/b | tr '\n' ' ' || true
+            echo
+          }
+
+          fingerprint baseline
+
+          for script in "${candidates[@]}"; do
+            echo "===== $script versions ====="
+            code="$(curl -sS "${auth[@]}" -o /tmp/versions.json -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/versions?per_page=20")"
+            echo "versions HTTP=$code"
+            if [ "$code" != 200 ]; then cat /tmp/versions.json; continue; fi
+            jq -r '.result[]? | [.id,.created_on] | @tsv' /tmp/versions.json | head -10
+            mapfile -t vids < <(jq -r '.result[]?.id' /tmp/versions.json | head -3)
+            for vid in "${vids[@]}"; do
+              [ -n "$vid" ] || continue
+              fingerprint "${script}-${vid}" -H "Cloudflare-Workers-Version-Overrides: ${script}=\"${vid}\""
+            done
+          done
