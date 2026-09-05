@@ -10,6 +10,8 @@ STATS_V3_TAG = '  <script src="prediction2-stats-v3.js?v=20260904-v3"></script>\
 SCRIPT_MARKER = '  <script src="site-footer.js?v=20260825-rail-v2"></script>\n'
 GRID_OLD = '<section class="king-preview-grid" aria-label="Prediction2 preview picks">'
 GRID_NEW = '<section class="king-preview-grid" aria-label="Prediction2 auto picks" hidden>'
+FOOTER_PREDICTIONS_OLD = '<a href="../soccer-predictions/">Soccer Predictions</a>'
+FOOTER_PREDICTIONS_NEW = '<a href="https://www.nomadtips3.com/prediction2">Soccer Predictions</a>'
 
 # The embedded legacy feed renderer stays neutral for historical statistics.
 # Statistics V3 owns scorebar/HISTORY/DAILY from 2026-09-04 onward.
@@ -64,6 +66,9 @@ def main():
             raise SystemExit('site-footer script marker not found for Statistics V3')
         text = text.replace(SCRIPT_MARKER, STATS_V3_TAG + SCRIPT_MARKER, 1)
 
+    if FOOTER_PREDICTIONS_OLD in text:
+        text = text.replace(FOOTER_PREDICTIONS_OLD, FOOTER_PREDICTIONS_NEW, 1)
+
     if SETTLED_OLD in text:
         text = text.replace(SETTLED_OLD, SETTLED_NEW, 1)
     if DRAWS_OLD in text:
@@ -84,9 +89,9 @@ def main():
 
     if text != original:
         PATH.write_text(text, encoding='utf-8')
-        print('Prediction2 patched: expanded cards are statistics-only; default rows unchanged.')
+        print('Prediction2 patched: auto-feed wiring and footer link are current.')
     else:
-        print('Prediction2 expanded-card stats-only wiring already current.')
+        print('Prediction2 auto-feed wiring and footer link already current.')
 
 
 if __name__ == '__main__':
