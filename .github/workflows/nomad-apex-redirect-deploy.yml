@@ -17,10 +17,9 @@ env:
   APEX_HOST: nomadtips3.com
   CANONICAL_HOST: www.nomadtips3.com
   REDIRECT_SCRIPT: nomadtips3-apex-redirect
-  ROUTE_PATTERN: nomadtips3.com/*
 
 jobs:
-  deploy-and-route:
+  deploy-and-bind:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -39,7 +38,7 @@ jobs:
           grep -Fq '"name": "nomadtips3-apex-redirect"' nomad-apex-redirect/wrangler.jsonc
           grep -Fq '"workers_dev": false' nomad-apex-redirect/wrangler.jsonc
           if grep -Fq '"routes"' nomad-apex-redirect/wrangler.jsonc; then
-            echo '::error::Apex redirect route must be managed explicitly after the isolated Worker deploy.'
+            echo '::error::Redirect Worker must stay isolated from the main production route config.'
             exit 1
           fi
 
@@ -58,79 +57,74 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.jsonc
 
-      - name: Resolve Cloudflare zone and snapshot existing apex route
-        id: route
+      - name: Snapshot existing Workers custom-domain bindings
+        id: before
         shell: bash
         run: |
           set -euo pipefail
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
 
           curl -fsS "${auth[@]}" \
-            "https://api.cloudflare.com/client/v4/zones?name=${APEX_HOST}&account.id=${CF_ACCOUNT_ID}&status=active" \
-            -o /tmp/zones.json
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" \
+            -o /tmp/domains-before.json
 
-          ZONE_ID="$(jq -r '.result[0].id // empty' /tmp/zones.json)"
-          test -n "$ZONE_ID" || { echo '::error::Could not resolve active Cloudflare zone for nomadtips3.com'; cat /tmp/zones.json; exit 1; }
-          echo "zone_id=$ZONE_ID" >> "$GITHUB_OUTPUT"
+          test "$(jq -r '.success' /tmp/domains-before.json)" = true || { cat /tmp/domains-before.json; exit 1; }
 
-          curl -fsS "${auth[@]}" \
-            "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes" \
-            -o /tmp/routes-before.json
+          jq --arg apex "$APEX_HOST" --arg canonical "$CANONICAL_HOST" \
+            '{captured_at:(now|todate),apex_domain:([.result[]? | select(.hostname==$apex)][0] // null),canonical_domain:([.result[]? | select(.hostname==$canonical)][0] // null)}' \
+            /tmp/domains-before.json > /tmp/apex-domain-backup.json
 
-          jq --arg p "$ROUTE_PATTERN" '{captured_at:(now|todate), target_pattern:$p, exact_route:(.result[]? | select(.pattern==$p)), all_routes:.result}' \
-            /tmp/routes-before.json > /tmp/apex-route-backup.json
+          OLD_SERVICE="$(jq -r --arg apex "$APEX_HOST" '[.result[]? | select(.hostname==$apex)][0].service // empty' /tmp/domains-before.json)"
+          OLD_DOMAIN_ID="$(jq -r --arg apex "$APEX_HOST" '[.result[]? | select(.hostname==$apex)][0].id // empty' /tmp/domains-before.json)"
+          echo "old_service=$OLD_SERVICE" >> "$GITHUB_OUTPUT"
+          echo "old_domain_id=$OLD_DOMAIN_ID" >> "$GITHUB_OUTPUT"
 
-          ROUTE_ID="$(jq -r --arg p "$ROUTE_PATTERN" '.result[]? | select(.pattern==$p) | .id' /tmp/routes-before.json | head -1)"
-          OLD_SCRIPT="$(jq -r --arg p "$ROUTE_PATTERN" '.result[]? | select(.pattern==$p) | (.script // "")' /tmp/routes-before.json | head -1)"
-          echo "route_id=$ROUTE_ID" >> "$GITHUB_OUTPUT"
-          echo "old_script=$OLD_SCRIPT" >> "$GITHUB_OUTPUT"
-
-          echo "### Apex route backup" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Pattern: \`$ROUTE_PATTERN\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "$ROUTE_ID" ]; then
-            echo "- Existing route id: \`$ROUTE_ID\`" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Previous script: \`${OLD_SCRIPT:-<none>}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Apex custom-domain backup" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Hostname: \`$APEX_HOST\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$OLD_SERVICE" ]; then
+            echo "- Previous Worker: \`$OLD_SERVICE\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Previous domain id: \`$OLD_DOMAIN_ID\`" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "- No exact apex route existed; a new exact route will be created." >> "$GITHUB_STEP_SUMMARY"
+            echo "- No previous Workers custom-domain binding was present for the apex hostname." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload rollback snapshot
         uses: actions/upload-artifact@v4
         with:
-          name: nomadtips3-apex-route-backup-${{ github.run_id }}
-          path: /tmp/apex-route-backup.json
+          name: nomadtips3-apex-domain-backup-${{ github.run_id }}
+          path: /tmp/apex-domain-backup.json
           if-no-files-found: error
           retention-days: 30
 
-      - name: Point only the exact apex route to redirect Worker
+      - name: Attach only nomadtips3.com to isolated redirect Worker
         shell: bash
-        env:
-          ZONE_ID: ${{ steps.route.outputs.zone_id }}
-          ROUTE_ID: ${{ steps.route.outputs.route_id }}
         run: |
           set -euo pipefail
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          payload="$(jq -nc --arg pattern "$ROUTE_PATTERN" --arg script "$REDIRECT_SCRIPT" '{pattern:$pattern,script:$script}')"
+          payload="$(jq -nc --arg hostname "$APEX_HOST" --arg service "$REDIRECT_SCRIPT" '{hostname:$hostname,service:$service}')"
 
-          if [ -n "$ROUTE_ID" ]; then
-            curl -fsS "${auth[@]}" -X PUT \
-              "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes/${ROUTE_ID}" \
-              --data "$payload" -o /tmp/route-change.json
-          else
-            curl -fsS "${auth[@]}" -X POST \
-              "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes" \
-              --data "$payload" -o /tmp/route-change.json
-          fi
+          curl -fsS "${auth[@]}" -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" \
+            --data "$payload" -o /tmp/domain-change.json
 
-          test "$(jq -r '.success' /tmp/route-change.json)" = true || { cat /tmp/route-change.json; exit 1; }
-          test "$(jq -r '.result.pattern' /tmp/route-change.json)" = "$ROUTE_PATTERN"
-          test "$(jq -r '.result.script' /tmp/route-change.json)" = "$REDIRECT_SCRIPT"
-          cat /tmp/route-change.json
+          test "$(jq -r '.success' /tmp/domain-change.json)" = true || { cat /tmp/domain-change.json; exit 1; }
+          test "$(jq -r '.result.hostname' /tmp/domain-change.json)" = "$APEX_HOST"
+          test "$(jq -r '.result.service' /tmp/domain-change.json)" = "$REDIRECT_SCRIPT"
+          cat /tmp/domain-change.json
 
-      - name: Verify apex redirect and protect www production
+      - name: Verify apex binding, redirect and www production
         shell: bash
         run: |
           set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+
+          curl -fsS "${auth[@]}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" \
+            -o /tmp/domains-after.json
+
+          bound_service="$(jq -r --arg apex "$APEX_HOST" '[.result[]? | select(.hostname==$apex)][0].service // empty' /tmp/domains-after.json)"
+          test "$bound_service" = "$REDIRECT_SCRIPT" || { echo "::error::Apex custom domain is bound to '$bound_service', expected '$REDIRECT_SCRIPT'"; exit 1; }
+
           ok=0
           probe="https://${APEX_HOST}/prediction3/?apex_fix_probe=${GITHUB_RUN_ID}"
           expected="https://${CANONICAL_HOST}/prediction3/?apex_fix_probe=${GITHUB_RUN_ID}"
@@ -147,14 +141,14 @@ jobs:
 
           test "$ok" = 1 || { echo "::error::Apex redirect verification failed code=$code location=$location"; exit 1; }
 
+          root_location="$(curl -sS --max-time 20 -D - -o /dev/null "https://${APEX_HOST}/" | awk 'BEGIN{IGNORECASE=1} /^location:/{sub(/\r$/,""); sub(/^[^:]*:[[:space:]]*/,""); print; exit}')"
+          test "$root_location" = "https://${CANONICAL_HOST}/"
+
           curl -fsS --max-time 20 "https://${CANONICAL_HOST}/__nomad_release?apex_fix_probe=${GITHUB_RUN_ID}" -o /tmp/www-release.json
           grep -Fq 'nomadtips3-live-web-production' /tmp/www-release.json
           grep -Fq '"version":"3.41"' /tmp/www-release.json
 
-          root_code="$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' "https://${APEX_HOST}/")"
-          test "$root_code" = 308
-
           echo "### Verification passed" >> "$GITHUB_STEP_SUMMARY"
-          echo "- \`nomadtips3.com/*\` returns HTTP 308 to \`www.nomadtips3.com\`." >> "$GITHUB_STEP_SUMMARY"
-          echo "- Path and query are preserved." >> "$GITHUB_STEP_SUMMARY"
+          echo "- \`nomadtips3.com\` is bound only to \`nomadtips3-apex-redirect\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "- HTTP 308 redirects to \`www.nomadtips3.com\` and preserves path/query." >> "$GITHUB_STEP_SUMMARY"
           echo "- Existing \`www\` production release marker remains NOMAD Live 3.41." >> "$GITHUB_STEP_SUMMARY"
