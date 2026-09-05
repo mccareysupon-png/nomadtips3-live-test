@@ -27,11 +27,11 @@ async function load(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json(),summary=data?.summary||{},rows=Array.isArray(data?.rows)?data.rows:[];
     set(metrics.total,summary.totalPredictions??rows.length);set(metrics.win,summary.wins??0);set(metrics.loss,summary.losses??0);set(metrics.push,summary.pushes??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
-    tbody.innerHTML=rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="9">No locked 3.42 prediction records yet.</td></tr>';
+    tbody.innerHTML=rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="9">No picks recorded yet.</td></tr>';
     set(status,`LEDGER ONLINE · ${summary.settledPredictions??0} settled · ${summary.pendingPredictions??0} pending`);
   }catch(error){
     set(status,'LEDGER TEMPORARILY UNAVAILABLE');
-    if(!tbody.children.length||/Connecting|No locked|unavailable/i.test(tbody.textContent||''))tbody.innerHTML='<tr><td colspan="9">Statistics ledger connection temporarily unavailable.</td></tr>';
+    if(!tbody.children.length||/Connecting|No picks|unavailable/i.test(tbody.textContent||''))tbody.innerHTML='<tr><td colspan="9">Statistics ledger connection temporarily unavailable.</td></tr>';
   }finally{busy=false;}
 }
 load();timer=setInterval(load,Math.max(10000,Number(runtime.pollMs)||15000));
