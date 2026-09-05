@@ -53,11 +53,10 @@ const compactSourceRow=source=>{
   return `<span class="price-source-row ${rowState}"><span class="price-source-name">S${source.position} · ${esc(source.source)}</span><span class="price-source-value">${esc(value)}</span></span>`;
 };
 const compactSelectedRow=(selected,side)=>{
-  const position=selected?.position??(String(selected?.id||'').replace(/\D/g,'')||'—');
   const selectedSide=sideKey(selected?.side||side);
   const sidePrefix=selectedSide==='away'?'AWAY · ':'';
-  const value=selected?`${sidePrefix}${selected.bookmaker||'—'} · ${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
-  return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">SELECTED${selected?` · S${position}`:''}</span><span class="price-selected-value">${esc(value)}</span></span>`;
+  const value=selected?`${selected.source||'—'} · ${selected.bookmaker||'—'} · ${sidePrefix}${fmtLine(selected.line)} @ ${fmtOdds(selected.odds)} · ${compactAge(selected)}`:'N/A';
+  return `<span class="price-selected-row ${selected?'has-price':'is-na'}"><span class="price-selected-name">PRICE REFERENCE</span><span class="price-selected-value">${esc(value)}</span></span>`;
 };
 const signalLock=m=>m?.signalStatus==='LOCKED'&&m?.signalLock?.status==='LOCKED'?m.signalLock:null;
 
@@ -76,7 +75,7 @@ function detail(m){
   const sources=priceSources(m),selected=m.selectedPrice||sources.find(source=>source.status==='PASS')||null;
   const sourceRows=sources.map(source=>sourceRow(source,side)).join('');
   const locked=signalLock(m),lockedSide=sideKey(locked?.selection||side),lockedLabel=sideLabel(lockedSide);
-  const lockSection=locked?`<section class="detail-card"><h3>SIGNAL LOCK · LOCKED</h3><div class="check"><span>Entry minute / score</span><b>${locked.minute??'—'}′ · ${pair(locked.entryScore)}</b></div><div class="check"><span>Locked ${lockedLabel} AH / odds</span><b>${fmtLine(locked.line)} @ ${fmtOdds(locked.odds)}</b></div><div class="check"><span>Bookmaker / source</span><b>${esc(locked.bookmaker||'—')} · ${esc(locked.oddsSource||'—')}</b></div><div class="check"><span>Locked at</span><b>${locked.lockedAt?when(locked.lockedAt):'—'}</b></div></section>`:'';
+  const lockSection=locked?`<section class="detail-card"><h3>SIGNAL LOCK · LOCKED</h3><div class="check"><span>Entry minute / score</span><b>${locked.minute??'—'}′ · ${pair(locked.entryScore)}</b></div><div class="check"><span>Locked ${lockedLabel} AH / odds</span><b>${fmtLine(locked.line)} @ ${fmtOdds(locked.odds)}</b></div><div class="check"><span>Price reference</span><b>${esc(locked.oddsSource||'—')} · ${esc(locked.bookmaker||'—')}</b></div><div class="check"><span>Locked at</span><b>${locked.lockedAt?when(locked.lockedAt):'—'}</b></div></section>`:'';
   const share=m.sidePressureShare??rolling.sides?.[side]?.pressureShare??rolling[side==='away'?'awayPressureShare':'homePressureShare'];
   return `<div class="match-detail">
     ${lockSection}
@@ -88,7 +87,7 @@ function detail(m){
     </div></section>
     <section class="detail-card"><h3>PRESSURE TREND</h3><div class="check"><span>${label} pressure · recent / previous</span><b>${recent[pressureKey]??'—'} / ${previous[pressureKey]??'—'}</b></div><div class="check"><span>${label} pressure share</span><b>${rolling.available&&n(share)!=null?`${Number(share).toFixed(1)}%`:'—'}</b></div><div class="check"><span>Match tempo · recent / previous</span><b>${recent.tempo??'—'} / ${previous.tempo??'—'}</b></div></section>
     <section class="detail-card"><h3>DETECTOR CHECK</h3>${renderChecks(m.checks,m.evidence,side)}</section>
-    <section class="detail-card"><h3>PRICE CHECK</h3>${sourceRows}<div class="check"><span>SELECTED PRICE · ${label}</span><b class="${selected?'ok':'wait'}">${esc(selectedValue(selected,side))}</b></div></section>
+    <section class="detail-card"><h3>PRICE CHECK</h3>${sourceRows}<div class="check"><span>PRICE REFERENCE · ${label}</span><b class="${selected?'ok':'wait'}">${esc(selectedValue(selected,side))}</b></div></section>
   </div>`;
 }
 function matchRow(m){
