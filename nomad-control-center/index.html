@@ -1,63 +1,94 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta name="theme-color" content="#101711">
-  <title>NOMAD CONTROL CENTER</title>
+  <title>ศูนย์ควบคุม NOMAD</title>
   <link rel="stylesheet" href="control-center.css">
 </head>
 <body>
   <header class="topbar">
     <div>
       <div class="eyebrow">NOMADTIPS3 · OWNER OPERATIONS</div>
-      <h1>NOMAD CONTROL CENTER</h1>
-      <p>Read-only executive monitor · engines · data sources · website · incidents</p>
+      <h1>ศูนย์ควบคุม NOMAD</h1>
+      <p>หน้าผู้บริหารสำหรับตรวจเครื่องยนต์ · แหล่งข้อมูล · เว็บไซต์ · ผู้เข้าชม · เหตุการณ์ผิดปกติ</p>
     </div>
     <div class="top-actions">
-      <div class="live-pill"><span class="pulse"></span><span id="liveText">MONITOR LIVE</span></div>
-      <button id="refreshBtn" type="button">REFRESH NOW</button>
+      <div class="live-pill"><span class="pulse"></span><span id="liveText">กำลังตรวจสด</span></div>
+      <button id="refreshBtn" type="button">ตรวจใหม่ตอนนี้</button>
     </div>
   </header>
 
   <main>
-    <section class="summary-grid" aria-label="System summary">
-      <article class="summary-card overall"><span>OVERALL HEALTH</span><strong id="overallHealth">—</strong><small id="overallNote">Starting monitor…</small></article>
-      <article class="summary-card"><span>ACTIVE / READY</span><strong id="activeCount">0</strong><small>healthy or reachable</small></article>
-      <article class="summary-card"><span>STANDBY / UNLINKED</span><strong id="standbyCount">0</strong><small>not currently carrying live telemetry</small></article>
-      <article class="summary-card warning"><span>ATTENTION</span><strong id="warningCount">0</strong><small>degraded · stale · drift</small></article>
-      <article class="summary-card danger"><span>OFFLINE / ERROR</span><strong id="offlineCount">0</strong><small>failed health contact</small></article>
-      <article class="summary-card"><span>LAST UPDATE</span><strong id="lastUpdate">—</strong><small>automatic refresh every 10 seconds</small></article>
+    <section class="summary-grid" aria-label="ภาพรวมระบบ">
+      <article class="summary-card overall"><span>สุขภาพระบบรวม</span><strong id="overallHealth">—</strong><small id="overallNote">กำลังเริ่มตรวจระบบ…</small></article>
+      <article class="summary-card"><span>กำลังทำงาน / พร้อมใช้</span><strong id="activeCount">0</strong><small>ระบบที่ติดต่อและใช้งานได้</small></article>
+      <article class="summary-card"><span>สำรอง / ยังไม่เชื่อม</span><strong id="standbyCount">0</strong><small>พร้อมสำรองหรือยังไม่มีข้อมูลสด</small></article>
+      <article class="summary-card warning"><span>ต้องตรวจสอบ</span><strong id="warningCount">0</strong><small>ข้อมูลค้าง · ทำงานลดลง · ค่าระบบไม่ตรง</small></article>
+      <article class="summary-card danger"><span>ขาดการติดต่อ / ผิดปกติ</span><strong id="offlineCount">0</strong><small>ตรวจ endpoint ไม่สำเร็จ</small></article>
+      <article class="summary-card"><span>อัปเดตล่าสุด</span><strong id="lastUpdate">—</strong><small>ตรวจอัตโนมัติทุก 10 วินาที</small></article>
+    </section>
+
+    <section class="panel priority-panel">
+      <div class="panel-head">
+        <div><span class="section-kicker">ระบบปฏิบัติการหลัก</span><h2>ตัวที่ต้องเห็นก่อนเมื่อสั่งงานหรือเกิดปัญหา</h2></div>
+        <div class="legend"><span><i class="dot ok"></i>ปกติ</span><span><i class="dot warn"></i>ต้องตรวจ</span><span><i class="dot bad"></i>ขาดการติดต่อ</span><span><i class="dot muted"></i>ยังไม่เชื่อม</span></div>
+      </div>
+      <div id="primarySystemsGrid" class="systems-grid primary-grid"></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <div><span class="section-kicker">LIVE OPERATIONS</span><h2>Engine & Source Capacity</h2></div>
-        <div class="legend"><span><i class="dot ok"></i>READY</span><span><i class="dot warn"></i>ATTENTION</span><span><i class="dot bad"></i>OFFLINE</span><span><i class="dot muted"></i>UNLINKED</span></div>
+      <div class="panel-head compact">
+        <div><span class="section-kicker">กำลังสำรองและเครื่องทดลอง</span><h2>ระบบรองรับ · สำรอง · Shadow · Adapter</h2></div>
       </div>
-      <div id="systemsGrid" class="systems-grid"></div>
+      <div id="supportSystemsGrid" class="systems-grid support-grid"></div>
     </section>
 
-    <section class="two-col">
+    <section class="panel">
+      <div class="panel-head compact"><div><span class="section-kicker">สถานะเว็บไซต์</span><h2>ตรวจว่าหน้าเว็บสำคัญเปิดถึงหรือไม่</h2></div></div>
+      <div id="webGrid" class="web-grid"></div>
+    </section>
+
+    <section class="panel visitor-panel">
+      <div class="panel-head compact">
+        <div><span class="section-kicker">ผู้เข้าชมเว็บไซต์</span><h2>Visitor Intelligence</h2></div>
+        <span id="visitorState" class="state-badge state-unlinked">ยังไม่เชื่อม Cloudflare Analytics</span>
+      </div>
+      <div class="visitor-summary">
+        <article><span>ผู้เข้าชมวันนี้</span><strong id="visitorToday">—</strong><small>คนโดยประมาณ</small></article>
+        <article><span>เปิดหน้าเว็บวันนี้</span><strong id="pageViewsToday">—</strong><small>ครั้ง</small></article>
+        <article><span>ออนไลน์ตอนนี้</span><strong id="onlineNow">—</strong><small>Visitor Pulse</small></article>
+        <article><span>15 นาทีล่าสุด</span><strong id="visitors15m">—</strong><small>คนโดยประมาณ</small></article>
+      </div>
+      <div class="visitor-detail-grid">
+        <div class="visitor-block"><h3>ประเทศที่เข้าชมมากที่สุด</h3><div id="countryList" class="visitor-empty">ยังไม่มีข้อมูล Analytics เชื่อมเข้าหน้านี้</div></div>
+        <div class="visitor-block"><h3>หน้าที่เข้าชมมากที่สุด</h3><div id="topPagesList" class="visitor-empty">ยังไม่มีข้อมูล Analytics เชื่อมเข้าหน้านี้</div></div>
+        <div class="visitor-block"><h3>ผู้เข้าชมล่าสุด</h3><div id="liveVisitorsList" class="visitor-empty">ยังไม่เปิด Visitor Pulse · จะไม่แสดง IP เต็มบนหน้านี้</div></div>
+      </div>
+      <p class="privacy-note">ส่วนผู้เข้าชมจะเชื่อมผ่าน Worker ฝั่งเซิร์ฟเวอร์เท่านั้น เพื่อไม่เปิด API Token หรือ IP เต็มในหน้าเว็บ</p>
+    </section>
+
+    <section class="two-col incident-maintenance">
       <article class="panel">
-        <div class="panel-head compact"><div><span class="section-kicker">WEB</span><h2>Website Reachability</h2></div></div>
-        <div id="webGrid" class="web-grid"></div>
+        <div class="panel-head compact"><div><span class="section-kicker">เหตุการณ์ระบบ</span><h2>การเปลี่ยนสถานะล่าสุด</h2></div><button id="clearIncidents" class="ghost" type="button">ล้างประวัติหน้าจอ</button></div>
+        <div id="incidentList" class="incident-list"></div>
       </article>
       <article class="panel">
-        <div class="panel-head compact"><div><span class="section-kicker">INCIDENTS</span><h2>Recent State Changes</h2></div><button id="clearIncidents" class="ghost" type="button">CLEAR LOCAL LOG</button></div>
-        <div id="incidentList" class="incident-list"></div>
+        <div class="panel-head compact"><div><span class="section-kicker">งานตรวจซ่อม</span><h2>จุดที่ควรตรวจต่อ</h2></div></div>
+        <div id="maintenanceList" class="maintenance-list"></div>
       </article>
     </section>
 
     <section class="panel inventory-panel">
-      <div class="panel-head compact"><div><span class="section-kicker">INVENTORY</span><h2>Registered / Reserve Components</h2></div></div>
+      <div class="panel-head compact"><div><span class="section-kicker">คลังระบบทั้งหมด</span><h2>ระบบหลัก · กรรมการ · แหล่งสำรอง · ระบบที่ยังไม่เชื่อม Telemetry</h2></div></div>
       <div id="inventoryGrid" class="inventory-grid"></div>
     </section>
 
     <footer>
-      <span>READ ONLY · no Signal, Scout, Odds, Config or Scheduler writes</span>
-      <span id="monitorVersion">CONTROL CENTER v1</span>
+      <span>READ ONLY · ไม่เขียน Signal, Scout, Odds, Config, Scheduler หรือสถานะ Engine</span>
+      <span id="monitorVersion">CONTROL CENTER v2 · TH</span>
     </footer>
   </main>
 
