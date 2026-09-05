@@ -50,3 +50,4 @@ jobs:
           for r in d.get('result') or []:
               print('ruleset=',r.get('id'),r.get('name'),r.get('phase'),r.get('kind'))
           PY
+          echo 'inspect_complete=1'
