@@ -157,18 +157,24 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
-      - name: Bust NOMAD 3.42 tab CSS cache
+      - name: Bust NOMAD 3.42 asset caches
         run: |
           python - <<'PY'
           from pathlib import Path
 
           path = Path("nomad-live-342/index.html")
           text = path.read_text(encoding="utf-8")
-          old = "nomad342-tabs.css?v=20260905-v2"
-          new = "nomad342-tabs.css?v=20260905-v3"
-          if old not in text:
+          old_tabs = "nomad342-tabs.css?v=20260905-v2"
+          new_tabs = "nomad342-tabs.css?v=20260905-v3"
+          old_signal = "signal-ledger.js?v=20260905-v1"
+          new_signal = "signal-ledger.js?v=20260905-v2"
+          if old_tabs not in text:
               raise SystemExit("3.42 tab stylesheet cache key not found")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          if old_signal not in text:
+              raise SystemExit("3.42 signal ledger cache key not found")
+          text = text.replace(old_tabs, new_tabs, 1)
+          text = text.replace(old_signal, new_signal, 1)
+          path.write_text(text, encoding="utf-8")
           PY
 
       - name: Configure GitHub Pages
