@@ -3,6 +3,7 @@
    Scope:
    - compact bookmaker label under league
    - compact 1X2 · O/U LOCK detection badge
+   - hide expanded candidate referee helper labels
    No feed, market, detector, prediction, ledger or engine logic changes.
    Rollback: remove this stylesheet link from nomad-live-342/index.html and delete this file. */
 
@@ -26,4 +27,12 @@ body[data-page="live"] .event-compact .api-candidate-mini{
 
 body[data-page="live"] .event-compact .api-candidate-mini *{
   color:#83df89!important;
+}
+
+/* Hide only the two helper lines:
+   API-FOOTBALL · ONE-SHOT REFEREE
+   K Default passed → 1X2 + OVER/UNDER
+   Keep PREDICTION LOCKED and the prediction data visible. */
+body[data-page="live"] .event-compact .api-football-candidate-card .afc-head>div{
+  display:none!important;
 }
