@@ -15,7 +15,7 @@ test('O/U integer line can PUSH',()=>{
   assert.equal(gradeTotals('UNDER',2.5,2,1),'LOSS');
 });
 
-test('summary excludes PUSH from win-rate denominator',()=>{
+test('summary excludes PUSH from win-rate denominator and reports settled avg odds + Bangkok day count',()=>{
   const base={
     id:'342:123456',matchId:'123456',fixtureId:'price-fixture-id',lockedAt:1,league:'L',home:'A',away:'B',minute:60,entryScore:{home:0,away:0},
     prediction:{oneXtwo:{pick:'HOME',odds:2},totals:{pick:'OVER',line:3,odds:2}},
@@ -25,6 +25,8 @@ test('summary excludes PUSH from win-rate denominator',()=>{
   assert.equal(summary.wins,1);
   assert.equal(summary.pushes,1);
   assert.equal(summary.losses,0);
+  assert.equal(summary.days,1);
+  assert.equal(summary.avgOdds,2);
   assert.equal(summary.winRate,100);
   assert.equal(winPush.settlement.source,'totalcorner-live-score-v3');
   assert.equal(winPush.settlement.sourceMatchId,'123456');
