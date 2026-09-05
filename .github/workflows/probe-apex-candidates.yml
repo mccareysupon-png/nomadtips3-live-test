@@ -1,0 +1,43 @@
+name: Probe Apex Worker Candidates
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-apex-candidates.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Compare apex with likely Worker endpoints
+        shell: bash
+        run: |
+          set +e
+          probe() {
+            label="$1"; url="$2"
+            rm -f /tmp/h /tmp/b
+            code="$(curl -sS --max-time 20 -D /tmp/h -o /tmp/b -w '%{http_code}' "${url}?probe=${GITHUB_RUN_ID}" || true)"
+            title="$(grep -Eio '<title>[^<]*' /tmp/b 2>/dev/null | head -1)"
+            source="$(grep -Ei '^x-nomadtips3-source:' /tmp/h 2>/dev/null | tr -d '\r' | head -1)"
+            release="$(grep -Eio 'nomadtips3-live-web-production|Live Asian Handicap scanner|Live soccer analysis' /tmp/b 2>/dev/null | head -2 | tr '\n' ' ')"
+            bytes="$(wc -c </tmp/b 2>/dev/null || echo 0)"
+            hash="$(sha256sum /tmp/b 2>/dev/null | awk '{print $1}')"
+            echo "LABEL=$label HTTP=$code BYTES=$bytes HASH=$hash"
+            echo "  URL=$url"
+            echo "  $source"
+            echo "  TITLE=$title"
+            echo "  MARKER=$release"
+          }
+
+          probe apex https://nomadtips3.com/
+          probe car35-preview https://nomadtips3-car35-preview.mccarey-supon.workers.dev/
+          probe car341-preview https://nomadtips3-car341-preview.mccarey-supon.workers.dev/
+          probe car34-audit https://nomadtips3-car34-real-market-audit.mccarey-supon.workers.dev/
+          probe live-web-canary https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev/
+          probe live-web-prod-dev https://nomadtips3-live-web-production.mccarey-supon.workers.dev/
