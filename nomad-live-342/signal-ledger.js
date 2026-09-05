@@ -11,7 +11,7 @@ const finite=value=>{if(value===null||value===undefined||value===''||typeof valu
 const fmtOdds=value=>finite(value)===null?'—':finite(value).toFixed(2);
 const fmtPct=value=>finite(value)===null?'—':`${Math.round(finite(value))}%`;
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
-const when=value=>{try{return new Date(value).toLocaleString([],{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
+const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
 const resultClass=result=>String(result||'PENDING').toLowerCase().replace(/[^a-z]/g,'');
 const set=(node,value)=>{if(node)node.textContent=String(value)};
 const normalize=value=>String(value??'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -46,9 +46,9 @@ function card(record){
   return `<article class="signal-lock-card" data-match-id="${esc(record.matchId)}">
     <div class="signal-lock-head"><div><div class="signal-lock-kicker">SIGNAL LOCKED · 3.42</div><div class="signal-lock-teams">${esc(record.home)} — ${esc(record.away)}</div><div class="signal-lock-league">${esc(record.league||'—')}</div></div><div class="signal-lock-meta"><span>${esc(record.minute??'—')}′ · ${esc(pair(record.entryScore))}</span><span>${esc(when(record.lockedAt))}</span></div></div>
     <div class="signal-lock-grid">
-      <section class="signal-market"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(one.pick||'—')}</strong><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(oneResult)}</span></section>
-      <section class="signal-final ${mirror.score?'is-final':'is-wait'}" aria-label="Live score mirror"><span>FINAL</span><strong>${esc(mirror.score?pair(mirror.score):'—')}</strong><small>${esc(mirror.status)}</small></section>
-      <section class="signal-market"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(totalsResult)}</span></section>
+      <section class="signal-market"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(one.pick||'—')}</strong><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(oneResult==='PUSH'?'DRAW':oneResult.replaceAll('_',' '))}</span></section>
+      <section class="signal-final ${mirror.status==='FT'?'is-final':'is-wait'}" aria-label="Live score mirror"><span>${mirror.status==='FT'?'FINAL':'LIVE SCORE'}</span><strong>${esc(mirror.score?pair(mirror.score):'—')}</strong><small>${esc(mirror.status)}</small></section>
+      <section class="signal-market"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(totalsResult==='PUSH'?'DRAW':totalsResult.replaceAll('_',' '))}</span></section>
     </div>
   </article>`;
 }
@@ -56,12 +56,12 @@ async function load(){
   if(busy||!base||!list)return;busy=true;
   try{
     const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.timeoutMs)||6500);
-    let response;try{response=await fetch(`${base}${runtime.signalPath||'/signal'}?limit=250&t=${Date.now()}`,{cache:'no-store',signal:ac.signal});}finally{clearTimeout(timeout)}
+    let response;try{response=await fetch(`${base}${runtime.signalPath||'/signal'}?limit=500&t=${Date.now()}`,{cache:'no-store',signal:ac.signal});}finally{clearTimeout(timeout)}
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json(),summary=data?.summary||{},records=Array.isArray(data?.records)?data.records:[];
     set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??records.length*2);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
     list.innerHTML=records.length?records.map(card).join(''):'<div class="ledger-empty">No qualifying picks yet.</div>';
-    set(status,`LEDGER ONLINE · ${records.length} locked matches`);
+    set(status,`LEDGER ONLINE · ${records.length} locked matches · updated ${when(data.updatedAt)}`);
   }catch(error){
     set(status,'LEDGER TEMPORARILY UNAVAILABLE');
     if(!list.children.length||list.querySelector('.ledger-empty'))list.innerHTML='<div class="ledger-empty">Signal ledger connection temporarily unavailable.</div>';

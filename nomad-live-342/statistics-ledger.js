@@ -5,6 +5,8 @@ const base=String(runtime.base||'').replace(/\/$/,'');
 const tbody=document.getElementById('statsRows');
 const status=document.getElementById('statsStatus');
 const metrics={
+  roi:document.getElementById('statsRoi'),
+  profit:document.getElementById('statsProfit'),
   total:document.getElementById('statsTotal'),
   day:document.getElementById('statsDay'),
   win:document.getElementById('statsWin'),
@@ -17,11 +19,11 @@ let timer=null,busy=false;
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const finite=value=>{if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null};
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
-const when=value=>{try{return new Date(value).toLocaleString([],{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
+const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
 const fmtOdds=value=>finite(value)===null?'—':finite(value).toFixed(2);
 const fmtProfit=value=>finite(value)===null?'—':`${finite(value)>0?'+':''}${finite(value).toFixed(2)}u`;
 const resultClass=result=>`result-${String(result||'PENDING').toLowerCase()}`;
-const displayResult=result=>String(result||'PENDING').toUpperCase()==='PUSH'?'DRAW':String(result||'PENDING').toUpperCase();
+const displayResult=result=>String(result||'PENDING').toUpperCase()==='PUSH'?'DRAW':String(result||'PENDING').toUpperCase().replaceAll('_',' ');
 const profitClass=value=>finite(value)===null?'':finite(value)>0?'pl-positive':finite(value)<0?'pl-negative':'';
 const set=(node,value)=>{if(node)node.textContent=String(value)};
 const normalize=value=>String(value??'').trim().toLowerCase().replace(/\s+/g,' ');
@@ -81,6 +83,10 @@ async function load(){
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json(),summary=data?.summary||{},rows=Array.isArray(data?.rows)?data.rows:[];
     const avgOdds=finite(summary.avgOdds)??fallbackAvgOdds(rows);
+    set(metrics.roi,finite(summary.roi)===null?'—':`${Number(summary.roi).toFixed(2)}%`);
+    set(metrics.profit,fmtProfit(summary.profit));
+    const daily=document.getElementById('statsDailyRows');
+    if(daily)daily.innerHTML=(data.daily||[]).map(d=>`<tr><td>${esc(d.day)}</td><td>${esc(d.totalPredictions)}</td><td>${esc(d.wins)} (${esc(d.halfWins||0)} half)</td><td>${esc(d.losses)} (${esc(d.halfLosses||0)} half)</td><td>${esc(d.pushes)}</td><td>${esc(d.pendingPredictions)}</td><td>${Number(d.winRate).toFixed(1)}%</td><td>${esc(fmtProfit(d.profit))}</td><td>${finite(d.roi)===null?'—':Number(d.roi).toFixed(2)+'%'}</td></tr>`).join('');
     set(metrics.total,summary.totalPredictions??rows.length);
     set(metrics.day,summary.days??fallbackDays(rows));
     set(metrics.win,summary.wins??0);
@@ -89,7 +95,7 @@ async function load(){
     set(metrics.avgOdds,avgOdds===null?'—':Number(avgOdds).toFixed(2));
     set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
     tbody.innerHTML=rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="9">No picks recorded yet.</td></tr>';
-    set(status,`LEDGER ONLINE · ${summary.settledPredictions??0} settled · ${summary.pendingPredictions??0} pending`);
+    set(status,`LEDGER ONLINE · ${summary.settledPredictions??0} settled · ${summary.pendingPredictions??0} pending · updated ${when(data.updatedAt)}`);
   }catch(error){
     set(status,'LEDGER TEMPORARILY UNAVAILABLE');
     if(!tbody.children.length||/Connecting|No picks|unavailable/i.test(tbody.textContent||''))tbody.innerHTML='<tr><td colspan="9">Statistics ledger connection temporarily unavailable.</td></tr>';

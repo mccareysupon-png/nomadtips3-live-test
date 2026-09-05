@@ -48,7 +48,8 @@ const selectedOdds=(market,pick)=>{
   if(p==='UNDER')return finite(market?.under??market?.underOdds);
   return null;
 };
-const profitFor=(result,odds)=>result==='WIN'&&finite(odds)!==null?Number((finite(odds)-1).toFixed(4)):result==='LOSS'?-1:0;
+const profitFor=(result,odds)=>{const n=finite(odds);return result==='WIN'?Number((n-1).toFixed(4)):result==='HALF_WIN'?Number(((n-1)/2).toFixed(4)):result==='LOSS'?-1:result==='HALF_LOSS'?-.5:0;};
+const GRADING_REVISION='asian-total-v2';
 const json=(request,body,status=200)=>{
   const origin=request.headers.get('origin')||'';
   const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'no-store'});
@@ -67,18 +68,22 @@ function validateLock(body){
   const marketOne=body?.market?.oneXtwo||{},marketTotals=body?.market?.totals||{};
   const oneOdds=selectedOdds(marketOne,onePick),totalsOdds=selectedOdds(marketTotals,totalsPick);
   const errors=[];
+  if(body?.capturedAt!==undefined&&(finite(body.capturedAt)===null||body.capturedAt<=0||body.capturedAt>Date.now()+5000))errors.push('capturedAt');
   if(!matchId)errors.push('matchId');
   if(!home||!away)errors.push('teams');
   if(minute===null||minute<1||minute>130)errors.push('minute');
   if(score.home===null||score.away===null)errors.push('entryScore');
-  if(!eventPass)errors.push('eventPass');
+  const gate=body?.pickGate;
+  const pickGatePass=gate?.pass===true&&gate?.global?.pass===true&&gate?.oneXtwo?.pass===true&&gate?.totals?.pass===true&&finite(gate?.football?.from)!==null&&finite(gate?.football?.to)!==null&&gate.football.from<gate.football.to;
+  if(!eventPass&&!pickGatePass)errors.push('eventPass');
   if(!['HOME','DRAW','AWAY'].includes(onePick))errors.push('oneXtwo.pick');
   if(!['OVER','UNDER'].includes(totalsPick))errors.push('totals.pick');
-  if(line===null||line<0||line>20)errors.push('totals.line');
+  if(line===null||line<0||line>20||!Number.isInteger(line*4))errors.push('totals.line');
   if(oneOdds===null||oneOdds<=1||oneOdds>100)errors.push('oneXtwo.odds');
   if(totalsOdds===null||totalsOdds<=1||totalsOdds>100)errors.push('totals.odds');
   return {ok:errors.length===0,errors,value:{
-    matchId,fixtureId:fixtureId||null,league:clean(body?.league,160),home,away,minute,entryScore:score,eventPass,
+    capturedAt:finite(body?.capturedAt),matchId,fixtureId:fixtureId||null,league:clean(body?.league,160),home,away,minute,entryScore:score,eventPass,
+    pickGate:pickGatePass?gate:null,
     configVersion:clean(body?.configVersion,80)||null,presetVersion:clean(body?.presetVersion,80)||null,
     eventMetrics:body?.eventMetrics&&typeof body.eventMetrics==='object'?body.eventMetrics:null,
     prediction:{
@@ -102,6 +107,12 @@ export function gradeOneXtwo(pick,home,away){
 export function gradeTotals(pick,line,home,away){
   const p=String(pick||'').toUpperCase(),l=finite(line);
   if(!['OVER','UNDER'].includes(p)||l===null||!Number.isFinite(home)||!Number.isFinite(away))return 'PENDING';
+  if(!Number.isInteger(l*4))return 'PENDING';
+  if(!Number.isInteger(l*2)){
+    const parts=[l-.25,l+.25].map(part=>gradeTotals(p,part,home,away));
+    if(parts.includes('PUSH'))return parts.includes('WIN')?'HALF_WIN':'HALF_LOSS';
+    return parts[0];
+  }
   const total=home+away;
   if(Math.abs(total-l)<1e-9)return 'PUSH';
   if(p==='OVER')return total>l?'WIN':'LOSS';
@@ -121,7 +132,7 @@ export function settleRecord(record,finalScore,status,settledAt=Date.now(),sourc
   const oneResult=gradeOneXtwo(record?.prediction?.oneXtwo?.pick,score.home,score.away);
   const totalsResult=gradeTotals(record?.prediction?.totals?.pick,record?.prediction?.totals?.line,score.home,score.away);
   const oneOdds=finite(record?.prediction?.oneXtwo?.odds),totalsOdds=finite(record?.prediction?.totals?.odds);
-  return {...record,settlementRevision:SETTLEMENT_REVISION,settlement:{status:'SETTLED',fixtureStatus:status,finalScore:score,settledAt,
+  return {...record,settlementRevision:SETTLEMENT_REVISION,settlement:{status:'SETTLED',gradingRevision:GRADING_REVISION,fixtureStatus:status,finalScore:score,settledAt,
     source:sourceMeta?.source||null,sourceMatchId:sourceMeta?.sourceMatchId||null,matchMode:sourceMeta?.matchMode||null,
     oneXtwo:{result:oneResult,profit:profitFor(oneResult,oneOdds)},
     totals:{result:totalsResult,profit:profitFor(totalsResult,totalsOdds)},
@@ -138,12 +149,12 @@ function rowsFromRecords(records){
 }
 export function summarize(records){
   const rows=rowsFromRecords(records),settled=rows.filter(row=>row.result!=='PENDING');
-  const wins=settled.filter(row=>row.result==='WIN').length,losses=settled.filter(row=>row.result==='LOSS').length,pushes=settled.filter(row=>row.result==='PUSH').length;
+  const wins=settled.filter(row=>['WIN','HALF_WIN'].includes(row.result)).length,losses=settled.filter(row=>['LOSS','HALF_LOSS'].includes(row.result)).length,pushes=settled.filter(row=>row.result==='PUSH').length;
   const decided=wins+losses,profit=settled.reduce((sum,row)=>sum+(finite(row.profit)||0),0);
   const priced=settled.map(row=>finite(row.odds)).filter(value=>value!==null);
   const avgOdds=priced.length?Number((priced.reduce((sum,value)=>sum+value,0)/priced.length).toFixed(4)):null;
   const days=new Set((Array.isArray(records)?records:[]).map(record=>bangkokDayKey(record?.lockedAt)).filter(Boolean)).size;
-  return {lockedMatches:records.length,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,days,avgOdds,winRate:decided?wins/decided*100:0,profit:Number(profit.toFixed(4))};
+  return {lockedMatches:records.length,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,days,avgOdds,winRate:decided?wins/decided*100:0,halfWins:settled.filter(r=>r.result==='HALF_WIN').length,halfLosses:settled.filter(r=>r.result==='HALF_LOSS').length,stake:settled.length,roi:settled.length?Number((profit/settled.length*100).toFixed(4)):null,profit:Number(profit.toFixed(4))};
 }
 
 export function parseTotalCornerFinalPayload(payload){
@@ -182,7 +193,7 @@ async function totalCornerFinalIndex(){
 
 export class PredictionLedger{
   constructor(state,env){this.state=state;this.env=env;}
-  async records(){return [...(await this.state.storage.list({prefix:'record:'})).values()].filter(Boolean).sort((a,b)=>Number(b.lockedAt)-Number(a.lockedAt));}
+  async records(){return [...(await this.state.storage.list({prefix:'record:'})).values()].filter(Boolean).map(record=>{const old=record.settlement;if(!old||old.gradingRevision===GRADING_REVISION||old.source!==SETTLEMENT_SOURCE||old.fixtureStatus!=='FT')return record;const revised=settleRecord(record,old.finalScore,old.fixtureStatus,old.settledAt,old);return {...revised,settlement:{...revised.settlement,previousGrading:{oneXtwo:old.oneXtwo,totals:old.totals}}};}).sort((a,b)=>Number(b.lockedAt)-Number(a.lockedAt));}
   async scheduleNext(records=null){
     const list=records||await this.records(),now=Date.now();
     const pending=list.filter(record=>!record.settlement);
@@ -199,7 +210,7 @@ export class PredictionLedger{
     const checked=validateLock(body);if(!checked.ok)return json(request,{ok:false,error:'invalid_lock',fields:checked.errors},400);
     const value=checked.value,key=`record:${value.matchId}`,existing=await this.state.storage.get(key);
     if(existing)return json(request,{ok:true,locked:true,duplicate:true,record:existing},200);
-    const lockedAt=Date.now(),minutesUntilCheck=Math.max(3,92-(value.minute||0));
+    const lockedAt=value.capturedAt||Date.now(),minutesUntilCheck=Math.max(3,92-(value.minute||0));
     const record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,settlementRevision:SETTLEMENT_REVISION,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'};
     await this.state.storage.put(key,record);await this.scheduleNext();
     return json(request,{ok:true,locked:true,duplicate:false,record},201);
@@ -207,14 +218,14 @@ export class PredictionLedger{
   async signal(request,url){
     await this.settleDue();
     const requested=Math.trunc(finite(url.searchParams.get('limit'))||200),limit=Math.max(1,Math.min(MAX_SIGNAL_LIMIT,requested));
-    const records=(await this.records()).slice(0,limit),summary=summarize(records);
+    const all=await this.records(),records=all.slice(0,limit),summary=summarize(all);
     return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,records});
   }
   async statistics(request,url){
     await this.settleDue();
     const requested=Math.trunc(finite(url.searchParams.get('limit'))||500),limit=Math.max(1,Math.min(MAX_SIGNAL_LIMIT,requested));
     const all=await this.records(),records=all.slice(0,limit),summary=summarize(all),rows=rowsFromRecords(records);
-    return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,rows});
+    return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,rows,daily:[...new Set(all.map(r=>bangkokDayKey(r.lockedAt)).filter(Boolean))].sort().reverse().map(day=>({day,...summarize(all.filter(r=>bangkokDayKey(r.lockedAt)===day))})),timezone:'Asia/Bangkok',gradingRevision:GRADING_REVISION});
   }
   async health(request,url){
     await this.settleDue();
