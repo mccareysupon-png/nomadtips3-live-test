@@ -9,6 +9,11 @@ Default publication gates:
 - draw cannot be the published main pick
 - no daily pick-count cap
 
+Reverse publication experiment:
+- analysis and qualification remain on the model-selected HOME/AWAY side
+- final published pick is reversed HOME <-> AWAY
+- final published odds come from the reversed side's real Goaloo 1X2 price
+
 KING V2 underlying/market-edge/EV hard gates are not publication gates in this
 default profile. Market edge and EV are still calculated and stored for audit.
 """
@@ -26,9 +31,18 @@ MIN_ODDS = 1.88
 MAX_ODDS = 3.00
 MAX_PICKS = None
 MIN_RECENT = 8
+REVERSE_PREDICTION = True
 ENGINE = "the-king-default-goaloo-composite-40pct-188"
 POLICY = "KING_DEFAULT_40_188"
 PROFILE_NAME = "OWNER_DEFAULT_40_188"
+
+
+def reverse_side(side):
+    if side == "home":
+        return "away"
+    if side == "away":
+        return "home"
+    return None
 
 
 def _profile_meta(date_str):
@@ -41,6 +55,8 @@ def _profile_meta(date_str):
         "recent_sample_min_each": MIN_RECENT,
         "max_picks": MAX_PICKS,
         "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "reverse_prediction": REVERSE_PREDICTION,
+        "reverse_rule": "HOME_TO_AWAY__AWAY_TO_HOME",
         "king_v2_underlying_gate": "BYPASSED",
         "king_v2_market_edge_gate": "BYPASSED",
         "king_v2_ev_gate": "BYPASSED",
@@ -76,8 +92,8 @@ def analyse_default(row, date_str, odds_map):
             "away_n": len(away_rows),
         }
 
-    side = model.get("side")
-    if side not in ("home", "away"):
+    model_side = model.get("side")
+    if model_side not in ("home", "away"):
         return None, {
             "reason": "DRAW_NOT_MAIN_PICK",
             "model_probability": round(float(model.get("confidence") or 0.0), 4),
@@ -91,29 +107,29 @@ def analyse_default(row, date_str, odds_map):
         }
 
     try:
-        locked = float(market[side])
+        model_locked = float(market[model_side])
     except Exception:
         return None, {"reason": "INVALID_SELECTED_ODDS"}
 
-    confidence = float(model["home_win"] if side == "home" else model["away_win"])
+    confidence = float(model["home_win"] if model_side == "home" else model["away_win"])
     if confidence < MIN_CONFIDENCE:
         return None, {
             "reason": "DEFAULT_MIN_CONFIDENCE",
             "confidence": round(confidence, 4),
             "required": MIN_CONFIDENCE,
-            "odds": round(locked, 2),
+            "odds": round(model_locked, 2),
         }
-    if locked < MIN_ODDS:
+    if model_locked < MIN_ODDS:
         return None, {
             "reason": "DEFAULT_MIN_ODDS",
-            "odds": round(locked, 2),
+            "odds": round(model_locked, 2),
             "required": MIN_ODDS,
             "confidence": round(confidence, 4),
         }
-    if locked > MAX_ODDS:
+    if model_locked > MAX_ODDS:
         return None, {
             "reason": "ODDS_SAFETY_MAX",
-            "odds": round(locked, 2),
+            "odds": round(model_locked, 2),
             "maximum": MAX_ODDS,
             "confidence": round(confidence, 4),
         }
@@ -121,12 +137,30 @@ def analyse_default(row, date_str, odds_map):
     priced = v10.fair_market(market)
     market_fair_probability = None
     market_edge = None
-    ev = confidence * locked - 1.0
+    ev = confidence * model_locked - 1.0
     if priced:
-        market_fair_probability = float(priced["fair"][side])
+        market_fair_probability = float(priced["fair"][model_side])
         market_edge = confidence - market_fair_probability
 
-    team = row["home"] if side == "home" else row["away"]
+    published_side = reverse_side(model_side) if REVERSE_PREDICTION else model_side
+    try:
+        published_locked = float(market[published_side])
+    except Exception:
+        return None, {
+            "reason": "INVALID_REVERSE_ODDS",
+            "model_side": model_side,
+            "published_side": published_side,
+        }
+    if published_locked <= 1.0:
+        return None, {
+            "reason": "INVALID_REVERSE_ODDS",
+            "model_side": model_side,
+            "published_side": published_side,
+            "odds": published_locked,
+        }
+
+    model_team = row["home"] if model_side == "home" else row["away"]
+    team = row["home"] if published_side == "home" else row["away"]
     return {
         "id": core.stable_id(date_str, row["home"], row["away"]),
         "goaloo_id": row["id"],
@@ -136,8 +170,8 @@ def analyse_default(row, date_str, odds_map):
         "home": row["home"],
         "away": row["away"],
         "pick": f"{team} Win",
-        "side": side,
-        "odds": round(locked, 2),
+        "side": published_side,
+        "odds": round(published_locked, 2),
         "odds_source": "1xBet / Goaloo goal50.xml",
         "confidence": round(confidence, 4),
         "model_probability": round(confidence, 4),
@@ -145,6 +179,11 @@ def analyse_default(row, date_str, odds_map):
         "market_edge": None if market_edge is None else round(market_edge, 4),
         "ev": round(ev, 4),
         "edge": "—" if market_edge is None else round(market_edge * 100, 1),
+        "reverse_mode": REVERSE_PREDICTION,
+        "model_side": model_side,
+        "model_pick": f"{model_team} Win",
+        "model_odds": round(model_locked, 2),
+        "published_side": published_side,
         "result": "PENDING",
         "ft": None,
         "source_url": row["h2h_url"],
@@ -159,6 +198,7 @@ def analyse_default(row, date_str, odds_map):
             "default_confidence_min": "PASS",
             "default_odds_min": "PASS",
             "odds_safety_max": "PASS",
+            "reverse_prediction": "APPLIED" if REVERSE_PREDICTION else "OFF",
             "daily_cap": "UNLIMITED",
             "king_v2_underlying": "NOT_A_GATE",
             "king_v2_market_edge": "INFO_ONLY",
@@ -242,7 +282,7 @@ def selection(date_str):
         "max_daily_picks": MAX_PICKS,
         "no_pick": len(qualified) == 0,
         "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
-        "decision_layer": "Persistent owner default Goaloo composite thresholds",
+        "decision_layer": "Persistent owner default Goaloo composite thresholds + reverse publication HOME/AWAY",
         "selection_profile": _profile_meta(date_str),
         "rejected": max(0, len(fixtures) - len(qualified)),
         "rejection_reasons": dict(reasons),
@@ -256,18 +296,22 @@ def selection(date_str):
             "max_daily_picks": MAX_PICKS,
             "recent_sample_min_each": MIN_RECENT,
             "draw_main_pick": "REJECT",
-            "goaloo_1x2_required": True,
+            "goaloo_1x2_required": true,
+            "reverse_prediction": REVERSE_PREDICTION,
+            "reverse_rule": "HOME_TO_AWAY__AWAY_TO_HOME",
             "king_v2_underlying_gate": "BYPASSED",
             "king_v2_market_edge_gate": "BYPASSED",
-            "king_v2_ev_gate": "BYPASSED",
+            "king_v2_ev_gate": "BYPASSED"
         },
         "transition_notes": [
             "Owner default profile is active until the owner explicitly changes it.",
-            "Publication thresholds: selected winner probability >=40% and selected-side odds >=1.88.",
+            "Qualification remains on the model-selected side: probability >=40%, odds >=1.88 and <=3.00.",
+            "Reverse publication experiment is active: model HOME publishes AWAY; model AWAY publishes HOME.",
+            "Published odds are read from the reversed side's real Goaloo 1X2 price.",
             "No daily pick-count cap.",
-            "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw side, odds <=3.00.",
-            "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates.",
-        ],
+            "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw model side.",
+            "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
+        ]
     }
     core.save_json(core.STATE_PATH, state)
 
@@ -276,19 +320,22 @@ def selection(date_str):
         "profile": PROFILE_NAME,
         "fixtures": len(fixtures),
         "qualified": len(qualified),
+        "reverse_prediction": REVERSE_PREDICTION,
         "picks": [
             {
                 "match": f"{x['home']} vs {x['away']}",
+                "model_pick": x.get("model_pick"),
                 "pick": x["pick"],
                 "confidence": x["confidence"],
+                "model_odds": x.get("model_odds"),
                 "odds": x["odds"],
-                "goaloo_id": x["goaloo_id"],
+                "goaloo_id": x["goaloo_id"]
             }
             for x in qualified
         ],
         "no_pick": not qualified,
         "reasons": dict(reasons),
-        "health": v8.HEALTH,
+        "health": v8.HEALTH
     }))
 
 
@@ -298,6 +345,10 @@ def self_test():
     assert MAX_ODDS == 3.00
     assert MAX_PICKS is None
     assert MIN_RECENT == 8
+    assert REVERSE_PREDICTION is True
+    assert reverse_side("home") == "away"
+    assert reverse_side("away") == "home"
+    assert reverse_side("draw") is None
     print("the-king-engine-default self-test OK")
 
 
