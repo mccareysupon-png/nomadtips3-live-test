@@ -10,6 +10,7 @@ on:
       - 'nomad-live/runtime.js'
       - 'nomad-live/statistics-live.js'
       - 'nomad-live/statistics-bookmaker-icons.js'
+      - 'nomad-live/public-source-mask.js'
       - 'workers/nomadtips3-market-engine/**'
       - 'workers/nomadtips3-live-engine-5dollar/**'
       - '.github/workflows/nomad342-market-layer-check.yml'
@@ -42,6 +43,7 @@ jobs:
           node --check nomad-live/runtime.js
           node --check nomad-live/statistics-live.js
           node --check nomad-live/statistics-bookmaker-icons.js
+          node --check nomad-live/public-source-mask.js
       - name: Block public OddStorm HTML scraping
         run: |
           if grep -Rni 'oddstorm.com' workers/nomadtips3-market-engine/src workers/nomadtips3-live-engine-5dollar/src 2>/dev/null; then
@@ -56,7 +58,7 @@ jobs:
         run: |
           git fetch origin main
           changed="$(git diff --name-only origin/main...HEAD | grep -E '^nomad-live/' || true)"
-          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^(nomad-live/runtime\.js|nomad-live/statistics-live\.js|nomad-live/statistics-bookmaker-icons\.js)$' || true)"
+          unexpected="$(printf '%s\n' "$changed" | grep -Ev '^(nomad-live/runtime\.js|nomad-live/statistics-live\.js|nomad-live/statistics-bookmaker-icons\.js|nomad-live/public-source-mask\.js)$' || true)"
           if [ -n "$unexpected" ]; then
             echo 'Unexpected NOMAD 3.41 files changed:'
             echo "$unexpected"
