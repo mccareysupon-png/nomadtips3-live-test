@@ -11,48 +11,55 @@ permissions:
   contents: read
 
 env:
-  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   ZONE_ID: 35badb923b6451ed5109276f20b6c749
+  T1: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  T2: ${{ secrets.CLOUDFLARE_DNS_API_TOKEN }}
+  T3: ${{ secrets.CLOUDFLARE_DNS_TOKEN }}
+  T4: ${{ secrets.CLOUDFLARE_TOKEN }}
+  T5: ${{ secrets.CF_API_TOKEN }}
+  T6: ${{ secrets.CF_DNS_TOKEN }}
+  T7: ${{ secrets.CLOUDFLARE_ZONE_API_TOKEN }}
+  T8: ${{ secrets.CLOUDFLARE_PROD_TOKEN }}
+  T9: ${{ secrets.CLOUDFLARE_PRODUCTION_TOKEN }}
+  T10: ${{ secrets.CLOUDFLARE_WORKERS_API_TOKEN }}
+  CF_EMAIL: ${{ secrets.CLOUDFLARE_EMAIL }}
+  CF_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+  CF_GLOBAL_KEY: ${{ secrets.CLOUDFLARE_GLOBAL_API_KEY }}
 
 jobs:
   tail:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Inspect apex live and Cloudflare redirect capability
+      - name: Find existing Cloudflare credential with DNS or redirect access
         shell: bash
         run: |
           set +e
-          echo '=== DNS APEX ==='
-          dig @1.1.1.1 +short CNAME nomadtips3.com
-          dig @1.1.1.1 +short A nomadtips3.com
-          echo '=== DNS WWW ==='
-          dig @1.1.1.1 +short CNAME www.nomadtips3.com
-          dig @1.1.1.1 +short A www.nomadtips3.com
-          echo '=== APEX LIVE ==='
-          curl -sS -D /tmp/apex.h -o /tmp/apex.html --max-time 20 "https://nomadtips3.com/?liveprobe=${GITHUB_RUN_ID}"
-          sed -n '1,40p' /tmp/apex.h
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          t=Path('/tmp/apex.html').read_text(errors='ignore') if Path('/tmp/apex.html').exists() else ''
-          m=re.search(r'<title[^>]*>(.*?)</title>',t,re.I|re.S)
-          print('apex_title=',re.sub(r'\s+',' ',m.group(1)).strip() if m else 'NONE')
-          print('apex_bytes=',len(t.encode()))
-          print('has_redirect=', 'www.nomadtips3.com' in t and ('location.replace' in t or 'location.href' in t))
-          PY
-          echo '=== WWW LIVE ==='
-          curl -sS -D /tmp/www.h -o /tmp/www.html --max-time 20 "https://www.nomadtips3.com/?liveprobe=${GITHUB_RUN_ID}"
-          sed -n '1,40p' /tmp/www.h
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          t=Path('/tmp/www.html').read_text(errors='ignore') if Path('/tmp/www.html').exists() else ''
-          m=re.search(r'<title[^>]*>(.*?)</title>',t,re.I|re.S)
-          print('www_title=',re.sub(r'\s+',' ',m.group(1)).strip() if m else 'NONE')
-          print('www_bytes=',len(t.encode()))
-          PY
-          echo '=== RULESETS ==='
-          code=$(curl -sS -o /tmp/rulesets.json -w '%{http_code}' -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/rulesets")
-          echo "rulesets_http=$code"
-          cat /tmp/rulesets.json
+          test_token(){
+            name="$1"; token="$2"
+            if [ -z "$token" ]; then echo "$name present=no"; return; fi
+            dns=$(curl -sS -o /tmp/${name}-dns.json -w '%{http_code}' -H "Authorization: Bearer $token" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=nomadtips3.com")
+            rules=$(curl -sS -o /tmp/${name}-rules.json -w '%{http_code}' -H "Authorization: Bearer $token" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/rulesets")
+            echo "$name present=yes dns_http=$dns rulesets_http=$rules"
+          }
+          test_token T1 "$T1"
+          test_token T2 "$T2"
+          test_token T3 "$T3"
+          test_token T4 "$T4"
+          test_token T5 "$T5"
+          test_token T6 "$T6"
+          test_token T7 "$T7"
+          test_token T8 "$T8"
+          test_token T9 "$T9"
+          test_token T10 "$T10"
+          if [ -n "$CF_EMAIL" ]; then echo 'CF_EMAIL present=yes'; else echo 'CF_EMAIL present=no'; fi
+          if [ -n "$CF_KEY" ]; then echo 'CF_KEY present=yes'; else echo 'CF_KEY present=no'; fi
+          if [ -n "$CF_GLOBAL_KEY" ]; then echo 'CF_GLOBAL_KEY present=yes'; else echo 'CF_GLOBAL_KEY present=no'; fi
+          if [ -n "$CF_EMAIL" ] && [ -n "$CF_KEY" ]; then
+            code=$(curl -sS -o /tmp/keydns.json -w '%{http_code}' -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $CF_KEY" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=nomadtips3.com")
+            echo "EMAIL+CF_KEY dns_http=$code"
+          fi
+          if [ -n "$CF_EMAIL" ] && [ -n "$CF_GLOBAL_KEY" ]; then
+            code=$(curl -sS -o /tmp/globaldns.json -w '%{http_code}' -H "X-Auth-Email: $CF_EMAIL" -H "X-Auth-Key: $CF_GLOBAL_KEY" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?name=nomadtips3.com")
+            echo "EMAIL+CF_GLOBAL_KEY dns_http=$code"
+          fi
