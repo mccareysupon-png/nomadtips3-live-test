@@ -22,7 +22,6 @@ function setTab(name,{updateHash=true,focus=false}={}){
     const next=`#${selected}`;
     if(location.hash!==next)history.replaceState(null,'',next);
   }
-  document.querySelectorAll('.topnav a,.mobile-nav a').forEach(a=>a.classList.toggle('active',a.getAttribute('href')===`#${selected}`));
   document.title=`nomadtips3 · ${selected==='live-score'?'Live Score':selected==='signal'?'Signal':'Statistics'} 3.42`;
   document.dispatchEvent(new CustomEvent('nomad342:ledgerrefresh'));
   document.dispatchEvent(new CustomEvent('nomad342:tabchange',{detail:{tab:selected}}));
