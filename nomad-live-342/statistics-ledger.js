@@ -6,7 +6,7 @@ const tbody=document.getElementById('statsRows');
 const status=document.getElementById('statsStatus');
 const metrics={total:document.getElementById('statsTotal'),win:document.getElementById('statsWin'),loss:document.getElementById('statsLoss'),push:document.getElementById('statsPush'),winRate:document.getElementById('statsWinRate')};
 let timer=null,busy=false;
-const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const finite=value=>{const n=Number(value);return Number.isFinite(n)?n:null};
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
 const when=value=>{try{return new Date(value).toLocaleString([],{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
