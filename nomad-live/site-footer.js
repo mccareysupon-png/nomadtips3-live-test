@@ -107,3 +107,5 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',fix,{once:true});
   [100,500,1500,2500].forEach(ms=>setTimeout(fix,ms));
 })();
+
+/* 2026-09-05 footer-target production release: includes Prediction2 direct footer + Statistics rail. */
