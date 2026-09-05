@@ -1,0 +1,58 @@
+name: Diagnose NOMADTIPS3 Apex Cache
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-apex-cache.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  ZONE_ID: 35badb923b6451ed5109276f20b6c749
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare apex, GitHub Pages and repository source
+        shell: bash
+        run: |
+          set -euo pipefail
+          check(){
+            label="$1"; url="$2"
+            curl -sS --max-time 25 -D "/tmp/${label}.h" -o "/tmp/${label}.b" "$url"
+            echo "===== $label ====="
+            echo "BYTES=$(wc -c </tmp/${label}.b) HASH=$(sha256sum /tmp/${label}.b | awk '{print $1}')"
+            grep -Ei '^(HTTP/|cf-cache-status:|cache-control:|age:|etag:|last-modified:|x-nomadtips3-source:)' "/tmp/${label}.h" | tr -d '\r' || true
+            echo "HAS_APEX_REDIRECT=$(grep -Fq "location.hostname||'').toLowerCase()==='nomadtips3.com'" /tmp/${label}.b && echo yes || echo no)"
+            echo "HAS_WWW_TARGET=$(grep -Fq 'https://www.nomadtips3.com' /tmp/${label}.b && echo yes || echo no)"
+            grep -Eio '<title>[^<]*' /tmp/${label}.b | head -1 || true
+          }
+
+          check apex "https://nomadtips3.com/?cache_diag=${GITHUB_RUN_ID}"
+          check apex_nocache "https://nomadtips3.com/?cache_diag_nocache=${GITHUB_RUN_ID}"
+          check pages "https://mccareysupon-png.github.io/nomadtips3-live-test/?cache_diag=${GITHUB_RUN_ID}"
+
+          echo '===== REPO ====='
+          echo "BYTES=$(wc -c <index.html) HASH=$(sha256sum index.html | awk '{print $1}')"
+          echo "HAS_APEX_REDIRECT=$(grep -Fq "location.hostname||'').toLowerCase()==='nomadtips3.com'" index.html && echo yes || echo no)"
+          echo "HAS_WWW_TARGET=$(grep -Fq 'https://www.nomadtips3.com' index.html && echo yes || echo no)"
+
+      - name: Test cache purge permission without changing cache
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          # Deliberately invalid empty-file purge: this checks authentication/permission path but cannot purge a real URL.
+          code="$(curl -sS "${auth[@]}" -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+            --data '{"files":[]}' -o /tmp/purge-permission.json -w '%{http_code}')"
+          echo "PURGE_PERMISSION_HTTP=$code"
+          cat /tmp/purge-permission.json
