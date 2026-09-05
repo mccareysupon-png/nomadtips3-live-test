@@ -3,11 +3,11 @@
   "policy": "KING_DEFAULT_40_188",
   "status": "OK",
   "last_selection_run": "2026-09-05T12:48:08Z",
-  "last_settlement_run": "2026-09-05T10:44:15Z",
+  "last_settlement_run": "2026-09-05T13:53:59Z",
   "selection_date": "2026-09-05",
   "fixtures_seen": 510,
   "qualified": 143,
-  "pending": 143,
+  "pending": 133,
   "max_daily_picks": null,
   "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
@@ -387,11 +387,11 @@
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": true,
-    "index_rows": 745,
-    "odds_rows": 739,
-    "h2h_static_ok": 508,
-    "h2h_browser_fallback": 2,
+    "odds_ok": false,
+    "index_rows": 739,
+    "odds_rows": 0,
+    "h2h_static_ok": 0,
+    "h2h_browser_fallback": 0,
     "errors": []
   },
   "policy_limits": {
@@ -416,5 +416,23 @@
     "No daily pick-count cap.",
     "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw model side.",
     "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
-  ]
+  ],
+  "settled_this_run": 10,
+  "settlement_fallback": {
+    "mode": "DISABLED",
+    "reason": "Goaloo direct index is authoritative",
+    "last_run": "2026-09-05T13:53:59Z"
+  },
+  "direct_reconcile": {
+    "source": "goaloo-bf_us-direct-index",
+    "index_ok": true,
+    "index_rows": 739,
+    "trusted_settled": 10,
+    "reset_untrusted": 0,
+    "missing_ids": 16,
+    "team_mismatch": 0,
+    "invalid_scores": 0,
+    "non_terminal": 117,
+    "last_run": "2026-09-05T13:53:59Z"
+  }
 }
