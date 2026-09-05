@@ -3,13 +3,14 @@
 
 const HEALTH_URL='https://nomadtips3-live-engine.mccarey-supon.workers.dev/health';
 const CARD_ID='nowgoalMonitorCard';
-const POLL_MS=10_000;
-let busy=false;
+const nativeFetch=window.fetch.bind(window);
+let latestPayload=null,latestLatency=null,latestError=null;
 
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const num=value=>finite(value)?Number(value):0;
 const pct=(value,total)=>total>0?Math.max(0,Math.min(100,Math.round(value/total*100))):null;
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const requestUrl=input=>typeof input==='string'?input:(input?.url||'');
 
 function stateFor(payload,source){
   if(!payload||payload.ok===false)return ['ERROR','state-error'];
@@ -20,6 +21,10 @@ function stateFor(payload,source){
   return status?[status,'state-unlinked']:['NO TELEMETRY','state-degraded'];
 }
 
+function offlineMarkup(error){
+  return `<article class="system-card" id="${CARD_ID}"><div class="card-top"><div><div class="system-name">Nowgoal · AH Referee</div><div class="role">LIVE AH PRICE CONSENSUS · 20 BOOKMAKERS</div></div><span class="state-badge state-offline">OFFLINE</span></div><div class="load-row"><div class="load-head"><span>PRICE COVERAGE</span><b>—</b></div><div class="bar"><i style="width:0%"></i></div><div class="load-head"><span>Telemetry unavailable</span><span>20 bookmaker identities</span></div></div><div class="note">Monitor contact failed: ${esc(error||'UNAVAILABLE')}</div></article>`;
+}
+
 function cardMarkup(payload,latency){
   const source=payload?.source?.oddspedia||{};
   const checked=num(source.checked),mapped=num(source.mapped),ready=num(source.ready),selected=num(source.selected);
@@ -27,7 +32,7 @@ function cardMarkup(payload,latency){
   const [state,stateClass]=stateFor(payload,source);
   const width=coverage==null?0:coverage;
   const sourceStatus=String(source.status||'—').replaceAll('_',' ');
-  const note=source.error?`Source error: ${source.error}`:'Read-only monitor · telemetry from NOMAD Live Engine · does not alter AH referee or price selection.';
+  const note=source.error?`Source error: ${source.error}`:'Read-only monitor · reuses NOMAD Live Engine health telemetry · no extra health polling.';
   return `<article class="system-card" id="${CARD_ID}">
     <div class="card-top"><div><div class="system-name">Nowgoal · AH Referee</div><div class="role">LIVE AH PRICE CONSENSUS · 20 BOOKMAKERS</div></div><span class="state-badge ${stateClass}">${esc(state)}</span></div>
     <div class="load-row"><div class="load-head"><span>PRICE COVERAGE</span><b>${coverage==null?'—':`${coverage}%`}</b></div><div class="bar"><i style="width:${width}%"></i></div><div class="load-head"><span>${mapped}/${checked} mapped</span><span>20 bookmaker identities</span></div></div>
@@ -54,29 +59,29 @@ function placeCard(markup){
   if(!grid)return;
   const old=document.getElementById(CARD_ID);if(old)old.remove();
   const liveEngine=[...grid.querySelectorAll('.system-card')].find(card=>card.querySelector('.system-name')?.textContent.trim()==='NOMAD Live Engine');
-  if(liveEngine)liveEngine.insertAdjacentHTML('afterend',markup);else grid.insertAdjacentHTML('beforeend',markup);
+  if(liveEngine)liveEngine.insertAdjacentHTML('afterend',markup);else if(grid.children.length)grid.insertAdjacentHTML('beforeend',markup);
 }
 
-async function refresh(){
-  if(busy||document.hidden)return;busy=true;
-  const started=performance.now();
-  try{
-    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);
-    try{
-      const response=await fetch(`${HEALTH_URL}?_nowgoal_monitor=${Date.now()}`,{cache:'no-store',signal:controller.signal});
-      const latency=Math.round(performance.now()-started);
-      if(!response.ok)throw new Error(`HTTP ${response.status}`);
-      const payload=await response.json();
-      placeCard(cardMarkup(payload,latency));
-    }finally{clearTimeout(timer)}
-  }catch(error){
-    placeCard(`<article class="system-card" id="${CARD_ID}"><div class="card-top"><div><div class="system-name">Nowgoal · AH Referee</div><div class="role">LIVE AH PRICE CONSENSUS · 20 BOOKMAKERS</div></div><span class="state-badge state-offline">OFFLINE</span></div><div class="load-row"><div class="load-head"><span>PRICE COVERAGE</span><b>—</b></div><div class="bar"><i style="width:0%"></i></div><div class="load-head"><span>Telemetry unavailable</span><span>20 bookmaker identities</span></div></div><div class="note">Monitor contact failed: ${esc(error?.name==='AbortError'?'TIMEOUT':error?.message||error)}</div></article>`);
-  }finally{busy=false}
+function renderLatest(){
+  if(latestError)return placeCard(offlineMarkup(latestError));
+  if(latestPayload)return placeCard(cardMarkup(latestPayload,latestLatency));
 }
+
+window.fetch=async function(input,init){
+  const url=requestUrl(input),isLiveEngineHealth=url.startsWith(HEALTH_URL),started=isLiveEngineHealth?performance.now():0;
+  try{
+    const response=await nativeFetch(input,init);
+    if(isLiveEngineHealth){
+      latestLatency=Math.round(performance.now()-started);latestError=response.ok?null:`HTTP ${response.status}`;
+      response.clone().json().then(payload=>{latestPayload=payload;latestError=response.ok?null:`HTTP ${response.status}`;setTimeout(renderLatest,0)}).catch(error=>{latestPayload=null;latestError=String(error?.message||error);setTimeout(renderLatest,0)});
+    }
+    return response;
+  }catch(error){
+    if(isLiveEngineHealth){latestPayload=null;latestError=String(error?.name==='AbortError'?'TIMEOUT':error?.message||error);setTimeout(renderLatest,0)}
+    throw error;
+  }
+};
 
 const grid=document.getElementById('systemsGrid');
-if(grid)new MutationObserver(()=>{if(!document.getElementById(CARD_ID))setTimeout(refresh,25)}).observe(grid,{childList:true});
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
-setTimeout(refresh,250);
-setInterval(refresh,POLL_MS);
+if(grid)new MutationObserver(()=>{if(!document.getElementById(CARD_ID)&&(latestPayload||latestError))setTimeout(renderLatest,0)}).observe(grid,{childList:true});
 })();
