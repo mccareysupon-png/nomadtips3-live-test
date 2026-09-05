@@ -7,6 +7,7 @@ on:
       - 'nomad-live-342/signal.html'
       - 'nomad-live-342/statistics.html'
       - 'nomad-live-342/nomad342-tabs.css'
+      - 'nomad-live-342/nomad342-tabs.js'
       - 'nomad-live-342/ledger-pages.css'
       - 'nomad-live-342/ledger-runtime.js'
       - 'nomad-live-342/signal-ledger.js'
@@ -21,6 +22,7 @@ on:
       - 'nomad-live-342/signal.html'
       - 'nomad-live-342/statistics.html'
       - 'nomad-live-342/nomad342-tabs.css'
+      - 'nomad-live-342/nomad342-tabs.js'
       - 'nomad-live-342/ledger-pages.css'
       - 'nomad-live-342/ledger-runtime.js'
       - 'nomad-live-342/signal-ledger.js'
@@ -49,7 +51,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Validate isolated 3.42 ledger and pages
+      - name: Validate isolated 3.42 ledger and tabs
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-342-ledger/src/index.js
@@ -57,31 +59,36 @@ jobs:
           node --check nomad-live-342/api-football-candidate-layer.js
           node --check nomad-live-342/signal-ledger.js
           node --check nomad-live-342/statistics-ledger.js
+          node --check nomad-live-342/nomad342-tabs.js
           cd workers/nomadtips3-342-ledger
           npm test
-      - name: Verify navigation and isolation contract
+      - name: Verify real-tab and isolation contract
         run: |
           set -euo pipefail
-          test -f nomad-live-342/signal.html
-          test -f nomad-live-342/statistics.html
-          grep -Fq 'data-nomad342-nav="1"' nomad-live-342/index.html
-          grep -Fq 'href="signal.html"' nomad-live-342/index.html
-          grep -Fq 'href="statistics.html"' nomad-live-342/index.html
-          grep -Fq 'WIN ÷ (WIN + LOSS)' nomad-live-342/statistics.html
+          grep -Fq 'role="tablist"' nomad-live-342/index.html
+          grep -Fq 'data-tab="live-score"' nomad-live-342/index.html
+          grep -Fq 'data-tab="signal"' nomad-live-342/index.html
+          grep -Fq 'data-tab="statistics"' nomad-live-342/index.html
+          grep -Fq 'data-panel="live-score"' nomad-live-342/index.html
+          grep -Fq 'data-panel="signal"' nomad-live-342/index.html
+          grep -Fq 'data-panel="statistics"' nomad-live-342/index.html
+          grep -Fq 'WIN ÷ (WIN + LOSS)' nomad-live-342/index.html
+          grep -Fq "location.replace('./#signal')" nomad-live-342/signal.html
+          grep -Fq "location.replace('./#statistics')" nomad-live-342/statistics.html
           grep -Fq "base:'https://nomadtips3-342-ledger.mccarey-supon.workers.dev'" nomad-live-342/ledger-runtime.js
           grep -Fq "postLedger(ledgerPayload(id,r,row))" nomad-live-342/api-football-candidate-layer.js
           grep -Fq 'oneSignalPerMatch:true' nomad-live-342/event-config.js
           changed="$(git diff --name-only origin/main...HEAD 2>/dev/null || true)"
           if echo "$changed" | grep -Eq '^nomad-live/'; then
-            echo '::error::Legacy Signal/Statistics files changed; 3.42 isolation violated'; echo "$changed"; exit 1
+            echo '::error::Legacy NOMAD files changed; 3.42 isolation violated'; echo "$changed"; exit 1
           fi
           if echo "$changed" | grep -Eq '^nomad-live-score-feed-v3/'; then
-            echo '::error::Live-score V3 feed changed; 3.42 ledger must not touch it'; echo "$changed"; exit 1
+            echo '::error::Live-score V3 feed changed; 3.42 tabs must not touch it'; echo "$changed"; exit 1
           fi
           if echo "$changed" | grep -Eq '^workers/nomadtips3-market-engine/'; then
-            echo '::error::Market Engine changed; ledger must remain isolated'; echo "$changed"; exit 1
+            echo '::error::Market Engine changed; tabs/ledger must remain isolated'; echo "$changed"; exit 1
           fi
-          echo '3.42 UI + ledger isolated; live feed, legacy pages, and market engine sealed.'
+          echo '3.42 real tabs + ledger isolated; live feed, legacy pages, and market engine sealed.'
 
   deploy:
     needs: validate
