@@ -1,0 +1,39 @@
+name: Inspect Legacy Worker Services
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/inspect-legacy-worker-services.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Inspect Workers service and environment APIs
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          probe(){
+            label="$1"; url="$2"
+            code="$(curl -sS "${auth[@]}" -o "/tmp/${label}.json" -w '%{http_code}' "$url")"
+            echo "===== ${label} HTTP=${code} ====="
+            cat "/tmp/${label}.json"
+            echo
+          }
+
+          probe services "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/services"
+          probe car35-preview-envs "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/services/nomadtips3-car35-preview/environments"
+          probe car35-envs "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/services/nomadtips3-car35/environments"
+          probe car35-production-envs "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/services/car35-production/environments"
+          probe nomad-car35-production-envs "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/services/nomadtips3-car35-production/environments"
