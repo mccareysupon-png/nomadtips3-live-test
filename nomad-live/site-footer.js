@@ -65,7 +65,7 @@
     const nav=document.createElement('nav');
     nav.className='nomad-info-linkrail';
     nav.setAttribute('aria-label','NOMADTIPS3 information pages');
-    nav.innerHTML='<a href="/about/">About Us</a><span class="sep">|</span><a href="/user-guide/">User Guide</a><span class="sep">|</span><a href="/privacy/">Privacy Policy</a><span class="sep">|</span><a href="/terms/">Terms of Service</a><span class="sep">|</span><a href="/disclaimer/">Disclaimer</a>';
+    nav.innerHTML='<a href="https://www.nomadtips3.com/prediction2">Soccer Predictions</a><span class="sep">|</span><a href="/about/">About Us</a><span class="sep">|</span><a href="/user-guide/">User Guide</a><span class="sep">|</span><a href="/privacy/">Privacy Policy</a><span class="sep">|</span><a href="/terms/">Terms of Service</a><span class="sep">|</span><a href="/disclaimer/">Disclaimer</a>';
     footer.querySelector('.site-footer-inner')?.appendChild(nav);
   }
 
