@@ -4,36 +4,6 @@ const runtime=window.NOMAD342_LEDGER_RUNTIME||{};
 const base=String(runtime.base||'').replace(/\/$/,'');
 const tbody=document.getElementById('statsRows');
 const status=document.getElementById('statsStatus');
-const statsPanel=document.getElementById('nomad342PanelStatistics');
-function prepareSummary(){
-  const grid=statsPanel?.querySelector('.ledger-summary');
-  if(!grid)return;
-  grid.classList.add('statistics-summary');
-  const total=document.getElementById('statsTotal')?.closest('article');
-  const push=document.getElementById('statsPush')?.closest('article');
-  const winRate=document.getElementById('statsWinRate')?.closest('article');
-  if(total&&!document.getElementById('statsDay')){
-    const day=document.createElement('article');
-    day.className='metric';
-    day.innerHTML='<span>DAY</span><strong id="statsDay">—</strong><small>active ledger days</small>';
-    total.insertAdjacentElement('afterend',day);
-  }
-  if(push){
-    const label=push.querySelector('span'),value=push.querySelector('strong'),small=push.querySelector('small');
-    if(label)label.textContent='DRAW';
-    if(value)value.id='statsDraw';
-    if(small)small.textContent='returned stake';
-  }
-  if(winRate&&!document.getElementById('statsAvgOdds')){
-    const avg=document.createElement('article');
-    avg.className='metric';
-    avg.innerHTML='<span>AVG ODDS</span><strong id="statsAvgOdds">—</strong><small>settled predictions</small>';
-    winRate.insertAdjacentElement('beforebegin',avg);
-  }
-  const note=statsPanel?.querySelector('.note');
-  if(note)note.textContent='Statistics are generated from locked 3.42 Signal records only. DRAW is the display label for settlement PUSH and is excluded from the Win Rate denominator.';
-}
-prepareSummary();
 const metrics={
   total:document.getElementById('statsTotal'),
   day:document.getElementById('statsDay'),
@@ -78,18 +48,18 @@ function currentLive(row){
 }
 function finalDisplay(row){
   const settledScore=scorePair(row?.finalScore);
-  if(settledScore)return {score:pair(settledScore),minute:null,live:false};
+  if(settledScore)return pair(settledScore);
   const result=String(row?.result||'PENDING').toUpperCase();
-  if(result!=='PENDING')return null;
+  if(result!=='PENDING')return '—';
   const live=currentLive(row),liveScore=scorePair(live?.score),minute=finite(live?.minute);
-  if(liveScore&&minute!==null)return {score:pair(liveScore),minute:Math.max(0,Math.trunc(minute)),live:true};
-  return null;
+  if(liveScore&&minute!==null)return `${pair(liveScore)} · ${Math.max(0,Math.trunc(minute))}′`;
+  return '—';
 }
 function finalHtml(row){
-  const value=finalDisplay(row);
-  if(!value)return '—';
-  if(value.live)return `${esc(value.score)} · <span class="live-minute">${esc(value.minute)}′</span>`;
-  return esc(value.score);
+  const text=finalDisplay(row);
+  const liveMatch=/^(.*? · )(\d+′)$/.exec(text);
+  if(!liveMatch)return esc(text);
+  return `${esc(liveMatch[1])}<span class="live-minute">${esc(liveMatch[2])}</span>`;
 }
 function fallbackDays(rows){
   return new Set(rows.map(row=>bangkokDayKey(row?.lockedAt)).filter(Boolean)).size;

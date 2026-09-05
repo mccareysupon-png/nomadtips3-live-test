@@ -36,7 +36,7 @@
   <link rel="stylesheet" href="event-timeline-dual-rail.css?v=20260902-v2">
   <link rel="stylesheet" href="vintage-trading-chart.css?v=20260904-card-palette-v1">
   <link rel="stylesheet" href="nomad342-tabs.css?v=20260905-v2">
-  <link rel="stylesheet" href="ledger-pages.css?v=20260905-live-mirror-v2">
+  <link rel="stylesheet" href="ledger-pages.css?v=20260905-stats-kpi-repair-v1">
 </head>
 <body data-page="live" data-vintage-chart-page="page2">
   <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="index.html">Live Score</a></nav><div class="source-pill"><span class="dot"></span>LIVE SCORE</div></div></header>
@@ -95,18 +95,20 @@
     </section>
 
     <section class="nomad342-tab-panel" id="nomad342PanelStatistics" role="tabpanel" aria-labelledby="nomad342TabStatistics" data-panel="statistics" hidden aria-hidden="true">
-      <section class="status-grid ledger-summary" aria-label="Statistics summary">
-        <article class="metric"><span>TOTAL PREDICTIONS</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
+      <section class="status-grid ledger-summary statistics-summary" aria-label="Statistics summary">
+        <article class="metric"><span>TOTAL</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
+        <article class="metric"><span>DAY</span><strong id="statsDay">—</strong><small>active ledger days</small></article>
         <article class="metric signal"><span>WIN</span><strong id="statsWin">—</strong><small>settled</small></article>
         <article class="metric"><span>LOSS</span><strong id="statsLoss">—</strong><small>settled</small></article>
-        <article class="metric"><span>PUSH</span><strong id="statsPush">—</strong><small>excluded from win rate</small></article>
+        <article class="metric"><span>DRAW</span><strong id="statsDraw">—</strong><small>returned stake</small></article>
+        <article class="metric"><span>AVG ODDS</span><strong id="statsAvgOdds">—</strong><small>settled predictions</small></article>
         <article class="metric"><span>WIN RATE</span><strong id="statsWinRate">—</strong><small>WIN ÷ (WIN + LOSS)</small></article>
       </section>
       <section class="panel ledger-panel">
         <div class="panel-head"><div><p class="eyebrow">PREDICTION LEDGER</p><h2>1X2 + Over/Under</h2></div><span class="ledger-status" id="statsStatus">Connecting 3.42 ledger…</span></div>
         <div class="stats-table-wrap"><table class="stats342-table"><thead><tr><th>TIME</th><th>MATCH</th><th>MARKET</th><th>PICK</th><th>ODDS</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody id="statsRows"><tr><td colspan="9">Connecting NOMAD 3.42 statistics ledger…</td></tr></tbody></table></div>
       </section>
-      <div class="note">Statistics are generated from locked 3.42 Signal records only. PUSH is excluded from the Win Rate denominator.</div>
+      <div class="note">Statistics are generated from locked 3.42 Signal records only. DRAW is the display label for settlement PUSH and is excluded from the Win Rate denominator.</div>
     </section>
   </main>
 
@@ -131,7 +133,7 @@
   <script src="vintage-trading-chart.js?v=20260904-card-palette-v1" defer></script>
   <script src="nomad342-tabs.js?v=20260905-v1" defer></script>
   <script src="signal-ledger.js?v=20260905-live-mirror-v2" defer></script>
-  <script src="statistics-ledger.js?v=20260905-live-mirror-v2" defer></script>
+  <script src="statistics-ledger.js?v=20260905-stats-kpi-repair-v1" defer></script>
   <script>
     (()=>{
       const rebrandText=node=>{
