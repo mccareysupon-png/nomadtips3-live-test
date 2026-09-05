@@ -4,9 +4,25 @@ const runtime=window.NOMAD342_MARKET_RUNTIME||{};
 const ledgerRuntime=window.NOMAD342_LEDGER_RUNTIME||{};
 const STORE_KEY='nomad342ApiFootballPredictionsV1';
 const LEDGER_OUTBOX_KEY='nomad342LedgerOutboxV1';
+const PICK_GATE_KEY='nomad342PickGateV1';
+const PICK_GATE_DEFAULTS=Object.freeze({
+  minuteFrom:0,minuteTo:120,
+  priceFreshnessEnabled:false,maximumPriceAgeSeconds:90,
+  allowHome:true,allowDraw:true,allowAway:true,
+  oneXtwoMinProbability:0,oneXtwoMinLead:0,oneXtwoMinEdge:-100,
+  oneXtwoOddsMin:1.01,oneXtwoOddsMax:6,
+  oneXtwoPressureConfirm:false,oneXtwoSidePressureMin:0,oneXtwoDrawBalanceMax:50,
+  oneXtwoRejectSelectedSideIfTrailing:false,
+  allowOver:true,allowUnder:true,
+  totalsMinProbability:0,totalsMinLead:0,totalsMinEdge:-100,
+  totalsOddsMin:1.01,totalsOddsMax:6,
+  totalsActivityConfirm:false,overMinRecentShots:0,overMinRecentSot:0,
+  underMaxRecentShots:99,underMaxRecentSot:99
+});
 const MAX_ATTEMPTS=3;
 const RETRY_DELAYS=[0,45000,120000];
 const LEDGER_RETRY_DELAYS=[0,15000,45000,120000,300000];
+const GATE_RECHECK_MS=15000;
 const state=new Map();
 let busy=false,ledgerBusy=false;
 
@@ -17,6 +33,7 @@ function load(){try{return JSON.parse(sessionStorage.getItem(STORE_KEY)||'{}')||
 function save(store){try{sessionStorage.setItem(STORE_KEY,JSON.stringify(store))}catch{}}
 function loadOutbox(){try{return JSON.parse(localStorage.getItem(LEDGER_OUTBOX_KEY)||'{}')||{}}catch{return {}}}
 function saveOutbox(store){try{localStorage.setItem(LEDGER_OUTBOX_KEY,JSON.stringify(store));return true}catch{return false}}
+function pickGateSettings(){try{return {...PICK_GATE_DEFAULTS,...JSON.parse(localStorage.getItem(PICK_GATE_KEY)||'{}')}}catch{return {...PICK_GATE_DEFAULTS}}}
 function lockedFor(id){const row=load()[String(id)];return row?.status==='PREDICTED'?row:null}
 function remember(id,row){const store=load();store[String(id)]={...row,status:'PREDICTED',ledgerStatus:row?.ledgerStatus||'PENDING',savedAt:Date.now()};save(store)}
 function setLedgerStatus(id,status,extra={}){const store=load(),key=String(id),row=store[key];if(!row)return;store[key]={...row,ledgerStatus:status,...extra};save(store)}
@@ -42,6 +59,42 @@ function prediction(r,market){
   }
   const [overPct,underPct]=normalize2(over,under),ouPick=overPct>=underPct?'OVER':'UNDER';
   return {oneXtwo:{pick:onePick,home:homePct,draw:drawPct,away:awayPct},totals:{pick:ouPick,line,over:overPct,under:underPct}};
+}
+function selectedOddsOne(market,pick){return finite(pick==='HOME'?market?.oneXtwo?.home:pick==='DRAW'?market?.oneXtwo?.draw:market?.oneXtwo?.away)}
+function selectedOddsTotals(market,pick){return finite(pick==='OVER'?market?.totals?.over:market?.totals?.under)}
+function selectedProbabilityOne(pred,pick){return finite(pick==='HOME'?pred?.home:pick==='DRAW'?pred?.draw:pred?.away)}
+function selectedProbabilityTotals(pred,pick){return finite(pick==='OVER'?pred?.over:pred?.under)}
+function oddsWithin(value,min,max){return value!==null&&value>=Number(min)&&value<=Number(max)}
+function evaluatePickGate(r,row){
+  const c=pickGateSettings(),m=r?.m||{},em=r?.event?.metrics||{},market=row?.market||{},p=row?.prediction||{},globalReasons=[];
+  const minute=finite(m.minute),observedAt=finite(market.observedAt);
+  if(minute===null||minute<c.minuteFrom||minute>c.minuteTo)globalReasons.push(`minute outside ${c.minuteFrom}-${c.minuteTo}`);
+  if(c.priceFreshnessEnabled){if(observedAt===null)globalReasons.push('market timestamp missing');else if(Date.now()-observedAt>Number(c.maximumPriceAgeSeconds)*1000)globalReasons.push('market price stale')}
+
+  const onePick=String(p?.oneXtwo?.pick||'').toUpperCase(),oneProb=selectedProbabilityOne(p.oneXtwo,onePick),oneOdds=selectedOddsOne(market,onePick);
+  const oneValues=[finite(p?.oneXtwo?.home),finite(p?.oneXtwo?.draw),finite(p?.oneXtwo?.away)].filter(v=>v!==null).sort((a,b)=>b-a),oneLead=oneValues.length>1?oneValues[0]-oneValues[1]:0;
+  const [ih,id,ia]=implied([market?.oneXtwo?.home,market?.oneXtwo?.draw,market?.oneXtwo?.away]),impliedOne=(onePick==='HOME'?ih:onePick==='DRAW'?id:ia)*100,oneEdge=oneProb===null?null:oneProb-impliedOne;
+  const oneReasons=[];
+  if((onePick==='HOME'&&!c.allowHome)||(onePick==='DRAW'&&!c.allowDraw)||(onePick==='AWAY'&&!c.allowAway)||!['HOME','DRAW','AWAY'].includes(onePick))oneReasons.push(`${onePick||'1X2'} disabled`);
+  if(oneProb===null||oneProb<Number(c.oneXtwoMinProbability))oneReasons.push('1X2 probability below minimum');
+  if(oneLead<Number(c.oneXtwoMinLead))oneReasons.push('1X2 lead below minimum');
+  if(oneEdge===null||oneEdge<Number(c.oneXtwoMinEdge))oneReasons.push('1X2 edge below minimum');
+  if(!oddsWithin(oneOdds,c.oneXtwoOddsMin,c.oneXtwoOddsMax))oneReasons.push('1X2 odds outside range');
+  if(c.oneXtwoPressureConfirm){const hp=finite(em.pressureShare);if(hp===null)oneReasons.push('pressure unavailable');else if(onePick==='HOME'&&hp<Number(c.oneXtwoSidePressureMin))oneReasons.push('HOME pressure below minimum');else if(onePick==='AWAY'&&(100-hp)<Number(c.oneXtwoSidePressureMin))oneReasons.push('AWAY pressure below minimum');else if(onePick==='DRAW'&&Math.abs(hp-50)>Number(c.oneXtwoDrawBalanceMax))oneReasons.push('DRAW pressure imbalance too high')}
+  if(c.oneXtwoRejectSelectedSideIfTrailing){const sh=finite(m?.score?.[0]),sa=finite(m?.score?.[1]);if(sh===null||sa===null)oneReasons.push('score unavailable');else if(onePick==='HOME'&&sh<sa)oneReasons.push('HOME currently trailing');else if(onePick==='AWAY'&&sa<sh)oneReasons.push('AWAY currently trailing')}
+
+  const totPick=String(p?.totals?.pick||'').toUpperCase(),totProb=selectedProbabilityTotals(p.totals,totPick),totOdds=selectedOddsTotals(market,totPick),totOther=totPick==='OVER'?finite(p?.totals?.under):finite(p?.totals?.over),totLead=totProb===null||totOther===null?0:totProb-totOther;
+  const [io,iu]=implied([market?.totals?.over,market?.totals?.under]),impliedTot=(totPick==='OVER'?io:iu)*100,totEdge=totProb===null?null:totProb-impliedTot;
+  const totalShots=(finite(em.hSot)??0)+(finite(em.aSot)??0)+(finite(em.hOff)??0)+(finite(em.aOff)??0),totalSot=(finite(em.hSot)??0)+(finite(em.aSot)??0),totReasons=[];
+  if((totPick==='OVER'&&!c.allowOver)||(totPick==='UNDER'&&!c.allowUnder)||!['OVER','UNDER'].includes(totPick))totReasons.push(`${totPick||'O/U'} disabled`);
+  if(totProb===null||totProb<Number(c.totalsMinProbability))totReasons.push('O/U probability below minimum');
+  if(totLead<Number(c.totalsMinLead))totReasons.push('O/U lead below minimum');
+  if(totEdge===null||totEdge<Number(c.totalsMinEdge))totReasons.push('O/U edge below minimum');
+  if(!oddsWithin(totOdds,c.totalsOddsMin,c.totalsOddsMax))totReasons.push('O/U odds outside range');
+  if(c.totalsActivityConfirm){if(totPick==='OVER'&&(totalShots<Number(c.overMinRecentShots)||totalSot<Number(c.overMinRecentSot)))totReasons.push('OVER activity below minimum');if(totPick==='UNDER'&&(totalShots>Number(c.underMaxRecentShots)||totalSot>Number(c.underMaxRecentSot)))totReasons.push('UNDER activity above maximum')}
+
+  const globalPass=globalReasons.length===0,onePass=oneReasons.length===0,totalsPass=totReasons.length===0;
+  return {pass:globalPass&&onePass&&totalsPass,global:{pass:globalPass,reasons:globalReasons},oneXtwo:{pass:onePass,pick:onePick,probability:oneProb,lead:Number(oneLead.toFixed(1)),edge:oneEdge===null?null:Number(oneEdge.toFixed(1)),odds:oneOdds,reasons:oneReasons},totals:{pass:totalsPass,pick:totPick,probability:totProb,lead:Number(totLead.toFixed(1)),edge:totEdge===null?null:Number(totEdge.toFixed(1)),odds:totOdds,totalShots,totalSot,reasons:totReasons}};
 }
 function fmt(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
 function panelHtml(row){const m=row.market,p=row.prediction;return `<section class="api-football-candidate-card"><div class="afc-head"><div><span>API-FOOTBALL · ONE-SHOT REFEREE</span><small>K Default passed → 1X2 + OVER/UNDER</small></div><strong>PREDICTION LOCKED</strong></div><div class="afc-grid"><article><span>1X2</span><strong>${esc(p.oneXtwo.pick)}</strong><small>H ${p.oneXtwo.home}% · X ${p.oneXtwo.draw}% · A ${p.oneXtwo.away}%</small><div>1 @ ${esc(fmt(m.oneXtwo.home))} · X @ ${esc(fmt(m.oneXtwo.draw))} · 2 @ ${esc(fmt(m.oneXtwo.away))}</div></article><article><span>OVER / UNDER ${esc(String(p.totals.line))}</span><strong>${esc(p.totals.pick)}</strong><small>OVER ${p.totals.over}% · UNDER ${p.totals.under}%</small><div>O @ ${esc(fmt(m.totals.over))} · U @ ${esc(fmt(m.totals.under))}</div></article></div><div class="afc-foot">API STOPPED FOR THIS MATCH · ${esc(m.fixture?.home||'')} vs ${esc(m.fixture?.away||'')} · upstream requests ${esc(m.requestsUsed??'—')} · fixture cache ${esc(m.fixtureCache||'—')}</div></section>`}
@@ -99,8 +152,8 @@ function recoverLockedRows(){
   }
 }
 function scheduleFailure(id,error){const current=state.get(id)||{attempts:0,nextAt:0},attempts=current.attempts+1;state.set(id,{attempts,nextAt:attempts>=MAX_ATTEMPTS?Infinity:Date.now()+RETRY_DELAYS[Math.min(attempts,RETRY_DELAYS.length-1)],error:String(error?.message||error)})}
-async function runOne(id,r){busy=true;try{const market=await fetchCandidate(r);if(!market.oneXtwo||!market.totals)throw new Error('markets_incomplete');const row={market,prediction:prediction(r,market)};remember(id,row);state.set(id,{attempts:0,nextAt:Infinity,done:true});hydrateAll();postLedger(ledgerPayload(id,r,row))}catch(error){scheduleFailure(id,error)}finally{busy=false;setTimeout(scan,900)}}
-function scan(){hydrateAll();recoverLockedRows();flushLedgerOutbox();if(busy)return;const byId=resultById(),now=Date.now();for(const [id,r] of byId){if(!r?.event?.pass||lockedFor(id))continue;const s=state.get(id)||{attempts:0,nextAt:0};if(s.attempts>=MAX_ATTEMPTS||now<s.nextAt)continue;runOne(id,r);return}}
-function start(){if(document.body?.dataset?.page!=='live')return;const list=document.getElementById('matchList');if(!list)return;let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan()})};new MutationObserver(queue).observe(list,{childList:true});list.addEventListener('click',()=>setTimeout(hydrateAll,0));setInterval(scan,15000);setInterval(flushLedgerOutbox,15000);queue();flushLedgerOutbox();window.__nomad342ApiFootballCandidate={scan,storeKey:STORE_KEY,outboxKey:LEDGER_OUTBOX_KEY,maxAttempts:MAX_ATTEMPTS,flushLedgerOutbox}}
+async function runOne(id,r){busy=true;try{const market=await fetchCandidate(r);if(!market.oneXtwo||!market.totals)throw new Error('markets_incomplete');const row={market,prediction:prediction(r,market)},gate=evaluatePickGate(r,row);if(!gate.pass){state.set(id,{attempts:0,nextAt:Date.now()+GATE_RECHECK_MS,gate});return;}row.pickGate=gate;remember(id,row);state.set(id,{attempts:0,nextAt:Infinity,done:true,gate});hydrateAll();postLedger(ledgerPayload(id,r,row))}catch(error){scheduleFailure(id,error)}finally{busy=false;setTimeout(scan,900)}}
+function scan(){hydrateAll();recoverLockedRows();flushLedgerOutbox();if(busy)return;const byId=resultById(),now=Date.now(),c=pickGateSettings();for(const [id,r] of byId){if(!r?.event?.metrics||lockedFor(id))continue;const minute=finite(r?.m?.minute);if(minute===null||minute<c.minuteFrom||minute>c.minuteTo)continue;const s=state.get(id)||{attempts:0,nextAt:0};if(s.attempts>=MAX_ATTEMPTS||now<s.nextAt)continue;runOne(id,r);return}}
+function start(){if(document.body?.dataset?.page!=='live')return;const list=document.getElementById('matchList');if(!list)return;let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan()})};new MutationObserver(queue).observe(list,{childList:true});list.addEventListener('click',()=>setTimeout(hydrateAll,0));setInterval(scan,15000);setInterval(flushLedgerOutbox,15000);window.addEventListener('storage',event=>{if(event.key===PICK_GATE_KEY){state.clear();queue();}});document.addEventListener('nomad342:pickgatesaved',()=>{state.clear();queue();});queue();flushLedgerOutbox();window.__nomad342ApiFootballCandidate={scan,storeKey:STORE_KEY,outboxKey:LEDGER_OUTBOX_KEY,pickGateKey:PICK_GATE_KEY,maxAttempts:MAX_ATTEMPTS,flushLedgerOutbox,evaluatePickGate}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
