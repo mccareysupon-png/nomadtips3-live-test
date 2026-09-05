@@ -112,7 +112,7 @@ const mountFooterRail=()=>{
   nav.className='nomad-342-info-linkrail';
   nav.setAttribute('aria-label','NOMADTIPS3 information pages');
   const links=[
-    ['Soccer Precictions','../soccer-predictions/'],
+    ['Soccer Predictions','https://www.nomadtips3.com/prediction2'],
     ['About Us','../about/'],
     ['User Guide','../user-guide/'],
     ['Privacy Policy','../privacy/'],
