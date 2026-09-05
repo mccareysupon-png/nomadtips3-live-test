@@ -1,0 +1,49 @@
+name: Search CAR35 Worker Services
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/search-car35-services.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  search:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Search Cloudflare Workers services and environments
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          for q in car35 production live-web; do
+            echo "===== SEARCH: $q ====="
+            code="$(curl -sS "${auth[@]}" -o "/tmp/search-${q}.json" -w '%{http_code}' \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts-search?name=${q}&per_page=100")"
+            echo "HTTP=$code"
+            cat "/tmp/search-${q}.json"
+            echo
+          done
+
+      - name: Inspect CAR35 preview script settings and deployments
+        shell: bash
+        run: |
+          set +e
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          script='nomadtips3-car35-preview'
+          for suffix in settings deployments versions; do
+            echo "===== $script/$suffix ====="
+            code="$(curl -sS "${auth[@]}" -o "/tmp/${suffix}.json" -w '%{http_code}' \
+              "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/${suffix}")"
+            echo "HTTP=$code"
+            cat "/tmp/${suffix}.json"
+            echo
+          done
