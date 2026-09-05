@@ -7,13 +7,12 @@ const list=()=>document.getElementById('matchList');
 let timer=null,running=false,lastPayload=null,lastError=null;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
-function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]))}
 function norm(v=''){return String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()}
 function compact(v=''){return norm(v).replace(/\s/g,'')}
 function teamScore(a,b){const x=norm(a),y=norm(b);if(!x||!y)return 0;if(x===y)return 1;if(compact(x)===compact(y))return .99;if(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)))return .9;const aa=new Set(x.split(' ').filter(Boolean)),bb=new Set(y.split(' ').filter(Boolean));let hit=0;for(const t of aa)if(bb.has(t))hit++;const union=aa.size+bb.size-hit;return union?hit/union:0}
 function fmtOdds(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';return `${n>0?'+':''}${Number.isInteger(n)?n.toFixed(1):n.toFixed(2)}`}
-function inverseLine(v){const n=finite(v);return n===null?null:-n}
 function observedAt(m){const rows=Array.isArray(m?.bookmakers)?m.bookmakers:[];const values=rows.map(b=>Number(b?.observedAt)).filter(Number.isFinite);const direct=Number(m?.observedAt);if(Number.isFinite(direct))values.push(direct);return values.length?Math.max(...values):null}
 function ageText(ms){if(!Number.isFinite(ms)||ms<0)return '—';if(ms<1000)return '<1s';if(ms<60000)return `${Math.floor(ms/1000)}s`;return `${Math.floor(ms/60000)}m`}
 
@@ -26,7 +25,7 @@ function mapMarket(eventMatch,marketMatches){
     const em=finite(eventMatch?.minute),mm=finite(market?.minute);
     if(em!==null&&mm!==null&&Math.abs(em-mm)<=8)score+=.03;
     if(Array.isArray(eventMatch?.score)&&Array.isArray(market?.score)&&Number(eventMatch.score[0])===Number(market.score[0])&&Number(eventMatch.score[1])===Number(market.score[1]))score+=.04;
-    candidates.push({market,score,h,a});
+    candidates.push({market,score});
   }
   candidates.sort((x,y)=>y.score-x.score);
   const best=candidates[0],second=candidates[1];
@@ -37,7 +36,7 @@ function mapMarket(eventMatch,marketMatches){
 
 function historyStore(){try{return JSON.parse(localStorage.getItem(runtime.historyKey)||'{}')||{}}catch{return {}}}
 function historyKey(m){return `${norm(m?.home)}__${norm(m?.away)}`}
-function snapshot(m){return {at:Number(m?.observedAt)||Date.now(),ah:m?.main?.ah||null,oneXtwo:m?.main?.oneXtwo||null,totals:m?.main?.totals||null}}
+function snapshot(m){return {at:Number(m?.observedAt)||Date.now(),oneXtwo:m?.main?.oneXtwo||null,totals:m?.main?.totals||null}}
 function remember(payload){
   if(!runtime.historyKey)return;
   const store=historyStore(),cutoff=Date.now()-2*60*60*1000,max=Math.max(4,Number(runtime.historyMaxRows)||24);
@@ -52,53 +51,18 @@ function previousSnapshot(m){const rows=historyStore()[historyKey(m)]||[];if(row
 function movement(current,previous){const a=finite(current),b=finite(previous);if(a===null||b===null)return {arrow:'',label:''};const d=a-b;if(Math.abs(d)<.005)return {arrow:'→',label:'steady'};return d<0?{arrow:'↓',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}:{arrow:'↑',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}}
 function moveHtml(label,current,previous){const m=movement(current,previous);return !m.arrow?'':`<span class="market-move"><b>${esc(label)}</b> ${esc(m.label||fmtOdds(current))} <i class="${m.arrow==='↓'?'down':m.arrow==='↑'?'up':'flat'}">${m.arrow}</i></span>`}
 
-function consensusUsable(data){
-  const strength=String(data?.strength||'MIXED').toUpperCase();
-  const share=finite(data?.weightedShare),minimum=Number(kMarket.moderateShare)||.58;
-  return ['MODERATE','STRONG'].includes(strength)&&(share===null||share>=minimum);
-}
-function kLiveNet(r,m){
-  const eventPass=Boolean(r?.event?.pass),books=Array.isArray(m?.bookmakers)?m.bookmakers:[],cons=m?.consensus||{};
-  const at=observedAt(m),age=Number.isFinite(at)?Date.now()-at:Infinity;
-  const maxAge=Math.min(Number(runtime.maxDisplayAgeMs)||30000,Number(kMarket.maxAgeMs)||30000);
-  const minRefs=Math.max(1,Number(kMarket.minReferees)||3);
-  if(!eventPass)return {status:'WATCH',label:'EVENT WAIT',css:'observe',detail:'Event Gate has not passed'};
-  if(age>maxAge||books.length<minRefs)return {status:'EVENT_ONLY',label:'EVENT ONLY',css:'observe',detail:`Market net needs ${minRefs}+ fresh referees`};
-
-  const ah=cons.ah||{},one=cons.oneXtwo||{},tot=cons.totals||{};
-  const ahOk=consensusUsable(ah),oneOk=consensusUsable(one),totOk=consensusUsable(tot);
-  const ahSide=String(ah.side||'MIXED').toUpperCase(),oneSide=String(one.side||'MIXED').toUpperCase(),totSide=String(tot.side||'MIXED').toUpperCase();
-  const conflict=(ahOk&&ahSide==='AWAY')||(oneOk&&oneSide==='AWAY');
-  if(conflict)return {status:'CONFLICT',label:'MARKET CONFLICT',css:'conflict',detail:`AH ${ahSide} · 1X2 ${oneSide}`};
-
-  const ahHome=ahOk&&ahSide==='HOME',oneHome=oneOk&&oneSide==='HOME';
-  const strongHome=(ahHome&&String(ah.strength).toUpperCase()==='STRONG')||(oneHome&&String(one.strength).toUpperCase()==='STRONG');
-  const context=totOk&&['OVER','UNDER'].includes(totSide)?` / ${totSide}`:'';
-  if(ahHome&&oneHome&&strongHome)return {status:'STRONG',label:`STRONG HOME${context}`,css:'confirm',detail:`AH ${ah.strength} · 1X2 ${one.strength}${totOk?` · O/U ${tot.strength}`:''}`};
-  if(ahHome||oneHome)return {status:'CONFIRM',label:`CONFIRM HOME${context}`,css:'confirm',detail:`AH ${ahOk?ahSide:'MIXED'} · 1X2 ${oneOk?oneSide:'MIXED'}${totOk?` · O/U ${totSide}`:''}`};
-  return {status:'WATCH',label:`WATCH${context}`,css:'mixed',detail:`AH ${ahOk?ahSide:'MIXED'} · 1X2 ${oneOk?oneSide:'MIXED'}${totOk?` · O/U ${totSide}`:''}`};
-}
-
-function consensusBlock(label,data,cls){
-  const side=String(data?.side||'MIXED'),strength=String(data?.strength||'MIXED'),agree=finite(data?.agree),total=finite(data?.total);
-  return `<div class="market-consensus-item ${cls}"><span>${esc(label)}</span><strong>${esc(side)}</strong><small>${agree!==null&&total!==null?`${agree}/${total} · `:''}${esc(strength)}</small></div>`;
-}
-function marketHtml(m,r){
-  const main=m?.main||{},prev=previousSnapshot(m),age=Date.now()-(observedAt(m)||Date.now()),books=Array.isArray(m?.bookmakers)?m.bookmakers:[],cons=m?.consensus||{},k=kLiveNet(r,m);
-  const ah=main.ah,one=main.oneXtwo,tot=main.totals;
-  const ahMove=moveHtml('HOME AH',ah?.homeOdds,prev?.ah?.line===ah?.line?prev?.ah?.homeOdds:null);
+function marketHtml(m){
+  const main=m?.main||{},prev=previousSnapshot(m),age=Date.now()-(observedAt(m)||Date.now()),books=Array.isArray(m?.bookmakers)?m.bookmakers:[];
+  const one=main.oneXtwo,tot=main.totals,provider=String(lastPayload?.provider||'Nowgoal');
   const oneMove=moveHtml('HOME 1X2',one?.home,prev?.oneXtwo?.home);
   const ouMove=moveHtml('OVER',tot?.overOdds,prev?.totals?.line===tot?.line?prev?.totals?.overOdds:null);
-  return `<section class="nomad-market-card" data-market-match="${esc(m.matchKey||historyKey(m))}" data-k-live="${esc(k.status)}">
-    <div class="market-head"><div><span>MARKET REFEREES</span><small>AH · 1X2 · OVER/UNDER</small></div><div class="market-health"><strong>${books.length}</strong><span>ONLINE</span><small>${esc(ageText(age))} old</small></div></div>
+  return `<section class="nomad-market-card market-reference-only" data-market-match="${esc(m.matchKey||historyKey(m))}" data-market-source="${esc(provider)}">
+    <div class="market-head"><div><span>PRICE REFERENCE</span><small>SOURCE · ${esc(provider)} · 1X2 + OVER/UNDER</small></div><div class="market-health"><strong>${books.length}</strong><span>BOOKS</span><small>${esc(ageText(age))} old</small></div></div>
     <div class="market-grid">
-      <article class="market-tile market-ah"><div class="market-title"><span>AH</span><b>ASIAN HANDICAP</b></div>${ah?`<div class="market-pair"><div><small>HOME</small><strong>${esc(fmtLine(ah.line))}</strong><b>@ ${esc(fmtOdds(ah.homeOdds))}</b></div><div><small>AWAY</small><strong>${esc(fmtLine(inverseLine(ah.line)))}</strong><b>@ ${esc(fmtOdds(ah.awayOdds))}</b></div></div>${ahMove}`:'<div class="market-empty">NO FRESH MAIN LINE</div>'}</article>
       <article class="market-tile market-1x2"><div class="market-title"><span>1X2</span><b>MATCH RESULT</b></div>${one?`<div class="market-triple"><div><small>1</small><strong>${esc(fmtOdds(one.home))}</strong></div><div><small>X</small><strong>${esc(fmtOdds(one.draw))}</strong></div><div><small>2</small><strong>${esc(fmtOdds(one.away))}</strong></div></div>${oneMove}`:'<div class="market-empty">NO FRESH 1X2</div>'}</article>
       <article class="market-tile market-ou"><div class="market-title"><span>O/U</span><b>TOTAL ${esc(fmtLine(tot?.line))}</b></div>${tot?`<div class="market-pair"><div><small>OVER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.overOdds))}</b></div><div><small>UNDER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.underOdds))}</b></div></div>${ouMove}`:'<div class="market-empty">NO FRESH TOTAL</div>'}</article>
     </div>
-    <div class="market-consensus">${consensusBlock('AH',cons.ah,'ah')}${consensusBlock('1X2',cons.oneXtwo,'one')}${consensusBlock('O/U',cons.totals,'ou')}<div class="market-consensus-overall"><span>MARKET CONSENSUS</span><strong>${esc(cons?.overall?.label||'MIXED')}</strong><small>${esc(cons?.overall?.strength||'MIXED')}</small></div></div>
-    <div class="market-confirm market-confirm-${esc(k.css)}"><span>K LIVE NET</span><strong>${esc(k.label)}</strong><small>${esc(k.detail)} · AUTO ALL MATCHES · Event Gate unchanged</small></div>
-    <div class="market-bookmakers"><span>REFEREES</span>${books.slice(0,12).map(b=>`<b>${esc(b.name)}</b>`).join('')}${books.length>12?`<i>+${books.length-12}</i>`:''}</div>
+    <div class="market-bookmakers"><span>BOOKMAKER REFERENCE</span>${books.slice(0,12).map(b=>`<b>${esc(b.name)}</b>`).join('')}${books.length>12?`<i>+${books.length-12}</i>`:''}</div>
   </section>`;
 }
 
@@ -112,9 +76,10 @@ function hydrateCard(card,r,marketMatches){
   if(!Number.isFinite(at)||Date.now()-at>maxAge)return;
   const details=card.querySelector('.event-details');
   if(!details)return;
-  const wrap=document.createElement('div');wrap.innerHTML=marketHtml(market,r);const node=wrap.firstElementChild;if(!node)return;
+  const wrap=document.createElement('div');wrap.innerHTML=marketHtml(market);const node=wrap.firstElementChild;if(!node)return;
   details.insertBefore(node,details.firstChild);
-  const badge=document.createElement('span');badge.className='market-mini-badge';badge.textContent=`K LIVE · ${market.refereesOnline||market.bookmakers?.length||0}`;
+  const provider=String(lastPayload?.provider||'Nowgoal').toUpperCase();
+  const badge=document.createElement('span');badge.className='market-mini-badge';badge.textContent=`${provider} · ${market.refereesOnline||market.bookmakers?.length||0} BOOKS`;
   const topline=card.querySelector('.card-topline');if(topline)topline.appendChild(badge);
 }
 function hydrateAll(){
