@@ -1,0 +1,44 @@
+name: Scan Apex Worker Owner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/scan-apex-worker-owner.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Find deployed Worker containing CAR35 production marker
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN")
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts" -o /tmp/scripts.json
+          mkdir -p /tmp/scan
+          found=0
+          while IFS= read -r script; do
+            [ -n "$script" ] || continue
+            safe="$(printf '%s' "$script" | tr -c 'A-Za-z0-9._-' '_')"
+            code="$(curl -sS "${auth[@]}" -o "/tmp/scan/${safe}.content" -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${script}/content")"
+            if [ "$code" != 200 ]; then
+              echo "$script content HTTP=$code"
+              continue
+            fi
+            if grep -Eqi 'x-nomadtips3-source|car35-production|Live soccer analysis' "/tmp/scan/${safe}.content"; then
+              echo "=== CANDIDATE $script ==="
+              grep -Eio '.{0,100}(x-nomadtips3-source|car35-production|Live soccer analysis).{0,160}' "/tmp/scan/${safe}.content" | head -20 || true
+              found=1
+            fi
+          done < <(jq -r '.result[]?.id' /tmp/scripts.json)
+          echo "FOUND=$found"
