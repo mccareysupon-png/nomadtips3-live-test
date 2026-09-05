@@ -64,3 +64,10 @@ body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{paddin
   .signal-final>strong{font-size:20px}
   .signal-lock-teams{font-size:16px}
 }
+
+/* Scope summaries to the unified panels; event-monitor's legacy rule hides all status grids. */
+body[data-page="live"] .nomad342-tab-panel .status-grid{display:grid!important}
+body[data-page="live"] #runStatus{display:block!important;font-size:11px;max-width:100%;overflow-wrap:anywhere}
+.statistics-summary{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.signal-result.halfwin,.stats342-table .result-half_win{color:#41d99a}
+.signal-result.halfloss,.stats342-table .result-half_loss{color:#ff7777}

@@ -166,10 +166,10 @@ jobs:
           path = Path("nomad-live-342/index.html")
           text = path.read_text(encoding="utf-8")
           assets = {
-              r'nomad342-tabs\.css\?v=[^"\']+': 'nomad342-tabs.css?v=20260906-realtime-v1',
-              r'ledger-runtime\.js\?v=[^"\']+': 'ledger-runtime.js?v=20260906-realtime-v1',
-              r'signal-ledger\.js\?v=[^"\']+': 'signal-ledger.js?v=20260906-realtime-v1',
-              r'statistics-ledger\.js\?v=[^"\']+': 'statistics-ledger.js?v=20260906-realtime-v1',
+              r'nomad342-tabs\.css\?v=[^"\']+': 'nomad342-tabs.css?v=20260906-flow-v3',
+              r'ledger-runtime\.js\?v=[^"\']+': 'ledger-runtime.js?v=20260906-flow-v3',
+              r'signal-ledger\.js\?v=[^"\']+': 'signal-ledger.js?v=20260906-flow-v3',
+              r'statistics-ledger\.js\?v=[^"\']+': 'statistics-ledger.js?v=20260906-flow-v3',
           }
           for pattern, replacement in assets.items():
               text, count = re.subn(pattern, replacement, text, count=1)
