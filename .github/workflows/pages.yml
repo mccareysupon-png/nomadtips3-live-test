@@ -157,6 +157,20 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
+      - name: Bust NOMAD 3.42 tab CSS cache
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("nomad-live-342/index.html")
+          text = path.read_text(encoding="utf-8")
+          old = "nomad342-tabs.css?v=20260905-v2"
+          new = "nomad342-tabs.css?v=20260905-v3"
+          if old not in text:
+              raise SystemExit("3.42 tab stylesheet cache key not found")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
         with:
