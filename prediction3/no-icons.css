@@ -1,0 +1,42 @@
+/* Prediction3 no-icons layer — UI only.
+   Owner request: text/data only. No decorative, generated or team-shirt icons. */
+.p3-icon,
+.p3-vintage-icon,
+.p3-team-shirt,
+.p3-team-badge{
+  display:none!important;
+}
+
+/* Close gaps left by removed icons. */
+.p3-section-label,
+.p3-panel-title,
+.p3-final-heading,
+.p3-support-card,
+.p3-bullets li,
+.toolbar .toolbar-copy .eyebrow,
+.toolbar .toolbar-copy h2,
+.search,
+.day-switch .day-tab{
+  gap:0!important;
+}
+
+.p3-team,
+.p3-team.away{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  text-align:center;
+}
+.p3-team strong{
+  width:100%;
+  text-align:center;
+}
+
+/* Restore simple text layout where the vintage icon grid previously reserved a column. */
+.prediction3-status>div,
+.prediction3-kpis .p3-kpi,
+.prediction3-hero .hero-badge{
+  display:block!important;
+}
+.prediction3-kpis .p3-kpi{text-align:center!important}
