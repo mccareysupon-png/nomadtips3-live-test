@@ -1,10 +1,13 @@
-/* NOMAD Live 3.42 in-page tabs only. No feed, event, market, prediction, or ledger logic. */
+/* NOMAD Live 3.42 in-page tabs only. No feed, event, market, prediction, or ledger logic.
+   Desktop: compact left-aligned sub-navigation so it is visually distinct from the main top navigation.
+   Mobile: retain full-width three-column tap targets. */
 .nomad342-tabs{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:8px;
+  grid-template-columns:repeat(3,132px);
+  justify-content:start;
+  gap:12px;
   margin:0 0 14px;
-  padding:7px;
+  padding:4px 0 7px;
   border:0;
   background:transparent;
   box-shadow:none;
@@ -58,7 +61,13 @@
 @keyframes nomad342TabIn{from{opacity:.72;transform:translateY(2px)}to{opacity:1;transform:none}}
 
 @media(max-width:700px){
-  .nomad342-tabs{gap:3px;padding:5px;margin-bottom:10px}
+  .nomad342-tabs{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    justify-content:stretch;
+    gap:3px;
+    padding:5px;
+    margin-bottom:10px;
+  }
   .nomad342-tab{min-height:44px;padding:6px 3px;gap:4px;font-size:10.5px;flex-direction:column}
   .nomad342-tab-icon,.nomad342-tab-icon svg{width:18px;height:18px}
   .nomad342-tab[aria-selected="true"]::after{left:22%;right:22%}
