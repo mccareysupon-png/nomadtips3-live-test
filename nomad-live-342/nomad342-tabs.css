@@ -5,9 +5,9 @@
   gap:8px;
   margin:0 0 14px;
   padding:7px;
-  border:1px solid rgba(215,190,104,.16);
-  background:linear-gradient(180deg,rgba(22,28,23,.94),rgba(13,18,14,.96));
-  box-shadow:0 8px 20px rgba(0,0,0,.16);
+  border:0;
+  background:transparent;
+  box-shadow:none;
 }
 .nomad342-tab{
   position:relative;
@@ -24,16 +24,23 @@
   cursor:pointer;
   font:900 12px/1 Arial,Helvetica,sans-serif;
   letter-spacing:.02em;
-  transition:color .14s ease,background .14s ease;
+  transition:color .14s ease;
 }
-.nomad342-tab:hover,.nomad342-tab:focus-visible{color:#d8c98e;outline:none;background:rgba(255,255,255,.025)}
-.nomad342-tab[aria-selected="true"]{color:var(--green);background:rgba(131,223,137,.035)}
+.nomad342-tab:hover,.nomad342-tab:focus-visible{
+  color:var(--green);
+  outline:none;
+  background:transparent;
+}
+.nomad342-tab[aria-selected="true"]{
+  color:var(--green);
+  background:transparent;
+}
 .nomad342-tab[aria-selected="true"]::after{
   content:"";
   position:absolute;
   left:18%;right:18%;bottom:2px;height:1px;
-  background:#d8c261;
-  box-shadow:0 0 7px rgba(216,194,97,.18);
+  background:var(--green);
+  box-shadow:0 0 7px color-mix(in srgb,var(--green) 22%,transparent);
 }
 .nomad342-tab-icon{
   display:inline-flex;
@@ -43,7 +50,7 @@
   opacity:.9;
   filter:drop-shadow(0 1px 0 rgba(0,0,0,.45));
 }
-.nomad342-tab[aria-selected="true"] .nomad342-tab-icon{color:#dfc86d;opacity:1}
+.nomad342-tab[aria-selected="true"] .nomad342-tab-icon{color:currentColor;opacity:1}
 .nomad342-tab-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 .nomad342-tab-label{display:inline-block}
 .nomad342-tab-panel[hidden]{display:none!important}
