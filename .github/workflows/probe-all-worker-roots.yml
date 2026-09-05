@@ -1,0 +1,46 @@
+name: Probe All Worker Roots
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-all-worker-roots.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Compare every workers.dev root with apex fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN")
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts" -o /tmp/scripts.json
+
+          curl -sS --max-time 20 -D /tmp/apex.h -o /tmp/apex.b "https://nomadtips3.com/?probe=${GITHUB_RUN_ID}"
+          apex_bytes="$(wc -c </tmp/apex.b)"
+          apex_title="$(grep -Eio '<title>[^<]*' /tmp/apex.b | head -1 || true)"
+          echo "APEX bytes=$apex_bytes title=$apex_title"
+
+          while IFS= read -r script; do
+            [ -n "$script" ] || continue
+            url="https://${script}.mccarey-supon.workers.dev/?probe=${GITHUB_RUN_ID}"
+            rm -f /tmp/h /tmp/b
+            code="$(curl -sS --max-time 8 -D /tmp/h -o /tmp/b -w '%{http_code}' "$url" || true)"
+            title="$(grep -Eio '<title>[^<]*' /tmp/b 2>/dev/null | head -1 || true)"
+            source="$(grep -Ei '^x-nomadtips3-source:' /tmp/h 2>/dev/null | tr -d '\r' | head -1 || true)"
+            if [ "$code" = 200 ] && { [ "$title" = "$apex_title" ] || grep -Eqi 'Live soccer analysis|car35-production' /tmp/b 2>/dev/null; }; then
+              bytes="$(wc -c </tmp/b)"
+              hash="$(sha256sum /tmp/b | awk '{print $1}')"
+              echo "CANDIDATE script=$script HTTP=$code bytes=$bytes hash=$hash title=$title source=$source"
+            fi
+          done < <(jq -r '.result[]?.id' /tmp/scripts.json)
