@@ -10,7 +10,12 @@ const SOURCE_PATHS=[
   '/match/today/?toggle_predictions=1',
   '/match/today/',
 ];
+const FINAL_SOURCE_PATHS=[
+  '/match/today/ended?toggle_corner_game=1',
+  '/match/today/ended',
+];
 const CACHE_MS=10000;
+const FINAL_CACHE_MS=30000;
 const SOURCE_STALE_MS=90000;
 const LAST_GOOD_MAX_MS=5*60*1000;
 const HISTORY_MS=12*60*1000;
@@ -19,11 +24,13 @@ const REQUEST_TIMEOUT_MS=7000;
 const CAPABILITIES=Object.freeze({
   today:true,minute:true,score:true,attacks:true,dangerous:true,corner:true,
   sot:false,off:false,detail:false,lastGood:true,multiSourcePath:true,
+  finalScore:true,ended:true,
 });
 
 const state={
   scanning:null,lastScanAt:0,lastSuccessAt:0,lastError:null,lastSourceUrl:null,
-  cycle:0,matches:[],history:new Map(),freshness:new Map(),hasSuccessfulScan:false,
+  finalScanning:null,lastFinalScanAt:0,lastFinalSuccessAt:0,lastFinalError:null,lastFinalSourceUrl:null,
+  cycle:0,matches:[],finals:[],history:new Map(),freshness:new Map(),hasSuccessfulScan:false,hasSuccessfulFinalScan:false,
 };
 
 const cors={
@@ -71,15 +78,17 @@ async function fetchHtml(url){
     throw error;
   }finally{clearTimeout(timer)}
 }
-async function fetchToday(token){
+async function fetchFromPaths(paths,token,label){
   const errors=[];
-  for(const path of SOURCE_PATHS){
+  for(const path of paths){
     const url=sourceUrl(path,token);
     try{return {html:await fetchHtml(url),url};}
     catch(error){errors.push(`${path}:${String(error?.message||error)}`)}
   }
-  throw new Error(`all_totalcorner_paths_failed:${errors.join('|')}`);
+  throw new Error(`all_totalcorner_${label}_paths_failed:${errors.join('|')}`);
 }
+function fetchToday(token){return fetchFromPaths(SOURCE_PATHS,token,'live')}
+function fetchEnded(token){return fetchFromPaths(FINAL_SOURCE_PATHS,token,'ended')}
 function mergePair(value){return {home:finite(value?.home),away:finite(value?.away)}}
 function normalizeMatch(row,observedAt,sourceUrlUsed){
   return {
@@ -90,6 +99,13 @@ function normalizeMatch(row,observedAt,sourceUrlUsed){
       sot:{home:null,away:null},off:{home:null,away:null},corner:mergePair(row.stats?.corner),
     },
     source:{name:SOURCE_NAME,observedAt,detail:false,mode:'TODAY_MULTI_PATH',transport:TRANSPORT,url:sourceUrlUsed},
+  };
+}
+function normalizeFinal(row,observedAt,sourceUrlUsed){
+  return {
+    id:String(row.id),league:row.league||null,home:row.home||null,away:row.away||null,
+    status:'FT',score:[finite(row.score?.home),finite(row.score?.away)],observedAt,
+    source:{name:SOURCE_NAME,observedAt,mode:'TODAY_ENDED',transport:TRANSPORT,url:sourceUrlUsed},
   };
 }
 function fingerprint(m){return JSON.stringify({minute:m.minute,score:m.score,stats:m.stats})}
@@ -142,14 +158,34 @@ async function performScan(){
   }
   return feedPayload();
 }
+async function performFinalScan(){
+  const started=now();state.lastFinalScanAt=started;
+  try{
+    const source=await fetchEnded(started);
+    const finals=parseToday(source.html,SOURCE_HOST)
+      .filter(m=>m.status==='FT')
+      .filter(m=>Number.isFinite(m.score?.home)&&Number.isFinite(m.score?.away))
+      .map(row=>normalizeFinal(row,started,source.url));
+    state.finals=finals;state.lastFinalSuccessAt=now();state.lastFinalError=null;state.lastFinalSourceUrl=source.url;state.hasSuccessfulFinalScan=true;
+  }catch(error){
+    state.lastFinalError=String(error?.message||error||'final_source_fetch_failed');
+  }
+  return finalPayload();
+}
 async function scan(force=false){
   if(!force&&state.lastScanAt&&now()-state.lastScanAt<CACHE_MS)return feedPayload();
   if(state.scanning)return state.scanning;
   state.scanning=performScan().finally(()=>{state.scanning=null});
   return state.scanning;
 }
+async function scanFinals(force=false){
+  if(!force&&state.lastFinalScanAt&&now()-state.lastFinalScanAt<FINAL_CACHE_MS)return finalPayload();
+  if(state.finalScanning)return state.finalScanning;
+  state.finalScanning=performFinalScan().finally(()=>{state.finalScanning=null});
+  return state.finalScanning;
+}
 function sourceMeta(){
-  return {name:SOURCE_NAME,host:SOURCE_HOST,scanUrls:SOURCE_PATHS.map(p=>new URL(p,SOURCE_HOST).toString()),lastSourceUrl:state.lastSourceUrl,cacheSeconds:CACHE_MS/1000,staleSeconds:SOURCE_STALE_MS/1000,lastGoodSeconds:LAST_GOOD_MAX_MS/1000,detailMode:'TODAY_MULTI_PATH',capabilities:CAPABILITIES};
+  return {name:SOURCE_NAME,host:SOURCE_HOST,scanUrls:SOURCE_PATHS.map(p=>new URL(p,SOURCE_HOST).toString()),finalUrls:FINAL_SOURCE_PATHS.map(p=>new URL(p,SOURCE_HOST).toString()),lastSourceUrl:state.lastSourceUrl,lastFinalSourceUrl:state.lastFinalSourceUrl,cacheSeconds:CACHE_MS/1000,finalCacheSeconds:FINAL_CACHE_MS/1000,staleSeconds:SOURCE_STALE_MS/1000,lastGoodSeconds:LAST_GOOD_MAX_MS/1000,detailMode:'TODAY_MULTI_PATH',capabilities:CAPABILITIES};
 }
 function feedPayload(){
   const age=state.lastSuccessAt?Math.max(0,now()-state.lastSuccessAt):null;
@@ -164,13 +200,25 @@ function feedPayload(){
     detailErrors:{},matches,lastError:state.lastError,
   };
 }
+function finalPayload(){
+  const age=state.lastFinalSuccessAt?Math.max(0,now()-state.lastFinalSuccessAt):null;
+  const canServeLastGood=Boolean(state.lastFinalError&&state.hasSuccessfulFinalScan&&age!==null&&age<=LAST_GOOD_MAX_MS);
+  const fatal=Boolean(state.lastFinalError&&!canServeLastGood);
+  return {
+    ok:!fatal,version:VERSION,component:COMPONENT,transport:TRANSPORT,mode:'FINAL_SCORE_FEED',
+    updatedAt:iso(state.lastFinalSuccessAt),source:sourceMeta(),sourceAgeMs:age,degraded:canServeLastGood,servingLastGood:canServeLastGood,
+    counts:{finals:(state.finals||[]).length},finals:state.finals||[],lastError:state.lastFinalError,
+  };
+}
 function healthPayload(){
   const feed=feedPayload();
-  return {ok:feed.ok,version:VERSION,component:COMPONENT,transport:TRANSPORT,source:feed.source,cycle:state.cycle,lastScanAt:iso(state.lastScanAt),lastSuccessAt:iso(state.lastSuccessAt),sourceAgeMs:feed.sourceAgeMs,sourceStale:feed.sourceStale,degraded:feed.degraded,servingLastGood:feed.servingLastGood,lastError:state.lastError,liveMatches:feed.matches.length,historyMatches:state.history.size};
+  return {ok:feed.ok,version:VERSION,component:COMPONENT,transport:TRANSPORT,source:feed.source,cycle:state.cycle,lastScanAt:iso(state.lastScanAt),lastSuccessAt:iso(state.lastSuccessAt),sourceAgeMs:feed.sourceAgeMs,sourceStale:feed.sourceStale,degraded:feed.degraded,servingLastGood:feed.servingLastGood,lastError:state.lastError,liveMatches:feed.matches.length,historyMatches:state.history.size,lastFinalScanAt:iso(state.lastFinalScanAt),lastFinalSuccessAt:iso(state.lastFinalSuccessAt),lastFinalError:state.lastFinalError,finalMatches:(state.finals||[]).length};
 }
 const contract=Object.freeze({
   ok:true,version:VERSION,component:COMPONENT,transport:TRANSPORT,mode:'LIVE_EVENT_FEED',source:{name:SOURCE_NAME,detailMode:'TODAY_MULTI_PATH'},
+  finalEndpoint:'/finals',
   match:{id:'string',league:'string|null',home:'string',away:'string',minute:'number',score:['home','away'],event:{snapshots:[{minute:'number',observedAt:'epoch-ms',attacks:['home','away'],dangerous:['home','away'],sot:[null,null],off:[null,null],corner:['home','away']}]},freshness:{changedAt:'epoch-ms',lastSeenAt:'epoch-ms',stale:'boolean'}},
+  final:{id:'same match id as live feed',status:'FT',score:['home','away'],observedAt:'epoch-ms'},
 });
 
 export default {
@@ -180,6 +228,7 @@ export default {
     const url=new URL(request.url);
     if(url.pathname==='/'||url.pathname==='/health')return json(healthPayload());
     if(url.pathname==='/feed')return json(await scan(url.searchParams.get('force')==='1'));
+    if(url.pathname==='/finals')return json(await scanFinals(url.searchParams.get('force')==='1'));
     if(url.pathname==='/contract')return json(contract);
     return json({ok:false,error:'not_found'},404);
   },

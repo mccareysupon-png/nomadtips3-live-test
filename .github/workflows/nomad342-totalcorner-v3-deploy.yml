@@ -35,20 +35,25 @@ jobs:
           node --check nomad-live-score-feed-v3/src/index.js
           grep -q '^name = "nomadtips3-live-score-feed-v3"$' nomad-live-score-feed-v3/wrangler.toml
           grep -q '^main = "src/index.js"$' nomad-live-score-feed-v3/wrangler.toml
+          grep -Fq "finalEndpoint:'/finals'" nomad-live-score-feed-v3/src/index.js
+          grep -Fq "'/match/today/ended'" nomad-live-score-feed-v3/src/index.js
 
       - name: Parser contract smoke
         run: |
           node --input-type=module - <<'NODE'
           import {parseToday} from './nomad-live-score-feed-v3/src/totalcorner.js';
-          const html=`<table><tr><td><a href="/league/test/1">Test League</a></td><td class="match_status">67</td><td><a href="/team/view/11">Home FC</a></td><td>2 - 1</td><td><a href="/team/view/22">Away FC</a></td><td>5 - 3 (2-1)</td><td>44 - 31</td><td>28 - 17</td><td><a href="/stats/home-fc-vs-away-fc/123456">Stats</a><a href="/live/home-fc-vs-away-fc/123456">Live</a></td></tr></table>`;
+          const html=`<table>
+          <tr><td><a href="/league/test/1">Test League</a></td><td class="match_status">67</td><td><a href="/team/view/11">Home FC</a></td><td>2 - 1</td><td><a href="/team/view/22">Away FC</a></td><td>5 - 3 (2-1)</td><td>44 - 31</td><td>28 - 17</td><td><a href="/stats/home-fc-vs-away-fc/123456">Stats</a><a href="/live/home-fc-vs-away-fc/123456">Live</a></td></tr>
+          <tr><td><a href="/league/test/1">Test League</a></td><td class="match_status">Full</td><td><a href="/team/view/33">Final Home</a></td><td>3 - 2</td><td><a href="/team/view/44">Final Away</a></td><td>4 - 2 (2-1)</td><td>50 - 40</td><td>25 - 20</td><td><a href="/stats/final-home-vs-final-away/999999">Stats</a><a href="/live/final-home-vs-final-away/999999">Live</a></td></tr>
+          </table>`;
           const rows=parseToday(html);
-          if(rows.length!==1)throw new Error('parser_count');
-          const m=rows[0];
-          if(m.id!=='123456'||m.home!=='Home FC'||m.away!=='Away FC'||m.minute!==67)throw new Error('parser_identity');
-          if(m.score.home!==2||m.score.away!==1)throw new Error('parser_score');
-          if(m.stats.attacks.home!==44||m.stats.attacks.away!==31)throw new Error('parser_attacks');
-          if(m.stats.dangerous.home!==28||m.stats.dangerous.away!==17)throw new Error('parser_dangerous');
-          console.log(JSON.stringify(m,null,2));
+          if(rows.length!==2)throw new Error('parser_count');
+          const live=rows.find(x=>x.id==='123456'),final=rows.find(x=>x.id==='999999');
+          if(!live||live.minute!==67||live.status!=='LIVE')throw new Error('parser_live_identity');
+          if(live.score.home!==2||live.score.away!==1)throw new Error('parser_live_score');
+          if(!final||final.minute!==null||final.status!=='FT')throw new Error('parser_final_status');
+          if(final.score.home!==3||final.score.away!==2)throw new Error('parser_final_score');
+          console.log(JSON.stringify({live,final},null,2));
           NODE
 
       - name: Dry-run Worker bundle
@@ -79,7 +84,7 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/contract.json','utf8'));
           console.log(JSON.stringify(j,null,2));
-          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||j.mode!=='LIVE_EVENT_FEED') process.exit(1);
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||j.mode!=='LIVE_EVENT_FEED'||j.finalEndpoint!=='/finals') process.exit(1);
           NODE
             then ok=1; break; fi
             sleep 4
@@ -97,6 +102,24 @@ jobs:
           const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
           console.log(JSON.stringify({ok:j.ok,version:j.version,component:j.component,transport:j.transport,updatedAt:j.updatedAt,counts:j.counts,degraded:j.degraded,servingLastGood:j.servingLastGood,lastError:j.lastError,source:j.source},null,2));
           if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||!Array.isArray(j.matches)) process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
+
+      - name: Probe V3 TotalCorner FINAL feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 35 "$V3_URL/finals?force=1&_=$RANDOM$RANDOM" -o /tmp/finals.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/finals.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,version:j.version,component:j.component,transport:j.transport,mode:j.mode,updatedAt:j.updatedAt,counts:j.counts,lastError:j.lastError,source:j.source},null,2));
+          if(j.ok!==true||j.version!=='3.42'||j.component!=='totalcorner-live-score-v3'||j.transport!=='DIRECT_WORKER_V3'||j.mode!=='FINAL_SCORE_FEED'||!Array.isArray(j.finals)) process.exit(1);
+          for(const row of j.finals){if(String(row.status)!=='FT'||!Array.isArray(row.score)||row.score.length!==2)process.exit(1)}
           NODE
             then ok=1; break; fi
             sleep 5

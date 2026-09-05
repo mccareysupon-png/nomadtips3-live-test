@@ -1,11 +1,8 @@
 const SERVICE='nomadtips3-342-ledger';
 const VERSION='ledger-v1';
-const SETTLEMENT_SOURCE='goaloo-bf_us-direct-index';
-const GOALOO_INDEX_URLS=[
-  'https://live10.goaloo28.com/gf/data/bf_us.js',
-  'https://live10.goaloo28.com/gf/data/bf_us1.js',
-];
-const GOALOO_FINAL_STATE=-1;
+const SETTLEMENT_REVISION='totalcorner-final-v1';
+const SETTLEMENT_SOURCE='totalcorner-live-score-v3';
+const TOTALCORNER_FINALS_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals';
 const MAX_GOALS=30;
 const ALLOWED_WRITE_ORIGINS=new Set([
   'https://www.nomadtips3.com',
@@ -15,10 +12,10 @@ const ALLOWED_WRITE_ORIGINS=new Set([
   'http://127.0.0.1:8787',
 ]);
 const MAX_SIGNAL_LIMIT=500;
-const SETTLEMENT_RETRY_MS=10*60*1000;
-const SETTLEMENT_ERROR_RETRY_MS=15*60*1000;
+const SETTLEMENT_RETRY_MS=5*60*1000;
+const SETTLEMENT_ERROR_RETRY_MS=5*60*1000;
 const SCHEDULED_SETTLEMENT_PATH='/__scheduled_settlement';
-const GOALOO_TIMEOUT_MS=8000;
+const TOTALCORNER_TIMEOUT_MS=10000;
 
 const finite=value=>{
   if(value===null||value===undefined||value===''||typeof value==='boolean')return null;
@@ -63,7 +60,6 @@ function validateLock(body){
   const oneOdds=selectedOdds(marketOne,onePick),totalsOdds=selectedOdds(marketTotals,totalsPick);
   const errors=[];
   if(!matchId)errors.push('matchId');
-  // fixtureId remains stored as market trace metadata, but settlement no longer depends on it.
   if(!home||!away)errors.push('teams');
   if(minute===null||minute<1||minute>130)errors.push('minute');
   if(score.home===null||score.away===null)errors.push('entryScore');
@@ -131,108 +127,38 @@ export function summarize(records){
   return {lockedMatches:records.length,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,winRate:decided?wins/decided*100:0,profit:Number(profit.toFixed(4))};
 }
 
-function jsScalar(raw){
-  const value=String(raw??'').trim();
-  if(!value||value==='null'||value==='undefined')return null;
-  if(/^-?\d+(?:\.\d+)?$/.test(value))return Number(value);
-  return value;
-}
-function splitJsArray(body){
-  const out=[];let token='',quote=null,escape=false;
-  for(const ch of body){
-    if(quote){
-      if(escape){token+=ch;escape=false;continue;}
-      if(ch==='\\'){escape=true;continue;}
-      if(ch===quote){quote=null;continue;}
-      token+=ch;continue;
-    }
-    if(ch==="'"||ch==='"'){quote=ch;continue;}
-    if(ch===','){out.push(jsScalar(token));token='';continue;}
-    token+=ch;
+export function parseTotalCornerFinalPayload(payload){
+  if(!payload||payload.ok!==true)throw new Error('TOTALCORNER_FINALS_NOT_OK');
+  if(payload.version!=='3.42'||payload.component!=='totalcorner-live-score-v3'||payload.mode!=='FINAL_SCORE_FEED')throw new Error('TOTALCORNER_FINALS_CONTRACT_MISMATCH');
+  const rows=[];
+  for(const row of Array.isArray(payload.finals)?payload.finals:[]){
+    const id=clean(row?.id,120),score=pair(row?.score),status=clean(row?.status,20).toUpperCase();
+    const home=safeScore(score.home),away=safeScore(score.away);
+    if(!id||status!=='FT'||home===null||away===null)continue;
+    rows.push({id,status:'FT',score:{home,away},home:clean(row?.home,120)||null,away:clean(row?.away,120)||null,observedAt:finite(row?.observedAt)});
   }
-  out.push(jsScalar(token));return out;
+  return rows;
 }
-function parseIndexedArrays(source,variable){
-  const out=new Map(),re=new RegExp(`${variable}\\[(\\d+)\\]\\s*=\\s*\\[([^\\n;]*)\\]\\s*;`,'g');
-  for(const match of String(source||'').matchAll(re))out.set(Number(match[1]),splitJsArray(match[2]));
-  return out;
+export function matchTotalCornerFinal(record,rows){
+  const id=clean(record?.matchId,120);
+  if(!id)return null;
+  return (Array.isArray(rows)?rows:[]).find(row=>String(row?.id)===id)||null;
 }
-export function parseGoalooIndex(source){
-  const A=parseIndexedArrays(source,'A'),rows=[];
-  for(const row of A.values()){
-    if(row.length<11)continue;
-    const state=finite(row[8]);
-    if(state===null)continue;
-    rows.push({
-      id:String(row[0]??''),home:clean(row[4],120),away:clean(row[5],120),state,
-      score:{home:safeScore(row[9]),away:safeScore(row[10])},
-    });
-  }
-  return rows.filter(row=>row.id&&row.home&&row.away);
-}
-const strictTeam=value=>String(value??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-const looseTeam=value=>strictTeam(value)
-  .replace(/&/g,' and ')
-  .replace(/\b(?:fc|cf|sc|afc|fk|bk|sk)\b/g,' ')
-  .replace(/[^a-z0-9]+/g,' ')
-  .replace(/\s+/g,' ')
-  .trim();
-function pairMatches(record,row,normalizer){
-  return normalizer(record?.home)===normalizer(row?.home)&&normalizer(record?.away)===normalizer(row?.away);
-}
-export function matchGoalooRecord(record,rows){
-  const list=Array.isArray(rows)?rows:[];
-  const pinned=clean(record?.settlementGoalooId,40);
-  if(pinned){
-    const row=list.find(item=>String(item?.id)===pinned);
-    if(row)return {row,mode:'PINNED_ID'};
-  }
-  const strict=list.filter(row=>pairMatches(record,row,strictTeam));
-  if(strict.length===1)return {row:strict[0],mode:'EXACT_TEAMS'};
-  if(strict.length>1)throw new Error('GOALOO_MATCH_AMBIGUOUS_EXACT');
-  const loose=list.filter(row=>pairMatches(record,row,looseTeam));
-  if(loose.length===1)return {row:loose[0],mode:'NORMALIZED_TEAMS'};
-  if(loose.length>1)throw new Error('GOALOO_MATCH_AMBIGUOUS_NORMALIZED');
-  throw new Error('GOALOO_MATCH_NOT_FOUND');
-}
-async function fetchGoalooText(url){
-  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),GOALOO_TIMEOUT_MS);
+async function totalCornerFinalIndex(){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),TOTALCORNER_TIMEOUT_MS);
   try{
-    const separator=url.includes('?')?'&':'?';
-    const response=await fetch(`${url}${separator}t=${Math.floor(Date.now()/30000)}`,{
-      headers:{'user-agent':'NOMADTIPS3-342-LEDGER/2.0 (+Goaloo settlement)','accept':'*/*','accept-language':'en-US,en;q=0.8'},
-      cache:'no-store',signal:controller.signal,
-    });
-    if(!response.ok)throw new Error(`GOALOO_HTTP_${response.status}`);
-    const text=await response.text();
-    if(text.length<100)throw new Error('GOALOO_BODY_TOO_SHORT');
-    return text;
+    const url=new URL(TOTALCORNER_FINALS_URL);
+    url.searchParams.set('force','1');
+    url.searchParams.set('t',String(Date.now()));
+    const response=await fetch(url.toString(),{cache:'no-store',signal:controller.signal,headers:{'accept':'application/json','user-agent':'NOMADTIPS3-342-LEDGER/3.0 (+TotalCorner final settlement)'}});
+    if(!response.ok)throw new Error(`TOTALCORNER_FINALS_HTTP_${response.status}`);
+    let data;try{data=await response.json();}catch{throw new Error('TOTALCORNER_FINALS_JSON_INVALID');}
+    const rows=parseTotalCornerFinalPayload(data);
+    return {rows,url:TOTALCORNER_FINALS_URL,updatedAt:data.updatedAt||null};
   }catch(error){
-    if(error?.name==='AbortError')throw new Error('GOALOO_TIMEOUT');
+    if(error?.name==='AbortError')throw new Error('TOTALCORNER_FINALS_TIMEOUT');
     throw error;
   }finally{clearTimeout(timer);}
-}
-async function goalooIndex(){
-  const errors=[];
-  for(const url of GOALOO_INDEX_URLS){
-    try{
-      const rows=parseGoalooIndex(await fetchGoalooText(url));
-      if(rows.length)return {rows,url};
-      errors.push(`${url}:GOALOO_EMPTY_INDEX`);
-    }catch(error){errors.push(`${url}:${String(error?.message||error)}`);}
-  }
-  throw new Error(`GOALOO_INDEX_FAILED:${errors.join('|')}`);
-}
-async function goalooFixture(record,source=null){
-  const index=source||await goalooIndex();
-  const matched=matchGoalooRecord(record,index.rows);
-  const row=matched.row;
-  const final=row.state===GOALOO_FINAL_STATE;
-  if(final&&(row.score.home===null||row.score.away===null))throw new Error('GOALOO_FINAL_SCORE_INVALID');
-  return {
-    source:SETTLEMENT_SOURCE,sourceUrl:index.url,goalooId:String(row.id),matchMode:matched.mode,
-    status:final?'FT':row.state===2?'HT':row.state>0?'LIVE':'SCHEDULED',finalScore:final?row.score:null,
-  };
 }
 
 export class PredictionLedger{
@@ -251,8 +177,8 @@ export class PredictionLedger{
     const checked=validateLock(body);if(!checked.ok)return json(request,{ok:false,error:'invalid_lock',fields:checked.errors},400);
     const value=checked.value,key=`record:${value.matchId}`,existing=await this.state.storage.get(key);
     if(existing)return json(request,{ok:true,locked:true,duplicate:true,record:existing},200);
-    const lockedAt=Date.now(),minutesUntilCheck=Math.max(10,105-(value.minute||0));
-    const record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,settlementGoalooId:null,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000};
+    const lockedAt=Date.now(),minutesUntilCheck=Math.max(3,92-(value.minute||0));
+    const record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'};
     await this.state.storage.put(key,record);await this.scheduleNext();
     return json(request,{ok:true,locked:true,duplicate:false,record},201);
   }
@@ -272,37 +198,38 @@ export class PredictionLedger{
     await this.settleDue();
     let sourceProbe=null;
     if(url.searchParams.get('probe')==='1'){
-      try{const source=await goalooIndex();sourceProbe={ok:true,source:SETTLEMENT_SOURCE,rows:source.rows.length,url:source.url};}
+      try{const source=await totalCornerFinalIndex();sourceProbe={ok:true,source:SETTLEMENT_SOURCE,rows:source.rows.length,url:source.url,updatedAt:source.updatedAt};}
       catch(error){sourceProbe={ok:false,source:SETTLEMENT_SOURCE,error:clean(error?.message||error,240)};}
     }
     const records=await this.records(),summary=summarize(records),settlementMeta=await this.state.storage.get('meta:settlement');
-    return json(request,{ok:sourceProbe?.ok===false?false:true,service:SERVICE,version:VERSION,storage:'durable-object',settlementSource:SETTLEMENT_SOURCE,autoSettlement:'alarm+cron+read-repair',summary,alarmAt:iso(await this.state.storage.getAlarm()),settlementMeta:settlementMeta||null,sourceProbe});
+    return json(request,{ok:sourceProbe?.ok===false?false:true,service:SERVICE,version:VERSION,settlementRevision:SETTLEMENT_REVISION,storage:'durable-object',settlementSource:SETTLEMENT_SOURCE,settlementEndpoint:TOTALCORNER_FINALS_URL,autoSettlement:'alarm+cron+read-repair',summary,alarmAt:iso(await this.state.storage.getAlarm()),settlementMeta:settlementMeta||null,sourceProbe});
   }
   async settleDue(records=null,reason='runtime'){
     const list=records||await this.records(),now=Date.now(),due=list.filter(record=>!record.settlement&&Number.isFinite(Number(record.nextSettlementCheckAt))&&Number(record.nextSettlementCheckAt)<=now).slice(0,8);
-    let settled=0,errors=0;
+    let settled=0,waiting=0,errors=0;
     let source=null,sourceError=null;
-    if(due.length){try{source=await goalooIndex();}catch(error){sourceError=error;}}
+    if(due.length){try{source=await totalCornerFinalIndex();}catch(error){sourceError=error;}}
     for(const record of due){
       const key=`record:${record.matchId}`;
       try{
         if(sourceError)throw sourceError;
-        const fixture=await goalooFixture(record,source),checkedAt=Date.now();
-        const traced={...record,settlementGoalooId:fixture.goalooId,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:fixture.matchMode};
-        if(fixture.status==='FT'&&fixture.finalScore?.home!==null&&fixture.finalScore?.away!==null){
-          await this.state.storage.put(key,settleRecord(traced,fixture.finalScore,'FT',checkedAt,{source:SETTLEMENT_SOURCE,sourceMatchId:fixture.goalooId,matchMode:fixture.matchMode}));settled++;
+        const final=matchTotalCornerFinal(record,source?.rows||[]),checkedAt=Date.now();
+        if(final){
+          const traced={...record,settlementSource:SETTLEMENT_SOURCE,settlementSourceMatchId:final.id,settlementMatchMode:'MATCH_ID'};
+          await this.state.storage.put(key,settleRecord(traced,final.score,'FT',checkedAt,{source:SETTLEMENT_SOURCE,sourceMatchId:final.id,matchMode:'MATCH_ID'}));settled++;
         }else{
-          await this.state.storage.put(key,{...traced,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS,settlementError:null});
+          waiting++;
+          await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_RETRY_MS,settlementError:null,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
         }
       }catch(error){
         errors++;
         const checkedAt=Date.now();
-        await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_ERROR_RETRY_MS,settlementError:clean(error?.message||error,240),settlementSource:SETTLEMENT_SOURCE});
+        await this.state.storage.put(key,{...record,lastSettlementCheckAt:checkedAt,nextSettlementCheckAt:checkedAt+SETTLEMENT_ERROR_RETRY_MS,settlementError:clean(error?.message||error,240),settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'});
       }
     }
-    await this.state.storage.put('meta:settlement',{source:SETTLEMENT_SOURCE,reason,ranAt:Date.now(),due:due.length,settled,errors});
+    await this.state.storage.put('meta:settlement',{source:SETTLEMENT_SOURCE,endpoint:TOTALCORNER_FINALS_URL,reason,ranAt:Date.now(),due:due.length,settled,waiting,errors});
     await this.scheduleNext();
-    return {source:SETTLEMENT_SOURCE,due:due.length,settled,errors};
+    return {source:SETTLEMENT_SOURCE,due:due.length,settled,waiting,errors};
   }
   async alarm(){await this.settleDue(null,'durable-object-alarm');}
   async fetch(request){
