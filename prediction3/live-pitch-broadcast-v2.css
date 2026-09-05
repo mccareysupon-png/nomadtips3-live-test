@@ -1,0 +1,147 @@
+/* Prediction3 broadcast v2 — presentation-only enhancement.
+   Adds numbered 11v11 markers, stronger pitch depth and broadcast metric deck.
+   No provider, prediction, settlement or signal logic is changed. */
+
+.p3-pitch-shell{
+  padding:30px 34px 34px;
+  background:
+    radial-gradient(ellipse at 50% -8%,rgba(230,255,235,.16) 0,rgba(88,158,103,.08) 30%,transparent 58%),
+    linear-gradient(90deg,rgba(255,255,255,.018),transparent 8%,transparent 92%,rgba(255,255,255,.018)),
+    linear-gradient(180deg,#17221b 0 8%,#0b130e 9% 17%,#050a07 30% 100%);
+  box-shadow:inset 0 28px 48px rgba(0,0,0,.46),inset 0 -24px 42px rgba(0,0,0,.58);
+}
+.p3-pitch-shell:before{
+  inset:8px 11px 10px;
+  border:1px solid rgba(221,242,226,.13);
+  background:
+    repeating-linear-gradient(90deg,rgba(210,232,216,.13) 0 4px,rgba(5,10,7,.24) 4px 9px) top/100% 13px no-repeat,
+    repeating-linear-gradient(90deg,rgba(210,232,216,.10) 0 4px,rgba(5,10,7,.25) 4px 9px) bottom/100% 13px no-repeat,
+    repeating-linear-gradient(0deg,rgba(210,232,216,.07) 0 4px,rgba(5,10,7,.22) 4px 9px) left/11px 100% no-repeat,
+    repeating-linear-gradient(0deg,rgba(210,232,216,.07) 0 4px,rgba(5,10,7,.22) 4px 9px) right/11px 100% no-repeat,
+    linear-gradient(90deg,rgba(0,0,0,.46),transparent 7%,transparent 93%,rgba(0,0,0,.46));
+  box-shadow:0 24px 55px rgba(0,0,0,.62),inset 0 0 30px rgba(0,0,0,.35);
+}
+.p3-pitch{
+  outline:9px solid rgba(2,7,4,.88);
+  border-color:rgba(244,255,246,.70);
+  background:
+    radial-gradient(ellipse at 50% -18%,rgba(255,255,255,.105),transparent 34%),
+    radial-gradient(circle at 17% 22%,rgba(255,255,255,.045),transparent 18%),
+    radial-gradient(circle at 78% 77%,rgba(0,0,0,.12),transparent 25%),
+    repeating-radial-gradient(circle at 30% 40%,rgba(255,255,255,.015) 0 1px,transparent 1px 3px),
+    linear-gradient(90deg,rgba(255,255,255,.028) 50%,transparent 50%) 0 0/12.5% 100%,
+    repeating-linear-gradient(90deg,#1d7138 0 7.15%,#287f43 7.15% 14.3%);
+  box-shadow:
+    0 34px 60px rgba(0,0,0,.66),
+    0 10px 20px rgba(0,0,0,.45),
+    inset 0 0 85px rgba(0,0,0,.26),
+    inset 0 2px rgba(255,255,255,.10),
+    inset 0 -2px rgba(0,0,0,.14);
+}
+
+[data-player-layer]{position:absolute;inset:0;z-index:5;pointer-events:none}
+.p3-player-dot{
+  display:grid;
+  place-items:center;
+  width:22px;
+  height:22px;
+  margin:-11px;
+  border-width:2px;
+  font:900 9px/1 Arial,sans-serif;
+  color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.9);
+  box-shadow:0 6px 10px rgba(0,0,0,.58),0 0 0 2px rgba(0,0,0,.22),inset 0 1px rgba(255,255,255,.30);
+}
+.p3-player-dot:after{
+  content:"";
+  position:absolute;
+  left:50%;top:100%;
+  width:13px;height:5px;
+  transform:translate(-50%,2px);
+  border-radius:50%;
+  background:rgba(0,0,0,.30);
+  filter:blur(2px);
+  z-index:-1;
+}
+.p3-player-dot.home{background:radial-gradient(circle at 35% 28%,#8cc8ff 0 8%,#2c78e8 34%,#0b3d96 100%);border-color:#c9e2ff}
+.p3-player-dot.away{background:radial-gradient(circle at 35% 28%,#ffb0b4 0 8%,#e64852 34%,#8b1e27 100%);border-color:#ffd7da}
+.p3-player-dot.home.goalie{background:radial-gradient(circle at 35% 28%,#a7ffd1 0 8%,#28a867 35%,#0b5735 100%);border-color:#cbffe4}
+.p3-player-dot.away.goalie{background:radial-gradient(circle at 35% 28%,#fff1a4 0 8%,#e1b32d 35%,#8b6600 100%);border-color:#fff4bb;color:#151007;text-shadow:none}
+.p3-player-dot.ref{width:18px;height:18px;margin:-9px;background:radial-gradient(circle at 35% 28%,#fff3a4 0 8%,#d6a92b 40%,#715800 100%);border-color:#fff1a6;color:#181204;font-size:7px;text-shadow:none}
+
+.p3-ball{
+  width:21px;height:21px;margin:-10.5px 0 0 -10.5px;
+  box-shadow:0 9px 12px rgba(0,0,0,.60),0 0 0 3px rgba(255,255,255,.12),0 0 18px rgba(255,255,255,.15);
+}
+.p3-ball:after{
+  content:"";
+  position:absolute;
+  left:50%;top:100%;
+  width:18px;height:6px;
+  transform:translate(-50%,5px);
+  border-radius:50%;
+  background:rgba(0,0,0,.34);
+  filter:blur(3px);
+}
+.p3-zone.danger.show{animation:p3-danger-breathe 1.35s ease-in-out infinite alternate}
+@keyframes p3-danger-breathe{from{opacity:.72;filter:saturate(.95)}to{opacity:1;filter:saturate(1.35)}}
+
+.p3-live-bottom{display:block;border-top:1px solid rgba(255,255,255,.075);background:#07100a}
+.p3-broadcast-deck{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(118px,1fr)) minmax(220px,1.65fr);
+  gap:8px;
+  padding:10px;
+  background:linear-gradient(180deg,#09120c,#060d09);
+}
+.p3-metric-card,.p3-flow-card{
+  min-width:0;
+  padding:11px 12px 10px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:7px;
+  background:linear-gradient(180deg,rgba(20,31,24,.95),rgba(9,16,11,.98));
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 7px 18px rgba(0,0,0,.26);
+}
+.p3-metric-card h3,.p3-flow-card h3{margin:0 0 9px;color:#dfe9e2;font-size:10px;font-weight:800;letter-spacing:.015em;text-transform:none}
+.p3-metric-values{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:9px}
+.p3-metric-values strong{font-size:18px;line-height:1;color:#6ea8ff;text-shadow:0 0 12px rgba(68,139,255,.18)}
+.p3-metric-values strong:last-child{color:#ff6670;text-shadow:0 0 12px rgba(255,78,89,.16)}
+.p3-dual-bar{position:relative;display:flex;width:100%;height:7px;overflow:hidden;border-radius:5px;background:#17221b;box-shadow:inset 0 1px 3px rgba(0,0,0,.52)}
+.p3-dual-bar i,.p3-dual-bar b{display:block;height:100%;transition:width .5s ease}
+.p3-dual-bar i{background:linear-gradient(90deg,#2777ef,#58a1ff);box-shadow:0 0 10px rgba(55,130,255,.22)}
+.p3-dual-bar b{margin-left:auto;background:linear-gradient(90deg,#ff6b73,#e63843);box-shadow:0 0 10px rgba(255,77,88,.20)}
+.p3-flow-card{display:flex;flex-direction:column}
+.p3-flow-plot{position:relative;display:flex;align-items:flex-end;gap:2px;height:36px;margin-top:auto;padding-top:3px;border-bottom:1px solid rgba(255,255,255,.08);background:linear-gradient(180deg,rgba(255,255,255,.018),transparent)}
+.p3-flow-plot i{flex:1 1 0;min-width:2px;height:var(--h,30%);border-radius:1px 1px 0 0;background:#388cff;box-shadow:0 0 5px rgba(56,140,255,.18)}
+.p3-flow-plot i.away{background:#f14e58;box-shadow:0 0 5px rgba(241,78,88,.15)}
+.p3-flow-now{position:absolute;right:1px;top:0;bottom:0;width:2px;background:#ffd15c;box-shadow:0 0 8px rgba(255,209,92,.75)}
+.p3-flow-scale{display:flex;justify-content:space-between;margin-top:5px;color:#617166;font-size:7px}
+.p3-event-strip{display:flex;align-items:center;gap:10px;padding:8px 11px 10px;border-top:1px solid rgba(255,255,255,.055);background:#080f0b}
+.p3-event-strip h3{flex:0 0 auto;margin:0;color:#76877c;font-size:8px;letter-spacing:.11em}
+.p3-event-line{flex:1;min-width:0}
+
+@media (max-width:1000px){
+  .p3-broadcast-deck{grid-template-columns:repeat(4,minmax(105px,1fr))}
+  .p3-flow-card{grid-column:1/-1}
+}
+@media (max-width:760px){
+  .p3-pitch-shell{padding:16px 14px 18px}
+  .p3-pitch{outline-width:5px}
+  .p3-player-dot{width:16px;height:16px;margin:-8px;font-size:6px;border-width:1.5px}
+  .p3-player-dot.ref{width:13px;height:13px;margin:-6.5px;font-size:5px}
+  .p3-ball{width:17px;height:17px;margin:-8.5px 0 0 -8.5px}
+  .p3-broadcast-deck{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:7px}
+  .p3-flow-card{grid-column:1/-1}
+  .p3-metric-card,.p3-flow-card{padding:9px 9px 8px}
+  .p3-metric-card h3,.p3-flow-card h3{font-size:8px}
+  .p3-metric-values strong{font-size:15px}
+  .p3-event-strip{display:block;padding:8px}
+  .p3-event-strip h3{margin-bottom:7px}
+}
+@media (max-width:430px){
+  .p3-pitch-shell{padding:13px 10px 15px}
+  .p3-player-dot{width:14px;height:14px;margin:-7px;font-size:5px}
+  .p3-player-dot.ref{display:none}
+  .p3-pitch-side-label{font-size:6px;padding:3px 4px}
+}
+@media (prefers-reduced-motion:reduce){.p3-zone.danger.show{animation:none}}
