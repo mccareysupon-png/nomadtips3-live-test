@@ -3,19 +3,23 @@
 const runtime=window.NOMAD342_MARKET_RUNTIME||{};
 const ledgerRuntime=window.NOMAD342_LEDGER_RUNTIME||{};
 const STORE_KEY='nomad342ApiFootballPredictionsV1';
+const LEDGER_OUTBOX_KEY='nomad342LedgerOutboxV1';
 const MAX_ATTEMPTS=3;
 const RETRY_DELAYS=[0,45000,120000];
 const LEDGER_RETRY_DELAYS=[0,15000,45000,120000,300000];
 const state=new Map();
-let busy=false;
+let busy=false,ledgerBusy=false;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
 function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
 function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function load(){try{return JSON.parse(sessionStorage.getItem(STORE_KEY)||'{}')||{}}catch{return {}}}
 function save(store){try{sessionStorage.setItem(STORE_KEY,JSON.stringify(store))}catch{}}
+function loadOutbox(){try{return JSON.parse(localStorage.getItem(LEDGER_OUTBOX_KEY)||'{}')||{}}catch{return {}}}
+function saveOutbox(store){try{localStorage.setItem(LEDGER_OUTBOX_KEY,JSON.stringify(store));return true}catch{return false}}
 function lockedFor(id){const row=load()[String(id)];return row?.status==='PREDICTED'?row:null}
-function remember(id,row){const store=load();store[String(id)]={...row,status:'PREDICTED',savedAt:Date.now()};save(store)}
+function remember(id,row){const store=load();store[String(id)]={...row,status:'PREDICTED',ledgerStatus:row?.ledgerStatus||'PENDING',savedAt:Date.now()};save(store)}
+function setLedgerStatus(id,status,extra={}){const store=load(),key=String(id),row=store[key];if(!row)return;store[key]={...row,ledgerStatus:status,...extra};save(store)}
 function implied(values){const raw=values.map(v=>1/Math.max(1.001,Number(v)||999)),sum=raw.reduce((a,b)=>a+b,0);return raw.map(v=>sum>0?v/sum:0)}
 function normalize3(a,b,c){const sum=a+b+c||1;const raw=[a/sum*100,b/sum*100,c/sum*100],rounded=raw.map(Math.round);let diff=100-rounded.reduce((x,y)=>x+y,0);for(let i=0;diff!==0;i=(i+1)%3){rounded[i]+=diff>0?1:-1;diff+=diff>0?-1:1}return rounded}
 function normalize2(a,b){const sum=a+b||1,aa=Math.round(a/sum*100);return [aa,100-aa]}
@@ -54,21 +58,49 @@ function ledgerPayload(id,r,row){
     market:{provider:market.provider||'API-Football',observedAt:market.observedAt||Date.now(),oneXtwo:market.oneXtwo||null,totals:market.totals||null}
   };
 }
-async function postLedger(payload,attempt=0){
-  const base=String(ledgerRuntime.base||'').replace(/\/$/,'');if(!base||!payload?.fixtureId)return;
+function postLedger(payload){
+  const id=String(payload?.matchId||'');if(!id||!payload?.fixtureId)return false;
+  const outbox=loadOutbox(),existing=outbox[id];
+  outbox[id]={payload,createdAt:existing?.createdAt||Date.now(),attempts:existing?.attempts||0,nextAt:0,lastError:null};
+  saveOutbox(outbox);setLedgerStatus(id,'PENDING',{ledgerQueuedAt:Date.now()});
+  setTimeout(flushLedgerOutbox,0);return true;
+}
+async function sendLedger(payload){
+  const base=String(ledgerRuntime.base||'').replace(/\/$/,'');if(!base||!payload?.fixtureId)throw new Error('ledger_target_missing');
   const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),Number(ledgerRuntime.timeoutMs)||6500);
   try{
     const response=await fetch(`${base}${ledgerRuntime.lockPath||'/lock'}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload),cache:'no-store',signal:ac.signal});
     let data={};try{data=await response.json()}catch{}
-    if(!response.ok||data?.ok===false)throw new Error(data?.error||`ledger_http_${response.status}`);
-  }catch(error){
-    const next=attempt+1;
-    if(next<LEDGER_RETRY_DELAYS.length){const delay=LEDGER_RETRY_DELAYS[next];setTimeout(()=>{postLedger(payload,next)},delay)}
+    if(!response.ok||data?.ok===false||data?.locked!==true)throw new Error(data?.error||`ledger_http_${response.status}`);
+    return data;
   }finally{clearTimeout(timer)}
+}
+async function flushLedgerOutbox(){
+  if(ledgerBusy)return;const outbox=loadOutbox(),now=Date.now();
+  const next=Object.entries(outbox).filter(([,item])=>item?.payload&&Number(item.nextAt||0)<=now).sort((a,b)=>Number(a[1]?.createdAt||0)-Number(b[1]?.createdAt||0))[0];
+  if(!next)return;ledgerBusy=true;
+  const [id,item]=next;
+  try{
+    const ack=await sendLedger(item.payload),fresh=loadOutbox();delete fresh[id];saveOutbox(fresh);
+    setLedgerStatus(id,'SYNCED',{ledgerSyncedAt:Date.now(),ledgerDuplicate:ack?.duplicate===true});
+    document.dispatchEvent(new CustomEvent('nomad342:ledgerlocked',{detail:{matchId:id,duplicate:ack?.duplicate===true}}));
+  }catch(error){
+    const fresh=loadOutbox(),current=fresh[id]||item,attempts=Number(current.attempts||0)+1,delay=LEDGER_RETRY_DELAYS[Math.min(attempts,LEDGER_RETRY_DELAYS.length-1)];
+    fresh[id]={...current,attempts,nextAt:Date.now()+delay,lastError:String(error?.message||error),lastAttemptAt:Date.now()};saveOutbox(fresh);
+    setLedgerStatus(id,'PENDING',{ledgerLastError:String(error?.message||error),ledgerLastAttemptAt:Date.now()});
+  }finally{ledgerBusy=false;setTimeout(flushLedgerOutbox,250)}
+}
+function recoverLockedRows(){
+  const store=load(),byId=resultById(),outbox=loadOutbox();
+  for(const [id,row] of Object.entries(store)){
+    if(row?.status!=='PREDICTED'||row?.ledgerStatus==='SYNCED'||outbox[id])continue;
+    const r=byId.get(String(id));if(!r)continue;
+    const payload=ledgerPayload(id,r,row);if(payload.fixtureId)postLedger(payload);
+  }
 }
 function scheduleFailure(id,error){const current=state.get(id)||{attempts:0,nextAt:0},attempts=current.attempts+1;state.set(id,{attempts,nextAt:attempts>=MAX_ATTEMPTS?Infinity:Date.now()+RETRY_DELAYS[Math.min(attempts,RETRY_DELAYS.length-1)],error:String(error?.message||error)})}
 async function runOne(id,r){busy=true;try{const market=await fetchCandidate(r);if(!market.oneXtwo||!market.totals)throw new Error('markets_incomplete');const row={market,prediction:prediction(r,market)};remember(id,row);state.set(id,{attempts:0,nextAt:Infinity,done:true});hydrateAll();postLedger(ledgerPayload(id,r,row))}catch(error){scheduleFailure(id,error)}finally{busy=false;setTimeout(scan,900)}}
-function scan(){hydrateAll();if(busy)return;const byId=resultById(),now=Date.now();for(const [id,r] of byId){if(!r?.event?.pass||lockedFor(id))continue;const s=state.get(id)||{attempts:0,nextAt:0};if(s.attempts>=MAX_ATTEMPTS||now<s.nextAt)continue;runOne(id,r);return}}
-function start(){if(document.body?.dataset?.page!=='live')return;const list=document.getElementById('matchList');if(!list)return;let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan()})};new MutationObserver(queue).observe(list,{childList:true});list.addEventListener('click',()=>setTimeout(hydrateAll,0));setInterval(scan,15000);queue();window.__nomad342ApiFootballCandidate={scan,storeKey:STORE_KEY,maxAttempts:MAX_ATTEMPTS}}
+function scan(){hydrateAll();recoverLockedRows();flushLedgerOutbox();if(busy)return;const byId=resultById(),now=Date.now();for(const [id,r] of byId){if(!r?.event?.pass||lockedFor(id))continue;const s=state.get(id)||{attempts:0,nextAt:0};if(s.attempts>=MAX_ATTEMPTS||now<s.nextAt)continue;runOne(id,r);return}}
+function start(){if(document.body?.dataset?.page!=='live')return;const list=document.getElementById('matchList');if(!list)return;let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;scan()})};new MutationObserver(queue).observe(list,{childList:true});list.addEventListener('click',()=>setTimeout(hydrateAll,0));setInterval(scan,15000);setInterval(flushLedgerOutbox,15000);queue();flushLedgerOutbox();window.__nomad342ApiFootballCandidate={scan,storeKey:STORE_KEY,outboxKey:LEDGER_OUTBOX_KEY,maxAttempts:MAX_ATTEMPTS,flushLedgerOutbox}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
