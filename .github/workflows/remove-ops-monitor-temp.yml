@@ -1,0 +1,30 @@
+name: REMOVE Ops Monitor Temp
+
+on:
+  push:
+    branches: ['diag/web-recovery-20260905']
+    paths:
+      - '.github/workflows/remove-ops-monitor-temp.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  remove:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Remove isolated Ops Monitor Worker
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          npx --yes wrangler@4.92.0 delete --name nomadtips3-ops-monitor --force
