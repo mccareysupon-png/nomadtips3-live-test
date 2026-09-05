@@ -1,0 +1,132 @@
+name: Diagnose NOMADTIPS3 Apex Owner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-apex-owner.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  APEX_HOST: nomadtips3.com
+  WWW_HOST: www.nomadtips3.com
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fresh DNS and HTTP fingerprints
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/apex-diag
+          {
+            echo '=== APEX A ==='; dig +short "$APEX_HOST" A
+            echo '=== APEX AAAA ==='; dig +short "$APEX_HOST" AAAA
+            echo '=== APEX CNAME ==='; dig +short "$APEX_HOST" CNAME
+            echo '=== WWW A ==='; dig +short "$WWW_HOST" A
+            echo '=== WWW AAAA ==='; dig +short "$WWW_HOST" AAAA
+            echo '=== WWW CNAME ==='; dig +short "$WWW_HOST" CNAME
+            echo '=== NS ==='; dig +short "$APEX_HOST" NS
+          } | tee /tmp/apex-diag/dns.txt
+
+          for host in "$APEX_HOST" "$WWW_HOST"; do
+            safe="${host//./_}"
+            url="https://${host}/?apex_owner_diag=${GITHUB_RUN_ID}"
+            curl -sS --max-time 25 -D "/tmp/apex-diag/${safe}.headers" -o "/tmp/apex-diag/${safe}.body" "$url"
+            echo "===== $host ====="
+            sed -n '1,80p' "/tmp/apex-diag/${safe}.headers"
+            echo '--- MARKERS ---'
+            grep -Eio '<title>[^<]*|MANUAL PROTOTYPE[^<]*|Qualified Match Analysis|Live Asian Handicap scanner|NOMAD LIVE 3\.[0-9]+|nomadtips3-live-web-production|x-nomad-[A-Za-z0-9_-]+' "/tmp/apex-diag/${safe}.body" | head -40
+            echo '--- BODY HEAD ---'
+            head -c 2200 "/tmp/apex-diag/${safe}.body"
+            echo
+          done
+
+      - name: Inspect account-level Workers and Pages ownership
+        shell: bash
+        run: |
+          set +e
+          mkdir -p /tmp/apex-diag
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+
+          fetch_api() {
+            name="$1"; url="$2"
+            code="$(curl -sS "${auth[@]}" -o "/tmp/apex-diag/${name}.json" -w '%{http_code}' "$url")"
+            echo "$name HTTP=$code"
+            echo "$code" > "/tmp/apex-diag/${name}.http"
+          }
+
+          fetch_api workers-domains "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains"
+          if [ "$(cat /tmp/apex-diag/workers-domains.http)" = 200 ]; then
+            jq '[.result[]? | {id,hostname,service,environment,zone_id,zone_name}]' /tmp/apex-diag/workers-domains.json | tee /tmp/apex-diag/workers-domains-summary.json
+          fi
+
+          fetch_api pages-projects "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects"
+          if [ "$(cat /tmp/apex-diag/pages-projects.http)" = 200 ]; then
+            jq '[.result[]? | {name,subdomain,domains,created_on,production_branch}]' /tmp/apex-diag/pages-projects.json | tee /tmp/apex-diag/pages-projects-summary.json
+            jq -r '.result[]?.name' /tmp/apex-diag/pages-projects.json | while IFS= read -r project; do
+              [ -n "$project" ] || continue
+              enc="$(PROJECT="$project" python - <<'PY'
+import os, urllib.parse
+print(urllib.parse.quote(os.environ['PROJECT'], safe=''))
+PY
+)"
+              safe="$(printf '%s' "$project" | tr -c 'A-Za-z0-9._-' '_')"
+              code="$(curl -sS "${auth[@]}" -o "/tmp/apex-diag/pages-domains-${safe}.json" -w '%{http_code}' "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/${enc}/domains")"
+              echo "pages-domains project=$project HTTP=$code"
+              if [ "$code" = 200 ]; then
+                jq --arg p "$project" '[.result[]? | {project:$p,id,name,status,zone_tag,validation_data,verification_data}]' "/tmp/apex-diag/pages-domains-${safe}.json"
+              fi
+            done | tee /tmp/apex-diag/pages-domains-summary.txt
+          fi
+
+          fetch_api workers-scripts "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts"
+          if [ "$(cat /tmp/apex-diag/workers-scripts.http)" = 200 ]; then
+            jq -r '.result[]?.id' /tmp/apex-diag/workers-scripts.json | tee /tmp/apex-diag/workers-script-ids.txt
+          fi
+
+      - name: Summarize likely apex owner
+        shell: bash
+        run: |
+          set +e
+          echo '### NOMADTIPS3 apex ownership diagnostic' >> "$GITHUB_STEP_SUMMARY"
+
+          apex_marker='unknown'
+          if grep -Eqi 'MANUAL PROTOTYPE|Qualified Match Analysis' /tmp/apex-diag/nomadtips3_com.body; then
+            apex_marker='legacy-prototype'
+          elif grep -Eqi 'Live Asian Handicap scanner|NOMAD LIVE 3\.' /tmp/apex-diag/nomadtips3_com.body; then
+            apex_marker='current-live-web'
+          fi
+          echo "- Fresh apex content marker: \`$apex_marker\`" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f /tmp/apex-diag/pages-domains-summary.txt ] && grep -Fq '"name": "nomadtips3.com"' /tmp/apex-diag/pages-domains-summary.txt; then
+            echo '- Owner evidence: apex hostname is attached to a Cloudflare Pages project.' >> "$GITHUB_STEP_SUMMARY"
+            grep -B2 -A8 '"name": "nomadtips3.com"' /tmp/apex-diag/pages-domains-summary.txt >> "$GITHUB_STEP_SUMMARY" || true
+          else
+            echo '- Cloudflare Pages: no apex-domain attachment found (or Pages API unavailable).' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          if [ -f /tmp/apex-diag/workers-domains-summary.json ] && grep -Fq '"hostname": "nomadtips3.com"' /tmp/apex-diag/workers-domains-summary.json; then
+            echo '- Workers Custom Domain: apex hostname is attached.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo '- Workers Custom Domain: no apex attachment.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo '- If neither surface owns apex, remaining owner is a zone-level Worker Route or DNS/origin rule.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload diagnostic evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nomadtips3-apex-owner-diagnostic-${{ github.run_id }}
+          path: /tmp/apex-diag
+          if-no-files-found: error
+          retention-days: 14
