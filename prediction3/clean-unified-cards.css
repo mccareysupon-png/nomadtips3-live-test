@@ -1,0 +1,320 @@
+/* Prediction3 clean unified card layer — UI only.
+   Goal: no card outlines, quiet gradients, same-row sections merged into one surface
+   with thin internal dividers. No data/engine/settlement behavior. */
+
+:root{
+  --p3-clean-surface:linear-gradient(180deg,rgba(24,31,26,.98) 0%,rgba(17,23,19,.98) 100%);
+  --p3-clean-surface-soft:linear-gradient(180deg,rgba(27,35,29,.94) 0%,rgba(19,25,21,.96) 100%);
+  --p3-clean-surface-deep:linear-gradient(145deg,rgba(20,27,22,.99) 0%,rgba(15,21,17,.99) 62%,rgba(12,18,14,.99) 100%);
+  --p3-clean-divider:rgba(255,255,255,.075);
+  --p3-clean-divider-soft:rgba(215,180,106,.12);
+  --p3-clean-shadow:0 14px 34px rgba(0,0,0,.18);
+  --p3-clean-radius:14px;
+}
+
+/* ---------- global card cleanup ---------- */
+.prediction3-status,
+.prediction3-kpis,
+.p3-featured,
+.p3-pick-hero,
+.p3-value-box,
+.p3-panel,
+.p3-final-call,
+.p3-support-card,
+.p3-empty,
+.result-card,
+.settle-box,
+.p3-sources a{
+  border:0!important;
+  outline:0!important;
+}
+
+.p3-empty{
+  background:var(--p3-clean-surface)!important;
+  border-radius:var(--p3-clean-radius)!important;
+  box-shadow:var(--p3-clean-shadow)!important;
+}
+
+/* ---------- STATUS: one card, four inner sections ---------- */
+.prediction3-status{
+  gap:0!important;
+  padding:0!important;
+  overflow:hidden;
+  border-radius:var(--p3-clean-radius)!important;
+  background:var(--p3-clean-surface-soft)!important;
+  box-shadow:var(--p3-clean-shadow)!important;
+}
+.prediction3-status>div{
+  position:relative;
+  padding:14px 16px!important;
+  border:0!important;
+  background:transparent!important;
+}
+.prediction3-status>div:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:14px;
+  right:0;
+  bottom:14px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* ---------- KPI: one card, six inner sections ---------- */
+.prediction3-kpis{
+  gap:0!important;
+  overflow:hidden;
+  border-radius:var(--p3-clean-radius)!important;
+  background:var(--p3-clean-surface)!important;
+  box-shadow:var(--p3-clean-shadow)!important;
+}
+.prediction3-kpis .p3-kpi{
+  position:relative;
+  padding:14px 13px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.prediction3-kpis .p3-kpi:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:14px;
+  right:0;
+  bottom:14px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* ---------- featured match: one quiet outer surface ---------- */
+.p3-featured{
+  border-radius:16px!important;
+  background:var(--p3-clean-surface-deep)!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.22)!important;
+  overflow:hidden;
+}
+.p3-featured:before{
+  background:radial-gradient(circle at 82% 0%,rgba(215,180,106,.055),transparent 30%)!important;
+}
+.p3-match-head{
+  border:0!important;
+  border-bottom:1px solid var(--p3-clean-divider-soft)!important;
+  background:linear-gradient(180deg,rgba(27,36,29,.96),rgba(19,26,21,.96))!important;
+}
+.p3-match-head:after{display:none!important}
+.p3-pick-hero:after{display:none!important}
+
+/* ---------- PICK + VALUE: merge row into one card ---------- */
+.p3-pick-grid{
+  gap:0!important;
+  padding:12px!important;
+  margin:0;
+  overflow:hidden;
+  border-radius:14px;
+  background:var(--p3-clean-surface-soft)!important;
+}
+.p3-pick-hero,
+.p3-value-box{
+  position:relative;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.p3-pick-hero::before{
+  content:"";
+  position:absolute;
+  top:16px;
+  right:0;
+  bottom:16px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* inner facts are sections, not mini-cards */
+.p3-pick-facts{border-top:1px solid var(--p3-clean-divider)!important}
+.p3-pick-facts>div{border-right:1px solid var(--p3-clean-divider)!important}
+.p3-pick-facts>div:last-child{border-right:0!important}
+.p3-value-box dl>div{border-bottom:1px solid var(--p3-clean-divider)!important}
+.p3-value-box dl>div:last-child{border-bottom:0!important}
+
+/* ---------- WHY + MATCH SUPPORT: one card ---------- */
+.p3-analysis-grid{
+  gap:0!important;
+  padding:0 12px 10px!important;
+  overflow:hidden;
+  border-radius:14px;
+  background:var(--p3-clean-surface)!important;
+}
+.p3-analysis-grid>.p3-panel{
+  position:relative;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:16px!important;
+}
+.p3-analysis-grid>.p3-panel:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:16px;
+  right:0;
+  bottom:16px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* MATCH SUPPORT sub-row also becomes one card */
+.p3-support-grid{
+  gap:0!important;
+  overflow:hidden;
+  border-radius:10px;
+  background:rgba(255,255,255,.018)!important;
+}
+.p3-support-card{
+  position:relative;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:12px 11px!important;
+}
+.p3-support-card:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:12px;
+  right:0;
+  bottom:12px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* ---------- TACTICAL + RISK + NO BET: one card ---------- */
+.p3-three-grid{
+  gap:0!important;
+  padding:0 12px 10px!important;
+  overflow:hidden;
+  border-radius:14px;
+  background:var(--p3-clean-surface-soft)!important;
+}
+.p3-three-grid>.p3-panel{
+  position:relative;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  padding:16px!important;
+}
+.p3-three-grid>.p3-panel:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:16px;
+  right:0;
+  bottom:16px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* ---------- FINAL CALL: borderless standalone band ---------- */
+.p3-final-call{
+  margin:0 12px 12px!important;
+  border-radius:14px!important;
+  background:linear-gradient(90deg,rgba(24,32,26,.96),rgba(17,23,19,.98))!important;
+  box-shadow:none!important;
+}
+.p3-final-copy{border-left:1px solid var(--p3-clean-divider-soft)!important}
+
+/* ---------- sources: flat chips, no outlines ---------- */
+.p3-sources a{
+  background:rgba(255,255,255,.035)!important;
+  box-shadow:none!important;
+}
+.p3-sources a:hover{
+  border:0!important;
+  background:rgba(215,180,106,.075)!important;
+}
+
+/* ---------- RESULTS ---------- */
+.result-card{
+  overflow:hidden;
+  border-radius:14px!important;
+  background:var(--p3-clean-surface)!important;
+  box-shadow:var(--p3-clean-shadow)!important;
+}
+.result-main,
+.result-settle{background:transparent!important}
+.result-settle{
+  gap:0!important;
+  overflow:hidden;
+  background:rgba(255,255,255,.018)!important;
+}
+.result-settle .settle-box{
+  position:relative;
+  border-radius:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.result-settle .settle-box:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:12px;
+  right:0;
+  bottom:12px;
+  width:1px;
+  background:var(--p3-clean-divider);
+}
+
+/* ---------- compact responsive behavior ---------- */
+@media (max-width:1060px){
+  .p3-pick-facts>div{border-right:0!important}
+  .p3-pick-facts>div:nth-child(-n+3){border-bottom:1px solid var(--p3-clean-divider)!important;padding-bottom:10px!important}
+  .p3-pick-facts>div:nth-child(n+4){padding-top:2px!important}
+
+  .p3-support-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .p3-support-card:nth-child(2n)::after{display:none}
+  .p3-support-card:nth-child(-n+2){border-bottom:1px solid var(--p3-clean-divider)!important}
+
+  .p3-three-grid{grid-template-columns:1fr 1fr!important}
+  .p3-three-grid>.p3-panel:nth-child(2)::after{display:none}
+  .p3-three-grid>.p3-panel:nth-child(-n+2){border-bottom:1px solid var(--p3-clean-divider)!important}
+  .p3-three-grid>.p3-break{grid-column:1/-1!important}
+}
+
+@media (max-width:900px){
+  .prediction3-status>div::after{display:none!important}
+  .prediction3-status>div:nth-child(-n+2){border-bottom:1px solid var(--p3-clean-divider)!important}
+  .prediction3-status>div:nth-child(odd){border-right:1px solid var(--p3-clean-divider)!important}
+
+  .prediction3-kpis .p3-kpi::after{display:none!important}
+  .prediction3-kpis .p3-kpi:nth-child(-n+3){border-bottom:1px solid var(--p3-clean-divider)!important}
+  .prediction3-kpis .p3-kpi:not(:nth-child(3n)){border-right:1px solid var(--p3-clean-divider)!important}
+
+  .p3-pick-grid{grid-template-columns:1fr!important}
+  .p3-pick-hero::before{display:none!important}
+  .p3-pick-hero{border-bottom:1px solid var(--p3-clean-divider)!important}
+
+  .p3-analysis-grid{grid-template-columns:1fr!important}
+  .p3-analysis-grid>.p3-panel::after{display:none!important}
+  .p3-analysis-grid>.p3-panel:first-child{border-bottom:1px solid var(--p3-clean-divider)!important}
+
+  .p3-final-copy{
+    border-left:0!important;
+    border-top:1px solid var(--p3-clean-divider-soft)!important;
+  }
+}
+
+@media (max-width:680px){
+  .prediction3-kpis .p3-kpi{border-right:0!important}
+  .prediction3-kpis .p3-kpi:nth-child(odd){border-right:1px solid var(--p3-clean-divider)!important}
+  .prediction3-kpis .p3-kpi:nth-child(-n+4){border-bottom:1px solid var(--p3-clean-divider)!important}
+
+  .p3-three-grid{grid-template-columns:1fr!important}
+  .p3-three-grid>.p3-panel{grid-column:auto!important}
+  .p3-three-grid>.p3-panel::after{display:none!important}
+  .p3-three-grid>.p3-panel:not(:last-child){border-bottom:1px solid var(--p3-clean-divider)!important}
+
+  .p3-support-grid{grid-template-columns:1fr 1fr!important}
+
+  .result-settle{grid-template-columns:1fr!important}
+  .result-settle .settle-box::after{display:none!important}
+  .result-settle .settle-box:not(:last-child){border-bottom:1px solid var(--p3-clean-divider)!important}
+}
