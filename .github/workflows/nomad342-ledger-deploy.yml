@@ -37,7 +37,6 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
   LEDGER_URL: https://nomadtips3-342-ledger.mccarey-supon.workers.dev
 
 jobs:
@@ -62,7 +61,7 @@ jobs:
           node --check nomad-live-342/nomad342-tabs.js
           cd workers/nomadtips3-342-ledger
           npm test
-      - name: Verify real-tab and isolation contract
+      - name: Verify real-tab, Goaloo settlement, and isolation contract
         run: |
           set -euo pipefail
           grep -Fq 'role="tablist"' nomad-live-342/index.html
@@ -78,6 +77,11 @@ jobs:
           grep -Fq "base:'https://nomadtips3-342-ledger.mccarey-supon.workers.dev'" nomad-live-342/ledger-runtime.js
           grep -Fq "postLedger(ledgerPayload(id,r,row))" nomad-live-342/api-football-candidate-layer.js
           grep -Fq 'oneSignalPerMatch:true' nomad-live-342/event-config.js
+          grep -Fq "const SETTLEMENT_SOURCE='goaloo-bf_us-direct-index'" workers/nomadtips3-342-ledger/src/index.js
+          grep -Fq 'https://live10.goaloo28.com/gf/data/bf_us.js' workers/nomadtips3-342-ledger/src/index.js
+          if grep -Eq 'API_FOOTBALL|api-sports\.io' workers/nomadtips3-342-ledger/src/index.js; then
+            echo '::error::API-Football is still wired into 3.42 settlement'; exit 1
+          fi
           changed="$(git diff --name-only origin/main...HEAD 2>/dev/null || true)"
           if echo "$changed" | grep -Eq '^nomad-live/'; then
             echo '::error::Legacy NOMAD files changed; 3.42 isolation violated'; echo "$changed"; exit 1
@@ -88,7 +92,7 @@ jobs:
           if echo "$changed" | grep -Eq '^workers/nomadtips3-market-engine/'; then
             echo '::error::Market Engine changed; tabs/ledger must remain isolated'; echo "$changed"; exit 1
           fi
-          echo '3.42 real tabs + ledger isolated; live feed, legacy pages, and market engine sealed.'
+          echo '3.42 ledger uses Goaloo direct settlement; live feed, legacy pages, and market engine sealed.'
 
   deploy:
     needs: validate
@@ -97,12 +101,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Validate Cloudflare and settlement credentials
+      - name: Validate Cloudflare credentials
         run: |
           set -euo pipefail
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          test -n "$API_FOOTBALL_KEY" || { echo '::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY'; exit 1; }
       - name: Deploy isolated 3.42 prediction ledger
         uses: cloudflare/wrangler-action@v3
         with:
@@ -111,27 +114,24 @@ jobs:
           workingDirectory: workers/nomadtips3-342-ledger
           wranglerVersion: '4.92.0'
           command: deploy
-          secrets: |
-            API_FOOTBALL_KEY
-        env:
-          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
-      - name: Smoke-test ledger read contract
+      - name: Smoke-test Goaloo settlement source and ledger read contract
         shell: bash
         run: |
           set -euo pipefail
           ok=0
           for attempt in $(seq 1 12); do
-            if curl -fsS --max-time 20 "$LEDGER_URL/health?t=$(date +%s)" -o /tmp/ledger-health.json \
+            if curl -fsS --max-time 25 "$LEDGER_URL/health?probe=1&t=$(date +%s)" -o /tmp/ledger-health.json \
               && grep -Fq '"service":"nomadtips3-342-ledger"' /tmp/ledger-health.json \
               && grep -Fq '"version":"ledger-v1"' /tmp/ledger-health.json \
-              && grep -Fq '"apiFootballConfigured":true' /tmp/ledger-health.json; then
+              && grep -Fq '"settlementSource":"goaloo-bf_us-direct-index"' /tmp/ledger-health.json \
+              && grep -Fq '"sourceProbe":{"ok":true' /tmp/ledger-health.json; then
               ok=1; break
             fi
             sleep 5
           done
-          test "$ok" = 1 || { echo '::error::3.42 ledger health check failed'; cat /tmp/ledger-health.json || true; exit 1; }
+          test "$ok" = 1 || { echo '::error::3.42 Goaloo settlement source probe failed'; cat /tmp/ledger-health.json || true; exit 1; }
           curl -fsS --max-time 20 "$LEDGER_URL/signal?limit=2&t=$(date +%s)" -o /tmp/ledger-signal.json
           curl -fsS --max-time 20 "$LEDGER_URL/statistics?limit=2&t=$(date +%s)" -o /tmp/ledger-statistics.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-signal.json
           grep -Fq '"version":"ledger-v1"' /tmp/ledger-statistics.json
-          echo 'NOMAD 3.42 ledger deployed; no synthetic lock record was written during smoke test.'
+          echo 'NOMAD 3.42 ledger deployed with Goaloo direct settlement; no synthetic lock record was written during smoke test.'
