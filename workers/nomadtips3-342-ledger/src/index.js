@@ -40,7 +40,7 @@ const json=(request,body,status=200)=>{
   headers.set('access-control-allow-methods','GET,POST,OPTIONS');
   headers.set('access-control-allow-headers','content-type');
   headers.set('vary','Origin');
-  return new Response(JSON.stringify(body),{status,headers});
+  return new Response(status===204?null:JSON.stringify(body),{status,headers});
 };
 
 function validateLock(body){
