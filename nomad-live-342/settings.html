@@ -5,75 +5,132 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · 3.42 Pick Gate Settings</title>
+  <title>nomadtips3 · 3.42 Football Evidence Settings</title>
   <link rel="stylesheet" href="styles.css?v=20260829-5dollar-v1">
-  <link rel="stylesheet" href="settings-complete.css?v=20260905-pick-gate-v2">
+  <link rel="stylesheet" href="settings-complete.css?v=20260905-football-evidence-v1">
 </head>
 <body data-page="settings">
 <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav></div></header>
 <main class="shell">
-  <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · K PICK GATE</p><h1>1X2 &amp; Over / Under Settings</h1><p>Control only the final lock gate for 1X2 and O/U. Prediction formulas, market prices, live-score feeds and settlement are not changed here.</p></div><div class="mode"><span>MODE</span><strong>OWNER</strong><small>next pick scan</small></div></section>
+  <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · K FOOTBALL EVIDENCE</p><h1>1X2 &amp; Over / Under Detection Settings</h1><p>Set the real live-football evidence used before a 3.42 lock: Attack, Dangerous Attack, SOT, Shot Off Target, Corner, pressure, trend and score state. Probability and bookmaker checks remain the final confirmation.</p></div><div class="mode"><span>MODE</span><strong>OWNER</strong><small>next pick scan</small></div></section>
 
-  <section class="settings-guide" aria-label="Pick gate groups">
-    <article><span>STEP A</span><strong>GLOBAL</strong><small>Choose the minute window and how fresh bookmaker prices must be.</small></article>
-    <article><span>STEP B</span><strong>1X2</strong><small>Filter HOME / DRAW / AWAY by probability, lead, market edge, odds and game state.</small></article>
-    <article><span>STEP C</span><strong>OVER / UNDER</strong><small>Filter O/U by probability, lead, market edge, odds and recent match activity.</small></article>
-    <article><span>LOCK RULE</span><strong>BOTH MUST PASS</strong><small>A match locks only when both the 1X2 gate and O/U gate pass.</small></article>
+  <section class="settings-guide" aria-label="Detection flow">
+    <article><span>STEP A</span><strong>LIVE WINDOW</strong><small>Minute, rolling window, attack weights and bookmaker freshness.</small></article>
+    <article><span>STEP B</span><strong>1X2 EVIDENCE</strong><small>HOME/AWAY use selected-side football evidence. DRAW uses balance evidence.</small></article>
+    <article><span>STEP C</span><strong>OVER / UNDER</strong><small>OVER needs active football. UNDER needs quiet football.</small></article>
+    <article><span>FINAL GATE</span><strong>MARKET CONFIRM</strong><small>Probability, lead, edge and odds are checked after football evidence.</small></article>
   </section>
 
-  <section class="settings-reference" aria-label="Selective reference values">
+  <section class="settings-reference" aria-label="K football reference">
     <span class="setting-note-label">REFERENCE ONLY · NOT AUTO-APPLIED</span>
-    <h2>K Selective reference</h2>
-    <p><code>55–80'</code> · <code>Price age ≤30s</code> · <code>Probability ≥62%</code> · <code>Lead ≥8%</code> · <code>Edge ≥5%</code> · <code>Odds 1.45–2.10</code> · <code>1X2 pressure confirm ON</code> · <code>reject selected side if trailing</code> · <code>O/U activity confirm ON</code>. Use LOAD REFERENCE to fill the form, then press SAVE only if you want it active.</p>
+    <h2>K Football Selective reference</h2>
+    <p><code>55–80'</code> · <code>Rolling 8m</code> · <code>ATTACK×1</code> · <code>DANGER×2.5</code> · 1X2: <code>DANGER +3</code>, <code>SOT +1</code>, <code>OFF +1</code>, <code>CORNER +1</code>, <code>3 OF 4</code>, pressure <code>60%</code>, trend <code>3/3</code>. OVER uses combined activity; UNDER uses combined quiet activity. Press LOAD K REFERENCE only to fill the form, then SAVE if you want it active.</p>
   </section>
 
   <form id="settingsForm" novalidate>
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">A · GLOBAL PICK WINDOW</p><h2>When K may lock</h2></div></div><div class="form-grid">
-      <div class="field"><label>Minute From</label><input name="minuteFrom" type="number" min="0" max="120" step="1" required><small class="setting-hint">Earliest minute allowed to request a new 1X2/O-U lock.</small></div>
-      <div class="field"><label>Minute To</label><input name="minuteTo" type="number" min="0" max="120" step="1" required><small class="setting-hint">Latest minute allowed to create a new lock.</small></div>
-      <div class="field"><label class="check"><input name="priceFreshnessEnabled" type="checkbox"> Require fresh bookmaker price</label><small class="setting-hint">If enabled, missing or stale market timestamps fail closed.</small></div>
-      <div class="field"><label>Maximum Price Age (seconds)</label><input name="maximumPriceAgeSeconds" type="number" min="1" max="3600" step="1" required><small class="setting-hint">Used only when fresh-price checking is enabled.</small></div>
-    </div></section>
-
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">B · 1X2 GATE</p><h2>HOME · DRAW · AWAY</h2></div></div>
-      <div class="choice-strip"><label class="check"><input name="allowHome" type="checkbox"> HOME</label><label class="check"><input name="allowDraw" type="checkbox"> DRAW</label><label class="check"><input name="allowAway" type="checkbox"> AWAY</label></div>
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">A · GLOBAL LIVE WINDOW</p><h2>When and how K reads the match</h2></div></div>
       <div class="form-grid">
-        <div class="field"><label>Minimum Pick Probability %</label><input name="oneXtwoMinProbability" type="number" min="0" max="100" step="0.1" required><small class="setting-hint">Chosen HOME/DRAW/AWAY probability must reach this value.</small></div>
-        <div class="field"><label>Minimum Lead Over 2nd Choice %</label><input name="oneXtwoMinLead" type="number" min="0" max="100" step="0.1" required><small class="setting-hint">Rejects close calls where the top two outcomes are too similar.</small></div>
-        <div class="field"><label>Minimum Edge vs Bookmaker %</label><input name="oneXtwoMinEdge" type="number" min="-100" max="100" step="0.1" required><small class="setting-hint">Model probability minus normalized bookmaker implied probability.</small></div>
-        <div class="field"><label>Minimum Odds</label><input name="oneXtwoOddsMin" type="number" min="1.01" max="20" step="0.01" required></div>
-        <div class="field"><label>Maximum Odds</label><input name="oneXtwoOddsMax" type="number" min="1.01" max="20" step="0.01" required></div>
-        <div class="field"><label class="check"><input name="oneXtwoPressureConfirm" type="checkbox"> Require pressure confirmation</label><small class="setting-hint">HOME/AWAY use selected-side pressure. DRAW uses pressure balance.</small></div>
-        <div class="field"><label>Selected Side Pressure Minimum %</label><input name="oneXtwoSidePressureMin" type="number" min="0" max="100" step="0.1" required><small class="setting-hint">HOME uses HOME pressure; AWAY uses 100 − HOME pressure.</small></div>
-        <div class="field"><label>DRAW Maximum Pressure Imbalance %</label><input name="oneXtwoDrawBalanceMax" type="number" min="0" max="50" step="0.1" required><small class="setting-hint">Example 8 means DRAW requires HOME pressure between 42% and 58%.</small></div>
-        <div class="field"><label class="check"><input name="oneXtwoRejectSelectedSideIfTrailing" type="checkbox"> Reject selected HOME/AWAY if currently trailing</label><small class="setting-hint">DRAW is not affected by this switch.</small></div>
+        <div class="field"><label>Minute From</label><input name="minuteFrom" type="number" min="0" max="120" step="1" required><small class="setting-hint">Earliest minute a new 1X2/O-U lock may be created.</small></div>
+        <div class="field"><label>Minute To</label><input name="minuteTo" type="number" min="0" max="120" step="1" required><small class="setting-hint">Latest minute a new lock may be created.</small></div>
+        <div class="field"><label>Rolling Window (minutes)</label><input name="rollingWindowMinutes" type="number" min="2" max="20" step="1" required><small class="setting-hint">All Attack / Dangerous / SOT / Off / Corner deltas below are recalculated from this window.</small></div>
+        <div class="field"><label>Attack Weight</label><input name="attackWeight" type="number" min="0" max="10" step="0.1" required><small class="setting-hint">Used only for side pressure and trend.</small></div>
+        <div class="field"><label>Dangerous Attack Weight</label><input name="dangerousAttackWeight" type="number" min="0" max="10" step="0.1" required><small class="setting-hint">Higher than normal Attack makes dangerous pressure count more.</small></div>
+        <div class="field"><label class="check"><input name="priceFreshnessEnabled" type="checkbox"> Require fresh bookmaker price</label><small class="setting-hint">Missing or stale market timestamps fail closed when enabled.</small></div>
+        <div class="field"><label>Maximum Price Age (seconds)</label><input name="maximumPriceAgeSeconds" type="number" min="1" max="3600" step="1" required></div>
       </div>
     </section>
 
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">C · OVER / UNDER GATE</p><h2>Totals market</h2></div></div>
-      <div class="choice-strip"><label class="check"><input name="allowOver" type="checkbox"> OVER</label><label class="check"><input name="allowUnder" type="checkbox"> UNDER</label></div>
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">B · 1X2 LIVE FOOTBALL EVIDENCE</p><h2>HOME · DRAW · AWAY</h2></div></div>
+      <div class="choice-strip">
+        <label class="check"><input name="allowHome" type="checkbox"> HOME</label>
+        <label class="check"><input name="allowDraw" type="checkbox"> DRAW</label>
+        <label class="check"><input name="allowAway" type="checkbox"> AWAY</label>
+        <label class="check"><input name="oneXtwoEvidenceEnabled" type="checkbox"> REQUIRE FOOTBALL EVIDENCE</label>
+      </div>
+      <p class="settings-save-scope"><b>HOME/AWAY:</b> every value below is read from the side K is about to pick. HOME reads HOME deltas; AWAY reads AWAY deltas. It is not HOME-only.</p>
+      <div class="form-grid">
+        <div class="field"><label>Selected Side · Attack Δ Minimum</label><input name="oneXtwoAttackMin" type="number" min="0" max="100" step="1" required></div>
+        <div class="field"><label>Selected Side · Dangerous Attack Δ Minimum</label><input name="oneXtwoDangerousMin" type="number" min="0" max="100" step="1" required></div>
+        <div class="field"><label>Selected Side · SOT Δ Minimum</label><input name="oneXtwoSotMin" type="number" min="0" max="30" step="1" required></div>
+        <div class="field"><label>Selected Side · Shot Off Target Δ Minimum</label><input name="oneXtwoShotOffMin" type="number" min="0" max="30" step="1" required></div>
+        <div class="field"><label>Selected Side · Corner Δ Minimum</label><input name="oneXtwoCornerMin" type="number" min="0" max="30" step="1" required></div>
+        <div class="field"><label>Evidence Required</label><select name="oneXtwoEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select><small class="setting-hint">The four evidence items are Dangerous Attack, SOT, Shot Off Target and Corner. Attack Δ is a separate base requirement.</small></div>
+        <div class="field"><label>Selected Side Pressure Minimum %</label><input name="oneXtwoSidePressureMin" type="number" min="0" max="100" step="0.1" required><small class="setting-hint">Pressure is recalculated from Attack and Dangerous Attack in the rolling window.</small></div>
+        <div class="field"><label>Selected Side Trend Required</label><select name="oneXtwoTrendRequired" required><option value="0">OFF</option><option value="1">1 / 3</option><option value="2">2 / 3</option><option value="3">3 / 3</option></select><small class="setting-hint">Trend = weighted pressure lead + Dangerous Attack lead + total-shot lead.</small></div>
+        <div class="field"><label class="check"><input name="oneXtwoRejectSelectedSideIfTrailing" type="checkbox"> Reject selected HOME/AWAY if currently trailing</label></div>
+      </div>
+
+      <div class="panel-head"><div><p class="eyebrow">DRAW CONFIRMATION</p><h2>Balance evidence</h2></div></div>
+      <div class="form-grid">
+        <div class="field"><label>DRAW · Maximum Pressure Imbalance %</label><input name="drawPressureBalanceMax" type="number" min="0" max="50" step="0.1" required><small class="setting-hint">8 means HOME pressure must stay between 42% and 58%.</small></div>
+        <div class="field"><label>DRAW · Maximum Dangerous Attack Difference</label><input name="drawDangerousDiffMax" type="number" min="0" max="100" step="1" required></div>
+        <div class="field"><label>DRAW · Maximum SOT Difference</label><input name="drawSotDiffMax" type="number" min="0" max="30" step="1" required></div>
+        <div class="field"><label class="check"><input name="drawRequireLevelScore" type="checkbox"> DRAW requires current score to be level</label></div>
+      </div>
+
+      <div class="panel-head"><div><p class="eyebrow">1X2 · FINAL MARKET CONFIRMATION</p><h2>Only after football evidence</h2></div></div>
+      <div class="form-grid">
+        <div class="field"><label>Minimum Pick Probability %</label><input name="oneXtwoMinProbability" type="number" min="0" max="100" step="0.1" required></div>
+        <div class="field"><label>Minimum Lead Over 2nd Choice %</label><input name="oneXtwoMinLead" type="number" min="0" max="100" step="0.1" required></div>
+        <div class="field"><label>Minimum Edge vs Bookmaker %</label><input name="oneXtwoMinEdge" type="number" min="-100" max="100" step="0.1" required></div>
+        <div class="field"><label>Minimum Odds</label><input name="oneXtwoOddsMin" type="number" min="1.01" max="20" step="0.01" required></div>
+        <div class="field"><label>Maximum Odds</label><input name="oneXtwoOddsMax" type="number" min="1.01" max="20" step="0.01" required></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">C · OVER / UNDER LIVE FOOTBALL EVIDENCE</p><h2>Combined activity from both teams</h2></div></div>
+      <div class="choice-strip">
+        <label class="check"><input name="allowOver" type="checkbox"> OVER</label>
+        <label class="check"><input name="allowUnder" type="checkbox"> UNDER</label>
+        <label class="check"><input name="totalsEvidenceEnabled" type="checkbox"> REQUIRE FOOTBALL EVIDENCE</label>
+      </div>
+      <p class="settings-save-scope"><b>OVER:</b> needs active football from both teams combined. <b>UNDER:</b> needs quiet football from both teams combined. Neither side uses HOME pressure as an O/U shortcut.</p>
+
+      <div class="panel-head"><div><p class="eyebrow">OVER EVIDENCE</p><h2>Game must be active</h2></div></div>
+      <div class="form-grid">
+        <div class="field"><label>OVER · Total Attack Δ Minimum</label><input name="overAttackMin" type="number" min="0" max="200" step="1" required></div>
+        <div class="field"><label>OVER · Total Dangerous Attack Δ Minimum</label><input name="overDangerousMin" type="number" min="0" max="200" step="1" required></div>
+        <div class="field"><label>OVER · Total SOT Δ Minimum</label><input name="overSotMin" type="number" min="0" max="50" step="1" required></div>
+        <div class="field"><label>OVER · Total Shot Off Target Δ Minimum</label><input name="overShotOffMin" type="number" min="0" max="50" step="1" required></div>
+        <div class="field"><label>OVER · Total Corner Δ Minimum</label><input name="overCornerMin" type="number" min="0" max="50" step="1" required></div>
+        <div class="field"><label>OVER Evidence Required</label><select name="overEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select></div>
+      </div>
+
+      <div class="panel-head"><div><p class="eyebrow">UNDER EVIDENCE</p><h2>Game must stay quiet</h2></div></div>
+      <div class="form-grid">
+        <div class="field"><label>UNDER · Total Attack Δ Maximum</label><input name="underAttackMax" type="number" min="0" max="999" step="1" required></div>
+        <div class="field"><label>UNDER · Total Dangerous Attack Δ Maximum</label><input name="underDangerousMax" type="number" min="0" max="999" step="1" required></div>
+        <div class="field"><label>UNDER · Total SOT Δ Maximum</label><input name="underSotMax" type="number" min="0" max="99" step="1" required></div>
+        <div class="field"><label>UNDER · Total Shot Off Target Δ Maximum</label><input name="underShotOffMax" type="number" min="0" max="99" step="1" required></div>
+        <div class="field"><label>UNDER · Total Corner Δ Maximum</label><input name="underCornerMax" type="number" min="0" max="99" step="1" required></div>
+        <div class="field"><label>UNDER Quiet Evidence Required</label><select name="underEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select></div>
+      </div>
+
+      <div class="panel-head"><div><p class="eyebrow">O/U · FINAL MARKET CONFIRMATION</p><h2>Only after football evidence</h2></div></div>
       <div class="form-grid">
         <div class="field"><label>Minimum Pick Probability %</label><input name="totalsMinProbability" type="number" min="0" max="100" step="0.1" required></div>
         <div class="field"><label>Minimum Lead Over Other Side %</label><input name="totalsMinLead" type="number" min="0" max="100" step="0.1" required></div>
         <div class="field"><label>Minimum Edge vs Bookmaker %</label><input name="totalsMinEdge" type="number" min="-100" max="100" step="0.1" required></div>
         <div class="field"><label>Minimum Odds</label><input name="totalsOddsMin" type="number" min="1.01" max="20" step="0.01" required></div>
         <div class="field"><label>Maximum Odds</label><input name="totalsOddsMax" type="number" min="1.01" max="20" step="0.01" required></div>
-        <div class="field"><label class="check"><input name="totalsActivityConfirm" type="checkbox"> Require activity confirmation</label><small class="setting-hint">OVER requires enough recent shooting activity; UNDER requires quiet recent activity.</small></div>
-        <div class="field"><label>OVER · Minimum Recent Shots</label><input name="overMinRecentShots" type="number" min="0" max="50" step="1" required><small class="setting-hint">SOT + shots off target from both teams in the current rolling metrics.</small></div>
-        <div class="field"><label>OVER · Minimum Recent SOT</label><input name="overMinRecentSot" type="number" min="0" max="20" step="1" required></div>
-        <div class="field"><label>UNDER · Maximum Recent Shots</label><input name="underMaxRecentShots" type="number" min="0" max="99" step="1" required></div>
-        <div class="field"><label>UNDER · Maximum Recent SOT</label><input name="underMaxRecentSot" type="number" min="0" max="99" step="1" required></div>
       </div>
     </section>
 
-    <section class="panel"><div class="panel-head"><div><p class="eyebrow">ACTIVE PICK GATE</p><h2>What the next scan will use</h2></div></div><div class="settings-summary" id="settingsSummary" aria-live="polite"></div><div class="settings-save-scope"><b>Scope:</b> SAVE writes only <code>nomad342PickGateV1</code>. The 3.42 pick scanner reads it again on every scan. It does not write 3.41 settings, 3.42 Event Monitor settings, feeds, probability formulas, ledger grading or settlement.</div></section>
+    <section class="panel">
+      <div class="panel-head"><div><p class="eyebrow">ACTIVE 3.42 PICK GATE</p><h2>What the next scan will use</h2></div></div>
+      <div class="settings-summary" id="settingsSummary" aria-live="polite"></div>
+      <div class="settings-save-scope"><b>Scope:</b> SAVE writes only <code>nomad342PickGateV2</code>. The 3.42 candidate scanner recalculates the football evidence directly from the live snapshots on every pick scan. It does not write 3.41 settings, change TotalCorner/Goaloo, alter probability formulas, ledger grading or settlement.</div>
+    </section>
 
-    <div class="toolbar"><button class="btn" type="submit">SAVE &amp; APPLY NEXT SCAN</button><button class="btn secondary" id="referenceButton" type="button">LOAD K REFERENCE</button><button class="btn secondary" id="defaultsButton" type="button">LOAD PERMISSIVE DEFAULT</button><span id="saveStatus" class="muted">Ready</span></div>
+    <div class="toolbar"><button class="btn" type="submit">SAVE &amp; APPLY NEXT SCAN</button><button class="btn secondary" id="referenceButton" type="button">LOAD K FOOTBALL REFERENCE</button><button class="btn secondary" id="defaultsButton" type="button">LOAD PERMISSIVE DEFAULT</button><span id="saveStatus" class="muted">Ready</span></div>
   </form>
 </main>
 <nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
 <!-- Legacy CI compatibility tokens only; not active controls: 5DollarFootballAPI Bet365 -->
 <!-- Static contract compatibility only: event-config.js must precede app.js; neither legacy script is loaded on this dedicated pick-gate page. -->
-<script src="pick-gate-settings.js?v=20260905-pick-gate-v1" defer></script>
+<script src="pick-gate-settings.js?v=20260905-football-evidence-v2" defer></script>
 </body>
 </html>
