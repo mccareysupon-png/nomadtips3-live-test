@@ -1,70 +1,58 @@
-/* NOMAD Live 3.42 navigation only. No feed, event, market, or prediction logic. */
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a{
-  position:relative!important;
-  width:116px!important;
-  gap:7px!important;
-  color:rgba(239,239,222,.72)!important;
+/* NOMAD Live 3.42 in-page tabs only. No feed, event, market, prediction, or ledger logic. */
+.nomad342-tabs{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:0 0 14px;
+  padding:7px;
+  border:1px solid rgba(215,190,104,.16);
+  background:linear-gradient(180deg,rgba(22,28,23,.94),rgba(13,18,14,.96));
+  box-shadow:0 8px 20px rgba(0,0,0,.16);
 }
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a:nth-child(n){width:116px!important}
-body[data-nomad342-nav="1"] .nomad342-tab-icon{
-  display:inline-flex;
-  width:21px;
-  height:21px;
+.nomad342-tab{
+  position:relative;
+  min-height:48px;
+  margin:0;
+  padding:8px 10px;
+  border:0;
+  background:transparent;
+  color:#9ca49b;
+  display:flex;
   align-items:center;
   justify-content:center;
-  flex:0 0 21px;
-  color:currentColor;
-  opacity:.88;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.5));
+  gap:8px;
+  cursor:pointer;
+  font:900 12px/1 Arial,Helvetica,sans-serif;
+  letter-spacing:.02em;
+  transition:color .14s ease,background .14s ease;
 }
-body[data-nomad342-nav="1"] .nomad342-tab-icon svg{
-  width:21px;
-  height:21px;
-  fill:none;
-  stroke:currentColor;
-  stroke-width:1.65;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-body[data-nomad342-nav="1"] .nomad342-tab-label{display:inline-block}
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a::after{
+.nomad342-tab:hover,.nomad342-tab:focus-visible{color:#d8c98e;outline:none;background:rgba(255,255,255,.025)}
+.nomad342-tab[aria-selected="true"]{color:var(--green);background:rgba(131,223,137,.035)}
+.nomad342-tab[aria-selected="true"]::after{
   content:"";
   position:absolute;
-  left:20px;
-  right:20px;
-  bottom:1px;
-  height:1px;
-  background:transparent;
-  box-shadow:none;
+  left:18%;right:18%;bottom:2px;height:1px;
+  background:#d8c261;
+  box-shadow:0 0 7px rgba(216,194,97,.18);
 }
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a:hover,
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a:focus-visible{
-  color:#d8c98e!important;
+.nomad342-tab-icon{
+  display:inline-flex;
+  width:22px;height:22px;flex:0 0 22px;
+  align-items:center;justify-content:center;
+  color:currentColor;
+  opacity:.9;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.45));
 }
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active{
-  color:var(--green)!important;
-}
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active::after{
-  background:rgba(215,190,104,.72);
-  box-shadow:0 0 7px rgba(215,190,104,.16);
-}
-body[data-nomad342-nav="1"] .topnav.nomad342-nav a.active .nomad342-tab-icon{
-  color:#e0c970;
-  opacity:1;
-}
+.nomad342-tab[aria-selected="true"] .nomad342-tab-icon{color:#dfc86d;opacity:1}
+.nomad342-tab-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.nomad342-tab-label{display:inline-block}
+.nomad342-tab-panel[hidden]{display:none!important}
+.nomad342-tab-panel{animation:nomad342TabIn .16s ease both}
+@keyframes nomad342TabIn{from{opacity:.72;transform:translateY(2px)}to{opacity:1;transform:none}}
 
 @media(max-width:700px){
-  body[data-nomad342-nav="1"] .mobile-nav.public-four-nav a::before{display:none!important;content:none!important}
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a{
-    gap:3px!important;
-    color:#9ca49b!important;
-  }
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a.active{color:var(--green)!important}
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav a.active .nomad342-tab-icon{color:#dfc86d}
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-icon,
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-icon svg{
-    width:18px;
-    height:18px;
-  }
-  body[data-nomad342-nav="1"] .mobile-nav.nomad342-nav .nomad342-tab-label{font-size:11px;line-height:1}
+  .nomad342-tabs{gap:3px;padding:5px;margin-bottom:10px}
+  .nomad342-tab{min-height:44px;padding:6px 3px;gap:4px;font-size:10.5px;flex-direction:column}
+  .nomad342-tab-icon,.nomad342-tab-icon svg{width:18px;height:18px}
+  .nomad342-tab[aria-selected="true"]::after{left:22%;right:22%}
 }
