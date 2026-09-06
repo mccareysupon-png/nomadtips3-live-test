@@ -254,3 +254,9 @@ body[data-page="prediction2"] .topbar-inner.public-four-nav>.brand span{
     -webkit-text-stroke:.24px currentColor!important;
   }
 }
+
+/* Primary content cards: square corners on every viewport. */
+html body main.shell :is(.hero,.panel,.metric,.match-wrap,.signal-card,.signal-lock-card,.table-wrap,.stats-table-wrap){
+  border-radius:0!important;
+}
+html body main.shell .match-wrap > summary{border-radius:0!important;}
