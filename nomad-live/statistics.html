@@ -51,7 +51,7 @@
   <link rel="stylesheet" href="statistics-bookmaker-icons.css?v=20260903-rollback-v1">
   <link rel="stylesheet" href="tablet-icon-bridge.css?v=20260904-v1">
 </head>
-<body>
+<body data-odds-role="receiver">
   <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a class="active" href="index.html">Signal</a><a href="../nomad-live-342/index.html?v=20260831-standalone342-v1">1X2 · Over/Under</a></nav><div class="source-pill"><span class="dot"></span>RESULT LEDGER · CONNECTING</div></div></header>
   <main class="shell">
     <section class="hero"><div><p class="eyebrow">PERFORMANCE</p><h1>Statistics</h1><p>Locked prices, settled results and unit-based performance from recorded live signals.</p></div><div class="mode"><span>RANGE</span><strong>All</strong><small>full ledger</small></div></section>
@@ -66,8 +66,6 @@
         <article class="mobile-settled-metric mobile-settled-push mobile-stats-push"><span>PUSH</span><strong>0</strong></article>
       </div>
     </section>
-
-    <section class="odds-display-toolbar toolbar"><div class="odds-display-control" role="group" aria-label="Odds display format"><span class="odds-display-label">ODDS</span><button type="button" data-odds-mode="decimal" aria-pressed="false">DECIMAL</button><button type="button" data-odds-mode="american" aria-pressed="false">AMERICAN</button><button type="button" data-odds-mode="fractional" aria-pressed="false">FRACTION</button></div></section>
 
     <section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted statistics-results-summary">WIN 0 · LOSS 0 · PUSH 0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th class="condition-head">CONDITION</th><th>PICK</th><th>AH</th><th>ODDS</th><th>ODDS SOURCE</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody><tr><td colspan="11">No locked signals yet.</td></tr></tbody></table></div><nav class="stats-pagination" data-stats-pagination aria-label="Statistics pages" hidden></nav></section>
 
@@ -87,7 +85,7 @@
   <script src="../public-info-footer.js?v=20260831-info-v1" defer></script>
   <script src="public-source-mask.js?v=20260824-v1" defer></script>
   <script src="statistics-bookmaker-icons.js?v=20260903-odds-source-v1" defer></script>
-  <script src="odds-display.js?v=20260830-column-safe-v3" defer></script>
+  <script src="odds-display.js?v=20260906-global-receiver-v2" defer></script>
   <script src="statistics-equity.js?v=20260828-v8" defer></script>
   <script src="statistics-ema.js?v=20260830-ema-v1" defer></script>
   <script src="statistics-indicators.js?v=20260830-indicators-v1" defer></script>
