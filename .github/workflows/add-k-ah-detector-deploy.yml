@@ -1,32 +1,83 @@
 name: Deploy ADD K AH Detector
+
 on:
   push:
     branches: [main]
-    paths: ['workers/add-k-ah-detector/**','.github/workflows/add-k-ah-detector-deploy.yml']
+    paths:
+      - "workers/add-k-ah-detector/**"
+      - ".github/workflows/add-k-ah-detector-deploy.yml"
   workflow_dispatch:
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
+  OWNER_ADMIN_TOKEN: ${{ secrets.OWNER_ADMIN_TOKEN }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
       - name: ตรวจสอบระบบ
         working-directory: workers/add-k-ah-detector
-        run: npm test && node --check src/index.js
-      - name: Deploy Worker
+        run: npm test && node --check src/index.js && node --check src/rules.js
+
+      - name: ตรวจสอบ secret ที่จำเป็น
+        shell: bash
+        run: |
+          test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo "::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY"; exit 1; }
+          test -n "$OWNER_ADMIN_TOKEN" || { echo "::error::Missing OWNER_ADMIN_TOKEN"; exit 1; }
+
+      - name: Deploy Worker พร้อม Cron, Durable Object และ secret
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
           workingDirectory: workers/add-k-ah-detector
-          command: deploy
-      - name: ตั้งค่า API-Football
-        working-directory: workers/add-k-ah-detector
+          wranglerVersion: "4"
+          command: deploy --config wrangler.jsonc
+          secrets: |
+            API_FOOTBALL_KEY
+            OWNER_ADMIN_TOKEN
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
-          OWNER_KEY: ${{ secrets.OWNER_ADMIN_TOKEN }}
+          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
+          OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
+
+      - name: ตรวจ production ก่อนเปิดระบบ
+        shell: bash
         run: |
-          test -n "$API_FOOTBALL_KEY"
-          printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4 secret put API_FOOTBALL_KEY --name add-k-ah-detector
-          if [ -n "$OWNER_KEY" ]; then printf '%s' "$OWNER_KEY" | npx --yes wrangler@4 secret put OWNER_KEY --name add-k-ah-detector; fi
-      - name: ตรวจ production
-        run: curl --fail --retry 8 --retry-delay 5 https://add-k-ah-detector.mccarey-supon.workers.dev/
+          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
+          curl --fail --retry 8 --retry-delay 5 "$BASE/"
+          curl --fail --retry 8 --retry-delay 5 "$BASE/config" | tee /tmp/add-k-config.json
+          curl --fail --retry 8 --retry-delay 5 "$BASE/status"
+
+      - name: Production smoke และเปิดระบบเมื่อผ่านเท่านั้น
+        shell: bash
+        run: |
+          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
+          BODY=$(curl --fail --retry 3 --retry-delay 3 -sS -X POST "$BASE/cycle" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
+          printf '%s\n' "$BODY"
+          printf '%s' "$BODY" | grep -q '"ok":true'
+          CONFIG=$(curl --fail -sS "$BASE/config" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=true;process.stdout.write(JSON.stringify(j.config))})")
+          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$CONFIG")
+          printf '%s\n' "$SAVED"
+          printf '%s' "$SAVED" | grep -q '"enabled":true'
+
+      - name: ยืนยันระบบเปิดและ endpoint ใช้งานได้
+        shell: bash
+        run: |
+          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
+          curl --fail -sS "$BASE/config" | tee /tmp/add-k-final-config.json
+          grep -q '"enabled":true' /tmp/add-k-final-config.json
+          curl --fail -sS "$BASE/signals"
+          curl --fail -sS "$BASE/status"
