@@ -6,6 +6,7 @@
    Brightness rollback note: rollback-notes/icon-brightness-20260902.md */
 
 .toolbar .tabs .tab::before,
+.toolbar .tabs .statistics-link::before,
 .toolbar .odds-display-control button::before,
 .toolbar .odds-display-label::before{
   background-image:url("assets/icons/vintage-toolbar-independent.webp")!important;
@@ -15,6 +16,24 @@
   filter:brightness(1.12) saturate(1.07)!important;
   transform:translateY(0) scale(1);
   transition:filter .16s ease,opacity .16s ease,transform .16s ease!important;
+}
+
+.toolbar .tabs .statistics-link{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  padding:7px 9px!important;
+  border:0!important;
+  border-radius:7px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#aab1ab!important;
+  text-decoration:none!important;
+  text-shadow:none!important;
+  font-size:9px!important;
+  font-weight:900!important;
+  line-height:1!important;
 }
 
 /* 2026-09-04 bright light-vintage replacements: artwork only. */
@@ -38,10 +57,19 @@
   background-size:contain!important;
   background-position:center!important;
 }
+.toolbar .tabs .statistics-link::before{
+  content:""!important;
+  display:inline-block!important;
+  background-image:url("assets/icons/toolbar-statistics-bright-vintage.svg")!important;
+  background-size:contain!important;
+  background-position:center!important;
+  background-repeat:no-repeat!important;
+}
 
 /* +15% icon footprint, rounded to crisp whole pixels: PC 26->30, mobile 21->24. */
 @media(min-width:1025px){
   .toolbar .tabs .tab::before,
+  .toolbar .tabs .statistics-link::before,
   .toolbar .odds-display-control button::before,
   .toolbar .odds-display-label::before{
     width:30px!important;
@@ -50,8 +78,30 @@
   }
 }
 
+@media(min-width:701px) and (max-width:1024px){
+  .toolbar .tabs .statistics-link::before{
+    width:26px!important;
+    height:26px!important;
+    flex:0 0 26px!important;
+  }
+}
+
 @media(max-width:700px){
+  .toolbar .tabs{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  }
+  .toolbar .tabs .tab,
+  .toolbar .tabs .statistics-link{
+    min-width:0!important;
+    width:100%!important;
+    min-height:32px!important;
+    padding:4px 2px!important;
+    gap:3px!important;
+    font-size:8px!important;
+    white-space:nowrap!important;
+  }
   .toolbar .tabs .tab::before,
+  .toolbar .tabs .statistics-link::before,
   .toolbar .odds-display-control button::before,
   .toolbar .odds-display-label::before{
     width:24px!important;
@@ -111,11 +161,18 @@
 /* Hover remains above the brighter default; active remains the strongest state. */
 .toolbar .tabs .tab:hover::before,
 .toolbar .tabs .tab:focus-visible::before,
+.toolbar .tabs .statistics-link:hover::before,
+.toolbar .tabs .statistics-link:focus-visible::before,
 .toolbar .odds-display-control button:hover::before,
 .toolbar .odds-display-control button:focus-visible::before{
   opacity:1!important;
   filter:brightness(1.27) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.24))!important;
   transform:translateY(-1px) scale(1.04)!important;
+}
+.toolbar .tabs .statistics-link:hover,
+.toolbar .tabs .statistics-link:focus-visible{
+  color:var(--green)!important;
+  outline:none!important;
 }
 
 .toolbar .tabs .tab[aria-pressed="true"]::before,
