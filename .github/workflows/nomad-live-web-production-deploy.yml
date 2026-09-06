@@ -66,7 +66,7 @@ jobs:
           # Page 1 remains on its established production engine path.
           grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
-          grep -Fq 'live-filter-lock.js?v=20260828-default-all-v1' nomad-live/index.html
+          grep -Fq 'live-filter-lock.js?v=20260906-subview-refresh-v1' nomad-live/index.html
           grep -Fq "transport:directProduction?'direct':'service-binding'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
