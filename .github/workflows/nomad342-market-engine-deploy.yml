@@ -21,7 +21,6 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
   MARKET_URL: https://nomadtips3-market-engine.mccarey-supon.workers.dev
 
 jobs:
@@ -54,10 +53,16 @@ jobs:
           grep -Fq 'blocksEventRender:false' nomad-live-342/market-runtime.js
           grep -Fq 'eventDependency: false' workers/nomadtips3-market-engine/src/index.js
           grep -Fq "url.pathname === '/candidate'" workers/nomadtips3-market-engine/src/index.js
-          grep -Fq "fetchApiFootballCandidate" workers/nomadtips3-market-engine/src/api-football-candidate.js
+          grep -Fq 'fetchNowgoalCandidate' workers/nomadtips3-market-engine/src/index.js
+          grep -Fq 'parseNowgoalPossessionHtml' workers/nomadtips3-market-engine/src/nowgoal.js
+          grep -Fq 'matchNowgoalLiveMatch' workers/nomadtips3-market-engine/src/nowgoal.js
           grep -Fq '"MARKET_PROVIDER_KIND": "nowgoal"' workers/nomadtips3-market-engine/wrangler.jsonc
           grep -Fq "markets: ['1X2', 'OVER_UNDER']" workers/nomadtips3-market-engine/src/nowgoal.js
+          grep -Fq "candidateStatistics: ['POSSESSION']" workers/nomadtips3-market-engine/src/nowgoal.js
           grep -Fq 'asianHandicap: false' workers/nomadtips3-market-engine/src/nowgoal.js
+          if grep -Fq 'fetchApiFootballCandidate' workers/nomadtips3-market-engine/src/index.js; then
+            echo '::error::API-Football candidate is still active in the market runtime'; exit 1
+          fi
           grep -Fq "/api/poll/tipsterMatchOdds" workers/nomadtips3-market-engine/src/asianbookie.js
           if grep -Fq '"MARKET_PROVIDER_KIND": "asianbookie"' workers/nomadtips3-market-engine/wrangler.jsonc; then
             echo '::error::AsianBookie direct Worker polling is intentionally disabled after empty non-JSON production responses'; exit 1
@@ -72,7 +77,7 @@ jobs:
           if [ -n "$changed" ]; then
             echo '::error::NOMAD 3.41 files changed:'; echo "$changed"; exit 1
           fi
-          echo '3.41 sealed; Nowgoal market provider restricted to 1X2/O-U; AH/Event Worker unchanged.'
+          echo '3.41 sealed; 3.42 Nowgoal candidate supplies 1X2/O-U + possession; SOT/OFF remain unavailable.'
 
   deploy:
     needs: validate
@@ -81,11 +86,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - name: Validate Cloudflare credentials and API-Football secret
+      - name: Validate Cloudflare credentials
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          test -n "$API_FOOTBALL_KEY" || { echo '::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY'; exit 1; }
       - name: Deploy isolated Market Worker
         uses: cloudflare/wrangler-action@v3
         with:
@@ -94,11 +98,7 @@ jobs:
           workingDirectory: workers/nomadtips3-market-engine
           wranglerVersion: '4.92.0'
           command: deploy
-          secrets: |
-            API_FOOTBALL_KEY
-        env:
-          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
-      - name: Smoke-test Nowgoal 1X2/O-U production provider
+      - name: Smoke-test Nowgoal 1X2/O-U and possession candidate
         shell: bash
         run: |
           set -euo pipefail
@@ -110,6 +110,8 @@ jobs:
               && grep -Fq '"providerConfigured":true' /tmp/market-health.json \
               && grep -Fq '"providerKind":"nowgoal"' /tmp/market-health.json \
               && grep -Fq '"providerName":"Nowgoal"' /tmp/market-health.json \
+              && grep -Fq '"nowgoalCandidate":{"enabled":true' /tmp/market-health.json \
+              && grep -Fq '"statistics":["POSSESSION"]' /tmp/market-health.json \
               && grep -Fq '"nowgoal":{"enabled":true' /tmp/market-health.json \
               && grep -Fq '"markets":["1X2","OVER_UNDER"]' /tmp/market-health.json \
               && grep -Fq '"asianHandicap":false' /tmp/market-health.json; then
@@ -117,7 +119,7 @@ jobs:
             fi
             sleep 5
           done
-          test "$health_ok" = 1 || { echo '::error::Production health is not serving the Nowgoal 1X2/O-U provider'; cat /tmp/market-health.json || true; exit 1; }
+          test "$health_ok" = 1 || { echo '::error::Production health is not serving the Nowgoal candidate'; cat /tmp/market-health.json || true; exit 1; }
           cat /tmp/market-health.json
 
           markets_ok=0
@@ -131,4 +133,30 @@ jobs:
             sleep 5
           done
           test "$markets_ok" = 1 || { echo '::error::Nowgoal /markets did not return a normalized market-v1 payload'; cat /tmp/markets.json || true; exit 1; }
-          echo 'NOWGOAL MARKET DATA ONLINE: 1X2 + O/U provider confirmed.'
+
+          MARKET_URL="$MARKET_URL" node - <<'NODE'
+          const base=process.env.MARKET_URL;
+          const payload=JSON.parse(require('fs').readFileSync('/tmp/markets.json','utf8'));
+          const rows=(payload.matches||[]).filter(m=>m?.home&&m?.away&&Array.isArray(m?.score)&&Number.isFinite(Number(m.score[0]))&&Number.isFinite(Number(m.score[1]))).slice(0,10);
+          if(!rows.length)throw new Error('no live Nowgoal rows available for candidate smoke');
+          let last=null;
+          for(const m of rows){
+            const url=new URL(`${base}/candidate`);
+            url.searchParams.set('home',m.home);
+            url.searchParams.set('away',m.away);
+            url.searchParams.set('minute',String(m.minute??0));
+            url.searchParams.set('scoreHome',String(m.score[0]));
+            url.searchParams.set('scoreAway',String(m.score[1]));
+            const response=await fetch(url,{headers:{origin:'https://www.nomadtips3.com'}});
+            let body={};try{body=await response.json()}catch{}
+            last={status:response.status,body};
+            if(response.ok&&body?.ok===true&&body?.provider==='Nowgoal'&&body?.statistics?.home&&Object.hasOwn(body.statistics.home,'possession')){
+              console.log(JSON.stringify({candidate:true,fixture:body.fixture,statistics:body.statistics,diagnostics:body.sourceDiagnostics},null,2));
+              process.exit(0);
+            }
+          }
+          console.error(JSON.stringify(last,null,2));
+          throw new Error('Nowgoal candidate smoke did not return the possession contract');
+          NODE
+
+          echo 'NOWGOAL 3.42 ONLINE: 1X2 + O/U + possession candidate confirmed; SOT/OFF intentionally null.'
