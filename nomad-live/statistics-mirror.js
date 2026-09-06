@@ -44,6 +44,14 @@
     syncFrame=requestAnimationFrame(syncHeight);
   };
 
+  const syncOddsMode=()=>{
+    try{
+      const mode=window.NOMAD_ODDS_DISPLAY?.getMode?.();
+      const child=frame.contentWindow?.NOMAD_ODDS_DISPLAY;
+      if(mode&&child?.setMode)child.setMode(mode);
+    }catch{}
+  };
+
   const installMonitorStyle=doc=>{
     let style=doc.getElementById('statistics-monitor-embed-style');
     if(style)return;
@@ -52,7 +60,7 @@
     style.textContent=`
       html{scroll-behavior:auto!important;scrollbar-gutter:auto!important;overflow:hidden!important}
       body{overflow:hidden!important}
-      .topbar,.hero,.mobile-nav,footer,.site-footer,.public-info-footer,[data-public-info-footer]{display:none!important}
+      .topbar,.hero,.mobile-nav,footer,.site-footer,.public-info-footer,[data-public-info-footer],.odds-display-toolbar{display:none!important}
       main.shell{padding-top:0!important;padding-bottom:0!important}
     `;
     doc.head.appendChild(style);
@@ -63,6 +71,7 @@
       const doc=frame.contentDocument;
       if(!doc?.documentElement||!doc.body)return;
       installMonitorStyle(doc);
+      syncOddsMode();
 
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
@@ -77,9 +86,9 @@
       mutationObserver.observe(doc.body,{childList:true,subtree:true,attributes:true,characterData:true});
 
       scheduleSync();
-      requestAnimationFrame(scheduleSync);
-      setTimeout(scheduleSync,80);
-      setTimeout(scheduleSync,300);
+      requestAnimationFrame(()=>{syncOddsMode();scheduleSync();});
+      setTimeout(()=>{syncOddsMode();scheduleSync();},80);
+      setTimeout(()=>{syncOddsMode();scheduleSync();},300);
       setTimeout(scheduleSync,900);
     }catch{
       mirror.dataset.ready='0';
@@ -108,6 +117,7 @@
 
     if(show){
       ensureMonitor();
+      syncOddsMode();
       scheduleSync();
     }
   };
@@ -118,6 +128,10 @@
   });
 
   filterTabs.forEach(tab=>tab.addEventListener('click',()=>setView('matches')));
+  window.addEventListener('nomad:odds-display-change',()=>{
+    syncOddsMode();
+    if(active)scheduleSync();
+  });
   window.addEventListener('resize',()=>{if(active)scheduleSync()},{passive:true});
   window.addEventListener('beforeunload',()=>{
     if(syncFrame)cancelAnimationFrame(syncFrame);
