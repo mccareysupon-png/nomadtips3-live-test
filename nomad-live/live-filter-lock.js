@@ -4,15 +4,17 @@
   const search=document.querySelector('.search input');
   if(!tabs.length||!list)return;
 
+  const SESSION_KEY='nomad341SignalSubviewV1';
   const valid=new Set(['ALL','SIGNAL','NEAR','WATCHING']);
   const tabName=tab=>String(tab?.textContent||'').trim().toUpperCase();
   const signalOrder=new Map();
   let nextSignalOrder=0;
   let selected='ALL';
 
-  // Every fresh page load starts on ALL. Remove the legacy saved filter so an
-  // earlier SIGNAL/NEAR/WATCHING choice can never override the landing view.
-  try{localStorage.removeItem('nomad341LiveFilterV1');}catch{}
+  try{
+    const saved=String(sessionStorage.getItem(SESSION_KEY)||'').toUpperCase();
+    if(valid.has(saved))selected=saved;
+  }catch{}
 
   // Prevent browser scroll anchoring from following newly inserted/reordered live cards.
   list.style.overflowAnchor='none';
@@ -56,7 +58,11 @@
   for(const tab of tabs){
     tab.addEventListener('click',()=>{
       const next=tabName(tab);
-      if(valid.has(next)){selected=next;requestAnimationFrame(apply);}
+      if(valid.has(next)){
+        selected=next;
+        try{sessionStorage.setItem(SESSION_KEY,next);}catch{}
+        requestAnimationFrame(apply);
+      }
     });
   }
   if(search)search.addEventListener('input',()=>requestAnimationFrame(apply));
