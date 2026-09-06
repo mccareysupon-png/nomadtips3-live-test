@@ -75,7 +75,9 @@
   <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="index.html">Live Score</a></nav><div class="source-pill"><span class="dot"></span>LIVE SCORE</div></div></header>
 
   <main class="shell">
-    <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · EVENT</p><h1>Live Score & Event Monitor</h1><p>Live score, rolling event pressure and recent attack flow from the isolated 3.42 event feed.</p></div><div class="mode"><span>MODE</span><strong>LIVE</strong><small>event monitor</small></div></section>
+    <section class="nomad342-subpage-heading" aria-labelledby="nomad342HeadingTitle">
+      <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="nomad342HeadingTitle">LIVE SCORE & EVENT MONITOR</h2></div>
+    </section>
 
     <nav class="nomad342-tabs" role="tablist" aria-label="NOMAD Live 3.42 sections">
       <button class="nomad342-tab" id="nomad342TabLive" type="button" role="tab" aria-selected="true" aria-controls="nomad342PanelLive" data-tab="live-score">
@@ -90,9 +92,6 @@
     </nav>
 
     <section class="nomad342-tab-panel" id="nomad342PanelLive" role="tabpanel" aria-labelledby="nomad342TabLive" data-panel="live-score">
-      <section class="nomad342-subpage-heading" aria-labelledby="liveHeadingTitle">
-        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="liveHeadingTitle">LIVE SCORE & EVENT MONITOR</h2></div>
-      </section>
       <section class="status-grid">
         <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>Live event feed</small></article>
         <article class="metric"><span>FRESH FEED</span><strong id="freshCount">—</strong><small>not stale</small></article>
@@ -116,9 +115,6 @@
     </section>
 
     <section class="nomad342-tab-panel" id="nomad342PanelSignal" role="tabpanel" aria-labelledby="nomad342TabSignal" data-panel="signal" hidden aria-hidden="true">
-      <section class="nomad342-subpage-heading" aria-labelledby="signalHeadingTitle">
-        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="signalHeadingTitle">1X2 · OVER/UNDER SIGNAL</h2></div>
-      </section>
       <section class="status-grid ledger-summary" aria-label="Signal summary">
         <article class="metric"><span>LOCKED MATCHES</span><strong id="signalLocked">—</strong><small>persistent ledger</small></article>
         <article class="metric signal"><span>PREDICTIONS</span><strong id="signalPredictions">—</strong><small>1X2 + O/U</small></article>
@@ -134,9 +130,6 @@
     </section>
 
     <section class="nomad342-tab-panel" id="nomad342PanelStatistics" role="tabpanel" aria-labelledby="nomad342TabStatistics" data-panel="statistics" hidden aria-hidden="true">
-      <section class="nomad342-subpage-heading" aria-labelledby="statisticsHeadingTitle">
-        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="statisticsHeadingTitle">STATISTICS</h2></div>
-      </section>
       <section class="status-grid ledger-summary statistics-summary" aria-label="Statistics summary">
         <article class="metric"><span>TOTAL</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
         <article class="metric"><span>DAYS</span><strong id="statsDay">—</strong><small>active ledger days</small></article>
@@ -175,7 +168,7 @@
   <script src="vintage-draw-theme.js?v=20260902-v1" defer></script>
   <script src="event-timeline-dual-rail.js?v=20260902-v1" defer></script>
   <script src="vintage-trading-chart.js?v=20260904-card-palette-v1" defer></script>
-  <script src="nomad342-tabs.js?v=20260906-main-nav-v4" defer></script>
+  <script src="nomad342-tabs.js?v=20260906-main-nav-v5" defer></script>
   <script src="signal-ledger.js?v=20260906-flow-v3" defer></script>
   <script src="statistics-ledger.js?v=20260906-flow-v3" defer></script>
   <script>
