@@ -20,7 +20,7 @@ const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt
 const finite=value=>{if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null};
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
 const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
-const fmtOdds=value=>finite(value)===null?'—':finite(value).toFixed(2);
+const fmtOdds=value=>{const n=finite(value);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2);};
 const fmtProfit=value=>finite(value)===null?'—':`${finite(value)>0?'+':''}${finite(value).toFixed(2)}u`;
 const resultClass=result=>`result-${String(result||'PENDING').toLowerCase()}`;
 const displayResult=result=>String(result||'PENDING').toUpperCase()==='PUSH'?'DRAW':String(result||'PENDING').toUpperCase().replaceAll('_',' ');
@@ -92,7 +92,7 @@ async function load(){
     set(metrics.win,summary.wins??0);
     set(metrics.loss,summary.losses??0);
     set(metrics.draw,summary.pushes??0);
-    set(metrics.avgOdds,avgOdds===null?'—':Number(avgOdds).toFixed(2));
+    set(metrics.avgOdds,avgOdds===null?'—':fmtOdds(avgOdds));
     set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
     tbody.innerHTML=rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="9">No picks recorded yet.</td></tr>';
     set(status,`LEDGER ONLINE · ${summary.settledPredictions??0} settled · ${summary.pendingPredictions??0} pending · updated ${when(data.updatedAt)}`);
@@ -105,6 +105,7 @@ const refresh=()=>setTimeout(load,0);
 load();timer=setInterval(load,Math.max(3000,Number(runtime.pollMs)||5000));
 document.addEventListener('nomad342:ledgerlocked',refresh);
 document.addEventListener('nomad342:ledgerrefresh',refresh);
+document.addEventListener('nomad342:odds-display-change',refresh);
 window.addEventListener('focus',refresh);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)});
