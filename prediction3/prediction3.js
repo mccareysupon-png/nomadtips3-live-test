@@ -90,7 +90,7 @@
 
       <section class="p3-pick-grid">
         <div class="p3-pick-hero">
-          <div class="p3-section-label">${icon('crown')}<span>ADD K PICK</span></div>
+          <div class="p3-section-label">${icon('crown')}<span>SIRIUS VERDICT</span></div>
           <h2>${esc(pickLabel)}</h2>
           <div class="p3-pick-facts">
             <div><span>MARKET</span><strong>${esc(item.market||'1X2')}</strong></div>
