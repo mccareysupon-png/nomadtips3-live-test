@@ -72,7 +72,7 @@ jobs:
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
 
           # Page 3 is direct TotalCorner V3 with the isolated V2 Worker retained as fallback.
-          grep -Fq 'Live Score & Event Monitor' nomad-live-342/index.html
+          grep -Fq 'LIVE SCORE & EVENT MONITOR' nomad-live-342/index.html
           grep -Fq "transport:'direct-worker-v3'" nomad-live-342/runtime-config.js
           grep -Fq 'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev' nomad-live-342/runtime-config.js
           grep -Fq 'https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' nomad-live-342/runtime-config.js
@@ -165,7 +165,7 @@ jobs:
           done
 
           curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/canary-342.html
-          grep -Fq 'Live Score & Event Monitor' /tmp/canary-342.html
+          grep -Fq 'LIVE SCORE & EVENT MONITOR' /tmp/canary-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/canary-342.html
           curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/canary-342-runtime.js
           grep -Fq "transport:'direct-worker-v3'" /tmp/canary-342-runtime.js
@@ -235,7 +235,7 @@ jobs:
           done
 
           curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?t=$(date +%s)" -o /tmp/custom-342.html
-          grep -Fq 'Live Score & Event Monitor' /tmp/custom-342.html
+          grep -Fq 'LIVE SCORE & EVENT MONITOR' /tmp/custom-342.html
           grep -Fq 'event-monitor.js?v=' /tmp/custom-342.html
           curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/runtime-config.js?t=$(date +%s)" -o /tmp/custom-342-runtime.js
           grep -Fq "transport:'direct-worker-v3'" /tmp/custom-342-runtime.js
