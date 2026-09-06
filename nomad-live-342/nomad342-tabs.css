@@ -1,6 +1,7 @@
 /* NOMAD Live 3.42 in-page tabs only. No feed, event, market, prediction, or ledger logic.
    Desktop: compact left-aligned sub-navigation so it is visually distinct from the main top navigation.
-   Mobile: retain full-width three-column tap targets. */
+   Mobile: retain full-width three-column tap targets.
+   2026-09-06: presentation-only bright-vintage icon artwork; layout and tab logic unchanged. */
 .nomad342-tabs{
   display:grid;
   grid-template-columns:repeat(3,132px);
@@ -50,12 +51,34 @@
   display:inline-flex;
   width:22px;height:22px;flex:0 0 22px;
   align-items:center;justify-content:center;
-  color:currentColor;
-  opacity:.9;
-  filter:drop-shadow(0 1px 0 rgba(0,0,0,.45));
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:contain;
+  opacity:1;
+  filter:brightness(1.08) saturate(1.06) drop-shadow(0 1px 0 rgba(0,0,0,.45));
+  transform:translateY(0) scale(1);
+  transition:filter .16s ease,opacity .16s ease,transform .16s ease;
 }
-.nomad342-tab[aria-selected="true"] .nomad342-tab-icon{color:currentColor;opacity:1}
-.nomad342-tab-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
+.nomad342-tab:nth-child(1) .nomad342-tab-icon{
+  background-image:url("assets/subnav-live-score-bright-vintage.svg?v=20260906-v1");
+}
+.nomad342-tab:nth-child(2) .nomad342-tab-icon{
+  background-image:url("assets/subnav-signal-bright-vintage.svg?v=20260906-v1");
+}
+.nomad342-tab:nth-child(3) .nomad342-tab-icon{
+  background-image:url("assets/subnav-statistics-bright-vintage.svg?v=20260906-v1");
+}
+.nomad342-tab-icon svg{display:none!important}
+.nomad342-tab:hover .nomad342-tab-icon,
+.nomad342-tab:focus-visible .nomad342-tab-icon{
+  filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22));
+  transform:translateY(-1px) scale(1.04);
+}
+.nomad342-tab[aria-selected="true"] .nomad342-tab-icon{
+  opacity:1;
+  filter:brightness(1.32) saturate(1.13) drop-shadow(0 0 6px rgba(131,223,137,.44));
+  transform:translateY(-1px) scale(1.04);
+}
 .nomad342-tab-label{display:inline-block}
 .nomad342-tab-panel[hidden]{display:none!important}
 .nomad342-tab-panel{animation:nomad342TabIn .16s ease both}
@@ -70,6 +93,6 @@
     margin-bottom:10px;
   }
   .nomad342-tab{min-height:44px;padding:6px 3px;gap:4px;font-size:9.45px;flex-direction:column}
-  .nomad342-tab-icon,.nomad342-tab-icon svg{width:18px;height:18px}
+  .nomad342-tab-icon{width:18px;height:18px;flex-basis:18px}
   .nomad342-tab[aria-selected="true"]::after{left:22%;right:22%}
 }
