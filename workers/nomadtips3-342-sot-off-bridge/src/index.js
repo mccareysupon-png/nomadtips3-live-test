@@ -1,9 +1,8 @@
-const VERSION='3.42-sot-off-bridge-v1';
+import {openNowgoalSession,fetchNowgoalDetails,NOWGOAL_STATS_SOURCE} from './nowgoal-stats.js';
+
+const VERSION='3.42-sot-off-bridge-v2-nowgoal';
 const TC_FEED='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed';
-const GOALOO_FEED='https://nomadtips3-goaloo-stats-342-test.mccarey-supon.workers.dev/feed';
 const REQUEST_TIMEOUT_MS=9000;
-const MAX_MINUTE_GAP=5;
-const LOCK_MAX_MINUTE_GAP=6;
 const MIN_TEAM_SCORE=.80;
 const MIN_PAIR_SCORE=.86;
 const MIN_MARGIN=.07;
@@ -42,11 +41,6 @@ export function teamScore(a,b){
   let prefix=0;for(let i=0;i<Math.min(x.length,y.length);i++){if(x[i]!==y[i])break;prefix++}
   return Math.min(.98,dice+(prefix?Math.min(.08,prefix*.025):0));
 }
-function leagueScore(a,b){
-  const x=norm(a),y=norm(b);if(!x||!y)return null;if(x===y)return 1;
-  const xs=new Set(tokens(a)),ys=new Set(tokens(b));let hit=0;for(const t of xs)if(ys.has(t))hit++;
-  return hit/Math.max(1,Math.max(xs.size,ys.size));
-}
 function scorePair(v){
   if(Array.isArray(v))return [finite(v[0]),finite(v[1])];
   return [finite(v?.home),finite(v?.away)];
@@ -64,55 +58,46 @@ function pairValid(pair){
   if(home===null||away===null||home<0||away<0)return null;
   return [home,away];
 }
-function candidate(eventMatch,goaloo){
-  const h=teamScore(eventMatch?.home,goaloo?.home),a=teamScore(eventMatch?.away,goaloo?.away);
+function candidate(eventMatch,nowgoal){
+  const h=teamScore(eventMatch?.home,nowgoal?.home),a=teamScore(eventMatch?.away,nowgoal?.away);
   if(h<MIN_TEAM_SCORE||a<MIN_TEAM_SCORE)return null;
   const direct=(h+a)/2;if(direct<MIN_PAIR_SCORE)return null;
-  const reverse=(teamScore(eventMatch?.home,goaloo?.away)+teamScore(eventMatch?.away,goaloo?.home))/2;
+  const reverse=(teamScore(eventMatch?.home,nowgoal?.away)+teamScore(eventMatch?.away,nowgoal?.home))/2;
   if(reverse>=direct-.02)return null;
-  const exact=scoreExact(eventMatch?.score,goaloo?.score);if(exact===false)return null;
-  if(scoreReversed(eventMatch?.score,goaloo?.score))return null;
-  const em=finite(eventMatch?.minute),gm=finite(goaloo?.minute),minuteGap=em!==null&&gm!==null?Math.abs(em-gm):null;
-  if(minuteGap!==null&&minuteGap>MAX_MINUTE_GAP)return null;
-  const ls=leagueScore(eventMatch?.league,goaloo?.league);
-  let confidence=direct;
-  if(exact===true)confidence+=.06;
-  if(minuteGap!==null)confidence+=minuteGap<=2?.04:minuteGap<=4?.02:0;
-  if(ls!==null&&ls>=.5)confidence+=Math.min(.04,ls*.04);
-  return {goaloo,confidence,homeScore:h,awayScore:a,minuteGap,leagueScore:ls};
+  const exact=scoreExact(eventMatch?.score,nowgoal?.score);
+  if(exact!==true)return null;
+  if(scoreReversed(eventMatch?.score,nowgoal?.score))return null;
+  return {nowgoal,confidence:direct+.08,homeScore:h,awayScore:a};
 }
-export function chooseGoaloo(eventMatch,goalooMatches){
-  const rows=[];for(const g of goalooMatches||[]){const c=candidate(eventMatch,g);if(c)rows.push(c)}
+export function chooseNowgoal(eventMatch,nowgoalMatches){
+  const rows=[];for(const row of nowgoalMatches||[]){const c=candidate(eventMatch,row);if(c)rows.push(c)}
   rows.sort((a,b)=>b.confidence-a.confidence);
   const best=rows[0],second=rows[1];
   if(!best)return {match:null,reason:'NO_CANDIDATE'};
   if(second&&best.confidence-second.confidence<MIN_MARGIN)return {match:null,reason:'AMBIGUOUS'};
-  return {match:best.goaloo,reason:'MATCHED',confidence:best.confidence,minuteGap:best.minuteGap,homeScore:best.homeScore,awayScore:best.awayScore,leagueScore:best.leagueScore};
+  return {match:best.nowgoal,reason:'MATCHED',confidence:best.confidence,homeScore:best.homeScore,awayScore:best.awayScore};
 }
-function validateLock(eventMatch,goaloo){
-  if(!goaloo)return false;
-  const h=teamScore(eventMatch?.home,goaloo?.home),a=teamScore(eventMatch?.away,goaloo?.away);
+function validateLock(eventMatch,nowgoal){
+  if(!nowgoal)return false;
+  const h=teamScore(eventMatch?.home,nowgoal?.home),a=teamScore(eventMatch?.away,nowgoal?.away);
   if(h<.78||a<.78)return false;
-  const direct=(h+a)/2,reverse=(teamScore(eventMatch?.home,goaloo?.away)+teamScore(eventMatch?.away,goaloo?.home))/2;
+  const direct=(h+a)/2,reverse=(teamScore(eventMatch?.home,nowgoal?.away)+teamScore(eventMatch?.away,nowgoal?.home))/2;
   if(reverse>=direct-.02)return false;
-  const exact=scoreExact(eventMatch?.score,goaloo?.score);if(exact===false)return false;
-  const em=finite(eventMatch?.minute),gm=finite(goaloo?.minute);
-  if(em!==null&&gm!==null&&Math.abs(em-gm)>LOCK_MAX_MINUTE_GAP)return false;
-  return true;
+  return scoreExact(eventMatch?.score,nowgoal?.score)===true;
 }
 function latestSnapshot(match){
   const rows=Array.isArray(match?.event?.snapshots)?match.event.snapshots:[];
   return [...rows].filter(s=>finite(s?.minute)!==null).sort((a,b)=>finite(a.minute)-finite(b.minute)||(finite(a.observedAt)||0)-(finite(b.observedAt)||0)).at(-1)||null;
 }
-function saveObservation(match,goaloo,observedAt){
+function saveObservation(match,nowgoal,observedAt){
   const id=String(match?.id||'');if(!id)return null;
-  const sot=pairValid(goaloo?.stats?.shots_on_target),off=pairValid(goaloo?.stats?.shots_off_target);
+  const sot=pairValid(nowgoal?.stats?.shots_on_target),off=pairValid(nowgoal?.stats?.shots_off_target);
   if(!sot&&!off)return null;
   const latest=latestSnapshot(match),minute=finite(latest?.minute)??finite(match?.minute);
   if(minute===null)return null;
   const sourceObservedAt=finite(observedAt)??Date.now();
   const at=finite(latest?.observedAt)??sourceObservedAt;
-  const next={minute,observedAt:at,sot,off,goalooId:String(goaloo?.sourceMatchId||'')};
+  const next={minute,observedAt:at,sot,off,nowgoalId:String(nowgoal?.sourceMatchId||'')};
   const cutoff=sourceObservedAt-HISTORY_MS;
   let rows=(histories.get(id)||[]).filter(x=>x.observedAt>=cutoff);
   const idx=rows.findIndex(x=>x.minute===minute);
@@ -129,13 +114,30 @@ function overlayHistory(match){
     const next={...s};
     if(obs.sot)next.sot=[...obs.sot];
     if(obs.off)next.off=[...obs.off];
-    next.supplement={...(s?.supplement||{}),goalooSotOff:{sourceMatchId:obs.goalooId,observedAt:obs.observedAt}};
+    next.supplement={...(s?.supplement||{}),nowgoalSotOff:{sourceMatchId:obs.nowgoalId,observedAt:obs.observedAt}};
     return next;
   }):[];
   return {...match,event:{...(match?.event||{}),snapshots}};
 }
-export function enrichFeed(tcFeed,goalooFeed,observedAt=Date.now()){
-  const goalooMatches=Array.isArray(goalooFeed?.matches)?goalooFeed.matches:[],byId=new Map(goalooMatches.map(m=>[String(m.sourceMatchId),m]));
+
+function detailIdsNeeded(tcMatches,roster){
+  const byId=new Map((roster||[]).map(row=>[String(row.sourceMatchId),row]));
+  const ids=new Set();
+  for(const eventMatch of tcMatches||[]){
+    const key=String(eventMatch?.id||''),lockedId=locks.get(key);
+    if(lockedId){
+      const locked=byId.get(String(lockedId));
+      if(locked&&validateLock(eventMatch,locked))ids.add(String(locked.sourceMatchId));
+      continue;
+    }
+    const picked=chooseNowgoal(eventMatch,roster);
+    if(picked.match)ids.add(String(picked.match.sourceMatchId));
+  }
+  return [...ids];
+}
+
+export function enrichFeed(tcFeed,nowgoalFeed,observedAt=Date.now()){
+  const sourceMatches=Array.isArray(nowgoalFeed?.matches)?nowgoalFeed.matches:[],byId=new Map(sourceMatches.map(m=>[String(m.sourceMatchId),m]));
   let matched=0,ambiguous=0,unmatched=0,lockedUnavailable=0,withSot=0,withOff=0;
   const matches=(Array.isArray(tcFeed?.matches)?tcFeed.matches:[]).map(eventMatch=>{
     const key=String(eventMatch?.id||'');let source=null,meta=null;
@@ -143,23 +145,23 @@ export function enrichFeed(tcFeed,goalooFeed,observedAt=Date.now()){
     if(lockedId){
       const locked=byId.get(String(lockedId));
       if(locked&&validateLock(eventMatch,locked)){
-        source=locked;meta={confidence:1,locked:true,minuteGap:finite(eventMatch?.minute)!==null&&finite(locked?.minute)!==null?Math.abs(finite(eventMatch.minute)-finite(locked.minute)):null};
+        source=locked;meta={confidence:1,locked:true};
       }else{
         lockedUnavailable++;
         return overlayHistory(eventMatch);
       }
     }else{
-      const picked=chooseGoaloo(eventMatch,goalooMatches);
+      const picked=chooseNowgoal(eventMatch,sourceMatches);
       if(!picked.match){if(picked.reason==='AMBIGUOUS')ambiguous++;else unmatched++;return overlayHistory(eventMatch)}
       source=picked.match;meta={...picked,locked:false};locks.set(key,String(source.sourceMatchId));
     }
     matched++;
-    const obs=saveObservation(eventMatch,source,goalooFeed?.observedAt??observedAt);
+    const obs=saveObservation(eventMatch,source,nowgoalFeed?.observedAt??observedAt);
     if(obs?.sot)withSot++;if(obs?.off)withOff++;
     const enriched=overlayHistory(eventMatch);
-    return {...enriched,supplement:{...(eventMatch?.supplement||{}),goalooSotOff:{matched:true,sourceMatchId:String(source.sourceMatchId),confidence:meta?.confidence??null,minuteGap:meta?.minuteGap??null,locked:Boolean(meta?.locked),fields:{sot:Boolean(obs?.sot),off:Boolean(obs?.off)}}}};
+    return {...enriched,supplement:{...(eventMatch?.supplement||{}),nowgoalSotOff:{matched:true,sourceMatchId:String(source.sourceMatchId),confidence:meta?.confidence??null,locked:Boolean(meta?.locked),fields:{sot:Boolean(obs?.sot),off:Boolean(obs?.off)}}}};
   });
-  return {...tcFeed,matches,bridge:{version:VERSION,mode:'SOT_OFF_ONLY',totalCornerLive:matches.length,goalooLive:goalooMatches.length,matched,ambiguous,unmatched,lockedUnavailable,withSot,withOff,observedAt:finite(goalooFeed?.observedAt)??observedAt}};
+  return {...tcFeed,matches,bridge:{version:VERSION,mode:'SOT_OFF_ONLY',source:'Nowgoal match detail',totalCornerLive:matches.length,nowgoalLive:nowgoalFeed?.rosterCount??sourceMatches.length,detailRequested:nowgoalFeed?.detailRequested??sourceMatches.length,detailUsable:sourceMatches.length,matched,ambiguous,unmatched,lockedUnavailable,withSot,withOff,observedAt:finite(nowgoalFeed?.observedAt)??observedAt}};
 }
 
 async function fetchJson(url){
@@ -171,14 +173,28 @@ async function fetchJson(url){
   }catch(error){if(error?.name==='AbortError')throw new Error('timeout');throw error}
   finally{clearTimeout(timer)}
 }
+
 async function liveFeed(){
   let tc;
   try{tc=await fetchJson(TC_FEED)}catch(error){return {status:502,body:{ok:false,version:VERSION,error:`totalcorner_unavailable:${String(error?.message||error)}`,matches:[]}}}
   if(tc?.ok!==true||!Array.isArray(tc?.matches))return {status:502,body:{ok:false,version:VERSION,error:'totalcorner_feed_invalid',matches:[]}};
-  let goaloo;
-  try{goaloo=await fetchJson(GOALOO_FEED)}catch(error){return {status:200,body:{...tc,bridge:{version:VERSION,mode:'SOT_OFF_ONLY',degraded:true,error:`goaloo_unavailable:${String(error?.message||error)}`,matched:0,totalCornerLive:tc.matches.length}}}}
-  if(goaloo?.ok!==true||!Array.isArray(goaloo?.matches))return {status:200,body:{...tc,bridge:{version:VERSION,mode:'SOT_OFF_ONLY',degraded:true,error:'goaloo_feed_invalid',matched:0,totalCornerLive:tc.matches.length}}};
-  return {status:200,body:enrichFeed(tc,goaloo)};
+
+  const observedAt=Date.now();
+  let session;
+  try{session=await openNowgoalSession(fetch,observedAt)}catch(error){
+    return {status:200,body:{...tc,bridge:{version:VERSION,mode:'SOT_OFF_ONLY',source:'Nowgoal match detail',degraded:true,error:String(error?.message||error),matched:0,totalCornerLive:tc.matches.length,nowgoalLive:0}}};
+  }
+
+  const ids=detailIdsNeeded(tc.matches,session.matches);
+  const details=await fetchNowgoalDetails(session,ids,fetch,observedAt);
+  const detailById=new Map(details.map(item=>[String(item.sourceMatchId),item]));
+  const ready=session.matches.map(row=>{
+    const detail=detailById.get(String(row.sourceMatchId));
+    if(!detail?.ok||!detail.stats)return null;
+    return {...row,stats:detail.stats};
+  }).filter(Boolean);
+
+  return {status:200,body:enrichFeed(tc,{ok:true,observedAt,matches:ready,rosterCount:session.matches.length,detailRequested:ids.length},observedAt)};
 }
 
 export default {
@@ -186,8 +202,8 @@ export default {
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers:HEADERS});
     if(request.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);
     const url=new URL(request.url);
-    if(url.pathname==='/'||url.pathname==='/health')return json({ok:true,version:VERSION,mode:'SOT_OFF_ONLY',totalCorner:TC_FEED,goaloo:GOALOO_FEED,changes:['event.snapshots[].sot','event.snapshots[].off'],untouched:['minute','score','attacks','dangerous','corner','markets','settlement']});
-    if(url.pathname==='/contract')return json({ok:true,version:VERSION,input:'TotalCorner V3 + Goaloo stats',output:'TotalCorner V3-compatible feed',fills:['event.snapshots[].sot','event.snapshots[].off'],failClosed:true});
+    if(url.pathname==='/'||url.pathname==='/health')return json({ok:true,version:VERSION,mode:'SOT_OFF_ONLY',totalCorner:TC_FEED,statsSource:NOWGOAL_STATS_SOURCE,changes:['event.snapshots[].sot','event.snapshots[].off'],untouched:['minute','score','attacks','dangerous','corner','markets','settlement']});
+    if(url.pathname==='/contract')return json({ok:true,version:VERSION,input:'TotalCorner V3 + Nowgoal match-detail statistics',output:'TotalCorner V3-compatible feed',fills:['event.snapshots[].sot','event.snapshots[].off'],failClosed:true,matchGuards:['HOME/AWAY orientation','exact score','team similarity','ambiguity reject','session lock']});
     if(url.pathname==='/feed'){const result=await liveFeed();return json(result.body,result.status)}
     return json({ok:false,error:'not_found'},404);
   }
