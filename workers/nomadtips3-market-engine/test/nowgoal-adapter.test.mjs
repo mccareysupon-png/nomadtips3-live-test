@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { nowgoalCandidate } from '../src/index.js';
 import {
   fetchNowgoalCandidate,
   fetchNowgoalPayload,
@@ -92,6 +93,38 @@ const fullRow = '3003850,17348417,1.25,0.78,1.06,155043777,1.63,4.41,5.28,9001,2
   assert.equal(candidate.sourceDiagnostics.possessionAvailable, true);
   assert.ok(calls.some(call => call.path === '/match/live-3003850'));
   assert.ok(calls.slice(1).every(call => call.cookie.includes('ngsid=test-session')));
+}
+
+{
+  const partialOneXtwoRow = '3003850,17348417,1.25,0.78,1.06,155043777,1.63,4.41,5.28,9001,,,';
+  const roster = `var A=Array(2); A[1]=[3003850,2,384,27,'Hull City','Manchester United','2026-09-05 10:00:00','2026-09-05 10:25:00',3,1,0,2,0];`;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async url => {
+    const parsed = new URL(url);
+    if (parsed.pathname === '/') {
+      return new Response('<html>Nowgoal</html>', { status: 200, headers: { 'set-cookie': 'ngsid=partial-session; Path=/; HttpOnly' } });
+    }
+    if (parsed.pathname === '/gf/data/bf_en-idn1.js') return new Response(roster, { status: 200 });
+    if (['/gf/data/odds/en/goal50.xml','/gf/data/odds/en/goal8.xml','/gf/data/odds/en/goal17.xml'].includes(parsed.pathname)) {
+      return new Response(`<c><match><m>${partialOneXtwoRow}</m></match></c>`, { status: 200 });
+    }
+    if (parsed.pathname === '/match/live-3003850') return new Response('<h2>Statistics</h2><h2>Team Statistics</h2>', { status: 200 });
+    return new Response('missing', { status: 404 });
+  };
+  try {
+    const candidate = await nowgoalCandidate(
+      { maxAgeMs: 30000 },
+      { MARKET_PROVIDER_TIMEOUT_MS: '3000' },
+      { home: 'Hull City', away: 'Manchester United', minute: 67, score: [1, 0] },
+    );
+    assert.equal(candidate.ok, true);
+    assert.deepEqual(candidate.oneXtwo, { home: 1.63, draw: 4.41, away: 5.28 });
+    assert.deepEqual(candidate.totals, { line: null, over: null, under: null });
+    assert.deepEqual(candidate.sourceDiagnostics.availableMarkets, ['1X2']);
+    assert.equal(candidate.sourceDiagnostics.partialMarket, true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 }
 
 console.log('nowgoal-adapter tests passed');
