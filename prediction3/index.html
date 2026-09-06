@@ -100,34 +100,5 @@
   <script src="locked-picks-ui.js?v=20260905-p3-locked-picks-v1" defer></script>
   <script src="sirius-guardian.js?v=20260906-sirius-guardian-v1" defer></script>
   <script src="live-tracker.js?v=20260906-sirius-live-v2" defer></script>
-  <script>
-  (()=>{
-    async function syncPrediction3Floor(){
-      let data=null;
-      try{
-        const response=await fetch(`data/ledger.json?floor=${Date.now()}`,{cache:'no-store'});
-        if(response.ok)data=await response.json();
-      }catch(_){return;}
-      const globalFloor=Number(data?.selection?.minimum_decimal_odds);
-      const floors=(Array.isArray(data?.today)?data.today:[]).map(item=>{
-        const own=Number(item?.minimumOdds);
-        return Number.isFinite(own)?own:globalFloor;
-      });
-      const stamp=()=>{
-        document.querySelectorAll('.p3-featured').forEach((card,index)=>{
-          const node=card.querySelector('.p3-price-rule');
-          const floor=Number(floors[index]);
-          if(!node||!Number.isFinite(floor))return;
-          node.innerHTML=`Playable only at <strong>${floor.toFixed(2)}+</strong>. Re-check price before kick-off.`;
-        });
-      };
-      stamp();
-      const host=document.getElementById('predictionList');
-      if(host)new MutationObserver(stamp).observe(host,{childList:true,subtree:true});
-    }
-    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',syncPrediction3Floor,{once:true});
-    else syncPrediction3Floor();
-  })();
-  </script>
 </body>
 </html>
