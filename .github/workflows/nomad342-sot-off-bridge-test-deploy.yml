@@ -6,6 +6,7 @@ on:
       - work/342-settings-clean-rebuild
     paths:
       - 'workers/nomadtips3-342-sot-off-bridge/**'
+      - 'nomad-live-342/diagnostics/nowgoal-event-stats-probe.mjs'
       - '.github/workflows/nomad342-sot-off-bridge-test-deploy.yml'
   workflow_dispatch:
 
@@ -15,11 +16,9 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  BRIDGE_URL: https://nomadtips3-342-sot-off-bridge-test.mccarey-supon.workers.dev
-  TC_URL: https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed
 
 jobs:
-  validate-deploy-smoke:
+  validate-source-and-bridge:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -29,61 +28,24 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate bridge code
+      - name: Validate bridge and Nowgoal source code
         run: |
+          node --check workers/nomadtips3-342-sot-off-bridge/src/nowgoal-stats.js
           node --check workers/nomadtips3-342-sot-off-bridge/src/index.js
           node --test workers/nomadtips3-342-sot-off-bridge/test/*.test.mjs
+
+      - name: Probe Nowgoal live SOT OFF source read only
+        run: node nomad-live-342/diagnostics/nowgoal-event-stats-probe.mjs
 
       - name: Dry-run isolated bridge
         working-directory: workers/nomadtips3-342-sot-off-bridge
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
 
-      - name: Validate Cloudflare credentials
-        run: |
-          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
-          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-
-      - name: Deploy isolated bridge test Worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ env.CF_API_TOKEN }}
-          accountId: ${{ env.CF_ACCOUNT_ID }}
-          workingDirectory: workers/nomadtips3-342-sot-off-bridge
-          wranglerVersion: '4.92.0'
-          command: deploy --config wrangler.toml
-
-      - name: Smoke bridge contract and live feed
-        shell: bash
+      - name: Confirm production paths untouched
         run: |
           set -euo pipefail
-          curl -fsS --max-time 20 "$BRIDGE_URL/health?_=$RANDOM" -o /tmp/health.json
-          node - <<'NODE'
-          const j=require('/tmp/health.json');
-          if(j.ok!==true||j.mode!=='SOT_OFF_ONLY') process.exit(1);
-          if(!Array.isArray(j.changes)||j.changes.join(',')!=='event.snapshots[].sot,event.snapshots[].off') process.exit(1);
-          NODE
-
-          curl -fsS --max-time 30 "$TC_URL?_=$RANDOM" -o /tmp/tc.json
-          curl -fsS --max-time 30 "$BRIDGE_URL/feed?_=$RANDOM" -o /tmp/bridge.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const tc=JSON.parse(fs.readFileSync('/tmp/tc.json','utf8'));
-          const br=JSON.parse(fs.readFileSync('/tmp/bridge.json','utf8'));
-          if(br.ok!==true||!Array.isArray(br.matches)||!br.bridge) process.exit(1);
-          const byId=new Map((tc.matches||[]).map(m=>[String(m.id),m]));
-          let compared=0,enriched=0;
-          for(const m of br.matches||[]){
-            const base=byId.get(String(m.id)); if(!base) continue;
-            compared++;
-            if(JSON.stringify(m.score)!==JSON.stringify(base.score)) throw new Error(`score changed ${m.id}`);
-            if(Number(m.minute)!==Number(base.minute)) throw new Error(`minute changed ${m.id}`);
-            if(String(m.home)!==String(base.home)||String(m.away)!==String(base.away)) throw new Error(`teams changed ${m.id}`);
-            const a=(base.event?.snapshots||[]).at(-1),b=(m.event?.snapshots||[]).at(-1);
-            if(a&&b){
-              for(const k of ['attacks','dangerous','corner']) if(JSON.stringify(a[k])!==JSON.stringify(b[k])) throw new Error(`${k} changed ${m.id}`);
-              if(Array.isArray(b.sot)&&b.sot.some(Number.isFinite)) enriched++;
-            }
-          }
-          if(compared===0) throw new Error('no comparable TotalCorner matches');
-          console.log(JSON.stringify({totalCorner:(tc.matches||[]).length,bridge:(br.matches||[]).length,matched:br.bridge.matched,withSot:br.bridge.withSot,withOff:br.bridge.withOff,enriched,ambiguous:br.bridge.ambiguous,unmatched:br.bridge.unmatched},null,2));
-          NODE
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          if echo "$changed" | grep -E '^(nomad-live-score-feed-v3/|nomad-live-engine/|nomad-live/)' >/dev/null; then
+            echo '::error::Production or 3.41 path changed in source-rail task'; echo "$changed"; exit 1
+          fi
+          echo 'Nowgoal source rail is isolated to the 3.42 clean branch bridge.'
