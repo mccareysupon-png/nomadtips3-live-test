@@ -11,25 +11,25 @@ body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{paddin
 .signal-lock-card{position:relative;padding:12px;border:0;background:linear-gradient(145deg,rgba(20,36,26,.98),rgba(15,27,20,.98) 54%,rgba(10,18,13,.99));box-shadow:0 8px 20px rgba(0,0,0,.16)}
 .signal-lock-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:linear-gradient(#6ac58d,#2f7650,#163d2a);opacity:.82}
 .signal-lock-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start;padding-bottom:8px;border:0}
-.signal-lock-kicker{display:flex;align-items:center;gap:7px;color:#79c995;font:900 9px/1 Arial,Helvetica,sans-serif;letter-spacing:.075em;text-transform:uppercase}
+.signal-lock-kicker{display:flex;align-items:center;gap:7px;color:#79c995;font:900 8.5px/1 Arial,Helvetica,sans-serif;letter-spacing:.075em;text-transform:uppercase}
 .signal-lock-kicker::before{content:"";width:6px;height:6px;border:0;border-radius:50%;background:currentColor;box-shadow:0 0 8px rgba(121,201,149,.22)}
-.signal-lock-teams{margin-top:5px;font:900 15.5px/1.22 Arial,Helvetica,sans-serif;color:#f1f4ef}
-.signal-lock-league{margin-top:3px;color:#8e9d93;font-size:10px;font-weight:800}
-.signal-lock-meta{text-align:right;color:#9daaa1;font-size:10px;font-weight:800;line-height:1.5}
+.signal-lock-teams{margin-top:5px;font:900 14px/1.22 Arial,Helvetica,sans-serif;color:#f1f4ef}
+.signal-lock-league{margin-top:3px;color:#8e9d93;font-size:9px;font-weight:800}
+.signal-lock-meta{text-align:right;color:#9daaa1;font-size:9px;font-weight:800;line-height:1.5}
 .signal-lock-grid{display:grid;grid-template-columns:minmax(0,1fr) 90px minmax(0,1fr);gap:6px;margin-top:9px;align-items:stretch}
 .signal-market{padding:10px 11px;border:0;background:linear-gradient(145deg,rgba(28,54,37,.62),rgba(18,36,25,.60) 58%,rgba(13,27,19,.64))}
-.signal-market-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9dad9f;font-size:9.5px;font-weight:900;letter-spacing:.065em;text-transform:uppercase}
-.signal-market strong{display:block;margin-top:6px;color:#f0f3ed;font:900 16px/1 Arial,Helvetica,sans-serif}
-.signal-market .signal-odds{color:#d8c36c;font-size:11.5px;font-weight:900}
-.signal-market small{display:block;margin-top:6px;color:#8fa095;font-size:9.5px;font-weight:800;line-height:1.45}
-.signal-result{margin-top:7px;display:inline-flex;align-items:center;min-height:21px;padding:0 7px;border:0;background:rgba(255,255,255,.035);font-size:9px;font-weight:900;letter-spacing:.045em}
+.signal-market-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#9dad9f;font-size:8.5px;font-weight:900;letter-spacing:.065em;text-transform:uppercase}
+.signal-market strong{display:block;margin-top:6px;color:#f0f3ed;font:900 13.5px/1 Arial,Helvetica,sans-serif}
+.signal-market .signal-odds{color:#d8c36c;font-size:10.5px;font-weight:900}
+.signal-market small{display:block;margin-top:6px;color:#8fa095;font-size:9px;font-weight:800;line-height:1.45}
+.signal-result{margin-top:7px;display:inline-flex;align-items:center;min-height:21px;padding:0 7px;border:0;background:rgba(255,255,255,.035);font-size:8.5px;font-weight:900;letter-spacing:.045em}
 .signal-result.win{color:#56dfa2;background:rgba(65,217,154,.08)}
 .signal-result.loss{color:#ff8585;background:rgba(255,119,119,.07)}
 .signal-result.push{color:#e6cf7b;background:rgba(229,206,120,.07)}
 .signal-result.pending{color:#aab5ad;background:rgba(255,255,255,.035)}
 .signal-final{display:flex;min-height:100%;align-items:center;justify-content:center;flex-direction:column;gap:4px;padding:9px 6px;text-align:center;border:0;background:linear-gradient(180deg,rgba(51,105,72,.30),rgba(21,50,33,.36))}
 .signal-final>span{color:#9caf9f;font:900 8.5px/1 Arial,Helvetica,sans-serif;letter-spacing:.10em;text-transform:uppercase}
-.signal-final>strong{color:#f1f4ee;font:900 20px/1 Arial,Helvetica,sans-serif;letter-spacing:.015em}
+.signal-final>strong{color:#f1f4ee;font:900 14.5px/1 Arial,Helvetica,sans-serif;letter-spacing:.015em}
 .signal-final>small{color:#8fa095;font:900 8.5px/1 Arial,Helvetica,sans-serif;letter-spacing:.08em}
 .signal-final.is-final{background:linear-gradient(180deg,rgba(67,121,85,.34),rgba(25,58,38,.40));box-shadow:inset 0 0 16px rgba(76,160,105,.035)}
 .signal-final.is-final>strong,.signal-final.is-final>small{color:#d9c46d}
@@ -58,11 +58,19 @@ body[data-page="signal342"] .shell,body[data-page="statistics342"] .shell{paddin
   .ledger-summary .metric strong{font-size:19px}
   .signal-lock-card{padding:11px 10px}
   .signal-lock-head{grid-template-columns:1fr}
-  .signal-lock-meta{text-align:left;display:flex;gap:10px;flex-wrap:wrap}
+  .signal-lock-kicker{font-size:8px}
+  .signal-lock-league{font-size:8.5px}
+  .signal-lock-meta{text-align:left;display:flex;gap:10px;flex-wrap:wrap;font-size:8.5px}
   .signal-lock-grid{grid-template-columns:1fr}
+  .signal-market-head{font-size:8px}
+  .signal-market strong{font-size:12px}
+  .signal-market .signal-odds{font-size:9.5px}
+  .signal-market small{font-size:8.5px}
+  .signal-result{font-size:8px}
   .signal-final{min-height:60px;display:grid;grid-template-columns:auto auto auto;justify-content:center;gap:9px;padding:7px 9px}
-  .signal-final>strong{font-size:18px}
-  .signal-lock-teams{font-size:15px}
+  .signal-final>span,.signal-final>small{font-size:8px}
+  .signal-final>strong{font-size:13px}
+  .signal-lock-teams{font-size:12.5px}
 }
 
 /* Scope summaries to the unified panels; event-monitor's legacy rule hides all status grids. */
