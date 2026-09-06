@@ -8,7 +8,7 @@ const API_ROUTES=new Map([
 const PREDICTIONS_ORIGIN='https://mccareysupon-png.github.io';
 const PREDICTIONS_BASE='/nomadtips3-live-test';
 const NOMAD342_PREFIX='/nomad-live-342';
-const PUBLIC_INFO_PREFIXES=['/about','/privacy','/terms','/user-guide','/disclaimer'];
+const PUBLIC_INFO_PREFIXES=['/about','/privacy','/terms','/user-guide','/disclaimer','/add-k-ah'];
 const ROOT_SHARED_FOOTER_ASSETS=new Set(['/site-footer.css','/site-footer.js']);
 const PUBLIC_INFO_ASSETS=new Set([
   '/info-pages.css',
