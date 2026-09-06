@@ -11,7 +11,7 @@ function esc(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&
 function norm(v=''){return String(v).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()}
 function compact(v=''){return norm(v).replace(/\s/g,'')}
 function teamScore(a,b){const x=norm(a),y=norm(b);if(!x||!y)return 0;if(x===y)return 1;if(compact(x)===compact(y))return .99;if(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)))return .9;const aa=new Set(x.split(' ').filter(Boolean)),bb=new Set(y.split(' ').filter(Boolean));let hit=0;for(const t of aa)if(bb.has(t))hit++;const union=aa.size+bb.size-hit;return union?hit/union:0}
-function fmtOdds(v){const n=finite(v);return n===null?'—':n.toFixed(2)}
+function fmtOdds(v){const n=finite(v);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2)}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';return `${n>0?'+':''}${Number.isInteger(n)?n.toFixed(1):n.toFixed(2)}`}
 function observedAt(m){const rows=Array.isArray(m?.bookmakers)?m.bookmakers:[];const values=rows.map(b=>Number(b?.observedAt)).filter(Number.isFinite);const direct=Number(m?.observedAt);if(Number.isFinite(direct))values.push(direct);return values.length?Math.max(...values):null}
 function ageText(ms){if(!Number.isFinite(ms)||ms<0)return '—';if(ms<1000)return '<1s';if(ms<60000)return `${Math.floor(ms/1000)}s`;return `${Math.floor(ms/60000)}m`}
@@ -49,7 +49,7 @@ function remember(payload){
   try{localStorage.setItem(runtime.historyKey,JSON.stringify(store))}catch{}
 }
 function previousSnapshot(m){const rows=historyStore()[historyKey(m)]||[];if(rows.length<2)return null;return rows[rows.length-2]||null}
-function movement(current,previous){const a=finite(current),b=finite(previous);if(a===null||b===null)return {arrow:'',label:''};const d=a-b;if(Math.abs(d)<.005)return {arrow:'→',label:'steady'};return d<0?{arrow:'↓',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}:{arrow:'↑',label:`${b.toFixed(2)} → ${a.toFixed(2)}`}}
+function movement(current,previous){const a=finite(current),b=finite(previous);if(a===null||b===null)return {arrow:'',label:''};const d=a-b;if(Math.abs(d)<.005)return {arrow:'→',label:'steady'};return d<0?{arrow:'↓',label:`${fmtOdds(b)} → ${fmtOdds(a)}`}:{arrow:'↑',label:`${fmtOdds(b)} → ${fmtOdds(a)}`}}
 function moveHtml(label,current,previous){const m=movement(current,previous);return !m.arrow?'':`<span class="market-move"><b>${esc(label)}</b> ${esc(m.label||fmtOdds(current))} <i class="${m.arrow==='↓'?'down':m.arrow==='↑'?'up':'flat'}">${m.arrow}</i></span>`}
 
 function marketHtml(m){
@@ -118,6 +118,7 @@ function start(){
   const target=list();if(!target)return;
   let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;if(lastPayload)hydrateAll()})};
   new MutationObserver(queue).observe(target,{childList:true});
+  document.addEventListener('nomad342:odds-display-change',queue);
   cycle();timer=setInterval(cycle,Math.max(10000,Number(runtime.pollMs)||15000));
   window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)},{once:true});
 }
