@@ -46,7 +46,7 @@
       display:flex;
       align-items:center;
       border:0;
-      border-radius:12px;
+      border-radius:0!important;
       background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);
     }
     body[data-page="live"] .nomad342-subpage-heading .eyebrow{
@@ -90,6 +90,9 @@
     </nav>
 
     <section class="nomad342-tab-panel" id="nomad342PanelLive" role="tabpanel" aria-labelledby="nomad342TabLive" data-panel="live-score">
+      <section class="nomad342-subpage-heading" aria-labelledby="liveHeadingTitle">
+        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="liveHeadingTitle">LIVE SCORE & EVENT MONITOR</h2></div>
+      </section>
       <section class="status-grid">
         <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>Live event feed</small></article>
         <article class="metric"><span>FRESH FEED</span><strong id="freshCount">—</strong><small>not stale</small></article>
