@@ -10,24 +10,11 @@
   const signalOrder=new Map();
   let nextSignalOrder=0;
   let selected='ALL';
-  const entryUrl=new URL(location.href);
-  const forceAll=entryUrl.searchParams.get('view')==='all';
 
   try{
-    if(forceAll){
-      selected='ALL';
-      sessionStorage.setItem(SESSION_KEY,'ALL');
-      if(search)search.value='';
-    }else{
-      const saved=String(sessionStorage.getItem(SESSION_KEY)||'').toUpperCase();
-      if(valid.has(saved))selected=saved;
-    }
+    const saved=String(sessionStorage.getItem(SESSION_KEY)||'').toUpperCase();
+    if(valid.has(saved))selected=saved;
   }catch{}
-
-  if(forceAll){
-    entryUrl.searchParams.delete('view');
-    history.replaceState(history.state,'',entryUrl.pathname+entryUrl.search+entryUrl.hash);
-  }
 
   // Prevent browser scroll anchoring from following newly inserted/reordered live cards.
   list.style.overflowAnchor='none';

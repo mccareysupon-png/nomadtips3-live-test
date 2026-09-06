@@ -63,7 +63,7 @@
 
   <script src="runtime-config.js?v=20260830-side-aware-v3"></script>
   <script src="signal-retention.js?v=20260825-d005-server-lock-v1" defer></script>
-  <script src="live-filter-lock.js?v=20260906-return-all-v2" defer></script>
+  <script src="live-filter-lock.js?v=20260906-subview-refresh-v1" defer></script>
   <script src="live-source-label.js?v=20260824-source-mask-v2" defer></script>
   <script src="live-entry-score.js?v=20260825-entry-score-v3" defer></script>
   <script src="live-score-status.js?v=20260903-center-no-live-v1" defer></script>
@@ -109,6 +109,26 @@
       };
       if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
       else start();
+    })();
+  </script>
+
+  <script id="return-all-nav-reset">
+    (()=>{
+      const url=new URL(location.href);
+      if(url.searchParams.get('view')!=='all')return;
+      try{sessionStorage.setItem('nomad341SignalSubviewV1','ALL')}catch{}
+      const search=document.querySelector('.search input');
+      if(search)search.value='';
+      const all=[...document.querySelectorAll('.tabs .tab')].find(tab=>String(tab.textContent||'').trim().toUpperCase()==='ALL');
+      if(all){
+        for(const tab of document.querySelectorAll('.tabs .tab')){
+          const active=tab===all;
+          tab.dataset.active=active?'1':'0';
+          tab.setAttribute('aria-pressed',active?'true':'false');
+        }
+      }
+      url.searchParams.delete('view');
+      history.replaceState(history.state,'',url.pathname+url.search+url.hash);
     })();
   </script>
 </body>
