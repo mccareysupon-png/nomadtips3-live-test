@@ -8,7 +8,7 @@ const metrics={locked:document.getElementById('signalLocked'),predictions:docume
 let timer=null,busy=false;
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const finite=value=>{if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null};
-const fmtOdds=value=>finite(value)===null?'—':finite(value).toFixed(2);
+const fmtOdds=value=>{const n=finite(value);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2);};
 const fmtPct=value=>finite(value)===null?'—':`${Math.round(finite(value))}%`;
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
 const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
@@ -71,6 +71,7 @@ const refresh=()=>setTimeout(load,0);
 load();timer=setInterval(load,Math.max(3000,Number(runtime.pollMs)||5000));
 document.addEventListener('nomad342:ledgerlocked',refresh);
 document.addEventListener('nomad342:ledgerrefresh',refresh);
+document.addEventListener('nomad342:odds-display-change',refresh);
 window.addEventListener('focus',refresh);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
 window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)});
