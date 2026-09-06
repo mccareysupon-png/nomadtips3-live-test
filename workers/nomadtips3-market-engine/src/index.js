@@ -119,16 +119,17 @@ async function nowgoalCandidate(config, env, query) {
   const match = normalized.matches[0] || null;
   const oneXtwo = match?.main?.oneXtwo || null;
   const total = match?.main?.totals || null;
-  if (!match || !oneXtwo || !total) {
+  if (!match || (!oneXtwo && !total)) {
     return {
       ok: false,
       provider: 'Nowgoal',
       observedAt: raw.observedAt,
-      error: 'nowgoal_candidate_markets_incomplete',
+      error: 'nowgoal_candidate_markets_unavailable',
       sourceDiagnostics: raw.sourceDiagnostics || null,
     };
   }
   const possession = raw.possession || null;
+  const availableMarkets = [oneXtwo ? '1X2' : null, total ? 'OVER_UNDER' : null].filter(Boolean);
   return {
     ok: true,
     version: 'nowgoal-candidate-v1',
@@ -141,15 +142,23 @@ async function nowgoalCandidate(config, env, query) {
       minute: query.minute,
       score: raw.match.score,
     },
-    oneXtwo: {
+    oneXtwo: oneXtwo ? {
       home: oneXtwo.home,
       draw: oneXtwo.draw,
       away: oneXtwo.away,
+    } : {
+      home: null,
+      draw: null,
+      away: null,
     },
-    totals: {
+    totals: total ? {
       line: total.line,
       over: total.overOdds,
       under: total.underOdds,
+    } : {
+      line: null,
+      over: null,
+      under: null,
     },
     statistics: {
       home: {
@@ -165,6 +174,8 @@ async function nowgoalCandidate(config, env, query) {
     },
     sourceDiagnostics: {
       ...(raw.sourceDiagnostics || {}),
+      availableMarkets,
+      partialMarket: availableMarkets.length === 1,
       activeStatistics: ['possession'],
       inactiveStatistics: ['shotOnTarget', 'shotOff'],
     },
