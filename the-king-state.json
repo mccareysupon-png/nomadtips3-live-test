@@ -3,7 +3,7 @@
   "policy": "KING_DEFAULT_40_188",
   "status": "OK",
   "last_selection_run": "2026-09-06T03:12:14Z",
-  "last_settlement_run": "2026-09-05T23:59:00Z",
+  "last_settlement_run": "2026-09-06T04:49:03Z",
   "selection_date": "2026-09-06",
   "fixtures_seen": 622,
   "qualified": 124,
@@ -389,10 +389,10 @@
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": true,
+    "odds_ok": false,
     "index_rows": 751,
-    "odds_rows": 713,
-    "h2h_static_ok": 622,
+    "odds_rows": 0,
+    "h2h_static_ok": 0,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -418,5 +418,23 @@
     "No daily pick-count cap.",
     "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw model side.",
     "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
-  ]
+  ],
+  "settled_this_run": 0,
+  "settlement_fallback": {
+    "mode": "DISABLED",
+    "reason": "Goaloo direct index is authoritative",
+    "last_run": "2026-09-06T04:49:03Z"
+  },
+  "direct_reconcile": {
+    "source": "goaloo-bf_us-direct-index",
+    "index_ok": true,
+    "index_rows": 751,
+    "trusted_settled": 0,
+    "reset_untrusted": 0,
+    "missing_ids": 4,
+    "team_mismatch": 0,
+    "invalid_scores": 0,
+    "non_terminal": 120,
+    "last_run": "2026-09-06T04:49:03Z"
+  }
 }
