@@ -1,0 +1,4 @@
+import test from'node:test';import assert from'node:assert/strict';import{normalizeConfig,schedule,evaluate}from'../src/rules.js';
+test('หารช่วงเป็นสี่รอบเสมอ',()=>{assert.deepEqual(schedule(normalizeConfig({minuteFrom:55,minuteTo:85})),[55,65,75,85]);assert.deepEqual(schedule(normalizeConfig({minuteFrom:70,minuteTo:82})),[70,74,78,82])});
+test('ผ่านครบทุกเงื่อนไขฝั่งเจ้าบ้าน',()=>{const r=evaluate({side:'HOME',stats:{sot:{home:1,away:0},shotOff:{home:1,away:0},corners:{home:1,away:0},attacks:{home:60,away:40},dangerous:{home:55,away:45}},market:{source:'Nowgoal',line:-.5,homeOdds:1.85,awayOdds:2}},{});assert.equal(r.passed,true)});
+test('ไม่ผ่านเมื่อราคามิใช่ Nowgoal',()=>{const r=evaluate({side:'HOME',stats:{sot:{home:1,away:0},shotOff:{home:1,away:0},corners:{home:1,away:0},attacks:{home:60,away:40},dangerous:{home:55,away:45}},market:{source:'Other',line:-.5,homeOdds:1.85}},{});assert.equal(r.passed,false)});
