@@ -1,59 +1,64 @@
-# NOMAD LIVE 3.42 — STEP 2 SOURCE AUDIT
+# NOMAD LIVE 3.42 — SOURCE AUDIT / SOT-OFF UPSTREAM RAIL
 
-Status: SOURCE AUDIT + GOALOO STATS SUPPLEMENT TEST COMPLETE · CLEAN BRANCH ONLY · MAIN/PRODUCTION UNCHANGED
+Status: NOWGOAL SOT/OFF UPSTREAM RAIL CONNECTED IN CLEAN BRANCH · TEST VALIDATED · MAIN/PRODUCTION UNCHANGED
 
-ขอบเขต: OVER / UNDER / 1X2 โดยยึดคำสั่งว่า TotalCorner ใช้เป็นสายเหตุการณ์เท่านั้น, API-Football ไม่กลับเข้าระบบ และ Goaloo ใช้เสริมเฉพาะสถิติที่ขาด
+ขอบเขต: ต่อสายข้อมูลที่ขาดให้ 3.42 เฉพาะ `Shot on Target` และ `Shot Off` ก่อน Event Gate/หน้าแสดงผล โดยห้ามเปลี่ยนสาย TotalCorner, ราคา, settlement หรือส่วนอื่น
 
-## สายข้อมูลที่ล็อกสำหรับ clean rebuild
+## สายข้อมูลปัจจุบันของ clean branch
 
-| ข้อมูล | Source | ผล |
+| ข้อมูล | Source | สถานะ |
 | --- | --- | --- |
-| นาที / สกอร์ | TotalCorner V3 | ใช้เป็นตัวตนและเหตุการณ์หลัก |
-| Attack | TotalCorner V3 | ใช้ |
-| Dangerous Attack | TotalCorner V3 | ใช้ |
-| Corner | TotalCorner V3 | ใช้ |
-| Shot on Target | Goaloo `detailIn.js` code 5 | ใช้เมื่อจับคู่แข่งขันผ่าน guard |
-| Shot Off | Goaloo `detailIn.js` code 8 | ใช้เฉพาะเมื่อ code 8 = Total Shots - SOT ของทั้ง HOME/AWAY |
-| การครอบครองบอล % | Goaloo `detailIn.js` code 11 | ใช้เฉพาะคู่ HOME+AWAY รวม 98–102% |
-| ราคา 1X2 | Market Engine / Nowgoal `/markets` | ใช้ |
-| เส้น + ราคา OVER/UNDER | Market Engine / Nowgoal `/markets` | ใช้ |
+| นาที / สกอร์ | TotalCorner V3 | เจ้าของสายเดิม ไม่แตะ |
+| Attack | TotalCorner V3 | เจ้าของสายเดิม ไม่แตะ |
+| Dangerous Attack | TotalCorner V3 | เจ้าของสายเดิม ไม่แตะ |
+| Corner | TotalCorner V3 | เจ้าของสายเดิม ไม่แตะ |
+| Shot on Target | Nowgoal `/match/live-{matchId}` Statistics | ต่อเข้า SOT bridge แล้ว |
+| Shot Off | Nowgoal `/match/live-{matchId}` Statistics | ต่อเข้า OFF bridge แล้ว |
+| Possession | Nowgoal match detail มีข้อมูลจริง | ตรวจพบ แต่รอบนี้ยังไม่ต่อเข้าระบบ |
+| ราคา 1X2 | Market Engine / Nowgoal market rail | สายราคาเดิม ไม่แตะ |
+| ราคา OVER/UNDER | Market Engine / Nowgoal market rail | สายราคาเดิม ไม่แตะ |
 
-TotalCorner V3 ปัจจุบันยังส่ง `sot/off = null` เพราะ worker ของเราไม่ได้ดึง detail; ไม่ใช้ TotalCorner detail ต่อ เนื่องจากหน้าสถิติติด Cloudflare และตามคำสั่งให้ถือว่าเส้นนั้นใช้งานไม่ได้
+TotalCorner V3 เดิมยังคง `sot/off = null` ที่ต้น feed ของมันเอง. การเติม SOT/OFF เกิดใน upstream bridge แยกก่อน Event Gate/หน้าแสดงผล จึงสามารถถอด bridge แล้วกลับสภาพเดิมได้ทันที
 
-## Goaloo supplement contract
+## Nowgoal upstream source contract
 
-Goaloo ตัวใหม่เป็น `STATS_ONLY` เท่านั้น: อ่าน live identity จาก `bf_us.js`/`bf_us1.js` และสถิติจาก `detailIn.js`. ไม่รับราคา, ไม่รับ events, ไม่ทำ settlement และไม่เปลี่ยน TotalCorner event rail
+แหล่งตัวตนสดใช้ Nowgoal roster เดิม `/gf/data/bf_en-idn1.js` เพื่อรับ `matchId`, HOME, AWAY, สถานะ และสกอร์ จากนั้นอ่านเฉพาะคู่ที่จับได้จาก `/match/live-{matchId}` และแยก `Shots on Goal` / `Shots off Goal` จากส่วน Statistics
 
-การจับคู่ TotalCorner → Goaloo เป็น fail-closed:
+กฎจับคู่เป็น fail-closed:
 
-1. HOME ต้องตรงกับ HOME และ AWAY ต้องตรงกับ AWAY; ไม่ยอมกลับด้าน
-2. ตรวจชื่อทีมแบบ normalize พร้อม alias จำกัด เช่น `Utd` = `United`; ไม่ลด guard เพื่อไล่ coverage
-3. ถ้าสกอร์มีทั้งสอง source ต้องตรงกันเป๊ะ
-4. ตอนสร้าง mapping ครั้งแรก นาทีต่างได้ไม่เกิน 5 นาที
-5. ถ้ามี candidate ใกล้กันจนแยกไม่ชัดให้ `AMBIGUOUS` และไม่เติมสถิติ
-6. เมื่อจับได้แล้ว lock `TotalCorner matchId → Goaloo sourceMatchId` ใน session; ห้ามสลับ Goaloo match กลางเกม
-7. mapping ที่ lock แล้วต้องตรวจชื่อ/สกอร์/นาทีซ้ำ ถ้าหลุดให้หยุดรับ stats แทนการ remap
-8. ค่าใดไม่มีหรือ validation ไม่ผ่านให้คง `null`; UNDER ห้ามตีความ null เป็น 0
+1. HOME ต้องจับ HOME และ AWAY ต้องจับ AWAY; ไม่กลับด้าน
+2. ชื่อทีมต้องผ่าน similarity guard
+3. สกอร์ TotalCorner และ Nowgoal ต้องมีครบและตรงกันเป๊ะก่อนขอ detail
+4. candidate ใกล้กันเกินกำหนดให้ `AMBIGUOUS` และไม่เติมข้อมูล
+5. เมื่อจับได้แล้ว lock `TotalCorner matchId → Nowgoal matchId` ใน session
+6. lock ที่ไม่ผ่านชื่อ/สกอร์รอบถัดไปจะหยุดรับข้อมูล ไม่ remap กลางเกม
+7. ถ้า Match Detail ไม่มี SOT หรือ OFF จริง ฟิลด์นั้นคง `null`; ห้ามสร้างค่าเอง
+8. bridge เติมได้เฉพาะ `event.snapshots[].sot` และ `event.snapshots[].off`
+9. `minute`, `score`, `attacks`, `dangerous`, `corner`, market และ settlement ห้ามถูกเขียนทับ
 
-## ผลทดสอบล่าสุด
+## ผลทดสอบสดล่าสุด
 
-- parser + matcher tests: 10/10 PASS
-- isolated Goaloo stats Worker: deploy + `/health` + `/feed` PASS
-- live Goaloo feed รอบทดสอบ: 94 คู่
-- TotalCorner V3 รอบเดียวกัน: 27 คู่
-- strict cross-source match: 1 คู่ผ่าน, 0 ambiguous, 26 unmatched
-- คู่ที่ผ่านจริง: `Hong Kong FC vs Lee Man FC`, TotalCorner ID `200608773` → Goaloo ID `3049317`, นาที 45 ตรงกัน, สกอร์ 0-1 ตรงกัน
+- bridge + parser tests: **12/12 PASS**
+- Nowgoal live roster ที่อ่านได้: **118 คู่**
+- จ่อ Match Detail สด 5 คู่: **4/5 มี Shots on Goal + Shots off Goal ใช้งานได้**
+- หน้า detail ที่ตรวจพบมี Statistics, Possession และข้อมูล shot/timeline ตาม coverage ของแต่ละคู่
+- Wrangler isolated bridge dry-run: **PASS**
+- guard ตรวจว่า Production / 3.41 path ไม่ถูกแตะ: **PASS**
 
-Coverage รอบนี้ต่ำแต่ guard ไม่จับคู่ผิดเพื่อบังคับให้ครบ; คู่ที่ไม่ยืนยันได้จะไม่มี Goaloo stats และ fail closed ตามกติกา
+หนึ่งใน 5 คู่ไม่มี SOT/OFF ในหน้า Statistics รอบนั้น จึงถูกปล่อย `null` ตามกติกา ไม่เดาและไม่ดึงค่าจากส่วน Team Statistics มาใช้แทน
 
-## กติกาหลัง STEP 2
+## สถานะ Goaloo
 
-- TotalCorner = EVENT rail เท่านั้นสำหรับข้อมูลสดที่ใช้ในเงื่อนไข: minute, score, Attack, Dangerous Attack, Corner และ history ของเหตุการณ์เหล่านี้
-- Goaloo = SUPPLEMENT STATS rail เฉพาะ SOT / Shot Off / Possession
-- Nowgoal `/markets` = PRICE rail สำหรับ 1X2 / OVER-UNDER
-- API-Football = ไม่ใช้
-- main / Production ยังไม่ถูกแตะ; Goaloo supplement อยู่บน `work/342-settings-clean-rebuild` และ test Worker เท่านั้น
+Goaloo stats rail ที่ทดสอบก่อนหน้านี้ยังเก็บไว้เป็นงาน TEST/ประวัติ แต่ **ไม่ใช่ active dependency ของ SOT/OFF bridge v2** หลังยืนยันว่า Nowgoal Match Detail จ่าย SOT/OFF ได้โดยตรง
 
-## STEP 2 RESULT
+## แนวทางนำไปใช้กับ 3.41
 
-Source gap ของ SOT / Shot Off / Possession ถูกปิดในระดับ TEST ด้วย Goaloo และมี strict match guard แล้ว พร้อมเข้าสู่ STEP 3 เพื่อ lock Data Contract โดยยังคง fail closed เมื่อ cross-source mapping ไม่ผ่าน
+ยึด contract เดียวกันภายหลัง:
+
+`Nowgoal roster → strict match/lock → Nowgoal match-detail stats → เติมเฉพาะ SOT/OFF → snapshot เดิมของรุ่นนั้น`
+
+ห้ามยกโครงสร้าง 3.42 ไปทับ 3.41; ให้ทำ adapter ตาม snapshot ของ 3.41 และคง rollback เป็นชิ้นเดียว
+
+## CURRENT RESULT
+
+สายต้นทาง SOT/OFF สำหรับ 3.42 ถูกต่อใน `work/342-settings-clean-rebuild` แล้วและผ่านการทดสอบ source/bridge. main/Production ยังไม่ถูกเปลี่ยนแปลง
