@@ -1,0 +1,84 @@
+name: Deploy Prediction3 Tracker
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'prediction3-tracker/**'
+      - '.github/workflows/prediction3-tracker-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TRACKER_URL: https://nomadtips3-prediction3-tracker.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate source
+        run: |
+          node --check prediction3-tracker/src/index.js
+          grep -q '^name = "nomadtips3-prediction3-tracker"$' prediction3-tracker/wrangler.toml
+          grep -q '^main = "src/index.js"$' prediction3-tracker/wrangler.toml
+          grep -Fq 'class Prediction3Tracker' prediction3-tracker/src/index.js
+          grep -Fq 'crons = ["*/5 * * * *"]' prediction3-tracker/wrangler.toml
+
+      - name: Dry-run Worker bundle
+        working-directory: prediction3-tracker
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated Prediction3 Tracker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: prediction3-tracker
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.toml
+
+      - name: Smoke tracker health
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 20 "$TRACKER_URL/health?_=$RANDOM$RANDOM" -o /tmp/health.json && node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.ok!==true||j.component!=='prediction3-tracker') process.exit(1);
+          NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = '1'
+
+      - name: Smoke tracker state
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 35 "$TRACKER_URL/state?refresh=1&_=$RANDOM$RANDOM" -o /tmp/state.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/state.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,updatedAt:j.updatedAt,count:Array.isArray(j.records)?j.records.length:null,errors:j.errors},null,2));
+          if(j.ok!==true||!Array.isArray(j.records)) process.exit(1);
+          NODE
