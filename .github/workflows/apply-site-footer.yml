@@ -27,13 +27,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Add shared footer assets to every HTML page
+      - name: Add shared footer assets only when missing
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           import os
-          import re
 
           version = '202608040844'
           changed = []
@@ -50,21 +49,18 @@ jobs:
               css = f'<link rel="stylesheet" href="{prefix}/site-footer.css?v={version}">'
               js = f'<script src="{prefix}/site-footer.js?v={version}"></script>'
 
+              # Page-specific footer assets are intentional. Never replace them.
               if 'site-footer.css' not in text:
                   text = text.replace('</head>', f'  {css}\n</head>', 1)
-              else:
-                  text = re.sub(r'<link rel="stylesheet" href="[^"]*/site-footer\.css\?v=[^"]+">', css, text)
 
               if 'site-footer.js' not in text:
                   text = text.replace('</body>', f'  {js}\n</body>', 1)
-              else:
-                  text = re.sub(r'<script src="[^"]*/site-footer\.js\?v=[^"]+"></script>', js, text)
 
               if text != original:
                   path.write_text(text, encoding='utf-8')
                   changed.append(str(path))
 
-          print('\n'.join(changed) if changed else 'All pages already use the latest shared footer.')
+          print('\n'.join(changed) if changed else 'All pages already have footer assets; existing page-specific assets were preserved.')
           PY
 
       - name: Commit footer links
