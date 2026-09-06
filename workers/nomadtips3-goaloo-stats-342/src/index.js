@@ -120,7 +120,6 @@ async function sourceText(url,token){
     const separator=url.includes('?')?'&':'?';
     const response=await fetch(`${url}${separator}nomad342stats=${token}`,{
       signal:ac.signal,
-      cache:'no-store',
       headers:{'user-agent':'NOMADTIPS3-Goaloo-Stats/3.42','accept':'*/*','accept-language':'en-US,en;q=.8'},
       cf:{cacheTtl:CACHE_SECONDS,cacheEverything:true},
     });
