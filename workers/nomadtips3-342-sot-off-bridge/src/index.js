@@ -110,9 +110,11 @@ function saveObservation(match,goaloo,observedAt){
   if(!sot&&!off)return null;
   const latest=latestSnapshot(match),minute=finite(latest?.minute)??finite(match?.minute);
   if(minute===null)return null;
-  const at=finite(latest?.observedAt)??finite(observedAt)??Date.now();
+  const sourceObservedAt=finite(observedAt)??Date.now();
+  const at=finite(latest?.observedAt)??sourceObservedAt;
   const next={minute,observedAt:at,sot,off,goalooId:String(goaloo?.sourceMatchId||'')};
-  let rows=(histories.get(id)||[]).filter(x=>x.observedAt>=Date.now()-HISTORY_MS);
+  const cutoff=sourceObservedAt-HISTORY_MS;
+  let rows=(histories.get(id)||[]).filter(x=>x.observedAt>=cutoff);
   const idx=rows.findIndex(x=>x.minute===minute);
   if(idx>=0)rows[idx]=next;else rows.push(next);
   rows.sort((a,b)=>a.minute-b.minute||a.observedAt-b.observedAt);
