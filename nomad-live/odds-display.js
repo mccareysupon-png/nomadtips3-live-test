@@ -1,7 +1,9 @@
 (()=>{
 'use strict';
 const KEY='nomad341OddsDisplayV1',MODES=new Set(['decimal','american','fractional']);
-let mode=(()=>{try{const v=String(localStorage.getItem(KEY)||'').toLowerCase();return MODES.has(v)?v:'decimal'}catch{return'decimal'}})(),applying=false;
+const normalizeMode=v=>{v=String(v||'').toLowerCase();return MODES.has(v)?v:'decimal'};
+const storedMode=()=>{try{return normalizeMode(localStorage.getItem(KEY))}catch{return'decimal'}};
+let mode=storedMode(),applying=false;
 const finite=v=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v));
 const american=v=>{if(!finite(v)||Number(v)<=1)return'—';const d=Number(v),a=d>=2?Math.round((d-1)*100):Math.round(-100/(d-1));return a>0?`+${a}`:String(a)};
 const gcd=(a,b)=>{a=Math.abs(Math.trunc(a));b=Math.abs(Math.trunc(b));while(b){const t=b;b=a%b;a=t}return a||1};
@@ -22,11 +24,15 @@ function apply(){if(applying)return;applying=true;try{
  document.querySelectorAll('[data-odds-mode]').forEach(b=>{const on=b.dataset.oddsMode===mode;b.classList.toggle('is-active',on);b.setAttribute('aria-pressed',on?'true':'false')});
  document.documentElement.dataset.oddsDisplay=mode;
 }finally{applying=false}}
-function setMode(next){next=String(next||'').toLowerCase();if(!MODES.has(next)||next===mode){apply();return}mode=next;try{localStorage.setItem(KEY,mode)}catch{}apply();window.dispatchEvent(new CustomEvent('nomad:odds-display-change',{detail:{mode}}))}
+function emit(source){window.dispatchEvent(new CustomEvent('nomad:odds-display-change',{detail:{mode,source}}))}
+function setMode(next){next=normalizeMode(next);if(next===mode){apply();return}mode=next;try{localStorage.setItem(KEY,mode)}catch{}apply();emit('control')}
+function syncStored(next,source='storage'){next=normalizeMode(next);if(next===mode){apply();return}mode=next;apply();emit(source)}
 const markup=()=>`<div class="odds-display-control" role="group" aria-label="Odds display format"><span class="odds-display-label">ODDS</span><button type="button" data-odds-mode="decimal" aria-pressed="false">DECIMAL</button><button type="button" data-odds-mode="american" aria-pressed="false">AMERICAN</button><button type="button" data-odds-mode="fractional" aria-pressed="false">FRACTION</button></div>`;
 function mount(){if(document.querySelector('.odds-display-control'))return;const search=document.querySelector('.toolbar .search');if(search){search.insertAdjacentHTML('beforebegin',markup());return}const panel=document.querySelector('.summary-grid + .panel');if(panel){const s=document.createElement('section');s.className='odds-display-toolbar';s.innerHTML=markup();panel.parentNode.insertBefore(s,panel)}}
 const observer=new MutationObserver(()=>{if(!applying)requestAnimationFrame(apply)});
 function start(){mount();document.addEventListener('click',e=>{const b=e.target.closest('[data-odds-mode]');if(b)setMode(b.dataset.oddsMode)});apply();if(document.body)observer.observe(document.body,{childList:true,subtree:true,characterData:true})}
+window.addEventListener('storage',event=>{if(event.key===KEY)syncStored(event.newValue,'storage')});
+window.addEventListener('focus',()=>syncStored(storedMode(),'focus'));
 window.NOMAD_ODDS_DISPLAY=Object.freeze({getMode:()=>mode,setMode,format,americanFromDecimal:american,fractionalFromDecimal:fractional,decimalText:decimal,refresh:apply});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
