@@ -53,31 +53,46 @@ jobs:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
           OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
 
-      - name: ตรวจ production ก่อนเปิดระบบ
+      - name: บังคับปิดระบบก่อน Production smoke
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          curl --fail --retry 8 --retry-delay 5 "$BASE/"
-          curl --fail --retry 8 --retry-delay 5 "$BASE/config" | tee /tmp/add-k-config.json
-          curl --fail --retry 8 --retry-delay 5 "$BASE/status"
+          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/"
+          CURRENT=$(curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config")
+          DISABLED=$(printf '%s' "$CURRENT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=false;process.stdout.write(JSON.stringify(j.config))})")
+          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$DISABLED")
+          printf '%s\n' "$SAVED" | tee /tmp/add-k-disabled.json
+          printf '%s' "$SAVED" | grep -q '"enabled":false'
 
-      - name: Production smoke และเปิดระบบเมื่อผ่านเท่านั้น
+      - name: Production smoke ตรวจ API-Football, TotalCorner และ NowGoal AH จริง
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          BODY=$(curl --fail --retry 3 --retry-delay 3 -sS -X POST "$BASE/cycle" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
-          printf '%s\n' "$BODY"
+          BODY=$(curl --fail --retry 3 --retry-delay 3 -sS -X POST "$BASE/smoke" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
+          printf '%s\n' "$BODY" | tee /tmp/add-k-smoke.json
           printf '%s' "$BODY" | grep -q '"ok":true'
-          CONFIG=$(curl --fail -sS "$BASE/config" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=true;process.stdout.write(JSON.stringify(j.config))})")
-          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$CONFIG")
+          printf '%s' "$BODY" | grep -q '"apiFootball":{"ok":true'
+          printf '%s' "$BODY" | grep -q '"totalCorner":{"ok":true'
+          printf '%s' "$BODY" | grep -q '"nowgoal":{"ok":true'
+
+      - name: เปิดระบบเมื่อ Production smoke ผ่านเท่านั้น
+        shell: bash
+        run: |
+          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
+          CURRENT=$(curl --fail -sS "$BASE/config")
+          ENABLED=$(printf '%s' "$CURRENT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=true;process.stdout.write(JSON.stringify(j.config))})")
+          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$ENABLED")
           printf '%s\n' "$SAVED"
           printf '%s' "$SAVED" | grep -q '"enabled":true'
 
-      - name: ยืนยันระบบเปิดและ endpoint ใช้งานได้
+      - name: ยืนยัน config, cycle, signals, cron state และ status
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
           curl --fail -sS "$BASE/config" | tee /tmp/add-k-final-config.json
           grep -q '"enabled":true' /tmp/add-k-final-config.json
+          CYCLE=$(curl --fail -sS -X POST "$BASE/cycle" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
+          printf '%s\n' "$CYCLE"
+          printf '%s' "$CYCLE" | grep -q '"ok":true'
           curl --fail -sS "$BASE/signals"
           curl --fail -sS "$BASE/status"
