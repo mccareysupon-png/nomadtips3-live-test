@@ -36,12 +36,29 @@ function scoreMirror(record){
   if(liveScore&&minute!==null)return {score:liveScore,status:`${Math.max(0,Math.trunc(minute))}′`};
   return {score:null,status:'WAIT'};
 }
+function signalByMarket(record,key,settled=false){
+  const rows=settled?record?.settlement?.signals:record?.signals;
+  if(!Array.isArray(rows))return null;
+  if(key==='oneXtwo')return rows.find(signal=>String(signal?.market||'').toUpperCase()==='1X2')||null;
+  return rows.find(signal=>['OVER','UNDER'].includes(String(signal?.market||'').toUpperCase()))||null;
+}
+function marketView(record,key){
+  const liveSignal=signalByMarket(record,key,false);
+  if(liveSignal){
+    if(key==='oneXtwo')return {pick:liveSignal.pick,odds:liveSignal.odds,home:liveSignal.home,draw:liveSignal.draw,away:liveSignal.away};
+    return {pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,over:liveSignal.over,under:liveSignal.under};
+  }
+  if(key==='oneXtwo')return record?.prediction?.oneXtwo||{};
+  return record?.prediction?.totals||{};
+}
 function marketResult(record,key){
+  const settledSignal=signalByMarket(record,key,true);
+  if(settledSignal?.result)return settledSignal.result;
   if(key==='oneXtwo')return record?.settlement?.oneXtwo?.result||'PENDING';
   return record?.settlement?.totals?.result||'PENDING';
 }
 function card(record){
-  const one=record?.prediction?.oneXtwo||{},totals=record?.prediction?.totals||{};
+  const one=marketView(record,'oneXtwo'),totals=marketView(record,'totals');
   const oneResult=marketResult(record,'oneXtwo'),totalsResult=marketResult(record,'totals'),mirror=scoreMirror(record);
   return `<article class="signal-lock-card" data-match-id="${esc(record.matchId)}">
     <div class="signal-lock-head"><div><div class="signal-lock-kicker">SIGNAL LOCKED · 3.42</div><div class="signal-lock-teams">${esc(record.home)} — ${esc(record.away)}</div><div class="signal-lock-league">${esc(record.league||'—')}</div></div><div class="signal-lock-meta"><span>${esc(record.minute??'—')}′ · ${esc(pair(record.entryScore))}</span><span>${esc(when(record.lockedAt))}</span></div></div>
