@@ -38,6 +38,38 @@
   <link rel="stylesheet" href="nomad342-tabs.css?v=20260905-v2">
   <link rel="stylesheet" href="ledger-pages.css?v=20260906-flow-v7">
   <link rel="stylesheet" href="live-score-alert-visual.css?v=20260906-v2">
+  <style id="nomad342-subpage-heading-style">
+    body[data-page="live"] .nomad342-subpage-heading{
+      min-height:72px;
+      margin:0 0 12px;
+      padding:14px 16px;
+      display:flex;
+      align-items:center;
+      border:0;
+      border-radius:12px;
+      background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);
+    }
+    body[data-page="live"] .nomad342-subpage-heading .eyebrow{
+      margin:0;
+      color:#a7afa7;
+      font-size:8px;
+      line-height:1;
+      letter-spacing:.08em;
+    }
+    body[data-page="live"] .nomad342-subpage-heading h2{
+      margin:6px 0 0!important;
+      color:var(--text);
+      font:900 18px/1.1 Arial,Helvetica,sans-serif;
+      letter-spacing:.01em;
+    }
+    @media(max-width:700px){
+      body[data-page="live"] .nomad342-subpage-heading{
+        min-height:60px;
+        padding:11px 12px;
+      }
+      body[data-page="live"] .nomad342-subpage-heading h2{font-size:15px}
+    }
+  </style>
 </head>
 <body data-page="live" data-vintage-chart-page="page2">
   <header class="topbar"><div class="topbar-inner public-four-nav"><div class="brand">nomad<span>tips3</span></div><nav class="topnav"><a href="../nomad-live/index.html">Signal</a><a href="../nomad-live/statistics.html">Statistics</a><a class="active" href="index.html">Live Score</a></nav><div class="source-pill"><span class="dot"></span>LIVE SCORE</div></div></header>
@@ -81,6 +113,9 @@
     </section>
 
     <section class="nomad342-tab-panel" id="nomad342PanelSignal" role="tabpanel" aria-labelledby="nomad342TabSignal" data-panel="signal" hidden aria-hidden="true">
+      <section class="nomad342-subpage-heading" aria-labelledby="signalHeadingTitle">
+        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="signalHeadingTitle">1X2 · OVER/UNDER SIGNAL</h2></div>
+      </section>
       <section class="status-grid ledger-summary" aria-label="Signal summary">
         <article class="metric"><span>LOCKED MATCHES</span><strong id="signalLocked">—</strong><small>persistent ledger</small></article>
         <article class="metric signal"><span>PREDICTIONS</span><strong id="signalPredictions">—</strong><small>1X2 + O/U</small></article>
@@ -96,6 +131,9 @@
     </section>
 
     <section class="nomad342-tab-panel" id="nomad342PanelStatistics" role="tabpanel" aria-labelledby="nomad342TabStatistics" data-panel="statistics" hidden aria-hidden="true">
+      <section class="nomad342-subpage-heading" aria-labelledby="statisticsHeadingTitle">
+        <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="statisticsHeadingTitle">STATISTICS</h2></div>
+      </section>
       <section class="status-grid ledger-summary statistics-summary" aria-label="Statistics summary">
         <article class="metric"><span>TOTAL</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
         <article class="metric"><span>DAYS</span><strong id="statsDay">—</strong><small>active ledger days</small></article>
