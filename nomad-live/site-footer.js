@@ -1,4 +1,34 @@
 (()=>{
+  /* Shared primary-navigation label only. Keep page titles, live-score feeds,
+     tab labels and runtime logic untouched. */
+  const label='1X2 · Over/Under';
+  const links=document.querySelectorAll('.topbar-inner.public-four-nav > .topnav a, .mobile-nav.public-four-nav a');
+  let found=false;
+  links.forEach(link=>{
+    const text=String(link.textContent||'').trim();
+    let pointsTo342=false;
+    try{pointsTo342=/\/nomad-live-342(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+    if(!pointsTo342&&!/^Live\s*Score$/i.test(text))return;
+    link.textContent=label;
+    link.setAttribute('aria-label',label);
+    link.dataset.nomadMarketNav='true';
+    found=true;
+  });
+  if(found){
+    document.body.classList.add('nomad-market-nav-label');
+    if(!document.getElementById('nomad-market-nav-label-style')){
+      const style=document.createElement('style');
+      style.id='nomad-market-nav-label-style';
+      style.textContent=`
+        body.nomad-market-nav-label .topbar-inner.public-four-nav>.topnav a[data-nomad-market-nav="true"]{width:144px!important}
+        @media(max-width:700px){
+          body.nomad-market-nav-label .mobile-nav.public-four-nav a[data-nomad-market-nav="true"]{font-size:10px!important;letter-spacing:-.01em!important}
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
   if(document.querySelector('.site-footer')) return;
 
   const footer=document.createElement('footer');
