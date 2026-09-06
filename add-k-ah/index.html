@@ -1,1 +1,113 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ADD K AH</title><style>:root{color-scheme:dark;font-family:system-ui;background:#080d0a;color:#edf7ef}*{box-sizing:border-box}body{margin:0}header{background:#105c45;padding:18px;display:flex;justify-content:space-between}button{border:0;border-radius:0;padding:12px 18px;background:#61db7f;color:#071109;font-weight:800}main{max-width:1100px;margin:auto;padding:24px}.tabs{display:flex;gap:8px}.panel,fieldset,.card{background:#111a14;border:0;border-radius:0;padding:18px;margin:12px 0}fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}label{display:grid;gap:5px}input,select{padding:10px;background:#080d0a;color:white;border:1px solid #385442;border-radius:0}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.row{display:flex;justify-content:space-between}.metric{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric span{background:#080d0a;padding:8px}@media(max-width:600px){main{padding:12px}.cards{grid-template-columns:1fr}}</style></head><body><header><b>nomadtips3 · ADD K AH</b><div class="tabs"><button onclick="tab('result')">ผลตรวจจับ</button><button onclick="tab('settings')">ตั้งค่า</button></div></header><main><section id="result"><h1>คู่ที่ผ่านเงื่อนไข</h1><p id="status">กำลังโหลด</p><div id="cards" class="cards"></div></section><section id="settings" hidden><h1>ตั้งค่าการตรวจจับ AH</h1><form id="form"><fieldset><legend>เวลาและฝั่ง</legend><label>นาทีเริ่ม<input name="minuteFrom" type="number"></label><label>นาทีสิ้นสุด<input name="minuteTo" type="number"></label><label>ฝั่ง<select name="side"><option value="BOTH">ทั้งสองฝั่ง</option><option value="HOME">เจ้าบ้าน</option><option value="AWAY">ทีมเยือน</option></select></label><label>เปิดระบบ<input name="enabled" type="checkbox"></label><p id="times"></p></fieldset><fieldset><legend>เหตุการณ์ขั้นต่ำ</legend><label>ยิงเข้ากรอบ<input name="sotMin" type="number"></label><label>ยิงออก<input name="shotOffMin" type="number"></label><label>เตะมุม<input name="cornerMin" type="number"></label></fieldset><fieldset><legend>เปอร์เซ็นต์การบุก</legend><label>Attack ต่ำสุด<input name="attackShareMin" type="number"></label><label>Attack สูงสุด<input name="attackShareMax" type="number"></label><label>Dangerous ต่ำสุด<input name="dangerousShareMin" type="number"></label><label>Dangerous สูงสุด<input name="dangerousShareMax" type="number"></label><label>อัตราการบุกต่ำสุด<input name="attackRateMin" type="number"></label><label>อัตราการบุกสูงสุด<input name="attackRateMax" type="number"></label></fieldset><fieldset><legend>NowGoal AH</legend><label>แต้มต่อต่ำสุด<input name="ahMin" type="number" step=".25"></label><label>แต้มต่อสูงสุด<input name="ahMax" type="number" step=".25"></label><label>ราคาต่ำสุด<input name="oddsMin" type="number" step=".01"></label><label>ราคาสูงสุด<input name="oddsMax" type="number" step=".01"></label></fieldset><label>รหัสเจ้าของ<input id="key" type="password"></label><button>บันทึก</button><output id="msg"></output></form></section></main><script>const B='https://add-k-ah-detector.mccarey-supon.workers.dev',q=s=>document.querySelector(s);function tab(x){q('#result').hidden=x!=='result';q('#settings').hidden=x!=='settings'}async function api(p,o){let r=await fetch(B+p,o),j=await r.json();if(!r.ok||j.ok===false)throw Error(j.error||'ผิดพลาด');return j}function put(k,v){let e=q('#form').elements[k];if(e)e.type==='checkbox'?e.checked=!!v:e.value=v}async function load(){try{let[c,s,g]=await Promise.all([api('/config'),api('/signals'),api('/status')]);Object.entries(c.config).forEach(x=>put(...x));q('#times').textContent='ตรวจ 4 รอบ: นาที '+c.schedule.join(', ');q('#status').textContent=g.status?'บอลสด '+g.status.live+' · อัปเดต '+new Date(g.status.updatedAt).toLocaleTimeString('th-TH'):'ระบบยังไม่เริ่ม';q('#cards').innerHTML=s.signals.length?s.signals.map(x=>`<article class=card><div class=row><b>${x.home}</b><b>${x.score.home}-${x.score.away}</b><b>${x.away}</b></div><p>${x.league||''} · นาที ${x.minute} · ${x.side==='HOME'?'เจ้าบ้าน':'ทีมเยือน'}</p><div class=metric><span>SOT ${x.stats.sot[x.side.toLowerCase()]}</span><span>ยิงออก ${x.stats.shotOff[x.side.toLowerCase()]}</span><span>มุม ${x.stats.corners[x.side.toLowerCase()]}</span><span>บุก ${x.metrics.attackRate?.toFixed(1)}%</span><span>AH ${x.metrics.line}</span><span>ราคา ${x.metrics.odds}</span></div></article>`).join(''):'ยังไม่มีคู่ที่ผ่าน'}catch(e){q('#status').textContent=e.message}}q('#form').onsubmit=async e=>{e.preventDefault();let d={};for(let x of e.target.elements)if(x.name)d[x.name]=x.type==='checkbox'?x.checked:x.name==='side'?x.value:Number(x.value);try{let j=await api('/config',{method:'POST',headers:{'content-type':'application/json','x-owner-key':q('#key').value},body:JSON.stringify(d)});q('#msg').textContent='บันทึกแล้ว · '+j.schedule.join(', ')}catch(e){q('#msg').textContent=e.message}};load();setInterval(load,30000)</script></body></html>
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ADD K · ตัวตรวจจับเอเชียนแฮนดิแคป</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#080d0a;color:#edf7ef}*{box-sizing:border-box}body{margin:0;background:#080d0a}header{background:#105c45;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;position:sticky;top:0;z-index:5}.brand{font-weight:900;letter-spacing:.2px}.tabs{display:flex;gap:8px;flex-wrap:wrap}button{border:0;padding:11px 16px;background:#61db7f;color:#071109;font-weight:850;cursor:pointer}main{max-width:1100px;margin:auto;padding:22px}.panel,fieldset,.card{background:#111a14;border:0;padding:18px;margin:12px 0}fieldset{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}legend{font-weight:850;padding:0 8px}label{display:grid;gap:6px;font-weight:650}input,select{width:100%;padding:11px;background:#080d0a;color:#fff;border:1px solid #385442;font:inherit}.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px}.metric{display:grid;grid-template-columns:1fr 1fr;gap:7px}.metric span{background:#080d0a;padding:8px}.muted{color:#a9b8ad}.source{font-size:.92rem;color:#c8d4cb}.ok{color:#7ff09a}.warn{color:#ffd86a}#times,#msg{grid-column:1/-1}.save-row{display:flex;align-items:end;gap:12px;flex-wrap:wrap}.save-row label{min-width:260px;flex:1}.empty{padding:20px;background:#111a14;color:#a9b8ad}@media(max-width:700px){header{align-items:flex-start;flex-direction:column;padding:13px 14px}.tabs{width:100%}.tabs button{flex:1;padding:10px 8px}main{padding:12px}h1{font-size:1.35rem}.cards{grid-template-columns:1fr}.metric{grid-template-columns:1fr 1fr}fieldset{grid-template-columns:1fr 1fr;padding:14px}.save-row{display:grid}.save-row label{min-width:0}}@media(max-width:430px){fieldset{grid-template-columns:1fr}.metric{grid-template-columns:1fr 1fr;font-size:.92rem}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">nomadtips3 · ADD K · ตัวตรวจจับ AH</div>
+  <div class="tabs">
+    <button type="button" onclick="tab('result')">ผลตรวจจับ</button>
+    <button type="button" onclick="tab('settings')">ตั้งค่า</button>
+  </div>
+</header>
+<main>
+  <section id="result">
+    <h1>คู่ที่ผ่านเงื่อนไขและล็อกแล้ว</h1>
+    <p id="status" class="muted">กำลังโหลดสถานะระบบ</p>
+    <p id="source" class="source"></p>
+    <div id="cards" class="cards"></div>
+  </section>
+
+  <section id="settings" hidden>
+    <h1>ตั้งค่าตัวตรวจจับเอเชียนแฮนดิแคป</h1>
+    <p class="muted">ช่วงเวลาที่เลือกจะถูกแบ่งเป็น 4 รอบต่อคู่เสมอ เมื่อคู่ใดผ่านเงื่อนไข ระบบจะล็อกการ์ดและหยุดตรวจคู่นั้นทันที</p>
+    <form id="form">
+      <fieldset>
+        <legend>เวลาและฝั่งที่ต้องการตรวจ</legend>
+        <label>นาทีเริ่มตรวจ<input name="minuteFrom" type="number" min="1" max="119" required></label>
+        <label>นาทีสิ้นสุด<input name="minuteTo" type="number" min="2" max="120" required></label>
+        <label>ฝั่งที่ต้องการตรวจ<select name="side"><option value="BOTH">ทั้งเจ้าบ้านและทีมเยือน</option><option value="HOME">เจ้าบ้านเท่านั้น</option><option value="AWAY">ทีมเยือนเท่านั้น</option></select></label>
+        <label>สถานะระบบ<input name="enabled" type="checkbox"></label>
+        <p id="times" class="muted"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>เหตุการณ์ขั้นต่ำ</legend>
+        <label>ยิงเข้ากรอบ ตั้งแต่<input name="sotMin" type="number" min="1" max="100" required></label>
+        <label>ยิงออกกรอบ ตั้งแต่<input name="shotOffMin" type="number" min="1" max="100" required></label>
+        <label>เตะมุม ตั้งแต่<input name="cornerMin" type="number" min="1" max="100" required></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>เปอร์เซ็นต์การบุก</legend>
+        <label>สัดส่วนการบุก ต่ำสุด<input name="attackShareMin" type="number" min="1" max="100" step=".1" required></label>
+        <label>สัดส่วนการบุก สูงสุด<input name="attackShareMax" type="number" min="1" max="100" step=".1" required></label>
+        <label>สัดส่วนการบุกอันตราย ต่ำสุด<input name="dangerousShareMin" type="number" min="1" max="100" step=".1" required></label>
+        <label>สัดส่วนการบุกอันตราย สูงสุด<input name="dangerousShareMax" type="number" min="1" max="100" step=".1" required></label>
+        <label>อัตราการบุก ต่ำสุด<input name="attackRateMin" type="number" min="1" max="100" step=".1" required></label>
+        <label>อัตราการบุก สูงสุด<input name="attackRateMax" type="number" min="1" max="100" step=".1" required></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>ราคาเอเชียนแฮนดิแคปจาก NowGoal เท่านั้น</legend>
+        <label>แต้มต่อ ต่ำสุด<input name="ahMin" type="number" min="-5" max="10" step=".25" required></label>
+        <label>แต้มต่อ สูงสุด<input name="ahMax" type="number" min="-5" max="10" step=".25" required></label>
+        <label>ราคาต่ำสุด<input name="oddsMin" type="number" min="1.01" max="10" step=".01" required></label>
+        <label>ราคาสูงสุด<input name="oddsMax" type="number" min="1.01" max="10" step=".01" required></label>
+      </fieldset>
+
+      <div class="save-row">
+        <label>รหัสเจ้าของระบบ<input id="key" type="password" autocomplete="off"></label>
+        <button type="submit">บันทึกการตั้งค่า</button>
+        <output id="msg"></output>
+      </div>
+    </form>
+  </section>
+</main>
+<script>
+const B='https://add-k-ah-detector.mccarey-supon.workers.dev';
+const q=s=>document.querySelector(s);
+function tab(name){q('#result').hidden=name!=='result';q('#settings').hidden=name!=='settings'}
+async function api(path,options){const response=await fetch(B+path,{cache:'no-store',...(options||{})});const body=await response.json();if(!response.ok||body.ok===false)throw Error(body.error||'ระบบตอบกลับผิดพลาด');return body}
+function put(key,value){const element=q('#form').elements[key];if(element)element.type==='checkbox'?element.checked=!!value:element.value=value}
+const sideLabel=side=>side==='HOME'?'เจ้าบ้าน':'ทีมเยือน';
+const value=v=>v==null?'—':v;
+async function load(){
+  try{
+    const [config,signals,status]=await Promise.all([api('/config'),api('/signals'),api('/status')]);
+    Object.entries(config.config).forEach(([key,val])=>put(key,val));
+    q('#times').textContent='ตรวจ 4 รอบ: นาที '+config.schedule.join(', ');
+    const state=status.status;
+    q('#status').textContent=state?`ระบบ ${state.enabled===false?'ปิด':'เปิด'} · บอลสด ${value(state.live)} · ตรวจรอบล่าสุด ${value(state.checked)} คู่ · ล็อกใหม่ ${value(state.locked)} คู่ · อัปเดต ${new Date(state.updatedAt).toLocaleTimeString('th-TH')}`:'ระบบยังไม่มีรอบตรวจ';
+    const smoke=status.smoke;
+    q('#source').textContent=smoke?.ok?`แหล่งข้อมูลพร้อม: API-Football ${value(smoke.apiFootball?.live)} คู่ · TotalCorner ${value(smoke.totalCorner?.matches)} คู่ · NowGoal ${smoke.nowgoal?.status||'—'}`:'';
+    q('#cards').innerHTML=signals.signals.length?signals.signals.map(item=>{
+      const side=item.side.toLowerCase();
+      return `<article class="card"><div class="row"><b>${item.home}</b><b>${item.score.home}-${item.score.away}</b><b>${item.away}</b></div><p>${item.league||''} · นาที ${item.minute} · ${sideLabel(item.side)} · ล็อกแล้ว</p><div class="metric"><span>ยิงเข้ากรอบ ${value(item.stats.sot[side])}</span><span>ยิงออกกรอบ ${value(item.stats.shotOff[side])}</span><span>เตะมุม ${value(item.stats.corners[side])}</span><span>สัดส่วนการบุก ${item.metrics.attackShare?.toFixed(1)??'—'}%</span><span>สัดส่วนการบุกอันตราย ${item.metrics.dangerousShare?.toFixed(1)??'—'}%</span><span>อัตราการบุก ${item.metrics.attackRate?.toFixed(1)??'—'}%</span><span>แต้มต่อ ${value(item.metrics.line)}</span><span>ราคา ${value(item.metrics.odds)}</span></div></article>`;
+    }).join(''):'<div class="empty">ยังไม่มีคู่ที่ผ่านเงื่อนไข</div>';
+  }catch(error){q('#status').textContent=error.message}
+}
+q('#form').onsubmit=async event=>{
+  event.preventDefault();
+  const data={};
+  for(const element of event.target.elements){
+    if(!element.name)continue;
+    data[element.name]=element.type==='checkbox'?element.checked:element.name==='side'?element.value:Number(element.value);
+  }
+  try{
+    const saved=await api('/config',{method:'POST',headers:{'content-type':'application/json','x-owner-key':q('#key').value},body:JSON.stringify(data)});
+    q('#msg').textContent='บันทึกแล้ว · รอบตรวจนาที '+saved.schedule.join(', ');
+    await load();
+  }catch(error){q('#msg').textContent=error.message}
+};
+load();
+setInterval(load,30000);
+</script>
+</body>
+</html>
