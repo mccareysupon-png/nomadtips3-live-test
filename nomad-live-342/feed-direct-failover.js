@@ -3,13 +3,14 @@
 const runtime=window.NOMAD342_RUNTIME||{};
 const primaryBase=String(runtime.engineBase||'').trim().replace(/\/$/,'');
 const directBase=String(runtime.defaultEngineBase||'').trim().replace(/\/$/,'');
+const legacyBase=String(runtime.legacyEngineBase||'').trim().replace(/\/$/,'');
 const canaryBase='https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev/nomad-live-342';
 const feedPath=String(runtime.feedPath||'/feed');
 
 if(typeof window.fetch!=='function'||!primaryBase)return;
 
 const previousFetch=window.fetch.bind(window);
-const bases=[...new Set([primaryBase,directBase,canaryBase].filter(Boolean))];
+const bases=[...new Set([primaryBase,directBase,legacyBase,canaryBase].filter(Boolean))];
 const feedUrls=bases.map(base=>`${base}${feedPath}`);
 
 function requestUrl(input){
@@ -25,7 +26,7 @@ function valid342(data){
   return Boolean(data&&String(data.version)==='3.42'&&Array.isArray(data.matches)&&data.ok!==false);
 }
 function degraded342(data){
-  return valid342(data)&&(data.degraded===true||String(data.fallback||'').toUpperCase()==='LAST_GOOD');
+  return valid342(data)&&(data.degraded===true||data.bridge?.degraded===true||String(data.fallback||'').toUpperCase()==='LAST_GOOD');
 }
 function targetFor(base,input){
   const source=requestUrl(input);
@@ -80,7 +81,7 @@ window.fetch=async function(...args){
 
 window.__nomad342FeedDirectFailover=Object.freeze({
   routes:Object.freeze(feedUrls),
-  mode:'MULTI_ROUTE_342_FEED',
+  mode:'BRIDGE_THEN_TOTALCORNER_342_FEED',
   fallbackTimeoutMs:6000
 });
 })();
