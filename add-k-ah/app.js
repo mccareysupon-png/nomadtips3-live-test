@@ -1,7 +1,7 @@
 (function(){
   'use strict';
 
-  var BASE='https://add-k-ah-detector.mccarey-supon.workers.dev';
+  var BASE='/add-k-ah-api';
   var form=document.getElementById('form');
   var resultSection=document.getElementById('result');
   var settingsSection=document.getElementById('settings');
