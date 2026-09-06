@@ -1,0 +1,32 @@
+name: Deploy ADD K AH Detector
+on:
+  push:
+    branches: [main]
+    paths: ['workers/add-k-ah-detector/**','.github/workflows/add-k-ah-detector-deploy.yml']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ตรวจสอบระบบ
+        working-directory: workers/add-k-ah-detector
+        run: npm test && node --check src/index.js
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: workers/add-k-ah-detector
+          command: deploy
+      - name: ตั้งค่า API-Football
+        working-directory: workers/add-k-ah-detector
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
+          OWNER_KEY: ${{ secrets.OWNER_ADMIN_TOKEN }}
+        run: |
+          test -n "$API_FOOTBALL_KEY"
+          printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4 secret put API_FOOTBALL_KEY --name add-k-ah-detector
+          if [ -n "$OWNER_KEY" ]; then printf '%s' "$OWNER_KEY" | npx --yes wrangler@4 secret put OWNER_KEY --name add-k-ah-detector; fi
+      - name: ตรวจ production
+        run: curl --fail --retry 8 --retry-delay 5 https://add-k-ah-detector.mccarey-supon.workers.dev/
