@@ -1,60 +1,59 @@
 # NOMAD LIVE 3.42 — STEP 2 SOURCE AUDIT
 
-Status: SOURCE AUDIT COMPLETE · RUNTIME UNCHANGED · CLEAN BRANCH ONLY
+Status: SOURCE AUDIT + GOALOO STATS SUPPLEMENT TEST COMPLETE · CLEAN BRANCH ONLY · MAIN/PRODUCTION UNCHANGED
 
-ขอบเขต: ตรวจสอบแหล่งข้อมูลเดิม/ปัจจุบันของ NOMAD สำหรับหน้าตั้งค่า OVER / UNDER / 1X2 โดยยึดคำสั่งว่า TotalCorner ใช้เป็นสายเหตุการณ์เท่านั้น และ API-Football ไม่ให้กลับมาเป็นส่วนพึ่งพาของระบบใหม่
+ขอบเขต: OVER / UNDER / 1X2 โดยยึดคำสั่งว่า TotalCorner ใช้เป็นสายเหตุการณ์เท่านั้น, API-Football ไม่กลับเข้าระบบ และ Goaloo ใช้เสริมเฉพาะสถิติที่ขาด
 
-## 1) สายข้อมูลที่ยืนยันได้จากระบบ NOMAD ปัจจุบัน
+## สายข้อมูลที่ล็อกสำหรับ clean rebuild
 
-| ข้อมูลที่ Settings ต้องใช้ | สาย NOMAD ปัจจุบัน | Contract/Field | ผลตรวจ |
-| --- | --- | --- | --- |
-| นาที | TotalCorner Live Score V3 | match.minute | ใช้ได้ |
-| สกอร์ | TotalCorner Live Score V3 | match.score | ใช้ได้ |
-| Attack | TotalCorner Live Score V3 | event.snapshots[].attacks[HOME,AWAY] | ใช้ได้ |
-| Dangerous Attack | TotalCorner Live Score V3 | event.snapshots[].dangerous[HOME,AWAY] | ใช้ได้ |
-| Corner | TotalCorner Live Score V3 | event.snapshots[].corner[HOME,AWAY] | ใช้ได้ |
-| Shot on Target | — | V3 ส่ง sot:[null,null] | SOURCE GAP |
-| Shot Off | — | V3 ส่ง off:[null,null] | SOURCE GAP |
-| การครอบครองบอล % | — | V3 ไม่มี field นี้ | SOURCE GAP |
-| ราคา 1X2 | Market Engine / Nowgoal | GET /markets → bookmakers[].markets.oneXtwo | ใช้ได้ |
-| เส้น + ราคา Over/Under | Market Engine / Nowgoal | GET /markets → bookmakers[].markets.totals | ใช้ได้ |
-| ผลจบเกม | TotalCorner Live Score V3 | GET /finals | ใช้ได้ |
+| ข้อมูล | Source | ผล |
+| --- | --- | --- |
+| นาที / สกอร์ | TotalCorner V3 | ใช้เป็นตัวตนและเหตุการณ์หลัก |
+| Attack | TotalCorner V3 | ใช้ |
+| Dangerous Attack | TotalCorner V3 | ใช้ |
+| Corner | TotalCorner V3 | ใช้ |
+| Shot on Target | Goaloo `detailIn.js` code 5 | ใช้เมื่อจับคู่แข่งขันผ่าน guard |
+| Shot Off | Goaloo `detailIn.js` code 8 | ใช้เฉพาะเมื่อ code 8 = Total Shots - SOT ของทั้ง HOME/AWAY |
+| การครอบครองบอล % | Goaloo `detailIn.js` code 11 | ใช้เฉพาะคู่ HOME+AWAY รวม 98–102% |
+| ราคา 1X2 | Market Engine / Nowgoal `/markets` | ใช้ |
+| เส้น + ราคา OVER/UNDER | Market Engine / Nowgoal `/markets` | ใช้ |
 
-TotalCorner V3 ปัจจุบันประกาศ capability ชัดเจนว่า minute / score / attacks / dangerous / corner ใช้ได้ แต่ sot=false, off=false และ detail=false จึงห้ามตีความค่า null เป็น 0 หรือสร้างค่าขึ้นเอง
+TotalCorner V3 ปัจจุบันยังส่ง `sot/off = null` เพราะ worker ของเราไม่ได้ดึง detail; ไม่ใช้ TotalCorner detail ต่อ เนื่องจากหน้าสถิติติด Cloudflare และตามคำสั่งให้ถือว่าเส้นนั้นใช้งานไม่ได้
 
-## 2) ตรวจย้อนหลังของ NOMAD
+## Goaloo supplement contract
 
-เครื่องยนต์ NOMAD รุ่นเก่าเคยอ่าน TotalCorner รายคู่ผ่าน /stats และ fallback /live แล้ว parser อ่าน Attack, Dangerous Attack, Shot on Target, Shot Off, Corner และ Possession ได้จริง
+Goaloo ตัวใหม่เป็น `STATS_ONLY` เท่านั้น: อ่าน live identity จาก `bf_us.js`/`bf_us1.js` และสถิติจาก `detailIn.js`. ไม่รับราคา, ไม่รับ events, ไม่ทำ settlement และไม่เปลี่ยน TotalCorner event rail
 
-อย่างไรก็ตามเส้น detail รุ่นเก่ามีประวัติปัญหา frozen minute / stale / invalid detail และภายหลัง 3.42 เปลี่ยนมาใช้ TotalCorner V3 แบบ resilient โดยตั้ง detail=false เพื่อแยกสายที่เปราะออก ดังนั้นข้อมูลย้อนหลังนี้ใช้เพื่อยืนยันที่มาเดิมเท่านั้น ไม่อนุญาตให้ต่อกลับเข้าระบบใหม่อัตโนมัติ และตามคำสั่งปัจจุบัน TotalCorner ยังคงเป็นสายเหตุการณ์เท่านั้น
+การจับคู่ TotalCorner → Goaloo เป็น fail-closed:
 
-## 3) สายราคา
+1. HOME ต้องตรงกับ HOME และ AWAY ต้องตรงกับ AWAY; ไม่ยอมกลับด้าน
+2. ตรวจชื่อทีมแบบ normalize พร้อม alias จำกัด เช่น `Utd` = `United`; ไม่ลด guard เพื่อไล่ coverage
+3. ถ้าสกอร์มีทั้งสอง source ต้องตรงกันเป๊ะ
+4. ตอนสร้าง mapping ครั้งแรก นาทีต่างได้ไม่เกิน 5 นาที
+5. ถ้ามี candidate ใกล้กันจนแยกไม่ชัดให้ `AMBIGUOUS` และไม่เติมสถิติ
+6. เมื่อจับได้แล้ว lock `TotalCorner matchId → Goaloo sourceMatchId` ใน session; ห้ามสลับ Goaloo match กลางเกม
+7. mapping ที่ lock แล้วต้องตรวจชื่อ/สกอร์/นาทีซ้ำ ถ้าหลุดให้หยุดรับ stats แทนการ remap
+8. ค่าใดไม่มีหรือ validation ไม่ผ่านให้คง `null`; UNDER ห้ามตีความ null เป็น 0
 
-Market Engine ปัจจุบันตั้ง provider เป็น Nowgoal และ /markets รองรับสองตลาดที่ต้องใช้กับงานนี้โดยตรง:
+## ผลทดสอบล่าสุด
 
-- 1X2: home / draw / away (หน้าตั้งค่าใหม่จะไม่ใช้ Draw เป็นตัวเลือก Signal)
-- OVER/UNDER: line / overOdds / underOdds
+- parser + matcher tests: 10/10 PASS
+- isolated Goaloo stats Worker: deploy + `/health` + `/feed` PASS
+- live Goaloo feed รอบทดสอบ: 94 คู่
+- TotalCorner V3 รอบเดียวกัน: 27 คู่
+- strict cross-source match: 1 คู่ผ่าน, 0 ambiguous, 26 unmatched
+- คู่ที่ผ่านจริง: `Hong Kong FC vs Lee Man FC`, TotalCorner ID `200608773` → Goaloo ID `3049317`, นาที 45 ตรงกัน, สกอร์ 0-1 ตรงกัน
 
-Nowgoal /markets จึงเป็นสายราคาที่พบว่าระบบปัจจุบันเตรียมไว้สำหรับ 1X2 และ OVER/UNDER ส่วน API-Football /candidate ที่ยังค้างอยู่ใน repository เป็น legacy code และห้ามนำมาเป็น dependency ของ clean rebuild
+Coverage รอบนี้ต่ำแต่ guard ไม่จับคู่ผิดเพื่อบังคับให้ครบ; คู่ที่ไม่ยืนยันได้จะไม่มี Goaloo stats และ fail closed ตามกติกา
 
-## 4) แหล่งเก่าที่ตรวจแล้วแต่ไม่เลือกกลับมา
+## กติกาหลัง STEP 2
 
-- API-Football: ถูกปลดตามคำสั่ง ไม่ใช้เป็น candidate / statistics / price dependency
-- BigBalls/BigBaller: legacy API; ตัวอย่างข้อมูลใน repo เคยคืน HTTP 200 แต่ key live stats หลายตัวเป็น null จึงไม่ใช้
-- 5Dollar source8: retired / registry ไม่มี source8 แล้ว
-- Flashscore: legacy / active telemetry ไม่ได้รับการยืนยันในระบบปัจจุบัน
-- Alerts.bet: เคยอยู่ระดับ POC_CANDIDATE เท่านั้น ไม่ใช่ Production source
-
-## 5) กติกาที่ล็อกหลัง STEP 2
-
-1. TotalCorner = EVENT rail: minute, score, Attack, Dangerous Attack, Corner, history และ Final เท่านั้นในสถาปัตยกรรมใหม่
-2. Nowgoal /markets = PRICE rail สำหรับ 1X2 และ OVER/UNDER ตามระบบปัจจุบัน
-3. Shot on Target / Shot Off / การครอบครองบอล ยังไม่มี active approved source ใน clean rebuild จึงคงเป็น SOURCE GAP จนกว่าจะตรวจและเลือกแหล่งที่ใช้จริง
-4. ข้อมูลหาย = null และ fail closed; โดยเฉพาะ UNDER ห้ามถือ null เป็น 0
-5. Attack % และ Dangerous Attack % สามารถคำนวณจาก rolling delta ของ TotalCorner V3 เป็นสัดส่วน HOME/AWAY รวม 100%; ถ้าผลรวมไม่มีค่า/เป็น 0 ให้คืน null
-6. การครอบครองบอลต้องมาจากข้อมูลจริงของ source ที่อนุมัติ ห้ามคำนวณแทนจาก Attack
-7. ขั้นนี้ไม่เชื่อม RUN เข้ากับ Engine, ไม่แก้ Ledger, ไม่แก้ Worker และไม่แตะ main/Production
+- TotalCorner = EVENT rail เท่านั้นสำหรับข้อมูลสดที่ใช้ในเงื่อนไข: minute, score, Attack, Dangerous Attack, Corner และ history ของเหตุการณ์เหล่านี้
+- Goaloo = SUPPLEMENT STATS rail เฉพาะ SOT / Shot Off / Possession
+- Nowgoal `/markets` = PRICE rail สำหรับ 1X2 / OVER-UNDER
+- API-Football = ไม่ใช้
+- main / Production ยังไม่ถูกแตะ; Goaloo supplement อยู่บน `work/342-settings-clean-rebuild` และ test Worker เท่านั้น
 
 ## STEP 2 RESULT
 
-Audit เสร็จและพบ blocker ที่ต้องเห็นก่อน STEP 3: Shot on Target / Shot Off / การครอบครองบอล ยังไม่มี active approved source ในเส้น 3.42 ปัจจุบัน การไป STEP 3 แบบแม่นยำต้องเก็บสาม field นี้เป็น SOURCE GAP หรือทำ sub-step ตรวจ source ที่ได้รับอนุญาตให้ครบก่อนล็อก Data Contract
+Source gap ของ SOT / Shot Off / Possession ถูกปิดในระดับ TEST ด้วย Goaloo และมี strict match guard แล้ว พร้อมเข้าสู่ STEP 3 เพื่อ lock Data Contract โดยยังคง fail closed เมื่อ cross-source mapping ไม่ผ่าน
