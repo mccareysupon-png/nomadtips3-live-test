@@ -2,19 +2,19 @@
   "engine": "the-king-default-goaloo-composite-40pct-188",
   "policy": "KING_DEFAULT_40_188",
   "status": "OK",
-  "last_selection_run": "2026-09-05T12:48:08Z",
+  "last_selection_run": "2026-09-06T03:12:14Z",
   "last_settlement_run": "2026-09-05T23:59:00Z",
-  "selection_date": "2026-09-05",
-  "fixtures_seen": 510,
-  "qualified": 143,
-  "pending": 139,
+  "selection_date": "2026-09-06",
+  "fixtures_seen": 622,
+  "qualified": 124,
+  "pending": 124,
   "max_daily_picks": null,
   "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
   "decision_layer": "Persistent owner default Goaloo composite thresholds + reverse publication HOME/AWAY",
   "selection_profile": {
     "name": "OWNER_DEFAULT_40_188",
-    "date": "2026-09-05",
+    "date": "2026-09-06",
     "minimum_confidence": 0.4,
     "minimum_odds": 1.88,
     "maximum_odds_safety": 3.0,
@@ -27,370 +27,372 @@
     "king_v2_market_edge_gate": "BYPASSED",
     "king_v2_ev_gate": "BYPASSED"
   },
-  "rejected": 367,
+  "rejected": 498,
   "rejection_reasons": {
-    "ODDS_SAFETY_MAX": 180,
-    "DEFAULT_MIN_ODDS": 32,
-    "DEFAULT_MIN_CONFIDENCE": 68,
-    "GOALOO_FORM_SHORT": 81,
-    "NO_GOALOO_1X2_ODDS": 5,
-    "DRAW_NOT_MAIN_PICK": 1
+    "GOALOO_FORM_SHORT": 158,
+    "DEFAULT_MIN_CONFIDENCE": 63,
+    "ODDS_SAFETY_MAX": 223,
+    "DEFAULT_MIN_ODDS": 34,
+    "NO_GOALOO_1X2_ODDS": 18,
+    "DRAW_NOT_MAIN_PICK": 2
   },
   "rejection_samples": [
     {
-      "match": "Bourg Peronnas vs Caen",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.52,
-      "maximum": 3.0,
-      "confidence": 0.5793
+      "match": "AC Middle Range vs Kansai University",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 4,
+      "away_n": 8,
+      "required_each": 8
     },
     {
-      "match": "Concarneau vs Thionville FC",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.95,
-      "maximum": 3.0,
-      "confidence": 0.5269
-    },
-    {
-      "match": "Fleury Merogis U.S. vs Villefranche",
-      "reason": "DEFAULT_MIN_ODDS",
-      "odds": 1.85,
-      "required": 1.88,
-      "confidence": 0.5415
-    },
-    {
-      "match": "La Roche VF vs Quevilly",
+      "match": "Sydney United vs Manly United",
       "reason": "DEFAULT_MIN_CONFIDENCE",
-      "confidence": 0.3913,
+      "confidence": 0.3959,
       "required": 0.4,
-      "odds": 4.13
+      "odds": 6.89
     },
     {
-      "match": "Le Puy Foot 43 Auvergne vs Orleans US 45",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 10,
-      "required_each": 8
-    },
-    {
-      "match": "Paris 13 Atletico vs Aubagne",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 9,
-      "required_each": 8
-    },
-    {
-      "match": "Versailles 78 vs Cannes AS",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 10,
-      "required_each": 8
-    },
-    {
-      "match": "Widzew lodz vs Radomiak Radom",
-      "reason": "DEFAULT_MIN_ODDS",
-      "odds": 1.66,
-      "required": 1.88,
-      "confidence": 0.5315
-    },
-    {
-      "match": "Manjung City FC vs Kelantan WTS FC",
-      "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.3742
-    },
-    {
-      "match": "Fiorentina vs Torino",
-      "reason": "DEFAULT_MIN_CONFIDENCE",
-      "confidence": 0.3701,
-      "required": 0.4,
-      "odds": 2.2
-    },
-    {
-      "match": "SudTirol vs Catanzaro",
-      "reason": "DEFAULT_MIN_CONFIDENCE",
-      "confidence": 0.3864,
-      "required": 0.4,
-      "odds": 2.34
-    },
-    {
-      "match": "Degerfors IF vs Halmstads",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.62,
-      "maximum": 3.0,
-      "confidence": 0.5744
-    },
-    {
-      "match": "VV Kloetinge vs IJsselmeervogels",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 5,
-      "away_n": 9,
-      "required_each": 8
-    },
-    {
-      "match": "Rohda Raalte vs Kozakken Boys",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.81,
-      "maximum": 3.0,
-      "confidence": 0.486
-    },
-    {
-      "match": "Brattvag vs Kvik Halden",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 5.28,
-      "maximum": 3.0,
-      "confidence": 0.5625
-    },
-    {
-      "match": "Sotra vs Vidar",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 12.7,
-      "maximum": 3.0,
-      "confidence": 0.6279
-    },
-    {
-      "match": "FC Ufa vs Veles",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 3.25,
-      "maximum": 3.0,
-      "confidence": 0.4378
-    },
-    {
-      "match": "Sigma Olomouc vs Bohemians 1905",
-      "reason": "DEFAULT_MIN_CONFIDENCE",
-      "confidence": 0.3827,
-      "required": 0.4,
-      "odds": 1.67
-    },
-    {
-      "match": "Slavia Praha vs Brno",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 9.45,
-      "maximum": 3.0,
-      "confidence": 0.6016
-    },
-    {
-      "match": "Banik Most-Sous vs FK Horni Redice",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 8.65,
-      "maximum": 3.0,
-      "confidence": 0.7011
-    },
-    {
-      "match": "Red Arrows vs Inate Rouge",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 0,
-      "required_each": 8
-    },
-    {
-      "match": "PAOK Saloniki B vs Olympiakos Piraeus B",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 10,
-      "away_n": 7,
-      "required_each": 8
-    },
-    {
-      "match": "Panthrakikos vs Pyrgos AFC",
+      "match": "Avondale FC (W) vs Boroondara Eagles (W)",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 8,
+      "away_n": 6,
+      "required_each": 8
+    },
+    {
+      "match": "Hokuriku Electric Power vs Japan Soccer College",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 5,
+      "away_n": 10,
+      "required_each": 8
+    },
+    {
+      "match": "Celeste Tokushima vs Takamatsu R-Velho",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 27.0,
+      "maximum": 3.0,
+      "confidence": 0.8971
+    },
+    {
+      "match": "Artista Asama vs Fukui United",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 6,
+      "required_each": 8
+    },
+    {
+      "match": "Kingborough Lions (W) vs Devonport Strikers (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 24.0,
+      "maximum": 3.0,
+      "confidence": 0.8184
+    },
+    {
+      "match": "Taroona (W) vs Launceston United (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.5,
+      "maximum": 3.0,
+      "confidence": 0.7833
+    },
+    {
+      "match": "Broadmeadow Magic vs Maitland",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 4.11,
+      "maximum": 3.0,
+      "confidence": 0.5186
+    },
+    {
+      "match": "Oyama SC vs Fukushima United FC II",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 2,
+      "away_n": 4,
+      "required_each": 8
+    },
+    {
+      "match": "Sendai University SC II vs Bogolle D.Tsugaru",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 10,
+      "away_n": 2,
+      "required_each": 8
+    },
+    {
+      "match": "Tadotsu FC vs Kochi University II",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 10,
+      "required_each": 8
+    },
+    {
+      "match": "Tokai Gakuen University vs Kyoto Sangyo University",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 0,
+      "away_n": 4,
+      "required_each": 8
+    },
+    {
+      "match": "Bulls Academy (W) vs WS Wanderers B (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.51,
+      "maximum": 3.0,
+      "confidence": 0.5018
+    },
+    {
+      "match": "Ravia SA vs Qi Yi FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 10,
       "away_n": 5,
       "required_each": 8
     },
     {
-      "match": "Bandirmaspor vs Boluspor",
+      "match": "A.P.I.A. Leichhardt Tigers vs NWS Spirit FC",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 11.5,
+      "odds": 5.44,
       "maximum": 3.0,
-      "confidence": 0.522
+      "confidence": 0.5937
     },
     {
-      "match": "Terengganu vs Penang",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 5.7,
-      "maximum": 3.0,
-      "confidence": 0.4674
+      "match": "Okayama Yunogo Belle (W) vs Orca Kamogawa FC (W)",
+      "reason": "DEFAULT_MIN_CONFIDENCE",
+      "confidence": 0.3854,
+      "required": 0.4,
+      "odds": 2.72
     },
     {
-      "match": "Chippa United vs Milford",
+      "match": "VONDS Ichihara (W) vs Nittaidai University (W)",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 10,
+      "required_each": 8
+    },
+    {
+      "match": "Kibi International University (W) vs Diosa Izumo (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.38,
+      "maximum": 3.0,
+      "confidence": 0.4911
+    },
+    {
+      "match": "Ococias Kyoto AC vs Moriyama Samurai",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
       "away_n": 8,
       "required_each": 8
     },
     {
-      "match": "FK Aktobe Lento vs Zhenis",
+      "match": "Belconnen United (W) vs Canberra Olympic(W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 22.0,
+      "maximum": 3.0,
+      "confidence": 0.6462
+    },
+    {
+      "match": "Hannan University vs Bandito Ikoma",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 10,
+      "away_n": 2,
+      "required_each": 8
+    },
+    {
+      "match": "Mindil Aces vs Casuarina FC",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 20.0,
+      "maximum": 3.0,
+      "confidence": 0.6179
+    },
+    {
+      "match": "Johannesburg Uni (W) vs Ramatlaohle FC (W)",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
+      "away_n": 2,
+      "required_each": 8
+    },
+    {
+      "match": "Sikkim Himalayan SC vs Sikkim Aakraman FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9,
+      "required_each": 8
+    },
+    {
+      "match": "Tsuen Wan vs Kowloon Cricket Club",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 3.57,
+      "maximum": 3.0,
+      "confidence": 0.5007
+    },
+    {
+      "match": "Citizen vs South China AA",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 6.1,
+      "maximum": 3.0,
+      "confidence": 0.4673
+    },
+    {
+      "match": "Hoi Jing vs Sham Shui Po",
       "reason": "DEFAULT_MIN_CONFIDENCE",
-      "confidence": 0.3536,
+      "confidence": 0.3823,
       "required": 0.4,
-      "odds": 1.93
+      "odds": 1.75
     },
     {
-      "match": "Naesby vs Horsholm-Usserod IK",
+      "match": "Central Western District RSA vs Lucky Mile FC",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.0,
+      "odds": 20.0,
       "maximum": 3.0,
-      "confidence": 0.6716
+      "confidence": 0.8164
     },
     {
-      "match": "Hammarby (W) vs IFK Norrkoping DFK (W)",
+      "match": "Yangpyeong vs Siheung City",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 16.0,
+      "odds": 4.74,
       "maximum": 3.0,
-      "confidence": 0.8593
-    },
-    {
-      "match": "Sogdiana Jizak vs Mashal Muborak",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 10.4,
-      "maximum": 3.0,
-      "confidence": 0.4045
+      "confidence": 0.6004
     }
   ],
   "near_gate_top": [
     {
-      "match": "Schalke 04 vs Bayern Munchen",
+      "match": "Partick Thistle (W) vs Celtic (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 13.5,
+      "odds": 11.2,
       "maximum": 3.0,
-      "confidence": 0.9436
+      "confidence": 0.9104
     },
     {
-      "match": "Sevilla FC (W) vs Barcelona (W)",
+      "match": "Nojima Stella (W) vs INAC (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 80.0,
+      "odds": 4.18,
       "maximum": 3.0,
-      "confidence": 0.9299
+      "confidence": 0.9037
     },
     {
-      "match": "MTK Hungaria FC (W) vs Pecsi MFC (W)",
+      "match": "Celeste Tokushima vs Takamatsu R-Velho",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 27.0,
+      "maximum": 3.0,
+      "confidence": 0.8971
+    },
+    {
+      "match": "Kirivong Sok Sen Chey vs Svay Rieng FC",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 13.0,
+      "maximum": 3.0,
+      "confidence": 0.8962
+    },
+    {
+      "match": "CF Esperanca dAndorra vs Inter Club Escaldes",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 18.0,
+      "maximum": 3.0,
+      "confidence": 0.8922
+    },
+    {
+      "match": "Hong Kong FC vs LeeMan",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 17.5,
+      "maximum": 3.0,
+      "confidence": 0.8911
+    },
+    {
+      "match": "Sukhothai vs Buriram United",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 8.0,
+      "maximum": 3.0,
+      "confidence": 0.8832
+    },
+    {
+      "match": "Qarabag vs Araz Nakhchivan",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 13.0,
+      "maximum": 3.0,
+      "confidence": 0.8733
+    },
+    {
+      "match": "Manchester City (W) vs Birmingham (W)",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.9171
+      "confidence": 0.8562
     },
     {
-      "match": "Mawyawadi vs Shan United",
+      "match": "Montrose LFC (W) vs Hearts (W)",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 21.0,
+      "maximum": 3.0,
+      "confidence": 0.8545
+    },
+    {
+      "match": "Valencia vs FC Barcelona",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 10.0,
+      "maximum": 3.0,
+      "confidence": 0.8488
+    },
+    {
+      "match": "Ferencvarosi TC vs Ujpesti",
+      "reason": "ODDS_SAFETY_MAX",
+      "odds": 6.69,
+      "maximum": 3.0,
+      "confidence": 0.8469
+    },
+    {
+      "match": "Queens Park Rangers (W) vs Fulham (W)",
       "reason": "NO_GOALOO_1X2_ODDS",
-      "confidence": 0.8994
+      "confidence": 0.8356
     },
     {
-      "match": "Maritimo vs Benfica",
+      "match": "MFA Zalgiris (W) vs Ssg FA Siauliai (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 15.5,
+      "odds": 11.7,
       "maximum": 3.0,
-      "confidence": 0.8888
+      "confidence": 0.8308
     },
     {
-      "match": "Volos NFC vs Olympiakos Piraeus",
+      "match": "Fortuna Hjorring (W) vs Odense BK (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 9.15,
+      "odds": 12.2,
       "maximum": 3.0,
-      "confidence": 0.8799
+      "confidence": 0.825
     },
     {
-      "match": "Hammarby (W) vs IFK Norrkoping DFK (W)",
+      "match": "Banska Bystrica B vs Sokol Medzibrod",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 16.0,
+      "odds": 4.96,
       "maximum": 3.0,
-      "confidence": 0.8593
+      "confidence": 0.8248
     },
     {
-      "match": "Ararat Yerevan vs FC Ararat Armenia",
+      "match": "Rudes vs Hajduk Split",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 10.5,
+      "odds": 10.1,
       "maximum": 3.0,
-      "confidence": 0.8566
+      "confidence": 0.8207
     },
     {
-      "match": "Sporting CP vs Nacional da Madeira",
+      "match": "Kingborough Lions (W) vs Devonport Strikers (W)",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 16.5,
+      "odds": 24.0,
       "maximum": 3.0,
-      "confidence": 0.8485
+      "confidence": 0.8184
     },
     {
-      "match": "Folgore/Falciano vs Cailungo",
+      "match": "Central Western District RSA vs Lucky Mile FC",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 11.5,
+      "odds": 20.0,
       "maximum": 3.0,
-      "confidence": 0.8462
+      "confidence": 0.8164
     },
     {
-      "match": "Saku Sporting (W) vs FC Elva (W)",
+      "match": "Rancho Santana FC vs Real Esteli",
       "reason": "ODDS_SAFETY_MAX",
-      "odds": 13.5,
+      "odds": 10.0,
       "maximum": 3.0,
-      "confidence": 0.8325
-    },
-    {
-      "match": "Spartak Varna vs CSKA Sofia",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 5.8,
-      "maximum": 3.0,
-      "confidence": 0.8234
-    },
-    {
-      "match": "Formartine United vs Nairn County",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 10.7,
-      "maximum": 3.0,
-      "confidence": 0.8154
-    },
-    {
-      "match": "Slovan Bratislava (W) vs FC Tatran Presov (W)",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 38.0,
-      "maximum": 3.0,
-      "confidence": 0.8132
-    },
-    {
-      "match": "Al Kuwait SC vs Al-Jahra",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 23.0,
-      "maximum": 3.0,
-      "confidence": 0.8131
-    },
-    {
-      "match": "KFR Aegir vs Grindavik",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 8.4,
-      "maximum": 3.0,
-      "confidence": 0.8094
-    },
-    {
-      "match": "Alverca vs Sporting Braga",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.99,
-      "maximum": 3.0,
-      "confidence": 0.8065
-    },
-    {
-      "match": "Fuerte San Francisco vs CD FAS",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.14,
-      "maximum": 3.0,
-      "confidence": 0.8056
-    },
-    {
-      "match": "FC Karpaty Lviv vs FC Shakhtar Donetsk",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 4.7,
-      "maximum": 3.0,
-      "confidence": 0.8038
-    },
-    {
-      "match": "ASK Voitsberg vs Sturm Graz",
-      "reason": "ODDS_SAFETY_MAX",
-      "odds": 7.05,
-      "maximum": 3.0,
-      "confidence": 0.7891
+      "confidence": 0.8045
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 750,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 751,
+    "odds_rows": 713,
+    "h2h_static_ok": 622,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -416,23 +418,5 @@
     "No daily pick-count cap.",
     "Structural guards: >=8 recent matches per team, valid Goaloo 1X2, non-draw model side.",
     "KING V2 underlying/market-edge/EV remain audit information, not publication hard gates."
-  ],
-  "settled_this_run": 4,
-  "settlement_fallback": {
-    "mode": "DISABLED",
-    "reason": "Goaloo direct index is authoritative",
-    "last_run": "2026-09-05T23:59:00Z"
-  },
-  "direct_reconcile": {
-    "source": "goaloo-bf_us-direct-index",
-    "index_ok": true,
-    "index_rows": 750,
-    "trusted_settled": 4,
-    "reset_untrusted": 9,
-    "missing_ids": 131,
-    "team_mismatch": 0,
-    "invalid_scores": 0,
-    "non_terminal": 8,
-    "last_run": "2026-09-05T23:59:00Z"
-  }
+  ]
 }
