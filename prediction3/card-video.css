@@ -1,0 +1,71 @@
+/* Prediction3 · Sirius gold-pick video background.
+   Presentation only: no selection, odds, tracker, settlement or live-feed logic. */
+body[data-page="prediction3"] .p3-card-video-host{
+  position:relative!important;
+  isolation:isolate;
+  overflow:hidden!important;
+  background:linear-gradient(115deg,#0b110d 0%,#101912 36%,#171b10 63%,#0a0e0b 100%)!important;
+}
+body[data-page="prediction3"] .p3-card-video-layer{
+  position:absolute;
+  z-index:0;
+  top:0;
+  right:0;
+  bottom:0;
+  width:clamp(250px,43%,470px);
+  overflow:hidden;
+  pointer-events:none;
+  opacity:.94;
+  background:linear-gradient(180deg,#12170f,#2b2410);
+}
+body[data-page="prediction3"] .p3-card-video-media{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  object-position:50% 43%;
+  transform:scale(1.035);
+  filter:brightness(.70) contrast(1.08) saturate(.78) sepia(.12);
+}
+body[data-page="prediction3"] .p3-card-video-host::after{
+  content:"";
+  position:absolute;
+  z-index:1;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,rgba(8,14,10,.99) 0%,rgba(10,17,12,.97) 27%,rgba(18,23,13,.86) 48%,rgba(65,47,10,.45) 68%,rgba(12,16,11,.16) 100%),
+    linear-gradient(180deg,rgba(4,8,6,.08) 0%,rgba(5,9,7,.10) 58%,rgba(6,10,7,.48) 100%);
+}
+body[data-page="prediction3"] .p3-card-video-host>.p3-pick-hero,
+body[data-page="prediction3"] .p3-card-video-host>.p3-value-box,
+body[data-page="prediction3"] .p3-card-video-host>.p3-prematch-gold{
+  position:relative!important;
+  z-index:2;
+}
+body[data-page="prediction3"] .p3-card-video-host>.p3-pick-hero{
+  text-shadow:0 1px 2px rgba(0,0,0,.42);
+}
+body[data-page="prediction3"] .p3-card-video-fallback .p3-card-video-layer{display:none!important}
+body[data-page="prediction3"] .p3-card-video-paused .p3-card-video-media{opacity:.72}
+
+@media(max-width:900px){
+  body[data-page="prediction3"] .p3-card-video-layer{width:68%;opacity:.86}
+  body[data-page="prediction3"] .p3-card-video-host::after{
+    background:
+      linear-gradient(90deg,rgba(8,14,10,.96) 0%,rgba(12,18,11,.80) 45%,rgba(62,45,10,.30) 78%,rgba(8,12,9,.18) 100%),
+      linear-gradient(180deg,rgba(5,9,7,.08) 0%,rgba(6,10,7,.42) 50%,rgba(6,10,7,.92) 100%);
+  }
+}
+@media(max-width:680px){
+  body[data-page="prediction3"] .p3-card-video-layer{top:0;right:0;bottom:auto;width:100%;height:43%;opacity:.78}
+  body[data-page="prediction3"] .p3-card-video-media{object-position:58% 39%;filter:brightness(.64) contrast(1.08) saturate(.74) sepia(.14)}
+  body[data-page="prediction3"] .p3-card-video-host::after{
+    background:
+      linear-gradient(90deg,rgba(8,14,10,.78) 0%,rgba(14,18,10,.42) 56%,rgba(53,39,9,.18) 100%),
+      linear-gradient(180deg,rgba(6,10,7,.18) 0%,rgba(7,11,8,.56) 32%,rgba(7,11,8,.96) 52%,rgba(7,11,8,.99) 100%);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-page="prediction3"] .p3-card-video-layer{display:none!important}
+}
