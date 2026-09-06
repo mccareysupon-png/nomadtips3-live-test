@@ -59,29 +59,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 20 "$WORKER_URL/health?_=$RANDOM" -o /tmp/health.json
-          node - <<'NODE'
-          const j=require('/tmp/health.json');
+          health_ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            code=$(curl -sS --max-time 20 -o /tmp/health.json -w '%{http_code}' "$WORKER_URL/health?_=$RANDOM" || true)
+            if [ "$code" = "200" ]; then
+              if node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
           if(j.ok!==true||j.mode!=='STATS_ONLY'||j.source!=='Goaloo') process.exit(1);
           if(j.markets!==false||j.events!==false||j.settlement!==false) process.exit(1);
           NODE
-          ok=0
-          for attempt in 1 2 3 4 5; do
-            code=$(curl -sS --max-time 25 -o /tmp/feed.json -w '%{http_code}' "$WORKER_URL/feed?_=$RANDOM" || true)
-            if [ "$code" = "200" ]; then
-              node - <<'NODE'
-              const fs=require('fs');
-              const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
-              if(j.ok!==true||j.source!=='Goaloo'||!Array.isArray(j.matches)) process.exit(1);
-              for(const m of j.matches.slice(0,25)){
-                if(!m.sourceMatchId||!m.home||!m.away) process.exit(1);
-                if(!m.stats||!('shots_on_target' in m.stats)||!('shots_off_target' in m.stats)||!('possession' in m.stats)) process.exit(1);
-              }
-              console.log(JSON.stringify({live:j.matches.length,observedAt:j.observedAt},null,2));
-          NODE
-              ok=1
-              break
+              then health_ok=1; break; fi
             fi
             sleep 4
           done
-          test "$ok" = '1'
+          test "$health_ok" = '1'
+
+          feed_ok=0
+          for attempt in 1 2 3 4 5 6 7 8; do
+            code=$(curl -sS --max-time 25 -o /tmp/feed.json -w '%{http_code}' "$WORKER_URL/feed?_=$RANDOM" || true)
+            if [ "$code" = "200" ]; then
+              if node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+          if(j.ok!==true||j.source!=='Goaloo'||!Array.isArray(j.matches)) process.exit(1);
+          for(const m of j.matches.slice(0,25)){
+            if(!m.sourceMatchId||!m.home||!m.away) process.exit(1);
+            if(!m.stats||!('shots_on_target' in m.stats)||!('shots_off_target' in m.stats)||!('possession' in m.stats)) process.exit(1);
+          }
+          console.log(JSON.stringify({live:j.matches.length,observedAt:j.observedAt},null,2));
+          NODE
+              then feed_ok=1; break; fi
+            fi
+            sleep 4
+          done
+          test "$feed_ok" = '1'
