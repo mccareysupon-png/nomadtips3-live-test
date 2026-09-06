@@ -1,136 +1,61 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · 3.42 Football Evidence Settings</title>
-  <link rel="stylesheet" href="styles.css?v=20260829-5dollar-v1">
-  <link rel="stylesheet" href="settings-complete.css?v=20260905-football-evidence-v1">
+  <title>nomadtips3 · ตั้งค่า 3.42</title>
+  <link rel="stylesheet" href="styles.css?v=20260831-standalone342-v2">
+  <link rel="stylesheet" href="settings-market-v3.css?v=20260906-th-v1">
 </head>
-<body data-page="settings">
+<body data-page="market-settings-v3">
 <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav></div></header>
-<main class="shell">
-  <section class="hero"><div><p class="eyebrow">NOMAD LIVE 3.42 · K FOOTBALL EVIDENCE</p><h1>1X2 &amp; Over / Under Detection Settings</h1><p>Set the real live-football evidence used before a 3.42 lock: Attack, Dangerous Attack, SOT, Shot Off Target, Corner, pressure, trend and score state. Probability and bookmaker checks remain the final confirmation.</p></div><div class="mode"><span>MODE</span><strong>OWNER</strong><small>next pick scan</small></div></section>
-
-  <section class="settings-guide" aria-label="Detection flow">
-    <article><span>STEP A</span><strong>LIVE WINDOW</strong><small>Minute, rolling window, attack weights and bookmaker freshness.</small></article>
-    <article><span>STEP B</span><strong>1X2 EVIDENCE</strong><small>HOME/AWAY use selected-side football evidence. DRAW uses balance evidence.</small></article>
-    <article><span>STEP C</span><strong>OVER / UNDER</strong><small>OVER needs active football. UNDER needs quiet football.</small></article>
-    <article><span>FINAL GATE</span><strong>MARKET CONFIRM</strong><small>Probability, lead, edge and odds are checked after football evidence.</small></article>
+<main class="shell settings-v3-shell">
+  <section class="settings-v3-hero">
+    <div><p class="eyebrow">NOMAD LIVE 3.42 · OWNER SETTINGS</p><h1>ตั้งค่า 1X2 · OVER · UNDER</h1><p>แยกการตั้งค่าแต่ละตลาดชัดเจน · บันทึกก่อน แล้วกด RUN ให้ตลาดนั้นทำงาน</p></div>
+    <div class="settings-v3-status-board" aria-label="สถานะระบบ">
+      <div><i data-status-light="over" class="status-light is-off"></i><span>OVER</span><b data-status-label="over">หยุด</b></div>
+      <div><i data-status-light="under" class="status-light is-off"></i><span>UNDER</span><b data-status-label="under">หยุด</b></div>
+      <div><i data-status-light="oneXtwo" class="status-light is-off"></i><span>1X2</span><b data-status-label="oneXtwo">หยุด</b></div>
+    </div>
   </section>
 
-  <section class="settings-reference" aria-label="K football reference">
-    <span class="setting-note-label">REFERENCE ONLY · NOT AUTO-APPLIED</span>
-    <h2>K Football Selective reference</h2>
-    <p><code>55–80'</code> · <code>Rolling 8m</code> · <code>ATTACK×1</code> · <code>DANGER×2.5</code> · 1X2: <code>DANGER +3</code>, <code>SOT +1</code>, <code>OFF +1</code>, <code>CORNER +1</code>, <code>3 OF 4</code>, pressure <code>60%</code>, trend <code>3/3</code>. OVER uses combined activity; UNDER uses combined quiet activity. Press LOAD K REFERENCE only to fill the form, then SAVE if you want it active.</p>
-  </section>
+  <nav class="market-tabs" aria-label="เลือกตลาด"><button type="button" class="market-tab active" data-market-tab="over">OVER</button><button type="button" class="market-tab" data-market-tab="under">UNDER</button><button type="button" class="market-tab" data-market-tab="oneXtwo">1X2</button></nav>
 
-  <form id="settingsForm" novalidate>
-    <section class="panel">
-      <div class="panel-head"><div><p class="eyebrow">A · GLOBAL LIVE WINDOW</p><h2>When and how K reads the match</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>Minute From</label><input name="minuteFrom" type="number" min="0" max="120" step="1" required><small class="setting-hint">Earliest minute a new 1X2/O-U lock may be created.</small></div>
-        <div class="field"><label>Minute To</label><input name="minuteTo" type="number" min="0" max="120" step="1" required><small class="setting-hint">Latest minute a new lock may be created.</small></div>
-        <div class="field"><label>Rolling Window (minutes)</label><input name="rollingWindowMinutes" type="number" min="2" max="20" step="1" required><small class="setting-hint">All Attack / Dangerous / SOT / Off / Corner deltas below are recalculated from this window.</small></div>
-        <div class="field"><label>Attack Weight</label><input name="attackWeight" type="number" min="0" max="10" step="0.1" required><small class="setting-hint">Used only for side pressure and trend.</small></div>
-        <div class="field"><label>Dangerous Attack Weight</label><input name="dangerousAttackWeight" type="number" min="0" max="10" step="0.1" required><small class="setting-hint">Higher than normal Attack makes dangerous pressure count more.</small></div>
-        <div class="field"><label class="check"><input name="priceFreshnessEnabled" type="checkbox"> Require fresh bookmaker price</label><small class="setting-hint">Missing or stale market timestamps fail closed when enabled.</small></div>
-        <div class="field"><label>Maximum Price Age (seconds)</label><input name="maximumPriceAgeSeconds" type="number" min="1" max="3600" step="1" required></div>
-      </div>
-    </section>
+  <section class="market-panel" data-market-panel="over"><form class="market-form" data-market-form="over">
+    <header class="market-title"><div><span>ตลาดที่ 1</span><h2>OVER</h2></div><p>ตรวจ Home และ Away แยกกัน · ฝั่งใดฝั่งหนึ่งผ่านตามจำนวนหลักฐานที่ตั้ง = ผ่าน</p></header>
+    <section class="setting-group"><div class="group-title"><span>ส่วนสำคัญ</span><small>ค่าหลักฐานใช้คำว่า “ตั้งแต่”</small></div><div class="setting-grid evidence-grid">
+      <label><span>Shot on Target ตั้งแต่</span><input name="shotOnTarget" type="number" min="0" max="50" step="1" required></label><label><span>Shot Off ตั้งแต่</span><input name="shotOff" type="number" min="0" max="50" step="1" required></label><label><span>Corner ตั้งแต่</span><input name="corner" type="number" min="0" max="50" step="1" required></label><label><span>Dangerous Attack % ตั้งแต่</span><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required></label><label><span>Attack % ตั้งแต่</span><input name="attackPct" type="number" min="0" max="100" step="1" required></label><label><span>การครอบครองบอล % ตั้งแต่</span><input name="possessionPct" type="number" min="0" max="100" step="1" required></label><label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label>
+    </div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนราคา</span></div><div class="setting-grid"><label><span>เส้น Over ตั้งแต่</span><input name="lineMin" type="number" min="0.5" max="10" step="0.5" required></label><label><span>ราคา odds ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนเวลา</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
+    <section class="setting-group behavior"><div class="group-title"><span>ส่วนพฤติกรรม</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อคทันที</span><span>ไม่เลือกซ้ำ</span><span>ปล่อยจนจบเกม</span></div></section>
+    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  </form></section>
 
-    <section class="panel">
-      <div class="panel-head"><div><p class="eyebrow">B · 1X2 LIVE FOOTBALL EVIDENCE</p><h2>HOME · DRAW · AWAY</h2></div></div>
-      <div class="choice-strip">
-        <label class="check"><input name="allowHome" type="checkbox"> HOME</label>
-        <label class="check"><input name="allowDraw" type="checkbox"> DRAW</label>
-        <label class="check"><input name="allowAway" type="checkbox"> AWAY</label>
-        <label class="check"><input name="oneXtwoEvidenceEnabled" type="checkbox"> REQUIRE FOOTBALL EVIDENCE</label>
-      </div>
-      <p class="settings-save-scope"><b>HOME/AWAY:</b> every value below is read from the side K is about to pick. HOME reads HOME deltas; AWAY reads AWAY deltas. It is not HOME-only.</p>
-      <div class="form-grid">
-        <div class="field"><label>Selected Side · Attack Δ Minimum</label><input name="oneXtwoAttackMin" type="number" min="0" max="100" step="1" required></div>
-        <div class="field"><label>Selected Side · Dangerous Attack Δ Minimum</label><input name="oneXtwoDangerousMin" type="number" min="0" max="100" step="1" required></div>
-        <div class="field"><label>Selected Side · SOT Δ Minimum</label><input name="oneXtwoSotMin" type="number" min="0" max="30" step="1" required></div>
-        <div class="field"><label>Selected Side · Shot Off Target Δ Minimum</label><input name="oneXtwoShotOffMin" type="number" min="0" max="30" step="1" required></div>
-        <div class="field"><label>Selected Side · Corner Δ Minimum</label><input name="oneXtwoCornerMin" type="number" min="0" max="30" step="1" required></div>
-        <div class="field"><label>Evidence Required</label><select name="oneXtwoEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select><small class="setting-hint">The four evidence items are Dangerous Attack, SOT, Shot Off Target and Corner. Attack Δ is a separate base requirement.</small></div>
-        <div class="field"><label>Selected Side Pressure Minimum %</label><input name="oneXtwoSidePressureMin" type="number" min="0" max="100" step="0.1" required><small class="setting-hint">Pressure is recalculated from Attack and Dangerous Attack in the rolling window.</small></div>
-        <div class="field"><label>Selected Side Trend Required</label><select name="oneXtwoTrendRequired" required><option value="0">OFF</option><option value="1">1 / 3</option><option value="2">2 / 3</option><option value="3">3 / 3</option></select><small class="setting-hint">Trend = weighted pressure lead + Dangerous Attack lead + total-shot lead.</small></div>
-        <div class="field"><label class="check"><input name="oneXtwoRejectSelectedSideIfTrailing" type="checkbox"> Reject selected HOME/AWAY if currently trailing</label></div>
-      </div>
+  <section class="market-panel" data-market-panel="under" hidden aria-hidden="true"><form class="market-form" data-market-form="under">
+    <header class="market-title"><div><span>ตลาดที่ 2</span><h2>UNDER</h2></div><p>เลือก Home / Away / Both · ค่าหลักฐานใช้ “ไม่เกิน”</p></header>
+    <section class="setting-group"><div class="group-title"><span>ส่วนเลือกฝั่ง</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนสำคัญ</span><small>ต่ำกว่าหรือเท่ากับค่าที่ตั้ง = ผ่าน</small></div><div class="setting-grid evidence-grid"><label><span>Shot on Target ไม่เกิน</span><input name="shotOnTarget" type="number" min="0" max="50" step="1" required></label><label><span>Shot Off ไม่เกิน</span><input name="shotOff" type="number" min="0" max="50" step="1" required></label><label><span>Corner ไม่เกิน</span><input name="corner" type="number" min="0" max="50" step="1" required></label><label><span>Dangerous Attack % ไม่เกิน</span><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required></label><label><span>Attack % ไม่เกิน</span><input name="attackPct" type="number" min="0" max="100" step="1" required></label><label><span>การครอบครองบอล % ไม่เกิน</span><input name="possessionPct" type="number" min="0" max="100" step="1" required></label><label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนราคา</span></div><div class="setting-grid"><label><span>เส้น Under ตั้งแต่</span><input name="lineMin" type="number" min="0.5" max="10" step="0.5" required></label><label><span>ราคา odds ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนเวลา</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
+    <section class="setting-group behavior"><div class="group-title"><span>ส่วนพฤติกรรม</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อคทันที</span><span>ไม่เลือกซ้ำ</span><span>ปล่อยจนจบเกม</span></div></section>
+    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  </form></section>
 
-      <div class="panel-head"><div><p class="eyebrow">DRAW CONFIRMATION</p><h2>Balance evidence</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>DRAW · Maximum Pressure Imbalance %</label><input name="drawPressureBalanceMax" type="number" min="0" max="50" step="0.1" required><small class="setting-hint">8 means HOME pressure must stay between 42% and 58%.</small></div>
-        <div class="field"><label>DRAW · Maximum Dangerous Attack Difference</label><input name="drawDangerousDiffMax" type="number" min="0" max="100" step="1" required></div>
-        <div class="field"><label>DRAW · Maximum SOT Difference</label><input name="drawSotDiffMax" type="number" min="0" max="30" step="1" required></div>
-        <div class="field"><label class="check"><input name="drawRequireLevelScore" type="checkbox"> DRAW requires current score to be level</label></div>
-      </div>
-
-      <div class="panel-head"><div><p class="eyebrow">1X2 · FINAL MARKET CONFIRMATION</p><h2>Only after football evidence</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>Minimum Pick Probability %</label><input name="oneXtwoMinProbability" type="number" min="0" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Lead Over 2nd Choice %</label><input name="oneXtwoMinLead" type="number" min="0" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Edge vs Bookmaker %</label><input name="oneXtwoMinEdge" type="number" min="-100" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Odds</label><input name="oneXtwoOddsMin" type="number" min="1.01" max="20" step="0.01" required></div>
-        <div class="field"><label>Maximum Odds</label><input name="oneXtwoOddsMax" type="number" min="1.01" max="20" step="0.01" required></div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><div><p class="eyebrow">C · OVER / UNDER LIVE FOOTBALL EVIDENCE</p><h2>Combined activity from both teams</h2></div></div>
-      <div class="choice-strip">
-        <label class="check"><input name="allowOver" type="checkbox"> OVER</label>
-        <label class="check"><input name="allowUnder" type="checkbox"> UNDER</label>
-        <label class="check"><input name="totalsEvidenceEnabled" type="checkbox"> REQUIRE FOOTBALL EVIDENCE</label>
-      </div>
-      <p class="settings-save-scope"><b>OVER:</b> needs active football from both teams combined. <b>UNDER:</b> needs quiet football from both teams combined. Neither side uses HOME pressure as an O/U shortcut.</p>
-
-      <div class="panel-head"><div><p class="eyebrow">OVER EVIDENCE</p><h2>Game must be active</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>OVER · Total Attack Δ Minimum</label><input name="overAttackMin" type="number" min="0" max="200" step="1" required></div>
-        <div class="field"><label>OVER · Total Dangerous Attack Δ Minimum</label><input name="overDangerousMin" type="number" min="0" max="200" step="1" required></div>
-        <div class="field"><label>OVER · Total SOT Δ Minimum</label><input name="overSotMin" type="number" min="0" max="50" step="1" required></div>
-        <div class="field"><label>OVER · Total Shot Off Target Δ Minimum</label><input name="overShotOffMin" type="number" min="0" max="50" step="1" required></div>
-        <div class="field"><label>OVER · Total Corner Δ Minimum</label><input name="overCornerMin" type="number" min="0" max="50" step="1" required></div>
-        <div class="field"><label>OVER Evidence Required</label><select name="overEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select></div>
-      </div>
-
-      <div class="panel-head"><div><p class="eyebrow">UNDER EVIDENCE</p><h2>Game must stay quiet</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>UNDER · Total Attack Δ Maximum</label><input name="underAttackMax" type="number" min="0" max="999" step="1" required></div>
-        <div class="field"><label>UNDER · Total Dangerous Attack Δ Maximum</label><input name="underDangerousMax" type="number" min="0" max="999" step="1" required></div>
-        <div class="field"><label>UNDER · Total SOT Δ Maximum</label><input name="underSotMax" type="number" min="0" max="99" step="1" required></div>
-        <div class="field"><label>UNDER · Total Shot Off Target Δ Maximum</label><input name="underShotOffMax" type="number" min="0" max="99" step="1" required></div>
-        <div class="field"><label>UNDER · Total Corner Δ Maximum</label><input name="underCornerMax" type="number" min="0" max="99" step="1" required></div>
-        <div class="field"><label>UNDER Quiet Evidence Required</label><select name="underEvidenceRequired" required><option value="1">ANY 1 OF 4</option><option value="2">2 OF 4</option><option value="3">3 OF 4</option><option value="4">ALL 4 OF 4</option></select></div>
-      </div>
-
-      <div class="panel-head"><div><p class="eyebrow">O/U · FINAL MARKET CONFIRMATION</p><h2>Only after football evidence</h2></div></div>
-      <div class="form-grid">
-        <div class="field"><label>Minimum Pick Probability %</label><input name="totalsMinProbability" type="number" min="0" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Lead Over Other Side %</label><input name="totalsMinLead" type="number" min="0" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Edge vs Bookmaker %</label><input name="totalsMinEdge" type="number" min="-100" max="100" step="0.1" required></div>
-        <div class="field"><label>Minimum Odds</label><input name="totalsOddsMin" type="number" min="1.01" max="20" step="0.01" required></div>
-        <div class="field"><label>Maximum Odds</label><input name="totalsOddsMax" type="number" min="1.01" max="20" step="0.01" required></div>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><div><p class="eyebrow">ACTIVE 3.42 PICK GATE</p><h2>What the next scan will use</h2></div></div>
-      <div class="settings-summary" id="settingsSummary" aria-live="polite"></div>
-      <div class="settings-save-scope"><b>Scope:</b> SAVE writes only <code>nomad342PickGateV2</code>. The 3.42 candidate scanner recalculates the football evidence directly from the live snapshots on every pick scan. It does not write 3.41 settings, change TotalCorner/Goaloo, alter probability formulas, ledger grading or settlement.</div>
-    </section>
-
-    <div class="toolbar"><button class="btn" type="submit">SAVE &amp; APPLY NEXT SCAN</button><button class="btn secondary" id="referenceButton" type="button">LOAD K FOOTBALL REFERENCE</button><button class="btn secondary" id="defaultsButton" type="button">LOAD PERMISSIVE DEFAULT</button><span id="saveStatus" class="muted">Ready</span></div>
-  </form>
+  <section class="market-panel" data-market-panel="oneXtwo" hidden aria-hidden="true"><form class="market-form" data-market-form="oneXtwo">
+    <header class="market-title"><div><span>ตลาดที่ 3</span><h2>1X2</h2></div><p>ไม่มี Draw · เลือก Home / Away / Both</p></header>
+    <section class="setting-group"><div class="group-title"><span>ส่วนเลือกฝั่ง</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนสกอร์</span></div><div class="setting-grid"><label><span>ระยะห่างของสกอร์ตอนตรวจจับ</span><input name="scoreTrailingMax" type="number" min="0" max="10" step="1" required><small>ฝั่งที่เลือกตามหลังได้ไม่เกินจำนวนนี้</small></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนสำคัญ</span><small>ค่าหลักฐานใช้คำว่า “ตั้งแต่”</small></div><div class="setting-grid evidence-grid"><label><span>Shot on Target ตั้งแต่</span><input name="shotOnTarget" type="number" min="0" max="50" step="1" required></label><label><span>Shot Off ตั้งแต่</span><input name="shotOff" type="number" min="0" max="50" step="1" required></label><label><span>Corner ตั้งแต่</span><input name="corner" type="number" min="0" max="50" step="1" required></label><label><span>Dangerous Attack % ตั้งแต่</span><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required></label><label><span>Attack % ตั้งแต่</span><input name="attackPct" type="number" min="0" max="100" step="1" required></label><label><span>การครอบครองบอล % ตั้งแต่</span><input name="possessionPct" type="number" min="0" max="100" step="1" required></label><label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนราคา</span></div><div class="setting-grid"><label><span>ราคา odds ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
+    <section class="setting-group"><div class="group-title"><span>ส่วนเวลา</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
+    <section class="setting-group behavior"><div class="group-title"><span>ส่วนพฤติกรรม</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อคทันที</span><span>ไม่เลือกซ้ำ</span><span>ปล่อยจนจบเกม</span></div></section>
+    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  </form></section>
+  <div class="settings-v3-note">หน้าตั้งค่านี้ใช้กับ NOMAD LIVE 3.42 · 1X2 · Over/Under เท่านั้น ไม่แตะ Asian Handicap และไม่แก้ Signal ที่ล็อคไปแล้ว</div>
 </main>
-<nav class="mobile-nav"><a href="index.html">Live</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav>
-<!-- Legacy CI compatibility tokens only; not active controls: 5DollarFootballAPI Bet365 -->
-<!-- Static contract compatibility only: event-config.js must precede app.js; neither legacy script is loaded on this dedicated pick-gate page. -->
-<script src="pick-gate-settings.js?v=20260905-football-evidence-v2" defer></script>
+<script src="market-settings-v3.js?v=20260906-th-v1" defer></script>
 </body>
 </html>
