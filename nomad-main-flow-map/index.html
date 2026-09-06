@@ -13,6 +13,7 @@
 @media(max-width:1180px){.flow{grid-template-columns:repeat(3,1fr)}.node:nth-child(3)::after{display:none}.subgrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.shell{width:min(100% - 16px,1500px);padding-top:14px}.top{display:block}.toolbar{margin-top:12px}.brand{font-size:24px}.page-head{grid-template-columns:1fr}.page-state{text-align:left}.flow{grid-template-columns:1fr}.node::after{content:'↓';right:auto;left:50%;top:auto;bottom:-18px;transform:translate(-50%,50%)}.node:nth-child(3)::after{display:block}.node:last-child::after{display:none}.subgrid{grid-template-columns:1fr}}
 </style>
+  <link rel="stylesheet" href="../site-footer.css?v=202608040844">
 </head>
 <body>
 <div class="shell">
@@ -109,5 +110,6 @@ let running=false;async function refresh(){if(running)return;running=true;text('
 $('refreshBtn').addEventListener('click',refresh);refresh();setInterval(refresh,10000);
 })();
 </script>
+  <script src="../site-footer.js?v=202608040844"></script>
 </body>
 </html>
