@@ -79,18 +79,6 @@
       <div><p class="eyebrow">NOMAD LIVE 3.42</p><h2 id="nomad342HeadingTitle">LIVE SCORE & EVENT MONITOR</h2></div>
     </section>
 
-    <nav class="nomad342-tabs" role="tablist" aria-label="NOMAD Live 3.42 sections">
-      <button class="nomad342-tab" id="nomad342TabLive" type="button" role="tab" aria-selected="true" aria-controls="nomad342PanelLive" data-tab="live-score">
-        <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span>
-      </button>
-      <button class="nomad342-tab" id="nomad342TabSignal" type="button" role="tab" aria-selected="false" aria-controls="nomad342PanelSignal" data-tab="signal" tabindex="-1">
-        <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span>
-      </button>
-      <button class="nomad342-tab" id="nomad342TabStatistics" type="button" role="tab" aria-selected="false" aria-controls="nomad342PanelStatistics" data-tab="statistics" tabindex="-1">
-        <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span>
-      </button>
-    </nav>
-
     <section class="nomad342-tab-panel" id="nomad342PanelLive" role="tabpanel" aria-labelledby="nomad342TabLive" data-panel="live-score">
       <section class="status-grid">
         <article class="metric"><span>LIVE MATCHES</span><strong id="liveCount">—</strong><small>Live event feed</small></article>
@@ -98,6 +86,18 @@
         <article class="metric"><span>ROLLING WINDOW</span><strong id="windowCount">—</strong><small>event data available</small></article>
         <article class="metric event-metric"><span>EVENT PASS</span><strong id="eventCount">—</strong><small>NOMAD event gate</small></article>
       </section>
+
+      <nav class="nomad342-tabs" role="tablist" aria-label="NOMAD Live 3.42 sections">
+        <button class="nomad342-tab" id="nomad342TabLive" type="button" role="tab" aria-selected="true" aria-controls="nomad342PanelLive" data-tab="live-score">
+          <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M8 9h8M8 15h8M12 5v14"/></svg></span><span class="nomad342-tab-label">Live Score</span>
+        </button>
+        <button class="nomad342-tab" id="nomad342TabSignal" type="button" role="tab" aria-selected="false" aria-controls="nomad342PanelSignal" data-tab="signal" tabindex="-1">
+          <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><circle cx="12" cy="12" r="5"/><path d="M5.2 5.2a9.6 9.6 0 0 0 0 13.6M18.8 5.2a9.6 9.6 0 0 1 0 13.6"/></svg></span><span class="nomad342-tab-label">Signal</span>
+        </button>
+        <button class="nomad342-tab" id="nomad342TabStatistics" type="button" role="tab" aria-selected="false" aria-controls="nomad342PanelStatistics" data-tab="statistics" tabindex="-1">
+          <span class="nomad342-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V6M19 19V9M3 19h18"/><path d="M4.5 7.5 9 4l4 2.5L20 3"/></svg></span><span class="nomad342-tab-label">Statistics</span>
+        </button>
+      </nav>
 
       <section class="panel nomad-scanner-panel">
         <div class="panel-head"><div><p class="eyebrow">LIVE SCORE & EVENT</p></div><span class="muted" id="runStatus" role="status">Connecting NOMADTIPS3 live event feed…</span></div>
@@ -168,7 +168,7 @@
   <script src="vintage-draw-theme.js?v=20260902-v1" defer></script>
   <script src="event-timeline-dual-rail.js?v=20260902-v1" defer></script>
   <script src="vintage-trading-chart.js?v=20260904-card-palette-v1" defer></script>
-  <script src="nomad342-tabs.js?v=20260906-main-nav-v5" defer></script>
+  <script src="nomad342-tabs.js?v=20260906-row3-v1" defer></script>
   <script src="signal-ledger.js?v=20260906-flow-v3" defer></script>
   <script src="statistics-ledger.js?v=20260906-flow-v3" defer></script>
   <script>
