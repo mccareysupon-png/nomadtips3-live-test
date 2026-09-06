@@ -8,10 +8,17 @@ const HEADING=Object.freeze({
 });
 function normalize(value){return VALID.has(value)?value:'live-score'}
 function fromHash(){return normalize(String(location.hash||'').replace(/^#/,'').toLowerCase())}
+function placeTabs(selected,panels){
+  const panel=panels.find(item=>item.dataset.panel===selected);
+  const tablist=document.querySelector('.nomad342-tabs[role="tablist"]');
+  const summary=panel?.querySelector('.status-grid');
+  if(panel&&tablist&&summary&&summary.nextElementSibling!==tablist)summary.after(tablist);
+}
 function setTab(name,{updateHash=true,focus=false}={}){
   const selected=normalize(name);
   const tabs=[...document.querySelectorAll('.nomad342-tab[role="tab"]')];
   const panels=[...document.querySelectorAll('.nomad342-tab-panel[role="tabpanel"]')];
+  placeTabs(selected,panels);
   for(const tab of tabs){
     const active=tab.dataset.tab===selected;
     tab.setAttribute('aria-selected',active?'true':'false');
