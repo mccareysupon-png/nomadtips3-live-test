@@ -65,13 +65,24 @@ jobs:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
           OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
 
-      - name: ยืนยัน Worker รอบแรกปิดอยู่
+      - name: รอ Worker พร้อมและยืนยันว่ารอบแรกปิดอยู่
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/"
-          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config" | tee /tmp/add-k-disabled.json
-          grep -q '"enabled":false' /tmp/add-k-disabled.json
+          : > /tmp/add-k-disabled.json
+          READY=0
+          for i in $(seq 1 18); do
+            BODY=$(curl -sS --max-time 12 "$BASE/config" || true)
+            printf '%s' "$BODY" > /tmp/add-k-disabled.json
+            if printf '%s' "$BODY" | grep -q '"config"' && printf '%s' "$BODY" | grep -q '"enabled":false'; then
+              READY=1
+              printf '%s\n' "$BODY"
+              break
+            fi
+            echo "รอ Worker propagation รอบ $i/18"
+            sleep 5
+          done
+          test "$READY" = "1" || { echo "::error::Worker /config ยังไม่พร้อมหรือไม่ได้ปิด"; cat /tmp/add-k-disabled.json; exit 1; }
 
       - name: Production smoke API-Football, TotalCorner และ NowGoal AH จริง
         shell: bash
@@ -132,12 +143,22 @@ jobs:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
           OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
 
-      - name: ยืนยัน config, signals และ status
+      - name: รอ production พร้อมและยืนยัน config, signals, status
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config" | tee /tmp/add-k-final-config.json
-          grep -q '"enabled":true' /tmp/add-k-final-config.json
-          grep -q '"schedule":\[70,74,78,82\]' /tmp/add-k-final-config.json
+          READY=0
+          for i in $(seq 1 18); do
+            BODY=$(curl -sS --max-time 12 "$BASE/config" || true)
+            printf '%s' "$BODY" > /tmp/add-k-final-config.json
+            if printf '%s' "$BODY" | grep -q '"enabled":true' && printf '%s' "$BODY" | grep -q '"schedule":\[70,74,78,82\]'; then
+              READY=1
+              printf '%s\n' "$BODY"
+              break
+            fi
+            echo "รอ production propagation รอบ $i/18"
+            sleep 5
+          done
+          test "$READY" = "1" || { echo "::error::Production config ยังไม่พร้อม"; cat /tmp/add-k-final-config.json; exit 1; }
           curl --fail -sS "$BASE/signals"
           curl --fail -sS "$BASE/status"
