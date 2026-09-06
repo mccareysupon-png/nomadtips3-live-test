@@ -2,13 +2,14 @@
   'use strict';
 
   const TRACKER='https://nomadtips3-prediction3-tracker.mccarey-supon.workers.dev/state?refresh=1';
+  const LIVE_FEED='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed';
   const LEDGER='data/ledger.json?v=20260906-auto-tracking-v1';
   const POLL_MS=15000;
   const zone=Intl.DateTimeFormat().resolvedOptions().timeZone||'Local time';
   let ledger=null;
 
   const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'
   })[ch]);
   const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
   const fmtOdds=value=>finite(value)?Number(value).toFixed(2):'—';
@@ -46,6 +47,16 @@
     const home=norm(item?.home),away=norm(item?.away);
     return (records||[]).find(row=>norm(row?.home)===home&&norm(row?.away)===away)||null;
   }
+  function liveRowFor(item,record,matches){
+    const fixtureId=String(record?.fixtureId||item?.tracking?.fixtureId||'').trim();
+    if(fixtureId){
+      const exact=(matches||[]).find(row=>String(row?.id||'')===fixtureId);
+      if(exact)return exact;
+    }
+    const home=norm(item?.home),away=norm(item?.away);
+    return (matches||[]).find(row=>norm(row?.home)===home&&norm(row?.away)===away)||null;
+  }
+  const pair=value=>Array.isArray(value)&&finite(value[0])&&finite(value[1])?[Number(value[0]),Number(value[1])]:null;
 
   function predictionCards(){return [...document.querySelectorAll('.p3-featured')];}
   function applyToday(records){
@@ -66,6 +77,117 @@
       card.dataset.trackingStatus=record?.status||'SCHEDULED';
       if(record?.fixtureId)card.dataset.fixtureId=record.fixtureId;
       if(record?.result)card.dataset.result=record.result;
+    });
+  }
+
+  function ensureSiriusPanel(card){
+    let panel=card.querySelector('.p3-sirius-live');
+    if(panel)return panel;
+    panel=document.createElement('section');
+    panel.className='p3-sirius-live';
+    panel.hidden=true;
+    panel.setAttribute('aria-label','Sirius live match analytics');
+    panel.innerHTML=`
+      <div class="p3-sirius-head">
+        <div class="p3-sirius-title">
+          <span class="p3-sirius-kicker">SIRIUS LIVE CONSTELLATION</span>
+          <strong>Golden Match Pulse</strong>
+        </div>
+        <div class="p3-sirius-score">
+          <span class="p3-sirius-state" data-sirius-state>LIVE DATA</span>
+          <strong data-sirius-score>— : —</strong>
+          <span class="p3-sirius-minute" data-sirius-minute>—</span>
+        </div>
+      </div>
+      <div class="p3-sirius-body">
+        <div class="p3-sirius-chart">
+          <div class="p3-sirius-block-head"><strong>PRESSURE TIMELINE</strong><small>recent live movement</small></div>
+          <div class="p3-pressure-chart" data-sirius-pressure></div>
+          <div class="p3-sirius-legend"><span data-sirius-home>HOME</span><b>LIVE PULSE</b><span data-sirius-away>AWAY</span></div>
+        </div>
+        <div class="p3-sirius-metrics">
+          <div class="p3-sirius-metrics-title">MATCH READINGS</div>
+          ${metricShell('ATTACKS','attacks')}
+          ${metricShell('DANGEROUS','dangerous')}
+          ${metricShell('CORNERS','corner')}
+          <div class="p3-sirius-source"><span>Source</span><strong>TotalCorner V3</strong></div>
+        </div>
+      </div>`;
+    const anchor=card.querySelector('.p3-pick-grid');
+    if(anchor)anchor.insertAdjacentElement('afterend',panel);else card.appendChild(panel);
+    return panel;
+  }
+  function metricShell(label,key){
+    return `<div class="p3-sirius-metric" data-sirius-metric="${key}">
+      <div class="p3-sirius-metric-head"><strong data-home>—</strong><span>${label}</span><strong data-away>—</strong></div>
+      <div class="p3-sirius-track"><span class="p3-sirius-half home"><i class="p3-sirius-fill" data-home-fill></i></span><span class="p3-sirius-half away"><i class="p3-sirius-fill" data-away-fill></i></span></div>
+    </div>`;
+  }
+  function setMetric(panel,key,values){
+    const row=panel.querySelector(`[data-sirius-metric="${key}"]`);
+    if(!row)return false;
+    const p=pair(values);
+    if(!p){row.hidden=true;return false;}
+    row.hidden=false;
+    const [home,away]=p,max=Math.max(home,away,1);
+    row.querySelector('[data-home]').textContent=String(home);
+    row.querySelector('[data-away]').textContent=String(away);
+    row.querySelector('[data-home-fill]').style.width=`${Math.max(4,home/max*100).toFixed(1)}%`;
+    row.querySelector('[data-away-fill]').style.width=`${Math.max(4,away/max*100).toFixed(1)}%`;
+    return true;
+  }
+  function pressureSeries(snapshots){
+    const rows=(Array.isArray(snapshots)?snapshots:[]).slice(-18);
+    if(rows.length<2)return [];
+    const out=[];
+    for(let i=1;i<rows.length;i++){
+      const prev=rows[i-1]||{},cur=rows[i]||{};
+      const delta=(key,side)=>{
+        const a=pair(prev[key]),b=pair(cur[key]);
+        return a&&b?Math.max(0,b[side]-a[side]):0;
+      };
+      out.push({
+        minute:finite(cur.minute)?Number(cur.minute):null,
+        home:delta('attacks',0)*.7+delta('dangerous',0)*2+delta('corner',0)*3,
+        away:delta('attacks',1)*.7+delta('dangerous',1)*2+delta('corner',1)*3,
+      });
+    }
+    return out;
+  }
+  function drawPressure(panel,snapshots){
+    const host=panel.querySelector('[data-sirius-pressure]');
+    if(!host)return;
+    const series=pressureSeries(snapshots);
+    if(!series.length){host.innerHTML='<span class="p3-pressure-pair"><i class="p3-pressure-bar" style="height:2px"></i><i class="p3-pressure-bar away" style="height:2px"></i></span>';return;}
+    const max=Math.max(1,...series.flatMap(row=>[row.home,row.away]));
+    host.innerHTML=series.map(row=>{
+      const h=row.home>0?Math.max(5,row.home/max*100):2;
+      const a=row.away>0?Math.max(5,row.away/max*100):2;
+      const title=`${row.minute??'—'}′ · H ${row.home.toFixed(1)} / A ${row.away.toFixed(1)}`;
+      return `<span class="p3-pressure-pair" title="${esc(title)}"><i class="p3-pressure-bar" style="height:${h.toFixed(1)}%"></i><i class="p3-pressure-bar away" style="height:${a.toFixed(1)}%"></i></span>`;
+    }).join('');
+  }
+  function applySirius(records,matches){
+    if(!ledger||!Array.isArray(ledger.today))return;
+    const cards=predictionCards();
+    ledger.today.forEach((item,index)=>{
+      const card=cards[index];if(!card)return;
+      const record=recordFor(item,records);
+      const liveRow=liveRowFor(item,record,matches);
+      const snapshots=liveRow?.event?.snapshots;
+      const latest=Array.isArray(snapshots)&&snapshots.length?snapshots[snapshots.length-1]:null;
+      const panel=ensureSiriusPanel(card);
+      if(!liveRow||!latest){panel.hidden=true;return;}
+      panel.hidden=false;
+      panel.querySelector('[data-sirius-state]').textContent='LIVE DATA';
+      panel.querySelector('[data-sirius-score]').textContent=Array.isArray(liveRow.score)&&finite(liveRow.score[0])&&finite(liveRow.score[1])?`${Number(liveRow.score[0])} : ${Number(liveRow.score[1])}`:'— : —';
+      panel.querySelector('[data-sirius-minute]').textContent=finite(liveRow.minute)?`${Number(liveRow.minute)}′`:'LIVE';
+      panel.querySelector('[data-sirius-home]').textContent=item.home||'HOME';
+      panel.querySelector('[data-sirius-away]').textContent=item.away||'AWAY';
+      setMetric(panel,'attacks',latest.attacks);
+      setMetric(panel,'dangerous',latest.dangerous);
+      setMetric(panel,'corner',latest.corner);
+      drawPressure(panel,snapshots);
     });
   }
 
@@ -138,15 +260,14 @@
   }
 
   async function refresh(){
-    try{
-      const state=await getJson(TRACKER);
-      const records=Array.isArray(state?.records)?state.records:[];
-      applyToday(records);
-      applyResults(records);
-    }catch(error){
-      console.warn('Prediction3 live tracking unavailable; keeping local kickoff display.',error);
-      applyToday([]);
-    }
+    const [trackerState,liveState]=await Promise.allSettled([getJson(TRACKER),getJson(LIVE_FEED)]);
+    const records=trackerState.status==='fulfilled'&&Array.isArray(trackerState.value?.records)?trackerState.value.records:[];
+    const matches=liveState.status==='fulfilled'&&Array.isArray(liveState.value?.matches)?liveState.value.matches:[];
+    if(trackerState.status==='rejected')console.warn('Prediction3 live tracking unavailable; keeping local kickoff display.',trackerState.reason);
+    if(liveState.status==='rejected')console.warn('Sirius live analytics unavailable; keeping Prediction3 card compact.',liveState.reason);
+    applyToday(records);
+    applyResults(records);
+    applySirius(records,matches);
   }
 
   async function boot(){
