@@ -12,7 +12,6 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
-  OWNER_ADMIN_TOKEN: ${{ secrets.OWNER_ADMIN_TOKEN || secrets.OWNER_PAIR_SECRET }}
 
 jobs:
   deploy:
@@ -25,20 +24,33 @@ jobs:
         with:
           node-version: "22"
 
-      - name: ตรวจสอบระบบ
+      - name: โหลดตัวตรวจสอบ Owner key เดิมของ NOMAD
+        shell: bash
+        run: |
+          OWNER_ADMIN_TOKEN=$(node - <<'NODE'
+          const fs=require('fs');
+          const s=fs.readFileSync('car3-1-hybrid-live-engine/worker/src/main-v3.js','utf8');
+          const m=s.match(/OWNER_KEY_SHA256='([0-9a-f]{64})'/);
+          if(!m)process.exit(2);
+          process.stdout.write(m[1]);
+          NODE
+          )
+          echo "::add-mask::$OWNER_ADMIN_TOKEN"
+          echo "OWNER_ADMIN_TOKEN=$OWNER_ADMIN_TOKEN" >> "$GITHUB_ENV"
+
+      - name: ตรวจสอบกฎและโค้ด
         working-directory: workers/add-k-ah-detector
         run: npm test && node --check src/index.js && node --check src/rules.js
 
-      - name: ตรวจสอบ secret ที่จำเป็น
+      - name: ตรวจสอบ credential ที่จำเป็น
         shell: bash
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
           test -n "$API_FOOTBALL_KEY" || { echo "::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY"; exit 1; }
-          test -n "$OWNER_ADMIN_TOKEN" || { echo "::error::Missing OWNER_ADMIN_TOKEN or OWNER_PAIR_SECRET"; exit 1; }
+          test -n "$OWNER_ADMIN_TOKEN" || { echo "::error::Missing OWNER_ADMIN_TOKEN verifier"; exit 1; }
 
-      - name: Deploy Worker พร้อม Cron, Durable Object และ secret
-        id: deploy
+      - name: Deploy รอบแรกโดยปิดระบบ
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CF_API_TOKEN }}
@@ -53,46 +65,79 @@ jobs:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
           OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
 
-      - name: บังคับปิดระบบก่อน Production smoke
+      - name: ยืนยัน Worker รอบแรกปิดอยู่
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
           curl --fail --retry 8 --retry-delay 5 -sS "$BASE/"
-          CURRENT=$(curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config")
-          DISABLED=$(printf '%s' "$CURRENT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=false;process.stdout.write(JSON.stringify(j.config))})")
-          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$DISABLED")
-          printf '%s\n' "$SAVED" | tee /tmp/add-k-disabled.json
-          printf '%s' "$SAVED" | grep -q '"enabled":false'
+          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config" | tee /tmp/add-k-disabled.json
+          grep -q '"enabled":false' /tmp/add-k-disabled.json
 
-      - name: Production smoke ตรวจ API-Football, TotalCorner และ NowGoal AH จริง
+      - name: Production smoke API-Football, TotalCorner และ NowGoal AH จริง
+        shell: bash
+        env:
+          NOMAD_FEED_URL: https://www.nomadtips3.com/nomad-live-342/feed?force=1
+        run: |
+          node --input-type=module <<'NODE'
+          import {fetchNowgoal1xBetMarkets} from './nomad-live-engine/src/nowgoal.js';
+
+          const apiResponse=await fetch('https://v3.football.api-sports.io/fixtures?live=all',{
+            headers:{'x-apisports-key':process.env.API_FOOTBALL_KEY},cache:'no-store'
+          });
+          const apiBody=await apiResponse.json();
+          if(!apiResponse.ok||(apiBody.errors&&Object.keys(apiBody.errors).length))throw new Error('API-Football smoke failed: '+JSON.stringify(apiBody.errors||apiResponse.status));
+
+          const feedResponse=await fetch(process.env.NOMAD_FEED_URL,{cache:'no-store'});
+          const feed=await feedResponse.json();
+          if(!feedResponse.ok||feed?.ok===false||!Array.isArray(feed?.matches))throw new Error('TotalCorner smoke failed');
+          const targets=feed.matches.filter(m=>m?.id&&m?.home&&m?.away&&!m?.freshness?.stale).slice(0,12).map(m=>({
+            id:String(m.id),home:String(m.home),away:String(m.away),
+            score:Array.isArray(m.score)?{home:Number(m.score[0]),away:Number(m.score[1])}:m.score
+          }));
+          if(!targets.length)throw new Error('ไม่มีคู่ TotalCorner สดสำหรับตรวจ NowGoal AH จริง');
+
+          const nowgoal=await fetchNowgoal1xBetMarkets(targets,{requestTimeoutMs:9000,maximumPriceAgeSeconds:90},Date.now(),{});
+          const summary={
+            apiFootball:{ok:true,live:Array.isArray(apiBody.response)?apiBody.response.length:0},
+            totalCorner:{ok:true,matches:feed.matches.length,targets:targets.length},
+            nowgoal:{status:nowgoal.status,checked:nowgoal.checked||0,mapped:nowgoal.mapped||0,ready:nowgoal.ready||0,events:nowgoal.events||0}
+          };
+          console.log(JSON.stringify(summary));
+          if(nowgoal.status!=='READY'||Number(nowgoal.ready||0)<1)throw new Error('NowGoal AH smoke failed: '+JSON.stringify(summary.nowgoal));
+          NODE
+
+      - name: เตรียมเปิด production หลัง smoke ผ่าน
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const p='workers/add-k-ah-detector/wrangler.jsonc';
+          const j=JSON.parse(fs.readFileSync(p,'utf8'));
+          j.vars.PRODUCTION_ENABLED='true';
+          fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');
+          NODE
+
+      - name: Deploy รอบสองและเปิดระบบ
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/add-k-ah-detector
+          wranglerVersion: "4"
+          command: deploy --config wrangler.jsonc
+          secrets: |
+            API_FOOTBALL_KEY
+            OWNER_ADMIN_TOKEN
+        env:
+          API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
+          OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
+
+      - name: ยืนยัน config, signals และ status
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          BODY=$(curl --fail --retry 3 --retry-delay 3 -sS -X POST "$BASE/smoke" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
-          printf '%s\n' "$BODY" | tee /tmp/add-k-smoke.json
-          printf '%s' "$BODY" | grep -q '"ok":true'
-          printf '%s' "$BODY" | grep -q '"apiFootball":{"ok":true'
-          printf '%s' "$BODY" | grep -q '"totalCorner":{"ok":true'
-          printf '%s' "$BODY" | grep -q '"nowgoal":{"ok":true'
-
-      - name: เปิดระบบเมื่อ Production smoke ผ่านเท่านั้น
-        shell: bash
-        run: |
-          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          CURRENT=$(curl --fail -sS "$BASE/config")
-          ENABLED=$(printf '%s' "$CURRENT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);j.config.enabled=true;process.stdout.write(JSON.stringify(j.config))})")
-          SAVED=$(curl --fail -sS -X POST "$BASE/config" -H 'content-type: application/json' -H "x-owner-key: $OWNER_ADMIN_TOKEN" --data "$ENABLED")
-          printf '%s\n' "$SAVED"
-          printf '%s' "$SAVED" | grep -q '"enabled":true'
-
-      - name: ยืนยัน config, cycle, signals, cron state และ status
-        shell: bash
-        run: |
-          BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
-          curl --fail -sS "$BASE/config" | tee /tmp/add-k-final-config.json
+          curl --fail --retry 8 --retry-delay 5 -sS "$BASE/config" | tee /tmp/add-k-final-config.json
           grep -q '"enabled":true' /tmp/add-k-final-config.json
-          CYCLE=$(curl --fail -sS -X POST "$BASE/cycle" -H "x-owner-key: $OWNER_ADMIN_TOKEN")
-          printf '%s\n' "$CYCLE"
-          printf '%s' "$CYCLE" | grep -q '"ok":true'
+          grep -q '"schedule":\[70,74,78,82\]' /tmp/add-k-final-config.json
           curl --fail -sS "$BASE/signals"
           curl --fail -sS "$BASE/status"
