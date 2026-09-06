@@ -27,3 +27,5 @@ test('Cron ส่งงานเข้า cycle ภายในด้วย head
   assert.equal(requestSeen.method,'POST');
   assert.equal(requestSeen.headers.get('x-add-k-internal'),'cron');
 });
+
+// Production route smoke is performed by the deploy workflow after this test passes.
