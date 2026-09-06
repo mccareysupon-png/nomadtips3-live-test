@@ -1,0 +1,87 @@
+name: Goaloo Stats 3.42 Test Deploy
+
+on:
+  push:
+    branches:
+      - work/342-settings-clean-rebuild
+    paths:
+      - 'workers/nomadtips3-goaloo-stats-342/**'
+      - 'nomad-live-342/goaloo-stats-layer.js'
+      - 'nomad-live-342/runtime-config.js'
+      - '.github/workflows/goaloo-stats-342-test-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WORKER_URL: https://nomadtips3-goaloo-stats-342-test.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate Goaloo supplement code
+        run: |
+          node --check workers/nomadtips3-goaloo-stats-342/src/index.js
+          node --check nomad-live-342/goaloo-stats-layer.js
+          node --check nomad-live-342/runtime-config.js
+          node --test workers/nomadtips3-goaloo-stats-342/test/parser.test.mjs
+
+      - name: Dry-run isolated Worker bundle
+        working-directory: workers/nomadtips3-goaloo-stats-342
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Deploy isolated Goaloo stats test Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-goaloo-stats-342
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.toml
+
+      - name: Smoke health and feed contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$WORKER_URL/health?_=$RANDOM" -o /tmp/health.json
+          node - <<'NODE'
+          const j=require('/tmp/health.json');
+          if(j.ok!==true||j.mode!=='STATS_ONLY'||j.source!=='Goaloo') process.exit(1);
+          if(j.markets!==false||j.events!==false||j.settlement!==false) process.exit(1);
+          NODE
+          ok=0
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -sS --max-time 25 -o /tmp/feed.json -w '%{http_code}' "$WORKER_URL/feed?_=$RANDOM" || true)
+            if [ "$code" = "200" ]; then
+              node - <<'NODE'
+              const fs=require('fs');
+              const j=JSON.parse(fs.readFileSync('/tmp/feed.json','utf8'));
+              if(j.ok!==true||j.source!=='Goaloo'||!Array.isArray(j.matches)) process.exit(1);
+              for(const m of j.matches.slice(0,25)){
+                if(!m.sourceMatchId||!m.home||!m.away) process.exit(1);
+                if(!m.stats||!('shots_on_target' in m.stats)||!('shots_off_target' in m.stats)||!('possession' in m.stats)) process.exit(1);
+              }
+              console.log(JSON.stringify({live:j.matches.length,observedAt:j.observedAt},null,2));
+          NODE
+              ok=1
+              break
+            fi
+            sleep 4
+          done
+          test "$ok" = '1'
