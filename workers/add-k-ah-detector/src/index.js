@@ -4,6 +4,7 @@ import {teamSimilarity} from '../../../nomad-live-engine/src/real-market.js';
 
 const API='https://v3.football.api-sports.io';
 const INTERNAL_HEADER='x-add-k-internal';
+const INTERNAL_HOST='add-k-ah-detector.internal';
 
 const cors=()=>({
   'content-type':'application/json;charset=utf-8',
@@ -246,11 +247,13 @@ export class DetectorState{
   async fetch(request){
     if(request.method==='OPTIONS')return new Response('',{status:204,headers:cors()});
     const url=new URL(request.url);
-    const internal=request.headers.get(INTERNAL_HEADER)==='cron';
+    const internal=request.headers.get(INTERNAL_HEADER)||'';
+    const internalCron=internal==='cron';
+    const internalWeb=internal==='web';
 
     if(url.pathname==='/config'){
       if(request.method==='POST'){
-        if(!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
+        if(!internalWeb&&!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
         try{
           const config=normalizeConfig(await request.json());
           await this.state.storage.put('config',config);
@@ -278,21 +281,22 @@ export class DetectorState{
     }
 
     if(url.pathname==='/cycle'&&request.method==='POST'){
-      if(!internal&&!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
+      if(!internalCron&&!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
       try{return json(await this.cycle())}catch(error){
         await this.state.storage.put('status',{ok:false,error:String(error?.message||error),updatedAt:Date.now()});
         return json({ok:false,error:error.message},500);
       }
     }
 
-    return json({ok:true,service:'ADD K AH Detector',version:'1.2.0',language:'th',defaultEnabled:false});
+    return json({ok:true,service:'ADD K AH Detector',version:'1.3.0',language:'th',defaultEnabled:false});
   }
 }
 
 export default{
   fetch(request,env){
+    const url=new URL(request.url);
     const headers=new Headers(request.headers);
-    headers.delete(INTERNAL_HEADER);
+    if(url.hostname!==INTERNAL_HOST)headers.delete(INTERNAL_HEADER);
     const clean=new Request(request,{headers});
     return env.DETECTOR.get(env.DETECTOR.idFromName('main')).fetch(clean);
   },
