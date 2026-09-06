@@ -215,3 +215,28 @@ body[data-page="live"] #nomad342PanelSignal>.signal-heading-card h2{
     font-size:15px;
   }
 }
+
+/* Signal card list: once card #11 exists, keep the panel compact and scroll vertically. */
+body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11)){
+  max-height:min(72vh,960px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding-right:6px;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:#454a47 #050605;
+}
+body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11))::-webkit-scrollbar{width:9px}
+body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11))::-webkit-scrollbar-track{background:#050605}
+body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11))::-webkit-scrollbar-thumb{
+  background:#454a47;
+  border:2px solid #050605;
+  border-radius:8px;
+}
+body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11))::-webkit-scrollbar-thumb:hover{background:#5b615d}
+@media(max-width:700px){
+  body[data-page="live"] #nomad342PanelSignal .signal-lock-list:has(> .signal-lock-card:nth-of-type(11)){
+    max-height:68vh;
+    padding-right:4px;
+  }
+}
