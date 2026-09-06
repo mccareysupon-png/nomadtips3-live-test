@@ -1,6 +1,11 @@
 (()=>{
 'use strict';
 const VALID=new Set(['live-score','signal','statistics']);
+const HEADING=Object.freeze({
+  'live-score':'LIVE SCORE & EVENT MONITOR',
+  signal:'1X2 · OVER/UNDER SIGNAL',
+  statistics:'STATISTICS'
+});
 function normalize(value){return VALID.has(value)?value:'live-score'}
 function fromHash(){return normalize(String(location.hash||'').replace(/^#/,'').toLowerCase())}
 function setTab(name,{updateHash=true,focus=false}={}){
@@ -18,6 +23,8 @@ function setTab(name,{updateHash=true,focus=false}={}){
     panel.hidden=!active;
     panel.setAttribute('aria-hidden',active?'false':'true');
   }
+  const heading=document.getElementById('nomad342HeadingTitle');
+  if(heading)heading.textContent=HEADING[selected];
   if(updateHash){
     const next=`#${selected}`;
     if(location.hash!==next)history.replaceState(null,'',next);
