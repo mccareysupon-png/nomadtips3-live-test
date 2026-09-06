@@ -1,0 +1,18 @@
+name = "nomadtips3-prediction3-tracker"
+main = "src/index.js"
+compatibility_date = "2026-09-06"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["*/5 * * * *"]
+
+[[durable_objects.bindings]]
+name = "TRACKER"
+class_name = "Prediction3Tracker"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Prediction3Tracker"]
