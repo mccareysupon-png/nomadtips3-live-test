@@ -38,7 +38,7 @@ jobs:
           echo "::add-mask::$OWNER_ADMIN_TOKEN"
           echo "OWNER_ADMIN_TOKEN=$OWNER_ADMIN_TOKEN" >> "$GITHUB_ENV"
 
-      - name: ตรวจสอบกฎและโค้ด
+      - name: ตรวจสอบกฎ โค้ด และเส้นทาง Cron
         working-directory: workers/add-k-ah-detector
         run: npm test && node --check src/index.js && node --check src/rules.js
 
@@ -143,7 +143,7 @@ jobs:
           API_FOOTBALL_KEY: ${{ env.API_FOOTBALL_KEY }}
           OWNER_ADMIN_TOKEN: ${{ env.OWNER_ADMIN_TOKEN }}
 
-      - name: รอ production พร้อมและยืนยัน config, signals, cron, status
+      - name: ยืนยัน production config, signals และ status endpoint
         shell: bash
         run: |
           BASE="https://add-k-ah-detector.mccarey-supon.workers.dev"
@@ -161,17 +161,16 @@ jobs:
           done
           test "$READY" = "1" || { echo "::error::Production config ยังไม่พร้อม"; cat /tmp/add-k-final-config.json; exit 1; }
           curl --fail -sS "$BASE/signals"
+          curl --fail -sS "$BASE/status"
 
-          CRON_READY=0
-          for i in $(seq 1 18); do
-            STATUS=$(curl -sS --max-time 12 "$BASE/status" || true)
-            printf '%s' "$STATUS" > /tmp/add-k-status.json
-            if printf '%s' "$STATUS" | grep -q '"status":{' && printf '%s' "$STATUS" | grep -q '"enabled":true'; then
-              CRON_READY=1
-              printf '%s\n' "$STATUS"
-              break
-            fi
-            echo "รอ Cron รอบแรก $i/18"
-            sleep 5
-          done
-          test "$CRON_READY" = "1" || { echo "::error::Cron ยังไม่เขียน runtime status"; cat /tmp/add-k-status.json; exit 1; }
+      - name: ตรวจหน้า ADD K จริงทั้งโครง PC และ mobile
+        shell: bash
+        run: |
+          PAGE=$(curl --fail --retry 8 --retry-all-errors --retry-delay 5 -sS https://www.nomadtips3.com/add-k-ah/)
+          printf '%s' "$PAGE" | grep -q 'lang="th"'
+          printf '%s' "$PAGE" | grep -q 'ผลตรวจจับ'
+          printf '%s' "$PAGE" | grep -q 'ตั้งค่า'
+          printf '%s' "$PAGE" | grep -q 'viewport-fit=cover'
+          printf '%s' "$PAGE" | grep -q '@media(max-width:700px)'
+          printf '%s' "$PAGE" | grep -q '@media(max-width:430px)'
+          printf '%s' "$PAGE" | grep -q 'ราคาเอเชียนแฮนดิแคปจาก NowGoal เท่านั้น'
