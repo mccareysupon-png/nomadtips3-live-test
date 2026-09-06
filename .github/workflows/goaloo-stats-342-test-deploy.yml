@@ -19,6 +19,7 @@ env:
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   WORKER_URL: https://nomadtips3-goaloo-stats-342-test.mccarey-supon.workers.dev
   TC_URL: https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed
+  CAR33_URL: https://nomadtips3-car33-live.mccarey-supon.workers.dev/live
 
 jobs:
   validate-deploy-smoke:
@@ -63,6 +64,9 @@ jobs:
           health_ok=0
           for attempt in 1 2 3 4 5 6 7 8; do
             code=$(curl -sS --max-time 20 -o /tmp/health.json -w '%{http_code}' "$WORKER_URL/health?_=$RANDOM" || true)
+            echo "health attempt=$attempt code=$code"
+            cat /tmp/health.json 2>/dev/null || true
+            echo
             if [ "$code" = "200" ]; then
               if node - <<'NODE'
           const fs=require('fs');
@@ -79,6 +83,9 @@ jobs:
           feed_ok=0
           for attempt in 1 2 3 4 5 6 7 8; do
             code=$(curl -sS --max-time 25 -o /tmp/feed.json -w '%{http_code}' "$WORKER_URL/feed?_=$RANDOM" || true)
+            echo "feed attempt=$attempt code=$code"
+            cat /tmp/feed.json 2>/dev/null || true
+            echo
             if [ "$code" = "200" ]; then
               if node - <<'NODE'
           const fs=require('fs');
@@ -94,7 +101,11 @@ jobs:
             fi
             sleep 4
           done
-          test "$feed_ok" = '1'
+          if [ "$feed_ok" != "1" ]; then
+            echo '--- existing CAR 3.3 Goaloo /live diagnostic ---'
+            curl -sS --max-time 25 -w '\nHTTP %{http_code}\n' "$CAR33_URL?_=$RANDOM" | head -c 12000 || true
+            exit 1
+          fi
 
       - name: Audit live TotalCorner to Goaloo alignment
         shell: bash
