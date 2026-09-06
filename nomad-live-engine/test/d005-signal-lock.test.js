@@ -66,5 +66,5 @@ test('D-005 browser renders LOCKED separately and no longer intercepts feed with
   assert.doesNotMatch(retention,/state\s*:\s*['"]SIGNAL['"]/);
   assert.match(retention,/localStorage\.removeItem/);
   assert.match(index,/signal-retention\.js\?v=20260825-d005-server-lock-v1/);
-  assert.match(index,/runtime\.js\?v=20260825-d005-server-lock-v1/);
+  assert.match(index,/runtime\.js\?v=20260903-cycle-mask-v1/);
 });
