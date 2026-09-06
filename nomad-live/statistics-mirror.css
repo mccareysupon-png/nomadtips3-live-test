@@ -1,198 +1,49 @@
-/* Statistics mirror for the public Signal page.
-   Presentation only. Fully scoped to #statisticsMirror / .statistics-link.
-   Does not style or alter the master statistics page, live match cards, filters, feed or engine. */
+/* Exact Statistics monitor inside the public Signal page.
+   The visual content comes from the real statistics.html document.
+   This file only owns the parent monitor frame and Statistics tab state. */
 
 #statisticsMirror[hidden]{display:none!important}
 .statistics-mirror-hidden{display:none!important}
 
 #statisticsMirror{
-  display:grid;
-  gap:12px;
-  margin-top:12px;
-}
-
-#statisticsMirror .statistics-mirror-summary{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:8px;
-}
-
-#statisticsMirror .statistics-mirror-metric,
-#statisticsMirror .statistics-mirror-breakdown-item{
-  min-width:0;
-  padding:12px 10px;
-  border:1px solid rgba(131,223,137,.12);
-  border-radius:10px;
-  background:linear-gradient(145deg,rgba(29,39,31,.96),rgba(17,23,18,.96));
-  text-align:center;
-  box-shadow:0 6px 16px rgba(0,0,0,.14);
-}
-
-#statisticsMirror .statistics-mirror-metric span,
-#statisticsMirror .statistics-mirror-breakdown-item span{
-  display:block;
-  color:#99a69d;
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:.055em;
-  text-transform:uppercase;
-}
-
-#statisticsMirror .statistics-mirror-metric strong,
-#statisticsMirror .statistics-mirror-breakdown-item strong{
-  display:block;
-  margin-top:5px;
-  color:#eef4ef;
-  font-size:20px;
-  line-height:1;
-}
-
-#statisticsMirror .statistics-mirror-metric.is-primary strong{color:var(--green)}
-#statisticsMirror .statistics-mirror-breakdown-item.is-win strong{color:#83df89}
-#statisticsMirror .statistics-mirror-breakdown-item.is-loss strong{color:#ef6f62}
-#statisticsMirror .statistics-mirror-breakdown-item.is-push strong{color:#d3c77d}
-
-#statisticsMirror .statistics-mirror-breakdown{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:8px;
-}
-
-#statisticsMirror .statistics-mirror-panel{
+  position:relative;
+  width:calc(100% + 32px);
+  margin:0 0 8px -16px;
   overflow:hidden;
-  border:1px solid rgba(131,223,137,.11);
-  border-radius:12px;
-  background:linear-gradient(145deg,#12271f 0%,#0f1d17 58%,#0c1712 100%);
-  box-shadow:0 8px 20px rgba(0,0,0,.18);
+  background:var(--bg);
 }
 
-#statisticsMirror .statistics-mirror-head{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:12px;
-  padding:12px 14px;
-  border-bottom:1px solid rgba(150,158,151,.11);
+#statisticsMirror[data-ready="0"]{
+  min-height:72px;
 }
 
-#statisticsMirror .statistics-mirror-head .eyebrow{
-  margin:0 0 3px;
-  color:#8fa098;
+#statisticsMirror[data-ready="0"]::before{
+  content:"Loading statistics…";
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
   font-size:9px;
   font-weight:800;
-  letter-spacing:.08em;
+  letter-spacing:.03em;
+  pointer-events:none;
 }
 
-#statisticsMirror .statistics-mirror-head h2{
+#statisticsMirror[data-ready="1"]::before{display:none}
+
+#statisticsMirror .statistics-monitor-frame{
+  display:block;
+  width:100%;
+  height:0;
   margin:0;
-  font-size:18px;
+  border:0;
+  background:var(--bg);
+  visibility:hidden;
 }
 
-#statisticsMirror .statistics-mirror-result-summary{
-  flex:0 0 auto;
-  color:#9ca89f;
-  font-size:10px;
-  font-weight:800;
-  white-space:nowrap;
-}
-
-#statisticsMirror .statistics-mirror-table-wrap{
-  width:100%;
-  overflow-x:auto;
-  -webkit-overflow-scrolling:touch;
-}
-
-#statisticsMirror .statistics-mirror-table{
-  width:100%;
-  min-width:1040px;
-  border-collapse:collapse;
-  font-size:11px;
-}
-
-#statisticsMirror .statistics-mirror-table th,
-#statisticsMirror .statistics-mirror-table td{
-  padding:9px 8px;
-  border-bottom:1px solid rgba(150,158,151,.09);
-  text-align:left;
-  vertical-align:top;
-}
-
-#statisticsMirror .statistics-mirror-table th{
-  color:#8fa098;
-  font-size:9px;
-  font-weight:900;
-  letter-spacing:.045em;
-  text-transform:uppercase;
-  background:rgba(8,15,11,.38);
-  position:sticky;
-  top:0;
-  z-index:1;
-}
-
-#statisticsMirror .statistics-mirror-table td{color:#d8e0da}
-#statisticsMirror .statistics-mirror-table td.is-win{color:#83df89;font-weight:800}
-#statisticsMirror .statistics-mirror-table td.is-loss{color:#ef6f62;font-weight:800}
-#statisticsMirror .statistics-mirror-table td.is-push{color:#d3c77d;font-weight:800}
-#statisticsMirror .statistics-mirror-table td.statistics-mirror-condition{min-width:265px;color:#aeb8b0}
-#statisticsMirror .statistics-mirror-condition-line{display:block;line-height:1.35}
-#statisticsMirror .statistics-mirror-condition-line + .statistics-mirror-condition-line{margin-top:2px}
-#statisticsMirror .statistics-mirror-live-score{color:var(--green);font-weight:800}
-
-#statisticsMirror .statistics-mirror-pager{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-}
-
-#statisticsMirror .statistics-mirror-page-summary{
-  color:#8fa098;
-  font-size:10px;
-  font-weight:800;
-}
-
-#statisticsMirror .statistics-mirror-page-controls{
-  display:flex;
-  align-items:center;
-  gap:5px;
-}
-
-#statisticsMirror .statistics-mirror-page-button{
-  min-width:34px;
-  min-height:30px;
-  padding:5px 8px;
-  border:1px solid rgba(131,223,137,.13);
-  border-radius:7px;
-  background:rgba(18,51,40,.42);
-  color:#c8d2ca;
-  font:inherit;
-  font-size:10px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-#statisticsMirror .statistics-mirror-page-button:hover,
-#statisticsMirror .statistics-mirror-page-button:focus-visible,
-#statisticsMirror .statistics-mirror-page-button.is-active{
-  color:var(--green);
-  border-color:rgba(131,223,137,.32);
-  outline:none;
-}
-
-#statisticsMirror .statistics-mirror-page-button:disabled{
-  opacity:.36;
-  cursor:default;
-}
-
-#statisticsMirror .statistics-mirror-note{
-  padding:9px 12px;
-  border:1px solid rgba(131,223,137,.08);
-  border-radius:9px;
-  background:rgba(18,92,69,.035);
-  color:#8f9b92;
-  font-size:10px;
-  text-align:center;
+#statisticsMirror[data-ready="1"] .statistics-monitor-frame{
+  visibility:visible;
 }
 
 .toolbar.statistics-view-active .search{display:none!important}
@@ -214,27 +65,8 @@
 }
 
 @media(max-width:700px){
-  #statisticsMirror{gap:8px;margin-top:8px}
-  #statisticsMirror .statistics-mirror-summary,
-  #statisticsMirror .statistics-mirror-breakdown{
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:4px;
+  #statisticsMirror{
+    width:calc(100% + 16px);
+    margin-left:-8px;
   }
-  #statisticsMirror .statistics-mirror-metric,
-  #statisticsMirror .statistics-mirror-breakdown-item{
-    padding:8px 3px;
-    border-radius:8px;
-  }
-  #statisticsMirror .statistics-mirror-metric span,
-  #statisticsMirror .statistics-mirror-breakdown-item span{font-size:7px;letter-spacing:.02em}
-  #statisticsMirror .statistics-mirror-metric strong,
-  #statisticsMirror .statistics-mirror-breakdown-item strong{font-size:15px;margin-top:4px}
-  #statisticsMirror .statistics-mirror-head{padding:9px 10px;align-items:flex-start}
-  #statisticsMirror .statistics-mirror-head h2{font-size:15px}
-  #statisticsMirror .statistics-mirror-result-summary{font-size:8px;white-space:normal;text-align:right}
-  #statisticsMirror .statistics-mirror-table{font-size:10px;min-width:980px}
-  #statisticsMirror .statistics-mirror-table th,
-  #statisticsMirror .statistics-mirror-table td{padding:8px 7px}
-  #statisticsMirror .statistics-mirror-pager{padding:8px;align-items:flex-start;flex-direction:column}
-  #statisticsMirror .statistics-mirror-page-controls{width:100%;overflow-x:auto;padding-bottom:2px}
 }
