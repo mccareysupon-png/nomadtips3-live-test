@@ -35,7 +35,7 @@ jobs:
           node --check workers/nomadtips3-goaloo-stats-342/src/index.js
           node --check nomad-live-342/goaloo-stats-layer.js
           node --check nomad-live-342/runtime-config.js
-          node --test workers/nomadtips3-goaloo-stats-342/test/parser.test.mjs
+          node --test workers/nomadtips3-goaloo-stats-342/test/*.mjs
 
       - name: Dry-run isolated Worker bundle
         working-directory: workers/nomadtips3-goaloo-stats-342
