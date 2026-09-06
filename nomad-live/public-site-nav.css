@@ -99,7 +99,7 @@ html{scrollbar-gutter:stable}
 }
 .topbar-inner.public-four-nav>.topnav a:nth-child(1){width:124px!important;font-size:13px!important}
 .topbar-inner.public-four-nav>.topnav a:nth-child(1)::after{display:none!important;content:none!important}
-.topbar-inner.public-four-nav>.topnav a:nth-child(2){width:104px!important}
+.topbar-inner.public-four-nav>.topnav a:nth-child(2){width:144px!important}
 .topbar-inner.public-four-nav>.topnav a:nth-child(3){width:104px!important}
 .topbar-inner.public-four-nav>.topnav a:nth-child(4){width:72px!important}
 .topbar-inner.public-four-nav>.topnav a[href*="nomad-live-342"]{width:144px!important}
@@ -282,3 +282,22 @@ html body main.shell :is(.hero,.panel,.metric,.match-wrap,.signal-card,.signal-l
   border-radius:0!important;
 }
 html body main.shell .match-wrap > summary{border-radius:0!important;}
+
+/* Final two-link geometry lock: identical before and after page scripts run. */
+html body .topbar-inner.public-four-nav>.topnav{
+  width:270px!important;
+  min-width:270px!important;
+  max-width:270px!important;
+}
+html body .topbar-inner.public-four-nav>.topnav>a:nth-child(1){
+  width:124px!important;
+  min-width:124px!important;
+  max-width:124px!important;
+  flex:0 0 124px!important;
+}
+html body .topbar-inner.public-four-nav>.topnav>a:nth-child(2){
+  width:144px!important;
+  min-width:144px!important;
+  max-width:144px!important;
+  flex:0 0 144px!important;
+}
