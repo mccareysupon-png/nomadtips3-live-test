@@ -22,7 +22,7 @@ test('detector card renders every enabled source and the selected whole price',(
   assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">PASS · 1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S3 · API-Football<\/span><span class="price-source-value">PASS · API-Football \(bookmaker not supplied\) · -0\.75 @ 1\.80 · 9s<\/span>/);
-  assert.match(context.__output,/<span class="price-selected-name">SELECTED · S1<\/span><span class="price-selected-value">1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
+  assert.match(context.__output,/<span class="price-selected-name">PRICE REFERENCE<\/span><span class="price-selected-value">Odds-API\.io · 1xBet · -0\.75 @ 1\.82 · 14s<\/span>/);
   assert.doesNotMatch(context.__output,/Price pass · Selected|>SIDE</);
 });
 
@@ -41,8 +41,8 @@ test('AWAY detector card labels the selected mirrored AH price without changing 
   vm.runInNewContext(`${runtime}\n__output=matchRow(__match);`,context);
   assert.match(context.__output,/data-side="away"/);
   assert.match(context.__output,/<span>AWAY PRESS<\/span><b>14<\/b>/);
-  assert.match(context.__output,/<span class="price-selected-name">SELECTED · S1<\/span><span class="price-selected-value">AWAY · 1xBet · \+0\.50 @ 2\.00 · 11s<\/span>/);
-  assert.match(context.__output,/SELECTED PRICE · AWAY/);
+  assert.match(context.__output,/<span class="price-selected-name">PRICE REFERENCE<\/span><span class="price-selected-value">Odds-API\.io · 1xBet · AWAY · \+0\.50 @ 2\.00 · 11s<\/span>/);
+  assert.match(context.__output,/PRICE REFERENCE · AWAY/);
   assert.match(context.__output,/Odds-API\.io · 1xBet · AWAY \+0\.50 @ 2\.00/);
 });
 
@@ -64,7 +64,7 @@ test('detector card collapses missing legacy source and selected prices to N/A',
   assert.match(context.__output,/<span class="price-source-name">S1 · Odds-API\.io<\/span><span class="price-source-value">N\/A<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S2 · The Odds API<\/span><span class="price-source-value">N\/A<\/span>/);
   assert.match(context.__output,/<span class="price-source-name">S3 · API-Football<\/span><span class="price-source-value">N\/A<\/span>/);
-  assert.match(context.__output,/<span class="price-selected-name">SELECTED<\/span><span class="price-selected-value">N\/A<\/span>/);
+  assert.match(context.__output,/<span class="price-selected-name">PRICE REFERENCE<\/span><span class="price-selected-value">N\/A<\/span>/);
   assert.doesNotMatch(context.__output,/very long provider error|no matching live match|rate limit|No selected source/);
   assert.doesNotMatch(context.__output,/<span class="wait">N\/A<\/span>/);
 });
