@@ -1,7 +1,6 @@
 import { normalizeProviderPayload } from './normalize.js';
 import { fetchAsianBookiePayload, asianBookieConfig } from './asianbookie.js';
-import { fetchApiFootballCandidate } from './api-football-candidate.js';
-import { fetchNowgoalPayload, nowgoalConfig } from './nowgoal.js';
+import { fetchNowgoalCandidate, fetchNowgoalPayload, nowgoalConfig } from './nowgoal.js';
 
 const CACHE_MS = 5_000;
 let memoryCache = { at: 0, payload: null, providerKey: '' };
@@ -94,6 +93,84 @@ async function markets(config, env) {
   return { ...payload, cache: 'fresh' };
 }
 
+function candidateQuery(url) {
+  const scoreHome = Number(url.searchParams.get('scoreHome'));
+  const scoreAway = Number(url.searchParams.get('scoreAway'));
+  const minute = Number(url.searchParams.get('minute'));
+  return {
+    home: url.searchParams.get('home') || '',
+    away: url.searchParams.get('away') || '',
+    minute: Number.isFinite(minute) ? minute : null,
+    score: Number.isFinite(scoreHome) && Number.isFinite(scoreAway) ? [scoreHome, scoreAway] : null,
+  };
+}
+
+async function nowgoalCandidate(config, env, query) {
+  const raw = await fetchNowgoalCandidate(env, query);
+  if (!raw.ok) return raw;
+  const normalized = normalizeProviderPayload({
+    provider: 'Nowgoal',
+    observedAt: raw.observedAt,
+    matches: [raw.match],
+  }, {
+    providerName: 'Nowgoal',
+    maxAgeMs: config.maxAgeMs,
+  });
+  const match = normalized.matches[0] || null;
+  const oneXtwo = match?.main?.oneXtwo || null;
+  const total = match?.main?.totals || null;
+  if (!match || !oneXtwo || !total) {
+    return {
+      ok: false,
+      provider: 'Nowgoal',
+      observedAt: raw.observedAt,
+      error: 'nowgoal_candidate_markets_incomplete',
+      sourceDiagnostics: raw.sourceDiagnostics || null,
+    };
+  }
+  const possession = raw.possession || null;
+  return {
+    ok: true,
+    version: 'nowgoal-candidate-v1',
+    provider: 'Nowgoal',
+    observedAt: raw.observedAt,
+    fixture: {
+      id: String(raw.match.id),
+      home: raw.match.home,
+      away: raw.match.away,
+      minute: query.minute,
+      score: raw.match.score,
+    },
+    oneXtwo: {
+      home: oneXtwo.home,
+      draw: oneXtwo.draw,
+      away: oneXtwo.away,
+    },
+    totals: {
+      line: total.line,
+      over: total.overOdds,
+      under: total.underOdds,
+    },
+    statistics: {
+      home: {
+        shotOnTarget: null,
+        shotOff: null,
+        possession: possession?.home ?? null,
+      },
+      away: {
+        shotOnTarget: null,
+        shotOff: null,
+        possession: possession?.away ?? null,
+      },
+    },
+    sourceDiagnostics: {
+      ...(raw.sourceDiagnostics || {}),
+      activeStatistics: ['possession'],
+      inactiveStatistics: ['shotOnTarget', 'shotOff'],
+    },
+  };
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return json(request, {}, 204, env);
@@ -112,12 +189,13 @@ export default {
         providerKind: config.kind || 'generic',
         providerName: config.providerName,
         maxMarketAgeMs: config.maxAgeMs,
-        apiFootballCandidate: {
-          enabled: true,
-          configured: Boolean(env.API_FOOTBALL_KEY),
-          trigger: 'EVENT_PASS_ONLY',
+        nowgoalCandidate: {
+          enabled: config.kind === 'nowgoal',
+          trigger: 'MARKET_SETTINGS_SCAN',
           markets: ['1X2', 'OVER_UNDER'],
-          fixtureCacheMs: 180000,
+          statistics: ['POSSESSION'],
+          unavailableStatistics: ['SOT', 'SHOT_OFF'],
+          matchGuards: ['HOME/AWAY orientation', 'exact score', 'team similarity', 'ambiguity reject'],
         },
         asianBookie: asian ? {
           enabled: true,
@@ -130,6 +208,7 @@ export default {
           base: nowgoal.base,
           bookmakers: nowgoal.bookmakers,
           markets: ['1X2', 'OVER_UNDER'],
+          candidateStatistics: ['POSSESSION'],
           asianHandicap: false,
         } : { enabled: false },
         eventDependency: false,
@@ -138,31 +217,35 @@ export default {
     }
 
     if (url.pathname === '/candidate' && request.method === 'GET') {
-      if (!env.API_FOOTBALL_KEY) {
+      if (config.kind !== 'nowgoal') {
         return json(request, {
           ok: false,
-          version: 'api-football-candidate-v1',
-          error: 'api_football_key_not_configured',
+          version: 'nowgoal-candidate-v1',
+          provider: 'Nowgoal',
+          error: 'nowgoal_candidate_provider_not_active',
           optional: true,
         }, 503, env);
       }
-      const scoreHome = Number(url.searchParams.get('scoreHome'));
-      const scoreAway = Number(url.searchParams.get('scoreAway'));
-      const query = {
-        home: url.searchParams.get('home') || '',
-        away: url.searchParams.get('away') || '',
-        minute: url.searchParams.get('minute'),
-        score: Number.isFinite(scoreHome) && Number.isFinite(scoreAway) ? [scoreHome, scoreAway] : null,
-      };
-      try {
-        const result = await fetchApiFootballCandidate(env.API_FOOTBALL_KEY, query, config.timeoutMs);
-        return json(request, { ...result, optional: true }, result.ok ? 200 : 404, env);
-      } catch (error) {
-        const reason = error?.name === 'AbortError' ? 'api_football_timeout' : String(error?.message || error || 'api_football_candidate_failed');
+      const query = candidateQuery(url);
+      if (!query.home || !query.away || !Array.isArray(query.score)) {
         return json(request, {
           ok: false,
-          version: 'api-football-candidate-v1',
-          provider: 'API-Football',
+          version: 'nowgoal-candidate-v1',
+          provider: 'Nowgoal',
+          error: 'nowgoal_candidate_identity_incomplete',
+          optional: true,
+        }, 400, env);
+      }
+      try {
+        const result = await nowgoalCandidate(config, env, query);
+        const notMatched = String(result?.error || '').includes('no_candidate') || String(result?.error || '').includes('ambiguous') || String(result?.error || '').includes('score_required');
+        return json(request, { ...result, optional: true }, result.ok ? 200 : notMatched ? 404 : 502, env);
+      } catch (error) {
+        const reason = error?.name === 'AbortError' ? 'nowgoal_candidate_timeout' : String(error?.code || error?.message || error || 'nowgoal_candidate_failed');
+        return json(request, {
+          ok: false,
+          version: 'nowgoal-candidate-v1',
+          provider: 'Nowgoal',
           error: reason,
           optional: true,
         }, 502, env);
@@ -199,4 +282,4 @@ export default {
   },
 };
 
-export { providerConfig, fetchProvider };
+export { providerConfig, fetchProvider, nowgoalCandidate };
