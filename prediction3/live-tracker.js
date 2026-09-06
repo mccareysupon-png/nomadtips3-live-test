@@ -90,8 +90,8 @@
     panel.innerHTML=`
       <div class="p3-sirius-head">
         <div class="p3-sirius-title">
-          <span class="p3-sirius-kicker">SIRIUS LIVE CONSTELLATION</span>
-          <strong>Golden Match Pulse</strong>
+          <span class="p3-sirius-kicker">SIRIUS MATCH INTELLIGENCE</span>
+          <strong>Golden Live Reading</strong>
         </div>
         <div class="p3-sirius-score">
           <span class="p3-sirius-state" data-sirius-state>LIVE DATA</span>
@@ -101,16 +101,24 @@
       </div>
       <div class="p3-sirius-body">
         <div class="p3-sirius-chart">
-          <div class="p3-sirius-block-head"><strong>PRESSURE TIMELINE</strong><small>recent live movement</small></div>
+          <div class="p3-sirius-block-head"><strong>EVENT FLOW</strong><small>recent attack · danger · corner movement</small></div>
           <div class="p3-pressure-chart" data-sirius-pressure></div>
           <div class="p3-sirius-legend"><span data-sirius-home>HOME</span><b>LIVE PULSE</b><span data-sirius-away>AWAY</span></div>
         </div>
         <div class="p3-sirius-metrics">
-          <div class="p3-sirius-metrics-title">MATCH READINGS</div>
+          <div class="p3-sirius-metrics-title">MATCH STATS</div>
           ${metricShell('ATTACKS','attacks')}
           ${metricShell('DANGEROUS','dangerous')}
           ${metricShell('CORNERS','corner')}
           <div class="p3-sirius-source"><span>Source</span><strong>TotalCorner V3</strong></div>
+        </div>
+        <div class="p3-sirius-analysis">
+          <div class="p3-sirius-metrics-title">LIVE ANALYSIS</div>
+          <div class="p3-analysis-reading"><span>PRESSURE SHARE</span><strong data-sirius-share>50% · 50%</strong></div>
+          <div class="p3-analysis-balance" aria-hidden="true"><i data-sirius-balance></i><b></b></div>
+          <div class="p3-analysis-reading"><span>CURRENT EDGE</span><strong data-sirius-edge>BALANCED</strong></div>
+          <div class="p3-analysis-reading"><span>RECENT PULSE</span><strong data-sirius-recent>—</strong></div>
+          <p class="p3-analysis-note">Observed live event volume only · not win probability.</p>
         </div>
       </div>`;
     const anchor=card.querySelector('.p3-pick-grid');
@@ -167,6 +175,28 @@
       return `<span class="p3-pressure-pair" title="${esc(title)}"><i class="p3-pressure-bar" style="height:${h.toFixed(1)}%"></i><i class="p3-pressure-bar away" style="height:${a.toFixed(1)}%"></i></span>`;
     }).join('');
   }
+  function setAnalysis(panel,latest,snapshots){
+    const attacks=pair(latest?.attacks)||[0,0];
+    const dangerous=pair(latest?.dangerous)||[0,0];
+    const corners=pair(latest?.corner)||[0,0];
+    const home=attacks[0]*.35+dangerous[0]*1.4+corners[0]*2;
+    const away=attacks[1]*.35+dangerous[1]*1.4+corners[1]*2;
+    const total=home+away;
+    const share=total>0?Math.max(0,Math.min(100,home/total*100)):50;
+    const awayShare=100-share;
+    const edge=Math.abs(share-50)<5?'BALANCED':share>50?'HOME PRESSURE':'AWAY PRESSURE';
+    const recent=pressureSeries(snapshots).slice(-5);
+    const recentHome=recent.reduce((sum,row)=>sum+row.home,0);
+    const recentAway=recent.reduce((sum,row)=>sum+row.away,0);
+    const shareEl=panel.querySelector('[data-sirius-share]');
+    const bar=panel.querySelector('[data-sirius-balance]');
+    const edgeEl=panel.querySelector('[data-sirius-edge]');
+    const recentEl=panel.querySelector('[data-sirius-recent]');
+    if(shareEl)shareEl.textContent=`${share.toFixed(0)}% · ${awayShare.toFixed(0)}%`;
+    if(bar)bar.style.width=`${share.toFixed(1)}%`;
+    if(edgeEl)edgeEl.textContent=edge;
+    if(recentEl)recentEl.textContent=recent.length?`H ${recentHome.toFixed(1)} · A ${recentAway.toFixed(1)}`:'WAITING';
+  }
   function applySirius(records,matches){
     if(!ledger||!Array.isArray(ledger.today))return;
     const cards=predictionCards();
@@ -188,6 +218,7 @@
       setMetric(panel,'dangerous',latest.dangerous);
       setMetric(panel,'corner',latest.corner);
       drawPressure(panel,snapshots);
+      setAnalysis(panel,latest,snapshots);
     });
   }
 
