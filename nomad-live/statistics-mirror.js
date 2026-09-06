@@ -1,6 +1,7 @@
 (()=>{
   'use strict';
 
+  const SESSION_KEY='nomad341SignalSubviewV1';
   const trigger=document.querySelector('.toolbar .tabs .statistics-link');
   const toolbar=trigger?.closest('.toolbar');
   const filterTabs=[...document.querySelectorAll('.toolbar .tabs .tab')];
@@ -16,6 +17,15 @@
   let resizeObserver=null;
   let mutationObserver=null;
   let syncFrame=0;
+
+  const savedView=()=>{
+    try{return String(sessionStorage.getItem(SESSION_KEY)||'').toUpperCase();}
+    catch{return'';}
+  };
+
+  const rememberStatistics=()=>{
+    try{sessionStorage.setItem(SESSION_KEY,'STATISTICS');}catch{}
+  };
 
   const syncHeight=()=>{
     syncFrame=0;
@@ -124,6 +134,7 @@
 
   trigger.addEventListener('click',event=>{
     event.preventDefault();
+    rememberStatistics();
     setView('statistics');
   });
 
@@ -142,4 +153,5 @@
   trigger.dataset.active='0';
   trigger.setAttribute('aria-pressed','false');
   mirror.dataset.ready='0';
+  if(savedView()==='STATISTICS')setView('statistics');
 })();
