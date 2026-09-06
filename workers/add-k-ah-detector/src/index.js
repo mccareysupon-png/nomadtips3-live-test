@@ -3,6 +3,7 @@ import {fetchNowgoal1xBetMarkets} from '../../../nomad-live-engine/src/nowgoal.j
 import {teamSimilarity} from '../../../nomad-live-engine/src/real-market.js';
 
 const API='https://v3.football.api-sports.io';
+const INTERNAL_HEADER='x-add-k-internal';
 
 const cors=()=>({
   'content-type':'application/json;charset=utf-8',
@@ -16,8 +17,17 @@ const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite
 const pair=(home,away)=>({home:finite(home)?Number(home):null,away:finite(away)?Number(away):null});
 const pairFrom=value=>Array.isArray(value)?pair(value[0],value[1]):pair(value?.home,value?.away);
 const scoreFrom=value=>Array.isArray(value)?pair(value[0],value[1]):pair(value?.home,value?.away);
-const ownerKey=env=>String(env.OWNER_ADMIN_TOKEN||'');
-const authorized=(request,env)=>Boolean(ownerKey(env))&&request.headers.get('x-owner-key')===ownerKey(env);
+
+async function sha256Hex(value){
+  const bytes=new TextEncoder().encode(String(value||''));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return [...new Uint8Array(digest)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+async function authorized(request,env){
+  const verifier=String(env.OWNER_ADMIN_TOKEN||'');
+  const key=request.headers.get('x-owner-key')||'';
+  return Boolean(verifier&&key)&&(await sha256Hex(key))===verifier;
+}
 
 async function api(path,key){
   const response=await fetch(API+path,{headers:{'x-apisports-key':key},cache:'no-store'});
@@ -107,43 +117,43 @@ function nowgoalTargets(matches){
 export class DetectorState{
   constructor(state,env){this.state=state;this.env=env}
 
-  async cfg(){return normalizeConfig(await this.state.storage.get('config')||DEFAULT_CONFIG)}
+  async cfg(){
+    const stored=await this.state.storage.get('config');
+    if(stored)return normalizeConfig(stored);
+    return normalizeConfig({...DEFAULT_CONFIG,enabled:String(this.env.PRODUCTION_ENABLED||'false')==='true'});
+  }
 
   async smoke(){
     if(!this.env.API_FOOTBALL_KEY)throw new Error('ยังไม่ได้ตั้ง API_FOOTBALL_KEY');
-    if(!ownerKey(this.env))throw new Error('ยังไม่ได้ตั้ง OWNER_ADMIN_TOKEN');
+    if(!this.env.OWNER_ADMIN_TOKEN)throw new Error('ยังไม่ได้ตั้ง OWNER_ADMIN_TOKEN');
     const [live,feed]=await Promise.all([
       api('/fixtures?live=all',this.env.API_FOOTBALL_KEY),
       totalCornerFeed(this.env)
     ]);
-    const targets=nowgoalTargets(feed.matches).slice(0,5);
-    let nowgoal={status:'NOT_NEEDED',checked:0,mapped:0,ready:0,events:0,results:[],priceUpdates:{}};
-    if(targets.length){
-      nowgoal=await fetchNowgoal1xBetMarkets(
-        targets,
-        {requestTimeoutMs:9000,maximumPriceAgeSeconds:90},
-        Date.now(),
-        await this.state.storage.get('nowgoalUpdates')||{}
-      );
-      await this.state.storage.put('nowgoalUpdates',nowgoal.priceUpdates||{});
-      if(nowgoal.status!=='READY')throw new Error(`NowGoal AH ยังไม่พร้อม: ${nowgoal.status||'UNKNOWN'}`);
-    }
+    const targets=nowgoalTargets(feed.matches).slice(0,8);
+    if(!targets.length)throw new Error('ไม่มีคู่จาก TotalCorner สำหรับตรวจ NowGoal AH จริง');
+    const nowgoal=await fetchNowgoal1xBetMarkets(
+      targets,
+      {requestTimeoutMs:9000,maximumPriceAgeSeconds:90},
+      Date.now(),
+      await this.state.storage.get('nowgoalUpdates')||{}
+    );
+    await this.state.storage.put('nowgoalUpdates',nowgoal.priceUpdates||{});
+    if(nowgoal.status!=='READY'||Number(nowgoal.ready||0)<1)throw new Error(`NowGoal AH ยังไม่พร้อม: ${nowgoal.status||'UNKNOWN'} / ready ${nowgoal.ready||0}`);
     const result={
       ok:true,
       apiFootball:{ok:true,live:live.length},
       totalCorner:{ok:true,matches:feed.matches.length,source:feed.source?.name||'TotalCorner',updatedAt:feed.updatedAt||null},
-      nowgoal:{ok:true,status:nowgoal.status,checked:nowgoal.checked||0,mapped:nowgoal.mapped||0,ready:nowgoal.ready||0,events:nowgoal.events||0}
+      nowgoal:{ok:true,status:nowgoal.status,checked:nowgoal.checked||0,mapped:nowgoal.mapped||0,ready:nowgoal.ready||0,events:nowgoal.events||0},
+      updatedAt:Date.now()
     };
-    await this.state.storage.put('smoke',{...result,updatedAt:Date.now()});
+    await this.state.storage.put('smoke',result);
     return result;
   }
 
   async cycle(){
     const config=await this.cfg();
-    if(!config.enabled){
-      const smoke=await this.smoke();
-      return{ok:true,skipped:'disabled',smoke};
-    }
+    if(!config.enabled)return{ok:true,skipped:'disabled',schedule:schedule(config)};
     if(!this.env.API_FOOTBALL_KEY)throw new Error('ยังไม่ได้ตั้ง API_FOOTBALL_KEY');
 
     const [live,feed]=await Promise.all([
@@ -236,10 +246,11 @@ export class DetectorState{
   async fetch(request){
     if(request.method==='OPTIONS')return new Response('',{status:204,headers:cors()});
     const url=new URL(request.url);
+    const internal=request.headers.get(INTERNAL_HEADER)==='cron';
 
     if(url.pathname==='/config'){
       if(request.method==='POST'){
-        if(!authorized(request,this.env))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
+        if(!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
         try{
           const config=normalizeConfig(await request.json());
           await this.state.storage.put('config',config);
@@ -259,7 +270,7 @@ export class DetectorState{
     if(url.pathname==='/status')return json({ok:true,status:await this.state.storage.get('status')||null,smoke:await this.state.storage.get('smoke')||null});
 
     if(url.pathname==='/smoke'&&request.method==='POST'){
-      if(!authorized(request,this.env))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
+      if(!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
       try{return json(await this.smoke())}catch(error){
         await this.state.storage.put('smoke',{ok:false,error:String(error?.message||error),updatedAt:Date.now()});
         return json({ok:false,error:error.message},500);
@@ -267,21 +278,25 @@ export class DetectorState{
     }
 
     if(url.pathname==='/cycle'&&request.method==='POST'){
-      if(!authorized(request,this.env))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
+      if(!internal&&!(await authorized(request,this.env)))return json({ok:false,error:'รหัสเจ้าของไม่ถูกต้อง'},401);
       try{return json(await this.cycle())}catch(error){
         await this.state.storage.put('status',{ok:false,error:String(error?.message||error),updatedAt:Date.now()});
         return json({ok:false,error:error.message},500);
       }
     }
 
-    return json({ok:true,service:'ADD K AH Detector',version:'1.1.0',language:'th',defaultEnabled:false});
+    return json({ok:true,service:'ADD K AH Detector',version:'1.2.0',language:'th',defaultEnabled:false});
   }
 }
 
 export default{
-  fetch(request,env){return env.DETECTOR.get(env.DETECTOR.idFromName('main')).fetch(request)},
+  fetch(request,env){
+    const headers=new Headers(request.headers);
+    headers.delete(INTERNAL_HEADER);
+    const clean=new Request(request,{headers});
+    return env.DETECTOR.get(env.DETECTOR.idFromName('main')).fetch(clean);
+  },
   scheduled(_,env,ctx){
-    const key=ownerKey(env);
-    ctx.waitUntil(env.DETECTOR.get(env.DETECTOR.idFromName('main')).fetch('https://internal/cycle',{method:'POST',headers:{'x-owner-key':key}}));
+    ctx.waitUntil(env.DETECTOR.get(env.DETECTOR.idFromName('main')).fetch('https://internal/cycle',{method:'POST',headers:{[INTERNAL_HEADER]:'cron'}}));
   }
 };
