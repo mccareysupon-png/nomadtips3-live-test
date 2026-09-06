@@ -174,9 +174,9 @@ body[data-page="live"] #nomad342PanelStatistics>.statistics-summary>.metric>smal
   }
 }
 
-/* 2026-09-06 — Signal section heading balanced to the site's hero/panel scale.
-   Presentation only. Existing ledger markup and runtime stay untouched. */
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head{
+/* 2026-09-06 — Statistics ledger heading balanced to the site's panel scale.
+   Correct target: the card headed “1X2 + Over/Under”. Presentation only. */
+body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head{
   min-height:72px;
   margin:0 0 12px;
   padding:14px 16px;
@@ -185,43 +185,35 @@ body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head{
   background:linear-gradient(145deg,#20251f,#191d18 52%,#151814);
   align-items:center;
 }
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head>div>.eyebrow{
-  font-size:0!important;
-  line-height:1;
-}
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head>div>.eyebrow::after{
-  content:"NOMAD LIVE 3.42";
+body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head>div>.eyebrow{
+  margin:0;
   color:#a7afa7;
-  font:900 8px/1 Arial,Helvetica,sans-serif;
+  font-size:8px;
+  line-height:1;
   letter-spacing:.08em;
 }
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head h2{
+body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head h2{
   margin:6px 0 0!important;
-  font-size:0!important;
-  line-height:1;
-}
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head h2::after{
-  content:"1X2 · OVER/UNDER SIGNAL";
   color:var(--text);
   font:900 18px/1.1 Arial,Helvetica,sans-serif;
   letter-spacing:.01em;
 }
-body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head .ledger-status{
+body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head .ledger-status{
   max-width:42%;
   text-align:right;
   font-size:10px;
   line-height:1.35;
 }
 @media(max-width:700px){
-  body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head{
+  body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head{
     min-height:60px;
     padding:11px 12px;
     gap:8px;
   }
-  body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head h2::after{
+  body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head h2{
     font-size:15px;
   }
-  body[data-page="live"] #nomad342PanelSignal>.ledger-panel>.panel-head .ledger-status{
+  body[data-page="live"] #nomad342PanelStatistics>.ledger-panel>.panel-head .ledger-status{
     max-width:44%;
     font-size:9px;
   }
