@@ -12,7 +12,7 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
-  OWNER_ADMIN_TOKEN: ${{ secrets.OWNER_ADMIN_TOKEN }}
+  OWNER_ADMIN_TOKEN: ${{ secrets.OWNER_ADMIN_TOKEN || secrets.OWNER_PAIR_SECRET }}
 
 jobs:
   deploy:
@@ -35,7 +35,7 @@ jobs:
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
           test -n "$API_FOOTBALL_KEY" || { echo "::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY"; exit 1; }
-          test -n "$OWNER_ADMIN_TOKEN" || { echo "::error::Missing OWNER_ADMIN_TOKEN"; exit 1; }
+          test -n "$OWNER_ADMIN_TOKEN" || { echo "::error::Missing OWNER_ADMIN_TOKEN or OWNER_PAIR_SECRET"; exit 1; }
 
       - name: Deploy Worker พร้อม Cron, Durable Object และ secret
         id: deploy
