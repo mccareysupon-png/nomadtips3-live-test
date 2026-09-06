@@ -3,6 +3,7 @@
    Does not style or alter the master statistics page, live match cards, filters, feed or engine. */
 
 #statisticsMirror[hidden]{display:none!important}
+.statistics-mirror-hidden{display:none!important}
 
 #statisticsMirror{
   display:grid;
@@ -193,6 +194,8 @@
   font-size:10px;
   text-align:center;
 }
+
+.toolbar.statistics-view-active .search{display:none!important}
 
 .toolbar.statistics-view-active .tabs .tab{
   color:#aab1ab!important;
