@@ -4,6 +4,7 @@ const DEFAULT_TIMEOUT_MS=6000;
 let fixtureCache={at:0,rows:[],quota:null};
 
 function finite(value){if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null}
+function statNumber(value){if(typeof value==='string')value=value.replace('%','').trim();return finite(value)}
 function norm(value=''){return String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/&/g,' and ').replace(/\b(fc|cf|sc|afc|fk|club)\b/g,' ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim()}
 function compact(value=''){return norm(value).replace(/\s+/g,'')}
 function teamScore(a,b){const x=norm(a),y=norm(b);if(!x||!y)return 0;if(x===y)return 1;if(compact(x)===compact(y))return .99;if(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)))return .9;const A=new Set(x.split(' ').filter(Boolean)),B=new Set(y.split(' ').filter(Boolean));let hit=0;for(const t of A)if(B.has(t))hit++;const union=A.size+B.size-hit;return union?hit/union:0}
@@ -25,7 +26,7 @@ async function apiFetch(apiKey,path,params={},timeoutMs=DEFAULT_TIMEOUT_MS){
   }finally{clearTimeout(timer)}
 }
 
-function liveFixtureRow(row){return {id:String(row?.fixture?.id??''),home:String(row?.teams?.home?.name||''),away:String(row?.teams?.away?.name||''),minute:finite(row?.fixture?.status?.elapsed),score:[finite(row?.goals?.home),finite(row?.goals?.away)],league:String(row?.league?.name||'')}}
+function liveFixtureRow(row){return {id:String(row?.fixture?.id??''),home:String(row?.teams?.home?.name||''),away:String(row?.teams?.away?.name||''),homeId:String(row?.teams?.home?.id??''),awayId:String(row?.teams?.away?.id??''),minute:finite(row?.fixture?.status?.elapsed),score:[finite(row?.goals?.home),finite(row?.goals?.away)],league:String(row?.league?.name||'')}}
 async function liveFixtures(apiKey,timeoutMs,now=Date.now()){
   if(fixtureCache.rows.length&&now-fixtureCache.at<FIXTURE_CACHE_MS)return {rows:fixtureCache.rows,quota:fixtureCache.quota,requests:0,cache:'HIT'};
   const res=await apiFetch(apiKey,'/fixtures',{live:'all'},timeoutMs),rows=res.rows.map(liveFixtureRow).filter(x=>x.id&&x.home&&x.away);
@@ -77,13 +78,33 @@ function totalsCandidates(events=[]){
 }
 export function parseCandidateOdds(events=[]){return {oneXtwo:oneXtwoCandidates(events)[0]||null,totals:totalsCandidates(events)[0]||null}}
 
+function statMap(row){const out=new Map();for(const item of Array.isArray(row?.statistics)?row.statistics:[]){const k=norm(item?.type);if(k)out.set(k,statNumber(item?.value))}return out}
+function findStat(map,names){for(const name of names){const v=map.get(norm(name));if(v!==undefined&&v!==null)return v}return null}
+export function parseFixtureStatistics(rows=[],fixture={}){
+  const pick=(side,id,name)=>{
+    let row=(Array.isArray(rows)?rows:[]).find(r=>id&&String(r?.team?.id??'')===String(id));
+    if(!row)row=(Array.isArray(rows)?rows:[]).sort((a,b)=>teamScore(name,b?.team?.name)-teamScore(name,a?.team?.name))[0]||null;
+    if(!row||teamScore(name,row?.team?.name)<.55)return null;
+    const map=statMap(row);
+    return {shotOnTarget:findStat(map,['Shots on Goal','Shots on Target']),shotOff:findStat(map,['Shots off Goal','Shots off Target']),possession:findStat(map,['Ball Possession'])};
+  };
+  const home=pick('home',fixture.homeId,fixture.home),away=pick('away',fixture.awayId,fixture.away);
+  if(!home||!away)return null;
+  return {home,away};
+}
+
 export async function fetchApiFootballCandidate(apiKey,query={},timeoutMs=DEFAULT_TIMEOUT_MS,now=Date.now()){
   const home=String(query.home||'').trim(),away=String(query.away||'').trim();if(!home||!away)throw new Error('CANDIDATE_TEAMS_REQUIRED');
   const fixtures=await liveFixtures(apiKey,timeoutMs,now),fixture=matchFixture({home,away,minute:query.minute,score:query.score},fixtures.rows);
   if(!fixture)return {ok:false,error:'fixture_not_found',home,away,fixtureCache:fixtures.cache,requestsUsed:fixtures.requests,quota:fixtures.quota};
-  const odds=await apiFetch(apiKey,'/odds/live',{fixture:fixture.id},timeoutMs),parsed=parseCandidateOdds(odds.rows),requestsUsed=fixtures.requests+1;
-  if(!parsed.oneXtwo||!parsed.totals)return {ok:false,error:'markets_incomplete',home,away,fixture,oneXtwo:parsed.oneXtwo,totals:parsed.totals,fixtureCache:fixtures.cache,requestsUsed,quota:minQuota(fixtures.quota,odds.quota)};
-  return {ok:true,version:'api-football-candidate-v1',provider:'API-Football',home,away,fixture,oneXtwo:parsed.oneXtwo,totals:parsed.totals,observedAt:now,fixtureCache:fixtures.cache,requestsUsed,quota:minQuota(fixtures.quota,odds.quota)};
+  const [odds,stats]=await Promise.all([
+    apiFetch(apiKey,'/odds/live',{fixture:fixture.id},timeoutMs),
+    apiFetch(apiKey,'/fixtures/statistics',{fixture:fixture.id},timeoutMs),
+  ]);
+  const parsed=parseCandidateOdds(odds.rows),statistics=parseFixtureStatistics(stats.rows,fixture),requestsUsed=fixtures.requests+2;
+  if(!parsed.oneXtwo||!parsed.totals)return {ok:false,error:'markets_incomplete',home,away,fixture,oneXtwo:parsed.oneXtwo,totals:parsed.totals,statistics,fixtureCache:fixtures.cache,requestsUsed,quota:minQuota(fixtures.quota,odds.quota,stats.quota)};
+  if(!statistics)return {ok:false,error:'statistics_incomplete',home,away,fixture,oneXtwo:parsed.oneXtwo,totals:parsed.totals,statistics:null,fixtureCache:fixtures.cache,requestsUsed,quota:minQuota(fixtures.quota,odds.quota,stats.quota)};
+  return {ok:true,version:'api-football-candidate-v2',provider:'API-Football',home,away,fixture,oneXtwo:parsed.oneXtwo,totals:parsed.totals,statistics,observedAt:now,statisticsObservedAt:now,fixtureCache:fixtures.cache,requestsUsed,quota:minQuota(fixtures.quota,odds.quota,stats.quota)};
 }
 
 export function resetFixtureCache(){fixtureCache={at:0,rows:[],quota:null}}
