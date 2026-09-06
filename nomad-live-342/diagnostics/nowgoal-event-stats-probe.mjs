@@ -1,9 +1,10 @@
+import {parseNowgoalRoster,parseNowgoalStatsHtml} from '../../workers/nomadtips3-342-sot-off-bridge/src/nowgoal-stats.js';
+
 const BASE='https://www.nowgoal.net';
 const UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36';
 const TIMEOUT_MS=12000;
 const FALLBACK_MATCH_ID='2991086';
 
-function finite(v){const n=Number(v);return Number.isFinite(n)?n:null}
 function cookieFromHeaders(headers){
   const all=typeof headers?.getSetCookie==='function'?headers.getSetCookie():[];
   if(all.length)return all.map(v=>String(v).split(';')[0]).filter(Boolean).join('; ');
@@ -19,23 +20,8 @@ async function get(path,cookie=''){
     return {text,cookie:cookieFromHeaders(r.headers)};
   }finally{clearTimeout(timer)}
 }
-function splitLiteral(body=''){
-  const out=[];let current='',quote=null,escape=false;
-  for(const ch of body){
-    if(quote){if(escape){current+=ch;escape=false;continue}if(ch==='\\'){escape=true;continue}if(ch===quote){quote=null;continue}current+=ch;continue}
-    if(ch==="'"||ch==='"'){quote=ch;continue}if(ch===','){out.push(current.trim());current='';continue}current+=ch;
-  }
-  out.push(current.trim());return out;
-}
-function liveRoster(js=''){
-  const rows=[];
-  for(const m of String(js).matchAll(/A\[\d+\]\s*=\s*\[([^;]*?)\];/g)){
-    const f=splitLiteral(m[1]),id=String(f[0]||'').trim(),state=finite(f[8]);
-    if(/^\d+$/.test(id)&&state!==null&&state>0)rows.push({id,home:String(f[4]||'').trim(),away:String(f[5]||'').trim(),state,score:[finite(f[9]),finite(f[10])]});
-  }
-  return rows;
-}
 function inspectMatchHtml(id,html){
+  const parsed=parseNowgoalStatsHtml(html);
   const label=(re)=>re.test(html);
   const eventHits=[...html.matchAll(/(?:Off Target|On Target|Blocked|Shots on Goal|Shots off Goal)/gi)].length;
   return {
@@ -51,22 +37,24 @@ function inspectMatchHtml(id,html){
     timelineOnTarget:label(/On\s+Target/i),
     timelineBlocked:label(/\bBlocked\b/i),
     eventHits,
+    parserUsable:parsed.usable,
+    parsed:{sot:parsed.shots_on_target,off:parsed.shots_off_target,possession:parsed.possession},
   };
 }
 
 const homepage=await get('/');
 if(!homepage.cookie)throw new Error('NOWGOAL_SESSION_COOKIE_MISSING');
 const rosterResp=await get(`/gf/data/bf_en-idn1.js?${Date.now()}`,homepage.cookie);
-const live=liveRoster(rosterResp.text);
-const ids=live.slice(0,5).map(x=>x.id);
+const live=parseNowgoalRoster(rosterResp.text);
+const ids=live.slice(0,5).map(x=>x.sourceMatchId);
 if(!ids.length)ids.push(FALLBACK_MATCH_ID);
 const results=[];
 for(const id of ids){
   try{const page=await get(`/match/live-${id}?_=${Date.now()}`,homepage.cookie);results.push(inspectMatchHtml(id,page.text));}
   catch(error){results.push({id,error:String(error?.message||error)});}
 }
-const usable=results.filter(r=>!r.error&&r.statistics&&r.shotsOnGoal&&r.shotsOffGoal);
+const usable=results.filter(r=>!r.error&&r.parserUsable&&r.parsed?.sot&&r.parsed?.off);
 const timeline=results.filter(r=>!r.error&&(r.timelineOffTarget||r.timelineOnTarget||r.timelineBlocked));
-const out={ok:usable.length>0,mode:'READ_ONLY_DIAGNOSTIC',source:'Nowgoal',liveRosterCount:live.length,usedFallback:live.length===0,results,summary:{pages:results.length,usableStatsPages:usable.length,timelineEvidencePages:timeline.length}};
+const out={ok:usable.length>0,mode:'READ_ONLY_DIAGNOSTIC',source:'Nowgoal',parser:'3.42-nowgoal-stats.js',liveRosterCount:live.length,usedFallback:live.length===0,results,summary:{pages:results.length,parserUsableSotOffPages:usable.length,timelineEvidencePages:timeline.length}};
 console.log(JSON.stringify(out,null,2));
 if(!out.ok)process.exitCode=2;
