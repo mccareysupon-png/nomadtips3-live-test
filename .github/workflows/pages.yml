@@ -157,25 +157,46 @@ jobs:
           path.write_text(text, encoding="utf-8")
           PY
 
-      - name: Bust NOMAD 3.42 asset caches
+      - name: Stamp NOMAD 3.42 release and asset cache keys
+        env:
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           python - <<'PY'
+          import os
           import re
           from pathlib import Path
 
           path = Path("nomad-live-342/index.html")
           text = path.read_text(encoding="utf-8")
-          assets = {
-              r'nomad342-tabs\.css\?v=[^"\']+': 'nomad342-tabs.css?v=20260906-flow-v3',
-              r'ledger-runtime\.js\?v=[^"\']+': 'ledger-runtime.js?v=20260906-flow-v3',
-              r'signal-ledger\.js\?v=[^"\']+': 'signal-ledger.js?v=20260906-flow-v3',
-              r'statistics-ledger\.js\?v=[^"\']+': 'statistics-ledger.js?v=20260906-flow-v3',
-          }
-          for pattern, replacement in assets.items():
-              text, count = re.subn(pattern, replacement, text, count=1)
-              if count != 1:
-                  raise SystemExit(f"3.42 asset cache key not found: {pattern}")
+          sha = os.environ.get("RELEASE_SHA", "").strip().lower()
+          if not re.fullmatch(r"[0-9a-f]{40}", sha):
+              raise SystemExit(f"Invalid release SHA: {sha!r}")
+          short = sha[:12]
+
+          text = re.sub(
+              r'\s*<meta name="nomad342-release" content="[^"]*">\s*',
+              "\n",
+              text,
+              count=1,
+          )
+          marker = "</head>"
+          if marker not in text:
+              raise SystemExit("NOMAD 3.42 closing head tag not found")
+          release_meta = f'  <meta name="nomad342-release" content="{sha}">\n'
+          text = text.replace(marker, release_meta + marker, 1)
+
+          asset_pattern = re.compile(
+              r'((?:href|src)=")(?!\.\./)([^"?]+\.(?:css|js))(?:\?[^\"]*)?(\")'
+          )
+          text, count = asset_pattern.subn(
+              lambda m: f'{m.group(1)}{m.group(2)}?v={short}{m.group(3)}',
+              text,
+          )
+          if count < 10:
+              raise SystemExit(f"Expected NOMAD 3.42 local assets to be stamped; only {count} matched")
+
           path.write_text(text, encoding="utf-8")
+          print(f"NOMAD342_RELEASE_STAMPED sha={sha} assets={count}")
           PY
 
       - name: Configure GitHub Pages
@@ -191,3 +212,41 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify NOMAD 3.42 exact release is live on Pages and www
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          short="${RELEASE_SHA:0:12}"
+          targets=(
+            "https://mccareysupon-png.github.io/nomadtips3-live-test/nomad-live-342/"
+            "https://www.nomadtips3.com/nomad-live-342/"
+          )
+
+          for target in "${targets[@]}"; do
+            ok=0
+            out="/tmp/nomad342-live-check.html"
+            for attempt in $(seq 1 36); do
+              url="${target}?release=${RELEASE_SHA}&attempt=${attempt}&t=$(date +%s)"
+              if curl -fsSL --max-time 20 "$url" -o "$out" \
+                && grep -Fq "meta name=\"nomad342-release\" content=\"${RELEASE_SHA}\"" "$out" \
+                && grep -Fq "ledger-pages.css?v=${short}" "$out" \
+                && grep -Fq "live-score-alert-visual.css?v=${short}" "$out"; then
+                css="/tmp/nomad342-ledger.css"
+                if curl -fsSL --max-time 20 "${target}ledger-pages.css?v=${short}&t=$(date +%s)" -o "$css" \
+                  && test -s "$css"; then
+                  ok=1
+                  echo "LIVE_OK target=${target} sha=${RELEASE_SHA} attempt=${attempt}"
+                  break
+                fi
+              fi
+              sleep 5
+            done
+            if [ "$ok" != "1" ]; then
+              echo "::error::NOMAD 3.42 release ${RELEASE_SHA} did not reach ${target} within 3 minutes"
+              exit 1
+            fi
+          done
+
+          echo "NOMAD342_END_TO_END_LIVE sha=${RELEASE_SHA}"
