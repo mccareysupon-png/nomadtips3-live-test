@@ -4,6 +4,26 @@
   const script = document.currentScript;
   const root = new URL('./', script?.src || window.location.href);
 
+  /* KrystalView production analytics. Public site key from KrystalView install screen.
+     Keep input masking enabled and avoid touching NOMAD feed/engine logic. */
+  if(!window.__NOMAD_KRYSTALVIEW_TRACKER__){
+    window.__NOMAD_KRYSTALVIEW_TRACKER__=true;
+    const kv=document.createElement('script');
+    kv.src='https://krystalview.com/t/kv.js';
+    kv.async=true;
+    kv.onload=()=>{
+      if(!window.KUAnalytics)return;
+      window.KUAnalytics.init({
+        collectorBaseUrl:'https://krystalview.com/api',
+        siteKey:'site_0ac9bf521d3841e5bb1590680aa94254',
+        consentRequired:false,
+        maskAllInputs:true,
+        sampleRate:1
+      });
+    };
+    document.head.appendChild(kv);
+  }
+
   /* Shared primary-navigation label only. Keep page titles, live-score feeds,
      tab labels and runtime logic untouched. */
   const normalizePublicMarketNav = () => {
