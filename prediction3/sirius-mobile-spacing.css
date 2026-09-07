@@ -1,0 +1,62 @@
+/* Prediction3 · Sirius mobile spacing balance.
+   Mobile-only presentation tuning. No data, odds, engine, settlement or desktop/tablet changes. */
+@media(max-width:680px){
+  /* Remove the oversized dead zone at the bottom of the Guardian while preserving the image composition. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
+    min-height:360px!important;
+    gap:7px!important;
+    padding:178px 12px 30px!important;
+  }
+
+  /* Keep the content stack compact and rhythmically even. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-intro{
+    padding-left:9px!important;
+    margin:0!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-match-teams{
+    margin-top:0!important;
+    padding:7px 0 6px 8px!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-match-meta{
+    margin-top:0!important;
+    padding-left:8px!important;
+    gap:6px!important;
+    line-height:1.3!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-manual-pill{
+    margin-top:1px!important;
+    letter-spacing:.035em!important;
+  }
+
+  /* Tighten tracking for small screens so words read as words, not separated letters. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-intro span{
+    letter-spacing:.075em!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-intro strong{
+    letter-spacing:.01em!important;
+    line-height:1.08!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-floating-pick span{
+    letter-spacing:.105em!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-floating-pick strong{
+    letter-spacing:.01em!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-section-label span,
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-final-heading span{
+    letter-spacing:.055em!important;
+  }
+
+  /* Pull the Verdict content slightly closer to the blended seam without making it cramped. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-pick-grid{
+    padding-top:8px!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-pick-hero{
+    padding-top:14px!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-pick-hero h2{
+    margin-top:8px!important;
+    margin-bottom:13px!important;
+    letter-spacing:.012em!important;
+  }
+}
