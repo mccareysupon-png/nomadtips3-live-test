@@ -11,7 +11,8 @@
     "automatic_settlement": true,
     "market_default": "1X2 Team Win",
     "minimum_decimal_odds": 1.75,
-    "principle": "quality over quantity; only high-grade 1X2 picks at 1.75+; NO PICK is valid; strategy may change daily"
+    "principle": "quality over quantity; only high-grade 1X2 picks at 1.75+; NO PICK is valid; strategy may change daily",
+    "daily_strategy": "2026-09-08 SIRIUS WORLD HUNT · straight 1X2 win only · minimum price 1.75"
   },
   "settlement": {
     "reviewer": "Prediction3 Tracker",
@@ -25,248 +26,239 @@
   },
   "today": [
     {
-      "id": "p3-2026-09-07-pal-sam",
-      "date": "2026-09-07",
-      "league": "Serie B",
-      "round": "Matchday 3",
-      "kickoff": "01:30 Thailand Time · 08 Sep",
-      "tracking": {
-        "provider": "TotalCorner V3",
-        "fixtureId": null,
-        "kickoffUtc": "2026-09-07T18:30:00Z",
-        "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
+      "id": "p3-2026-09-08-uls-seo",
+      "date": "2026-09-08",
+      "league": "K League 1",
+      "round": "Round 28",
+      "kickoff": "17:30 Thailand Time",
+      "tracking": {"provider":"TotalCorner V3","fixtureId":null,"kickoffUtc":"2026-09-08T10:30:00Z","pickSide":"away","liveScore":true,"automaticSettlement":true},
+      "home": "Ulsan HD",
+      "homeShort": "ULS",
+      "away": "FC Seoul",
+      "awayShort": "SEO",
+      "homeColors": {"base":"#164a98","stripe":"#f2c230","accent":"#d7b46a","pattern":"stripe"},
+      "awayColors": {"base":"#c51f2f","stripe":"#111111","accent":"#d7b46a","pattern":"stripe"},
+      "pick": "FC Seoul to Win",
+      "market": "1X2",
+      "referenceOdds": 2.10,
+      "bestOddsObserved": 2.22,
+      "oddsCapturedAt": "2026-09-08 06:33 ICT",
+      "minimumOdds": 1.75,
+      "confidenceLabel": "Highest / Away Control",
+      "currentView": "Approved",
+      "finalCheck": "Price + Starting XI",
+      "nomadView": "Strong Positive",
+      "risk": "Moderate",
+      "grade": "A+",
+      "why": [
+        "FC Seoul enter on five consecutive league wins and lead the K League by a wide margin.",
+        "Ulsan have only one win in their latest five-match sequence, while Seoul's current run is W-W-W-W-W.",
+        "Seoul have 47 points with 19 conceded after 23 matches versus Ulsan's 37 points and 33 conceded.",
+        "The away price remains above 2.00, comfortably clearing the Sirius 1.75 floor."
+      ],
+      "support": {
+        "form": "ULS: D W L L L | SEO: W W W W W",
+        "squad": "Keep only if the core FC Seoul starting structure is intact at final lineup check.",
+        "level": "League leader · five straight wins · materially stronger defensive record.",
+        "price": "Ref 2.10 · best observed 2.22 · floor 1.75"
       },
-      "home": "Palermo",
-      "homeShort": "PAL",
-      "away": "Sampdoria",
-      "awayShort": "SAM",
-      "homeColors": {"base": "#e7a6bc", "stripe": "#151515", "accent": "#d7b46a", "pattern": "center"},
-      "awayColors": {"base": "#1f4e9c", "stripe": "#ffffff", "accent": "#d7b46a", "pattern": "stripe"},
-      "pick": "Palermo to Win",
+      "historicalStats": {
+        "sampleLabel": "CURRENT K LEAGUE FORM / TABLE",
+        "note": "Pre-match public data only; no guarantee of result.",
+        "metrics": [
+          {"label":"RECENT FORM","home":20,"away":100,"homeText":"1 win / 5","awayText":"5 wins / 5","max":100},
+          {"label":"MODEL WIN VIEW","home":20,"away":59,"homeText":"20%","awayText":"59%","max":100}
+        ]
+      },
+      "tactical": ["Seoul can play from control rather than chase the game early.","Ulsan remain dangerous at home, so the selection stays 1X2 only with no handicap extension."],
+      "riskFactors": ["Away-match variance", "Ulsan won the most recent July meeting", "Price can compress before kickoff"],
+      "noBetIf": ["FC Seoul price drops below 1.75", "Confirmed XI removes multiple core starters", "Material adverse team news appears before kickoff"],
+      "finalCall": "SIRIUS LOCK — FC SEOUL WIN · PRICE 1.75+",
+      "finalNote": "Top global selection of the current slate. Strongest form gap with a playable away price.",
+      "disciplineNote": "Straight 1X2 win only. Never chase below 1.75.",
+      "sources": [
+        {"label":"Current Odds / Form","type":"price","url":"https://footballnation.eu/match/k-league-1/2026/775537/"},
+        {"label":"Odds Cross-check","type":"price","url":"https://www.oddschecker.com/football/world/south-korea/k-league-1/ulsan-hd-v-fc-seoul/winner?selectionName=FC-Seoul"},
+        {"label":"Asian Football Update","type":"document","url":"https://www.reuters.com/sports/soccer/week-asian-football-2026-09-07/"}
+      ]
+    },
+    {
+      "id": "p3-2026-09-08-ett-fai",
+      "date": "2026-09-08",
+      "league": "Saudi Pro League",
+      "round": "Round 6",
+      "kickoff": "22:30 Thailand Time",
+      "tracking": {"provider":"TotalCorner V3","fixtureId":null,"kickoffUtc":"2026-09-08T15:30:00Z","pickSide":"home","liveScore":true,"automaticSettlement":true},
+      "home": "Al-Ettifaq",
+      "homeShort": "ETT",
+      "away": "Al-Faisaly",
+      "awayShort": "FAI",
+      "homeColors": {"base":"#1d7a58","stripe":"#d63a3a","accent":"#d7b46a","pattern":"stripe"},
+      "awayColors": {"base":"#6b1530","stripe":"#ffffff","accent":"#d7b46a","pattern":"center"},
+      "pick": "Al-Ettifaq to Win",
+      "market": "1X2",
+      "referenceOdds": 1.85,
+      "bestOddsObserved": 1.92,
+      "oddsCapturedAt": "2026-09-08 06:33 ICT",
+      "minimumOdds": 1.75,
+      "confidenceLabel": "High / Controlled",
+      "currentView": "Approved",
+      "finalCheck": "Price + Starting XI",
+      "nomadView": "Strong Positive",
+      "risk": "Moderate",
+      "grade": "A+",
+      "why": [
+        "Al-Ettifaq have three league wins from their first five matches while Al-Faisaly remain winless.",
+        "Al-Faisaly are in the relegation zone and have lost both league away matches in the reviewed sample.",
+        "Al-Ettifaq have won 13 of 26 historical meetings and are favoured again at home.",
+        "Current 1X2 prices around 1.85-1.92 remain above the Sirius minimum."
+      ],
+      "support": {
+        "form": "ETT: 3W 0D 2L | FAI: 0W 2D 3L",
+        "squad": "Final lineup check required; keep Moussa Dembélé / central attacking structure intact where available.",
+        "level": "Al-Ettifaq 8th · Al-Faisaly 17th before Round 6.",
+        "price": "Ref 1.85 · best observed 1.92 · floor 1.75"
+      },
+      "historicalStats": {
+        "sampleLabel": "SAUDI PRO LEAGUE START / H2H",
+        "note": "Current league form plus historical matchup context.",
+        "metrics": [
+          {"label":"LEAGUE WINS","home":60,"away":0,"homeText":"3 / 5","awayText":"0 / 5","max":100},
+          {"label":"H2H WINS","home":50,"away":26.9,"homeText":"13 / 26","awayText":"7 / 26","max":100}
+        ]
+      },
+      "tactical": ["The home side should have the initiative against a promoted opponent still searching for its first win.","Avoid handicap escalation; the 1X2 price already clears the required floor."],
+      "riskFactors": ["Al-Ettifaq have lost two home league matches in the early sample", "Saudi league volatility", "Late lineup changes"],
+      "noBetIf": ["Al-Ettifaq price drops below 1.75", "Multiple first-choice attackers are absent", "Late market movement and team news both turn sharply negative"],
+      "finalCall": "SIRIUS LOCK — AL-ETTIFAQ WIN · PRICE 1.75+",
+      "finalNote": "Second core selection: form and opponent profile create a clean 1X2 case at the available price.",
+      "disciplineNote": "Straight home win only; remove if the 1.75 floor breaks.",
+      "sources": [
+        {"label":"Current Odds","type":"price","url":"https://m.aiscore.com/match-al-ettifaq-al-faisaly/o17pjiowmnysy7j"},
+        {"label":"Form / H2H","type":"document","url":"https://www.soccerpunter.com/h2h/Al-Ettifaq-vs-Al-Faisaly/10010/6883/"},
+        {"label":"Match Preview","type":"document","url":"https://www.thestatszone.com/al-ettifaq-vs-al-faisaly-preview-prediction-222589"}
+      ]
+    },
+    {
+      "id": "p3-2026-09-08-aek-las",
+      "date": "2026-09-08",
+      "league": "UEFA Champions League",
+      "round": "League Phase · Matchday 1",
+      "kickoff": "23:45 Thailand Time",
+      "tracking": {"provider":"TotalCorner V3","fixtureId":null,"kickoffUtc":"2026-09-08T16:45:00Z","pickSide":"home","liveScore":true,"automaticSettlement":true},
+      "home": "AEK Athens",
+      "homeShort": "AEK",
+      "away": "LASK",
+      "awayShort": "LASK",
+      "homeColors": {"base":"#f0c400","stripe":"#111111","accent":"#d7b46a","pattern":"stripe"},
+      "awayColors": {"base":"#ffffff","stripe":"#111111","accent":"#d7b46a","pattern":"stripe"},
+      "pick": "AEK Athens to Win",
       "market": "1X2",
       "referenceOdds": 1.80,
-      "bestOddsObserved": 1.81,
-      "oddsCapturedAt": "2026-09-07 06:14 ICT",
+      "bestOddsObserved": 1.85,
+      "oddsCapturedAt": "2026-09-08 06:33 ICT",
       "minimumOdds": 1.75,
-      "confidenceLabel": "High / Controlled",
-      "currentView": "Provisional",
-      "finalCheck": "Starting XI + Price",
-      "nomadView": "Strong Positive",
-      "risk": "Moderate",
-      "grade": "A+",
-      "why": [
-        "Palermo enter the matchup on the stronger recent run, while Sampdoria's recent sequence is materially weaker.",
-        "The 1X2 market keeps Palermo as a clear home favourite while still offering a playable price around the 1.75-1.81 range.",
-        "Public pre-match data gives Palermo the stronger attacking profile and a clear edge in recent form.",
-        "The home setting at Renzo Barbera supports the side with the cleaner current momentum."
-      ],
-      "support": {
-        "form": "PAL: W W W W W | SAM: L D L L W",
-        "squad": "Projected Palermo XI includes Pohjanpalo with Strefezza, Palumbo and Johnsen behind him; re-check confirmed XI before lock.",
-        "level": "Recent form and pre-match attacking indicators favour Palermo.",
-        "price": "Ref 1.80 · best observed 1.81 · floor 1.75"
-      },
-      "historicalStats": {
-        "sampleLabel": "RECENT FORM / PRE-MATCH PUBLIC DATA",
-        "note": "Only values explicitly available in reviewed public sources are used; missing values are not inferred.",
-        "metrics": [
-          {"label": "FORM POINTS", "home": 100, "away": 26.7, "homeText": "15 / 15", "awayText": "4 / 15", "max": 100},
-          {"label": "PRE-MATCH xG", "home": 2.0, "away": 0.89, "homeText": "2.00", "awayText": "0.89", "max": 2.5}
-        ]
-      },
-      "tactical": [
-        "Palermo's projected 4-2-3-1 gives a central reference in Pohjanpalo with three creators operating behind him.",
-        "The main route is sustained home pressure rather than chasing an early open game.",
-        "Sampdoria remain dangerous enough that Palermo must avoid cheap transition losses after committing numbers forward."
-      ],
-      "riskFactors": ["Serie B draw risk", "Price has already moved across the 1.75-1.81 band at different books", "Final starting XI still needs confirmation"],
-      "noBetIf": ["Palermo price drops below 1.75", "Confirmed XI removes multiple primary attacking pieces", "Late market movement turns materially against Palermo together with adverse team news"],
-      "finalCall": "FOLLOW — PRICE 1.75+ AND XI CHECK",
-      "finalNote": "Palermo are today's top home-side candidate from the reviewed slate. Keep the pick only while the 1X2 price remains at or above 1.75 and the core attack starts.",
-      "disciplineNote": "Quality gate only. Do not replace the pick with a lower-grade match if the price or lineup breaks.",
-      "sources": [
-        {"label": "Official Fixture Confirmation", "type": "document", "url": "https://www.palermofc.com/en/news/palermo-fc-vs-uc-sampdoria-ticket-info-2"},
-        {"label": "Current Odds Comparison", "type": "price", "url": "https://www.oddschecker.com/football/italy/serie-b/palermo-v-sampdoria/winner"},
-        {"label": "Current Market Cross-check", "type": "price", "url": "https://www.betmgm.com/en/sports/events/palermo-fc-uc-sampdoria-2%3A7845403"},
-        {"label": "Recent Form & Pre-match Data", "type": "document", "url": "https://kickleak.com/en/match/135114"},
-        {"label": "Projected Lineups", "type": "squad", "url": "https://www.tuttopalermo.net/primo-piano/serie-b-palermo-sampdoria-probabili-formazioni-127389"}
-      ]
-    },
-    {
-      "id": "p3-2026-09-07-kal-dju",
-      "date": "2026-09-07",
-      "league": "Allsvenskan",
-      "round": "Regular Season",
-      "kickoff": "00:00 Thailand Time · 08 Sep",
-      "tracking": {
-        "provider": "TotalCorner V3",
-        "fixtureId": null,
-        "kickoffUtc": "2026-09-07T17:00:00Z",
-        "pickSide": "away",
-        "liveScore": true,
-        "automaticSettlement": true
-      },
-      "home": "Kalmar FF",
-      "homeShort": "KAL",
-      "away": "Djurgården",
-      "awayShort": "DIF",
-      "homeColors": {"base": "#d9272e", "stripe": "#ffffff", "accent": "#d7b46a", "pattern": "stripe"},
-      "awayColors": {"base": "#1f4f9d", "stripe": "#7eb2e6", "accent": "#d7b46a", "pattern": "stripe"},
-      "pick": "Djurgården to Win",
-      "market": "1X2",
-      "referenceOdds": 1.78,
-      "bestOddsObserved": 1.80,
-      "oddsCapturedAt": "2026-09-07 06:14 ICT",
-      "minimumOdds": 1.75,
-      "confidenceLabel": "High / Controlled",
-      "currentView": "Provisional",
-      "finalCheck": "Starting XI + Price",
-      "nomadView": "Strong Positive",
-      "risk": "Moderate",
-      "grade": "A+",
-      "why": [
-        "Djurgården arrive with the stronger league trend and have won five of their last seven league matches to nil.",
-        "They have also won five of their last seven Allsvenskan away trips, which directly supports the away-win angle.",
-        "Kalmar are winless in their last five league matches and have struggled to convert home advantage into control.",
-        "The best observed away-win price remains at the 1.80 area, just above today's 1.75 quality floor."
-      ],
-      "support": {
-        "form": "KAL: W D L L D L | DIF: W L L W W W",
-        "squad": "Kalmar list Carl Gustafsson unavailable; Djurgården had no unavailable players listed in the reviewed preview.",
-        "level": "Djurgården: 5 wins in last 7 league games to nil · 5 wins in last 7 league away trips.",
-        "price": "Ref 1.78 · best observed 1.80 · floor 1.75"
-      },
-      "historicalStats": {
-        "sampleLabel": "RECENT ALLSVENSKAN / PRE-MATCH DATA",
-        "note": "Metrics are based only on reviewed public pre-match sources and are not treated as guarantees.",
-        "metrics": [
-          {"label": "RECENT FORM POINTS", "home": 13.3, "away": 60.0, "homeText": "2 / 15", "awayText": "9 / 15", "max": 100},
-          {"label": "CLEAN SHEETS", "home": 20, "away": 80, "homeText": "20%", "awayText": "competition high", "max": 100}
-        ]
-      },
-      "tactical": [
-        "Djurgården can stay patient because Kalmar's recent league form does not force an early high-risk game state.",
-        "Away control and clean-sheet frequency make a structured 1X2 win preferable to chasing a larger handicap.",
-        "The main concern is market compression: the pick loses value quickly if the away price falls under the daily floor."
-      ],
-      "riskFactors": ["Away-match variance", "Price is close to the 1.75 minimum", "Kalmar can still create isolated scoring chances at home"],
-      "noBetIf": ["Djurgården price drops below 1.75", "Confirmed XI shows material attacking or defensive rotation", "Late team news materially weakens Djurgården"],
-      "finalCall": "FOLLOW — PRICE 1.75+ AND XI CHECK",
-      "finalNote": "Djurgården remain the strongest away-side candidate in today's reviewed set. Keep the pick only while the market stays at 1.75 or higher.",
-      "disciplineNote": "Do not chase the price. If the 1X2 floor breaks, remove the pick rather than changing market.",
-      "sources": [
-        {"label": "Current Odds Comparison", "type": "price", "url": "https://www.oddschecker.com/football/sweden/allsvenskan/kalmar-ff-v-djurgarden/winner"},
-        {"label": "Current Market Cross-check", "type": "price", "url": "https://www.sportingbet.com/en/sports/events/kalmar-ff-djurgardens-if-2%3A7845395"},
-        {"label": "Form & Key Stats", "type": "document", "url": "https://www.betfred.com/sports/football/event/36743214"},
-        {"label": "Lineups / Availability", "type": "squad", "url": "https://www.fotmob.com/matches/djurgarden-vs-kalmar-ff/37gy4d"}
-      ]
-    },
-    {
-      "id": "p3-2026-09-07-pog-wpl",
-      "date": "2026-09-07",
-      "league": "Ekstraklasa",
-      "round": "Matchday 7",
-      "kickoff": "01:30 Thailand Time · 08 Sep",
-      "tracking": {
-        "provider": "TotalCorner V3",
-        "fixtureId": null,
-        "kickoffUtc": "2026-09-07T18:30:00Z",
-        "pickSide": "home",
-        "liveScore": true,
-        "automaticSettlement": true
-      },
-      "home": "Pogoń Szczecin",
-      "homeShort": "POG",
-      "away": "Wisła Płock",
-      "awayShort": "WPL",
-      "homeColors": {"base": "#1f3f8f", "stripe": "#b51f2e", "accent": "#d7b46a", "pattern": "stripe"},
-      "awayColors": {"base": "#173d88", "stripe": "#ffffff", "accent": "#d7b46a", "pattern": "center"},
-      "pick": "Pogoń Szczecin to Win",
-      "market": "1X2",
-      "referenceOdds": 1.90,
-      "bestOddsObserved": 1.95,
-      "oddsCapturedAt": "2026-09-07 06:14 ICT",
-      "minimumOdds": 1.75,
-      "confidenceLabel": "High / Watch",
-      "currentView": "Provisional",
-      "finalCheck": "Starting XI + Price",
+      "confidenceLabel": "High / Home Edge",
+      "currentView": "Approved",
+      "finalCheck": "Price + Starting XI",
       "nomadView": "Positive",
       "risk": "Moderate",
       "grade": "A",
       "why": [
-        "Pogoń sit seventh with eight points while Wisła Płock are sixteenth with four points in the current league table context.",
-        "Wisła enter on a run of three consecutive league defeats, while Pogoń's recent league sequence is materially steadier.",
-        "Independent pre-match models reviewed lean home, with one results-first model placing Pogoń near 59% and another Poisson model at 57%.",
-        "The 1X2 market still offers roughly 1.90-1.95 on the home win, comfortably above today's 1.75 floor."
+        "AEK's latest five-match run is 5-0, 2-0, 1-1, 4-0 and 4-0, showing strong home and overall momentum.",
+        "UEFA lists no AEK players as out or doubtful for this matchday, while LASK have one player out and Samuel Adeniran doubtful.",
+        "AEK are priced as clear home favourites around 1.75-1.85.",
+        "The front line projects with Barnabás Varga and Luka Jović, supported by a strong midfield core."
       ],
       "support": {
-        "form": "POG: 2W 2D 1L, 7:4 after five league games | WPL: 4 pts, three straight league losses",
-        "squad": "Re-check confirmed Pogoń XI; reported injuries include Botis, José Pozo and Rajmund Molnár.",
-        "level": "Table position and recent league stability favour Pogoń; model estimates also lean home.",
-        "price": "Ref 1.90 · best observed 1.95 · floor 1.75"
+        "form": "AEK: W W D W W | LASK: W W W W L",
+        "squad": "AEK: no listed outs/doubts in UEFA preview; LASK: Kalajdžić out, Adeniran doubtful.",
+        "level": "Strong AEK home scoring form; LASK remain dangerous after the Celtic comeback.",
+        "price": "Ref 1.80 · best observed 1.85 · floor 1.75"
       },
       "historicalStats": {
-        "sampleLabel": "CURRENT LEAGUE / PRE-MATCH MODELS",
-        "note": "Table and form context comes from the reviewed club/public sources; model probabilities are shown as supporting evidence only.",
+        "sampleLabel": "RECENT COMPETITIVE FORM",
+        "note": "Both teams are in form, so home advantage and availability drive the selection.",
         "metrics": [
-          {"label": "LEAGUE POINT RATE", "home": 53.3, "away": 26.7, "homeText": "8 / 15", "awayText": "4 / 15", "max": 100},
-          {"label": "MODEL HOME WIN", "home": 58.6, "away": 14.0, "homeText": "58.6%", "awayText": "14.0%", "max": 100}
+          {"label":"RECENT WINS","home":80,"away":80,"homeText":"4 / 5","awayText":"4 / 5","max":100},
+          {"label":"MODEL HOME WIN","home":53,"away":22,"homeText":"53%","awayText":"22%","max":100}
         ]
       },
-      "tactical": [
-        "Pogoń do not need to force the game early; the home edge is strongest if they control territory and avoid transition chaos.",
-        "Wisła's need to end a three-match league losing run can open space if the visitors chase the game.",
-        "The 1X2 price is attractive enough that no handicap extension is needed."
-      ],
-      "riskFactors": ["Pogoń drew their last two league matches", "Home-win models still leave meaningful draw probability", "Several Pogoń absences require a final lineup check"],
-      "noBetIf": ["Pogoń price drops below 1.75", "Confirmed XI removes multiple core creators or finishers", "Late market and team news both move materially against Pogoń"],
-      "finalCall": "FOLLOW — PRICE 1.75+ AND XI CHECK",
-      "finalNote": "Pogoń offer the best price of today's three approved selections. The home edge is good enough for an A grade, but lineup discipline remains mandatory.",
-      "disciplineNote": "No handicap conversion. Keep the original 1X2 call or remove the pick if the quality gate breaks.",
+      "tactical": ["AEK's home structure and two-striker threat provide the cleaner route to a regulation-time win.","LASK's attacking form prevents this from receiving A+ status."],
+      "riskFactors": ["LASK scored five against Celtic in the playoff return leg", "Both sides carry strong recent form", "Price sits close to the minimum at some books"],
+      "noBetIf": ["AEK price drops below 1.75", "Jović and Varga are both absent from the starting attack", "Major late team news weakens AEK"],
+      "finalCall": "FOLLOW — AEK ATHENS WIN · PRICE 1.75+",
+      "finalNote": "Approved home selection, but one tier below the two core picks because LASK arrive in strong attacking form.",
+      "disciplineNote": "Keep regulation 1X2 only and respect the price floor.",
       "sources": [
-        {"label": "Current Odds Comparison", "type": "price", "url": "https://www.sportytrader.com/pt-br/odds/mks-pogon-szczecin-wisla-plock-sa-8533461/"},
-        {"label": "Current Market Cross-check", "type": "price", "url": "https://www.sportingbet.co.za/en/sports/events/pogon-szczecin-wisla-plock-2%3A7858646"},
-        {"label": "Official Wisła Match Preview", "type": "document", "url": "https://wisla-plock.pl/aktualnosci/zapowiedz-odgryzc-sie-w-szczecinie/"},
-        {"label": "Model / Match Context", "type": "document", "url": "https://footycheck.com/football/match/pogon-szczecin-vs-wisla-plock-2026-09-07/1553161/"}
+        {"label":"UEFA Team News","type":"squad","url":"https://www.uefa.com/uefachampionsleague/news/02a9-2188cf675017-df8325ec95c3-1000--champions-league-predicted-line-ups-matchday-1-team-news-/"},
+        {"label":"Current Odds","type":"price","url":"https://www.sportytrader.com/en/odds/aek-athens-lask-linz-8786590/"},
+        {"label":"Recent Form","type":"document","url":"https://www.fotmob.com/matches/aek-athens-vs-lask/2uc3cn"}
+      ]
+    },
+    {
+      "id": "p3-2026-09-08-dor-vil",
+      "date": "2026-09-08",
+      "league": "UEFA Champions League",
+      "round": "League Phase · Matchday 1",
+      "kickoff": "02:00 Thailand Time · 09 Sep",
+      "tracking": {"provider":"TotalCorner V3","fixtureId":null,"kickoffUtc":"2026-09-08T19:00:00Z","pickSide":"home","liveScore":true,"automaticSettlement":true},
+      "home": "Borussia Dortmund",
+      "homeShort": "BVB",
+      "away": "Villarreal",
+      "awayShort": "VIL",
+      "homeColors": {"base":"#f4d000","stripe":"#111111","accent":"#d7b46a","pattern":"stripe"},
+      "awayColors": {"base":"#f3df34","stripe":"#1c63a6","accent":"#d7b46a","pattern":"center"},
+      "pick": "Borussia Dortmund to Win",
+      "market": "1X2",
+      "referenceOdds": 1.75,
+      "bestOddsObserved": 1.81,
+      "oddsCapturedAt": "2026-09-08 06:33 ICT",
+      "minimumOdds": 1.75,
+      "confidenceLabel": "High / Price Floor",
+      "currentView": "Approved",
+      "finalCheck": "Starting XI + Price",
+      "nomadView": "Positive",
+      "risk": "Moderate-High",
+      "grade": "A",
+      "why": [
+        "Dortmund's recent public form line is five straight wins with 15 goals scored and four conceded.",
+        "Villarreal enter without a win in four league matches and have a poor recent Champions League defensive record.",
+        "Signal Iduna Park gives Dortmund the stronger venue edge.",
+        "The selection only qualifies while the home price remains at or above the exact 1.75 Sirius floor."
+      ],
+      "support": {
+        "form": "BVB: W W W W W | Villarreal: recent league run without a win in four",
+        "squad": "Dortmund have several absences; final starting XI is mandatory before retaining the pick.",
+        "level": "Strong current BVB form vs Villarreal's weak recent Champions League defensive history.",
+        "price": "Ref 1.75 · best observed 1.81 · floor 1.75"
+      },
+      "historicalStats": {
+        "sampleLabel": "RECENT FORM / UCL CONTEXT",
+        "note": "Dortmund injury load lowers this selection from A+ to A.",
+        "metrics": [
+          {"label":"RECENT FORM","home":100,"away":35,"homeText":"5 wins / 5","awayText":"no league win / 4","max":100},
+          {"label":"RECENT GOAL BALANCE","home":78.9,"away":30.4,"homeText":"15:4","awayText":"7:23 UCL sample","max":100}
+        ]
+      },
+      "tactical": ["Dortmund should own more territory and chance volume at home.","Because of the injury list, no handicap or price chase is permitted."],
+      "riskFactors": ["Dortmund have a significant absentee list", "Price is sitting exactly on the minimum at some books", "Villarreal retain dangerous attacking players"],
+      "noBetIf": ["Dortmund price drops below 1.75", "Serhou Guirassy is absent from the starting XI", "Late defensive absences materially worsen Dortmund's lineup"],
+      "finalCall": "FOLLOW — DORTMUND WIN · STRICT PRICE 1.75+",
+      "finalNote": "Approved only at the floor or better. Strong form case, but lineup risk must be respected.",
+      "disciplineNote": "If the market goes 1.74 or lower, remove the pick rather than chasing it.",
+      "sources": [
+        {"label":"Current Bet365 Price","type":"price","url":"https://sportscore.com/pt/football/match/borussia-dortmund-vs-villarreal-cf/"},
+        {"label":"Form / Match Context","type":"document","url":"https://kickleak.com/en/match/135502"},
+        {"label":"Team News / Preview","type":"squad","url":"https://www.squawka.com/us/news/champions-league/match-preview-dortmund-vs-villarreal-08-09-26-champions-league/"}
       ]
     }
   ],
   "results": [
-    {
-      "id": "p3-2026-09-06-ang-ren",
-      "date": "2026-09-06",
-      "league": "Ligue 1",
-      "round": "Matchday 3",
-      "kickoff": "22:15 Thailand Time",
-      "home": "Angers SCO",
-      "away": "Stade Rennais",
-      "pick": "Rennes to Win",
-      "market": "1X2",
-      "odds": 1.92,
-      "ft": "1-2",
-      "result": "WIN",
-      "settledAt": "2026-09-07 06:14 ICT",
-      "verified": true,
-      "resultSource": "TotalCorner V3"
-    },
-    {
-      "id": "p3-2026-09-05-scp-scf",
-      "date": "2026-09-05",
-      "league": "Bundesliga",
-      "round": "Matchday 2",
-      "kickoff": "20:30 Thailand Time",
-      "home": "SC Paderborn 07",
-      "away": "SC Freiburg",
-      "pick": "Freiburg to Win",
-      "market": "1X2",
-      "odds": 2.04,
-      "ft": "0-1",
-      "result": "WIN",
-      "settledAt": "2026-09-06 10:26 ICT",
-      "verified": true,
-      "resultSource": "https://www.scfreiburg.com/en/latest/first-team/match-reports/2026-27/fifth-win-in-fifth-competitive-fixture/"
-    }
+    {"id":"p3-2026-09-07-pal-sam","date":"2026-09-07","league":"Serie B","home":"Palermo","away":"Sampdoria","pick":"Palermo to Win","market":"1X2","odds":1.80,"ft":"3-1","result":"WIN","settledAt":"2026-09-08 ICT","verified":true,"resultSource":"Prediction3 Tracker / TotalCorner V3"},
+    {"id":"p3-2026-09-07-kal-dju","date":"2026-09-07","league":"Allsvenskan","home":"Kalmar FF","away":"Djurgården","pick":"Djurgården to Win","market":"1X2","odds":1.78,"ft":"0-1","result":"WIN","settledAt":"2026-09-08 ICT","verified":true,"resultSource":"Prediction3 Tracker / TotalCorner V3"},
+    {"id":"p3-2026-09-07-pog-wpl","date":"2026-09-07","league":"Ekstraklasa","home":"Pogoń Szczecin","away":"Wisła Płock","pick":"Pogoń Szczecin to Win","market":"1X2","odds":1.90,"ft":"1-1","result":"LOSS","settledAt":"2026-09-08 ICT","verified":true,"resultSource":"Prediction3 Tracker / TotalCorner V3"},
+    {"id":"p3-2026-09-06-ang-ren","date":"2026-09-06","league":"Ligue 1","home":"Angers SCO","away":"Stade Rennais","pick":"Rennes to Win","market":"1X2","odds":1.92,"ft":"1-2","result":"WIN","settledAt":"2026-09-07 06:14 ICT","verified":true,"resultSource":"TotalCorner V3"},
+    {"id":"p3-2026-09-05-scp-scf","date":"2026-09-05","league":"Bundesliga","home":"SC Paderborn 07","away":"SC Freiburg","pick":"Freiburg to Win","market":"1X2","odds":2.04,"ft":"0-1","result":"WIN","settledAt":"2026-09-06 10:26 ICT","verified":true,"resultSource":"Official result verification"}
   ]
 }
