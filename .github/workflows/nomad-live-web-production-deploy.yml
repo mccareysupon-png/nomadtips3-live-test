@@ -49,11 +49,14 @@ jobs:
           node --check nomad-live-web-production/src/index.js
           node --check nomad-live/runtime.js
           node --check nomad-live/live-filter-lock.js
-          node --check nomad-live/statistics-live-score-mirror.js
+          node --check nomad-live/statistics-live.js
           node --check nomad-live-342/runtime-config.js
           test -f nomad-live/index.html
           test -f nomad-live/statistics.html
           test -f nomad-live/runtime-config.js
+          test -f nomad-live/legacy/statistics-20260907-before-split.html
+          test -f nomad-live/legacy/statistics-mirror-20260907.js
+          test -f nomad-live/legacy/statistics-live-score-mirror-20260907.js
           test -f nomad-live-342/index.html
           test -f about/index.html
           test -f privacy/index.html
@@ -67,19 +70,24 @@ jobs:
           grep -Fq 'src="runtime-config.js' nomad-live/index.html
           grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
           grep -Fq 'live-filter-lock.js?v=20260906-subview-refresh-v1' nomad-live/index.html
+          grep -Fq 'statistics.html?v=20260907-standalone-v1' nomad-live/index.html
+          ! grep -Fq 'statisticsMirror' nomad-live/index.html
+          ! grep -Fq 'statistics-mirror.js' nomad-live/index.html
+          ! grep -Fq 'live-entry-score.js' nomad-live/index.html
           grep -Fq "transport:directProduction?'direct':'service-binding'" nomad-live/runtime-config.js
           grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
           grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
+
+          # Page 2 is now a standalone 3.41 statistics page with no embedded/live-score mirror polling.
+          grep -Fq 'statistics-live.js?v=20260903-winrate-v1' nomad-live/statistics.html
+          ! grep -Fq 'statistics-live-score-mirror.js' nomad-live/statistics.html
+          ! grep -Fq 'statistics-live-score-mirror.css' nomad-live/statistics.html
 
           # Page 3 is direct TotalCorner V3 with the isolated V2 Worker retained as fallback.
           grep -Fq 'LIVE SCORE & EVENT MONITOR' nomad-live-342/index.html
           grep -Fq "transport:'direct-worker-v3'" nomad-live-342/runtime-config.js
           grep -Fq 'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev' nomad-live-342/runtime-config.js
           grep -Fq 'https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' nomad-live-342/runtime-config.js
-
-          # Page 2 FINAL remains isolated on its existing V2 mirror without touching Page 1 runtime.
-          grep -Fq "LIVE_SCORE_V2_BASE='https://nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev'" nomad-live/statistics-live-score-mirror.js
-          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' nomad-live/statistics.html
 
           # Preserve existing public bridges and dashboard-managed production route.
           grep -Fq 'proxyPublicInfo' nomad-live-web-production/src/index.js
@@ -91,7 +99,7 @@ jobs:
             echo '::error::Production routes must stay dashboard-managed; remove routes from Wrangler config.'
             exit 1
           fi
-          echo '3.41 production web + Page2 FINAL V2 mirror + Page3 V3 primary/V2 fallback validated'
+          echo '3.41 production web + standalone Statistics + Page3 V3 primary/V2 fallback validated'
 
       - name: Validate Cloudflare credentials
         run: |
@@ -144,11 +152,15 @@ jobs:
           curl -fsS --max-time 20 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
           grep -Fq 'src="runtime-config.js' /tmp/home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          grep -Fq 'statistics.html?v=20260907-standalone-v1' /tmp/home.html
+          ! grep -Fq 'statisticsMirror' /tmp/home.html
+          ! grep -Fq 'statistics-mirror.js' /tmp/home.html
+          ! grep -Fq 'live-entry-score.js' /tmp/home.html
 
           curl -fsSL --max-time 20 "$CANARY_URL/statistics.html?t=$(date +%s)" -o /tmp/canary-statistics.html
-          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/canary-statistics.html
-          curl -fsSL --max-time 20 "$CANARY_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/canary-final-mirror.js
-          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/canary-final-mirror.js
+          grep -Fq 'Statistics' /tmp/canary-statistics.html
+          grep -Fq 'statistics-live.js?v=20260903-winrate-v1' /tmp/canary-statistics.html
+          ! grep -Fq 'statistics-live-score-mirror.js' /tmp/canary-statistics.html
 
           for page in about privacy terms user-guide disclaimer; do
             curl -fsSL --max-time 20 "$CANARY_URL/$page/?t=$(date +%s)" -o "/tmp/canary-info-$page.html"
@@ -183,7 +195,7 @@ jobs:
           assert data.get('ok') is not False, data.get('lastError') or data.get('error')
           print('DIRECT_V3_FEED_OK matches=',len(data['matches']))
           PY
-          echo 'Canary + Page1 API + Page2 FINAL V2 mirror assets + Page3 V3 primary contract passed before Production deploy.'
+          echo 'Canary + Page1 API + standalone Statistics + Page3 V3 primary contract passed before Production deploy.'
 
       - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
@@ -194,7 +206,7 @@ jobs:
           wranglerVersion: '4.92.0'
           command: deploy --config wrangler.production.jsonc
 
-      - name: Verify www now serves 3.41, FINAL V2 mirror and V3-primary 3.42 page
+      - name: Verify www now serves 3.41 standalone Statistics and V3-primary 3.42 page
         shell: bash
         run: |
           set -euo pipefail
@@ -213,12 +225,15 @@ jobs:
           curl -fsS --max-time 20 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
           grep -Fq 'src="runtime-config.js' /tmp/custom-home.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
+          grep -Fq 'statistics.html?v=20260907-standalone-v1' /tmp/custom-home.html
+          ! grep -Fq 'statisticsMirror' /tmp/custom-home.html
+          ! grep -Fq 'statistics-mirror.js' /tmp/custom-home.html
+          ! grep -Fq 'live-entry-score.js' /tmp/custom-home.html
 
           curl -fsSL --max-time 20 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
           grep -Fq 'Statistics' /tmp/custom-statistics.html
-          grep -Fq 'statistics-live-score-mirror.js?v=20260902-live-final-v3-v2feed' /tmp/custom-statistics.html
-          curl -fsSL --max-time 20 "$CUSTOM_URL/statistics-live-score-mirror.js?t=$(date +%s)" -o /tmp/custom-final-mirror.js
-          grep -Fq 'nomadtips3-live-score-feed-v2.mccarey-supon.workers.dev' /tmp/custom-final-mirror.js
+          grep -Fq 'statistics-live.js?v=20260903-winrate-v1' /tmp/custom-statistics.html
+          ! grep -Fq 'statistics-live-score-mirror.js' /tmp/custom-statistics.html
 
           for page in about privacy terms user-guide disclaimer; do
             curl -fsSL --max-time 20 "$CUSTOM_URL/$page/?t=$(date +%s)" -o "/tmp/custom-info-$page.html"
@@ -273,6 +288,6 @@ jobs:
           fi
 
           echo 'NOMAD Live 3.41 remains active on www.nomadtips3.com with its original Page1 engine path.'
-          echo 'Statistics FINAL mirror asset remains isolated on V2.'
+          echo 'Statistics is standalone and no longer runs iframe/live-score mirror polling inside Page1.'
           echo 'NOMAD Live 3.42 runtime points to V3 primary with V2 fallback.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
