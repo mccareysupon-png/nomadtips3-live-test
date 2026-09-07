@@ -15,7 +15,18 @@ body[data-page="prediction3"] .p3-sirius-head{
     url('./queen-sirius-guardian.webp?v=20260906-120914') !important;
   background-size:cover !important;
   background-position:center 18% !important;
-  border-bottom-color:rgba(242,207,114,.42);
+  border:0!important;
+}
+/* Uniform gold line overlays the entire Guardian block on every device. */
+body[data-page="prediction3"] .p3-sirius-head:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:5;
+  pointer-events:none;
+  box-sizing:border-box;
+  border:1px solid rgba(242,207,114,.72);
+  box-shadow:inset 0 0 12px rgba(242,207,114,.035);
 }
 body[data-page="prediction3"] .p3-sirius-head:after{
   content:"";
@@ -174,7 +185,7 @@ body[data-page="prediction3"] .p3-sirius-card .p3-final-heading span{color:#e5bf
     margin-bottom:20px!important;
   }
   body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
-    border-bottom:1px solid rgba(242,207,114,.46)!important;
+    border-bottom:0!important;
   }
   body[data-page="prediction3"] .p3-sirius-head{
     min-height:390px;
