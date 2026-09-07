@@ -121,3 +121,94 @@ body[data-page="prediction3"] .day-switch .day-tab.active span{
   }
 }
 body[data-page="prediction3"] .day-switch .day-tab:focus-visible{outline-color:#d7b15a!important}
+
+/* ---------- PRE-MATCH / INDICATORS DARK GOLD ----------
+   Dark gold means bronze-gold surfaces, not near-black panels. */
+body[data-page="prediction3"] .p3-prematch-gold{
+  border-color:rgba(174,132,48,.58)!important;
+  background:
+    linear-gradient(135deg,rgba(205,164,77,.10),transparent 34%,rgba(255,228,145,.035) 52%,transparent 72%),
+    linear-gradient(145deg,#3a2a10 0%,#4a3512 22%,#2f240f 52%,#3d2d11 78%,#251d0d 100%)!important;
+  box-shadow:inset 0 1px rgba(255,230,150,.06),inset 0 0 38px rgba(0,0,0,.18)!important;
+}
+body[data-page="prediction3"] .p3-prematch-head{
+  border-bottom-color:rgba(184,142,54,.30)!important;
+  background:linear-gradient(90deg,rgba(191,149,59,.13),rgba(81,58,19,.06) 50%,rgba(196,154,63,.10))!important;
+}
+body[data-page="prediction3"] .p3-gold-stone,
+body[data-page="prediction3"] .p3-historical-gold,
+body[data-page="prediction3"] .p3-key-coins{
+  border-color:rgba(180,139,53,.42)!important;
+  background:
+    linear-gradient(135deg,rgba(209,169,78,.16),rgba(130,92,28,.10) 38%,rgba(62,46,20,.20) 70%),
+    linear-gradient(150deg,#4d3814 0%,#5e4518 26%,#3d2e13 58%,#4a3615 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(224,190,105,.07),inset 0 0 26px rgba(21,14,4,.30)!important;
+}
+body[data-page="prediction3"] .p3-gold-stone:before,
+body[data-page="prediction3"] .p3-gold-stone:after{
+  background:linear-gradient(90deg,transparent,#d7b15a,transparent)!important;
+  opacity:.78!important;
+}
+body[data-page="prediction3"] .p3-gold-reading{
+  border-bottom-color:rgba(220,190,112,.10)!important;
+}
+body[data-page="prediction3"] .p3-gold-gate{
+  border-left-color:#c79b3d!important;
+  background:rgba(190,143,49,.11)!important;
+}
+body[data-page="prediction3"] .p3-hist-row{
+  border-bottom-color:rgba(220,190,112,.10)!important;
+}
+body[data-page="prediction3"] .p3-hist-half{
+  background:rgba(105,75,24,.28)!important;
+}
+body[data-page="prediction3"] .p3-hist-half b{
+  background:linear-gradient(90deg,#8c651f,#d1a748)!important;
+}
+body[data-page="prediction3"] .p3-hist-half.away b{
+  background:linear-gradient(90deg,#725018,#b88b31)!important;
+  opacity:.95!important;
+}
+
+/* Indicator cards are dark-gold tablets, clearly gold/bronze rather than green-black. */
+body[data-page="prediction3"] .p3-gold-coin-face{
+  width:100%!important;
+  height:auto!important;
+  min-height:82px!important;
+  border-radius:0!important;
+  border:1px solid rgba(201,161,71,.68)!important;
+  background:
+    radial-gradient(circle at 48% 30%,rgba(225,190,104,.18),transparent 34%),
+    linear-gradient(145deg,#5a4319 0%,#6e531f 24%,#4c3917 52%,#5e451a 76%,#392c13 100%)!important;
+  box-shadow:
+    inset 0 0 0 3px rgba(224,190,103,.08),
+    inset 0 0 28px rgba(22,15,5,.34),
+    0 5px 14px rgba(0,0,0,.16)!important;
+}
+body[data-page="prediction3"] .p3-gold-coin span{
+  color:#e5d4a5!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.76)!important;
+}
+body[data-page="prediction3"] .p3-gold-coin strong{
+  color:#ffdf80!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.90),0 0 8px rgba(217,177,78,.10)!important;
+}
+body[data-page="prediction3"] .p3-key-coins-title,
+body[data-page="prediction3"] .p3-gold-title,
+body[data-page="prediction3"] .p3-history-head strong{
+  color:#ebca73!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.68)!important;
+}
+body[data-page="prediction3"] .p3-gold-reading span,
+body[data-page="prediction3"] .p3-hist-values span,
+body[data-page="prediction3"] .p3-gold-gate span{
+  color:#cbbd98!important;
+}
+body[data-page="prediction3"] .p3-gold-reading strong,
+body[data-page="prediction3"] .p3-hist-values strong{
+  color:#f4e7c5!important;
+}
+
+@media(max-width:680px){
+  body[data-page="prediction3"] .p3-gold-coin-face{min-height:78px!important}
+}
