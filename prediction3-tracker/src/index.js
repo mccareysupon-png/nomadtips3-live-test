@@ -21,12 +21,22 @@ async function fetchJson(url){
   return response.json();
 }
 
-function tokens(value){
+const LATIN_FOLD=Object.freeze({
+  'ł':'l','Ł':'L','ø':'o','Ø':'O','đ':'d','Đ':'D','ð':'d','Ð':'D',
+  'þ':'th','Þ':'TH','æ':'ae','Æ':'AE','œ':'oe','Œ':'OE','ß':'ss',
+});
+export function foldLatin(value){
+  return String(value||'')
+    .replace(/[łŁøØđĐðÐþÞæÆœŒß]/g,ch=>LATIN_FOLD[ch]||ch)
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g,'');
+}
+export function tokens(value){
   const ignored=new Set(['fc','cf','sc','ac','afc','club','de','the','stade','olympique','football']);
-  return String(value||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!ignored.has(x))||[];
+  return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!ignored.has(x))||[];
 }
 function tokenLike(a,b){return a===b||(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4));}
-function teamScore(a,b){
+export function teamScore(a,b){
   const aa=tokens(a),bb=tokens(b);
   if(!aa.length||!bb.length)return 0;
   let matched=0;
