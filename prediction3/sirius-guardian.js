@@ -3,6 +3,35 @@
 
   const CARD_SELECTOR='.p3-featured';
 
+  function toRoman(value){
+    const map=[
+      [1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],
+      [50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']
+    ];
+    let number=Math.max(1,Math.floor(Number(value)||1));
+    let result='';
+    for(const [unit,symbol] of map){
+      while(number>=unit){result+=symbol;number-=unit;}
+    }
+    return result;
+  }
+
+  function refreshOrder(){
+    const list=document.getElementById('predictionList')||document;
+    [...list.querySelectorAll(CARD_SELECTOR)].forEach((card,index)=>{
+      const head=card.querySelector('.p3-match-head');
+      if(!head)return;
+      let badge=head.querySelector('.p3-sirius-order');
+      if(!badge){
+        badge=document.createElement('span');
+        badge.className='p3-sirius-order';
+        head.appendChild(badge);
+      }
+      badge.textContent=toRoman(index+1);
+      badge.setAttribute('aria-label',`Match ${index+1}`);
+    });
+  }
+
   function decorate(card){
     if(!(card instanceof HTMLElement)||card.dataset.siriusGuardian==='1')return;
     const head=card.querySelector('.p3-match-head');
@@ -58,13 +87,16 @@
   }
 
   scan();
+  refreshOrder();
   const target=document.getElementById('predictionList')||document.body;
   const observer=new MutationObserver(mutations=>{
+    let changed=false;
     for(const mutation of mutations){
       mutation.addedNodes.forEach(node=>{
-        if(node.nodeType===1)scan(node);
+        if(node.nodeType===1){scan(node);changed=true;}
       });
     }
+    if(changed)refreshOrder();
   });
   observer.observe(target,{childList:true,subtree:true});
 })();
