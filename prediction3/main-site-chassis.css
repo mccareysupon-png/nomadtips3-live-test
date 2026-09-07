@@ -33,6 +33,11 @@ body[data-page="prediction3"] .prediction3-status{
   display:none!important;
 }
 
+/* Today's Selections / Manual Prediction Desk / Search toolbar is hidden on every device. */
+body[data-page="prediction3"] .toolbar{
+  display:none!important;
+}
+
 /* Same public topbar geometry as Asian Handicap / Statistics / Live Score. */
 body[data-page="prediction3"] .topbar{
   height:64px!important;
