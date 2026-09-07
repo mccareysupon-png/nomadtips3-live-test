@@ -5,10 +5,14 @@ on:
     branches: [main]
     paths:
       - 'workers/nomadtips3-342-signal-engine/**'
+      - 'nomad-live-342/market-settings-server-sync.js'
+      - 'nomad-live-342/settings.html'
       - '.github/workflows/nomad342-signal-engine-deploy.yml'
   pull_request:
     paths:
       - 'workers/nomadtips3-342-signal-engine/**'
+      - 'nomad-live-342/market-settings-server-sync.js'
+      - 'nomad-live-342/settings.html'
       - '.github/workflows/nomad342-signal-engine-deploy.yml'
 
 permissions:
@@ -32,11 +36,13 @@ jobs:
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-342-signal-engine/src/index.js
+          node --check nomad-live-342/market-settings-server-sync.js
           grep -Fq "crons = [\"* * * * *\"]" workers/nomadtips3-342-signal-engine/wrangler.toml
           grep -Fq "nomadtips3-live-score-feed-v3" workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq "nomadtips3-market-engine" workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq "nomadtips3-342-ledger" workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq "serverRun:true" workers/nomadtips3-342-signal-engine/src/index.js
+          grep -Fq 'market-settings-server-sync.js?v=20260908-server-v1' nomad-live-342/settings.html
           changed="$(git diff --name-only HEAD^ HEAD 2>/dev/null || true)"
           if echo "$changed" | grep -Eq '^nomad-live/'; then
             echo '::error::Legacy 3.41 files changed'; exit 1
