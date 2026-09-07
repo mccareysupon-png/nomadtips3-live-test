@@ -1,0 +1,51 @@
+/* Prediction3 · Dark-gold typography readability · all devices.
+   Presentation only: raises text contrast inside Sirius pre-match tablets/indicators. */
+body[data-page="prediction3"] .p3-prematch-head span,
+body[data-page="prediction3"] .p3-gold-title,
+body[data-page="prediction3"] .p3-history-head strong,
+body[data-page="prediction3"] .p3-key-coins-title{
+  color:#efd58a!important;
+  text-shadow:0 1px 0 rgba(0,0,0,.62),0 0 10px rgba(216,181,95,.08)!important;
+}
+
+body[data-page="prediction3"] .p3-prematch-head strong{
+  color:#fff0c7!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.78)!important;
+}
+body[data-page="prediction3"] .p3-prematch-head small,
+body[data-page="prediction3"] .p3-history-head small,
+body[data-page="prediction3"] .p3-history-note{
+  color:#b9b2a0!important;
+}
+
+body[data-page="prediction3"] .p3-gold-reading span,
+body[data-page="prediction3"] .p3-gold-gate span,
+body[data-page="prediction3"] .p3-hist-values span{
+  color:#c8bea2!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.62)!important;
+}
+body[data-page="prediction3"] .p3-gold-reading strong,
+body[data-page="prediction3"] .p3-hist-values strong{
+  color:#f4ead0!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.74)!important;
+}
+body[data-page="prediction3"] .p3-gold-gate strong{
+  color:#f5d878!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.78),0 0 8px rgba(216,181,95,.08)!important;
+}
+
+/* Indicator coins/cards: labels become warm ivory; values stay royal gold. */
+body[data-page="prediction3"] .p3-gold-coin span{
+  color:#d6c9a6!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.78)!important;
+}
+body[data-page="prediction3"] .p3-gold-coin strong{
+  color:#ffe18a!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.88),0 0 10px rgba(216,181,95,.12)!important;
+}
+
+@media(max-width:680px){
+  body[data-page="prediction3"] .p3-gold-coin span{color:#ddd0ad!important}
+  body[data-page="prediction3"] .p3-gold-coin strong{color:#ffe594!important}
+  body[data-page="prediction3"] .p3-key-coins-title{color:#f2d98d!important}
+}
