@@ -93,7 +93,7 @@ body[data-page="prediction3"] .prediction3-hero .hero-copy>p:last-child{
   font-weight:600!important;
 }
 
-/* Golden seal for MANUAL MODE / count / published picks. */
+/* Golden seal for decree count. */
 body[data-page="prediction3"] .prediction3-hero .hero-badge{
   width:112px!important;
   height:112px!important;
@@ -183,4 +183,13 @@ body[data-page="prediction3"] .prediction3-hero .hero-badge small{
   body[data-page="prediction3"] .prediction3-hero .hero-badge span{font-size:5.5px!important;letter-spacing:.07em!important}
   body[data-page="prediction3"] .prediction3-hero .hero-badge strong{font-size:23px!important}
   body[data-page="prediction3"] .prediction3-hero .hero-badge small{font-size:5.5px!important}
+}
+
+/* Shield intentionally concealed on every device; keep markup/data hooks intact. */
+body[data-page="prediction3"] .prediction3-hero{
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:0!important;
+}
+body[data-page="prediction3"] .prediction3-hero .hero-badge{
+  display:none!important;
 }
