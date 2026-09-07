@@ -1,0 +1,79 @@
+name: Deploy NOMAD 3.42 Server Signal Engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/nomadtips3-342-signal-engine/**'
+      - '.github/workflows/nomad342-signal-engine-deploy.yml'
+  pull_request:
+    paths:
+      - 'workers/nomadtips3-342-signal-engine/**'
+      - '.github/workflows/nomad342-signal-engine-deploy.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ENGINE_URL: https://nomadtips3-342-signal-engine.mccarey-supon.workers.dev
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Validate isolated server signal engine
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-342-signal-engine/src/index.js
+          grep -Fq "crons = [\"* * * * *\"]" workers/nomadtips3-342-signal-engine/wrangler.toml
+          grep -Fq "nomadtips3-live-score-feed-v3" workers/nomadtips3-342-signal-engine/src/index.js
+          grep -Fq "nomadtips3-market-engine" workers/nomadtips3-342-signal-engine/src/index.js
+          grep -Fq "nomadtips3-342-ledger" workers/nomadtips3-342-signal-engine/src/index.js
+          grep -Fq "serverRun:true" workers/nomadtips3-342-signal-engine/src/index.js
+          changed="$(git diff --name-only HEAD^ HEAD 2>/dev/null || true)"
+          if echo "$changed" | grep -Eq '^nomad-live/'; then
+            echo '::error::Legacy 3.41 files changed'; exit 1
+          fi
+
+  deploy:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+      - name: Deploy 3.42 server signal engine
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-342-signal-engine
+          wranglerVersion: '4.92.0'
+          command: deploy
+      - name: Smoke test server-run health
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 20 "$ENGINE_URL/health?t=$(date +%s)" -o /tmp/signal-engine.json \
+              && grep -Fq '"service":"nomadtips3-342-signal-engine"' /tmp/signal-engine.json \
+              && grep -Fq '"serverRun":true' /tmp/signal-engine.json; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { cat /tmp/signal-engine.json || true; exit 1; }
+          cat /tmp/signal-engine.json
