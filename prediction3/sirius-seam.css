@@ -1,0 +1,43 @@
+/* Prediction3 · Queen Sirius section seam blend · all devices.
+   Presentation only: smooth the Guardian → Verdict color transition without touching data or engine logic. */
+body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
+  box-shadow:inset 0 -74px 58px -46px rgba(8,10,8,.72)!important;
+}
+
+body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-pick-grid{
+  position:relative;
+  margin-top:-1px!important;
+  border-radius:0!important;
+  background:linear-gradient(
+    180deg,
+    rgba(8,10,8,.995) 0%,
+    rgba(9,13,10,.995) 9%,
+    rgba(12,18,14,.99) 22%,
+    rgba(17,25,20,.985) 40%,
+    rgba(22,31,25,.97) 64%,
+    rgba(27,35,29,.94) 100%
+  )!important;
+}
+
+/* Keep the transition quiet: no extra seam rule between the two sections. */
+body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head + .p3-pick-grid{
+  border-top:0!important;
+  box-shadow:none!important;
+}
+
+@media(max-width:680px){
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
+    box-shadow:inset 0 -88px 68px -48px rgba(8,10,8,.78)!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-pick-grid{
+    background:linear-gradient(
+      180deg,
+      rgba(8,10,8,1) 0%,
+      rgba(9,13,10,.998) 12%,
+      rgba(12,18,14,.995) 27%,
+      rgba(17,25,20,.985) 46%,
+      rgba(22,31,25,.97) 68%,
+      rgba(27,35,29,.94) 100%
+    )!important;
+  }
+}
