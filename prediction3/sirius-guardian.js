@@ -23,6 +23,22 @@
       head.insertBefore(intro,head.firstChild);
     }
 
+    const pickText=card.querySelector('.p3-pick-hero h2')?.textContent?.trim();
+    if(pickText&&!head.querySelector('.p3-sirius-floating-pick')){
+      const floating=document.createElement('div');
+      floating.className='p3-sirius-floating-pick';
+      floating.setAttribute('aria-hidden','true');
+
+      const kicker=document.createElement('span');
+      kicker.textContent='SIRIUS PICK';
+
+      const value=document.createElement('strong');
+      value.textContent=pickText;
+
+      floating.append(kicker,value);
+      head.appendChild(floating);
+    }
+
     const manual=head.querySelector('.p3-manual-pill');
     if(manual)manual.textContent='SIRIUS VERDICT';
 
