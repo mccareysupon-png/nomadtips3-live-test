@@ -163,6 +163,19 @@ body[data-page="prediction3"] .p3-sirius-card .p3-final-heading span{color:#e5bf
   body[data-page="prediction3"] .p3-sirius-head .p3-team strong{font-size:16px}
 }
 @media(max-width:680px){
+  /* Mobile match separation: keep each fixture and all of its sub-content visually grouped. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card{
+    border:1px solid rgba(242,207,114,.58)!important;
+    border-top-color:rgba(255,224,141,.82)!important;
+    box-shadow:
+      0 0 0 1px rgba(242,207,114,.07),
+      0 18px 38px rgba(0,0,0,.34),
+      0 0 22px rgba(242,207,114,.055)!important;
+    margin-bottom:20px!important;
+  }
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
+    border-bottom:1px solid rgba(242,207,114,.46)!important;
+  }
   body[data-page="prediction3"] .p3-sirius-head{
     min-height:390px;
     align-content:end;
