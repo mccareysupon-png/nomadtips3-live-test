@@ -1,123 +1,135 @@
 /* Prediction3 · Sirius dark-gold system · all devices.
    Presentation only: recolors existing gold plaques/cards/tabs without touching data or engine behavior. */
 body[data-page="prediction3"]{
-  --dg-ink:#10281c;
-  --dg-text:#2f331f;
-  --dg-edge:#4b330f;
-  --dg-line:#6a4816;
-  --dg-deep:#6b4a16;
-  --dg-base:#8a6220;
-  --dg-mid:#b68632;
-  --dg-light:#d7b15a;
-  --dg-soft:#e7c978;
-  --dg-hi:#f1dda0;
+  --dg-ink:#f4e7c5;
+  --dg-text:#d3c5a5;
+  --dg-edge:#3a2a10;
+  --dg-line:#9a742d;
+  --dg-deep:#2b210e;
+  --dg-base:#3a2a10;
+  --dg-mid:#5b4217;
+  --dg-light:#b88b31;
+  --dg-soft:#d7b15a;
+  --dg-hi:#f0d783;
 }
 
-/* ---------- HERO PLAQUE ---------- */
+/* ---------- HERO PLAQUE · SMOKED DARK GOLD ---------- */
 body[data-page="prediction3"] .prediction3-hero{
-  border-color:var(--dg-line)!important;
+  border-color:rgba(176,136,49,.72)!important;
   color:var(--dg-ink)!important;
   background:
-    linear-gradient(108deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.04) 18%,transparent 34%,rgba(255,239,177,.10) 49%,transparent 63%,rgba(255,255,255,.05) 82%,transparent 100%),
-    repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,rgba(40,24,4,.025) 1px 3px),
-    linear-gradient(135deg,#5f4214 0%,#7a561a 14%,#9a7024 28%,#b68632 44%,#8b6422 58%,#6c4a17 74%,#9d7326 88%,#54370f 100%)!important;
+    radial-gradient(circle at 18% 18%,rgba(222,183,87,.14),transparent 28%),
+    linear-gradient(112deg,rgba(255,235,159,.045) 0%,transparent 25%,rgba(208,164,71,.075) 47%,transparent 68%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,rgba(36,24,6,.028) 1px 3px),
+    linear-gradient(145deg,#2a210f 0%,#3d2d11 18%,#4b3613 38%,#34270f 58%,#453116 78%,#241b0b 100%)!important;
   box-shadow:
-    inset 0 0 0 2px rgba(214,179,92,.34),
-    inset 0 0 0 4px rgba(66,43,7,.26),
-    inset 0 14px 24px rgba(255,240,180,.07),
-    inset 0 -16px 28px rgba(45,28,5,.16),
-    0 12px 28px rgba(0,0,0,.24)!important;
+    inset 0 0 0 1px rgba(226,190,99,.17),
+    inset 0 0 0 4px rgba(82,57,16,.28),
+    inset 0 18px 32px rgba(221,179,83,.045),
+    inset 0 -18px 30px rgba(12,8,2,.23),
+    0 12px 28px rgba(0,0,0,.28)!important;
 }
 body[data-page="prediction3"] .prediction3-hero::before{
-  border-color:rgba(86,58,13,.58)!important;
-  box-shadow:0 0 0 1px rgba(219,188,110,.24),inset 0 0 14px rgba(255,239,178,.05)!important;
+  border-color:rgba(183,142,55,.48)!important;
+  box-shadow:0 0 0 1px rgba(224,188,97,.09),inset 0 0 18px rgba(206,162,65,.035)!important;
 }
 body[data-page="prediction3"] .prediction3-hero::after{
-  background:radial-gradient(circle at 18% 12%,rgba(255,246,214,.12),transparent 24%),linear-gradient(96deg,transparent 0 44%,rgba(255,240,188,.07) 49%,transparent 55%)!important;
+  background:
+    radial-gradient(circle at 18% 12%,rgba(224,190,109,.08),transparent 25%),
+    linear-gradient(96deg,transparent 0 44%,rgba(212,171,77,.045) 49%,transparent 55%)!important;
 }
-body[data-page="prediction3"] .prediction3-hero .prediction3-kicker{color:#4f370f!important}
+body[data-page="prediction3"] .prediction3-hero .prediction3-kicker{
+  color:#d7b15a!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.68)!important;
+}
 body[data-page="prediction3"] .prediction3-hero h1{
-  color:var(--dg-ink)!important;
-  text-shadow:0 1px 0 rgba(255,236,170,.22),0 -1px 0 rgba(63,40,7,.12)!important;
+  color:#f4e7c5!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.82),0 0 12px rgba(177,132,46,.06)!important;
 }
-body[data-page="prediction3"] .prediction3-hero .hero-copy>p:last-child{color:#283022!important}
+body[data-page="prediction3"] .prediction3-hero .hero-copy>p:last-child{
+  color:#cbbd9b!important;
+  text-shadow:0 1px 1px rgba(0,0,0,.60)!important;
+}
 body[data-page="prediction3"] .prediction3-hero .hero-badge{
-  border-color:var(--dg-line)!important;
-  background:radial-gradient(circle at 35% 28%,#e7c978 0%,#b68632 36%,#7d581b 72%,#5a3c12 100%)!important;
-  box-shadow:inset 0 0 0 2px rgba(224,192,110,.26),inset 0 0 0 4px rgba(70,45,8,.24),0 6px 16px rgba(40,24,4,.18)!important;
+  border-color:rgba(161,119,40,.72)!important;
+  background:radial-gradient(circle at 35% 28%,#8f6b25 0%,#624715 38%,#3f2e10 72%,#261c0b 100%)!important;
+  box-shadow:inset 0 0 0 2px rgba(213,177,83,.18),inset 0 0 0 4px rgba(50,33,8,.28),0 6px 16px rgba(0,0,0,.24)!important;
 }
 
-/* ---------- KPI GOLD TABLET ---------- */
+/* ---------- KPI TABLET · SMOKED DARK GOLD ---------- */
 body[data-page="prediction3"] .prediction3-kpis{
-  border-color:var(--dg-line)!important;
+  border-color:rgba(176,136,49,.72)!important;
   background:
-    linear-gradient(110deg,rgba(255,255,255,.08) 0 7%,transparent 19% 72%,rgba(55,31,3,.08) 100%),
-    linear-gradient(180deg,#a47729 0%,#7c571b 16%,#9e7327 42%,#694815 72%,#8a6422 100%)!important;
+    radial-gradient(circle at 18% 14%,rgba(219,178,81,.09),transparent 25%),
+    linear-gradient(110deg,rgba(255,255,255,.025) 0 7%,transparent 19% 72%,rgba(126,88,24,.055) 100%),
+    linear-gradient(145deg,#2d230f 0%,#403015 20%,#4d3815 42%,#362910 64%,#473416 82%,#271e0d 100%)!important;
   box-shadow:
-    inset 0 0 0 1px rgba(218,186,104,.32),
-    inset 0 0 0 4px rgba(61,39,7,.24),
-    inset 0 9px 18px rgba(255,236,172,.06),
-    inset 0 -10px 18px rgba(45,27,4,.14),
-    0 9px 24px rgba(0,0,0,.20)!important;
+    inset 0 0 0 1px rgba(222,186,95,.16),
+    inset 0 0 0 4px rgba(67,46,13,.27),
+    inset 0 9px 20px rgba(211,166,65,.035),
+    inset 0 -12px 20px rgba(15,9,2,.18),
+    0 9px 24px rgba(0,0,0,.23)!important;
 }
 body[data-page="prediction3"] .prediction3-kpis::before{
-  border-color:rgba(76,49,8,.62)!important;
-  box-shadow:inset 0 0 0 1px rgba(218,185,101,.15)!important;
+  border-color:rgba(164,123,42,.40)!important;
+  box-shadow:inset 0 0 0 1px rgba(218,181,90,.07)!important;
 }
 body[data-page="prediction3"] .prediction3-kpis .p3-kpi:not(:last-child)::after{
-  background:linear-gradient(180deg,transparent,rgba(58,35,5,.66) 20% 80%,transparent)!important;
-  box-shadow:1px 0 rgba(218,185,101,.13)!important;
+  background:linear-gradient(180deg,transparent,rgba(162,120,39,.38) 20% 80%,transparent)!important;
+  box-shadow:1px 0 rgba(219,182,89,.055)!important;
 }
 body[data-page="prediction3"] .prediction3-kpis .p3-kpi span{
-  color:#3f2c0e!important;
-  text-shadow:0 1px rgba(220,189,110,.16)!important;
+  color:#cbbd98!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.68)!important;
 }
 body[data-page="prediction3"] .prediction3-kpis .p3-kpi strong{
-  color:#10281c!important;
-  text-shadow:0 1px rgba(221,190,109,.16)!important;
+  color:#f0d783!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.82)!important;
 }
 body[data-page="prediction3"] .prediction3-kpis .p3-kpi.win strong,
-body[data-page="prediction3"] .prediction3-kpis #statWinRate{color:#0c402b!important}
-body[data-page="prediction3"] .prediction3-kpis .p3-kpi.loss strong{color:#392d1b!important}
+body[data-page="prediction3"] .prediction3-kpis #statWinRate{color:#f4df9b!important}
+body[data-page="prediction3"] .prediction3-kpis .p3-kpi.loss strong{color:#d8c8a2!important}
 
-/* ---------- TODAY / RESULTS DARK-GOLD TABS ---------- */
+/* ---------- TODAY / RESULTS · SMOKED DARK GOLD ---------- */
 body[data-page="prediction3"] .day-switch .day-tab{
-  border-color:var(--dg-line)!important;
-  color:#25301f!important;
+  border-color:rgba(176,136,49,.72)!important;
+  color:#ead9ad!important;
   background:
-    linear-gradient(108deg,rgba(255,255,255,.11) 0%,transparent 25%,rgba(255,239,177,.08) 48%,transparent 70%),
-    linear-gradient(135deg,#624313 0%,#805b1d 18%,#a4782a 38%,#78531a 58%,#936b23 78%,#57390f 100%)!important;
-  box-shadow:inset 0 0 0 1px rgba(215,181,91,.22),inset 0 -10px 20px rgba(47,28,4,.12),0 7px 16px rgba(0,0,0,.18)!important;
+    radial-gradient(circle at 20% 16%,rgba(219,178,81,.10),transparent 28%),
+    linear-gradient(108deg,rgba(255,255,255,.035) 0%,transparent 25%,rgba(194,146,49,.06) 48%,transparent 70%),
+    linear-gradient(145deg,#2d230f 0%,#473315 24%,#543c16 44%,#392a10 64%,#473315 82%,#251c0c 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(219,182,89,.14),inset 0 -10px 20px rgba(15,9,2,.16),0 7px 16px rgba(0,0,0,.22)!important;
 }
 body[data-page="prediction3"] .day-switch .day-tab::after{
-  border-color:rgba(69,44,7,.50)!important;
-  box-shadow:0 0 0 1px rgba(217,184,94,.10)!important;
+  border-color:rgba(163,121,39,.38)!important;
+  box-shadow:0 0 0 1px rgba(217,184,94,.055)!important;
 }
-body[data-page="prediction3"] .day-switch .day-tab + .day-tab{border-left-color:var(--dg-line)!important}
+body[data-page="prediction3"] .day-switch .day-tab + .day-tab{border-left-color:rgba(176,136,49,.72)!important}
 body[data-page="prediction3"] .day-switch .day-tab span{
-  color:#e1c06a!important;
-  border-color:rgba(92,62,16,.84)!important;
-  background:radial-gradient(circle at 35% 28%,#294235 0%,#173025 58%,#0d1d16 100%)!important;
-  box-shadow:inset 0 0 0 1px rgba(217,181,83,.14),0 2px 7px rgba(43,25,4,.18)!important;
+  color:#f0d783!important;
+  border-color:rgba(155,116,42,.78)!important;
+  background:radial-gradient(circle at 35% 28%,#23382e 0%,#15291f 58%,#0b1712 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(213,177,83,.12),0 2px 7px rgba(0,0,0,.22)!important;
 }
 body[data-page="prediction3"] .day-switch .day-tab.active{
-  color:#10281c!important;
-  border-color:#5c3d0d!important;
+  color:#fff0c7!important;
+  border-color:rgba(199,156,59,.86)!important;
   background:
-    linear-gradient(110deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,.025) 25%,rgba(255,235,166,.13) 50%,transparent 72%),
-    linear-gradient(135deg,#765117 0%,#a77b28 19%,#c69a3c 39%,#8a6020 59%,#ac812d 80%,#654313 100%)!important;
-  box-shadow:inset 0 0 0 1px rgba(226,194,109,.32),inset 0 -12px 24px rgba(48,28,4,.12),0 0 0 1px rgba(190,139,38,.08),0 8px 20px rgba(0,0,0,.22),0 0 16px rgba(156,108,28,.09)!important;
+    radial-gradient(circle at 24% 16%,rgba(235,196,103,.16),transparent 29%),
+    linear-gradient(110deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.012) 25%,rgba(214,169,73,.085) 50%,transparent 72%),
+    linear-gradient(145deg,#3a2b10 0%,#594019 22%,#684a1b 42%,#453214 62%,#5c4319 82%,#30230e 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(226,194,109,.20),inset 0 -12px 24px rgba(18,11,2,.15),0 8px 20px rgba(0,0,0,.24),0 0 14px rgba(156,108,28,.065)!important;
 }
 body[data-page="prediction3"] .day-switch .day-tab.active span{
-  color:#edd078!important;
-  border-color:#5a3c10!important;
+  color:#ffe39a!important;
+  border-color:#8a6625!important;
   background:radial-gradient(circle at 35% 28%,#31523f 0%,#183729 58%,#0a1a13 100%)!important;
 }
 @media(hover:hover){
   body[data-page="prediction3"] .day-switch .day-tab:hover{
-    filter:brightness(1.11) saturate(.96)!important;
-    border-color:#7a5518!important;
-    box-shadow:inset 0 0 0 1px rgba(226,194,109,.30),inset 0 -10px 20px rgba(47,28,4,.08),0 9px 20px rgba(0,0,0,.22),0 0 13px rgba(169,117,28,.09)!important;
+    filter:brightness(1.08) saturate(.92)!important;
+    border-color:#9c7429!important;
+    box-shadow:inset 0 0 0 1px rgba(226,194,109,.18),inset 0 -10px 20px rgba(18,11,2,.10),0 9px 20px rgba(0,0,0,.24),0 0 11px rgba(169,117,28,.065)!important;
   }
 }
 body[data-page="prediction3"] .day-switch .day-tab:focus-visible{outline-color:#d7b15a!important}
