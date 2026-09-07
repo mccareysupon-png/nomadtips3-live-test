@@ -1,0 +1,106 @@
+/* Prediction3 · Queen Sirius desktop spacing fix.
+   Desktop presentation only: distribute Guardian content across the available dark area.
+   Mobile/tablet rules remain untouched. */
+
+@media (min-width:1100px){
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head{
+    min-height:390px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1.45fr) minmax(0,.90fr) minmax(0,1.30fr)!important;
+    grid-template-rows:auto auto!important;
+    align-content:center!important;
+    align-items:center!important;
+    column-gap:clamp(24px,2.2vw,42px)!important;
+    row-gap:clamp(18px,1.6vw,28px)!important;
+    padding:34px clamp(34px,3vw,54px) 32px 0!important;
+  }
+
+  /* Leave the first grid column to the Queen artwork.
+     Copy sits in the first dark column; fixture sits farther right. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-intro{
+    grid-column:2!important;
+    grid-row:1!important;
+    align-self:end!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:14px!important;
+  }
+
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-intro strong{
+    font-size:clamp(21px,1.55vw,26px)!important;
+    line-height:1.04!important;
+  }
+
+  /* The selected pick is no longer absolutely laid over the headline. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-floating-pick{
+    position:relative!important;
+    left:auto!important;
+    right:auto!important;
+    top:auto!important;
+    bottom:auto!important;
+    grid-column:3!important;
+    grid-row:1!important;
+    align-self:end!important;
+    justify-self:stretch!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:8px!important;
+    text-align:left!important;
+  }
+
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-floating-pick strong{
+    font-size:clamp(20px,1.75vw,28px)!important;
+    line-height:1.04!important;
+  }
+
+  /* Match details stay under the headline instead of competing for the same line. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-match-meta{
+    grid-column:2!important;
+    grid-row:2!important;
+    align-self:start!important;
+    width:100%!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-left:14px!important;
+    justify-content:flex-start!important;
+    flex-wrap:wrap!important;
+    row-gap:8px!important;
+  }
+
+  /* Fixture gets the widest dark column on the far right. */
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-match-teams{
+    grid-column:3!important;
+    grid-row:2!important;
+    align-self:start!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    margin:0!important;
+    padding:14px 0 12px 22px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)!important;
+    align-items:center!important;
+    gap:clamp(12px,1.2vw,22px)!important;
+  }
+
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-team{
+    min-width:0!important;
+  }
+
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-team strong{
+    display:block!important;
+    max-width:100%!important;
+    font-size:clamp(16px,1.3vw,21px)!important;
+    line-height:1.08!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    text-align:center!important;
+  }
+
+  body[data-page="prediction3"] #predictionList .p3-sirius-card .p3-sirius-head .p3-vs{
+    flex:0 0 auto!important;
+    white-space:nowrap!important;
+  }
+}
