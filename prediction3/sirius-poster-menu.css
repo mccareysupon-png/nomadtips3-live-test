@@ -1,0 +1,35 @@
+/* Prediction3 · third submenu card for Daily Verdict Poster. */
+body[data-page="prediction3"] .day-switch{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body[data-page="prediction3"] .day-switch .poster-menu-tab{
+  position:relative!important;
+  min-height:48px!important;
+  padding:11px 14px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  text-decoration:none!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  border:1px solid #6d501a!important;
+  border-radius:2px!important;
+  color:#e7d6a7!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  line-height:1.15!important;
+  letter-spacing:.02em!important;
+  background:linear-gradient(145deg,#392910 0%,#5b4218 46%,#33260f 100%)!important;
+  box-shadow:inset 0 0 0 1px rgba(220,184,92,.10),0 7px 16px rgba(0,0,0,.18)!important;
+  transition:transform .16s ease,filter .16s ease,border-color .16s ease!important;
+}
+body[data-page="prediction3"] .day-switch .poster-menu-tab::after{
+  content:"";position:absolute;inset:4px;pointer-events:none;border:1px solid rgba(217,181,83,.13)
+}
+@media(hover:hover){body[data-page="prediction3"] .day-switch .poster-menu-tab:hover{transform:translateY(-1px)!important;filter:brightness(1.12)!important;border-color:#977029!important}}
+body[data-page="prediction3"] .day-switch .poster-menu-tab:focus-visible{outline:2px solid #d7b15a!important;outline-offset:2px!important}
+@media(max-width:680px){
+  body[data-page="prediction3"] .day-switch{gap:6px!important}
+  body[data-page="prediction3"] .day-switch .poster-menu-tab{min-height:44px!important;padding:9px 5px!important;font-size:9.5px!important;letter-spacing:.01em!important}
+  body[data-page="prediction3"] .day-switch .day-tab{font-size:9.5px!important;padding-left:5px!important;padding-right:5px!important}
+}
+@media(max-width:390px){body[data-page="prediction3"] .day-switch .poster-menu-tab,body[data-page="prediction3"] .day-switch .day-tab{font-size:8.5px!important}}
