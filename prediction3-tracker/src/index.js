@@ -3,6 +3,7 @@ const LIVE_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/
 const FINAL_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals';
 const REFRESH_MS=20000;
 const MAX_RECORDS=100;
+const FINAL_FALLBACK_AFTER_MS=75*60*1000;
 
 const CORS={
   'access-control-allow-origin':'*',
@@ -25,6 +26,7 @@ const LATIN_FOLD=Object.freeze({
   'ł':'l','Ł':'L','ø':'o','Ø':'O','đ':'d','Đ':'D','ð':'d','Ð':'D',
   'þ':'th','Þ':'TH','æ':'ae','Æ':'AE','œ':'oe','Œ':'OE','ß':'ss',
 });
+const IGNORED_TEAM_TOKENS=new Set(['fc','cf','sc','ac','afc','club','de','the','stade','olympique','football','al']);
 export function foldLatin(value){
   return String(value||'')
     .replace(/[łŁøØđĐðÐþÞæÆœŒß]/g,ch=>LATIN_FOLD[ch]||ch)
@@ -32,8 +34,7 @@ export function foldLatin(value){
     .replace(/[\u0300-\u036f]/g,'');
 }
 export function tokens(value){
-  const ignored=new Set(['fc','cf','sc','ac','afc','club','de','the','stade','olympique','football']);
-  return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!ignored.has(x))||[];
+  return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!IGNORED_TEAM_TOKENS.has(x))||[];
 }
 function tokenLike(a,b){return a===b||(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4));}
 export function teamScore(a,b){
@@ -44,17 +45,28 @@ export function teamScore(a,b){
   return matched/Math.max(aa.length,bb.length);
 }
 function rowId(row){return String(row?.id??row?.fixtureId??'');}
-function fixtureFor(item,rows){
-  const fixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();
-  if(fixtureId){
-    const exact=(rows||[]).find(row=>rowId(row)===fixtureId);
+export function kickoffMs(item){
+  const raw=item?.tracking?.kickoffUtc||item?.kickoffAt||null;
+  if(!raw)return null;
+  const value=Date.parse(raw);
+  return Number.isFinite(value)?value:null;
+}
+export function finalFallbackEligible(item,at=now()){
+  const kickoff=kickoffMs(item);
+  return kickoff!==null&&Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS;
+}
+export function fixtureFor(item,rows,{knownFixtureId=null,final=false,at=now()}={}){
+  const ids=[item?.tracking?.fixtureId,item?.fixtureId,knownFixtureId].map(value=>String(value??'').trim()).filter(Boolean);
+  for(const id of ids){
+    const exact=(rows||[]).find(row=>rowId(row)===id);
     if(exact)return exact;
   }
+  if(final&&!finalFallbackEligible(item,at))return null;
   let best=null,bestScore=0;
   for(const row of rows||[]){
     const hs=teamScore(item?.home,row?.home),as=teamScore(item?.away,row?.away);
     const score=hs+as;
-    if(hs>=0.5&&as>=0.5&&score>bestScore){best=row;bestScore=score;}
+    if(hs>=0.75&&as>=0.75&&score>bestScore){best=row;bestScore=score;}
   }
   return best;
 }
@@ -80,6 +92,20 @@ function settle1x2(item,score){
   const side=pickSide(item);
   if(!side)return null;
   return {result:side===actual?'WIN':'LOSS',actual,pickSide:side};
+}
+export function sanitizeExisting(item,existing={},at=now()){
+  const kickoff=kickoffMs(item);
+  const hasSettlement=Boolean(existing?.result||existing?.status==='FT'||existing?.settledAt);
+  if(!hasSettlement||kickoff===null||Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS)return existing;
+  const clean={...existing};
+  clean.status='SCHEDULED';
+  clean.score=null;
+  clean.minute=null;
+  clean.result=null;
+  clean.settledAt=null;
+  clean.actual=null;
+  clean.fixtureId=null;
+  return clean;
 }
 function recordFromPick(item,existing={}){
   const kickoffUtc=item?.tracking?.kickoffUtc||item?.kickoffAt||existing.kickoffUtc||null;
@@ -124,11 +150,14 @@ export class Prediction3Tracker{
     if(responses[2].status==='fulfilled')finals=responses[2].value;else errors.push(`finals:${responses[2].reason}`);
 
     if(ledger&&Array.isArray(ledger.today)){
+      const refreshedAt=now();
       for(const item of ledger.today){
         if(!item?.id)continue;
-        const record=recordFromPick(item,byId.get(String(item.id))||{});
-        const finalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[]);
-        const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[]);
+        const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);
+        const record=recordFromPick(item,previous);
+        const knownFixtureId=record.fixtureId||previous.fixtureId||null;
+        const finalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});
+        const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});
 
         if(finalRow){
           const finalScore=scorePair(finalRow);
@@ -148,6 +177,9 @@ export class Prediction3Tracker{
           record.status='LIVE';
           record.score=scorePair(liveRow);
           record.minute=finite(liveRow?.minute);
+          record.result=null;
+          record.settledAt=null;
+          record.actual=null;
         }else if(!record.result){
           record.status='SCHEDULED';
           record.score=null;
