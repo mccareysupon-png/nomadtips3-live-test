@@ -1,0 +1,186 @@
+/* Prediction3 · Sirius Divine Verdict golden plaque · presentation only.
+   Pure CSS metal treatment; no image asset and no engine/data behavior. */
+body[data-page="prediction3"] .prediction3-hero{
+  position:relative!important;
+  isolation:isolate;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:28px!important;
+  min-height:150px!important;
+  margin:0 0 14px!important;
+  padding:24px 28px!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+  border:1px solid #8b641d!important;
+  border-radius:2px!important;
+  color:#14251b!important;
+  background:
+    linear-gradient(108deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.06) 16%,transparent 33%,rgba(255,244,177,.18) 49%,transparent 63%,rgba(255,255,255,.08) 82%,transparent 100%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,rgba(91,57,5,.025) 1px 3px),
+    linear-gradient(135deg,#9e6a1b 0%,#d7aa47 12%,#f7dc88 27%,#c58f2f 43%,#f5d77d 58%,#b57921 74%,#d8ad49 88%,#8b5d18 100%)!important;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,238,160,.56),
+    inset 0 0 0 4px rgba(95,60,8,.34),
+    inset 0 14px 24px rgba(255,246,196,.17),
+    inset 0 -16px 28px rgba(79,47,5,.16),
+    0 12px 28px rgba(0,0,0,.24)!important;
+}
+
+/* Engraved inner rail. */
+body[data-page="prediction3"] .prediction3-hero::before{
+  content:""!important;
+  position:absolute!important;
+  inset:8px!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  border:1px solid rgba(99,63,9,.52)!important;
+  box-shadow:
+    0 0 0 1px rgba(255,238,160,.34),
+    inset 0 0 16px rgba(255,241,178,.08)!important;
+  background:none!important;
+}
+
+/* Soft metallic sweep, static so there is no layout or motion shift. */
+body[data-page="prediction3"] .prediction3-hero::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  height:auto!important;
+  opacity:1!important;
+  background:
+    radial-gradient(circle at 18% 12%,rgba(255,255,225,.28),transparent 23%),
+    linear-gradient(96deg,transparent 0 44%,rgba(255,248,205,.13) 49%,transparent 55%)!important;
+}
+
+body[data-page="prediction3"] .prediction3-hero .hero-copy,
+body[data-page="prediction3"] .prediction3-hero .hero-badge{
+  position:relative!important;
+  z-index:2!important;
+}
+
+body[data-page="prediction3"] .prediction3-hero .hero-copy{
+  max-width:760px!important;
+  text-shadow:0 1px 0 rgba(255,240,176,.34)!important;
+}
+body[data-page="prediction3"] .prediction3-hero .prediction3-kicker{
+  margin:0 0 7px!important;
+  color:#5e410f!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  letter-spacing:.17em!important;
+}
+body[data-page="prediction3"] .prediction3-hero h1{
+  margin:0!important;
+  color:#10281c!important;
+  font-family:Georgia,'Times New Roman',serif!important;
+  font-size:clamp(30px,4vw,48px)!important;
+  font-weight:700!important;
+  line-height:1.02!important;
+  letter-spacing:.01em!important;
+  text-shadow:
+    0 1px 0 rgba(255,246,190,.5),
+    0 -1px 0 rgba(84,53,8,.16)!important;
+}
+body[data-page="prediction3"] .prediction3-hero .hero-copy>p:last-child{
+  max-width:720px!important;
+  margin:10px 0 0!important;
+  color:#2f331f!important;
+  font-size:12px!important;
+  line-height:1.55!important;
+  font-weight:600!important;
+}
+
+/* Golden seal for MANUAL MODE / count / published picks. */
+body[data-page="prediction3"] .prediction3-hero .hero-badge{
+  width:112px!important;
+  height:112px!important;
+  min-width:112px!important;
+  padding:12px!important;
+  display:grid!important;
+  place-content:center!important;
+  gap:2px!important;
+  box-sizing:border-box!important;
+  text-align:center!important;
+  border:1px solid #6f4b14!important;
+  border-radius:50%!important;
+  background:
+    radial-gradient(circle at 35% 28%,#ffe9a0 0%,#d9a843 34%,#9a661d 72%,#6d4612 100%)!important;
+  box-shadow:
+    inset 0 0 0 3px rgba(255,235,148,.58),
+    inset 0 0 0 5px rgba(88,55,8,.34),
+    inset 0 0 22px rgba(255,244,191,.16),
+    0 7px 18px rgba(71,43,5,.22)!important;
+  color:#14251b!important;
+}
+body[data-page="prediction3"] .prediction3-hero .hero-badge span{
+  color:#53380f!important;
+  font-size:8px!important;
+  font-weight:900!important;
+  letter-spacing:.1em!important;
+  line-height:1.15!important;
+}
+body[data-page="prediction3"] .prediction3-hero .hero-badge strong{
+  margin:1px 0!important;
+  color:#10281c!important;
+  font-family:Georgia,'Times New Roman',serif!important;
+  font-size:34px!important;
+  line-height:.95!important;
+  text-shadow:0 1px 0 rgba(255,240,171,.46)!important;
+}
+body[data-page="prediction3"] .prediction3-hero .hero-badge small{
+  color:#624619!important;
+  font-size:7px!important;
+  font-weight:800!important;
+  line-height:1.1!important;
+  letter-spacing:.02em!important;
+}
+
+@media(max-width:900px){
+  body[data-page="prediction3"] .prediction3-hero{
+    gap:18px!important;
+    min-height:138px!important;
+    padding:20px 22px!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero .hero-badge{
+    width:96px!important;
+    height:96px!important;
+    min-width:96px!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero .hero-badge strong{font-size:29px!important}
+}
+
+@media(max-width:680px){
+  body[data-page="prediction3"] .prediction3-hero{
+    grid-template-columns:minmax(0,1fr) 76px!important;
+    gap:12px!important;
+    min-height:126px!important;
+    padding:18px 14px 18px 16px!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero::before{inset:6px!important}
+  body[data-page="prediction3"] .prediction3-hero .prediction3-kicker{
+    margin-bottom:5px!important;
+    font-size:8px!important;
+    letter-spacing:.12em!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero h1{
+    font-size:24px!important;
+    line-height:1.03!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero .hero-copy>p:last-child{
+    margin-top:7px!important;
+    font-size:9px!important;
+    line-height:1.42!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero .hero-badge{
+    width:72px!important;
+    height:72px!important;
+    min-width:72px!important;
+    padding:8px!important;
+  }
+  body[data-page="prediction3"] .prediction3-hero .hero-badge span{font-size:5.5px!important;letter-spacing:.07em!important}
+  body[data-page="prediction3"] .prediction3-hero .hero-badge strong{font-size:23px!important}
+  body[data-page="prediction3"] .prediction3-hero .hero-badge small{font-size:5.5px!important}
+}
