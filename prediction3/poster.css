@@ -1,0 +1,40 @@
+/* Prediction3 · Daily Verdict Poster page · all devices. */
+:root{--poster-bg:#07110d;--poster-green:#0c241a;--poster-green-2:#123328;--poster-gold:#c99b3d;--poster-gold-soft:#e5c56f;--poster-gold-light:#f2dc94;--poster-bronze:#5b4318;--poster-line:#8e6b27;--poster-ivory:#f4ead0;--poster-muted:#b9b29e}
+*{box-sizing:border-box}
+html{background:var(--poster-bg)}
+body[data-page="prediction3-poster"]{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -10%,rgba(33,83,59,.28),transparent 34%),linear-gradient(180deg,#07110d 0%,#09150f 45%,#06100c 100%);color:var(--poster-ivory);font-family:Arial,Helvetica,sans-serif}
+body[data-page="prediction3-poster"] .poster-shell{width:min(1180px,calc(100% - 28px));margin:22px auto 110px}
+.poster-hero{position:relative;overflow:hidden;padding:28px 30px;margin:0 0 14px;border:1px solid #6f521d;background:linear-gradient(110deg,rgba(255,255,255,.05),transparent 26%,rgba(226,191,104,.07) 48%,transparent 72%),linear-gradient(145deg,#3b2a10 0%,#62491a 34%,#483514 62%,#2f240f 100%);box-shadow:inset 0 0 0 2px rgba(225,191,104,.15),inset 0 0 0 5px rgba(48,31,7,.20),0 12px 28px rgba(0,0,0,.26)}
+.poster-hero:before{content:"";position:absolute;inset:8px;border:1px solid rgba(220,184,92,.24);pointer-events:none}
+.poster-hero p{position:relative;margin:0 0 6px;color:#e4c56e;font-size:10px;font-weight:900;letter-spacing:.18em}
+.poster-hero h1{position:relative;margin:0;color:#f2dc94;font-family:Georgia,'Times New Roman',serif;font-size:clamp(30px,5vw,54px);line-height:1.02;letter-spacing:.015em;text-shadow:0 2px 2px rgba(0,0,0,.45)}
+.poster-hero span{position:relative;display:block;margin-top:8px;color:#d7ccb1;font-size:12px;font-weight:700}
+.poster-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.poster-tab{min-height:52px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;text-align:center;text-decoration:none;color:#e8d9ae;font-size:12px;font-weight:900;line-height:1.15;border:1px solid #73551c;background:linear-gradient(145deg,#392910,#5b4218 48%,#33260f 100%);box-shadow:inset 0 0 0 1px rgba(218,181,88,.10),0 6px 16px rgba(0,0,0,.18);transition:transform .16s ease,filter .16s ease,border-color .16s ease}
+.poster-tab span{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:999px;border:1px solid #8b6926;background:#0e2c20;color:#efd47b;font-family:Georgia,'Times New Roman',serif;font-size:12px}
+.poster-tab.active{color:#10271c;background:linear-gradient(145deg,#7f5f21 0%,#b08334 47%,#6b501e 100%);border-color:#a27a2c;box-shadow:inset 0 0 0 1px rgba(242,211,126,.30),0 7px 18px rgba(0,0,0,.22)}
+@media(hover:hover){.poster-tab:hover{transform:translateY(-1px);filter:brightness(1.10);border-color:#9b762d}}
+.poster-preview-card{padding:16px;border:1px solid #6e521c;background:linear-gradient(145deg,rgba(31,47,36,.98),rgba(10,22,16,.99));box-shadow:inset 0 0 0 1px rgba(213,177,82,.07),0 16px 34px rgba(0,0,0,.30)}
+.poster-preview-frame{max-width:760px;margin:0 auto;padding:10px;border:1px solid #8a6825;background:#07130e;box-shadow:inset 0 0 0 2px rgba(209,170,73,.08)}
+#posterCanvas{display:block;width:100%;height:auto;aspect-ratio:4/5;background:#07130e}
+.poster-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:900px;margin:16px auto 0}
+.poster-actions button{appearance:none;border:1px solid #8d6924;background:linear-gradient(180deg,#9a7027,#6d501c);color:#f7e6b4;min-height:48px;padding:10px 14px;font-size:12px;font-weight:900;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(239,207,120,.18),0 5px 12px rgba(0,0,0,.18)}
+.poster-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(hover:hover){.poster-actions button:hover:not(:disabled){filter:brightness(1.12)}}
+.poster-caption{max-width:850px;margin:14px auto 0;text-align:center;color:#bdb6a4;font-size:11px;line-height:1.5}
+.poster-info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));max-width:900px;margin:14px auto 0;border:1px solid #74551c;background:linear-gradient(145deg,#38280f,#4d3814 52%,#2f240f);box-shadow:inset 0 0 0 1px rgba(213,177,82,.08)}
+.poster-info>div{padding:12px 14px;text-align:center}
+.poster-info>div+div{border-left:1px solid rgba(189,145,49,.22)}
+.poster-info span{display:block;color:#9f9478;font-size:8px;font-weight:900;letter-spacing:.12em}
+.poster-info strong{display:block;margin-top:4px;color:#eedaa0;font-size:11px;line-height:1.3}
+.poster-status{margin:10px 0 0;text-align:center;color:#8f998f;font-size:9px;min-height:1.2em}
+@media(max-width:680px){
+  body[data-page="prediction3-poster"] .poster-shell{width:calc(100% - 20px);margin-top:14px;margin-bottom:92px}
+  .poster-hero{padding:20px 16px}.poster-hero p{font-size:8px}.poster-hero h1{font-size:28px}.poster-hero span{font-size:10px}
+  .poster-tabs{gap:6px}.poster-tab{min-height:48px;padding:8px 5px;font-size:9px;gap:5px}.poster-tab span{min-width:20px;height:20px;font-size:10px}
+  .poster-preview-card{padding:9px}.poster-preview-frame{padding:5px}
+  .poster-actions{gap:6px}.poster-actions button{min-height:44px;padding:8px 5px;font-size:9.5px}
+  .poster-caption{font-size:9px;margin-top:10px}
+  .poster-info>div{padding:10px 6px}.poster-info span{font-size:7px}.poster-info strong{font-size:9px}
+}
+@media(max-width:390px){.poster-tab{font-size:8.2px}.poster-actions button{font-size:8.8px}}
