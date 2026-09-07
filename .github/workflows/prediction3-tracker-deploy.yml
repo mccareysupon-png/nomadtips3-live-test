@@ -31,6 +31,7 @@ jobs:
       - name: Validate source
         run: |
           node --check prediction3-tracker/src/index.js
+          node prediction3-tracker/test/name-normalization.test.mjs
           grep -q '^name = "nomadtips3-prediction3-tracker"$' prediction3-tracker/wrangler.toml
           grep -q '^main = "src/index.js"$' prediction3-tracker/wrangler.toml
           grep -Fq 'class Prediction3Tracker' prediction3-tracker/src/index.js
