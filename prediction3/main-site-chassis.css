@@ -28,6 +28,11 @@ body[data-page="prediction3"]{
   background:#10120f!important;
 }
 
+/* Owner/engine operating-status block is intentionally hidden from the public UI on every device. */
+body[data-page="prediction3"] .prediction3-status{
+  display:none!important;
+}
+
 /* Same public topbar geometry as Asian Handicap / Statistics / Live Score. */
 body[data-page="prediction3"] .topbar{
   height:64px!important;
