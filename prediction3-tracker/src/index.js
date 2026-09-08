@@ -45,6 +45,10 @@ export function teamScore(a,b){
   return matched/Math.max(aa.length,bb.length);
 }
 function rowId(row){return String(row?.id??row?.fixtureId??'');}
+export function fixtureIdentityMatches(item,row){
+  if(!item||!row)return false;
+  return teamScore(item?.home,row?.home)>=0.75&&teamScore(item?.away,row?.away)>=0.75;
+}
 export function kickoffMs(item){
   const raw=item?.tracking?.kickoffUtc||item?.kickoffAt||null;
   if(!raw)return null;
@@ -56,19 +60,32 @@ export function finalFallbackEligible(item,at=now()){
   return kickoff!==null&&Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS;
 }
 export function fixtureFor(item,rows,{knownFixtureId=null,final=false,at=now()}={}){
-  const ids=[item?.tracking?.fixtureId,item?.fixtureId,knownFixtureId].map(value=>String(value??'').trim()).filter(Boolean);
-  for(const id of ids){
+  const configuredIds=[item?.tracking?.fixtureId,item?.fixtureId].map(value=>String(value??'').trim()).filter(Boolean);
+  for(const id of configuredIds){
     const exact=(rows||[]).find(row=>rowId(row)===id);
     if(exact)return exact;
   }
+
+  const learnedId=String(knownFixtureId??'').trim();
+  if(learnedId){
+    const learned=(rows||[]).find(row=>rowId(row)===learnedId);
+    // Runtime fixture IDs are learned from a name match. Never let a bad learned ID
+    // become authoritative: it must still identify the same home/away pair.
+    if(learned&&fixtureIdentityMatches(item,learned))return learned;
+  }
+
   if(final&&!finalFallbackEligible(item,at))return null;
-  let best=null,bestScore=0;
+
+  const candidates=[];
   for(const row of rows||[]){
     const hs=teamScore(item?.home,row?.home),as=teamScore(item?.away,row?.away);
-    const score=hs+as;
-    if(hs>=0.75&&as>=0.75&&score>bestScore){best=row;bestScore=score;}
+    if(hs>=0.75&&as>=0.75)candidates.push({row,score:hs+as});
   }
-  return best;
+  if(!candidates.length)return null;
+  candidates.sort((a,b)=>b.score-a.score);
+  // If two provider rows are effectively tied, do not guess an ID from team names.
+  if(candidates.length>1&&Math.abs(candidates[0].score-candidates[1].score)<0.05&&rowId(candidates[0].row)!==rowId(candidates[1].row))return null;
+  return candidates[0].row;
 }
 function scorePair(row){
   const raw=Array.isArray(row?.score)?row.score:[row?.score?.home,row?.score?.away];
@@ -155,7 +172,19 @@ export class Prediction3Tracker{
         if(!item?.id)continue;
         const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);
         const record=recordFromPick(item,previous);
-        const knownFixtureId=record.fixtureId||previous.fixtureId||null;
+        const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();
+        let knownFixtureId=record.fixtureId||previous.fixtureId||null;
+
+        // Heal a previously learned wrong ID as soon as that provider row is visible.
+        if(knownFixtureId&&!configuredFixtureId){
+          const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];
+          const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));
+          if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){
+            record.fixtureId=null;
+            knownFixtureId=null;
+          }
+        }
+
         const finalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});
         const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});
 
