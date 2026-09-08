@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 const SERVER_BASE='https://nomadtips3-342-signal-engine.mccarey-supon.workers.dev';
-const MARKETS=['over','under','oneXtwo'];
+const MARKETS=['over','under','oneXtwo','ah'];
 let syncTimer=null,syncBusy=false;
 
 const api=()=>window.NOMAD342_MARKET_SETTINGS||null;
@@ -30,7 +30,7 @@ function applyLocal(serverSnapshot){
   try{
     localStorage.setItem(settingsApi.activeKey,JSON.stringify(settings));
     localStorage.setItem(settingsApi.draftKey,JSON.stringify(settings));
-    localStorage.setItem(settingsApi.runKey,JSON.stringify({over:Boolean(run.over),under:Boolean(run.under),oneXtwo:Boolean(run.oneXtwo),updatedAt:finite(run.updatedAt)||finite(serverSnapshot.updatedAt)||Date.now()}));
+    localStorage.setItem(settingsApi.runKey,JSON.stringify({over:Boolean(run.over),under:Boolean(run.under),oneXtwo:Boolean(run.oneXtwo),ah:Boolean(run.ah),updatedAt:finite(run.updatedAt)||finite(serverSnapshot.updatedAt)||Date.now()}));
   }catch{}
   for(const name of MARKETS){fillForm(name,settings[name]);setLight(name,Boolean(run[name]));if(run[name])setNote(name,'SERVER 24/7 · ระบบตรวจจับทำงานต่อแม้ปิดหน้านี้')}
 }

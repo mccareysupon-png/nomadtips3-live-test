@@ -22,7 +22,7 @@ const pair=value=>Array.isArray(value)?{home:finite(value[0]),away:finite(value[
 const safeScore=value=>{const n=finite(value);return n!==null&&Number.isInteger(n)&&n>=0&&n<=MAX_GOALS?n:null;};
 const selectedOdds=(market,pick)=>{const p=String(pick||'').toUpperCase();if(p==='HOME')return finite(market?.home);if(p==='DRAW')return finite(market?.draw);if(p==='AWAY')return finite(market?.away);if(p==='OVER')return finite(market?.over??market?.overOdds);if(p==='UNDER')return finite(market?.under??market?.underOdds);return null;};
 const profitFor=(result,odds)=>{const n=finite(odds);return result==='WIN'?Number((n-1).toFixed(4)):result==='HALF_WIN'?Number(((n-1)/2).toFixed(4)):result==='LOSS'?-1:result==='HALF_LOSS'?-.5:0;};
-const GRADING_REVISION='asian-total-v2';
+const GRADING_REVISION='asian-total-v3';
 const json=(request,body,status=200)=>{const origin=request.headers.get('origin')||'';const headers=new Headers({'content-type':'application/json; charset=utf-8','cache-control':'no-store'});headers.set('access-control-allow-origin',ALLOWED_WRITE_ORIGINS.has(origin)?origin:'*');headers.set('access-control-allow-methods','GET,POST,OPTIONS');headers.set('access-control-allow-headers','content-type');headers.set('vary','Origin');return new Response(status===204?null:JSON.stringify(body),{status,headers});};
 
 function baseFields(body,errors){
@@ -50,13 +50,14 @@ function validateSettings(cfg,kind,errors,prefix){
   if(required===null||!Number.isInteger(required)||required<1||required>6)errors.push(`${prefix}.settings.evidenceRequired`);
   for(const key of ['shotOnTarget','shotOff','corner']){const n=finite(cfg?.[key]);if(n===null||n<0||n>50)errors.push(`${prefix}.settings.${key}`);}
   for(const key of ['dangerousAttackPct','attackPct','possessionPct']){const n=finite(cfg?.[key]);if(n===null||n<0||n>100)errors.push(`${prefix}.settings.${key}`);}
-  if(kind!=='1X2'){const lineMin=finite(cfg?.lineMin);if(lineMin===null||lineMin<.5||lineMin>10||!Number.isInteger(lineMin*2))errors.push(`${prefix}.settings.lineMin`);}
+  if(kind==='AH'){const lineMin=finite(cfg?.lineMin);if(lineMin===null||lineMin<-10||lineMin>10||!Number.isInteger(lineMin*4))errors.push(`${prefix}.settings.lineMin`);}
+  else if(kind!=='1X2'){const lineMin=finite(cfg?.lineMin);if(lineMin===null||lineMin<.5||lineMin>10||!Number.isInteger(lineMin*2))errors.push(`${prefix}.settings.lineMin`);}
   if(kind==='1X2'){const gap=finite(cfg?.scoreTrailingMax),mode=String(cfg?.sideMode||'').toUpperCase();if(gap===null||!Number.isInteger(gap)||gap<0||gap>10)errors.push(`${prefix}.settings.scoreTrailingMax`);if(!['HOME','AWAY','BOTH'].includes(mode))errors.push(`${prefix}.settings.sideMode`);}
-  if(kind==='UNDER'&&!['HOME','AWAY','BOTH'].includes(String(cfg?.sideMode||'').toUpperCase()))errors.push(`${prefix}.settings.sideMode`);
+  if(['UNDER','AH'].includes(kind)&&!['HOME','AWAY','BOTH'].includes(String(cfg?.sideMode||'').toUpperCase()))errors.push(`${prefix}.settings.sideMode`);
 }
 function validateSignal(signal,base,errors,index){
   const prefix=`signals.${index}`,kind=String(signal?.market||'').toUpperCase(),pick=String(signal?.pick||'').toUpperCase(),cfg=signal?.settings||{},gate=signal?.gate||{};
-  if(!['1X2','OVER','UNDER'].includes(kind)){errors.push(`${prefix}.market`);return null;}
+  if(!['1X2','OVER','UNDER','AH'].includes(kind)){errors.push(`${prefix}.market`);return null;}
   validateSettings(cfg,kind,errors,prefix);
   if(gate?.pass!==true)errors.push(`${prefix}.gate`);
   if(base.minute<Number(cfg.minuteFrom)||base.minute>Number(cfg.minuteTo))errors.push(`${prefix}.minute`);
@@ -69,6 +70,13 @@ function validateSignal(signal,base,errors,index){
     const trailing=pick==='HOME'?Math.max(0,Number(base.entryScore.away)-Number(base.entryScore.home)):Math.max(0,Number(base.entryScore.home)-Number(base.entryScore.away));if(trailing>Number(cfg.scoreTrailingMax))errors.push(`${prefix}.scoreTrailingMax`);
     return {market:'1X2',pick,odds,probability:finite(signal?.probability),home:finite(signal?.home),away:finite(signal?.away),settings:{...cfg},gate};
   }
+  if(kind==='AH'){
+    if(!['HOME','AWAY'].includes(pick))errors.push(`${prefix}.pick`);
+    const sideMode=String(cfg.sideMode||'BOTH').toUpperCase();if(sideMode!=='BOTH'&&sideMode!==pick)errors.push(`${prefix}.sideMode`);
+    const line=finite(signal?.line);if(line===null||line<Number(cfg.lineMin)||line<-20||line>20||!Number.isInteger(line*4))errors.push(`${prefix}.line`);
+    const selected=evidence?.sides?.[pick]?.values||evidence?.values||null,check=countEvidence(selected,cfg,'MIN');if(check.required<1||check.passCount<check.required)errors.push(`${prefix}.evidence`);
+    return {market:'AH',marketLabel:'Asian Handicap',pick,line,rawLine:finite(signal?.rawLine),odds,probability:finite(signal?.probability),bookmaker:clean(signal?.bookmaker,80)||null,provider:clean(signal?.provider,80)||null,settings:{...cfg},gate};
+  }
   if(pick!==kind)errors.push(`${prefix}.pick`);const line=finite(signal?.line);if(line===null||line<Number(cfg.lineMin)||line>20||!Number.isInteger(line*4))errors.push(`${prefix}.line`);
   if(kind==='OVER'){
     const home=countEvidence(evidence?.sides?.HOME?.values,cfg,'MIN'),away=countEvidence(evidence?.sides?.AWAY?.values,cfg,'MIN');if(home.passCount<home.required&&away.passCount<away.required)errors.push(`${prefix}.evidence`);
@@ -79,18 +87,19 @@ function validateSignal(signal,base,errors,index){
 }
 function validateV3Lock(body){
   const errors=[],base=baseFields(body,errors),raw=Array.isArray(body?.signals)?body.signals:[];
-  if(raw.length<1||raw.length>2)errors.push('signals');
+  if(raw.length<1||raw.length>3)errors.push('signals');
   const signals=raw.map((s,i)=>validateSignal(s,base,errors,i)).filter(Boolean),kinds=signals.map(s=>s.market);
   if(new Set(kinds).size!==kinds.length)errors.push('signals.duplicate');if(kinds.includes('OVER')&&kinds.includes('UNDER'))errors.push('signals.conflict');
-  return {ok:errors.length===0,errors,value:{...base,schemaVersion:3,settingsVersion:clean(body?.settingsVersion,80)||null,signals,market:{provider:clean(body?.market?.provider,80)||null,observedAt:finite(body?.market?.observedAt),fixture:body?.market?.fixture&&typeof body.market.fixture==='object'?body.market.fixture:null,oneXtwo:body?.market?.oneXtwo&&typeof body.market.oneXtwo==='object'?body.market.oneXtwo:null,totals:body?.market?.totals&&typeof body.market.totals==='object'?body.market.totals:null,statistics:body?.market?.statistics&&typeof body.market.statistics==='object'?body.market.statistics:null}}};
+  return {ok:errors.length===0,errors,value:{...base,schemaVersion:3,settingsVersion:clean(body?.settingsVersion,80)||null,signals,market:{provider:clean(body?.market?.provider,80)||null,observedAt:finite(body?.market?.observedAt),fixture:body?.market?.fixture&&typeof body.market.fixture==='object'?body.market.fixture:null,oneXtwo:body?.market?.oneXtwo&&typeof body.market.oneXtwo==='object'?body.market.oneXtwo:null,totals:body?.market?.totals&&typeof body.market.totals==='object'?body.market.totals:null,asianHandicap:body?.market?.asianHandicap&&typeof body.market.asianHandicap==='object'?body.market.asianHandicap:null,statistics:body?.market?.statistics&&typeof body.market.statistics==='object'?body.market.statistics:null}}};
 }
 function validateLock(body){return Number(body?.schemaVersion)>=3&&Array.isArray(body?.signals)?validateV3Lock(body):validateLegacyLock(body);}
 
 export function gradeOneXtwo(pick,home,away){const p=String(pick||'').toUpperCase();if(!Number.isFinite(home)||!Number.isFinite(away))return 'PENDING';const actual=home>away?'HOME':home<away?'AWAY':'DRAW';return p===actual?'WIN':'LOSS';}
 export function gradeTotals(pick,line,home,away){const p=String(pick||'').toUpperCase(),l=finite(line);if(!['OVER','UNDER'].includes(p)||l===null||!Number.isFinite(home)||!Number.isFinite(away))return 'PENDING';if(!Number.isInteger(l*4))return 'PENDING';if(!Number.isInteger(l*2)){const parts=[l-.25,l+.25].map(part=>gradeTotals(p,part,home,away));if(parts.includes('PUSH'))return parts.includes('WIN')?'HALF_WIN':'HALF_LOSS';return parts[0];}const total=home+away;if(Math.abs(total-l)<1e-9)return 'PUSH';if(p==='OVER')return total>l?'WIN':'LOSS';return total<l?'WIN':'LOSS';}
+export function gradeAsianHandicap(pick,line,home,away){const p=String(pick||'').toUpperCase(),l=finite(line);if(!['HOME','AWAY'].includes(p)||l===null||!Number.isFinite(home)||!Number.isFinite(away))return 'PENDING';if(!Number.isInteger(l*4))return 'PENDING';if(!Number.isInteger(l*2)){const parts=[l-.25,l+.25].map(part=>gradeAsianHandicap(p,part,home,away));if(parts.includes('PUSH'))return parts.includes('WIN')?'HALF_WIN':'HALF_LOSS';return parts[0];}const selected=p==='HOME'?home:away,opponent=p==='HOME'?away:home,adjusted=selected+l-opponent;if(Math.abs(adjusted)<1e-9)return 'PUSH';return adjusted>0?'WIN':'LOSS';}
 export function settlementNeedsRevision(record){return Boolean(record&&!record.settlement&&record.settlementRevision!==SETTLEMENT_REVISION);}
 export function settlementIsDue(record,now=Date.now()){if(!record||record.settlement)return false;if(settlementNeedsRevision(record))return true;return Number.isFinite(Number(record.nextSettlementCheckAt))&&Number(record.nextSettlementCheckAt)<=Number(now);}
-function settleV3Signals(record,score){return (record.signals||[]).map(signal=>{const result=signal.market==='1X2'?gradeOneXtwo(signal.pick,score.home,score.away):gradeTotals(signal.pick,signal.line,score.home,score.away);return {...signal,result,profit:profitFor(result,signal.odds)};});}
+function settleV3Signals(record,score){return (record.signals||[]).map(signal=>{const result=signal.market==='1X2'?gradeOneXtwo(signal.pick,score.home,score.away):signal.market==='AH'?gradeAsianHandicap(signal.pick,signal.line,score.home,score.away):gradeTotals(signal.pick,signal.line,score.home,score.away);return {...signal,result,profit:profitFor(result,signal.odds)};});}
 export function settleRecord(record,finalScore,status,settledAt=Date.now(),sourceMeta=null){
   const score=pair(finalScore);if(score.home===null||score.away===null)return record;
   const common={status:'SETTLED',gradingRevision:GRADING_REVISION,fixtureStatus:status,finalScore:score,settledAt,source:sourceMeta?.source||null,sourceMatchId:sourceMeta?.sourceMatchId||null,matchMode:sourceMeta?.matchMode||null};
@@ -100,7 +109,7 @@ export function settleRecord(record,finalScore,status,settledAt=Date.now(),sourc
 }
 function rowsFromRecords(records){
   const rows=[];for(const record of records){const common={recordId:record.id,matchId:record.matchId,fixtureId:record.fixtureId,lockedAt:record.lockedAt,league:record.league,home:record.home,away:record.away,minute:record.minute,entryScore:record.entryScore,finalScore:record.settlement?.finalScore||null};
-    if(Array.isArray(record.signals)){const settled=new Map((record.settlement?.signals||[]).map(x=>[x.market,x]));for(const s of record.signals){const done=settled.get(s.market);rows.push({...common,market:s.market==='1X2'?'1X2':`O/U ${Number(s.line).toFixed(Number.isInteger(Number(s.line))?1:2)}`,pick:s.pick,line:s.market==='1X2'?null:s.line,odds:s.odds,result:done?.result||'PENDING',profit:done?.profit??null});}continue;}
+    if(Array.isArray(record.signals)){const settled=new Map((record.settlement?.signals||[]).map(x=>[x.market,x]));for(const s of record.signals){const done=settled.get(s.market);rows.push({...common,market:s.market==='1X2'?'1X2':s.market==='AH'?`Asian Handicap ${Number(s.line).toFixed(Number.isInteger(Number(s.line))?1:2)}`:`O/U ${Number(s.line).toFixed(Number.isInteger(Number(s.line))?1:2)}`,pick:s.pick,line:s.market==='1X2'?null:s.line,odds:s.odds,result:done?.result||'PENDING',profit:done?.profit??null});}continue;}
     rows.push({...common,market:'1X2',pick:record.prediction.oneXtwo.pick,line:null,odds:record.prediction.oneXtwo.odds,result:record.settlement?.oneXtwo?.result||'PENDING',profit:record.settlement?.oneXtwo?.profit??null});rows.push({...common,market:`O/U ${Number(record.prediction.totals.line).toFixed(Number.isInteger(Number(record.prediction.totals.line))?1:2)}`,pick:record.prediction.totals.pick,line:record.prediction.totals.line,odds:record.prediction.totals.odds,result:record.settlement?.totals?.result||'PENDING',profit:record.settlement?.totals?.profit??null});}
   return rows.sort((a,b)=>Number(b.lockedAt)-Number(a.lockedAt));
 }

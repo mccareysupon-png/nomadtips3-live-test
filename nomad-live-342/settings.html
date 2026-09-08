@@ -8,20 +8,22 @@
   <title>nomadtips3 · ตั้งค่า 3.42</title>
   <link rel="stylesheet" href="styles.css?v=20260831-standalone342-v2">
   <link rel="stylesheet" href="settings-market-v3.css?v=20260906-th-v1">
+  <link rel="stylesheet" href="settings-ah-v1.css?v=20260908-ah-safe-v1">
 </head>
 <body data-page="market-settings-v3">
 <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="index.html">Live</a><a class="active" href="settings.html">Settings</a><a href="health.html">Health</a></nav></div></header>
 <main class="shell settings-v3-shell">
   <section class="settings-v3-hero">
-    <div><p class="eyebrow">NOMAD LIVE 3.42 · OWNER SETTINGS</p><h1>ตั้งค่า 1X2 · OVER · UNDER</h1><p>แยกการตั้งค่าแต่ละตลาดชัดเจน · บันทึกก่อน แล้วกด RUN ให้ตลาดนั้นทำงาน</p></div>
+    <div><p class="eyebrow">NOMAD LIVE 3.42 · OWNER SETTINGS</p><h1>ตั้งค่า Asian Handicap · 1X2 · OVER · UNDER</h1><p>แยกการตั้งค่าแต่ละตลาดชัดเจน · บันทึกก่อน แล้วเริ่มทำงานเฉพาะตลาดที่ต้องการ</p></div>
     <div class="settings-v3-status-board" aria-label="สถานะระบบ">
       <div><i data-status-light="over" class="status-light is-off"></i><span>OVER</span><b data-status-label="over">หยุด</b></div>
       <div><i data-status-light="under" class="status-light is-off"></i><span>UNDER</span><b data-status-label="under">หยุด</b></div>
       <div><i data-status-light="oneXtwo" class="status-light is-off"></i><span>1X2</span><b data-status-label="oneXtwo">หยุด</b></div>
+      <div><i data-status-light="ah" class="status-light is-off"></i><span>Asian Handicap</span><b data-status-label="ah">หยุด</b></div>
     </div>
   </section>
 
-  <nav class="market-tabs" aria-label="เลือกตลาด"><button type="button" class="market-tab active" data-market-tab="over">OVER</button><button type="button" class="market-tab" data-market-tab="under">UNDER</button><button type="button" class="market-tab" data-market-tab="oneXtwo">1X2</button></nav>
+  <nav class="market-tabs" aria-label="เลือกตลาด"><button type="button" class="market-tab active" data-market-tab="over">OVER</button><button type="button" class="market-tab" data-market-tab="under">UNDER</button><button type="button" class="market-tab" data-market-tab="oneXtwo">1X2</button><button type="button" class="market-tab" data-market-tab="ah">Asian Handicap</button></nav>
 
   <section class="market-panel" data-market-panel="over"><form class="market-form" data-market-form="over">
     <header class="market-title"><div><span>ตลาดที่ 1</span><h2>OVER</h2></div><p>ตรวจ Home และ Away แยกกัน · ฝั่งใดฝั่งหนึ่งผ่านตามจำนวนหลักฐานที่ตั้ง = ผ่าน</p></header>
@@ -54,9 +56,30 @@
     <section class="setting-group behavior"><div class="group-title"><span>ส่วนพฤติกรรม</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อคทันที</span><span>ไม่เลือกซ้ำ</span><span>ปล่อยจนจบเกม</span></div></section>
     <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
   </form></section>
-  <div class="settings-v3-note">หน้าตั้งค่านี้ใช้กับ NOMAD LIVE 3.42 · 1X2 · Over/Under เท่านั้น ไม่แตะ Asian Handicap และไม่แก้ Signal ที่ล็อคไปแล้ว</div>
+
+  <section class="market-panel" data-market-panel="ah" hidden aria-hidden="true"><form class="market-form" data-market-form="ah">
+    <header class="market-title"><div><span>ตลาดที่ 4</span><h2>Asian Handicap</h2></div><p>ตรวจตามฝั่งที่เลือก · ใช้เฉพาะเหตุการณ์สดที่ระบบได้รับจริง</p></header>
+    <section class="setting-group"><div class="group-title"><span>เลือกฝั่งที่ต้องการตรวจ</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div><small class="ah-help">Both = ตรวจทั้งสองฝั่ง แล้วเลือกฝั่งที่ผ่านเงื่อนไขจริงและมีหลักฐานแข็งแรงกว่า</small></section>
+    <section class="setting-group"><div class="group-title"><span>เงื่อนไขเหตุการณ์สด</span><small>ตั้งแต่ค่าที่กำหนด = ผ่าน · ข้อมูลที่ไม่มีจะไม่ถูกนับเป็นศูนย์</small></div><div class="setting-grid evidence-grid">
+      <label><span>Shot on Target ตั้งแต่</span><div class="input-unit"><input name="shotOnTarget" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
+      <label><span>Shot off Target ตั้งแต่</span><div class="input-unit"><input name="shotOff" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
+      <label><span>Corner Kick ตั้งแต่</span><div class="input-unit"><input name="corner" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
+      <label><span>Dangerous Attack ตั้งแต่</span><div class="input-unit"><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
+      <label><span>Attack ตั้งแต่</span><div class="input-unit"><input name="attackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
+      <label><span>Ball Possession ตั้งแต่</span><div class="input-unit"><input name="possessionPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
+      <label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label>
+    </div></section>
+    <section class="setting-group"><div class="group-title"><span>เงื่อนไขราคา</span></div><div class="setting-grid">
+      <label><span>Asian Handicap Line ต่ำสุด</span><input name="lineMin" type="number" min="-10" max="10" step="0.25" required><small>ใช้ไลน์ของฝั่งที่ถูกเลือกจริง</small></label>
+      <label><span>Odds ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label>
+    </div></section>
+    <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
+    <section class="setting-group behavior"><div class="group-title"><span>การทำงานของ Signal</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อกทันที</span><span>ไม่เลือกคู่เดิมซ้ำ</span><span>ตรวจราคาก่อนปล่อย Signal</span><span>ทำงานต่อจนจบช่วงเวลาที่กำหนด</span></div></section>
+    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>หยุดทำงาน</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>เริ่มทำงาน</button></div></footer>
+  </form></section>
+  <div class="settings-v3-note">หน้าตั้งค่านี้ใช้กับ NOMAD LIVE 3.42 เท่านั้น · Asian Handicap แยกการตั้งค่าและสถานะทำงานของตัวเอง · ไม่แก้ Signal ที่ล็อกไปแล้ว และไม่แตะ NOMAD LIVE 3.41</div>
 </main>
-<script src="market-settings-v3.js?v=20260906-th-v1" defer></script>
-<script src="market-settings-server-sync.js?v=20260908-server-v1" defer></script>
+<script src="market-settings-v3.js?v=20260906-th-v1-ah1" defer></script>
+<script src="market-settings-server-sync.js?v=20260908-server-v1-ah1" defer></script>
 </body>
 </html>
