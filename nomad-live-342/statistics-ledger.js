@@ -21,6 +21,9 @@ const finite=value=>{if(value===null||value===undefined||value===''||typeof valu
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
 const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
 const fmtOdds=value=>{const n=finite(value);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2);};
+const fmtDecimal=value=>{const n=finite(value);return n===null?'—':n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');};
+const fmtLine=value=>{const n=finite(value);if(n===null)return'—';if(Math.abs(n)<1e-9)return'0.0';const abs=Math.abs(n);const digits=Number.isInteger(abs)?1:2;return `${n>0?'+':'-'}${abs.toFixed(digits)}`;};
+const fmtRawHk=value=>{const n=finite(value);return n===null?'—':n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');};
 const fmtProfit=value=>finite(value)===null?'—':`${finite(value)>0?'+':''}${finite(value).toFixed(2)}u`;
 const resultClass=result=>`result-${String(result||'PENDING').toLowerCase()}`;
 const displayResult=result=>String(result||'PENDING').toUpperCase()==='PUSH'?'DRAW':String(result||'PENDING').toUpperCase().replaceAll('_',' ');
@@ -71,17 +74,55 @@ function fallbackAvgOdds(rows){
   const priced=settled.map(row=>finite(row?.odds)).filter(value=>value!==null);
   return priced.length?priced.reduce((sum,value)=>sum+value,0)/priced.length:null;
 }
-function rowHtml(row){
-  const result=String(row.result||'PENDING').toUpperCase();
-  return `<tr><td>${esc(when(row.lockedAt))}</td><td>${esc(row.home)} — ${esc(row.away)}</td><td class="market-cell">${esc(row.market)}</td><td>${esc(row.pick)}</td><td>${esc(fmtOdds(row.odds))}</td><td>${esc(row.minute??'—')}′ · ${esc(pair(row.entryScore))}</td><td class="final-cell">${finalHtml(row)}</td><td class="${esc(resultClass(result))}">${esc(displayResult(result))}</td><td class="${esc(profitClass(row.profit))}">${esc(fmtProfit(row.profit))}</td></tr>`;
+function buildAhAudit(records){
+  const audit=new Map();
+  for(const record of Array.isArray(records)?records:[]){
+    const signal=(Array.isArray(record?.signals)?record.signals:[]).find(item=>String(item?.market||'').toUpperCase()==='AH');
+    if(!signal)continue;
+    const matchId=String(record?.matchId??'');if(!matchId)continue;
+    audit.set(matchId,{
+      pick:String(signal.pick||'').toUpperCase(),line:finite(signal.line),rawLine:finite(signal.rawLine),odds:finite(signal.odds),
+      homeOdds:finite(signal.homeOdds),awayOdds:finite(signal.awayOdds),rawHomeHk:finite(signal.rawHomeHk),rawAwayHk:finite(signal.rawAwayHk),
+      bookmaker:String(signal.bookmaker||record?.market?.asianHandicap?.bookmaker||'Bet365'),provider:String(signal.provider||record?.market?.asianHandicap?.provider||record?.market?.provider||'Nowgoal')
+    });
+  }
+  return audit;
+}
+function ahCells(row,audit){
+  const pick=String(audit?.pick||row?.pick||'').toUpperCase(),selectedLine=finite(audit?.line)??finite(row?.line),rawLine=finite(audit?.rawLine);
+  const selectedOdds=finite(audit?.odds)??finite(row?.odds),rawHk=pick==='HOME'?finite(audit?.rawHomeHk):pick==='AWAY'?finite(audit?.rawAwayHk):null;
+  const bookmaker=String(audit?.bookmaker||'Bet365'),provider=String(audit?.provider||'Nowgoal');
+  const expected=rawLine===null?null:(pick==='AWAY'?-rawLine:rawLine),perspectiveOk=expected===null||selectedLine===null?null:Math.abs(expected-selectedLine)<1e-9;
+  const priceExpected=rawHk===null?null:1+rawHk,priceOk=priceExpected===null||selectedOdds===null?null:Math.abs(priceExpected-selectedOdds)<1e-6;
+  const pickMain=`${pick||'—'} ${fmtLine(selectedLine)}`;
+  const perspective=`Goaloo Home line ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓ perspective':' · ⚠ perspective'}`;
+  const priceMain=fmtDecimal(selectedOdds);
+  const priceAudit=`${bookmaker} · ${provider} · Raw HK ${fmtRawHk(rawHk)} → ${priceExpected===null?'—':fmtDecimal(priceExpected)}${priceOk===null?'':priceOk?' · ✓':' · ⚠'}`;
+  return {
+    market:'Asian Handicap',
+    pick:`<strong>${esc(pickMain)}</strong><br><small>${esc(perspective)}</small>`,
+    odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(priceAudit)}</small>`
+  };
+}
+function rowHtml(row,ahAudit){
+  const result=String(row.result||'PENDING').toUpperCase(),isAh=String(row.market||'').startsWith('Asian Handicap');
+  const audit=isAh?ahCells(row,ahAudit.get(String(row?.matchId??''))):null;
+  const marketHtml=isAh?esc(audit.market):esc(row.market);
+  const pickHtml=isAh?audit.pick:esc(row.pick);
+  const oddsHtml=isAh?audit.odds:esc(fmtOdds(row.odds));
+  return `<tr><td>${esc(when(row.lockedAt))}</td><td>${esc(row.home)} — ${esc(row.away)}</td><td class="market-cell">${marketHtml}</td><td>${pickHtml}</td><td>${oddsHtml}</td><td>${esc(row.minute??'—')}′ · ${esc(pair(row.entryScore))}</td><td class="final-cell">${finalHtml(row)}</td><td class="${esc(resultClass(result))}">${esc(displayResult(result))}</td><td class="${esc(profitClass(row.profit))}">${esc(fmtProfit(row.profit))}</td></tr>`;
+}
+async function fetchJson(path){
+  const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.timeoutMs)||6500);
+  try{const response=await fetch(`${base}${path}${path.includes('?')?'&':'?'}t=${Date.now()}`,{cache:'no-store',signal:ac.signal});if(!response.ok)throw new Error(`HTTP ${response.status}`);return await response.json();}
+  finally{clearTimeout(timeout);}
 }
 async function load(){
   if(busy||!base||!tbody)return;busy=true;
   try{
-    const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.timeoutMs)||6500);
-    let response;try{response=await fetch(`${base}${runtime.statisticsPath||'/statistics'}?limit=500&t=${Date.now()}`,{cache:'no-store',signal:ac.signal});}finally{clearTimeout(timeout)}
-    if(!response.ok)throw new Error(`HTTP ${response.status}`);
-    const data=await response.json(),summary=data?.summary||{},rows=Array.isArray(data?.rows)?data.rows:[];
+    const data=await fetchJson(`${runtime.statisticsPath||'/statistics'}?limit=500`),summary=data?.summary||{},rows=Array.isArray(data?.rows)?data.rows:[];
+    let ahAudit=new Map();
+    try{const signalData=await fetchJson(`${runtime.signalPath||'/signal'}?limit=500`);ahAudit=buildAhAudit(signalData?.records);}catch{}
     const avgOdds=finite(summary.avgOdds)??fallbackAvgOdds(rows);
     set(metrics.roi,finite(summary.roi)===null?'—':`${Number(summary.roi).toFixed(2)}%`);
     set(metrics.profit,fmtProfit(summary.profit));
@@ -94,7 +135,7 @@ async function load(){
     set(metrics.draw,summary.pushes??0);
     set(metrics.avgOdds,avgOdds===null?'—':fmtOdds(avgOdds));
     set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
-    tbody.innerHTML=rows.length?rows.map(rowHtml).join(''):'<tr><td colspan="9">No picks recorded yet.</td></tr>';
+    tbody.innerHTML=rows.length?rows.map(row=>rowHtml(row,ahAudit)).join(''):'<tr><td colspan="9">No picks recorded yet.</td></tr>';
     set(status,`LEDGER ONLINE · ${summary.settledPredictions??0} settled · ${summary.pendingPredictions??0} pending · updated ${when(data.updatedAt)}`);
   }catch(error){
     set(status,'LEDGER TEMPORARILY UNAVAILABLE');
