@@ -4,11 +4,12 @@ const VERSION='market-settings-v3';
 const DRAFT_KEY='nomad342MarketSettingsDraftV3';
 const ACTIVE_KEY='nomad342MarketSettingsActiveV3';
 const RUN_KEY='nomad342MarketRunV3';
-const MARKETS=['over','under','oneXtwo'];
+const MARKETS=['over','under','oneXtwo','ah'];
 const DEFAULTS=Object.freeze({
   over:{lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
-  oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
+  oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
+  ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
 });
 function clone(v){return JSON.parse(JSON.stringify(v))}
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
@@ -22,13 +23,13 @@ function normalizeMarket(name,input={}){
   }
   return out;
 }
-function normalizeSettings(input={}){return {version:VERSION,over:normalizeMarket('over',input.over),under:normalizeMarket('under',input.under),oneXtwo:normalizeMarket('oneXtwo',input.oneXtwo)}}
+function normalizeSettings(input={}){return {version:VERSION,over:normalizeMarket('over',input.over),under:normalizeMarket('under',input.under),oneXtwo:normalizeMarket('oneXtwo',input.oneXtwo),ah:normalizeMarket('ah',input.ah)}}
 function loadDraft(){return normalizeSettings(loadJson(DRAFT_KEY,{}))}
 function loadActive(){return normalizeSettings(loadJson(ACTIVE_KEY,loadDraft()))}
-function loadRun(){const raw=loadJson(RUN_KEY,{});return {over:Boolean(raw.over),under:Boolean(raw.under),oneXtwo:Boolean(raw.oneXtwo),updatedAt:finite(raw.updatedAt)}}
+function loadRun(){const raw=loadJson(RUN_KEY,{});return {over:Boolean(raw.over),under:Boolean(raw.under),oneXtwo:Boolean(raw.oneXtwo),ah:Boolean(raw.ah),updatedAt:finite(raw.updatedAt)}}
 function saveDraft(settings){const next=normalizeSettings(settings);localStorage.setItem(DRAFT_KEY,JSON.stringify(next));return next}
 function saveActive(settings){const next=normalizeSettings(settings);localStorage.setItem(ACTIVE_KEY,JSON.stringify(next));return next}
-function saveRun(run){const next={over:Boolean(run.over),under:Boolean(run.under),oneXtwo:Boolean(run.oneXtwo),updatedAt:Date.now()};localStorage.setItem(RUN_KEY,JSON.stringify(next));return next}
+function saveRun(run){const next={over:Boolean(run.over),under:Boolean(run.under),oneXtwo:Boolean(run.oneXtwo),ah:Boolean(run.ah),updatedAt:Date.now()};localStorage.setItem(RUN_KEY,JSON.stringify(next));return next}
 function validate(name,cfg){
   const e=[];
   if(!MARKETS.includes(name))return ['ไม่รู้จักตลาด'];
@@ -37,7 +38,8 @@ function validate(name,cfg){
   if(Number(cfg.minuteFrom)>Number(cfg.minuteTo))e.push('นาทีเริ่มต้องไม่มากกว่านาทีจบ');
   if(!Number.isInteger(Number(cfg.rollingWindowMinutes))||cfg.rollingWindowMinutes<2||cfg.rollingWindowMinutes>30)e.push('ช่วงย้อนหลังต้องเป็น 2–30 นาที');
   if(finite(cfg.oddsMin)===null||cfg.oddsMin<1.01||cfg.oddsMin>20)e.push('ราคา odds ต้องเริ่มตั้งแต่ 1.01');
-  if(name!=='oneXtwo'&&(finite(cfg.lineMin)===null||cfg.lineMin<0.5||cfg.lineMin>10||!Number.isInteger(cfg.lineMin*2)))e.push('เส้นประตูใช้ 0.5–10.0 เพิ่มทีละ 0.5');
+  if(name==='ah'&&(finite(cfg.lineMin)===null||cfg.lineMin<-10||cfg.lineMin>10||!Number.isInteger(cfg.lineMin*4)))e.push('Asian Handicap Line ต้องอยู่ระหว่าง -10 ถึง 10 และเพิ่มทีละ 0.25');
+  if(name!=='oneXtwo'&&name!=='ah'&&(finite(cfg.lineMin)===null||cfg.lineMin<0.5||cfg.lineMin>10||!Number.isInteger(cfg.lineMin*2)))e.push('เส้นประตูใช้ 0.5–10.0 เพิ่มทีละ 0.5');
   if(name==='oneXtwo'&&(!Number.isInteger(Number(cfg.scoreTrailingMax))||cfg.scoreTrailingMax<0||cfg.scoreTrailingMax>10))e.push('ระยะห่างของสกอร์ต้องเป็นจำนวนเต็ม 0–10');
   if(name!=='over'&&!['HOME','AWAY','BOTH'].includes(String(cfg.sideMode||'').toUpperCase()))e.push('เลือก Home / Away / Both ให้ถูกต้อง');
   for(const key of ['shotOnTarget','shotOff','corner'])if(finite(cfg[key])===null||cfg[key]<0||cfg[key]>50)e.push(`${key} ต้องเป็น 0–50`);
@@ -49,7 +51,7 @@ function marketActive(name){const run=loadRun();return Boolean(run[name])?loadAc
 function anyRunning(){const r=loadRun();return MARKETS.some(k=>r[k])}
 function runMarket(name,cfg){const errors=validate(name,cfg);if(errors.length)return {ok:false,errors};const draft=loadDraft();draft[name]=normalizeMarket(name,cfg);saveDraft(draft);const active=loadActive();active[name]=normalizeMarket(name,cfg);saveActive(active);const run=loadRun();run[name]=true;saveRun(run);document.dispatchEvent(new CustomEvent('nomad342:marketsettingsrun',{detail:{market:name,settings:active[name]}}));return {ok:true,settings:active[name]}}
 function stopMarket(name){const run=loadRun();run[name]=false;saveRun(run);document.dispatchEvent(new CustomEvent('nomad342:marketsettingsstop',{detail:{market:name}}));return run}
-function stopAll(){saveRun({over:false,under:false,oneXtwo:false});document.dispatchEvent(new CustomEvent('nomad342:marketsettingsstop',{detail:{market:'all'}}))}
+function stopAll(){saveRun({over:false,under:false,oneXtwo:false,ah:false});document.dispatchEvent(new CustomEvent('nomad342:marketsettingsstop',{detail:{market:'all'}}))}
 function runningSnapshot(){return {version:VERSION,settings:loadActive(),run:loadRun()}}
 function readForm(form,name){const base=loadDraft()[name],next={...base};for(const el of form.elements){if(!el.name)continue;if(el.type==='radio'){if(el.checked)next[el.name]=el.value;continue;}next[el.name]=el.tagName==='SELECT'?el.value:Number(el.value)}return normalizeMarket(name,next)}
 function fillForm(form,name,cfg){for(const el of form.elements){if(!el.name)continue;const v=cfg[el.name];if(el.type==='radio'){el.checked=String(el.value).toUpperCase()===String(v).toUpperCase();continue;}el.value=String(v??'')}}
@@ -62,8 +64,8 @@ function startSettingsPage(){
   for(const name of MARKETS){
     const form=document.querySelector(`form[data-market-form="${name}"]`);if(!form)continue;fillForm(form,name,draft[name]);syncStatus(name);
     form.addEventListener('submit',event=>{event.preventDefault();const next=readForm(form,name),errors=validate(name,next);const note=form.querySelector('[data-form-note]');if(errors.length){setLight(name,'error','ตั้งค่าไม่ถูกต้อง');setText(note,errors[0]);return;}draft[name]=next;saveDraft(draft);const run=loadRun();if(run[name]){const active=loadActive();active[name]=normalizeMarket(name,next);saveActive(active);setLight(name,'run','กำลังทำงาน');setText(note,'บันทึกแล้ว · กำลังทำงานด้วยค่าชุดใหม่');}else{setLight(name,'ready','บันทึกแล้ว · รอกด RUN');setText(note,'บันทึกแล้ว · ค่านี้ยังไม่ทำงานจนกว่าจะกด RUN');}});
-    form.querySelector('[data-run-button]')?.addEventListener('click',()=>{const next=readForm(form,name),result=runMarket(name,next),note=form.querySelector('[data-form-note]');if(!result.ok){setLight(name,'error','ตั้งค่าไม่ถูกต้อง');setText(note,result.errors[0]);return;}draft[name]=next;setLight(name,'run','กำลังทำงาน');setText(note,'RUNNING · ใช้ค่าชุดนี้กับการตรวจจับใหม่');});
-    form.querySelector('[data-stop-button]')?.addEventListener('click',()=>{stopMarket(name);setLight(name,'off','หยุด');setText(form.querySelector('[data-form-note]'),'STOP · ไม่สร้าง Signal ใหม่ของตลาดนี้');});
+    form.querySelector('[data-run-button]')?.addEventListener('click',()=>{const next=readForm(form,name),result=runMarket(name,next),note=form.querySelector('[data-form-note]');if(!result.ok){setLight(name,'error','ตั้งค่าไม่ถูกต้อง');setText(note,result.errors[0]);return;}draft[name]=next;setLight(name,'run','กำลังทำงาน');setText(note,name==='ah'?'กำลังทำงาน · ใช้ค่าชุดนี้กับการตรวจจับใหม่':'RUNNING · ใช้ค่าชุดนี้กับการตรวจจับใหม่');});
+    form.querySelector('[data-stop-button]')?.addEventListener('click',()=>{stopMarket(name);setLight(name,'off','หยุด');setText(form.querySelector('[data-form-note]'),name==='ah'?'หยุดทำงาน · ไม่สร้าง Signal ใหม่ของตลาดนี้':'STOP · ไม่สร้าง Signal ใหม่ของตลาดนี้');});
   }
   document.querySelectorAll('[data-market-tab]').forEach(button=>button.addEventListener('click',()=>{
     const target=button.dataset.marketTab;document.querySelectorAll('[data-market-tab]').forEach(b=>b.classList.toggle('active',b===button));document.querySelectorAll('[data-market-panel]').forEach(p=>{const on=p.dataset.marketPanel===target;p.hidden=!on;p.setAttribute('aria-hidden',String(!on));});

@@ -6,6 +6,9 @@ const SETTINGS_VERSION='market-settings-v3';
 const MAX_MATCHES_PER_SCAN=4;
 const MARKET_TIMEOUT_MS=7000;
 const REMOTE_TIMEOUT_MS=10000;
+const NOWGOAL_BASE='https://www.nowgoal.net';
+const NOWGOAL_AH_COMPANY_ID='8';
+const NOWGOAL_UA='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/152 Safari/537.36';
 const ALLOWED_ORIGINS=new Set([
   'https://www.nomadtips3.com','https://nomadtips3.com',
   'https://mccareysupon-png.github.io','http://localhost:8787','http://127.0.0.1:8787'
@@ -13,9 +16,10 @@ const ALLOWED_ORIGINS=new Set([
 const DEFAULTS=Object.freeze({
   over:{lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
-  oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
+  oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
+  ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
 });
-const MARKETS=['over','under','oneXtwo'];
+const MARKETS=['over','under','oneXtwo','ah'];
 const EVIDENCE_KEYS=['shotOnTarget','shotOff','corner','dangerousAttackPct','attackPct','possessionPct'];
 
 const finite=v=>{if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null};
@@ -32,10 +36,10 @@ function normalizeMarket(name,input={}){
   for(const key of Object.keys(base)){if(key==='sideMode')continue;const n=finite(out[key]);out[key]=n===null?base[key]:n}
   return out;
 }
-function normalizeSettings(input={}){return {version:SETTINGS_VERSION,over:normalizeMarket('over',input.over),under:normalizeMarket('under',input.under),oneXtwo:normalizeMarket('oneXtwo',input.oneXtwo)}}
-function normalizeRun(input={}){return {over:Boolean(input.over),under:Boolean(input.under),oneXtwo:Boolean(input.oneXtwo),updatedAt:finite(input.updatedAt)??Date.now()}}
+function normalizeSettings(input={}){return {version:SETTINGS_VERSION,over:normalizeMarket('over',input.over),under:normalizeMarket('under',input.under),oneXtwo:normalizeMarket('oneXtwo',input.oneXtwo),ah:normalizeMarket('ah',input.ah)}}
+function normalizeRun(input={}){return {over:Boolean(input.over),under:Boolean(input.under),oneXtwo:Boolean(input.oneXtwo),ah:Boolean(input.ah),updatedAt:finite(input.updatedAt)??Date.now()}}
 function normalizeSnapshot(input={}){return {version:SETTINGS_VERSION,settings:normalizeSettings(input.settings||{}),run:normalizeRun(input.run||{}),updatedAt:finite(input.updatedAt)??Date.now()}}
-function emptySnapshot(){return normalizeSnapshot({settings:DEFAULTS,run:{over:false,under:false,oneXtwo:false}})}
+function emptySnapshot(){return normalizeSnapshot({settings:DEFAULTS,run:{over:false,under:false,oneXtwo:false,ah:false}})}
 function anyRunning(snapshot){return MARKETS.some(k=>Boolean(snapshot?.run?.[k]))}
 function validateSnapshot(snapshot){
   const errors=[];
@@ -44,7 +48,8 @@ function validateSnapshot(snapshot){
     if(c.minuteFrom<0||c.minuteTo>120||c.minuteFrom>c.minuteTo)errors.push(`${name}.minute`);
     if(c.rollingWindowMinutes<2||c.rollingWindowMinutes>30||!Number.isInteger(c.rollingWindowMinutes))errors.push(`${name}.rollingWindowMinutes`);
     if(c.oddsMin<1.01||c.oddsMin>20)errors.push(`${name}.oddsMin`);
-    if(name!=='oneXtwo'&&(c.lineMin<.5||c.lineMin>10||!Number.isInteger(c.lineMin*2)))errors.push(`${name}.lineMin`);
+    if(name==='ah'&&(c.lineMin<-10||c.lineMin>10||!Number.isInteger(c.lineMin*4)))errors.push(`${name}.lineMin`);
+    if(name!=='oneXtwo'&&name!=='ah'&&(c.lineMin<.5||c.lineMin>10||!Number.isInteger(c.lineMin*2)))errors.push(`${name}.lineMin`);
     if(name==='oneXtwo'&&(c.scoreTrailingMax<0||c.scoreTrailingMax>10||!Number.isInteger(c.scoreTrailingMax)))errors.push(`${name}.scoreTrailingMax`);
     if(name!=='over'&&!['HOME','AWAY','BOTH'].includes(c.sideMode))errors.push(`${name}.sideMode`);
     if(c.evidenceRequired<1||c.evidenceRequired>6||!Number.isInteger(c.evidenceRequired))errors.push(`${name}.evidenceRequired`);
@@ -70,6 +75,40 @@ async function fetchJson(url,options={},timeoutMs=REMOTE_TIMEOUT_MS){
     return data;
   }catch(error){if(error?.name==='AbortError')throw new Error('REMOTE_TIMEOUT');throw error}
   finally{clearTimeout(timer)}
+}
+function cookieFromHeaders(headers){
+  const all=typeof headers?.getSetCookie==='function'?headers.getSetCookie():[];
+  if(all.length)return all.map(value=>String(value).split(';')[0]).filter(Boolean).join('; ');
+  const one=headers?.get?.('set-cookie')||'';return one?String(one).split(';')[0]:'';
+}
+async function fetchText(url,headers={},timeoutMs=MARKET_TIMEOUT_MS){
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),timeoutMs);
+  try{
+    const response=await fetch(url,{cache:'no-store',redirect:'follow',headers,signal:ac.signal});
+    const text=await response.text();
+    if(!response.ok)throw new Error(`NOWGOAL_HTTP_${response.status}`);
+    if(/cf-chl-|captcha|attention required|access denied/i.test(text))throw new Error('NOWGOAL_BLOCKED');
+    return {text,headers:response.headers};
+  }catch(error){if(error?.name==='AbortError')throw new Error('NOWGOAL_TIMEOUT');throw error}
+  finally{clearTimeout(timer)}
+}
+function hkToDecimal(value){const n=finite(value);if(n===null||n<0)return null;const out=n<1.5?1+n:n;return out>1&&out<100?Number(out.toFixed(4)):null}
+function parseAsianHandicapQuotes(xml='',observedAt=Date.now()){
+  const out=new Map();
+  for(const match of String(xml).matchAll(/<m>([^<]+)<\/m>/g)){
+    const fields=match[1].split(',').map(value=>String(value??'').trim()),id=String(fields[0]||'');
+    const rawHomeLine=finite(fields[2]),homeOdds=hkToDecimal(fields[3]),awayOdds=hkToDecimal(fields[4]);
+    if(!/^\d+$/.test(id)||rawHomeLine===null||homeOdds===null||awayOdds===null||!Number.isInteger(rawHomeLine*4))continue;
+    out.set(id,{rawHomeLine,homeOdds,awayOdds,observedAt,provider:'Nowgoal',bookmaker:'Bet365',companyId:NOWGOAL_AH_COMPANY_ID,linePerspective:'HOME'});
+  }
+  return out;
+}
+async function fetchAsianHandicapQuotes(now=Date.now()){
+  const common={'user-agent':NOWGOAL_UA,accept:'text/html,*/*','accept-language':'en-US,en;q=0.9','cache-control':'no-cache, no-store',pragma:'no-cache',referer:`${NOWGOAL_BASE}/`};
+  const home=await fetchText(`${NOWGOAL_BASE}/`,common);
+  const cookie=cookieFromHeaders(home.headers);if(!cookie)throw new Error('NOWGOAL_SESSION_COOKIE_MISSING');
+  const xml=await fetchText(`${NOWGOAL_BASE}/gf/data/odds/en/goal${NOWGOAL_AH_COMPANY_ID}.xml?${now}`,{...common,accept:'application/xml,text/xml,*/*',cookie});
+  return parseAsianHandicapQuotes(xml.text,now);
 }
 
 function rollingFootball(m,minutes){
@@ -122,6 +161,39 @@ function lineOk(value,min){const n=finite(value),m=finite(min);return n!==null&&
 function selectedOddsOne(market,pick){return finite(pick==='HOME'?market?.oneXtwo?.home:market?.oneXtwo?.away)}
 function chooseOneXtwo(pred,cfg){const mode=String(cfg?.sideMode||'BOTH').toUpperCase();if(mode==='HOME')return 'HOME';if(mode==='AWAY')return 'AWAY';return Number(pred?.home||0)>=Number(pred?.away||0)?'HOME':'AWAY'}
 function trailingBy(score,pick){const h=finite(score?.[0]),a=finite(score?.[1]);if(h===null||a===null)return null;return pick==='HOME'?Math.max(0,a-h):Math.max(0,h-a)}
+function rollingAsianHandicapEvidence(m,market,minutes){
+  const current=finite(m?.minute),windowMinutes=Number(minutes),snaps=[...(m?.event?.snapshots||[])]
+    .filter(s=>finite(s?.minute)!==null).sort((a,b)=>Number(a.minute)-Number(b.minute)||Number(a.observedAt||0)-Number(b.observedAt||0));
+  if(current===null||!Number.isFinite(windowMinutes))return null;
+  const eligible=snaps.filter(s=>Number(s.minute)>=current-windowMinutes&&Number(s.minute)<=current),first=eligible[0],last=eligible[eligible.length-1];
+  if(!first||!last||first===last||Number(first.minute)>=Number(last.minute))return null;
+  const hSot=delta(first,last,'sot',0),aSot=delta(first,last,'sot',1),hOff=delta(first,last,'off',0),aOff=delta(first,last,'off',1);
+  const hCorner=delta(first,last,'corner',0),aCorner=delta(first,last,'corner',1),hA=delta(first,last,'attacks',0),aA=delta(first,last,'attacks',1),hD=delta(first,last,'dangerous',0),aD=delta(first,last,'dangerous',1);
+  const [hAttackPct,aAttackPct]=share(hA,aA),[hDangerousPct,aDangerousPct]=share(hD,aD),latest=normalizeCandidateStats(market?.statistics);
+  return {from:Number(first.minute),to:Number(last.minute),home:{shotOnTarget:hSot,shotOff:hOff,corner:hCorner,dangerousAttackPct:hDangerousPct,attackPct:hAttackPct,possessionPct:finite(latest?.home?.possessionPct)},away:{shotOnTarget:aSot,shotOff:aOff,corner:aCorner,dangerousAttackPct:aDangerousPct,attackPct:aAttackPct,possessionPct:finite(latest?.away?.possessionPct)}};
+}
+function ahLineOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n>=-20&&n<=20&&Number.isInteger(n*4)}
+function ahSideQuote(quote,side){if(!quote||!['HOME','AWAY'].includes(side))return null;return side==='HOME'?{line:finite(quote.rawHomeLine),odds:finite(quote.homeOdds)}:{line:finite(quote.rawHomeLine)===null?null:-finite(quote.rawHomeLine),odds:finite(quote.awayOdds)}}
+function ahEvidenceStrength(e){const v=e?.values||{};return Number(e?.passCount||0)*1000+(finite(v.shotOnTarget)||0)*10+(finite(v.shotOff)||0)*4+(finite(v.corner)||0)*5+(finite(v.dangerousAttackPct)||0)+(finite(v.attackPct)||0)+(finite(v.possessionPct)||0)}
+function asianHandicapGate(m,market,snapshot,quote){
+  const run=Boolean(snapshot?.run?.ah),cfg=snapshot?.settings?.ah||null,reasons=[];
+  if(!run||!cfg)return {market:'ah',pass:false,disabled:true,reasons:['ตลาดยังไม่ได้เริ่มทำงาน']};
+  const minute=finite(m.minute);if(!minutePass(minute,cfg))reasons.push('อยู่นอกช่วงเวลาที่ตั้ง');
+  const rolling=rollingAsianHandicapEvidence(m,market,cfg.rollingWindowMinutes);if(!rolling)reasons.push('ข้อมูลช่วงย้อนหลังยังไม่พร้อม');
+  if(!quote)reasons.push('ยังไม่มีราคา Asian Handicap จาก Bet365');
+  const mode=String(cfg.sideMode||'BOTH').toUpperCase(),allowed=mode==='BOTH'?['HOME','AWAY']:[mode],sides={};
+  for(const side of ['HOME','AWAY']){
+    const evidence=evaluateEvidence(rolling?.[side.toLowerCase()]||null,cfg,'MIN'),selected=ahSideQuote(quote,side),sideReasons=[];
+    if(!evidence.pass)sideReasons.push(`หลักฐานผ่าน ${evidence.passCount}/${evidence.required}`);
+    if(!selected||!ahLineOk(selected.line,cfg.lineMin))sideReasons.push('Asian Handicap Line ไม่ผ่านค่าที่ตั้ง');
+    if(!selected||!oddsOk(selected.odds,cfg.oddsMin))sideReasons.push('Odds ต่ำกว่าที่ตั้ง');
+    sides[side]={...evidence,line:selected?.line??null,odds:selected?.odds??null,pass:sideReasons.length===0,reasons:sideReasons,strength:ahEvidenceStrength(evidence)};
+  }
+  const passing=allowed.filter(side=>sides[side]?.pass).sort((a,b)=>sides[b].passCount-sides[a].passCount||sides[b].strength-sides[a].strength||Number(sides[a].odds||999)-Number(sides[b].odds||999));
+  const pick=passing[0]||null,selected=pick?sides[pick]:null;if(!pick)reasons.push('ยังไม่มีฝั่งที่เลือกผ่านเหตุการณ์และราคา');
+  const evidence={mode,sides,passingSides:passing,selectedSide:pick,pass:Boolean(pick),from:rolling?.from??null,to:rolling?.to??null};
+  return {market:'ah',pass:reasons.length===0,disabled:false,reasons,minute,evidence,pick,line:selected?.line??null,rawLine:finite(quote?.rawHomeLine),odds:selected?.odds??null,probability:null,bookmaker:quote?.bookmaker||'Bet365',provider:quote?.provider||'Nowgoal',settings:{...cfg}};
+}
 function marketGate(name,m,row,snapshot,statRows){
   const run=Boolean(snapshot?.run?.[name]),cfg=snapshot?.settings?.[name]||null,market=row.market,pred=row.prediction,reasons=[];
   if(!run||!cfg)return {market:name,pass:false,disabled:true,reasons:['ตลาดยังไม่ได้ RUN']};
@@ -148,16 +220,17 @@ function marketGate(name,m,row,snapshot,statRows){
   }
   return {market:name,pass:reasons.length===0,disabled:false,reasons,minute,football,stats,evidence,pick,line,odds,probability,settings:{...cfg}};
 }
-function buildSignals(m,row,snapshot,statRows){
-  const gates={oneXtwo:marketGate('oneXtwo',m,row,snapshot,statRows),over:marketGate('over',m,row,snapshot,statRows),under:marketGate('under',m,row,snapshot,statRows)},signals=[];
+function buildSignals(m,row,snapshot,statRows,ahQuote=null){
+  const gates={oneXtwo:marketGate('oneXtwo',m,row,snapshot,statRows),over:marketGate('over',m,row,snapshot,statRows),under:marketGate('under',m,row,snapshot,statRows),ah:asianHandicapGate(m,row.market,snapshot,ahQuote)},signals=[];
   if(gates.oneXtwo.pass)signals.push({market:'1X2',pick:gates.oneXtwo.pick,odds:gates.oneXtwo.odds,probability:gates.oneXtwo.probability,home:finite(row.prediction?.oneXtwo?.home),away:finite(row.prediction?.oneXtwo?.away),gate:gates.oneXtwo,settings:gates.oneXtwo.settings});
   let totalsGate=null;if(gates.over.pass&&gates.under.pass)totalsGate=String(row.prediction?.totals?.pick||'').toUpperCase()==='UNDER'?gates.under:gates.over;else if(gates.over.pass)totalsGate=gates.over;else if(gates.under.pass)totalsGate=gates.under;
   if(totalsGate)signals.push({market:totalsGate.pick,pick:totalsGate.pick,line:totalsGate.line,odds:totalsGate.odds,probability:totalsGate.probability,over:finite(row.prediction?.totals?.over),under:finite(row.prediction?.totals?.under),gate:totalsGate,settings:totalsGate.settings});
+  if(gates.ah.pass)signals.push({market:'AH',marketLabel:'Asian Handicap',pick:gates.ah.pick,line:gates.ah.line,rawLine:gates.ah.rawLine,odds:gates.ah.odds,probability:null,bookmaker:gates.ah.bookmaker,provider:gates.ah.provider,gate:gates.ah,settings:gates.ah.settings});
   return {signals,gates};
 }
 function eligibleByTime(m,snapshot){const minute=finite(m?.minute);if(minute===null||m?.freshness?.stale)return false;return MARKETS.some(name=>snapshot.run[name]&&snapshot.settings[name]&&minute>=Number(snapshot.settings[name].minuteFrom)&&minute<=Number(snapshot.settings[name].minuteTo))}
 function candidateUrl(m){const u=new URL(MARKET_URL);u.searchParams.set('home',m.home||'');u.searchParams.set('away',m.away||'');u.searchParams.set('minute',String(m.minute??''));u.searchParams.set('scoreHome',String(m.score?.[0]??''));u.searchParams.set('scoreAway',String(m.score?.[1]??''));return u.toString()}
-function lockPayload(m,market,signals){return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,statistics:market.statistics||null}}}
+function lockPayload(m,market,signals){const ah=signals.find(signal=>signal.market==='AH');return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,asianHandicap:ah?{line:ah.rawLine,selectedLine:ah.line,homeOdds:ah.pick==='HOME'?ah.odds:null,awayOdds:ah.pick==='AWAY'?ah.odds:null,bookmaker:ah.bookmaker||'Bet365',linePerspective:'HOME'}:null,statistics:market.statistics||null}}}
 
 export class SignalEngine{
   constructor(state,env){this.state=state;this.env=env}
@@ -190,6 +263,8 @@ export class SignalEngine{
         fetchJson(`${LEDGER_URL}/signal?limit=500&t=${started}`)
       ]);
       if(feed?.ok===false||feed?.version!=='3.42'||!Array.isArray(feed?.matches))throw new Error('LIVE_FEED_CONTRACT');
+      let ahQuotes=new Map(),ahSourceError=null;
+      if(snapshot.run.ah){try{ahQuotes=await fetchAsianHandicapQuotes(started)}catch(error){ahSourceError=String(error?.message||error).slice(0,160)}}
       const lockedIds=new Set((Array.isArray(ledger?.records)?ledger.records:[]).map(r=>String(r?.matchId||'')));
       let matches=feed.matches.filter(m=>m?.id&&!lockedIds.has(String(m.id))&&eligibleByTime(m,snapshot));
       const cursor=Math.max(0,Number(await this.state.storage.get('cursor'))||0),total=matches.length;
@@ -199,14 +274,14 @@ export class SignalEngine{
         try{
           const market=await fetchJson(candidateUrl(m),{headers:{origin:'https://www.nomadtips3.com'}},MARKET_TIMEOUT_MS);
           if(!market?.ok||!market?.oneXtwo||!market?.totals||!market?.statistics)throw new Error(market?.error||'candidate_incomplete');
-          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},evaluated=buildSignals(m,row,snapshot,statRows);
+          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},ahQuote=ahQuotes.get(String(market?.fixture?.id||''))||null,evaluated=buildSignals(m,row,snapshot,statRows,ahQuote);
           if(!evaluated.signals.length){details.push({matchId:String(m.id),status:'WAIT',gates:Object.fromEntries(Object.entries(evaluated.gates).map(([k,g])=>[k,g.reasons]))});continue}
           const ack=await fetchJson(`${LEDGER_URL}/lock`,{method:'POST',headers:{'content-type':'application/json',origin:'https://www.nomadtips3.com'},body:JSON.stringify(lockPayload(m,market,evaluated.signals))},REMOTE_TIMEOUT_MS);
           if(ack?.locked===true)locked++;
           details.push({matchId:String(m.id),status:ack?.duplicate?'DUPLICATE':'LOCKED',signals:evaluated.signals.map(s=>s.market)});
         }catch(error){details.push({matchId:String(m.id),status:'ERROR',error:String(error?.message||error).slice(0,180)})}
       }
-      const result={at:iso(started),status:'RUNNING',feedMatches:feed.matches.length,eligible:total,processed:matches.length,locked,run:snapshot.run,details};
+      const result={at:iso(started),status:'RUNNING',feedMatches:feed.matches.length,eligible:total,processed:matches.length,locked,run:snapshot.run,asianHandicapSource:{enabled:Boolean(snapshot.run.ah),quotes:ahQuotes.size,error:ahSourceError},details};
       await this.state.storage.put('lastScan',result);return json(request,{ok:true,version:VERSION,scan:result});
     }catch(error){
       const result={at:iso(started),status:'ERROR',error:String(error?.message||error).slice(0,240),processed:0,locked:0,run:snapshot.run};
