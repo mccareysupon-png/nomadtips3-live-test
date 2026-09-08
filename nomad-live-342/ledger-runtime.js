@@ -23,7 +23,8 @@ const decimal=value=>finite(value)?Number(value).toFixed(2):'—';
 const format=value=>oddsMode==='american'?american(value):oddsMode==='fractional'?fractional(value):decimal(value);
 const emit=source=>document.dispatchEvent(new CustomEvent('nomad342:odds-display-change',{detail:{mode:oddsMode,source}}));
 const syncMode=(value,source)=>{const next=normalizeMode(value);if(next===oddsMode)return false;oddsMode=next;emit(source);return true;};
-window.NOMAD342_ODDS_DISPLAY=Object.freeze({getMode:()=>oddsMode,format,americanFromDecimal:american,fractionalFromDecimal:fractional,decimalText:decimal});
+const setMode=(value,source='control')=>{const next=normalizeMode(value);try{localStorage.setItem(ODDS_KEY,next);}catch{}if(next===oddsMode){emit(source);return oddsMode;}oddsMode=next;emit(source);return oddsMode;};
+window.NOMAD342_ODDS_DISPLAY=Object.freeze({getMode:()=>oddsMode,setMode,format,americanFromDecimal:american,fractionalFromDecimal:fractional,decimalText:decimal});
 window.addEventListener('storage',event=>{if(event.key===ODDS_KEY)syncMode(event.newValue,'storage');});
 window.addEventListener('focus',()=>syncMode(storedMode(),'focus'));
 
