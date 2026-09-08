@@ -1,5 +1,10 @@
 td[data-live-score-mirror="1"]{
-  white-space:nowrap;
+  white-space:pre-line;
   color:var(--green,#83df89);
   font-weight:800;
+  line-height:1.25;
+}
+
+td[data-live-score-mirror="ft"]{
+  white-space:nowrap;
 }
