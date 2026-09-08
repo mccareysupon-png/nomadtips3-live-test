@@ -1,6 +1,7 @@
 const LEDGER_URL='https://www.nomadtips3.com/prediction3/data/ledger.json';
 const LIVE_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed';
 const FINAL_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals';
+const API_FOOTBALL_BASE='https://v3.football.api-sports.io';
 const REFRESH_MS=20000;
 const MAX_RECORDS=100;
 const FINAL_FALLBACK_AFTER_MS=75*60*1000;
@@ -22,6 +23,36 @@ async function fetchJson(url){
   return response.json();
 }
 
+async function fetchApiFootballFinals(date,env){
+  if(!env?.API_FOOTBALL_KEY)throw new Error('api_football_key_missing');
+  const url=new URL('/fixtures',API_FOOTBALL_BASE);
+  url.searchParams.set('date',date);
+  const response=await fetch(url.toString(),{
+    cache:'no-store',
+    headers:{'accept':'application/json','x-apisports-key':env.API_FOOTBALL_KEY},
+  });
+  if(!response.ok)throw new Error(`api_football_http_${response.status}`);
+  const body=await response.json();
+  const rows=[];
+  for(const entry of Array.isArray(body?.response)?body.response:[]){
+    const short=String(entry?.fixture?.status?.short||'').toUpperCase();
+    if(short!=='FT')continue;
+    const home=entry?.teams?.home?.name||null,away=entry?.teams?.away?.name||null;
+    const homeScore=finite(entry?.score?.fulltime?.home??entry?.goals?.home);
+    const awayScore=finite(entry?.score?.fulltime?.away??entry?.goals?.away);
+    const fixtureId=String(entry?.fixture?.id??'').trim();
+    if(!fixtureId||!home||!away||homeScore===null||awayScore===null)continue;
+    rows.push({
+      id:`api-football:${fixtureId}`,
+      apiFixtureId:fixtureId,
+      league:entry?.league?.name||null,
+      home,away,status:'FT',score:[homeScore,awayScore],
+      source:'API-Football',
+    });
+  }
+  return rows;
+}
+
 const LATIN_FOLD=Object.freeze({
   'ł':'l','Ł':'L','ø':'o','Ø':'O','đ':'d','Đ':'D','ð':'d','Ð':'D',
   'þ':'th','Þ':'TH','æ':'ae','Æ':'AE','œ':'oe','Œ':'OE','ß':'ss',
@@ -36,13 +67,36 @@ export function foldLatin(value){
 export function tokens(value){
   return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!IGNORED_TEAM_TOKENS.has(x))||[];
 }
-function tokenLike(a,b){return a===b||(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4));}
+function editDistance(a,b){
+  if(a===b)return 0;
+  if(!a.length)return b.length;
+  if(!b.length)return a.length;
+  const prev=Array.from({length:b.length+1},(_,i)=>i);
+  for(let i=1;i<=a.length;i+=1){
+    let last=prev[0];
+    prev[0]=i;
+    for(let j=1;j<=b.length;j+=1){
+      const old=prev[j];
+      prev[j]=Math.min(prev[j]+1,prev[j-1]+1,last+(a[i-1]===b[j-1]?0:1));
+      last=old;
+    }
+  }
+  return prev[b.length];
+}
+function tokenLike(a,b){
+  if(a===b)return true;
+  if(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4))return true;
+  return a.length>=5&&b.length>=5&&Math.abs(a.length-b.length)<=1&&editDistance(a,b)<=1;
+}
 export function teamScore(a,b){
   const aa=tokens(a),bb=tokens(b);
   if(!aa.length||!bb.length)return 0;
   let matched=0;
   for(const x of aa)if(bb.some(y=>tokenLike(x,y)))matched+=1;
-  return matched/Math.max(aa.length,bb.length);
+  // The selected-team name is the canonical side. Providers may append city/suffix
+  // tokens (for example LASK -> LASK Linz), so extra provider tokens must not make
+  // an otherwise exact identity fail.
+  return matched/aa.length;
 }
 function rowId(row){return String(row?.id??row?.fixtureId??'');}
 export function fixtureIdentityMatches(item,row){
@@ -54,6 +108,10 @@ export function kickoffMs(item){
   if(!raw)return null;
   const value=Date.parse(raw);
   return Number.isFinite(value)?value:null;
+}
+function kickoffDate(item){
+  const value=kickoffMs(item);
+  return value===null?null:new Date(value).toISOString().slice(0,10);
 }
 export function finalFallbackEligible(item,at=now()){
   const kickoff=kickoffMs(item);
@@ -122,6 +180,8 @@ export function sanitizeExisting(item,existing={},at=now()){
   clean.settledAt=null;
   clean.actual=null;
   clean.fixtureId=null;
+  clean.fixtureProvider=null;
+  clean.settlementSource=null;
   return clean;
 }
 function recordFromPick(item,existing={}){
@@ -145,7 +205,9 @@ function recordFromPick(item,existing={}){
     minute:existing.minute??null,
     result:existing.result||null,
     settledAt:existing.settledAt||null,
-    source:'TotalCorner V3',
+    source:existing.source||'TotalCorner V3',
+    fixtureProvider:existing.fixtureProvider||null,
+    settlementSource:existing.settlementSource||null,
   };
 }
 
@@ -168,6 +230,19 @@ export class Prediction3Tracker{
 
     if(ledger&&Array.isArray(ledger.today)){
       const refreshedAt=now();
+      const apiDateCache=new Map();
+      const getApiFinals=async item=>{
+        const date=kickoffDate(item);
+        if(!date)return [];
+        if(!apiDateCache.has(date)){
+          apiDateCache.set(date,fetchApiFootballFinals(date,this.env).catch(error=>{
+            errors.push(`apiFootball:${date}:${String(error?.message||error)}`);
+            return [];
+          }));
+        }
+        return apiDateCache.get(date);
+      };
+
       for(const item of ledger.today){
         if(!item?.id)continue;
         const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);
@@ -175,8 +250,8 @@ export class Prediction3Tracker{
         const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();
         let knownFixtureId=record.fixtureId||previous.fixtureId||null;
 
-        // Heal a previously learned wrong ID as soon as that provider row is visible.
-        if(knownFixtureId&&!configuredFixtureId){
+        // Heal a previously learned wrong TotalCorner ID as soon as that provider row is visible.
+        if(knownFixtureId&&!configuredFixtureId&&!String(knownFixtureId).startsWith('api-football:')){
           const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];
           const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));
           if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){
@@ -185,13 +260,27 @@ export class Prediction3Tracker{
           }
         }
 
-        const finalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});
+        const tcFinalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});
         const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});
+        let apiFinalRow=null;
 
+        // TotalCorner occasionally leaves a completed fixture as scheduled/unsettled. Once a
+        // match is safely beyond the finish window and is no longer live, use API-Football as
+        // a final-score referee instead of leaving Prediction3 pending forever.
+        if(!tcFinalRow&&!liveRow&&!record.result&&finalFallbackEligible(item,refreshedAt)){
+          const apiRows=await getApiFinals(item);
+          apiFinalRow=fixtureFor(item,apiRows,{knownFixtureId,final:true,at:refreshedAt});
+        }
+
+        const finalRow=tcFinalRow||apiFinalRow;
         if(finalRow){
           const finalScore=scorePair(finalRow);
           const settlement=String(item?.market||'1X2').toUpperCase()==='1X2'?settle1x2(item,finalScore):null;
+          const apiUsed=Boolean(apiFinalRow&&finalRow===apiFinalRow);
           record.fixtureId=rowId(finalRow)||record.fixtureId;
+          record.fixtureProvider=apiUsed?'API-Football':'TotalCorner V3';
+          record.settlementSource=apiUsed?'API-Football fallback':'TotalCorner V3';
+          record.source=record.settlementSource;
           record.status='FT';
           record.score=finalScore;
           record.minute=null;
@@ -203,6 +292,7 @@ export class Prediction3Tracker{
           }
         }else if(liveRow){
           record.fixtureId=rowId(liveRow)||record.fixtureId;
+          record.fixtureProvider='TotalCorner V3';
           record.status='LIVE';
           record.score=scorePair(liveRow);
           record.minute=finite(liveRow?.minute);
