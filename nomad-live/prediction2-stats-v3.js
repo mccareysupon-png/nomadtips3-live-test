@@ -10,7 +10,8 @@
     if (!Number.isFinite(x)) return '—';
     return `${x > 0 ? '+' : ''}${Math.round(x)}`;
   };
-  const cls = result => result === 'WIN' ? 'win' : result === 'LOSS' ? 'loss' : 'pending';
+  const cls = result => ['WIN','HALF_WIN'].includes(result) ? 'win' : ['LOSS','HALF_LOSS'].includes(result) ? 'loss' : 'pending';
+  const resultText = result => String(result || '').replaceAll('_', ' ');
 
   function ensurePresentationStyle() {
     if (document.getElementById('prediction2-borderless-gradient-v1')) return;
@@ -171,7 +172,8 @@
   function render(data) {
     if (!data || data.record_version !== 'KING_STATS_V3') return;
     const records = Array.isArray(data.records) ? data.records : [];
-    const settled = records.filter(x => ['WIN', 'LOSS', 'PUSH'].includes(String(x.result || '').toUpperCase()));
+    const finalResults = ['WIN', 'HALF_WIN', 'LOSS', 'HALF_LOSS', 'PUSH'];
+    const settled = records.filter(x => finalResults.includes(String(x.result || '').toUpperCase()));
     const s = data.summary || {};
 
     const firstLabel = $('.king-scorebar .metric:first-child span');
@@ -198,18 +200,19 @@
       historyRows.innerHTML = settled.slice().sort(resultOrder).map(x => {
         const result = String(x.result || '').toUpperCase();
         const pl = Number(x.profit || 0);
-        return `<tr><td>${x.date || '—'}</td><td>${x.pick || '—'}</td><td>${odds(x.odds)}</td><td>${x.ft || '—'}</td><td><span class="king-result ${cls(result)}">${result}</span></td><td class="king-pl ${pl >= 0 ? 'positive' : 'negative'}">${money(pl)}</td></tr>`;
+        return `<tr><td>${x.date || '—'}</td><td>${x.pick || '—'}</td><td>${odds(x.odds)}</td><td>${x.ft || '—'}</td><td><span class="king-result ${cls(result)}">${resultText(result)}</span></td><td class="king-pl ${pl >= 0 ? 'positive' : 'negative'}">${money(pl)}</td></tr>`;
       }).join('');
     }
 
     const byDay = new Map();
     settled.forEach(x => {
       const date = x.date || '—';
+      const result = String(x.result || '').toUpperCase();
       const d = byDay.get(date) || {p: 0, w: 0, l: 0, push: 0, net: 0};
       d.p += 1;
-      d.w += x.result === 'WIN' ? 1 : 0;
-      d.l += x.result === 'LOSS' ? 1 : 0;
-      d.push += x.result === 'PUSH' ? 1 : 0;
+      d.w += ['WIN','HALF_WIN'].includes(result) ? 1 : 0;
+      d.l += ['LOSS','HALF_LOSS'].includes(result) ? 1 : 0;
+      d.push += result === 'PUSH' ? 1 : 0;
       d.net += Number(x.profit || 0);
       byDay.set(date, d);
     });
@@ -223,7 +226,7 @@
     }
 
     const hero = $('.king-hero p');
-    if (hero) hero.textContent = 'Pre-match selection · KING Statistics V3 since 04/09/2026';
+    if (hero) hero.textContent = 'ADD K pre-match selection · combined verified statistics since 04/09/2026';
   }
 
   async function load() {
