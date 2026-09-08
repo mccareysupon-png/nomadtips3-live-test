@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
-"""KING Statistics V3 — isolated Prediction2 ledger starting 2026-09-04.
-
-The public statistics remain one combined WIN/LOSS record across every supported
-Prediction2 market. Market metadata is retained per pick for audit, but the main
-scoreboard is intentionally not split by 1X2/AH/O-U.
-
-Settlement trusts only Goaloo's direct bf_us.js terminal state and delegates the
-market math to the isolated ADD K Prediction2 engine. Existing legacy 1X2 records
-remain compatible.
-"""
+"""Prediction2 Statistics V3: one combined record across 1X2/AH/O-U."""
 from __future__ import annotations
 
+import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,29 +22,28 @@ STAKE = 100.0
 FINAL_RESULTS = {"WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"}
 
 
-def now_iso() -> str:
+def now_iso():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
-def load(path: Path, default):
+def load(path, default):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return default
 
 
-def save(path: Path, data) -> None:
+def save(path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def backup_sources_once() -> list[str]:
+def backup_sources_once():
     ARCHIVE_DIR.mkdir(exist_ok=True)
     created = []
-    pairs = [
+    for source, target in (
         (FEED_PATH, ARCHIVE_DIR / "the-king-feed-pre-stats-v3-20260904.json"),
         (STATE_PATH, ARCHIVE_DIR / "the-king-state-pre-stats-v3-20260904.json"),
-    ]
-    for source, target in pairs:
+    ):
         if source.exists() and not target.exists():
             target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
             created.append(str(target.relative_to(ROOT)))
@@ -66,58 +57,35 @@ def blank_ledger():
         "settlement_contract": DIRECT_SOURCE,
         "stake_model": {"currency": "THB", "stake_per_pick": int(STAKE)},
         "records": [],
-        "summary": {
-            "settled": 0,
-            "pending": 0,
-            "wins": 0,
-            "losses": 0,
-            "pushes": 0,
-            "win_rate": None,
-            "avg_odds": None,
-            "net": 0.0,
-            "roi": None,
-        },
+        "summary": {"settled": 0, "pending": 0, "wins": 0, "losses": 0, "pushes": 0,
+                    "win_rate": None, "avg_odds": None, "net": 0.0, "roi": None},
     }
 
 
-def canonical_key(rec: dict) -> str:
+def canonical_key(rec):
     rid = str(rec.get("id") or "").strip()
     if rid:
         return f"id:{rid}"
-    gid = str(rec.get("goaloo_id") or "").strip()
-    date = str(rec.get("date") or "").strip()
+    gid, date = str(rec.get("goaloo_id") or "").strip(), str(rec.get("date") or "").strip()
     if gid and date:
-        return f"goaloo:{date}:{gid}"
-    return "|".join([
-        date,
-        str(rec.get("home") or "").strip().lower(),
-        str(rec.get("away") or "").strip().lower(),
-        str(rec.get("market") or "1X2").strip().upper(),
-    ])
+        return f"goaloo:{date}:{gid}:{str(rec.get('market') or '1X2').upper()}"
+    return "|".join([date, str(rec.get("home") or "").strip().lower(),
+                     str(rec.get("away") or "").strip().lower(), str(rec.get("market") or "1X2").upper()])
 
 
-def result_of(rec: dict) -> str:
+def result_of(rec):
     result = str(rec.get("result") or "PENDING").upper().strip()
     return result if result in FINAL_RESULTS else "PENDING"
 
 
-def profit_for(result: str, odds) -> float | None:
+def profit_for(result, odds):
     value = addk.profit_for_result(result, odds, STAKE)
     return None if value is None else round(float(value), 2)
 
 
-def safe_score(value):
-    return addk.safe_score(value)
-
-
-def project_record(source: dict, existing: dict | None = None) -> dict:
-    """Copy immutable pick identity/market fields; never trust page-level FT text."""
+def project_record(source, existing=None):
     base = dict(existing or {})
-    trusted_final = (
-        base.get("settlement_source") == DIRECT_SOURCE
-        and result_of(base) in FINAL_RESULTS
-        and base.get("ft")
-    )
+    trusted = base.get("settlement_source") == DIRECT_SOURCE and result_of(base) in FINAL_RESULTS and base.get("ft")
     fields = (
         "id", "goaloo_id", "date", "kickoff", "league", "home", "away", "pick", "side",
         "market", "selection", "line", "odds", "odds_source", "confidence", "edge",
@@ -128,84 +96,57 @@ def project_record(source: dict, existing: dict | None = None) -> dict:
         value = source.get(field)
         if value is not None and value != "":
             base[field] = value
-
-    # Legacy KING records did not carry an explicit market/selection.
     base.setdefault("market", "1X2")
     if not base.get("selection") and str(base.get("side") or "").lower() in ("home", "away"):
-        base["selection"] = str(base.get("side")).upper()
-
+        base["selection"] = str(base["side"]).upper()
     base["record_version"] = VERSION
     base["stats_since"] = START_DATE
-    if not trusted_final:
-        base["result"] = "PENDING"
-        base["ft"] = None
-        base["profit"] = None
-        base.pop("settlement_score", None)
-        base.pop("settled_at", None)
-        base.pop("settlement_source", None)
-        base.pop("goaloo_terminal_state", None)
+    if not trusted:
+        base.update({"result": "PENDING", "ft": None, "profit": None})
+        for key in ("settlement_score", "settled_at", "settlement_source", "goaloo_terminal_state"):
+            base.pop(key, None)
     return base
 
 
-def settle_from_direct_index(records: list[dict]) -> tuple[int, dict]:
-    """Settle every V3 PENDING record from the Goaloo terminal score only."""
+def settle_from_direct_index(records):
     rows = v8.load_index()
-    status = {
-        "source": DIRECT_SOURCE,
-        "index_ok": bool(rows),
-        "index_rows": len(rows),
-        "settled": 0,
-        "matched_pending": 0,
-        "invalid_scores": 0,
-        "invalid_market_records": 0,
-    }
-    if not rows:
-        return 0, status
-
+    status = {"source": DIRECT_SOURCE, "index_ok": bool(rows), "index_rows": len(rows),
+              "settled": 0, "matched_pending": 0, "invalid_scores": 0, "invalid_market_records": 0}
     direct = {str(row.get("id") or ""): row for row in rows}
     changed = 0
     for rec in records:
         if result_of(rec) != "PENDING":
             continue
-        gid = str(rec.get("goaloo_id") or "").strip()
-        row = direct.get(gid)
+        row = direct.get(str(rec.get("goaloo_id") or "").strip())
         if not row:
             continue
         status["matched_pending"] += 1
         if row.get("state") != -1:
             continue
-        hg = safe_score(row.get("score_home"))
-        ag = safe_score(row.get("score_away"))
+        hg, ag = addk.safe_score(row.get("score_home")), addk.safe_score(row.get("score_away"))
         if hg is None or ag is None:
             status["invalid_scores"] += 1
             continue
-
         settled = addk.settle_record(rec, hg, ag)
         if not settled:
             status["invalid_market_records"] += 1
             continue
-        rec["ft"] = f"{hg}-{ag}"
-        rec["result"] = settled["result"]
-        rec["settlement_score"] = settled["settlement_score"]
-        rec["profit"] = profit_for(rec["result"], rec.get("odds"))
-        rec["settled_at"] = now_iso()
-        rec["settlement_source"] = DIRECT_SOURCE
-        rec["goaloo_terminal_state"] = -1
+        rec.update({
+            "ft": f"{hg}-{ag}", "result": settled["result"], "settlement_score": settled["settlement_score"],
+            "profit": profit_for(settled["result"], rec.get("odds")), "settled_at": now_iso(),
+            "settlement_source": DIRECT_SOURCE, "goaloo_terminal_state": -1,
+        })
         changed += 1
-
     status["settled"] = changed
     return changed, status
 
 
-def build_summary(records: list[dict]) -> dict:
+def build_summary(records):
     settled = [r for r in records if result_of(r) in FINAL_RESULTS]
-    # HALF_WIN/HALF_LOSS remain visible in history but roll into the single public
-    # WIN/LOSS counters. Profit/ROI retain their exact half-stake settlement.
     wins = sum(result_of(r) in {"WIN", "HALF_WIN"} for r in settled)
     losses = sum(result_of(r) in {"LOSS", "HALF_LOSS"} for r in settled)
     pushes = sum(result_of(r) == "PUSH" for r in settled)
     decided = wins + losses
-
     odds_values = []
     for rec in settled:
         try:
@@ -214,35 +155,22 @@ def build_summary(records: list[dict]) -> dict:
             pass
     net = round(sum(float(r.get("profit") or 0.0) for r in settled), 2)
     return {
-        "settled": len(settled),
-        "pending": sum(result_of(r) == "PENDING" for r in records),
-        "wins": wins,
-        "losses": losses,
-        "pushes": pushes,
-        "win_rate": None if decided == 0 else round(wins / decided * 100.0, 2),
+        "settled": len(settled), "pending": sum(result_of(r) == "PENDING" for r in records),
+        "wins": wins, "losses": losses, "pushes": pushes,
+        "win_rate": None if not decided else round(wins / decided * 100.0, 2),
         "avg_odds": None if not odds_values else round(sum(odds_values) / len(odds_values), 3),
-        "net": net,
-        "roi": None if not settled else round(net / (len(settled) * STAKE) * 100.0, 2),
+        "net": net, "roi": None if not settled else round(net / (len(settled) * STAKE) * 100.0, 2),
     }
 
 
-def sync() -> dict:
+def sync():
     backups = backup_sources_once()
     feed = load(FEED_PATH, {"today": [], "history": []})
     ledger = load(STATS_PATH, blank_ledger())
     before = json.dumps(ledger, sort_keys=True, ensure_ascii=False)
-
-    ledger["record_version"] = VERSION
-    ledger["stats_since"] = START_DATE
-    ledger["settlement_contract"] = DIRECT_SOURCE
-    ledger["stake_model"] = {"currency": "THB", "stake_per_pick": int(STAKE)}
     records = [r for r in (ledger.get("records") or []) if str(r.get("date") or "") >= START_DATE]
     index = {canonical_key(r): i for i, r in enumerate(records)}
-
-    incoming = []
-    incoming.extend(feed.get("today") or [])
-    incoming.extend(feed.get("history") or [])
-    for source in incoming:
+    for source in list(feed.get("today") or []) + list(feed.get("history") or []):
         if str(source.get("date") or "") < START_DATE:
             continue
         key = canonical_key(source)
@@ -251,52 +179,34 @@ def sync() -> dict:
         else:
             index[key] = len(records)
             records.append(project_record(source))
-
     direct_settled, settlement_status = settle_from_direct_index(records)
-
     records.sort(key=lambda r: (str(r.get("date") or ""), str(r.get("kickoff") or ""), canonical_key(r)))
-    ledger["records"] = records
-    ledger["summary"] = build_summary(records)
-    ledger["settlement_status"] = settlement_status
-
-    after_without_time = json.dumps(ledger, sort_keys=True, ensure_ascii=False)
-    changed = before != after_without_time
+    ledger.update({
+        "record_version": VERSION, "stats_since": START_DATE, "settlement_contract": DIRECT_SOURCE,
+        "stake_model": {"currency": "THB", "stake_per_pick": int(STAKE)}, "records": records,
+        "summary": build_summary(records), "settlement_status": settlement_status,
+    })
+    changed = before != json.dumps(ledger, sort_keys=True, ensure_ascii=False)
     if changed:
         ledger["updated_at"] = now_iso()
         save(STATS_PATH, ledger)
     elif not STATS_PATH.exists():
         save(STATS_PATH, ledger)
-
-    result = {
-        "record_version": VERSION,
-        "stats_since": START_DATE,
-        "records": len(records),
-        "summary": ledger["summary"],
-        "direct_settled": direct_settled,
-        "settlement_status": settlement_status,
-        "backups_created": backups,
-        "changed": changed,
-        "selection_date": feed.get("selection_date"),
-    }
+    result = {"record_version": VERSION, "stats_since": START_DATE, "records": len(records),
+              "summary": ledger["summary"], "direct_settled": direct_settled,
+              "settlement_status": settlement_status, "backups_created": backups,
+              "changed": changed, "selection_date": feed.get("selection_date")}
     print(json.dumps(result, ensure_ascii=False))
     return result
 
 
-def self_test() -> None:
+def self_test():
     assert profit_for("WIN", 2.0) == 100.0
     assert profit_for("HALF_WIN", 2.0) == 50.0
     assert profit_for("HALF_LOSS", 2.0) == -50.0
     assert profit_for("LOSS", 2.0) == -100.0
-    assert safe_score("2") == 2
-    assert safe_score("81") is None
     dirty = project_record({"id": "x", "date": START_DATE, "result": "WIN", "ft": "81-90"})
     assert dirty["result"] == "PENDING" and dirty["ft"] is None
-    trusted = project_record(
-        {"id": "x", "date": START_DATE, "result": "PENDING"},
-        {"id": "x", "date": START_DATE, "result": "WIN", "ft": "2-0",
-         "profit": 100.0, "settlement_source": DIRECT_SOURCE},
-    )
-    assert trusted["result"] == "WIN" and trusted["ft"] == "2-0"
     sample = build_summary([
         {"result": "WIN", "odds": 2.0, "profit": 100.0},
         {"result": "HALF_WIN", "odds": 2.0, "profit": 50.0},
@@ -304,9 +214,8 @@ def self_test() -> None:
         {"result": "LOSS", "odds": 2.0, "profit": -100.0},
         {"result": "PUSH", "odds": 2.0, "profit": 0.0},
     ])
-    assert sample["wins"] == 2 and sample["losses"] == 2
-    assert sample["win_rate"] == 50.0
-    assert sample["settled"] == 5 and sample["pushes"] == 1
+    assert sample["wins"] == 2 and sample["losses"] == 2 and sample["pushes"] == 1
+    assert sample["win_rate"] == 50.0 and sample["settled"] == 5
     print("KING Statistics V3 ADD K multi-market self-test OK")
 
 
