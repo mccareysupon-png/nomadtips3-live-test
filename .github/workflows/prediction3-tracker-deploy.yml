@@ -80,6 +80,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/state.json','utf8'));
-          console.log(JSON.stringify({ok:j.ok,updatedAt:j.updatedAt,count:Array.isArray(j.records)?j.records.length:null,errors:j.errors},null,2));
+          const records=(Array.isArray(j.records)?j.records:[]).map(r=>({id:r.id,home:r.home,away:r.away,fixtureId:r.fixtureId,status:r.status,score:r.score,result:r.result,settledAt:r.settledAt}));
+          console.log(JSON.stringify({ok:j.ok,updatedAt:j.updatedAt,count:records.length,errors:j.errors,records},null,2));
           if(j.ok!==true||!Array.isArray(j.records)) process.exit(1);
           NODE
