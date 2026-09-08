@@ -4,9 +4,23 @@ export const GOALOO_BET365_URL='https://live10.goaloo28.com/gf/data/odds/en/runO
 
 const MARKET_GATES=new Set(['REAL MARKET','REAL PRICE AGE','MARKET / ODDS']);
 const num=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(String(v).replace('%','').trim());return Number.isFinite(n)?n:null;};
-const marketOdd=raw=>{const v=num(raw);if(v===null)return null;return v>=0&&v<1.5?Number((1+v).toFixed(3)):v;};
+// Goaloo runOddsData AH prices are Hong Kong odds. Standard decimal = HK + 1.
+// Do not guess by range: HK odds can be above 1.50, so 1.55 must become 2.55.
+const marketOdd=raw=>{const v=num(raw);if(v===null||v<0)return null;return Number((1+v).toFixed(3));};
 const isQuarterLine=value=>{const n=num(value);return n!==null&&Math.abs(n*4-Math.round(n*4))<1e-7;};
 const fmtLine=value=>{const n=num(value);return n===null?'—':`${n>0?'+':''}${Number.isInteger(n)?n:n.toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}`;};
+
+// Goaloo exposes one signed AH line from HOME perspective.
+// Standard sportsbook notation is selected-side signed handicap:
+// HOME keeps the sign; AWAY is the exact inverse.
+// Example verified against Bet365: HOME -1.0 <=> AWAY +1.0.
+export function standardGoalooAhLine(homePerspectiveLine,side='HOME'){
+  const line=num(homePerspectiveLine);
+  if(line===null)return null;
+  const selected=String(side||'HOME').toUpperCase();
+  if(selected!=='HOME'&&selected!=='AWAY')return null;
+  return selected==='AWAY'?-line:line;
+}
 
 export function parseGoalooBet365RunOdds(source){
   const out=new Map();
@@ -22,7 +36,7 @@ export function parseGoalooBet365RunOdds(source){
       providerCompanyId:GOALOO_BET365_COMPANY_ID,
       providerName:'Bet365',
       source:'Goaloo',
-      asianHandicap:{home,line,away,linePerspective:'HOME',raw:{home:ah[0],line:ah[1],away:ah[2]}}
+      asianHandicap:{home,line,away,linePerspective:'HOME',oddsFormat:'DECIMAL',sourceOddsFormat:'HK',raw:{home:ah[0],line:ah[1],away:ah[2]}}
     });
   }
   return out;
@@ -64,7 +78,8 @@ export function evaluateGoalooBet365Quote(match,quote,config={}){
   const side=String(match?.engine?.side||'').toUpperCase();
   if((side!=='HOME'&&side!=='AWAY')||home===null||away===null||rawHomeLine===null)return{passed:false,reason:'INVALID_QUOTE'};
   if(home<=1||away<=1||!isQuarterLine(rawHomeLine))return{passed:false,reason:'INVALID_AH'};
-  const selectedLine=side==='AWAY'?-rawHomeLine:rawHomeLine,selectedOdds=side==='AWAY'?away:home;
+  const selectedLine=standardGoalooAhLine(rawHomeLine,side),selectedOdds=side==='AWAY'?away:home;
+  if(selectedLine===null)return{passed:false,reason:'INVALID_AH'};
   const ahMin=num(config.ahMin),ahMax=num(config.ahMax),oddsMin=num(config.oddsMin),oddsMax=num(config.oddsMax);
   const linePassed=(ahMin===null||selectedLine>=ahMin)&&(ahMax===null||selectedLine<=ahMax);
   const oddsPassed=(oddsMin===null||selectedOdds>=oddsMin)&&(oddsMax===null||selectedOdds<=oddsMax);
@@ -115,11 +130,11 @@ export function applyGoalooBet365Fallback({latest,config={},history=[],fallbackS
     }
     pricePassed++;
     const previousMarket=match.realMarket?{source:match.realMarket.source||null,status:match.realMarket.status||null,error:match.realMarket.error||null}:null;
-    match.odds={...(match.odds||{}),asianHandicap:{line:evaluation.rawHomeLine,home:evaluation.homeOdds,away:evaluation.awayOdds,updatedAt:at,provider:'Bet365 (Goaloo)',providerCompanyId:GOALOO_BET365_COMPANY_ID,linePerspective:'HOME'}};
+    match.odds={...(match.odds||{}),asianHandicap:{line:evaluation.rawHomeLine,home:evaluation.homeOdds,away:evaluation.awayOdds,updatedAt:at,provider:'Bet365 (Goaloo)',providerCompanyId:GOALOO_BET365_COMPANY_ID,linePerspective:'HOME',oddsFormat:'DECIMAL',sourceOddsFormat:'HK'}};
     match.realMarket={source:'Goaloo',bookmaker:'Bet365',status:'MATCH',checkedAt:at,oddsUpdatedAt:at,marketAgeSeconds:0,feed:GOALOO_BET365_FEED,companyId:GOALOO_BET365_COMPANY_ID,linePerspective:'HOME',mapping:'GOALOO_MATCH_ID',pricingSource:'GOALOO_BET365_FALLBACK',freshnessBasis:'FETCH_OBSERVED',fallbackFrom:previousMarket};
-    match.currentAh={status:'MATCH',line:evaluation.rawHomeLine,homeOdds:evaluation.homeOdds,awayOdds:evaluation.awayOdds,updatedAt:at,provider:'Bet365 (Goaloo)',marketAgeSeconds:0,pricingSource:'GOALOO_BET365_FALLBACK'};
+    match.currentAh={status:'MATCH',line:evaluation.rawHomeLine,homeOdds:evaluation.homeOdds,awayOdds:evaluation.awayOdds,updatedAt:at,provider:'Bet365 (Goaloo)',marketAgeSeconds:0,pricingSource:'GOALOO_BET365_FALLBACK',linePerspective:'HOME'};
     const streak=(Number(fallbackStreaks[key])||0)+1;fallbackStreaks[key]=streak;
-    match.engine={...(match.engine||{}),decision:'SHADOW SIGNAL',reason:`Goaloo Bet365 fallback · confirmation ${config.confirmationRounds||1} rounds required`,line:evaluation.selectedLine,rawLine:evaluation.rawHomeLine,selectedLine:evaluation.selectedLine,odds:evaluation.selectedOdds,entryScore:{home:match.score?.home,away:match.score?.away},gates:replaceMarketGates(match.engine?.gates,evaluation),streak,bookmaker:'Bet365',pricingSource:'GOALOO_BET365_FALLBACK'};
+    match.engine={...(match.engine||{}),decision:'SHADOW SIGNAL',reason:`Goaloo Bet365 fallback · confirmation ${config.confirmationRounds||1} rounds required`,line:evaluation.selectedLine,rawLine:evaluation.rawHomeLine,selectedLine:evaluation.selectedLine,linePerspective:'SELECTED',odds:evaluation.selectedOdds,entryScore:{home:match.score?.home,away:match.score?.away},gates:replaceMarketGates(match.engine?.gates,evaluation),streak,bookmaker:'Bet365',pricingSource:'GOALOO_BET365_FALLBACK'};
     match.enrichment={...(match.enrichment||{}),odds:'GOALOO_BET365_FALLBACK',bookmaker:'Bet365',priceSource:'Goaloo'};
     const rounds=Math.max(1,Number(config.confirmationRounds)||1);
     if(streak<rounds)continue;
