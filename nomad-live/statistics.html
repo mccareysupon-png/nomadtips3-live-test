@@ -28,6 +28,8 @@
   <link rel="stylesheet" href="statistics-summary-strip.css?v=20260902-day-v2">
   <link rel="stylesheet" href="odds-display.css?v=20260827-v1">
   <link rel="stylesheet" href="toolbar-vintage-icons.css?v=20260901-v2" media="(min-width:1025px)">
+  <link rel="stylesheet" href="mobile-toolbar-pc-icons.css?v=20260904-statepulse-v1">
+  <link rel="stylesheet" href="toolbar-vintage-independent-icons.css?v=20260906-statistics-subpage-v2">
   <link rel="stylesheet" href="statistics-odds-icons.css?v=20260904-oddsretro-v1" media="(min-width:1025px)">
   <link rel="stylesheet" href="statistics-equity.css?v=20260827-v5">
   <link rel="stylesheet" href="statistics-ema.css?v=20260830-ema-v1">
@@ -40,6 +42,11 @@
     #matchScoutStatistics{display:none!important}
     .hero .mode{display:none!important}
     .hero .mode strong{font-size:12px}
+    .statistics-icon-nav{margin-top:12px}
+    .statistics-icon-nav .tabs{width:100%}
+    .statistics-icon-nav .tab{text-decoration:none}
+    .statistics-icon-nav .statistics-link[data-active="1"]{color:var(--green)!important;text-shadow:0 0 7px rgba(131,223,137,.28)!important}
+    .statistics-icon-nav .statistics-link[data-active="1"]::before{opacity:1!important;filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;transform:translateY(-1px) scale(1.04)!important}
   </style>
   <link rel="stylesheet" href="public-site-nav.css?v=20260906-nav-geometry-v2">
   <link rel="stylesheet" href="mobile-ui-spacing.css?v=20260901-v1">
@@ -66,6 +73,16 @@
       </div>
     </section>
 
+    <section class="toolbar statistics-icon-nav" aria-label="Asian Handicap subpages">
+      <div class="tabs">
+        <a class="tab" data-stat-target="ALL" href="index.html">All</a>
+        <a class="tab" data-stat-target="SIGNAL" href="index.html">Signal</a>
+        <a class="tab" data-stat-target="NEAR" href="index.html">Near</a>
+        <a class="tab" data-stat-target="WATCHING" href="index.html">Watching</a>
+        <a class="statistics-link" data-active="1" aria-current="page" href="statistics.html">Statistics</a>
+      </div>
+    </section>
+
     <section class="odds-display-toolbar toolbar" aria-hidden="true" hidden></section>
 
     <section class="panel"><div class="panel-head"><div><p class="eyebrow">LOCKED SIGNALS</p><h2>Result ledger</h2></div><span class="muted statistics-results-summary">WIN 0 · LOSS 0 · PUSH 0</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>TIME</th><th>MATCH</th><th class="condition-head">CONDITION</th><th>PICK</th><th>AH</th><th>ODDS</th><th>ODDS SOURCE</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody><tr><td colspan="11">No locked signals yet.</td></tr></tbody></table></div><nav class="stats-pagination" data-stats-pagination aria-label="Statistics pages" hidden></nav></section>
@@ -74,6 +91,16 @@
   </main>
   <nav class="mobile-nav public-four-nav"><a class="active" aria-current="page" href="https://www.nomadtips3.com/">Asian Handicap</a><a href="https://www.nomadtips3.com/nomad-live-342/">1X2 · Over/Under</a></nav>
 
+  <script>
+    (()=>{
+      const key='nomad341SignalSubviewV1';
+      document.querySelectorAll('.statistics-icon-nav [data-stat-target]').forEach(link=>{
+        link.addEventListener('click',()=>{
+          try{sessionStorage.setItem(key,String(link.dataset.statTarget||'ALL').toUpperCase())}catch(_){ }
+        });
+      });
+    })();
+  </script>
   <script src="runtime-config.js?v=20260830-side-aware-v3"></script>
   <script src="statistics-chart-viewport.js?v=20260830-wheel-v2" defer></script>
   <script src="statistics-live.js?v=20260903-winrate-v1" defer></script>
