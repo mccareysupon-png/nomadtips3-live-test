@@ -157,7 +157,7 @@
     <section class="nomad342-tab-panel" id="nomad342PanelSignal" role="tabpanel" aria-labelledby="nomad342TabSignal" data-panel="signal" hidden aria-hidden="true">
       <section class="status-grid ledger-summary" aria-label="Signal summary">
         <article class="metric"><span>LOCKED MATCHES</span><strong id="signalLocked">—</strong><small>persistent ledger</small></article>
-        <article class="metric signal"><span>PREDICTIONS</span><strong id="signalPredictions">—</strong><small>1X2 + O/U</small></article>
+        <article class="metric signal"><span>PREDICTIONS</span><strong id="signalPredictions">—</strong><small>1X2 + O/U + AH</small></article>
         <article class="metric"><span>SETTLED</span><strong id="signalSettled">—</strong><small>graded predictions</small></article>
         <article class="metric"><span>PENDING</span><strong id="signalPending">—</strong><small>awaiting final score</small></article>
         <article class="metric"><span>WIN RATE</span><strong id="signalWinRate">—</strong><small>PUSH excluded</small></article>
@@ -171,7 +171,7 @@
 
     <section class="nomad342-tab-panel" id="nomad342PanelStatistics" role="tabpanel" aria-labelledby="nomad342TabStatistics" data-panel="statistics" hidden aria-hidden="true">
       <section class="status-grid ledger-summary statistics-summary" aria-label="Statistics summary">
-        <article class="metric"><span>TOTAL</span><strong id="statsTotal">—</strong><small>1X2 + O/U</small></article>
+        <article class="metric"><span>TOTAL</span><strong id="statsTotal">—</strong><small>1X2 + O/U + AH</small></article>
         <article class="metric"><span>DAYS</span><strong id="statsDay">—</strong><small>active ledger days</small></article>
         <article class="metric signal"><span>WIN</span><strong id="statsWin">—</strong><small>including half results</small></article>
         <article class="metric"><span>LOSS</span><strong id="statsLoss">—</strong><small>including half results</small></article>
@@ -182,7 +182,7 @@
         <article class="metric"><span>NET P/L</span><strong id="statsProfit">—</strong><small>1u per prediction</small></article>
       </section>
       <section class="panel ledger-panel">
-        <div class="panel-head"><div><p class="eyebrow">PREDICTION LEDGER</p><h2>1X2 + Over/Under</h2></div><span class="ledger-status" id="statsStatus">Connecting 3.42 ledger…</span></div>
+        <div class="panel-head"><div><p class="eyebrow">PREDICTION LEDGER</p><h2>1X2 + Over/Under + Asian Handicap</h2></div><span class="ledger-status" id="statsStatus">Connecting 3.42 ledger…</span></div>
         <div class="stats-table-wrap"><table class="stats342-table"><thead><tr><th>TIME</th><th>MATCH</th><th>MARKET</th><th>PICK</th><th>ODDS</th><th>ENTRY</th><th>FINAL</th><th>RESULT</th><th>P/L</th></tr></thead><tbody id="statsRows"><tr><td colspan="9">Connecting NOMAD 3.42 statistics ledger…</td></tr></tbody></table></div>
       </section>
       <div class="note">Statistics are generated from locked 3.42 Signal records only. DRAW is the display label for settlement PUSH and is excluded from the Win Rate denominator. Half wins/losses count as winning/losing predictions; P/L uses half stake settlement. ROI uses 1u per settled prediction, including returned stakes. Days use entry date in Asia/Bangkok.</div>
@@ -209,7 +209,7 @@
   <script src="event-timeline-dual-rail.js?v=20260902-v1" defer></script>
   <script src="vintage-trading-chart.js?v=20260904-card-palette-v1" defer></script>
   <script src="nomad342-tabs.js?v=20260906-row3-v1" defer></script>
-  <script src="signal-ledger.js?v=20260906-flow-v3" defer></script>
+  <script src="signal-ledger.js?v=20260908-ah-market-lock-v2" defer></script>
   <script src="statistics-ledger.js?v=20260906-flow-v3" defer></script>
   <script>
     (()=>{

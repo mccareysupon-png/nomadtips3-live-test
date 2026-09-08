@@ -62,13 +62,14 @@ function signalByMarket(record,key,settled=false){
 function marketView(record,key){
   const liveSignal=signalByMarket(record,key,false);
   if(liveSignal){
-    if(key==='oneXtwo')return {locked:true,pick:liveSignal.pick,odds:liveSignal.odds,home:liveSignal.home,draw:liveSignal.draw,away:liveSignal.away};
-    if(key==='ah')return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,bookmaker:liveSignal.bookmaker,provider:liveSignal.provider};
-    return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,over:liveSignal.over,under:liveSignal.under};
+    const lock={lockedAt:finite(liveSignal.lockedAt)??finite(record?.lockedAt),lockMinute:finite(liveSignal.lockMinute)??finite(record?.minute),entryScore:liveSignal.entryScore||record?.entryScore};
+    if(key==='oneXtwo')return {locked:true,pick:liveSignal.pick,odds:liveSignal.odds,home:liveSignal.home,draw:liveSignal.draw,away:liveSignal.away,...lock};
+    if(key==='ah')return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,bookmaker:liveSignal.bookmaker,provider:liveSignal.provider,...lock};
+    return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,over:liveSignal.over,under:liveSignal.under,...lock};
   }
-  if(key==='oneXtwo')return {...(record?.prediction?.oneXtwo||{}),locked:false};
-  if(key==='ah')return {locked:false,pick:null,line:null,odds:null,bookmaker:null,provider:null};
-  return {...(record?.prediction?.totals||{}),locked:false};
+  if(key==='oneXtwo')return {...(record?.prediction?.oneXtwo||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};
+  if(key==='ah')return {locked:false,pick:null,line:null,odds:null,bookmaker:null,provider:null,lockedAt:null,lockMinute:null,entryScore:null};
+  return {...(record?.prediction?.totals||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};
 }
 function marketResult(record,key){
   const settledSignal=signalByMarket(record,key,true);
@@ -77,22 +78,23 @@ function marketResult(record,key){
   if(key==='ah')return 'PENDING';
   return record?.settlement?.totals?.result||'PENDING';
 }
-function asianHandicapCard(ah,result){
+function marketLockText(view,record){const minute=finite(view?.lockMinute)??finite(record?.minute),score=scorePair(view?.entryScore)||scorePair(record?.entryScore);return `LOCK ${minute===null?'—':Math.trunc(minute)}′ · SCORE ${score?pair(score):'—'}`;}
+function asianHandicapCard(ah,result,record){
   const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase();
   const selection=locked&&['HOME','AWAY'].includes(pick)?`${pick} ${fmtLine(ah.line)}`:'NO LOCK';
   const source=[ah?.bookmaker,ah?.provider].filter(Boolean).join(' · ');
-  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">@ ${esc(fmtOdds(ah?.odds))}</span></div><strong>${esc(selection)}</strong><small>${locked?`LINE ${esc(fmtLine(ah.line))}${source?` · ${esc(source)}`:''}`:'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
+  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">@ ${esc(fmtOdds(ah?.odds))}</span></div><strong>${esc(selection)}</strong><small>${locked?`LINE ${esc(fmtLine(ah.line))}${source?` · ${esc(source)}`:''}`:'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><small>${locked?esc(marketLockText(ah,record)):'—'}</small><span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
 }
 function card(record){
   const one=marketView(record,'oneXtwo'),totals=marketView(record,'totals'),ah=marketView(record,'ah');
   const oneResult=marketResult(record,'oneXtwo'),totalsResult=marketResult(record,'totals'),ahResult=marketResult(record,'ah'),mirror=scoreMirror(record);
   return `<article class="signal-lock-card" data-match-id="${esc(record.matchId)}">
-    <div class="signal-lock-head"><div><div class="signal-lock-kicker">SIGNAL LOCKED · 3.42</div><div class="signal-lock-teams">${esc(record.home)} — ${esc(record.away)}</div><div class="signal-lock-league">${esc(record.league||'—')}</div></div><div class="signal-lock-meta"><span>LOCK ${esc(record.minute??'—')}′ · SCORE ${esc(pair(record.entryScore))}</span><span>${esc(when(record.lockedAt))}</span></div></div>
+    <div class="signal-lock-head"><div><div class="signal-lock-kicker">SIGNAL LOCKED · 3.42</div><div class="signal-lock-teams">${esc(record.home)} — ${esc(record.away)}</div><div class="signal-lock-league">${esc(record.league||'—')}</div></div><div class="signal-lock-meta"><span>FIRST LOCK ${esc(record.minute??'—')}′ · SCORE ${esc(pair(record.entryScore))}</span><span>${esc(when(record.lockedAt))}</span></div></div>
     <div class="signal-lock-grid has-asian-handicap">
-      <section class="signal-market"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(one.pick||'—')}</strong><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(displayResult(oneResult))}</span></section>
+      <section class="signal-market"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(one.pick||'—')}</strong><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><small>${esc(marketLockText(one,record))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(displayResult(oneResult))}</span></section>
       <section class="signal-final ${mirror.status==='FT'?'is-final':'is-wait'}" aria-label="Live score mirror"><span>${mirror.status==='FT'?'FINAL':'LIVE SCORE'}</span><strong>${esc(mirror.score?pair(mirror.score):'—')}</strong><small>${esc(mirror.status)}</small></section>
-      <section class="signal-market"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(displayResult(totalsResult))}</span></section>
-      ${asianHandicapCard(ah,ahResult)}
+      <section class="signal-market"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><small>${esc(marketLockText(totals,record))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(displayResult(totalsResult))}</span></section>
+      ${asianHandicapCard(ah,ahResult,record)}
     </div>
   </article>`;
 }
@@ -103,7 +105,7 @@ async function load(){
     let response;try{response=await fetch(`${base}${runtime.signalPath||'/signal'}?limit=500&t=${Date.now()}`,{cache:'no-store',signal:ac.signal});}finally{clearTimeout(timeout)}
     if(!response.ok)throw new Error(`HTTP ${response.status}`);
     const data=await response.json(),summary=data?.summary||{},records=Array.isArray(data?.records)?data.records:[];
-    set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??records.length*2);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
+    const fallbackPredictions=records.reduce((sum,record)=>sum+(Array.isArray(record?.signals)?record.signals.length:(record?.prediction?2:0)),0);set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??fallbackPredictions);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);
     list.innerHTML=records.length?records.map(card).join(''):'<div class="ledger-empty">No qualifying picks yet.</div>';
     set(status,`LEDGER ONLINE · ${records.length} locked matches · updated ${when(data.updatedAt)}`);
   }catch(error){

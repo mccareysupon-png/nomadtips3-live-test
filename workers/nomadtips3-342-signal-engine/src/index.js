@@ -92,14 +92,14 @@ async function fetchText(url,headers={},timeoutMs=MARKET_TIMEOUT_MS){
   }catch(error){if(error?.name==='AbortError')throw new Error('NOWGOAL_TIMEOUT');throw error}
   finally{clearTimeout(timer)}
 }
-function hkToDecimal(value){const n=finite(value);if(n===null||n<0)return null;const out=n<1.5?1+n:n;return out>1&&out<100?Number(out.toFixed(4)):null}
+function hkToDecimal(value){const n=finite(value);if(n===null||n<0)return null;const out=1+n;return out>1&&out<100?Number(out.toFixed(4)):null}
 function parseAsianHandicapQuotes(xml='',observedAt=Date.now()){
   const out=new Map();
   for(const match of String(xml).matchAll(/<m>([^<]+)<\/m>/g)){
     const fields=match[1].split(',').map(value=>String(value??'').trim()),id=String(fields[0]||'');
-    const rawHomeLine=finite(fields[2]),homeOdds=hkToDecimal(fields[3]),awayOdds=hkToDecimal(fields[4]);
-    if(!/^\d+$/.test(id)||rawHomeLine===null||homeOdds===null||awayOdds===null||!Number.isInteger(rawHomeLine*4))continue;
-    out.set(id,{rawHomeLine,homeOdds,awayOdds,observedAt,provider:'Nowgoal',bookmaker:'Bet365',companyId:NOWGOAL_AH_COMPANY_ID,linePerspective:'HOME'});
+    const rawHomeLine=finite(fields[2]),rawHomeHk=finite(fields[3]),rawAwayHk=finite(fields[4]),homeOdds=hkToDecimal(rawHomeHk),awayOdds=hkToDecimal(rawAwayHk);
+    if(!/^\d+$/.test(id)||rawHomeLine===null||rawHomeHk===null||rawAwayHk===null||homeOdds===null||awayOdds===null||!Number.isInteger(rawHomeLine*4))continue;
+    out.set(id,{rawHomeLine,rawHomeHk,rawAwayHk,homeOdds,awayOdds,observedAt,provider:'Nowgoal',bookmaker:'Bet365',companyId:NOWGOAL_AH_COMPANY_ID,linePerspective:'HOME'});
   }
   return out;
 }
@@ -192,7 +192,7 @@ function asianHandicapGate(m,market,snapshot,quote){
   const passing=allowed.filter(side=>sides[side]?.pass).sort((a,b)=>sides[b].passCount-sides[a].passCount||sides[b].strength-sides[a].strength||Number(sides[a].odds||999)-Number(sides[b].odds||999));
   const pick=passing[0]||null,selected=pick?sides[pick]:null;if(!pick)reasons.push('ยังไม่มีฝั่งที่เลือกผ่านเหตุการณ์และราคา');
   const evidence={mode,sides,passingSides:passing,selectedSide:pick,pass:Boolean(pick),from:rolling?.from??null,to:rolling?.to??null};
-  return {market:'ah',pass:reasons.length===0,disabled:false,reasons,minute,evidence,pick,line:selected?.line??null,rawLine:finite(quote?.rawHomeLine),odds:selected?.odds??null,probability:null,bookmaker:quote?.bookmaker||'Bet365',provider:quote?.provider||'Nowgoal',settings:{...cfg}};
+  return {market:'ah',pass:reasons.length===0,disabled:false,reasons,minute,evidence,pick,line:selected?.line??null,rawLine:finite(quote?.rawHomeLine),odds:selected?.odds??null,homeOdds:finite(quote?.homeOdds),awayOdds:finite(quote?.awayOdds),rawHomeHk:finite(quote?.rawHomeHk),rawAwayHk:finite(quote?.rawAwayHk),probability:null,bookmaker:quote?.bookmaker||'Bet365',provider:quote?.provider||'Nowgoal',settings:{...cfg}};
 }
 function marketGate(name,m,row,snapshot,statRows){
   const run=Boolean(snapshot?.run?.[name]),cfg=snapshot?.settings?.[name]||null,market=row.market,pred=row.prediction,reasons=[];
@@ -225,12 +225,18 @@ function buildSignals(m,row,snapshot,statRows,ahQuote=null){
   if(gates.oneXtwo.pass)signals.push({market:'1X2',pick:gates.oneXtwo.pick,odds:gates.oneXtwo.odds,probability:gates.oneXtwo.probability,home:finite(row.prediction?.oneXtwo?.home),away:finite(row.prediction?.oneXtwo?.away),gate:gates.oneXtwo,settings:gates.oneXtwo.settings});
   let totalsGate=null;if(gates.over.pass&&gates.under.pass)totalsGate=String(row.prediction?.totals?.pick||'').toUpperCase()==='UNDER'?gates.under:gates.over;else if(gates.over.pass)totalsGate=gates.over;else if(gates.under.pass)totalsGate=gates.under;
   if(totalsGate)signals.push({market:totalsGate.pick,pick:totalsGate.pick,line:totalsGate.line,odds:totalsGate.odds,probability:totalsGate.probability,over:finite(row.prediction?.totals?.over),under:finite(row.prediction?.totals?.under),gate:totalsGate,settings:totalsGate.settings});
-  if(gates.ah.pass)signals.push({market:'AH',marketLabel:'Asian Handicap',pick:gates.ah.pick,line:gates.ah.line,rawLine:gates.ah.rawLine,odds:gates.ah.odds,probability:null,bookmaker:gates.ah.bookmaker,provider:gates.ah.provider,gate:gates.ah,settings:gates.ah.settings});
+  if(gates.ah.pass)signals.push({market:'AH',marketLabel:'Asian Handicap',pick:gates.ah.pick,line:gates.ah.line,rawLine:gates.ah.rawLine,odds:gates.ah.odds,homeOdds:gates.ah.homeOdds,awayOdds:gates.ah.awayOdds,rawHomeHk:gates.ah.rawHomeHk,rawAwayHk:gates.ah.rawAwayHk,probability:null,bookmaker:gates.ah.bookmaker,provider:gates.ah.provider,gate:gates.ah,settings:gates.ah.settings});
   return {signals,gates};
 }
-function eligibleByTime(m,snapshot){const minute=finite(m?.minute);if(minute===null||m?.freshness?.stale)return false;return MARKETS.some(name=>snapshot.run[name]&&snapshot.settings[name]&&minute>=Number(snapshot.settings[name].minuteFrom)&&minute<=Number(snapshot.settings[name].minuteTo))}
+function signalFamily(market){const name=String(market||'').toUpperCase();if(name==='1X2')return'oneXtwo';if(name==='AH')return'ah';if(name==='OVER'||name==='UNDER')return'totals';return null}
+function lockedFamilies(record){const out=new Set();if(!record)return out;if(Array.isArray(record.signals)){for(const signal of record.signals){const family=signalFamily(signal?.market);if(family)out.add(family)}return out}if(record?.prediction?.oneXtwo)out.add('oneXtwo');if(record?.prediction?.totals)out.add('totals');return out}
+function settingsFamily(name){return name==='oneXtwo'?'oneXtwo':name==='ah'?'ah':'totals'}
+function eligibleByTime(m,snapshot,record=null){const minute=finite(m?.minute);if(minute===null||m?.freshness?.stale)return false;const locked=lockedFamilies(record);return MARKETS.some(name=>snapshot.run[name]&&snapshot.settings[name]&&!locked.has(settingsFamily(name))&&minute>=Number(snapshot.settings[name].minuteFrom)&&minute<=Number(snapshot.settings[name].minuteTo))}
+function filterNewSignals(signals,record=null){const seen=lockedFamilies(record),out=[];for(const signal of Array.isArray(signals)?signals:[]){const family=signalFamily(signal?.market);if(!family||seen.has(family))continue;seen.add(family);out.push(signal)}return out}
 function candidateUrl(m){const u=new URL(MARKET_URL);u.searchParams.set('home',m.home||'');u.searchParams.set('away',m.away||'');u.searchParams.set('minute',String(m.minute??''));u.searchParams.set('scoreHome',String(m.score?.[0]??''));u.searchParams.set('scoreAway',String(m.score?.[1]??''));return u.toString()}
-function lockPayload(m,market,signals){const ah=signals.find(signal=>signal.market==='AH');return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,asianHandicap:ah?{line:ah.rawLine,selectedLine:ah.line,homeOdds:ah.pick==='HOME'?ah.odds:null,awayOdds:ah.pick==='AWAY'?ah.odds:null,bookmaker:ah.bookmaker||'Bet365',linePerspective:'HOME'}:null,statistics:market.statistics||null}}}
+function lockPayload(m,market,signals){const ah=signals.find(signal=>signal.market==='AH');return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,asianHandicap:ah?{line:ah.rawLine,selectedLine:ah.line,homeOdds:ah.homeOdds??null,awayOdds:ah.awayOdds??null,rawHomeHk:ah.rawHomeHk??null,rawAwayHk:ah.rawAwayHk??null,selectedOdds:ah.odds,bookmaker:ah.bookmaker||'Bet365',provider:ah.provider||'Nowgoal',linePerspective:'HOME'}:null,statistics:market.statistics||null}}}
+
+export {hkToDecimal,parseAsianHandicapQuotes,ahSideQuote,signalFamily,lockedFamilies,filterNewSignals};
 
 export class SignalEngine{
   constructor(state,env){this.state=state;this.env=env}
@@ -265,8 +271,8 @@ export class SignalEngine{
       if(feed?.ok===false||feed?.version!=='3.42'||!Array.isArray(feed?.matches))throw new Error('LIVE_FEED_CONTRACT');
       let ahQuotes=new Map(),ahSourceError=null;
       if(snapshot.run.ah){try{ahQuotes=await fetchAsianHandicapQuotes(started)}catch(error){ahSourceError=String(error?.message||error).slice(0,160)}}
-      const lockedIds=new Set((Array.isArray(ledger?.records)?ledger.records:[]).map(r=>String(r?.matchId||'')));
-      let matches=feed.matches.filter(m=>m?.id&&!lockedIds.has(String(m.id))&&eligibleByTime(m,snapshot));
+      const existingById=new Map((Array.isArray(ledger?.records)?ledger.records:[]).map(record=>[String(record?.matchId||''),record]).filter(([id])=>id));
+      let matches=feed.matches.filter(m=>m?.id&&eligibleByTime(m,snapshot,existingById.get(String(m.id))||null));
       const cursor=Math.max(0,Number(await this.state.storage.get('cursor'))||0),total=matches.length;
       if(total>MAX_MATCHES_PER_SCAN){const rotated=[...matches.slice(cursor%total),...matches.slice(0,cursor%total)];matches=rotated.slice(0,MAX_MATCHES_PER_SCAN);await this.state.storage.put('cursor',(cursor+MAX_MATCHES_PER_SCAN)%total)}else await this.state.storage.put('cursor',0);
       const details=[];let locked=0;
@@ -274,11 +280,12 @@ export class SignalEngine{
         try{
           const market=await fetchJson(candidateUrl(m),{headers:{origin:'https://www.nomadtips3.com'}},MARKET_TIMEOUT_MS);
           if(!market?.ok||!market?.oneXtwo||!market?.totals||!market?.statistics)throw new Error(market?.error||'candidate_incomplete');
-          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},ahQuote=ahQuotes.get(String(market?.fixture?.id||''))||null,evaluated=buildSignals(m,row,snapshot,statRows,ahQuote);
-          if(!evaluated.signals.length){details.push({matchId:String(m.id),status:'WAIT',gates:Object.fromEntries(Object.entries(evaluated.gates).map(([k,g])=>[k,g.reasons]))});continue}
-          const ack=await fetchJson(`${LEDGER_URL}/lock`,{method:'POST',headers:{'content-type':'application/json',origin:'https://www.nomadtips3.com'},body:JSON.stringify(lockPayload(m,market,evaluated.signals))},REMOTE_TIMEOUT_MS);
-          if(ack?.locked===true)locked++;
-          details.push({matchId:String(m.id),status:ack?.duplicate?'DUPLICATE':'LOCKED',signals:evaluated.signals.map(s=>s.market)});
+          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},ahQuote=ahQuotes.get(String(market?.fixture?.id||''))||null,evaluated=buildSignals(m,row,snapshot,statRows,ahQuote),existing=existingById.get(String(m.id))||null,newSignals=filterNewSignals(evaluated.signals,existing);
+          if(!newSignals.length){details.push({matchId:String(m.id),status:evaluated.signals.length?'ALREADY_LOCKED':'WAIT',gates:Object.fromEntries(Object.entries(evaluated.gates).map(([k,g])=>[k,g.reasons]))});continue}
+          const ack=await fetchJson(`${LEDGER_URL}/lock`,{method:'POST',headers:{'content-type':'application/json',origin:'https://www.nomadtips3.com'},body:JSON.stringify(lockPayload(m,market,newSignals))},REMOTE_TIMEOUT_MS);
+          if(ack?.locked===true&&!ack?.duplicate)locked++;
+          if(ack?.record)existingById.set(String(m.id),ack.record);
+          details.push({matchId:String(m.id),status:ack?.appended?'APPENDED':ack?.duplicate?'DUPLICATE':'LOCKED',signals:newSignals.map(s=>s.market)});
         }catch(error){details.push({matchId:String(m.id),status:'ERROR',error:String(error?.message||error).slice(0,180)})}
       }
       const result={at:iso(started),status:'RUNNING',feedMatches:feed.matches.length,eligible:total,processed:matches.length,locked,run:snapshot.run,asianHandicapSource:{enabled:Boolean(snapshot.run.ah),quotes:ahQuotes.size,error:ahSourceError},details};
