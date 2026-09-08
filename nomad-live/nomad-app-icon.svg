@@ -1,7 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="nomadtips3 app icon">
-  <rect width="512" height="512" rx="104" fill="#10120f"/>
-  <rect x="18" y="18" width="476" height="476" rx="90" fill="#123328"/>
-  <text x="256" y="286" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="92" font-weight="900" letter-spacing="-2.8" textLength="388" lengthAdjust="spacingAndGlyphs">
-    <tspan fill="#f1f3f4">nomad</tspan><tspan fill="#f2d21b">tips3</tspan>
-  </text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f7257"/>
+      <stop offset="0.45" stop-color="#1f5b43"/>
+      <stop offset="1" stop-color="#123d2e"/>
+    </linearGradient>
+    <radialGradient id="soft" cx="50%" cy="34%" r="70%">
+      <stop offset="0" stop-color="#a9e0bd" stop-opacity=".16"/>
+      <stop offset="1" stop-color="#a9e0bd" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#10261e"/>
+  <rect x="18" y="18" width="476" height="476" rx="98" fill="url(#bg)"/>
+  <rect x="18" y="18" width="476" height="476" rx="98" fill="url(#soft)"/>
+  <path d="M84 256h344M256 84v344" stroke="#dff5e6" stroke-opacity=".075" stroke-width="4"/>
+  <circle cx="256" cy="256" r="172" fill="none" stroke="#dff5e6" stroke-opacity=".075" stroke-width="4"/>
+  <text x="256" y="245" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="112" font-weight="900" letter-spacing="-4" fill="#f7faf8">nomad</text>
+  <text x="256" y="352" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="118" font-weight="900" letter-spacing="-4" fill="#f3cf32">tips3</text>
 </svg>
