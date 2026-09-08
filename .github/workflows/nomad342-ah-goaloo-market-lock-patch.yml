@@ -1,0 +1,185 @@
+name: One-shot NOMAD 3.42 AH Goaloo market-lock patch
+
+on:
+  push:
+    branches:
+      - work/nomad342-ah-goaloo-market-lock
+    paths:
+      - '.github/workflows/nomad342-ah-goaloo-market-lock-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: work/nomad342-ah-goaloo-market-lock
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Apply isolated AH price + market-lock patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text(encoding='utf-8').replace('\r\n','\n')
+          def write(path,text):
+              Path(path).write_text(text,encoding='utf-8',newline='\n')
+          def repl_once(text,old,new,label):
+              count=text.count(old)
+              if count!=1:
+                  raise SystemExit(f'{label}: expected 1 match, got {count}')
+              return text.replace(old,new,1)
+          def regex_once(text,pattern,replacement,label):
+              new,count=re.subn(pattern,replacement,text,count=1,flags=re.S)
+              if count!=1:
+                  raise SystemExit(f'{label}: expected 1 regex match, got {count}')
+              return new
+
+          # 1) Signal Engine: Goaloo/Nowgoal goal8.xml uses HK odds. Always convert HK -> Decimal by +1.
+          path='workers/nomadtips3-342-signal-engine/src/index.js'
+          s=read(path)
+          s=repl_once(s,
+              "function hkToDecimal(value){const n=finite(value);if(n===null||n<0)return null;const out=n<1.5?1+n:n;return out>1&&out<100?Number(out.toFixed(4)):null}",
+              "function hkToDecimal(value){const n=finite(value);if(n===null||n<0)return null;const out=1+n;return out>1&&out<100?Number(out.toFixed(4)):null}",
+              'signal hkToDecimal')
+          s=repl_once(s,
+              "    const rawHomeLine=finite(fields[2]),homeOdds=hkToDecimal(fields[3]),awayOdds=hkToDecimal(fields[4]);\n    if(!/^\\d+$/.test(id)||rawHomeLine===null||homeOdds===null||awayOdds===null||!Number.isInteger(rawHomeLine*4))continue;\n    out.set(id,{rawHomeLine,homeOdds,awayOdds,observedAt,provider:'Nowgoal',bookmaker:'Bet365',companyId:NOWGOAL_AH_COMPANY_ID,linePerspective:'HOME'});",
+              "    const rawHomeLine=finite(fields[2]),rawHomeHk=finite(fields[3]),rawAwayHk=finite(fields[4]),homeOdds=hkToDecimal(rawHomeHk),awayOdds=hkToDecimal(rawAwayHk);\n    if(!/^\\d+$/.test(id)||rawHomeLine===null||rawHomeHk===null||rawAwayHk===null||homeOdds===null||awayOdds===null||!Number.isInteger(rawHomeLine*4))continue;\n    out.set(id,{rawHomeLine,rawHomeHk,rawAwayHk,homeOdds,awayOdds,observedAt,provider:'Nowgoal',bookmaker:'Bet365',companyId:NOWGOAL_AH_COMPANY_ID,linePerspective:'HOME'});",
+              'signal parse AH quote')
+          s=repl_once(s,
+              "  return {market:'ah',pass:reasons.length===0,disabled:false,reasons,minute,evidence,pick,line:selected?.line??null,rawLine:finite(quote?.rawHomeLine),odds:selected?.odds??null,probability:null,bookmaker:quote?.bookmaker||'Bet365',provider:quote?.provider||'Nowgoal',settings:{...cfg}};",
+              "  return {market:'ah',pass:reasons.length===0,disabled:false,reasons,minute,evidence,pick,line:selected?.line??null,rawLine:finite(quote?.rawHomeLine),odds:selected?.odds??null,homeOdds:finite(quote?.homeOdds),awayOdds:finite(quote?.awayOdds),rawHomeHk:finite(quote?.rawHomeHk),rawAwayHk:finite(quote?.rawAwayHk),probability:null,bookmaker:quote?.bookmaker||'Bet365',provider:quote?.provider||'Nowgoal',settings:{...cfg}};",
+              'signal AH gate audit fields')
+          s=repl_once(s,
+              "  if(gates.ah.pass)signals.push({market:'AH',marketLabel:'Asian Handicap',pick:gates.ah.pick,line:gates.ah.line,rawLine:gates.ah.rawLine,odds:gates.ah.odds,probability:null,bookmaker:gates.ah.bookmaker,provider:gates.ah.provider,gate:gates.ah,settings:gates.ah.settings});",
+              "  if(gates.ah.pass)signals.push({market:'AH',marketLabel:'Asian Handicap',pick:gates.ah.pick,line:gates.ah.line,rawLine:gates.ah.rawLine,odds:gates.ah.odds,homeOdds:gates.ah.homeOdds,awayOdds:gates.ah.awayOdds,rawHomeHk:gates.ah.rawHomeHk,rawAwayHk:gates.ah.rawAwayHk,probability:null,bookmaker:gates.ah.bookmaker,provider:gates.ah.provider,gate:gates.ah,settings:gates.ah.settings});",
+              'signal AH signal audit fields')
+          s=repl_once(s,
+              "function eligibleByTime(m,snapshot){const minute=finite(m?.minute);if(minute===null||m?.freshness?.stale)return false;return MARKETS.some(name=>snapshot.run[name]&&snapshot.settings[name]&&minute>=Number(snapshot.settings[name].minuteFrom)&&minute<=Number(snapshot.settings[name].minuteTo))}",
+              "function signalFamily(market){const name=String(market||'').toUpperCase();if(name==='1X2')return'oneXtwo';if(name==='AH')return'ah';if(name==='OVER'||name==='UNDER')return'totals';return null}\nfunction lockedFamilies(record){const out=new Set();if(!record)return out;if(Array.isArray(record.signals)){for(const signal of record.signals){const family=signalFamily(signal?.market);if(family)out.add(family)}return out}if(record?.prediction?.oneXtwo)out.add('oneXtwo');if(record?.prediction?.totals)out.add('totals');return out}\nfunction settingsFamily(name){return name==='oneXtwo'?'oneXtwo':name==='ah'?'ah':'totals'}\nfunction eligibleByTime(m,snapshot,record=null){const minute=finite(m?.minute);if(minute===null||m?.freshness?.stale)return false;const locked=lockedFamilies(record);return MARKETS.some(name=>snapshot.run[name]&&snapshot.settings[name]&&!locked.has(settingsFamily(name))&&minute>=Number(snapshot.settings[name].minuteFrom)&&minute<=Number(snapshot.settings[name].minuteTo))}\nfunction filterNewSignals(signals,record=null){const seen=lockedFamilies(record),out=[];for(const signal of Array.isArray(signals)?signals:[]){const family=signalFamily(signal?.market);if(!family||seen.has(family))continue;seen.add(family);out.push(signal)}return out}",
+              'signal market-level eligibility')
+          s=regex_once(s,
+              r"function lockPayload\(m,market,signals\)\{.*?\}\n\nexport class SignalEngine",
+              "function lockPayload(m,market,signals){const ah=signals.find(signal=>signal.market==='AH');return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,asianHandicap:ah?{line:ah.rawLine,selectedLine:ah.line,homeOdds:ah.homeOdds??null,awayOdds:ah.awayOdds??null,rawHomeHk:ah.rawHomeHk??null,rawAwayHk:ah.rawAwayHk??null,selectedOdds:ah.odds,bookmaker:ah.bookmaker||'Bet365',provider:ah.provider||'Nowgoal',linePerspective:'HOME'}:null,statistics:market.statistics||null}}}\n\nexport {hkToDecimal,parseAsianHandicapQuotes,ahSideQuote,signalFamily,lockedFamilies,filterNewSignals};\n\nexport class SignalEngine",
+              'signal lock payload/export helpers')
+          s=repl_once(s,
+              "      const lockedIds=new Set((Array.isArray(ledger?.records)?ledger.records:[]).map(r=>String(r?.matchId||'')));\n      let matches=feed.matches.filter(m=>m?.id&&!lockedIds.has(String(m.id))&&eligibleByTime(m,snapshot));",
+              "      const existingById=new Map((Array.isArray(ledger?.records)?ledger.records:[]).map(record=>[String(record?.matchId||''),record]).filter(([id])=>id));\n      let matches=feed.matches.filter(m=>m?.id&&eligibleByTime(m,snapshot,existingById.get(String(m.id))||null));",
+              'signal existing records scan')
+          old_chunk="""          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},ahQuote=ahQuotes.get(String(market?.fixture?.id||''))||null,evaluated=buildSignals(m,row,snapshot,statRows,ahQuote);\n          if(!evaluated.signals.length){details.push({matchId:String(m.id),status:'WAIT',gates:Object.fromEntries(Object.entries(evaluated.gates).map(([k,g])=>[k,g.reasons]))});continue}\n          const ack=await fetchJson(`${LEDGER_URL}/lock`,{method:'POST',headers:{'content-type':'application/json',origin:'https://www.nomadtips3.com'},body:JSON.stringify(lockPayload(m,market,evaluated.signals))},REMOTE_TIMEOUT_MS);\n          if(ack?.locked===true)locked++;\n          details.push({matchId:String(m.id),status:ack?.duplicate?'DUPLICATE':'LOCKED',signals:evaluated.signals.map(s=>s.market)});"""
+          new_chunk="""          const statRows=await this.rememberStats(String(m.id),market),row={market,prediction:prediction(m,market)},ahQuote=ahQuotes.get(String(market?.fixture?.id||''))||null,evaluated=buildSignals(m,row,snapshot,statRows,ahQuote),existing=existingById.get(String(m.id))||null,newSignals=filterNewSignals(evaluated.signals,existing);\n          if(!newSignals.length){details.push({matchId:String(m.id),status:evaluated.signals.length?'ALREADY_LOCKED':'WAIT',gates:Object.fromEntries(Object.entries(evaluated.gates).map(([k,g])=>[k,g.reasons]))});continue}\n          const ack=await fetchJson(`${LEDGER_URL}/lock`,{method:'POST',headers:{'content-type':'application/json',origin:'https://www.nomadtips3.com'},body:JSON.stringify(lockPayload(m,market,newSignals))},REMOTE_TIMEOUT_MS);\n          if(ack?.locked===true&&!ack?.duplicate)locked++;\n          if(ack?.record)existingById.set(String(m.id),ack.record);\n          details.push({matchId:String(m.id),status:ack?.appended?'APPENDED':ack?.duplicate?'DUPLICATE':'LOCKED',signals:newSignals.map(s=>s.market)});"""
+          s=repl_once(s,old_chunk,new_chunk,'signal append scan flow')
+          write(path,s)
+
+          # Signal engine tests: lock Goaloo HK conversion and selected-side perspective.
+          pkg=read('workers/nomadtips3-342-signal-engine/package.json')
+          pkg=repl_once(pkg,'"test": "node --check src/index.js"','"test": "node --check src/index.js && node --test"','signal package test')
+          write('workers/nomadtips3-342-signal-engine/package.json',pkg)
+          test_dir=Path('workers/nomadtips3-342-signal-engine/test');test_dir.mkdir(parents=True,exist_ok=True)
+          write(test_dir/'ah-goaloo.test.mjs',"""import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport {hkToDecimal,parseAsianHandicapQuotes,ahSideQuote,lockedFamilies,filterNewSignals} from '../src/index.js';\n\ntest('Goaloo goal8 HK odds always convert to decimal with +1',()=>{\n  assert.equal(hkToDecimal(0.5),1.5);\n  assert.equal(hkToDecimal(1.4),2.4);\n  assert.equal(hkToDecimal(1.5),2.5);\n  assert.equal(hkToDecimal(2.4),3.4);\n});\n\ntest('Goaloo AH fields keep HOME/AWAY price ownership and only reverse line perspective',()=>{\n  const quotes=parseAsianHandicapQuotes('<c><m>123,77,-1.5,0.5,1.4</m></c>',1000);\n  const q=quotes.get('123');\n  assert.equal(q.rawHomeLine,-1.5);\n  assert.equal(q.rawHomeHk,0.5);\n  assert.equal(q.rawAwayHk,1.4);\n  assert.equal(q.homeOdds,1.5);\n  assert.equal(q.awayOdds,2.4);\n  assert.deepEqual(ahSideQuote(q,'HOME'),{line:-1.5,odds:1.5});\n  assert.deepEqual(ahSideQuote(q,'AWAY'),{line:1.5,odds:2.4});\n});\n\ntest('market locks are per family; existing 1X2 does not block O/U or Asian Handicap',()=>{\n  const record={signals:[{market:'1X2'}]};\n  assert.deepEqual([...lockedFamilies(record)],['oneXtwo']);\n  assert.deepEqual(filterNewSignals([{market:'1X2'},{market:'OVER'},{market:'AH'}],record).map(x=>x.market),['OVER','AH']);\n  const legacy={prediction:{oneXtwo:{pick:'HOME'},totals:{pick:'OVER'}}};\n  assert.deepEqual(filterNewSignals([{market:'UNDER'},{market:'AH'}],legacy).map(x=>x.market),['AH']);\n});\n""")
+
+          # 2) Ledger: append new market family to same match record, stamp per-market lock data, audit AH price/line ownership.
+          path='workers/nomadtips3-342-ledger/src/index.js'
+          s=read(path)
+          s=regex_once(s,
+              r"  if\(kind==='AH'\)\{.*?\n  \}\n  if\(pick!==kind\)",
+              """  if(kind==='AH'){\n    if(!['HOME','AWAY'].includes(pick))errors.push(`${prefix}.pick`);\n    const sideMode=String(cfg.sideMode||'BOTH').toUpperCase();if(sideMode!=='BOTH'&&sideMode!==pick)errors.push(`${prefix}.sideMode`);\n    const line=finite(signal?.line),rawLine=finite(signal?.rawLine);if(line===null||line<Number(cfg.lineMin)||line<-20||line>20||!Number.isInteger(line*4))errors.push(`${prefix}.line`);\n    if(rawLine!==null){const expected=pick==='AWAY'?-rawLine:rawLine;if(Math.abs(expected-line)>1e-9)errors.push(`${prefix}.linePerspective`);}\n    const homeOdds=finite(signal?.homeOdds),awayOdds=finite(signal?.awayOdds),rawHomeHk=finite(signal?.rawHomeHk),rawAwayHk=finite(signal?.rawAwayHk),selectedTeamOdds=pick==='HOME'?homeOdds:awayOdds;\n    if(selectedTeamOdds!==null&&Math.abs(selectedTeamOdds-odds)>1e-6)errors.push(`${prefix}.oddsSide`);\n    if(rawHomeHk!==null&&homeOdds!==null&&Math.abs((1+rawHomeHk)-homeOdds)>1e-6)errors.push(`${prefix}.homeHkDecimal`);\n    if(rawAwayHk!==null&&awayOdds!==null&&Math.abs((1+rawAwayHk)-awayOdds)>1e-6)errors.push(`${prefix}.awayHkDecimal`);\n    const selected=evidence?.sides?.[pick]?.values||evidence?.values||null,check=countEvidence(selected,cfg,'MIN');if(check.required<1||check.passCount<check.required)errors.push(`${prefix}.evidence`);\n    return {market:'AH',marketLabel:'Asian Handicap',pick,line,rawLine,odds,homeOdds,awayOdds,rawHomeHk,rawAwayHk,probability:finite(signal?.probability),bookmaker:clean(signal?.bookmaker,80)||null,provider:clean(signal?.provider,80)||null,settings:{...cfg},gate};\n  }\n  if(pick!==kind)""",
+              'ledger AH validation')
+          s=repl_once(s,
+              "function validateLock(body){return Number(body?.schemaVersion)>=3&&Array.isArray(body?.signals)?validateV3Lock(body):validateLegacyLock(body);}\n\nexport function gradeOneXtwo",
+              """function validateLock(body){return Number(body?.schemaVersion)>=3&&Array.isArray(body?.signals)?validateV3Lock(body):validateLegacyLock(body);}\nexport function signalFamily(market){const name=String(market||'').toUpperCase();if(name==='1X2')return'oneXtwo';if(name==='AH')return'ah';if(name==='OVER'||name==='UNDER')return'totals';return null;}\nfunction storedFamilies(record){const out=new Set();if(Array.isArray(record?.signals)){for(const signal of record.signals){const family=signalFamily(signal?.market);if(family)out.add(family);}return out;}if(record?.prediction?.oneXtwo)out.add('oneXtwo');if(record?.prediction?.totals)out.add('totals');return out;}\nfunction stampSignals(signals,lockedAt,base){return (Array.isArray(signals)?signals:[]).map(signal=>({...signal,lockedAt,lockMinute:base.minute,entryScore:{...base.entryScore}}));}\nfunction mergeMarketSnapshot(existing={},incoming={},families=new Set()){const out={...(existing||{})};out.provider=clean(incoming?.provider,80)||out.provider||null;out.observedAt=Math.max(finite(out.observedAt)||0,finite(incoming?.observedAt)||0)||null;if(incoming?.fixture)out.fixture=incoming.fixture;if(families.has('oneXtwo')&&incoming?.oneXtwo)out.oneXtwo=incoming.oneXtwo;if(families.has('totals')&&incoming?.totals)out.totals=incoming.totals;if(families.has('ah')&&incoming?.asianHandicap)out.asianHandicap=incoming.asianHandicap;if(incoming?.statistics)out.statistics=incoming.statistics;return out;}\n\nexport function gradeOneXtwo""",
+              'ledger market family helpers')
+          s=regex_once(s,
+              r"function rowsFromRecords\(records\)\{.*?\n\}\nexport function summarize\(records\)\{.*?\}\n\nexport function parseTotalCornerFinalPayload",
+              """function signalLockFields(record,signal=null){const lockedAt=finite(signal?.lockedAt)??finite(record?.lockedAt),minute=finite(signal?.lockMinute)??finite(record?.minute),entry=pair(signal?.entryScore||record?.entryScore);return {lockedAt,minute,entryScore:entry};}\nfunction rowsFromRecords(records){\n  const rows=[];for(const record of records){\n    if(Array.isArray(record.signals)){const settled=new Map((record.settlement?.signals||[]).map(x=>[x.market,x]));for(const s of record.signals){const done=settled.get(s.market),lock=signalLockFields(record,s),common={recordId:record.id,matchId:record.matchId,fixtureId:record.fixtureId,lockedAt:lock.lockedAt,league:record.league,home:record.home,away:record.away,minute:lock.minute,entryScore:lock.entryScore,finalScore:record.settlement?.finalScore||null};rows.push({...common,market:s.market==='1X2'?'1X2':s.market==='AH'?`Asian Handicap ${Number(s.line).toFixed(Number.isInteger(Number(s.line))?1:2)}`:`O/U ${Number(s.line).toFixed(Number.isInteger(Number(s.line))?1:2)}`,pick:s.pick,line:s.market==='1X2'?null:s.line,odds:s.odds,result:done?.result||'PENDING',profit:done?.profit??null});}continue;}\n    const common={recordId:record.id,matchId:record.matchId,fixtureId:record.fixtureId,lockedAt:record.lockedAt,league:record.league,home:record.home,away:record.away,minute:record.minute,entryScore:record.entryScore,finalScore:record.settlement?.finalScore||null};rows.push({...common,market:'1X2',pick:record.prediction.oneXtwo.pick,line:null,odds:record.prediction.oneXtwo.odds,result:record.settlement?.oneXtwo?.result||'PENDING',profit:record.settlement?.oneXtwo?.profit??null});rows.push({...common,market:`O/U ${Number(record.prediction.totals.line).toFixed(Number.isInteger(Number(record.prediction.totals.line))?1:2)}`,pick:record.prediction.totals.pick,line:record.prediction.totals.line,odds:record.prediction.totals.odds,result:record.settlement?.totals?.result||'PENDING',profit:record.settlement?.totals?.profit??null});}\n  return rows.sort((a,b)=>Number(b.lockedAt)-Number(a.lockedAt));\n}\nfunction summarizeRows(rows,lockedMatches=null){const settled=rows.filter(row=>row.result!=='PENDING'),wins=settled.filter(row=>['WIN','HALF_WIN'].includes(row.result)).length,losses=settled.filter(row=>['LOSS','HALF_LOSS'].includes(row.result)).length,pushes=settled.filter(row=>row.result==='PUSH').length,decided=wins+losses,profit=settled.reduce((sum,row)=>sum+(finite(row.profit)||0),0),priced=settled.map(row=>finite(row.odds)).filter(value=>value!==null),avgOdds=priced.length?Number((priced.reduce((sum,value)=>sum+value,0)/priced.length).toFixed(4)):null,days=new Set(rows.map(row=>bangkokDayKey(row?.lockedAt)).filter(Boolean)).size,matchCount=lockedMatches??new Set(rows.map(row=>row.recordId).filter(Boolean)).size;return {lockedMatches:matchCount,totalPredictions:rows.length,settledPredictions:settled.length,pendingPredictions:rows.length-settled.length,wins,losses,pushes,days,avgOdds,winRate:decided?wins/decided*100:0,halfWins:settled.filter(r=>r.result==='HALF_WIN').length,halfLosses:settled.filter(r=>r.result==='HALF_LOSS').length,stake:settled.length,roi:settled.length?Number((profit/settled.length*100).toFixed(4)):null,profit:Number(profit.toFixed(4))};}\nexport function summarize(records){const rows=rowsFromRecords(records);return summarizeRows(rows,records.length);}\n\nexport function parseTotalCornerFinalPayload""",
+              'ledger per-market rows/summary')
+          s=regex_once(s,
+              r"  async lock\(request\)\{.*?\}\n  async signal",
+              """  async lock(request){const origin=request.headers.get('origin')||'';if(!ALLOWED_WRITE_ORIGINS.has(origin))return json(request,{ok:false,error:'write_origin_not_allowed'},403);let body;try{body=await request.json();}catch{return json(request,{ok:false,error:'invalid_json'},400);}const checked=validateLock(body);if(!checked.ok)return json(request,{ok:false,error:'invalid_lock',fields:checked.errors},400);const value=checked.value,key=`record:${value.matchId}`,existing=await this.state.storage.get(key),lockAt=value.capturedAt||Date.now();\n    if(existing){\n      if(existing.settlement||!Array.isArray(existing.signals))return json(request,{ok:true,locked:true,duplicate:true,sealed:Boolean(existing.settlement),record:existing},200);\n      const families=storedFamilies(existing),incoming=value.signals.filter(signal=>{const family=signalFamily(signal?.market);return family&&!families.has(family);});\n      if(!incoming.length)return json(request,{ok:true,locked:true,duplicate:true,record:existing},200);\n      const stamped=stampSignals(incoming,lockAt,value),newFamilies=new Set(stamped.map(signal=>signalFamily(signal.market)).filter(Boolean)),record={...existing,status:'LOCKED',signals:[...existing.signals,...stamped],market:mergeMarketSnapshot(existing.market,value.market,newFamilies),lastUpdatedAt:lockAt};\n      await this.state.storage.put(key,record);await this.scheduleNext();return json(request,{ok:true,locked:true,duplicate:false,appended:true,newMarkets:stamped.map(signal=>signal.market),record},200);\n    }\n    const lockedAt=lockAt,minutesUntilCheck=Math.max(3,92-(value.minute||0)),record={...value,id:`342:${value.matchId}`,status:'LOCKED',lockedAt,settlement:null,settlementRevision:SETTLEMENT_REVISION,lastSettlementCheckAt:null,nextSettlementCheckAt:lockedAt+minutesUntilCheck*60*1000,settlementSource:SETTLEMENT_SOURCE,settlementMatchMode:'MATCH_ID'};if(Array.isArray(value.signals))record.signals=stampSignals(value.signals,lockedAt,value);await this.state.storage.put(key,record);await this.scheduleNext();return json(request,{ok:true,locked:true,duplicate:false,appended:false,record},201);}\n  async signal""",
+              'ledger append lock')
+          s=regex_once(s,
+              r"  async statistics\(request,url\)\{.*?\}\n  async health",
+              """  async statistics(request,url){await this.settleDue();const requested=Math.trunc(finite(url.searchParams.get('limit'))||500),limit=Math.max(1,Math.min(MAX_SIGNAL_LIMIT,requested)),all=await this.records(),records=all.slice(0,limit),summary=summarize(all),rows=rowsFromRecords(records),allRows=rowsFromRecords(all),days=[...new Set(allRows.map(row=>bangkokDayKey(row.lockedAt)).filter(Boolean))].sort().reverse(),daily=days.map(day=>{const dayRows=allRows.filter(row=>bangkokDayKey(row.lockedAt)===day);return {day,...summarizeRows(dayRows,new Set(dayRows.map(row=>row.recordId).filter(Boolean)).size)};});return json(request,{ok:true,version:VERSION,updatedAt:new Date().toISOString(),summary,rows,daily,timezone:'Asia/Bangkok',gradingRevision:GRADING_REVISION});}\n  async health""",
+              'ledger daily per-market lock day')
+          write(path,s)
+
+          # Ledger append test.
+          test_dir=Path('workers/nomadtips3-342-ledger/test');test_dir.mkdir(parents=True,exist_ok=True)
+          write(test_dir/'market-append.test.mjs',"""import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport {PredictionLedger} from '../src/index.js';\n\nfunction setup(){\n  const map=new Map();let alarm=null;\n  const storage={async get(k){return structuredClone(map.get(k));},async put(k,v){map.set(k,structuredClone(v));},async list(){return new Map([...map].filter(([k])=>k.startsWith('record:')));},async getAlarm(){return alarm;},async setAlarm(v){alarm=v;},async deleteAlarm(){alarm=null;}};\n  return {ledger:new PredictionLedger({storage},{}),storage};\n}\nconst req=p=>new Request('https://test/lock',{method:'POST',headers:{origin:'https://www.nomadtips3.com','content-type':'application/json'},body:JSON.stringify(p)});\nconst ev={shotOnTarget:2,shotOff:2,corner:2,dangerousAttackPct:60,attackPct:60,possessionPct:60};\nconst baseCfg={oddsMin:1.01,minuteFrom:1,minuteTo:120,rollingWindowMinutes:5,evidenceRequired:1,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50};\nconst oneSignal=()=>({market:'1X2',pick:'HOME',odds:1.8,probability:60,home:60,away:30,settings:{...baseCfg,sideMode:'BOTH',scoreTrailingMax:2},gate:{pass:true,evidence:{values:ev}}});\nconst ahSignal=()=>({market:'AH',pick:'AWAY',line:1.5,rawLine:-1.5,odds:2.4,homeOdds:1.5,awayOdds:2.4,rawHomeHk:0.5,rawAwayHk:1.4,bookmaker:'Bet365',provider:'Nowgoal',settings:{...baseCfg,sideMode:'BOTH',lineMin:-10},gate:{pass:true,evidence:{sides:{AWAY:{values:ev}}}}});\nconst payload=({capturedAt,minute,entryScore,signals})=>({schemaVersion:3,capturedAt,matchId:'append-342',fixtureId:'123',league:'Test',home:'Home',away:'Away',minute,entryScore,settingsVersion:'market-settings-v3',signals,market:{provider:'Nowgoal',observedAt:capturedAt,fixture:{id:'123'},oneXtwo:{home:1.8,draw:3.2,away:4.1},asianHandicap:{line:-1.5,selectedLine:1.5,homeOdds:1.5,awayOdds:2.4,rawHomeHk:0.5,rawAwayHk:1.4,bookmaker:'Bet365',linePerspective:'HOME'},statistics:{}}});\n\ntest('same match appends a new market and preserves per-market lock minute/score',async()=>{\n  const {ledger}=setup(),t1=Date.now()-120000,t2=t1+60000;\n  const first=await (await ledger.lock(req(payload({capturedAt:t1,minute:60,entryScore:[1,0],signals:[oneSignal()]})))).json();\n  assert.equal(first.appended,false);assert.equal(first.record.signals.length,1);assert.equal(first.record.signals[0].lockMinute,60);\n  const second=await (await ledger.lock(req(payload({capturedAt:t2,minute:70,entryScore:[1,1],signals:[ahSignal()]})))).json();\n  assert.equal(second.appended,true);assert.deepEqual(second.newMarkets,['AH']);assert.equal(second.record.signals.length,2);\n  const ah=second.record.signals.find(s=>s.market==='AH');assert.equal(ah.lockMinute,70);assert.deepEqual(ah.entryScore,{home:1,away:1});assert.equal(ah.odds,2.4);assert.equal(ah.line,1.5);\n  const stats=await (await ledger.statistics(new Request('https://test/statistics'),new URL('https://test/statistics'))).json();\n  assert.equal(stats.summary.totalPredictions,2);\n  const oneRow=stats.rows.find(r=>r.market==='1X2'),ahRow=stats.rows.find(r=>r.market.startsWith('Asian Handicap'));\n  assert.equal(oneRow.minute,60);assert.deepEqual(oneRow.entryScore,{home:1,away:0});\n  assert.equal(ahRow.minute,70);assert.deepEqual(ahRow.entryScore,{home:1,away:1});\n  const third=await (await ledger.lock(req(payload({capturedAt:t2+1000,minute:71,entryScore:[1,1],signals:[ahSignal()]})))).json();\n  assert.equal(third.duplicate,true);assert.equal(third.record.signals.length,2);\n});\n\ntest('AH lock rejects swapped price ownership or wrong selected-side line perspective',async()=>{\n  const {ledger}=setup(),base=payload({capturedAt:Date.now()-1000,minute:70,entryScore:[1,1],signals:[ahSignal()]});\n  const badOdds=structuredClone(base);badOdds.signals[0].odds=1.5;assert.equal((await ledger.lock(req(badOdds))).status,400);\n  const badLine=structuredClone(base);badLine.signals[0].line=-1.5;assert.equal((await ledger.lock(req(badLine))).status,400);\n});\n""")
+
+          # 3) Signal card: each market shows its own lock minute/entry score; AH remains a peer card.
+          path='nomad-live-342/signal-ledger.js'
+          s=read(path)
+          s=regex_once(s,
+              r"function marketView\(record,key\)\{.*?\n\}\nfunction marketResult",
+              """function marketView(record,key){\n  const liveSignal=signalByMarket(record,key,false);\n  if(liveSignal){\n    const lock={lockedAt:finite(liveSignal.lockedAt)??finite(record?.lockedAt),lockMinute:finite(liveSignal.lockMinute)??finite(record?.minute),entryScore:liveSignal.entryScore||record?.entryScore};\n    if(key==='oneXtwo')return {locked:true,pick:liveSignal.pick,odds:liveSignal.odds,home:liveSignal.home,draw:liveSignal.draw,away:liveSignal.away,...lock};\n    if(key==='ah')return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,bookmaker:liveSignal.bookmaker,provider:liveSignal.provider,...lock};\n    return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,over:liveSignal.over,under:liveSignal.under,...lock};\n  }\n  if(key==='oneXtwo')return {...(record?.prediction?.oneXtwo||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};\n  if(key==='ah')return {locked:false,pick:null,line:null,odds:null,bookmaker:null,provider:null,lockedAt:null,lockMinute:null,entryScore:null};\n  return {...(record?.prediction?.totals||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};\n}\nfunction marketResult""",
+              'card market per-lock view')
+          s=regex_once(s,
+              r"function asianHandicapCard\(ah,result\)\{.*?\n\}\nfunction card\(record\)\{.*?\n\}",
+              """function marketLockText(view,record){const minute=finite(view?.lockMinute)??finite(record?.minute),score=scorePair(view?.entryScore)||scorePair(record?.entryScore);return `LOCK ${minute===null?'—':Math.trunc(minute)}′ · SCORE ${score?pair(score):'—'}`;}\nfunction asianHandicapCard(ah,result,record){\n  const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase();\n  const selection=locked&&['HOME','AWAY'].includes(pick)?`${pick} ${fmtLine(ah.line)}`:'NO LOCK';\n  const source=[ah?.bookmaker,ah?.provider].filter(Boolean).join(' · ');\n  return `<section class=\"signal-market signal-market-ah${locked?'':' is-no-lock'}\"><div class=\"signal-market-head\"><span>ASIAN HANDICAP</span><span class=\"signal-odds\">@ ${esc(fmtOdds(ah?.odds))}</span></div><strong>${esc(selection)}</strong><small>${locked?`LINE ${esc(fmtLine(ah.line))}${source?` · ${esc(source)}`:''}`:'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><small>${locked?esc(marketLockText(ah,record)):'—'}</small><span class=\"signal-result ${esc(resultClass(result))}\">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;\n}\nfunction card(record){\n  const one=marketView(record,'oneXtwo'),totals=marketView(record,'totals'),ah=marketView(record,'ah');\n  const oneResult=marketResult(record,'oneXtwo'),totalsResult=marketResult(record,'totals'),ahResult=marketResult(record,'ah'),mirror=scoreMirror(record);\n  return `<article class=\"signal-lock-card\" data-match-id=\"${esc(record.matchId)}\">\n    <div class=\"signal-lock-head\"><div><div class=\"signal-lock-kicker\">SIGNAL LOCKED · 3.42</div><div class=\"signal-lock-teams\">${esc(record.home)} — ${esc(record.away)}</div><div class=\"signal-lock-league\">${esc(record.league||'—')}</div></div><div class=\"signal-lock-meta\"><span>FIRST LOCK ${esc(record.minute??'—')}′ · SCORE ${esc(pair(record.entryScore))}</span><span>${esc(when(record.lockedAt))}</span></div></div>\n    <div class=\"signal-lock-grid has-asian-handicap\">\n      <section class=\"signal-market\"><div class=\"signal-market-head\"><span>1X2</span><span class=\"signal-odds\">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(one.pick||'—')}</strong><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><small>${esc(marketLockText(one,record))}</small><span class=\"signal-result ${esc(resultClass(oneResult))}\">${esc(displayResult(oneResult))}</span></section>\n      <section class=\"signal-final ${mirror.status==='FT'?'is-final':'is-wait'}\" aria-label=\"Live score mirror\"><span>${mirror.status==='FT'?'FINAL':'LIVE SCORE'}</span><strong>${esc(mirror.score?pair(mirror.score):'—')}</strong><small>${esc(mirror.status)}</small></section>\n      <section class=\"signal-market\"><div class=\"signal-market-head\"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class=\"signal-odds\">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><small>${esc(marketLockText(totals,record))}</small><span class=\"signal-result ${esc(resultClass(totalsResult))}\">${esc(displayResult(totalsResult))}</span></section>\n      ${asianHandicapCard(ah,ahResult,record)}\n    </div>\n  </article>`;\n}""",
+              'card AH peer/per-market lock display')
+          s=repl_once(s,
+              "    set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??records.length*2);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);",
+              "    const fallbackPredictions=records.reduce((sum,record)=>sum+(Array.isArray(record?.signals)?record.signals.length:(record?.prediction?2:0)),0);set(metrics.locked,summary.lockedMatches??records.length);set(metrics.predictions,summary.totalPredictions??fallbackPredictions);set(metrics.settled,summary.settledPredictions??0);set(metrics.pending,summary.pendingPredictions??0);set(metrics.winRate,`${Number(summary.winRate||0).toFixed(1)}%`);",
+              'card prediction fallback count')
+          write(path,s)
+
+          # 4) Page labels/cache: include AH in summary and force fresh signal-card JS.
+          path='nomad-live-342/index.html'
+          s=read(path)
+          s=s.replace('<small>1X2 + O/U</small>','<small>1X2 + O/U + AH</small>')
+          s=repl_once(s,'<h2>1X2 + Over/Under</h2>','<h2>1X2 + Over/Under + Asian Handicap</h2>','index statistics title')
+          s=repl_once(s,'signal-ledger.js?v=20260906-flow-v3','signal-ledger.js?v=20260908-ah-market-lock-v2','index signal cache')
+          write(path,s)
+
+          # Remove one-shot workflow from final tree so PR contains only product/test files.
+          Path('.github/workflows/nomad342-ah-goaloo-market-lock-patch.yml').unlink()
+          PY
+
+      - name: Run focused 3.42 tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm test --prefix workers/nomadtips3-342-signal-engine
+          npm test --prefix workers/nomadtips3-342-ledger
+          node --check nomad-live-342/signal-ledger.js
+          node --check nomad-live-342/statistics-ledger.js
+          grep -Fq 'signal-ledger.js?v=20260908-ah-market-lock-v2' nomad-live-342/index.html
+          grep -Fq '1X2 + O/U + AH' nomad-live-342/index.html
+
+      - name: Verify isolation and final diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          changed="$(git diff --name-only origin/main)"
+          echo "$changed"
+          test -n "$changed"
+          if echo "$changed" | grep -Eq '^nomad-live/'; then
+            echo '::error::3.41 file changed'; exit 1
+          fi
+          unexpected="$(echo "$changed" | grep -Ev '^(workers/nomadtips3-342-signal-engine/(src/index\.js|package\.json|test/ah-goaloo\.test\.mjs)|workers/nomadtips3-342-ledger/(src/index\.js|test/market-append\.test\.mjs)|nomad-live-342/(signal-ledger\.js|index\.html))$' || true)"
+          if [ -n "$unexpected" ]; then
+            echo '::error::Unexpected files changed'; echo "$unexpected"; exit 1
+          fi
+
+      - name: Commit tested patch to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Fix 3.42 AH Goaloo price and market-level locks [skip ci]'
+          git push origin HEAD:work/nomad342-ah-goaloo-market-lock
