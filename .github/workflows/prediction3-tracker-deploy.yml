@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -83,4 +83,16 @@ jobs:
           const records=(Array.isArray(j.records)?j.records:[]).map(r=>({id:r.id,home:r.home,away:r.away,fixtureId:r.fixtureId,status:r.status,score:r.score,result:r.result,settledAt:r.settledAt}));
           console.log(JSON.stringify({ok:j.ok,updatedAt:j.updatedAt,count:records.length,errors:j.errors,records},null,2));
           if(j.ok!==true||!Array.isArray(j.records)) process.exit(1);
+          fs.writeFileSync('prediction3/data/tracker-state-diagnostic.json',JSON.stringify({updatedAt:j.updatedAt,errors:j.errors,records},null,2)+'\n');
           NODE
+
+      - name: Persist tracker diagnostic snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add prediction3/data/tracker-state-diagnostic.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Update Prediction3 tracker diagnostic snapshot [skip ci]'
+          git push
