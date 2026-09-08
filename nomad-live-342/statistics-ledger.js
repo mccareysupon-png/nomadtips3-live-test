@@ -118,7 +118,7 @@ function ahCells(row,audit){
   return {
     market:'Asian Handicap',
     pick:`<strong>${esc(pickMain)}</strong><br><small>${esc(perspective)}</small>`,
-    odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(pricePair)}</small><br><small>${esc(rawPair)}</small>`,
+    odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(bookmaker)}</small>`,
     settlement:settlement?`<br><small>${esc(settlement)}</small>`:''
   };
 }
