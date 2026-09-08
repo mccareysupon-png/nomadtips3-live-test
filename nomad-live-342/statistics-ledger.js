@@ -42,6 +42,10 @@ const scorePair=value=>{
   const home=finite(Array.isArray(value)?value[0]:value?.home),away=finite(Array.isArray(value)?value[1]:value?.away);
   return home===null||away===null?null:{home,away};
 };
+function scoreAfterEntry(finalScore,entryScore){
+  const final=scorePair(finalScore),entry=scorePair(entryScore);if(!final)return null;if(!entry)return final;
+  const home=final.home-entry.home,away=final.away-entry.away;return home<0||away<0?null:{home,away};
+}
 function gradeAhExpected(pick,line,score){
   const p=String(pick||'').toUpperCase(),l=finite(line),s=scorePair(score);
   if(!['HOME','AWAY'].includes(p)||l===null||!s||!Number.isInteger(l*4))return null;
@@ -91,7 +95,7 @@ function buildAhAudit(records){
     if(!signal)continue;
     const matchId=String(record?.matchId??'');if(!matchId)continue;
     audit.set(matchId,{
-      pick:String(signal.pick||'').toUpperCase(),line:finite(signal.line),rawLine:finite(signal.rawLine),odds:finite(signal.odds),
+      pick:String(signal.pick||'').toUpperCase(),line:finite(signal.line),rawLine:finite(signal.rawLine),odds:finite(signal.odds),entryScore:signal.entryScore||record?.entryScore,
       homeOdds:finite(signal.homeOdds),awayOdds:finite(signal.awayOdds),rawHomeHk:finite(signal.rawHomeHk),rawAwayHk:finite(signal.rawAwayHk),
       bookmaker:String(signal.bookmaker||record?.market?.asianHandicap?.bookmaker||'Bet365'),provider:String(signal.provider||record?.market?.asianHandicap?.provider||record?.market?.provider||'Nowgoal')
     });
@@ -102,15 +106,15 @@ function ahCells(row,audit){
   const pick=String(audit?.pick||row?.pick||'').toUpperCase(),selectedLine=finite(audit?.line)??finite(row?.line),rawLine=finite(audit?.rawLine);
   const selectedOdds=finite(audit?.odds)??finite(row?.odds),homeOdds=finite(audit?.homeOdds),awayOdds=finite(audit?.awayOdds),rawHome=finite(audit?.rawHomeHk),rawAway=finite(audit?.rawAwayHk);
   const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,bookmaker=String(audit?.bookmaker||'Bet365'),provider=String(audit?.provider||'Nowgoal');
-  const expected=rawLine===null?null:(pick==='AWAY'?-rawLine:rawLine),perspectiveOk=expected===null||selectedLine===null?null:Math.abs(expected-selectedLine)<1e-9;
+  const expected=rawLine===null?null:(pick==='HOME'?-rawLine:rawLine),perspectiveOk=expected===null||selectedLine===null?null:Math.abs(expected-selectedLine)<1e-9;
   const priceExpected=rawSelected===null?null:1+rawSelected,priceOk=priceExpected===null||selectedOdds===null?null:Math.abs(priceExpected-selectedOdds)<1e-6;
   const pickMain=`${pick||'—'} ${fmtLine(selectedLine)}`;
-  const perspective=rawLine===null?'Home-perspective raw line not stored':`Home perspective ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
+  const perspective=rawLine===null?'Goaloo raw line not stored':`Goaloo raw ${fmtLine(rawLine)} → ${pick||'—'} ${fmtLine(expected)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
   const priceMain=fmtDecimal(selectedOdds);
   const pricePair=`${bookmaker} · ${provider} · Home ${fmtDecimal(homeOdds)} · Away ${fmtDecimal(awayOdds)}`;
   const rawPair=rawHome===null&&rawAway===null?'Hong Kong raw odds not stored':`Hong Kong Home ${fmtRawHk(rawHome)} · Away ${fmtRawHk(rawAway)}${priceOk===null?'':` · selected → ${fmtDecimal(priceExpected)} ${priceOk?'✓':'⚠'}`}`;
-  const finalScore=scorePair(row?.finalScore),expectedResult=finalScore?gradeAhExpected(pick,selectedLine,finalScore):null,serverResult=String(row?.result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
-  const settlement=expectedResult&&finalScore?`FT ${pair(finalScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
+  const finalScore=scorePair(row?.finalScore),gradingScore=finalScore?scoreAfterEntry(finalScore,audit?.entryScore||row?.entryScore):null,expectedResult=gradingScore?gradeAhExpected(pick,selectedLine,gradingScore):null,serverResult=String(row?.result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
+  const settlement=expectedResult&&finalScore&&gradingScore?`FT ${pair(finalScore)} · AFTER LOCK ${pair(gradingScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
   return {
     market:'Asian Handicap',
     pick:`<strong>${esc(pickMain)}</strong><br><small>${esc(perspective)}</small>`,
