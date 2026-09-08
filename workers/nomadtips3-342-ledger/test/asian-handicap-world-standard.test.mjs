@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { gradeAsianHandicap, settleRecord } from '../src/index.js';
+import { parseAsianHandicapQuotes, ahSideQuote } from '../../nomadtips3-342-signal-engine/src/index.js';
 
 const cases=[
   ['HOME',0,1,1,'PUSH','Home level ball draw'],
@@ -22,6 +23,12 @@ const cases=[
   ['HOME',1.5,1,2,'WIN','Home +1.50 loses by one'],
   ['AWAY',-1.5,1,2,'LOSS','Away -1.50 wins by one only']
 ];
+
+test('Goaloo Bet365 raw give-home line matches verified Bet365 signed Asian Handicap',()=>{
+  const quote=parseAsianHandicapQuotes('<c><m>123,77,0.25,1.6,0.475</m></c>',1000).get('123');
+  assert.deepEqual(ahSideQuote(quote,'HOME'),{line:-0.25,odds:2.6});
+  assert.deepEqual(ahSideQuote(quote,'AWAY'),{line:0.25,odds:1.475});
+});
 
 test('Asian Handicap settlement follows selected-side world-standard perspective',()=>{
   for(const [pick,line,home,away,expected,label] of cases){
