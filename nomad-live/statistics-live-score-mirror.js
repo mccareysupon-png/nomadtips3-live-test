@@ -27,7 +27,7 @@
     if(!finite(home)||!finite(away))return null;
     return `${Number(home)}–${Number(away)}`;
   };
-  const minuteText=value=>finite(value)?`${Math.max(0,Math.trunc(Number(value)))}'`:'';
+  const minuteText=value=>finite(value)?`${Math.max(0,Math.trunc(Number(value)))}′`:'';
   const isSettled=record=>Boolean(record?.settlement&&record.settlement?.result&&record.settlement.result!=='PENDING');
   const isUsableLive=match=>Boolean(match&&!match?.freshness?.stale&&scorePair(match.score)&&finite(match.minute));
   const setCellText=(cell,value)=>{
@@ -102,9 +102,23 @@
   function findFinal(record){return findIndexed(record,finalById,finalByTeams);}
 
   function restoreFinalCell(cell,record){
+    if(!cell)return;
     const fin=record?.settlement?.finalScore;
     setCellText(cell,fin?`${fin.home??'—'}–${fin.away??'—'}`:'—');
     cell.removeAttribute('data-live-score-mirror');
+  }
+
+  function restoreResultCell(cell,record){
+    if(!cell)return;
+    const result=record?.settlement?.result||'PENDING';
+    setCellText(cell,result);
+    cell.removeAttribute('data-live-score-mirror');
+  }
+
+  function showPendingLive(cell,score,minute){
+    if(!cell||!score||!minute)return;
+    setCellText(cell,`PENDING\n${score} · ${minute}`);
+    cell.setAttribute('data-live-score-mirror','1');
   }
 
   function apply(){
@@ -114,10 +128,12 @@
     rows.forEach((row,index)=>{
       const record=records[index];
       const finalCell=row.children?.[8];
-      if(!record||!finalCell)return;
+      const resultCell=row.children?.[9];
+      if(!record||!finalCell||!resultCell)return;
 
       if(isSettled(record)){
         restoreFinalCell(finalCell,record);
+        restoreResultCell(resultCell,record);
         return;
       }
 
@@ -126,8 +142,9 @@
         const score=scorePair(live.score);
         const minute=minuteText(live.minute);
         if(score&&minute){
-          setCellText(finalCell,`${score} · ${minute}`);
-          finalCell.setAttribute('data-live-score-mirror','1');
+          // While the match is live, FINAL must remain reserved for FT only.
+          restoreFinalCell(finalCell,record);
+          showPendingLive(resultCell,score,minute);
           return;
         }
       }
@@ -137,10 +154,12 @@
       if(finalScore){
         setCellText(finalCell,`${finalScore} · FT`);
         finalCell.setAttribute('data-live-score-mirror','ft');
+        restoreResultCell(resultCell,record);
         return;
       }
 
       restoreFinalCell(finalCell,record);
+      restoreResultCell(resultCell,record);
     });
   }
 
