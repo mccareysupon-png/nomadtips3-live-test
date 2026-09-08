@@ -1,4 +1,4 @@
-# KING_DEFAULT_40_188_ACTIVATED_2026-09-04
+# ADD_K_MULTI_MARKET_ACTIVATED_2026-09-08
 name: The King — 07:00 Selection Wheel
 
 on:
@@ -6,10 +6,8 @@ on:
   push:
     branches: [main]
     paths:
-      - '.github/scripts/the_king_engine_default.py'
-      - '.github/scripts/the_king_engine_v10.py'
+      - '.github/scripts/add_k_multimarket_engine.py'
       - '.github/workflows/the-king-selection.yml'
-      - '.github/workflows/the-king-settlement.yml'
   schedule:
     - cron: '47 23 * * *'
 
@@ -17,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: the-king-selection-wheel-default-40-188
+  group: the-king-selection-wheel-add-k-multi
   cancel-in-progress: true
 
 jobs:
@@ -33,20 +31,18 @@ jobs:
       - name: Install scraper dependencies
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
-      - name: Default engine self-test
-        run: |
-          python3 .github/scripts/the_king_engine_v10.py self-test
-          python3 .github/scripts/the_king_engine_default.py self-test
+      - name: ADD K multi-market self-test
+        run: python3 .github/scripts/add_k_multimarket_engine.py self-test
 
-      - name: Run Thailand selection — Goaloo default 40% / 1.88
+      - name: Run Thailand Prediction2 selection — 1X2 / AH / O-U
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          echo 'Using persistent owner default: confidence>=40%, odds>=1.88, odds<=3.00, recent>=8/team, non-draw, unlimited qualified picks.'
-          python3 .github/scripts/the_king_engine_default.py select --date "$TARGET_DATE"
+          echo 'ADD K AUTO: scan all eligible fixtures; choose one strongest market among 1X2/AH/O-U; published odds >=1.70; no daily cap; no reverse.'
+          python3 .github/scripts/add_k_multimarket_engine.py select --date "$TARGET_DATE"
 
-      - name: Publish The King feed and health state
+      - name: Publish Prediction2 feed and health state
         shell: bash
         run: |
           set -euo pipefail
@@ -54,10 +50,10 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add the-king-feed.json the-king-state.json
           if git diff --cached --quiet; then
-            echo 'No The King default selection-state change.'
+            echo 'No Prediction2 selection-state change (existing daily lock may be preserved).'
             exit 0
           fi
-          git commit -m "The King default 40-188 Goaloo selection $(TZ=Asia/Bangkok date +%F)"
+          git commit -m "ADD K multi-market Goaloo selection $(TZ=Asia/Bangkok date +%F)"
           for attempt in 1 2 3; do
             if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
             git rebase --abort 2>/dev/null || true
