@@ -15,6 +15,7 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
   TRACKER_URL: https://nomadtips3-prediction3-tracker.mccarey-supon.workers.dev
 
 jobs:
@@ -41,10 +42,16 @@ jobs:
         working-directory: prediction3-tracker
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
 
-      - name: Validate Cloudflare credentials
+      - name: Validate deploy credentials
         run: |
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$API_FOOTBALL_KEY" || { echo '::error::Missing API_FOOTBALL_KEY/APISPORTS_KEY/API_SPORTS_KEY'; exit 1; }
+
+      - name: Configure API-Football fallback secret
+        working-directory: prediction3-tracker
+        shell: bash
+        run: printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4.92.0 secret put API_FOOTBALL_KEY --config wrangler.toml
 
       - name: Deploy isolated Prediction3 Tracker
         uses: cloudflare/wrangler-action@v3
@@ -80,7 +87,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/state.json','utf8'));
-          const records=(Array.isArray(j.records)?j.records:[]).map(r=>({id:r.id,home:r.home,away:r.away,fixtureId:r.fixtureId,status:r.status,score:r.score,result:r.result,settledAt:r.settledAt}));
+          const records=(Array.isArray(j.records)?j.records:[]).map(r=>({id:r.id,home:r.home,away:r.away,fixtureId:r.fixtureId,fixtureProvider:r.fixtureProvider,settlementSource:r.settlementSource,status:r.status,score:r.score,result:r.result,settledAt:r.settledAt}));
           console.log(JSON.stringify({ok:j.ok,updatedAt:j.updatedAt,count:records.length,errors:j.errors,records},null,2));
           if(j.ok!==true||!Array.isArray(j.records)) process.exit(1);
           fs.writeFileSync('prediction3/data/tracker-state-diagnostic.json',JSON.stringify({updatedAt:j.updatedAt,errors:j.errors,records},null,2)+'\n');
