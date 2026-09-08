@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-08T05:48:12Z",
+  "updated_at": "2026-09-08T09:48:39Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2325,8 +2325,8 @@
       "model_pick": "Kanan FC Win",
       "model_odds": 2.89,
       "published_side": "away",
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "0-2",
       "source_url": "https://www.goaloo.com/football/india-mizoram-premier-league-kanan-fc-vs-saikhamakawn-fc/h2h-3087772",
       "summary_url": "https://www.goaloo.com/football/india-mizoram-premier-league-kanan-fc-vs-saikhamakawn-fc/summary-3087772",
       "policy": "KING_DEFAULT_40_188",
@@ -2392,7 +2392,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 116.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-08T09:48:39Z"
     },
     {
       "id": "2a4a631674f196f9",
@@ -6012,6 +6017,103 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settlement_verified_at": "2026-09-07T23:34:38Z"
+    },
+    {
+      "id": "451a17079eeae280",
+      "goaloo_id": "3087772",
+      "date": "2026-09-08",
+      "kickoff": "2026-09-08 06:00:00",
+      "league": "India Mizoram Premier League",
+      "home": "Kanan FC",
+      "away": "Saikhamakawn FC",
+      "pick": "Saikhamakawn FC Win",
+      "side": "away",
+      "odds": 2.16,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.4422,
+      "model_probability": 0.4422,
+      "market_fair_probability": 0.3142,
+      "market_edge": 0.128,
+      "ev": 0.278,
+      "edge": 12.8,
+      "reverse_mode": true,
+      "model_side": "home",
+      "model_pick": "Kanan FC Win",
+      "model_odds": 2.89,
+      "published_side": "away",
+      "result": "WIN",
+      "ft": "0-2",
+      "source_url": "https://www.goaloo.com/football/india-mizoram-premier-league-kanan-fc-vs-saikhamakawn-fc/h2h-3087772",
+      "summary_url": "https://www.goaloo.com/football/india-mizoram-premier-league-kanan-fc-vs-saikhamakawn-fc/summary-3087772",
+      "policy": "KING_DEFAULT_40_188",
+      "engine": "the-king-default-goaloo-composite-40pct-188",
+      "selection_profile": {
+        "name": "OWNER_DEFAULT_40_188",
+        "date": "2026-09-08",
+        "minimum_confidence": 0.4,
+        "minimum_odds": 1.88,
+        "maximum_odds_safety": 3.0,
+        "recent_sample_min_each": 8,
+        "max_picks": null,
+        "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "reverse_prediction": true,
+        "reverse_rule": "HOME_TO_AWAY__AWAY_TO_HOME",
+        "king_v2_underlying_gate": "BYPASSED",
+        "king_v2_market_edge_gate": "BYPASSED",
+        "king_v2_ev_gate": "BYPASSED"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_1x2_market": "PASS",
+        "default_confidence_min": "PASS",
+        "default_odds_min": "PASS",
+        "odds_safety_max": "PASS",
+        "reverse_prediction": "APPLIED",
+        "daily_cap": "UNLIMITED",
+        "king_v2_underlying": "NOT_A_GATE",
+        "king_v2_market_edge": "INFO_ONLY",
+        "king_v2_ev": "INFO_ONLY",
+        "lineup": "NOT_A_GATE",
+        "market_movement": "NOT_A_GATE",
+        "rest_rotation": "NOT_A_GATE"
+      },
+      "model": {
+        "lambda_home": 1.927,
+        "lambda_away": 1.639,
+        "home_win": 0.4422,
+        "draw": 0.2329,
+        "away_win": 0.3249,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.052,
+          "gd_edge": 0.1319,
+          "clean_sheet_edge": -0.0049,
+          "failed_to_score_edge": -0.1756,
+          "bounded_adjustment": 0.0004,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 116.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-08T09:48:39Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
