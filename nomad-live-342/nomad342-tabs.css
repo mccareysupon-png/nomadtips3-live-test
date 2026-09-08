@@ -2,7 +2,19 @@
    Desktop: compact left-aligned sub-navigation so it is visually distinct from the main top navigation.
    Mobile: retain full-width three-column tap targets.
    2026-09-06: presentation-only bright-vintage icon artwork; layout and tab logic unchanged.
-   2026-09-06: enlarge visible subnav artwork by 20% without changing icon box/layout metrics. */
+   2026-09-06: enlarge visible subnav artwork by 20% without changing icon box/layout metrics.
+   2026-09-08: place shared odds-format controls opposite the 3.42 icon navigation. */
+.nomad342-controlbar{
+  display:flex;
+  align-items:stretch;
+  justify-content:space-between;
+  gap:18px;
+  margin:0 0 14px;
+  padding:4px 0 7px;
+  border:0;
+  background:transparent;
+  box-shadow:none;
+}
 .nomad342-tabs{
   display:grid;
   grid-template-columns:repeat(3,132px);
@@ -13,6 +25,11 @@
   border:0;
   background:transparent;
   box-shadow:none;
+}
+.nomad342-controlbar .nomad342-tabs{
+  flex:0 1 auto;
+  margin:0;
+  padding:0;
 }
 .nomad342-tab{
   position:relative;
@@ -81,11 +98,113 @@
   transform:translateY(-1px) scale(1.248);
 }
 .nomad342-tab-label{display:inline-block}
+
+.nomad342-odds-control{
+  display:grid;
+  grid-template-columns:repeat(4,88px);
+  justify-content:end;
+  align-items:stretch;
+  gap:6px;
+  min-width:0;
+}
+.nomad342-odds-label,
+.nomad342-odds-control button{
+  position:relative;
+  min-width:0;
+  min-height:48px;
+  margin:0;
+  padding:6px 4px;
+  border:0;
+  background:transparent;
+  color:#9ca49b;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  font:900 9px/1 Arial,Helvetica,sans-serif;
+  letter-spacing:.02em;
+  text-align:center;
+  white-space:nowrap;
+}
+.nomad342-odds-control button{
+  cursor:pointer;
+  transition:color .14s ease;
+}
+.nomad342-odds-label::before,
+.nomad342-odds-control button::before{
+  content:"";
+  display:block;
+  width:28px;
+  height:28px;
+  flex:0 0 28px;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:contain;
+  opacity:1;
+  filter:brightness(1.08) saturate(1.06) drop-shadow(0 1px 0 rgba(0,0,0,.45));
+  transition:filter .16s ease,opacity .16s ease,transform .16s ease;
+}
+.nomad342-odds-label::before{
+  background-image:url("../nomad-live/assets/icons/toolbar-odds-retro-vintage.webp?v=20260904-retro-v1");
+}
+.nomad342-odds-control button[data-odds-mode="decimal"]::before{
+  background-image:url("../nomad-live/assets/icons/toolbar-decimal-retro-vintage.webp?v=20260904-retro-v1");
+}
+.nomad342-odds-control button[data-odds-mode="american"]::before{
+  background-image:url("../nomad-live/assets/icons/toolbar-american-retro-vintage.webp?v=20260904-retro-v1");
+}
+.nomad342-odds-control button[data-odds-mode="fractional"]::before{
+  background-image:url("../nomad-live/assets/icons/toolbar-fraction-retro-vintage.webp?v=20260904-retro-v1");
+}
+.nomad342-odds-control button:hover,
+.nomad342-odds-control button:focus-visible{
+  color:var(--green);
+  outline:none;
+  background:transparent;
+}
+.nomad342-odds-control button:hover::before,
+.nomad342-odds-control button:focus-visible::before{
+  filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22));
+  transform:translateY(-1px) scale(1.04);
+}
+.nomad342-odds-control button.is-active,
+.nomad342-odds-control button[aria-pressed="true"]{
+  color:var(--green);
+}
+.nomad342-odds-control button.is-active::before,
+.nomad342-odds-control button[aria-pressed="true"]::before{
+  filter:brightness(1.32) saturate(1.13) drop-shadow(0 0 6px rgba(131,223,137,.44));
+  transform:translateY(-1px) scale(1.04);
+}
+.nomad342-odds-control button.is-active::after,
+.nomad342-odds-control button[aria-pressed="true"]::after{
+  content:"";
+  position:absolute;
+  left:22%;right:22%;bottom:2px;height:1px;
+  background:var(--green);
+  box-shadow:0 0 7px color-mix(in srgb,var(--green) 22%,transparent);
+}
 .nomad342-tab-panel[hidden]{display:none!important}
 .nomad342-tab-panel{animation:nomad342TabIn .16s ease both}
 @keyframes nomad342TabIn{from{opacity:.72;transform:translateY(2px)}to{opacity:1;transform:none}}
 
+@media(max-width:900px) and (min-width:701px){
+  .nomad342-controlbar{gap:10px}
+  .nomad342-tabs{grid-template-columns:repeat(3,112px);gap:6px}
+  .nomad342-odds-control{grid-template-columns:repeat(4,72px);gap:3px}
+  .nomad342-odds-label,.nomad342-odds-control button{font-size:8px}
+  .nomad342-odds-label::before,.nomad342-odds-control button::before{width:25px;height:25px;flex-basis:25px}
+}
+
 @media(max-width:700px){
+  .nomad342-controlbar{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:2px;
+    padding:5px;
+    margin:0 0 10px;
+  }
   .nomad342-tabs{
     grid-template-columns:repeat(3,minmax(0,1fr));
     justify-content:stretch;
@@ -93,7 +212,30 @@
     padding:5px;
     margin-bottom:10px;
   }
+  .nomad342-controlbar .nomad342-tabs{
+    width:100%;
+    padding:0;
+    margin:0;
+  }
   .nomad342-tab{min-height:44px;padding:6px 3px;gap:4px;font-size:9.45px;flex-direction:column}
   .nomad342-tab-icon{width:18px;height:18px;flex-basis:18px}
   .nomad342-tab[aria-selected="true"]::after{left:22%;right:22%}
+  .nomad342-odds-control{
+    width:100%;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:3px;
+  }
+  .nomad342-odds-label,
+  .nomad342-odds-control button{
+    min-height:42px;
+    padding:5px 2px;
+    gap:4px;
+    font-size:8px;
+  }
+  .nomad342-odds-label::before,
+  .nomad342-odds-control button::before{
+    width:22px;
+    height:22px;
+    flex-basis:22px;
+  }
 }

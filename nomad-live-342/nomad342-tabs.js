@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 const VALID=new Set(['live-score','signal','statistics']);
+const ODDS_KEY='nomad341OddsDisplayV1',ODDS_MODES=new Set(['decimal','american','fractional']);
 const HEADING=Object.freeze({
   'live-score':'LIVE SCORE & EVENT MONITOR',
   signal:'1X2 · OVER/UNDER SIGNAL',
@@ -8,11 +9,60 @@ const HEADING=Object.freeze({
 });
 function normalize(value){return VALID.has(value)?value:'live-score'}
 function fromHash(){return normalize(String(location.hash||'').replace(/^#/,'').toLowerCase())}
+function currentOddsMode(){
+  const runtime=window.NOMAD342_ODDS_DISPLAY;
+  if(typeof runtime?.getMode==='function')return runtime.getMode();
+  try{const value=String(localStorage.getItem(ODDS_KEY)||'').toLowerCase();return ODDS_MODES.has(value)?value:'decimal';}catch{return'decimal'}
+}
+function syncOddsControl(){
+  const mode=currentOddsMode();
+  document.querySelectorAll('.nomad342-odds-control [data-odds-mode]').forEach(button=>{
+    const active=button.dataset.oddsMode===mode;
+    button.classList.toggle('is-active',active);
+    button.setAttribute('aria-pressed',active?'true':'false');
+  });
+}
+function setOddsMode(value){
+  const mode=ODDS_MODES.has(String(value||'').toLowerCase())?String(value).toLowerCase():'decimal';
+  const runtime=window.NOMAD342_ODDS_DISPLAY;
+  if(typeof runtime?.setMode==='function'){runtime.setMode(mode);return;}
+  try{localStorage.setItem(ODDS_KEY,mode);}catch{}
+  document.dispatchEvent(new CustomEvent('nomad342:odds-display-change',{detail:{mode,source:'control-fallback'}}));
+}
+function mountOddsControl(){
+  const tablist=document.querySelector('.nomad342-tabs[role="tablist"]');
+  if(!tablist)return null;
+  let bar=tablist.closest('.nomad342-controlbar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.className='nomad342-controlbar';
+    tablist.before(bar);
+    bar.append(tablist);
+  }
+  let control=bar.querySelector('.nomad342-odds-control');
+  if(!control){
+    control=document.createElement('div');
+    control.className='nomad342-odds-control';
+    control.setAttribute('role','group');
+    control.setAttribute('aria-label','Odds display format');
+    control.innerHTML='<span class="nomad342-odds-label">ODDS</span><button type="button" data-odds-mode="decimal" aria-pressed="false">DECIMAL</button><button type="button" data-odds-mode="american" aria-pressed="false">AMERICAN</button><button type="button" data-odds-mode="fractional" aria-pressed="false">FRACTION</button>';
+    bar.append(control);
+    control.addEventListener('click',event=>{
+      const button=event.target.closest('[data-odds-mode]');
+      if(!button)return;
+      setOddsMode(button.dataset.oddsMode);
+      syncOddsControl();
+    });
+  }
+  syncOddsControl();
+  return bar;
+}
 function placeTabs(selected,panels){
   const panel=panels.find(item=>item.dataset.panel===selected);
   const tablist=document.querySelector('.nomad342-tabs[role="tablist"]');
+  const controlbar=tablist?.closest('.nomad342-controlbar')||tablist;
   const summary=panel?.querySelector('.status-grid');
-  if(panel&&tablist&&summary&&summary.nextElementSibling!==tablist)summary.after(tablist);
+  if(panel&&controlbar&&summary&&summary.nextElementSibling!==controlbar)summary.after(controlbar);
 }
 function setTab(name,{updateHash=true,focus=false}={}){
   const selected=normalize(name);
@@ -43,6 +93,7 @@ function setTab(name,{updateHash=true,focus=false}={}){
 function start(){
   const tabs=[...document.querySelectorAll('.nomad342-tab[role="tab"]')];
   if(!tabs.length)return;
+  mountOddsControl();
   tabs.forEach((tab,index)=>{
     tab.addEventListener('click',()=>setTab(tab.dataset.tab));
     tab.addEventListener('keydown',event=>{
@@ -56,6 +107,7 @@ function start(){
       setTab(tabs[next].dataset.tab,{focus:true});
     });
   });
+  document.addEventListener('nomad342:odds-display-change',syncOddsControl);
   addEventListener('hashchange',()=>setTab(fromHash(),{updateHash:false}));
   setTab(fromHash(),{updateHash:location.hash.length>0});
 }
