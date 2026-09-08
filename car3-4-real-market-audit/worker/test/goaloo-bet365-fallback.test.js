@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseGoalooBet365RunOdds,evaluateGoalooBet365Quote,applyGoalooBet365Fallback,countGoalooBet365FallbackCandidates} from '../src/goaloo-bet365-fallback.js';
+import {parseGoalooBet365RunOdds,evaluateGoalooBet365Quote,applyGoalooBet365Fallback,countGoalooBet365FallbackCandidates,standardGoalooAhLine} from '../src/goaloo-bet365-fallback.js';
 
 const gates=(market=false)=>[['MINUTE',true,''],['CORE STATS',true,''],['REAL MARKET',market,''],['REAL PRICE AGE',market,''],['MARKET / ODDS',market,''],['MOMENTUM',true,''],['EVIDENCE',true,''],['GOAL GAP',true,''],['RED CARD',true,''],['SOURCE',true,'']];
 const match=()=>({sourceMatchId:'3061002',home:'Home FC',away:'Away FC',league:'Test',minute:67,score:{home:1,away:1},kickoffUtc:'2026-08-24T00:00:00Z',engine:{side:'HOME',gates:gates(false),momentum:66,evidence:{sot:1},dailyBlocked:false},realMarket:{source:'1xbet',status:'ERROR',error:'ODDS_API_HTTP_429'},odds:{asianHandicap:null}});
@@ -9,7 +9,21 @@ const config={ahMin:-5,ahMax:5,oddsMin:1.5,oddsMax:3,confirmationRounds:1,signal
 test('parses Goaloo Bet365 HOME AH and converts HK odds to decimal',()=>{
   const q=parseGoalooBet365RunOdds('3061002!0.88,-1,0.94!2.1,3.2,3.4!0.91,2.5,0.95$').get('3061002');
   assert.equal(q.providerCompanyId,8);assert.equal(q.providerName,'Bet365');
-  assert.deepEqual(q.asianHandicap,{home:1.88,line:-1,away:1.94,linePerspective:'HOME',raw:{home:0.88,line:-1,away:0.94}});
+  assert.deepEqual(q.asianHandicap,{home:1.88,line:-1,away:1.94,linePerspective:'HOME',oddsFormat:'DECIMAL',sourceOddsFormat:'HK',raw:{home:0.88,line:-1,away:0.94}});
+});
+
+test('verified standard AH mapping matches Bet365 notation: HOME -1 and AWAY +1',()=>{
+  const q=parseGoalooBet365RunOdds('3061002!0.925,-1,0.925!$').get('3061002');
+  assert.equal(q.asianHandicap.home,1.925);
+  assert.equal(q.asianHandicap.away,1.925);
+  assert.equal(standardGoalooAhLine(q.asianHandicap.line,'HOME'),-1);
+  assert.equal(standardGoalooAhLine(q.asianHandicap.line,'AWAY'),1);
+});
+
+test('Goaloo HK odds above 1.50 are still converted to standard decimal',()=>{
+  const q=parseGoalooBet365RunOdds('3061002!1.55,-0.5,1.60!$').get('3061002');
+  assert.equal(q.asianHandicap.home,2.55);
+  assert.equal(q.asianHandicap.away,2.6);
 });
 
 test('AWAY selection inverts only the HOME line',()=>{
