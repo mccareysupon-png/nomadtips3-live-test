@@ -117,7 +117,7 @@ function ahCells(row,audit){
   const settlement=expectedResult&&finalScore&&gradingScore?`FT ${pair(finalScore)} · AFTER LOCK ${pair(gradingScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
   return {
     market:'Asian Handicap',
-    pick:`<strong>${esc(pickMain)}</strong><br><small>${esc(perspective)}</small>`,
+    pick:`<strong>${esc(pickMain)}</strong>`,
     odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(bookmaker)}</small>`,
     settlement:settlement?`<br><small>${esc(settlement)}</small>`:''
   };
