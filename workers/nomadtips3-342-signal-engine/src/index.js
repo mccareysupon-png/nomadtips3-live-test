@@ -173,7 +173,7 @@ function rollingAsianHandicapEvidence(m,market,minutes){
   return {from:Number(first.minute),to:Number(last.minute),home:{shotOnTarget:hSot,shotOff:hOff,corner:hCorner,dangerousAttackPct:hDangerousPct,attackPct:hAttackPct,possessionPct:finite(latest?.home?.possessionPct)},away:{shotOnTarget:aSot,shotOff:aOff,corner:aCorner,dangerousAttackPct:aDangerousPct,attackPct:aAttackPct,possessionPct:finite(latest?.away?.possessionPct)}};
 }
 function ahLineOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n>=-20&&n<=20&&Number.isInteger(n*4)}
-function ahSideQuote(quote,side){if(!quote||!['HOME','AWAY'].includes(side))return null;return side==='HOME'?{line:finite(quote.rawHomeLine),odds:finite(quote.homeOdds)}:{line:finite(quote.rawHomeLine)===null?null:-finite(quote.rawHomeLine),odds:finite(quote.awayOdds)}}
+function ahSideQuote(quote,side){if(!quote||!['HOME','AWAY'].includes(side))return null;const raw=finite(quote.rawHomeLine);if(raw===null)return null;return side==='HOME'?{line:-raw,odds:finite(quote.homeOdds)}:{line:raw,odds:finite(quote.awayOdds)}}
 function ahEvidenceStrength(e){const v=e?.values||{};return Number(e?.passCount||0)*1000+(finite(v.shotOnTarget)||0)*10+(finite(v.shotOff)||0)*4+(finite(v.corner)||0)*5+(finite(v.dangerousAttackPct)||0)+(finite(v.attackPct)||0)+(finite(v.possessionPct)||0)}
 function asianHandicapGate(m,market,snapshot,quote){
   const run=Boolean(snapshot?.run?.ah),cfg=snapshot?.settings?.ah||null,reasons=[];

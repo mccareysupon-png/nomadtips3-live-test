@@ -24,6 +24,10 @@ const scorePair=value=>{
   const home=finite(Array.isArray(value)?value[0]:value?.home),away=finite(Array.isArray(value)?value[1]:value?.away);
   return home===null||away===null?null:{home,away};
 };
+function scoreAfterEntry(finalScore,entryScore){
+  const final=scorePair(finalScore),entry=scorePair(entryScore);if(!final)return null;if(!entry)return final;
+  const home=final.home-entry.home,away=final.away-entry.away;return home<0||away<0?null:{home,away};
+}
 function gradeAhExpected(pick,line,score){
   const p=String(pick||'').toUpperCase(),l=finite(line),s=scorePair(score);
   if(!['HOME','AWAY'].includes(p)||l===null||!s||!Number.isInteger(l*4))return null;
@@ -97,16 +101,16 @@ function marketLockText(view,record){const minute=finite(view?.lockMinute)??fini
 function asianHandicapCard(ah,result,record){
   const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase();
   const selectedLine=finite(ah?.line),rawLine=finite(ah?.rawLine),selectedOdds=finite(ah?.odds),homeOdds=finite(ah?.homeOdds),awayOdds=finite(ah?.awayOdds),rawHome=finite(ah?.rawHomeHk),rawAway=finite(ah?.rawAwayHk);
-  const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,expectedLine=rawLine===null?null:(pick==='AWAY'?-rawLine:rawLine),expectedOdds=rawSelected===null?null:1+rawSelected;
+  const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,expectedLine=rawLine===null?null:(pick==='HOME'?-rawLine:rawLine),expectedOdds=rawSelected===null?null:1+rawSelected;
   const perspectiveOk=expectedLine===null||selectedLine===null?null:Math.abs(expectedLine-selectedLine)<1e-9;
   const priceOk=expectedOdds===null||selectedOdds===null?null:Math.abs(expectedOdds-selectedOdds)<1e-6;
   const selection=locked&&['HOME','AWAY'].includes(pick)?`${pick} ${fmtLine(selectedLine)}`:'NO LOCK';
   const source=[ah?.bookmaker,ah?.provider].filter(Boolean).join(' · ');
-  const perspectiveText=rawLine===null?'Raw Home line not stored':`Home perspective ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
+  const perspectiveText=rawLine===null?'Goaloo raw line not stored':`Goaloo raw ${fmtLine(rawLine)} → ${pick||'—'} ${fmtLine(expectedLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
   const pairText=`Home ${fmtDecimal(homeOdds)} · Away ${fmtDecimal(awayOdds)}`;
   const rawText=rawHome===null&&rawAway===null?'Hong Kong raw odds not stored':`Hong Kong Home ${fmtRaw(rawHome)} · Away ${fmtRaw(rawAway)}${priceOk===null?'':` · selected → ${fmtDecimal(expectedOdds)} ${priceOk?'✓':'⚠'}`}`;
-  const finalScore=scorePair(record?.settlement?.finalScore),expectedResult=finalScore?gradeAhExpected(pick,selectedLine,finalScore):null,serverResult=String(result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
-  const settlementText=expectedResult&&finalScore?`FT ${pair(finalScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
+  const finalScore=scorePair(record?.settlement?.finalScore),gradingScore=finalScore?scoreAfterEntry(finalScore,ah?.entryScore||record?.entryScore):null,expectedResult=gradingScore?gradeAhExpected(pick,selectedLine,gradingScore):null,serverResult=String(result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
+  const settlementText=expectedResult&&finalScore&&gradingScore?`FT ${pair(finalScore)} · AFTER LOCK ${pair(gradingScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
   return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">DECIMAL ${esc(fmtDecimal(selectedOdds))}</span></div><strong>${esc(selection)}</strong><small class="ah-audit-row ${perspectiveOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(perspectiveText):'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><small class="ah-audit-row">${locked?esc(`${source?`${source} · `:''}${pairText}`):'—'}</small><small class="ah-audit-row ${priceOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(rawText):'—'}</small><small>${locked?esc(marketLockText(ah,record)):'—'}</small>${settlementText?`<small class="ah-audit-row ${settlementOk===false?'ah-audit-warn':'ah-audit-ok'}">${esc(settlementText)}</small>`:''}<span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
 }
 function card(record){
