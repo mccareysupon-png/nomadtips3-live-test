@@ -9,8 +9,10 @@ let timer=null,busy=false;
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const finite=value=>{if(value===null||value===undefined||value===''||typeof value==='boolean')return null;const n=Number(value);return Number.isFinite(n)?n:null};
 const fmtOdds=value=>{const n=finite(value);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2);};
+const fmtDecimal=value=>{const n=finite(value);return n===null?'—':n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');};
+const fmtRaw=value=>{const n=finite(value);return n===null?'—':n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');};
 const fmtPct=value=>finite(value)===null?'—':`${Math.round(finite(value))}%`;
-const fmtLine=value=>{const n=finite(value);if(n===null)return'—';const digits=Number.isInteger(n)?1:2;return `${n>0?'+':''}${n.toFixed(digits)}`;};
+const fmtLine=value=>{const n=finite(value);if(n===null)return'—';if(Math.abs(n)<1e-9)return'0.0';const abs=Math.abs(n),digits=Number.isInteger(abs)?1:2;return `${n>0?'+':'-'}${abs.toFixed(digits)}`;};
 const pair=value=>`${value?.home??'—'}–${value?.away??'—'}`;
 const when=value=>{try{return new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});}catch{return '—'}};
 const resultClass=result=>String(result||'PENDING').toLowerCase().replace(/[^a-z]/g,'');
@@ -22,6 +24,16 @@ const scorePair=value=>{
   const home=finite(Array.isArray(value)?value[0]:value?.home),away=finite(Array.isArray(value)?value[1]:value?.away);
   return home===null||away===null?null:{home,away};
 };
+function gradeAhExpected(pick,line,score){
+  const p=String(pick||'').toUpperCase(),l=finite(line),s=scorePair(score);
+  if(!['HOME','AWAY'].includes(p)||l===null||!s||!Number.isInteger(l*4))return null;
+  const selected=p==='HOME'?s.home:s.away,opponent=p==='HOME'?s.away:s.home;
+  const grade=part=>{const adjusted=selected+part-opponent;if(Math.abs(adjusted)<1e-9)return'PUSH';return adjusted>0?'WIN':'LOSS';};
+  if(Number.isInteger(l*2))return grade(l);
+  const parts=[grade(l-.25),grade(l+.25)];
+  if(parts.includes('PUSH'))return parts.includes('WIN')?'HALF_WIN':'HALF_LOSS';
+  return parts[0]===parts[1]?parts[0]:null;
+}
 function ensureAsianHandicapCardStyle(){
   if(document.getElementById('nomad342-ah-signal-card-style'))return;
   const style=document.createElement('style');
@@ -31,6 +43,9 @@ function ensureAsianHandicapCardStyle(){
     .signal-market.signal-market-ah .signal-market-head>span:first-child{color:#d9c46d}
     .signal-market.signal-market-ah.is-no-lock{opacity:.62}
     .signal-market.signal-market-ah.is-no-lock strong{color:#8f9991}
+    .signal-market.signal-market-ah .ah-audit-ok{color:#8fc59c}
+    .signal-market.signal-market-ah .ah-audit-warn{color:#e3b864;font-weight:800}
+    .signal-market.signal-market-ah .ah-audit-row{display:block;line-height:1.35}
     @media(max-width:900px){.signal-lock-grid.has-asian-handicap{grid-template-columns:repeat(2,minmax(0,1fr))}.signal-lock-grid.has-asian-handicap .signal-final{min-height:100%}}
     @media(max-width:700px){.signal-lock-grid.has-asian-handicap{grid-template-columns:1fr}}
   `;
@@ -64,11 +79,11 @@ function marketView(record,key){
   if(liveSignal){
     const lock={lockedAt:finite(liveSignal.lockedAt)??finite(record?.lockedAt),lockMinute:finite(liveSignal.lockMinute)??finite(record?.minute),entryScore:liveSignal.entryScore||record?.entryScore};
     if(key==='oneXtwo')return {locked:true,pick:liveSignal.pick,odds:liveSignal.odds,home:liveSignal.home,draw:liveSignal.draw,away:liveSignal.away,...lock};
-    if(key==='ah')return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,bookmaker:liveSignal.bookmaker,provider:liveSignal.provider,...lock};
+    if(key==='ah')return {locked:true,pick:liveSignal.pick,line:liveSignal.line,rawLine:liveSignal.rawLine,odds:liveSignal.odds,homeOdds:liveSignal.homeOdds,awayOdds:liveSignal.awayOdds,rawHomeHk:liveSignal.rawHomeHk,rawAwayHk:liveSignal.rawAwayHk,bookmaker:liveSignal.bookmaker,provider:liveSignal.provider,...lock};
     return {locked:true,pick:liveSignal.pick,line:liveSignal.line,odds:liveSignal.odds,over:liveSignal.over,under:liveSignal.under,...lock};
   }
   if(key==='oneXtwo')return {...(record?.prediction?.oneXtwo||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};
-  if(key==='ah')return {locked:false,pick:null,line:null,odds:null,bookmaker:null,provider:null,lockedAt:null,lockMinute:null,entryScore:null};
+  if(key==='ah')return {locked:false,pick:null,line:null,rawLine:null,odds:null,homeOdds:null,awayOdds:null,rawHomeHk:null,rawAwayHk:null,bookmaker:null,provider:null,lockedAt:null,lockMinute:null,entryScore:null};
   return {...(record?.prediction?.totals||{}),locked:false,lockedAt:record?.lockedAt,lockMinute:record?.minute,entryScore:record?.entryScore};
 }
 function marketResult(record,key){
@@ -81,9 +96,18 @@ function marketResult(record,key){
 function marketLockText(view,record){const minute=finite(view?.lockMinute)??finite(record?.minute),score=scorePair(view?.entryScore)||scorePair(record?.entryScore);return `LOCK ${minute===null?'—':Math.trunc(minute)}′ · SCORE ${score?pair(score):'—'}`;}
 function asianHandicapCard(ah,result,record){
   const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase();
-  const selection=locked&&['HOME','AWAY'].includes(pick)?`${pick} ${fmtLine(ah.line)}`:'NO LOCK';
+  const selectedLine=finite(ah?.line),rawLine=finite(ah?.rawLine),selectedOdds=finite(ah?.odds),homeOdds=finite(ah?.homeOdds),awayOdds=finite(ah?.awayOdds),rawHome=finite(ah?.rawHomeHk),rawAway=finite(ah?.rawAwayHk);
+  const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,expectedLine=rawLine===null?null:(pick==='AWAY'?-rawLine:rawLine),expectedOdds=rawSelected===null?null:1+rawSelected;
+  const perspectiveOk=expectedLine===null||selectedLine===null?null:Math.abs(expectedLine-selectedLine)<1e-9;
+  const priceOk=expectedOdds===null||selectedOdds===null?null:Math.abs(expectedOdds-selectedOdds)<1e-6;
+  const selection=locked&&['HOME','AWAY'].includes(pick)?`${pick} ${fmtLine(selectedLine)}`:'NO LOCK';
   const source=[ah?.bookmaker,ah?.provider].filter(Boolean).join(' · ');
-  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">@ ${esc(fmtOdds(ah?.odds))}</span></div><strong>${esc(selection)}</strong><small>${locked?`LINE ${esc(fmtLine(ah.line))}${source?` · ${esc(source)}`:''}`:'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><small>${locked?esc(marketLockText(ah,record)):'—'}</small><span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
+  const perspectiveText=rawLine===null?'Raw Home line not stored':`Home perspective ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
+  const pairText=`Home ${fmtDecimal(homeOdds)} · Away ${fmtDecimal(awayOdds)}`;
+  const rawText=rawHome===null&&rawAway===null?'Hong Kong raw odds not stored':`Hong Kong Home ${fmtRaw(rawHome)} · Away ${fmtRaw(rawAway)}${priceOk===null?'':` · selected → ${fmtDecimal(expectedOdds)} ${priceOk?'✓':'⚠'}`}`;
+  const finalScore=scorePair(record?.settlement?.finalScore),expectedResult=finalScore?gradeAhExpected(pick,selectedLine,finalScore):null,serverResult=String(result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
+  const settlementText=expectedResult&&finalScore?`FT ${pair(finalScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
+  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">DECIMAL ${esc(fmtDecimal(selectedOdds))}</span></div><strong>${esc(selection)}</strong><small class="ah-audit-row ${perspectiveOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(perspectiveText):'ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้'}</small><small class="ah-audit-row">${locked?esc(`${source?`${source} · `:''}${pairText}`):'—'}</small><small class="ah-audit-row ${priceOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(rawText):'—'}</small><small>${locked?esc(marketLockText(ah,record)):'—'}</small>${settlementText?`<small class="ah-audit-row ${settlementOk===false?'ah-audit-warn':'ah-audit-ok'}">${esc(settlementText)}</small>`:''}<span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
 }
 function card(record){
   const one=marketView(record,'oneXtwo'),totals=marketView(record,'totals'),ah=marketView(record,'ah');

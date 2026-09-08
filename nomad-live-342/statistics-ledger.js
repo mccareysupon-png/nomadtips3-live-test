@@ -42,6 +42,16 @@ const scorePair=value=>{
   const home=finite(Array.isArray(value)?value[0]:value?.home),away=finite(Array.isArray(value)?value[1]:value?.away);
   return home===null||away===null?null:{home,away};
 };
+function gradeAhExpected(pick,line,score){
+  const p=String(pick||'').toUpperCase(),l=finite(line),s=scorePair(score);
+  if(!['HOME','AWAY'].includes(p)||l===null||!s||!Number.isInteger(l*4))return null;
+  const selected=p==='HOME'?s.home:s.away,opponent=p==='HOME'?s.away:s.home;
+  const grade=part=>{const adjusted=selected+part-opponent;if(Math.abs(adjusted)<1e-9)return'PUSH';return adjusted>0?'WIN':'LOSS';};
+  if(Number.isInteger(l*2))return grade(l);
+  const parts=[grade(l-.25),grade(l+.25)];
+  if(parts.includes('PUSH'))return parts.includes('WIN')?'HALF_WIN':'HALF_LOSS';
+  return parts[0]===parts[1]?parts[0]:null;
+}
 function currentLive(row){
   const rows=Array.isArray(window.__nomad342EventResults)?window.__nomad342EventResults:[];
   const usable=rows.map(item=>item?.m).filter(m=>m&&!m?.freshness?.stale&&scorePair(m.score));
@@ -90,18 +100,22 @@ function buildAhAudit(records){
 }
 function ahCells(row,audit){
   const pick=String(audit?.pick||row?.pick||'').toUpperCase(),selectedLine=finite(audit?.line)??finite(row?.line),rawLine=finite(audit?.rawLine);
-  const selectedOdds=finite(audit?.odds)??finite(row?.odds),rawHk=pick==='HOME'?finite(audit?.rawHomeHk):pick==='AWAY'?finite(audit?.rawAwayHk):null;
-  const bookmaker=String(audit?.bookmaker||'Bet365'),provider=String(audit?.provider||'Nowgoal');
+  const selectedOdds=finite(audit?.odds)??finite(row?.odds),homeOdds=finite(audit?.homeOdds),awayOdds=finite(audit?.awayOdds),rawHome=finite(audit?.rawHomeHk),rawAway=finite(audit?.rawAwayHk);
+  const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,bookmaker=String(audit?.bookmaker||'Bet365'),provider=String(audit?.provider||'Nowgoal');
   const expected=rawLine===null?null:(pick==='AWAY'?-rawLine:rawLine),perspectiveOk=expected===null||selectedLine===null?null:Math.abs(expected-selectedLine)<1e-9;
-  const priceExpected=rawHk===null?null:1+rawHk,priceOk=priceExpected===null||selectedOdds===null?null:Math.abs(priceExpected-selectedOdds)<1e-6;
+  const priceExpected=rawSelected===null?null:1+rawSelected,priceOk=priceExpected===null||selectedOdds===null?null:Math.abs(priceExpected-selectedOdds)<1e-6;
   const pickMain=`${pick||'—'} ${fmtLine(selectedLine)}`;
-  const perspective=`Goaloo Home line ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓ perspective':' · ⚠ perspective'}`;
+  const perspective=rawLine===null?'Home-perspective raw line not stored':`Home perspective ${fmtLine(rawLine)}${perspectiveOk===null?'':perspectiveOk?' · ✓':' · ⚠'}`;
   const priceMain=fmtDecimal(selectedOdds);
-  const priceAudit=`${bookmaker} · ${provider} · Raw HK ${fmtRawHk(rawHk)} → ${priceExpected===null?'—':fmtDecimal(priceExpected)}${priceOk===null?'':priceOk?' · ✓':' · ⚠'}`;
+  const pricePair=`${bookmaker} · ${provider} · Home ${fmtDecimal(homeOdds)} · Away ${fmtDecimal(awayOdds)}`;
+  const rawPair=rawHome===null&&rawAway===null?'Hong Kong raw odds not stored':`Hong Kong Home ${fmtRawHk(rawHome)} · Away ${fmtRawHk(rawAway)}${priceOk===null?'':` · selected → ${fmtDecimal(priceExpected)} ${priceOk?'✓':'⚠'}`}`;
+  const finalScore=scorePair(row?.finalScore),expectedResult=finalScore?gradeAhExpected(pick,selectedLine,finalScore):null,serverResult=String(row?.result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
+  const settlement=expectedResult&&finalScore?`FT ${pair(finalScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
   return {
     market:'Asian Handicap',
     pick:`<strong>${esc(pickMain)}</strong><br><small>${esc(perspective)}</small>`,
-    odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(priceAudit)}</small>`
+    odds:`<strong>${esc(priceMain)}</strong><br><small>${esc(pricePair)}</small><br><small>${esc(rawPair)}</small>`,
+    settlement:settlement?`<br><small>${esc(settlement)}</small>`:''
   };
 }
 function rowHtml(row,ahAudit){
@@ -110,7 +124,8 @@ function rowHtml(row,ahAudit){
   const marketHtml=isAh?esc(audit.market):esc(row.market);
   const pickHtml=isAh?audit.pick:esc(row.pick);
   const oddsHtml=isAh?audit.odds:esc(fmtOdds(row.odds));
-  return `<tr><td>${esc(when(row.lockedAt))}</td><td>${esc(row.home)} — ${esc(row.away)}</td><td class="market-cell">${marketHtml}</td><td>${pickHtml}</td><td>${oddsHtml}</td><td>${esc(row.minute??'—')}′ · ${esc(pair(row.entryScore))}</td><td class="final-cell">${finalHtml(row)}</td><td class="${esc(resultClass(result))}">${esc(displayResult(result))}</td><td class="${esc(profitClass(row.profit))}">${esc(fmtProfit(row.profit))}</td></tr>`;
+  const resultHtml=isAh?`${esc(displayResult(result))}${audit.settlement}`:esc(displayResult(result));
+  return `<tr><td>${esc(when(row.lockedAt))}</td><td>${esc(row.home)} — ${esc(row.away)}</td><td class="market-cell">${marketHtml}</td><td>${pickHtml}</td><td>${oddsHtml}</td><td>${esc(row.minute??'—')}′ · ${esc(pair(row.entryScore))}</td><td class="final-cell">${finalHtml(row)}</td><td class="${esc(resultClass(result))}">${resultHtml}</td><td class="${esc(profitClass(row.profit))}">${esc(fmtProfit(row.profit))}</td></tr>`;
 }
 async function fetchJson(path){
   const ac=new AbortController(),timeout=setTimeout(()=>ac.abort(),Number(runtime.timeoutMs)||6500);
