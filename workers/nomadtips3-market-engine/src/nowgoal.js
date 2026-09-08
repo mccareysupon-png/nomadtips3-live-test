@@ -111,7 +111,9 @@ function decimal(value) {
 function hkToDecimal(value) {
   const n = number(value);
   if (n === null || n < 0) return null;
-  const out = n < 1.5 ? 1 + n : n;
+  // goal*.xml O/U prices are Hong Kong odds. Decimal is always HK + 1.
+  // Do not use a 1.50 threshold: e.g. raw 1.55 must normalize to 2.55, not 1.55.
+  const out = 1 + n;
   return out > 1 && out < 100 ? Number(out.toFixed(4)) : null;
 }
 
