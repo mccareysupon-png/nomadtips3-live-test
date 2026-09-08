@@ -42,3 +42,17 @@ test('Asian Handicap quarter-line profit uses half-stake settlement',()=>{
   assert.equal(push.settlement.signals[0].result,'PUSH');
   assert.equal(push.settlement.signals[0].profit,0);
 });
+
+test('Live Asian Handicap settles only score movement after LOCK',()=>{
+  const noMoreGoals=settleRecord({signals:[{market:'AH',pick:'HOME',line:-0.25,odds:2.6,entryScore:{home:3,away:1}}]},{home:3,away:1},'FT',1000,{source:'test',sourceMatchId:'4',matchMode:'MATCH_ID'});
+  assert.equal(noMoreGoals.settlement.signals[0].result,'HALF_LOSS','3-1 at LOCK and 3-1 FT means post-entry 0-0');
+
+  const awayQuarter=settleRecord({signals:[{market:'AH',pick:'AWAY',line:0.25,odds:1.475,entryScore:{home:3,away:1}}]},{home:3,away:1},'FT',1000,{source:'test',sourceMatchId:'5',matchMode:'MATCH_ID'});
+  assert.equal(awayQuarter.settlement.signals[0].result,'HALF_WIN','AWAY +0.25 on post-entry 0-0 is half win');
+
+  const homeScores=settleRecord({signals:[{market:'AH',pick:'HOME',line:-0.25,odds:2.6,entryScore:{home:3,away:1}}]},{home:4,away:1},'FT',1000,{source:'test',sourceMatchId:'6',matchMode:'MATCH_ID'});
+  assert.equal(homeScores.settlement.signals[0].result,'WIN','post-entry score 1-0');
+
+  const awayScores=settleRecord({signals:[{market:'AH',pick:'HOME',line:-0.25,odds:2.6,entryScore:{home:3,away:1}}]},{home:3,away:2},'FT',1000,{source:'test',sourceMatchId:'7',matchMode:'MATCH_ID'});
+  assert.equal(awayScores.settlement.signals[0].result,'LOSS','post-entry score 0-1');
+});
