@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="statistics-summary-strip.css?v=20260902-day-v2">
   <link rel="stylesheet" href="odds-display.css?v=20260908-stat-toolbar-v1">
   <link rel="stylesheet" href="toolbar-vintage-icons.css?v=20260901-v2" media="(min-width:1025px)">
+  <link rel="stylesheet" href="toolbar-vintage-icons-scale.css?v=20260908-stat-geometry-v1" media="(min-width:1025px)">
   <link rel="stylesheet" href="mobile-toolbar-pc-icons.css?v=20260904-statepulse-v1">
   <link rel="stylesheet" href="toolbar-vintage-independent-icons.css?v=20260908-statistics-transparent-v1">
   <link rel="stylesheet" href="statistics-odds-icons.css?v=20260908-stat-odds-v1" media="(min-width:1025px)">
@@ -42,11 +43,15 @@
     #matchScoutStatistics{display:none!important}
     .hero .mode{display:none!important}
     .hero .mode strong{font-size:12px}
-    .statistics-icon-nav{margin-top:12px}
-    .statistics-icon-nav .tabs{width:100%}
+    .statistics-icon-nav{margin-top:0}
+    .statistics-icon-nav .tabs{width:auto}
     .statistics-icon-nav .tab{text-decoration:none}
     .statistics-icon-nav .statistics-link[data-active="1"]{color:var(--green)!important;text-shadow:0 0 7px rgba(131,223,137,.28)!important}
     .statistics-icon-nav .statistics-link[data-active="1"]::before{opacity:1!important;filter:brightness(1.34) saturate(1.14) drop-shadow(0 0 6px rgba(131,223,137,.48))!important;transform:translateY(-1px) scale(1.04)!important}
+    @media(min-width:1025px){
+      .statistics-icon-nav{justify-content:space-between!important;align-items:center!important;padding:7px 8px!important;margin:0 0 8px!important}
+      .statistics-icon-nav .tabs{width:auto!important}
+    }
   </style>
   <link rel="stylesheet" href="public-site-nav.css?v=20260906-nav-geometry-v2">
   <link rel="stylesheet" href="mobile-ui-spacing.css?v=20260901-v1">
