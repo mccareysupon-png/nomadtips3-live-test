@@ -20,6 +20,16 @@ jobs:
         with:
           fetch-depth: 0
           ref: work/nomad342-ah-goaloo-market-lock
+      - name: Sync and pin latest main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          MAIN_SHA="$(git rev-parse origin/main)"
+          echo "MAIN_SHA=$MAIN_SHA" >> "$GITHUB_ENV"
+          git merge --no-edit "$MAIN_SHA"
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
@@ -38,12 +48,11 @@ jobs:
           grep -Fq 'const out=1+n' workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq 'priceAudit' workers/nomadtips3-342-ledger/src/index.js
           grep -Fq "status:ack?.appended?'APPENDED'" workers/nomadtips3-342-signal-engine/src/index.js
-      - name: Verify strict isolation
+      - name: Verify strict isolation against pinned main
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin main
-          changed="$(git diff --name-only origin/main)"
+          changed="$(git diff --name-only "$MAIN_SHA")"
           echo "$changed"
           test -n "$changed"
           if echo "$changed" | grep -Eq '^nomad-live/'; then
@@ -57,8 +66,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git commit -m 'Fix 3.42 AH Goaloo price and market-level locks [skip ci]'
           git push origin HEAD:work/nomad342-ah-goaloo-market-lock
