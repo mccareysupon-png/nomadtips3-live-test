@@ -94,7 +94,7 @@
   }
   if(!document.querySelector('script[data-nomad-pwa-install]')){
     const pwaScript=document.createElement('script');
-    pwaScript.src=new URL('nomad-pwa-install.js?v=20260908-v4',base).href;
+    pwaScript.src=new URL('nomad-pwa-install.js?v=20260908-v5',base).href;
     pwaScript.dataset.nomadPwaInstall='1';
     document.head.appendChild(pwaScript);
   }
