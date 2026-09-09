@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#123328">
+  <title>nomadtips3 · Statistics 3.43</title>
+  <link rel="stylesheet" href="settings.css?v=20260910-343-stats-v1">
+  <link rel="stylesheet" href="statistics.css?v=20260910-343-stats-v1">
+</head>
+<body data-page="statistics-343">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">nomad<span>tips</span>3</div>
+    <nav class="topnav">
+      <a href="#" aria-disabled="true">Live</a>
+      <a class="active" aria-current="page" href="statistics.html">Statistics</a>
+      <a href="settings.html">Settings</a>
+      <a href="#" aria-disabled="true">Health</a>
+    </nav>
+  </div>
+</header>
+
+<main class="stats-shell">
+  <section class="stats-hero">
+    <div>
+      <p class="eyebrow">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK</p>
+      <h1>Live Match Statistics</h1>
+      <p>แสดงเฉพาะข้อมูลจริงที่ระบบตรวจพบ · ไม่มีข้อมูล = เว้นว่าง ไม่สร้างค่าจำลอง</p>
+    </div>
+    <div class="feed-state" id="feedState"><i></i><span>WAITING DATA</span></div>
+  </section>
+
+  <section class="match-head-panel">
+    <div class="match-title-block">
+      <small id="leagueName">—</small>
+      <h2><span id="homeName">HOME</span><b id="scoreNow">— : —</b><span id="awayName">AWAY</span></h2>
+    </div>
+    <div class="live-minute"><span>LIVE</span><strong id="minuteNow">—</strong></div>
+  </section>
+
+  <section class="entry-grid" aria-label="ข้อมูลตอนเข้า Signal">
+    <article><span>MARKET</span><strong id="entryMarket">—</strong></article>
+    <article><span>ENTRY MIN</span><strong id="entryMinute">—</strong></article>
+    <article><span>ENTRY SCORE</span><strong id="entryScore">—</strong></article>
+    <article><span>ENTRY LINE</span><strong id="entryLine">—</strong></article>
+    <article><span>ENTRY ODDS</span><strong id="entryOdds">—</strong></article>
+  </section>
+
+  <section class="analytics-grid">
+    <article class="stats-card battle-card">
+      <header class="card-head">
+        <div><span>MATCH STATISTICS</span><small>HOME ← 6 EVENTS → AWAY</small></div>
+        <div class="team-legend"><span class="home-key">HOME</span><span class="away-key">AWAY</span></div>
+      </header>
+      <div class="battle-bars" id="battleBars"></div>
+    </article>
+
+    <article class="stats-card event-card">
+      <header class="card-head">
+        <div><span>EVENT FLOW</span><small>เส้นอีเวนต์ตามข้อมูลที่ตรวจได้จริง</small></div>
+        <div class="line-legend"><span class="home-line-key">HOME</span><span class="away-line-key">AWAY</span></div>
+      </header>
+      <div class="chart-wrap" id="eventChartWrap">
+        <svg id="eventChart" viewBox="0 0 720 260" role="img" aria-label="Event flow chart"></svg>
+        <div class="chart-empty" id="eventEmpty">รอ Event history จริง</div>
+      </div>
+    </article>
+  </section>
+
+  <section class="stats-card bookmaker-card">
+    <header class="card-head bookmaker-head">
+      <div><span>BOOKMAKER PRICE FLOW</span><small>ราคาไหลตาม snapshot ที่ระบบตรวจพบ</small></div>
+      <div class="bookmaker-legend" id="bookmakerLegend"></div>
+    </header>
+    <div class="chart-wrap bookmaker-wrap">
+      <svg id="bookmakerChart" viewBox="0 0 1040 320" role="img" aria-label="Bookmaker odds history chart"></svg>
+      <div class="chart-empty" id="bookmakerEmpty">รอประวัติราคาจริงจาก Bookmaker</div>
+    </div>
+  </section>
+
+  <div class="stats-note">DATA CONTRACT: <code>window.NOMAD343Statistics.update(payload)</code> หรือส่ง CustomEvent <code>nomad343:statistics</code></div>
+</main>
+
+<script src="statistics.js?v=20260910-343-stats-v1" defer></script>
+</body>
+</html>
