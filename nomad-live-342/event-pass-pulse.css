@@ -71,3 +71,25 @@ html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statisti
 html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric>span{
   color:rgba(238,241,238,.72)!important;
 }
+
+/* 2026-09-09 — Live summary cleanup requested by owner.
+   Only LIVE MATCHES / FRESH FEED / ROLLING WINDOW / EVENT PASS.
+   Remove separator splinters and remove the glow highlight for a cleaner flat finish. */
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(-n+2){
+  background:linear-gradient(145deg,#08352f 0%,#082824 58%,#061f1e 100%)!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(n+3){
+  background:linear-gradient(145deg,#3a214d 0%,#2c1c3e 58%,#21152f 100%)!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::before,
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::after{
+  content:none!important;
+  display:none!important;
+  background:none!important;
+  border:0!important;
+  box-shadow:none!important;
+}
