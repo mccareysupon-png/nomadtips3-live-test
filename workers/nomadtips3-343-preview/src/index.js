@@ -2,7 +2,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === '/') {
-      return Response.redirect(new URL('/index.html', url), 302);
+      const assetUrl = new URL(request.url);
+      assetUrl.pathname = '/index.html';
+      return env.ASSETS.fetch(new Request(assetUrl, request));
     }
     return env.ASSETS.fetch(request);
   }
