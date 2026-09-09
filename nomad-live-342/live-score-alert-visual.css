@@ -8,6 +8,7 @@
    - square compact summary strip with short internal dividers
    - remove match-card outlines and keep only subtle content separators
    - remove boxed outlines inside expanded match content
+   - remove remaining inner content outlines while keeping chart/separator lines
    No feed, market, detector, prediction, ledger or engine logic changes.
    Rollback: remove this stylesheet link from nomad-live-342/index.html and delete this file. */
 
@@ -182,4 +183,25 @@ body[data-page="live"] #nomad342PanelLive .event-compact .nomad-market-card::bef
 body[data-page="live"] #nomad342PanelLive .event-compact .market-bookmakers,
 body[data-page="live"] #nomad342PanelLive .event-compact .afc-foot{
   border-top:1px solid rgba(150,158,151,.06)!important;
+}
+
+/* Final clean pass: these were the remaining visible rectangular outlines.
+   Preserve only true graph rails/axes and thin horizontal section separators. */
+body[data-page="live"] #nomad342PanelLive .event-compact .gf-stats-head,
+body[data-page="live"] #nomad342PanelLive .event-compact .event-stats,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-section,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-shift-bar,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-timeline-event,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-dual-stage,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-time-tick.is-half b,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-timeline-now b,
+body[data-page="live"] #nomad342PanelLive .event-compact .event-overview>div,
+body[data-page="live"] #nomad342PanelLive .event-compact .na-radar-values span,
+body[data-page="live"] #nomad342PanelLive .event-compact .market-bookmakers b,
+body[data-page="live"] #nomad342PanelLive .event-compact .market-bookmakers i{
+  border:0!important;
+  box-shadow:none!important;
+}
+body[data-page="live"] #nomad342PanelLive .event-compact .na-pressure-ring{
+  box-shadow:none!important;
 }
