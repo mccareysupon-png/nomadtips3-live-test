@@ -1,7 +1,7 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const VERSION = 'shot-sidecar-342-v2';
 const PROVIDER = '5DollarFootballAPI';
-const PROVIDER_CACHE_MS = 15 * 60 * 1000;
+const PROVIDER_CACHE_MS = 120 * 1000;
 const NOMAD_CACHE_MS = 15 * 1000;
 const PROVIDER_TIMEOUT_MS = 8000;
 const NOMAD_TIMEOUT_MS = 8000;
