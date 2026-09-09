@@ -69,6 +69,21 @@ function statsPageTokens(totalPages,currentPage){
   });
   return tokens;
 }
+function simplifyStatisticsResults(){
+  const tbody=document.getElementById('statsRows');
+  if(!tbody)return;
+  tbody.querySelectorAll('tr').forEach(row=>{
+    const cell=row.children?.[7];
+    if(!cell)return;
+    const cls=String(cell.className||'').toLowerCase();
+    const raw=String(cell.textContent||'').trim().toUpperCase().replace(/\s+/g,' ');
+    let label=null;
+    if(cls.includes('result-win')||raw.startsWith('WIN')||raw.startsWith('HALF WIN'))label='WIN ✓';
+    else if(cls.includes('result-loss')||raw.startsWith('LOSS')||raw.startsWith('HALF LOSS'))label='LOSS ✕';
+    else if(cls.includes('result-push')||raw.startsWith('DRAW')||raw.startsWith('PUSH'))label='DRAW —';
+    if(label&&String(cell.textContent||'').trim()!==label)cell.textContent=label;
+  });
+}
 function mountStatisticsPagination(){
   const tbody=document.getElementById('statsRows');
   const wrap=tbody?.closest('.stats-table-wrap');
@@ -106,6 +121,7 @@ function mountStatisticsPagination(){
     document.head.append(style);
   }
   const render=(scrollToTable=false)=>{
+    simplifyStatisticsResults();
     const rows=[...tbody.children];
     const total=rows.length;
     const placeholder=total===1&&Number(rows[0]?.firstElementChild?.colSpan||0)>=9;
