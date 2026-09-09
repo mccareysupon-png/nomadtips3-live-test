@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#b68a35">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>คุมงบดาบเจ๋ง</title>
+<style>
+:root{--bg:#090d15;--card:#121927;--card2:#182233;--line:#28364c;--text:#f4f7fb;--muted:#9cacbf;--gold:#d2a84d;--green:#43d49e;--red:#ff7272;--blue:#68a9ff}*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#0b101a,#080b12);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif}.wrap{max-width:720px;margin:auto;padding:14px 12px 40px}.hero{display:flex;align-items:center;gap:12px;padding:8px 2px 16px}.hero img{width:54px;height:54px;border-radius:15px}.hero h1{margin:0;font-size:1.35rem}.hero p{margin:3px 0 0;color:var(--muted);font-size:.86rem}.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:rgba(18,25,39,.96);border:1px solid var(--line);border-radius:16px;padding:14px}.label{font-size:.76rem;color:var(--muted)}.value{font-size:1.28rem;font-weight:800;margin-top:4px}.gold{color:var(--gold)}.green{color:var(--green)}.red{color:var(--red)}section{margin-top:12px}h2{font-size:1rem;margin:0 0 10px}.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}label{display:block;color:var(--muted);font-size:.84rem;margin-bottom:10px}input,select,button{font:inherit}input,select{width:100%;margin-top:5px;padding:12px;border-radius:12px;border:1px solid var(--line);background:#0d1421;color:var(--text);font-size:16px;outline:none}input:focus,select:focus{border-color:var(--gold)}button{width:100%;min-height:46px;border:0;border-radius:12px;font-weight:800;cursor:pointer}.primary{background:var(--gold);color:#171108}.secondary{background:var(--card2);color:var(--text);border:1px solid var(--line)}.install{background:#1b2739;color:var(--text);border:1px solid #3d536f;margin-top:8px}.notice{padding:11px 12px;border-radius:12px;background:#0e1624;border:1px dashed var(--line);color:var(--muted);font-size:.87rem;line-height:1.55}.schedule,.expense-list{display:grid;gap:8px}.item,.expense{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-radius:12px;background:var(--card2);border:1px solid var(--line);font-size:.88rem}.expense button{width:auto;min-height:auto;padding:6px 9px;background:#2a1820;color:#ff9f9f}.tabs{display:flex;gap:8px;overflow:auto;padding-bottom:2px}.tab{width:auto;white-space:nowrap;padding:9px 12px;min-height:40px;background:#111a29;color:var(--muted);border:1px solid var(--line)}.tab.active{background:var(--gold);color:#171108}.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.pay{padding:9px 10px;background:var(--card2);border:1px solid var(--line);border-radius:11px;font-size:.82rem;display:flex;justify-content:space-between;gap:8px}.footer{text-align:center;color:var(--muted);font-size:.75rem;margin-top:20px}@media(max-width:430px){.row,.pay-grid{grid-template-columns:1fr}.value{font-size:1.18rem}.wrap{padding-left:10px;padding-right:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero"><img src="./icon.svg" alt="ไอคอนคุมงบดาบเจ๋ง"><div><h1>คุมงบดาบเจ๋ง</h1><p>คุมเงินแบบเดียวกับเช็กกับแอด K</p></div></div>
+
+  <div class="cards">
+    <div class="card"><div class="label">เงินคงเหลือ</div><div id="balanceView" class="value gold">฿6,400</div></div>
+    <div class="card"><div class="label">เหลือถึงเงินออก</div><div id="daysView" class="value">16 วัน</div></div>
+    <div class="card"><div class="label">งบวันนี้</div><div id="todayView" class="value">฿200</div></div>
+    <div class="card"><div class="label">อิสระ / วัน</div><div id="freeView" class="value green">฿400</div></div>
+  </div>
+
+  <section class="card">
+    <h2>เช็กงบวันนี้</h2>
+    <div class="row"><label>วันที่เช็ก<input id="checkDate" type="date"></label><label>วันเงินเดือนออก<input id="payday" type="date"></label></div>
+    <div class="row"><label>เงินคงเหลือ (บาท)<input id="balance" type="number" min="0" inputmode="numeric"></label><label>ใช้วันนี้แล้ว (บาท)<input id="spent" type="number" min="0" inputmode="numeric"></label></div>
+    <div id="dutyInfo" class="notice"></div>
+    <button id="saveCheck" class="primary" type="button" style="margin-top:10px">บันทึกและเช็กงบ</button>
+    <button id="installBtn" class="install" type="button" hidden>ติดตั้ง “คุมงบดาบเจ๋ง” ที่หน้าจอมือถือ</button>
+    <div id="installHint" class="notice" style="margin-top:8px">Android: เปิดด้วย Chrome แล้วกดเมนู ⋮ → “ติดตั้งแอป” หรือ “เพิ่มไปยังหน้าจอหลัก”</div>
+  </section>
+
+  <section class="card">
+    <h2>ผลคำนวณ</h2>
+    <div class="cards"><div><div class="label">งบตามรอบเวรที่เหลือ</div><div id="planNeed" class="value">฿0</div></div><div><div class="label">เงินสำรองคาดการณ์</div><div id="reserve" class="value">฿0</div></div></div>
+    <div id="result" class="notice" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card">
+    <h2>เพิ่มรายจ่ายวันนี้</h2>
+    <div class="row"><label>รายการ<input id="expenseName" type="text" placeholder="เช่น ข้าว / น้ำมัน"></label><label>จำนวนเงิน<input id="expenseAmount" type="number" min="0" inputmode="numeric" placeholder="0"></label></div>
+    <button id="addExpense" class="secondary" type="button">+ เพิ่มรายจ่าย</button>
+    <div id="expenseList" class="expense-list" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card">
+    <h2>รอบเวรถัดไป</h2>
+    <div id="schedule" class="schedule"></div>
+  </section>
+
+  <section class="card">
+    <h2>วันเงินเดือนออก</h2>
+    <div class="tabs" id="yearTabs"></div>
+    <div class="notice" style="margin-top:8px">ปี 2569 ใช้วันที่ตั้งไว้ในแอป ส่วนปีถัดไปเป็นค่าประมาณและแก้วันเงินออกเองได้เมื่อมีประกาศจริง</div>
+    <div id="payGrid" class="pay-grid" style="margin-top:10px"></div>
+  </section>
+
+  <section class="card">
+    <h2>ตั้งค่า</h2>
+    <div class="row"><label>งบวันปกติ<input id="normalBudget" type="number" min="0"></label><label>งบวันเข้าเวร<input id="dutyBudget" type="number" min="0"></label></div>
+    <label>วันเข้าเวรอ้างอิง (วน 1 เวร / 2 พัก)<input id="anchorDuty" type="date"></label>
+    <button id="saveSettings" class="secondary" type="button">บันทึกการตั้งค่า</button>
+  </section>
+
+  <div class="footer">ข้อมูลทั้งหมดเก็บในเครื่องของคุณ • ติดตั้งแล้วเปิดแบบแอปได้ • รองรับออฟไลน์</div>
+</div>
+<script>
+const KEY='khumNgobDabJengWebV1',DAY=86400000;
+const defaults={balance:6400,checkDate:'2026-09-09',payday:'2026-09-25',normalBudget:200,dutyBudget:300,anchorDuty:'2026-09-10',spent:0,expenses:[],paydays:{'2026-09':'2026-09-25'}};
+let s=load(),deferredPrompt=null,selectedYear=2026;
+function load(){try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}}
+function save(){localStorage.setItem(KEY,JSON.stringify(s))}
+function utc(x){const [y,m,d]=x.split('-').map(Number);return Date.UTC(y,m-1,d)}
+function iso(t){const d=new Date(t);return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`}
+function money(n){return '฿'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('th-TH')}
+function isDuty(x){const q=Math.round((utc(x)-utc(s.anchorDuty))/DAY);return ((q%3)+3)%3===0}
+function dayBudget(x){return isDuty(x)?+s.dutyBudget:+s.normalBudget}
+function expenseTotal(){return s.expenses.reduce((a,b)=>a+(+b.amount||0),0)}
+function daysLeft(){return Math.max(0,Math.round((utc(s.payday)-utc(s.checkDate))/DAY))}
+function planNeed(){let total=0,start=utc(s.checkDate),end=utc(s.payday),used=(+s.spent||0)+expenseTotal();for(let t=start;t<end;t+=DAY){let need=dayBudget(iso(t));if(t===start)need=Math.max(0,need-used);total+=need}return total}
+function endBusinessApprox(y,m){let t=Date.UTC(y,m+1,0),count=0;while(count<3){t-=DAY;let w=new Date(t).getUTCDay();if(w!==0&&w!==6)count++}return iso(t)}
+function renderPaydays(){yearTabs.innerHTML='';[2026,2027,2028,2029].forEach(y=>{let b=document.createElement('button');b.className='tab'+(y===selectedYear?' active':'');b.textContent=y+543;b.onclick=()=>{selectedYear=y;renderPaydays()};yearTabs.appendChild(b)});payGrid.innerHTML='';for(let m=0;m<12;m++){let key=`${selectedYear}-${String(m+1).padStart(2,'0')}`,date=s.paydays[key]||endBusinessApprox(selectedYear,m),el=document.createElement('div');el.className='pay';el.innerHTML=`<span>${m+1}/${selectedYear+543}</span><strong>${date.slice(8,10)}/${date.slice(5,7)}</strong>`;payGrid.appendChild(el)}}
+function renderExpenses(){expenseList.innerHTML='';if(!s.expenses.length){expenseList.innerHTML='<div class="notice">ยังไม่มีรายจ่ายย่อยวันนี้</div>';return}s.expenses.forEach((x,i)=>{let el=document.createElement('div');el.className='expense';let a=document.createElement('span');a.textContent=x.name||'รายจ่าย';let b=document.createElement('strong');b.textContent=money(x.amount);let c=document.createElement('button');c.textContent='ลบ';c.onclick=()=>{s.expenses.splice(i,1);save();render()};el.append(a,b,c);expenseList.appendChild(el)})}
+function renderSchedule(){schedule.innerHTML='';for(let i=0;i<8;i++){let d=iso(utc(s.checkDate)+i*DAY),el=document.createElement('div');el.className='item';el.innerHTML=`<span>${d.slice(8,10)}/${d.slice(5,7)} • ${isDuty(d)?'เข้าเวร':'พัก'}</span><strong>${money(dayBudget(d))}</strong>`;schedule.appendChild(el)}}
+function render(){let used=(+s.spent||0)+expenseTotal(),after=Math.max(0,+s.balance-used),days=daysLeft(),free=days?after/days:0,plan=planNeed(),res=after-plan;balanceView.textContent=money(after);daysView.textContent=days+' วัน';todayView.textContent=money(dayBudget(s.checkDate));freeView.textContent=money(free);planNeed.textContent=money(plan);reserve.textContent=(res<0?'-':'')+money(Math.abs(res));reserve.className='value '+(res>=0?'green':'red');dutyInfo.textContent=(isDuty(s.checkDate)?'วันนี้เข้าเวร':'วันนี้วันพัก / วันปกติ')+' • งบวันนี้ '+money(dayBudget(s.checkDate))+' • ใช้แล้ว '+money(used);result.textContent=res>=0?`ถ้าคุมตามแผน จะเหลือสำรองประมาณ ${money(res)} ก่อนเงินเดือนออก • ถ้าหารอิสระเท่ากันทุกวัน ใช้ได้ประมาณ ${money(free)} / วัน`:`ถ้าใช้ตามแผนเดิม เงินจะขาดประมาณ ${money(Math.abs(res))} ควรลดรายจ่ายในวันที่เหลือ`;renderExpenses();renderSchedule();renderPaydays()}
+function sync(){checkDate.value=s.checkDate;payday.value=s.payday;balance.value=s.balance;spent.value=s.spent;normalBudget.value=s.normalBudget;dutyBudget.value=s.dutyBudget;anchorDuty.value=s.anchorDuty}
+saveCheck.onclick=()=>{s.checkDate=checkDate.value||s.checkDate;s.payday=payday.value||s.payday;s.balance=Math.max(0,+balance.value||0);s.spent=Math.max(0,+spent.value||0);let p=s.payday.slice(0,7);s.paydays[p]=s.payday;save();render()};
+addExpense.onclick=()=>{let amount=Math.max(0,+expenseAmount.value||0);if(!amount)return;s.expenses.push({name:expenseName.value.trim()||'รายจ่าย',amount});expenseName.value='';expenseAmount.value='';save();render()};
+saveSettings.onclick=()=>{s.normalBudget=Math.max(0,+normalBudget.value||0);s.dutyBudget=Math.max(0,+dutyBudget.value||0);s.anchorDuty=anchorDuty.value||s.anchorDuty;save();render()};
+checkDate.onchange=()=>{s.checkDate=checkDate.value;s.spent=0;s.expenses=[];spent.value=0;save();render()};payday.onchange=()=>{s.payday=payday.value;s.paydays[s.payday.slice(0,7)]=s.payday;save();render()};
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;installBtn.hidden=false});installBtn.onclick=async()=>{if(!deferredPrompt)return;deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;installBtn.hidden=true};window.addEventListener('appinstalled',()=>{installHint.textContent='ติดตั้งแอปแล้ว — เปิดจากไอคอน “คุมงบดาบเจ๋ง” บนหน้าจอมือถือได้เลย'});
+sync();render();if('serviceWorker'in navigator)navigator.serviceWorker.register('./service-worker.js').catch(()=>{});
+</script>
+</body>
+</html>
