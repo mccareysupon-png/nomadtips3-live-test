@@ -4,6 +4,7 @@ const runtime=window.NOMAD342_MARKET_RUNTIME||{};
 const preset=window.NOMAD342_K_LIVE_PRESET||{};
 const kMarket=preset.market||{};
 const list=()=>document.getElementById('matchList');
+const autoExpandedMatches=new Set();
 let timer=null,running=false,lastPayload=null,lastError=null;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
@@ -13,6 +14,7 @@ function compact(v=''){return norm(v).replace(/\s/g,'')}
 function teamScore(a,b){const x=norm(a),y=norm(b);if(!x||!y)return 0;if(x===y)return 1;if(compact(x)===compact(y))return .99;if(x.length>=5&&y.length>=5&&(x.includes(y)||y.includes(x)))return .9;const aa=new Set(x.split(' ').filter(Boolean)),bb=new Set(y.split(' ').filter(Boolean));let hit=0;for(const t of aa)if(bb.has(t))hit++;const union=aa.size+bb.size-hit;return union?hit/union:0}
 function fmtOdds(v){const n=finite(v);if(n===null)return'—';const formatter=window.NOMAD342_ODDS_DISPLAY?.format;return typeof formatter==='function'?formatter(n):n.toFixed(2)}
 function fmtLine(v){const n=finite(v);if(n===null)return '—';return `${n>0?'+':''}${Number.isInteger(n)?n.toFixed(1):n.toFixed(2)}`}
+function fmtOppositeLine(v){const n=finite(v);return n===null?'—':fmtLine(-n)}
 function observedAt(m){const rows=Array.isArray(m?.bookmakers)?m.bookmakers:[];const values=rows.map(b=>Number(b?.observedAt)).filter(Number.isFinite);const direct=Number(m?.observedAt);if(Number.isFinite(direct))values.push(direct);return values.length?Math.max(...values):null}
 function ageText(ms){if(!Number.isFinite(ms)||ms<0)return '—';if(ms<1000)return '<1s';if(ms<60000)return `${Math.floor(ms/1000)}s`;return `${Math.floor(ms/60000)}m`}
 function bookmakerNames(m,limit=3){return (Array.isArray(m?.bookmakers)?m.bookmakers:[]).map(b=>String(b?.name||'').trim()).filter(Boolean).slice(0,limit)}
@@ -37,7 +39,7 @@ function mapMarket(eventMatch,marketMatches){
 
 function historyStore(){try{return JSON.parse(localStorage.getItem(runtime.historyKey)||'{}')||{}}catch{return {}}}
 function historyKey(m){return `${norm(m?.home)}__${norm(m?.away)}`}
-function snapshot(m){return {at:Number(m?.observedAt)||Date.now(),oneXtwo:m?.main?.oneXtwo||null,totals:m?.main?.totals||null}}
+function snapshot(m){return {at:Number(m?.observedAt)||Date.now(),ah:m?.main?.ah||null,oneXtwo:m?.main?.oneXtwo||null,totals:m?.main?.totals||null}}
 function remember(payload){
   if(!runtime.historyKey)return;
   const store=historyStore(),cutoff=Date.now()-2*60*60*1000,max=Math.max(4,Number(runtime.historyMaxRows)||24);
@@ -55,13 +57,15 @@ function moveHtml(label,current,previous){const m=movement(current,previous);ret
 function marketHtml(m){
   const main=m?.main||{},prev=previousSnapshot(m),age=Date.now()-(observedAt(m)||Date.now()),books=Array.isArray(m?.bookmakers)?m.bookmakers:[];
   const names=bookmakerNames(m,3),bookLabel=names.length?names.join(' · '):'BOOKMAKER DATA';
-  const one=main.oneXtwo,tot=main.totals;
+  const one=main.oneXtwo,ah=main.ah,tot=main.totals;
   const oneMove=moveHtml('HOME 1X2',one?.home,prev?.oneXtwo?.home);
+  const ahMove=moveHtml('HOME AH',ah?.homeOdds,finite(prev?.ah?.line)===finite(ah?.line)?prev?.ah?.homeOdds:null);
   const ouMove=moveHtml('OVER',tot?.overOdds,prev?.totals?.line===tot?.line?prev?.totals?.overOdds:null);
   return `<section class="nomad-market-card market-reference-only" data-market-match="${esc(m.matchKey||historyKey(m))}">
-    <div class="market-head"><div><span>PRICE REFERENCE</span><small>${esc(bookLabel)} · 1X2 + OVER/UNDER</small></div><div class="market-health"><strong>${books.length}</strong><span>BOOKS</span><small>${esc(ageText(age))} old</small></div></div>
+    <div class="market-head"><div><span>PRICE REFERENCE</span><small>${esc(bookLabel)} · 1X2 + AH + OVER/UNDER</small></div><div class="market-health"><strong>${books.length}</strong><span>BOOKS</span><small>${esc(ageText(age))} old</small></div></div>
     <div class="market-grid">
       <article class="market-tile market-1x2"><div class="market-title"><span>1X2</span><b>MATCH RESULT</b></div>${one?`<div class="market-triple"><div><small>1</small><strong>${esc(fmtOdds(one.home))}</strong></div><div><small>X</small><strong>${esc(fmtOdds(one.draw))}</strong></div><div><small>2</small><strong>${esc(fmtOdds(one.away))}</strong></div></div>${oneMove}`:'<div class="market-empty">NO FRESH 1X2</div>'}</article>
+      <article class="market-tile market-ah"><div class="market-title"><span>AH</span><b>ASIAN HANDICAP ${esc(fmtLine(ah?.line))}</b></div>${ah?`<div class="market-pair"><div><small>HOME</small><strong>${esc(fmtLine(ah.line))}</strong><b>@ ${esc(fmtOdds(ah.homeOdds))}</b></div><div><small>AWAY</small><strong>${esc(fmtOppositeLine(ah.line))}</strong><b>@ ${esc(fmtOdds(ah.awayOdds))}</b></div></div>${ahMove}`:'<div class="market-empty">NO FRESH AH</div>'}</article>
       <article class="market-tile market-ou"><div class="market-title"><span>O/U</span><b>TOTAL ${esc(fmtLine(tot?.line))}</b></div>${tot?`<div class="market-pair"><div><small>OVER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.overOdds))}</b></div><div><small>UNDER</small><strong>${esc(fmtLine(tot.line))}</strong><b>@ ${esc(fmtOdds(tot.underOdds))}</b></div></div>${ouMove}`:'<div class="market-empty">NO FRESH TOTAL</div>'}</article>
     </div>
     <div class="market-bookmakers"><span>BOOKMAKER REFERENCE</span>${books.slice(0,12).map(b=>`<b>${esc(b.name)}</b>`).join('')}${books.length>12?`<i>+${books.length-12}</i>`:''}</div>
@@ -69,6 +73,12 @@ function marketHtml(m){
 }
 
 function removeMarket(card){card?.querySelectorAll('.nomad-market-card,.market-mini-badge').forEach(n=>n.remove())}
+function autoExpandMarketCard(card,r){
+  const id=String(r?.m?.id??card?.dataset?.matchId??'');
+  if(!id||autoExpandedMatches.has(id))return;
+  autoExpandedMatches.add(id);
+  if(!card.classList.contains('expanded'))card.click();
+}
 function hydrateCard(card,r,marketMatches){
   if(!card||!r)return;
   removeMarket(card);
@@ -83,6 +93,7 @@ function hydrateCard(card,r,marketMatches){
   const names=bookmakerNames(market,3);
   const badge=document.createElement('span');badge.className='market-mini-badge';badge.textContent=names.length?names.join(' · '):`${market.refereesOnline||market.bookmakers?.length||0} BOOKS`;
   const topline=card.querySelector('.card-topline');if(topline)topline.appendChild(badge);
+  autoExpandMarketCard(card,r);
 }
 function hydrateAll(){
   const results=window.__nomad342EventResults;if(!Array.isArray(results)||!lastPayload?.matches)return;
