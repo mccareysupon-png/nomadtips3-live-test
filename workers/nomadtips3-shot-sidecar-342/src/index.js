@@ -1,11 +1,11 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const VERSION = 'shot-sidecar-342-v1';
 const PROVIDER = '5DollarFootballAPI';
-const PROVIDER_CACHE_MS = 20 * 60 * 1000;
+const PROVIDER_CACHE_MS = 120 * 1000;
 const NOMAD_CACHE_MS = 15 * 1000;
 const PROVIDER_TIMEOUT_MS = 8000;
 const NOMAD_TIMEOUT_MS = 8000;
-const PROVIDER_PAGE_SIZE = 50;
+const PROVIDER_PAGE_SIZE = 500;
 
 let providerCache = { at: 0, fixtures: [], error: null };
 let nomadCache = { at: 0, matches: [], error: null };
