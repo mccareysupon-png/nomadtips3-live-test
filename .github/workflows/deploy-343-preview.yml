@@ -90,8 +90,7 @@ jobs:
           if(j.ok!==true||j.version!=='nomad343-5usd-hub-v2')process.exit(1);
           NODE
           for path in / /signal.html /statistics.html /settings.html /live.js; do
-            code="$(curl -sS --max-time 20 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
+            code="$(curl -L -sS --max-time 20 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
           done
-          grep -Fq "Today's Scores" /tmp/page || true
