@@ -21,11 +21,11 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
   }
 }
 
-/* 2026-09-09 — repair only the TOP SUMMARY CARD SETS in 3.42.
-   Reference colors come from the exact AH teal-green and O/U purple cards supplied by the owner.
-   Keep the existing square geometry, dimensions, spacing, text, values and runtime behavior. */
+/* 2026-09-09 — TOP SUMMARY CARD SETS in 3.42.
+   Use the owner-approved AH teal-green and O/U purple as clean solid fills.
+   No gradient, glow or texture; keep geometry, spacing, text, values and runtime behavior. */
 
-/* The heading is NOT part of the requested two-color card set. Restore it to neutral dark. */
+/* The heading is NOT part of the requested two-color card set. */
 html body[data-page="live"] main.shell>section.nomad342-subpage-heading{
   background:linear-gradient(145deg,#20251f,#191d18 52%,#151814)!important;
   border-radius:0!important;
@@ -38,7 +38,7 @@ html body[data-page="live"] main.shell>section.nomad342-subpage-heading h2{
   color:var(--text)!important;
 }
 
-/* Remove the old one-piece olive summary background. Do not alter its grid. */
+/* Summary container stays transparent; each metric carries its own solid color. */
 html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid{
   background:transparent!important;
   border-radius:0!important;
@@ -47,24 +47,23 @@ html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status
 html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric{
   border-radius:0!important;
   box-shadow:none!important;
+  filter:none!important;
 }
 
-/* Group 1 = AH reference teal-green. */
+/* Group 1 = AH reference teal-green — solid and seamless. */
 html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(-n+2),
 html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric:nth-child(-n+3),
 html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric:nth-child(-n+5){
-  background:
-    radial-gradient(circle at 88% 0%,rgba(24,108,88,.34) 0%,rgba(24,108,88,.12) 18%,transparent 36%),
-    linear-gradient(145deg,#083c33 0%,#082824 56%,#061e1e 100%)!important;
+  background:#082824!important;
+  background-image:none!important;
 }
 
-/* Group 2 = O/U reference purple. */
+/* Group 2 = O/U reference purple — solid and seamless. */
 html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(n+3),
 html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric:nth-child(n+4),
 html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric:nth-child(n+6){
-  background:
-    radial-gradient(circle at 88% 0%,rgba(103,55,138,.38) 0%,rgba(103,55,138,.13) 18%,transparent 36%),
-    linear-gradient(145deg,#47265f 0%,#2c1c3e 56%,#21122f 100%)!important;
+  background:#2c1c3e!important;
+  background-image:none!important;
 }
 
 /* Neutral readable labels on both colors. Values and semantic result colors stay untouched. */
@@ -72,21 +71,13 @@ html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status
   color:rgba(238,241,238,.72)!important;
 }
 
-/* 2026-09-09 — Live summary matte pass.
-   Only LIVE MATCHES / FRESH FEED / ROLLING WINDOW / EVENT PASS.
-   No glow, no separator lines, but keep enough tonal depth to avoid a flat block. */
-html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(-n+2){
-  background:linear-gradient(180deg,#0c3a33 0%,#0a302b 52%,#082722 100%)!important;
-  box-shadow:none!important;
-  filter:none!important;
-}
-html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(n+3){
-  background:linear-gradient(180deg,#422b55 0%,#362342 52%,#2a1c34 100%)!important;
-  box-shadow:none!important;
-  filter:none!important;
-}
+/* No decorative separators on any summary metric. */
 html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::before,
-html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::after{
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::after,
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric::before,
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric::after,
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric::before,
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric::after{
   content:none!important;
   display:none!important;
   background:none!important;
