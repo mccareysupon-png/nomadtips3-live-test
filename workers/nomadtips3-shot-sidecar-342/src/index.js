@@ -1,5 +1,5 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
-const VERSION = 'shot-sidecar-342-v2';
+const VERSION = 'shot-sidecar-342-v3';
 const PROVIDER = '5DollarFootballAPI';
 const PROVIDER_CACHE_MS = 120 * 1000;
 const NOMAD_CACHE_MS = 15 * 1000;
@@ -211,7 +211,7 @@ async function providerFixtures(env, force = false) {
   const timestamp = now();
   if (!force && providerCache.at && timestamp - providerCache.at < PROVIDER_CACHE_MS) return { ...providerCache, cacheHit:true };
   if (!env.FIVEDOLLAR_API_KEY) throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');
-  const path = `/fixtures?status=live&include=stats&per_page=${PROVIDER_PAGE_SIZE}`;
+  const path = `/fixtures?status=live&include=events,stats&per_page=${PROVIDER_PAGE_SIZE}`;
   try {
     const payload = await fetchJson(`${API_BASE}${path}`, {
       timeoutMs:PROVIDER_TIMEOUT_MS,
@@ -259,6 +259,26 @@ function statsFromFixture(fixture) {
   const off = pair(root.shots_off_target ?? root.shotsOffTarget ?? root.off);
   const available = [sot.home, sot.away, off.home, off.away].some(value => value !== null);
   return available ? { shotOnTarget:sot, shotOffTarget:off } : null;
+}
+function goalEventsFromFixture(fixture) {
+  const rows = Array.isArray(fixture?.events)
+    ? fixture.events
+    : Array.isArray(fixture?.event?.events)
+      ? fixture.event.events
+      : [];
+  return rows
+    .filter(event => String(event?.type ?? '').trim().toLowerCase() === 'goal')
+    .map(event => {
+      const minute = number(event?.minute);
+      const team = String(event?.team ?? event?.side ?? '').trim().toLowerCase();
+      return {
+        minute,
+        side: team === 'home' ? 'HOME' : team === 'away' ? 'AWAY' : '',
+        count: Math.max(1, number(event?.count) ?? 1),
+      };
+    })
+    .filter(event => event.minute !== null && (event.side === 'HOME' || event.side === 'AWAY'))
+    .sort((a, b) => a.minute - b.minute || a.side.localeCompare(b.side));
 }
 
 function bucketForMinute(minute) {
@@ -334,10 +354,24 @@ async function buildSnapshot(env, forceProvider = false) {
       continue;
     }
     matched++;
-    const stats = statsFromFixture(mapping.fixture);
     const providerFixtureId = String(fixtureId(mapping.fixture));
+    const goalEvents = goalEventsFromFixture(mapping.fixture);
+    const stats = statsFromFixture(mapping.fixture);
     if (!stats) {
-      results.push({ nomadMatchId:target.id, providerFixtureId, home:target.home, away:target.away, status:'STATS_UNAVAILABLE', mapping:{ confidence:mapping.confidence ?? null, locked:Boolean(mapping.locked) } });
+      results.push({
+        nomadMatchId:target.id,
+        providerFixtureId,
+        home:target.home,
+        away:target.away,
+        league:target.league,
+        minute:target.minute,
+        status:'STATS_UNAVAILABLE',
+        source:PROVIDER,
+        displayOnly:true,
+        detectorConnected:false,
+        mapping:{ confidence:mapping.confidence ?? null, locked:Boolean(mapping.locked) },
+        goalEvents,
+      });
       continue;
     }
     statsReady++;
@@ -357,6 +391,7 @@ async function buildSnapshot(env, forceProvider = false) {
       mapping:{ confidence:mapping.confidence ?? null, locked:Boolean(mapping.locked) },
       shotOnTarget:stats.shotOnTarget,
       shotOffTarget:stats.shotOffTarget,
+      goalEvents,
       rolling15:rolling15(rows),
       snapshot:{ bucket:bucketForMinute(target.minute), matchMinuteObserved:target.minute, observedAt },
     });
