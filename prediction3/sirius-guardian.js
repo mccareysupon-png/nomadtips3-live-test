@@ -77,8 +77,11 @@
     const finalLabel=card.querySelector('.p3-final-heading span');
     if(finalLabel)finalLabel.textContent='SIRIUS FINAL CALL';
 
+    const priceRule=card.querySelector('.p3-price-rule');
+    if(priceRule)priceRule.innerHTML='Official pick requires <strong>1.70+</strong>. Raw Best Market may be shown separately when it falls below the price gate.';
+
     const note=card.querySelector('.prediction3-card-note');
-    if(note)note.textContent='Queen Sirius guardian presentation · Prediction3 manual record · odds and results remain factual.';
+    if(note)note.textContent='Queen Sirius guardian presentation · Prediction3 multi-market record · official odds and results remain factual.';
   }
 
   function scan(root=document){
