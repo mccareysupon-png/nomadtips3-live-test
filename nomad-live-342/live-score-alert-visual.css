@@ -241,3 +241,22 @@ body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric>span{
 body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric:not(:last-child)::after{
   background:rgba(184,160,96,.13)!important;
 }
+
+/* 2026-09-09 — Signal market fills: solid color only.
+   Keep the existing green price-ready/signal outline exactly as-is. */
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-market:not(.price-ready),
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-compare{
+  border:0!important;
+}
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-market-1x2{
+  background:#10365e!important;
+}
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-market-ou{
+  background:#3b2357!important;
+}
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-market.signal-market-ah{
+  background:#0b493b!important;
+}
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-compare{
+  background:#272c29!important;
+}
