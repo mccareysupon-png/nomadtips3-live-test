@@ -20,3 +20,46 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
     box-shadow:0 0 0 1px rgba(131,223,137,.16),0 0 14px rgba(131,223,137,.18);
   }
 }
+
+/* 2026-09-09 — 3.42 top summary cards: use the exact two visual families
+   requested from the AH (deep teal-green) and O/U (deep purple) reference.
+   COLOR ONLY. Keep the current square geometry, sizing, layout, data and behavior. */
+
+/* Undo the mistaken bronze heading override and return the 3.42 heading to its existing dark card. */
+html body[data-page="live"] main.shell>.nomad342-subpage-heading{
+  background:linear-gradient(145deg,#20251f,#191d18 52%,#151814)!important;
+  border-radius:0!important;
+}
+html body[data-page="live"] main.shell>.nomad342-subpage-heading h2{
+  color:var(--text)!important;
+}
+
+/* All top KPI/summary card sets in Live / Signal / Statistics. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid{
+  background:transparent!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* AH reference family — deep teal-green with the same soft upper highlight. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric:nth-child(odd){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(25,111,91,.34) 0%,rgba(25,111,91,.12) 18%,transparent 36%),
+    linear-gradient(145deg,#083c33 0%,#082824 56%,#061e1e 100%)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* O/U reference family — deep purple with the same soft upper highlight. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric:nth-child(even){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(104,55,139,.38) 0%,rgba(104,55,139,.13) 18%,transparent 36%),
+    linear-gradient(145deg,#47265f 0%,#2c1c3e 56%,#21122f 100%)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* Keep labels readable on both colors; do not alter values or status semantics. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric>span{
+  color:rgba(238,241,238,.72)!important;
+}
