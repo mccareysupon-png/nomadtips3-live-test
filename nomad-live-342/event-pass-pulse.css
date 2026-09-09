@@ -20,3 +20,57 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
     box-shadow:0 0 0 1px rgba(131,223,137,.16),0 0 14px rgba(131,223,137,.18);
   }
 }
+
+/* 2026-09-09 — repair only the TOP SUMMARY CARD SETS in 3.42.
+   Reference colors come from the exact AH teal-green and O/U purple cards supplied by the owner.
+   Keep the existing square geometry, dimensions, spacing, text, values and runtime behavior. */
+
+/* The heading is NOT part of the requested two-color card set. Restore it to neutral dark. */
+html body[data-page="live"] main.shell>section.nomad342-subpage-heading{
+  background:linear-gradient(145deg,#20251f,#191d18 52%,#151814)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+html body[data-page="live"] main.shell>section.nomad342-subpage-heading .eyebrow{
+  color:#a7afa7!important;
+}
+html body[data-page="live"] main.shell>section.nomad342-subpage-heading h2{
+  color:var(--text)!important;
+}
+
+/* Remove the old one-piece olive summary background. Do not alter its grid. */
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid{
+  background:transparent!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric{
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+
+/* Group 1 = AH reference teal-green. */
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(-n+2),
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric:nth-child(-n+3),
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric:nth-child(-n+5){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(24,108,88,.34) 0%,rgba(24,108,88,.12) 18%,transparent 36%),
+    linear-gradient(145deg,#083c33 0%,#082824 56%,#061e1e 100%)!important;
+}
+
+/* Group 2 = O/U reference purple. */
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(n+3),
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric:nth-child(n+4),
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric:nth-child(n+6){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(103,55,138,.38) 0%,rgba(103,55,138,.13) 18%,transparent 36%),
+    linear-gradient(145deg,#47265f 0%,#2c1c3e 56%,#21122f 100%)!important;
+}
+
+/* Neutral readable labels on both colors. Values and semantic result colors stay untouched. */
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric>span{
+  color:rgba(238,241,238,.72)!important;
+}
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric:not(:last-child)::after{
+  background:rgba(255,255,255,.10)!important;
+}
