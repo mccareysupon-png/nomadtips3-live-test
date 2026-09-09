@@ -86,6 +86,9 @@ function ensureAsianHandicapCardStyle(){
     body[data-page="live"] #nomad342PanelSignal .signal-final.is-final>strong,body[data-page="live"] #nomad342PanelSignal .signal-final.is-final>small{color:#c3c1b2!important}
     body[data-page="live"] #nomad342PanelSignal .signal-result.push{color:#b9b19a!important;background:rgba(185,177,154,.06)!important}
     body[data-page="live"] #nomad342PanelSignal .signal-live-meta{color:#b9bbb0!important}
+    @keyframes nomad342SignalPriceReady{0%,100%{border-color:rgba(86,168,111,.34);box-shadow:0 0 0 rgba(78,180,108,0)}50%{border-color:rgba(102,210,137,.96);box-shadow:0 0 10px rgba(78,180,108,.18),inset 0 0 0 1px rgba(110,216,144,.07)}}
+    body[data-page="live"] #nomad342PanelSignal .signal-market.price-ready{box-sizing:border-box;border:1px solid rgba(86,168,111,.52)!important;animation:nomad342SignalPriceReady 2s ease-in-out infinite}
+    @media(prefers-reduced-motion:reduce){body[data-page="live"] #nomad342PanelSignal .signal-market.price-ready{animation:none;border-color:rgba(102,210,137,.82)!important}}
     @media(max-width:900px){body[data-page="live"] #nomad342PanelSignal .signal-lock-grid.has-asian-handicap{grid-template-columns:repeat(2,minmax(0,1fr))}.signal-lock-grid.has-asian-handicap .signal-final{min-height:100%}}
     @media(max-width:700px){body[data-page="live"] #nomad342PanelSignal .signal-lock-grid.has-asian-handicap{grid-template-columns:1fr}body[data-page="live"] #nomad342PanelSignal .signal-compare{min-height:92px}body[data-page="live"] #nomad342PanelSignal .signal-compare-stage{grid-template-columns:44px 1fr auto}}
   `;
@@ -137,6 +140,13 @@ function marketResult(record,key){
   if(key==='ah')return 'PENDING';
   return record?.settlement?.totals?.result||'PENDING';
 }
+function marketPriceReady(view,key){
+  const pick=String(view?.pick||'').toUpperCase(),odds=finite(view?.odds);
+  if(key==='oneXtwo')return ['HOME','DRAW','AWAY'].includes(pick)&&odds!==null;
+  if(key==='totals')return ['OVER','UNDER'].includes(pick)&&finite(view?.line)!==null&&odds!==null;
+  if(key==='ah')return Boolean(view?.locked)&&['HOME','AWAY'].includes(pick)&&finite(view?.line)!==null&&odds!==null;
+  return false;
+}
 function lockSnapshot(view,record){
   const minute=finite(view?.lockMinute)??finite(record?.minute),score=scorePair(view?.entryScore)||scorePair(record?.entryScore);
   return {minute,score};
@@ -147,7 +157,7 @@ function marketCompareText(view,record,mirror){
   return `LOCK ${lock.minute===null?'—':Math.trunc(lock.minute)}′ · ${lock.score?pair(lock.score):'—'} → ${liveStage} · ${mirror.score?pair(mirror.score):'—'}`;
 }
 function asianHandicapCard(ah,result,record,mirror){
-  const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase();
+  const locked=Boolean(ah?.locked),pick=String(ah?.pick||'').toUpperCase(),ready=marketPriceReady(ah,'ah');
   const selectedLine=finite(ah?.line),rawLine=finite(ah?.rawLine),selectedOdds=finite(ah?.odds),homeOdds=finite(ah?.homeOdds),awayOdds=finite(ah?.awayOdds),rawHome=finite(ah?.rawHomeHk),rawAway=finite(ah?.rawAwayHk);
   const rawSelected=pick==='HOME'?rawHome:pick==='AWAY'?rawAway:null,expectedLine=rawLine===null?null:(pick==='HOME'?-rawLine:rawLine),expectedOdds=rawSelected===null?null:1+rawSelected;
   const perspectiveOk=expectedLine===null||selectedLine===null?null:Math.abs(expectedLine-selectedLine)<1e-9;
@@ -159,18 +169,19 @@ function asianHandicapCard(ah,result,record,mirror){
   const rawText=rawHome===null&&rawAway===null?'Hong Kong raw odds not stored':`Hong Kong Home ${fmtRaw(rawHome)} · Away ${fmtRaw(rawAway)}${priceOk===null?'':` · selected → ${fmtDecimal(expectedOdds)} ${priceOk?'✓':'⚠'}`}`;
   const finalScore=scorePair(record?.settlement?.finalScore),gradingScore=finalScore?scoreAfterEntry(finalScore,ah?.entryScore||record?.entryScore):null,expectedResult=gradingScore?gradeAhExpected(pick,selectedLine,gradingScore):null,serverResult=String(result||'PENDING').toUpperCase(),settlementOk=expectedResult?expectedResult===serverResult:null;
   const settlementText=expectedResult&&finalScore&&gradingScore?`FT ${pair(finalScore)} · AFTER LOCK ${pair(gradingScore)} · expected ${displayResult(expectedResult)} · ${settlementOk?'✓':'⚠'}`:'';
-  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">DECIMAL ${esc(fmtDecimal(selectedOdds))}</span></div><strong>${esc(selection)}</strong>${locked?`<small class="signal-pick-side">${esc(pick)}</small>`:`<small class="ah-audit-row">ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้</small>`}<small class="ah-audit-row">${locked?esc(`${source?`${source} · `:''}${pairText}`):'—'}</small><small class="ah-audit-row ${priceOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(rawText):'—'}</small><small>${locked?esc(marketCompareText(ah,record,mirror)):'—'}</small>${settlementText?`<small class="ah-audit-row ${settlementOk===false?'ah-audit-warn':'ah-audit-ok'}">${esc(settlementText)}</small>`:''}<span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
+  return `<section class="signal-market signal-market-ah${locked?'':' is-no-lock'}${ready?' price-ready':''}"><div class="signal-market-head"><span>ASIAN HANDICAP</span><span class="signal-odds">DECIMAL ${esc(fmtDecimal(selectedOdds))}</span></div><strong>${esc(selection)}</strong>${locked?`<small class="signal-pick-side">${esc(pick)}</small>`:`<small class="ah-audit-row">ยังไม่มี Asian Handicap Signal ที่ล็อกในคู่นี้</small>`}<small class="ah-audit-row">${locked?esc(`${source?`${source} · `:''}${pairText}`):'—'}</small><small class="ah-audit-row ${priceOk===false?'ah-audit-warn':'ah-audit-ok'}">${locked?esc(rawText):'—'}</small><small>${locked?esc(marketCompareText(ah,record,mirror)):'—'}</small>${settlementText?`<small class="ah-audit-row ${settlementOk===false?'ah-audit-warn':'ah-audit-ok'}">${esc(settlementText)}</small>`:''}<span class="signal-result ${esc(resultClass(result))}">${esc(locked?displayResult(result):'NO LOCK')}</span></section>`;
 }
 function card(record){
   const one=marketView(record,'oneXtwo'),totals=marketView(record,'totals'),ah=marketView(record,'ah');
   const oneResult=marketResult(record,'oneXtwo'),totalsResult=marketResult(record,'totals'),ahResult=marketResult(record,'ah'),mirror=scoreMirror(record),firstLock=lockSnapshot({},record);
   const oneTeam=selectedTeam(record,one.pick),liveMeta=mirror.status==='FT'?`FT · SCORE ${mirror.score?pair(mirror.score):'—'}`:mirror.status==='WAIT'?'LIVE WAIT':`LIVE ${mirror.status} · SCORE ${mirror.score?pair(mirror.score):'—'}`;
+  const oneReady=marketPriceReady(one,'oneXtwo'),totalsReady=marketPriceReady(totals,'totals');
   return `<article class="signal-lock-card" data-match-id="${esc(record.matchId)}">
     <div class="signal-lock-head"><div><div class="signal-lock-kicker">SIGNAL LOCKED · 3.42</div><div class="signal-lock-teams">${esc(record.home)} — ${esc(record.away)}</div><div class="signal-lock-league">${esc(record.league||'—')}</div></div><div class="signal-lock-meta"><span>FIRST LOCK ${esc(record.minute??'—')}′ · SCORE ${esc(pair(record.entryScore))}</span><span class="signal-live-meta">${esc(liveMeta)}</span><span>${esc(when(record.lockedAt))}</span></div></div>
     <div class="signal-lock-grid has-asian-handicap">
-      <section class="signal-market signal-market-1x2"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(oneTeam)}</strong><small class="signal-pick-side">${esc(one.pick||'—')}</small><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><small>${esc(marketCompareText(one,record,mirror))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(displayResult(oneResult))}</span></section>
+      <section class="signal-market signal-market-1x2${oneReady?' price-ready':''}"><div class="signal-market-head"><span>1X2</span><span class="signal-odds">@ ${esc(fmtOdds(one.odds))}</span></div><strong>${esc(oneTeam)}</strong><small class="signal-pick-side">${esc(one.pick||'—')}</small><small>HOME ${esc(fmtPct(one.home))} · DRAW ${esc(fmtPct(one.draw))} · AWAY ${esc(fmtPct(one.away))}</small><small>${esc(marketCompareText(one,record,mirror))}</small><span class="signal-result ${esc(resultClass(oneResult))}">${esc(displayResult(oneResult))}</span></section>
       <section class="signal-final signal-compare ${mirror.status==='FT'?'is-final':'is-wait'}" aria-label="Lock versus live score comparison"><span>COMPARE</span><div class="signal-compare-stage"><small>LOCK</small><b>${esc(firstLock.minute===null?'—':`${Math.trunc(firstLock.minute)}′`)}</b><strong>${esc(firstLock.score?pair(firstLock.score):'—')}</strong></div><div class="signal-compare-arrow">→</div><div class="signal-compare-stage"><small>${mirror.status==='FT'?'FT':'LIVE'}</small><b>${esc(mirror.status==='WAIT'?'—':mirror.status)}</b><strong>${esc(mirror.score?pair(mirror.score):'—')}</strong></div></section>
-      <section class="signal-market signal-market-ou"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><small>${esc(marketCompareText(totals,record,mirror))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(displayResult(totalsResult))}</span></section>
+      <section class="signal-market signal-market-ou${totalsReady?' price-ready':''}"><div class="signal-market-head"><span>OVER / UNDER ${esc(totals.line??'—')}</span><span class="signal-odds">@ ${esc(fmtOdds(totals.odds))}</span></div><strong>${esc(totals.pick||'—')}</strong><small>OVER ${esc(fmtPct(totals.over))} · UNDER ${esc(fmtPct(totals.under))}</small><small>${esc(marketCompareText(totals,record,mirror))}</small><span class="signal-result ${esc(resultClass(totalsResult))}">${esc(displayResult(totalsResult))}</span></section>
       ${asianHandicapCard(ah,ahResult,record,mirror)}
     </div>
   </article>`;
