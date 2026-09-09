@@ -18,7 +18,7 @@ const iso=value=>new Date(value||Date.now()).toISOString();
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value))?Number(value):null;
 
 async function fetchJson(url){
-  const response=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store',headers:{'accept':'application/json'}});
+  const response=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store',headers:{accept:'application/json'}});
   if(!response.ok)throw new Error(`http_${response.status}`);
   return response.json();
 }
@@ -27,10 +27,7 @@ async function fetchApiFootballFinals(date,env){
   if(!env?.API_FOOTBALL_KEY)throw new Error('api_football_key_missing');
   const url=new URL('/fixtures',API_FOOTBALL_BASE);
   url.searchParams.set('date',date);
-  const response=await fetch(url.toString(),{
-    cache:'no-store',
-    headers:{'accept':'application/json','x-apisports-key':env.API_FOOTBALL_KEY},
-  });
+  const response=await fetch(url.toString(),{cache:'no-store',headers:{accept:'application/json','x-apisports-key':env.API_FOOTBALL_KEY}});
   if(!response.ok)throw new Error(`api_football_http_${response.status}`);
   const body=await response.json();
   const rows=[];
@@ -42,309 +39,108 @@ async function fetchApiFootballFinals(date,env){
     const awayScore=finite(entry?.score?.fulltime?.away??entry?.goals?.away);
     const fixtureId=String(entry?.fixture?.id??'').trim();
     if(!fixtureId||!home||!away||homeScore===null||awayScore===null)continue;
-    rows.push({
-      id:`api-football:${fixtureId}`,
-      apiFixtureId:fixtureId,
-      league:entry?.league?.name||null,
-      home,away,status:'FT',score:[homeScore,awayScore],
-      source:'API-Football',
-    });
+    rows.push({id:`api-football:${fixtureId}`,apiFixtureId:fixtureId,league:entry?.league?.name||null,home,away,status:'FT',score:[homeScore,awayScore],source:'API-Football'});
   }
   return rows;
 }
 
-const LATIN_FOLD=Object.freeze({
-  'ł':'l','Ł':'L','ø':'o','Ø':'O','đ':'d','Đ':'D','ð':'d','Ð':'D',
-  'þ':'th','Þ':'TH','æ':'ae','Æ':'AE','œ':'oe','Œ':'OE','ß':'ss',
-});
+const LATIN_FOLD=Object.freeze({'ł':'l','Ł':'L','ø':'o','Ø':'O','đ':'d','Đ':'D','ð':'d','Ð':'D','þ':'th','Þ':'TH','æ':'ae','Æ':'AE','œ':'oe','Œ':'OE','ß':'ss'});
 const IGNORED_TEAM_TOKENS=new Set(['fc','cf','sc','ac','afc','club','de','the','stade','olympique','football','al']);
-export function foldLatin(value){
-  return String(value||'')
-    .replace(/[łŁøØđĐðÐþÞæÆœŒß]/g,ch=>LATIN_FOLD[ch]||ch)
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g,'');
-}
-export function tokens(value){
-  return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!IGNORED_TEAM_TOKENS.has(x))||[];
-}
+export function foldLatin(value){return String(value||'').replace(/[łŁøØđĐðÐþÞæÆœŒß]/g,ch=>LATIN_FOLD[ch]||ch).normalize('NFKD').replace(/[\u0300-\u036f]/g,'');}
+export function tokens(value){return foldLatin(value).toLowerCase().match(/[a-z0-9]+/g)?.filter(x=>!IGNORED_TEAM_TOKENS.has(x))||[];}
 function editDistance(a,b){
-  if(a===b)return 0;
-  if(!a.length)return b.length;
-  if(!b.length)return a.length;
+  if(a===b)return 0;if(!a.length)return b.length;if(!b.length)return a.length;
   const prev=Array.from({length:b.length+1},(_,i)=>i);
-  for(let i=1;i<=a.length;i+=1){
-    let last=prev[0];
-    prev[0]=i;
-    for(let j=1;j<=b.length;j+=1){
-      const old=prev[j];
-      prev[j]=Math.min(prev[j]+1,prev[j-1]+1,last+(a[i-1]===b[j-1]?0:1));
-      last=old;
-    }
-  }
+  for(let i=1;i<=a.length;i+=1){let last=prev[0];prev[0]=i;for(let j=1;j<=b.length;j+=1){const old=prev[j];prev[j]=Math.min(prev[j]+1,prev[j-1]+1,last+(a[i-1]===b[j-1]?0:1));last=old;}}
   return prev[b.length];
 }
-function tokenLike(a,b){
-  if(a===b)return true;
-  if(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4))return true;
-  return a.length>=5&&b.length>=5&&Math.abs(a.length-b.length)<=1&&editDistance(a,b)<=1;
-}
-export function teamScore(a,b){
-  const aa=tokens(a),bb=tokens(b);
-  if(!aa.length||!bb.length)return 0;
-  let matched=0;
-  for(const x of aa)if(bb.some(y=>tokenLike(x,y)))matched+=1;
-  // The selected-team name is the canonical side. Providers may append city/suffix
-  // tokens (for example LASK -> LASK Linz), so extra provider tokens must not make
-  // an otherwise exact identity fail.
-  return matched/aa.length;
-}
+function tokenLike(a,b){if(a===b)return true;if(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4))return true;return a.length>=5&&b.length>=5&&Math.abs(a.length-b.length)<=1&&editDistance(a,b)<=1;}
+export function teamScore(a,b){const aa=tokens(a),bb=tokens(b);if(!aa.length||!bb.length)return 0;let matched=0;for(const x of aa)if(bb.some(y=>tokenLike(x,y)))matched+=1;return matched/aa.length;}
 function rowId(row){return String(row?.id??row?.fixtureId??'');}
-export function fixtureIdentityMatches(item,row){
-  if(!item||!row)return false;
-  return teamScore(item?.home,row?.home)>=0.75&&teamScore(item?.away,row?.away)>=0.75;
-}
-export function kickoffMs(item){
-  const raw=item?.tracking?.kickoffUtc||item?.kickoffAt||null;
-  if(!raw)return null;
-  const value=Date.parse(raw);
-  return Number.isFinite(value)?value:null;
-}
-function kickoffDate(item){
-  const value=kickoffMs(item);
-  return value===null?null:new Date(value).toISOString().slice(0,10);
-}
-export function finalFallbackEligible(item,at=now()){
-  const kickoff=kickoffMs(item);
-  return kickoff!==null&&Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS;
-}
+export function fixtureIdentityMatches(item,row){return Boolean(item&&row&&teamScore(item?.home,row?.home)>=0.75&&teamScore(item?.away,row?.away)>=0.75);}
+export function kickoffMs(item){const raw=item?.tracking?.kickoffUtc||item?.kickoffAt||null;if(!raw)return null;const value=Date.parse(raw);return Number.isFinite(value)?value:null;}
+function kickoffDate(item){const value=kickoffMs(item);return value===null?null:new Date(value).toISOString().slice(0,10);}
+export function finalFallbackEligible(item,at=now()){const kickoff=kickoffMs(item);return kickoff!==null&&Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS;}
 export function fixtureFor(item,rows,{knownFixtureId=null,final=false,at=now()}={}){
   const configuredIds=[item?.tracking?.fixtureId,item?.fixtureId].map(value=>String(value??'').trim()).filter(Boolean);
-  for(const id of configuredIds){
-    const exact=(rows||[]).find(row=>rowId(row)===id);
-    if(exact)return exact;
-  }
-
+  for(const id of configuredIds){const exact=(rows||[]).find(row=>rowId(row)===id);if(exact)return exact;}
   const learnedId=String(knownFixtureId??'').trim();
-  if(learnedId){
-    const learned=(rows||[]).find(row=>rowId(row)===learnedId);
-    // Runtime fixture IDs are learned from a name match. Never let a bad learned ID
-    // become authoritative: it must still identify the same home/away pair.
-    if(learned&&fixtureIdentityMatches(item,learned))return learned;
-  }
-
+  if(learnedId){const learned=(rows||[]).find(row=>rowId(row)===learnedId);if(learned&&fixtureIdentityMatches(item,learned))return learned;}
   if(final&&!finalFallbackEligible(item,at))return null;
-
   const candidates=[];
-  for(const row of rows||[]){
-    const hs=teamScore(item?.home,row?.home),as=teamScore(item?.away,row?.away);
-    if(hs>=0.75&&as>=0.75)candidates.push({row,score:hs+as});
-  }
-  if(!candidates.length)return null;
-  candidates.sort((a,b)=>b.score-a.score);
-  // If two provider rows are effectively tied, do not guess an ID from team names.
+  for(const row of rows||[]){const hs=teamScore(item?.home,row?.home),as=teamScore(item?.away,row?.away);if(hs>=0.75&&as>=0.75)candidates.push({row,score:hs+as});}
+  if(!candidates.length)return null;candidates.sort((a,b)=>b.score-a.score);
   if(candidates.length>1&&Math.abs(candidates[0].score-candidates[1].score)<0.05&&rowId(candidates[0].row)!==rowId(candidates[1].row))return null;
   return candidates[0].row;
 }
-function scorePair(row){
-  const raw=Array.isArray(row?.score)?row.score:[row?.score?.home,row?.score?.away];
-  const home=finite(raw?.[0]),away=finite(raw?.[1]);
-  return home===null||away===null?null:[home,away];
-}
+function scorePair(row){const raw=Array.isArray(row?.score)?row.score:[row?.score?.home,row?.score?.away];const home=finite(raw?.[0]),away=finite(raw?.[1]);return home===null||away===null?null:[home,away];}
 function pickSide(item){
   const explicit=String(item?.tracking?.pickSide||item?.pickSide||'').toLowerCase();
-  if(explicit==='home'||explicit==='away'||explicit==='draw')return explicit;
-  const pick=String(item?.pick||'');
-  const home=teamScore(pick,item?.home),away=teamScore(pick,item?.away);
-  if(home>away&&home>=0.5)return 'home';
-  if(away>home&&away>=0.5)return 'away';
-  if(/\bdraw\b|\bx\b/i.test(pick))return 'draw';
+  if(['home','away','draw'].includes(explicit))return explicit;
+  const pick=String(item?.pick||'');const home=teamScore(pick,item?.home),away=teamScore(pick,item?.away);
+  if(home>away&&home>=0.5)return 'home';if(away>home&&away>=0.5)return 'away';if(/\bdraw\b|\bx\b/i.test(pick))return 'draw';return null;
+}
+function marketName(item){return String(item?.market||'1X2').trim().toUpperCase();}
+function marketSelection(item){return String(item?.selection||item?.tracking?.selection||'').trim().toLowerCase();}
+function marketLine(item){return finite(item?.line??item?.tracking?.line??item?.handicap??item?.total);}
+function isQuarterLine(line){return line!==null&&Math.abs(line*2-Math.round(line*2))>1e-9;}
+function settle1x2(item,score){if(!score)return null;const [home,away]=score;const actual=home>away?'home':away>home?'away':'draw';const side=pickSide(item);if(!side)return null;return {result:side===actual?'WIN':'LOSS',actual,pickSide:side};}
+function settleBtts(item,score){if(!score)return null;const yes=score[0]>0&&score[1]>0;let selection=marketSelection(item);if(!selection)selection=/\bno\b/i.test(String(item?.pick||''))?'no':'yes';if(!['yes','no'].includes(selection))return null;const wanted=selection==='yes';return {result:wanted===yes?'WIN':'LOSS',actual:yes?'yes':'no',selection};}
+function settleTotal(item,score){
+  if(!score)return null;const line=marketLine(item);if(line===null||isQuarterLine(line))return null;
+  let selection=marketSelection(item);const pick=String(item?.pick||'');if(!selection)selection=/\bunder\b/i.test(pick)?'under':/\bover\b/i.test(pick)?'over':'';if(!['over','under'].includes(selection))return null;
+  const total=score[0]+score[1];if(total===line)return {result:'PUSH',actual:`total ${total}`,selection,line};
+  const win=selection==='over'?total>line:total<line;return {result:win?'WIN':'LOSS',actual:`total ${total}`,selection,line};
+}
+function settleAh(item,score){
+  if(!score)return null;const line=marketLine(item);if(line===null||isQuarterLine(line))return null;const side=pickSide(item);if(!['home','away'].includes(side))return null;
+  const selected=side==='home'?score[0]:score[1],opponent=side==='home'?score[1]:score[0];const adjusted=selected+line;const result=adjusted>opponent?'WIN':adjusted<opponent?'LOSS':'PUSH';
+  return {result,actual:`${side} ${selected}-${opponent} @ ${line>=0?'+':''}${line}`,pickSide:side,line};
+}
+export function settleMarket(item,score){
+  const market=marketName(item);
+  if(market==='1X2'||market==='MONEYLINE')return settle1x2(item,score);
+  if(market==='BTTS'||market.includes('BOTH TEAMS'))return settleBtts(item,score);
+  if(market==='O/U'||market==='OU'||market.includes('OVER/UNDER')||market.includes('TOTAL'))return settleTotal(item,score);
+  if(market==='AH'||market.includes('ASIAN HANDICAP')||market.includes('HANDICAP'))return settleAh(item,score);
   return null;
 }
-function settle1x2(item,score){
-  if(!score)return null;
-  const [home,away]=score;
-  const actual=home>away?'home':away>home?'away':'draw';
-  const side=pickSide(item);
-  if(!side)return null;
-  return {result:side===actual?'WIN':'LOSS',actual,pickSide:side};
-}
 export function sanitizeExisting(item,existing={},at=now()){
-  const kickoff=kickoffMs(item);
-  const hasSettlement=Boolean(existing?.result||existing?.status==='FT'||existing?.settledAt);
+  const kickoff=kickoffMs(item);const hasSettlement=Boolean(existing?.result||existing?.status==='FT'||existing?.settledAt);
   if(!hasSettlement||kickoff===null||Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS)return existing;
-  const clean={...existing};
-  clean.status='SCHEDULED';
-  clean.score=null;
-  clean.minute=null;
-  clean.result=null;
-  clean.settledAt=null;
-  clean.actual=null;
-  clean.fixtureId=null;
-  clean.fixtureProvider=null;
-  clean.settlementSource=null;
-  return clean;
+  const clean={...existing,status:'SCHEDULED',score:null,minute:null,result:null,settledAt:null,actual:null,fixtureId:null,fixtureProvider:null,settlementSource:null};return clean;
 }
 function recordFromPick(item,existing={}){
   const kickoffUtc=item?.tracking?.kickoffUtc||item?.kickoffAt||existing.kickoffUtc||null;
-  return {
-    ...existing,
-    id:String(item?.id||existing.id||''),
-    date:item?.date||existing.date||null,
-    league:item?.league||existing.league||null,
-    round:item?.round||existing.round||null,
-    home:item?.home||existing.home||null,
-    away:item?.away||existing.away||null,
-    pick:item?.pick||existing.pick||null,
-    market:item?.market||existing.market||'1X2',
-    odds:finite(item?.referenceOdds??item?.odds??existing.odds),
-    kickoffUtc,
-    fixtureId:String(item?.tracking?.fixtureId??existing.fixtureId??'')||null,
-    pickSide:pickSide(item)||existing.pickSide||null,
-    status:existing.status||'SCHEDULED',
-    score:existing.score||null,
-    minute:existing.minute??null,
-    result:existing.result||null,
-    settledAt:existing.settledAt||null,
-    source:existing.source||'TotalCorner V3',
-    fixtureProvider:existing.fixtureProvider||null,
-    settlementSource:existing.settlementSource||null,
-  };
+  return {...existing,id:String(item?.id||existing.id||''),date:item?.date||existing.date||null,league:item?.league||existing.league||null,round:item?.round||existing.round||null,home:item?.home||existing.home||null,away:item?.away||existing.away||null,pick:item?.pick||existing.pick||null,market:item?.market||existing.market||'1X2',selection:marketSelection(item)||existing.selection||null,line:marketLine(item)??existing.line??null,odds:finite(item?.referenceOdds??item?.odds??existing.odds),kickoffUtc,fixtureId:String(item?.tracking?.fixtureId??existing.fixtureId??'')||null,pickSide:pickSide(item)||existing.pickSide||null,status:existing.status||'SCHEDULED',score:existing.score||null,minute:existing.minute??null,result:existing.result||null,settledAt:existing.settledAt||null,source:existing.source||'TotalCorner V3',fixtureProvider:existing.fixtureProvider||null,settlementSource:existing.settlementSource||null};
 }
 
 export class Prediction3Tracker{
   constructor(state,env){this.state=state;this.env=env;}
-
   async refresh(force=false){
-    const last=finite(await this.state.storage.get('lastRefreshAt'))||0;
-    if(!force&&last&&now()-last<REFRESH_MS)return this.snapshot();
-
-    const current=Array.isArray(await this.state.storage.get('records'))?(await this.state.storage.get('records')):[];
-    const byId=new Map(current.map(row=>[String(row.id),row]));
-    const errors=[];
-
-    let ledger=null,live={matches:[]},finals={finals:[]};
-    const responses=await Promise.allSettled([fetchJson(LEDGER_URL),fetchJson(LIVE_URL),fetchJson(FINAL_URL)]);
-    if(responses[0].status==='fulfilled')ledger=responses[0].value;else errors.push(`ledger:${responses[0].reason}`);
-    if(responses[1].status==='fulfilled')live=responses[1].value;else errors.push(`live:${responses[1].reason}`);
-    if(responses[2].status==='fulfilled')finals=responses[2].value;else errors.push(`finals:${responses[2].reason}`);
-
+    const last=finite(await this.state.storage.get('lastRefreshAt'))||0;if(!force&&last&&now()-last<REFRESH_MS)return this.snapshot();
+    const current=Array.isArray(await this.state.storage.get('records'))?(await this.state.storage.get('records')):[];const byId=new Map(current.map(row=>[String(row.id),row]));const errors=[];
+    let ledger=null,live={matches:[]},finals={finals:[]};const responses=await Promise.allSettled([fetchJson(LEDGER_URL),fetchJson(LIVE_URL),fetchJson(FINAL_URL)]);
+    if(responses[0].status==='fulfilled')ledger=responses[0].value;else errors.push(`ledger:${responses[0].reason}`);if(responses[1].status==='fulfilled')live=responses[1].value;else errors.push(`live:${responses[1].reason}`);if(responses[2].status==='fulfilled')finals=responses[2].value;else errors.push(`finals:${responses[2].reason}`);
     if(ledger&&Array.isArray(ledger.today)){
-      const refreshedAt=now();
-      const apiDateCache=new Map();
-      const getApiFinals=async item=>{
-        const date=kickoffDate(item);
-        if(!date)return [];
-        if(!apiDateCache.has(date)){
-          apiDateCache.set(date,fetchApiFootballFinals(date,this.env).catch(error=>{
-            errors.push(`apiFootball:${date}:${String(error?.message||error)}`);
-            return [];
-          }));
-        }
-        return apiDateCache.get(date);
-      };
-
+      const refreshedAt=now();const apiDateCache=new Map();const getApiFinals=async item=>{const date=kickoffDate(item);if(!date)return [];if(!apiDateCache.has(date))apiDateCache.set(date,fetchApiFootballFinals(date,this.env).catch(error=>{errors.push(`apiFootball:${date}:${String(error?.message||error)}`);return [];}));return apiDateCache.get(date);};
       for(const item of ledger.today){
-        if(!item?.id)continue;
-        const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);
-        const record=recordFromPick(item,previous);
-        const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();
-        let knownFixtureId=record.fixtureId||previous.fixtureId||null;
-
-        // Heal a previously learned wrong TotalCorner ID as soon as that provider row is visible.
-        if(knownFixtureId&&!configuredFixtureId&&!String(knownFixtureId).startsWith('api-football:')){
-          const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];
-          const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));
-          if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){
-            record.fixtureId=null;
-            knownFixtureId=null;
-          }
-        }
-
-        const tcFinalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});
-        const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});
-        let apiFinalRow=null;
-
-        // TotalCorner occasionally leaves a completed fixture as scheduled/unsettled. Once a
-        // match is safely beyond the finish window and is no longer live, use API-Football as
-        // a final-score referee instead of leaving Prediction3 pending forever.
-        if(!tcFinalRow&&!liveRow&&!record.result&&finalFallbackEligible(item,refreshedAt)){
-          const apiRows=await getApiFinals(item);
-          apiFinalRow=fixtureFor(item,apiRows,{knownFixtureId,final:true,at:refreshedAt});
-        }
-
+        if(!item?.id)continue;const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);const record=recordFromPick(item,previous);const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();let knownFixtureId=record.fixtureId||previous.fixtureId||null;
+        if(knownFixtureId&&!configuredFixtureId&&!String(knownFixtureId).startsWith('api-football:')){const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){record.fixtureId=null;knownFixtureId=null;}}
+        const tcFinalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});let apiFinalRow=null;
+        if(!tcFinalRow&&!liveRow&&!record.result&&finalFallbackEligible(item,refreshedAt)){const apiRows=await getApiFinals(item);apiFinalRow=fixtureFor(item,apiRows,{knownFixtureId,final:true,at:refreshedAt});}
         const finalRow=tcFinalRow||apiFinalRow;
         if(finalRow){
-          const finalScore=scorePair(finalRow);
-          const settlement=String(item?.market||'1X2').toUpperCase()==='1X2'?settle1x2(item,finalScore):null;
-          const apiUsed=Boolean(apiFinalRow&&finalRow===apiFinalRow);
-          record.fixtureId=rowId(finalRow)||record.fixtureId;
-          record.fixtureProvider=apiUsed?'API-Football':'TotalCorner V3';
-          record.settlementSource=apiUsed?'API-Football fallback':'TotalCorner V3';
-          record.source=record.settlementSource;
-          record.status='FT';
-          record.score=finalScore;
-          record.minute=null;
-          if(settlement){
-            record.result=settlement.result;
-            record.pickSide=settlement.pickSide;
-            record.actual=settlement.actual;
-            record.settledAt=record.settledAt||iso();
-          }
-        }else if(liveRow){
-          record.fixtureId=rowId(liveRow)||record.fixtureId;
-          record.fixtureProvider='TotalCorner V3';
-          record.status='LIVE';
-          record.score=scorePair(liveRow);
-          record.minute=finite(liveRow?.minute);
-          record.result=null;
-          record.settledAt=null;
-          record.actual=null;
-        }else if(!record.result){
-          record.status='SCHEDULED';
-          record.score=null;
-          record.minute=null;
-        }
+          const finalScore=scorePair(finalRow);const settlement=settleMarket(item,finalScore);const apiUsed=Boolean(apiFinalRow&&finalRow===apiFinalRow);record.fixtureId=rowId(finalRow)||record.fixtureId;record.fixtureProvider=apiUsed?'API-Football':'TotalCorner V3';record.settlementSource=apiUsed?'API-Football fallback':'TotalCorner V3';record.source=record.settlementSource;record.status='FT';record.score=finalScore;record.minute=null;
+          if(settlement){record.result=settlement.result;record.pickSide=settlement.pickSide||record.pickSide||null;record.actual=settlement.actual;record.settledAt=record.settledAt||iso();}else{record.result=null;record.settledAt=null;record.actual='UNSUPPORTED_OR_QUARTER_LINE';errors.push(`settlement:${record.id}:${record.market}:${record.line??''}`);}
+        }else if(liveRow){record.fixtureId=rowId(liveRow)||record.fixtureId;record.fixtureProvider='TotalCorner V3';record.status='LIVE';record.score=scorePair(liveRow);record.minute=finite(liveRow?.minute);record.result=null;record.settledAt=null;record.actual=null;}else if(!record.result){record.status='SCHEDULED';record.score=null;record.minute=null;}
         byId.set(record.id,record);
       }
     }
-
-    const records=[...byId.values()]
-      .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')))
-      .slice(0,MAX_RECORDS);
-    const refreshedAt=now();
-    await this.state.storage.put({records,lastRefreshAt:refreshedAt,lastErrors:errors});
-    return {ok:true,updatedAt:iso(refreshedAt),records,errors};
+    const records=[...byId.values()].sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,MAX_RECORDS);const refreshedAt=now();await this.state.storage.put({records,lastRefreshAt:refreshedAt,lastErrors:errors});return {ok:true,updatedAt:iso(refreshedAt),records,errors};
   }
-
-  async snapshot(){
-    const records=Array.isArray(await this.state.storage.get('records'))?(await this.state.storage.get('records')):[];
-    const lastRefreshAt=finite(await this.state.storage.get('lastRefreshAt'))||0;
-    const errors=Array.isArray(await this.state.storage.get('lastErrors'))?(await this.state.storage.get('lastErrors')):[];
-    return {ok:true,updatedAt:lastRefreshAt?iso(lastRefreshAt):null,records,errors};
-  }
-
-  async fetch(request){
-    const url=new URL(request.url);
-    if(request.method==='OPTIONS')return new Response(null,{status:204,headers:CORS});
-    if(request.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);
-    if(url.pathname==='/refresh')return json(await this.refresh(url.searchParams.get('force')==='1'));
-    if(url.pathname==='/state')return json(url.searchParams.get('refresh')==='1'?await this.refresh(false):await this.snapshot());
-    if(url.pathname==='/'||url.pathname==='/health'){
-      const snap=await this.snapshot();
-      return json({ok:true,component:'prediction3-tracker',updatedAt:snap.updatedAt,records:snap.records.length,errors:snap.errors});
-    }
-    return json({ok:false,error:'not_found'},404);
-  }
+  async snapshot(){const records=Array.isArray(await this.state.storage.get('records'))?(await this.state.storage.get('records')):[];const lastRefreshAt=finite(await this.state.storage.get('lastRefreshAt'))||0;const errors=Array.isArray(await this.state.storage.get('lastErrors'))?(await this.state.storage.get('lastErrors')):[];return {ok:true,updatedAt:lastRefreshAt?iso(lastRefreshAt):null,records,errors};}
+  async fetch(request){const url=new URL(request.url);if(request.method==='OPTIONS')return new Response(null,{status:204,headers:CORS});if(request.method!=='GET')return json({ok:false,error:'method_not_allowed'},405);if(url.pathname==='/refresh')return json(await this.refresh(url.searchParams.get('force')==='1'));if(url.pathname==='/state')return json(url.searchParams.get('refresh')==='1'?await this.refresh(false):await this.snapshot());if(url.pathname==='/'||url.pathname==='/health'){const snap=await this.snapshot();return json({ok:true,component:'prediction3-tracker',updatedAt:snap.updatedAt,records:snap.records.length,errors:snap.errors});}return json({ok:false,error:'not_found'},404);}
 }
-
 function tracker(env){return env.TRACKER.get(env.TRACKER.idFromName('prediction3'));}
-
-export default{
-  async fetch(request,env){
-    if(request.method==='OPTIONS')return new Response(null,{status:204,headers:CORS});
-    return tracker(env).fetch(request);
-  },
-  async scheduled(_event,env,ctx){
-    ctx.waitUntil(tracker(env).fetch('https://tracker.internal/refresh?force=1'));
-  },
-};
+export default{async fetch(request,env){if(request.method==='OPTIONS')return new Response(null,{status:204,headers:CORS});return tracker(env).fetch(request);},async scheduled(_event,env,ctx){ctx.waitUntil(tracker(env).fetch('https://tracker.internal/refresh?force=1'));}};
