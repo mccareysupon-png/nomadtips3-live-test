@@ -41,9 +41,12 @@ jobs:
           assert(worker.includes('detectorConnected:false'),'detector must stay disconnected');
           assert(worker.includes("futureDetectorPort:'READY'"),'future detector port marker must remain prepared');
           assert(worker.includes('include=stats'),'provider list must request embedded stats');
-          assert(worker.includes('PROVIDER_PAGE_SIZE = 50'),'provider must stay one capped stats page');
+          assert(worker.includes('PROVIDER_PAGE_SIZE = 500'),'provider must request full live board up to 500 fixtures');
+          assert(worker.includes('ROLLING_WINDOW_MINUTES = 15'),'rolling window must stay 15 minutes');
           assert(worker.includes('best.score < 0.88'),'strict mapping threshold must remain');
           assert(worker.includes('best.score - second.score < 0.05'),'ambiguity rejection must remain');
+          assert(live.includes('rolling15'),'live shot UI must consume rolling15');
+          assert(live.includes('15M CHANGE'),'live shot UI must label 15-minute delta');
           assert(!live.includes('nomadSettings342'),'live shot UI must not touch market settings');
           assert(!live.includes('candidate'),'live shot UI must not call candidate layer');
           assert(!settings.includes('data-market-form'),'prepared settings UI must stay outside market forms');
