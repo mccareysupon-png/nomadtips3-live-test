@@ -1,0 +1,7 @@
+.p3-team-xbet-link{display:inline-flex;align-items:center;max-width:100%;color:inherit;text-decoration:none;cursor:pointer;position:relative;border-radius:4px;outline:none}
+.p3-team-xbet-link strong{transition:color .18s ease,text-shadow .18s ease,transform .18s ease}
+.p3-team-xbet-link:after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:1px;background:linear-gradient(90deg,transparent,rgba(240,205,122,.9),transparent);opacity:0;transform:scaleX(.45);transition:opacity .18s ease,transform .18s ease;pointer-events:none}
+.p3-team-xbet-link:hover strong,.p3-team-xbet-link:focus-visible strong{color:#f3d68b!important;text-shadow:0 0 12px rgba(215,180,106,.48);transform:translateY(-1px)}
+.p3-team-xbet-link:hover:after,.p3-team-xbet-link:focus-visible:after{opacity:1;transform:scaleX(1)}
+.p3-team-xbet-link:focus-visible{box-shadow:0 0 0 2px rgba(215,180,106,.26)}
+@media (hover:none){.p3-team-xbet-link:active strong{color:#f3d68b!important;text-shadow:0 0 10px rgba(215,180,106,.42)}}
