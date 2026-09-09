@@ -58,13 +58,22 @@ jobs:
       - name: Probe shield health
         run: |
           set -euo pipefail
-          curl -fsS --max-time 20 "$SHIELD_URL/health?_=$RANDOM$RANDOM" -o /tmp/shield-health.json
-          node - <<'NODE'
+          ok=0
+          for i in 1 2 3 4 5 6 7 8; do
+            code="$(curl -sS --max-time 20 -o /tmp/shield-health.json -w '%{http_code}' "$SHIELD_URL/health?_=$RANDOM$RANDOM" || true)"
+            echo "health attempt $i -> HTTP $code"
+            if [ "$code" = "200" ] && node - <<'NODE'
           const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/shield-health.json','utf8'));
-          console.log(JSON.stringify(j,null,2));
-          if(j.ok!==true||j.mode!=='PUBLIC_SHIELD')process.exit(1);
+          try {
+            const j=JSON.parse(fs.readFileSync('/tmp/shield-health.json','utf8'));
+            console.log(JSON.stringify(j,null,2));
+            process.exit(j.ok===true&&j.mode==='PUBLIC_SHIELD'?0:1);
+          } catch { process.exit(1); }
           NODE
+            then ok=1; break; fi
+            sleep 5
+          done
+          test "$ok" = "1"
 
       - name: Verify public force and probe are blocked
         run: |
