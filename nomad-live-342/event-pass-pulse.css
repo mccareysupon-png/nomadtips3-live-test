@@ -20,3 +20,44 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
     box-shadow:0 0 0 1px rgba(131,223,137,.16),0 0 14px rgba(131,223,137,.18);
   }
 }
+
+/* 3.42 top two-row palette — requested 2026-09-09.
+   Color-only override: preserve layout, content and runtime behavior. */
+body[data-page="live"] .nomad342-subpage-heading{
+  background:linear-gradient(90deg,#3a291a 0%,#332318 55%,#2b1e15 100%)!important;
+}
+body[data-page="live"] .nomad342-subpage-heading h2{
+  color:#f6f1e2!important;
+}
+
+body[data-page="live"] .nomad342-tab-panel>.status-grid{
+  gap:0!important;
+  overflow:hidden;
+  background:linear-gradient(90deg,#24371f 0%,#1e311b 50%,#182917 100%)!important;
+}
+body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric{
+  background:transparent!important;
+  border-left:1px solid rgba(191,199,99,.16)!important;
+  box-shadow:none!important;
+}
+body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric:first-child{
+  border-left:0!important;
+}
+body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric>span{
+  color:#c4b95f!important;
+}
+body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric>strong{
+  color:#f2f4ef!important;
+}
+body[data-page="live"] .nomad342-tab-panel>.status-grid>.event-metric>strong{
+  color:#72e57d!important;
+}
+
+body[data-page="live"] .market-tile.market-ah{
+  background:linear-gradient(145deg,#064236 0%,#06342e 50%,#031d1b 100%)!important;
+  border-color:rgba(34,183,139,.20)!important;
+}
+body[data-page="live"] .market-tile.market-ou{
+  background:linear-gradient(145deg,#472560 0%,#351b49 52%,#21122f 100%)!important;
+  border-color:rgba(145,72,190,.22)!important;
+}
