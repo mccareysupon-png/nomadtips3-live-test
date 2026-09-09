@@ -17,6 +17,8 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   SHOT_URL: https://nomadtips3-shot-sidecar-342.mccarey-supon.workers.dev
+  NOMAD_URL: https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed
+  FIVEDOLLAR_URL: https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=stats&per_page=50&page=1
 
 jobs:
   isolated-deploy-probe:
@@ -51,6 +53,24 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY repository secret'; exit 1; }
+
+      - name: Probe upstreams read-only
+        run: |
+          set -euo pipefail
+          nomad_code="$(curl -sS --max-time 20 -o /tmp/nomad-upstream.json -w '%{http_code}' "$NOMAD_URL?shot_probe=$RANDOM$RANDOM")"
+          provider_code="$(curl -sS --max-time 20 -o /tmp/provider-upstream.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$FIVEDOLLAR_URL")"
+          echo "NOMAD upstream HTTP $nomad_code"
+          echo "5Dollar upstream HTTP $provider_code"
+          node - <<'NODE'
+          const fs=require('fs');
+          const safe=(path)=>{try{return JSON.parse(fs.readFileSync(path,'utf8'))}catch{return null}};
+          const n=safe('/tmp/nomad-upstream.json');
+          const p=safe('/tmp/provider-upstream.json');
+          console.log('NOMAD:',JSON.stringify({ok:n?.ok,version:n?.version,component:n?.component,live:Array.isArray(n?.matches)?n.matches.length:null,error:n?.error??n?.lastError??null},null,2));
+          console.log('5Dollar:',JSON.stringify({success:p?.success,live:Array.isArray(p?.data)?p.data.length:null,pagination:p?.pagination??null,error:p?.error??null},null,2));
+          NODE
+          test "$nomad_code" = "200" || exit 21
+          test "$provider_code" = "200" || { echo '--- 5Dollar safe error body ---'; head -c 2000 /tmp/provider-upstream.json; echo; exit 22; }
 
       - name: Deploy isolated Shot Sidecar only
         working-directory: workers/nomadtips3-shot-sidecar-342
