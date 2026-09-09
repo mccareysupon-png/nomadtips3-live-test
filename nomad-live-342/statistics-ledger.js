@@ -169,7 +169,8 @@ function mountHistoryCard(){
   ensureHistoryStyle();
   card=document.createElement('section');card.id='statsHistoryCard';card.className='panel stats-history-card';card.setAttribute('aria-label','Performance history');
   card.innerHTML=`<div class="stats-history-head"><div class="stats-history-title"><div class="stats-history-copy"><span>PERFORMANCE HISTORY</span><div class="stats-history-rate" id="statsHistoryRate">—<small>WIN RATE</small></div></div><div class="stats-history-meta" id="statsHistoryMeta">WAITING FOR HISTORY</div></div><div class="stats-history-ranges" role="group" aria-label="Statistics history range">${Object.keys(HISTORY_RANGES).map(key=>`<button type="button" class="stats-history-range${key===historyState.range?' is-active':''}" data-history-range="${key}" aria-pressed="${key===historyState.range?'true':'false'}">${key}</button>`).join('')}</div></div><div class="stats-history-plot" id="statsHistoryPlot"><div class="stats-history-empty">Waiting for settled history…</div></div><div class="stats-history-axis"><span id="statsHistoryFrom">—</span><span id="statsHistoryTo">—</span></div><div class="stats-history-daily" id="statsHistoryDaily" aria-label="Daily statistics"></div>`;
-  summary.after(card);
+  const controlbar=panel.querySelector('.nomad342-controlbar')||panel.querySelector('.nomad342-tabs');
+  (controlbar||summary).after(card);
   card.addEventListener('click',event=>{const button=event.target.closest('[data-history-range]');if(!button)return;historyState.range=button.dataset.historyRange||'30D';card.querySelectorAll('[data-history-range]').forEach(item=>{const active=item.dataset.historyRange===historyState.range;item.classList.toggle('is-active',active);item.setAttribute('aria-pressed',active?'true':'false');});renderHistory();});
   return card;
 }
