@@ -5,12 +5,12 @@
   const ICONS={
     'SOT':'sot.webp',
     'SHOT OFF':'shot-off.webp',
-    'CORNER':'corner.webp'
+    'GOAL':'goal.webp'
   };
   const LABELS={
     'SOT':'SOT',
     'SHOT OFF':'OFF',
-    'CORNER':'COR'
+    'GOAL':'GOAL'
   };
   const TICKS=[0,15,30,45,60,75,90];
 
@@ -24,7 +24,7 @@
     const text=String(value??'').toUpperCase().replace(/\s*×\s*\d+\s*$/,'').trim();
     if(text==='SOT'||text.includes('ON TARGET'))return 'SOT';
     if(text==='SHOT OFF'||text==='OFF'||text.includes('OFF TARGET'))return 'SHOT OFF';
-    if(text.startsWith('CORNER'))return 'CORNER';
+    if(text==='GOAL'||text.startsWith('GOAL '))return 'GOAL';
     return text;
   };
   const teamText=(card,index,fallback)=>{
@@ -61,40 +61,74 @@
   const legendMarkup=()=>[
     ['sot.webp','SOT'],
     ['shot-off.webp','SHOT OFF'],
-    ['corner.webp','CORNER']
+    ['goal.webp','GOAL']
   ].map(([icon,label])=>`<span><img src="${ICON_BASE}${icon}" alt="" aria-hidden="true" draggable="false"><b>${label}</b></span>`).join('');
   const railMarkup=(side,team,events)=>`<div class="na-dual-row ${side.toLowerCase()}"><div class="na-dual-team"><b>${side}</b><small title="${esc(team)}">${esc(team)}</small></div><div class="na-dual-line"></div>${events.filter(event=>event.side===side).map(eventMarkup).join('')}</div>`;
 
-  function transformTimeline(timeline){
-    if(!timeline||timeline.dataset.dualRailReady==='1')return;
-    const card=timeline.closest('.event-compact');
-    if(!card)return;
-
-    const events=[...timeline.querySelectorAll(':scope > .na-timeline-event')].map(node=>{
+  function originalEvents(timeline){
+    return [...timeline.querySelectorAll(':scope > .na-timeline-event')].map(node=>{
       const minute=numberFrom(node.querySelector('span')?.textContent);
       const label=normalizeLabel(node.querySelector('strong')?.textContent);
       const side=node.classList.contains('home')?'HOME':node.classList.contains('away')?'AWAY':String(node.querySelector('small')?.textContent||'').toUpperCase();
       const countMatch=String(node.querySelector('strong')?.textContent||'').match(/×\s*(\d+)/);
       return {minute,label,side,count:countMatch?Number(countMatch[1]):1,lane:0};
-    }).filter(event=>Number.isFinite(event.minute)&&ICONS[event.label]&&(event.side==='HOME'||event.side==='AWAY'));
+    }).filter(event=>Number.isFinite(event.minute)&&(event.label==='SOT'||event.label==='SHOT OFF')&&(event.side==='HOME'||event.side==='AWAY'));
+  }
+  function storedBaseEvents(timeline){
+    if(timeline.dataset.naBaseEvents){
+      try{
+        const rows=JSON.parse(timeline.dataset.naBaseEvents);
+        if(Array.isArray(rows))return rows;
+      }catch(_){ }
+    }
+    const rows=originalEvents(timeline);
+    timeline.dataset.naBaseEvents=JSON.stringify(rows);
+    return rows;
+  }
+  function sidecarGoals(card){
+    const id=String(card?.dataset?.matchId||'');
+    if(!id)return [];
+    const rows=window.NOMAD342_SHOT_SIDECAR?.lastSnapshot?.results;
+    if(!Array.isArray(rows))return [];
+    const row=rows.find(item=>String(item?.nomadMatchId||'')===id);
+    if(!row||!Array.isArray(row.goalEvents))return [];
+    return row.goalEvents.map(event=>({
+      minute:numberFrom(event?.minute),
+      label:'GOAL',
+      side:String(event?.side||event?.team||'').toUpperCase(),
+      count:Math.max(1,numberFrom(event?.count)||1),
+      lane:0
+    })).filter(event=>Number.isFinite(event.minute)&&(event.side==='HOME'||event.side==='AWAY'));
+  }
 
+  function renderTimeline(timeline){
+    if(!timeline)return;
+    const card=timeline.closest('.event-compact');
+    if(!card)return;
+
+    const base=storedBaseEvents(timeline);
+    const events=[...base,...sidecarGoals(card)].sort((a,b)=>a.minute-b.minute||a.side.localeCompare(b.side)||a.label.localeCompare(b.label));
     assignLanes(events);
     const home=teamText(card,0,'HOME');
     const away=teamText(card,1,'AWAY');
     const live=currentMinute(card);
     const livePosition=live?clamp((live.value/90)*100,0,100):null;
-    const empty=events.length?'':`<div class="na-dual-empty-note">NO RECENT SOT / SHOT OFF / CORNER CHANGE</div>`;
+    const signature=JSON.stringify({home,away,live:live?.label||'',events:events.map(({minute,label,side,count,lane})=>({minute,label,side,count,lane}))});
+    if(timeline.dataset.dualRailSignature===signature)return;
+
+    const empty=events.length?'':`<div class="na-dual-empty-note">NO SOT / SHOT OFF / GOAL EVENT STORED YET</div>`;
     const now=live?`<div class="na-timeline-now-track"><div class="na-timeline-now" style="--x:${livePosition.toFixed(3)}%"><b>${esc(live.label)}</b><i></i></div></div>`:'';
 
     timeline.dataset.dualRailReady='1';
+    timeline.dataset.dualRailSignature=signature;
     timeline.classList.add('na-dual-timeline');
     timeline.innerHTML=`<div class="na-dual-head"><div class="na-dual-legend">${legendMarkup()}</div><span>HOME / AWAY · 0–90'</span></div><div class="na-dual-stage">${railMarkup('HOME',home,events)}${railMarkup('AWAY',away,events)}${now}<div class="na-time-axis">${ticksMarkup()}</div>${empty}</div>`;
   }
 
   const scan=root=>{
     const scope=root?.querySelectorAll?root:document;
-    scope.querySelectorAll('.na-timeline').forEach(transformTimeline);
-    if(scope.matches?.('.na-timeline'))transformTimeline(scope);
+    scope.querySelectorAll('.na-timeline').forEach(renderTimeline);
+    if(scope.matches?.('.na-timeline'))renderTimeline(scope);
   };
 
   function start(){
@@ -110,6 +144,7 @@
     new MutationObserver(queue).observe(list,{childList:true,subtree:true});
     list.addEventListener('click',()=>setTimeout(queue,0));
     list.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' ')setTimeout(queue,0)});
+    window.addEventListener('nomad342:shot-sidecar-update',queue);
     queue();
   }
 
