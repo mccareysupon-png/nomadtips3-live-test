@@ -260,3 +260,17 @@ html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-marke
 html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-compare{
   background:#272c29!important;
 }
+
+/* 2026-09-09 — remove the actual content separators/splinters.
+   Scope only to Live match content; summary-card dividers are intentionally untouched. */
+body[data-page="live"] #nomad342PanelLive .event-compact::after{
+  content:none!important;
+  display:none!important;
+}
+body[data-page="live"] #nomad342PanelLive .event-compact .event-details{
+  border-top:0!important;
+}
+body[data-page="live"] #nomad342PanelLive .event-compact .market-bookmakers,
+body[data-page="live"] #nomad342PanelLive .event-compact .afc-foot{
+  border-top:0!important;
+}
