@@ -17,11 +17,11 @@ const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,OPTIONS',
   'access-control-allow-headers': 'content-type',
-  'cache-control': 'no-store',
+  'cache-control':'no-store',
 };
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
-  headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
+  headers: { ...cors, 'content-type':'application/json; charset=utf-8' },
 });
 const now = () => Date.now();
 const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
@@ -45,7 +45,7 @@ function levenshtein(a, b) {
   if (a === b) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const prev = Array.from({ length:b.length + 1 }, (_, i) => i);
   const curr = new Array(b.length + 1);
   for (let i = 1; i <= a.length; i++) {
     curr[0] = i;
@@ -150,7 +150,7 @@ function mapFixture(target, fixtures) {
   const locked = mappingLocks.get(String(target.id));
   if (locked) {
     const fixture = fixtures.find(item => String(fixtureId(item)) === String(locked.fixtureId));
-    if (fixture) return { fixture, locked: true, confidence: locked.confidence, reason: null };
+    if (fixture) return { fixture, locked:true, confidence:locked.confidence, reason:null };
     mappingLocks.delete(String(target.id));
   }
 
@@ -162,16 +162,16 @@ function mapFixture(target, fixtures) {
   }
   candidates.sort((a, b) => b.score - a.score);
   const best = candidates[0] ?? null;
-  if (!best || best.score < 0.88) return { fixture: null, reason: 'not_found_or_not_covered', candidates: candidates.length };
+  if (!best || best.score < 0.88) return { fixture:null, reason:'not_found_or_not_covered', candidates:candidates.length };
   const second = candidates[1] ?? null;
   if (second && best.score - second.score < 0.05) {
-    return { fixture: null, reason: 'ambiguous_live_match', candidates: candidates.length, bestScore: best.score, secondScore: second.score };
+    return { fixture:null, reason:'ambiguous_live_match', candidates:candidates.length, bestScore:best.score, secondScore:second.score };
   }
   const id = fixtureId(best.fixture);
-  if (id == null) return { fixture: null, reason: 'fixture_id_missing', candidates: candidates.length };
+  if (id == null) return { fixture:null, reason:'fixture_id_missing', candidates:candidates.length };
   const confidence = Number(best.score.toFixed(4));
-  mappingLocks.set(String(target.id), { fixtureId: String(id), confidence, lockedAt: now() });
-  return { fixture: best.fixture, locked: false, confidence, reason: null, homeScore: best.home, awayScore: best.away, leagueScore: best.league };
+  mappingLocks.set(String(target.id), { fixtureId:String(id), confidence, lockedAt:now() });
+  return { fixture:best.fixture, locked:false, confidence, reason:null, homeScore:best.home, awayScore:best.away, leagueScore:best.league };
 }
 
 function extractFixtures(payload) {
@@ -181,7 +181,7 @@ function extractFixtures(payload) {
   return [];
 }
 
-async function fetchJson(url, { timeoutMs, headers = {} } = {}) {
+async function fetchJson(url, { timeoutMs, headers = {}, label = 'upstream' } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs ?? 8000);
   try {
@@ -189,9 +189,12 @@ async function fetchJson(url, { timeoutMs, headers = {} } = {}) {
     const text = await response.text();
     let payload = null;
     try { payload = JSON.parse(text); } catch {}
-    if (!response.ok) throw new Error(`HTTP_${response.status}`);
-    if (!payload || typeof payload !== 'object') throw new Error('INVALID_JSON');
+    if (!response.ok) throw new Error(`${label}:HTTP_${response.status}`);
+    if (!payload || typeof payload !== 'object') throw new Error(`${label}:INVALID_JSON`);
     return payload;
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`${label}:TIMEOUT`);
+    throw error;
   } finally {
     clearTimeout(timer);
   }
@@ -200,15 +203,16 @@ async function fetchJson(url, { timeoutMs, headers = {} } = {}) {
 async function providerFixtures(env, force = false) {
   const timestamp = now();
   if (!force && providerCache.at && timestamp - providerCache.at < PROVIDER_CACHE_MS) return { ...providerCache, cacheHit:true };
-  if (!env.FIVEDOLLAR_API_KEY) throw new Error('FIVEDOLLAR_API_KEY_MISSING');
+  if (!env.FIVEDOLLAR_API_KEY) throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');
   const path = `/fixtures?status=live&include=stats&per_page=${PROVIDER_PAGE_SIZE}&page=1`;
   try {
     const payload = await fetchJson(`${API_BASE}${path}`, {
-      timeoutMs: PROVIDER_TIMEOUT_MS,
-      headers: { accept:'application/json', authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`, 'user-agent':'NOMADTIPS3-SHOT-SIDECAR-342/1.0' },
+      timeoutMs:PROVIDER_TIMEOUT_MS,
+      label:'provider',
+      headers:{ accept:'application/json', authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}` },
     });
     const fixtures = extractFixtures(payload);
-    providerCache = { at: now(), fixtures, error:null };
+    providerCache = { at:now(), fixtures, error:null };
     return { ...providerCache, cacheHit:false };
   } catch (error) {
     providerCache = { ...providerCache, error:String(error?.message || error) };
@@ -220,7 +224,11 @@ async function nomadMatches(force = false) {
   const timestamp = now();
   if (!force && nomadCache.at && timestamp - nomadCache.at < NOMAD_CACHE_MS) return { ...nomadCache, cacheHit:true };
   try {
-    const payload = await fetchJson(`${NOMAD_FEED}?shot_sidecar=${timestamp}`, { timeoutMs:NOMAD_TIMEOUT_MS, headers:{ accept:'application/json' } });
+    const payload = await fetchJson(`${NOMAD_FEED}?shot_sidecar=${timestamp}`, {
+      timeoutMs:NOMAD_TIMEOUT_MS,
+      label:'nomad',
+      headers:{ accept:'application/json' },
+    });
     const matches = Array.isArray(payload?.matches) ? payload.matches : [];
     nomadCache = { at:now(), matches, error:null };
     return { ...nomadCache, cacheHit:false };
@@ -359,6 +367,32 @@ async function buildSnapshot(env, forceProvider = false) {
   };
 }
 
+async function probeUpstreams(env) {
+  const result = {
+    ok:false,
+    version:VERSION,
+    mode:'DISPLAY_ONLY',
+    detectorConnected:false,
+    futureDetectorPort:'READY',
+    nomad:{ ok:false, count:0, error:null },
+    provider:{ ok:false, count:0, error:null },
+  };
+  try {
+    const nomad = await nomadMatches(true);
+    result.nomad = { ok:true, count:nomad.matches.length, error:null };
+  } catch (error) {
+    result.nomad.error = String(error?.message || error);
+  }
+  try {
+    const provider = await providerFixtures(env, true);
+    result.provider = { ok:true, count:provider.fixtures.length, error:null };
+  } catch (error) {
+    result.provider.error = String(error?.message || error);
+  }
+  result.ok = result.nomad.ok && result.provider.ok;
+  return result;
+}
+
 function health() {
   return {
     ok:true,
@@ -380,6 +414,7 @@ export default {
     if (request.method !== 'GET') return json({ ok:false, error:'method_not_allowed' },405);
     const url = new URL(request.url);
     if (url.pathname === '/' || url.pathname === '/health') return json(health());
+    if (url.pathname === '/probe') return json(await probeUpstreams(env));
     if (url.pathname === '/snapshot' || url.pathname === '/status') {
       try {
         const snapshot = await buildSnapshot(env, url.searchParams.get('force') === '1');
