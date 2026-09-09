@@ -1,5 +1,4 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
-const NOMAD_FEED = 'https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed';
 const VERSION = 'shot-sidecar-342-v1';
 const PROVIDER = '5DollarFootballAPI';
 const PROVIDER_CACHE_MS = 20 * 60 * 1000;
@@ -181,17 +180,21 @@ function extractFixtures(payload) {
   return [];
 }
 
+async function parseJsonResponse(response, label) {
+  const text = await response.text();
+  let payload = null;
+  try { payload = JSON.parse(text); } catch {}
+  if (!response.ok) throw new Error(`${label}:HTTP_${response.status}`);
+  if (!payload || typeof payload !== 'object') throw new Error(`${label}:INVALID_JSON`);
+  return payload;
+}
+
 async function fetchJson(url, { timeoutMs, headers = {}, label = 'upstream' } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs ?? 8000);
   try {
     const response = await fetch(url, { cache:'no-store', signal:controller.signal, headers });
-    const text = await response.text();
-    let payload = null;
-    try { payload = JSON.parse(text); } catch {}
-    if (!response.ok) throw new Error(`${label}:HTTP_${response.status}`);
-    if (!payload || typeof payload !== 'object') throw new Error(`${label}:INVALID_JSON`);
-    return payload;
+    return await parseJsonResponse(response, label);
   } catch (error) {
     if (error?.name === 'AbortError') throw new Error(`${label}:TIMEOUT`);
     throw error;
@@ -220,21 +223,29 @@ async function providerFixtures(env, force = false) {
   }
 }
 
-async function nomadMatches(force = false) {
+async function nomadMatches(env, force = false) {
   const timestamp = now();
   if (!force && nomadCache.at && timestamp - nomadCache.at < NOMAD_CACHE_MS) return { ...nomadCache, cacheHit:true };
+  if (!env?.NOMAD_LIVE_FEED?.fetch) throw new Error('nomad:SERVICE_BINDING_MISSING');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), NOMAD_TIMEOUT_MS);
   try {
-    const payload = await fetchJson(`${NOMAD_FEED}?shot_sidecar=${timestamp}`, {
-      timeoutMs:NOMAD_TIMEOUT_MS,
-      label:'nomad',
+    const request = new Request(`https://nomad-live-feed.internal/feed?shot_sidecar=${timestamp}`, {
+      method:'GET',
+      signal:controller.signal,
       headers:{ accept:'application/json' },
     });
+    const response = await env.NOMAD_LIVE_FEED.fetch(request);
+    const payload = await parseJsonResponse(response, 'nomad');
     const matches = Array.isArray(payload?.matches) ? payload.matches : [];
     nomadCache = { at:now(), matches, error:null };
     return { ...nomadCache, cacheHit:false };
   } catch (error) {
-    nomadCache = { ...nomadCache, error:String(error?.message || error) };
-    throw error;
+    const labeled = error?.name === 'AbortError' ? new Error('nomad:TIMEOUT') : error;
+    nomadCache = { ...nomadCache, error:String(labeled?.message || labeled) };
+    throw labeled;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -305,7 +316,7 @@ function cleanup(activeIds) {
 
 async function buildSnapshot(env, forceProvider = false) {
   const observedAt = now();
-  const [nomad, provider] = await Promise.all([nomadMatches(), providerFixtures(env, forceProvider)]);
+  const [nomad, provider] = await Promise.all([nomadMatches(env), providerFixtures(env, forceProvider)]);
   const activeIds = new Set(nomad.matches.map(match => String(match.id)));
   cleanup(activeIds);
 
@@ -360,7 +371,7 @@ async function buildSnapshot(env, forceProvider = false) {
     futureDetectorPort:'READY',
     rollingWindowMinutes:20,
     provider:{ name:PROVIDER, pageSize:PROVIDER_PAGE_SIZE, onePageOnly:true, cacheHit:provider.cacheHit, cacheAgeSeconds:Math.max(0,(now()-provider.at)/1000) },
-    nomad:{ source:'3.42 live-score-feed-v3', cacheHit:nomad.cacheHit },
+    nomad:{ source:'3.42 live-score-feed-v3 service binding', cacheHit:nomad.cacheHit },
     counts:{ nomadLive:nomad.matches.length, providerLive:provider.fixtures.length, matched, statsReady, ambiguous, notCovered },
     observedAt,
     results,
@@ -374,18 +385,18 @@ async function probeUpstreams(env) {
     mode:'DISPLAY_ONLY',
     detectorConnected:false,
     futureDetectorPort:'READY',
-    nomad:{ ok:false, count:0, error:null },
-    provider:{ ok:false, count:0, error:null },
+    nomad:{ ok:false, count:0, error:null, transport:'SERVICE_BINDING' },
+    provider:{ ok:false, count:0, error:null, transport:'HTTPS' },
   };
   try {
-    const nomad = await nomadMatches(true);
-    result.nomad = { ok:true, count:nomad.matches.length, error:null };
+    const nomad = await nomadMatches(env, true);
+    result.nomad = { ok:true, count:nomad.matches.length, error:null, transport:'SERVICE_BINDING' };
   } catch (error) {
     result.nomad.error = String(error?.message || error);
   }
   try {
     const provider = await providerFixtures(env, true);
-    result.provider = { ok:true, count:provider.fixtures.length, error:null };
+    result.provider = { ok:true, count:provider.fixtures.length, error:null, transport:'HTTPS' };
   } catch (error) {
     result.provider.error = String(error?.message || error);
   }
@@ -401,6 +412,7 @@ function health() {
     detectorConnected:false,
     futureDetectorPort:'READY',
     rollingWindowMinutes:20,
+    nomadTransport:'SERVICE_BINDING',
     providerCache:{ ageSeconds:providerCache.at ? Math.max(0,(now()-providerCache.at)/1000) : null, count:providerCache.fixtures.length, lastError:providerCache.error },
     nomadCache:{ ageSeconds:nomadCache.at ? Math.max(0,(now()-nomadCache.at)/1000) : null, count:nomadCache.matches.length, lastError:nomadCache.error },
     locks:mappingLocks.size,
