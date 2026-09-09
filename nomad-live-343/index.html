@@ -4,19 +4,35 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27">
   <title>nomadtips3 · Live Score 3.43</title>
-  <link rel="stylesheet" href="app.css?v=343-clean-v1">
+  <link rel="stylesheet" href="app.css?v=343-today-board-v1">
 </head>
 <body data-page="live">
 <header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · 5USD ONE STOP ATTACK</div></div><nav class="topnav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav></div></header>
-<main class="shell">
-  <section class="page-head"><div><p class="eyebrow">NOMAD ENGINE 3.43</p><h1>Live Score · Condition Monitor</h1><p>หน้าตรวจคู่สด สถิติ Rolling และราคา Bet365 จากสาย 5USD เดียว</p></div><div class="source-state"><span class="pill"><i class="dot stop"></i>รอต่อ 5USD HUB</span></div></section>
-  <section class="summary-grid"><article class="metric"><span>LIVE MATCHES</span><strong>—</strong><small>คู่ที่กำลังแข่งขัน</small></article><article class="metric"><span>FRESH DATA</span><strong>—</strong><small>ข้อมูลไม่ stale</small></article><article class="metric good"><span>CONDITION PASS</span><strong>—</strong><small>ผ่านเงื่อนไขตลาด</small></article><article class="metric warn"><span>READY SIGNAL</span><strong>—</strong><small>ผ่านราคา Bet365</small></article></section>
-  <div class="toolbar"><div class="search"><input data-match-search type="search" placeholder="ค้นหาทีม หรือลีก…" autocomplete="off"></div><span class="pill">Rolling Window: จาก Settings</span><span class="pill">Source: 5DollarFootballAPI</span></div>
-  <section class="panel"><div class="panel-head"><div><h2>Live matches</h2><p>ข้อมูลไม่มี = ไม่แทนเป็นศูนย์</p></div><span class="pill"><i class="dot stop"></i>ยังไม่ต่อข้อมูลจริง</span></div>
-    <div class="table-wrap"><table class="data-table"><thead><tr><th>นาที</th><th>ลีก / คู่แข่งขัน</th><th>สกอร์</th><th>ยิงเข้ากรอบ</th><th>ยิงไม่เข้ากรอบ</th><th>เตะมุม</th><th>การบุก</th><th>การบุกอันตราย</th><th>ครองบอล</th><th>Bet365</th><th>สถานะ</th></tr></thead><tbody><tr><td colspan="11" class="empty">โครงหน้าเรียบร้อย · ขั้นถัดไปต่อ 5USD HUB และ Condition Engine</td></tr></tbody></table></div>
+<main class="shell live-board-shell">
+  <section class="page-head"><div><p class="eyebrow">NOMAD ENGINE 3.43</p><h1>Today's Scores</h1><p>โครงหน้าเรียบตามต้นทาง 5USD · คู่วันนี้อยู่ตำแหน่งเดิม แล้วเปลี่ยนสถานะตามการแข่งขัน</p></div><div class="source-state" data-hub-state><span class="pill"><i class="dot stop"></i>รอ 5USD HUB</span></div></section>
+
+  <div class="toolbar today-toolbar"><div class="search"><input data-match-search type="search" placeholder="ค้นหาทีม หรือลีก…" autocomplete="off"></div><span class="pill">Today · Asia/Bangkok</span><span class="pill">Source: 5DollarFootballAPI</span></div>
+
+  <section class="score-board" aria-live="polite">
+    <section class="score-group" data-group="live">
+      <header class="score-group-head"><div><span class="status-mark live"></span><h2>In play</h2></div><b data-count="live">0</b></header>
+      <div class="match-stack" data-board="live"><div class="empty compact-empty">ยังไม่มีคู่กำลังแข่งขัน</div></div>
+    </section>
+
+    <section class="score-group" data-group="scheduled">
+      <header class="score-group-head"><div><span class="status-mark"></span><h2>Kicking off next</h2></div><b data-count="scheduled">0</b></header>
+      <div class="match-stack" data-board="scheduled"><div class="empty compact-empty">กำลังรอรายการคู่วันนี้จาก 5USD</div></div>
+    </section>
+
+    <section class="score-group" data-group="finished">
+      <header class="score-group-head"><div><span class="status-mark finished"></span><h2>Finished</h2></div><b data-count="finished">0</b></header>
+      <div class="match-stack" data-board="finished"><div class="empty compact-empty">ยังไม่มีคู่จบการแข่งขัน</div></div>
+    </section>
   </section>
-  <div class="note">สถิติยิงและเตะมุมใช้จำนวนครั้งในช่วง Rolling · การบุกและการบุกอันตรายแปลงเป็นเปอร์เซ็นต์จากส่วนแบ่งในช่วง Rolling · การครองบอลใช้เปอร์เซ็นต์ล่าสุดจากผู้ให้ข้อมูล</div>
+
+  <div class="note">กดที่คู่แข่งขันเพื่อขยายรายละเอียดแบบ NOMAD เดิม · ยิงเข้ากรอบ / ยิงไม่เข้ากรอบ / เตะมุมเป็นจำนวนครั้ง · การบุกและการบุกอันตรายจะถูกคำนวณเป็นเปอร์เซ็นต์ใน Engine · ข้อมูลไม่มีจะคงเป็น “—” ไม่แทนด้วย 0</div>
 </main>
 <nav class="mobile-nav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>
-<script src="ui.js?v=343-clean-v1" defer></script>
+<script src="ui.js?v=343-today-board-v1" defer></script>
+<script src="live.js?v=343-today-board-v1" defer></script>
 </body></html>
