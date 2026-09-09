@@ -1,11 +1,12 @@
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
-const VERSION = 'shot-sidecar-342-v1';
+const VERSION = 'shot-sidecar-342-v2';
 const PROVIDER = '5DollarFootballAPI';
-const PROVIDER_CACHE_MS = 20 * 60 * 1000;
+const PROVIDER_CACHE_MS = 15 * 60 * 1000;
 const NOMAD_CACHE_MS = 15 * 1000;
 const PROVIDER_TIMEOUT_MS = 8000;
 const NOMAD_TIMEOUT_MS = 8000;
-const PROVIDER_PAGE_SIZE = 50;
+const PROVIDER_PAGE_SIZE = 500;
+const ROLLING_WINDOW_MINUTES = 15;
 
 let providerCache = { at: 0, fixtures: [], error: null };
 let nomadCache = { at: 0, matches: [], error: null };
@@ -16,11 +17,11 @@ const cors = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,OPTIONS',
   'access-control-allow-headers': 'content-type',
-  'cache-control':'no-store',
+  'cache-control': 'no-store',
 };
 const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status,
-  headers: { ...cors, 'content-type':'application/json; charset=utf-8' },
+  headers: { ...cors, 'content-type': 'application/json; charset=utf-8' },
 });
 const now = () => Date.now();
 const finite = value => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
@@ -44,12 +45,16 @@ function levenshtein(a, b) {
   if (a === b) return 0;
   if (!a.length) return b.length;
   if (!b.length) return a.length;
-  const prev = Array.from({ length:b.length + 1 }, (_, i) => i);
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
   const curr = new Array(b.length + 1);
   for (let i = 1; i <= a.length; i++) {
     curr[0] = i;
     for (let j = 1; j <= b.length; j++) {
-      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      curr[j] = Math.min(
+        curr[j - 1] + 1,
+        prev[j] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
     }
     for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
   }
@@ -141,23 +146,22 @@ function strictMappingScore(target, fixture) {
     if (diff <= 8) score = Math.min(1, score + 0.01);
     else if (diff > 20) score -= 0.03;
   }
-
   return { score, home, away, league, providerMinute };
 }
 
 function mapFixture(target, fixtures) {
-  const locked = mappingLocks.get(String(target.id));
+  const key = String(target.id);
+  const locked = mappingLocks.get(key);
   if (locked) {
     const fixture = fixtures.find(item => String(fixtureId(item)) === String(locked.fixtureId));
     if (fixture) return { fixture, locked:true, confidence:locked.confidence, reason:null };
-    mappingLocks.delete(String(target.id));
+    mappingLocks.delete(key);
   }
 
   const candidates = [];
   for (const fixture of fixtures) {
     const scored = strictMappingScore(target, fixture);
-    if (!scored) continue;
-    candidates.push({ fixture, ...scored });
+    if (scored) candidates.push({ fixture, ...scored });
   }
   candidates.sort((a, b) => b.score - a.score);
   const best = candidates[0] ?? null;
@@ -169,7 +173,7 @@ function mapFixture(target, fixtures) {
   const id = fixtureId(best.fixture);
   if (id == null) return { fixture:null, reason:'fixture_id_missing', candidates:candidates.length };
   const confidence = Number(best.score.toFixed(4));
-  mappingLocks.set(String(target.id), { fixtureId:String(id), confidence, lockedAt:now() });
+  mappingLocks.set(key, { fixtureId:String(id), confidence, lockedAt:now() });
   return { fixture:best.fixture, locked:false, confidence, reason:null, homeScore:best.home, awayScore:best.away, leagueScore:best.league };
 }
 
@@ -207,7 +211,7 @@ async function providerFixtures(env, force = false) {
   const timestamp = now();
   if (!force && providerCache.at && timestamp - providerCache.at < PROVIDER_CACHE_MS) return { ...providerCache, cacheHit:true };
   if (!env.FIVEDOLLAR_API_KEY) throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');
-  const path = `/fixtures?status=live&include=stats&per_page=${PROVIDER_PAGE_SIZE}&page=1`;
+  const path = `/fixtures?status=live&include=stats&per_page=${PROVIDER_PAGE_SIZE}`;
   try {
     const payload = await fetchJson(`${API_BASE}${path}`, {
       timeoutMs:PROVIDER_TIMEOUT_MS,
@@ -231,9 +235,7 @@ async function nomadMatches(env, force = false) {
   const timer = setTimeout(() => controller.abort(), NOMAD_TIMEOUT_MS);
   try {
     const request = new Request(`https://nomad-live-feed.internal/feed?shot_sidecar=${timestamp}`, {
-      method:'GET',
-      signal:controller.signal,
-      headers:{ accept:'application/json' },
+      method:'GET', signal:controller.signal, headers:{ accept:'application/json' },
     });
     const response = await env.NOMAD_LIVE_FEED.fetch(request);
     const payload = await parseJsonResponse(response, 'nomad');
@@ -249,9 +251,7 @@ async function nomadMatches(env, force = false) {
   }
 }
 
-function pair(source) {
-  return { home:number(source?.home), away:number(source?.away) };
-}
+function pair(source) { return { home:number(source?.home), away:number(source?.away) }; }
 function statsFromFixture(fixture) {
   const root = fixture?.statistics ?? fixture?.stats ?? fixture?.live_statistics ?? null;
   if (!root || typeof root !== 'object') return null;
@@ -263,12 +263,7 @@ function statsFromFixture(fixture) {
 
 function bucketForMinute(minute) {
   if (!finite(minute)) return null;
-  const m = Number(minute);
-  if (m >= 80) return 80;
-  if (m >= 60) return 60;
-  if (m >= 40) return 40;
-  if (m >= 20) return 20;
-  return 0;
+  return Math.floor(Number(minute) / ROLLING_WINDOW_MINUTES) * ROLLING_WINDOW_MINUTES;
 }
 
 function rememberSnapshot(nomad, fixture, mapping, stats, observedAt) {
@@ -287,7 +282,7 @@ function rememberSnapshot(nomad, fixture, mapping, stats, observedAt) {
   const last = rows[rows.length - 1];
   if (!last || last.bucket !== bucket || last.providerFixtureId !== next.providerFixtureId) rows = [...rows, next];
   else rows = [...rows.slice(0, -1), next];
-  rows = rows.slice(-6);
+  rows = rows.slice(-8);
   histories.set(key, rows);
   return rows;
 }
@@ -297,7 +292,7 @@ function safeDelta(current, previous) {
   const delta = current - previous;
   return delta >= 0 ? delta : null;
 }
-function rolling20(rows) {
+function rolling15(rows) {
   if (!Array.isArray(rows) || rows.length < 2) return null;
   const a = rows[rows.length - 2], b = rows[rows.length - 1];
   if (a.providerFixtureId !== b.providerFixtureId) return null;
@@ -331,7 +326,11 @@ async function buildSnapshot(env, forceProvider = false) {
     if (!mapping.fixture) {
       if (mapping.reason === 'ambiguous_live_match') ambiguous++;
       else notCovered++;
-      results.push({ nomadMatchId:target.id, home:target.home, away:target.away, status:mapping.reason === 'ambiguous_live_match' ? 'AMBIGUOUS' : 'NOT_COVERED_OR_NOT_FOUND', mapping:{ reason:mapping.reason, candidates:mapping.candidates ?? 0 } });
+      results.push({
+        nomadMatchId:target.id, home:target.home, away:target.away,
+        status:mapping.reason === 'ambiguous_live_match' ? 'AMBIGUOUS' : 'NOT_COVERED_OR_NOT_FOUND',
+        mapping:{ reason:mapping.reason, candidates:mapping.candidates ?? 0 },
+      });
       continue;
     }
     matched++;
@@ -358,7 +357,7 @@ async function buildSnapshot(env, forceProvider = false) {
       mapping:{ confidence:mapping.confidence ?? null, locked:Boolean(mapping.locked) },
       shotOnTarget:stats.shotOnTarget,
       shotOffTarget:stats.shotOffTarget,
-      rolling20:rolling20(rows),
+      rolling15:rolling15(rows),
       snapshot:{ bucket:bucketForMinute(target.minute), matchMinuteObserved:target.minute, observedAt },
     });
   }
@@ -369,7 +368,7 @@ async function buildSnapshot(env, forceProvider = false) {
     mode:'DISPLAY_ONLY',
     detectorConnected:false,
     futureDetectorPort:'READY',
-    rollingWindowMinutes:20,
+    rollingWindowMinutes:ROLLING_WINDOW_MINUTES,
     provider:{ name:PROVIDER, pageSize:PROVIDER_PAGE_SIZE, onePageOnly:true, cacheHit:provider.cacheHit, cacheAgeSeconds:Math.max(0,(now()-provider.at)/1000) },
     nomad:{ source:'3.42 live-score-feed-v3 service binding', cacheHit:nomad.cacheHit },
     counts:{ nomadLive:nomad.matches.length, providerLive:provider.fixtures.length, matched, statsReady, ambiguous, notCovered },
@@ -391,15 +390,11 @@ async function probeUpstreams(env) {
   try {
     const nomad = await nomadMatches(env, true);
     result.nomad = { ok:true, count:nomad.matches.length, error:null, transport:'SERVICE_BINDING' };
-  } catch (error) {
-    result.nomad.error = String(error?.message || error);
-  }
+  } catch (error) { result.nomad.error = String(error?.message || error); }
   try {
     const provider = await providerFixtures(env, true);
     result.provider = { ok:true, count:provider.fixtures.length, error:null, transport:'HTTPS' };
-  } catch (error) {
-    result.provider.error = String(error?.message || error);
-  }
+  } catch (error) { result.provider.error = String(error?.message || error); }
   result.ok = result.nomad.ok && result.provider.ok;
   return result;
 }
@@ -411,7 +406,8 @@ function health() {
     mode:'DISPLAY_ONLY',
     detectorConnected:false,
     futureDetectorPort:'READY',
-    rollingWindowMinutes:20,
+    rollingWindowMinutes:ROLLING_WINDOW_MINUTES,
+    providerPageSize:PROVIDER_PAGE_SIZE,
     nomadTransport:'SERVICE_BINDING',
     providerCache:{ ageSeconds:providerCache.at ? Math.max(0,(now()-providerCache.at)/1000) : null, count:providerCache.fixtures.length, lastError:providerCache.error },
     nomadCache:{ ageSeconds:nomadCache.at ? Math.max(0,(now()-nomadCache.at)/1000) : null, count:nomadCache.matches.length, lastError:nomadCache.error },
@@ -442,6 +438,7 @@ export default {
           mode:'DISPLAY_ONLY',
           detectorConnected:false,
           futureDetectorPort:'READY',
+          rollingWindowMinutes:ROLLING_WINDOW_MINUTES,
           error:String(error?.message || error),
           counts:{ nomadLive:nomadCache.matches.length, providerLive:providerCache.fixtures.length, matched:0, statsReady:0, ambiguous:0, notCovered:0 },
           results:[],
