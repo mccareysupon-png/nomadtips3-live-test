@@ -1,130 +1,52 @@
 <!doctype html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#123328">
-  <title>nomadtips3 · ตั้งค่า 3.43 5USD One Stop Attack</title>
-  <link rel="stylesheet" href="settings.css?v=20260909-343-preview-v1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27">
+  <title>nomadtips3 · Owner Settings 3.43</title>
+  <link rel="stylesheet" href="app.css?v=343-clean-v1"><link rel="stylesheet" href="settings.css?v=343-clean-v1">
 </head>
-<body data-page="market-settings-v3">
-<header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="#" title="ยังไม่ต่อหน้า Live">Live</a><a class="active" href="settings.html">Settings</a><a href="#" title="ยังไม่ต่อหน้า Health">Health</a></nav></div></header>
-<main class="settings-v3-shell">
-  <section class="settings-v3-hero">
-    <div>
-      <p class="eyebrow">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK</p>
-      <h1>ตั้งค่า Asian Handicap · 1X2 · OVER · UNDER</h1>
-      <p>โคลนรูปแบบล่าสุดจาก 3.42 · สายข้อมูลใหม่เตรียมสำหรับ 5DollarFootballAPI · ราคา Bet365 จากผู้ให้ข้อมูลเดียวกัน</p>
-      <span class="preview-badge">หน้าตรวจแบบ · ปุ่มบันทึก / RUN / STOP ทำงานเฉพาะในเบราว์เซอร์ ยังไม่ยิงเข้า Engine จริง</span>
-    </div>
-    <div class="settings-v3-status-board" aria-label="สถานะระบบ">
-      <div><i data-status-light="over" class="status-light is-off"></i><span>OVER</span><b data-status-label="over">หยุด</b></div>
-      <div><i data-status-light="under" class="status-light is-off"></i><span>UNDER</span><b data-status-label="under">หยุด</b></div>
-      <div><i data-status-light="oneXtwo" class="status-light is-off"></i><span>1X2</span><b data-status-label="oneXtwo">หยุด</b></div>
-      <div><i data-status-light="ah" class="status-light is-off"></i><span>Asian Handicap</span><b data-status-label="ah">หยุด</b></div>
-    </div>
-  </section>
+<body data-page="settings">
+<header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · OWNER SETTINGS</div></div></div></header>
+<main class="owner-shell">
+  <section class="owner-head"><div><p class="eyebrow">PRIVATE CONTROL · DIRECT URL ONLY</p><h1>ตั้งค่า Engine 3.43</h1><p>แยกค่าของ Asian Handicap · 1X2 · OVER · UNDER โดยไม่แสดงลิงก์จากหน้าสาธารณะ</p></div><div class="status-board"><div class="status-item" data-status="ah"><span>ASIAN HANDICAP</span><b>หยุด</b></div><div class="status-item" data-status="oneXtwo"><span>1X2</span><b>หยุด</b></div><div class="status-item" data-status="over"><span>OVER</span><b>หยุด</b></div><div class="status-item" data-status="under"><span>UNDER</span><b>หยุด</b></div></div></section>
+  <nav class="market-tabs"><button class="market-tab active" data-tab="ah">Asian Handicap</button><button class="market-tab" data-tab="oneXtwo">1X2</button><button class="market-tab" data-tab="over">OVER</button><button class="market-tab" data-tab="under">UNDER</button></nav>
 
-  <nav class="market-tabs" aria-label="เลือกตลาด">
-    <button type="button" class="market-tab active" data-market-tab="over">OVER</button>
-    <button type="button" class="market-tab" data-market-tab="under">UNDER</button>
-    <button type="button" class="market-tab" data-market-tab="oneXtwo">1X2</button>
-    <button type="button" class="market-tab" data-market-tab="ah">Asian Handicap</button>
-  </nav>
-
-  <section class="market-panel" data-market-panel="over"><form class="market-form" data-market-form="over">
-    <header class="market-title"><div><span>ตลาดที่ 1</span><h2>OVER</h2></div><p>ตรวจ Home และ Away แยกกัน · ฝั่งใดฝั่งหนึ่งผ่านจำนวนหลักฐานที่ตั้ง = ผ่าน</p></header>
-    <section class="setting-group"><div class="group-title"><span>หลักฐานสดจาก 5DollarFootballAPI</span><small>ค่าหลักฐานใช้คำว่า “ตั้งแต่”</small></div><div class="setting-grid evidence-grid">
-      <label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOnTarget" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div><small>จำนวนยิงเข้ากรอบที่เพิ่มขึ้นในช่วงย้อนหลัง</small></label>
-      <label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOff" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div><small>จำนวนยิงไม่เข้ากรอบที่เพิ่มขึ้นในช่วงย้อนหลัง</small></label>
-      <label><span>เตะมุม ตั้งแต่</span><div class="input-unit"><input name="corner" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div><small>จำนวนเตะมุมที่เพิ่มขึ้นในช่วงย้อนหลัง</small></label>
-      <label><span>สัดส่วนการบุกอันตราย ตั้งแต่</span><div class="input-unit"><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div><small>การบุกอันตรายของฝั่งนี้ ÷ การบุกอันตรายรวมสองฝั่ง ในช่วงย้อนหลัง × 100</small></label>
-      <label><span>สัดส่วนการบุก ตั้งแต่</span><div class="input-unit"><input name="attackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div><small>การบุกของฝั่งนี้ ÷ การบุกรวมสองฝั่ง ในช่วงย้อนหลัง × 100</small></label>
-      <label><span>การครองบอล ตั้งแต่</span><div class="input-unit"><input name="possessionPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div><small>ใช้เปอร์เซ็นต์การครองบอลล่าสุดจากผู้ให้ข้อมูล</small></label>
-      <label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select><small>ข้อมูลไม่มี = ไม่ผ่านหลักฐานข้อนั้น · ห้ามแปลงข้อมูลไม่มีเป็นศูนย์</small></label>
-    </div></section>
-    <section class="setting-group"><div class="group-title"><span>ราคา Bet365 จาก 5DollarFootballAPI</span></div><div class="setting-grid three">
-      <label><span>เส้น Over ตั้งแต่</span><input name="lineMin" type="number" min="0.5" max="10" step="0.5" required></label>
-      <label><span>เส้น Over ไม่เกิน</span><input name="lineMax" type="number" min="0.5" max="10" step="0.5" required></label>
-      <label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label>
-    </div></section>
-    <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
-    <section class="setting-group behavior"><div class="group-title"><span>การทำงานของสัญญาณ</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อกทันที</span><span>ไม่เลือกคู่เดิมซ้ำ</span><span>ตรวจราคา Bet365 ก่อนปล่อย Signal</span><span>ข้อมูลหายไม่ถือเป็นศูนย์</span></div></section>
-    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  <section class="settings-card" data-panel="ah"><form data-form="ah">
+    <header class="settings-title"><div><small>ตลาดที่ 1</small><h2>Asian Handicap</h2></div><p>ตรวจ Home / Away / Both แล้วใช้ราคา Bet365 จาก 5USD ตัดสินตรง ๆ</p></header>
+    <section class="group"><div class="group-head"><b>เลือกฝั่ง</b></div><div class="choice"><label><input type="radio" name="sideMode" value="HOME">Home</label><label><input type="radio" name="sideMode" value="AWAY">Away</label><label><input type="radio" name="sideMode" value="BOTH">Both</label></div></section>
+    <section class="group"><div class="group-head"><b>หลักฐานใน Rolling Window</b><small>ข้อมูลไม่มี = ไม่ผ่านข้อนั้น ไม่ใช่ 0</small></div><div class="grid"><label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOnTarget" type="number" min="0" max="50"><em>ครั้ง</em></div></label><label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOff" type="number" min="0" max="50"><em>ครั้ง</em></div></label><label><span>เตะมุม ตั้งแต่</span><div class="unit"><input name="corner" type="number" min="0" max="50"><em>ครั้ง</em></div></label><label><span>การบุก ตั้งแต่</span><div class="unit"><input name="attackPct" type="number" min="0" max="100"><em>%</em></div></label><label><span>การบุกอันตราย ตั้งแต่</span><div class="unit"><input name="dangerousAttackPct" type="number" min="0" max="100"><em>%</em></div></label><label><span>ครองบอล ตั้งแต่</span><div class="unit"><input name="possessionPct" type="number" min="0" max="100"><em>%</em></div></label><label class="wide"><span>ต้องการหลักฐาน</span><select name="evidenceRequired"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select><small>จำนวนข้อจากทั้งหมด 6 ข้อ</small></label></div></section>
+    <section class="group"><div class="group-head"><b>ราคา Bet365</b></div><div class="grid"><label><span>Asian Handicap ตั้งแต่</span><input name="lineMin" type="number" step="0.25"></label><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" step="0.01" min="1.01"></label><label><span>ราคา ไม่เกิน</span><input name="oddsMax" type="number" step="0.01" min="1.01"></label></div></section>
+    <section class="group"><div class="group-head"><b>ช่วงเวลาทำงาน</b></div><div class="grid"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120"></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120"></label><label><span>Rolling Window</span><div class="unit"><input name="rollingWindowMinutes" type="number" min="2" max="30"><em>นาที</em></div></label></div></section>
+    <footer class="actions"><div class="message" data-message>ยังไม่ได้เปลี่ยนค่า</div><div class="buttons"><button type="button" class="stop" data-stop>STOP</button><button type="submit" class="save">บันทึก</button><button type="button" class="run" data-run>RUN</button></div></footer>
   </form></section>
 
-  <section class="market-panel" data-market-panel="under" hidden aria-hidden="true"><form class="market-form" data-market-form="under">
-    <header class="market-title"><div><span>ตลาดที่ 2</span><h2>UNDER</h2></div><p>เลือก Home / Away / Both · หลักฐานใช้ “ไม่เกิน”</p></header>
-    <section class="setting-group"><div class="group-title"><span>เลือกฝั่งที่ต้องการตรวจ</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>หลักฐานสดจาก 5DollarFootballAPI</span><small>ต่ำกว่าหรือเท่ากับค่าที่ตั้ง = ผ่าน</small></div><div class="setting-grid evidence-grid">
-      <label><span>ยิงเข้ากรอบ ไม่เกิน</span><div class="input-unit"><input name="shotOnTarget" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>ยิงไม่เข้ากรอบ ไม่เกิน</span><div class="input-unit"><input name="shotOff" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>เตะมุม ไม่เกิน</span><div class="input-unit"><input name="corner" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>สัดส่วนการบุกอันตราย ไม่เกิน</span><div class="input-unit"><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>สัดส่วนการบุก ไม่เกิน</span><div class="input-unit"><input name="attackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>การครองบอล ไม่เกิน</span><div class="input-unit"><input name="possessionPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select><small>จำนวนครั้งใช้ค่าที่เพิ่มขึ้นในช่วงย้อนหลัง · สัดส่วนการบุกและการบุกอันตรายคำนวณเป็นเปอร์เซ็นต์ · ข้อมูลไม่มีไม่ใช่ 0</small></label>
-    </div></section>
-    <section class="setting-group"><div class="group-title"><span>ราคา Bet365 จาก 5DollarFootballAPI</span></div><div class="setting-grid"><label><span>เส้น Under ตั้งแต่</span><input name="lineMin" type="number" min="0.5" max="10" step="0.5" required></label><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
-    <section class="setting-group behavior"><div class="group-title"><span>การทำงานของสัญญาณ</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อกทันที</span><span>ไม่เลือกคู่เดิมซ้ำ</span><span>ตรวจราคา Bet365 ก่อนปล่อย Signal</span></div></section>
-    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  <section class="settings-card" data-panel="oneXtwo" hidden><form data-form="oneXtwo">
+    <header class="settings-title"><div><small>ตลาดที่ 2</small><h2>1X2</h2></div><p>เลือก Home / Away / Both · ไม่มี Draw เป็นตัวเลือก Signal</p></header>
+    <section class="group"><div class="group-head"><b>เลือกฝั่ง</b></div><div class="choice"><label><input type="radio" name="sideMode" value="HOME">Home</label><label><input type="radio" name="sideMode" value="AWAY">Away</label><label><input type="radio" name="sideMode" value="BOTH">Both</label></div></section>
+    <section class="group"><div class="group-head"><b>หลักฐานใน Rolling Window</b></div><div class="grid"><label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOnTarget" type="number"><em>ครั้ง</em></div></label><label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOff" type="number"><em>ครั้ง</em></div></label><label><span>เตะมุม ตั้งแต่</span><div class="unit"><input name="corner" type="number"><em>ครั้ง</em></div></label><label><span>การบุก ตั้งแต่</span><div class="unit"><input name="attackPct" type="number"><em>%</em></div></label><label><span>การบุกอันตราย ตั้งแต่</span><div class="unit"><input name="dangerousAttackPct" type="number"><em>%</em></div></label><label><span>ครองบอล ตั้งแต่</span><div class="unit"><input name="possessionPct" type="number"><em>%</em></div></label><label><span>ตามหลังได้ไม่เกิน</span><input name="scoreTrailingMax" type="number" min="0" max="10"></label><label><span>ต้องการหลักฐาน</span><select name="evidenceRequired"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label></div></section>
+    <section class="group"><div class="group-head"><b>ราคา Bet365</b></div><div class="grid two"><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" step="0.01"></label><label><span>ราคา ไม่เกิน</span><input name="oddsMax" type="number" step="0.01"></label></div></section>
+    <section class="group"><div class="group-head"><b>ช่วงเวลาทำงาน</b></div><div class="grid"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number"></label><label><span>นาทีจบ</span><input name="minuteTo" type="number"></label><label><span>Rolling Window</span><div class="unit"><input name="rollingWindowMinutes" type="number"><em>นาที</em></div></label></div></section>
+    <footer class="actions"><div class="message" data-message>ยังไม่ได้เปลี่ยนค่า</div><div class="buttons"><button type="button" class="stop" data-stop>STOP</button><button type="submit" class="save">บันทึก</button><button type="button" class="run" data-run>RUN</button></div></footer>
   </form></section>
 
-  <section class="market-panel" data-market-panel="oneXtwo" hidden aria-hidden="true"><form class="market-form" data-market-form="oneXtwo">
-    <header class="market-title"><div><span>ตลาดที่ 3</span><h2>1X2</h2></div><p>ไม่มี Draw ในตัวตรวจจับ · เลือก Home / Away / Both</p></header>
-    <section class="setting-group"><div class="group-title"><span>เลือกฝั่งที่ต้องการตรวจ</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>เงื่อนไขสกอร์</span></div><div class="setting-grid"><label><span>ฝั่งที่เลือกตามหลังได้ไม่เกิน</span><div class="input-unit"><input name="scoreTrailingMax" type="number" min="0" max="10" step="1" required><em>ประตู</em></div></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>หลักฐานสดจาก 5DollarFootballAPI</span><small>ค่าหลักฐานใช้คำว่า “ตั้งแต่”</small></div><div class="setting-grid evidence-grid">
-      <label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOnTarget" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOff" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>เตะมุม ตั้งแต่</span><div class="input-unit"><input name="corner" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>สัดส่วนการบุกอันตราย ตั้งแต่</span><div class="input-unit"><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>สัดส่วนการบุก ตั้งแต่</span><div class="input-unit"><input name="attackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>การครองบอล ตั้งแต่</span><div class="input-unit"><input name="possessionPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label>
-    </div></section>
-    <section class="setting-group"><div class="group-title"><span>ราคา Bet365 จาก 5DollarFootballAPI</span></div><div class="setting-grid"><label><span>ราคา Home / Away ที่เลือก ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
-    <section class="setting-group behavior"><div class="group-title"><span>การทำงานของสัญญาณ</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อกทันที</span><span>ไม่เลือกคู่เดิมซ้ำ</span><span>ตรวจราคา Bet365 ก่อนปล่อย Signal</span></div></section>
-    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  <section class="settings-card" data-panel="over" hidden><form data-form="over">
+    <header class="settings-title"><div><small>ตลาดที่ 3</small><h2>OVER</h2></div><p>ฝั่งใดฝั่งหนึ่งผ่านหลักฐานตามจำนวนที่ตั้ง และราคา Over ผ่าน</p></header>
+    <section class="group"><div class="group-head"><b>หลักฐานใน Rolling Window</b></div><div class="grid"><label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOnTarget" type="number"><em>ครั้ง</em></div></label><label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="unit"><input name="shotOff" type="number"><em>ครั้ง</em></div></label><label><span>เตะมุม ตั้งแต่</span><div class="unit"><input name="corner" type="number"><em>ครั้ง</em></div></label><label><span>การบุก ตั้งแต่</span><div class="unit"><input name="attackPct" type="number"><em>%</em></div></label><label><span>การบุกอันตราย ตั้งแต่</span><div class="unit"><input name="dangerousAttackPct" type="number"><em>%</em></div></label><label><span>ครองบอล ตั้งแต่</span><div class="unit"><input name="possessionPct" type="number"><em>%</em></div></label><label class="wide"><span>ต้องการหลักฐาน</span><select name="evidenceRequired"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label></div></section>
+    <section class="group"><div class="group-head"><b>ราคา Bet365</b></div><div class="grid"><label><span>เส้น Over ตั้งแต่</span><input name="lineMin" type="number" step="0.5"></label><label><span>เส้น Over ไม่เกิน</span><input name="lineMax" type="number" step="0.5"></label><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" step="0.01"></label></div></section>
+    <section class="group"><div class="group-head"><b>ช่วงเวลาทำงาน</b></div><div class="grid"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number"></label><label><span>นาทีจบ</span><input name="minuteTo" type="number"></label><label><span>Rolling Window</span><div class="unit"><input name="rollingWindowMinutes" type="number"><em>นาที</em></div></label></div></section>
+    <footer class="actions"><div class="message" data-message>ยังไม่ได้เปลี่ยนค่า</div><div class="buttons"><button type="button" class="stop" data-stop>STOP</button><button type="submit" class="save">บันทึก</button><button type="button" class="run" data-run>RUN</button></div></footer>
   </form></section>
 
-  <section class="market-panel" data-market-panel="ah" hidden aria-hidden="true"><form class="market-form" data-market-form="ah">
-    <header class="market-title"><div><span>ตลาดที่ 4</span><h2>Asian Handicap</h2></div><p>ตรวจฝั่งที่เลือก · ใช้ราคา Bet365 ของคู่เดียวกับข้อมูลสด 5DollarFootballAPI</p></header>
-    <section class="setting-group"><div class="group-title"><span>เลือกฝั่งที่ต้องการตรวจ</span></div><div class="choice-row"><label><input type="radio" name="sideMode" value="HOME"><span>Home</span></label><label><input type="radio" name="sideMode" value="AWAY"><span>Away</span></label><label><input type="radio" name="sideMode" value="BOTH"><span>Both</span></label></div><small class="ah-help">Both = ตรวจทั้งสองฝั่ง แล้วเลือกฝั่งที่ผ่านเงื่อนไขจริงและมีหลักฐานแข็งแรงกว่า</small></section>
-    <section class="setting-group"><div class="group-title"><span>หลักฐานสดจาก 5DollarFootballAPI</span><small>ตั้งแต่ค่าที่กำหนด = ผ่าน · ข้อมูลไม่มีจะไม่ถูกนับเป็นศูนย์</small></div><div class="setting-grid evidence-grid">
-      <label><span>ยิงเข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOnTarget" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>ยิงไม่เข้ากรอบ ตั้งแต่</span><div class="input-unit"><input name="shotOff" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>เตะมุม ตั้งแต่</span><div class="input-unit"><input name="corner" type="number" min="0" max="50" step="1" required><em>ครั้ง</em></div></label>
-      <label><span>สัดส่วนการบุกอันตราย ตั้งแต่</span><div class="input-unit"><input name="dangerousAttackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>สัดส่วนการบุก ตั้งแต่</span><div class="input-unit"><input name="attackPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label><span>การครองบอล ตั้งแต่</span><div class="input-unit"><input name="possessionPct" type="number" min="0" max="100" step="1" required><em>เปอร์เซ็นต์</em></div></label>
-      <label class="wide"><span>ต้องการหลักฐานดังกล่าว</span><select name="evidenceRequired" required><option value="1">1 จาก 6</option><option value="2">2 จาก 6</option><option value="3">3 จาก 6</option><option value="4">4 จาก 6</option><option value="5">5 จาก 6</option><option value="6">6 จาก 6</option></select></label>
-    </div></section>
-    <section class="setting-group"><div class="group-title"><span>ราคา Bet365 จาก 5DollarFootballAPI</span></div><div class="setting-grid"><label><span>เส้น Asian Handicap ต่ำสุด</span><input name="lineMin" type="number" min="-10" max="10" step="0.25" required><small>ใช้เส้นของฝั่งที่ถูกเลือกจริง</small></label><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label></div></section>
-    <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
-    <section class="setting-group behavior"><div class="group-title"><span>การทำงานของสัญญาณ</span></div><div class="behavior-row"><span>ผ่านเงื่อนไข → ล็อกทันที</span><span>ไม่เลือกคู่เดิมซ้ำ</span><span>ตรวจราคา Bet365 ก่อนปล่อย Signal</span><span>ทำงานต่อจนจบช่วงเวลาที่กำหนด</span></div></section>
-    <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
+  <section class="settings-card" data-panel="under" hidden><form data-form="under">
+    <header class="settings-title"><div><small>ตลาดที่ 4</small><h2>UNDER</h2></div><p>เลือก Home / Away / Both · หลักฐานใช้ค่าความกดดันไม่เกินค่าที่ตั้ง</p></header>
+    <section class="group"><div class="group-head"><b>เลือกฝั่ง</b></div><div class="choice"><label><input type="radio" name="sideMode" value="HOME">Home</label><label><input type="radio" name="sideMode" value="AWAY">Away</label><label><input type="radio" name="sideMode" value="BOTH">Both</label></div></section>
+    <section class="group"><div class="group-head"><b>หลักฐานใน Rolling Window</b></div><div class="grid"><label><span>ยิงเข้ากรอบ ไม่เกิน</span><div class="unit"><input name="shotOnTarget" type="number"><em>ครั้ง</em></div></label><label><span>ยิงไม่เข้ากรอบ ไม่เกิน</span><div class="unit"><input name="shotOff" type="number"><em>ครั้ง</em></div></label><label><span>เตะมุม ไม่เกิน</span><div class="unit"><input name="corner" type="number"><em>ครั้ง</em></div></label><label><span>การบุก ไม่เกิน</span><div class="unit"><input name="attackPct" type="number"><em>%</em></div></label><label><span>การบุกอันตราย ไม่เกิน</span><div class="unit"><input name="dangerousAttackPct" type="number"><em>%</em></div></label><label><span>ครองบอล ไม่เกิน</span><div class="unit"><input name="possessionPct" type="number"><em>%</em></div></label><label class="wide"><span>ต้องการหลักฐาน</span><select name="evidenceRequired"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select></label></div></section>
+    <section class="group"><div class="group-head"><b>ราคา Bet365</b></div><div class="grid"><label><span>เส้น Under ตั้งแต่</span><input name="lineMin" type="number" step="0.5"></label><label><span>เส้น Under ไม่เกิน</span><input name="lineMax" type="number" step="0.5"></label><label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" step="0.01"></label></div></section>
+    <section class="group"><div class="group-head"><b>ช่วงเวลาทำงาน</b></div><div class="grid"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number"></label><label><span>นาทีจบ</span><input name="minuteTo" type="number"></label><label><span>Rolling Window</span><div class="unit"><input name="rollingWindowMinutes" type="number"><em>นาที</em></div></label></div></section>
+    <footer class="actions"><div class="message" data-message>ยังไม่ได้เปลี่ยนค่า</div><div class="buttons"><button type="button" class="stop" data-stop>STOP</button><button type="submit" class="save">บันทึก</button><button type="button" class="run" data-run>RUN</button></div></footer>
   </form></section>
-
-  <section class="wire-panel" aria-label="เส้นทางข้อมูลที่เตรียมไว้">
-    <div class="wire-head"><div><h3>เส้นทางข้อมูล 3.43 · เปลือยสายพร้อมต่อ</h3><p>ทุกสายตั้งชื่อเต็มและบอกหน่วยชัดเจน · ตอนนี้ยังไม่เรียก API จริง รอคำยืนยันสัญญาข้อมูลจาก 5DollarFootballAPI</p></div><div class="wire-state">PRE-WIRED / NOT CONNECTED</div></div>
-    <div class="wire-grid">
-      <div class="wire"><b>ยิงเข้ากรอบ</b><span>จำนวนครั้ง</span><code>statistics.shots_on_target</code><small>คำนวณ: ค่าปัจจุบัน − ค่าต้นช่วงย้อนหลัง</small></div>
-      <div class="wire"><b>ยิงไม่เข้ากรอบ</b><span>จำนวนครั้ง</span><code>statistics.shots_off_target</code><small>คำนวณ: ค่าปัจจุบัน − ค่าต้นช่วงย้อนหลัง</small></div>
-      <div class="wire"><b>เตะมุม</b><span>จำนวนครั้ง</span><code>fixture / statistics corners</code><small>คำนวณ: ค่าปัจจุบัน − ค่าต้นช่วงย้อนหลัง</small></div>
-      <div class="wire"><b>สัดส่วนการบุกอันตราย</b><span>เปอร์เซ็นต์</span><code>statistics.dangerous_attacks</code><small class="wire-formula">ฝั่งนี้เพิ่ม ÷ (Home เพิ่ม + Away เพิ่ม) × 100</small></div>
-      <div class="wire"><b>สัดส่วนการบุก</b><span>เปอร์เซ็นต์</span><code>statistics.attacks</code><small class="wire-formula">ฝั่งนี้เพิ่ม ÷ (Home เพิ่ม + Away เพิ่ม) × 100</small></div>
-      <div class="wire"><b>การครองบอล</b><span>เปอร์เซ็นต์</span><code>statistics.possession</code><small>ใช้เปอร์เซ็นต์ล่าสุดจากผู้ให้ข้อมูล</small></div>
-      <div class="wire"><b>คะแนน / นาที / ทีม / ลีก</b><span>ข้อมูลบอลสด</span><code>live fixture</code><small>ใช้เป็นตัวตนของคู่และช่วงเวลาตรวจจับ</small></div>
-      <div class="wire"><b>ราคา Bet365</b><span>ราคาและเส้น</span><code>5USD Bet365 odds</code><small>เส้นสูงต่ำ / 1X2 / Asian Handicap ผูกกับคู่เดียวกัน</small></div>
-    </div>
-  </section>
-
-  <div class="settings-v3-note">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK · หน้าใหม่นี้แยกจาก 3.41 และ 3.42 · ยังไม่เชื่อมต่อ Engine จริง และไม่มีการแก้ไฟล์ของ 3.42 ในการทำหน้าตรวจแบบนี้</div>
+  <div class="private-note"><strong>สถานะตอนนี้:</strong> หน้านี้เก็บค่าทดสอบในเบราว์เซอร์เท่านั้น ยังไม่สั่ง Engine จริง และไม่มีลิงก์จาก Live Score / Signal / Statistics</div>
 </main>
-<script src="settings.js?v=20260909-343-preview-v1" defer></script>
-</body>
-</html>
+<script src="settings.js?v=343-clean-v1" defer></script>
+</body></html>
