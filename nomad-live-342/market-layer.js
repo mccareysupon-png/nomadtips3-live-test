@@ -5,6 +5,9 @@ const preset=window.NOMAD342_K_LIVE_PRESET||{};
 const kMarket=preset.market||{};
 const list=()=>document.getElementById('matchList');
 const autoExpandedMatches=new Set();
+const pinnedSignalMatches=new Set();
+const pinnedSignalOrder=new Map();
+let pinSequence=0;
 let timer=null,running=false,lastPayload=null,lastError=null;
 
 function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null}
@@ -77,6 +80,22 @@ function hasLockedSignal(card){
   const status=card?.querySelector('.api-football-candidate-card .afc-head strong');
   return String(status?.textContent||'').trim().toUpperCase()==='PREDICTION LOCKED';
 }
+function pinLockedSignals(){
+  const target=list();if(!target)return;
+  const cards=[...target.children].filter(node=>node?.matches?.('.event-compact'));
+  for(const card of cards){
+    if(!hasLockedSignal(card))continue;
+    const id=String(card?.dataset?.matchId||'');
+    if(!id||pinnedSignalMatches.has(id))continue;
+    pinnedSignalMatches.add(id);
+    pinnedSignalOrder.set(id,++pinSequence);
+  }
+  const pinned=cards.filter(card=>pinnedSignalMatches.has(String(card?.dataset?.matchId||''))).sort((a,b)=>(pinnedSignalOrder.get(String(b.dataset.matchId))||0)-(pinnedSignalOrder.get(String(a.dataset.matchId))||0));
+  if(!pinned.length)return;
+  const current=[...target.children];
+  if(pinned.every((card,index)=>current[index]===card))return;
+  for(let i=pinned.length-1;i>=0;i--)target.insertBefore(pinned[i],target.firstChild);
+}
 function autoExpandLockedSignals(){
   document.querySelectorAll('.event-compact').forEach(card=>{
     const id=String(card?.dataset?.matchId||'');
@@ -85,6 +104,7 @@ function autoExpandLockedSignals(){
     if(!card.classList.contains('expanded'))card.click();
   });
 }
+function processLockedSignals(){pinLockedSignals();autoExpandLockedSignals()}
 function hydrateCard(card,r,marketMatches){
   if(!card||!r)return;
   removeMarket(card);
@@ -134,10 +154,10 @@ function start(){
   const target=list();if(!target)return;
   let queued=false;const queue=()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;if(lastPayload)hydrateAll()})};
   new MutationObserver(queue).observe(target,{childList:true});
-  let signalQueued=false;const queueSignalExpand=()=>{if(signalQueued)return;signalQueued=true;requestAnimationFrame(()=>{signalQueued=false;autoExpandLockedSignals()})};
-  new MutationObserver(queueSignalExpand).observe(target,{childList:true,subtree:true,characterData:true});
+  let signalQueued=false;const queueSignalProcess=()=>{if(signalQueued)return;signalQueued=true;requestAnimationFrame(()=>{signalQueued=false;processLockedSignals()})};
+  new MutationObserver(queueSignalProcess).observe(target,{childList:true,subtree:true,characterData:true});
   document.addEventListener('nomad342:odds-display-change',queue);
-  cycle();queueSignalExpand();timer=setInterval(cycle,Math.max(10000,Number(runtime.pollMs)||15000));
+  cycle();queueSignalProcess();timer=setInterval(cycle,Math.max(10000,Number(runtime.pollMs)||15000));
   window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer)},{once:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
