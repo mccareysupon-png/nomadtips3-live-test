@@ -13,8 +13,8 @@ Isolated display-only SOT/SOFF sidecar for NOMAD LIVE 3.42.
 ## Sources
 
 - NOMAD match identity: `nomadtips3-live-score-feed-v3 /feed`.
-- Shot statistics: `GET /v1/fixtures?status=live&include=stats&per_page=50&page=1` from 5DollarFootballAPI.
-- Only one provider page is fetched by design. Coverage is intentionally partial to protect the Pro 10 req/min budget and avoid interfering with the existing S8 adapter.
+- Shot statistics: `GET /v1/fixtures?status=live&include=stats&per_page=500` from 5DollarFootballAPI.
+- One provider request returns the full live board (up to 500 fixtures) with embedded statistics. The sidecar caches this board for 15 minutes, which stays far below the Pro 10 requests/minute limit.
 
 ## Mapping
 
@@ -22,7 +22,7 @@ Precision before coverage. Home maps only to Home, Away only to Away. Low-confid
 
 ## Snapshot contract
 
-The response exposes current cumulative `shotOnTarget` / `shotOffTarget`, an actual observed match minute, a 20-minute bucket marker, and a best-effort `rolling20` delta when two consecutive sidecar snapshots exist. Provider corrections never emit negative rolling shot deltas.
+The response exposes current cumulative `shotOnTarget` / `shotOffTarget`, an actual observed match minute, a 15-minute bucket marker, and a best-effort `rolling15` delta when two consecutive sidecar snapshots exist. Provider corrections never emit negative rolling shot deltas.
 
 ## Secret
 
