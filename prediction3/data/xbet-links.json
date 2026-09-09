@@ -1,6 +1,6 @@
 {
-  "version": "PREDICTION3_1XBET_AFFILIATE_V2",
-  "updated_at": "2026-09-09T11:02:00+07:00",
+  "version": "PREDICTION3_1XBET_AFFILIATE_V3",
+  "updated_at": "2026-09-09T11:08:00+07:00",
   "affiliate": {
     "entry_url": "https://reffpa.com/L?tag=d_5987230m_14243c_&site=5987230&ad=14243",
     "tag": "d_5987230m_14243c_",
@@ -13,38 +13,44 @@
     "enabled": true,
     "required_for_every_official_pick": true,
     "affiliate_first": true,
+    "embed_on_selected_team_name": true,
+    "show_raw_url": false,
+    "hover_required": true,
     "direct_match_only": true,
     "never_publish_raw_target_url": true,
     "no_homepage_fallback": true,
     "no_league_fallback": true,
-    "deep_link_required": true,
-    "missing_link_action": "Do not invent affiliate deep-link syntax. Keep the public button hidden until a verified 1xBet Partners deep link preserves this affiliate tag and opens the exact selected fixture.",
-    "daily_flow": "After each SIRIUS selection is approved, resolve the exact 1xBet event target, then generate or verify an affiliate deep link using tag d_5987230m_14243c_ so the published link opens that exact fixture through the affiliate route."
+    "native_deep_link_preferred": true,
+    "fallback_route": "If a verified native affiliate deep link is not yet available, open the affiliate tracking URL first and then navigate that same user-opened tab to the exact verified fixture target.",
+    "daily_flow": "After each SIRIUS selection is approved, resolve that exact fixture on 1xBet, assign the selected team name as the hidden clickable anchor, preserve affiliate tag d_5987230m_14243c_, and route to the exact fixture. For O/U or BTTS where no team side is selected, both team names may act as the same hidden match link."
   },
   "links": {
     "p3-2026-09-09-liv-atm": {
       "event_id": "364650228",
       "home": "Liverpool",
       "away": "Atletico Madrid",
+      "selected_team": "Liverpool",
       "target_url": "https://1xlite-0673.pro/th/line/football/118587-uefa-champions-league/364650228-liverpool-atletico-madrid",
       "affiliate_deep_link": null,
-      "status": "AFFILIATE_DEEP_LINK_REQUIRED"
+      "status": "AFFILIATE_FIRST_FALLBACK_ACTIVE"
     },
     "p3-2026-09-09-spo-gal": {
       "event_id": "364650244",
       "home": "Sporting CP",
       "away": "Galatasaray",
+      "selected_team": "Sporting CP",
       "target_url": "https://1xlite-0673.pro/th/line/football/118587-uefa-champions-league/364650244-sporting-clube-de-portugal-galatasaray",
       "affiliate_deep_link": null,
-      "status": "AFFILIATE_DEEP_LINK_REQUIRED"
+      "status": "AFFILIATE_FIRST_FALLBACK_ACTIVE"
     },
     "p3-2026-09-09-uni-var": {
       "event_id": "366096108",
       "home": "Nordic United",
       "away": "IFK Varnamo",
+      "selected_team": "United Nordic",
       "target_url": "https://1xlite-0673.pro/th/line/football/1371789-sweden-superettan/366096108-nordic-united-ifk-varnamo",
       "affiliate_deep_link": null,
-      "status": "AFFILIATE_DEEP_LINK_REQUIRED"
+      "status": "AFFILIATE_FIRST_FALLBACK_ACTIVE"
     }
   }
 }
