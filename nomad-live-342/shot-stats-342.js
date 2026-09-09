@@ -22,7 +22,7 @@ function applyStat(card,label,pair,rollingPair,meta){
   if(away)away.textContent=value(pair?.away);
   const small=stat.querySelector('small');
   if(small){
-    const roll=rollingPair?`20M CHANGE · HOME ${delta(rollingPair.home)} · AWAY ${delta(rollingPair.away)}`:'5DOLLAR · DISPLAY ONLY';
+    const roll=rollingPair?`15M CHANGE · HOME ${delta(rollingPair.home)} · AWAY ${delta(rollingPair.away)}`:'5DOLLAR · DISPLAY ONLY';
     small.textContent=roll;
     small.title=`5DollarFootballAPI · mapping ${meta?.confidence??'—'} · detector not connected`;
   }
@@ -44,8 +44,8 @@ function applyCard(card){
     resetStat(card,'SHOTS OFF TARGET');
     return;
   }
-  applyStat(card,'SHOTS ON TARGET',row.shotOnTarget,row.rolling20?.shotOnTarget,row.mapping);
-  applyStat(card,'SHOTS OFF TARGET',row.shotOffTarget,row.rolling20?.shotOffTarget,row.mapping);
+  applyStat(card,'SHOTS ON TARGET',row.shotOnTarget,row.rolling15?.shotOnTarget,row.mapping);
+  applyStat(card,'SHOTS OFF TARGET',row.shotOffTarget,row.rolling15?.shotOffTarget,row.mapping);
 }
 function applyAll(){document.querySelectorAll('.event-compact[data-match-id]').forEach(applyCard)}
 function queueApply(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;applyAll()})}
