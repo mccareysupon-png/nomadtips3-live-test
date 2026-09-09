@@ -14,7 +14,7 @@ const ALLOWED_ORIGINS=new Set([
   'https://mccareysupon-png.github.io','http://localhost:8787','http://127.0.0.1:8787'
 ]);
 const DEFAULTS=Object.freeze({
-  over:{lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
+  over:{lineMin:0.5,lineMax:10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
@@ -50,6 +50,7 @@ function validateSnapshot(snapshot){
     if(c.oddsMin<1.01||c.oddsMin>20)errors.push(`${name}.oddsMin`);
     if(name==='ah'&&(c.lineMin<-10||c.lineMin>10||!Number.isInteger(c.lineMin*4)))errors.push(`${name}.lineMin`);
     if(name!=='oneXtwo'&&name!=='ah'&&(c.lineMin<.5||c.lineMin>10||!Number.isInteger(c.lineMin*2)))errors.push(`${name}.lineMin`);
+    if(name==='over'&&(c.lineMax<.5||c.lineMax>10||!Number.isInteger(c.lineMax*2)||c.lineMin>c.lineMax))errors.push(`${name}.lineMax`);
     if(name==='oneXtwo'&&(c.scoreTrailingMax<0||c.scoreTrailingMax>10||!Number.isInteger(c.scoreTrailingMax)))errors.push(`${name}.scoreTrailingMax`);
     if(name!=='over'&&!['HOME','AWAY','BOTH'].includes(c.sideMode))errors.push(`${name}.sideMode`);
     if(c.evidenceRequired<1||c.evidenceRequired>6||!Number.isInteger(c.evidenceRequired))errors.push(`${name}.evidenceRequired`);
@@ -158,6 +159,7 @@ function evaluateEvidence(values,cfg,direction){const checks={};let passCount=0;
 function minutePass(minute,cfg){const n=finite(minute);return n!==null&&n>=Number(cfg.minuteFrom)&&n<=Number(cfg.minuteTo)}
 function oddsOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n<=100}
 function lineOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n<=20&&Number.isInteger(n*4)}
+function lineRangeOk(value,min,max){const n=finite(value),lo=finite(min),hi=finite(max);return n!==null&&lo!==null&&hi!==null&&n>=lo&&n<=hi&&n<=20&&Number.isInteger(n*4)}
 function selectedOddsOne(market,pick){return finite(pick==='HOME'?market?.oneXtwo?.home:market?.oneXtwo?.away)}
 function chooseOneXtwo(pred,cfg){const mode=String(cfg?.sideMode||'BOTH').toUpperCase();if(mode==='HOME')return 'HOME';if(mode==='AWAY')return 'AWAY';return Number(pred?.home||0)>=Number(pred?.away||0)?'HOME':'AWAY'}
 function trailingBy(score,pick){const h=finite(score?.[0]),a=finite(score?.[1]);if(h===null||a===null)return null;return pick==='HOME'?Math.max(0,a-h):Math.max(0,h-a)}
@@ -209,7 +211,7 @@ function marketGate(name,m,row,snapshot,statRows){
     evidence=evaluateEvidence(pick==='HOME'?homeEv:awayEv,cfg,'MIN');if(!evidence.pass)reasons.push(`หลักฐานผ่าน ${evidence.passCount}/${evidence.required}`);
   }else if(name==='over'){
     pick='OVER';line=finite(market?.totals?.line);odds=finite(market?.totals?.over);probability=finite(pred?.totals?.over);
-    if(!lineOk(line,cfg.lineMin))reasons.push('เส้น Over ต่ำกว่าที่ตั้ง');if(!oddsOk(odds,cfg.oddsMin))reasons.push('ราคา odds ต่ำกว่าที่ตั้ง');
+    if(!lineRangeOk(line,cfg.lineMin,cfg.lineMax))reasons.push('เส้น Over ไม่อยู่ในช่วงที่ตั้ง');if(!oddsOk(odds,cfg.oddsMin))reasons.push('ราคา odds ต่ำกว่าที่ตั้ง');
     const home=evaluateEvidence(homeEv,cfg,'MIN'),away=evaluateEvidence(awayEv,cfg,'MIN'),passSides=[['HOME',home],['AWAY',away]].filter(([,e])=>e.pass).sort((a,b)=>b[1].passCount-a[1].passCount);
     evidence={mode:'EITHER',sides:{HOME:home,AWAY:away},passingSides:passSides.map(x=>x[0]),selectedSide:passSides[0]?.[0]||null,pass:passSides.length>0};if(!evidence.pass)reasons.push('ยังไม่มีฝั่งใดผ่านหลักฐานที่ตั้ง');
   }else{
