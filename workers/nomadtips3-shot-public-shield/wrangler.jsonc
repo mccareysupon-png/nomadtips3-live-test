@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-shot-public-shield",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-09",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "services": [
+    {
+      "binding": "SHOT_ORIGIN",
+      "service": "nomadtips3-shot-sidecar-342"
+    }
+  ],
+  "ratelimits": [
+    {
+      "name": "PUBLIC_RATE_LIMITER",
+      "namespace_id": "34291",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ]
+}
