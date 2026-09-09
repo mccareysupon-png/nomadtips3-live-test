@@ -13,9 +13,9 @@
    Rollback: remove this stylesheet link from nomad-live-342/index.html and delete this file. */
 
 body[data-page="live"] .event-compact .market-mini-badge{
-  font-size:8.1px!important; /* remains 10% smaller than the original 9px */
+  font-size:8.1px!important;
   color:#fff!important;
-  font-weight:550!important; /* +10% text weight from 500 */
+  font-weight:550!important;
   letter-spacing:0!important;
   opacity:1;
   background:none!important;
@@ -34,16 +34,10 @@ body[data-page="live"] .event-compact .api-candidate-mini *{
   color:#83df89!important;
 }
 
-/* Hide only the two helper lines:
-   API-FOOTBALL · ONE-SHOT REFEREE
-   K Default passed → 1X2 + OVER/UNDER
-   Keep PREDICTION LOCKED and the prediction data visible. */
 body[data-page="live"] .event-compact .api-football-candidate-card .afc-head>div{
   display:none!important;
 }
 
-/* Match list: no outer card outline in any state.
-   A short, low-contrast rule separates one fixture from the next. */
 body[data-page="live"] #nomad342PanelLive .event-compact{
   position:relative;
   border:0!important;
@@ -74,8 +68,6 @@ body[data-page="live"] #nomad342PanelLive .event-compact .event-details{
   border-top-color:rgba(150,158,151,.065)!important;
 }
 
-/* Live Score summary: one square card, four equal centered cells.
-   Existing 22px values are reduced exactly 30% to 15.4px. */
 body[data-page="live"] #nomad342PanelLive>.status-grid{
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
   gap:0!important;
@@ -101,7 +93,6 @@ body[data-page="live"] #nomad342PanelLive>.status-grid>.metric{
   box-shadow:none!important;
 }
 
-/* Short centered divider: deliberately does not touch the card edges. */
 body[data-page="live"] #nomad342PanelLive>.status-grid>.metric:not(:last-child)::after{
   content:"";
   position:absolute;
@@ -137,8 +128,6 @@ body[data-page="live"] #nomad342PanelLive>.status-grid>.metric>small{
   body[data-page="live"] #nomad342PanelLive>.status-grid>.metric{
     min-height:50px;
   }
-
-  /* Reset desktop dividers, then draw short dividers for the 2x2 mobile grid. */
   body[data-page="live"] #nomad342PanelLive>.status-grid>.metric::after{
     display:none!important;
   }
@@ -163,8 +152,6 @@ body[data-page="live"] #nomad342PanelLive>.status-grid>.metric>small{
   }
 }
 
-/* Expanded match content: remove box outlines and decorative framing.
-   Keep only the few horizontal separators that help scan the content. */
 body[data-page="live"] #nomad342PanelLive .event-compact .nomad-live-prediction,
 body[data-page="live"] #nomad342PanelLive .event-compact .nomad-market-card,
 body[data-page="live"] #nomad342PanelLive .event-compact .market-tile,
@@ -185,8 +172,6 @@ body[data-page="live"] #nomad342PanelLive .event-compact .afc-foot{
   border-top:1px solid rgba(150,158,151,.06)!important;
 }
 
-/* Final clean pass: these were the remaining visible rectangular outlines.
-   Preserve only true graph rails/axes and thin horizontal section separators. */
 body[data-page="live"] #nomad342PanelLive .event-compact .gf-stats-head,
 body[data-page="live"] #nomad342PanelLive .event-compact .event-stats,
 body[data-page="live"] #nomad342PanelLive .event-compact .na-section,
@@ -206,8 +191,6 @@ body[data-page="live"] #nomad342PanelLive .event-compact .na-pressure-ring{
   box-shadow:none!important;
 }
 
-/* 2026-09-09 — unified vintage square heading + summary cards across all 3.42 tabs.
-   Presentation only: no feed, market, prediction, ledger or settlement logic changes. */
 body[data-page="live"] .nomad342-subpage-heading{
   border:0!important;
   border-radius:0!important;
@@ -242,8 +225,6 @@ body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric:not(:last-child)
   background:rgba(210,180,106,.20)!important;
 }
 
-/* 2026-09-09 — Signal market fills: solid color only.
-   Keep the existing green price-ready/signal outline exactly as-is. */
 html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-market:not(.price-ready),
 html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-compare{
   border:0!important;
@@ -261,8 +242,6 @@ html body[data-page="live"] #nomad342PanelSignal .signal-lock-grid .signal-compa
   background:#272c29!important;
 }
 
-/* 2026-09-09 — remove the actual content separators/splinters.
-   Scope only to Live match content; summary-card dividers are intentionally untouched. */
 body[data-page="live"] #nomad342PanelLive .event-compact::after{
   content:none!important;
   display:none!important;
@@ -273,4 +252,18 @@ body[data-page="live"] #nomad342PanelLive .event-compact .event-details{
 body[data-page="live"] #nomad342PanelLive .event-compact .market-bookmakers,
 body[data-page="live"] #nomad342PanelLive .event-compact .afc-foot{
   border-top:0!important;
+}
+
+/* 2026-09-09 — final summary cleanup.
+   Remove the short separator "splinters" between all 18 summary cards
+   (Live 4 + Signal 5 + Statistics 9) on desktop and mobile. */
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric::before,
+html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric::after{
+  content:none!important;
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  border:0!important;
+  background:none!important;
+  box-shadow:none!important;
 }
