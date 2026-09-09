@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-09T06:04:32Z",
+  "updated_at": "2026-09-09T11:33:07Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3424,8 +3424,8 @@
       "edge": 23.5,
       "ev": 0.3894,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-09-09T01:36:46Z",
       "source_url": "https://www.goaloo.com/football/australia-cup-sydney-fc-vs-melbourne-victory/h2h-3084561",
       "summary_url": "https://www.goaloo.com/football/australia-cup-sydney-fc-vs-melbourne-victory/summary-3084561",
@@ -3485,7 +3485,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
     },
     {
       "id": "4e7646c5d1036945-OU-OVER-2p75",
@@ -5719,8 +5724,8 @@
       "edge": 47.3,
       "ev": 2.12,
       "required_confidence": 0.62,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "locked_at": "2026-09-09T01:36:40Z",
       "source_url": "https://www.goaloo.com/football/fa-cup-malaysia-penang-vs-melaka-fc/h2h-3073581",
       "summary_url": "https://www.goaloo.com/football/fa-cup-malaysia-penang-vs-melaka-fc/summary-3073581",
@@ -5780,7 +5785,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
     },
     {
       "id": "05986a95ebe4cd00-AH-HOME-0p75",
@@ -8779,8 +8789,8 @@
       "edge": 11.9,
       "ev": 0.1736,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "locked_at": "2026-09-09T01:36:44Z",
       "source_url": "https://www.goaloo.com/football/j-league-cup-rayluck-shiga-vs-tokyo-verdy/h2h-3008753",
       "summary_url": "https://www.goaloo.com/football/j-league-cup-rayluck-shiga-vs-tokyo-verdy/summary-3008753",
@@ -8840,7 +8850,12 @@
         "away_recent": 9,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
     },
     {
       "id": "d8f5e855d5e28111-AH-AWAY-0p75",
@@ -16023,6 +16038,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-09T00:20:40Z"
+    },
+    {
+      "id": "d8ebf129e79f1f98-AH-HOME-0p25",
+      "goaloo_id": "3084561",
+      "date": "2026-09-09",
+      "kickoff": "2026-09-09 09:30:00",
+      "league": "Australia Cup",
+      "home": "Sydney FC",
+      "away": "Melbourne Victory",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.25,
+      "pick": "Sydney FC +0.25",
+      "side": "home",
+      "odds": 1.91,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7245,
+      "model_probability": 0.7245,
+      "market_fair_probability": 0.4893,
+      "market_edge": 0.2352,
+      "edge": 23.5,
+      "ev": 0.3894,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-09-09T01:36:46Z",
+      "source_url": "https://www.goaloo.com/football/australia-cup-sydney-fc-vs-melbourne-victory/h2h-3084561",
+      "summary_url": "https://www.goaloo.com/football/australia-cup-sydney-fc-vs-melbourne-victory/summary-3084561",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.802,
+        "lambda_away": 1.062,
+        "home_win": 0.5555,
+        "draw": 0.2486,
+        "away_win": 0.1959,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0862,
+          "gd_edge": 0.4509,
+          "clean_sheet_edge": -0.0683,
+          "failed_to_score_edge": 0.1512,
+          "bounded_adjustment": 0.0149,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
+    },
+    {
+      "id": "012e4cb072ad2ddc-1X2-AWAY",
+      "goaloo_id": "3073581",
+      "date": "2026-09-09",
+      "kickoff": "2026-09-09 08:30:00",
+      "league": "FA Cup Malaysia",
+      "home": "Penang",
+      "away": "Melaka FC",
+      "market": "1X2",
+      "selection": "AWAY",
+      "line": null,
+      "pick": "Melaka FC Win",
+      "side": "away",
+      "odds": 4.67,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6681,
+      "model_probability": 0.6681,
+      "market_fair_probability": 0.1946,
+      "market_edge": 0.4735,
+      "edge": 47.3,
+      "ev": 2.12,
+      "required_confidence": 0.62,
+      "result": "LOSS",
+      "ft": "2-1",
+      "locked_at": "2026-09-09T01:36:40Z",
+      "source_url": "https://www.goaloo.com/football/fa-cup-malaysia-penang-vs-melaka-fc/h2h-3073581",
+      "summary_url": "https://www.goaloo.com/football/fa-cup-malaysia-penang-vs-melaka-fc/summary-3073581",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.648,
+        "lambda_away": 1.796,
+        "home_win": 0.0943,
+        "draw": 0.2376,
+        "away_win": 0.6681,
+        "h2h_adjustment": 0.0125,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.4049,
+          "gd_edge": -0.7685,
+          "clean_sheet_edge": -0.1561,
+          "failed_to_score_edge": -0.5756,
+          "bounded_adjustment": -0.0387,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
+    },
+    {
+      "id": "7b3ba54d9db607cf-OU-OVER-2p75",
+      "goaloo_id": "3008753",
+      "date": "2026-09-09",
+      "kickoff": "2026-09-09 09:30:00",
+      "league": "J-League Cup",
+      "home": "Rayluck Shiga",
+      "away": "Tokyo Verdy",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.75,
+      "pick": "Over 2.75",
+      "side": null,
+      "odds": 1.93,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6061,
+      "model_probability": 0.6061,
+      "market_fair_probability": 0.4867,
+      "market_edge": 0.1194,
+      "edge": 11.9,
+      "ev": 0.1736,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-1",
+      "locked_at": "2026-09-09T01:36:44Z",
+      "source_url": "https://www.goaloo.com/football/j-league-cup-rayluck-shiga-vs-tokyo-verdy/h2h-3008753",
+      "summary_url": "https://www.goaloo.com/football/j-league-cup-rayluck-shiga-vs-tokyo-verdy/summary-3008753",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.705,
+        "lambda_away": 1.699,
+        "home_win": 0.3775,
+        "draw": 0.2419,
+        "away_win": 0.3806,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0488,
+          "gd_edge": -0.0332,
+          "clean_sheet_edge": 0.0732,
+          "failed_to_score_edge": -0.1463,
+          "bounded_adjustment": -0.0028,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 9,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T11:33:07Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
