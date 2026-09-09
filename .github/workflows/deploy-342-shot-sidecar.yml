@@ -1,0 +1,82 @@
+name: Deploy 3.42 Shot Sidecar
+
+on:
+  push:
+    branches:
+      - work/nomad342-shot-sidecar
+    paths:
+      - 'workers/nomadtips3-shot-sidecar-342/**'
+      - '.github/workflows/deploy-342-shot-sidecar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  SHOT_URL: https://nomadtips3-shot-sidecar-342.mccarey-supon.workers.dev
+
+jobs:
+  isolated-deploy-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify isolated scope
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-shot-sidecar-342/src/index.js
+          grep -Fq "mode:'DISPLAY_ONLY'" workers/nomadtips3-shot-sidecar-342/src/index.js
+          grep -Fq 'detectorConnected:false' workers/nomadtips3-shot-sidecar-342/src/index.js
+          grep -Fq "futureDetectorPort:'READY'" workers/nomadtips3-shot-sidecar-342/src/index.js
+          test "$(git diff --name-only origin/main...HEAD | grep -Ev '^(workers/nomadtips3-shot-sidecar-342/|nomad-live-342/shot-(stats|settings-status)-342\.js$|nomad-live-342/shot-sidecar-contract\.md$|\.github/workflows/(test-342-shot-sidecar|deploy-342-shot-sidecar)\.yml$)' | wc -l)" = "0"
+
+      - name: Dry-run isolated worker bundle
+        working-directory: workers/nomadtips3-shot-sidecar-342
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Validate deploy credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY repository secret'; exit 1; }
+
+      - name: Deploy isolated Shot Sidecar only
+        working-directory: workers/nomadtips3-shot-sidecar-342
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Bind 5Dollar API key to isolated worker
+        working-directory: workers/nomadtips3-shot-sidecar-342
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
+
+      - name: Probe health contract
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$SHOT_URL/health?_=$RANDOM$RANDOM" -o /tmp/shot-health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/shot-health.json','utf8'));
+          console.log(JSON.stringify(j,null,2));
+          if(j.ok!==true||j.mode!=='DISPLAY_ONLY'||j.detectorConnected!==false||j.futureDetectorPort!=='READY')process.exit(1);
+          NODE
+
+      - name: Probe live mapping and stats
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 40 "$SHOT_URL/snapshot?force=1&_=$RANDOM$RANDOM" -o /tmp/shot-snapshot.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/shot-snapshot.json','utf8'));
+          const sample=(Array.isArray(j.results)?j.results:[]).filter(x=>x.status==='MATCHED').slice(0,20).map(x=>({nomadMatchId:x.nomadMatchId,providerFixtureId:x.providerFixtureId,home:x.home,away:x.away,league:x.league,minute:x.minute,status:x.status,mapping:x.mapping,shotOnTarget:x.shotOnTarget,shotOffTarget:x.shotOffTarget}));
+          console.log(JSON.stringify({ok:j.ok,mode:j.mode,detectorConnected:j.detectorConnected,counts:j.counts,provider:j.provider,nomad:j.nomad,sample},null,2));
+          if(j.mode!=='DISPLAY_ONLY'||j.detectorConnected!==false)process.exit(1);
+          if(j.ok!==true)process.exit(2);
+          NODE
