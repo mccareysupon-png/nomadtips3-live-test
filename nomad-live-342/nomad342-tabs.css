@@ -75,7 +75,7 @@
   opacity:1;
   filter:brightness(1.08) saturate(1.06) drop-shadow(0 1px 0 rgba(0,0,0,.45));
   transform:translateY(0) scale(1.20);
-  transition:filter .16s ease,opacity .16s ease,transform .16s ease;
+  transition:filter .16s ease,opacity .16s ease;
 }
 .nomad342-tab:nth-child(1) .nomad342-tab-icon{
   background-image:url("assets/subnav-live-score-bright-vintage.svg?v=20260906-v1");
@@ -90,12 +90,10 @@
 .nomad342-tab:hover .nomad342-tab-icon,
 .nomad342-tab:focus-visible .nomad342-tab-icon{
   filter:brightness(1.24) saturate(1.10) drop-shadow(0 0 5px rgba(255,255,255,.22));
-  transform:translateY(-1px) scale(1.248);
 }
 .nomad342-tab[aria-selected="true"] .nomad342-tab-icon{
   opacity:1;
   filter:brightness(1.32) saturate(1.13) drop-shadow(0 0 6px rgba(131,223,137,.44));
-  transform:translateY(-1px) scale(1.248);
 }
 .nomad342-tab-label{display:inline-block}
 
@@ -186,8 +184,8 @@
   box-shadow:0 0 7px color-mix(in srgb,var(--green) 22%,transparent);
 }
 .nomad342-tab-panel[hidden]{display:none!important}
-.nomad342-tab-panel{animation:nomad342TabIn .16s ease both}
-@keyframes nomad342TabIn{from{opacity:.72;transform:translateY(2px)}to{opacity:1;transform:none}}
+.nomad342-tab-panel{animation:nomad342TabIn .12s ease both}
+@keyframes nomad342TabIn{from{opacity:.84}to{opacity:1}}
 
 @media(max-width:900px) and (min-width:701px){
   .nomad342-controlbar{gap:10px}
