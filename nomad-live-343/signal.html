@@ -1,21 +1,7 @@
 <!doctype html>
-<html lang="th">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27">
-  <title>nomadtips3 · Signal 3.43</title>
-  <link rel="stylesheet" href="app.css?v=343-clean-v1">
-</head>
-<body data-page="signal">
-<header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · 5USD ONE STOP ATTACK</div></div><nav class="topnav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav></div></header>
-<main class="shell">
-  <section class="page-head"><div><p class="eyebrow">NOMAD ENGINE 3.43</p><h1>Signal</h1><p>แสดงเฉพาะคู่ที่ผ่านเงื่อนไขและราคา Bet365 แล้ว</p></div><div class="source-state"><span class="pill"><i class="dot stop"></i>รอต่อ Signal Engine</span></div></section>
-  <section class="summary-grid"><article class="metric good"><span>ACTIVE SIGNALS</span><strong>—</strong><small>กำลังแข่งขัน</small></article><article class="metric"><span>ASIAN HANDICAP</span><strong>—</strong><small>สัญญาณปัจจุบัน</small></article><article class="metric"><span>1X2</span><strong>—</strong><small>สัญญาณปัจจุบัน</small></article><article class="metric warn"><span>OVER / UNDER</span><strong>—</strong><small>สัญญาณปัจจุบัน</small></article></section>
-  <section class="panel"><div class="panel-head"><div><h2>Locked signals</h2><p>หนึ่งคู่ หนึ่งสัญญาณต่อเงื่อนไขที่ล็อกแล้ว</p></div><span class="pill"><i class="dot stop"></i>ยังไม่ต่อข้อมูลจริง</span></div>
-    <div class="table-wrap"><table class="data-table"><thead><tr><th>เวลา</th><th>ลีก / คู่แข่งขัน</th><th>นาที</th><th>สกอร์</th><th>ตลาด</th><th>ตัวเลือก</th><th>เส้น</th><th>ราคา Bet365</th><th>หลักฐานที่ผ่าน</th><th>สถานะ</th></tr></thead><tbody><tr><td colspan="10" class="empty">รอ Condition Engine → Bet365 Price Gate → Signal</td></tr></tbody></table></div>
-  </section>
-  <div class="note">หน้า Signal ไม่คำนวณซ้ำเอง รับเฉพาะผลที่ Engine ล็อกแล้ว เพื่อไม่ให้หน้าจอกับเครื่องตัดสินคนละคำตอบ</div>
-</main>
-<nav class="mobile-nav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>
-<script src="ui.js?v=343-clean-v1" defer></script>
-</body></html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27"><title>nomadtips3 · Signal 3.43</title><link rel="stylesheet" href="app.css?v=343-engine-v1"></head>
+<body data-page="signal"><header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · 5USD ONE STOP ATTACK</div></div><nav class="topnav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav></div></header>
+<main class="shell"><section class="page-head"><div><p class="eyebrow">NOMAD ENGINE 3.43</p><h1>Signal</h1><p>แสดงเฉพาะคู่ที่ผ่าน Rolling Conditions และราคา Bet365 in-play จาก 5USD แล้ว</p></div><div class="source-state" data-signal-state><span class="pill"><i class="dot stop"></i>กำลังเชื่อม Signal Engine</span></div></section>
+<section class="summary-grid"><article class="metric good"><span>ACTIVE SIGNALS</span><strong data-active>—</strong><small>กำลังแข่งขัน</small></article><article class="metric"><span>ASIAN HANDICAP</span><strong data-count-ah>—</strong><small>สัญญาณปัจจุบัน</small></article><article class="metric"><span>1X2</span><strong data-count-oneXtwo>—</strong><small>สัญญาณปัจจุบัน</small></article><article class="metric warn"><span>OVER / UNDER</span><strong data-count-ou>—</strong><small>สัญญาณปัจจุบัน</small></article></section>
+<section class="panel"><div class="panel-head"><div><h2>Locked signals</h2><p>หนึ่งคู่ หนึ่งสัญญาณต่อหนึ่งตลาด · หน้า Signal ไม่คำนวณซ้ำเอง</p></div><span class="pill"><i class="dot live"></i>ENGINE SOURCE</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>เวลา</th><th>ลีก / คู่แข่งขัน</th><th>นาที</th><th>สกอร์</th><th>ตลาด</th><th>ตัวเลือก</th><th>เส้น</th><th>ราคา Bet365</th><th>หลักฐานที่ผ่าน</th><th>สถานะ</th></tr></thead><tbody data-signal-body><tr><td colspan="10" class="empty">กำลังรอข้อมูลจาก Condition Engine → Bet365 Price Gate → Signal</td></tr></tbody></table></div></section><div class="note">Signal ถูกล็อกครั้งเดียวต่อคู่/ตลาด และรอผลจบเพื่อส่งต่อ Statistics</div></main>
+<nav class="mobile-nav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><script src="ui.js?v=343-engine-v1" defer></script><script src="signal.js?v=343-engine-v1" defer></script></body></html>
