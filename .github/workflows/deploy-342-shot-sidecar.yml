@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -36,7 +38,8 @@ jobs:
           grep -Fq "mode:'DISPLAY_ONLY'" workers/nomadtips3-shot-sidecar-342/src/index.js
           grep -Fq 'detectorConnected:false' workers/nomadtips3-shot-sidecar-342/src/index.js
           grep -Fq "futureDetectorPort:'READY'" workers/nomadtips3-shot-sidecar-342/src/index.js
-          test "$(git diff --name-only origin/main...HEAD | grep -Ev '^(workers/nomadtips3-shot-sidecar-342/|nomad-live-342/shot-(stats|settings-status)-342\.js$|nomad-live-342/shot-sidecar-contract\.md$|\.github/workflows/(test-342-shot-sidecar|deploy-342-shot-sidecar)\.yml$)' | wc -l)" = "0"
+          unexpected="$(git diff --name-only origin/main...HEAD | grep -Ev '^(workers/nomadtips3-shot-sidecar-342/|nomad-live-342/shot-(stats|settings-status)-342\.js$|nomad-live-342/shot-sidecar-contract\.md$|\.github/workflows/(test-342-shot-sidecar|deploy-342-shot-sidecar)\.yml$)' || true)"
+          if [ -n "$unexpected" ]; then echo "::error::Unexpected files outside shot sidecar scope"; printf '%s\n' "$unexpected"; exit 1; fi
 
       - name: Dry-run isolated worker bundle
         working-directory: workers/nomadtips3-shot-sidecar-342
@@ -76,7 +79,7 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/shot-snapshot.json','utf8'));
           const sample=(Array.isArray(j.results)?j.results:[]).filter(x=>x.status==='MATCHED').slice(0,20).map(x=>({nomadMatchId:x.nomadMatchId,providerFixtureId:x.providerFixtureId,home:x.home,away:x.away,league:x.league,minute:x.minute,status:x.status,mapping:x.mapping,shotOnTarget:x.shotOnTarget,shotOffTarget:x.shotOffTarget}));
-          console.log(JSON.stringify({ok:j.ok,mode:j.mode,detectorConnected:j.detectorConnected,counts:j.counts,provider:j.provider,nomad:j.nomad,sample},null,2));
+          console.log(JSON.stringify({ok:j.ok,error:j.error??null,mode:j.mode,detectorConnected:j.detectorConnected,counts:j.counts,provider:j.provider,nomad:j.nomad,sample},null,2));
           if(j.mode!=='DISPLAY_ONLY'||j.detectorConnected!==false)process.exit(1);
           if(j.ok!==true)process.exit(2);
           NODE
