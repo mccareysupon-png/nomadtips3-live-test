@@ -21,43 +21,45 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
   }
 }
 
-/* 3.42 top two-row palette — requested 2026-09-09.
-   Color-only override: preserve layout, content and runtime behavior. */
-body[data-page="live"] .nomad342-subpage-heading{
-  background:linear-gradient(90deg,#3a291a 0%,#332318 55%,#2b1e15 100%)!important;
+/* 2026-09-09 — 3.42 top summary cards: use the exact two visual families
+   requested from the AH (deep teal-green) and O/U (deep purple) reference.
+   COLOR ONLY. Keep the current square geometry, sizing, layout, data and behavior. */
+
+/* Undo the mistaken bronze heading override and return the 3.42 heading to its existing dark card. */
+html body[data-page="live"] main.shell>.nomad342-subpage-heading{
+  background:linear-gradient(145deg,#20251f,#191d18 52%,#151814)!important;
+  border-radius:0!important;
 }
-body[data-page="live"] .nomad342-subpage-heading h2{
-  color:#f6f1e2!important;
+html body[data-page="live"] main.shell>.nomad342-subpage-heading h2{
+  color:var(--text)!important;
 }
 
-body[data-page="live"] .nomad342-tab-panel>.status-grid{
-  gap:0!important;
-  overflow:hidden;
-  background:linear-gradient(90deg,#24371f 0%,#1e311b 50%,#182917 100%)!important;
-}
-body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric{
+/* All top KPI/summary card sets in Live / Signal / Statistics. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid{
   background:transparent!important;
-  border-left:1px solid rgba(191,199,99,.16)!important;
+  border-radius:0!important;
   box-shadow:none!important;
 }
-body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric:first-child{
-  border-left:0!important;
-}
-body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric>span{
-  color:#c4b95f!important;
-}
-body[data-page="live"] .nomad342-tab-panel>.status-grid>.metric>strong{
-  color:#f2f4ef!important;
-}
-body[data-page="live"] .nomad342-tab-panel>.status-grid>.event-metric>strong{
-  color:#72e57d!important;
+
+/* AH reference family — deep teal-green with the same soft upper highlight. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric:nth-child(odd){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(25,111,91,.34) 0%,rgba(25,111,91,.12) 18%,transparent 36%),
+    linear-gradient(145deg,#083c33 0%,#082824 56%,#061e1e 100%)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
 }
 
-body[data-page="live"] .market-tile.market-ah{
-  background:linear-gradient(145deg,#064236 0%,#06342e 50%,#031d1b 100%)!important;
-  border-color:rgba(34,183,139,.20)!important;
+/* O/U reference family — deep purple with the same soft upper highlight. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric:nth-child(even){
+  background:
+    radial-gradient(circle at 88% 0%,rgba(104,55,139,.38) 0%,rgba(104,55,139,.13) 18%,transparent 36%),
+    linear-gradient(145deg,#47265f 0%,#2c1c3e 56%,#21122f 100%)!important;
+  border-radius:0!important;
+  box-shadow:none!important;
 }
-body[data-page="live"] .market-tile.market-ou{
-  background:linear-gradient(145deg,#472560 0%,#351b49 52%,#21122f 100%)!important;
-  border-color:rgba(145,72,190,.22)!important;
+
+/* Keep labels readable on both colors; do not alter values or status semantics. */
+html body[data-page="live"] main.shell .nomad342-tab-panel>.status-grid>.metric>span{
+  color:rgba(238,241,238,.72)!important;
 }
