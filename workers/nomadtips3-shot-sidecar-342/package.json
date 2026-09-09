@@ -1,0 +1,12 @@
+{
+  "name": "nomadtips3-shot-sidecar-342",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node --check src/index.js",
+    "deploy": "npx wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

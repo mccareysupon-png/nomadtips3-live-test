@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-shot-sidecar-342",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-09",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+  "services": [
+    {
+      "binding": "NOMAD_LIVE_FEED",
+      "service": "nomadtips3-live-score-feed-v3"
+    }
+  ]
+}

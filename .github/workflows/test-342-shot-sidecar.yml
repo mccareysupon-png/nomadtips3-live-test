@@ -1,0 +1,53 @@
+name: Test 3.42 Shot Sidecar
+
+on:
+  push:
+    paths:
+      - 'workers/nomadtips3-shot-sidecar-342/**'
+      - 'nomad-live-342/shot-stats-342.js'
+      - 'nomad-live-342/shot-settings-status-342.js'
+      - 'nomad-live-342/shot-sidecar-contract.md'
+      - '.github/workflows/test-342-shot-sidecar.yml'
+  pull_request:
+    paths:
+      - 'workers/nomadtips3-shot-sidecar-342/**'
+      - 'nomad-live-342/shot-stats-342.js'
+      - 'nomad-live-342/shot-settings-status-342.js'
+      - 'nomad-live-342/shot-sidecar-contract.md'
+      - '.github/workflows/test-342-shot-sidecar.yml'
+
+jobs:
+  isolated-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check workers/nomadtips3-shot-sidecar-342/src/index.js
+          node --check nomad-live-342/shot-stats-342.js
+          node --check nomad-live-342/shot-settings-status-342.js
+      - name: Isolation contract
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const assert=require('assert');
+          const worker=fs.readFileSync('workers/nomadtips3-shot-sidecar-342/src/index.js','utf8');
+          const live=fs.readFileSync('nomad-live-342/shot-stats-342.js','utf8');
+          const settings=fs.readFileSync('nomad-live-342/shot-settings-status-342.js','utf8');
+          assert(worker.includes("mode:'DISPLAY_ONLY'"),'worker must stay display-only');
+          assert(worker.includes('detectorConnected:false'),'detector must stay disconnected');
+          assert(worker.includes("futureDetectorPort:'READY'"),'future detector port marker must remain prepared');
+          assert(worker.includes('include=stats'),'provider list must request embedded stats');
+          assert(worker.includes('PROVIDER_PAGE_SIZE = 50'),'provider must stay one capped stats page');
+          assert(worker.includes('best.score < 0.88'),'strict mapping threshold must remain');
+          assert(worker.includes('best.score - second.score < 0.05'),'ambiguity rejection must remain');
+          assert(!live.includes('nomadSettings342'),'live shot UI must not touch market settings');
+          assert(!live.includes('candidate'),'live shot UI must not call candidate layer');
+          assert(!settings.includes('data-market-form'),'prepared settings UI must stay outside market forms');
+          assert(!settings.includes('shotOnTarget'),'prepared settings UI must not reuse detector setting keys');
+          assert(!settings.includes('shotOff'),'prepared settings UI must not reuse detector setting keys');
+          console.log('3.42 shot sidecar isolation contract OK');
+          NODE
