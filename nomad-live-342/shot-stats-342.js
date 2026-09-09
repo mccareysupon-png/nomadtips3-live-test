@@ -75,6 +75,7 @@ async function refresh(){
     rowsByMatch=new Map(payload.results.map(row=>[String(row.nomadMatchId),row]));
     window.NOMAD342_SHOT_SIDECAR=Object.freeze({base:BASE,lastSnapshot:payload});
     queueApply();
+    window.dispatchEvent(new CustomEvent('nomad342:shot-sidecar-update',{detail:payload}));
   }catch(error){
     window.NOMAD342_SHOT_SIDECAR=Object.freeze({base:BASE,error:String(error?.message||error),lastSnapshot:null});
   }finally{busy=false}
