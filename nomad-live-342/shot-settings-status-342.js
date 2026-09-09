@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
 const BASE='https://nomadtips3-shot-sidecar-342.mccarey-supon.workers.dev';
+const POLL_MS=90_000;
+let timer=null;
 
 function style(){
   if(document.getElementById('n342shot-settings-style'))return;
@@ -22,7 +24,9 @@ function panel(){
   el=document.createElement('section');el.id='n342shotSettings';el.className='n342shot-settings';
   el.dataset.detectorConnected='false';
   el.innerHTML=`<div class="n342shot-settings-head"><div><p>SHOT DATA BRIDGE · 5DOLLAR</p><h2>เตรียมสาย SOT / SOFF สำหรับ 3.42</h2></div><span class="n342shot-settings-badge">DISPLAY ONLY · DETECTOR NOT CONNECTED</span></div><div class="n342shot-settings-grid"><div><span>SOURCE</span><b data-shot-field="source">5Dollar Pro</b></div><div><span>ROLLING</span><b data-shot-field="window">20 min</b></div><div><span>MATCHED</span><b data-shot-field="matched">—</b></div><div><span>STATS READY</span><b data-shot-field="ready">—</b></div><div><span>NOMAD LIVE</span><b data-shot-field="nomad">—</b></div><div><span>PROVIDER LIVE</span><b data-shot-field="provider">—</b></div><div><span>AMBIGUOUS</span><b data-shot-field="ambiguous">—</b></div><div><span>FUTURE PORT</span><b data-shot-field="future">READY · CLOSED</b></div></div>`;
-  shell.appendChild(el);return el;
+  const note=shell.querySelector('.settings-v3-note');
+  if(note)shell.insertBefore(el,note);else shell.appendChild(el);
+  return el;
 }
 function set(el,name,value){const node=el?.querySelector(`[data-shot-field="${name}"]`);if(node)node.textContent=String(value??'—')}
 async function refresh(){
@@ -37,7 +41,9 @@ async function refresh(){
 function mount(){
   if(document.body?.dataset?.page!=='market-settings-v3')return;
   style();panel();refresh();
+  if(!timer)timer=setInterval(refresh,POLL_MS);
 }
 window.NOMAD342_SHOT_SETTINGS_STATUS=Object.freeze({base:BASE,mount,refresh});
-// Prepared only. This file is intentionally NOT loaded by settings.html yet.
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+window.addEventListener('pagehide',()=>{if(timer)clearInterval(timer)},{once:true});
 })();
