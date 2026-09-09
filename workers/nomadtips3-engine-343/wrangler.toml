@@ -1,0 +1,22 @@
+name = "nomadtips3-engine-343"
+main = "src/index.js"
+compatibility_date = "2026-09-09"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "Nomad343Engine"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Nomad343Engine"]
