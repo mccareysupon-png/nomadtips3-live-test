@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-08T21:55:07Z",
+  "updated_at": "2026-09-09T00:20:40Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2706,8 +2706,8 @@
       "model_pick": "New York City Team B Win",
       "model_odds": 2.77,
       "published_side": "away",
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-2",
       "source_url": "https://www.goaloo.com/football/usa-mls-next-pro-league-new-york-city-team-b-vs-new-york-red-bulls-reserves/h2h-3084110",
       "summary_url": "https://www.goaloo.com/football/usa-mls-next-pro-league-new-york-city-team-b-vs-new-york-red-bulls-reserves/summary-3084110",
       "policy": "KING_DEFAULT_40_188",
@@ -2773,7 +2773,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T00:20:40Z"
     },
     {
       "id": "e245d4304bdce55d",
@@ -8256,6 +8261,103 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-08T21:55:07Z"
+    },
+    {
+      "id": "f53969dd27285ca9",
+      "goaloo_id": "3084110",
+      "date": "2026-09-08",
+      "kickoff": "2026-09-08 21:00:00",
+      "league": "USA MLS Next Pro League",
+      "home": "New York City Team B",
+      "away": "New York Red Bulls Reserves",
+      "pick": "New York Red Bulls Reserves Win",
+      "side": "away",
+      "odds": 2.03,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.4011,
+      "model_probability": 0.4011,
+      "market_fair_probability": 0.328,
+      "market_edge": 0.0731,
+      "ev": 0.111,
+      "edge": 7.3,
+      "reverse_mode": true,
+      "model_side": "home",
+      "model_pick": "New York City Team B Win",
+      "model_odds": 2.77,
+      "published_side": "away",
+      "result": "LOSS",
+      "ft": "4-2",
+      "source_url": "https://www.goaloo.com/football/usa-mls-next-pro-league-new-york-city-team-b-vs-new-york-red-bulls-reserves/h2h-3084110",
+      "summary_url": "https://www.goaloo.com/football/usa-mls-next-pro-league-new-york-city-team-b-vs-new-york-red-bulls-reserves/summary-3084110",
+      "policy": "KING_DEFAULT_40_188",
+      "engine": "the-king-default-goaloo-composite-40pct-188",
+      "selection_profile": {
+        "name": "OWNER_DEFAULT_40_188",
+        "date": "2026-09-08",
+        "minimum_confidence": 0.4,
+        "minimum_odds": 1.88,
+        "maximum_odds_safety": 3.0,
+        "recent_sample_min_each": 8,
+        "max_picks": null,
+        "scope": "DEFAULT_UNTIL_OWNER_CHANGES",
+        "reverse_prediction": true,
+        "reverse_rule": "HOME_TO_AWAY__AWAY_TO_HOME",
+        "king_v2_underlying_gate": "BYPASSED",
+        "king_v2_market_edge_gate": "BYPASSED",
+        "king_v2_ev_gate": "BYPASSED"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_1x2_market": "PASS",
+        "default_confidence_min": "PASS",
+        "default_odds_min": "PASS",
+        "odds_safety_max": "PASS",
+        "reverse_prediction": "APPLIED",
+        "daily_cap": "UNLIMITED",
+        "king_v2_underlying": "NOT_A_GATE",
+        "king_v2_market_edge": "INFO_ONLY",
+        "king_v2_ev": "INFO_ONLY",
+        "lineup": "NOT_A_GATE",
+        "market_movement": "NOT_A_GATE",
+        "rest_rotation": "NOT_A_GATE"
+      },
+      "model": {
+        "lambda_home": 2.182,
+        "lambda_away": 2.148,
+        "home_win": 0.4011,
+        "draw": 0.2089,
+        "away_win": 0.39,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.065,
+          "gd_edge": -0.041,
+          "clean_sheet_edge": 0.1463,
+          "failed_to_score_edge": 0.122,
+          "bounded_adjustment": -0.0006,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-09T00:20:40Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
