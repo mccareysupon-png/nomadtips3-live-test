@@ -25,7 +25,7 @@ body[data-page="live"] .event-compact.signal-card-pass.expanded{
    Use the owner-approved AH teal-green and O/U purple as clean solid fills.
    No gradient, glow or texture; keep geometry, spacing, text, values and runtime behavior. */
 
-/* The heading is NOT part of the requested two-color card set. */
+/* Unified top heading: bright green on the blue heading card, all 3.42 tabs. */
 html body[data-page="live"] main.shell>section.nomad342-subpage-heading{
   background:linear-gradient(145deg,#20251f,#191d18 52%,#151814)!important;
   border-radius:0!important;
@@ -35,7 +35,8 @@ html body[data-page="live"] main.shell>section.nomad342-subpage-heading .eyebrow
   color:#a7afa7!important;
 }
 html body[data-page="live"] main.shell>section.nomad342-subpage-heading h2{
-  color:var(--text)!important;
+  color:#8fffa3!important;
+  text-shadow:none!important;
 }
 
 /* Summary container stays transparent; each metric carries its own solid color. */
@@ -66,9 +67,10 @@ html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statisti
   background-image:none!important;
 }
 
-/* Neutral readable labels on both colors. Values and semantic result colors stay untouched. */
+/* Bright green metric headings on every 3.42 summary page. */
 html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric>span{
-  color:rgba(238,241,238,.72)!important;
+  color:#8fffa3!important;
+  text-shadow:none!important;
 }
 
 /* No decorative separators on any summary metric. */
