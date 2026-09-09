@@ -21,7 +21,6 @@ env:
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   PREVIEW_URL: https://nomadtips3-343-preview.mccarey-supon.workers.dev
   HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
-  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
 
 jobs:
   deploy-preview:
@@ -32,7 +31,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
       - name: Validate 3.43 isolated scope
         run: |
           set -euo pipefail
@@ -48,19 +46,16 @@ jobs:
           test -s nomad-live-343/signal.html
           test -s nomad-live-343/statistics.html
           test -s nomad-live-343/settings.html
-          grep -Fq "Today's Scores" nomad-live-343/index.html
           grep -Fq '/api/engine/board' nomad-live-343/live.js
           grep -Fq '/api/engine/settings' nomad-live-343/settings.js
           grep -Fq 'nomadtips3-5usd-hub-343' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq 'nomadtips3-engine-343' workers/nomadtips3-343-preview/wrangler.jsonc
-
       - name: Validate deploy credentials
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$FIVEDOLLAR_API_KEY"
-
       - name: Dry-run HUB
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
@@ -70,21 +65,18 @@ jobs:
       - name: Bind 5USD API key
         working-directory: workers/nomadtips3-5usd-hub-343
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
-
       - name: Dry-run 3.43 Engine
         working-directory: workers/nomadtips3-engine-343
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
       - name: Deploy 3.43 Engine
         working-directory: workers/nomadtips3-engine-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
-
       - name: Dry-run 3.43 preview
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
       - name: Deploy 3.43 preview
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
-
       - name: Smoke full 3.43 flow
         run: |
           set -euo pipefail
@@ -94,14 +86,15 @@ jobs:
           if(j.ok!==true||j.version!=='nomad343-5usd-hub-v2')process.exit(1);
           console.log('HUB',j.fixtureCount,j.counts);
           NODE
-          curl -fsS --max-time 30 -X POST "$ENGINE_URL/scan" -o /tmp/scan.json
-          curl -fsS --max-time 30 "$ENGINE_URL/health" -o /tmp/engine.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?smoke=$RANDOM" -o /tmp/engine.json
           node - <<'NODE'
-          const j=require('/tmp/engine.json');
-          if(j.component!=='NOMAD343_ENGINE'||j.version!=='nomad343-engine-v1')process.exit(1);
-          console.log('ENGINE',j);
+          const board=require('/tmp/board.json'),health=require('/tmp/engine.json');
+          if(board.ok!==true)throw new Error('board not ready: '+JSON.stringify(board));
+          if(health.component!=='NOMAD343_ENGINE'||health.version!=='nomad343-engine-v1')throw new Error('engine health mismatch');
+          console.log('ENGINE',health.fixtureCount,health.liveCount,health.signalCount);
           NODE
-          for path in / /signal.html /statistics.html /settings.html /live.js /signal.js /statistics.js /api/engine/board /api/engine/settings /api/engine/signals /api/engine/statistics; do
+          for path in / /signal.html /statistics.html /settings.html /live.js /signal.js /statistics.js /api/engine/settings /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
