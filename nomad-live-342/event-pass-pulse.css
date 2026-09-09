@@ -71,18 +71,3 @@ html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statisti
 html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status-grid>article.metric>span{
   color:rgba(238,241,238,.72)!important;
 }
-
-/* Remove all short divider pseudo-elements between summary contents.
-   These were rendering as small splinter-like lines on desktop/mobile. */
-html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::before,
-html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric::after,
-html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric::before,
-html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric::after,
-html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric::before,
-html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric::after{
-  content:none!important;
-  display:none!important;
-  background:none!important;
-  width:0!important;
-  height:0!important;
-}
