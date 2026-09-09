@@ -1,0 +1,97 @@
+name: Deploy NOMAD 3.43 Preview
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - 'nomad-live-343/**'
+      - 'workers/nomadtips3-5usd-hub-343/**'
+      - 'workers/nomadtips3-343-preview/**'
+      - '.github/workflows/deploy-343-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  PREVIEW_URL: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+  HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate 3.43 isolated scope
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/ui.js
+          node --check nomad-live-343/live.js
+          node --check nomad-live-343/settings.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          test -s nomad-live-343/index.html
+          test -s nomad-live-343/signal.html
+          test -s nomad-live-343/statistics.html
+          test -s nomad-live-343/settings.html
+          grep -Fq "Today's Scores" nomad-live-343/index.html
+          grep -Fq 'data-board="live"' nomad-live-343/index.html
+          grep -Fq 'data-board="scheduled"' nomad-live-343/index.html
+          grep -Fq 'data-board="finished"' nomad-live-343/index.html
+          grep -Fq 'src/index-v2.js' workers/nomadtips3-5usd-hub-343/wrangler.toml
+
+      - name: Validate deploy credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
+
+      - name: Dry-run HUB
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy 5USD HUB
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Bind 5USD API key
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Dry-run 3.43 preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy 3.43 preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Smoke test HUB and pages
+        run: |
+          set -euo pipefail
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 30 "$HUB_URL/snapshot?smoke=$RANDOM$RANDOM" -o /tmp/hub.json; then break; fi
+            sleep 3
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/hub.json','utf8'));
+          console.log(JSON.stringify({ok:j.ok,version:j.version,fixtureCount:j.fixtureCount,counts:j.counts,lastError:j.lastError},null,2));
+          if(j.ok!==true||j.version!=='nomad343-5usd-hub-v2')process.exit(1);
+          NODE
+          for path in / /signal.html /statistics.html /settings.html /live.js; do
+            code="$(curl -sS --max-time 20 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
+            echo "$path -> HTTP $code"
+            test "$code" = "200"
+          done
+          grep -Fq "Today's Scores" /tmp/page || true
