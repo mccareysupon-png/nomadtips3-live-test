@@ -1,0 +1,84 @@
+name: Deploy NOMAD 3.43 Auto Engine
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'workers/nomadtips3-343-auto-engine/**'
+      - '.github/workflows/nomad343-auto-engine-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  ENGINE_URL: https://nomadtips3-343-auto-engine.mccarey-supon.workers.dev
+
+jobs:
+  deploy-and-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated 3.43 code
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-343-auto-engine/src/index.js
+          grep -Fq "include=odds,events,stats" workers/nomadtips3-343-auto-engine/src/index.js
+          grep -Fq '"* * * * *"' workers/nomadtips3-343-auto-engine/wrangler.jsonc
+
+      - name: Dry run Worker bundle
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Validate deploy credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
+
+      - name: Deploy isolated 3.43 Worker
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Bind 5Dollar API key
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
+
+      - name: Run one server-side scan
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 45 -X POST "$ENGINE_URL/scan" -o /tmp/scan.json
+          cat /tmp/scan.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/scan.json','utf8'));
+          if(j.ok!==true) throw new Error('scan not ok: '+JSON.stringify(j));
+          if(!['RUNNING','STOPPED'].includes(j.engineState)) throw new Error('unexpected engine state: '+j.engineState);
+          if(j.engineState==='RUNNING' && !j.provider) throw new Error('provider summary missing');
+          console.log('3.43 server scan PASS', {state:j.engineState,live:j.provider?.liveCount,requests:j.provider?.requests,newSignals:j.newSignals?.length});
+          NODE
+
+      - name: Verify persisted server state
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$ENGINE_URL/health?_=$RANDOM$RANDOM" -o /tmp/health.json
+          cat /tmp/health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          if(j.ok!==true) throw new Error('health not ok');
+          if(j.version!=='nomad343-auto-v1') throw new Error('wrong version: '+j.version);
+          if(!j.run || !Object.values(j.run).some(Boolean)) throw new Error('no market running');
+          if(!['ONLINE','STARTING_OR_STALE'].includes(j.status)) throw new Error('unexpected status: '+j.status);
+          console.log('3.43 persistent state PASS', {status:j.status,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,lastRequestCount:j.lastRequestCount});
+          NODE
