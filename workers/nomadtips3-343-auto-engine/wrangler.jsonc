@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nomadtips3-343-auto-engine",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-10",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STATE",
+        "class_name": "Nomad343State"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Nomad343State"]
+    }
+  ]
+}
