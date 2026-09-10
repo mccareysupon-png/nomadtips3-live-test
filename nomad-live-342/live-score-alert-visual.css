@@ -430,3 +430,24 @@ html body[data-page="live"]:has(#nomad342TabStatistics[aria-selected="true"]) ma
     font-size:8.5px;
   }
 }
+
+/* 2026-09-10 — Expanded Live Score card: neutral card surfaces only.
+   Preserve graph lines, HOME/AWAY/DRAW colors, numbers, icons, odds,
+   event bars, momentum bars, endpoints and all data visual semantics. */
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .gf-stats-head,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details>.event-stats,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-section,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-pressure-wrap,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-pulse-summary>div,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-timeline-event,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-battle-item,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .event-overview>div,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-radar-values span,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-streak-card,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .na-quality-card,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .nomad-live-prediction,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .nlp-home,
+html body[data-page="live"] #nomad342PanelLive .event-compact.expanded .event-details .nlp-away{
+  background:linear-gradient(145deg,#252826 0%,#202321 56%,#1b1e1c 100%)!important;
+  background-image:linear-gradient(145deg,#252826 0%,#202321 56%,#1b1e1c 100%)!important;
+}
