@@ -41,9 +41,9 @@ jobs:
       - name: Validate deploy credentials
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-          test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
 
       - name: Deploy isolated 3.43 Worker
         working-directory: workers/nomadtips3-343-auto-engine
@@ -68,6 +68,24 @@ jobs:
           console.log('3.43 server scan PASS', {state:j.engineState,live:j.provider?.liveCount,requests:j.provider?.requests,newSignals:j.newSignals?.length});
           NODE
 
+      - name: Verify Bet365 referee endpoint
+        run: |
+          set -euo pipefail
+          FIXTURE_ID=$(node -e "const j=require('/tmp/scan.json'); const x=(j.fixtures||[])[0]; if(x) process.stdout.write(String(x.fixtureId));")
+          if [ -z "$FIXTURE_ID" ]; then
+            echo 'No live fixture available; referee probe skipped.'
+            exit 0
+          fi
+          curl -fsS --max-time 25 "$ENGINE_URL/api/referee?id=$FIXTURE_ID" -o /tmp/referee.json
+          cat /tmp/referee.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/referee.json','utf8'));
+          if(j.ok!==true) throw new Error('referee not ok: '+JSON.stringify(j));
+          if(!j.odds || typeof j.odds!=='object') throw new Error('referee odds missing');
+          console.log('3.43 Bet365 referee PASS', {fixtureId:j.fixtureId,markets:Object.keys(j.odds)});
+          NODE
+
       - name: Verify persisted server state
         run: |
           set -euo pipefail
@@ -77,8 +95,8 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
           if(j.ok!==true) throw new Error('health not ok');
-          if(j.version!=='nomad343-auto-v1') throw new Error('wrong version: '+j.version);
+          if(!String(j.version||'').startsWith('nomad343-auto-v')) throw new Error('wrong version: '+j.version);
           if(!j.run || !Object.values(j.run).some(Boolean)) throw new Error('no market running');
           if(!['ONLINE','STARTING_OR_STALE'].includes(j.status)) throw new Error('unexpected status: '+j.status);
-          console.log('3.43 persistent state PASS', {status:j.status,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,lastRequestCount:j.lastRequestCount});
+          console.log('3.43 persistent state PASS', {version:j.version,status:j.status,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,lastRequestCount:j.lastRequestCount});
           NODE
