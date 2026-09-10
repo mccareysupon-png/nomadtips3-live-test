@@ -6,7 +6,7 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#123328">
   <title>nomadtips3 · ตั้งค่า 3.43 5USD One Stop Attack</title>
-  <link rel="stylesheet" href="settings.css?v=20260909-343-preview-v1">
+  <link rel="stylesheet" href="settings.css?v=20260910-343-server-v1">
 </head>
 <body data-page="market-settings-v3">
 <header class="topbar"><div class="topbar-inner"><div class="brand">nomad<span>tips</span>3</div><nav class="topnav"><a href="#" title="ยังไม่ต่อหน้า Live">Live</a><a class="active" href="settings.html">Settings</a><a href="#" title="ยังไม่ต่อหน้า Health">Health</a></nav></div></header>
@@ -15,14 +15,14 @@
     <div>
       <p class="eyebrow">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK</p>
       <h1>ตั้งค่า Asian Handicap · 1X2 · OVER · UNDER</h1>
-      <p>โคลนรูปแบบล่าสุดจาก 3.42 · สายข้อมูลใหม่เตรียมสำหรับ 5DollarFootballAPI · ราคา Bet365 จากผู้ให้ข้อมูลเดียวกัน</p>
-      <span class="preview-badge">หน้าตรวจแบบ · ปุ่มบันทึก / RUN / STOP ทำงานเฉพาะในเบราว์เซอร์ ยังไม่ยิงเข้า Engine จริง</span>
+      <p>โคลนรูปแบบล่าสุดจาก 3.42 · สายข้อมูลใหม่ใช้ 5DollarFootballAPI · ราคา Bet365 จากผู้ให้ข้อมูลเดียวกัน</p>
+      <span class="preview-badge">AUTO SERVER · Cloudflare Cron ทุก 1 นาที · ปิดหน้าเว็บได้</span>
     </div>
     <div class="settings-v3-status-board" aria-label="สถานะระบบ">
-      <div><i data-status-light="over" class="status-light is-off"></i><span>OVER</span><b data-status-label="over">หยุด</b></div>
-      <div><i data-status-light="under" class="status-light is-off"></i><span>UNDER</span><b data-status-label="under">หยุด</b></div>
-      <div><i data-status-light="oneXtwo" class="status-light is-off"></i><span>1X2</span><b data-status-label="oneXtwo">หยุด</b></div>
-      <div><i data-status-light="ah" class="status-light is-off"></i><span>Asian Handicap</span><b data-status-label="ah">หยุด</b></div>
+      <div><i data-status-light="over" class="status-light is-off"></i><span>OVER</span><b data-status-label="over">กำลังเชื่อมต่อ</b></div>
+      <div><i data-status-light="under" class="status-light is-off"></i><span>UNDER</span><b data-status-label="under">กำลังเชื่อมต่อ</b></div>
+      <div><i data-status-light="oneXtwo" class="status-light is-off"></i><span>1X2</span><b data-status-label="oneXtwo">กำลังเชื่อมต่อ</b></div>
+      <div><i data-status-light="ah" class="status-light is-off"></i><span>Asian Handicap</span><b data-status-label="ah">กำลังเชื่อมต่อ</b></div>
     </div>
   </section>
 
@@ -109,8 +109,8 @@
     <footer class="form-actions"><div data-form-note class="form-note">ยังไม่ได้เปลี่ยนค่า</div><div><button type="button" class="stop-button" data-stop-button>STOP</button><button type="submit" class="save-button">บันทึกการตั้งค่า</button><button type="button" class="run-button" data-run-button>RUN</button></div></footer>
   </form></section>
 
-  <section class="wire-panel" aria-label="เส้นทางข้อมูลที่เตรียมไว้">
-    <div class="wire-head"><div><h3>เส้นทางข้อมูล 3.43 · เปลือยสายพร้อมต่อ</h3><p>ทุกสายตั้งชื่อเต็มและบอกหน่วยชัดเจน · ตอนนี้ยังไม่เรียก API จริง รอคำยืนยันสัญญาข้อมูลจาก 5DollarFootballAPI</p></div><div class="wire-state">PRE-WIRED / NOT CONNECTED</div></div>
+  <section class="wire-panel" aria-label="เส้นทางข้อมูล 3.43">
+    <div class="wire-head"><div><h3>เส้นทางข้อมูล 3.43 · 5USD AUTO SERVER</h3><p>ดึงบอลสด + events + stats เป็นชุดจาก 5DollarFootballAPI แล้วตรวจราคา Bet365 แบบรายคู่เฉพาะ Candidate ก่อนปล่อย Signal</p></div><div class="wire-state">AUTO / SERVER</div></div>
     <div class="wire-grid">
       <div class="wire"><b>ยิงเข้ากรอบ</b><span>จำนวนครั้ง</span><code>statistics.shots_on_target</code><small>คำนวณ: ค่าปัจจุบัน − ค่าต้นช่วงย้อนหลัง</small></div>
       <div class="wire"><b>ยิงไม่เข้ากรอบ</b><span>จำนวนครั้ง</span><code>statistics.shots_off_target</code><small>คำนวณ: ค่าปัจจุบัน − ค่าต้นช่วงย้อนหลัง</small></div>
@@ -119,12 +119,12 @@
       <div class="wire"><b>สัดส่วนการบุก</b><span>เปอร์เซ็นต์</span><code>statistics.attacks</code><small class="wire-formula">ฝั่งนี้เพิ่ม ÷ (Home เพิ่ม + Away เพิ่ม) × 100</small></div>
       <div class="wire"><b>การครองบอล</b><span>เปอร์เซ็นต์</span><code>statistics.possession</code><small>ใช้เปอร์เซ็นต์ล่าสุดจากผู้ให้ข้อมูล</small></div>
       <div class="wire"><b>คะแนน / นาที / ทีม / ลีก</b><span>ข้อมูลบอลสด</span><code>live fixture</code><small>ใช้เป็นตัวตนของคู่และช่วงเวลาตรวจจับ</small></div>
-      <div class="wire"><b>ราคา Bet365</b><span>ราคาและเส้น</span><code>5USD Bet365 odds</code><small>เส้นสูงต่ำ / 1X2 / Asian Handicap ผูกกับคู่เดียวกัน</small></div>
+      <div class="wire"><b>ราคา Bet365</b><span>ราคาและเส้น</span><code>5USD Bet365 odds referee</code><small>เส้นสูงต่ำ / 1X2 / Asian Handicap ผูกกับคู่เดียวกัน</small></div>
     </div>
   </section>
 
-  <div class="settings-v3-note">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK · หน้าใหม่นี้แยกจาก 3.41 และ 3.42 · ยังไม่เชื่อมต่อ Engine จริง และไม่มีการแก้ไฟล์ของ 3.42 ในการทำหน้าตรวจแบบนี้</div>
+  <div class="settings-v3-note">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK · แยกจาก 3.41 และ 3.42 · RUN / Settings / Rolling History / Signal เก็บฝั่ง Cloudflare และทำงานต่อเมื่อปิดหน้าเว็บ</div>
 </main>
-<script src="settings.js?v=20260909-343-preview-v1" defer></script>
+<script src="settings.js?v=20260910-343-server-v1" defer></script>
 </body>
 </html>
