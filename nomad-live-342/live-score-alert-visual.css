@@ -267,3 +267,68 @@ html body[data-page="live"] main.shell>section.nomad342-tab-panel>section.status
   background:none!important;
   box-shadow:none!important;
 }
+
+/* 2026-09-10 — 3.42 graphite surface pass.
+   Presentation only. Keep HOME/AWAY palettes, graph strokes, data colors,
+   icons, odds colors and market identity unchanged. Remove glow only from
+   card/surface backgrounds and keep the existing engine/runtime untouched. */
+html body[data-page="live"]{
+  background:linear-gradient(180deg,#151817 0%,#1b1e1c 46%,#121413 100%)!important;
+}
+
+html body[data-page="live"] main.shell>section.nomad342-subpage-heading{
+  background:linear-gradient(145deg,#313432 0%,#272a28 55%,#1d201e 100%)!important;
+  box-shadow:none!important;
+}
+
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid,
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary,
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary{
+  background:linear-gradient(145deg,#2d302e 0%,#252826 55%,#1c1f1d 100%)!important;
+  box-shadow:none!important;
+}
+
+html body[data-page="live"] main.shell>#nomad342PanelLive>section.status-grid>article.metric:nth-child(n),
+html body[data-page="live"] main.shell>#nomad342PanelSignal>section.ledger-summary>article.metric:nth-child(n),
+html body[data-page="live"] main.shell>#nomad342PanelStatistics>section.statistics-summary>article.metric:nth-child(n){
+  background:transparent!important;
+  background-image:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+}
+
+html body[data-page="live"] #nomad342PanelLive>.panel.nomad-scanner-panel,
+html body[data-page="live"] #nomad342PanelSignal>.panel.ledger-panel,
+html body[data-page="live"] #nomad342PanelStatistics>.panel.ledger-panel{
+  background:linear-gradient(145deg,#292c2a 0%,#222523 56%,#191c1a 100%)!important;
+  box-shadow:none!important;
+}
+
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready,
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready:hover,
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready.expanded,
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready.expanded:hover{
+  background:linear-gradient(145deg,#2a2d2b 0%,#232624 54%,#1b1e1c 100%)!important;
+  box-shadow:none!important;
+}
+
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready:hover,
+html body[data-page="live"] #nomad342PanelLive .event-compact.vintage-theme-ready.expanded:hover{
+  background:linear-gradient(145deg,#303331 0%,#282b29 54%,#202321 100%)!important;
+}
+
+html body[data-page="live"] #nomad342PanelSignal .signal-lock-card{
+  background:linear-gradient(145deg,#2b2e2c 0%,#232624 56%,#1a1d1b 100%)!important;
+  box-shadow:none!important;
+}
+
+html body[data-page="live"] #nomad342PanelStatistics .stats342-table th{
+  background:#202321!important;
+}
+
+html body[data-page="live"] #nomad342PanelLive .note,
+html body[data-page="live"] #nomad342PanelSignal>.note,
+html body[data-page="live"] #nomad342PanelStatistics>.note{
+  background:linear-gradient(145deg,#252826,#1c1f1d)!important;
+  box-shadow:none!important;
+}
