@@ -128,3 +128,9 @@ body.statistics-page > .main-nav,
   .site-footer a{color:#333!important}
   .site-footer__socials{display:none}
 }
+
+/* Public UX: hide search controls on every screen while preserving their JS/filter runtime. */
+.toolbar .search,
+#search,
+.match-search,
+.search:has(input[type="search"]){display:none!important}
