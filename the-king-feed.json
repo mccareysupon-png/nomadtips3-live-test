@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-10T01:33:29Z",
+  "updated_at": "2026-09-10T06:04:06Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1044,8 +1044,8 @@
       "edge": 33.9,
       "ev": 0.6573,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-0",
       "locked_at": "2026-09-10T01:30:58Z",
       "source_url": "https://www.goaloo.com/football/concacaf-central-american-cup-cd-motagua-vs-alianza-san-salvador/h2h-3085187",
       "summary_url": "https://www.goaloo.com/football/concacaf-central-american-cup-cd-motagua-vs-alianza-san-salvador/summary-3085187",
@@ -1105,7 +1105,12 @@
         "away_recent": 8,
         "h2h_n": 3,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 122.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T06:04:06Z"
     },
     {
       "id": "1bb27a6dcad7129b-AH-HOME-1p5",
@@ -17233,6 +17238,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-10T01:09:51Z"
+    },
+    {
+      "id": "b03870ee4bed9384-AH-HOME-1p25",
+      "goaloo_id": "3085187",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 03:05:00",
+      "league": "CONCACAF Central American Cup",
+      "home": "CD Motagua",
+      "away": "Alianza San Salvador",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.25,
+      "pick": "CD Motagua +1.25",
+      "side": "home",
+      "odds": 2.22,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7521,
+      "model_probability": 0.7521,
+      "market_fair_probability": 0.4127,
+      "market_edge": 0.3394,
+      "edge": 33.9,
+      "ev": 0.6573,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "3-0",
+      "locked_at": "2026-09-10T01:30:58Z",
+      "source_url": "https://www.goaloo.com/football/concacaf-central-american-cup-cd-motagua-vs-alianza-san-salvador/h2h-3085187",
+      "summary_url": "https://www.goaloo.com/football/concacaf-central-american-cup-cd-motagua-vs-alianza-san-salvador/summary-3085187",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.004,
+        "lambda_away": 1.275,
+        "home_win": 0.2756,
+        "draw": 0.3028,
+        "away_win": 0.4216,
+        "h2h_adjustment": 0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0715,
+          "gd_edge": -0.3253,
+          "clean_sheet_edge": -0.1561,
+          "failed_to_score_edge": 0.1854,
+          "bounded_adjustment": -0.0109,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 8,
+        "h2h_n": 3,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 122.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T06:04:06Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
