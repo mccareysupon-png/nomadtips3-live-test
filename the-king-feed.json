@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-10T06:04:06Z",
+  "updated_at": "2026-09-10T11:30:14Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2069,8 +2069,8 @@
       "edge": 36.5,
       "ev": 0.8529,
       "required_confidence": 0.58,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-2",
       "locked_at": "2026-09-10T01:31:03Z",
       "source_url": "https://www.goaloo.com/football/bhutan-thimphu-league-rtc-fc-vs-thimphu-city/h2h-3085739",
       "summary_url": "https://www.goaloo.com/football/bhutan-thimphu-league-rtc-fc-vs-thimphu-city/summary-3085739",
@@ -2130,7 +2130,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T11:30:14Z"
     },
     {
       "id": "387c3b7d56f24972-AH-HOME-0p0",
@@ -2324,8 +2329,8 @@
       "edge": 18.2,
       "ev": 0.2679,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "3-0",
       "locked_at": "2026-09-10T01:31:04Z",
       "source_url": "https://www.goaloo.com/football/india-shillong-premier-league-red-panda-fc-vs-howlers-sc/h2h-3088135",
       "summary_url": "https://www.goaloo.com/football/india-shillong-premier-league-red-panda-fc-vs-howlers-sc/summary-3088135",
@@ -2385,7 +2390,12 @@
         "away_recent": 9,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T11:30:14Z"
     },
     {
       "id": "c59c8dd9a6bdc474-AH-HOME-0p25",
@@ -17328,6 +17338,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-10T06:04:06Z"
+    },
+    {
+      "id": "bc6804d1b53481ae-AH-HOME-0p0",
+      "goaloo_id": "3085739",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 09:00:00",
+      "league": "Bhutan Thimphu League",
+      "home": "RTC FC",
+      "away": "Thimphu City",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.0,
+      "pick": "RTC FC +0",
+      "side": "home",
+      "odds": 2.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6866,
+      "model_probability": 0.6866,
+      "market_fair_probability": 0.3214,
+      "market_edge": 0.3651,
+      "edge": 36.5,
+      "ev": 0.8529,
+      "required_confidence": 0.58,
+      "result": "LOSS",
+      "ft": "1-2",
+      "locked_at": "2026-09-10T01:31:03Z",
+      "source_url": "https://www.goaloo.com/football/bhutan-thimphu-league-rtc-fc-vs-thimphu-city/h2h-3085739",
+      "summary_url": "https://www.goaloo.com/football/bhutan-thimphu-league-rtc-fc-vs-thimphu-city/summary-3085739",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.837,
+        "lambda_away": 0.986,
+        "home_win": 0.5839,
+        "draw": 0.2442,
+        "away_win": 0.1719,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1268,
+          "gd_edge": 0.528,
+          "clean_sheet_edge": -0.0195,
+          "failed_to_score_edge": 0.2488,
+          "bounded_adjustment": 0.0194,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T11:30:14Z"
+    },
+    {
+      "id": "54109e23497c8d45-OU-OVER-3p75",
+      "goaloo_id": "3088135",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 09:00:00",
+      "league": "India Shillong Premier League",
+      "home": "Red Panda FC",
+      "away": "Howlers SC",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 3.75,
+      "pick": "Over 3.75",
+      "side": null,
+      "odds": 1.88,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6715,
+      "model_probability": 0.6715,
+      "market_fair_probability": 0.4891,
+      "market_edge": 0.1823,
+      "edge": 18.2,
+      "ev": 0.2679,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "3-0",
+      "locked_at": "2026-09-10T01:31:04Z",
+      "source_url": "https://www.goaloo.com/football/india-shillong-premier-league-red-panda-fc-vs-howlers-sc/h2h-3088135",
+      "summary_url": "https://www.goaloo.com/football/india-shillong-premier-league-red-panda-fc-vs-howlers-sc/summary-3088135",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.337,
+        "lambda_away": 3.6,
+        "home_win": 0.0482,
+        "draw": 0.123,
+        "away_win": 0.8288,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.7024,
+          "gd_edge": -0.9784,
+          "clean_sheet_edge": 0.0732,
+          "failed_to_score_edge": -0.3902,
+          "bounded_adjustment": -0.0496,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 9,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T11:30:14Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
