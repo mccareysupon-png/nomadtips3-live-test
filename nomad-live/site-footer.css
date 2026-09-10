@@ -41,3 +41,9 @@
 /* Shared navigation readability: +15% type and touch spacing, presentation only. */
 .topnav a{font-size:11.5px;padding:11.5px 13.8px}
 @media(max-width:700px){.mobile-nav a{font-size:10.35px;padding:13.8px 4.6px}}
+
+/* Public UX: hide search controls on every screen while preserving their JS/filter runtime. */
+.toolbar .search,
+#search,
+.match-search,
+.search:has(input[type="search"]){display:none!important}
