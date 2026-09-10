@@ -1,3 +1,5 @@
+import { DurableObject } from 'cloudflare:workers';
+
 const VERSION = 'nomad343-auto-v1';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const PAGE_SIZE = 50;
@@ -170,8 +172,8 @@ async function providerLive(env){
   return {fixtures:all,requests,pages:page};
 }
 
-export class Nomad343State {
-  constructor(ctx,env){this.ctx=ctx;this.env=env;}
+export class Nomad343State extends DurableObject {
+  constructor(ctx,env){super(ctx,env);}
   async state(){
     const stored=await this.ctx.storage.get(['settings','settingsInitialized','run','history','board','signals','lastScanAt','lastSuccessAt','lastError','lastRequestCount']);
     return {
@@ -246,7 +248,7 @@ export class Nomad343State {
   }
 }
 
-function stub(env){return env.STATE.get(env.STATE.idFromName('nomad343-primary'));}
+function stub(env){return env.STATE.getByName('nomad343-primary');}
 async function proxy(env,path,init){return stub(env).fetch(`https://state.internal${path}`,init);}
 
 export default {
