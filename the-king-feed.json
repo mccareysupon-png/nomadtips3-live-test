@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-10T19:48:22Z",
+  "updated_at": "2026-09-10T22:39:36Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1154,8 +1154,8 @@
       "edge": 26.7,
       "ev": 0.4465,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "6-5",
       "locked_at": "2026-09-10T01:33:11Z",
       "source_url": "https://www.goaloo.com/football/iceland-4-deild-vaengir-jupiters-vs-ih-hafnarfjordur/h2h-3088106",
       "summary_url": "https://www.goaloo.com/football/iceland-4-deild-vaengir-jupiters-vs-ih-hafnarfjordur/summary-3088106",
@@ -1215,7 +1215,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 95.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
     },
     {
       "id": "6ec1f8ee8d694d90-AH-HOME-0p75",
@@ -2919,8 +2924,8 @@
       "edge": 16.1,
       "ev": 0.2307,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "locked_at": "2026-09-10T01:33:18Z",
       "source_url": "https://www.goaloo.com/football/liga-pro-ecuador-serie-b-cumbaya-fc-vs-gualaceo-sc/h2h-3071704",
       "summary_url": "https://www.goaloo.com/football/liga-pro-ecuador-serie-b-cumbaya-fc-vs-gualaceo-sc/summary-3071704",
@@ -2980,7 +2985,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
     },
     {
       "id": "a736820e9c2684a6-OU-OVER-2p25",
@@ -3434,8 +3444,8 @@
       "edge": 46.5,
       "ev": 2.3883,
       "required_confidence": 0.62,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-09-10T01:33:08Z",
       "source_url": "https://www.goaloo.com/football/liga-portugal-1-estrela-da-amadora-vs-sporting-braga/h2h-3023450",
       "summary_url": "https://www.goaloo.com/football/liga-portugal-1-estrela-da-amadora-vs-sporting-braga/summary-3023450",
@@ -3495,7 +3505,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 420.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
     },
     {
       "id": "ded202530c61bcd6-OU-OVER-1p75",
@@ -20273,6 +20288,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-10T19:48:22Z"
+    },
+    {
+      "id": "1bb27a6dcad7129b-AH-HOME-1p5",
+      "goaloo_id": "3088106",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 19:15:00",
+      "league": "Iceland 4 Deild",
+      "home": "Vaengir Jupiters",
+      "away": "IH Hafnarfjordur",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.5,
+      "pick": "Vaengir Jupiters +1.5",
+      "side": "home",
+      "odds": 1.95,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7418,
+      "model_probability": 0.7418,
+      "market_fair_probability": 0.4744,
+      "market_edge": 0.2674,
+      "edge": 26.7,
+      "ev": 0.4465,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "6-5",
+      "locked_at": "2026-09-10T01:33:11Z",
+      "source_url": "https://www.goaloo.com/football/iceland-4-deild-vaengir-jupiters-vs-ih-hafnarfjordur/h2h-3088106",
+      "summary_url": "https://www.goaloo.com/football/iceland-4-deild-vaengir-jupiters-vs-ih-hafnarfjordur/summary-3088106",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.346,
+        "lambda_away": 2.485,
+        "home_win": 0.3711,
+        "draw": 0.1954,
+        "away_win": 0.4335,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1659,
+          "gd_edge": -0.1776,
+          "clean_sheet_edge": 0.0,
+          "failed_to_score_edge": -0.3317,
+          "bounded_adjustment": -0.002,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 95.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
+    },
+    {
+      "id": "067677324f77f06b-AH-HOME-0p25",
+      "goaloo_id": "3071704",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 20:30:00",
+      "league": "Liga Pro Ecuador Serie B",
+      "home": "Cumbaya FC",
+      "away": "Gualaceo SC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.25,
+      "pick": "Cumbaya FC +0.25",
+      "side": "home",
+      "odds": 1.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6587,
+      "model_probability": 0.6587,
+      "market_fair_probability": 0.4973,
+      "market_edge": 0.1614,
+      "edge": 16.1,
+      "ev": 0.2307,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-1",
+      "locked_at": "2026-09-10T01:33:18Z",
+      "source_url": "https://www.goaloo.com/football/liga-pro-ecuador-serie-b-cumbaya-fc-vs-gualaceo-sc/h2h-3071704",
+      "summary_url": "https://www.goaloo.com/football/liga-pro-ecuador-serie-b-cumbaya-fc-vs-gualaceo-sc/summary-3071704",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.156,
+        "lambda_away": 0.857,
+        "home_win": 0.419,
+        "draw": 0.3238,
+        "away_win": 0.2572,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0472,
+          "gd_edge": 0.1586,
+          "clean_sheet_edge": -0.1122,
+          "failed_to_score_edge": 0.1756,
+          "bounded_adjustment": 0.0058,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
+    },
+    {
+      "id": "d54b62a968891eb7-1X2-HOME",
+      "goaloo_id": "3023450",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 19:15:00",
+      "league": "Liga Portugal 1",
+      "home": "Estrela da Amadora",
+      "away": "Sporting Braga",
+      "market": "1X2",
+      "selection": "HOME",
+      "line": null,
+      "pick": "Estrela da Amadora Win",
+      "side": "home",
+      "odds": 5.2,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6516,
+      "model_probability": 0.6516,
+      "market_fair_probability": 0.1867,
+      "market_edge": 0.4649,
+      "edge": 46.5,
+      "ev": 2.3883,
+      "required_confidence": 0.62,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-09-10T01:33:08Z",
+      "source_url": "https://www.goaloo.com/football/liga-portugal-1-estrela-da-amadora-vs-sporting-braga/h2h-3023450",
+      "summary_url": "https://www.goaloo.com/football/liga-portugal-1-estrela-da-amadora-vs-sporting-braga/summary-3023450",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.234,
+        "lambda_away": 1.1,
+        "home_win": 0.6516,
+        "draw": 0.2088,
+        "away_win": 0.1396,
+        "h2h_adjustment": -0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.439,
+          "gd_edge": 0.6737,
+          "clean_sheet_edge": 0.3561,
+          "failed_to_score_edge": 0.278,
+          "bounded_adjustment": 0.0371,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 420.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-10T22:39:36Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
