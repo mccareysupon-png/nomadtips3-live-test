@@ -1,0 +1,58 @@
+/* NOMAD 3.43 compact summary-card layout for Signal + Statistics only. */
+body[data-page="signal"] .summary-grid,
+body[data-page="statistics"] .summary-grid{gap:6px}
+
+body[data-page="signal"] .metric,
+body[data-page="statistics"] .metric{
+  min-width:0;
+  padding:8px 12px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+
+body[data-page="signal"] .metric strong,
+body[data-page="statistics"] .metric strong{
+  margin-top:3px;
+  line-height:1.05;
+}
+
+body[data-page="signal"] .metric small,
+body[data-page="statistics"] .metric small{
+  margin-top:2px;
+  font-size:9px;
+  line-height:1.25;
+}
+
+[data-signal-market-summary] .metric>span,
+[data-market-summary] .metric>span{
+  min-height:22px;
+  line-height:1.2;
+}
+
+/* Long all-market labels breathe better at tablet width. */
+@media (min-width:761px) and (max-width:1100px){
+  [data-signal-market-summary],
+  [data-market-summary]{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+@media (max-width:760px){
+  body[data-page="signal"] .summary-grid,
+  body[data-page="statistics"] .summary-grid{gap:6px}
+
+  body[data-page="signal"] .metric,
+  body[data-page="statistics"] .metric{padding:7px 9px}
+
+  body[data-page="signal"] .metric strong,
+  body[data-page="statistics"] .metric strong{margin-top:3px}
+
+  body[data-page="signal"] .metric small,
+  body[data-page="statistics"] .metric small{
+    margin-top:1px;
+    font-size:9px;
+    line-height:1.2;
+  }
+
+  [data-signal-market-summary],
+  [data-market-summary]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
