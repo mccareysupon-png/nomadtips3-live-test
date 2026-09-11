@@ -7,6 +7,9 @@
 .signal-market-chip b{font-size:8px;color:#8fd69e;white-space:normal}
 .signal-market-chip span{font-size:9px;color:#dce5df;white-space:normal;line-height:1.35}
 .signal-market-chip span strong{font-size:11px;color:#f1f5f2}
+/* Live time/score are glance data, not hero typography. Keep them readable without dominating the card. */
+.active-signal-score .live-minute-343{font-size:10px!important}
+.active-signal-score b{font-size:14px!important}
 .signal-tracker{padding:10px}
 .signal-tracker span{padding:8px 9px}
 .signal-tracker b{font-size:11px}
@@ -22,5 +25,7 @@ body[data-page="statistics"] .active-signal-panel{margin-bottom:12px}
   .active-signal-markets{grid-column:1/-1}
   .signal-market-chip{width:100%}
   .signal-technical-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .active-signal-score .live-minute-343{font-size:10px!important}
+  .active-signal-score b{font-size:14px!important}
 }
 @media(max-width:420px){.signal-entry-quick{min-width:118px}}
