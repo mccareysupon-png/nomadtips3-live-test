@@ -2,12 +2,20 @@
 'use strict';
 const SERVER_BASE='https://nomadtips3-342-signal-engine.mccarey-supon.workers.dev';
 const MARKETS=['over','under','oneXtwo','ah'];
-let syncTimer=null,syncBusy=false;
+let syncTimer=null,syncBusy=false,syncPending=false;
 
 const api=()=>window.NOMAD342_MARKET_SETTINGS||null;
 const finite=value=>{const n=Number(value);return Number.isFinite(n)?n:0};
 const anyRun=run=>MARKETS.some(name=>Boolean(run?.[name]));
-const snapshot=()=>api()?.runningSnapshot?.()||null;
+const snapshot=()=>{
+  const settingsApi=api();if(!settingsApi)return null;
+  const running=settingsApi.runningSnapshot?.()||{};
+  return {
+    ...running,
+    settings:settingsApi.loadDraft?.()||running.settings||{},
+    run:settingsApi.loadRun?.()||running.run||{}
+  };
+};
 
 function setLight(name,running){
   const light=document.querySelector(`[data-status-light="${name}"]`),label=document.querySelector(`[data-status-label="${name}"]`);
@@ -46,6 +54,10 @@ async function writeServer(localSnapshot){
   if(!response.ok||data?.ok===false||!data?.snapshot)throw new Error(data?.error||`SERVER_HTTP_${response.status}`);
   return data.snapshot;
 }
+function verifyServerEcho(localSnapshot,serverSnapshot){
+  const wanted=finite(localSnapshot?.settings?.over?.lineMax),received=finite(serverSnapshot?.settings?.over?.lineMax);
+  if(wanted>0&&received!==wanted)throw new Error(`OVER_MAX_SYNC_MISMATCH:${wanted}->${received}`);
+}
 function markSynced(serverSnapshot){
   const run=serverSnapshot?.run||{};
   for(const name of MARKETS){
@@ -60,7 +72,7 @@ function markSynced(serverSnapshot){
 function markError(error){
   const local=snapshot(),message=String(error?.message||error||'server_sync_failed');
   for(const name of MARKETS){
-    if(!local?.run?.[name])continue;
+    if(!local?.run?.[name]&&name!=='over')continue;
     const light=document.querySelector(`[data-status-light="${name}"]`),label=document.querySelector(`[data-status-label="${name}"]`);
     if(light){light.classList.remove('is-off','is-ready','is-run');light.classList.add('is-error')}
     if(label)label.textContent='SERVER SYNC ERROR';
@@ -68,8 +80,18 @@ function markError(error){
   }
 }
 async function pushCurrent(){
-  if(syncBusy)return;const local=snapshot();if(!local)return;syncBusy=true;
-  try{const server=await writeServer(local);applyLocal(server);markSynced(server)}catch(error){markError(error)}finally{syncBusy=false}
+  if(syncBusy){syncPending=true;return}
+  const local=snapshot();if(!local)return;syncBusy=true;
+  try{
+    const server=await writeServer(local);
+    verifyServerEcho(local,server);
+    applyLocal(server);
+    markSynced(server);
+  }catch(error){markError(error)}
+  finally{
+    syncBusy=false;
+    if(syncPending){syncPending=false;queuePush()}
+  }
 }
 function queuePush(){clearTimeout(syncTimer);syncTimer=setTimeout(pushCurrent,60)}
 async function reconcile(){
@@ -79,10 +101,10 @@ async function reconcile(){
     const server=await readServer(),localTime=finite(local?.run?.updatedAt),serverTime=Math.max(finite(server?.updatedAt),finite(server?.run?.updatedAt));
     const localRunning=anyRun(local?.run),serverRunning=anyRun(server?.run);
     if(localRunning&&!serverRunning&&localTime>=serverTime){
-      const saved=await writeServer(local);applyLocal(saved);markSynced(saved);return;
+      const saved=await writeServer(local);verifyServerEcho(local,saved);applyLocal(saved);markSynced(saved);return;
     }
     if(localRunning&&serverRunning&&localTime>serverTime+1000){
-      const saved=await writeServer(local);applyLocal(saved);markSynced(saved);return;
+      const saved=await writeServer(local);verifyServerEcho(local,saved);applyLocal(saved);markSynced(saved);return;
     }
     if(!serverRunning&&!localRunning&&localTime>serverTime+1000)return;
     applyLocal(server);markSynced(server);
