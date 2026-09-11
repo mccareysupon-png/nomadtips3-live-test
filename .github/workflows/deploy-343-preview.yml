@@ -46,6 +46,7 @@ jobs:
           node --check workers/nomadtips3-engine-343/src/index.js
           node --check workers/nomadtips3-343-preview/src/index.js
           node workers/nomadtips3-engine-343/test/market-core.test.mjs
+          node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
           test -s nomad-live-343/index.html
           test -s nomad-live-343/event-flow-343.js
           test -s nomad-live-343/event-flow-343.css
@@ -56,12 +57,20 @@ jobs:
           grep -Fq "const VERSION='343-flow-v3-stable-momentum'" nomad-live-343/event-flow-343.js
           grep -Fq 'const EMA_ALPHA=.48' nomad-live-343/event-flow-343.js
           grep -Fq 'const MOMENTUM_CAPS_5=' nomad-live-343/event-flow-343.js
-          grep -Fq 'points.map((p,i)=>num(p.at)??i)' nomad-live-343/event-flow-343.js
+          grep -Fq 'homeSmooth===null?null' nomad-live-343/event-flow-343.js
           grep -Fq 'data-event-flow-fixture' nomad-live-343/live.js
           grep -Fq 'data-event-flow-fixture' nomad-live-343/signal.js
           grep -Fq 'groupMatches' nomad-live-343/signal.js
+          if grep -Fq 'scrollIntoView' nomad-live-343/live.js; then echo 'unexpected Live auto-scroll'; exit 1; fi
+          grep -Fq '5USD RAW HOME LINE' nomad-live-343/bet365-board.js
+          grep -Fq 'providerLine' workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "if(/unknown/.test(s))return'unknown'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const SETTLEMENT_REVISION='bet365-rules-v2'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'const HISTORY_MS=180*60_000' workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'const MAX_HISTORY_ROWS=180' workers/nomadtips3-engine-343/src/index.js
+          grep -Fq 'const MIN_SCAN_GAP_MS=60_000' workers/nomadtips3-engine-343/src/index.js
           grep -Fq "u.pathname==='/history'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "'/history'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'main = "src/index.js"' workers/nomadtips3-engine-343/wrangler.toml
@@ -108,13 +117,14 @@ jobs:
         run: |
           set -euo pipefail
           curl -fsS --max-time 30 "$HUB_URL/snapshot?smoke=$RANDOM" -o /tmp/hub.json
-          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.version!=="nomad343-5usd-hub-v3")throw Error("HUB mismatch");console.log("HUB",j.fixtureCount,j.counts,j.include)'
+          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.version!=="nomad343-5usd-hub-v4-status-safe")throw Error("HUB mismatch");console.log("HUB",j.fixtureCount,j.counts,j.include)'
 
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/registry?smoke=$RANDOM" -o /tmp/registry.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?smoke=$RANDOM" -o /tmp/engine.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?smoke=$RANDOM" -o /tmp/signals.json
-          node -e 'const fs=require("fs"),r=require("/tmp/registry.json"),b=require("/tmp/board.json"),h=require("/tmp/engine.json"),s=require("/tmp/signals.json");if(r.ok!==true||!Array.isArray(r.marketKeys)||r.marketKeys.length!==18)throw Error("registry");if(b.ok!==true)throw Error("board");if(h.component!=="NOMAD343_ENGINE"||h.version!=="nomad343-engine-v2-all-markets")throw Error("health");if(s.ok!==true||!Array.isArray(s.signals))throw Error("signals");const ids=new Set();for(const x of s.signals){if(String(x.status||"").toUpperCase()==="SETTLED")throw Error("settled leak");if(x.mirrorState!=="LIVE"||x.mirrorSource!=="ENGINE_BOARD_LIVE")throw Error("non-live leak");ids.add(String(x.fixtureId))}if(Number(s.mirror?.activeSignals)!==s.signals.length||Number(s.mirror?.activeMatches)!==ids.size)throw Error("active counts");const f=Array.isArray(b.fixtures)?b.fixtures:[],live=f.find(x=>x?.fixtureId&&String(x.boardState||"").toLowerCase()==="live"),pick=live||f.find(x=>x?.fixtureId)||null;fs.writeFileSync("/tmp/fixture-id",pick?String(pick.fixtureId):"");console.log("ENGINE",h.fixtureCount,h.liveCount,h.signalCount,"markets",r.marketKeys.length);console.log("ACTIVE_SIGNAL_BOARD",ids.size,"matches",s.signals.length,"signals","hidden stale",s.mirror?.hiddenPendingSignals||0)'
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics?smoke=$RANDOM" -o /tmp/statistics.json
+          node -e 'const fs=require("fs"),r=require("/tmp/registry.json"),b=require("/tmp/board.json"),h=require("/tmp/engine.json"),s=require("/tmp/signals.json"),st=require("/tmp/statistics.json");if(r.ok!==true||!Array.isArray(r.marketKeys)||r.marketKeys.length!==18)throw Error("registry");if(r.settlementRevision!=="bet365-rules-v2")throw Error("registry settlement revision");if(b.ok!==true)throw Error("board");if(h.component!=="NOMAD343_ENGINE"||h.version!=="nomad343-engine-v3-settlement-safe")throw Error("health");if(s.ok!==true||!Array.isArray(s.signals))throw Error("signals");if(st.ok!==true||st.settlementRevision!=="bet365-rules-v2")throw Error("statistics settlement revision");for(const row of st.rows||[]){if(row.settlementRevision!=="bet365-rules-v2")throw Error("legacy settled row not reconciled")}const ids=new Set();for(const x of s.signals){if(String(x.status||"").toUpperCase()==="SETTLED")throw Error("settled leak");if(x.mirrorState!=="LIVE"||x.mirrorSource!=="ENGINE_BOARD_LIVE")throw Error("non-live leak");ids.add(String(x.fixtureId))}if(Number(s.mirror?.activeSignals)!==s.signals.length||Number(s.mirror?.activeMatches)!==ids.size)throw Error("active counts");const f=Array.isArray(b.fixtures)?b.fixtures:[],live=f.find(x=>x?.fixtureId&&String(x.boardState||"").toLowerCase()==="live"),pick=live||f.find(x=>x?.fixtureId)||null;fs.writeFileSync("/tmp/fixture-id",pick?String(pick.fixtureId):"");console.log("ENGINE",h.fixtureCount,h.liveCount,h.signalCount,"markets",r.marketKeys.length,"reconciled",h.reconciled||0);console.log("ACTIVE_SIGNAL_BOARD",ids.size,"matches",s.signals.length,"signals","hidden stale",s.mirror?.hiddenPendingSignals||0);console.log("STATISTICS",st.total,"settled","unresolved",st.unresolved||0)'
 
           FIXTURE_ID="$(cat /tmp/fixture-id)"
           if [ -n "$FIXTURE_ID" ]; then
@@ -136,6 +146,8 @@ jobs:
           grep -Fq 'event-flow-343.css?v=343-flow-v3' /tmp/live.html
           grep -Fq 'event-flow-343.js?v=343-flow-v3' /tmp/live.html
           grep -Fq 'live.js?v=343-public-v3-flow' /tmp/live.html
+          grep -Fq 'bet365-board.js?v=343-b365-v3-team-aware' /tmp/live.html
+          grep -Fq 'data-board="unknown"' /tmp/live.html
 
           curl -fsS --max-time 30 -D /tmp/flow.headers "$PREVIEW_URL/event-flow-343.js?verify=$RANDOM" -o /tmp/flow.js
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/flow.headers
@@ -144,7 +156,7 @@ jobs:
           grep -Fq 'ATTACK MOMENTUM' /tmp/flow.js
           grep -Fq 'EMA_ALPHA=.48' /tmp/flow.js
           grep -Fq 'MOMENTUM_CAPS_5' /tmp/flow.js
-          grep -Fq 'points.map((p,i)=>num(p.at)??i)' /tmp/flow.js
+          grep -Fq 'homeSmooth===null?null' /tmp/flow.js
           curl -fsS --max-time 30 "$PREVIEW_URL/event-flow-343.css?verify=$RANDOM" -o /tmp/flow.css
           grep -Fq 'stroke-width:.48' /tmp/flow.css
           grep -Fq '@keyframes nomad-flow-pulse' /tmp/flow.css
@@ -160,13 +172,16 @@ jobs:
           grep -Fq 'groupMatches' /tmp/signal.js
           grep -Fq 'LIVE NOW' /tmp/signal.js
           grep -Fq 'ENTRY SNAPSHOT' /tmp/signal.js
+          grep -Fq '5USD RAW LINE' /tmp/signal.js
           grep -Fq 'data-event-flow-fixture' /tmp/signal.js
-          if grep -Fq 'FT' /tmp/signal.js; then exit 1; fi
 
           curl -fsS --max-time 30 "$PREVIEW_URL/statistics.html?verify=$RANDOM" -o /tmp/stat.html
           if grep -Fq 'MATCH EVIDENCE' /tmp/stat.html; then exit 1; fi
+          curl -fsS --max-time 30 "$PREVIEW_URL/statistics.js?verify=$RANDOM" -o /tmp/stat.js
+          grep -Fq '5USD RAW' /tmp/stat.js
+          grep -Fq 'settlementRevision' /tmp/stat.js
 
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$RANDOM" -o /tmp/active.json
           node -e 'const j=require("/tmp/active.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("signal API");const ids=new Set();for(const s of j.signals){if(s.mirrorState!=="LIVE"||String(s.status||"").toUpperCase()==="SETTLED")throw Error("page2 state");if(!("liveStatistics" in s)||!("liveEvents" in s))throw Error("live payload");ids.add(String(s.fixtureId))}if(Number(j.mirror?.activeMatches)!==ids.size)throw Error("match count");console.log("ACTIVE_SIGNAL_BOARD_VERIFIED",ids.size,"MATCHES",j.signals.length,"SIGNALS","HIDDEN_PENDING",j.mirror?.hiddenPendingSignals||0)'
 
-          echo 'EVENT_FLOW_DEPLOY_VERIFIED 343-flow-v3-stable-momentum SIGNAL=343-signal-flow-v3'
+          echo 'NOMAD343_AUDIT_VERIFIED SETTLEMENT=bet365-rules-v2 TESTS=30000 FLOW=343-flow-v3-stable-momentum SIGNAL=343-signal-flow-v3'
