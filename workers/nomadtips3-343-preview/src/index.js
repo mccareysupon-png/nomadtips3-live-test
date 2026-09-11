@@ -16,9 +16,10 @@ async function noStoreUiAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-ui-revision', '343-active-signal-board-v2');
+  headers.set('x-nomad-ui-revision', '343-event-flow-v1');
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v6');
-  if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-active-v2');
+  if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-flow-v3');
+  if (path === '/index.html' || path === '/live.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-flow-v3');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -119,6 +120,7 @@ export default {
       return env.ENGINE.fetch(new Request(upstream, request));
     }
     if (request.method === 'GET' && (
+      url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
       url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css'
     )) {
@@ -127,7 +129,7 @@ export default {
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url);
       assetUrl.pathname = '/index.html';
-      return env.ASSETS.fetch(new Request(assetUrl, request));
+      return noStoreUiAsset(new Request(assetUrl, request), env);
     }
     return env.ASSETS.fetch(request);
   }
