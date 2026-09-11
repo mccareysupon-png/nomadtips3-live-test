@@ -1,6 +1,99 @@
+function engineRequest(request, path) {
+  const upstream = new URL(request.url);
+  upstream.protocol = 'https:';
+  upstream.hostname = 'engine.internal';
+  upstream.pathname = path;
+  return new Request(upstream, request);
+}
+
+const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
+const scoreCopy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
+
+function fixtureState(fixture) {
+  const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? '').toLowerCase();
+  if (fixture?.boardState === 'finished' || /finished|full_time|full time|\bft\b|ended/.test(raw)) return 'FT';
+  return 'PENDING';
+}
+
+function mirrorMinute(fixture, signal) {
+  if (fixtureState(fixture) === 'FT') return 'FT';
+  const direct = num(fixture?.minute);
+  if (direct !== null) return direct;
+  const match = String(fixture?.statusCode ?? '').match(/\d+/);
+  if (match) return Number(match[0]);
+  return num(signal?.entryMinute ?? signal?.minute);
+}
+
+function mirrorScore(fixture, signal) {
+  if (fixture?.goals && typeof fixture.goals === 'object') return scoreCopy(fixture.goals);
+  if (fixtureState(fixture) === 'FT' && signal?.finalScore) return scoreCopy(signal.finalScore);
+  return scoreCopy(signal?.entryScore ?? signal?.scoreAt);
+}
+
+async function mirroredSignals(request, env) {
+  const [signalResponse, boardResponse, statisticsResponse] = await Promise.all([
+    env.ENGINE.fetch(engineRequest(request, '/signals')),
+    env.ENGINE.fetch(engineRequest(request, '/board')),
+    env.ENGINE.fetch(engineRequest(request, '/statistics'))
+  ]);
+
+  const [signalData, boardData, statisticsData] = await Promise.all([
+    signalResponse.json().catch(() => ({})),
+    boardResponse.json().catch(() => ({})),
+    statisticsResponse.json().catch(() => ({}))
+  ]);
+
+  if (signalData?.ok !== true) {
+    return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
+  }
+
+  const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
+  const fixtureMap = new Map(fixtures.map(f => [String(f?.fixtureId ?? ''), f]));
+  const boardIds = new Set(fixtureMap.keys());
+  const pending = Array.isArray(signalData?.signals) ? signalData.signals : [];
+  const finished = Array.isArray(statisticsData?.rows)
+    ? statisticsData.rows.filter(s => boardIds.has(String(s?.fixtureId ?? '')))
+    : [];
+
+  const merged = new Map();
+  for (const signal of [...pending, ...finished]) {
+    if (!signal?.id) continue;
+    merged.set(String(signal.id), signal);
+  }
+
+  const signals = [...merged.values()]
+    .map(signal => {
+      const fixture = fixtureMap.get(String(signal?.fixtureId ?? ''));
+      const state = fixture ? fixtureState(fixture) : (signal?.status === 'SETTLED' ? 'FT' : 'PENDING');
+      return {
+        ...signal,
+        mirrorMinute: fixture ? mirrorMinute(fixture, signal) : (state === 'FT' ? 'FT' : num(signal?.entryMinute ?? signal?.minute)),
+        mirrorScore: fixture ? mirrorScore(fixture, signal) : scoreCopy(state === 'FT' ? (signal?.finalScore ?? signal?.entryScore) : (signal?.entryScore ?? signal?.scoreAt)),
+        mirrorState: state,
+        mirrorSource: 'ENGINE_CACHE'
+      };
+    })
+    .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0))
+    .slice(0, 120);
+
+  return Response.json({
+    ...signalData,
+    signals,
+    mirror: {
+      source: 'ENGINE_CACHE',
+      externalRequestsAdded: 0,
+      boardFixtures: fixtures.length,
+      finishedMirrored: finished.length
+    }
+  }, { headers: { 'cache-control': 'no-store' } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if (url.pathname === '/api/engine/signals' && request.method === 'GET') {
+      return mirroredSignals(request, env);
+    }
     if (url.pathname.startsWith('/api/engine/')) {
       const upstream = new URL(request.url);
       upstream.protocol = 'https:';
