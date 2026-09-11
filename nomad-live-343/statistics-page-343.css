@@ -1,41 +1,31 @@
 /* NOMAD 3.43 Statistics-only layout fixes.
-   Bottom navigation is ON by default for this page and is hidden only on a
-   clearly desktop viewport (wide + hover + fine pointer). This prevents the
-   shared .mobile-nav{display:none} rule from making the nav flash then vanish. */
+   Statistics uses ONE navigation DOM. The same nav is fixed to the bottom on
+   mobile/touch and sits in the header on a clearly desktop viewport. */
 
 body[data-page="statistics"] .public-stat-table th{
   position:static;
   top:auto;
 }
 
-/* Statistics navigation: visible by default. */
-body[data-page="statistics"] .topnav{
-  display:none;
-}
-
 body[data-page="statistics"] .shell{
   padding-bottom:calc(76px + env(safe-area-inset-bottom));
 }
 
-body[data-page="statistics"] .mobile-nav{
-  position:fixed !important;
-  left:0 !important;
-  right:0 !important;
-  bottom:0 !important;
-  z-index:2147483000 !important;
+body[data-page="statistics"] .statistics-nav{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:2147483000;
   min-height:56px;
   padding-bottom:env(safe-area-inset-bottom);
-  display:grid !important;
-  visibility:visible !important;
-  opacity:1 !important;
-  transform:none !important;
-  pointer-events:auto !important;
+  display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   background:#142019;
   border-top:1px solid var(--line);
 }
 
-body[data-page="statistics"] .mobile-nav a{
+body[data-page="statistics"] .statistics-nav a{
   min-width:0;
   display:flex;
   align-items:center;
@@ -45,25 +35,53 @@ body[data-page="statistics"] .mobile-nav a{
   font-size:10px;
   font-weight:900;
   white-space:nowrap;
+  border-top:2px solid transparent;
 }
 
-body[data-page="statistics"] .mobile-nav a.active{
+body[data-page="statistics"] .statistics-nav a.active{
   color:#fff;
   background:#1b3021;
-  border-top:2px solid var(--yellow);
+  border-top-color:var(--yellow);
 }
 
-/* Hide the bottom nav only when the browser clearly behaves like desktop. */
+/* Only a clearly desktop browser moves the SAME nav into the header. */
 @media (min-width:1101px) and (hover:hover) and (pointer:fine){
-  body[data-page="statistics"] .topnav{
-    display:flex;
-  }
-
   body[data-page="statistics"] .shell{
     padding-bottom:72px;
   }
 
-  body[data-page="statistics"] .mobile-nav{
-    display:none !important;
+  body[data-page="statistics"] .statistics-nav{
+    position:static;
+    left:auto;
+    right:auto;
+    bottom:auto;
+    z-index:auto;
+    min-height:0;
+    height:58px;
+    margin-left:auto;
+    padding-bottom:0;
+    display:flex;
+    align-items:stretch;
+    background:transparent;
+    border-top:0;
+  }
+
+  body[data-page="statistics"] .statistics-nav a{
+    padding:0 15px;
+    color:#c8d1ca;
+    font-size:12px;
+    border-top:0;
+    border-bottom:3px solid transparent;
+  }
+
+  body[data-page="statistics"] .statistics-nav a:hover{
+    background:rgba(255,255,255,.035);
+    color:#fff;
+  }
+
+  body[data-page="statistics"] .statistics-nav a.active{
+    color:#fff;
+    background:transparent;
+    border-bottom-color:var(--yellow);
   }
 }
