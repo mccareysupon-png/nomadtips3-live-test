@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-10T22:39:36Z",
+  "updated_at": "2026-09-11T01:12:03Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -719,8 +719,8 @@
       "edge": 41.0,
       "ev": 0.8863,
       "required_confidence": 0.58,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-1",
       "locked_at": "2026-09-10T01:33:23Z",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-patriotas-fc-vs-barranquilla-fc/h2h-3012142",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-patriotas-fc-vs-barranquilla-fc/summary-3012142",
@@ -780,7 +780,12 @@
         "away_recent": 9,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 141.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-11T01:12:03Z"
     },
     {
       "id": "cc6110e613c61986-AH-HOME-1p5",
@@ -1334,8 +1339,8 @@
       "edge": 22.4,
       "ev": 0.309,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-1",
       "locked_at": "2026-09-10T01:33:21Z",
       "source_url": "https://www.goaloo.com/football/paraguayan-division-2-12-de-junio-vh-vs-atletico-tembetary/h2h-3074443",
       "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-12-de-junio-vh-vs-atletico-tembetary/summary-3074443",
@@ -1395,7 +1400,12 @@
         "away_recent": 8,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 76.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-11T01:12:03Z"
     },
     {
       "id": "74c221329a9e4ce3-AH-HOME-1p5",
@@ -20558,6 +20568,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-10T22:39:36Z"
+    },
+    {
+      "id": "eb26505cd9394fb2-AH-HOME-1p25",
+      "goaloo_id": "3012142",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 22:00:00",
+      "league": "Colombia Primera B",
+      "home": "Patriotas FC",
+      "away": "Barranquilla FC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 1.25,
+      "pick": "Patriotas FC +1.25",
+      "side": "home",
+      "odds": 2.41,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7906,
+      "model_probability": 0.7906,
+      "market_fair_probability": 0.3805,
+      "market_edge": 0.4101,
+      "edge": 41.0,
+      "ev": 0.8863,
+      "required_confidence": 0.58,
+      "result": "WIN",
+      "ft": "3-1",
+      "locked_at": "2026-09-10T01:33:23Z",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-patriotas-fc-vs-barranquilla-fc/h2h-3012142",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-patriotas-fc-vs-barranquilla-fc/summary-3012142",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.454,
+        "lambda_away": 1.38,
+        "home_win": 0.3829,
+        "draw": 0.2698,
+        "away_win": 0.3473,
+        "h2h_adjustment": 0.003,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0358,
+          "gd_edge": 0.0176,
+          "clean_sheet_edge": 0.1024,
+          "failed_to_score_edge": -0.3122,
+          "bounded_adjustment": -0.002,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 9,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 141.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-11T01:12:03Z"
+    },
+    {
+      "id": "feaa193ffb872f8c-AH-HOME-0p75",
+      "goaloo_id": "3074443",
+      "date": "2026-09-10",
+      "kickoff": "2026-09-10 22:00:00",
+      "league": "Paraguayan Division 2",
+      "home": "12 de Junio VH",
+      "away": "Atletico Tembetary",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "12 de Junio VH +0.75",
+      "side": "home",
+      "odds": 1.76,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7379,
+      "model_probability": 0.7379,
+      "market_fair_probability": 0.5138,
+      "market_edge": 0.2241,
+      "edge": 22.4,
+      "ev": 0.309,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-1",
+      "locked_at": "2026-09-10T01:33:21Z",
+      "source_url": "https://www.goaloo.com/football/paraguayan-division-2-12-de-junio-vh-vs-atletico-tembetary/h2h-3074443",
+      "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-12-de-junio-vh-vs-atletico-tembetary/summary-3074443",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.504,
+        "lambda_away": 1.246,
+        "home_win": 0.4282,
+        "draw": 0.2723,
+        "away_win": 0.2996,
+        "h2h_adjustment": 0.003,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.0585,
+          "gd_edge": 0.0837,
+          "clean_sheet_edge": -0.2098,
+          "failed_to_score_edge": 0.0878,
+          "bounded_adjustment": 0.0025,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 8,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 76.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-11T01:12:03Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
