@@ -1,19 +1,19 @@
 import { DurableObject } from 'cloudflare:workers';
-import { MARKET_RULES, MARKET_KEYS, gapPass, lineGap, settleAh, settleOu } from './market-core.js';
+import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v2-all-markets';
+const VERSION='nomad343-engine-v3-settlement-safe';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
-const MIN_SCAN_GAP_MS=45_000;
+const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
 const MAX_HISTORY_ROWS=180;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
+const SETTLEMENT_REVISION='bet365-rules-v2';
 
-const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
+const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const clone=v=>JSON.parse(JSON.stringify(v));
 const now=()=>Date.now();
 const pair=v=>v&&typeof v==='object'?{home:num(v.home),away:num(v.away)}:{home:null,away:null};
-const text=v=>v===null||v===undefined?'':String(v);
 
 const COMMON_HIGH={shotOnTarget:1,shotOff:1,corner:1,attackPct:55,dangerousAttackPct:55,possessionPct:50,evidenceRequired:3,oddsMin:1.50,oddsMax:9.00,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10};
 const COMMON_LOW={shotOnTarget:1,shotOff:1,corner:1,attackPct:45,dangerousAttackPct:45,possessionPct:50,evidenceRequired:3,oddsMin:1.50,oddsMax:9.00,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10};
@@ -70,7 +70,6 @@ function sanitizeSettings(raw={}){
     c.oddsMin=Math.max(1.01,num(c.oddsMin)??1.5);
     c.oddsMax=Math.max(c.oddsMin,num(c.oddsMax)??9);
     if('sideMode' in base){const m=String(c.sideMode||base.sideMode).toUpperCase();c.sideMode=['HOME','AWAY','DRAW','BOTH','ALL'].includes(m)?m:base.sideMode;}
-    delete c.lineMaxOld;
     out[key]=c;
   }
   return out;
@@ -78,27 +77,32 @@ function sanitizeSettings(raw={}){
 function sanitizeRun(raw={}){const src=migrateLegacyRun(raw);return Object.fromEntries(MARKET_KEYS.map(k=>[k,Boolean(src[k]??DEFAULT_RUN[k])]))}
 
 function fixtureStatus(f){return String(f?.boardState??f?.status??f?.statusCode??'').toLowerCase()}
-function isLive(f){const s=fixtureStatus(f);return f?.boardState==='live'||/live|in_play|in play|playing|first|second|\b1h\b|\b2h\b/.test(s)}
-function isFinished(f){const s=fixtureStatus(f);return f?.boardState==='finished'||/finished|full_time|full time|\bft\b|ended/.test(s)}
+function isLive(f){const s=fixtureStatus(f);return f?.boardState==='live'||/live|in_play|in play|playing|first|second|\b1h\b|\b2h\b|\bhalf\b/.test(s)}
+function isFinished(f){const s=fixtureStatus(f);return f?.boardState==='finished'||/finished|full_time|full time|\bft\b|ended|\bfull\b/.test(s)}
+function isUnknown(f){const s=fixtureStatus(f);return f?.boardState==='unknown'||/unknown/.test(s)}
+function isHalfComplete(f){
+  if(isFinished(f))return true;
+  const raw=`${f?.status??''} ${f?.statusCode??''}`.toLowerCase(),minute=num(f?.minute);
+  return /\bhalf\b|half_time|halftime|break|second|\b2h\b/.test(raw)||(minute!==null&&minute>=46);
+}
 function periodEligible(f,def,cfg){
   const minute=num(f?.minute);
   if(minute===null||minute<Number(cfg.minuteFrom)||minute>Number(cfg.minuteTo)) return false;
-  if(def.period==='HT'){
-    const s=fixtureStatus(f);
-    if(minute>50||/second|2h|half_time|halftime|break/.test(s)) return false;
-  }
+  if(def.period==='HT'&&isHalfComplete(f))return false;
   return true;
 }
-function cardSide(v){return (num(v?.yellow)??0)+(num(v?.red)??0)}
-function cardPair(cards){return {home:cardSide(cards?.home),away:cardSide(cards?.away)}}
+function periodCompleteForSignal(s,f){const def=MARKET_RULES[s?.market];if(!def)return false;return def.period==='HT'?isHalfComplete(f):isFinished(f)}
+
+function cardPair(cards){return cardPointsPair(cards)}
+function totalPair(p){const h=num(p?.home),a=num(p?.away);return h===null||a===null?null:h+a}
 function currentBasisTotal(f,basis){
-  if(basis==='goals') return (num(f?.goals?.home)??0)+(num(f?.goals?.away)??0);
-  if(basis==='corners') return (num(f?.corners?.home)??0)+(num(f?.corners?.away)??0);
-  if(basis==='cards'){const p=cardPair(f?.cards);return p.home+p.away}
+  if(basis==='goals')return totalPair(pair(f?.goals));
+  if(basis==='corners')return totalPair(pair(f?.corners));
+  if(basis==='cards')return totalPair(cardPair(f?.cards));
   return null;
 }
 function metricSnapshot(f,at){return {at,minute:num(f.minute),shotsOnTarget:pair(f.statistics?.shotsOnTarget),shotsOffTarget:pair(f.statistics?.shotsOffTarget),corners:pair(f.corners),attacks:pair(f.statistics?.attacks),dangerousAttacks:pair(f.statistics?.dangerousAttacks),possession:pair(f.statistics?.possession),goals:pair(f.goals),cards:cardPair(f.cards)}}
-function delta(a,b){a=num(a);b=num(b);return a===null||b===null?null:Math.max(0,a-b)}
+function delta(a,b){a=num(a);b=num(b);return a===null||b===null||a<b?null:a-b}
 function deltaPair(cur,old){return {home:delta(cur?.home,old?.home),away:delta(cur?.away,old?.away)}}
 function sharePair(p){const h=num(p?.home),a=num(p?.away);if(h===null||a===null||h+a<=0)return {home:null,away:null};return {home:h/(h+a)*100,away:a/(h+a)*100}}
 function rolling(history,minutes){
@@ -155,7 +159,7 @@ function evidenceForSelection(key,selection,roll,cfg){
   if(sel==='UNDER'){const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return h.strength>=a.strength?h:a}
   const h=evidenceSide(roll,cfg,'HOME',false),a=evidenceSide(roll,cfg,'AWAY',false);return h.strength>=a.strength?h:a;
 }
-function scoreTrailingPass(f,selection,max){if(!['HOME','AWAY'].includes(selection))return true;const h=num(f.goals?.home)??0,a=num(f.goals?.away)??0,def=selection==='HOME'?a-h:h-a;return def<=Number(max??99)}
+function scoreTrailingPass(f,selection,max){if(!['HOME','AWAY'].includes(selection))return true;const h=num(f.goals?.home),a=num(f.goals?.away);if(h===null||a===null)return false;const def=selection==='HOME'?a-h:h-a;return def<=Number(max??99)}
 function preCandidatesForRule(key,f,history,cfg){
   const def=MARKET_RULES[key];if(!periodEligible(f,def,cfg))return {state:'TIME',candidates:[]};
   const roll=rolling(history,cfg.rollingWindowMinutes);if(!roll)return {state:'WARMING',candidates:[]};
@@ -178,11 +182,14 @@ function stageSnapshot(root,def,stage){const v=stageValue(findMarket(root,def),s
 function priceFor(root,key,selection){
   const def=MARKET_RULES[key],stage=stageValue(findMarket(root,def),'inplay');if(!stage||typeof stage!=='object')return null;
   const sel=String(selection).toUpperCase();
-  if(def.kind==='1X2'){const odds=num(stage[sel.toLowerCase()]);return odds===null?null:{line:null,odds}}
-  if(def.kind==='BTTS'){const odds=num(stage[sel.toLowerCase()]);return odds===null?null:{line:null,odds}}
-  const line=num(stage.line);if(line===null)return null;
-  if(def.kind==='AH'){const homeLine=line,odds=num(sel==='HOME'?stage.home:stage.away);return odds===null?null:{line:sel==='HOME'?homeLine:-homeLine,odds}}
-  const odds=num(sel==='OVER'?stage.over:stage.under);return odds===null?null:{line,odds};
+  if(def.kind==='1X2'){const odds=num(stage[sel.toLowerCase()]);return odds===null?null:{line:null,providerLine:null,odds}}
+  if(def.kind==='BTTS'){const odds=num(stage[sel.toLowerCase()]);return odds===null?null:{line:null,providerLine:null,odds}}
+  const providerLine=num(stage.line);if(providerLine===null)return null;
+  if(def.kind==='AH'){
+    const odds=num(sel==='HOME'?stage.home:stage.away);if(odds===null)return null;
+    return {line:sel==='HOME'?providerLine:-providerLine,providerLine,providerLineSide:'HOME',odds};
+  }
+  const odds=num(sel==='OVER'?stage.over:stage.under);return odds===null?null:{line:providerLine,providerLine,odds};
 }
 function pricePass(key,cfg,price,f){
   const def=MARKET_RULES[key];if(!price||price.odds<Number(cfg.oddsMin)||price.odds>Number(cfg.oddsMax))return false;
@@ -203,26 +210,19 @@ function pickBestPriced(candidates,root,f,settings){
   const passed=[];for(const c of candidates){const price=priceFor(root,c.market,c.selection),cfg=settings[c.market];if(!pricePass(c.market,cfg,price,f))continue;passed.push({...c,price})}
   passed.sort((a,b)=>b.strength-a.strength||a.price.odds-b.price.odds);return passed[0]||null;
 }
-
-function halfPair(v){return {home:num(v?.halfHome??v?.half_home),away:num(v?.halfAway??v?.half_away)}}
-function basisPair(f,def){
-  if(def.basis==='corners')return def.period==='HT'?halfPair(f.corners):pair(f.corners);
-  if(def.basis==='cards')return cardPair(f.cards);
-  return def.period==='HT'?halfPair(f.goals):pair(f.goals);
-}
-function settle1x2(p,selection){const h=num(p.home),a=num(p.away);if(h===null||a===null)return null;if(selection==='DRAW')return h===a?'WIN':'LOSS';if(selection==='HOME')return h>a?'WIN':'LOSS';return a>h?'WIN':'LOSS'}
-function settleSignal(s,f){
-  const def=MARKET_RULES[s.market];if(!def)return null;
-  if(def.kind==='1X2')return settle1x2(basisPair(f,{basis:'goals',period:def.period}),s.selection);
-  if(def.kind==='AH'){const p=basisPair(f,def);return settleAh(p.home,p.away,s.line,s.selection)}
-  if(def.kind==='OU'){const p=basisPair(f,def),total=num(p.home)!==null&&num(p.away)!==null?Number(p.home)+Number(p.away):null;return settleOu(total,s.line,s.selection)}
-  if(def.kind==='BTTS'){const p=pair(f.goals),yes=num(p.home)>0&&num(p.away)>0;return s.selection==='YES'?(yes?'WIN':'LOSS'):(yes?'LOSS':'WIN')}
-  return null;
+function storedFixture(s){return {goals:s?.finalScore??null,corners:s?.finalCorners??null,cards:s?.finalCards??null}}
+function reconcileSettled(s){
+  if(s?.status!=='SETTLED')return false;
+  const result=settleMarketSignal(s,storedFixture(s));if(!result)return false;
+  const changed=result!==s.result;
+  if(changed){s.previousResult=s.result;s.result=result;s.reconciledAt=now()}
+  s.settlementRevision=SETTLEMENT_REVISION;
+  return changed;
 }
 function statsFrom(signals){
   const rows=signals.filter(s=>s.status==='SETTLED');const count=r=>rows.filter(x=>x.result===r).length;const win=count('WIN'),loss=count('LOSS'),push=count('PUSH'),halfWin=count('HALF_WIN'),halfLoss=count('HALF_LOSS'),denom=win+loss+halfWin+halfLoss;
   const byMarket=Object.fromEntries(MARKET_KEYS.map(k=>[k,rows.filter(x=>x.market===k).length]));const byProviderMarket={};for(const s of rows){const p=MARKET_RULES[s.market]?.provider||s.market;byProviderMarket[p]=(byProviderMarket[p]||0)+1}
-  return {total:rows.length,win,loss,push,halfWin,halfLoss,winRate:denom?Math.round(((win+.5*halfWin)/denom)*1000)/10:null,byMarket,byProviderMarket,rows:rows.slice().sort((a,b)=>b.createdAt-a.createdAt)};
+  return {total:rows.length,win,loss,push,halfWin,halfLoss,unresolved:signals.filter(s=>s.status==='UNRESOLVED').length,winRate:denom?Math.round(((win+.5*halfWin)/denom)*1000)/10:null,byMarket,byProviderMarket,rows:rows.slice().sort((a,b)=>b.createdAt-a.createdAt)};
 }
 
 export class Nomad343Engine extends DurableObject{
@@ -261,26 +261,38 @@ export class Nomad343Engine extends DurableObject{
         const f=item.fixture,id=String(f.fixtureId);let root=null;try{root=await fetchFullOdds(id,this.env);refereeRequests++}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e)});const b=board.find(x=>String(x.fixtureId)===id);if(b)for(const c of item.candidates)b.analysis[c.market]={state:'PRICE_REFEREE_ERROR'};continue}
         const grouped=new Map();for(const c of item.candidates){if(!grouped.has(c.market))grouped.set(c.market,[]);grouped.get(c.market).push(c)}
         for(const [key,cands] of grouped){const best=pickBestPriced(cands,root,f,settings);const b=board.find(x=>String(x.fixtureId)===id);if(!best){if(b)b.analysis[key]={state:'NO_PRICE_PASS'};continue}
-          const def=MARKET_RULES[key],price=best.price,marketRaw=findMarket(root,def),historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,bookmaker:'Bet365',observedAt:now()};
-          const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,odds:price.odds,bookmaker:'Bet365',priceStage:'inplay',priceSource:'fixture-odds',openingPrice:stageSnapshot(root,def,'opening'),closingPrice:stageSnapshot(root,def,'closing'),inplayPrice:stageSnapshot(root,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
-          signals.push(sig);seen.add(`${id}:${key}`);if(b)b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,odds:price.odds,evidence:best.evidence};
+          const def=MARKET_RULES[key],price=best.price,historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:'Bet365',observedAt:now()};
+          const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:'Bet365',priceStage:'inplay',priceSource:'fixture-odds',openingPrice:stageSnapshot(root,def,'opening'),closingPrice:stageSnapshot(root,def,'closing'),inplayPrice:stageSnapshot(root,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
+          signals.push(sig);seen.add(`${id}:${key}`);if(b)b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,evidence:best.evidence};
         }
       }
-      for(const s of signals){if(s.status!=='PENDING')continue;const f=fixtureMap.get(String(s.fixtureId));if(!f||!isFinished(f))continue;const result=settleSignal(s,f);if(!result){s.status='UNRESOLVED';s.settlementError='FINAL_DATA_UNAVAILABLE';s.settledAt=now();continue}s.status='SETTLED';s.result=result;s.finalScore=clone(f.goals);s.finalCorners=clone(f.corners);s.finalCards=clone(f.cards);s.settledAt=now()}
-      await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}});
-      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
+      let reconciled=0;
+      for(const s of signals){
+        if(s.status==='SETTLED'){if(reconcileSettled(s))reconciled++;continue}
+        if(!['PENDING','UNRESOLVED'].includes(s.status))continue;
+        const f=fixtureMap.get(String(s.fixtureId));if(!f)continue;
+        if(isUnknown(f)){
+          s.status='UNRESOLVED';s.settlementError=String(f?.statusReason||'RESULT_UNCONFIRMED').toUpperCase();s.settledAt=s.settledAt||now();s.settlementRevision=SETTLEMENT_REVISION;continue;
+        }
+        if(!periodCompleteForSignal(s,f))continue;
+        const result=settleMarketSignal(s,f);
+        if(!result){s.status='UNRESOLVED';s.settlementError='FINAL_DATA_UNAVAILABLE';s.settledAt=s.settledAt||now();s.settlementRevision=SETTLEMENT_REVISION;continue}
+        s.status='SETTLED';s.result=result;s.finalScore=clone(f.goals);s.finalCorners=clone(f.corners);s.finalCards=clone(f.cards);s.settledAt=now();s.settlementError=null;s.settlementRevision=SETTLEMENT_REVISION;
+      }
+      await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}});
+      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
     }catch(e){const meta={ok:false,startedAt,finishedAt:now(),lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}
   }
   async fetch(request){
     const u=new URL(request.url);if(!['/settings','/registry'].includes(u.pathname))await this.scanIfDue();
     if(u.pathname==='/health'){const m=await this.ctx.storage.get('lastScan');return Response.json({ok:Boolean(m?.ok),component:'NOMAD343_ENGINE',version:VERSION,...m})}
-    if(u.pathname==='/registry')return Response.json({ok:true,version:VERSION,markets:MARKET_RULES,marketKeys:MARKET_KEYS});
+    if(u.pathname==='/registry')return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,marketKeys:MARKET_KEYS});
     if(u.pathname==='/settings'&&request.method==='GET')return Response.json({ok:true,version:VERSION,settings:await this.readSettings(),runState:await this.readRun(),markets:MARKET_RULES});
     if(u.pathname==='/settings'&&request.method==='PUT'){const body=await request.json().catch(()=>({}));const current=await this.readSettings(),settings=sanitizeSettings({...current,...(body.settings||{})}),run=sanitizeRun({...await this.readRun(),...(body.runState||{})});await this.ctx.storage.put('settings',settings);await this.ctx.storage.put('runState',run);return Response.json({ok:true,settings,runState:run,markets:MARKET_RULES})}
     if(u.pathname==='/scan'&&request.method==='POST')return Response.json(await this.scan());
     if(u.pathname==='/board')return Response.json(await this.ctx.storage.get('board')||{ok:false,version:VERSION,error:'NO_BOARD'});
     if(u.pathname==='/signals'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}
-    if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,markets:MARKET_RULES,...statsFrom(s)})}
+    if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}
     if(u.pathname==='/history'&&request.method==='GET'){const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:180,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})}
     return new Response('Not found',{status:404});
   }
