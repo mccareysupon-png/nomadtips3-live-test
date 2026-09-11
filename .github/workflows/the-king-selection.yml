@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/add_k_multimarket_engine.py'
+      - '.github/scripts/add_k_multimarket_engine_v2.py'
       - '.github/workflows/the-king-selection.yml'
   schedule:
     - cron: '47 23 * * *'
@@ -31,16 +32,16 @@ jobs:
       - name: Install scraper dependencies
         run: python3 -m pip install --disable-pip-version-check requests beautifulsoup4 playwright
 
-      - name: ADD K multi-market self-test
-        run: python3 .github/scripts/add_k_multimarket_engine.py self-test
+      - name: ADD K v2 AH-sign self-test
+        run: python3 .github/scripts/add_k_multimarket_engine_v2.py self-test
 
       - name: Run Thailand Prediction2 selection — 1X2 / AH / O-U
         shell: bash
         run: |
           set -euo pipefail
           TARGET_DATE="$(TZ=Asia/Bangkok date +%F)"
-          echo 'ADD K AUTO: scan all eligible fixtures; choose one strongest market among 1X2/AH/O-U; published odds >=1.70; no daily cap; no reverse.'
-          python3 .github/scripts/add_k_multimarket_engine.py select --date "$TARGET_DATE"
+          echo 'ADD K AUTO v2: normalize Goaloo AH sign; scan all eligible fixtures; choose one strongest market among 1X2/AH/O-U; published odds >=1.70; no daily cap; no reverse.'
+          python3 .github/scripts/add_k_multimarket_engine_v2.py select --date "$TARGET_DATE"
 
       - name: Publish Prediction2 feed and health state
         shell: bash
@@ -53,7 +54,7 @@ jobs:
             echo 'No Prediction2 selection-state change (existing daily lock may be preserved).'
             exit 0
           fi
-          git commit -m "ADD K multi-market Goaloo selection $(TZ=Asia/Bangkok date +%F)"
+          git commit -m "ADD K v2 corrected AH selection $(TZ=Asia/Bangkok date +%F)"
           for attempt in 1 2 3; do
             if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then exit 0; fi
             git rebase --abort 2>/dev/null || true
