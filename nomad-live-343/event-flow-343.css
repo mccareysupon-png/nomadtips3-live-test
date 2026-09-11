@@ -12,17 +12,18 @@
 .nomad-flow-legend>small{margin-left:auto;color:#627067}
 .nomad-flow-chart{padding:2px 8px 0;background:#020302;overflow:hidden}
 .nomad-flow-svg{display:block;width:100%;height:190px;background:#020302;overflow:visible}
-.nomad-flow-grid-line{stroke:#1b241f;stroke-width:.7;vector-effect:non-scaling-stroke}
-.nomad-flow-grid-line.mid{stroke:#34443a;stroke-width:.9}
-.nomad-flow-grid-line.vertical{stroke:#111813;stroke-width:.55}
+.nomad-flow-grid-line{stroke:#1b241f;stroke-width:.55;vector-effect:non-scaling-stroke}
+.nomad-flow-grid-line.mid{stroke:#34443a;stroke-width:1}
+.nomad-flow-grid-line.vertical{stroke:#111813;stroke-width:.45}
 .nomad-flow-axis-label{fill:#58675e;font-size:7px;font-family:system-ui,sans-serif}
-.nomad-flow-line{fill:none;stroke-width:1;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
-.nomad-flow-line.home{stroke:#52d985}
-.nomad-flow-line.away{stroke:#e08d5f}
+.nomad-flow-area{pointer-events:none;opacity:.9}
+.nomad-flow-line{fill:none;stroke-width:.58;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round;pointer-events:none}
+.nomad-flow-line.home{stroke:#52d985;filter:drop-shadow(0 1px 1.4px rgba(82,217,133,.42))}
+.nomad-flow-line.away{stroke:#e08d5f;filter:drop-shadow(0 1px 1.4px rgba(224,141,95,.38))}
 .nomad-flow-end{vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center;animation:nomad-flow-pulse 1.15s ease-in-out infinite}
-.nomad-flow-end.home{fill:#52d985;stroke:#b8ffd0;stroke-width:.8}
-.nomad-flow-end.away{fill:#e08d5f;stroke:#ffd4bc;stroke-width:.8;animation-delay:.25s}
-@keyframes nomad-flow-pulse{0%,100%{opacity:.55;transform:scale(.85)}50%{opacity:1;transform:scale(1.55)}}
+.nomad-flow-end.home{fill:#52d985;stroke:#b8ffd0;stroke-width:.65}
+.nomad-flow-end.away{fill:#e08d5f;stroke:#ffd4bc;stroke-width:.65;animation-delay:.25s}
+@keyframes nomad-flow-pulse{0%,100%{opacity:.55;transform:scale(.86)}50%{opacity:1;transform:scale(1.45)}}
 .nomad-flow-foot{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:7px 12px 9px;border-top:1px solid #121914;background:#050706;color:#65736b;font-size:7px;line-height:1.35}
 .nomad-flow-loading,.nomad-flow-empty{min-height:150px;display:flex;align-items:center;justify-content:center;padding:16px;text-align:center;background:#020302;color:#6f7d74;font-size:9px}
 .book-flow-single{margin-top:8px}
