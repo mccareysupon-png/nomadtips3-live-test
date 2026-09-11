@@ -1,12 +1,12 @@
 (()=>{'use strict';
 const API='/api/engine/signals',POLL=30000;
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const show=v=>v===null||v===undefined||v===''?'—':String(v);
 function time(ms){try{return new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(ms))}catch{return'—'}}
 function scoreValue(v){if(typeof v==='string'&&v.trim())return v;if(Array.isArray(v))return`${show(v[0])}-${show(v[1])}`;if(v&&typeof v==='object')return`${show(v.home??v.h)}-${show(v.away??v.a)}`;return'—'}
 function entryScore(s){return scoreValue(s.entryScore??s.scoreAt)}
 function isFt(s){return String(s.mirrorState||'').toUpperCase()==='FT'||String(s.status||'').toUpperCase()==='SETTLED'}
-function currentScore(s){return scoreValue(isFt(s)?(s.finalScore??s.mirrorScore??s.entryScore??s.scoreAt):(s.mirrorScore??s.entryScore??s.scoreAt))}
+function currentScore(s){return scoreValue(isFt(s)?(s.finalScore??s.mirrorScore):(s.mirrorScore??s.entryScore??s.scoreAt))}
 function entryMinute(s){return s.entryMinute??s.minute}
 function mirrorMinute(s){if(isFt(s))return'FT';const v=s.mirrorMinute;if(v===null||v===undefined||v==='')return'—';return`${show(v)}'`}
 function state(type,text){const el=document.querySelector('[data-signal-state]');if(el)el.innerHTML=`<span class="pill"><i class="dot ${type}"></i>${esc(text)}</span>`}
