@@ -55,8 +55,8 @@ async function writeServer(localSnapshot){
   return data.snapshot;
 }
 function verifyServerEcho(localSnapshot,serverSnapshot){
-  const wanted=finite(localSnapshot?.settings?.over?.lineMax),received=finite(serverSnapshot?.settings?.over?.lineMax);
-  if(wanted>0&&received!==wanted)throw new Error(`OVER_MAX_SYNC_MISMATCH:${wanted}->${received}`);
+  const wanted=finite(localSnapshot?.settings?.over?.maxGoalsToFullWin),received=finite(serverSnapshot?.settings?.over?.maxGoalsToFullWin);
+  if(wanted>0&&received!==wanted)throw new Error(`OVER_FULL_WIN_GOALS_SYNC_MISMATCH:${wanted}->${received}`);
 }
 function markSynced(serverSnapshot){
   const run=serverSnapshot?.run||{};

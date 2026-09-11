@@ -15,7 +15,7 @@ const ALLOWED_ORIGINS=new Set([
   'https://mccareysupon-png.github.io','http://localhost:8787','http://127.0.0.1:8787'
 ]);
 const DEFAULTS=Object.freeze({
-  over:{lineMin:0.5,lineMax:10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
+  over:{lineMin:0.5,maxGoalsToFullWin:1,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
@@ -33,6 +33,7 @@ const iso=v=>Number.isFinite(Number(v))?new Date(Number(v)).toISOString():null;
 
 function normalizeMarket(name,input={}){
   const base=clone(DEFAULTS[name]),out={...base,...(input||{})};
+  if(name==='over')delete out.lineMax;
   if(name!=='over')out.sideMode=['HOME','AWAY','BOTH'].includes(String(out.sideMode||'').toUpperCase())?String(out.sideMode).toUpperCase():'BOTH';
   for(const key of Object.keys(base)){if(key==='sideMode')continue;const n=finite(out[key]);out[key]=n===null?base[key]:n}
   return out;
@@ -51,7 +52,7 @@ function validateSnapshot(snapshot){
     if(c.oddsMin<1.01||c.oddsMin>20)errors.push(`${name}.oddsMin`);
     if(name==='ah'&&(c.lineMin<-10||c.lineMin>10||!Number.isInteger(c.lineMin*4)))errors.push(`${name}.lineMin`);
     if(name!=='oneXtwo'&&name!=='ah'&&(c.lineMin<.5||c.lineMin>10||!Number.isInteger(c.lineMin*2)))errors.push(`${name}.lineMin`);
-    if(name==='over'&&(c.lineMax<.5||c.lineMax>10||!Number.isInteger(c.lineMax*2)||c.lineMin>c.lineMax))errors.push(`${name}.lineMax`);
+    if(name==='over'&&![1,2,3,999].includes(Number(c.maxGoalsToFullWin)))errors.push(`${name}.maxGoalsToFullWin`);
     if(name==='oneXtwo'&&(c.scoreTrailingMax<0||c.scoreTrailingMax>10||!Number.isInteger(c.scoreTrailingMax)))errors.push(`${name}.scoreTrailingMax`);
     if(name!=='over'&&!['HOME','AWAY','BOTH'].includes(c.sideMode))errors.push(`${name}.sideMode`);
     if(c.evidenceRequired<1||c.evidenceRequired>6||!Number.isInteger(c.evidenceRequired))errors.push(`${name}.evidenceRequired`);
@@ -186,7 +187,8 @@ function evaluateEvidence(values,cfg,direction){const checks={};let passCount=0;
 function minutePass(minute,cfg){const n=finite(minute);return n!==null&&n>=Number(cfg.minuteFrom)&&n<=Number(cfg.minuteTo)}
 function oddsOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n<=100}
 function lineOk(value,min){const n=finite(value),m=finite(min);return n!==null&&m!==null&&n>=m&&n<=20&&Number.isInteger(n*4)}
-function lineRangeOk(value,min,max){const n=finite(value),lo=finite(min),hi=finite(max);return n!==null&&lo!==null&&hi!==null&&n>=lo&&n<=hi&&n<=20&&Number.isInteger(n*4)}
+function goalsNeededForFullOverWin(line,score){const n=finite(line),h=finite(score?.[0]),a=finite(score?.[1]);if(n===null||h===null||a===null||!Number.isInteger(n*4))return null;const minimumFullWinTotal=Math.floor(n+.25)+1;return Math.max(0,minimumFullWinTotal-h-a)}
+function fullWinGoalLimitOk(line,score,maxGoals){const needed=goalsNeededForFullOverWin(line,score),limit=finite(maxGoals);return needed!==null&&limit!==null&&(limit===999||needed<=limit)}
 function selectedOddsOne(market,pick){return finite(pick==='HOME'?market?.oneXtwo?.home:market?.oneXtwo?.away)}
 function chooseOneXtwo(pred,cfg){const mode=String(cfg?.sideMode||'BOTH').toUpperCase();if(mode==='HOME')return 'HOME';if(mode==='AWAY')return 'AWAY';return Number(pred?.home||0)>=Number(pred?.away||0)?'HOME':'AWAY'}
 function trailingBy(score,pick){const h=finite(score?.[0]),a=finite(score?.[1]);if(h===null||a===null)return null;return pick==='HOME'?Math.max(0,a-h):Math.max(0,h-a)}
@@ -239,7 +241,7 @@ function marketGate(name,m,row,snapshot,statRows,shotRows=[]){
     evidence=evaluateEvidence(pick==='HOME'?homeEv:awayEv,cfg,'MIN');if(!evidence.pass)reasons.push(`หลักฐานผ่าน ${evidence.passCount}/${evidence.required}`);
   }else if(name==='over'){
     pick='OVER';line=finite(market?.totals?.line);odds=finite(market?.totals?.over);probability=finite(pred?.totals?.over);
-    if(!lineRangeOk(line,cfg.lineMin,cfg.lineMax))reasons.push('เส้น Over ไม่อยู่ในช่วงที่ตั้ง');if(!oddsOk(odds,cfg.oddsMin))reasons.push('ราคา odds ต่ำกว่าที่ตั้ง');
+    if(!lineOk(line,cfg.lineMin))reasons.push('เส้น Over ต่ำกว่าที่ตั้ง');const goalsToFullWin=goalsNeededForFullOverWin(line,m.score);if(!fullWinGoalLimitOk(line,m.score,cfg.maxGoalsToFullWin))reasons.push(goalsToFullWin===null?'คำนวณจำนวนประตูเพื่อชนะเต็มไม่ได้':`ต้องยิงเพิ่ม ${goalsToFullWin} ลูกเพื่อชนะเต็ม เกินค่าที่ตั้ง`);if(!oddsOk(odds,cfg.oddsMin))reasons.push('ราคา odds ต่ำกว่าที่ตั้ง');
     const home=evaluateEvidence(homeEv,cfg,'MIN'),away=evaluateEvidence(awayEv,cfg,'MIN'),passSides=[['HOME',home],['AWAY',away]].filter(([,e])=>e.pass).sort((a,b)=>b[1].passCount-a[1].passCount);
     evidence={mode:'EITHER',sides:{HOME:home,AWAY:away},passingSides:passSides.map(x=>x[0]),selectedSide:passSides[0]?.[0]||null,pass:passSides.length>0};if(!evidence.pass)reasons.push('ยังไม่มีฝั่งใดผ่านหลักฐานที่ตั้ง');
   }else{
@@ -266,7 +268,7 @@ function filterNewSignals(signals,record=null){const seen=lockedFamilies(record)
 function candidateUrl(m){const u=new URL(MARKET_URL);u.searchParams.set('home',m.home||'');u.searchParams.set('away',m.away||'');u.searchParams.set('minute',String(m.minute??''));u.searchParams.set('scoreHome',String(m.score?.[0]??''));u.searchParams.set('scoreAway',String(m.score?.[1]??''));return u.toString()}
 function lockPayload(m,market,signals){const ah=signals.find(signal=>signal.market==='AH');return {schemaVersion:3,capturedAt:Date.now(),matchId:String(m.id),fixtureId:String(market?.fixture?.id||''),league:typeof m.league==='object'?String(m.league?.name||''):String(m.league||''),home:m.home||'',away:m.away||'',minute:m.minute,entryScore:m.score,settingsVersion:SETTINGS_VERSION,signals,market:{provider:market.provider||'Nowgoal',observedAt:market.observedAt||Date.now(),fixture:market.fixture||null,oneXtwo:market.oneXtwo||null,totals:market.totals||null,asianHandicap:ah?{line:ah.rawLine,selectedLine:ah.line,homeOdds:ah.homeOdds??null,awayOdds:ah.awayOdds??null,rawHomeHk:ah.rawHomeHk??null,rawAwayHk:ah.rawAwayHk??null,selectedOdds:ah.odds,bookmaker:ah.bookmaker||'Bet365',provider:ah.provider||'Nowgoal',linePerspective:'HOME'}:null,statistics:market.statistics||null}}}
 
-export {hkToDecimal,parseAsianHandicapQuotes,ahSideQuote,signalFamily,lockedFamilies,filterNewSignals,normalizeFiveDollarShotRow,fiveDollarShotEvidence,mergeShotEvidence};
+export {hkToDecimal,parseAsianHandicapQuotes,ahSideQuote,signalFamily,lockedFamilies,filterNewSignals,normalizeFiveDollarShotRow,fiveDollarShotEvidence,mergeShotEvidence,goalsNeededForFullOverWin,fullWinGoalLimitOk};
 
 export class SignalEngine{
   constructor(state,env){this.state=state;this.env=env}
