@@ -6,7 +6,7 @@ const ACTIVE_KEY='nomad342MarketSettingsActiveV3';
 const RUN_KEY='nomad342MarketRunV3';
 const MARKETS=['over','under','oneXtwo','ah'];
 const DEFAULTS=Object.freeze({
-  over:{lineMin:0.5,lineMax:10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
+  over:{lineMin:0.5,maxGoalsToFullWin:1,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   oneXtwo:{sideMode:'BOTH',scoreTrailingMax:0,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5},
   ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.01,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:50,attackPct:50,possessionPct:50,evidenceRequired:3,minuteFrom:0,minuteTo:120,rollingWindowMinutes:5}
@@ -16,6 +16,7 @@ function finite(v){if(v===null||v===undefined||v===''||typeof v==='boolean')retu
 function loadJson(key,fallback){try{const raw=JSON.parse(localStorage.getItem(key)||'null');return raw&&typeof raw==='object'?raw:fallback}catch{return fallback}}
 function normalizeMarket(name,input={}){
   const base=clone(DEFAULTS[name]);const out={...base,...(input||{})};
+  if(name==='over')delete out.lineMax;
   if(name!=='over')out.sideMode=['HOME','AWAY','BOTH'].includes(String(out.sideMode||'').toUpperCase())?String(out.sideMode).toUpperCase():'BOTH';
   for(const key of Object.keys(base)){
     if(key==='sideMode')continue;
@@ -40,10 +41,7 @@ function validate(name,cfg){
   if(finite(cfg.oddsMin)===null||cfg.oddsMin<1.01||cfg.oddsMin>20)e.push('ราคา odds ต้องเริ่มตั้งแต่ 1.01');
   if(name==='ah'&&(finite(cfg.lineMin)===null||cfg.lineMin<-10||cfg.lineMin>10||!Number.isInteger(cfg.lineMin*4)))e.push('Asian Handicap Line ต้องอยู่ระหว่าง -10 ถึง 10 และเพิ่มทีละ 0.25');
   if(name!=='oneXtwo'&&name!=='ah'&&(finite(cfg.lineMin)===null||cfg.lineMin<0.5||cfg.lineMin>10||!Number.isInteger(cfg.lineMin*2)))e.push('เส้นประตูใช้ 0.5–10.0 เพิ่มทีละ 0.5');
-  if(name==='over'){
-    if(finite(cfg.lineMax)===null||cfg.lineMax<0.5||cfg.lineMax>10||!Number.isInteger(cfg.lineMax*2))e.push('เส้น Over ไม่เกินต้องอยู่ระหว่าง 0.5–10.0 เพิ่มทีละ 0.5');
-    if(finite(cfg.lineMin)!==null&&finite(cfg.lineMax)!==null&&Number(cfg.lineMin)>Number(cfg.lineMax))e.push('เส้น Over ตั้งแต่ต้องไม่มากกว่าเส้น Over ไม่เกิน');
-  }
+  if(name==='over'&&![1,2,3,999].includes(Number(cfg.maxGoalsToFullWin)))e.push('ยิงเพิ่มเพื่อชนะเต็มต้องเลือก 1, 2, 3 ลูก หรือไม่จำกัด');
   if(name==='oneXtwo'&&(!Number.isInteger(Number(cfg.scoreTrailingMax))||cfg.scoreTrailingMax<0||cfg.scoreTrailingMax>10))e.push('ระยะห่างของสกอร์ต้องเป็นจำนวนเต็ม 0–10');
   if(name!=='over'&&!['HOME','AWAY','BOTH'].includes(String(cfg.sideMode||'').toUpperCase()))e.push('เลือก Home / Away / Both ให้ถูกต้อง');
   for(const key of ['shotOnTarget','shotOff','corner'])if(finite(cfg[key])===null||cfg[key]<0||cfg[key]>50)e.push(`${key} ต้องเป็น 0–50`);
@@ -59,19 +57,11 @@ function stopAll(){saveRun({over:false,under:false,oneXtwo:false,ah:false});docu
 function runningSnapshot(){return {version:VERSION,settings:loadActive(),run:loadRun()}}
 function readForm(form,name){const base=loadDraft()[name],next={...base};for(const el of form.elements){if(!el.name)continue;if(el.type==='radio'){if(el.checked)next[el.name]=el.value;continue;}next[el.name]=el.tagName==='SELECT'?el.value:Number(el.value)}return normalizeMarket(name,next)}
 function fillForm(form,name,cfg){for(const el of form.elements){if(!el.name)continue;const v=cfg[el.name];if(el.type==='radio'){el.checked=String(el.value).toUpperCase()===String(v).toUpperCase();continue;}el.value=String(v??'')}}
-function ensureOverLineMaxField(){
-  const form=document.querySelector('form[data-market-form="over"]');if(!form||form.elements.namedItem('lineMax'))return;
-  const lineMin=form.elements.namedItem('lineMin'),anchor=lineMin?.closest('label');if(!anchor)return;
-  const label=document.createElement('label');
-  label.innerHTML='<span>เส้น Over ไม่เกิน</span><input name="lineMax" type="number" min="0.5" max="10" step="0.5" required>';
-  anchor.insertAdjacentElement('afterend',label);
-}
 function setText(node,text){if(node)node.textContent=text}
 function setLight(name,state,message){const light=document.querySelector(`[data-status-light="${name}"]`),label=document.querySelector(`[data-status-label="${name}"]`);if(light){light.classList.remove('is-off','is-ready','is-run','is-error');light.classList.add(`is-${state}`)}setText(label,message)}
 function syncStatus(name){const run=loadRun();setLight(name,run[name]?'run':'off',run[name]?'กำลังทำงาน':'หยุด')}
 function startSettingsPage(){
   if(document.body?.dataset?.page!=='market-settings-v3')return;
-  ensureOverLineMaxField();
   let draft=loadDraft();
   for(const name of MARKETS){
     const form=document.querySelector(`form[data-market-form="${name}"]`);if(!form)continue;fillForm(form,name,draft[name]);syncStatus(name);
