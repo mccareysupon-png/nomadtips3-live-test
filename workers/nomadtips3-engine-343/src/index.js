@@ -83,7 +83,7 @@ function isUnknown(f){const s=fixtureStatus(f);return f?.boardState==='unknown'|
 function isHalfComplete(f){
   if(isFinished(f))return true;
   const raw=`${f?.status??''} ${f?.statusCode??''}`.toLowerCase(),minute=num(f?.minute);
-  return /\bhalf\b|half_time|halftime|break|second|\b2h\b/.test(raw)||(minute!==null&&minute>=46);
+  return /half[_\s-]?time|halftime|\bbreak\b|\bsecond(?:\s+half)?\b|\b2h\b|\bht\b/.test(raw)||(minute!==null&&minute>=46);
 }
 function periodEligible(f,def,cfg){
   const minute=num(f?.minute);
