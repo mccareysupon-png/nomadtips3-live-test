@@ -4,8 +4,8 @@ import { MARKET_RULES, MARKET_KEYS, gapPass, lineGap, settleAh, settleOu } from 
 const VERSION='nomad343-engine-v2-all-markets';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=45_000;
-const HISTORY_MS=60*60_000;
-const MAX_HISTORY_ROWS=90;
+const HISTORY_MS=180*60_000;
+const MAX_HISTORY_ROWS=180;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
 
@@ -108,6 +108,17 @@ function rolling(history,minutes){
   if(!old)return null;
   return {fromAt:old.at,toAt:cur.at,fromMinute:old.minute,toMinute:cur.minute,shotsOnTarget:deltaPair(cur.shotsOnTarget,old.shotsOnTarget),shotsOffTarget:deltaPair(cur.shotsOffTarget,old.shotsOffTarget),corners:deltaPair(cur.corners,old.corners),attacks:deltaPair(cur.attacks,old.attacks),dangerousAttacks:deltaPair(cur.dangerousAttacks,old.dangerousAttacks),possession:cur.possession};
 }
+const PRESSURE_WEIGHTS={attacks:20,dangerousAttacks:30,shotsOnTarget:20,shotsOffTarget:10,corners:10,possession:10};
+function pressurePoint(history,index,minutes=10){
+  const cur=history[index];if(!cur)return null;const target=Number(cur.at||0)-Number(minutes||10)*60_000;let old=null;
+  for(let i=index-1;i>=0;i--){if(Number(history[i]?.at||0)<=target){old=history[i];break}}
+  if(!old&&index>0)old=history[0];const parts=[];
+  const add=(key,p)=>{const s=sharePair(p);if(s.home===null||s.away===null)return;parts.push({weight:PRESSURE_WEIGHTS[key],home:s.home/100,away:s.away/100})};
+  if(old){add('attacks',deltaPair(cur.attacks,old.attacks));add('dangerousAttacks',deltaPair(cur.dangerousAttacks,old.dangerousAttacks));add('shotsOnTarget',deltaPair(cur.shotsOnTarget,old.shotsOnTarget));add('shotsOffTarget',deltaPair(cur.shotsOffTarget,old.shotsOffTarget));add('corners',deltaPair(cur.corners,old.corners))}
+  add('possession',cur.possession);const total=parts.reduce((s,x)=>s+x.weight,0);let home=50;if(total)home=parts.reduce((s,x)=>s+x.home*x.weight,0)/total*100;const away=100-home;
+  return {at:num(cur.at),minute:num(cur.minute),home:Math.round(home*10)/10,away:Math.round(away*10)/10,windowMinutes:old?Math.max(1,Math.round((Number(cur.at||0)-Number(old.at||0))/60_000)):0};
+}
+function pressureSeries(history,minutes=10){return (Array.isArray(history)?history:[]).map((_,i)=>pressurePoint(history,i,minutes)).filter(Boolean)}
 function sideValue(p,side){return num(side==='HOME'?p?.home:p?.away)}
 function evidenceSide(roll,cfg,side,low=false){
   if(!roll)return {pass:false,count:0,required:Number(cfg.evidenceRequired||3),side,mode:low?'LOW':'HIGH',items:[],strength:0,reason:'WARMING'};
@@ -270,12 +281,13 @@ export class Nomad343Engine extends DurableObject{
     if(u.pathname==='/board')return Response.json(await this.ctx.storage.get('board')||{ok:false,version:VERSION,error:'NO_BOARD'});
     if(u.pathname==='/signals'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}
     if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,markets:MARKET_RULES,...statsFrom(s)})}
+    if(u.pathname==='/history'&&request.method==='GET'){const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:180,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})}
     return new Response('Not found',{status:404});
   }
 }
 function stub(env){return env.ENGINE.get(env.ENGINE.idFromName('global'))}
 function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
 export default{
-  async fetch(request,env){if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));const u=new URL(request.url);if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)))},
+  async fetch(request,env){if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));const u=new URL(request.url);if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)))},
   async scheduled(_event,env,ctx){ctx.waitUntil(stub(env).fetch('https://engine.internal/scan',{method:'POST'}))}
 };
