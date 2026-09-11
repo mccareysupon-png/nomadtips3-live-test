@@ -9,6 +9,16 @@ function engineRequest(request, path) {
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const scoreCopy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
+async function noStoreStatisticsAsset(request, env) {
+  const response = await env.ASSETS.fetch(request);
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
+  headers.set('pragma', 'no-cache');
+  headers.set('expires', '0');
+  headers.set('x-nomad-stat-revision', '343-stat-clean-v2');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function fixtureState(fixture) {
   const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? '').toLowerCase();
   if (fixture?.boardState === 'finished' || /finished|full_time|full time|\bft\b|ended/.test(raw)) return 'FT';
@@ -113,6 +123,9 @@ export default {
       upstream.hostname = 'engine.internal';
       upstream.pathname = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(new Request(upstream, request));
+    }
+    if (request.method === 'GET' && (url.pathname === '/statistics.html' || url.pathname === '/statistics.js')) {
+      return noStoreStatisticsAsset(request, env);
     }
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url);
