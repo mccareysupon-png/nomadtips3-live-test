@@ -1,0 +1,50 @@
+/* NOMAD 3.43 Statistics-only layout fixes.
+   Keep the ledger header in normal document flow and keep the bottom navigation
+   available on mobile/tablet-width viewports without JavaScript forcing. */
+
+body[data-page="statistics"] .public-stat-table th{
+  position:static;
+  top:auto;
+}
+
+@media (max-width:1100px){
+  body[data-page="statistics"] .topnav{
+    display:none;
+  }
+
+  body[data-page="statistics"] .shell{
+    padding-bottom:calc(76px + env(safe-area-inset-bottom));
+  }
+
+  body[data-page="statistics"] .mobile-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:80;
+    min-height:56px;
+    padding-bottom:env(safe-area-inset-bottom);
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    background:#142019;
+    border-top:1px solid var(--line);
+  }
+
+  body[data-page="statistics"] .mobile-nav a{
+    min-width:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-decoration:none;
+    color:#aeb9b1;
+    font-size:10px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+
+  body[data-page="statistics"] .mobile-nav a.active{
+    color:#fff;
+    background:#1b3021;
+    border-top:2px solid var(--yellow);
+  }
+}
