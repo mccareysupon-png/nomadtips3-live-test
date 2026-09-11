@@ -15,6 +15,12 @@ function fixtureState(fixture) {
   return 'LOCKED';
 }
 
+function fixtureIsLive(fixture) {
+  const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? '').toLowerCase();
+  if (fixture?.boardState === 'finished' || /finished|full_time|full time|\bft\b|ended/.test(raw)) return false;
+  return fixture?.boardState === 'live' || /in_play|in play|live|playing|first|second|\b1h\b|\b2h\b/.test(raw);
+}
+
 function mirrorMinute(fixture, signal, state) {
   if (state === 'FT') return 'FT';
   const direct = num(fixture?.minute);
@@ -25,7 +31,7 @@ function mirrorMinute(fixture, signal, state) {
 }
 
 function mirrorScore(fixture, signal, state) {
-  if (state === 'FT') return scoreCopy(signal?.finalScore ?? fixture?.goals ?? signal?.entryScore ?? signal?.scoreAt);
+  if (state === 'FT') return scoreCopy(signal?.finalScore ?? fixture?.goals ?? null);
   if (fixture?.goals && typeof fixture.goals === 'object') return scoreCopy(fixture.goals);
   return scoreCopy(signal?.entryScore ?? signal?.scoreAt);
 }
@@ -50,6 +56,7 @@ async function mirroredSignals(request, env) {
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
   const fixtureMap = new Map(fixtures.map(f => [String(f?.fixtureId ?? ''), f]));
   const boardIds = new Set(fixtureMap.keys());
+  const liveCount = num(boardData?.counts?.live) ?? fixtures.filter(fixtureIsLive).length;
   const active = Array.isArray(signalData?.signals) ? signalData.signals : [];
   const finished = Array.isArray(statisticsData?.rows)
     ? statisticsData.rows.filter(s => boardIds.has(String(s?.fixtureId ?? '')))
@@ -61,17 +68,20 @@ async function mirroredSignals(request, env) {
     merged.set(String(signal.id), signal);
   }
 
+  let orphanFtCount = 0;
   const signals = [...merged.values()]
     .map(signal => {
       const fixture = fixtureMap.get(String(signal?.fixtureId ?? ''));
       const settled = String(signal?.status ?? '').toUpperCase() === 'SETTLED';
-      const state = settled ? 'FT' : (fixture ? fixtureState(fixture) : 'LOCKED');
+      const orphanFt = !settled && !fixture && liveCount === 0;
+      if (orphanFt) orphanFtCount += 1;
+      const state = (settled || orphanFt) ? 'FT' : (fixture ? fixtureState(fixture) : 'LOCKED');
       return {
         ...signal,
         mirrorMinute: fixture ? mirrorMinute(fixture, signal, state) : (state === 'FT' ? 'FT' : num(signal?.entryMinute ?? signal?.minute)),
-        mirrorScore: fixture ? mirrorScore(fixture, signal, state) : scoreCopy(state === 'FT' ? (signal?.finalScore ?? signal?.entryScore) : (signal?.entryScore ?? signal?.scoreAt)),
+        mirrorScore: fixture ? mirrorScore(fixture, signal, state) : scoreCopy(state === 'FT' ? (signal?.finalScore ?? null) : (signal?.entryScore ?? signal?.scoreAt)),
         mirrorState: state,
-        mirrorSource: 'ENGINE_CACHE'
+        mirrorSource: orphanFt ? 'ENGINE_CACHE_ORPHAN_FT' : 'ENGINE_CACHE'
       };
     })
     .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0))
@@ -84,7 +94,9 @@ async function mirroredSignals(request, env) {
       source: 'ENGINE_CACHE',
       externalRequestsAdded: 0,
       boardFixtures: fixtures.length,
-      finishedMirrored: finished.length
+      liveFixtures: liveCount,
+      finishedMirrored: finished.length,
+      orphanFtCount
     }
   }, { headers: { 'cache-control': 'no-store' } });
 }
