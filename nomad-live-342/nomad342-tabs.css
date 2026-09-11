@@ -3,7 +3,8 @@
    Mobile: retain full-width three-column tap targets.
    2026-09-06: presentation-only bright-vintage icon artwork; layout and tab logic unchanged.
    2026-09-06: enlarge visible subnav artwork by 20% without changing icon box/layout metrics.
-   2026-09-08: place shared odds-format controls opposite the 3.42 icon navigation. */
+   2026-09-08: place shared odds-format controls opposite the 3.42 icon navigation.
+   2026-09-11: harden mobile three-tab visibility so Live Score / Signal / Statistics cannot be clipped. */
 .nomad342-controlbar{
   display:flex;
   align-items:stretch;
@@ -200,24 +201,46 @@
 @media(max-width:700px){
   .nomad342-controlbar{
     display:grid;
-    grid-template-columns:1fr;
+    grid-template-columns:minmax(0,1fr);
     gap:2px;
     padding:5px;
     margin:0 0 10px;
-  }
-  .nomad342-tabs{
-    grid-template-columns:repeat(3,minmax(0,1fr));
-    justify-content:stretch;
-    gap:3px;
-    padding:5px;
-    margin-bottom:10px;
-  }
-  .nomad342-controlbar .nomad342-tabs{
     width:100%;
-    padding:0;
-    margin:0;
+    min-width:0;
+    overflow:visible;
   }
-  .nomad342-tab{min-height:44px;padding:6px 3px;gap:4px;font-size:9.45px;flex-direction:column}
+  .nomad342-tabs,
+  .nomad342-controlbar .nomad342-tabs{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    justify-content:stretch!important;
+    gap:3px!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:none!important;
+    padding:5px!important;
+    margin:0!important;
+    overflow:visible!important;
+    visibility:visible!important;
+  }
+  .nomad342-controlbar .nomad342-tabs{padding:0!important}
+  .nomad342-tab,
+  .nomad342-tabs>.nomad342-tab{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    min-width:0!important;
+    max-width:none!important;
+    width:auto!important;
+    min-height:44px;
+    padding:6px 3px;
+    gap:4px;
+    font-size:9.45px;
+    flex-direction:column;
+    overflow:visible!important;
+  }
+  .nomad342-tab:nth-child(3){display:flex!important;visibility:visible!important}
+  .nomad342-tab-label{display:block!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .nomad342-tab-icon{width:18px;height:18px;flex-basis:18px}
   .nomad342-tab[aria-selected="true"]::after{left:22%;right:22%}
   .nomad342-odds-control{
