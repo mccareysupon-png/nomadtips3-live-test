@@ -173,7 +173,10 @@
     if (!data || data.record_version !== 'KING_STATS_V3') return;
     const records = Array.isArray(data.records) ? data.records : [];
     const finalResults = ['WIN', 'HALF_WIN', 'LOSS', 'HALF_LOSS', 'PUSH'];
+    const historyResults = [...finalResults, 'VOID'];
     const settled = records.filter(x => finalResults.includes(String(x.result || '').toUpperCase()));
+    const history = records.filter(x => historyResults.includes(String(x.result || '').toUpperCase()));
+    const voids = history.filter(x => String(x.result || '').toUpperCase() === 'VOID');
     const s = data.summary || {};
 
     const firstLabel = $('.king-scorebar .metric:first-child span');
@@ -190,17 +193,19 @@
     if ($('#sumNet')) $('#sumNet').textContent = money(s.net || 0);
     if ($('#sumRoi')) $('#sumRoi').textContent = s.roi == null ? '—' : pct(s.roi);
 
+    const historyLabel = voids.length ? `${settled.length} settled · ${voids.length} void` : `${settled.length} settled`;
     const historyCount = $('#historyCount');
-    if (historyCount) historyCount.textContent = `${settled.length} settled`;
+    if (historyCount) historyCount.textContent = historyLabel;
     const historyTab = $('.king-tabs button[data-tab="history"]');
-    if (historyTab) historyTab.textContent = `HISTORY · ${settled.length}`;
+    if (historyTab) historyTab.textContent = `HISTORY · ${history.length}`;
 
     const historyRows = $('#historyRows');
     if (historyRows) {
-      historyRows.innerHTML = settled.slice().sort(resultOrder).map(x => {
+      historyRows.innerHTML = history.slice().sort(resultOrder).map(x => {
         const result = String(x.result || '').toUpperCase();
         const pl = Number(x.profit || 0);
-        return `<tr><td>${x.date || '—'}</td><td>${x.pick || '—'}</td><td>${odds(x.odds)}</td><td>${x.ft || '—'}</td><td><span class="king-result ${cls(result)}">${resultText(result)}</span></td><td class="king-pl ${pl >= 0 ? 'positive' : 'negative'}">${money(pl)}</td></tr>`;
+        const title = result === 'VOID' ? ' title="Invalidated: AH sign was reversed by v1 engine"' : '';
+        return `<tr${title}><td>${x.date || '—'}</td><td>${x.pick || '—'}</td><td>${odds(x.odds)}</td><td>${x.ft || '—'}</td><td><span class="king-result ${cls(result)}">${resultText(result)}</span></td><td class="king-pl ${pl >= 0 ? 'positive' : 'negative'}">${money(pl)}</td></tr>`;
       }).join('');
     }
 
@@ -226,7 +231,7 @@
     }
 
     const hero = $('.king-hero p');
-    if (hero) hero.textContent = 'ADD K pre-match selection · combined verified statistics since 04/09/2026';
+    if (hero) hero.textContent = 'ADD K pre-match selection · combined verified statistics since 04/09/2026 · invalid AH v1 excluded as VOID';
   }
 
   async function load() {
