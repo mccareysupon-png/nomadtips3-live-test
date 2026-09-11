@@ -116,29 +116,27 @@ jobs:
           set -euo pipefail
           curl -fsS --max-time 30 -D /tmp/stat.headers "$PREVIEW_URL/statistics.html?verify=$RANDOM$RANDOM" -o /tmp/stat.html
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/stat.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v4' /tmp/stat.headers
-          grep -Fq 'name="nomad-stat-revision" content="343-stat-clean-v4"' /tmp/stat.html
-          grep -Fq 'statistics-page-343.css?v=343-stat-clean-v4' /tmp/stat.html
+          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/stat.headers
+          grep -Fq 'name="nomad-stat-revision" content="343-stat-clean-v5"' /tmp/stat.html
+          grep -Fq 'statistics-page-343.css?v=343-stat-clean-v5' /tmp/stat.html
           grep -Fq 'statistics.js?v=343-stat-clean-v2' /tmp/stat.html
           grep -Fq 'data-visual-match-card' /tmp/stat.html
-          grep -Fq '<nav class="mobile-nav">' /tmp/stat.html
-          if grep -Fq 'statistics-mobile-nav-fix' /tmp/stat.html; then echo '::error::legacy Statistics nav CSS still deployed'; exit 1; fi
-          if grep -Fq 'public-nav-3' /tmp/stat.html; then echo '::error::legacy Statistics nav class still deployed'; exit 1; fi
-          if grep -Fq 'data-statistics-mobile-nav' /tmp/stat.html; then echo '::error::legacy Statistics nav hook still deployed'; exit 1; fi
+          test "$(grep -o '<nav class="statistics-nav">' /tmp/stat.html | wc -l)" = "1"
+          if grep -Fq '<nav class="topnav">' /tmp/stat.html; then echo '::error::duplicate desktop nav still deployed'; exit 1; fi
+          if grep -Fq '<nav class="mobile-nav">' /tmp/stat.html; then echo '::error::duplicate mobile nav still deployed'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/statcss.headers "$PREVIEW_URL/statistics-page-343.css?verify=$RANDOM$RANDOM" -o /tmp/stat.css
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/statcss.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v4' /tmp/statcss.headers
+          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/statcss.headers
           grep -Fq 'body[data-page="statistics"] .public-stat-table th' /tmp/stat.css
-          grep -Fq 'position:static' /tmp/stat.css
-          grep -Fq 'display:grid !important' /tmp/stat.css
-          grep -Fq 'visibility:visible !important' /tmp/stat.css
-          grep -Fq 'z-index:2147483000 !important' /tmp/stat.css
+          grep -Fq 'body[data-page="statistics"] .statistics-nav' /tmp/stat.css
+          grep -Fq 'position:fixed;' /tmp/stat.css
           grep -Fq '@media (min-width:1101px) and (hover:hover) and (pointer:fine)' /tmp/stat.css
-          grep -Fq 'display:none !important' /tmp/stat.css
+          if grep -Fq '.mobile-nav' /tmp/stat.css; then echo '::error::legacy mobile-nav selector remains in Statistics CSS'; exit 1; fi
+          if grep -Fq '.topnav' /tmp/stat.css; then echo '::error::legacy topnav selector remains in Statistics CSS'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/statjs.headers "$PREVIEW_URL/statistics.js?verify=$RANDOM$RANDOM" -o /tmp/stat.js
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/statjs.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v4' /tmp/statjs.headers
+          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/statjs.headers
           grep -Fq "hour12:true" /tmp/stat.js
-          echo 'STATISTICS_DEPLOY_VERIFIED 343-stat-clean-v4'
+          echo 'STATISTICS_DEPLOY_VERIFIED 343-stat-clean-v5 SINGLE_NAV'
