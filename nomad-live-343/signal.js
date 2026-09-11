@@ -22,7 +22,7 @@ function liveScore(s){return s?.mirrorScore===null||s?.mirrorScore===undefined?'
 function teamName(s,side){return s?.[String(side).toLowerCase()]?.name||side}
 function selectionLabel(s){const sel=String(s?.selection||'').toUpperCase();if(sel==='HOME')return teamName(s,'HOME');if(sel==='AWAY')return teamName(s,'AWAY');if(sel==='DRAW')return'DRAW';return show(s?.selection).toUpperCase()}
 function betText(s){const pick=selectionLabel(s),line=num(s?.line);if(line===null)return pick;if(isAsianMarket(s)||isTotalMarket(s))return`${pick} ${publicLineText(s)}`;return pick}
-function rawLineText(s){const n=num(s?.providerLine);return n===null?'—':`${signedLineText(n)}${s?.providerLineSide?` · ${s.providerLineSide}`:''}`}
+function rawLineText(s){const n=num(s?.providerLine);if(n===null)return'—';const raw=isAsianMarket(s)?signedLineText(n):numberText(n);return`${raw}${s?.providerLineSide?` · ${s.providerLineSide}`:''}`}
 function state(type,text){const el=document.querySelector('[data-signal-state]');if(el)el.innerHTML=`<span class="pill"><i class="dot ${type}"></i>${esc(text)}</span>`}
 function evidenceText(s){const e=s?.evidence;if(!e)return'—';const side=String(e.side||e.mode||'').toUpperCase();return`${show(e.count)}/${show(e.required)}${side?` · ${side}`:''}`}
 function metricPair(src,keys){if(!src)return[null,null];for(const k of keys){const v=src[k];if(Array.isArray(v))return[num(v[0]),num(v[1])];if(v&&typeof v==='object'){const h=num(v.home??v.h??v[0]),a=num(v.away??v.a??v[1]);if(h!==null||a!==null)return[h,a]}}return[null,null]}
