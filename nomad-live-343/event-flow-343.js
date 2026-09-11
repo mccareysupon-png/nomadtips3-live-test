@@ -8,7 +8,7 @@ const MIN_AVAILABLE_WEIGHT=40;
 const cache=new Map();
 const MOMENTUM_WEIGHTS={dangerousAttacks:30,shotsOnTarget:25,attacks:20,shotsOffTarget:10,corners:10,possession:5};
 const MOMENTUM_CAPS_5={dangerousAttacks:8,shotsOnTarget:2,attacks:14,shotsOffTarget:3,corners:2};
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 function fmt(v){const n=num(v);return n===null?'—':`${Math.round(n)}%`}
@@ -73,9 +73,9 @@ function momentumSeries(rows){
     const homeRaw=rawMomentum(cur,prev,'home'),awayRaw=rawMomentum(cur,prev,'away');
     if(homeRaw!==null)homeSmooth=homeSmooth===null?homeRaw:(homeRaw*EMA_ALPHA+homeSmooth*(1-EMA_ALPHA));
     if(awayRaw!==null)awaySmooth=awaySmooth===null?awayRaw:(awayRaw*EMA_ALPHA+awaySmooth*(1-EMA_ALPHA));
-    if(homeSmooth===null)homeSmooth=1;
-    if(awaySmooth===null)awaySmooth=1;
-    out.push({at:num(cur.at),minute:num(cur.minute),home:Math.round(clamp(homeSmooth,1,100)*10)/10,away:Math.round(clamp(awaySmooth,1,100)*10)/10,homeRaw:homeRaw===null?null:Math.round(homeRaw*10)/10,awayRaw:awayRaw===null?null:Math.round(awayRaw*10)/10});
+    const home=homeSmooth===null?null:Math.round(clamp(homeSmooth,1,100)*10)/10;
+    const away=awaySmooth===null?null:Math.round(clamp(awaySmooth,1,100)*10)/10;
+    out.push({at:num(cur.at),minute:num(cur.minute),home,away,homeRaw:homeRaw===null?null:Math.round(homeRaw*10)/10,awayRaw:awayRaw===null?null:Math.round(awayRaw*10)/10});
   }
   return out;
 }
@@ -84,7 +84,7 @@ function pointX(point,index,points,w,pad){
   let min=Math.min(...xs),max=Math.max(...xs);if(max===min)max=min+1;
   return pad.left+((x-min)/(max-min))*(w-pad.left-pad.right);
 }
-function pointY(value,h,pad){const v=clamp(num(value)??1,0,100);return pad.top+((100-v)/100)*(h-pad.top-pad.bottom)}
+function pointY(value,h,pad){const v=clamp(num(value)??0,0,100);return pad.top+((100-v)/100)*(h-pad.top-pad.bottom)}
 function coords(points,key,w,h,pad){return points.map((p,i)=>({x:pointX(p,i,points,w,pad),y:pointY(p[key],h,pad)}))}
 function polyline(points,key,w,h,pad){return coords(points,key,w,h,pad).map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')}
 function areaPath(points,key,w,h,pad){
