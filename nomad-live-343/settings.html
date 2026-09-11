@@ -46,7 +46,7 @@
     </div></section>
     <section class="setting-group"><div class="group-title"><span>ราคา Bet365 จาก 5DollarFootballAPI</span></div><div class="setting-grid three">
       <label><span>เส้น Over ตั้งแต่</span><input name="lineMin" type="number" min="0.5" max="10" step="0.5" required></label>
-      <label><span>เส้น Over ไม่เกิน</span><input name="lineMax" type="number" min="0.5" max="10" step="0.5" required></label>
+      <label><span>ระยะห่าง Over Line จากสกอร์รวม ไม่เกิน</span><select name="lineGapMax" required><option value="0.5">0.5</option><option value="1">1.0</option><option value="1.5">1.5</option><option value="2">2.0</option><option value="2.5">2.5</option><option value="999">ไม่จำกัด</option></select><small>ระบบคำนวณ Over Line − ประตูรวมปัจจุบันอัตโนมัติ · เช่น 3-1 / O4.5 = ระยะห่าง 0.5</small></label>
       <label><span>ราคา ตั้งแต่</span><input name="oddsMin" type="number" min="1.01" max="20" step="0.01" required></label>
     </div></section>
     <section class="setting-group"><div class="group-title"><span>ช่วงเวลาทำงาน</span></div><div class="setting-grid three"><label><span>นาทีเริ่ม</span><input name="minuteFrom" type="number" min="0" max="120" step="1" required></label><label><span>นาทีจบ</span><input name="minuteTo" type="number" min="0" max="120" step="1" required></label><label><span>ช่วงย้อนหลัง</span><div class="input-unit"><input name="rollingWindowMinutes" type="number" min="2" max="30" step="1" required><em>นาที</em></div></label></div></section>
@@ -125,6 +125,6 @@
 
   <div class="settings-v3-note">NOMAD ENGINE 3.43 · 5USD ONE STOP ATTACK · แยกจาก 3.41 และ 3.42 · RUN / Settings / Rolling History / Signal เก็บฝั่ง Cloudflare และทำงานต่อเมื่อปิดหน้าเว็บ</div>
 </main>
-<script src="settings.js?v=20260910-343-server-v1" defer></script>
+<script src="settings.js?v=20260911-343-over-gap-v1" defer></script>
 </body>
 </html>

@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -20,39 +20,19 @@ env:
 jobs:
   deploy-and-probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Apply isolated 3.43 OVER gap patch
-        run: python .github/scripts/patch343_over_gap.py
-
-      - name: Validate isolated 3.43 patch
+      - name: Validate isolated 3.43 code
         run: |
           set -euo pipefail
-          node --check nomad-live-343/settings.js
-          node --check workers/nomadtips3-343-auto-engine/src/over-gap.js
           node --check workers/nomadtips3-343-auto-engine/src/index.js
-          node --test workers/nomadtips3-343-auto-engine/test/over-gap.test.mjs
-          grep -Fq 'name="lineGapMax"' nomad-live-343/settings.html
-          grep -Fq 'lineGapMax:0.5' nomad-live-343/settings.js
-          grep -Fq 'lineGapMax:0.5' workers/nomadtips3-343-auto-engine/src/index.js
-          grep -Fq 'overGapPass(price.line,score,cfg.lineGapMax)' workers/nomadtips3-343-auto-engine/src/index.js
-          ! grep -Fq 'lineMax' nomad-live-343/settings.html
-          ! grep -Fq 'lineMax' nomad-live-343/settings.js
           grep -Fq "include=odds,events,stats" workers/nomadtips3-343-auto-engine/src/index.js
           grep -Fq '"* * * * *"' workers/nomadtips3-343-auto-engine/wrangler.jsonc
-          changed="$(git diff --name-only)"
-          if echo "$changed" | grep -Eq '^(nomad-live/|nomad-live-342/|workers/nomadtips3-342-|nomad-live-341/)'; then
-            echo '::error::3.41/3.42 file changed'; echo "$changed"; exit 1
-          fi
-          git diff --check
 
       - name: Dry run Worker bundle
         working-directory: workers/nomadtips3-343-auto-engine
@@ -61,9 +41,9 @@ jobs:
       - name: Validate deploy credentials
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN"
-          test -n "$CLOUDFLARE_ACCOUNT_ID"
-          test -n "$FIVEDOLLAR_API_KEY"
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
 
       - name: Deploy isolated 3.43 Worker
         working-directory: workers/nomadtips3-343-auto-engine
@@ -73,41 +53,50 @@ jobs:
         working-directory: workers/nomadtips3-343-auto-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
 
-      - name: Smoke test gap settings and scan
+      - name: Run one server-side scan
         run: |
           set -euo pipefail
           sleep 3
-          curl -fsS --max-time 25 "$ENGINE_URL/api/state?_=$RANDOM$RANDOM" -o /tmp/state.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/state.json','utf8'));
-          if(j.ok!==true) throw new Error('state not ok');
-          const over=j.settings?.over||{};
-          if(![0.5,1,1.5,2,2.5,999].includes(Number(over.lineGapMax))) throw new Error('lineGapMax invalid: '+JSON.stringify(over));
-          if(Object.prototype.hasOwnProperty.call(over,'lineMax')) throw new Error('obsolete lineMax still exposed');
-          console.log('3.43 OVER gap settings PASS',{lineMin:over.lineMin,lineGapMax:over.lineGapMax});
-          NODE
           curl -fsS --max-time 45 -X POST "$ENGINE_URL/scan" -o /tmp/scan.json
+          cat /tmp/scan.json
           node - <<'NODE'
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/scan.json','utf8'));
           if(j.ok!==true) throw new Error('scan not ok: '+JSON.stringify(j));
-          if(!['RUNNING','STOPPED'].includes(j.engineState)) throw new Error('bad engine state '+j.engineState);
-          console.log('3.43 scan PASS',{state:j.engineState,skipped:j.skipped||null,newSignals:j.newSignals?.length});
+          if(!['RUNNING','STOPPED'].includes(j.engineState)) throw new Error('unexpected engine state: '+j.engineState);
+          if(j.engineState==='RUNNING' && !j.provider) throw new Error('provider summary missing');
+          console.log('3.43 server scan PASS', {state:j.engineState,live:j.provider?.liveCount,requests:j.provider?.requests,newSignals:j.newSignals?.length});
           NODE
 
-      - name: Commit patch and restore normal workflow
+      - name: Verify Bet365 referee endpoint
         run: |
           set -euo pipefail
-          rm -f .github/workflows/patch-343-over-gap-once.yml .github/workflows/kick-343-over-gap.yml .github/scripts/patch343_over_gap.py
-          git show HEAD^:.github/workflows/nomad343-auto-engine-deploy.yml > .github/workflows/nomad343-auto-engine-deploy.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add nomad-live-343/settings.html nomad-live-343/settings.js workers/nomadtips3-343-auto-engine/src/index.js workers/nomadtips3-343-auto-engine/src/over-gap.js workers/nomadtips3-343-auto-engine/test/over-gap.test.mjs .github/workflows/nomad343-auto-engine-deploy.yml .github/workflows/patch-343-over-gap-once.yml .github/workflows/kick-343-over-gap.yml .github/scripts/patch343_over_gap.py
-          git diff --cached --check
-          changed="$(git diff --cached --name-only)"
-          if echo "$changed" | grep -Eq '^(nomad-live/|nomad-live-342/|workers/nomadtips3-342-|nomad-live-341/)'; then
-            echo '::error::3.41/3.42 staged'; echo "$changed"; exit 1
+          FIXTURE_ID=$(node -e "const j=require('/tmp/scan.json'); const x=(j.fixtures||[])[0]; if(x) process.stdout.write(String(x.fixtureId));")
+          if [ -z "$FIXTURE_ID" ]; then
+            echo 'No live fixture available; referee probe skipped.'
+            exit 0
           fi
-          git commit -m "3.43: gate OVER by line gap from current score"
-          git push origin HEAD:main
+          curl -fsS --max-time 25 "$ENGINE_URL/api/referee?id=$FIXTURE_ID" -o /tmp/referee.json
+          cat /tmp/referee.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/referee.json','utf8'));
+          if(j.ok!==true) throw new Error('referee not ok: '+JSON.stringify(j));
+          if(!j.odds || typeof j.odds!=='object') throw new Error('referee odds missing');
+          console.log('3.43 Bet365 referee PASS', {fixtureId:j.fixtureId,markets:Object.keys(j.odds)});
+          NODE
+
+      - name: Verify persisted server state
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "$ENGINE_URL/health?_=$RANDOM$RANDOM" -o /tmp/health.json
+          cat /tmp/health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          if(j.ok!==true) throw new Error('health not ok');
+          if(!String(j.version||'').startsWith('nomad343-auto-v')) throw new Error('wrong version: '+j.version);
+          if(!j.run || !Object.values(j.run).some(Boolean)) throw new Error('no market running');
+          if(!['ONLINE','STARTING_OR_STALE'].includes(j.status)) throw new Error('unexpected status: '+j.status);
+          console.log('3.43 persistent state PASS', {version:j.version,status:j.status,lastSuccessAgeSeconds:j.lastSuccessAgeSeconds,lastRequestCount:j.lastRequestCount});
+          NODE
