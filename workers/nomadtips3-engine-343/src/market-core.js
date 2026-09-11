@@ -23,10 +23,16 @@ export const MARKET_RULES = Object.freeze({
 });
 
 export const MARKET_KEYS = Object.freeze(Object.keys(MARKET_RULES));
+const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
+const pair=v=>v&&typeof v==='object'?{home:num(v.home),away:num(v.away)}:{home:null,away:null};
+const halfPair=v=>v&&typeof v==='object'?{home:num(v.halfHome??v.half_home),away:num(v.halfAway??v.half_away)}:{home:null,away:null};
+const pairReady=p=>num(p?.home)!==null&&num(p?.away)!==null;
 
 export function splitAsianLine(line){
-  const q=Math.round(Number(line)*4)/4;
-  if(!Number.isFinite(q)) return [];
+  const n=Number(line);
+  if(!Number.isFinite(n)) return [];
+  const q=Math.round(n*4)/4;
+  if(Math.abs(n-q)>1e-6) return [];
   if(Math.abs(q*2-Math.round(q*2))<1e-8) return [q];
   return [Math.floor(q*2)/2,Math.ceil(q*2)/2];
 }
@@ -43,8 +49,9 @@ export function combineAsianParts(parts){
 
 export function settleOu(total,line,selection){
   if(!Number.isFinite(Number(total))||!Number.isFinite(Number(line))) return null;
-  const t=Number(total),sel=String(selection||'').toUpperCase();
-  return combineAsianParts(splitAsianLine(line).map(l=>{
+  const t=Number(total),sel=String(selection||'').toUpperCase(),parts=splitAsianLine(line);
+  if(!parts.length||!['OVER','UNDER'].includes(sel))return null;
+  return combineAsianParts(parts.map(l=>{
     if(sel==='OVER') return t>l?'WIN':t<l?'LOSS':'PUSH';
     return t<l?'WIN':t>l?'LOSS':'PUSH';
   }));
@@ -52,8 +59,83 @@ export function settleOu(total,line,selection){
 
 export function settleAh(homeValue,awayValue,line,selection){
   if(!Number.isFinite(Number(homeValue))||!Number.isFinite(Number(awayValue))||!Number.isFinite(Number(line))) return null;
-  const base=String(selection||'').toUpperCase()==='HOME'?Number(homeValue)-Number(awayValue):Number(awayValue)-Number(homeValue);
-  return combineAsianParts(splitAsianLine(line).map(l=>base+l>0?'WIN':base+l<0?'LOSS':'PUSH'));
+  const sel=String(selection||'').toUpperCase(),parts=splitAsianLine(line);
+  if(!parts.length||!['HOME','AWAY'].includes(sel))return null;
+  const base=sel==='HOME'?Number(homeValue)-Number(awayValue):Number(awayValue)-Number(homeValue);
+  return combineAsianParts(parts.map(l=>base+l>0?'WIN':base+l<0?'LOSS':'PUSH'));
+}
+
+export function settle1x2(homeValue,awayValue,selection){
+  const h=num(homeValue),a=num(awayValue),sel=String(selection||'').toUpperCase();
+  if(h===null||a===null||!['HOME','DRAW','AWAY'].includes(sel))return null;
+  if(sel==='DRAW')return h===a?'WIN':'LOSS';
+  if(sel==='HOME')return h>a?'WIN':'LOSS';
+  return a>h?'WIN':'LOSS';
+}
+
+export function cardPointsSide(v){
+  if(!v||typeof v!=='object')return null;
+  const yellow=num(v.yellow),red=num(v.red);
+  if(yellow===null&&red===null)return null;
+  return (yellow??0)+2*(red??0);
+}
+
+export function cardPointsPair(cards){
+  return {home:cardPointsSide(cards?.home),away:cardPointsSide(cards?.away)};
+}
+
+function periodPair(v,period,{entryFallback=false}={}){
+  if(period!=='HT')return pair(v);
+  const half=halfPair(v);
+  if(pairReady(half))return half;
+  return entryFallback?pair(v):half;
+}
+function basisPair(f,def,{entryFallback=false}={}){
+  if(def.basis==='corners')return periodPair(f?.corners,def.period,{entryFallback});
+  if(def.basis==='cards')return cardPointsPair(f?.cards);
+  return periodPair(f?.goals,def.period,{entryFallback});
+}
+function subtractPair(finalPair,entryPair){
+  const fh=num(finalPair?.home),fa=num(finalPair?.away),eh=num(entryPair?.home),ea=num(entryPair?.away);
+  if([fh,fa,eh,ea].some(v=>v===null))return {home:null,away:null};
+  const home=fh-eh,away=fa-ea;
+  if(home<0||away<0)return {home:null,away:null};
+  return {home,away};
+}
+
+// Bet365 settlement rules used by NOMAD 3.43:
+// - live goal Asian Handicap ignores goals scored before Entry;
+// - live Goal Line includes all goals in the relevant period;
+// - Asian corners/card handicaps use final period totals;
+// - card totals score Yellow=1, Red=2.
+export function settleMarketSignal(signal,fixture){
+  const def=MARKET_RULES[signal?.market];
+  if(!def||!fixture)return null;
+  if(def.kind==='1X2'){
+    const p=basisPair(fixture,{basis:'goals',period:def.period});
+    return settle1x2(p.home,p.away,signal.selection);
+  }
+  if(def.kind==='AH'){
+    let p=basisPair(fixture,def);
+    if((def.basis||'goals')==='goals'){
+      const entryFixture={goals:signal?.entryScore??signal?.scoreAt??null};
+      const entry=basisPair(entryFixture,{basis:'goals',period:def.period},{entryFallback:true});
+      p=subtractPair(p,entry);
+    }
+    return settleAh(p.home,p.away,signal.line,signal.selection);
+  }
+  if(def.kind==='OU'){
+    const p=basisPair(fixture,def);
+    if(!pairReady(p))return null;
+    return settleOu(Number(p.home)+Number(p.away),signal.line,signal.selection);
+  }
+  if(def.kind==='BTTS'){
+    const p=pair(fixture?.goals),h=num(p.home),a=num(p.away),sel=String(signal.selection||'').toUpperCase();
+    if(h===null||a===null||!['YES','NO'].includes(sel))return null;
+    const yes=h>0&&a>0;
+    return sel==='YES'?(yes?'WIN':'LOSS'):(yes?'LOSS':'WIN');
+  }
+  return null;
 }
 
 export function lineGap(line,currentTotal){
