@@ -2,22 +2,23 @@
 <html lang="th">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27"><meta name="nomad-b365-revision" content="343-b365-v2-analysis-order">
+  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27"><meta name="nomad-b365-revision" content="343-b365-v3-team-aware">
   <title>nomadtips3 · Live Score 3.43</title>
   <link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="engine.css?v=343-engine-v1"><link rel="stylesheet" href="event-flow-343.css?v=343-flow-v3"><link rel="stylesheet" href="readability-343.css?v=343-card-interaction-v2">
 </head>
 <body data-page="live">
 <header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · LIVE ANALYTICS</div></div><nav class="topnav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav></div></header>
 <main class="shell live-board-shell">
-  <section class="page-head"><div><p class="eyebrow">NOMAD LIVE 3.43</p><h1>Today's Scores</h1><p>รายการแข่งขันวันนี้ · คู่รอแข่งและคู่สด พร้อมสถิติและราคา Bet365 ที่ 5USD ส่งมา</p></div><div class="source-state" data-hub-state><span class="pill"><i class="dot stop"></i>กำลังเชื่อมข้อมูลสด</span></div></section>
+  <section class="page-head"><div><p class="eyebrow">NOMAD LIVE 3.43</p><h1>Today's Scores</h1><p>รายการแข่งขันวันนี้ · คู่รอแข่งและคู่สด พร้อมสถิติและข้อมูลตลาด Bet365 ที่ 5USD ส่งมา</p></div><div class="source-state" data-hub-state><span class="pill"><i class="dot stop"></i>กำลังเชื่อมข้อมูลสด</span></div></section>
   <div class="toolbar today-toolbar"><div class="search"><input data-match-search type="search" placeholder="ค้นหาทีม หรือลีก…" autocomplete="off"></div><span class="pill">Today · Asia/Bangkok</span><span class="pill">5USD · Bet365</span></div>
   <section class="score-board" aria-live="polite">
     <section class="score-group" data-group="live"><header class="score-group-head"><div><span class="status-mark live"></span><h2>In play</h2></div><b data-count="live">0</b></header><div class="match-stack" data-board="live"><div class="empty compact-empty">ยังไม่มีคู่กำลังแข่งขัน</div></div></section>
     <section class="score-group" data-group="scheduled"><header class="score-group-head"><div><span class="status-mark"></span><h2>Kicking off next</h2></div><b data-count="scheduled">0</b></header><div class="match-stack" data-board="scheduled"><div class="empty compact-empty">กำลังรอรายการแข่งขันวันนี้</div></div></section>
     <section class="score-group" data-group="finished"><header class="score-group-head"><div><span class="status-mark finished"></span><h2>Finished</h2></div><b data-count="finished">0</b></header><div class="match-stack" data-board="finished"><div class="empty compact-empty">ยังไม่มีคู่จบการแข่งขัน</div></div></section>
+    <section class="score-group" data-group="unknown"><header class="score-group-head"><div><span class="status-mark"></span><h2>Unconfirmed</h2></div><b data-count="unknown">0</b></header><div class="match-stack" data-board="unknown"><div class="empty compact-empty">ไม่มีคู่ที่ผลหรือสถานะยังไม่ยืนยัน</div></div></section>
   </section>
-  <div class="note">กดคู่เพื่อดูรายละเอียด · Event Flow ใช้ประวัติกลางจาก Engine ตั้งแต่เริ่มมีข้อมูล · ไม่มีข้อมูลจะแสดงเป็น —</div>
+  <div class="note">กดคู่เพื่อดูรายละเอียด · Event Flow ใช้ประวัติกลางจาก Engine ตั้งแต่เริ่มมีข้อมูล · ไม่มีข้อมูลจะแสดงเป็น — · Unconfirmed ห้าม Settlement จนกว่าผู้ให้บริการยืนยันผล</div>
 </main>
 <nav class="mobile-nav"><a data-nav="live" href="index.html">Live Score</a><a data-nav="signal" href="signal.html">Signal</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>
-<script src="ui.js?v=343-engine-v1" defer></script><script src="event-flow-343.js?v=343-flow-v3" defer></script><script src="live.js?v=343-public-v3-flow" defer></script><script src="bet365-board.js?v=343-b365-v2-analysis-order" defer></script>
+<script src="ui.js?v=343-engine-v1" defer></script><script src="event-flow-343.js?v=343-flow-v3" defer></script><script src="live.js?v=343-public-v3-flow" defer></script><script src="bet365-board.js?v=343-b365-v3-team-aware" defer></script>
 </body></html>
