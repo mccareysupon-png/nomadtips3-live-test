@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           node --check nomad-live-343/ui.js
           node --check nomad-live-343/live.js
+          node --check nomad-live-343/bet365-board.js
           node --check nomad-live-343/signal.js
           node --check nomad-live-343/statistics.js
           node --check nomad-live-343/settings.js
@@ -43,10 +44,12 @@ jobs:
           node --check workers/nomadtips3-engine-343/src/index.js
           node --check workers/nomadtips3-343-preview/src/index.js
           test -s nomad-live-343/index.html
+          test -s nomad-live-343/bet365-board.js
           test -s nomad-live-343/signal.html
           test -s nomad-live-343/statistics.html
           test -s nomad-live-343/settings.html
           grep -Fq '/api/engine/board' nomad-live-343/live.js
+          grep -Fq '/api/engine/board' nomad-live-343/bet365-board.js
           grep -Fq '/api/engine/settings' nomad-live-343/settings.js
           grep -Fq 'nomadtips3-5usd-hub-343' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq 'nomadtips3-engine-343' workers/nomadtips3-343-preview/wrangler.jsonc
@@ -83,8 +86,8 @@ jobs:
           curl -fsS --max-time 30 "$HUB_URL/snapshot?smoke=$RANDOM" -o /tmp/hub.json
           node - <<'NODE'
           const j=require('/tmp/hub.json');
-          if(j.ok!==true||j.version!=='nomad343-5usd-hub-v2')process.exit(1);
-          console.log('HUB',j.fixtureCount,j.counts);
+          if(j.ok!==true||j.version!=='nomad343-5usd-hub-v3')process.exit(1);
+          console.log('HUB',j.fixtureCount,j.counts,j.include);
           NODE
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?smoke=$RANDOM" -o /tmp/engine.json
@@ -94,7 +97,7 @@ jobs:
           if(health.component!=='NOMAD343_ENGINE'||health.version!=='nomad343-engine-v1')throw new Error('engine health mismatch');
           console.log('ENGINE',health.fixtureCount,health.liveCount,health.signalCount);
           NODE
-          for path in / /signal.html /statistics.html /settings.html /live.js /signal.js /statistics.js /api/engine/settings /api/engine/signals /api/engine/statistics; do
+          for path in / /signal.html /statistics.html /settings.html /live.js /bet365-board.js /signal.js /statistics.js /api/engine/settings /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
