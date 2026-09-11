@@ -1,0 +1,85 @@
+name: One-shot 3.43 OVER Gap Runner
+
+on:
+  workflow_run:
+    workflows: ["pages build and deployment"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  ENGINE_URL: https://nomadtips3-343-auto-engine.mccarey-supon.workers.dev
+
+jobs:
+  patch-test-deploy:
+    if: github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Patch isolated 3.43 OVER
+        run: python .github/scripts/patch343_over_gap.py
+      - name: Validate and test
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/settings.js
+          node --check workers/nomadtips3-343-auto-engine/src/over-gap.js
+          node --check workers/nomadtips3-343-auto-engine/src/index.js
+          node --test workers/nomadtips3-343-auto-engine/test/over-gap.test.mjs
+          grep -Fq 'name="lineGapMax"' nomad-live-343/settings.html
+          grep -Fq 'lineGapMax:0.5' nomad-live-343/settings.js
+          grep -Fq 'lineGapMax:0.5' workers/nomadtips3-343-auto-engine/src/index.js
+          ! grep -Fq 'lineMax' nomad-live-343/settings.html
+          ! grep -Fq 'lineMax' nomad-live-343/settings.js
+          changed="$(git diff --name-only)"
+          if echo "$changed" | grep -Eq '^(nomad-live/|nomad-live-342/|workers/nomadtips3-342-|nomad-live-341/)'; then echo '::error::3.41/3.42 changed'; echo "$changed"; exit 1; fi
+          git diff --check
+      - name: Validate credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+      - name: Dry run 3.43 Worker
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy 3.43 Worker
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Bind 5Dollar key
+        working-directory: workers/nomadtips3-343-auto-engine
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 25 "$ENGINE_URL/api/state?_=$RANDOM$RANDOM" -o /tmp/state.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/state.json','utf8'));if(j.ok!==true)throw new Error('state not ok');const over=j.settings?.over||{};if(![0.5,1,1.5,2,2.5,999].includes(Number(over.lineGapMax)))throw new Error('lineGapMax invalid: '+JSON.stringify(over));if(Object.prototype.hasOwnProperty.call(over,'lineMax'))throw new Error('lineMax still exposed');console.log('3.43 OVER gap PASS',over.lineGapMax);
+          NODE
+          curl -fsS --max-time 45 -X POST "$ENGINE_URL/scan" -o /tmp/scan.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/scan.json','utf8'));if(j.ok!==true)throw new Error('scan not ok: '+JSON.stringify(j));console.log('3.43 scan PASS',{state:j.engineState,skipped:j.skipped||null,newSignals:j.newSignals?.length});
+          NODE
+      - name: Commit patch and clean one-shot files
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/kick-343-over-gap.yml .github/workflows/patch-343-over-gap-once.yml .github/scripts/patch343_over_gap.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nomad-live-343/settings.html nomad-live-343/settings.js workers/nomadtips3-343-auto-engine/src/index.js workers/nomadtips3-343-auto-engine/src/over-gap.js workers/nomadtips3-343-auto-engine/test/over-gap.test.mjs .github/workflows/kick-343-over-gap.yml .github/workflows/patch-343-over-gap-once.yml .github/scripts/patch343_over_gap.py
+          git diff --cached --check
+          changed="$(git diff --cached --name-only)"
+          if echo "$changed" | grep -Eq '^(nomad-live/|nomad-live-342/|workers/nomadtips3-342-|nomad-live-341/)'; then echo '::error::3.41/3.42 staged'; echo "$changed"; exit 1; fi
+          git commit -m "3.43: gate OVER by line gap from current score"
+          git push origin HEAD:main
