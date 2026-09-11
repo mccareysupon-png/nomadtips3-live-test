@@ -48,6 +48,7 @@ jobs:
           test -s nomad-live-343/index.html
           test -s nomad-live-343/bet365-board.js
           test -s nomad-live-343/signal.html
+          test -s nomad-live-343/signal-compact-343.css
           test -s nomad-live-343/statistics.html
           test -s nomad-live-343/statistics-page-343.css
           test -s nomad-live-343/settings.html
@@ -105,38 +106,56 @@ jobs:
           if(health.component!=='NOMAD343_ENGINE'||health.version!=='nomad343-engine-v2-all-markets')throw new Error('engine health mismatch');
           console.log('ENGINE',health.fixtureCount,health.liveCount,health.signalCount,'markets',registry.marketKeys.length);
           NODE
-          for path in / /signal.html /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
+          for path in / /signal.html /signal-compact-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
           done
 
-      - name: Verify deployed Statistics revision
+      - name: Verify Evidence placement
         run: |
           set -euo pipefail
+
           curl -fsS --max-time 30 -D /tmp/stat.headers "$PREVIEW_URL/statistics.html?verify=$RANDOM$RANDOM" -o /tmp/stat.html
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/stat.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/stat.headers
-          grep -Fq 'name="nomad-stat-revision" content="343-stat-clean-v5"' /tmp/stat.html
-          grep -Fq 'statistics-page-343.css?v=343-stat-clean-v5' /tmp/stat.html
-          grep -Fq 'statistics.js?v=343-stat-clean-v2' /tmp/stat.html
-          grep -Fq 'data-visual-match-card' /tmp/stat.html
+          grep -Fqi 'x-nomad-stat-revision: 343-stat-results-v6' /tmp/stat.headers
+          grep -Fq 'name="nomad-stat-revision" content="343-stat-results-v6"' /tmp/stat.html
+          grep -Fq 'statistics.js?v=343-stat-results-v1' /tmp/stat.html
           test "$(grep -o '<nav class="statistics-nav">' /tmp/stat.html | wc -l)" = "1"
-          if grep -Fq '<nav class="topnav">' /tmp/stat.html; then echo '::error::duplicate desktop nav still deployed'; exit 1; fi
-          if grep -Fq '<nav class="mobile-nav">' /tmp/stat.html; then echo '::error::duplicate mobile nav still deployed'; exit 1; fi
-
-          curl -fsS --max-time 30 -D /tmp/statcss.headers "$PREVIEW_URL/statistics-page-343.css?verify=$RANDOM$RANDOM" -o /tmp/stat.css
-          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/statcss.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/statcss.headers
-          grep -Fq 'body[data-page="statistics"] .public-stat-table th' /tmp/stat.css
-          grep -Fq 'body[data-page="statistics"] .statistics-nav' /tmp/stat.css
-          grep -Fq 'position:fixed;' /tmp/stat.css
-          grep -Fq '@media (min-width:1101px) and (hover:hover) and (pointer:fine)' /tmp/stat.css
-          if grep -Fq '.mobile-nav' /tmp/stat.css; then echo '::error::legacy mobile-nav selector remains in Statistics CSS'; exit 1; fi
-          if grep -Fq '.topnav' /tmp/stat.css; then echo '::error::legacy topnav selector remains in Statistics CSS'; exit 1; fi
+          if grep -Fq 'MATCH EVIDENCE' /tmp/stat.html; then echo '::error::Match Evidence still exists on Statistics'; exit 1; fi
+          if grep -Fq 'data-visual-evidence' /tmp/stat.html; then echo '::error::visual Evidence DOM still exists on Statistics'; exit 1; fi
+          if grep -Fq 'กดแถวเพื่อดูหลักฐาน' /tmp/stat.html; then echo '::error::Statistics still advertises row Evidence'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/statjs.headers "$PREVIEW_URL/statistics.js?verify=$RANDOM$RANDOM" -o /tmp/stat.js
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/statjs.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-clean-v5' /tmp/statjs.headers
+          grep -Fqi 'x-nomad-stat-revision: 343-stat-results-v6' /tmp/statjs.headers
           grep -Fq "hour12:true" /tmp/stat.js
-          echo 'STATISTICS_DEPLOY_VERIFIED 343-stat-clean-v5 SINGLE_NAV'
+          if grep -Fq 'prepareVisualLayout' /tmp/stat.js; then echo '::error::legacy Evidence builder remains in Statistics JS'; exit 1; fi
+          if grep -Fq 'data-visual-' /tmp/stat.js; then echo '::error::Evidence selectors remain in Statistics JS'; exit 1; fi
+
+          curl -fsS --max-time 30 -D /tmp/signal.headers "$PREVIEW_URL/signal.html?verify=$RANDOM$RANDOM" -o /tmp/signal.html
+          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signal.headers
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signal.headers
+          grep -Fq 'name="nomad-signal-revision" content="343-signal-evidence-v1"' /tmp/signal.html
+          grep -Fq 'signal-compact-343.css?v=343-signal-evidence-v1' /tmp/signal.html
+          grep -Fq 'signal.js?v=343-signal-evidence-v1' /tmp/signal.html
+          grep -Fq 'แตะแถวหรือการ์ดเพื่อขยาย Match Evidence' /tmp/signal.html
+
+          curl -fsS --max-time 30 -D /tmp/signaljs.headers "$PREVIEW_URL/signal.js?verify=$RANDOM$RANDOM" -o /tmp/signal.js
+          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signaljs.headers
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signaljs.headers
+          grep -Fq 'data-signal-toggle' /tmp/signal.js
+          grep -Fq 'data-signal-detail' /tmp/signal.js
+          grep -Fq 'MATCH EVIDENCE' /tmp/signal.js
+          grep -Fq 'MATCH STATISTICS' /tmp/signal.js
+          grep -Fq 'RULE EVIDENCE' /tmp/signal.js
+          grep -Fq 'Snapshot ที่ระบบบันทึกจริงตอนเข้า Signal' /tmp/signal.js
+
+          curl -fsS --max-time 30 -D /tmp/signalcss.headers "$PREVIEW_URL/signal-compact-343.css?verify=$RANDOM$RANDOM" -o /tmp/signal.css
+          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signalcss.headers
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signalcss.headers
+          grep -Fq '.signal-evidence-row[hidden]' /tmp/signal.css
+          grep -Fq '.signal-evidence-panel' /tmp/signal.css
+          grep -Fq '.signal-main-row.expanded' /tmp/signal.css
+
+          echo 'EVIDENCE_PLACEMENT_VERIFIED STATISTICS_CLEAN SIGNAL_EXPANDABLE_V1'
