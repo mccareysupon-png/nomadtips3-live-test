@@ -15,7 +15,7 @@ async function noStoreStatisticsAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-stat-revision', '343-stat-clean-v4');
+  headers.set('x-nomad-stat-revision', '343-stat-clean-v5');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
