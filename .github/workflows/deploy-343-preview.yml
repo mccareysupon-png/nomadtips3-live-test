@@ -36,6 +36,7 @@ jobs:
           set -euo pipefail
           node --check nomad-live-343/ui.js
           node --check nomad-live-343/live.js
+          node --check nomad-live-343/event-flow-343.js
           node --check nomad-live-343/bet365-board.js
           node --check nomad-live-343/signal.js
           node --check nomad-live-343/statistics.js
@@ -43,9 +44,12 @@ jobs:
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
           node --check workers/nomadtips3-engine-343/src/market-core.js
           node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/index-v3.js
           node --check workers/nomadtips3-343-preview/src/index.js
           node workers/nomadtips3-engine-343/test/market-core.test.mjs
           test -s nomad-live-343/index.html
+          test -s nomad-live-343/event-flow-343.js
+          test -s nomad-live-343/event-flow-343.css
           test -s nomad-live-343/bet365-board.js
           test -s nomad-live-343/signal.html
           test -s nomad-live-343/signal-compact-343.css
@@ -53,10 +57,16 @@ jobs:
           test -s nomad-live-343/statistics-page-343.css
           test -s nomad-live-343/settings.html
           grep -Fq '/api/engine/board' nomad-live-343/live.js
+          grep -Fq '/api/engine/history' nomad-live-343/event-flow-343.js
+          grep -Fq 'data-event-flow-fixture' nomad-live-343/live.js
+          grep -Fq 'data-event-flow-fixture' nomad-live-343/signal.js
           grep -Fq '/api/engine/board' nomad-live-343/bet365-board.js
           grep -Fq '/api/engine/settings' nomad-live-343/settings.js
           grep -Fq 'groupMatches' nomad-live-343/signal.js
           grep -Fq 'liveStatistics' nomad-live-343/signal.js
+          grep -Fq 'FLOW_HISTORY_MS' workers/nomadtips3-engine-343/src/index-v3.js
+          grep -Fq "url.pathname === '/history'" workers/nomadtips3-engine-343/src/index-v3.js
+          grep -Fq 'main = "src/index-v3.js"' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq "engineRequest(request, '/signals')" workers/nomadtips3-343-preview/src/index.js
           grep -Fq "engineRequest(request, '/board')" workers/nomadtips3-343-preview/src/index.js
           if grep -Fq "engineRequest(request, '/statistics')" workers/nomadtips3-343-preview/src/index.js; then echo '::error::Preview Signal API still merges Statistics into page 2'; exit 1; fi
@@ -120,18 +130,48 @@ jobs:
           }
           if(Number(signals.mirror?.activeSignals)!==signals.signals.length)throw new Error('active signal count mismatch');
           if(Number(signals.mirror?.activeMatches)!==ids.size)throw new Error('active match count mismatch');
+          const fixture=Array.isArray(board.fixtures)?board.fixtures.find(x=>x?.fixtureId):null;
+          require('fs').writeFileSync('/tmp/fixture-id',fixture?String(fixture.fixtureId):'');
           console.log('ENGINE',health.fixtureCount,health.liveCount,health.signalCount,'markets',registry.marketKeys.length);
           console.log('ACTIVE_SIGNAL_BOARD',ids.size,'matches',signals.signals.length,'signals','hidden stale',signals.mirror?.hiddenPendingSignals||0);
           NODE
-          for path in / /signal.html /signal-compact-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
+          FIXTURE_ID="$(cat /tmp/fixture-id)"
+          if [ -n "$FIXTURE_ID" ]; then
+            curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/history?fixtureId=$FIXTURE_ID&window=10&smoke=$RANDOM" -o /tmp/history.json
+            node - <<'NODE'
+            const j=require('/tmp/history.json');
+            if(j.ok!==true||j.version!=='nomad343-flow-history-v1')throw new Error('flow history unavailable');
+            if(!Array.isArray(j.rows)||!Array.isArray(j.pressure))throw new Error('flow history shape mismatch');
+            if(j.retainedMinutes!==180)throw new Error('flow retention mismatch');
+            console.log('EVENT_FLOW_HISTORY',j.fixtureId,j.rows.length,'raw',j.pressure.length,'pressure');
+            NODE
+          fi
+          for path in / /signal.html /signal-compact-343.css /event-flow-343.js /event-flow-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
           done
 
-      - name: Verify Active Signal Board
+      - name: Verify Active Signal Board and Event Flow
         run: |
           set -euo pipefail
+
+          curl -fsS --max-time 30 -D /tmp/live.headers "$PREVIEW_URL/?verify=$RANDOM$RANDOM" -o /tmp/live.html
+          grep -Fqi 'x-nomad-live-revision: 343-live-flow-v3' /tmp/live.headers
+          grep -Fq 'event-flow-343.css?v=343-flow-v1' /tmp/live.html
+          grep -Fq 'event-flow-343.js?v=343-flow-v1' /tmp/live.html
+          grep -Fq 'live.js?v=343-public-v3-flow' /tmp/live.html
+
+          curl -fsS --max-time 30 -D /tmp/flowjs.headers "$PREVIEW_URL/event-flow-343.js?verify=$RANDOM$RANDOM" -o /tmp/flow.js
+          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/flowjs.headers
+          grep -Fq '/api/engine/history' /tmp/flow.js
+          grep -Fq 'PRESSURE %' /tmp/flow.js
+          grep -Fq 'data-event-flow-fixture' /tmp/flow.js
+
+          curl -fsS --max-time 30 "$PREVIEW_URL/event-flow-343.css?verify=$RANDOM$RANDOM" -o /tmp/flow.css
+          grep -Fq 'stroke-width:1' /tmp/flow.css
+          grep -Fq '@keyframes nomad-flow-pulse' /tmp/flow.css
+          grep -Fq 'background:#020302' /tmp/flow.css
 
           curl -fsS --max-time 30 -D /tmp/stat.headers "$PREVIEW_URL/statistics.html?verify=$RANDOM$RANDOM" -o /tmp/stat.html
           grep -Fqi 'x-nomad-stat-revision: 343-stat-results-v6' /tmp/stat.headers
@@ -139,25 +179,28 @@ jobs:
 
           curl -fsS --max-time 30 -D /tmp/signal.headers "$PREVIEW_URL/signal.html?verify=$RANDOM$RANDOM" -o /tmp/signal.html
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signal.headers
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signal.headers
-          grep -Fq 'name="nomad-signal-revision" content="343-signal-active-v2"' /tmp/signal.html
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-flow-v3' /tmp/signal.headers
+          grep -Fq 'name="nomad-signal-revision" content="343-signal-flow-v3"' /tmp/signal.html
           grep -Fq 'signal-compact-343.css?v=343-signal-active-v2' /tmp/signal.html
-          grep -Fq 'signal.js?v=343-signal-active-v2' /tmp/signal.html
+          grep -Fq 'event-flow-343.css?v=343-flow-v1' /tmp/signal.html
+          grep -Fq 'event-flow-343.js?v=343-flow-v1' /tmp/signal.html
+          grep -Fq 'signal.js?v=343-signal-flow-v3' /tmp/signal.html
           grep -Fq 'Active Signal Board' /tmp/signal.html
           grep -Fq 'หนึ่งคู่ = หนึ่งการ์ด' /tmp/signal.html
           grep -Fq 'ไม่มี Active Signal = ไม่มีการ์ดค้าง' /tmp/signal.html
 
           curl -fsS --max-time 30 -D /tmp/signaljs.headers "$PREVIEW_URL/signal.js?verify=$RANDOM$RANDOM" -o /tmp/signal.js
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signaljs.headers
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-flow-v3' /tmp/signaljs.headers
           grep -Fq 'groupMatches' /tmp/signal.js
           grep -Fq 'LIVE NOW' /tmp/signal.js
           grep -Fq 'LIVE MATCH STATISTICS' /tmp/signal.js
           grep -Fq 'ENTRY SNAPSHOT' /tmp/signal.js
           grep -Fq 'liveStatistics' /tmp/signal.js
+          grep -Fq 'data-event-flow-fixture' /tmp/signal.js
           if grep -Fq 'FT' /tmp/signal.js; then echo '::error::Signal UI still contains FT card mode'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/signalcss.headers "$PREVIEW_URL/signal-compact-343.css?verify=$RANDOM$RANDOM" -o /tmp/signal.css
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signalcss.headers
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-flow-v3' /tmp/signalcss.headers
           grep -Fq '.active-signal-card' /tmp/signal.css
           grep -Fq '.active-signal-detail[hidden]' /tmp/signal.css
           grep -Fq '.signal-live-grid' /tmp/signal.css
@@ -177,4 +220,4 @@ jobs:
           console.log('ACTIVE_SIGNAL_BOARD_VERIFIED',ids.size,'MATCHES',j.signals.length,'SIGNALS','HIDDEN_PENDING',j.mirror?.hiddenPendingSignals||0);
           NODE
 
-          echo 'ACTIVE_SIGNAL_BOARD_DEPLOY_VERIFIED 343-signal-active-v2'
+          echo 'EVENT_FLOW_DEPLOY_VERIFIED 343-flow-v1 SIGNAL=343-signal-flow-v3'
