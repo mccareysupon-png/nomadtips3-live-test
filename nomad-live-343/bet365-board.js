@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-bet365-board-v3-team-aware';
+const VERSION='343-bet365-board-v4-market-language';
 const API='/api/engine/board';
 const POLL_MS=30_000;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
@@ -45,7 +45,8 @@ function primitiveEntries(obj){
   return out;
 }
 function priceValue(v){const n=num(v);if(n!==null)return Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000);return text(v)||'—'}
-function lineValue(v){const n=num(v);if(n===null)return'—';const t=Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000);return n>0?`+${t}`:t}
+function lineValue(v){const n=num(v);if(n===null)return'—';const t=priceValue(n);return n>0?`+${t}`:t}
+function totalLineValue(v){const n=num(v);return n===null?'—':priceValue(n)}
 function oppositeLine(v){const n=num(v);return n===null?null:(Object.is(n,-0)?0:-n)}
 function isAsian(key){const k=String(key||'').toLowerCase();return k==='asian'||k.startsWith('asian_')||k==='corner_asian'||k==='card_asian'||k==='cards_asian'}
 function isOneXtwo(key){return String(key||'').toLowerCase().startsWith('1x2')}
@@ -57,21 +58,21 @@ function ahStage(name,value,f){
   if(line===null)return `<div class="b365-stage is-empty"><b>${esc(STAGE_LABELS[name]||name)}</b><span>—</span></div>`;
   const homeOdds=num(obj?.home??obj?.home_odds??obj?.homeOdds),awayOdds=num(obj?.away??obj?.away_odds??obj?.awayOdds),awayLine=oppositeLine(line);
   const homeText=`${lineValue(line)}${homeOdds===null?'':` @ ${priceValue(homeOdds)}`}`,awayText=`${lineValue(awayLine)}${awayOdds===null?'':` @ ${priceValue(awayOdds)}`}`;
-  return `<div class="b365-stage${name==='inplay'||name==='in_play'?' live-stage':''}"><b>${esc(STAGE_LABELS[name]||name)}</b><div><div class="b365-chips">${chip(`${teamName(f,'home')} · HOME`,homeText)}${chip(`${teamName(f,'away')} · AWAY`,awayText)}</div><div class="b365-ah-audit">5USD RAW HOME LINE ${esc(lineValue(line))}${homeOdds===null&&awayOdds===null?' · LINE ONLY':''}</div></div></div>`;
+  return `<div class="b365-stage${name==='inplay'||name==='in_play'?' live-stage':''}"><b>${esc(STAGE_LABELS[name]||name)}</b><div><div class="b365-chips">${chip(teamName(f,'home'),homeText)}${chip(teamName(f,'away'),awayText)}</div><div class="b365-ah-audit">SOURCE RAW HOME LINE ${esc(lineValue(line))}${homeOdds===null&&awayOdds===null?' · LINE ONLY':''}</div></div></div>`;
 }
-function oneXtwoStage(name,value,f){
-  if(!value||typeof value!=='object')return genericStage(name,value,f);
-  const rows=[];if(value.home!==undefined)rows.push(chip(`${teamName(f,'home')} · HOME`,priceValue(value.home)));if(value.draw!==undefined)rows.push(chip('DRAW',priceValue(value.draw)));if(value.away!==undefined)rows.push(chip(`${teamName(f,'away')} · AWAY`,priceValue(value.away)));
-  if(!rows.length)return genericStage(name,value,f);
+function oneXtwoStage(name,value,key,f){
+  if(!value||typeof value!=='object')return genericStage(name,value,key,f);
+  const rows=[];if(value.home!==undefined)rows.push(chip(teamName(f,'home'),priceValue(value.home)));if(value.draw!==undefined)rows.push(chip('DRAW',priceValue(value.draw)));if(value.away!==undefined)rows.push(chip(teamName(f,'away'),priceValue(value.away)));
+  if(!rows.length)return genericStage(name,value,key,f);
   return `<div class="b365-stage${name==='inplay'||name==='in_play'?' live-stage':''}"><b>${esc(STAGE_LABELS[name]||name)}</b><div class="b365-chips">${rows.join('')}</div></div>`;
 }
-function genericStage(name,value,f){
+function genericStage(name,value,key,f){
   if(value===null||value===undefined)return `<div class="b365-stage is-empty"><b>${esc(STAGE_LABELS[name]||name)}</b><span>—</span></div>`;
   const entries=primitiveEntries(value);if(!entries.length)return `<div class="b365-stage is-empty"><b>${esc(STAGE_LABELS[name]||name)}</b><span>—</span></div>`;
-  const chips=entries.map(([k,v])=>{const label=k==='home'?`${teamName(f,'home')} · HOME`:k==='away'?`${teamName(f,'away')} · AWAY`:(KEY_LABELS[k]||k.replaceAll('_',' '));return chip(label,k==='line'?lineValue(v):priceValue(v))}).join('');
+  const chips=entries.map(([k,v])=>{const label=k==='home'?teamName(f,'home'):k==='away'?teamName(f,'away'):(KEY_LABELS[k]||k.replaceAll('_',' '));const rendered=k==='line'?(isAsian(key)?lineValue(v):totalLineValue(v)):priceValue(v);return chip(label,rendered)}).join('');
   return `<div class="b365-stage${name==='inplay'||name==='in_play'?' live-stage':''}"><b>${esc(STAGE_LABELS[name]||name)}</b><div class="b365-chips">${chips}</div></div>`;
 }
-function stageBlock(name,value,key,f){if(isAsian(key))return ahStage(name,value,f);if(isOneXtwo(key))return oneXtwoStage(name,value,f);return genericStage(name,value,f)}
+function stageBlock(name,value,key,f){if(isAsian(key))return ahStage(name,value,f);if(isOneXtwo(key))return oneXtwoStage(name,value,key,f);return genericStage(name,value,key,f)}
 function marketBlock(key,value,f){
   const label=MARKET_LABELS[key]||key.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());
   if(value===null||value===undefined)return `<section class="b365-market"><header><b>${esc(label)}</b><span>NO DATA</span></header><div class="b365-stage is-empty"><span>—</span></div></section>`;
@@ -86,7 +87,7 @@ function marketRank(key){
 function oddsPanel(f){
   const root=bet365Root(f?.providerOdds??f?.odds),state=classify(f),home=teamName(f,'home'),away=teamName(f,'away');
   const title=state==='scheduled'?'BET365 · PRE-MATCH MARKET BOARD':state==='live'?'BET365 · LIVE MARKET BOARD':'BET365 · MARKET SNAPSHOT';
-  const sub=`${home} vs ${away} · 5USD ส่งราคาเท่าไรแสดงเท่านั้น`;
+  const sub=`${home} vs ${away} · แสดงเฉพาะราคาที่ feed ส่งมา`;
   if(!root||typeof root!=='object')return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">0 ตลาด</span></div><div class="b365-empty">ยังไม่มีข้อมูลตลาด Bet365 สำหรับคู่นี้</div></section>`;
   const markets=Object.entries(root).filter(([k,v])=>!['fixture_id','bookmaker','slug','name','updated_at','recorded_at'].includes(k)&&v!==undefined).sort((a,b)=>marketRank(a[0])-marketRank(b[0])||String(a[0]).localeCompare(String(b[0])));
   return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)} · AH → Goals O/U → 1X2</small></div><span class="b365-count">${markets.length} ตลาด</span></div><div class="b365-grid">${markets.map(([k,v])=>marketBlock(k,v,f)).join('')}</div></section>`;
@@ -95,9 +96,9 @@ function pair(v){return v&&typeof v==='object'?{home:num(v.home),away:num(v.away
 function hasStats(f){const st=f?.statistics||{};return ['shotsOnTarget','shotsOffTarget','attacks','dangerousAttacks','possession'].some(k=>{const p=pair(st[k]);return p.home!==null||p.away!==null})||(pair(f?.corners).home!==null||pair(f?.corners).away!==null)}
 function scheduledStats(f){
   if(classify(f)!=='scheduled')return'';
-  if(!hasStats(f))return `<section class="b365-stats"><div class="b365-head"><div><b>5USD STATISTICS</b><small>ข้อมูลที่ผู้ให้บริการส่งมากับ fixture</small></div></div><div class="b365-empty">ยังไม่มี match statistics ก่อนเริ่มแข่งสำหรับคู่นี้</div></section>`;
+  if(!hasStats(f))return `<section class="b365-stats"><div class="b365-head"><div><b>MATCH STATISTICS</b><small>ข้อมูลที่ผู้ให้บริการส่งมากับ fixture</small></div></div><div class="b365-empty">ยังไม่มี match statistics ก่อนเริ่มแข่งสำหรับคู่นี้</div></section>`;
   const st=f.statistics||{},rows=[['SOT',pair(st.shotsOnTarget)],['SOFF',pair(st.shotsOffTarget)],['Corners',pair(f.corners)],['Attacks',pair(st.attacks)],['Dangerous',pair(st.dangerousAttacks)],['Possession',pair(st.possession)]];
-  return `<section class="b365-stats"><div class="b365-head"><div><b>5USD STATISTICS</b><small>${esc(teamName(f,'home'))} : ${esc(teamName(f,'away'))}</small></div></div><div class="b365-stat-grid">${rows.map(([label,p])=>`<div><small>${esc(label)}</small><b>${esc(p.home??'—')} : ${esc(p.away??'—')}</b></div>`).join('')}</div></section>`;
+  return `<section class="b365-stats"><div class="b365-head"><div><b>MATCH STATISTICS</b><small>${esc(teamName(f,'home'))} : ${esc(teamName(f,'away'))}</small></div></div><div class="b365-stat-grid">${rows.map(([label,p])=>`<div><small>${esc(label)}</small><b>${esc(p.home??'—')} : ${esc(p.away??'—')}</b></div>`).join('')}</div></section>`;
 }
 function placeAddon(details,wrap,f){if(classify(f)==='scheduled'){details.prepend(wrap);return}const flow=details.querySelector('.nomad-event-flow-card');if(flow){flow.insertAdjacentElement('afterend',wrap);return}const stats=details.querySelector('.evidence-card');if(stats){stats.insertAdjacentElement('afterend',wrap);return}details.prepend(wrap)}
 function decorate(snapshot){
@@ -107,7 +108,7 @@ function decorate(snapshot){
 function injectStyle(){
   if(document.getElementById('nomad343-bet365-board'))return;
   const s=document.createElement('style');s.id='nomad343-bet365-board';s.textContent=`
-  .b365-addon{display:grid;gap:9px;margin:9px 0}.b365-board,.b365-stats{background:#111914;border:1px solid #2c3b30}.b365-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #29372d}.b365-head>div{display:grid;gap:2px}.b365-head b{font-size:11px;letter-spacing:.05em;color:#eef7f0}.b365-head small{font-size:8px;color:#819087}.b365-count{font-size:9px;color:#f2ca61;border:1px solid #5d512c;padding:3px 6px;background:#1e1b10}.b365-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px}.b365-market{min-width:0;background:#0d120f;border:1px solid #26332a}.b365-market>header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid #222e26}.b365-market>header b{font-size:9px;color:#dce9df}.b365-market>header span{font-size:7px;color:#e7bb4b}.b365-stage{display:grid;grid-template-columns:64px 1fr;gap:7px;align-items:start;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.035)}.b365-stage:last-child{border-bottom:0}.b365-stage>b{font-size:7px;color:#77857b;padding-top:5px}.b365-stage.live-stage>b{color:#74d99a}.b365-chips{display:flex;flex-wrap:wrap;gap:5px}.b365-chip{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:5px;background:#151e18;border:1px solid #2b3a30;padding:4px 6px;min-width:58px}.b365-chip small{font-size:7px;color:#89978d;text-transform:none}.b365-chip strong{font-size:10px;color:#f1f7f2}.b365-stage.live-stage .b365-chip{border-color:#376848;background:#142219}.b365-stage.live-stage .b365-chip strong{color:#8ee4ad}.b365-ah-audit{margin-top:5px;font-size:7px;color:#819087}.b365-stage.is-empty span{color:#657169;font-size:9px;padding:3px}.b365-empty{padding:16px 10px;text-align:center;color:#738078;font-size:9px}.b365-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#263229}.b365-stat-grid>div{display:grid;gap:3px;padding:9px;background:#101712;text-align:center}.b365-stat-grid small{font-size:7px;color:#829087}.b365-stat-grid b{font-size:10px;color:#e4eee6}@media(max-width:760px){.b365-grid{grid-template-columns:1fr}.b365-stage{grid-template-columns:56px 1fr}.b365-stat-grid{grid-template-columns:repeat(2,1fr)}}`;
+  .b365-addon{display:grid;gap:9px;margin:9px 0}.b365-board,.b365-stats{background:#111914;border:1px solid #2c3b30}.b365-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #29372d}.b365-head>div{display:grid;gap:2px}.b365-head b{font-size:11px;letter-spacing:.05em;color:#eef7f0}.b365-head small{font-size:8px;color:#819087}.b365-count{font-size:9px;color:#f2ca61;border:1px solid #5d512c;padding:3px 6px;background:#1e1b10}.b365-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:9px}.b365-market{min-width:0;background:#0d120f;border:1px solid #26332a}.b365-market>header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid #222e26}.b365-market>header b{font-size:9px;color:#dce9df}.b365-market>header span{font-size:7px;color:#e7bb4b}.b365-stage{display:grid;grid-template-columns:64px 1fr;gap:7px;align-items:start;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.035)}.b365-stage:last-child{border-bottom:0}.b365-stage>b{font-size:7px;color:#77857b;padding-top:5px}.b365-stage.live-stage>b{color:#74d99a}.b365-chips{display:flex;flex-wrap:wrap;gap:5px}.b365-chip{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:5px;background:#151e18;border:1px solid #2b3a30;padding:4px 6px;min-width:58px}.b365-chip small{font-size:7px;color:#89978d;text-transform:none}.b365-chip strong{font-size:10px;color:#f1f7f2}.b365-stage.live-stage .b365-chip{border-color:#376848;background:#142219}.b365-stage.live-stage .b365-chip strong{color:#8ee4ad}.b365-ah-audit{margin-top:5px;font-size:7px;color:#66736a}.b365-stage.is-empty span{color:#657169;font-size:9px;padding:3px}.b365-empty{padding:16px 10px;text-align:center;color:#738078;font-size:9px}.b365-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#263229}.b365-stat-grid>div{display:grid;gap:3px;padding:9px;background:#101712;text-align:center}.b365-stat-grid small{font-size:7px;color:#829087}.b365-stat-grid b{font-size:10px;color:#e4eee6}@media(max-width:760px){.b365-grid{grid-template-columns:1fr}.b365-stage{grid-template-columns:56px 1fr}.b365-stat-grid{grid-template-columns:repeat(2,1fr)}}`;
   document.head.appendChild(s);
 }
 async function load(){if(busy)return;busy=true;try{const r=await fetch(`${API}?bet365=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);const j=await r.json();if(j?.ok!==true)throw new Error('DATA_NOT_READY');lastSnapshot=j;decorate(j)}catch(e){console.warn('[NOMAD343 BET365]',e)}finally{busy=false}}
