@@ -12,11 +12,11 @@ const scoreCopy = value => value && typeof value === 'object' ? JSON.parse(JSON.
 function fixtureState(fixture) {
   const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? '').toLowerCase();
   if (fixture?.boardState === 'finished' || /finished|full_time|full time|\bft\b|ended/.test(raw)) return 'FT';
-  return 'PENDING';
+  return 'LOCKED';
 }
 
-function mirrorMinute(fixture, signal) {
-  if (fixtureState(fixture) === 'FT') return 'FT';
+function mirrorMinute(fixture, signal, state) {
+  if (state === 'FT') return 'FT';
   const direct = num(fixture?.minute);
   if (direct !== null) return direct;
   const match = String(fixture?.statusCode ?? '').match(/\d+/);
@@ -24,9 +24,9 @@ function mirrorMinute(fixture, signal) {
   return num(signal?.entryMinute ?? signal?.minute);
 }
 
-function mirrorScore(fixture, signal) {
+function mirrorScore(fixture, signal, state) {
+  if (state === 'FT') return scoreCopy(signal?.finalScore ?? fixture?.goals ?? signal?.entryScore ?? signal?.scoreAt);
   if (fixture?.goals && typeof fixture.goals === 'object') return scoreCopy(fixture.goals);
-  if (fixtureState(fixture) === 'FT' && signal?.finalScore) return scoreCopy(signal.finalScore);
   return scoreCopy(signal?.entryScore ?? signal?.scoreAt);
 }
 
@@ -50,13 +50,13 @@ async function mirroredSignals(request, env) {
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
   const fixtureMap = new Map(fixtures.map(f => [String(f?.fixtureId ?? ''), f]));
   const boardIds = new Set(fixtureMap.keys());
-  const pending = Array.isArray(signalData?.signals) ? signalData.signals : [];
+  const active = Array.isArray(signalData?.signals) ? signalData.signals : [];
   const finished = Array.isArray(statisticsData?.rows)
     ? statisticsData.rows.filter(s => boardIds.has(String(s?.fixtureId ?? '')))
     : [];
 
   const merged = new Map();
-  for (const signal of [...pending, ...finished]) {
+  for (const signal of [...active, ...finished]) {
     if (!signal?.id) continue;
     merged.set(String(signal.id), signal);
   }
@@ -64,11 +64,12 @@ async function mirroredSignals(request, env) {
   const signals = [...merged.values()]
     .map(signal => {
       const fixture = fixtureMap.get(String(signal?.fixtureId ?? ''));
-      const state = fixture ? fixtureState(fixture) : (signal?.status === 'SETTLED' ? 'FT' : 'PENDING');
+      const settled = String(signal?.status ?? '').toUpperCase() === 'SETTLED';
+      const state = settled ? 'FT' : (fixture ? fixtureState(fixture) : 'LOCKED');
       return {
         ...signal,
-        mirrorMinute: fixture ? mirrorMinute(fixture, signal) : (state === 'FT' ? 'FT' : num(signal?.entryMinute ?? signal?.minute)),
-        mirrorScore: fixture ? mirrorScore(fixture, signal) : scoreCopy(state === 'FT' ? (signal?.finalScore ?? signal?.entryScore) : (signal?.entryScore ?? signal?.scoreAt)),
+        mirrorMinute: fixture ? mirrorMinute(fixture, signal, state) : (state === 'FT' ? 'FT' : num(signal?.entryMinute ?? signal?.minute)),
+        mirrorScore: fixture ? mirrorScore(fixture, signal, state) : scoreCopy(state === 'FT' ? (signal?.finalScore ?? signal?.entryScore) : (signal?.entryScore ?? signal?.scoreAt)),
         mirrorState: state,
         mirrorSource: 'ENGINE_CACHE'
       };
