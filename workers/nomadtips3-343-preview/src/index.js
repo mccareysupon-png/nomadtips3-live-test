@@ -9,13 +9,16 @@ function engineRequest(request, path) {
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const scoreCopy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
-async function noStoreStatisticsAsset(request, env) {
+async function noStoreUiAsset(request, env) {
   const response = await env.ASSETS.fetch(request);
   const headers = new Headers(response.headers);
+  const path = new URL(request.url).pathname;
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-stat-revision', '343-stat-clean-v5');
+  headers.set('x-nomad-ui-revision', '343-evidence-move-v1');
+  if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v6');
+  if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-evidence-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -124,8 +127,11 @@ export default {
       upstream.pathname = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(new Request(upstream, request));
     }
-    if (request.method === 'GET' && (url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css')) {
-      return noStoreStatisticsAsset(request, env);
+    if (request.method === 'GET' && (
+      url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
+      url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css'
+    )) {
+      return noStoreUiAsset(request, env);
     }
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url);
