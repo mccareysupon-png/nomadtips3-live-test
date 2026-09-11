@@ -52,6 +52,7 @@ jobs:
           test -s nomad-live-343/event-flow-343.css
           test -s nomad-live-343/signal.html
           test -s nomad-live-343/signal-compact-343.css
+          test -s nomad-live-343/signal-bettor-343.css
           test -s nomad-live-343/statistics.html
           grep -Fq '/api/engine/history' nomad-live-343/event-flow-343.js
           grep -Fq "const VERSION='343-flow-v3-stable-momentum'" nomad-live-343/event-flow-343.js
@@ -61,8 +62,13 @@ jobs:
           grep -Fq 'data-event-flow-fixture' nomad-live-343/live.js
           grep -Fq 'data-event-flow-fixture' nomad-live-343/signal.js
           grep -Fq 'groupMatches' nomad-live-343/signal.js
+          grep -Fq 'function publicLineText' nomad-live-343/signal.js
+          grep -Fq 'SIGNAL AT' nomad-live-343/signal.js
+          grep -Fq 'MATCH STATS AT SIGNAL' nomad-live-343/signal.js
+          if grep -Fq 'liveQuick(s)' nomad-live-343/signal.js; then echo 'unexpected default-card stat pack'; exit 1; fi
           if grep -Fq 'scrollIntoView' nomad-live-343/live.js; then echo 'unexpected Live auto-scroll'; exit 1; fi
-          grep -Fq '5USD RAW HOME LINE' nomad-live-343/bet365-board.js
+          grep -Fq 'SOURCE RAW HOME LINE' nomad-live-343/bet365-board.js
+          grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
           grep -Fq 'providerLine' workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "if(/unknown/.test(s))return'unknown'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
@@ -78,6 +84,8 @@ jobs:
           grep -Fq "engineRequest(request, '/board')" workers/nomadtips3-343-preview/src/index.js
           if grep -Fq "engineRequest(request, '/statistics')" workers/nomadtips3-343-preview/src/index.js; then exit 1; fi
           grep -Fq "mirrorState: 'LIVE'" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'mirrorScore: copy(fixture?.goals)' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "return null;" workers/nomadtips3-343-preview/src/index.js
 
       - name: Validate deploy credentials
         run: |
@@ -132,7 +140,7 @@ jobs:
             node -e 'const j=require("/tmp/history.json");if(j.ok!==true||j.version!=="nomad343-flow-history-v1")throw Error("history");if(!Array.isArray(j.rows)||!Array.isArray(j.pressure))throw Error("shape");if(j.retainedMinutes!==180||j.maxRows!==180)throw Error("retention");console.log("EVENT_FLOW_HISTORY",j.fixtureId,j.rows.length,"raw rows")'
           fi
 
-          for path in / /signal.html /signal-compact-343.css /event-flow-343.js /event-flow-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
+          for path in / /signal.html /signal-compact-343.css /signal-bettor-343.css /event-flow-343.js /event-flow-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
@@ -146,7 +154,7 @@ jobs:
           grep -Fq 'event-flow-343.css?v=343-flow-v3' /tmp/live.html
           grep -Fq 'event-flow-343.js?v=343-flow-v3' /tmp/live.html
           grep -Fq 'live.js?v=343-public-v3-flow' /tmp/live.html
-          grep -Fq 'bet365-board.js?v=343-b365-v3-team-aware' /tmp/live.html
+          grep -Fq 'bet365-board.js?v=343-b365-v4-market-language' /tmp/live.html
           grep -Fq 'data-board="unknown"' /tmp/live.html
 
           curl -fsS --max-time 30 -D /tmp/flow.headers "$PREVIEW_URL/event-flow-343.js?verify=$RANDOM" -o /tmp/flow.js
@@ -163,25 +171,30 @@ jobs:
           grep -Fq 'background:#020302' /tmp/flow.css
 
           curl -fsS --max-time 30 -D /tmp/signal.headers "$PREVIEW_URL/signal.html?verify=$RANDOM" -o /tmp/signal.html
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-flow-v3' /tmp/signal.headers
-          grep -Fq 'name="nomad-signal-revision" content="343-signal-flow-v3"' /tmp/signal.html
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-bettor-v4' /tmp/signal.headers
+          grep -Fq 'name="nomad-signal-revision" content="343-signal-bettor-v4"' /tmp/signal.html
           grep -Fq 'event-flow-343.js?v=343-flow-v3' /tmp/signal.html
-          grep -Fq 'signal.js?v=343-signal-flow-v3' /tmp/signal.html
+          grep -Fq 'signal-bettor-343.css?v=343-signal-bettor-v1' /tmp/signal.html
+          grep -Fq 'signal.js?v=343-signal-bettor-v4' /tmp/signal.html
           grep -Fq 'ไม่มี Active Signal = ไม่มีการ์ดค้าง' /tmp/signal.html
           curl -fsS --max-time 30 "$PREVIEW_URL/signal.js?verify=$RANDOM" -o /tmp/signal.js
           grep -Fq 'groupMatches' /tmp/signal.js
           grep -Fq 'LIVE NOW' /tmp/signal.js
-          grep -Fq 'ENTRY SNAPSHOT' /tmp/signal.js
+          grep -Fq 'SIGNAL AT' /tmp/signal.js
+          grep -Fq 'MATCH STATS AT SIGNAL' /tmp/signal.js
+          grep -Fq 'WHY THIS SIGNAL' /tmp/signal.js
           grep -Fq '5USD RAW LINE' /tmp/signal.js
           grep -Fq 'data-event-flow-fixture' /tmp/signal.js
 
           curl -fsS --max-time 30 "$PREVIEW_URL/statistics.html?verify=$RANDOM" -o /tmp/stat.html
-          if grep -Fq 'MATCH EVIDENCE' /tmp/stat.html; then exit 1; fi
+          grep -Fq 'LIVE MIRROR' /tmp/stat.html
+          grep -Fq 'signal.js?v=343-signal-bettor-v4' /tmp/stat.html
           curl -fsS --max-time 30 "$PREVIEW_URL/statistics.js?verify=$RANDOM" -o /tmp/stat.js
-          grep -Fq '5USD RAW' /tmp/stat.js
+          if grep -Fq '5USD RAW' /tmp/stat.js; then exit 1; fi
+          grep -Fq 'publicLineText' /tmp/stat.js
           grep -Fq 'settlementRevision' /tmp/stat.js
 
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$RANDOM" -o /tmp/active.json
           node -e 'const j=require("/tmp/active.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("signal API");const ids=new Set();for(const s of j.signals){if(s.mirrorState!=="LIVE"||String(s.status||"").toUpperCase()==="SETTLED")throw Error("page2 state");if(!("liveStatistics" in s)||!("liveEvents" in s))throw Error("live payload");ids.add(String(s.fixtureId))}if(Number(j.mirror?.activeMatches)!==ids.size)throw Error("match count");console.log("ACTIVE_SIGNAL_BOARD_VERIFIED",ids.size,"MATCHES",j.signals.length,"SIGNALS","HIDDEN_PENDING",j.mirror?.hiddenPendingSignals||0)'
 
-          echo 'NOMAD343_AUDIT_VERIFIED SETTLEMENT=bet365-rules-v2 TESTS=30000 FLOW=343-flow-v3-stable-momentum SIGNAL=343-signal-flow-v3'
+          echo 'NOMAD343_AUDIT_VERIFIED SETTLEMENT=bet365-rules-v2 TESTS=30000 FLOW=343-flow-v3-stable-momentum SIGNAL=343-signal-bettor-v4'
