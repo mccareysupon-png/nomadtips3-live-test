@@ -1,0 +1,47 @@
+/* NOMAD 3.43 expanded-card readability overrides */
+.match-card.expanded:focus>.event-details{
+  animation:none!important;
+  transform:none!important;
+  clip-path:none!important;
+  opacity:1!important;
+  will-change:auto!important;
+}
+.event-details{color:#eef3ef}
+.evidence-head b,.flow-head b{font-size:12px!important;color:#f1f6f2!important}
+.evidence-head small,.flow-head small{font-size:10px!important;color:#b7c3bb!important}
+.team-axis{font-size:10px!important;color:#d7dfda!important}
+.mirror-row>span{font-size:10px!important;color:#c5d0c8!important}
+.mirror-num{font-size:11px!important;color:#f0f5f1!important}
+.chart-legend,.book-legend{font-size:10px!important;color:#bdc8c0!important}
+.chart-empty{font-size:10px!important;color:#aab6ae!important}
+.details-note{font-size:10px!important;color:#aab6ae!important}
+
+.nomad-flow-head b{font-size:12px!important;color:#f2f6f3!important}
+.nomad-flow-head small{font-size:10px!important;color:#b4c1b8!important}
+.nomad-flow-head>span{font-size:9px!important;color:#82e59f!important}
+.nomad-flow-legend{font-size:10px!important;color:#c0cbc3!important}
+.nomad-flow-legend b{font-size:11px!important;color:#f4f7f5!important}
+.nomad-flow-legend>small{font-size:9px!important;color:#aab7ae!important}
+.nomad-flow-axis-label{fill:#87968d!important;font-size:8px!important}
+.nomad-flow-foot{font-size:9px!important;color:#a1aea5!important;line-height:1.45!important}
+.nomad-flow-loading,.nomad-flow-empty{font-size:10px!important;color:#aab6ae!important}
+
+.b365-head b{font-size:12px!important;color:#f2f6f3!important}
+.b365-head small{font-size:10px!important;color:#b5c1b9!important}
+.b365-count{font-size:10px!important;color:#f3d66d!important}
+.b365-market>header b{font-size:11px!important;color:#eef4ef!important}
+.b365-market>header span{font-size:9px!important;color:#edc75b!important}
+.b365-stage>b{font-size:9px!important;color:#aebbb2!important}
+.b365-stage.live-stage>b{color:#85e5a4!important}
+.b365-chip small{font-size:9px!important;color:#b6c2ba!important}
+.b365-chip strong{font-size:11px!important;color:#f4f7f5!important}
+.b365-stage.live-stage .b365-chip strong{color:#9aebb6!important}
+.b365-stage.is-empty span,.b365-empty{font-size:10px!important;color:#a9b5ad!important}
+.b365-stat-grid small{font-size:9px!important;color:#b1bdb5!important}
+.b365-stat-grid b{font-size:11px!important;color:#f0f5f1!important}
+
+@media(max-width:760px){
+  .evidence-head b,.flow-head b,.nomad-flow-head b,.b365-head b{font-size:11px!important}
+  .mirror-row>span,.nomad-flow-legend,.b365-chip small{font-size:9px!important}
+  .mirror-num,.b365-chip strong,.b365-market>header b{font-size:10px!important}
+}
