@@ -15,7 +15,7 @@ async function noStoreStatisticsAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-stat-revision', '343-stat-clean-v2');
+  headers.set('x-nomad-stat-revision', '343-stat-clean-v3');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -124,7 +124,7 @@ export default {
       upstream.pathname = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(new Request(upstream, request));
     }
-    if (request.method === 'GET' && (url.pathname === '/statistics.html' || url.pathname === '/statistics.js')) {
+    if (request.method === 'GET' && (url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css')) {
       return noStoreStatisticsAsset(request, env);
     }
     if (url.pathname === '/') {
