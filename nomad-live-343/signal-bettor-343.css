@@ -1,0 +1,26 @@
+/* NOMAD 3.43 bettor-facing signal hierarchy. Keeps the existing card shell/grid. */
+.signal-entry-quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;min-width:0}
+.signal-entry-quick span{padding:5px 6px;background:#101611;border:1px solid #243027;text-align:center;min-width:0}
+.signal-entry-quick small{display:block;font-size:6px;letter-spacing:.06em;color:#76837b}
+.signal-entry-quick b{display:block;margin-top:2px;font-size:10px;color:#dce6df;white-space:nowrap}
+.signal-market-chip{align-items:flex-start;flex-direction:column;gap:3px;padding:6px 8px}
+.signal-market-chip b{font-size:8px;color:#8fd69e;white-space:normal}
+.signal-market-chip span{font-size:9px;color:#dce5df;white-space:normal;line-height:1.35}
+.signal-market-chip span strong{font-size:11px;color:#f1f5f2}
+.signal-tracker{padding:10px}
+.signal-tracker span{padding:8px 9px}
+.signal-tracker b{font-size:11px}
+.signal-technical{margin:0 8px 8px;border:1px solid #29362d;background:#101611}
+.signal-technical summary{cursor:pointer;padding:8px 10px;color:#87958c;font-size:8px;font-weight:900;letter-spacing:.06em;user-select:none}
+.signal-technical-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#29362d;border-top:1px solid #29362d}
+.signal-technical-grid span{display:block;padding:8px;background:#121914;min-width:0}
+.signal-technical-grid small{display:block;font-size:6px;color:#78867d;letter-spacing:.05em}
+.signal-technical-grid b{display:block;margin-top:3px;font-size:9px;color:#cfd8d1;overflow-wrap:anywhere}
+body[data-page="statistics"] .active-signal-panel{margin-bottom:12px}
+@media(max-width:760px){
+  .signal-entry-quick{grid-column:2/3;grid-row:2;min-width:132px}
+  .active-signal-markets{grid-column:1/-1}
+  .signal-market-chip{width:100%}
+  .signal-technical-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:420px){.signal-entry-quick{min-width:118px}}
