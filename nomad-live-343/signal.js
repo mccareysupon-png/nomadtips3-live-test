@@ -1,6 +1,6 @@
 (()=>{'use strict';
 const API='/api/engine/signals',POLL=30000;
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const show=v=>v===null||v===undefined||v===''?'—':String(v);
 function time(ms){try{return new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(ms))}catch{return'—'}}
 function scoreValue(v){if(typeof v==='string'&&v.trim())return v;if(Array.isArray(v))return`${show(v[0])}-${show(v[1])}`;if(v&&typeof v==='object')return`${show(v.home??v.h)}-${show(v.away??v.a)}`;return'—'}
