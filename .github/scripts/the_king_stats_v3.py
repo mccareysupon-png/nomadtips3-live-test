@@ -20,6 +20,9 @@ VERSION = "KING_STATS_V3"
 DIRECT_SOURCE = "goaloo-bf_us-direct-index"
 STAKE = 100.0
 FINAL_RESULTS = {"WIN", "HALF_WIN", "PUSH", "HALF_LOSS", "LOSS"}
+DISPLAY_RESULTS = FINAL_RESULTS | {"VOID"}
+INVALID_AH_ENGINE = "add-k-multimarket-goaloo-v1"
+INVALID_AH_REASON = "AH_SIGN_REVERSED_V1"
 
 
 def now_iso():
@@ -57,7 +60,7 @@ def blank_ledger():
         "settlement_contract": DIRECT_SOURCE,
         "stake_model": {"currency": "THB", "stake_per_pick": int(STAKE)},
         "records": [],
-        "summary": {"settled": 0, "pending": 0, "wins": 0, "losses": 0, "pushes": 0,
+        "summary": {"settled": 0, "pending": 0, "voids": 0, "wins": 0, "losses": 0, "pushes": 0,
                     "win_rate": None, "avg_odds": None, "net": 0.0, "roi": None},
     }
 
@@ -75,7 +78,14 @@ def canonical_key(rec):
 
 def result_of(rec):
     result = str(rec.get("result") or "PENDING").upper().strip()
-    return result if result in FINAL_RESULTS else "PENDING"
+    return result if result in DISPLAY_RESULTS else "PENDING"
+
+
+def is_invalid_v1_ah(rec):
+    return (
+        str(rec.get("market") or "").upper() == "AH"
+        and str(rec.get("engine") or "") == INVALID_AH_ENGINE
+    )
 
 
 def profit_for(result, odds):
@@ -85,7 +95,13 @@ def profit_for(result, odds):
 
 def project_record(source, existing=None):
     base = dict(existing or {})
-    trusted = base.get("settlement_source") == DIRECT_SOURCE and result_of(base) in FINAL_RESULTS and base.get("ft")
+    invalid_ah = is_invalid_v1_ah(source) or is_invalid_v1_ah(base)
+    trusted = (
+        not invalid_ah
+        and base.get("settlement_source") == DIRECT_SOURCE
+        and result_of(base) in FINAL_RESULTS
+        and base.get("ft")
+    )
     fields = (
         "id", "goaloo_id", "date", "kickoff", "league", "home", "away", "pick", "side",
         "market", "selection", "line", "odds", "odds_source", "confidence", "edge",
@@ -101,9 +117,26 @@ def project_record(source, existing=None):
         base["selection"] = str(base["side"]).upper()
     base["record_version"] = VERSION
     base["stats_since"] = START_DATE
+
+    if invalid_ah:
+        original_result = str(source.get("result") or base.get("result") or "PENDING").upper()
+        if original_result in FINAL_RESULTS and not base.get("void_original_result"):
+            base["void_original_result"] = original_result
+        source_ft = source.get("ft")
+        if source_ft:
+            base["ft"] = source_ft
+        base["result"] = "VOID"
+        base["profit"] = 0.0
+        base["void_reason"] = INVALID_AH_REASON
+        base["void_engine"] = INVALID_AH_ENGINE
+        base.setdefault("voided_at", now_iso())
+        base.pop("settlement_score", None)
+        return base
+
     if not trusted:
         base.update({"result": "PENDING", "ft": None, "profit": None})
-        for key in ("settlement_score", "settled_at", "settlement_source", "goaloo_terminal_state"):
+        for key in ("settlement_score", "settled_at", "settlement_source", "goaloo_terminal_state",
+                    "void_original_result", "void_reason", "void_engine", "voided_at"):
             base.pop(key, None)
     return base
 
@@ -143,6 +176,7 @@ def settle_from_direct_index(records):
 
 def build_summary(records):
     settled = [r for r in records if result_of(r) in FINAL_RESULTS]
+    voids = [r for r in records if result_of(r) == "VOID"]
     wins = sum(result_of(r) in {"WIN", "HALF_WIN"} for r in settled)
     losses = sum(result_of(r) in {"LOSS", "HALF_LOSS"} for r in settled)
     pushes = sum(result_of(r) == "PUSH" for r in settled)
@@ -156,7 +190,7 @@ def build_summary(records):
     net = round(sum(float(r.get("profit") or 0.0) for r in settled), 2)
     return {
         "settled": len(settled), "pending": sum(result_of(r) == "PENDING" for r in records),
-        "wins": wins, "losses": losses, "pushes": pushes,
+        "voids": len(voids), "wins": wins, "losses": losses, "pushes": pushes,
         "win_rate": None if not decided else round(wins / decided * 100.0, 2),
         "avg_odds": None if not odds_values else round(sum(odds_values) / len(odds_values), 3),
         "net": net, "roi": None if not settled else round(net / (len(settled) * STAKE) * 100.0, 2),
@@ -179,12 +213,19 @@ def sync():
         else:
             index[key] = len(records)
             records.append(project_record(source))
+
+    # Re-validate every existing ledger row too. This makes the historical AH v1
+    # invalidation durable even when a row is no longer present in today's feed/history.
+    records = [project_record(rec, rec) for rec in records]
+
     direct_settled, settlement_status = settle_from_direct_index(records)
     records.sort(key=lambda r: (str(r.get("date") or ""), str(r.get("kickoff") or ""), canonical_key(r)))
     ledger.update({
         "record_version": VERSION, "stats_since": START_DATE, "settlement_contract": DIRECT_SOURCE,
         "stake_model": {"currency": "THB", "stake_per_pick": int(STAKE)}, "records": records,
         "summary": build_summary(records), "settlement_status": settlement_status,
+        "invalidated_contract": {"engine": INVALID_AH_ENGINE, "market": "AH", "result": "VOID",
+                                 "reason": INVALID_AH_REASON},
     })
     changed = before != json.dumps(ledger, sort_keys=True, ensure_ascii=False)
     if changed:
@@ -207,14 +248,19 @@ def self_test():
     assert profit_for("LOSS", 2.0) == -100.0
     dirty = project_record({"id": "x", "date": START_DATE, "result": "WIN", "ft": "81-90"})
     assert dirty["result"] == "PENDING" and dirty["ft"] is None
+    invalid = project_record({"id": "ah-x", "date": START_DATE, "market": "AH", "engine": INVALID_AH_ENGINE,
+                              "result": "WIN", "ft": "2-1", "odds": 2.0})
+    assert invalid["result"] == "VOID" and invalid["profit"] == 0.0
+    assert invalid["void_original_result"] == "WIN" and invalid["void_reason"] == INVALID_AH_REASON
     sample = build_summary([
         {"result": "WIN", "odds": 2.0, "profit": 100.0},
         {"result": "HALF_WIN", "odds": 2.0, "profit": 50.0},
         {"result": "HALF_LOSS", "odds": 2.0, "profit": -50.0},
         {"result": "LOSS", "odds": 2.0, "profit": -100.0},
         {"result": "PUSH", "odds": 2.0, "profit": 0.0},
+        {"result": "VOID", "odds": 2.0, "profit": 0.0},
     ])
-    assert sample["wins"] == 2 and sample["losses"] == 2 and sample["pushes"] == 1
+    assert sample["wins"] == 2 and sample["losses"] == 2 and sample["pushes"] == 1 and sample["voids"] == 1
     assert sample["win_rate"] == 50.0 and sample["settled"] == 5
     print("KING Statistics V3 ADD K multi-market self-test OK")
 
