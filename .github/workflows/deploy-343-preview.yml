@@ -55,6 +55,12 @@ jobs:
           grep -Fq '/api/engine/board' nomad-live-343/live.js
           grep -Fq '/api/engine/board' nomad-live-343/bet365-board.js
           grep -Fq '/api/engine/settings' nomad-live-343/settings.js
+          grep -Fq 'groupMatches' nomad-live-343/signal.js
+          grep -Fq 'liveStatistics' nomad-live-343/signal.js
+          grep -Fq "engineRequest(request, '/signals')" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "engineRequest(request, '/board')" workers/nomadtips3-343-preview/src/index.js
+          if grep -Fq "engineRequest(request, '/statistics')" workers/nomadtips3-343-preview/src/index.js; then echo '::error::Preview Signal API still merges Statistics into page 2'; exit 1; fi
+          grep -Fq "mirrorState: 'LIVE'" workers/nomadtips3-343-preview/src/index.js
           grep -Fq 'nomadtips3-5usd-hub-343' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq 'nomadtips3-engine-343' workers/nomadtips3-343-preview/wrangler.jsonc
       - name: Validate deploy credentials
@@ -99,12 +105,23 @@ jobs:
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/registry?smoke=$RANDOM" -o /tmp/registry.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?smoke=$RANDOM" -o /tmp/engine.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?smoke=$RANDOM" -o /tmp/signals.json
           node - <<'NODE'
-          const registry=require('/tmp/registry.json'),board=require('/tmp/board.json'),health=require('/tmp/engine.json');
+          const registry=require('/tmp/registry.json'),board=require('/tmp/board.json'),health=require('/tmp/engine.json'),signals=require('/tmp/signals.json');
           if(registry.ok!==true||!Array.isArray(registry.marketKeys)||registry.marketKeys.length!==18)throw new Error('market registry mismatch');
           if(board.ok!==true)throw new Error('board not ready: '+JSON.stringify(board));
           if(health.component!=='NOMAD343_ENGINE'||health.version!=='nomad343-engine-v2-all-markets')throw new Error('engine health mismatch');
+          if(signals.ok!==true||!Array.isArray(signals.signals))throw new Error('active signals API mismatch');
+          const ids=new Set();
+          for(const s of signals.signals){
+            if(String(s.status||'').toUpperCase()==='SETTLED')throw new Error('SETTLED leaked into Signal page API');
+            if(s.mirrorState!=='LIVE'||s.mirrorSource!=='ENGINE_BOARD_LIVE')throw new Error('non-live signal leaked into page 2');
+            ids.add(String(s.fixtureId));
+          }
+          if(Number(signals.mirror?.activeSignals)!==signals.signals.length)throw new Error('active signal count mismatch');
+          if(Number(signals.mirror?.activeMatches)!==ids.size)throw new Error('active match count mismatch');
           console.log('ENGINE',health.fixtureCount,health.liveCount,health.signalCount,'markets',registry.marketKeys.length);
+          console.log('ACTIVE_SIGNAL_BOARD',ids.size,'matches',signals.signals.length,'signals','hidden stale',signals.mirror?.hiddenPendingSignals||0);
           NODE
           for path in / /signal.html /signal-compact-343.css /statistics.html /statistics-page-343.css /settings.html /live.js /bet365-board.js /signal.js /statistics.js /settings.js /api/engine/settings /api/engine/registry /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
@@ -112,50 +129,52 @@ jobs:
             test "$code" = "200"
           done
 
-      - name: Verify Evidence placement
+      - name: Verify Active Signal Board
         run: |
           set -euo pipefail
 
           curl -fsS --max-time 30 -D /tmp/stat.headers "$PREVIEW_URL/statistics.html?verify=$RANDOM$RANDOM" -o /tmp/stat.html
-          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/stat.headers
           grep -Fqi 'x-nomad-stat-revision: 343-stat-results-v6' /tmp/stat.headers
-          grep -Fq 'name="nomad-stat-revision" content="343-stat-results-v6"' /tmp/stat.html
-          grep -Fq 'statistics.js?v=343-stat-results-v1' /tmp/stat.html
-          test "$(grep -o '<nav class="statistics-nav">' /tmp/stat.html | wc -l)" = "1"
-          if grep -Fq 'MATCH EVIDENCE' /tmp/stat.html; then echo '::error::Match Evidence still exists on Statistics'; exit 1; fi
-          if grep -Fq 'data-visual-evidence' /tmp/stat.html; then echo '::error::visual Evidence DOM still exists on Statistics'; exit 1; fi
-          if grep -Fq 'กดแถวเพื่อดูหลักฐาน' /tmp/stat.html; then echo '::error::Statistics still advertises row Evidence'; exit 1; fi
-
-          curl -fsS --max-time 30 -D /tmp/statjs.headers "$PREVIEW_URL/statistics.js?verify=$RANDOM$RANDOM" -o /tmp/stat.js
-          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/statjs.headers
-          grep -Fqi 'x-nomad-stat-revision: 343-stat-results-v6' /tmp/statjs.headers
-          grep -Fq "hour12:true" /tmp/stat.js
-          if grep -Fq 'prepareVisualLayout' /tmp/stat.js; then echo '::error::legacy Evidence builder remains in Statistics JS'; exit 1; fi
-          if grep -Fq 'data-visual-' /tmp/stat.js; then echo '::error::Evidence selectors remain in Statistics JS'; exit 1; fi
+          if grep -Fq 'MATCH EVIDENCE' /tmp/stat.html; then echo '::error::Match Evidence returned to Statistics'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/signal.headers "$PREVIEW_URL/signal.html?verify=$RANDOM$RANDOM" -o /tmp/signal.html
           grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signal.headers
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signal.headers
-          grep -Fq 'name="nomad-signal-revision" content="343-signal-evidence-v1"' /tmp/signal.html
-          grep -Fq 'signal-compact-343.css?v=343-signal-evidence-v1' /tmp/signal.html
-          grep -Fq 'signal.js?v=343-signal-evidence-v1' /tmp/signal.html
-          grep -Fq 'แตะแถวหรือการ์ดเพื่อขยาย Match Evidence' /tmp/signal.html
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signal.headers
+          grep -Fq 'name="nomad-signal-revision" content="343-signal-active-v2"' /tmp/signal.html
+          grep -Fq 'signal-compact-343.css?v=343-signal-active-v2' /tmp/signal.html
+          grep -Fq 'signal.js?v=343-signal-active-v2' /tmp/signal.html
+          grep -Fq 'Active Signal Board' /tmp/signal.html
+          grep -Fq 'หนึ่งคู่ = หนึ่งการ์ด' /tmp/signal.html
+          grep -Fq 'ไม่มี Active Signal = ไม่มีการ์ดค้าง' /tmp/signal.html
 
           curl -fsS --max-time 30 -D /tmp/signaljs.headers "$PREVIEW_URL/signal.js?verify=$RANDOM$RANDOM" -o /tmp/signal.js
-          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signaljs.headers
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signaljs.headers
-          grep -Fq 'data-signal-toggle' /tmp/signal.js
-          grep -Fq 'data-signal-detail' /tmp/signal.js
-          grep -Fq 'MATCH EVIDENCE' /tmp/signal.js
-          grep -Fq 'MATCH STATISTICS' /tmp/signal.js
-          grep -Fq 'RULE EVIDENCE' /tmp/signal.js
-          grep -Fq 'Snapshot ที่ระบบบันทึกจริงตอนเข้า Signal' /tmp/signal.js
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signaljs.headers
+          grep -Fq 'groupMatches' /tmp/signal.js
+          grep -Fq 'LIVE NOW' /tmp/signal.js
+          grep -Fq 'LIVE MATCH STATISTICS' /tmp/signal.js
+          grep -Fq 'ENTRY SNAPSHOT' /tmp/signal.js
+          grep -Fq 'liveStatistics' /tmp/signal.js
+          if grep -Fq 'FT' /tmp/signal.js; then echo '::error::Signal UI still contains FT card mode'; exit 1; fi
 
           curl -fsS --max-time 30 -D /tmp/signalcss.headers "$PREVIEW_URL/signal-compact-343.css?verify=$RANDOM$RANDOM" -o /tmp/signal.css
-          grep -Fqi 'cache-control: no-store, no-cache, must-revalidate, max-age=0' /tmp/signalcss.headers
-          grep -Fqi 'x-nomad-signal-revision: 343-signal-evidence-v1' /tmp/signalcss.headers
-          grep -Fq '.signal-evidence-row[hidden]' /tmp/signal.css
-          grep -Fq '.signal-evidence-panel' /tmp/signal.css
-          grep -Fq '.signal-main-row.expanded' /tmp/signal.css
+          grep -Fqi 'x-nomad-signal-revision: 343-signal-active-v2' /tmp/signalcss.headers
+          grep -Fq '.active-signal-card' /tmp/signal.css
+          grep -Fq '.active-signal-detail[hidden]' /tmp/signal.css
+          grep -Fq '.signal-live-grid' /tmp/signal.css
 
-          echo 'EVIDENCE_PLACEMENT_VERIFIED STATISTICS_CLEAN SIGNAL_EXPANDABLE_V1'
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$RANDOM$RANDOM" -o /tmp/active.json
+          node - <<'NODE'
+          const j=require('/tmp/active.json');
+          if(j.ok!==true||!Array.isArray(j.signals))throw new Error('Signal API unavailable');
+          const ids=new Set();
+          for(const s of j.signals){
+            if(s.mirrorState!=='LIVE')throw new Error('page 2 contains non-LIVE card source');
+            if(String(s.status||'').toUpperCase()==='SETTLED')throw new Error('page 2 contains SETTLED signal');
+            if(!('liveStatistics' in s)||!('liveEvents' in s))throw new Error('live board payload missing');
+            ids.add(String(s.fixtureId));
+          }
+          if(Number(j.mirror?.activeMatches)!==ids.size)throw new Error('group match count mismatch');
+          console.log('ACTIVE_SIGNAL_BOARD_VERIFIED',ids.size,'MATCHES',j.signals.length,'SIGNALS','HIDDEN_PENDING',j.mirror?.hiddenPendingSignals||0);
+          NODE
+
+          echo 'ACTIVE_SIGNAL_BOARD_DEPLOY_VERIFIED 343-signal-active-v2'
