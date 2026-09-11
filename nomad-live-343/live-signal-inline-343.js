@@ -22,6 +22,6 @@ function decorate(){document.querySelectorAll('.match-card[data-match-id]').forE
 async function load(){if(busy)return;busy=true;try{const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);const j=await r.json();if(j?.ok!==true||!Array.isArray(j.signals))throw new Error('SIGNALS_NOT_READY');groups=group(j.signals);ready=true;decorate()}catch{ready=false;decorate()}finally{busy=false}}
 document.addEventListener('click',e=>{if(e.target.closest('[data-signal-link]'))e.stopPropagation()},true);
 document.addEventListener('keydown',e=>{if(e.target.closest('[data-signal-link]'))e.stopPropagation()},true);
-const observer=new MutationObserver(()=>decorate());document.querySelectorAll('[data-board]').forEach(el=>observer.observe(el,{childList:true,subtree:true}));
+const observer=new MutationObserver(()=>decorate());document.querySelectorAll('[data-board]').forEach(el=>observer.observe(el,{childList:true}));
 injectStyle();load();setInterval(load,POLL);
 })();
