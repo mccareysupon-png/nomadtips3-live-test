@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-odds-format-v3-full-odds-safe';
+const VERSION='343-odds-format-v4-topbar-fixed';
 const STORAGE_KEY='nomad343_odds_format_v1';
 const EVENT_NAME='nomad343:odds-format-change';
 const FORMATS={decimal:'DEC',fractional:'FRA',american:'AM'};
@@ -119,7 +119,7 @@ function updateControl(){
 }
 function injectStyle(){
   if(document.getElementById('nomad343-odds-format-style'))return;
-  const s=document.createElement('style');s.id='nomad343-odds-format-style';s.textContent=`.odds-format-control{position:relative;flex:0 0 auto}.odds-format-button{appearance:none;border:0;background:transparent;color:#aeb9b1;padding:7px 3px;font:800 9px/1 Arial,sans-serif;letter-spacing:.04em;cursor:pointer;white-space:nowrap}.odds-format-button:hover,.odds-format-button:focus-visible{color:#fff;outline:none}.odds-format-menu{position:absolute;right:0;top:calc(100% + 7px);z-index:2147483600;min-width:118px;padding:4px;background:#101712;border:1px solid #334239;box-shadow:0 10px 28px rgba(0,0,0,.34)}.odds-format-menu[hidden]{display:none}.odds-format-menu button{display:block;width:100%;border:0;background:transparent;color:#b7c2ba;padding:7px 8px;text-align:left;font:800 9px/1 Arial,sans-serif;cursor:pointer}.odds-format-menu button:hover,.odds-format-menu button.active{background:#1b2a20;color:#fff}.odds-format-menu button.active:after{content:'✓';float:right;color:#d7c54a}@media(max-width:760px){.odds-format-control{position:absolute;right:9px;top:50%;transform:translateY(-50%)}.odds-format-button{font-size:8px;padding:8px 0}.odds-format-menu{right:0;top:calc(100% + 5px)}}`;
+  const s=document.createElement('style');s.id='nomad343-odds-format-style';s.textContent=`.odds-format-control{position:relative;flex:0 0 88px;width:88px;min-width:88px}.odds-format-button{appearance:none;border:0;background:transparent;color:#aeb9b1;width:100%;padding:7px 3px;text-align:right;font:800 9px/1 Arial,sans-serif;letter-spacing:.04em;cursor:pointer;white-space:nowrap}.odds-format-button:hover,.odds-format-button:focus-visible{color:#fff;outline:none}.odds-format-menu{position:absolute;right:0;top:calc(100% + 7px);z-index:2147483600;min-width:118px;padding:4px;background:#101712;border:1px solid #334239;box-shadow:0 10px 28px rgba(0,0,0,.34)}.odds-format-menu[hidden]{display:none}.odds-format-menu button{display:block;width:100%;border:0;background:transparent;color:#b7c2ba;padding:7px 8px;text-align:left;font:800 9px/1 Arial,sans-serif;cursor:pointer}.odds-format-menu button:hover,.odds-format-menu button.active{background:#1b2a20;color:#fff}.odds-format-menu button.active:after{content:'✓';float:right;color:#d7c54a}@media(max-width:760px){.odds-format-control{position:absolute;left:8px;right:auto;top:50%;transform:translateY(-50%);width:68px;min-width:68px;flex-basis:68px}.odds-format-button{width:68px;font-size:8px;padding:8px 0;text-align:left}.odds-format-menu{left:0;right:auto;top:calc(100% + 5px)}}`;
   document.head.appendChild(s);
 }
 function injectControl(){
