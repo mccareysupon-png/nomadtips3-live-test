@@ -1,0 +1,108 @@
+name: Deploy NOMAD 3.43 3s Full Test
+
+on:
+  push:
+    branches:
+      - work/nomad343-3s-engine-rateguard-20260912
+    paths:
+      - '.github/workflows/deploy-343-3s-fulltest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+  PREVIEW_URL: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+
+jobs:
+  deploy-full-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Predeploy safety checks
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          node --check workers/nomadtips3-engine-343/src/index-3s.js
+          node workers/nomadtips3-engine-343/test/market-core.test.mjs
+          node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
+          grep -Fq "const FAST_REFRESH_MS = 3_000;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const FAST_REQUEST_BUDGET = 20;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const CYCLE_MS = 3_000;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "const REFEREE_BUDGET = 10;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq 'main = "src/index-v3-fast.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'main = "src/index-3s.js"' workers/nomadtips3-engine-343/wrangler.toml
+
+      - name: Deploy 5USD Hub 3s
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: |
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Deploy 3.43 Engine 3s
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Deploy 3.43 Preview UI
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Arm engine and smoke full flow
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$HUB_URL/snapshot?deploy=$RANDOM" -o /tmp/hub1.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?deploy=$RANDOM" -o /tmp/engine1.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?deploy=$RANDOM" -o /tmp/board1.json
+          node - <<'NODE'
+          const hub=require('/tmp/hub1.json');
+          const eng=require('/tmp/engine1.json');
+          const board=require('/tmp/board1.json');
+          if(hub.ok!==true) throw Error('hub not ok');
+          if(hub.fastLive?.active!==true||hub.fastLive?.refreshMs!==3000) throw Error('hub fast live not active at 3s');
+          if(hub.fastLive?.rate?.internalCeiling!==20) throw Error('hub fast guard mismatch');
+          if(eng.component!=='NOMAD343_ENGINE') throw Error('engine component mismatch');
+          if(eng.cadence?.cycleMs!==3000||eng.cadence?.noOverlap!==true) throw Error('engine cadence mismatch');
+          if(eng.cadence?.referee?.internalCeiling!==10) throw Error('referee guard mismatch');
+          if(board.ok!==true) throw Error('board not ready');
+          console.log('FIRST',JSON.stringify({hubFixtures:hub.fixtureCount,live:hub.counts?.live,fastFixtures:hub.fastLive?.fixtureCount,hubRate:hub.fastLive?.rate,engineCadence:eng.cadence,boardFixtures:board.fixtures?.length},null,2));
+          NODE
+
+          sleep 8
+
+          curl -fsS --max-time 30 "$HUB_URL/snapshot?verify=$RANDOM" -o /tmp/hub2.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?verify=$RANDOM" -o /tmp/engine2.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$RANDOM" -o /tmp/board2.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$RANDOM" -o /tmp/signals.json
+          node - <<'NODE'
+          const h1=require('/tmp/hub1.json'),h2=require('/tmp/hub2.json');
+          const e2=require('/tmp/engine2.json'),b2=require('/tmp/board2.json'),s=require('/tmp/signals.json');
+          if(h2.ok!==true||h2.fastLive?.active!==true) throw Error('hub verify failed');
+          if(Number(h2.fastLive?.rate?.usedLast60s||0)>20) throw Error('hub rate guard exceeded');
+          if(Number(e2.cadence?.referee?.usedLast60s||0)>10) throw Error('referee rate guard exceeded');
+          if(e2.cadence?.alarmArmed!==true) throw Error('engine alarm not armed');
+          if(b2.ok!==true||s.ok!==true) throw Error('board/signals unavailable');
+          console.log('VERIFY',JSON.stringify({hubFetched1:h1.fastLive?.fetchedAt,hubFetched2:h2.fastLive?.fetchedAt,hubAgeMs:h2.ageMs,hubRate:h2.fastLive?.rate,engineCycleMs:e2.cadence?.cycleMs,referee:e2.cadence?.referee,engineStarted:e2.startedAt,engineFinished:e2.finishedAt,fixtures:b2.fixtures?.length,signals:s.signals?.length},null,2));
+          NODE
+
+      - name: UI smoke
+        run: |
+          set -euo pipefail
+          for path in / /signal.html /statistics.html /settings.html /api/engine/registry /api/engine/board /api/engine/signals /api/engine/statistics; do
+            code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
+            echo "$path -> HTTP $code"
+            test "$code" = "200"
+          done
