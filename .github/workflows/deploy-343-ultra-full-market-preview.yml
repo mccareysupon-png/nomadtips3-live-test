@@ -99,15 +99,22 @@ jobs:
       - name: Smoke Signal isolation and 10-book Full Market
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$CANARY_URL/api/engine/health?smoke=$RANDOM" -o /tmp/engine.json
-          node -e 'const j=require("/tmp/engine.json");if(j.component!=="NOMAD343_ENGINE"||j.version!=="nomad343-engine-v3-settlement-safe")throw Error("engine changed");console.log("ENGINE UNCHANGED",j.version)'
+          sleep 5
+          curl_retry() {
+            curl -fsS --retry 8 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 30 "$1" -o "$2"
+          }
 
-          curl -fsS --max-time 30 "$CANARY_URL/api/full-market/health?smoke=$RANDOM" -o /tmp/full-health.json
+          curl_retry "$CANARY_URL/api/engine/registry?smoke=$RANDOM" /tmp/registry.json
+          curl_retry "$CANARY_URL/api/engine/health?smoke=$RANDOM" /tmp/engine.json
+          node -e 'const r=require("/tmp/registry.json"),j=require("/tmp/engine.json");if(r.version!=="nomad343-engine-v3-settlement-safe"||j.component!=="NOMAD343_ENGINE"||j.version!=="nomad343-engine-v3-settlement-safe")throw Error("engine changed");console.log("ENGINE UNCHANGED",j.version)'
+
+          curl_retry "$CANARY_URL/api/full-market/health?smoke=$RANDOM" /tmp/full-health.json
           node -e 'const j=require("/tmp/full-health.json");if(j.ok!==true||j.component!=="NOMAD343_FULL_MARKET")throw Error("full market health");if(!Array.isArray(j.bookmakers)||j.bookmakers.length!==10)throw Error("10 books");if(j.rate?.accountLimitPerMinute!==40||j.rate?.sidecarSoftLimitPerMinute!==24)throw Error("rate policy");console.log("FULL MARKET",j.version,j.bookmakers.map(x=>x.slug).join(","))'
 
-          curl -fsS --max-time 30 "$CANARY_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
+          curl_retry "$CANARY_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
           node - <<'NODE'
           const fs=require('fs'),j=require('/tmp/board.json');
+          if(j.ok!==true) throw Error(j.error||'board not ready');
           const f=Array.isArray(j.fixtures)?j.fixtures:[];
           const live=f.find(x=>x?.fixtureId&&String(x.boardState||'').toLowerCase()==='live');
           const pick=live||f.find(x=>x?.fixtureId)||null;
@@ -116,12 +123,12 @@ jobs:
           NODE
           FIXTURE_ID="$(cat /tmp/fixture-id)"
           if [ -n "$FIXTURE_ID" ]; then
-            curl -fsS --max-time 30 "$CANARY_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&smoke=$RANDOM" -o /tmp/full.json
+            curl_retry "$CANARY_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&smoke=$RANDOM" /tmp/full.json
             node -e 'const j=require("/tmp/full.json");if(j.ok!==true)throw Error(j.error||"full market request");if(!Array.isArray(j.requestedBookmakers)||j.requestedBookmakers.length!==10)throw Error("requested books");console.log("10-BOOK SNAPSHOT",j.fixtureId,"available",(j.availableBookmakers||[]).join(","),"source",j.source)'
           fi
 
-          curl -fsS --max-time 30 "$CANARY_URL/?smoke=$RANDOM" -o /tmp/index.html
-          curl -fsS --max-time 30 "$CANARY_URL/full-odds-main-343.js?smoke=$RANDOM" -o /tmp/full-ui.js
+          curl_retry "$CANARY_URL/?smoke=$RANDOM" /tmp/index.html
+          curl_retry "$CANARY_URL/full-odds-main-343.js?smoke=$RANDOM" /tmp/full-ui.js
           grep -Fq '343-full-odds-main-v5-ultra-10book' /tmp/index.html
           grep -Fq "const VERSION='343-full-odds-main-v5-ultra-10book'" /tmp/full-ui.js
           grep -Fq 'FULL MARKET · 10 BOOKS' /tmp/full-ui.js
