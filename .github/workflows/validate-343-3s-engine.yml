@@ -1,0 +1,72 @@
+name: Validate NOMAD 3.43 3s Engine
+
+on:
+  push:
+    branches:
+      - work/nomad343-3s-engine-rateguard-20260912
+    paths:
+      - 'workers/nomadtips3-5usd-hub-343/**'
+      - 'workers/nomadtips3-engine-343/**'
+      - '.github/workflows/validate-343-3s-engine.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated 3.43 scope
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/index-3s.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+
+          node workers/nomadtips3-engine-343/test/market-core.test.mjs
+          node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
+
+          grep -Fq "const FAST_REFRESH_MS = 3_000;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const FAST_REQUEST_BUDGET = 20;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "include=odds,events,stats" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const CYCLE_MS = 3_000;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "const REFEREE_BUDGET = 10;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "async alarm()" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "if (this.scanPromise) return this.scanPromise;" workers/nomadtips3-engine-343/src/index-3s.js
+
+          grep -Fq 'main = "src/index-v3-fast.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'main = "src/index-3s.js"' workers/nomadtips3-engine-343/wrangler.toml
+
+          # Prove the existing core remains intact.
+          grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const REFRESH_MS=120_000" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const MIN_SCAN_GAP_MS=60_000" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const SETTLEMENT_REVISION='bet365-rules-v2'" workers/nomadtips3-engine-343/src/index.js
+
+          if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js workers/nomadtips3-engine-343/src/index-3s.js; then
+            echo '::error::3.43 cadence wrappers must not depend on 3.42 runtime'; exit 1
+          fi
+
+      - name: Dry-run 5USD Hub bundle
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Dry-run 3.43 Engine bundle
+        working-directory: workers/nomadtips3-engine-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Scope summary
+        run: |
+          git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" 2>/dev/null || true
+          echo 'Validation only: no Cloudflare deploy is performed by this workflow.'
