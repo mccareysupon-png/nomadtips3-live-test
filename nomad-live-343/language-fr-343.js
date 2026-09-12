@@ -1,0 +1,352 @@
+(()=>{
+'use strict';
+const VERSION='343-language-fr-v1';
+const CODE='fr';
+const STORAGE_KEY='nomad343_language_v1';
+const SELECT_ID='nomad343-language-select';
+
+const FR=new Map(Object.entries({
+  'Live Scores':'Scores en direct',
+  'Signals':'Signaux',
+  'Statistics':'Statistiques',
+  "Today's Matches":'Matchs du jour',
+  "Live scores, match statistics and Bet365 markets for today's fixtures.":'Scores en direct, statistiques des matchs et marchés Bet365 pour les rencontres du jour.',
+  'Connecting to Live Data':'Connexion aux données en direct',
+  'Search teams or leagues…':'Rechercher une équipe ou une ligue…',
+  'Today':"Aujourd’hui",
+  'Local Time':'Heure locale',
+  'Bet365 Live Markets':'Marchés en direct Bet365',
+  'Live':'En direct',
+  'Upcoming':'À venir',
+  'Finished':'Terminés',
+  'Unconfirmed':'Non confirmés',
+  'No Live Matches':'Aucun match en direct',
+  "Waiting for Today's Fixtures":'En attente des matchs du jour',
+  'No Finished Matches':'Aucun match terminé',
+  'No Unconfirmed Matches':'Aucun match non confirmé',
+  'No More Upcoming Matches':'Aucun autre match à venir',
+  'Select a match to view match details, statistics, event flow and Bet365 markets.':'Sélectionnez un match pour voir les détails, les statistiques, le déroulement du match et les marchés Bet365.',
+
+  'Latest Match Data':'Dernières données du match',
+  'Match Statistics':'Statistiques du match',
+  'Shots on Target':'Tirs cadrés',
+  'Shots off Target':'Tirs non cadrés',
+  'Corners':'Corners',
+  'Attacks':'Attaques',
+  'Dangerous Attacks':'Attaques dangereuses',
+  'Possession':'Possession',
+  'Attack Percentage':"Pourcentage d’attaques",
+  'Dangerous Attack Percentage':"Pourcentage d’attaques dangereuses",
+  'Possession Percentage':'Pourcentage de possession',
+  'Building Event History':"Construction de l’historique des événements",
+  'No Bookmaker Odds Available':'Aucune cote de bookmaker disponible',
+  'Building Odds Movement History':"Construction de l’historique des mouvements de cotes",
+  'Live Data Unavailable':'Données en direct indisponibles',
+  'Live Data Delayed':'Données en direct retardées',
+  'Live data':'Données en direct',
+  'Waiting for Data':'En attente de données',
+  'Signal Locked':'Signal verrouillé',
+  'No Signal':'Aucun signal',
+  'Signal —':'Signal —',
+  'Half-Time':'Mi-temps',
+  'Full-Time':'Fin du match',
+  'Event Flow':'Déroulement du match',
+  'Event Flow · Match History':'Déroulement du match · Historique du match',
+  'Event Flow · Attack Momentum':'Déroulement du match · Dynamique offensive',
+  'Attack intensity from recent match data':"Intensité offensive d’après les données récentes du match",
+  'Attack Momentum graph':'Graphique de dynamique offensive',
+  'Odds Movement':'Mouvement des cotes',
+  'Observed Odds':'Cotes observées',
+  'Building Attack Momentum History':"Construction de l’historique de la dynamique offensive",
+  'Loading Attack Momentum History…':"Chargement de l’historique de la dynamique offensive…",
+  'Event Flow Unavailable':'Déroulement du match indisponible',
+
+  'Active Signals':'Signaux actifs',
+  'Live selections with entry odds, entry score and current match status in one card.':"Sélections en direct avec cote d’entrée, score à l’entrée et état actuel du match sur une seule carte.",
+  'Connecting to Active Signals':'Connexion aux signaux actifs',
+  'Active Matches':'Matchs avec signal',
+  'One match per card':'Un match par carte',
+  'All markets currently being tracked':'Tous les marchés actuellement suivis',
+  'Live Tracking':'Suivi en direct',
+  'Now':'Maintenant',
+  'Minute · Score · Match Data':'Minute · Score · Données du match',
+  'Results':'Résultats',
+  'Settled signals move to Statistics':'Les signaux réglés passent dans Statistiques',
+  'System selections, entry odds and current match status. Select a card to view full details.':"Sélections du système, cotes d’entrée et état actuel du match. Sélectionnez une carte pour voir tous les détails.",
+  'Active Only':'Actifs uniquement',
+  'Waiting for Live Signals':'En attente de signaux en direct',
+  'When a signal is settled as Win, Loss or Push, it leaves this page and moves to Statistics.':'Lorsqu’un signal est réglé comme Gagné, Perdu ou Remboursé, il quitte cette page et passe dans Statistiques.',
+  'No Active Signals':'Aucun signal actif',
+  'There are no active signals right now':'Aucun signal actif pour le moment',
+  'Active Signals Unavailable':'Signaux actifs indisponibles',
+
+  'Signal Time':'Heure du signal',
+  'Entry Score':"Score à l’entrée",
+  'Pick':'Sélection',
+  'Line':'Ligne',
+  'Entry Odds':"Cote d’entrée",
+  'Bookmaker':'Bookmaker',
+  'Entry Match Statistics':"Statistiques à l’entrée",
+  'Signal Criteria':'Critères du signal',
+  'Match statistics at signal entry':"Statistiques du match au moment de l’entrée",
+  'Criteria met when the signal was created':'Critères remplis lors de la création du signal',
+  'Live Match Statistics':'Statistiques du match en direct',
+  'Signal Tracker':'Suivi du signal',
+  'Entry status compared with the current match':"Situation à l’entrée comparée au match actuel",
+  'Signal Details':'Détails du signal',
+  'Entry Locked':'Entrée verrouillée',
+  'Technical Details':'Détails techniques',
+  'Provider Market':'Marché du fournisseur',
+  'Rolling Window':"Fenêtre d’analyse",
+  '5USD Raw Line':'Ligne brute 5USD',
+  'Feed Age':'Âge des données',
+  'Events':'Événements',
+  'Raw Card Count':'Nombre brut de cartons',
+  'Pass':'Validé',
+  'Not Met':'Non validé',
+  'Required':'Requis',
+
+  'Settled Signals':'Signaux réglés',
+  'Track active signals above and review settled results below.':'Suivez les signaux actifs ci-dessus et consultez les résultats réglés ci-dessous.',
+  'Connecting to Statistics':'Connexion aux statistiques',
+  'Live Signal Tracker':'Suivi des signaux en direct',
+  'Live minute and score from the Signals page. Select a card to view details for an active match.':'Minute et score en direct depuis la page Signaux. Sélectionnez une carte pour voir les détails d’un match actif.',
+  'Waiting for Active Signals':'En attente de signaux actifs',
+  'Results already settled':'Résultats déjà réglés',
+  'Wins':'Gagnés',
+  'Full wins':'Gagnés entièrement',
+  'Losses':'Perdus',
+  'Full losses':'Perdus entièrement',
+  'Win Rate':'Taux de réussite',
+  'Push excluded · half results weighted':'Remboursés exclus · demi-résultats pondérés',
+  'Average Entry Odds':"Cote moyenne d’entrée",
+  'Average odds when signals were created':'Cote moyenne au moment de la création des signaux',
+  'Results History':'Historique des résultats',
+  'Entry odds and settled results by market · Time shown in':"Cotes d’entrée et résultats réglés par marché · Heure affichée en",
+  'All Market Results':'Résultats de tous les marchés',
+  'Date & Time':'Date et heure',
+  'League / Match':'Ligue / Match',
+  'Market':'Marché',
+  'Full-Time Score':'Score final',
+  'Result':'Résultat',
+  'Waiting for Settled Results':'En attente de résultats réglés',
+  'Supports Win, Loss, Push, Half Win and Half Loss. If required settlement data is unavailable, the result remains Unresolved.':'Prend en charge Gagné, Perdu, Remboursé, Demi-gagné et Demi-perdu. Si les données nécessaires au règlement sont indisponibles, le résultat reste En attente.',
+  'No Settled Results Yet':'Aucun résultat réglé pour le moment',
+  'Statistics Unavailable':'Statistiques indisponibles',
+
+  'Win':'Gagné',
+  'Loss':'Perdu',
+  'Push':'Remboursé',
+  'Half Win':'Demi-gagné',
+  'Half Loss':'Demi-perdu',
+  'Unresolved':'En attente',
+  'All Markets':'Tous les marchés',
+  'Half Results':'Demi-résultats',
+
+  'BET365 · FULL MARKET ODDS':'BET365 · COTES DE TOUS LES MARCHÉS',
+  'Match Result · Full Time':'Résultat du match · Match complet',
+  'Match Result · First Half':'Résultat du match · Première mi-temps',
+  'Asian Handicap · Full Time':'Handicap asiatique · Match complet',
+  'Asian Handicap · First Half':'Handicap asiatique · Première mi-temps',
+  'Goals Over / Under · Full Time':'Buts Plus / Moins · Match complet',
+  'Goals Over / Under · First Half':'Buts Plus / Moins · Première mi-temps',
+  'Goals Over · Full Time':'Buts Plus · Match complet',
+  'Goals Under · Full Time':'Buts Moins · Match complet',
+  'Goals Over · First Half':'Buts Plus · Première mi-temps',
+  'Goals Under · First Half':'Buts Moins · Première mi-temps',
+  'Corners Over / Under · Full Time':'Corners Plus / Moins · Match complet',
+  'Corners Over / Under · First Half':'Corners Plus / Moins · Première mi-temps',
+  'Corners Over · Full Time':'Corners Plus · Match complet',
+  'Corners Under · Full Time':'Corners Moins · Match complet',
+  'Corners Over · First Half':'Corners Plus · Première mi-temps',
+  'Corners Under · First Half':'Corners Moins · Première mi-temps',
+  'Corners Asian Handicap':'Handicap asiatique sur les corners',
+  'Cards Over / Under · Full Time':'Cartons Plus / Moins · Match complet',
+  'Cards Over · Full Time':'Cartons Plus · Match complet',
+  'Cards Under · Full Time':'Cartons Moins · Match complet',
+  'Cards Asian Handicap':'Handicap asiatique sur les cartons',
+  'Both Teams to Score':'Les deux équipes marquent',
+  'Both Teams to Score · Yes':'Les deux équipes marquent · Oui',
+  'Both Teams to Score · No':'Les deux équipes marquent · Non',
+  'In-Play Odds':'Cotes en direct',
+  'Pre-Match Odds':'Cotes avant-match',
+  'Opening Odds':"Cotes d’ouverture",
+  'Home':'Domicile',
+  'Away':'Extérieur',
+  'HOME':'Domicile',
+  'AWAY':'Extérieur',
+  'Draw':'Nul',
+  'Over':'Plus',
+  'Under':'Moins',
+  'Yes':'Oui',
+  'No':'Non',
+  'Loading':'Chargement',
+  'Odds —':'Cotes —',
+  'Full Market Odds Unavailable':'Cotes complètes indisponibles',
+  'Loading Full Bet365 Lines and Odds':'Chargement des lignes et cotes complètes Bet365',
+  'Full Market Odds Are Unavailable for This Match':'Les cotes complètes ne sont pas disponibles pour ce match'
+}));
+
+const RULES=[
+  [/^(\d+) Active Signal(?:s)? in this match$/i,(_,n)=>`${n} signal${Number(n)===1?'':'aux'} sur ce match`],
+  [/^(\d+) Signal(?:s)? · Details$/i,(_,n)=>`${n} signal${Number(n)===1?'':'aux'} · Détails`],
+  [/^Active Signals · (\d+) match(?:es)?(?: · (\d+) signal(?:s)?)?(?: · data age (\d+)s)?$/i,(_,m,s,a)=>`Signaux actifs · ${m} match${Number(m)===1?'':'s'}${s?` · ${s} signal${Number(s)===1?'':'aux'}`:''}${a?` · données de ${a} s`:''}`],
+  [/^(\d+) Points$/i,'$1 points'],
+  [/^(\d+) Markets$/i,'$1 marchés'],
+  [/^Half-Time\s+(.+)$/i,'Mi-temps $1'],
+  [/^Full Time · (.+)$/i,'Match complet · $1'],
+  [/^First Half · (.+)$/i,'Première mi-temps · $1'],
+  [/^Revised from (.+?) · /i,'Révisé depuis $1 · '],
+  [/^Attack trend from recent match data · (\d+)-minute rate · smoothed trend$/i,'Tendance offensive des données récentes · rythme sur $1 minutes · courbe lissée'],
+  [/^Timeline uses observed match data · both teams measured independently$/i,'La chronologie utilise les données observées du match · les deux équipes sont mesurées séparément'],
+  [/^Momentum = Dangerous Attacks 30 · Shots on Target 25 · Attacks 20 · Shots off Target 10 · Corners 10 · Possession 5$/i,'Dynamique = Attaques dangereuses 30 · Tirs cadrés 25 · Attaques 20 · Tirs non cadrés 10 · Corners 10 · Possession 5'],
+  [/^Event Flow uses observed match history · Bookmaker odds show observed data only/i,'Le déroulement du match utilise l’historique observé · les cotes du bookmaker affichent uniquement les données observées'],
+  [/ · this match is unconfirmed and cannot be settled$/i,' · ce match n’est pas confirmé et ne peut pas être réglé'],
+  [/\bMatch Statistics\b/g,'Statistiques du match'],
+  [/5USD Full Market Odds/g,'Cotes complètes 5USD'],
+  [/\s+vs\s+/gi,' contre '],
+  [/→\s*Live$/i,'→ En direct'],
+  [/\bHalf Win\b/g,'Demi-gagné'],
+  [/\bHalf Loss\b/g,'Demi-perdu'],
+  [/\bUnresolved\b/g,'En attente'],
+  [/\bWin\b/g,'Gagné'],
+  [/\bLoss\b/g,'Perdu'],
+  [/\bPush\b/g,'Remboursé'],
+  [/\bNot Met\b/g,'Non validé'],
+  [/\bRequired\b/g,'Requis'],
+  [/\bPass\b/g,'Validé'],
+  [/·\s*Full Time\b/g,'· Match complet'],
+  [/·\s*First Half\b/g,'· Première mi-temps'],
+  [/·\s*FT\b/g,'· Match complet'],
+  [/·\s*HT\b/g,'· Première mi-temps'],
+  [/\bAll Markets\b/g,'Tous les marchés'],
+  [/\bUnresolved (\d+)\b/gi,'En attente $1'],
+  [/ · Half Results (\d+\/\d+)$/i,' · Demi-résultats $1']
+];
+
+const TITLES={
+  live:'nomadtips3 · Scores en direct 3.43',
+  signal:'nomadtips3 · Signaux 3.43',
+  statistics:'nomadtips3 · Statistiques 3.43'
+};
+
+const TEXT_SOURCE=new WeakMap();
+const ATTR_SOURCE=new WeakMap();
+let active=false;
+let observer=null;
+let baseApi=null;
+let baseSet=null;
+let baseCurrent=null;
+
+function translate(text){
+  let next=FR.get(text)??text;
+  for(const [pattern,replacement] of RULES)next=next.replace(pattern,replacement);
+  return next;
+}
+function skip(el){return !el||Boolean(el.closest('[data-language-343],script,style,noscript,textarea,code,pre'))}
+function translateTextNode(node){
+  if(!active||!node||node.nodeType!==Node.TEXT_NODE||skip(node.parentElement))return;
+  const current=node.nodeValue||'',previous=TEXT_SOURCE.get(node);
+  const source=previous&&current===previous.rendered?previous.source:current;
+  const rendered=translate(source);
+  TEXT_SOURCE.set(node,{source,rendered});
+  if(current!==rendered)node.nodeValue=rendered;
+}
+function restoreTextNode(node){
+  if(!node||node.nodeType!==Node.TEXT_NODE||skip(node.parentElement))return;
+  const previous=TEXT_SOURCE.get(node);
+  if(previous&&node.nodeValue===previous.rendered)node.nodeValue=previous.source;
+  TEXT_SOURCE.delete(node);
+}
+function translateAttribute(el,attr){
+  if(!active||skip(el)||!el.hasAttribute(attr))return;
+  let record=ATTR_SOURCE.get(el);if(!record){record=new Map();ATTR_SOURCE.set(el,record)}
+  const current=el.getAttribute(attr)??'',previous=record.get(attr);
+  const source=previous&&current===previous.rendered?previous.source:current;
+  const rendered=translate(source);record.set(attr,{source,rendered});
+  if(current!==rendered)el.setAttribute(attr,rendered);
+}
+function restoreAttribute(el,attr){
+  const record=ATTR_SOURCE.get(el),previous=record?.get(attr);if(!previous)return;
+  if(el.getAttribute(attr)===previous.rendered)el.setAttribute(attr,previous.source);
+  record.delete(attr);
+}
+function visit(root,mode){
+  if(!root)return;
+  const textFn=mode==='restore'?restoreTextNode:translateTextNode;
+  const attrFn=mode==='restore'?restoreAttribute:translateAttribute;
+  if(root.nodeType===Node.TEXT_NODE){textFn(root);return}
+  if(root.nodeType!==Node.ELEMENT_NODE&&root.nodeType!==Node.DOCUMENT_FRAGMENT_NODE&&root.nodeType!==Node.DOCUMENT_NODE)return;
+  const applyEl=el=>{if(skip(el))return;attrFn(el,'placeholder');attrFn(el,'aria-label');attrFn(el,'title')};
+  if(root.nodeType===Node.ELEMENT_NODE)applyEl(root);
+  root.querySelectorAll?.('*').forEach(applyEl);
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let node;
+  while((node=walker.nextNode()))textFn(node);
+}
+function setTitle(){const page=document.body?.dataset.page||'';if(TITLES[page])document.title=TITLES[page]}
+function enableOption(){
+  const select=document.getElementById(SELECT_ID),option=select?.querySelector(`option[value="${CODE}"]`);
+  if(option)option.disabled=false;
+  const language=baseApi?.languages?.find?.(x=>x.code===CODE);if(language)language.ready=true;
+}
+function resetCurrentLanguage(){
+  const api=window.NOMAD343_LANGUAGE;
+  if(api&&typeof api.set==='function')api.set('en');
+  else if(baseSet)baseSet('en');
+}
+function activate({persist=true,emit=true}={}){
+  resetCurrentLanguage();
+  active=true;enableOption();
+  document.documentElement.lang=CODE;document.documentElement.dataset.language343=CODE;
+  setTitle();visit(document.body,'translate');
+  const select=document.getElementById(SELECT_ID);if(select)select.value=CODE;
+  if(persist){try{localStorage.setItem(STORAGE_KEY,CODE)}catch{}}
+  if(emit)document.dispatchEvent(new CustomEvent('nomad343:language-change',{detail:{language:CODE}}));
+}
+function deactivate(code,{forward=true}={}){
+  if(active)visit(document.body,'restore');active=false;
+  if(forward&&baseSet)baseSet(code);else if(forward){try{localStorage.setItem(STORAGE_KEY,code)}catch{}}
+}
+function intercept(event){
+  const select=event.target?.id===SELECT_ID?event.target:null;if(!select)return;
+  const code=select.value;
+  if(code===CODE){
+    activate({persist:true,emit:true});
+    event.stopPropagation();
+    return;
+  }
+  if(active)deactivate(code,{forward:false});
+}
+function startObserver(){
+  if(observer||!document.body)return;
+  observer=new MutationObserver(records=>{
+    if(!active)return;
+    for(const record of records){
+      if(record.type==='characterData'){translateTextNode(record.target);continue}
+      for(const node of record.addedNodes||[]){try{window.NOMAD343_FOOTBALL_EN?.normalize?.(node)}catch{}visit(node,'translate')}
+    }
+  });
+  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+}
+function patchApi(){
+  baseApi=window.NOMAD343_LANGUAGE||null;if(!baseApi)return;
+  baseSet=typeof baseApi.set==='function'?baseApi.set.bind(baseApi):null;
+  baseCurrent=typeof baseApi.current==='function'?baseApi.current.bind(baseApi):()=> 'en';
+  enableOption();
+  baseApi.current=()=>active?CODE:baseCurrent();
+  baseApi.set=code=>{
+    if(code===CODE)return activate({persist:true,emit:true});
+    if(active)return deactivate(code,{forward:true});
+    return baseSet?baseSet(code):undefined;
+  };
+}
+function mount(){
+  patchApi();enableOption();startObserver();
+  let saved='';try{saved=localStorage.getItem(STORAGE_KEY)||''}catch{}
+  if(saved===CODE)activate({persist:false,emit:false});
+}
+
+window.addEventListener('change',intercept,true);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+window.NOMAD343_LANGUAGE_FR={version:VERSION,code:CODE};
+})();
