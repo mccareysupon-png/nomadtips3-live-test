@@ -24,7 +24,7 @@ const LABELS={
 };
 const STAGE_LABELS={opening:'OPENING',closing:'PRE-MATCH',current:'CURRENT',inplay:'IN-PLAY',in_play:'IN-PLAY'};
 let lastSnapshot=null,lastSignals=[],busy=false;
-const fullOddsBusy=new Set();
+const fullOddsBusy=new Set(),fullOddsCache=new Map(),fullOddsRetryAt=new Map();
 function fixtureKey(f){return String(f?.fixtureId??[f?.home?.name,f?.away?.name,f?.kickoffAt??f?.kickoffUtc].join('|'))}
 function classify(f){const s=String(f?.boardState??f?.status??'').toLowerCase();if(s.includes('unknown'))return'unknown';if(['live','in_play','inplay','playing','half'].some(x=>s.includes(x)))return'live';if(['finished','full_time','ft','ended'].some(x=>s.includes(x)))return'finished';return'scheduled'}
 function teamName(f,side){return f?.[side]?.name||side.toUpperCase()}
@@ -104,22 +104,23 @@ function signalEntries(rows,f){
   }).join('')}</div></section>`;
 }
 function oddsPanel(f,snapshot,signalRows=[]){
-  const state=classify(f),bulkRoot=oddsRoot(f?.providerOdds??f?.odds),fullRoot=oddsRoot(f?.fullOdds),root=mergeMarketRoots(bulkRoot,fullRoot),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
-  const rows=marketRows(root,f,state),fullRows=marketRows(fullRoot,f,state),usingFull=fullRows.length>0,fetchedAt=num(f?.fullOddsFetchedAt),age=usingFull?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=usingFull?(bulkRoot?'bulk + full odds · engine referee':'full odds · engine referee'):'bulk feed',sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · ${source}${age===null||!Number.isFinite(age)?'':` · ${age}s`}`,signalHtml=signalEntries(signalRows,f);
+  const state=classify(f),bulkRoot=oddsRoot(f?.providerOdds??f?.odds),cached=fullOddsCache.get(fixtureKey(f))||null,fullRoot=oddsRoot(cached?.fullOdds??f?.fullOdds),root=mergeMarketRoots(bulkRoot,fullRoot),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
+  const rows=marketRows(root,f,state),fullRows=marketRows(fullRoot,f,state),usingFull=fullRows.length>0,fetchedAt=num(cached?.fetchedAt??f?.fullOddsFetchedAt),age=usingFull?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=usingFull?(cached?.stale?'cached full odds · stale-safe':bulkRoot?'bulk + full odds · persistent cache':'full odds · persistent cache'):'bulk feed',sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · ${source}${age===null||!Number.isFinite(age)?'':` · ${age}s`}`,signalHtml=signalEntries(signalRows,f);
   if(!rows.length)return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
   const body=rows.map(([,html])=>html).join('');
   return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">${rows.length} MARKETS</span></div>${signalHtml}<div class="b365-grid">${body}</div></section>`;
 }
 function snapshotFixture(id){return (Array.isArray(lastSnapshot?.fixtures)?lastSnapshot.fixtures:[]).find(f=>String(f?.fixtureId??'')===String(id??''))||null}
-function fullOddsFresh(f){const at=num(f?.fullOddsFetchedAt);return Boolean(f?.fullOdds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}
+function fullOddsFresh(v){const at=num(v?.fetchedAt??v?.fullOddsFetchedAt),odds=v?.fullOdds;return Boolean(odds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}
 async function ensureFullOdds(id){
   id=String(id||'');if(!id||fullOddsBusy.has(id))return;
-  const existing=snapshotFixture(id);if(fullOddsFresh(existing))return;
-  fullOddsBusy.add(id);
+  const nowAt=Date.now(),cached=fullOddsCache.get(id);if(fullOddsFresh(cached))return;if(Number(fullOddsRetryAt.get(id)||0)>nowAt)return;
+  const existing=snapshotFixture(id);if(!cached&&fullOddsFresh(existing)){fullOddsCache.set(id,{fullOdds:existing.fullOdds,fetchedAt:existing.fullOddsFetchedAt,source:existing.fullOddsSource||'ENGINE_BOARD',stale:false});return}
+  fullOddsBusy.add(id);fullOddsRetryAt.set(id,nowAt+FULL_ODDS_REFRESH_MS);
   try{
     const r=await fetch(`${FULL_ODDS_API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);
     if(!r.ok||j?.ok!==true){console.warn('[NOMAD343 FULL ODDS]',r.status,j?.error||'NOT_READY');return}
-    const f=snapshotFixture(id);if(f){f.fullOdds=j.fullOdds;f.fullOddsFetchedAt=j.fetchedAt;f.fullOddsSource=j.source||'UI_EXPAND'}
+    fullOddsCache.set(id,{fullOdds:j.fullOdds,fetchedAt:j.fetchedAt,source:j.source||'UI_ODDS_CACHE',stale:Boolean(j.stale)});
     if(lastSnapshot)decorate(lastSnapshot,lastSignals);
     window.NOMAD343_ODDS?.refresh?.();
   }catch(e){console.warn('[NOMAD343 FULL ODDS]',e)}finally{fullOddsBusy.delete(id)}

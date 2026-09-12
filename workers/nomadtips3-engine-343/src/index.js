@@ -9,6 +9,7 @@ const MAX_HISTORY_ROWS=180;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
 const UI_ODDS_CACHE_MS=60_000;
+const UI_ODDS_STALE_MS=15*60_000;
 const SETTLEMENT_REVISION='bet365-rules-v2';
 
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
@@ -289,19 +290,20 @@ export class Nomad343Engine extends DurableObject{
     }catch(e){const meta={ok:false,startedAt,finishedAt:now(),lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}
   }
   async fetch(request){
-    const u=new URL(request.url);if(!['/settings','/registry'].includes(u.pathname))await this.scanIfDue();
+    const u=new URL(request.url);if(!['/settings','/registry','/fixture-odds'].includes(u.pathname))await this.scanIfDue();
     if(u.pathname==='/fixture-odds'&&request.method==='GET'){
       const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();
       if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400,headers:{'cache-control':'no-store'}});
       const board=await this.ctx.storage.get('board')||{fixtures:[]},fixtures=Array.isArray(board?.fixtures)?board.fixtures:[],fixture=fixtures.find(x=>String(x?.fixtureId??'')===fixtureId);
       if(!fixture)return Response.json({ok:false,error:'FIXTURE_NOT_ON_BOARD'},{status:404,headers:{'cache-control':'no-store'}});
-      const cachedAt=num(fixture?.fullOddsFetchedAt);
-      if(fixture?.fullOdds&&cachedAt!==null&&now()-cachedAt<=UI_ODDS_CACHE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:fixture.fullOdds,fetchedAt:cachedAt,source:fixture.fullOddsSource||'ENGINE_CACHE',cached:true},{headers:{'cache-control':'no-store'}});
+      const cacheKey=`uiOdds:${fixtureId}`,cached=await this.ctx.storage.get(cacheKey)||null,cachedAt=num(cached?.fetchedAt),cacheAge=cachedAt===null?null:Math.max(0,now()-cachedAt);
+      if(cached?.fullOdds&&cacheAge!==null&&cacheAge<=UI_ODDS_CACHE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:cached.fullOdds,fetchedAt:cachedAt,source:cached.source||'UI_ODDS_CACHE',cached:true,stale:false},{headers:{'cache-control':'no-store'}});
       try{
-        const root=await fetchFullOdds(fixtureId,this.env),fetchedAt=now(),nextFixtures=fixtures.map(x=>String(x?.fixtureId??'')===fixtureId?{...x,fullOdds:clone(root),fullOddsFetchedAt:fetchedAt,fullOddsSource:'UI_EXPAND'}:x);
-        await this.ctx.storage.put('board',{...board,fixtures:nextFixtures});
-        return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:root,fetchedAt,source:'UI_EXPAND',cached:false},{headers:{'cache-control':'no-store'}});
+        const root=await fetchFullOdds(fixtureId,this.env),fetchedAt=now(),record={fullOdds:clone(root),fetchedAt,source:'UI_EXPAND'};
+        await this.ctx.storage.put(cacheKey,record);
+        return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:root,fetchedAt,source:'UI_EXPAND',cached:false,stale:false},{headers:{'cache-control':'no-store'}});
       }catch(e){
+        if(cached?.fullOdds&&cacheAge!==null&&cacheAge<=UI_ODDS_STALE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:cached.fullOdds,fetchedAt:cachedAt,source:cached.source||'UI_ODDS_CACHE',cached:true,stale:true,refreshError:String(e?.message||e)},{headers:{'cache-control':'no-store'}});
         const status=Number(e?.status)===429?429:502,retryAfter=num(e?.retryAfter),headers={'cache-control':'no-store'};if(retryAfter!==null)headers['retry-after']=String(retryAfter);
         return Response.json({ok:false,version:VERSION,fixtureId,error:String(e?.message||e),retryAfter},{status,headers});
       }
