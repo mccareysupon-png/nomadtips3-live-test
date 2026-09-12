@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-full-odds-main-v3-full-only';
+const VERSION='343-full-odds-main-v4-single-slot';
 const API='/api/engine/fixture-odds';
 const CACHE_MS=60_000;
 const cache=new Map(),busy=new Set();
@@ -83,12 +83,11 @@ function marketHtml(key,value,card){
 }
 function rank(key){const k=String(key).toLowerCase(),half=/(half|1st)/.test(k)?1:0;let f=9;if(k.startsWith('1x2'))f=0;else if(k==='asian'||k.startsWith('asian_'))f=1;else if(k.startsWith('goal'))f=2;else if(k.startsWith('corner'))f=3;else if(k.startsWith('card')||k.startsWith('cards'))f=4;else if(k.startsWith('btts'))f=5;return f*10+half}
 function ensureHost(card){
-  card.querySelectorAll('.b365-board,[data-b365-addon]').forEach(el=>el.remove());
-  let host=card.querySelector('[data-full-odds-main]');if(host)return host;
-  const details=card.querySelector('.event-details');if(!details)return null;
+  const details=card?.querySelector('.event-details');if(!details)return null;
+  let host=details.querySelector('[data-full-odds-main]');if(host)return host;
   host=document.createElement('div');host.dataset.fullOddsMain='1';host.className='fom-addon';
   const flow=details.querySelector('.nomad-event-flow-card'),stats=details.querySelector('.evidence-card');
-  if(flow)flow.insertAdjacentElement('afterend',host);else if(stats)stats.insertAdjacentElement('afterend',host);else details.prepend(host);
+  if(flow)flow.insertAdjacentElement('afterend',host);else if(stats)stats.insertAdjacentElement('afterend',host);else details.appendChild(host);
   return host;
 }
 function render(card,payload){
@@ -112,19 +111,24 @@ async function load(card){
   finally{busy.delete(id)}
 }
 function afterToggle(card){setTimeout(()=>{if(card?.getAttribute('aria-expanded')==='true')load(card)},0)}
-function hydrateExpanded(root=document){root.querySelectorAll?.('.match-card[data-match-id][aria-expanded="true"]').forEach(load)}
+function hydrateAdded(node){
+  if(node?.nodeType!==1)return;
+  if(node.matches?.('.match-card[data-match-id][aria-expanded="true"]'))load(node);
+  node.querySelectorAll?.('.match-card[data-match-id][aria-expanded="true"]').forEach(load);
+}
 function injectStyle(){
   if(document.getElementById('nomad343-full-odds-main'))return;
   const s=document.createElement('style');s.id='nomad343-full-odds-main';
-  s.textContent=`.b365-board,[data-b365-addon]{display:none!important}.fom-addon{display:grid;gap:8px;margin:8px 0 9px}.fom-board{background:#0e1511;border:1px solid #2b3a30}.fom-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #28362c}.fom-head>div{display:grid;gap:2px;min-width:0}.fom-head b{font-size:11px;letter-spacing:.05em;color:#eef7f0}.fom-head small{font-size:8px;color:#7f8d83;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fom-count{font-size:8px;font-weight:900;color:#f1c75b;border:1px solid #5b4e29;padding:3px 6px;background:#1c190f;white-space:nowrap}.fom-count.muted{color:#7c8980;border-color:#344039;background:#111713}.fom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px}.fom-market{border:1px solid #26352b;background:#111914;min-width:0}.fom-market>header{display:flex;justify-content:space-between;gap:8px;padding:7px 8px;border-bottom:1px solid #26352b}.fom-market>header b{font-size:9px;color:#dfeae2}.fom-market>header span{font-size:7px;color:#f1c75b;font-weight:900}.fom-stage{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04)}.fom-stage:last-child{border-bottom:0}.fom-stage>b{display:block;margin-bottom:5px;font-size:7px;color:#7f8c83}.fom-chips{display:flex;gap:6px;flex-wrap:wrap}.fom-chip{display:grid;gap:2px;min-width:78px;padding:5px 7px;border:1px solid #2d3b31;background:#0c120e}.fom-chip small{font-size:7px;color:#88958c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fom-chip strong{font-size:10px;color:#edf6ef;font-variant-numeric:tabular-nums}.fom-empty{padding:14px;text-align:center;color:#7d8981;font-size:9px}@media(max-width:760px){.fom-grid{grid-template-columns:1fr}.fom-chip{min-width:72px}}`;
+  s.textContent=`.fom-addon{display:grid;gap:8px;margin:8px 0 9px}.fom-board{background:#0e1511;border:1px solid #2b3a30}.fom-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #28362c}.fom-head>div{display:grid;gap:2px;min-width:0}.fom-head b{font-size:11px;letter-spacing:.05em;color:#eef7f0}.fom-head small{font-size:8px;color:#7f8d83;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fom-count{font-size:8px;font-weight:900;color:#f1c75b;border:1px solid #5b4e29;padding:3px 6px;background:#1c190f;white-space:nowrap}.fom-count.muted{color:#7c8980;border-color:#344039;background:#111713}.fom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px}.fom-market{border:1px solid #26352b;background:#111914;min-width:0}.fom-market>header{display:flex;justify-content:space-between;gap:8px;padding:7px 8px;border-bottom:1px solid #26352b}.fom-market>header b{font-size:9px;color:#dfeae2}.fom-market>header span{font-size:7px;color:#f1c75b;font-weight:900}.fom-stage{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04)}.fom-stage:last-child{border-bottom:0}.fom-stage>b{display:block;margin-bottom:5px;font-size:7px;color:#7f8c83}.fom-chips{display:flex;gap:6px;flex-wrap:wrap}.fom-chip{display:grid;gap:2px;min-width:78px;padding:5px 7px;border:1px solid #2d3b31;background:#0c120e}.fom-chip small{font-size:7px;color:#88958c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fom-chip strong{font-size:10px;color:#edf6ef;font-variant-numeric:tabular-nums}.fom-empty{padding:14px;text-align:center;color:#7d8981;font-size:9px}@media(max-width:760px){.fom-grid{grid-template-columns:1fr}.fom-chip{min-width:72px}}`;
   document.head.appendChild(s)
 }
 function start(){
   injectStyle();
   document.addEventListener('click',e=>{const card=e.target.closest('.match-card[data-match-id]');if(card)afterToggle(card)});
   document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const card=e.target.closest('.match-card[data-match-id]');if(card)afterToggle(card)});
-  const mo=new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes){if(n?.nodeType!==1)continue;if(n.matches?.('.match-card[data-match-id][aria-expanded="true"]'))load(n);hydrateExpanded(n)}});mo.observe(document.body,{childList:true,subtree:true});
-  hydrateExpanded();
+  const mo=new MutationObserver(records=>{for(const r of records)for(const n of r.addedNodes)hydrateAdded(n)});
+  document.querySelectorAll('.match-stack').forEach(root=>mo.observe(root,{childList:true,subtree:true}));
+  document.querySelectorAll('.match-card[data-match-id][aria-expanded="true"]').forEach(load);
   window.NOMAD343_FULL_ODDS_MAIN={version:VERSION,reload:id=>{cache.delete(String(id));const card=document.querySelector(`.match-card[data-match-id="${CSS.escape(String(id))}"]`);if(card)load(card)}};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
