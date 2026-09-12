@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-11T22:39:27Z",
+  "updated_at": "2026-09-12T01:12:59Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -9119,8 +9119,8 @@
       "edge": 26.9,
       "ev": 0.4273,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "1-2",
       "locked_at": "2026-09-11T03:55:34Z",
       "source_url": "https://www.goaloo.com/football/usa-women-racing-louisville-w-vs-gotham-fc-w/h2h-2957039",
       "summary_url": "https://www.goaloo.com/football/usa-women-racing-louisville-w-vs-gotham-fc-w/summary-2957039",
@@ -9180,7 +9180,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-12T01:12:59Z"
     },
     {
       "id": "2ffe0ee787a6ae73-AH-AWAY-0p75",
@@ -13474,8 +13479,8 @@
       "edge": 13.6,
       "ev": 0.2035,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-2",
       "locked_at": "2026-09-11T01:37:32Z",
       "source_url": "https://www.goaloo.com/football/argentina-primera-b-metropolitana-ituzaingo-vs-comunicaciones-bsas/h2h-2934802",
       "summary_url": "https://www.goaloo.com/football/argentina-primera-b-metropolitana-ituzaingo-vs-comunicaciones-bsas/summary-2934802",
@@ -13535,7 +13540,12 @@
         "away_recent": 8,
         "h2h_n": 5,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 114.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-12T01:12:59Z"
     },
     {
       "id": "86ef5b1c4bf365f8-AH-HOME-0p25",
@@ -35753,6 +35763,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-11T22:39:27Z"
+    },
+    {
+      "id": "b9498cad10681149-AH-HOME-0p75",
+      "goaloo_id": "2957039",
+      "date": "2026-09-11",
+      "kickoff": "2026-09-11 22:30:00",
+      "league": "USA Women",
+      "home": "Racing Louisville (W)",
+      "away": "Gotham FC (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Racing Louisville (W) +0.75",
+      "side": "home",
+      "odds": 1.86,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.764,
+      "model_probability": 0.764,
+      "market_fair_probability": 0.4946,
+      "market_edge": 0.2695,
+      "edge": 26.9,
+      "ev": 0.4273,
+      "required_confidence": 0.6,
+      "result": "HALF_LOSS",
+      "ft": "1-2",
+      "locked_at": "2026-09-11T03:55:34Z",
+      "source_url": "https://www.goaloo.com/football/usa-women-racing-louisville-w-vs-gotham-fc-w/h2h-2957039",
+      "summary_url": "https://www.goaloo.com/football/usa-women-racing-louisville-w-vs-gotham-fc-w/summary-2957039",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.194,
+        "lambda_away": 0.947,
+        "home_win": 0.4069,
+        "draw": 0.3144,
+        "away_win": 0.2787,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.1252,
+          "gd_edge": 0.1204,
+          "clean_sheet_edge": -0.0146,
+          "failed_to_score_edge": -0.0537,
+          "bounded_adjustment": 0.0065,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-12T01:12:59Z"
+    },
+    {
+      "id": "f81cc84acb27ed0e-OU-OVER-2p25",
+      "goaloo_id": "2934802",
+      "date": "2026-09-11",
+      "kickoff": "2026-09-11 22:00:00",
+      "league": "Argentina Primera B Metropolitana",
+      "home": "Ituzaingo",
+      "away": "Comunicaciones BsAs",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 2.14,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.5666,
+      "model_probability": 0.5666,
+      "market_fair_probability": 0.4309,
+      "market_edge": 0.1357,
+      "edge": 13.6,
+      "ev": 0.2035,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-2",
+      "locked_at": "2026-09-11T01:37:32Z",
+      "source_url": "https://www.goaloo.com/football/argentina-primera-b-metropolitana-ituzaingo-vs-comunicaciones-bsas/h2h-2934802",
+      "summary_url": "https://www.goaloo.com/football/argentina-primera-b-metropolitana-ituzaingo-vs-comunicaciones-bsas/summary-2934802",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v1",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.8,
+        "lambda_away": 0.887,
+        "home_win": 0.6063,
+        "draw": 0.2462,
+        "away_win": 0.1475,
+        "h2h_adjustment": -0.009,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4683,
+          "gd_edge": 0.5871,
+          "clean_sheet_edge": 0.322,
+          "failed_to_score_edge": 0.2098,
+          "bounded_adjustment": 0.0349,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 8,
+        "h2h_n": 5,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 114.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-12T01:12:59Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
