@@ -2,27 +2,54 @@
   "engine": "add-k-multimarket-goaloo-v2-ah-sign",
   "policy": "ADD_K_MULTI_170_STRONGEST",
   "status": "OK",
-  "last_selection_run": "2026-09-11T01:37:39Z",
+  "last_selection_run": "2026-09-12T01:47:47Z",
   "last_settlement_run": "2026-09-12T01:12:59Z",
-  "selection_date": "2026-09-11",
-  "fixtures_seen": 394,
-  "qualified": 184,
-  "pending": 82,
+  "selection_date": "2026-09-12",
+  "fixtures_seen": 653,
+  "qualified": 372,
+  "pending": 372,
   "max_daily_picks": null,
   "no_pick": false,
   "primary_source": "Goaloo bf_us.js + H2H + goal50.xml",
   "decision_layer": "ADD K strongest market across 1X2/AH/O-U; one pick per match",
-  "rejected": 210,
+  "rejected": 281,
   "rejection_reasons": {
-    "GOALOO_FORM_SHORT": 106,
-    "NO_MARKET_PASSED": 63,
-    "NO_GOALOO_MARKETS": 41
+    "GOALOO_FORM_SHORT": 144,
+    "NO_MARKET_PASSED": 135,
+    "NO_GOALOO_MARKETS": 2
   },
   "rejection_samples": [
     {
-      "match": "Washington (W) vs Maryland (W)",
+      "match": "Palestino FC Choloma vs CD Suyapa",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 1,
+      "home_n": 0,
+      "away_n": 1
+    },
+    {
+      "match": "Acatlan vs Real Apodaca FC",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 7
+    },
+    {
+      "match": "Perez Zeledon vs AD San Carlos",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 2.25",
+      "confidence": 0.5231,
+      "odds": 1.77,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Angel City FC (W) vs Denver Summit W",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 10
+    },
+    {
+      "match": "Saprissa (W) vs Sporting San Jose (W)",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 8,
       "away_n": 0
     },
     {
@@ -32,373 +59,367 @@
       "away_n": 4
     },
     {
-      "match": "Pumas U.N.A.M. vs Club Leon",
+      "match": "CF Atlante vs Pachuca",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Pumas U.N.A.M. +0.25",
-      "confidence": 0.5624,
-      "odds": 1.86,
-      "gate": "CONFIDENCE_GATE"
-    },
-    {
-      "match": "Luis Angel Firpo vs CD Olimpia",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "CD Olimpia -0",
-      "confidence": 0.5336,
-      "odds": 1.5,
+      "best_pick": "Pachuca +0",
+      "confidence": 0.5645,
+      "odds": 1.68,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "Garudayaksa vs Persik Kediri",
+      "match": "Atlas (W) vs Atlante (W)",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 9
+      "home_n": 9,
+      "away_n": 3
     },
     {
-      "match": "Huda Hue vs Dong Thap",
-      "reason": "NO_GOALOO_MARKETS"
+      "match": "Club Tijuana vs Queretaro FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 2.5",
+      "confidence": 0.5879,
+      "odds": 1.88,
+      "gate": "CONFIDENCE_GATE"
     },
     {
-      "match": "Bunga Raya vs Negeri Sembilan Il",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 1
-    },
-    {
-      "match": "Saikhamakawn FC vs MLS FC Lawngtlai",
+      "match": "North Lakes United (W) vs Caboolture FC (W)",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 9,
       "away_n": 7
     },
     {
-      "match": "UCSA vs FC Chernigiv",
+      "match": "Velago Ikoma vs Bundey thuns kakogawa",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 10,
-      "away_n": 6
+      "home_n": 6,
+      "away_n": 7
     },
     {
-      "match": "United Sports Club vs East Bengal",
+      "match": "ENEOS Mizushima vs Mitsubishi Motors Mizushima",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9
+    },
+    {
+      "match": "Gold Coast Knights (W) vs Eastern Suburbs SC (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Over 2.5",
+      "confidence": 0.5667,
+      "odds": 1.86,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Seosan Pioneer FC vs Geoje Citizen",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
+      "away_n": 9
+    },
+    {
+      "match": "Armadale SC vs Joondalup City",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "East Bengal +0.75",
-      "confidence": 0.5587,
+      "best_pick": "Joondalup City +2.25",
+      "confidence": 0.7318,
+      "odds": 1.65,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Albirex Niigata (W) vs Hiroshima Sanfrecce (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 2.25",
+      "confidence": 0.5797,
+      "odds": 1.85,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Baleine Shimonoseki vs Beluga Rosso Iwami",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 6,
+      "away_n": 4
+    },
+    {
+      "match": "University of Pretoria (W) vs Stellenbosch FC (W)",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
+      "away_n": 1
+    },
+    {
+      "match": "Jeonbuk Hyundai Motors vs FC Seoul",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "OU",
+      "best_pick": "Under 2.5",
+      "confidence": 0.5575,
+      "odds": 1.93,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Seoul E-Land FC vs Suwon Samsung Bluewings",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Suwon Samsung Bluewings +0",
+      "confidence": 0.5791,
+      "odds": 1.73,
+      "gate": "CONFIDENCE_GATE"
+    },
+    {
+      "match": "Shanghai Port B vs Jiangxi Liansheng FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Jiangxi Liansheng FC +0.25",
+      "confidence": 0.5814,
       "odds": 1.79,
       "gate": "CONFIDENCE_GATE"
     },
     {
-      "match": "Mohammedan SC vs Bhawanipore",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 10
-    },
-    {
-      "match": "Daejeon Korail vs Ulsan Citizens",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 10
-    },
-    {
-      "match": "Azur FC Samarkand vs Xorazm FA",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 4,
-      "away_n": 9
-    },
-    {
-      "match": "Qashqadaryo FA vs Nasaf Qarshi B",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 5,
-      "away_n": 9
-    },
-    {
-      "match": "Nongkseh SCC vs Meghalaya Police",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 10,
-      "away_n": 7
-    },
-    {
-      "match": "Switzerland Beach Soccer (W) vs Ukraine Beach (W)",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "TDTT Bac Ninh vs Cong An TP Ho Chi Minh",
+      "match": "Jecheon Citizen FC vs Jincheon HR FC",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
       "away_n": 7
     },
     {
-      "match": "Ekibastuzets vs Tobol Kostanai B",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 8
-    },
-    {
-      "match": "Ezra FC vs Shan United",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 7,
-      "away_n": 8
-    },
-    {
-      "match": "Zhuzhou Football Team vs Yiyang Football Team",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "Chenzhou Football Team vs Shaoyang Football Team",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 5,
-      "away_n": 7
-    },
-    {
-      "match": "Ratchaburi FC vs Bangkok United FC",
+      "match": "Jungnang Chorus Mustang FC vs Pyeongchang FC",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Ratchaburi FC +0",
-      "confidence": 0.5238,
-      "odds": 1.71,
-      "gate": "CONFIDENCE_GATE"
-    },
-    {
-      "match": "AS Khroub vs Paradou AC",
-      "reason": "NO_GOALOO_MARKETS"
-    },
-    {
-      "match": "MO Bejaia vs MO Constantine",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 10
-    },
-    {
-      "match": "Jaiyq vs FC Shakhtyor Karagandy",
-      "reason": "GOALOO_FORM_SHORT",
-      "home_n": 6,
-      "away_n": 5
-    },
-    {
-      "match": "FK Kaspiy Aktau B vs FK Arys",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Under 3.5",
-      "confidence": 0.5492,
-      "odds": 1.51,
+      "best_pick": "Pyeongchang FC +1.25",
+      "confidence": 0.7106,
+      "odds": 1.52,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "PSIS Semarang vs PSPS Pekanbaru",
+      "match": "Cetate Suceava vs CSM Ramnicu Valcea",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 7,
-      "away_n": 8
+      "away_n": 9
     },
     {
-      "match": "Posta Rangers vs KCB SC",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "AH",
-      "best_pick": "Posta Rangers +0",
-      "confidence": 0.5632,
-      "odds": 1.89,
-      "gate": "CONFIDENCE_GATE"
-    },
-    {
-      "match": "Nairobi United vs APS Bomet",
+      "match": "CS Dinamo Bucuresti vs Concordia Chiajna",
       "reason": "GOALOO_FORM_SHORT",
-      "home_n": 8,
+      "home_n": 7,
+      "away_n": 9
+    },
+    {
+      "match": "Metaloglobus vs CSM Satu Mare",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 7,
       "away_n": 7
     },
     {
-      "match": "AFC Leopards vs Shabana FC",
+      "match": "FC Politehnica Timisoara vs Lindab Stefanesti",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Lindab Stefanesti +2.25",
+      "confidence": 0.8947,
+      "odds": 1.69,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Kasem Bundit University FC vs Ayutthaya FC",
+      "reason": "NO_GOALOO_MARKETS"
+    },
+    {
+      "match": "Toin Yokohama University vs Shibuya City FC",
       "reason": "GOALOO_FORM_SHORT",
       "home_n": 8,
+      "away_n": 6
+    },
+    {
+      "match": "Aritma Praha vs Slavia Prague C",
+      "reason": "GOALOO_FORM_SHORT",
+      "home_n": 9,
       "away_n": 6
     }
   ],
   "near_gate_top": [
     {
-      "match": "CSKA Moscow  (W) vs Yenisey Krasnoyarsk  (W)",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Yenisey Krasnoyarsk  (W) Win",
-      "confidence": 0.9302,
-      "odds": 33.0,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "6 Yard Etihad (W) vs Al Istiqlal (W)",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Al Istiqlal (W) Win",
-      "confidence": 0.9027,
-      "odds": 24.0,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Paris Saint Germain (W) vs Strasbourg W",
+      "match": "Levanger FK vs Follo",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Paris Saint Germain (W) +1.75",
-      "confidence": 0.808,
-      "odds": 1.6,
+      "best_pick": "Follo +2.5",
+      "confidence": 0.9634,
+      "odds": 1.63,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "PPS vs Toolon Taisto",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "PPS Win",
-      "confidence": 0.8042,
-      "odds": 6.24,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Slovan Rosice vs Boskovice",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 2.5",
-      "confidence": 0.7737,
-      "odds": 1.55,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Riga FC vs FK Auda Riga",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "FK Auda Riga Win",
-      "confidence": 0.7714,
-      "odds": 7.8,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Trefelin vs Penybont FC",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Trefelin Win",
-      "confidence": 0.7135,
-      "odds": 7.05,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Deportivo La Coruna W vs Real Madrid (W)",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Deportivo La Coruna W Win",
-      "confidence": 0.7134,
-      "odds": 8.95,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Fiorentino vs SP La Fiorita",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Fiorentino Win",
-      "confidence": 0.6803,
-      "odds": 6.13,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "Khor Fakkan vs Banni Yas",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 2.75",
-      "confidence": 0.6778,
-      "odds": 1.61,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Werder Bremen (W) vs Hamburger SV (W)",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "Hamburger SV (W) Win",
-      "confidence": 0.6669,
-      "odds": 6.39,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "SK Treibach vs SV Donau Klagenfurt",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "SV Donau Klagenfurt Win",
-      "confidence": 0.6428,
-      "odds": 6.75,
-      "gate": "ODDS_SAFETY_MAX"
-    },
-    {
-      "match": "San Antonio Bulo Bulo vs Aurora",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 2.75",
-      "confidence": 0.6292,
-      "odds": 1.69,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Al Ali CSC vs Malkia",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 1.75",
-      "confidence": 0.6284,
-      "odds": 1.56,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "Greenock Morton vs Livingston",
+      "match": "Metta/LU Riga vs FK Ventspils",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "Livingston +0.75",
-      "confidence": 0.6281,
-      "odds": 1.64,
+      "best_pick": "FK Ventspils +3.5",
+      "confidence": 0.9553,
+      "odds": 1.63,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "LNZ Cherkasy vs Obolon Kiev",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Obolon Kiev +1.5",
+      "confidence": 0.9529,
+      "odds": 1.67,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Malmo (W) vs Eskilstuna United (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Eskilstuna United (W) +1.5",
+      "confidence": 0.9451,
+      "odds": 1.68,
       "gate": "ODDS_MIN"
     },
     {
       "match": "Gor Mahia vs Bandari",
       "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Under 2.25",
-      "confidence": 0.624,
-      "odds": 1.67,
+      "best_market": "AH",
+      "best_pick": "Bandari +1.25",
+      "confidence": 0.9146,
+      "odds": 1.43,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "VSG Altglienicke vs Chemnitzer",
-      "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 2.5",
-      "confidence": 0.6077,
-      "odds": 1.5,
-      "gate": "ODDS_MIN"
-    },
-    {
-      "match": "HJS Akatemia W vs EBK Espoo (W)",
+      "match": "Boluspor vs Pendikspor",
       "reason": "NO_MARKET_PASSED",
       "best_market": "AH",
-      "best_pick": "EBK Espoo (W) +0.75",
-      "confidence": 0.6044,
-      "odds": 1.68,
+      "best_pick": "Boluspor +1.5",
+      "confidence": 0.9127,
+      "odds": 1.64,
       "gate": "ODDS_MIN"
     },
     {
-      "match": "ToTe vs MPS Atletico Malmi",
+      "match": "CS Constantine vs ASO Chlef",
       "reason": "NO_MARKET_PASSED",
-      "best_market": "OU",
-      "best_pick": "Over 3.5",
-      "confidence": 0.5997,
-      "odds": 1.73,
-      "gate": "CONFIDENCE_GATE"
+      "best_market": "AH",
+      "best_pick": "ASO Chlef +1.25",
+      "confidence": 0.9102,
+      "odds": 1.52,
+      "gate": "ODDS_MIN"
     },
     {
-      "match": "Tre Fiori vs SP Domagnano",
+      "match": "SC Freiburg vs Borussia Monchengladbach",
       "reason": "NO_MARKET_PASSED",
-      "best_market": "1X2",
-      "best_pick": "SP Domagnano Win",
-      "confidence": 0.5983,
-      "odds": 5.02,
-      "gate": "CONFIDENCE_GATE"
+      "best_market": "AH",
+      "best_pick": "Borussia Monchengladbach +1.25",
+      "confidence": 0.901,
+      "odds": 1.56,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "FC Politehnica Timisoara vs Lindab Stefanesti",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Lindab Stefanesti +2.25",
+      "confidence": 0.8947,
+      "odds": 1.69,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "East Kilbride vs Peterhead",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Peterhead +1.25",
+      "confidence": 0.8933,
+      "odds": 1.58,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Ansan Greeners FC vs Hwaseong FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Ansan Greeners FC +1.25",
+      "confidence": 0.8877,
+      "odds": 1.55,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "CSKA Moscow vs Rubin Kazan",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Rubin Kazan +1.25",
+      "confidence": 0.8866,
+      "odds": 1.57,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Guangdong GZ-Power vs Dalian Kun City",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Dalian Kun City +1.5",
+      "confidence": 0.8861,
+      "odds": 1.56,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Renofa Yamaguchi vs Thespa Kusatsu",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Thespa Kusatsu +1.25",
+      "confidence": 0.8786,
+      "odds": 1.47,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "West Ham United (W) vs London City Lionesses (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "West Ham United (W) +1.5",
+      "confidence": 0.8708,
+      "odds": 1.63,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Radnicki 1923 Kragujevac vs Mladost Lucani",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Mladost Lucani +1.25",
+      "confidence": 0.8703,
+      "odds": 1.62,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Rozwoj Katowice vs Ruch Radzionkow",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Rozwoj Katowice +1.5",
+      "confidence": 0.8681,
+      "odds": 1.6,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Athletic Club Bibao (W) vs RCD Espanyol (W)",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "RCD Espanyol (W) +1.25",
+      "confidence": 0.8666,
+      "odds": 1.48,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Bangkok FC vs Thonburi United FC",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Thonburi United FC +1.25",
+      "confidence": 0.8649,
+      "odds": 1.49,
+      "gate": "ODDS_MIN"
+    },
+    {
+      "match": "Aubagne vs Concarneau",
+      "reason": "NO_MARKET_PASSED",
+      "best_market": "AH",
+      "best_pick": "Aubagne +0.75",
+      "confidence": 0.864,
+      "odds": 1.5,
+      "gate": "ODDS_MIN"
     }
   ],
   "source_health": {
     "index_url": "https://live10.goaloo28.com/gf/data/bf_us.js",
     "index_ok": true,
-    "odds_ok": false,
-    "index_rows": 829,
-    "odds_rows": 0,
-    "h2h_static_ok": 0,
+    "odds_ok": true,
+    "index_rows": 779,
+    "odds_rows": 762,
+    "h2h_static_ok": 653,
     "h2h_browser_fallback": 0,
     "errors": []
   },
@@ -429,610 +450,5 @@
     "Each match publishes only the strongest qualified market among 1X2, AH and O/U.",
     "Published odds must be at least 1.70 and the published side itself passes the gate.",
     "Reverse prediction is disabled."
-  ],
-  "ah_sign_fix": {
-    "status": "ACTIVE",
-    "convention": "goal50 raw AH line inverted once at ingestion",
-    "repaired_same_day": [
-      {
-        "goaloo_id": "2919898",
-        "old_pick": "FC Trollhattan +1.5",
-        "new_pick": "Under 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3024542",
-        "old_pick": "FC Ararat Armenia<font color=#880000>(N)</font> +2.25",
-        "new_pick": "Under 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "2913518",
-        "old_pick": "Eidsvold Turn +2.5",
-        "new_pick": "Ullensaker/Kisa IL +2.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2996143",
-        "old_pick": "AZ Alkmaar +2.5",
-        "new_pick": "Willem II +2.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3037799",
-        "old_pick": "Al-Garrafa<font color=#880000>(N)</font> +0.75",
-        "new_pick": "Al-Garrafa<font color=#880000>(N)</font> Win",
-        "new_market": "1X2"
-      },
-      {
-        "goaloo_id": "3045652",
-        "old_pick": "Johor Darul Takzim +4.5",
-        "new_pick": "Negeri Sembilan +4.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2954802",
-        "old_pick": "JK Tallinna Kalev II +1.5",
-        "new_pick": "Under 4.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3049319",
-        "old_pick": "LeeMan +1.75",
-        "new_pick": "Eastern District SA +1.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3086343",
-        "old_pick": "Jazz Pori +1.5",
-        "new_pick": "Under 3.75",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3010033",
-        "old_pick": "UTC Cajamarca +0.75",
-        "new_pick": "Over 2.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3021617",
-        "old_pick": "Hamrun Spartans +1.25",
-        "new_pick": "Birzebbuga +1.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3000940",
-        "old_pick": "Stade Ouchy +1.25",
-        "new_pick": "Under 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3088276",
-        "old_pick": "EsPa +2.5",
-        "new_pick": "EPS Reserves +2.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3021407",
-        "old_pick": "Newport City +0.25",
-        "new_pick": "Newport City -0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3080871",
-        "old_pick": "Flamurtari +1.25",
-        "new_pick": "Under 2.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "2912271",
-        "old_pick": "Hacken +1.25",
-        "new_pick": "Under 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3000941",
-        "old_pick": "FC Rapperswil-Jona -0.25",
-        "new_pick": "FC Rapperswil-Jona +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2952355",
-        "old_pick": "Barkchi Hisor +1.5",
-        "new_pick": "Under 2.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3086125",
-        "old_pick": "KTS-K Luzino +1.5",
-        "new_pick": "Grom Nowy Staw +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3072475",
-        "old_pick": "Sohar Club +0.25",
-        "new_pick": "Sohar Club -0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3087656",
-        "old_pick": "Box Hill (W) +0.75",
-        "new_pick": "Over 2.75",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3022533",
-        "old_pick": "SV Tillmitsch +0",
-        "new_pick": "SV Tillmitsch -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3032894",
-        "old_pick": "Al-Thaid +0",
-        "new_pick": "Al-Thaid +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3071673",
-        "old_pick": "Cuenca Juniors +0.25",
-        "new_pick": "Cuenca Juniors -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3072474",
-        "old_pick": "Sur Club +0",
-        "new_pick": "Sur Club -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3020319",
-        "old_pick": "SC Marchfeld Donauauen +1.25",
-        "new_pick": "Over 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3085263",
-        "old_pick": "Ninh Binh FC +1.5",
-        "new_pick": "Thanh Hoa +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3086119",
-        "old_pick": "TJ Spartak Myjava +1.25",
-        "new_pick": "Over 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3051293",
-        "old_pick": "Casarano +0.25",
-        "new_pick": "Over 2.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "2995342",
-        "old_pick": "Rennes +0.25",
-        "new_pick": "Under 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3017904",
-        "old_pick": "ASK Voitsberg -0",
-        "new_pick": "ASK Voitsberg +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3084557",
-        "old_pick": "Heart of Midlothian +1.5",
-        "new_pick": "Stenhousemuir +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3039216",
-        "old_pick": "Andrezieux +1.25",
-        "new_pick": "Lyon Duchere +1.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088288",
-        "old_pick": "EIF Academy +1.5",
-        "new_pick": "Over 4.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3086115",
-        "old_pick": "Eintracht Bamberg +1.5",
-        "new_pick": "Under 3.5",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "2939048",
-        "old_pick": "Cork City +1.5",
-        "new_pick": "Cobh Ramblers +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2933146",
-        "old_pick": "Lokomotiv Tashkent +1.5",
-        "new_pick": "Mashal Muborak +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3026451",
-        "old_pick": "RSV Eintracht -0",
-        "new_pick": "RSV Eintracht +0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3046987",
-        "old_pick": "Al Qadsiah +1.75",
-        "new_pick": "Al-Ettifaq +1.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2998960",
-        "old_pick": "FK Zeleznicar Pancevo +1.25",
-        "new_pick": "Macva Sabac +1.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088333",
-        "old_pick": "SC Red Star Penzing +1.25",
-        "new_pick": "Simmeringer SC +1.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3047383",
-        "old_pick": "Tampines Rovers FC +1.75",
-        "new_pick": "Balestier Khalsa FC +1.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2998112",
-        "old_pick": "Vejle +0.75",
-        "new_pick": "Under 2.75",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3037110",
-        "old_pick": "Port FC +1.5",
-        "new_pick": "Lamphun Warrior +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3021413",
-        "old_pick": "Swansea University +1.5",
-        "new_pick": "Pontardawe Town +1.5",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3043361",
-        "old_pick": "SV Atlas Delmenhorst +0",
-        "new_pick": "SV Atlas Delmenhorst -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088630",
-        "old_pick": "Essendon Royals +0.75",
-        "new_pick": "Keilor Park SC +0.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3019513",
-        "old_pick": "Airbus UK Broughton -1.75",
-        "new_pick": "Airbus UK Broughton +1.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2927347",
-        "old_pick": "Stenungsunds IF +0.75",
-        "new_pick": "Vanersborg FK +0.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088330",
-        "old_pick": "SV Gerasdorf Stammer +0",
-        "new_pick": "SV Gerasdorf Stammer -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088364",
-        "old_pick": "Mizoram Police FC +2.25",
-        "new_pick": "Kanan FC +2.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2998115",
-        "old_pick": "Vendsyssel +0",
-        "new_pick": "Vendsyssel -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3019130",
-        "old_pick": "Darmstadt +0",
-        "new_pick": "Darmstadt -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3000461",
-        "old_pick": "Kashima Antlers -0",
-        "new_pick": "Kashima Antlers +0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3084046",
-        "old_pick": "Prospect United Soccer Club +0.25",
-        "new_pick": "Over 3.25",
-        "new_market": "OU"
-      },
-      {
-        "goaloo_id": "3032799",
-        "old_pick": "Skenderbeu Korca +0",
-        "new_pick": "Skenderbeu Korca -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3022531",
-        "old_pick": "SC Kalsdorf +1.25",
-        "new_pick": "FSC Eggendorf Hartberg II +1.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088888",
-        "old_pick": "NK Race +0",
-        "new_pick": "NK Race -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088154",
-        "old_pick": "Hellenic AC +1.5",
-        "new_pick": "Palmerston +0.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3087426",
-        "old_pick": "Widzew Lodz II +0",
-        "new_pick": "Widzew Lodz II -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3000943",
-        "old_pick": "Etoile Carouge +0",
-        "new_pick": "Etoile Carouge -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3020326",
-        "old_pick": "SV Donau +0",
-        "new_pick": "SV Donau -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2957039",
-        "old_pick": "Gotham FC (W) +0.75",
-        "new_pick": "Racing Louisville (W) +0.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3003147",
-        "old_pick": "Rakow Czestochowa +0.75",
-        "new_pick": "Motor Lublin +0.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3041173",
-        "old_pick": "Sekhukhune United -0",
-        "new_pick": "Sekhukhune United +0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088328",
-        "old_pick": "Oberpullendorf +0",
-        "new_pick": "Oberpullendorf -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3074411",
-        "old_pick": "NRB Teleghma +0",
-        "new_pick": "NRB Teleghma -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3051292",
-        "old_pick": "Giugliano -0.25",
-        "new_pick": "Giugliano +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3086158",
-        "old_pick": "Northcote City +0",
-        "new_pick": "Northcote City -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2927344",
-        "old_pick": "Kumla +0",
-        "new_pick": "Kumla -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2998242",
-        "old_pick": "FC Copenhagen +1.75",
-        "new_pick": "AC Horsens +1.75",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2998480",
-        "old_pick": "Lokomotiv Sofia -0.25",
-        "new_pick": "Lokomotiv Sofia +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3040736",
-        "old_pick": "Benevento +0",
-        "new_pick": "Benevento -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3087655",
-        "old_pick": "West Torrens Birkalla -0.25",
-        "new_pick": "West Torrens Birkalla +0.25",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3009370",
-        "old_pick": "FC Pisek +0",
-        "new_pick": "FC Pisek -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3043368",
-        "old_pick": "Hannover 96 Am -0",
-        "new_pick": "Hannover 96 Am +0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "3088292",
-        "old_pick": "JyTy +0",
-        "new_pick": "JyTy -0",
-        "new_market": "AH"
-      },
-      {
-        "goaloo_id": "2933140",
-        "old_pick": "Buxoro FK -0.25",
-        "new_pick": "Buxoro FK +0.25",
-        "new_market": "AH"
-      }
-    ],
-    "dropped_invalid_same_day": [
-      {
-        "goaloo_id": "3021409",
-        "old_pick": "Caerau Ely +1.75",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3085345",
-        "old_pick": "PVF-CAND +2.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "id": "13ed29ad992858a2-AH-HOME-1p25",
-        "reason": "FIXTURE_NOT_AVAILABLE"
-      },
-      {
-        "goaloo_id": "3040743",
-        "old_pick": "Pisa +0.75",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3056744",
-        "old_pick": "CR Belouizdad +1.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3019750",
-        "old_pick": "Portalban/Gletterens +0.75",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3011590",
-        "old_pick": "Coleraine +1.5",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "id": "8f39ea0b9a5566d4-AH-HOME-0p0",
-        "reason": "FIXTURE_NOT_AVAILABLE"
-      },
-      {
-        "goaloo_id": "3019514",
-        "old_pick": "Caernarfon +2.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "2997721",
-        "old_pick": "Montpellier +0.75",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "2914404",
-        "old_pick": "St. Patricks Athletic +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3023790",
-        "old_pick": "SCU Torreense +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3086138",
-        "old_pick": "El Entag Al Harby +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3005385",
-        "old_pick": "Beerschot Wilrijk +1.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3047477",
-        "old_pick": "Pattaya Discovery United FC +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "2913943",
-        "old_pick": "Fortuna Alesund (W) +3.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3074332",
-        "old_pick": "TP47 Tornio +1.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3035906",
-        "old_pick": "Resovia Rzeszow +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3013690",
-        "old_pick": "Sevilla +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3020882",
-        "old_pick": "Fremad Amager +0.75",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3009490",
-        "old_pick": "Slovan Liberec II -0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3088153",
-        "old_pick": "Port Darwin FC +1.5",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3004985",
-        "old_pick": "LKS Lodz +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "goaloo_id": "3020320",
-        "old_pick": "Parndorf +0.25",
-        "reason": "NO_MARKET_PASSED"
-      },
-      {
-        "id": "c6b95f83e9ae5b8c-AH-HOME-1p25",
-        "reason": "FIXTURE_NOT_AVAILABLE"
-      },
-      {
-        "goaloo_id": "3086149",
-        "old_pick": "NEC FC Bugolobi +0.75",
-        "reason": "NO_MARKET_PASSED"
-      }
-    ],
-    "at": "2026-09-11T03:55:58Z"
-  },
-  "settled_this_run": 2
+  ]
 }
