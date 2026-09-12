@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-league-flags-v1';
+const VERSION='343-league-flags-v2-display';
 const STYLE_ID='nomad343-league-flags-style';
 const FLAG_BASE='https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.5.0/flags/4x3/';
 const WORLD=new Set(['international','world','worldwide','uefa','fifa','europe','global','international clubs','club international']);
