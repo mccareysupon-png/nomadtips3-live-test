@@ -15,14 +15,18 @@ jobs:
         run: |
           node <<'NODE'
           const BASE=process.env.BASE;
-          const ids=new Set(['200943379','200116599']);
-          const r=await fetch(BASE+'/api/engine/board?resultcheck='+Date.now(),{headers:{'cache-control':'no-cache'}});
-          if(!r.ok) throw new Error('board '+r.status);
-          const board=await r.json();
+          const ids=['200943379','200116599'];
+          async function j(path){const r=await fetch(BASE+path,{headers:{'cache-control':'no-cache'}});const t=await r.text();console.log('HTTP',path,r.status);try{return JSON.parse(t)}catch{return {raw:t.slice(0,2000)}}}
+          const board=await j('/api/engine/board?resultcheck='+Date.now());
+          const signals=await j('/api/engine/signals?resultcheck='+Date.now());
           console.log('CHECK_TS',new Date().toISOString());
           for(const id of ids){
             const f=(board.fixtures||[]).find(x=>String(x.fixtureId)===id);
-            if(!f){ console.log('RESULT_JSON '+JSON.stringify({fixtureId:id,found:false})); continue; }
-            console.log('RESULT_JSON '+JSON.stringify({fixtureId:id,found:true,home:f.home?.name,away:f.away?.name,status:f.status??f.boardState,statusCode:f.statusCode,minute:f.minute,goals:f.goals,boardState:f.boardState}));
+            console.log('BOARD_RESULT '+JSON.stringify(f?{fixtureId:id,found:true,home:f.home?.name,away:f.away?.name,status:f.status??f.boardState,statusCode:f.statusCode,minute:f.minute,goals:f.goals,boardState:f.boardState}:{fixtureId:id,found:false}));
+            const h=await j('/api/engine/history?fixtureId='+id+'&window=120&resultcheck='+Date.now());
+            const compact={fixtureId:id,keys:Object.keys(h||{}),status:h?.status,boardState:h?.boardState,minute:h?.minute,score:h?.score,goals:h?.goals,finalScore:h?.finalScore,result:h?.result,settlement:h?.settlement,pressure:Array.isArray(h?.pressure)?h.pressure.slice(-3):undefined};
+            console.log('HISTORY_RESULT '+JSON.stringify(compact));
+            const roots=[]; const walk=(v,d=0)=>{if(d>5||v==null)return;if(Array.isArray(v)){for(const x of v)walk(x,d+1);return}if(typeof v!=='object')return;if(String(v.fixtureId??v.fixture_id??'')===id)roots.push(v);for(const x of Object.values(v))if(x&&typeof x==='object')walk(x,d+1)}; walk(signals);
+            console.log('SIGNAL_RESULT '+JSON.stringify({fixtureId:id,matches:roots.slice(0,5)}));
           }
           NODE
