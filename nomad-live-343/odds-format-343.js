@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-odds-format-v2-odds-only-preserve-total';
+const VERSION='343-odds-format-v3-full-odds-safe';
 const STORAGE_KEY='nomad343_odds_format_v1';
 const EVENT_NAME='nomad343:odds-format-change';
 const FORMATS={decimal:'DEC',fractional:'FRA',american:'AM'};
@@ -57,6 +57,21 @@ function convertChip(strong){
   const raw=strong.textContent.trim(),n=numeric(raw);if(n===null||n<=1)return;
   strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';setElementText(strong,format(raw));
 }
+function convertFullOddsChip(strong){
+  if(!strong.closest('.fom-chip'))return;
+  if(strong.dataset.nomadOddsRaw){
+    if(strong.dataset.nomadOddsMode==='at')setElementText(strong,`${strong.dataset.nomadOddsPrefix||''}${format(strong.dataset.nomadOddsRaw)}${strong.dataset.nomadOddsSuffix||''}`);
+    else setElementText(strong,format(strong.dataset.nomadOddsRaw));
+    return;
+  }
+  const at=parseAt(strong.textContent);
+  if(at){
+    strong.dataset.nomadOddsRaw=at.raw;strong.dataset.nomadOddsMode='at';strong.dataset.nomadOddsPrefix=at.prefix;strong.dataset.nomadOddsSuffix=at.suffix;
+    setElementText(strong,`${at.prefix}${format(at.raw)}${at.suffix}`);return;
+  }
+  const raw=strong.textContent.trim(),n=numeric(raw);if(n===null||n<=1)return;
+  strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';setElementText(strong,format(raw));
+}
 function convertSignalMarket(span){
   const node=[...span.childNodes].find(n=>n.nodeType===3&&String(n.nodeValue).includes('@'));if(!node)return;
   if(!span.dataset.nomadOddsRaw){const p=parseAt(node.nodeValue);if(!p)return;span.dataset.nomadOddsRaw=p.raw;span.dataset.nomadOddsPrefix=p.prefix;span.dataset.nomadOddsSuffix=p.suffix}
@@ -81,6 +96,7 @@ function apply(root=document){
   try{
     root.querySelectorAll?.('.b365-signal-price').forEach(convertAtElement);
     root.querySelectorAll?.('.b365-chip strong').forEach(convertChip);
+    root.querySelectorAll?.('.fom-chip strong').forEach(convertFullOddsChip);
     root.querySelectorAll?.('.signal-market-chip > span').forEach(convertSignalMarket);
     root.querySelectorAll?.('.signal-entry-block > header small').forEach(convertAtElement);
     root.querySelectorAll?.('.signal-entry-grid > div').forEach(el=>convertLabelledDirect(el,'ODDS AT SIGNAL'));
