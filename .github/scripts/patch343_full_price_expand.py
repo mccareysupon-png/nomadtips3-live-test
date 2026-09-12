@@ -1,0 +1,94 @@
+from pathlib import Path
+
+engine = Path('workers/nomadtips3-engine-343/src/index.js')
+s = engine.read_text()
+
+old = "const MAX_ODDS_FIXTURES_PER_SCAN=4;\nconst SETTLEMENT_REVISION='bet365-rules-v2';"
+new = "const MAX_ODDS_FIXTURES_PER_SCAN=4;\nconst UI_ODDS_CACHE_MS=60_000;\nconst SETTLEMENT_REVISION='bet365-rules-v2';"
+assert old in s, 'engine cache constant anchor not found'
+s = s.replace(old, new, 1)
+
+old = """async function fetchFullOdds(fixtureId,env){
+  if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
+  const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
+  if(!r.ok)throw new Error(`5USD_ODDS_HTTP_${r.status}`);const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
+}"""
+new = """async function fetchFullOdds(fixtureId,env){
+  if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
+  const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
+  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
+}"""
+assert old in s, 'engine fetchFullOdds anchor not found'
+s = s.replace(old, new, 1)
+
+anchor = "    if(u.pathname==='/health'){const m=await this.ctx.storage.get('lastScan');return Response.json({ok:Boolean(m?.ok),component:'NOMAD343_ENGINE',version:VERSION,...m})}"
+insert = """    if(u.pathname==='/fixture-odds'&&request.method==='GET'){
+      const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();
+      if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400,headers:{'cache-control':'no-store'}});
+      const board=await this.ctx.storage.get('board')||{fixtures:[]},fixtures=Array.isArray(board?.fixtures)?board.fixtures:[],fixture=fixtures.find(x=>String(x?.fixtureId??'')===fixtureId);
+      if(!fixture)return Response.json({ok:false,error:'FIXTURE_NOT_ON_BOARD'},{status:404,headers:{'cache-control':'no-store'}});
+      const cachedAt=num(fixture?.fullOddsFetchedAt);
+      if(fixture?.fullOdds&&cachedAt!==null&&now()-cachedAt<=UI_ODDS_CACHE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:fixture.fullOdds,fetchedAt:cachedAt,source:fixture.fullOddsSource||'ENGINE_CACHE',cached:true},{headers:{'cache-control':'no-store'}});
+      try{
+        const root=await fetchFullOdds(fixtureId,this.env),fetchedAt=now(),nextFixtures=fixtures.map(x=>String(x?.fixtureId??'')===fixtureId?{...x,fullOdds:clone(root),fullOddsFetchedAt:fetchedAt,fullOddsSource:'UI_EXPAND'}:x);
+        await this.ctx.storage.put('board',{...board,fixtures:nextFixtures});
+        return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:root,fetchedAt,source:'UI_EXPAND',cached:false},{headers:{'cache-control':'no-store'}});
+      }catch(e){
+        const status=Number(e?.status)===429?429:502,retryAfter=num(e?.retryAfter),headers={'cache-control':'no-store'};if(retryAfter!==null)headers['retry-after']=String(retryAfter);
+        return Response.json({ok:false,version:VERSION,fixtureId,error:String(e?.message||e),retryAfter},{status,headers});
+      }
+    }
+""" + anchor
+assert anchor in s, 'engine route anchor not found'
+s = s.replace(anchor, insert, 1)
+engine.write_text(s)
+
+board = Path('nomad-live-343/bet365-board.js')
+s = board.read_text()
+old = "const SIGNALS_API='/api/engine/signals';\nconst POLL_MS=30_000;"
+new = "const SIGNALS_API='/api/engine/signals';\nconst FULL_ODDS_API='/api/engine/fixture-odds';\nconst FULL_ODDS_REFRESH_MS=60_000;\nconst POLL_MS=30_000;"
+assert old in s, 'board api anchor not found'
+s = s.replace(old, new, 1)
+
+old = "let lastSnapshot=null,lastSignals=[],busy=false;"
+new = "let lastSnapshot=null,lastSignals=[],busy=false;\nconst fullOddsBusy=new Set();"
+assert old in s, 'board state anchor not found'
+s = s.replace(old, new, 1)
+
+anchor = "function signalsForFixture(signals,id){return (Array.isArray(signals)?signals:[]).filter(s=>String(s?.fixtureId??'')===String(id??''))}"
+insert = """function snapshotFixture(id){return (Array.isArray(lastSnapshot?.fixtures)?lastSnapshot.fixtures:[]).find(f=>String(f?.fixtureId??'')===String(id??''))||null}
+function fullOddsFresh(f){const at=num(f?.fullOddsFetchedAt);return Boolean(f?.fullOdds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}
+async function ensureFullOdds(id){
+  id=String(id||'');if(!id||fullOddsBusy.has(id))return;
+  const existing=snapshotFixture(id);if(fullOddsFresh(existing))return;
+  fullOddsBusy.add(id);
+  try{
+    const r=await fetch(`${FULL_ODDS_API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);
+    if(!r.ok||j?.ok!==true){console.warn('[NOMAD343 FULL ODDS]',r.status,j?.error||'NOT_READY');return}
+    const f=snapshotFixture(id);if(f){f.fullOdds=j.fullOdds;f.fullOddsFetchedAt=j.fetchedAt;f.fullOddsSource=j.source||'UI_EXPAND'}
+    if(lastSnapshot)decorate(lastSnapshot,lastSignals);
+    window.NOMAD343_ODDS?.refresh?.();
+  }catch(e){console.warn('[NOMAD343 FULL ODDS]',e)}finally{fullOddsBusy.delete(id)}
+}
+function requestExpandedFullOdds(card){if(!card)return;queueMicrotask(()=>{if(card.getAttribute('aria-expanded')==='true')ensureFullOdds(card.dataset.matchId)})}
+""" + anchor
+assert anchor in s, 'board signals anchor not found'
+s = s.replace(anchor, insert, 1)
+
+old = "    const wrap=document.createElement('div');wrap.dataset.b365Addon='1';wrap.className='b365-addon';wrap.innerHTML=oddsPanel(f,snapshot,signalsForFixture(signals,id));placeAddon(details,wrap);"
+new = "    const wrap=document.createElement('div');wrap.dataset.b365Addon='1';wrap.className='b365-addon';wrap.innerHTML=oddsPanel(f,snapshot,signalsForFixture(signals,id));placeAddon(details,wrap);if(card.getAttribute('aria-expanded')==='true')ensureFullOdds(id);"
+assert old in s, 'board decorate anchor not found'
+s = s.replace(old, new, 1)
+
+old = "function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load}}"
+new = "function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>requestExpandedFullOdds(e.target.closest('.match-card[data-match-id]')));document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')requestExpandedFullOdds(e.target.closest('.match-card[data-match-id]'))});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load,refreshFullOdds:ensureFullOdds}}"
+assert old in s, 'board start anchor not found'
+s = s.replace(old, new, 1)
+board.write_text(s)
+
+index = Path('nomad-live-343/index.html')
+s = index.read_text()
+old = 'bet365-board.js?v=343-b365-v4-market-language&fix=oddsrestore1'
+new = 'bet365-board.js?v=343-b365-v4-market-language&fix=fullprices1'
+assert old in s, 'index cache-bust anchor not found'
+index.write_text(s.replace(old, new, 1))
