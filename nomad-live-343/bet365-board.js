@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-bet365-board-v8-merge-full-bulk';
+const VERSION='343-bet365-board-v4-market-language';
 const SIGNAL_ODDS_REVISION='v5-signal-odds-merge';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
