@@ -1,6 +1,8 @@
 (()=>{
 'use strict';
 const API='/api/engine/statistics',POLL=45000;
+const VIEWER_TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch{return'UTC'}})();
+const VIEWER_LOCALE=(()=>{try{return navigator.language||'en-GB'}catch{return'en-GB'}})();
 let marketDefs={};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const show=v=>v===null||v===undefined||v===''?'—':String(v);
@@ -11,7 +13,7 @@ function marketKey(s){return String(s?.market||s?.providerMarket||'').toLowerCas
 function isAsianMarket(s){const k=marketKey(s);return /(^|_)(ah|asian)(_|$)/.test(k)||k.includes('handicap')||k.includes('corner_asian')||k.includes('card_asian')||k.includes('cards_asian')}
 function publicLineText(s){const n=num(s?.line);if(n===null)return'—';return isAsianMarket(s)?signedLineText(n):numberText(n)}
 function label(s){return s?.marketLabel||marketDefs[s?.market]?.label||s?.market||'—'}
-function dt(ms){try{const d=new Date(ms);const date=new Intl.DateTimeFormat('th-TH',{timeZone:'Asia/Bangkok',day:'2-digit',month:'2-digit'}).format(d);const time=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Bangkok',hour:'2-digit',minute:'2-digit',hour12:true}).format(d);return`${date} ${time}`}catch{return'—'}}
+function dt(ms){try{return new Intl.DateTimeFormat(VIEWER_LOCALE,{timeZone:VIEWER_TZ,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(ms))}catch{return'—'}}
 function resultTag(r){const cls=r==='WIN'||r==='HALF_WIN'?'win':r==='LOSS'||r==='HALF_LOSS'?'loss':'push';return`<span class="tag ${cls}">${esc(r||'—')}</span>`}
 function resultCell(s){const audit=s?.previousResult&&s.previousResult!==s.result?`แก้จาก ${s.previousResult} · ${s.settlementRevision||'RULE FIX'}`:(s?.settlementRevision||'');return`${resultTag(s?.result)}${audit?`<span class="sub">${esc(audit)}</span>`:''}`}
 function set(q,v){const el=document.querySelector(q);if(el)el.textContent=show(v)}
