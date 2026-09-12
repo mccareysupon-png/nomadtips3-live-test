@@ -1,0 +1,28 @@
+name: Check NOMAD 3.43 Pick Results
+on:
+  push:
+    branches: ["probe/nomad343-live-picks-20260912"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check frozen fixture results from NOMAD 3.43 only
+        env:
+          BASE: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+        run: |
+          node <<'NODE'
+          const BASE=process.env.BASE;
+          const ids=new Set(['200943379','200116599']);
+          const r=await fetch(BASE+'/api/engine/board?resultcheck='+Date.now(),{headers:{'cache-control':'no-cache'}});
+          if(!r.ok) throw new Error('board '+r.status);
+          const board=await r.json();
+          console.log('CHECK_TS',new Date().toISOString());
+          for(const id of ids){
+            const f=(board.fixtures||[]).find(x=>String(x.fixtureId)===id);
+            if(!f){ console.log('RESULT_JSON '+JSON.stringify({fixtureId:id,found:false})); continue; }
+            console.log('RESULT_JSON '+JSON.stringify({fixtureId:id,found:true,home:f.home?.name,away:f.away?.name,status:f.status??f.boardState,statusCode:f.statusCode,minute:f.minute,goals:f.goals,boardState:f.boardState}));
+          }
+          NODE
