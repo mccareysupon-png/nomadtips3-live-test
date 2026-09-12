@@ -11,6 +11,10 @@ body[data-page="statistics"] .shell{
   padding-bottom:calc(76px + env(safe-area-inset-bottom));
 }
 
+body[data-page="statistics"] .stat-kpi-grid{
+  grid-template-columns:repeat(5,minmax(0,1fr));
+}
+
 body[data-page="statistics"] .statistics-nav{
   position:fixed;
   left:0;
@@ -42,6 +46,12 @@ body[data-page="statistics"] .statistics-nav a.active{
   color:#fff;
   background:#1b3021;
   border-top-color:var(--yellow);
+}
+
+@media(max-width:760px){
+  body[data-page="statistics"] .stat-kpi-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
 }
 
 /* Only a clearly desktop browser moves the SAME nav into the header. */
