@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-football-english-v1';
+const VERSION='343-football-english-v1-qa1';
 
 const EXACT=new Map(Object.entries({
   'ยิงเข้ากรอบ':'Shots on Target',
@@ -56,6 +56,7 @@ const EXACT=new Map(Object.entries({
   'WHY THIS SIGNAL':'Signal Criteria',
   'LIVE NOW':'Live',
   'LIVE MATCH STATISTICS':'Live Match Statistics',
+  'MATCH STATISTICS':'Match Statistics',
   'SIGNAL TRACKER':'Signal Tracker',
   'SIGNAL DETAILS':'Signal Details',
   'ENTRY LOCKED':'Entry Locked',
@@ -75,6 +76,7 @@ const EXACT=new Map(Object.entries({
   'Bookmaker Price Flow':'Odds Movement',
   'Actual observations':'Observed Odds',
   'EVENT FLOW · ATTACK MOMENTUM':'Event Flow · Attack Momentum',
+  'Event Flow · Engine history':'Event Flow · Match History',
   'Engine history · independent 1–100 attack intensity':'Attack intensity from recent match data',
   'WAIT':'Waiting for Data',
 
@@ -93,6 +95,12 @@ const EXACT=new Map(Object.entries({
   'HALF_WIN':'Half Win',
   'HALF_LOSS':'Half Loss',
   'UNRESOLVED':'Unresolved',
+  'PASS':'Pass',
+  'NOT MET':'Not Met',
+  'REQUIRED':'Required',
+  'LOADING':'Loading',
+  'ODDS —':'Odds —',
+  'Full prices unavailable for this fixture':'Full Market Odds Unavailable',
 
   'BET365 · FULL ODDS':'BET365 · FULL MARKET ODDS',
   '1X2 · Full Time':'Match Result · Full Time',
@@ -141,6 +149,7 @@ const RULES=[
   [/\s+·\s+HALF\s+(\d+\/\d+)$/,' · Half Results $1'],
   [/^(\d+)\s+SIGNAL(S?)\s+·\s+DETAILS$/i,(_,n,s)=>`${n} Signal${s?'s':''} · Details`],
   [/^(\d+)\s+PTS$/i,'$1 Points'],
+  [/^(\d+)\s+MARKETS$/i,'$1 Markets'],
   [/^Event Flow ยังไม่พร้อม\s+·\s*/,'Event Flow Unavailable · '],
   [/^แก้จาก\s+(.+?)\s+·\s*/,'Revised from $1 · '],
   [/^เทียบการบุกจากช่วงข้อมูลใหม่ต่อช่วง\s+·\s+ปรับเป็นอัตรา\s+(\d+)\s+นาที\s+·\s+Smooth EMA$/,'Attack trend from recent match data · $1-minute rate · smoothed trend'],
@@ -148,8 +157,21 @@ const RULES=[
   [/^Momentum = DANGER 30 · SOT 25 · ATTACK 20 · OFF 10 · CORNER 10 · POSSESSION 5$/,'Momentum = Dangerous Attacks 30 · Shots on Target 25 · Attacks 20 · Shots off Target 10 · Corners 10 · Possession 5'],
   [/^Event Flow ใช้ประวัติกลางจาก Engine\s+·\s+ราคา Bookmaker แสดงเฉพาะข้อมูลที่ตรวจพบจริง/,'Event Flow uses observed match history · Bookmaker odds show observed data only'],
   [/\s+·\s+ผลคู่นี้ยังไม่ยืนยัน จึงห้าม Settlement$/,' · this match is unconfirmed and cannot be settled'],
+  [/\bMATCH STATISTICS\b/g,'Match Statistics'],
+  [/\bHALF_WIN\b/g,'Half Win'],
+  [/\bHALF_LOSS\b/g,'Half Loss'],
+  [/\bUNRESOLVED\b/g,'Unresolved'],
+  [/\bWIN\b/g,'Win'],
+  [/\bLOSS\b/g,'Loss'],
+  [/\bPUSH\b/g,'Push'],
+  [/\bNOT MET\b/g,'Not Met'],
+  [/\bREQUIRED\b/g,'Required'],
+  [/\bPASS\b/g,'Pass'],
+  [/5USD FULL ODDS/g,'5USD Full Market Odds'],
   [/\bFT\s+·/g,'Full Time ·'],
-  [/\bHT\s+·/g,'First Half ·']
+  [/\bHT\s+·/g,'First Half ·'],
+  [/·\s*FT\b/g,'· Full Time'],
+  [/·\s*HT\b/g,'· First Half']
 ];
 
 function transform(text){
