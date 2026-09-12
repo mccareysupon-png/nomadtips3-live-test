@@ -83,12 +83,12 @@ function signalEntries(rows,f){
   }).join('')}</div></section>`;
 }
 function oddsPanel(f,snapshot,signalRows=[]){
-  const root=oddsRoot(f?.providerOdds??f?.odds),state=classify(f),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
-  const age=Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · bulk feed${Number.isFinite(age)?` · ${age}s`:''}`,signalHtml=signalEntries(signalRows,f);
-  if(!root||typeof root!=='object')return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Bulk odds unavailable for this fixture</div></section>`;
+  const fullRoot=oddsRoot(f?.fullOdds),root=fullRoot||oddsRoot(f?.providerOdds??f?.odds),state=classify(f),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
+  const fetchedAt=num(f?.fullOddsFetchedAt),age=fullRoot?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=fullRoot?'full odds · engine referee':'bulk feed',sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · ${source}${age===null||!Number.isFinite(age)?'':` · ${age}s`}`,signalHtml=signalEntries(signalRows,f);
+  if(!root||typeof root!=='object')return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
   const markets=Object.entries(root).filter(([k,v])=>!['fixture_id','bookmaker','slug','name','updated_at','recorded_at'].includes(k)&&v!==undefined&&v!==null).sort((a,b)=>rank(a[0])-rank(b[0])||a[0].localeCompare(b[0]));
   const body=markets.map(([k,v])=>marketBlock(k,v,f,state)).filter(Boolean).join('');
-  if(!body)return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Bulk odds unavailable for this fixture</div></section>`;
+  if(!body)return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
   return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">${markets.length} MARKETS</span></div>${signalHtml}<div class="b365-grid">${body}</div></section>`;
 }
 function signalsForFixture(signals,id){return (Array.isArray(signals)?signals:[]).filter(s=>String(s?.fixtureId??'')===String(id??''))}
