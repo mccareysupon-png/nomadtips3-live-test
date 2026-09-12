@@ -1,0 +1,46 @@
+name: Diagnose NOMAD 3.43 Upcoming
+
+on:
+  push:
+    branches:
+      - work/nomad343-3s-engine-rateguard-20260912
+    paths:
+      - '.github/workflows/diagnose-343-upcoming.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect live Hub and Engine board
+        env:
+          HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+          PREVIEW_URL: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$HUB_URL/snapshot?diag=$RANDOM" -o /tmp/hub.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?diag=$RANDOM" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const hub=JSON.parse(fs.readFileSync('/tmp/hub.json','utf8'));
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const classify=x=>String(x?.boardState??x?.status??'').toLowerCase();
+          const count=rows=>rows.reduce((o,x)=>{const k=classify(x)||'blank';o[k]=(o[k]||0)+1;return o;},{});
+          const hs=Array.isArray(hub.fixtures)?hub.fixtures:[];
+          const bs=Array.isArray(board.fixtures)?board.fixtures:[];
+          const sample=rows=>rows.filter(x=>{
+            const s=classify(x);return s==='scheduled'||(!s&&!String(x?.statusCode||'').match(/live|ft|finished/i));
+          }).slice(0,15).map(x=>({id:x.fixtureId,boardState:x.boardState,status:x.status,statusCode:x.statusCode,kickoffUtc:x.kickoffUtc,kickoffAt:x.kickoffAt,home:x.home?.name,away:x.away?.name}));
+          console.log('HUB_SUMMARY',JSON.stringify({ok:hub.ok,fixtureCount:hub.fixtureCount,counts:hub.counts,computed:count(hs),fastLive:hub.fastLive},null,2));
+          console.log('BOARD_SUMMARY',JSON.stringify({ok:board.ok,fixtureCount:bs.length,computed:count(bs),hubFetchedAt:board.hubFetchedAt,hubAgeMs:board.hubAgeMs},null,2));
+          console.log('HUB_SCHEDULED_SAMPLE',JSON.stringify(sample(hs),null,2));
+          console.log('BOARD_SCHEDULED_SAMPLE',JSON.stringify(sample(bs),null,2));
+          NODE
