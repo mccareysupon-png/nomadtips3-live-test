@@ -37,7 +37,7 @@ jobs:
           set -euo pipefail
           git fetch origin work/nomad343-clean-bet365-ui:refs/remotes/origin/work/nomad343-clean-bet365-ui
           git diff --name-only refs/remotes/origin/work/nomad343-clean-bet365-ui...HEAD | tee /tmp/changed.txt
-          if grep -Ev '^(nomad-live-343/(full-odds-main-343\.js|index\.html)|workers/nomadtips3-343-full-market/|workers/nomadtips3-343-preview/|\.github/workflows/deploy-343-ultra-full-market-preview\.yml)$' /tmp/changed.txt | grep -q .; then
+          if grep -Ev '^(nomad-live-343/(full-odds-main-343\.js|index\.html)|workers/nomadtips3-343-full-market/.*|workers/nomadtips3-343-preview/.*|\.github/workflows/deploy-343-ultra-full-market-preview\.yml)$' /tmp/changed.txt | grep -q .; then
             echo 'Unexpected file outside isolated Full Market scope'; exit 1
           fi
           if git diff --quiet refs/remotes/origin/work/nomad343-clean-bet365-ui...HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343; then
