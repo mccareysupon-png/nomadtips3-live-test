@@ -139,7 +139,8 @@ jobs:
 
           check_nav "$CANARY_URL/?t=$(date +%s)" /tmp/home.html 'Live Asian Handicap scanner'
           check_nav "$CANARY_URL/statistics.html?t=$(date +%s)" /tmp/statistics.html 'Statistics'
-          for page in about privacy terms user-guide disclaimer prediction3 soccer-predictions; do
+          # Only pages that previously carried the 3.42 menu slot are checked here.
+          for page in about privacy terms user-guide disclaimer prediction3; do
             check_nav "$CANARY_URL/$page/?t=$(date +%s)" "/tmp/$page.html" 'nomad'
           done
 
@@ -152,7 +153,7 @@ jobs:
           test "$code" = 302 || { echo "::error::3.42 public route did not stay retired; HTTP $code"; exit 1; }
           curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?retired=$(date +%s)" -o /tmp/retired-follow.html
           grep -Fq 'Live Asian Handicap scanner' /tmp/retired-follow.html
-          echo 'Canary passed: 3.41 healthy, 3.42 retired, Verdict of Sirius visible across public pages.'
+          echo 'Canary passed: 3.41 healthy, 3.42 retired, Verdict of Sirius visible across public pages that carried the retired slot.'
 
       - name: Deploy Production Worker with dashboard-managed www route
         uses: cloudflare/wrangler-action@v3
@@ -193,7 +194,8 @@ jobs:
 
           check_nav "$CUSTOM_URL/?t=$(date +%s)" /tmp/custom-home.html 'Live Asian Handicap scanner'
           check_nav "$CUSTOM_URL/statistics.html?t=$(date +%s)" /tmp/custom-statistics.html 'Statistics'
-          for page in about privacy terms user-guide disclaimer prediction3 soccer-predictions; do
+          # Soccer Predictions has no former 3.42 menu slot, so its header is intentionally left unchanged.
+          for page in about privacy terms user-guide disclaimer prediction3; do
             check_nav "$CUSTOM_URL/$page/?t=$(date +%s)" "/tmp/custom-$page.html" 'nomad'
           done
 
@@ -208,5 +210,5 @@ jobs:
           grep -Fq 'Live Asian Handicap scanner' /tmp/retired-follow.html
 
           echo 'NOMAD Live 3.41 remains active and healthy on www.nomadtips3.com.'
-          echo 'The retired 3.42 menu slot now links to Verdict of Sirius on public pages.'
+          echo 'The retired 3.42 menu slot now links to Verdict of Sirius on every page that carried that slot.'
           echo "Old web remains preserved off the production route at: $BACKUP_URL"
