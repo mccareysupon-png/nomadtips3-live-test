@@ -25,15 +25,50 @@ function league(f){const r=f?.league??f?.competition??{};return {id:text(r?.id??
 function statistics(r){if(!r||typeof r!=='object')return null;const out={attacks:pair(r.attacks),dangerousAttacks:pair(r.dangerous_attacks??r.dangerousAttacks),shotsOnTarget:pair(r.shots_on_target??r.shotsOnTarget),shotsOffTarget:pair(r.shots_off_target??r.shotsOffTarget),possession:pair(r.possession)};if(!Object.values(out).some(Boolean))return null;const h=r.first_half??r.half;out.half=h&&typeof h==='object'?{attacks:pair(h.attacks),dangerousAttacks:pair(h.dangerous_attacks??h.dangerousAttacks),shotsOnTarget:pair(h.shots_on_target??h.shotsOnTarget),shotsOffTarget:pair(h.shots_off_target??h.shotsOffTarget),possession:pair(h.possession)}:null;return out}
 function fixtureId(f){return text(f?.id??f?.fixture_id??f?.fixture?.id??null)}
 function kickoffUtc(f){return text(f?.kickoff_utc??f?.kickoffUtc??f?.start_time??f?.kickoff??f?.date??null)}
+function plainObject(v){return Boolean(v)&&typeof v==='object'&&!Array.isArray(v)}
+function deepKeep(base,extra){
+  if(extra===null||extra===undefined)return base;
+  if(base===null||base===undefined)return extra;
+  if(Array.isArray(base)||Array.isArray(extra))return Array.isArray(extra)&&extra.length?extra:base;
+  if(plainObject(base)&&plainObject(extra)){const out={...base};for(const [k,v] of Object.entries(extra))out[k]=deepKeep(out[k],v);return out}
+  return extra;
+}
+function bookmakerKey(v,i=0){return String(v?.id??v?.slug??v?.name??v?.bookmaker?.id??v?.bookmaker?.slug??v?.bookmaker?.name??`#${i}`).toLowerCase().replace(/[\s_-]/g,'')}
+function mergeBookmakers(base,extra){
+  const out=Array.isArray(base)?base.map(x=>plainObject(x)?{...x}:x):[];
+  const pos=new Map(out.map((x,i)=>[bookmakerKey(x,i),i]));
+  for(const [i,row] of (Array.isArray(extra)?extra:[]).entries()){
+    const key=bookmakerKey(row,i),at=pos.get(key);
+    if(at===undefined){pos.set(key,out.length);out.push(row)}else out[at]=deepKeep(out[at],row);
+  }
+  return out;
+}
+function providerOddsRaw(f){
+  const out={};
+  if(f?.bookmakers!==undefined&&f?.bookmakers!==null)out.bookmakers=f.bookmakers;
+  if(f?.bet365!==undefined&&f?.bet365!==null)out.bet365=f.bet365;
+  if(f?.markets!==undefined&&f?.markets!==null)out.markets=f.markets;
+  if(f?.odds!==undefined&&f?.odds!==null)out.odds=f.odds;
+  return Object.keys(out).length?out:null;
+}
+function mergeProviderOdds(base,extra){
+  if(!base)return extra;if(!extra)return base;
+  const out={...base};
+  for(const [k,v] of Object.entries(extra)){
+    if(v===null||v===undefined)continue;
+    out[k]=k==='bookmakers'&&Array.isArray(v)?mergeBookmakers(out[k],v):deepKeep(out[k],v);
+  }
+  return out;
+}
 function boardState(status,statusCode){const s=`${status||''} ${statusCode||''}`.toLowerCase();if(/unknown/.test(s))return'unknown';if(/finished|full_time|full time|\bft\b|ended|\bfull\b/.test(s))return'finished';if(/in_play|in play|live|half/.test(s)||/^\d+$/.test(String(statusCode||'')))return'live';return'scheduled'}
-function normalize(f){const id=fixtureId(f),status=text(f?.status?.name??f?.status??null),statusReason=text(f?.status_reason??f?.status?.reason??null),statusCode=text(f?.status_code??f?.status?.code??f?.status?.short??null),minute=finite(f?.minute??f?.elapsed??f?.status?.minute??f?.status?.elapsed??statusCode),kickoff=kickoffUtc(f);return {fixtureId:id,league:league(f),home:team(f,'home'),away:team(f,'away'),kickoffUtc:kickoff,kickoffAt:kickoff&&Number.isFinite(Date.parse(kickoff))?Date.parse(kickoff):finite(f?.kickoff_ts??f?.start_time)?finite(f?.kickoff_ts??f?.start_time)*1000:null,status,statusReason,statusCode,boardState:boardState(status,statusCode),minute,goals:score(f?.goals??f?.score),corners:score(f?.corners),cards:cards(f?.cards),statistics:statistics(f?.statistics??f?.stats??null),events:Array.isArray(f?.events)?f.events:null,providerOdds:f?.odds??f?.bookmakers??f?.markets??f?.bet365??null}}
+function normalize(f){const id=fixtureId(f),status=text(f?.status?.name??f?.status??null),statusReason=text(f?.status_reason??f?.status?.reason??null),statusCode=text(f?.status_code??f?.status?.code??f?.status?.short??null),minute=finite(f?.minute??f?.elapsed??f?.status?.minute??f?.status?.elapsed??statusCode),kickoff=kickoffUtc(f);return {fixtureId:id,league:league(f),home:team(f,'home'),away:team(f,'away'),kickoffUtc:kickoff,kickoffAt:kickoff&&Number.isFinite(Date.parse(kickoff))?Date.parse(kickoff):finite(f?.kickoff_ts??f?.start_time)?finite(f?.kickoff_ts??f?.start_time)*1000:null,status,statusReason,statusCode,boardState:boardState(status,statusCode),minute,goals:score(f?.goals??f?.score),corners:score(f?.corners),cards:cards(f?.cards),statistics:statistics(f?.statistics??f?.stats??null),events:Array.isArray(f?.events)?f.events:null,providerOdds:providerOddsRaw(f),providerOddsUpdatedAt:providerOddsRaw(f)?now():null}}
 function extract(payload){if(Array.isArray(payload?.data))return payload.data;if(Array.isArray(payload?.data?.data))return payload.data.data;if(Array.isArray(payload?.fixtures))return payload.fixtures;return []}
 function pageInfo(payload){const p=payload?.pagination??payload?.meta?.pagination??payload?.meta??{};const raw=p?.has_more??p?.hasMore??payload?.has_more??payload?.hasMore??false;return {hasMore:raw===true||raw===1||raw==='1'||raw==='true'}}
 async function fetchJson(url,key){const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),TIMEOUT_MS);try{const r=await fetch(url,{cache:'no-store',signal:ac.signal,headers:{accept:'application/json',authorization:`Bearer ${key}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}if(!r.ok)throw new Error(`provider:HTTP_${r.status}`);if(!j||typeof j!=='object')throw new Error('provider:INVALID_JSON');return j}catch(e){if(e?.name==='AbortError')throw new Error('provider:TIMEOUT');throw e}finally{clearTimeout(timer)}}
 async function fetchPages(env,query,perPage,maxPages){if(!env.FIVEDOLLAR_API_KEY)throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');const rows=[];let page=1,hasMore=false;do{const join=query?`&${query}`:'';const j=await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`,env.FIVEDOLLAR_API_KEY);rows.push(...extract(j));hasMore=pageInfo(j).hasMore;page+=1}while(hasMore&&page<=maxPages);return {rows,requests:page-1,guardHit:hasMore&&page>maxPages}}
 function bangkokWindow(ms=now()){const shift=7*3600_000,d=new Date(ms+shift);const start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-shift;return {startMs:start,endMs:start+86_400_000,start:Math.floor(start/1000),end:Math.floor((start+86_400_000)/1000)}}
 async function fetchProvider(env){const w=bangkokWindow();const include='odds,events,stats';const today=await fetchPages(env,`start_time=${w.start}&end_time=${w.end}&status=all&include=${include}`,TODAY_PAGE_SIZE,TODAY_MAX_PAGES);const live=await fetchPages(env,`status=live&include=${include}`,LIVE_PAGE_SIZE,LIVE_MAX_PAGES);const requests=today.requests+live.requests;if(requests>MAX_PROVIDER_REQUESTS_PER_REFRESH)throw new Error(`provider:REQUEST_BUDGET_${requests}`);return {today,live,window:w,include,requestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH}}
-function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:extra.providerOdds??base.providerOdds}}
+function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt}}
 function chunks(rows){const out=[];let cur=[];for(const row of rows){const next=[...cur,row];if(cur.length&&encoder.encode(JSON.stringify(next)).byteLength>CHUNK_BYTES){out.push(cur);cur=[row]}else cur=next}if(cur.length||!out.length)out.push(cur);return out}
 
 export class FiveUsdHub{
