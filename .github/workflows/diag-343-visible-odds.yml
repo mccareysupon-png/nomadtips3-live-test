@@ -1,0 +1,63 @@
+name: Diagnose 3.43 Visible Odds
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - .github/workflows/diag-343-visible-odds.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect expanded card visibility only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pw && cd /tmp/pw
+          npm init -y >/dev/null 2>&1
+          npm install --silent playwright-core@1.55.0
+          node - <<'NODE'
+          const {chromium}=require('playwright-core');
+          (async()=>{
+            const browser=await chromium.launch({headless:true,executablePath:'/usr/bin/google-chrome',args:['--no-sandbox']});
+            const page=await browser.newPage({viewport:{width:390,height:844}});
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('console',m=>{if(m.type()==='error')errors.push('console:'+m.text())});
+            await page.goto('https://nomadtips3-343-preview.mccarey-supon.workers.dev/?diag=visible-odds',{waitUntil:'networkidle',timeout:30000});
+            await page.waitForSelector('.match-card[data-match-id="200100164"]',{timeout:15000});
+            const card=page.locator('.match-card[data-match-id="200100164"]');
+            await card.click();
+            await page.waitForTimeout(800);
+            const result=await card.evaluate(el=>{
+              const details=el.querySelector('.event-details');
+              const board=el.querySelector('.b365-board');
+              const markets=[...el.querySelectorAll('.b365-market header b')].map(x=>x.textContent.trim());
+              const chips=[...el.querySelectorAll('.b365-chip')].slice(0,12).map(x=>x.textContent.trim().replace(/\s+/g,' '));
+              const dr=details?.getBoundingClientRect();
+              const br=board?.getBoundingClientRect();
+              return {
+                expanded:el.getAttribute('aria-expanded'),
+                detailsHidden:details?.hidden,
+                detailsDisplay:details?getComputedStyle(details).display:null,
+                detailsHeight:dr?.height??null,
+                boardExists:!!board,
+                boardDisplay:board?getComputedStyle(board).display:null,
+                boardVisibility:board?getComputedStyle(board).visibility:null,
+                boardOpacity:board?getComputedStyle(board).opacity:null,
+                boardHeight:br?.height??null,
+                markets,
+                chips,
+                text:(board?.innerText||'').slice(0,1200)
+              };
+            });
+            console.log(JSON.stringify({result,errors},null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
