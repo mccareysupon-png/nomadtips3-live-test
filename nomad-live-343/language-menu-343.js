@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-language-menu-v2-thai';
+const VERSION='343-language-menu-v3-thai-freeze';
 const STORAGE_KEY='nomad343_language_v1';
 const BASE_STANDARD='Football Language Standard 3.43 · English v1';
 const LANGUAGES=[
@@ -36,6 +36,7 @@ const THAI=new Map(Object.entries({
   'Select a match to view match details, statistics, event flow and Bet365 markets.':'เลือกคู่การแข่งขันเพื่อดูรายละเอียด สถิติ ลำดับเหตุการณ์ และตลาด Bet365',
 
   'Latest Match Data':'ข้อมูลการแข่งขันล่าสุด',
+  'Match Statistics':'สถิติการแข่งขัน',
   'Shots on Target':'ยิงตรงกรอบ',
   'Shots off Target':'ยิงออกกรอบ',
   'Corners':'ลูกเตะมุม',
@@ -58,8 +59,10 @@ const THAI=new Map(Object.entries({
   'Half-Time':'พักครึ่ง',
   'Full-Time':'เต็มเวลา',
   'Event Flow':'ลำดับเหตุการณ์',
+  'Event Flow · Match History':'ลำดับเหตุการณ์ · ประวัติการแข่งขัน',
   'Event Flow · Attack Momentum':'ลำดับเหตุการณ์ · โมเมนตัมการบุก',
   'Attack intensity from recent match data':'ความเข้มข้นของการบุกจากข้อมูลการแข่งขันล่าสุด',
+  'Attack Momentum graph':'กราฟโมเมนตัมการบุก',
   'Odds Movement':'การไหลของอัตราจ่าย',
   'Observed Odds':'อัตราจ่ายที่ตรวจพบ',
   'Building Attack Momentum History':'กำลังรวบรวมประวัติโมเมนตัมการบุก',
@@ -109,7 +112,7 @@ const THAI=new Map(Object.entries({
   'Raw Card Count':'จำนวนใบจากข้อมูลดิบ',
   'Pass':'ผ่าน',
   'Not Met':'ไม่ผ่าน',
-  'Required':'ค่าที่กำหนด',
+  'Required':'เกณฑ์',
 
   'Settled Signals':'สัญญาณที่ตัดสินผลแล้ว',
   'Track active signals above and review settled results below.':'ติดตามสัญญาณที่กำลังใช้งานด้านบน และตรวจผลที่ตัดสินแล้วด้านล่าง',
@@ -185,6 +188,9 @@ const THAI=new Map(Object.entries({
   'Under':'ต่ำ',
   'Yes':'ใช่',
   'No':'ไม่ใช่',
+  'Loading':'กำลังโหลด',
+  'Odds —':'อัตราจ่าย —',
+  'Full Market Odds Unavailable':'ยังไม่มีอัตราจ่ายครบทุกตลาด',
   'Loading Full Bet365 Lines and Odds':'กำลังโหลดเส้นราคาและอัตราจ่ายครบจาก Bet365',
   'Full Market Odds Are Unavailable for This Match':'คู่นี้ยังไม่มีอัตราจ่ายครบจากต้นทาง'
 }));
@@ -194,6 +200,7 @@ const THAI_RULES=[
   [/^(\d+) Signal(?:s)? · Details$/i,'$1 สัญญาณ · รายละเอียด'],
   [/^Active Signals · (\d+) match(?:es)?(?: · (\d+) signal(?:s)?)?(?: · data age (\d+)s)?$/i,(_,m,s,a)=>`สัญญาณที่กำลังใช้งาน · ${m} คู่${s?` · ${s} สัญญาณ`:''}${a?` · อายุข้อมูล ${a} วินาที`:''}`],
   [/^(\d+) Points$/i,'$1 คะแนน'],
+  [/^(\d+) Markets$/i,'$1 ตลาด'],
   [/^Half-Time\s+(.+)$/i,'พักครึ่ง $1'],
   [/^Full Time · (.+)$/i,'เต็มเวลา · $1'],
   [/^First Half · (.+)$/i,'ครึ่งแรก · $1'],
@@ -203,6 +210,21 @@ const THAI_RULES=[
   [/^Momentum = Dangerous Attacks 30 · Shots on Target 25 · Attacks 20 · Shots off Target 10 · Corners 10 · Possession 5$/i,'โมเมนตัม = บุกอันตราย 30 · ยิงตรงกรอบ 25 · จำนวนบุก 20 · ยิงออกกรอบ 10 · ลูกเตะมุม 10 · ครองบอล 5'],
   [/^Event Flow uses observed match history · Bookmaker odds show observed data only/i,'ลำดับเหตุการณ์ใช้ประวัติการแข่งขันที่ตรวจพบ · อัตราจ่ายจากเจ้ามือแสดงเฉพาะข้อมูลที่ตรวจพบจริง'],
   [/ · this match is unconfirmed and cannot be settled$/i,' · คู่นี้ยังไม่ยืนยัน จึงยังตัดสินผลไม่ได้'],
+  [/\bMatch Statistics\b/g,'สถิติการแข่งขัน'],
+  [/5USD Full Market Odds/g,'อัตราจ่ายครบทุกตลาดจาก 5USD'],
+  [/\s+vs\s+/gi,' พบ '],
+  [/→\s*Live$/i,'→ กำลังแข่งขัน'],
+  [/\bHalf Win\b/g,'ชนะครึ่ง'],
+  [/\bHalf Loss\b/g,'แพ้ครึ่ง'],
+  [/\bUnresolved\b/g,'รอการตัดสิน'],
+  [/\bWin\b/g,'ชนะ'],
+  [/\bLoss\b/g,'แพ้'],
+  [/\bPush\b/g,'เสมอราคา'],
+  [/\bNot Met\b/g,'ไม่ผ่าน'],
+  [/\bRequired\b/g,'เกณฑ์'],
+  [/\bPass\b/g,'ผ่าน'],
+  [/·\s*Full Time\b/g,'· เต็มเวลา'],
+  [/·\s*First Half\b/g,'· ครึ่งแรก'],
   [/\bAll Markets\b/g,'ทุกตลาด'],
   [/\bUnresolved (\d+)\b/gi,'รอการตัดสิน $1'],
   [/ · Half Results (\d+\/\d+)$/i,' · ผลครึ่ง $1']
