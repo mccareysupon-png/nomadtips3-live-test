@@ -176,7 +176,7 @@ async function fetchAllLive(env) {
   let page = 1;
   let hasMore = false;
   do {
-    const url = `${API_BASE}/fixtures?status=live&include=events,stats&per_page=${PAGE_SIZE}&page=${page}`;
+    const url = `${API_BASE}/fixtures?status=live&include=odds,events,stats&per_page=${PAGE_SIZE}&page=${page}`;
     const payload = await fetchJson(url, headers);
     fixtures.push(...extractFixtures(payload));
     hasMore = pagination(payload).hasMore;
@@ -253,7 +253,7 @@ export class FiveUsdHub {
         fixtureCount: normalized.length,
         providerRequestCount: provider.requestCount,
         hasMoreAfterGuard: provider.hasMoreAfterGuard,
-        include: 'events,stats',
+        include: 'odds,events,stats',
         pageSize: PAGE_SIZE,
         refreshMs: REFRESH_MS
       };
@@ -332,7 +332,7 @@ export class FiveUsdHub {
       stale: ageMs === null ? true : ageMs > STALE_AFTER_MS,
       refreshMs: REFRESH_MS,
       pageSize: PAGE_SIZE,
-      include: 'events,stats',
+      include: 'odds,events,stats',
       providerRequestCount: meta?.providerRequestCount ?? 0,
       lastAttemptAt: state.lastAttemptAt,
       lastSuccessAt: state.lastSuccessAt,
