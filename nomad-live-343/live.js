@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-public-v7-signal-status';
+const VERSION='343-public-v8-viewer-timezone';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
 const POLL_MS=30_000;
@@ -26,7 +26,7 @@ const show=(v,d=0)=>num(v)===null?'—':Number(v).toFixed(d).replace(/\.0+$/,'')
 const dateMs=v=>{const n=num(v);if(n!==null)return n>1e10?n:n*1000;const p=Date.parse(String(v||''));return Number.isFinite(p)?p:null};
 const pair=v=>v&&typeof v==='object'?{home:num(v.home),away:num(v.away)}:{home:null,away:null};
 function classify(f){const s=String(f.boardState??f.status??'').toLowerCase();if(s.includes('unknown'))return'unknown';if(['live','in_play','inplay','playing','half'].some(x=>s.includes(x)))return'live';if(['finished','full_time','ft','ended'].some(x=>s.includes(x)))return'finished';return'scheduled'}
-function fixtureTimeZone(f){const explicit=String(f?.timezone??f?.venue?.timezone??f?.league?.timezone??'').trim();if(explicit){try{new Intl.DateTimeFormat('en',{timeZone:explicit}).format(0);return explicit}catch{}}return COUNTRY_TZ[String(f?.league?.country||'').trim().toLowerCase()]||'UTC'}
+function fixtureTimeZone(){try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC'}catch{return'UTC'}}
 function fixtureDateLabel(f){const ms=dateMs(f.kickoffAt??f.kickoffUtc);if(ms===null)return'—';const parts=new Intl.DateTimeFormat('en-GB',{timeZone:fixtureTimeZone(f),month:'2-digit',day:'2-digit'}).formatToParts(new Date(ms));const month=parts.find(x=>x.type==='month')?.value,day=parts.find(x=>x.type==='day')?.value;return month&&day?`${month}-${day}`:'—'}
 function kickoffLabel(f){if(classify(f)==='live')return f.statusCode&&/^\d+$/.test(String(f.statusCode))?`${f.statusCode}'`:(f.minute!==null&&f.minute!==undefined?`${f.minute}'`:'LIVE');const ms=dateMs(f.kickoffAt??f.kickoffUtc);if(ms===null)return'—';return new Intl.DateTimeFormat('en-GB',{timeZone:fixtureTimeZone(f),hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(ms))}
 function statusTag(f){const k=classify(f);if(k==='live')return'<span class="tag pass">LIVE</span>';if(k==='finished')return'<span class="tag wait">FINISHED</span>';if(k==='unknown')return'<span class="tag wait">UNCONFIRMED</span>';return'<span class="tag wait">WAITING</span>'}
