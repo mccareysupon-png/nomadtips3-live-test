@@ -77,7 +77,7 @@ board.write_text(s)
 
 index = Path('nomad-live-343/index.html')
 s = index.read_text()
-old = 'bet365-board.js?v=343-b365-v4-market-language&fix=fullprices1'
+old = 'bet365-board.js?v=343-b365-v4-market-language&fix=fullprices2'
 new = 'bet365-board.js?v=343-b365-v4-market-language&fix=oddspersist2'
 assert old in s, 'index cache bust anchor missing'
 index.write_text(s.replace(old, new, 1))
