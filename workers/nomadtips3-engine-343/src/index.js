@@ -8,6 +8,7 @@ const HISTORY_MS=180*60_000;
 const MAX_HISTORY_ROWS=180;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
+const UI_ODDS_CACHE_MS=60_000;
 const SETTLEMENT_REVISION='bet365-rules-v2';
 
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
@@ -204,7 +205,7 @@ function pricePass(key,cfg,price,f){
 async function fetchFullOdds(fixtureId,env){
   if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
   const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
-  if(!r.ok)throw new Error(`5USD_ODDS_HTTP_${r.status}`);const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
+  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
 }
 function pickBestPriced(candidates,root,f,settings){
   const passed=[];for(const c of candidates){const price=priceFor(root,c.market,c.selection),cfg=settings[c.market];if(!pricePass(c.market,cfg,price,f))continue;passed.push({...c,price})}
@@ -289,6 +290,22 @@ export class Nomad343Engine extends DurableObject{
   }
   async fetch(request){
     const u=new URL(request.url);if(!['/settings','/registry'].includes(u.pathname))await this.scanIfDue();
+    if(u.pathname==='/fixture-odds'&&request.method==='GET'){
+      const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();
+      if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400,headers:{'cache-control':'no-store'}});
+      const board=await this.ctx.storage.get('board')||{fixtures:[]},fixtures=Array.isArray(board?.fixtures)?board.fixtures:[],fixture=fixtures.find(x=>String(x?.fixtureId??'')===fixtureId);
+      if(!fixture)return Response.json({ok:false,error:'FIXTURE_NOT_ON_BOARD'},{status:404,headers:{'cache-control':'no-store'}});
+      const cachedAt=num(fixture?.fullOddsFetchedAt);
+      if(fixture?.fullOdds&&cachedAt!==null&&now()-cachedAt<=UI_ODDS_CACHE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:fixture.fullOdds,fetchedAt:cachedAt,source:fixture.fullOddsSource||'ENGINE_CACHE',cached:true},{headers:{'cache-control':'no-store'}});
+      try{
+        const root=await fetchFullOdds(fixtureId,this.env),fetchedAt=now(),nextFixtures=fixtures.map(x=>String(x?.fixtureId??'')===fixtureId?{...x,fullOdds:clone(root),fullOddsFetchedAt:fetchedAt,fullOddsSource:'UI_EXPAND'}:x);
+        await this.ctx.storage.put('board',{...board,fixtures:nextFixtures});
+        return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:root,fetchedAt,source:'UI_EXPAND',cached:false},{headers:{'cache-control':'no-store'}});
+      }catch(e){
+        const status=Number(e?.status)===429?429:502,retryAfter=num(e?.retryAfter),headers={'cache-control':'no-store'};if(retryAfter!==null)headers['retry-after']=String(retryAfter);
+        return Response.json({ok:false,version:VERSION,fixtureId,error:String(e?.message||e),retryAfter},{status,headers});
+      }
+    }
     if(u.pathname==='/health'){const m=await this.ctx.storage.get('lastScan');return Response.json({ok:Boolean(m?.ok),component:'NOMAD343_ENGINE',version:VERSION,...m})}
     if(u.pathname==='/registry')return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,marketKeys:MARKET_KEYS});
     if(u.pathname==='/settings'&&request.method==='GET')return Response.json({ok:true,version:VERSION,settings:await this.readSettings(),runState:await this.readRun(),markets:MARKET_RULES});

@@ -4,6 +4,8 @@ const VERSION='343-bet365-board-v4-market-language';
 const SIGNAL_ODDS_REVISION='v5-signal-odds-merge';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
+const FULL_ODDS_API='/api/engine/fixture-odds';
+const FULL_ODDS_REFRESH_MS=60_000;
 const POLL_MS=30_000;
 const QA_AUDIT='SOURCE RAW HOME LINE';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
@@ -22,6 +24,7 @@ const LABELS={
 };
 const STAGE_LABELS={opening:'OPENING',closing:'PRE-MATCH',current:'CURRENT',inplay:'IN-PLAY',in_play:'IN-PLAY'};
 let lastSnapshot=null,lastSignals=[],busy=false;
+const fullOddsBusy=new Set();
 function fixtureKey(f){return String(f?.fixtureId??[f?.home?.name,f?.away?.name,f?.kickoffAt??f?.kickoffUtc].join('|'))}
 function classify(f){const s=String(f?.boardState??f?.status??'').toLowerCase();if(s.includes('unknown'))return'unknown';if(['live','in_play','inplay','playing','half'].some(x=>s.includes(x)))return'live';if(['finished','full_time','ft','ended'].some(x=>s.includes(x)))return'finished';return'scheduled'}
 function teamName(f,side){return f?.[side]?.name||side.toUpperCase()}
@@ -107,6 +110,21 @@ function oddsPanel(f,snapshot,signalRows=[]){
   const body=rows.map(([,html])=>html).join('');
   return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">${rows.length} MARKETS</span></div>${signalHtml}<div class="b365-grid">${body}</div></section>`;
 }
+function snapshotFixture(id){return (Array.isArray(lastSnapshot?.fixtures)?lastSnapshot.fixtures:[]).find(f=>String(f?.fixtureId??'')===String(id??''))||null}
+function fullOddsFresh(f){const at=num(f?.fullOddsFetchedAt);return Boolean(f?.fullOdds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}
+async function ensureFullOdds(id){
+  id=String(id||'');if(!id||fullOddsBusy.has(id))return;
+  const existing=snapshotFixture(id);if(fullOddsFresh(existing))return;
+  fullOddsBusy.add(id);
+  try{
+    const r=await fetch(`${FULL_ODDS_API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);
+    if(!r.ok||j?.ok!==true){console.warn('[NOMAD343 FULL ODDS]',r.status,j?.error||'NOT_READY');return}
+    const f=snapshotFixture(id);if(f){f.fullOdds=j.fullOdds;f.fullOddsFetchedAt=j.fetchedAt;f.fullOddsSource=j.source||'UI_EXPAND'}
+    if(lastSnapshot)decorate(lastSnapshot,lastSignals);
+    window.NOMAD343_ODDS?.refresh?.();
+  }catch(e){console.warn('[NOMAD343 FULL ODDS]',e)}finally{fullOddsBusy.delete(id)}
+}
+function requestExpandedFullOdds(card){if(!card)return;queueMicrotask(()=>{if(card.getAttribute('aria-expanded')==='true')ensureFullOdds(card.dataset.matchId)})}
 function signalsForFixture(signals,id){return (Array.isArray(signals)?signals:[]).filter(s=>String(s?.fixtureId??'')===String(id??''))}
 function placeAddon(details,wrap){
   const flow=details.querySelector('.nomad-event-flow-card');
@@ -121,7 +139,7 @@ function decorate(snapshot,signals=lastSignals){
     const id=String(card.dataset.matchId||''),f=map.get(id);if(!f)return;
     const details=card.querySelector('.event-details');if(!details)return;
     details.querySelectorAll('[data-b365-addon]').forEach(el=>el.remove());
-    const wrap=document.createElement('div');wrap.dataset.b365Addon='1';wrap.className='b365-addon';wrap.innerHTML=oddsPanel(f,snapshot,signalsForFixture(signals,id));placeAddon(details,wrap);
+    const wrap=document.createElement('div');wrap.dataset.b365Addon='1';wrap.className='b365-addon';wrap.innerHTML=oddsPanel(f,snapshot,signalsForFixture(signals,id));placeAddon(details,wrap);if(card.getAttribute('aria-expanded')==='true')ensureFullOdds(id);
   });
 }
 function injectStyle(){if(document.getElementById('nomad343-bet365-board'))return;const s=document.createElement('style');s.id='nomad343-bet365-board';s.textContent=`.b365-addon{display:grid;gap:8px;margin:8px 0 9px}.b365-board{background:#0e1511;border:1px solid #2b3a30}.b365-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #28362c}.b365-head>div{display:grid;gap:2px;min-width:0}.b365-head b{font-size:11px;letter-spacing:.05em;color:#eef7f0}.b365-head small{font-size:8px;color:#7f8d83;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.b365-count{font-size:8px;font-weight:900;color:#f1c75b;border:1px solid #5b4e29;padding:3px 6px;background:#1c190f;white-space:nowrap}.b365-count.muted{color:#7c8980;border-color:#344039;background:#111713}.b365-signal-odds{margin:8px;border:1px solid #315e40;background:#101b14}.b365-signal-head{display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid #294b35}.b365-signal-head b{font-size:9px;color:#8de1ab}.b365-signal-head span{font-size:7px;font-weight:900;color:#f1c75b}.b365-signal-list{display:grid}.b365-signal-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(90px,1.4fr) auto auto;gap:8px;align-items:center;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04)}.b365-signal-row:last-child{border-bottom:0}.b365-signal-market{font-size:8px;color:#95a198;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.b365-signal-row strong{font-size:10px;color:#eef7f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.b365-signal-price{font-size:11px;font-weight:900;color:#8de1ab;font-variant-numeric:tabular-nums;white-space:nowrap}.b365-signal-row small{font-size:7px;color:#d6b95f;white-space:nowrap}.b365-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:8px}.b365-market{min-width:0;background:#0a0f0c;border:1px solid #243128}.b365-market>header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid #202b24}.b365-market>header b{font-size:9px;color:#dce8df}.b365-market>header span{font-size:7px;font-weight:900;color:#e5b94d}.b365-stage{display:grid;grid-template-columns:62px minmax(0,1fr);gap:7px;align-items:start;padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.035)}.b365-stage:last-child{border-bottom:0}.b365-stage>b{font-size:7px;color:#728077;padding-top:5px}.b365-stage.live-stage{background:#101c14}.b365-stage.live-stage>b{color:#70d698}.b365-chips{display:flex;flex-wrap:wrap;gap:5px}.b365-chip{display:inline-grid;grid-template-columns:auto auto;gap:5px;align-items:center;background:#141d17;border:1px solid #2b3930;padding:4px 6px;min-width:60px}.b365-chip small{font-size:7px;color:#89968d}.b365-chip strong{font-size:10px;color:#f0f6f1;font-variant-numeric:tabular-nums}.b365-stage.live-stage .b365-chip{border-color:#356445;background:#132117}.b365-stage.live-stage .b365-chip strong{color:#8de1ab}.b365-empty{padding:14px 10px;text-align:center;color:#6f7c74;font-size:9px}@media(max-width:760px){.b365-grid{grid-template-columns:1fr}.b365-stage{grid-template-columns:54px minmax(0,1fr)}.b365-head{align-items:flex-start}.b365-head small{white-space:normal}.b365-signal-row{grid-template-columns:minmax(70px,1fr) minmax(80px,1.2fr) auto}.b365-signal-row small{display:none}}`;document.head.appendChild(s)}
@@ -137,6 +155,6 @@ async function load(){
   }catch(e){console.warn('[NOMAD343 BET365]',e)}finally{busy=false}
 }
 const mo=new MutationObserver(records=>{if(!lastSnapshot)return;const changed=records.some(r=>[...r.addedNodes].some(n=>n?.nodeType===1&&(n.matches?.('.match-card[data-match-id]')||n.querySelector?.('.match-card[data-match-id]'))));if(changed)setTimeout(()=>decorate(lastSnapshot,lastSignals),0)});
-function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load}}
+function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});document.addEventListener('click',e=>requestExpandedFullOdds(e.target.closest('.match-card[data-match-id]')));document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')requestExpandedFullOdds(e.target.closest('.match-card[data-match-id]'))});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load,refreshFullOdds:ensureFullOdds}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
