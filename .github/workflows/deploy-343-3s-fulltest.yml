@@ -35,17 +35,20 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$FIVEDOLLAR_API_KEY"
           node --check workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
           node --check workers/nomadtips3-engine-343/src/index-3s.js
           node workers/nomadtips3-engine-343/test/market-core.test.mjs
           node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
           grep -Fq "const FAST_REFRESH_MS = 3_000;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
           grep -Fq "const FAST_REQUEST_BUDGET = 20;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const UPCOMING_REFRESH_MS = 120_000;" workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
+          grep -Fq "status=scheduled&per_page=" workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
           grep -Fq "const CYCLE_MS = 3_000;" workers/nomadtips3-engine-343/src/index-3s.js
           grep -Fq "const REFEREE_BUDGET = 10;" workers/nomadtips3-engine-343/src/index-3s.js
-          grep -Fq 'main = "src/index-v3-fast.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'main = "src/index-v4-upcoming.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq 'main = "src/index-3s.js"' workers/nomadtips3-engine-343/wrangler.toml
 
-      - name: Deploy 5USD Hub 3s
+      - name: Deploy 5USD Hub 3s + Upcoming
         working-directory: workers/nomadtips3-5usd-hub-343
         run: |
           npx --yes wrangler@4.92.0 deploy --config wrangler.toml
@@ -74,11 +77,15 @@ jobs:
           if(hub.ok!==true) throw Error('hub not ok');
           if(hub.fastLive?.active!==true||hub.fastLive?.refreshMs!==3000) throw Error('hub fast live not active at 3s');
           if(hub.fastLive?.rate?.internalCeiling!==20) throw Error('hub fast guard mismatch');
+          if(hub.upcoming?.active!==true) throw Error('upcoming overlay not active');
+          if(Number(hub.counts?.scheduled||0)<=0) throw Error('scheduled fixtures still missing');
           if(eng.component!=='NOMAD343_ENGINE') throw Error('engine component mismatch');
           if(eng.cadence?.cycleMs!==3000||eng.cadence?.noOverlap!==true) throw Error('engine cadence mismatch');
           if(eng.cadence?.referee?.internalCeiling!==10) throw Error('referee guard mismatch');
           if(board.ok!==true) throw Error('board not ready');
-          console.log('FIRST',JSON.stringify({hubFixtures:hub.fixtureCount,live:hub.counts?.live,fastFixtures:hub.fastLive?.fixtureCount,hubRate:hub.fastLive?.rate,engineCadence:eng.cadence,boardFixtures:board.fixtures?.length},null,2));
+          const scheduled=(board.fixtures||[]).filter(x=>x?.boardState==='scheduled').length;
+          if(scheduled<=0) throw Error('engine board scheduled fixtures missing');
+          console.log('FIRST',JSON.stringify({hubFixtures:hub.fixtureCount,counts:hub.counts,upcoming:hub.upcoming,hubRate:hub.fastLive?.rate,engineCadence:eng.cadence,boardFixtures:board.fixtures?.length,boardScheduled:scheduled},null,2));
           NODE
 
           sleep 8
@@ -88,20 +95,21 @@ jobs:
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$RANDOM" -o /tmp/board2.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$RANDOM" -o /tmp/signals.json
           node - <<'NODE'
-          const h1=require('/tmp/hub1.json'),h2=require('/tmp/hub2.json');
-          const e2=require('/tmp/engine2.json'),b2=require('/tmp/board2.json'),s=require('/tmp/signals.json');
-          if(h2.ok!==true||h2.fastLive?.active!==true) throw Error('hub verify failed');
+          const h2=require('/tmp/hub2.json'),e2=require('/tmp/engine2.json'),b2=require('/tmp/board2.json'),s=require('/tmp/signals.json');
+          if(h2.ok!==true||h2.fastLive?.active!==true||h2.upcoming?.active!==true) throw Error('hub verify failed');
           if(Number(h2.fastLive?.rate?.usedLast60s||0)>20) throw Error('hub rate guard exceeded');
           if(Number(e2.cadence?.referee?.usedLast60s||0)>10) throw Error('referee rate guard exceeded');
           if(e2.cadence?.alarmArmed!==true) throw Error('engine alarm not armed');
           if(b2.ok!==true||s.ok!==true) throw Error('board/signals unavailable');
-          console.log('VERIFY',JSON.stringify({hubFetched1:h1.fastLive?.fetchedAt,hubFetched2:h2.fastLive?.fetchedAt,hubAgeMs:h2.ageMs,hubRate:h2.fastLive?.rate,engineCycleMs:e2.cadence?.cycleMs,referee:e2.cadence?.referee,engineStarted:e2.startedAt,engineFinished:e2.finishedAt,fixtures:b2.fixtures?.length,signals:s.signals?.length},null,2));
+          const scheduled=(b2.fixtures||[]).filter(x=>x?.boardState==='scheduled').length;
+          if(scheduled<=0) throw Error('scheduled fixtures disappeared after cadence cycles');
+          console.log('VERIFY',JSON.stringify({counts:h2.counts,upcoming:h2.upcoming,hubRate:h2.fastLive?.rate,engineCycleMs:e2.cadence?.cycleMs,referee:e2.cadence?.referee,fixtures:b2.fixtures?.length,scheduled,signals:s.signals?.length},null,2));
           NODE
 
       - name: UI smoke
         run: |
           set -euo pipefail
-          for path in / /signal.html /statistics.html /settings.html /api/engine/registry /api/engine/board /api/engine/signals /api/engine/statistics; do
+          for path in / /index.html /signal.html /statistics.html /settings.html /api/engine/registry /api/engine/board /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"
