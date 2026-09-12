@@ -19,118 +19,27 @@ jobs:
           ref: work/nomad343-clean-bet365-ui
           fetch-depth: 0
 
-      - name: Apply persistent odds cache fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
+      - name: Apply patch
+        run: python .github/scripts/patch-343-odds-persistence-v2.py
 
-          engine = Path('workers/nomadtips3-engine-343/src/index.js')
-          s = engine.read_text()
-
-          old = "const UI_ODDS_CACHE_MS=60_000;\nconst SETTLEMENT_REVISION='bet365-rules-v2';"
-          new = "const UI_ODDS_CACHE_MS=60_000;\nconst UI_ODDS_STALE_MS=15*60_000;\nconst SETTLEMENT_REVISION='bet365-rules-v2';"
-          assert old in s, 'engine odds cache constants anchor missing'
-          s = s.replace(old, new, 1)
-
-          old = "const u=new URL(request.url);if(!['/settings','/registry'].includes(u.pathname))await this.scanIfDue();"
-          new = "const u=new URL(request.url);if(!['/settings','/registry','/fixture-odds'].includes(u.pathname))await this.scanIfDue();"
-          assert old in s, 'engine scan exclusion anchor missing'
-          s = s.replace(old, new, 1)
-
-          start = s.index("    if(u.pathname==='/fixture-odds'&&request.method==='GET'){")
-          end = s.index("    if(u.pathname==='/health')", start)
-          assert start >= 0 and end > start, 'fixture-odds route bounds missing'
-          route = """    if(u.pathname==='/fixture-odds'&&request.method==='GET'){
-      const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();
-      if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400,headers:{'cache-control':'no-store'}});
-      const board=await this.ctx.storage.get('board')||{fixtures:[]},fixtures=Array.isArray(board?.fixtures)?board.fixtures:[],fixture=fixtures.find(x=>String(x?.fixtureId??'')===fixtureId);
-      if(!fixture)return Response.json({ok:false,error:'FIXTURE_NOT_ON_BOARD'},{status:404,headers:{'cache-control':'no-store'}});
-      const cacheKey=`uiOdds:${fixtureId}`,cached=await this.ctx.storage.get(cacheKey)||null,cachedAt=num(cached?.fetchedAt),cacheAge=cachedAt===null?null:Math.max(0,now()-cachedAt);
-      if(cached?.fullOdds&&cacheAge!==null&&cacheAge<=UI_ODDS_CACHE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:cached.fullOdds,fetchedAt:cachedAt,source:cached.source||'UI_ODDS_CACHE',cached:true,stale:false},{headers:{'cache-control':'no-store'}});
-      try{
-        const root=await fetchFullOdds(fixtureId,this.env),fetchedAt=now(),record={fullOdds:clone(root),fetchedAt,source:'UI_EXPAND'};
-        await this.ctx.storage.put(cacheKey,record);
-        return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:root,fetchedAt,source:'UI_EXPAND',cached:false,stale:false},{headers:{'cache-control':'no-store'}});
-      }catch(e){
-        if(cached?.fullOdds&&cacheAge!==null&&cacheAge<=UI_ODDS_STALE_MS)return Response.json({ok:true,version:VERSION,fixtureId,fullOdds:cached.fullOdds,fetchedAt:cachedAt,source:cached.source||'UI_ODDS_CACHE',cached:true,stale:true,refreshError:String(e?.message||e)},{headers:{'cache-control':'no-store'}});
-        const status=Number(e?.status)===429?429:502,retryAfter=num(e?.retryAfter),headers={'cache-control':'no-store'};if(retryAfter!==null)headers['retry-after']=String(retryAfter);
-        return Response.json({ok:false,version:VERSION,fixtureId,error:String(e?.message||e),retryAfter},{status,headers});
-      }
-    }
-"""
-          s = s[:start] + route + s[end:]
-          engine.write_text(s)
-
-          board = Path('nomad-live-343/bet365-board.js')
-          s = board.read_text()
-
-          old = "let lastSnapshot=null,lastSignals=[],busy=false;\nconst fullOddsBusy=new Set();"
-          new = "let lastSnapshot=null,lastSignals=[],busy=false;\nconst fullOddsBusy=new Set(),fullOddsCache=new Map(),fullOddsRetryAt=new Map();"
-          assert old in s, 'board state anchor missing'
-          s = s.replace(old, new, 1)
-
-          old = "const state=classify(f),bulkRoot=oddsRoot(f?.providerOdds??f?.odds),fullRoot=oddsRoot(f?.fullOdds),root=mergeMarketRoots(bulkRoot,fullRoot),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';\n  const rows=marketRows(root,f,state),fullRows=marketRows(fullRoot,f,state),usingFull=fullRows.length>0,fetchedAt=num(f?.fullOddsFetchedAt),age=usingFull?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=usingFull?(bulkRoot?'bulk + full odds · engine referee':'full odds · engine referee'):'bulk feed'"
-          new = "const state=classify(f),bulkRoot=oddsRoot(f?.providerOdds??f?.odds),cached=fullOddsCache.get(fixtureKey(f))||null,fullRoot=oddsRoot(cached?.fullOdds??f?.fullOdds),root=mergeMarketRoots(bulkRoot,fullRoot),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';\n  const rows=marketRows(root,f,state),fullRows=marketRows(fullRoot,f,state),usingFull=fullRows.length>0,fetchedAt=num(cached?.fetchedAt??f?.fullOddsFetchedAt),age=usingFull?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=usingFull?(cached?.stale?'cached full odds · stale-safe':bulkRoot?'bulk + full odds · persistent cache':'full odds · persistent cache'):'bulk feed'"
-          assert old in s, 'oddsPanel cache anchor missing'
-          s = s.replace(old, new, 1)
-
-          old = "function fullOddsFresh(f){const at=num(f?.fullOddsFetchedAt);return Boolean(f?.fullOdds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}"
-          new = "function fullOddsFresh(v){const at=num(v?.fetchedAt??v?.fullOddsFetchedAt),odds=v?.fullOdds;return Boolean(odds)&&at!==null&&Date.now()-at<FULL_ODDS_REFRESH_MS}"
-          assert old in s, 'fullOddsFresh anchor missing'
-          s = s.replace(old, new, 1)
-
-          start = s.index('async function ensureFullOdds(id){')
-          end = s.index('function requestExpandedFullOdds(card)', start)
-          assert start >= 0 and end > start, 'ensureFullOdds bounds missing'
-          ensure = """async function ensureFullOdds(id){
-  id=String(id||'');if(!id||fullOddsBusy.has(id))return;
-  const nowAt=Date.now(),cached=fullOddsCache.get(id);if(fullOddsFresh(cached))return;if(Number(fullOddsRetryAt.get(id)||0)>nowAt)return;
-  const existing=snapshotFixture(id);if(!cached&&fullOddsFresh(existing)){fullOddsCache.set(id,{fullOdds:existing.fullOdds,fetchedAt:existing.fullOddsFetchedAt,source:existing.fullOddsSource||'ENGINE_BOARD',stale:false});return}
-  fullOddsBusy.add(id);fullOddsRetryAt.set(id,nowAt+FULL_ODDS_REFRESH_MS);
-  try{
-    const r=await fetch(`${FULL_ODDS_API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);
-    if(!r.ok||j?.ok!==true){console.warn('[NOMAD343 FULL ODDS]',r.status,j?.error||'NOT_READY');return}
-    fullOddsCache.set(id,{fullOdds:j.fullOdds,fetchedAt:j.fetchedAt,source:j.source||'UI_ODDS_CACHE',stale:Boolean(j.stale)});
-    if(lastSnapshot)decorate(lastSnapshot,lastSignals);
-    window.NOMAD343_ODDS?.refresh?.();
-  }catch(e){console.warn('[NOMAD343 FULL ODDS]',e)}finally{fullOddsBusy.delete(id)}
-}
-"""
-          s = s[:start] + ensure + s[end:]
-          board.write_text(s)
-
-          index = Path('nomad-live-343/index.html')
-          s = index.read_text()
-          old = 'bet365-board.js?v=343-b365-v4-market-language&fix=fullprices1'
-          new = 'bet365-board.js?v=343-b365-v4-market-language&fix=oddspersist2'
-          assert old in s, 'index cache bust anchor missing'
-          index.write_text(s.replace(old,new,1))
-          PY
-
-      - name: Validate persistent odds fix
+      - name: Validate patch
         shell: bash
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-engine-343/src/index.js
           node --check nomad-live-343/bet365-board.js
-          grep -Fq "'/fixture-odds'" workers/nomadtips3-engine-343/src/index.js
-          grep -Fq 'uiOdds:' workers/nomadtips3-engine-343/src/index.js
-          grep -Fq 'UI_ODDS_STALE_MS=15*60_000' workers/nomadtips3-engine-343/src/index.js
-          grep -Fq 'fullOddsCache=new Map()' nomad-live-343/bet365-board.js
-          grep -Fq 'cached full odds · stale-safe' nomad-live-343/bet365-board.js
-          grep -Fq 'fix=oddspersist2' nomad-live-343/index.html
-          grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
-          grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
+          grep -Fq "const UI_ODDS_STALE_MS=15*60_000" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "uiOdds:" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "fullOddsCache=new Map()" nomad-live-343/bet365-board.js
+          grep -Fq "fix=oddspersist2" nomad-live-343/index.html
 
-      - name: Commit persistent odds fix
+      - name: Commit patch
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'nomad343-bot'
           git config user.email 'actions@users.noreply.github.com'
           git add workers/nomadtips3-engine-343/src/index.js nomad-live-343/bet365-board.js nomad-live-343/index.html
-          git rm .github/workflows/patch-343-odds-persistence-v2.yml
+          git rm .github/workflows/patch-343-odds-persistence-v2.yml .github/scripts/patch-343-odds-persistence-v2.py
           git commit -m '3.43: persist full odds outside scan board'
           git push origin HEAD:work/nomad343-clean-bet365-ui
