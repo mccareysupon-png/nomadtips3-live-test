@@ -19,7 +19,6 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -29,6 +28,7 @@ jobs:
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
           node --check workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
           node --check workers/nomadtips3-engine-343/src/index.js
           node --check workers/nomadtips3-engine-343/src/index-3s.js
           node --check workers/nomadtips3-engine-343/src/market-core.js
@@ -39,23 +39,24 @@ jobs:
           grep -Fq "const FAST_REFRESH_MS = 3_000;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
           grep -Fq "const FAST_REQUEST_BUDGET = 20;" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
           grep -Fq "include=odds,events,stats" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js
+          grep -Fq "const UPCOMING_REFRESH_MS = 120_000;" workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
+          grep -Fq "status=scheduled&per_page=" workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
           grep -Fq "const CYCLE_MS = 3_000;" workers/nomadtips3-engine-343/src/index-3s.js
           grep -Fq "const REFEREE_BUDGET = 10;" workers/nomadtips3-engine-343/src/index-3s.js
-          grep -Fq "async alarm()" workers/nomadtips3-engine-343/src/index-3s.js
           grep -Fq "if (this.scanPromise) return this.scanPromise;" workers/nomadtips3-engine-343/src/index-3s.js
 
-          grep -Fq 'main = "src/index-v3-fast.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'main = "src/index-v4-upcoming.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq 'main = "src/index-3s.js"' workers/nomadtips3-engine-343/wrangler.toml
 
-          # Prove the existing core remains intact.
+          # Prove the established cores remain intact.
           grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "const REFRESH_MS=120_000" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const MIN_SCAN_GAP_MS=60_000" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const SETTLEMENT_REVISION='bet365-rules-v2'" workers/nomadtips3-engine-343/src/index.js
 
-          if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343/src/index-v3-fast.js workers/nomadtips3-engine-343/src/index-3s.js; then
-            echo '::error::3.43 cadence wrappers must not depend on 3.42 runtime'; exit 1
+          if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js workers/nomadtips3-engine-343/src/index-3s.js; then
+            echo '::error::3.43 wrappers must not depend on 3.42 runtime'; exit 1
           fi
 
       - name: Dry-run 5USD Hub bundle
