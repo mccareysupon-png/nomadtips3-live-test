@@ -1,0 +1,55 @@
+name: Audit 3.43 Signal Full Odds Runtime
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - .github/workflows/audit-343-signal-full-odds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-clean-bet365-ui
+          fetch-depth: 0
+
+      - name: Audit Signal fixtures against Engine board
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://nomadtips3-343-preview.mccarey-supon.workers.dev/api/engine'
+          curl -fsS --max-time 30 "$BASE/board?audit=$RANDOM$RANDOM" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BASE/signals?audit=$RANDOM$RANDOM" -o /tmp/signals.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json'), s=require('/tmp/signals.json');
+          const rows=Array.isArray(b.fixtures)?b.fixtures:[];
+          const sigs=Array.isArray(s.signals)?s.signals:[];
+          const map=new Map(rows.map(x=>[String(x.fixtureId),x]));
+          const full=rows.filter(x=>x&&x.fullOdds);
+          console.log('BOARD_TOTAL',rows.length,'FULL_ODDS_TOTAL',full.length,'ACTIVE_SIGNALS',sigs.length,'LIVE_COUNT',rows.filter(x=>String(x.boardState||'').toLowerCase()==='live').length);
+          for(const x of full){console.log('FULL_ROW',String(x.fixtureId),String(x.boardState||''),String(x.fullOddsSource||''),x.home?.name,'vs',x.away?.name,'MARKETS',Object.keys(x.fullOdds||{}).join(','));}
+          let missing=0;
+          for(const sig of sigs){
+            const id=String(sig.fixtureId), row=map.get(id), has=Boolean(row?.fullOdds);
+            if(!has) missing++;
+            console.log('SIGNAL_ROW',id,'MARKET',sig.market,'PICK',sig.selection,'SIGNAL_ODDS',sig.odds,'BOARD_STATE',row?.boardState,'HAS_FULL_ODDS',has,'SOURCE',row?.fullOddsSource||'','FULL_MARKETS',Object.keys(row?.fullOdds||{}).join(','));
+          }
+          console.log('SIGNAL_FULL_ODDS_MISSING',missing);
+          NODE
+
+      - name: Remove one-shot audit
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'nomad343-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm .github/workflows/audit-343-signal-full-odds.yml
+          git commit -m 'chore: remove 3.43 signal Full Odds audit'
+          git push origin HEAD:work/nomad343-clean-bet365-ui
