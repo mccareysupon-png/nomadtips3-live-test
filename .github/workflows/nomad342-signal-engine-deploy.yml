@@ -32,12 +32,12 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: '22'
-      - name: Validate isolated server signal engine
+      - name: Validate retired isolated server signal engine
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-342-signal-engine/src/index.js
           node --check nomad-live-342/market-settings-server-sync.js
-          grep -Fq "crons = [\"* * * * *\"]" workers/nomadtips3-342-signal-engine/wrangler.toml
+          grep -Fq "crons = []" workers/nomadtips3-342-signal-engine/wrangler.toml
           grep -Fq "nomadtips3-live-score-feed-v3" workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq "nomadtips3-market-engine" workers/nomadtips3-342-signal-engine/src/index.js
           grep -Fq "nomadtips3-342-ledger" workers/nomadtips3-342-signal-engine/src/index.js
@@ -60,7 +60,7 @@ jobs:
           set -euo pipefail
           test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
-      - name: Deploy 3.42 server signal engine
+      - name: Deploy retired 3.42 server signal engine
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CF_API_TOKEN }}

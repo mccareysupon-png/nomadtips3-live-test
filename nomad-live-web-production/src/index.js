@@ -31,6 +31,17 @@ function unavailable(message,status=503){
   }});
 }
 
+function stripRetired342Navigation(response){
+  if(!response?.body)return response;
+  const contentType=String(response.headers.get('content-type')||'');
+  if(!/text\/html/i.test(contentType))return response;
+  const remove={element(element){element.remove();}};
+  return new HTMLRewriter()
+    .on('.topbar-inner.public-four-nav .topnav a[href*="/nomad-live-342"]',remove)
+    .on('.mobile-nav.public-four-nav a[href*="/nomad-live-342"]',remove)
+    .transform(response);
+}
+
 async function proxyApi(request,env,url){
   const enginePath=API_ROUTES.get(url.pathname);
   if(!enginePath) return unavailable('Production API route not found',404);
@@ -67,7 +78,7 @@ async function proxyPredictions(request,url){
   headers.set('pragma','no-cache');
   headers.set('expires','0');
   headers.set('x-nomad-web','soccer-predictions-bridge');
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+  return stripRetired342Navigation(new Response(response.body,{status:response.status,statusText:response.statusText,headers}));
 }
 
 async function proxyPrediction3(request,url){
@@ -86,7 +97,7 @@ async function proxyPrediction3(request,url){
   headers.set('pragma','no-cache');
   headers.set('expires','0');
   headers.set('x-nomad-web','prediction3-manual-bridge');
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+  return stripRetired342Navigation(new Response(response.body,{status:response.status,statusText:response.statusText,headers}));
 }
 
 function isPublicInfoPath(pathname){
@@ -149,39 +160,14 @@ async function proxyPublicInfo(request,url){
   headers.set('pragma','no-cache');
   headers.set('expires','0');
   headers.set('x-nomad-web','public-info-bridge');
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+  return stripRetired342Navigation(new Response(response.body,{status:response.status,statusText:response.statusText,headers}));
 }
 
 async function proxyNomad342(request,env,url){
-  if(url.pathname===NOMAD342_PREFIX){
-    return Response.redirect(new URL(NOMAD342_PREFIX+'/'+url.search,url.origin).toString(),302);
+  if(url.pathname===NOMAD342_PREFIX||url.pathname.startsWith(NOMAD342_PREFIX+'/')){
+    return Response.redirect(new URL('/'+url.search,url.origin).toString(),302);
   }
-  if(!url.pathname.startsWith(NOMAD342_PREFIX+'/')) return null;
-  if(request.method!=='GET'&&request.method!=='HEAD'){
-    return unavailable('NOMAD Live 3.42 route supports GET/HEAD only',405);
-  }
-  if(url.pathname===NOMAD342_PREFIX+'/feed'){
-    if(!env?.EVENT_ENGINE||typeof env.EVENT_ENGINE.fetch!=='function'){
-      return unavailable('NOMAD Live 3.42 Event Engine binding unavailable');
-    }
-    const internalUrl=new URL('/feed'+url.search,'https://nomadtips3-live-engine-342.internal');
-    const response=await env.EVENT_ENGINE.fetch(new Request(internalUrl,request));
-    const headers=new Headers(response.headers);
-    headers.set('cache-control','no-store, max-age=0');
-    headers.set('pragma','no-cache');
-    headers.set('expires','0');
-    headers.set('x-nomad-web','nomad-live-342-feed-binding');
-    return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
-  }
-  const upstreamUrl=new URL(PREDICTIONS_BASE+url.pathname+url.search,PREDICTIONS_ORIGIN);
-  const upstreamRequest=new Request(upstreamUrl.toString(),request);
-  const response=await fetch(upstreamRequest);
-  const headers=new Headers(response.headers);
-  headers.set('cache-control','no-store, max-age=0');
-  headers.set('pragma','no-cache');
-  headers.set('expires','0');
-  headers.set('x-nomad-web','nomad-live-342-bridge');
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+  return null;
 }
 
 function releaseResponse(){
@@ -218,6 +204,6 @@ export default {
     if(!env?.ASSETS||typeof env.ASSETS.fetch!=='function'){
       return unavailable('Static assets unavailable');
     }
-    return env.ASSETS.fetch(request);
+    return stripRetired342Navigation(await env.ASSETS.fetch(request));
   },
 };

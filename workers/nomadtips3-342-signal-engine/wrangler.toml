@@ -6,8 +6,9 @@ workers_dev = true
 [observability]
 enabled = true
 
+# 3.42 retired: keep Worker/read state available, stop autonomous scans.
 [triggers]
-crons = ["* * * * *"]
+crons = []
 
 [[durable_objects.bindings]]
 name = "ENGINE"

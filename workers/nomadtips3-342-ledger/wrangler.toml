@@ -6,8 +6,9 @@ workers_dev = true
 [observability]
 enabled = true
 
+# 3.42 retired: stop periodic sweeps. Existing Durable Object alarms may finish already-locked pending records, then self-clear.
 [triggers]
-crons = ["*/5 * * * *"]
+crons = []
 
 [[durable_objects.bindings]]
 name = "LEDGER"
