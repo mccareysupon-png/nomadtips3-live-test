@@ -1,0 +1,75 @@
+name: Probe NOMAD 3.43 Live Picks
+on:
+  push:
+    branches: ["probe/nomad343-live-picks-20260912"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read live board and 10-book markets
+        env:
+          BASE: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+        run: |
+          node <<'NODE'
+          const BASE=process.env.BASE;
+          const n=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
+          const pair=v=>v&&typeof v==='object'?{home:n(v.home),away:n(v.away)}:{home:null,away:null};
+          const minute=f=>n(f.minute)??n(String(f.statusCode||'').match(/\d+/)?.[0]);
+          const live=f=>String(f.boardState??f.status??'').toLowerCase().includes('live');
+          const val=(o,...ks)=>{for(const k of ks){if(o?.[k]!==undefined&&o?.[k]!==null)return o[k]}return null};
+          const norm=s=>String(s??'').toLowerCase().replace(/[\s_-]/g,'');
+          const BOOKS=['bet365','pinnacle','crown','1xbet','12bet','interwetten','macauslot','18bet','vcbet','easybets'];
+          async function get(path){const r=await fetch(BASE+path,{headers:{'cache-control':'no-cache'}});if(!r.ok)throw Error(path+' '+r.status);return r.json()}
+          function score(f){
+            const s=f.statistics||{},sot=pair(s.shotsOnTarget),sof=pair(s.shotsOffTarget),cor=pair(f.corners??s.corners),att=pair(s.attacks),da=pair(s.dangerousAttacks);
+            const sum=x=>(x.home||0)+(x.away||0);
+            const m=minute(f)||0, goals=(n(f.goals?.home)||0)+(n(f.goals?.away)||0);
+            return sum(sot)*7+sum(sof)*2+sum(cor)*2+sum(da)*0.18+sum(att)*0.03+goals*4+(m>=35&&m<=78?8:0);
+          }
+          function providerBooks(payload){
+            const full=payload?.fullOdds??payload?.data??payload;
+            const candidates=[full?.data?.bookmakers,full?.bookmakers,payload?.bookmakers,payload?.data?.bookmakers];
+            let raw=candidates.find(Array.isArray)||[];
+            if(!raw.length){
+              const roots=[full?.data,full,payload?.data,payload].filter(x=>x&&typeof x==='object'&&!Array.isArray(x));
+              for(const root of roots){const keyed=[];for(const slug of BOOKS){const hit=root[slug]??root[slug.toLowerCase()];if(hit&&typeof hit==='object')keyed.push({slug,...hit})}if(keyed.length){raw=keyed;break}}
+            }
+            const found=[];
+            for(const slug of BOOKS){
+              const target=norm(slug),row=raw.find(x=>{const key=norm(x?.slug??x?.bookmaker?.slug??x?.name??x?.bookmaker?.name);return key===target||key.includes(target)||target.includes(key)});
+              if(!row)continue;const odds=row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??row;if(!odds||typeof odds!=='object'||Array.isArray(odds))continue;found.push({slug,odds});
+            }
+            return found;
+          }
+          function market(obj,keys){for(const k of Object.keys(obj||{})){const nk=k.toLowerCase().replace(/[\s-]+/g,'_');if(keys.some(x=>nk===x||nk.startsWith(x)))return obj[k]}return null}
+          function stage(m){return m?.inplay??m?.in_play??m?.live??null}
+          function summarizeOdds(payload){
+            const rows=[];
+            for(const b of providerBooks(payload)){
+              const ah=stage(market(b.odds,['asian_handicap','asian','handicap']));
+              const gl=stage(market(b.odds,['goal_line','goalline','total_goals','goals_over_under']));
+              const x12=stage(market(b.odds,['1x2']));
+              rows.push({book:b.slug,ah:ah?{line:val(ah,'line','hdp','handicap'),home:val(ah,'home','home_odds','homeOdds'),away:val(ah,'away','away_odds','awayOdds')}:null,goal:gl?{line:val(gl,'line','total'),over:val(gl,'over','over_odds','overOdds'),under:val(gl,'under','under_odds','underOdds')}:null,x12:x12?{home:x12.home,draw:x12.draw,away:x12.away}:null});
+            }
+            return rows;
+          }
+          const board=await get('/api/engine/board?probe='+Date.now());
+          const all=(board.fixtures||[]).filter(live).filter(f=>{const m=minute(f);return m!==null&&m>=20&&m<=82}).sort((a,b)=>score(b)-score(a)).slice(0,8);
+          console.log('PROBE_TS',new Date().toISOString(),'LIVE_CANDIDATES',all.length);
+          for(const f of all){
+            const id=String(f.fixtureId),m=minute(f),s=f.statistics||{};
+            let odds=null,hist=null;
+            try{odds=await get('/api/full-market/fixture-odds?fixtureId='+encodeURIComponent(id)+'&probe='+Date.now())}catch(e){console.log('ODDS_ERR',id,String(e))}
+            try{hist=await get('/api/engine/history?fixtureId='+encodeURIComponent(id)+'&window=10&probe='+Date.now())}catch{}
+            const out={
+              fixtureId:id,minute:m,score:[n(f.goals?.home)||0,n(f.goals?.away)||0],home:f.home?.name,away:f.away?.name,league:[f.league?.country,f.league?.name].filter(Boolean).join(' · '),
+              stats:{sot:pair(s.shotsOnTarget),soff:pair(s.shotsOffTarget),corners:pair(f.corners??s.corners),attacks:pair(s.attacks),dangerous:pair(s.dangerousAttacks),possession:pair(s.possession)},
+              pressure:Array.isArray(hist?.pressure)?hist.pressure.slice(-5):[],
+              odds:odds?summarizeOdds(odds):[],rankScore:Number(score(f).toFixed(2))
+            };
+            console.log('CANDIDATE_JSON '+JSON.stringify(out));
+          }
+          NODE
