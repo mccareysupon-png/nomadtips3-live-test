@@ -1,8 +1,8 @@
 (()=>{
 'use strict';
-const VERSION='343-league-flags-v2-display';
+const VERSION='343-league-flags-v3-no-broken-image';
 const STYLE_ID='nomad343-league-flags-style';
-const FLAG_BASE='https://cdn.jsdelivr.net/gh/lipis/flag-icons@7.5.0/flags/4x3/';
+const FLAG_BASE='https://cdn.jsdelivr.net/npm/flag-icons@7.5.0/flags/4x3/';
 const WORLD=new Set(['international','world','worldwide','uefa','fifa','europe','global','international clubs','club international']);
 const CODES={
   'afghanistan':'af','albania':'al','algeria':'dz','andorra':'ad','angola':'ao','argentina':'ar','armenia':'am','australia':'au','austria':'at','azerbaijan':'az',
@@ -48,16 +48,20 @@ function codeFor(country){
 }
 function flag(code){
   if(code==='WORLD'||!code)return globe();
+  const placeholder=globe();
   const img=document.createElement('img');
   img.className='league-flag';
   img.alt='';
   img.setAttribute('aria-hidden','true');
-  img.loading='lazy';
   img.decoding='async';
   img.referrerPolicy='no-referrer';
-  img.src=`${FLAG_BASE}${code}.svg`;
-  img.addEventListener('error',()=>img.replaceWith(globe()),{once:true});
-  return img;
+  const url=`${FLAG_BASE}${code}.svg`;
+  img.addEventListener('load',()=>{
+    if(placeholder.isConnected)placeholder.replaceWith(img);
+  },{once:true});
+  img.addEventListener('error',()=>{}, {once:true});
+  img.src=url;
+  return placeholder;
 }
 function decorateLine(line){
   if(!line||line.dataset.leagueFlagDone==='1')return;
