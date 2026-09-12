@@ -323,6 +323,6 @@ export class Nomad343Engine extends DurableObject{
 function stub(env){return env.ENGINE.get(env.ENGINE.idFromName('global'))}
 function cors(request,response){const h=new Headers(response.headers);h.set('access-control-allow-origin',request.headers.get('origin')||'*');h.set('access-control-allow-methods','GET,PUT,POST,OPTIONS');h.set('access-control-allow-headers','content-type');h.set('cache-control','no-store');return new Response(response.body,{status:response.status,headers:h})}
 export default{
-  async fetch(request,env){if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));const u=new URL(request.url);if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)))},
+  async fetch(request,env){if(request.method==='OPTIONS')return cors(request,new Response(null,{status:204}));const u=new URL(request.url);if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));return cors(request,await stub(env).fetch(new Request(`https://engine.internal${u.pathname}${u.search}`,request)))},
   async scheduled(_event,env,ctx){ctx.waitUntil(stub(env).fetch('https://engine.internal/scan',{method:'POST'}))}
 };
