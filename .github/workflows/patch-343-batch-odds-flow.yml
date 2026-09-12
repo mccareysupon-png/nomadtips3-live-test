@@ -1,0 +1,50 @@
+name: Patch 3.43 Batch Odds Flow
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - .github/workflows/patch-343-batch-odds-flow.yml
+      - .github/scripts/patch-343-batch-odds-flow.py
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-clean-bet365-ui
+          fetch-depth: 0
+
+      - name: Apply batch odds patch
+        run: python .github/scripts/patch-343-batch-odds-flow.py
+
+      - name: Validate batch odds patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check nomad-live-343/bet365-board.js
+          grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'mergeProviderOdds(base.providerOdds,extra.providerOdds)' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'providerOddsRaw(f)' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "source='5USD batch · round feed'" nomad-live-343/bet365-board.js
+          if grep -Fq '/api/engine/fixture-odds' nomad-live-343/bet365-board.js; then echo 'public board still calls fixture odds'; exit 1; fi
+          if grep -Fq 'ensureFullOdds' nomad-live-343/bet365-board.js; then echo 'public board still has full odds loader'; exit 1; fi
+          grep -Fq 'fix=oddsbatch1' nomad-live-343/index.html
+          grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
+
+      - name: Commit batch odds patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'nomad343-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add workers/nomadtips3-5usd-hub-343/src/index-v2.js nomad-live-343/bet365-board.js nomad-live-343/index.html
+          git rm .github/workflows/patch-343-batch-odds-flow.yml .github/scripts/patch-343-batch-odds-flow.py
+          git commit -m '3.43: use batch odds for prematch and rolling prices'
+          git push origin HEAD:work/nomad343-clean-bet365-ui
