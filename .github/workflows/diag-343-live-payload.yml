@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Read ENGINE board only
+      - name: Read one ENGINE odds payload only
         shell: bash
         run: |
           set -euo pipefail
@@ -24,16 +24,7 @@ jobs:
           const fs=require('fs');
           const s=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
           const all=Array.isArray(s.fixtures)?s.fixtures:[];
-          const live=all.filter(x=>x.boardState==='live');
-          const rows=live.map(x=>({
-            fixtureId:x.fixtureId,
-            home:x.home?.name,
-            away:x.away?.name,
-            minute:x.minute,
-            providerOdds:x.providerOdds==null?'ABSENT':'PRESENT',
-            oddsKeys:x.providerOdds&&typeof x.providerOdds==='object'?Object.keys(x.providerOdds):[],
-            eventCount:Array.isArray(x.events)?x.events.length:null,
-            stats:x.statistics==null?'ABSENT':'PRESENT'
-          }));
-          console.log(JSON.stringify({ok:s.ok,version:s.version,liveCount:live.length,liveWithOdds:rows.filter(x=>x.providerOdds==='PRESENT').length,rows},null,2));
+          const x=all.find(v=>String(v.fixtureId)==='200100164');
+          if(!x){console.log('fixture not found');process.exit(2)}
+          console.log(JSON.stringify({fixtureId:x.fixtureId,home:x.home?.name,away:x.away?.name,minute:x.minute,providerOdds:x.providerOdds},null,2));
           NODE
