@@ -1,0 +1,49 @@
+name: Hotfix 3.43 fixture odds route
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - .github/workflows/hotfix-343-fixture-odds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Expose existing fixture odds route only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          old="if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));"
+          new="if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));"
+          if old not in s:
+              raise SystemExit('expected public allowlist not found')
+          p.write_text(s.replace(old,new,1))
+          w=Path('workers/nomadtips3-engine-343/wrangler.toml')
+          ws=w.read_text().replace('main = "src/public-entry.js"','main = "src/index.js"')
+          w.write_text(ws)
+          Path('workers/nomadtips3-engine-343/src/public-entry.js').unlink(missing_ok=True)
+          PY
+          node --check workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "'/fixture-odds'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq 'main = "src/index.js"' workers/nomadtips3-engine-343/wrangler.toml
+      - name: Commit route fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js workers/nomadtips3-engine-343/wrangler.toml workers/nomadtips3-engine-343/src/public-entry.js
+          git commit -m 'fix(343): expose fixture odds route to preview'
+          git push origin HEAD:work/nomad343-clean-bet365-ui
