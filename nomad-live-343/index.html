@@ -11,43 +11,37 @@
     const originalFetch=window.fetch.bind(window);
     const BOARD='/api/engine/board';
     const SIGNALS='/api/engine/signals';
+    const SNAPSHOT_KEY='nomad343-board-snapshot-v1';
+    const SNAPSHOT_MAX_MS=5*60*1000;
     let boardResponse=null,signalResponse=null;
-    let boardServed=0,signalServed=0,restored=false;
+    let boardServed=0,signalServed=0,restored=false,warmUsed=false;
     const pathOf=input=>{try{return new URL(typeof input==='string'?input:input?.url,location.href).pathname}catch{return''}};
-    const prefetch=(path,kind)=>originalFetch(`${path}?_fast=${Date.now()}`,{cache:'no-store'}).then(r=>{if(kind==='board')boardResponse=r;else signalResponse=r;return r}).catch(()=>null);
-    const boardPrefetch=prefetch(BOARD,'board');
-    const signalPrefetch=prefetch(SIGNALS,'signals');
+    const readSnapshot=()=>{try{const raw=localStorage.getItem(SNAPSHOT_KEY);if(!raw)return null;const entry=JSON.parse(raw),savedAt=Number(entry?.savedAt||0),payload=entry?.payload,age=Date.now()-savedAt;if(!savedAt||age<0||age>SNAPSHOT_MAX_MS||payload?.ok!==true)return null;if(new Date(savedAt).toDateString()!==new Date().toDateString())return null;return{savedAt,payload}}catch{return null}};
+    const warmSnapshot=readSnapshot();
+    const warmResponse=()=>{if(!warmSnapshot)return null;const age=Math.max(0,Date.now()-warmSnapshot.savedAt),baseAge=Math.max(0,Number(warmSnapshot.payload?.hubAgeMs||0));const payload={...warmSnapshot.payload,stale:true,warmStart:true,hubAgeMs:baseAge+age};return new Response(JSON.stringify(payload),{status:200,headers:{'Content-Type':'application/json','X-NOMAD-Warm-Start':'1'}})};
+    const saveSnapshot=async r=>{try{if(!r?.ok)return;const j=await r.clone().json();if(j?.ok===true)localStorage.setItem(SNAPSHOT_KEY,JSON.stringify({savedAt:Date.now(),payload:j}))}catch{}};
+    const boardPrefetch=originalFetch(`${BOARD}?_fast=${Date.now()}`,{cache:'no-store'}).then(r=>{boardResponse=r;saveSnapshot(r);return r}).catch(()=>null);
+    const signalPrefetch=originalFetch(`${SIGNALS}?_fast=${Date.now()}`,{cache:'no-store'}).then(r=>{signalResponse=r;return r}).catch(()=>null);
     const restore=()=>{if(restored)return;restored=true;window.fetch=originalFetch};
+    const scheduleSync=()=>{let attempts=0;const sync=()=>{if(restored||attempts>=80)return;if(window.NOMAD343_LIVE?.reload){window.NOMAD343_LIVE.reload();return}attempts++;setTimeout(sync,50)};sync()};
     window.fetch=(input,init)=>{
       const path=pathOf(input);
-      if(path===BOARD&&boardServed<2){
+      if(path===BOARD){
         boardServed++;
+        if(boardServed===1){const warm=warmResponse();if(warm){warmUsed=true;return Promise.resolve(warm)}}
+        if(boardResponse)return Promise.resolve(boardResponse.clone());
         return boardPrefetch.then(r=>r?r.clone():originalFetch(input,init));
       }
-      if(path===SIGNALS&&signalServed===0){
+      if(path===SIGNALS){
         signalServed++;
         if(signalResponse)return Promise.resolve(signalResponse.clone());
-        return Promise.resolve(new Response('',{status:503,statusText:'Signals warming'}));
-      }
-      if(path===SIGNALS&&signalServed===1&&signalResponse){
-        signalServed++;
-        const out=signalResponse.clone();
-        queueMicrotask(restore);
-        return Promise.resolve(out);
+        if(signalServed===1)return Promise.resolve(new Response('',{status:503,statusText:'Signals warming'}));
+        return signalPrefetch.then(r=>r?r.clone():originalFetch(input,init));
       }
       return originalFetch(input,init);
     };
-    signalPrefetch.then(r=>{
-      if(!r)return;
-      let attempts=0;
-      const sync=()=>{
-        if(restored||signalServed>=2)return;
-        if(window.NOMAD343_LIVE?.reload)window.NOMAD343_LIVE.reload();
-        attempts++;
-        if(signalServed<2&&attempts<40)setTimeout(sync,50);
-      };
-      sync();
-    });
+    boardPrefetch.then(r=>{if(r&&warmUsed)scheduleSync()});
+    signalPrefetch.then(r=>{if(r)scheduleSync()});
     setTimeout(restore,10000);
   })();
   </script>
@@ -66,5 +60,5 @@
   <div class="note">Select a match to view match details, statistics, event flow and full markets.</div>
 </main>
 <nav class="mobile-nav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>
-<script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed" defer></script><script src="ui.js?v=343-ui-local-timezone-v2" defer></script><script src="football-language-343.js?v=343-football-english-v1-qa1" defer></script><script src="language-menu-343.js?v=343-language-menu-v3-thai-freeze" defer></script><script src="language-es-343.js?v=343-language-es-v1" defer></script><script src="language-fr-343.js?v=343-language-fr-v1" defer></script><script src="language-pt-br-343.js?v=343-language-pt-br-v1" defer></script><script src="language-ar-343.js?v=343-language-ar-v1" defer></script><script src="language-id-343.js?v=343-language-id-v1" defer></script><script src="event-flow-343.js?v=343-flow-v3" defer></script><script src="live.js?v=343-public-v8-viewer-timezone" defer></script><script src="league-flags-343.js?v=343-league-flags-v3-no-broken-image" defer></script><script src="team-kits-343.js?v=343-team-kits-v5-vintage-plus30-shadow" defer></script><script src="full-odds-main-343.js?v=343-full-odds-main-v5-ultra-10book" defer></script><script src="card-order-343.js?v=343-card-order-v1" defer></script>
+<script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed" defer></script><script src="ui.js?v=343-ui-local-timezone-v2" defer></script><script src="live.js?v=343-public-v8-viewer-timezone" defer></script><script src="football-language-343.js?v=343-football-english-v1-qa1" defer></script><script src="language-menu-343.js?v=343-language-menu-v3-thai-freeze" defer></script><script src="language-es-343.js?v=343-language-es-v1" defer></script><script src="language-fr-343.js?v=343-language-fr-v1" defer></script><script src="language-pt-br-343.js?v=343-language-pt-br-v1" defer></script><script src="language-ar-343.js?v=343-language-ar-v1" defer></script><script src="language-id-343.js?v=343-language-id-v1" defer></script><script src="event-flow-343.js?v=343-flow-v3" defer></script><script src="league-flags-343.js?v=343-league-flags-v3-no-broken-image" defer></script><script src="team-kits-343.js?v=343-team-kits-v5-vintage-plus30-shadow" defer></script><script src="full-odds-main-343.js?v=343-full-odds-main-v5-ultra-10book" defer></script><script src="card-order-343.js?v=343-card-order-v1" defer></script>
 </body></html>
