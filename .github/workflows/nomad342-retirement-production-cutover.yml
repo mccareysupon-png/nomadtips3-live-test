@@ -1,0 +1,152 @@
+name: Finalize NOMAD 3.42 Retirement Cutover
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomad342-retirement-production-cutover.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
+  CUSTOM_URL: https://www.nomadtips3.com
+
+jobs:
+  retire-342-public-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate retirement scope
+        run: |
+          set -euo pipefail
+          node --check nomad-live-web-production/src/index.js
+          grep -Fq 'stripRetired342Navigation' nomad-live-web-production/src/index.js
+          grep -Fq 'proxyNomad342' nomad-live-web-production/src/index.js
+          grep -Fq "crons = []" workers/nomadtips3-342-signal-engine/wrangler.toml
+          grep -Fq "crons = []" workers/nomadtips3-342-ledger/wrangler.toml
+          ! grep -Fq 'https://www.nomadtips3.com/nomad-live-342/' sitemap.xml
+          grep -Fq 'nomadtips3-live-engine-5dollar' workers/nomadtips3-live-engine-5dollar/wrangler.jsonc
+          grep -Fq 'nomadtips3-343-auto-engine' .github/workflows/nomad343-auto-engine-deploy.yml
+          echo 'Retirement scope validated; shared 5USD and 3.43 files remain present.'
+
+      - name: Validate Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+
+      - name: Dry-run web bundles
+        working-directory: nomad-live-web-production
+        run: |
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.preview.jsonc
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
+
+      - name: Deploy retirement canary
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-web-production
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.preview.jsonc
+
+      - name: Verify retirement canary
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 20 "$CANARY_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json \
+              && grep -Fq 'nomadtips3-live-web-production' /tmp/release.json \
+              && grep -Fq '"version":"3.41"' /tmp/release.json; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1
+
+          check_no_342_menu(){
+            local url="$1" out="$2"
+            curl -fsSL --max-time 25 "$url" -o "$out"
+            if grep -Eq 'href="[^"]*/nomad-live-342/?' "$out"; then
+              echo "::error::3.42 menu link still present at $url"
+              exit 1
+            fi
+          }
+
+          check_no_342_menu "$CANARY_URL/?t=$(date +%s)" /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          check_no_342_menu "$CANARY_URL/statistics.html?t=$(date +%s)" /tmp/statistics.html
+          grep -Fq 'Statistics' /tmp/statistics.html
+          for page in about privacy terms user-guide disclaimer prediction3 soccer-predictions; do
+            check_no_342_menu "$CANARY_URL/$page/?t=$(date +%s)" "/tmp/$page.html"
+          done
+
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$CANARY_URL/nomad-live-342/?retired=$(date +%s)")"
+          test "$code" = 302 || { echo "::error::3.42 public route did not retire; HTTP $code"; exit 1; }
+          curl -fsSL --max-time 20 "$CANARY_URL/nomad-live-342/?retired=$(date +%s)" -o /tmp/retired-follow.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/retired-follow.html
+          echo 'Canary retirement checks passed.'
+
+      - name: Deploy Production Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-web-production
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.production.jsonc
+
+      - name: Verify www retirement and 3.41 health
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 20 "$CUSTOM_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json \
+              && grep -Fq 'nomadtips3-live-web-production' /tmp/release.json \
+              && grep -Fq '"version":"3.41"' /tmp/release.json; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1
+
+          check_no_342_menu(){
+            local url="$1" out="$2"
+            curl -fsSL --max-time 25 "$url" -o "$out"
+            if grep -Eq 'href="[^"]*/nomad-live-342/?' "$out"; then
+              echo "::error::3.42 menu link still present at $url"
+              exit 1
+            fi
+          }
+
+          check_no_342_menu "$CUSTOM_URL/?t=$(date +%s)" /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          check_no_342_menu "$CUSTOM_URL/statistics.html?t=$(date +%s)" /tmp/statistics.html
+          grep -Fq 'Statistics' /tmp/statistics.html
+          for page in about privacy terms user-guide disclaimer prediction3 soccer-predictions; do
+            check_no_342_menu "$CUSTOM_URL/$page/?t=$(date +%s)" "/tmp/$page.html"
+          done
+
+          for endpoint in health feed statistics config; do
+            curl -fsS --max-time 20 "$CUSTOM_URL/api/$endpoint?t=$(date +%s)" -o "/tmp/$endpoint.json"
+            test -s "/tmp/$endpoint.json"
+          done
+
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$CUSTOM_URL/nomad-live-342/?retired=$(date +%s)")"
+          test "$code" = 302 || { echo "::error::www 3.42 public route did not retire; HTTP $code"; exit 1; }
+          curl -fsSL --max-time 20 "$CUSTOM_URL/nomad-live-342/?retired=$(date +%s)" -o /tmp/retired-follow.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/retired-follow.html
+          echo 'NOMAD 3.42 public entry retired; 3.41 remains healthy.'
