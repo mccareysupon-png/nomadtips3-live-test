@@ -1,39 +1,53 @@
 {
-  "generatedAt": "2026-09-03T06:25:00+07:00",
-  "mode": "king-v2-beta",
+  "generatedAt": "2026-09-13T05:42:00+07:00",
+  "mode": "sirius-prediction3",
   "liveScore": false,
   "metricsStatus": "source-screened",
-  "status": "NO_PICK",
-  "noPickMessage": "NO KING PICK TODAY",
+  "status": "PICKS_READY",
+  "noPickMessage": "NO SIRIUS PICK TODAY",
   "selectionPolicy": {
-    "version": "KING V2 BETA",
+    "version": "SIRIUS PREDICTION3",
     "market": "1X2 Team Win",
-    "underlyingGate": "normally >= 3/4 tests",
-    "minMarketEdgePctPoints": 5,
-    "minEVPct": 5,
-    "maxOdds": 3.0,
-    "confidenceDisplay": "disabled until calibrated",
-    "lineupRecheck": "60-75 minutes before kickoff when available",
-    "decision": "Data quality and value first; NO PICK is valid"
+    "minOdds": 1.80,
+    "maxPicks": 3,
+    "abcRequired": true,
+    "noPickAllowed": true,
+    "decision": "Win-only selection; do not force a third pick"
   },
   "selectionRun": {
-    "candidatesScreened": 14,
-    "qualified": 0,
-    "decision": "NO KING PICK TODAY",
-    "audit": "data/v2-audit/KING_V2_2026-09-03.json"
+    "qualified": 2,
+    "decision": "2 PICKS — NO THIRD PICK"
   },
-  "watchlist": [
+  "picks": [
     {
-      "match": "FC Basel vs FC Sion",
-      "side": "FC Sion",
-      "referenceOdds": 2.55,
-      "marketFairProbability": 36.54,
-      "betaModelProbability": 40.2,
-      "edgePctPoints": 3.66,
-      "evPct": 2.51,
-      "status": "NEAR VALUE — NOT A PICK",
-      "note": "Recheck only after confirmed lineup and meaningful price change; all V2 gates must be recalculated."
+      "id": "nordsjaelland-agf-20260913",
+      "league": "Denmark · Superliga",
+      "kickoff": "13 Sep · 18:00 TH",
+      "kickoffAt": "2026-09-13T11:00:00Z",
+      "home": "FC Nordsjaelland",
+      "away": "AGF Aarhus",
+      "pick": "FC Nordsjaelland Win",
+      "odds": 1.80,
+      "confidence": 62.5,
+      "abc": "PASS · ABC",
+      "featured": true,
+      "analysis": "FC Nordsjaelland are the primary Sirius 1X2 selection. Current source screening supports the home side through stronger home form and AGF's recent away losses; expert win probability is assessed in the 60–65% range. The 1.80 reference price meets the Sirius floor, so this remains the first-choice win-only pick.",
+      "source": "https://insights.betfred.com/football/match/denmark/13-09-2026/fc-nordsjaelland-v-agf/"
+    },
+    {
+      "id": "coventry-brighton-20260913",
+      "league": "England · Premier League",
+      "kickoff": "13 Sep · 20:00 TH",
+      "kickoffAt": "2026-09-13T13:00:00Z",
+      "home": "Coventry City",
+      "away": "Brighton & Hove Albion",
+      "pick": "Brighton & Hove Albion Win",
+      "odds": 1.90,
+      "confidence": 50.7,
+      "abc": "PASS · ABC",
+      "featured": false,
+      "analysis": "Brighton are the second Sirius 1X2 selection. Coventry have opened the league season with three defeats, no points and no league goals, while Brighton hold the stronger attacking profile. The current 1X2 market is around 1.90 for Brighton and the independent model probability is about 50.7%, so this is retained as the secondary pick rather than forcing a third match.",
+      "source": "https://betmines.com/match-preview/coventry-city-vs-brighton-and-hove-albion-prediction-match-preview-and-analysis-premier-league-13-09-2026"
     }
-  ],
-  "picks": []
+  ]
 }
