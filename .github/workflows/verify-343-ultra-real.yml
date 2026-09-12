@@ -1,0 +1,55 @@
+name: Verify NOMAD 3.43 Ultra Real
+
+on:
+  push:
+    branches: [work/nomad343-clean-bet365-ui]
+    paths:
+      - '.github/workflows/verify-343-ultra-real.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-real:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      REAL_URL: https://nomadtips3-343-preview.mccarey-supon.workers.dev
+    steps:
+      - name: Verify real 3.43 and 10-book Full Market
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl_retry() {
+            curl -fsS --retry 8 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 30 "$1" -o "$2"
+          }
+
+          curl_retry "$REAL_URL/api/engine/health?verify=$RANDOM" /tmp/engine.json
+          node -e 'const j=require("/tmp/engine.json");if(j.component!=="NOMAD343_ENGINE"||j.version!=="nomad343-engine-v3-settlement-safe")throw Error("engine changed");console.log("ENGINE OK",j.version)'
+
+          curl_retry "$REAL_URL/api/full-market/health?verify=$RANDOM" /tmp/full-health.json
+          node -e 'const j=require("/tmp/full-health.json");if(j.ok!==true||j.component!=="NOMAD343_FULL_MARKET")throw Error("full market health");if(!Array.isArray(j.bookmakers)||j.bookmakers.length!==10)throw Error("10 books");if(j.rate?.accountLimitPerMinute!==40)throw Error("rate limit");console.log("FULL MARKET OK",j.bookmakers.map(x=>x.slug).join(","))'
+
+          curl_retry "$REAL_URL/api/engine/board?verify=$RANDOM" /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs'),j=require('/tmp/board.json');
+          if(j.ok!==true) throw Error(j.error||'board not ready');
+          const f=Array.isArray(j.fixtures)?j.fixtures:[];
+          const live=f.find(x=>x?.fixtureId&&String(x.boardState||'').toLowerCase()==='live');
+          const pick=live||f.find(x=>x?.fixtureId)||null;
+          fs.writeFileSync('/tmp/fixture-id',pick?String(pick.fixtureId):'');
+          console.log('FIXTURE',pick?.fixtureId||'none');
+          NODE
+          FIXTURE_ID="$(cat /tmp/fixture-id)"
+          if [ -n "$FIXTURE_ID" ]; then
+            curl_retry "$REAL_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&verify=$RANDOM" /tmp/full.json
+            node -e 'const j=require("/tmp/full.json");if(j.ok!==true)throw Error(j.error||"full market request");if(!Array.isArray(j.requestedBookmakers)||j.requestedBookmakers.length!==10)throw Error("requested books");console.log("10-BOOK SNAPSHOT",j.fixtureId,"available",(j.availableBookmakers||[]).join(","),"source",j.source)'
+          fi
+
+          curl_retry "$REAL_URL/?verify=$RANDOM" /tmp/index.html
+          curl_retry "$REAL_URL/full-odds-main-343.js?verify=$RANDOM" /tmp/full-ui.js
+          grep -Fq '343-full-odds-main-v5-ultra-10book' /tmp/index.html
+          grep -Fq "const VERSION='343-full-odds-main-v5-ultra-10book'" /tmp/full-ui.js
+          grep -Fq 'FULL MARKET · 10 BOOKS' /tmp/full-ui.js
+          echo "REAL 3.43 ULTRA OK"
