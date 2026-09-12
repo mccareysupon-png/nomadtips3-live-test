@@ -1,0 +1,56 @@
+name: Verify 3.43 Pending Full Odds Runtime
+
+on:
+  push:
+    branches:
+      - work/nomad343-clean-bet365-ui
+    paths:
+      - .github/workflows/verify-343-pending-full-odds.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-clean-bet365-ui
+          fetch-depth: 0
+
+      - name: Verify deployed board receives pending-signal Full Odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://nomadtips3-343-preview.mccarey-supon.workers.dev/api/engine/board'
+          for attempt in 1 2 3; do
+            curl -fsS --max-time 30 "$URL?verify=$RANDOM$RANDOM" -o /tmp/board.json
+            node - <<'NODE'
+          const b=require('/tmp/board.json');
+          const rows=Array.isArray(b.fixtures)?b.fixtures:[];
+          const full=rows.filter(x=>x&&x.fullOdds);
+          const backfill=rows.filter(x=>x&&x.fullOddsSource==='ENGINE_REFEREE_BACKFILL');
+          console.log('BOARD',rows.length,'FULL_ODDS',full.length,'BACKFILL',backfill.length,'REFEREE',JSON.stringify(b.referee||{}));
+          if(backfill.length){
+            for(const x of backfill.slice(0,5)) console.log('BACKFILL_FIXTURE',x.fixtureId,x.home?.name,'vs',x.away?.name,'MARKETS',Object.keys(x.fullOdds||{}).length);
+            process.exit(0);
+          }
+          process.exit(3);
+          NODE
+            rc=$?
+            if [ "$rc" = 0 ]; then exit 0; fi
+            if [ "$attempt" != 3 ]; then sleep 35; fi
+          done
+          exit 1
+
+      - name: Remove one-shot verifier
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'nomad343-bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git rm .github/workflows/verify-343-pending-full-odds.yml
+          git commit -m 'chore: remove 3.43 Full Odds runtime verifier'
+          git push origin HEAD:work/nomad343-clean-bet365-ui
