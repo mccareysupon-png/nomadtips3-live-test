@@ -35,10 +35,13 @@ function stripRetired342Navigation(response){
   if(!response?.body)return response;
   const contentType=String(response.headers.get('content-type')||'');
   if(!/text\/html/i.test(contentType))return response;
-  const remove={element(element){element.remove();}};
+  const sirius={element(element){
+    element.setAttribute('href','https://www.nomadtips3.com/prediction3/');
+    element.setInnerContent('Verdict of Sirius');
+  }};
   return new HTMLRewriter()
-    .on('.topbar-inner.public-four-nav .topnav a[href*="/nomad-live-342"]',remove)
-    .on('.mobile-nav.public-four-nav a[href*="/nomad-live-342"]',remove)
+    .on('.topbar-inner.public-four-nav .topnav a[href*="/nomad-live-342"]',sirius)
+    .on('.mobile-nav.public-four-nav a[href*="/nomad-live-342"]',sirius)
     .transform(response);
 }
 
