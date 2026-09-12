@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-team-kits-v1';
+const VERSION='343-team-kits-v2';
 const PALETTES=[
   ['#2fd276','#0c1b12','#a7f3c0'],['#2f6df6','#0c1733','#dbe8ff'],['#ef4050','#1a0c0f','#ffb0b8'],['#8c5cff','#1b1237','#ded1ff'],
   ['#ff8a2a','#21130a','#ffd0a6'],['#21c7b7','#0b201d','#b7fff4'],['#f4d63d','#1f1b07','#fff2a2'],['#29c6f4','#0b1b28','#b8edff'],
@@ -30,9 +30,9 @@ function ensureStyle(){
   style.id=STYLE_ID;
   style.textContent=`
     .team-slot.kit-ready{gap:5px}
-    .team-kit-icon{display:inline-block;width:.82em;height:.82em;flex:0 0 .82em;clip-path:polygon(24% 7%,39% 0,61% 0,76% 7%,100% 25%,84% 43%,75% 34%,75% 100%,25% 100%,25% 34%,16% 43%,0 25%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 3px rgba(0,0,0,.45);opacity:.98}
+    .team-kit-icon{display:inline-block;width:.984em;height:.984em;flex:0 0 .984em;clip-path:polygon(24% 7%,39% 0,61% 0,76% 7%,100% 25%,84% 43%,75% 34%,75% 100%,25% 100%,25% 34%,16% 43%,0 25%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.22),0 0 3px rgba(0,0,0,.45);opacity:.98}
     .team-kit-icon::after{content:"";display:block;width:100%;height:100%;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
-    @media(max-width:760px){.team-slot.kit-ready{gap:4px}.team-kit-icon{width:.78em;height:.78em;flex-basis:.78em}}
+    @media(max-width:760px){.team-slot.kit-ready{gap:4px}.team-kit-icon{width:.936em;height:.936em;flex-basis:.936em}}
   `;
   document.head.appendChild(style);
 }
