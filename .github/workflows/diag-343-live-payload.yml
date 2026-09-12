@@ -15,16 +15,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Read one ENGINE odds payload only
+      - name: Inspect rendered Preview DOM only
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board' -o /tmp/board.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const s=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
-          const all=Array.isArray(s.fixtures)?s.fixtures:[];
-          const x=all.find(v=>String(v.fixtureId)==='200100164');
-          if(!x){console.log('fixture not found');process.exit(2)}
-          console.log(JSON.stringify({fixtureId:x.fixtureId,home:x.home?.name,away:x.away?.name,minute:x.minute,providerOdds:x.providerOdds},null,2));
-          NODE
+          BROWSER="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$BROWSER"
+          "$BROWSER" --headless=new --disable-gpu --no-sandbox --virtual-time-budget=15000 --dump-dom 'https://nomadtips3-343-preview.mccarey-supon.workers.dev/?diag=odds' > /tmp/dom.html 2>/tmp/chrome.log || true
+          echo '=== browser ==='
+          echo "$BROWSER"
+          echo '=== checks ==='
+          grep -o 'Bucheon FC 1995' /tmp/dom.html | head -1 || true
+          echo "B365_ADDONS=$(grep -o 'data-b365-addon' /tmp/dom.html | wc -l)"
+          echo "B365_BOARDS=$(grep -o 'class=\"b365-board\"' /tmp/dom.html | wc -l)"
+          echo "ODDS_EMPTY=$(grep -o 'Odds unavailable in current batch for this fixture' /tmp/dom.html | wc -l)"
+          echo "ASIAN_MARKETS=$(grep -o 'Asian Handicap · Full Time' /tmp/dom.html | wc -l)"
+          echo "GOAL_MARKETS=$(grep -o 'Goals O/U · Full Time' /tmp/dom.html | wc -l)"
+          echo '=== Bucheon vicinity ==='
+          grep -n -m1 -B1 -A2 'Bucheon FC 1995' /tmp/dom.html | cut -c1-1200 || true
+          echo '=== console/errors ==='
+          tail -80 /tmp/chrome.log || true
+          test "$(grep -o 'Bucheon FC 1995' /tmp/dom.html | wc -l)" -ge 1
