@@ -40,8 +40,7 @@ function stripRetired342Navigation(response){
     element.setInnerContent('Verdict of Sirius');
   }};
   return new HTMLRewriter()
-    .on('.topbar-inner.public-four-nav .topnav a[href*="/nomad-live-342"]',sirius)
-    .on('.mobile-nav.public-four-nav a[href*="/nomad-live-342"]',sirius)
+    .on('a[href*="/nomad-live-342"]',sirius)
     .transform(response);
 }
 
