@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-bet365-board-v4-market-language';
+const VERSION='343-bet365-board-v8-merge-full-bulk';
 const SIGNAL_ODDS_REVISION='v5-signal-odds-merge';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
@@ -73,6 +73,24 @@ function stageBlock(stage,value,key,f){
 }
 function rank(key){const k=String(key||'').toLowerCase(),half=/(half|1st)/.test(k)?1:0;let family=9;if(/^1x2/.test(k))family=0;else if(k==='asian'||/^asian_handicap/.test(k)||/^asian_/.test(k))family=1;else if(/^goal_line/.test(k)||/^goalline/.test(k))family=2;else if(/^corner/.test(k))family=3;else if(/^card/.test(k)||/^cards/.test(k))family=4;else if(/^btts/.test(k))family=5;return family*10+half}
 function marketBlock(key,value,f,state){const title=LABELS[key]||key.replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase());const stages=stageOrder(value,state).map(([s,v])=>stageBlock(s,v,key,f)).filter(Boolean).join('');if(!stages)return'';return `<section class="b365-market"><header><b>${esc(title)}</b><span>BET365</span></header>${stages}</section>`}
+function mergeMarketRoots(base,overlay){
+  const out={};
+  if(base&&typeof base==='object')for(const [k,v] of Object.entries(base))if(v!==undefined&&v!==null)out[k]=v;
+  if(overlay&&typeof overlay==='object')for(const [k,v] of Object.entries(overlay)){
+    if(v===undefined||v===null)continue;
+    const prev=out[k];
+    if(prev&&v&&typeof prev==='object'&&typeof v==='object'&&!Array.isArray(prev)&&!Array.isArray(v))out[k]={...prev,...v};else out[k]=v;
+  }
+  return Object.keys(out).length?out:null;
+}
+function marketRows(root,f,state){
+  if(!root||typeof root!=='object')return[];
+  return Object.entries(root)
+    .filter(([k,v])=>!['fixture_id','bookmaker','slug','name','updated_at','recorded_at'].includes(k)&&v!==undefined&&v!==null)
+    .sort((a,b)=>rank(a[0])-rank(b[0])||a[0].localeCompare(b[0]))
+    .map(([k,v])=>[k,marketBlock(k,v,f,state)])
+    .filter(([,html])=>Boolean(html));
+}
 function selectionText(s,f){const sel=String(s?.selection||'').toUpperCase();if(sel==='HOME')return teamName(f,'home');if(sel==='AWAY')return teamName(f,'away');if(sel==='DRAW')return'DRAW';return sel||'PICK'}
 function signalLineText(s){const line=num(s?.line);if(line===null)return'';const market=String(s?.market??s?.providerMarket??'').toLowerCase();const asian=market.includes('ah')||market.includes('asian')||market.includes('handicap');return asian?signed(line):price(line)}
 function signalEntries(rows,f){
@@ -83,13 +101,11 @@ function signalEntries(rows,f){
   }).join('')}</div></section>`;
 }
 function oddsPanel(f,snapshot,signalRows=[]){
-  const fullRoot=oddsRoot(f?.fullOdds),root=fullRoot||oddsRoot(f?.providerOdds??f?.odds),state=classify(f),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
-  const fetchedAt=num(f?.fullOddsFetchedAt),age=fullRoot?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=fullRoot?'full odds · engine referee':'bulk feed',sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · ${source}${age===null||!Number.isFinite(age)?'':` · ${age}s`}`,signalHtml=signalEntries(signalRows,f);
-  if(!root||typeof root!=='object')return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
-  const markets=Object.entries(root).filter(([k,v])=>!['fixture_id','bookmaker','slug','name','updated_at','recorded_at'].includes(k)&&v!==undefined&&v!==null).sort((a,b)=>rank(a[0])-rank(b[0])||a[0].localeCompare(b[0]));
-  const body=markets.map(([k,v])=>marketBlock(k,v,f,state)).filter(Boolean).join('');
-  if(!body)return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
-  return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">${markets.length} MARKETS</span></div>${signalHtml}<div class="b365-grid">${body}</div></section>`;
+  const state=classify(f),bulkRoot=oddsRoot(f?.providerOdds??f?.odds),fullRoot=oddsRoot(f?.fullOdds),root=mergeMarketRoots(bulkRoot,fullRoot),title=state==='live'?'BET365 · LIVE MARKETS':state==='scheduled'?'BET365 · PRE-MATCH MARKETS':'BET365 · MARKET SNAPSHOT';
+  const rows=marketRows(root,f,state),fullRows=marketRows(fullRoot,f,state),usingFull=fullRows.length>0,fetchedAt=num(f?.fullOddsFetchedAt),age=usingFull?(fetchedAt===null?null:Math.max(0,Math.round((Date.now()-fetchedAt)/1000))):Math.max(0,Math.round(Number(snapshot?.hubAgeMs||0)/1000)),source=usingFull?(bulkRoot?'bulk + full odds · engine referee':'full odds · engine referee'):'bulk feed',sub=`${teamName(f,'home')} vs ${teamName(f,'away')} · ${source}${age===null||!Number.isFinite(age)?'':` · ${age}s`}`,signalHtml=signalEntries(signalRows,f);
+  if(!rows.length)return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count muted">ODDS —</span></div>${signalHtml}<div class="b365-empty">Odds unavailable for this fixture</div></section>`;
+  const body=rows.map(([,html])=>html).join('');
+  return `<section class="b365-board"><div class="b365-head"><div><b>${title}</b><small>${esc(sub)}</small></div><span class="b365-count">${rows.length} MARKETS</span></div>${signalHtml}<div class="b365-grid">${body}</div></section>`;
 }
 function signalsForFixture(signals,id){return (Array.isArray(signals)?signals:[]).filter(s=>String(s?.fixtureId??'')===String(id??''))}
 function placeAddon(details,wrap){
