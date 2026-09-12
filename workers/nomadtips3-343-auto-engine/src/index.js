@@ -1,12 +1,13 @@
 import { DurableObject } from 'cloudflare:workers';
 import { overLineGap, overGapPass } from './over-gap.js';
 
-const VERSION = 'nomad343-auto-v2';
+const VERSION = 'nomad343-auto-v3';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const LIVE_PAGE_SIZE = 500;
 const REQUEST_BUDGET_PER_SCAN = 10;
 const MIN_SCAN_GAP_MS = 59000;
-const MAX_HISTORY = 35;
+const MAX_HISTORY = 150;
+const MAX_EVENT_HISTORY = 320;
 const MAX_SIGNALS = 600;
 
 const DEFAULT_SETTINGS = {
@@ -41,9 +42,9 @@ function leagueName(f){return f?.league?.name??f?.competition?.name??f?.league_n
 function statsRoot(f){return f?.statistics??f?.stats??f?.live_statistics??{}}
 function normalizeFixture(f){
   const id=fixtureId(f),teams=teamNames(f),st=statsRoot(f);
-  return {fixtureId:id===null?null:String(id),home:{name:teams.home},away:{name:teams.away},league:{name:leagueName(f)},minute:minuteOf(f),status:f?.status??f?.status_code??'live',statusCode:f?.status_code??null,goals:{home:num(f?.goals?.home??f?.score?.home),away:num(f?.goals?.away??f?.score?.away)},corners:pair(f?.corners??st?.corners),statistics:{shotsOnTarget:pair(st?.shots_on_target??st?.shotsOnTarget??st?.sot),shotsOffTarget:pair(st?.shots_off_target??st?.shotsOffTarget??st?.off),attacks:pair(st?.attacks),dangerousAttacks:pair(st?.dangerous_attacks??st?.dangerousAttacks),possession:pair(st?.possession)},events:Array.isArray(f?.events)?f.events:[],providerOdds:f?.odds??null,kickoffAt:f?.kickoff_utc??f?.kickoff_ts??null};
+  return {fixtureId:id===null?null:String(id),home:{name:teams.home},away:{name:teams.away},league:{name:leagueName(f)},minute:minuteOf(f),status:f?.status??f?.status_code??'live',statusCode:f?.status_code??null,goals:{home:num(f?.goals?.home??f?.score?.home),away:num(f?.goals?.away??f?.score?.away)},corners:pair(f?.corners??st?.corners),statistics:{shots:pair(st?.shots??st?.total_shots??st?.totalShots),shotsOnTarget:pair(st?.shots_on_target??st?.shotsOnTarget??st?.sot),shotsOffTarget:pair(st?.shots_off_target??st?.shotsOffTarget??st?.off),attacks:pair(st?.attacks),dangerousAttacks:pair(st?.dangerous_attacks??st?.dangerousAttacks),possession:pair(st?.possession)},events:Array.isArray(f?.events)?f.events:[],providerOdds:f?.odds??null,kickoffAt:f?.kickoff_utc??f?.kickoff_ts??null};
 }
-function cumulativeSnapshot(f){return {at:now(),minute:f.minute,corners:f.corners,shotsOnTarget:f.statistics.shotsOnTarget,shotsOffTarget:f.statistics.shotsOffTarget,attacks:f.statistics.attacks,dangerousAttacks:f.statistics.dangerousAttacks,possession:f.statistics.possession}}
+function cumulativeSnapshot(f){return {at:now(),minute:f.minute,goals:f.goals,corners:f.corners,shots:f.statistics.shots,shotsOnTarget:f.statistics.shotsOnTarget,shotsOffTarget:f.statistics.shotsOffTarget,attacks:f.statistics.attacks,dangerousAttacks:f.statistics.dangerousAttacks,possession:f.statistics.possession}}
 function rolling(history,current,minutes){
   if(!Array.isArray(history)||history.length<2)return null;
   const target=(num(current.minute)??0)-Number(minutes||10);let base=null;
@@ -68,7 +69,7 @@ function preEvaluate(market,cfg,f,roll,side){
   const ev=evidence(cfg,roll,side,market==='under');if(!ev.pass)return {pass:false,stage:'EVIDENCE',side,evidence:ev};
   if(market==='oneXtwo'){const h=num(f.goals?.home)??0,a=num(f.goals?.away)??0,trailing=side==='HOME'?Math.max(0,a-h):Math.max(0,h-a);if(trailing>Number(cfg.scoreTrailingMax??99))return {pass:false,stage:'SCORE',side,evidence:ev,trailing};const price=inline1x2Price(f,side);if(price.odds===null||price.odds<Number(cfg.oddsMin))return {pass:false,stage:'PRICE',side,evidence:ev,price};return {pass:true,stage:'PREPASS',side,evidence:ev,price};}
   const line=inlineLine(f,market,side);if(line===null)return {pass:false,stage:'LINE_UNAVAILABLE',side,evidence:ev};
-  if(market==='over'){if(line<Number(cfg.lineMin))return {pass:false,stage:'LINE_MIN',side,evidence:ev,line};const lineGap=overLineGap(line,f.goals);if(!overGapPass(line,f.goals,cfg.lineGapMax))return {pass:false,stage:lineGap===null?'LINE_GAP_UNAVAILABLE':'LINE_GAP',side,evidence:ev,line,lineGap};return {pass:true,stage:'PREPASS',side,evidence:ev,line,lineGap};}
+  if(market==='over'){if(line<Number(cfg.lineMin))return {pass:false,stage:'LINE_MIN',side,evidence:ev,line};const lineGap=overLineGap(line,f.goals);if(!overGapPass(price?.line,f.goals,cfg.lineGapMax))return {pass:false,stage:lineGap===null?'LINE_GAP_UNAVAILABLE':'LINE_GAP',side,evidence:ev,line,lineGap};return {pass:true,stage:'PREPASS',side,evidence:ev,line,lineGap};}
   if(market==='under'&&line<Number(cfg.lineMin))return {pass:false,stage:'LINE',side,evidence:ev,line};
   if(market==='ah'&&line<Number(cfg.lineMin))return {pass:false,stage:'LINE',side,evidence:ev,line};
   return {pass:true,stage:'PREPASS',side,evidence:ev,line};
@@ -89,6 +90,47 @@ function refereePrice(root,market,side){
 }
 function pricePass(market,cfg,price,score){if(price?.odds===null||price?.odds===undefined||price.odds<Number(cfg.oddsMin))return false;if(market==='over')return price.line!==null&&price.line>=Number(cfg.lineMin)&&overGapPass(price.line,score,cfg.lineGapMax);if(market==='under'||market==='ah')return price.line!==null&&price.line>=Number(cfg.lineMin);return true}
 function sanitizeSettings(input,current=DEFAULT_SETTINGS){const out=clone(current);for(const market of Object.keys(DEFAULT_SETTINGS))if(input?.[market]&&typeof input[market]==='object')out[market]={...out[market],...input[market]};delete out.over.lineMax;return out}
+
+function eventMinute(event){for(const v of [event?.minute,event?.elapsed,event?.time?.elapsed,event?.time?.minute,event?.timer?.minute])if(finite(v))return Number(v);return null}
+function cleanText(v){return String(v??'').trim()}
+function eventText(event){return [event?.type,event?.detail,event?.event,event?.name,event?.comments,event?.comment,event?.reason].map(cleanText).filter(Boolean).join(' ')}
+function eventKind(event){
+  const text=eventText(event).toLowerCase().replace(/[_-]+/g,' ');
+  if(!text)return null;
+  if(/own\s*goal|goal\s*own/.test(text))return 'OWN_GOAL';
+  if(/penalty/.test(text)&&/(goal|scored|award|won|given|kick)/.test(text))return 'PENALTY';
+  if(/yellow/.test(text)&&/card/.test(text))return 'YELLOW_CARD';
+  if(/red/.test(text)&&/card/.test(text))return 'RED_CARD';
+  if(/\bvar\b|video assistant/.test(text))return 'VAR';
+  if(/substitution|substitute|player in|player out/.test(text))return 'SUBSTITUTION';
+  if(/corner/.test(text))return 'CORNER';
+  if(/shot/.test(text)&&/(on target|on goal|saved)/.test(text))return 'SHOT_ON_TARGET';
+  if(/shot/.test(text)&&/(off target|wide|blocked|missed)/.test(text))return 'SHOT_OFF_TARGET';
+  if(/\bgoal\b/.test(text))return 'GOAL';
+  return null;
+}
+function normName(v){return cleanText(v).toLowerCase().replace(/\s+/g,' ')}
+function eventSide(event,fixture){
+  const team=cleanText(event?.team?.name??event?.team_name??event?.teamName??event?.team);
+  const t=normName(team),h=normName(fixture?.home?.name),a=normName(fixture?.away?.name);
+  if(t&&h&&(t===h||h.includes(t)||t.includes(h)))return 'HOME';
+  if(t&&a&&(t===a||a.includes(t)||t.includes(a)))return 'AWAY';
+  const side=cleanText(event?.side??event?.team_side??event?.teamSide).toUpperCase();
+  if(side==='HOME'||side==='H')return 'HOME';if(side==='AWAY'||side==='A')return 'AWAY';
+  return null;
+}
+function normalizeEvent(event,fixture){
+  const kind=eventKind(event),minute=eventMinute(event);if(!kind||minute===null)return null;
+  const side=eventSide(event,fixture),team=cleanText(event?.team?.name??event?.team_name??event?.teamName??event?.team),player=cleanText(event?.player?.name??event?.player_name??event?.playerName??event?.player),detail=cleanText(event?.detail??event?.comments??event?.comment??event?.name??event?.type);
+  const key=[fixture.fixtureId,minute,kind,side??'',team,player,detail].map(v=>String(v).toLowerCase()).join('|');
+  return {key,kind,minute,side,team,player,detail,source:'bulk-events'};
+}
+function mergeEventHistory(existing,fixture){
+  const map=new Map((Array.isArray(existing)?existing:[]).filter(Boolean).map(event=>[event.key,event]));
+  for(const raw of fixture.events||[]){const event=normalizeEvent(raw,fixture);if(event)map.set(event.key,event)}
+  return [...map.values()].filter(event=>finite(event.minute)&&event.minute>=0&&event.minute<=130).sort((a,b)=>a.minute-b.minute).slice(-MAX_EVENT_HISTORY);
+}
+
 async function providerLive(env){
   if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
   const url=`${API_BASE}/fixtures?status=live&include=odds,events,stats&per_page=${LIVE_PAGE_SIZE}&page=1`;
@@ -98,16 +140,16 @@ async function providerLive(env){
 
 export class Nomad343State extends DurableObject {
   constructor(ctx,env){super(ctx,env)}
-  async state(){const stored=await this.ctx.storage.get(['settings','settingsInitialized','run','history','board','signals','lastScanAt','lastSuccessAt','lastError','lastRequestCount']);return {settings:sanitizeSettings(stored.get('settings')||DEFAULT_SETTINGS),settingsInitialized:Boolean(stored.get('settingsInitialized')),run:{...DEFAULT_RUN,...(stored.get('run')||{})},history:stored.get('history')||{},board:stored.get('board')||{fixtures:[],candidates:[],signals:[]},signals:stored.get('signals')||[],lastScanAt:stored.get('lastScanAt')||null,lastSuccessAt:stored.get('lastSuccessAt')||null,lastError:stored.get('lastError')||null,lastRequestCount:stored.get('lastRequestCount')||0}}
+  async state(){const stored=await this.ctx.storage.get(['settings','settingsInitialized','run','history','eventHistory','board','signals','lastScanAt','lastSuccessAt','lastError','lastRequestCount']);return {settings:sanitizeSettings(stored.get('settings')||DEFAULT_SETTINGS),settingsInitialized:Boolean(stored.get('settingsInitialized')),run:{...DEFAULT_RUN,...(stored.get('run')||{})},history:stored.get('history')||{},eventHistory:stored.get('eventHistory')||{},board:stored.get('board')||{fixtures:[],candidates:[],signals:[]},signals:stored.get('signals')||[],lastScanAt:stored.get('lastScanAt')||null,lastSuccessAt:stored.get('lastSuccessAt')||null,lastError:stored.get('lastError')||null,lastRequestCount:stored.get('lastRequestCount')||0}}
   async scan(){
     const s=await this.state(),t=now();if(s.lastScanAt&&t-s.lastScanAt<MIN_SCAN_GAP_MS)return {...s.board,ok:true,skipped:'SCAN_GAP',lastScanAt:s.lastScanAt};await this.ctx.storage.put('lastScanAt',t);
     if(!Object.values(s.run).some(Boolean)){const board={ok:true,version:VERSION,engineState:'STOPPED',observedAt:t,fixtures:[],candidates:[],signals:s.signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',requests:0}};await this.ctx.storage.put({board,lastSuccessAt:t,lastError:null,lastRequestCount:0});return board}
     try{
-      const upstream=await providerLive(this.env),normalized=upstream.fixtures.map(normalizeFixture).filter(x=>x.fixtureId),history=s.history,preCandidates=[];
-      for(const f of normalized){const current=cumulativeSnapshot(f),rows=Array.isArray(history[f.fixtureId])?history[f.fixtureId]:[];rows.push(current);history[f.fixtureId]=rows.slice(-MAX_HISTORY);
+      const upstream=await providerLive(this.env),normalized=upstream.fixtures.map(normalizeFixture).filter(x=>x.fixtureId),history=s.history,eventHistory=s.eventHistory,preCandidates=[];
+      for(const f of normalized){const current=cumulativeSnapshot(f),rows=Array.isArray(history[f.fixtureId])?history[f.fixtureId]:[];rows.push(current);history[f.fixtureId]=rows.slice(-MAX_HISTORY);eventHistory[f.fixtureId]=mergeEventHistory(eventHistory[f.fixtureId],f);
         for(const market of Object.keys(DEFAULT_SETTINGS)){if(!s.run[market])continue;const cfg=s.settings[market],roll=rolling(history[f.fixtureId],current,cfg.rollingWindowMinutes),best=chooseBest(selectedSides(cfg,market).map(side=>preEvaluate(market,cfg,f,roll,side)));if(best)preCandidates.push({fixtureId:f.fixtureId,market,side:best.side,minute:f.minute,home:f.home.name,away:f.away.name,league:f.league.name,score:f.goals,evidence:best.evidence,price:best.price??null,line:best.line??null,lineGap:best.lineGap??null,observedAt:t});}
       }
-      const active=new Set(normalized.map(x=>x.fixtureId));for(const id of Object.keys(history))if(!active.has(id))delete history[id];
+      const active=new Set(normalized.map(x=>x.fixtureId));for(const id of Object.keys(history))if(!active.has(id))delete history[id];for(const id of Object.keys(eventHistory))if(!active.has(id))delete eventHistory[id];
       preCandidates.sort((a,b)=>(b.evidence?.strength??0)-(a.evidence?.strength??0));
       let requests=upstream.requests;const fullOdds=new Map(),refereeErrors=[];
       for(const c of preCandidates){if(c.market==='oneXtwo'||fullOdds.has(c.fixtureId))continue;if(requests>=REQUEST_BUDGET_PER_SCAN)break;try{fullOdds.set(c.fixtureId,await fetchFullOdds(c.fixtureId,this.env))}catch(error){fullOdds.set(c.fixtureId,null);refereeErrors.push({fixtureId:c.fixtureId,error:String(error?.message||error)})}requests++}
@@ -119,12 +161,13 @@ export class Nomad343State extends DurableObject {
         const duplicate=s.signals.some(x=>String(x.fixtureId)===String(c.fixtureId)&&x.market===c.market);if(!duplicate){const key=`${c.fixtureId}|${c.market}`,signal={...candidate,key,lockedAt:t,status:'LOCKED'};s.signals.push(signal);newSignals.push(signal)}
       }
       const signals=s.signals.slice(-MAX_SIGNALS),board={ok:true,version:VERSION,engineState:'RUNNING',observedAt:t,fixtures:normalized,candidates,newSignals,signals:signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',bookmaker:'Bet365',requests,requestBudget:REQUEST_BUDGET_PER_SCAN,liveCount:normalized.length},refereeErrors};
-      await this.ctx.storage.put({history,signals,board,lastSuccessAt:t,lastError:null,lastRequestCount:requests});return board;
+      await this.ctx.storage.put({history,eventHistory,signals,board,lastSuccessAt:t,lastError:null,lastRequestCount:requests});return board;
     }catch(error){const message=String(error?.message||error);await this.ctx.storage.put({lastError:message,lastRequestCount:0});const board={...(s.board||{}),ok:false,version:VERSION,engineState:'ERROR',observedAt:t,error:message,run:s.run};await this.ctx.storage.put('board',board);return board}
   }
   async fetch(request){const url=new URL(request.url);
     if(request.method==='GET'&&url.pathname==='/state'){const s=await this.state(),age=s.lastSuccessAt?Math.round((now()-s.lastSuccessAt)/1000):null,anyRun=Object.values(s.run).some(Boolean);return json({ok:true,version:VERSION,settings:s.settings,settingsInitialized:s.settingsInitialized,run:s.run,status:anyRun?(age!==null&&age<=130?'ONLINE':'STARTING_OR_STALE'):'STOPPED',lastScanAt:s.lastScanAt,lastSuccessAt:s.lastSuccessAt,lastSuccessAgeSeconds:age,lastError:s.lastError,lastRequestCount:s.lastRequestCount,provider:'5DollarFootballAPI',bookmaker:'Bet365'})}
     if(request.method==='GET'&&url.pathname==='/board'){const s=await this.state();return json(s.board)}
+    if(request.method==='GET'&&url.pathname==='/history'){const id=url.searchParams.get('id');if(!id)return json({ok:false,error:'ID_REQUIRED'},400);const s=await this.state();return json({ok:true,version:VERSION,fixtureId:id,snapshots:Array.isArray(s.history[id])?s.history[id]:[],events:Array.isArray(s.eventHistory[id])?s.eventHistory[id]:[],source:'bulk-persisted',upstreamRequests:0})}
     if(request.method==='GET'&&url.pathname==='/signals'){const s=await this.state();return json({ok:true,version:VERSION,signals:s.signals.slice(-300)})}
     if(request.method==='GET'&&url.pathname==='/referee'){const id=url.searchParams.get('id');if(!id)return json({ok:false,error:'ID_REQUIRED'},400);try{return json({ok:true,fixtureId:id,bookmaker:'Bet365',odds:await fetchFullOdds(id,this.env)})}catch(error){return json({ok:false,fixtureId:id,error:String(error?.message||error)},200)}}
     if(request.method==='POST'&&url.pathname==='/settings'){const body=await request.json().catch(()=>null);if(!body)return json({ok:false,error:'INVALID_JSON'},400);const s=await this.state(),settings=sanitizeSettings(body.settings??body,s.settings);await this.ctx.storage.put({settings,settingsInitialized:true});return json({ok:true,settings})}
@@ -133,4 +176,4 @@ export class Nomad343State extends DurableObject {
 }
 function stub(env){return env.STATE.getByName('nomad343-primary')}
 async function proxy(env,path,init){return stub(env).fetch(`https://state.internal${path}`,init)}
-export default {async fetch(request,env){if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});const url=new URL(request.url);if(url.pathname==='/'||url.pathname==='/health'||url.pathname==='/api/state')return proxy(env,'/state');if(url.pathname==='/api/settings')return proxy(env,'/settings',request.method==='POST'?{method:'POST',headers:{'content-type':'application/json'},body:await request.text()}:undefined);if(url.pathname==='/api/run'&&request.method==='POST')return proxy(env,'/run',{method:'POST',headers:{'content-type':'application/json'},body:await request.text()});if((url.pathname==='/api/engine/board'||url.pathname==='/board')&&request.method==='GET')return proxy(env,'/board');if((url.pathname==='/api/signals'||url.pathname==='/signals')&&request.method==='GET')return proxy(env,'/signals');if(url.pathname==='/api/referee'&&request.method==='GET')return proxy(env,`/referee${url.search}`,{method:'GET'});if(url.pathname==='/scan'&&request.method==='POST')return proxy(env,'/scan',{method:'POST'});return json({ok:false,error:'NOT_FOUND',version:VERSION},404)},async scheduled(_event,env,ctx){ctx.waitUntil(proxy(env,'/scan',{method:'POST'}).then(r=>r.text()))}};
+export default {async fetch(request,env){if(request.method==='OPTIONS')return new Response(null,{status:204,headers:cors});const url=new URL(request.url);if(url.pathname==='/'||url.pathname==='/health'||url.pathname==='/api/state')return proxy(env,'/state');if(url.pathname==='/api/settings')return proxy(env,'/settings',request.method==='POST'?{method:'POST',headers:{'content-type':'application/json'},body:await request.text()}:undefined);if(url.pathname==='/api/run'&&request.method==='POST')return proxy(env,'/run',{method:'POST',headers:{'content-type':'application/json'},body:await request.text()});if((url.pathname==='/api/engine/board'||url.pathname==='/board')&&request.method==='GET')return proxy(env,'/board');if(url.pathname==='/api/history'&&request.method==='GET')return proxy(env,`/history${url.search}`,{method:'GET'});if((url.pathname==='/api/signals'||url.pathname==='/signals')&&request.method==='GET')return proxy(env,'/signals');if(url.pathname==='/api/referee'&&request.method==='GET')return proxy(env,`/referee${url.search}`,{method:'GET'});if(url.pathname==='/scan'&&request.method==='POST')return proxy(env,'/scan',{method:'POST'});return json({ok:false,error:'NOT_FOUND',version:VERSION},404)},async scheduled(_event,env,ctx){ctx.waitUntil(proxy(env,'/scan',{method:'POST'}).then(r=>r.text()))}};
