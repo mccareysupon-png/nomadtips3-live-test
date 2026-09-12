@@ -1,9 +1,11 @@
 (()=>{
 'use strict';
-const VERSION='343-bet365-board-v5-signal-odds-merge';
+const VERSION='343-bet365-board-v4-market-language';
+const SIGNAL_ODDS_REVISION='v5-signal-odds-merge';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
 const POLL_MS=30_000;
+const QA_AUDIT='SOURCE RAW HOME LINE';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);
 const text=v=>v===null||v===undefined?'':String(v);
