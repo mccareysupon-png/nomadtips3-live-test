@@ -1,0 +1,49 @@
+name: Diagnose 3.43 Provider Windows
+
+on:
+  push:
+    branches:
+      - work/nomad343-3s-engine-rateguard-20260912
+    paths:
+      - '.github/workflows/diagnose-343-provider-window.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare current-day and rolling scheduled windows
+        run: |
+          set -euo pipefail
+          test -n "$FIVEDOLLAR_API_KEY"
+          python - <<'PY'
+          import time, datetime, subprocess, json, os
+          now=int(time.time())
+          # Bangkok calendar day
+          th=datetime.timezone(datetime.timedelta(hours=7))
+          d=datetime.datetime.now(th)
+          start_dt=d.replace(hour=0,minute=0,second=0,microsecond=0)
+          end_dt=start_dt+datetime.timedelta(days=1)
+          bkk_start=int(start_dt.timestamp()); bkk_end=int(end_dt.timestamp())
+          windows={
+            'BKK_DAY_SCHEDULED': (bkk_start,bkk_end,'scheduled'),
+            'NEXT_24H_SCHEDULED': (now,now+86400,'scheduled'),
+            'UTC_DAY_SCHEDULED': (int(datetime.datetime.now(datetime.timezone.utc).replace(hour=0,minute=0,second=0,microsecond=0).timestamp()),int((datetime.datetime.now(datetime.timezone.utc).replace(hour=0,minute=0,second=0,microsecond=0)+datetime.timedelta(days=1)).timestamp()),'scheduled'),
+          }
+          key=os.environ['FIVEDOLLAR_API_KEY']
+          for name,(start,end,status) in windows.items():
+            url=f'https://api.5dollarfootballapi.com/v1/fixtures?start_time={start}&end_time={end}&status={status}&per_page=100&page=1'
+            raw=subprocess.check_output(['curl','-fsS','--max-time','30','-H','Accept: application/json','-H',f'Authorization: Bearer {key}',url],text=True)
+            j=json.loads(raw)
+            rows=j.get('data') if isinstance(j.get('data'),list) else (j.get('data',{}).get('data') if isinstance(j.get('data'),dict) else j.get('fixtures',[]))
+            rows=rows if isinstance(rows,list) else []
+            p=j.get('pagination') or (j.get('meta') or {}).get('pagination') or j.get('meta') or {}
+            print(name,json.dumps({'count':len(rows),'has_more':p.get('has_more',p.get('hasMore')),'first':[(x.get('kickoff_utc'),x.get('status'),(x.get('teams') or {}).get('home',{}).get('name'),(x.get('teams') or {}).get('away',{}).get('name')) for x in rows[:5]],'last':[(x.get('kickoff_utc'),x.get('status'),(x.get('teams') or {}).get('home',{}).get('name'),(x.get('teams') or {}).get('away',{}).get('name')) for x in rows[-5:]]},ensure_ascii=False))
+          PY
