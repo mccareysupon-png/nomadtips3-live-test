@@ -88,6 +88,33 @@ export class EngineState extends ShadowEngineState{
 
   async fetch(request){
     const url=new URL(request.url);
+
+    if(url.pathname==='/fiveusd-test-referee'&&request.method==='GET'){
+      const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
+      if(!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
+      const side=String(url.searchParams.get('side')||'home').toLowerCase()==='away'?'away':'home';
+      try{
+        const snapshot=await this.fiveUsdNative.refreshReferee(fixtureId);
+        const config=await this.currentConfig();
+        const decision=refereeDecisionTest(snapshot,config,side,now());
+        return json({
+          ok:true,
+          runtimeContract:RUNTIME_CONTRACT_VERSION,
+          source:'5DollarFootballAPI',
+          testOnly:true,
+          fixtureId,
+          side,
+          bookmakerPanel:10,
+          readyCount:snapshot?.readyCount??0,
+          total:Array.isArray(snapshot?.referees)?snapshot.referees.length:0,
+          referees:snapshot?.referees??[],
+          decision,
+        });
+      }catch(error){
+        return json({ok:false,runtimeContract:RUNTIME_CONTRACT_VERSION,fixtureId,error:String(error?.message||error)},503);
+      }
+    }
+
     if(url.pathname==='/fiveusd-test-signals'&&request.method==='GET'){
       const signals=await this.testSignals();
       return json({
