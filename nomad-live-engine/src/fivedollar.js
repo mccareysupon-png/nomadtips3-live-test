@@ -2,9 +2,7 @@ const API_BASE='https://api.5dollarfootballapi.com/v1';
 
 export const FIVEUSD_CADENCE=Object.freeze({
   liveRefreshMs:3_000,
-  liveRequestBudgetPer60s:20,
   upcomingRefreshMs:120_000,
-  refereeRequestBudgetPer60s:10,
   providerRequestCeilingPer60s:40,
   livePageSize:50,
   liveMaxPages:10,
