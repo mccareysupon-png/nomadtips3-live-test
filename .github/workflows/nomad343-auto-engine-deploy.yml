@@ -31,6 +31,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-343-auto-engine/src/index.js
+          node --check workers/nomadtips3-343-auto-engine/src/pause.js
           grep -Fq "include=odds,events,stats" workers/nomadtips3-343-auto-engine/src/index.js
 
       - name: Dry run Worker bundle
@@ -52,10 +53,27 @@ jobs:
         working-directory: workers/nomadtips3-343-auto-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
 
-      - name: Run one server-side scan
+      - name: Persist 3.43 stop state
         run: |
           set -euo pipefail
           sleep 3
+          curl -fsS --max-time 20 -X POST "$ENGINE_URL/api/run" \
+            -H 'content-type: application/json' \
+            --data '{"market":"ALL","running":false}' \
+            -o /tmp/run-stop.json
+          cat /tmp/run-stop.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/run-stop.json','utf8'));
+          if(j.ok!==true) throw new Error('run stop not ok: '+JSON.stringify(j));
+          if(!j.run || Object.values(j.run).some(Boolean)) throw new Error('3.43 run flags are not fully stopped');
+          if(j.paused!==true) throw new Error('pause wrapper not active');
+          console.log('3.43 persisted STOP PASS', j.run);
+          NODE
+
+      - name: Run one server-side scan
+        run: |
+          set -euo pipefail
           curl -fsS --max-time 45 -X POST "$ENGINE_URL/scan" -o /tmp/scan.json
           cat /tmp/scan.json
           node - <<'NODE'
@@ -64,7 +82,8 @@ jobs:
           if(j.ok!==true) throw new Error('scan not ok: '+JSON.stringify(j));
           if(!['RUNNING','STOPPED'].includes(j.engineState)) throw new Error('unexpected engine state: '+j.engineState);
           if(j.engineState==='RUNNING' && !j.provider) throw new Error('provider summary missing');
-          console.log('3.43 server scan PASS', {state:j.engineState,live:j.provider?.liveCount,requests:j.provider?.requests,newSignals:j.newSignals?.length});
+          if(j.paused===true && Number(j.provider?.requests||0)!==0) throw new Error('paused scan made upstream requests');
+          console.log('3.43 server scan PASS', {state:j.engineState,paused:j.paused,live:j.provider?.liveCount,requests:j.provider?.requests,newSignals:j.newSignals?.length});
           NODE
 
       - name: Verify Bet365 referee endpoint
@@ -94,6 +113,14 @@ jobs:
           const fs=require('fs');
           const j=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
           if(j.ok!==true) throw new Error('health not ok');
+          if(j.paused===true){
+            if(!String(j.version||'').startsWith('nomad343-paused-')) throw new Error('wrong paused version: '+j.version);
+            if(!j.run || Object.values(j.run).some(Boolean)) throw new Error('paused engine still has running market');
+            if(!['PAUSED','STOPPED'].includes(j.status)) throw new Error('unexpected paused status: '+j.status);
+            if(Number(j.lastRequestCount||0)!==0) throw new Error('paused health shows non-zero request count');
+            console.log('3.43 persistent PAUSE PASS', {version:j.version,status:j.status,lastRequestCount:j.lastRequestCount});
+            process.exit(0);
+          }
           if(!String(j.version||'').startsWith('nomad343-auto-v')) throw new Error('wrong version: '+j.version);
           if(!j.run || !Object.values(j.run).some(Boolean)) throw new Error('no market running');
           if(!['ONLINE','STARTING_OR_STALE'].includes(j.status)) throw new Error('unexpected status: '+j.status);
