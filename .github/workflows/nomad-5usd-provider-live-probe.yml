@@ -1,0 +1,56 @@
+name: NOMAD 5USD Provider Live Probe
+
+on:
+  push:
+    branches: [work/nomad341-5usd-central-rewire]
+    paths:
+      - '.github/workflows/nomad-5usd-provider-live-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate provider credential presence
+        run: |
+          set -euo pipefail
+          test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
+
+      - name: Probe compound live feed and ten referees
+        env:
+          API_BASE: https://api.5dollarfootballapi.com/v1
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base=process.env.API_BASE;
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          const books=['1xbet','bet365','macauslot','crown','easybets','vcbet','interwetten','12bet','18bet','pinnacle'];
+          const headers={accept:'application/json',authorization:`Bearer ${key}`};
+          const cleanRate=r=>({limit:r.headers.get('x-ratelimit-limit'),remaining:r.headers.get('x-ratelimit-remaining'),reset:r.headers.get('x-ratelimit-reset'),retryAfter:r.headers.get('retry-after')});
+          const rows=p=>Array.isArray(p?.data)?p.data:Array.isArray(p?.data?.data)?p.data.data:Array.isArray(p?.fixtures)?p.fixtures:[];
+          const id=f=>f?.id??f?.fixture_id??f?.fixture?.id??null;
+          const bookRows=p=>Array.isArray(p?.data?.bookmakers)?p.data.bookmakers:Array.isArray(p?.bookmakers)?p.bookmakers:Array.isArray(p?.data?.data?.bookmakers)?p.data.data.bookmakers:[];
+          const keyOf=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const get=async url=>{const r=await fetch(url,{headers}); const text=await r.text(); let body=null; try{body=JSON.parse(text)}catch{}; if(!r.ok) throw new Error(`HTTP_${r.status}:${text.slice(0,200)}`); return {r,body};};
+          const live=await get(`${base}/fixtures?status=live&include=odds,events,stats&per_page=50&page=1`);
+          const fixtures=rows(live.body);
+          const fixture=fixtures.find(x=>id(x)!=null)||null;
+          console.log('LIVE_PROBE',JSON.stringify({count:fixtures.length,fixtureId:fixture?String(id(fixture)):null,rate:cleanRate(live.r)}));
+          if(!fixture){console.log('REFEREE_PROBE skipped:no_live_fixture'); process.exit(0);}
+          const odds=await get(`${base}/fixtures/${encodeURIComponent(id(fixture))}/odds?market=asian&bookmakers=${encodeURIComponent(books.join(','))}`);
+          const returned=bookRows(odds.body);
+          const status=Object.fromEntries(books.map(slug=>[slug,returned.some(b=>[b?.slug,b?.name,b?.bookmaker].map(keyOf).includes(keyOf(slug)))?'PRESENT':'MISSING']));
+          console.log('REFEREE_PROBE',JSON.stringify({fixtureId:String(id(fixture)),requested:books.length,returned:returned.length,status,rate:cleanRate(odds.r)}));
+          NODE
