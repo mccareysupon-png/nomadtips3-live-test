@@ -3,7 +3,7 @@ export { Nomad343State };
 
 const VERSION = 'nomad343-paused-20260913-hardstop';
 const REASON = 'OWNER_UNUSED_HARD_PAUSE';
-const STOPPED_RUN = {over:false,under:false,oneXtwo:false,ah:false};
+const STOPPED_RUN = {over:false,under:false,oneXtwo:false,ah:false,special341:false};
 const headers = {
   'access-control-allow-origin':'*',
   'access-control-allow-methods':'GET,POST,OPTIONS',
