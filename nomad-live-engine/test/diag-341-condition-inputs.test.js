@@ -22,10 +22,14 @@ test('DIAG ONLY: print current TotalCorner rows and production detector checks',
     const feedRes=await fetch(`https://nomadtips3-live-engine.mccarey-supon.workers.dev/feed?_diag=${Date.now()}`,{signal:AbortSignal.timeout(12000)});
     const feed=await feedRes.json();
     console.log('DIAG_FEED_STATUS',feedRes.status,'CYCLE',feed.cycle,'UPDATED',feed.updatedAt,'COUNTS',JSON.stringify(feed.counts));
-    const sample=(feed.matches||[]).slice(0,8).map(m=>({
+    const sample=(feed.matches||[]).slice(0,10).map(m=>({
       id:m.id,minute:m.minute,home:m.home,away:m.away,state:m.state,side:m.side,
       passed:m.passed,total:m.total,detectionPassed:m.detectionPassed,
-      checks:m.checks,stats:m.stats,rolling:m.rolling,freshness:m.freshness,priceStatus:m.priceStatus
+      checks:m.checks,stats:m.stats,rolling:m.rolling,
+      snapshotCount:Array.isArray(m.snapshots)?m.snapshots.length:0,
+      snapshotMinutes:Array.isArray(m.snapshots)?m.snapshots.map(s=>s.minute):[],
+      snapshotObserved:Array.isArray(m.snapshots)?m.snapshots.map(s=>s.observedAt):[],
+      freshness:m.freshness,priceStatus:m.priceStatus
     }));
     console.log('DIAG_FEED_MATCHES',JSON.stringify(sample));
   }catch(error){console.log('DIAG_FEED_ERROR',String(error?.message||error));}
