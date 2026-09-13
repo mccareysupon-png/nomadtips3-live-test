@@ -67,11 +67,25 @@ jobs:
       - name: Arm shadow engine and verify 3s cadence
         run: |
           set -euo pipefail
-          curl -fsS --max-time 20 "$SHADOW_URL/health?arm=$RANDOM" -o /tmp/health0.json
+          probe() {
+            local url="$1" out="$2"
+            local code=""
+            for attempt in $(seq 1 10); do
+              code=$(curl -sS --max-time 20 -o "$out" -w '%{http_code}' "$url" || true)
+              echo "probe attempt $attempt -> HTTP $code"
+              if [ "$code" = "200" ]; then return 0; fi
+              sleep 2
+            done
+            echo "::error::Shadow endpoint never became ready: $url"
+            [ -f "$out" ] && cat "$out" || true
+            return 1
+          }
+
+          probe "$SHADOW_URL/health?arm=$RANDOM" /tmp/health0.json
           sleep 10
-          curl -fsS --max-time 20 "$SHADOW_URL/fiveusd-native?sample=1&n=$RANDOM" -o /tmp/native1.json
+          probe "$SHADOW_URL/fiveusd-native?sample=1&n=$RANDOM" /tmp/native1.json
           sleep 8
-          curl -fsS --max-time 20 "$SHADOW_URL/fiveusd-native?sample=2&n=$RANDOM" -o /tmp/native2.json
+          probe "$SHADOW_URL/fiveusd-native?sample=2&n=$RANDOM" /tmp/native2.json
           node - <<'NODE'
           const fs=require('fs');
           const a=JSON.parse(fs.readFileSync('/tmp/native1.json','utf8'));
