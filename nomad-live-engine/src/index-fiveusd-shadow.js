@@ -5,6 +5,7 @@ import {buildNativeCandidateShadow} from './fivedollar-candidate-shadow.js';
 import {summarizeFiveUsdFreshness} from './fivedollar-freshness.js';
 import {selectFiveUsdRefereeConsensus} from './fivedollar-referee-consensus.js';
 import {buildFiveUsdEventFlow,FIVEUSD_EVENT_FLOW_VERSION} from './fivedollar-event-flow.js';
+import {buildFiveUsdPublicFeed} from './fivedollar-public-feed.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const MIN_ALARM_DELAY_MS=250;
@@ -234,6 +235,10 @@ export class EngineState extends BaseEngineState{
 
   async fetch(request){
     const url=new URL(request.url);
+    if(url.pathname==='/fiveusd-feed'&&request.method==='GET'){
+      return json({runtimeContract:RUNTIME_CONTRACT_VERSION,...buildFiveUsdPublicFeed(await this.fiveUsdNative.snapshot(),await this.candidateShadow())});
+    }
+
     if(url.pathname==='/fiveusd-event-flow'&&request.method==='GET'){
       const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
       if(!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
