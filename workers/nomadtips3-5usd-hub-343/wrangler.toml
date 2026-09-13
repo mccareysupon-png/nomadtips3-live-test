@@ -1,13 +1,10 @@
 name = "nomadtips3-5usd-hub-343"
-main = "src/index-v4-upcoming.js"
+main = "src/pause.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
 
 [observability]
 enabled = true
-
-[triggers]
-crons = ["*/2 * * * *"]
 
 [[durable_objects.bindings]]
 name = "HUB"
