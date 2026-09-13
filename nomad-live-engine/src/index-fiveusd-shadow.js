@@ -5,6 +5,7 @@ import {buildNativeCandidateShadow} from './fivedollar-candidate-shadow.js';
 import {summarizeFiveUsdFreshness} from './fivedollar-freshness.js';
 import {selectFiveUsdRefereeConsensus} from './fivedollar-referee-consensus.js';
 import {buildFiveUsdEventFlow,FIVEUSD_EVENT_FLOW_VERSION} from './fivedollar-event-flow.js';
+import {appendFiveUsdRefereeFlow,summarizeFiveUsdRefereeFlow} from './fivedollar-referee-flow.js';
 import {buildFiveUsdPublicFeed} from './fivedollar-public-feed.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
@@ -15,6 +16,7 @@ const CANDIDATE_STATE_KEY='fiveUsdNativeCandidateShadowV1';
 const EVENT_FLOW_HISTORY_KEY='fiveUsdNativeEventFlowHistoryV1';
 const EVENT_FLOW_STATE_KEY='fiveUsdNativeEventFlowStateV1';
 const REFEREE_PREFIX='fiveUsdNativeReferee:';
+const REFEREE_FLOW_PREFIX='fiveUsdNativeRefereeFlow:';
 const now=()=>Date.now();
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:JSON_HEADERS});
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
@@ -107,6 +109,25 @@ export class EngineState extends BaseEngineState{
   async candidateShadow(){return await this.state.storage.get(CANDIDATE_STATE_KEY)||null;}
   async eventFlowState(){return await this.state.storage.get(EVENT_FLOW_STATE_KEY)||null;}
 
+  async updateFiveUsdRefereePriceFlow(snapshot,at=now()){
+    const fixtureId=String(snapshot?.fixtureId||'').trim();
+    if(!fixtureId) return null;
+    const key=`${REFEREE_FLOW_PREFIX}${fixtureId}`;
+    const previous=await this.state.storage.get(key)||null;
+    const flow=appendFiveUsdRefereeFlow(previous,snapshot,at,{historyLimit:24});
+    await this.state.storage.put(key,flow);
+    return flow;
+  }
+
+  async refereePriceFlow(fixtureId){
+    const id=String(fixtureId||'').trim();
+    if(!id) return null;
+    const stored=await this.state.storage.get(`${REFEREE_FLOW_PREFIX}${id}`)||null;
+    if(stored) return stored;
+    const snapshot=await this.state.storage.get(`${REFEREE_PREFIX}${id}`)||null;
+    return snapshot?appendFiveUsdRefereeFlow(null,snapshot,now(),{historyLimit:24}):null;
+  }
+
   async updateFiveUsdEventFlow(at=now()){
     const snapshot=await this.fiveUsdNative.snapshot();
     const liveFixtures=Array.isArray(snapshot?.live?.fixtures)?snapshot.live.fixtures:[];
@@ -156,6 +177,7 @@ export class EngineState extends BaseEngineState{
         starts+=1;
         try{
           const result=await this.fiveUsdNative.refreshReferee(candidate.fixtureId);
+          await this.updateFiveUsdRefereePriceFlow(result,now());
           const freshness=refereeFreshnessView(result,config,now());
           const decision=refereeDecisionShadow(result,config,candidate.side,now());
           refereeAttempts.push({
@@ -171,6 +193,7 @@ export class EngineState extends BaseEngineState{
       }
 
       const current=await this.state.storage.get(key)||previous;
+      if(current) await this.updateFiveUsdRefereePriceFlow(current,at);
       const freshness=refereeFreshnessView(current,config,at);
       const decisionShadow=refereeDecisionShadow(current,config,candidate.side,at);
       if(decisionShadow?.ok===true) consensusReady+=1;
@@ -252,6 +275,23 @@ export class EngineState extends BaseEngineState{
         sourceOfTruth:true,
         presentationOnly:true,
         signalAuthority:false,
+        flow,
+      });
+    }
+
+    if(url.pathname==='/fiveusd-referee-flow'&&request.method==='GET'){
+      const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
+      if(!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
+      const flow=await this.refereePriceFlow(fixtureId);
+      if(!flow) return json({ok:false,error:'REFEREE_FLOW_NOT_FOUND',fixtureId},404);
+      return json({
+        ok:true,
+        runtimeContract:RUNTIME_CONTRACT_VERSION,
+        source:'5DollarFootballAPI',
+        sourceOfTruth:true,
+        presentationOnly:true,
+        signalAuthority:false,
+        summary:summarizeFiveUsdRefereeFlow(flow),
         flow,
       });
     }
