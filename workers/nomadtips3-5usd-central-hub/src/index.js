@@ -1,9 +1,10 @@
 import { DurableObject } from 'cloudflare:workers';
 
-const VERSION='nomad-5usd-central-hub-v0.2';
+const VERSION='nomad-5usd-central-hub-v0.3';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const LIVE_TTL_MS=55_000;
 const REFEREE_TTL_MS=55_000;
+const FULL_ODDS_TTL_MS=55_000;
 const LIVE_PAGE_SIZE=50;
 const LIVE_MAX_PAGES=10;
 const JSON_HEADERS={
@@ -32,6 +33,8 @@ const num=v=>finite(v)?Number(v):null;
 const now=()=>Date.now();
 const iso=v=>finite(v)?new Date(Number(v)).toISOString():null;
 const authHeaders=env=>({accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`});
+const normalizedBookmakerKey=value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const quarterGoal=value=>finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
 
 function pair(value){
   if(!value||typeof value!=='object') return {home:null,away:null};
@@ -50,6 +53,13 @@ function paginationOf(payload){
   return {hasMore:Boolean(p?.has_more??p?.hasMore),page:num(p?.page),perPage:num(p?.per_page??p?.perPage)};
 }
 
+function extractBookmakers(payload){
+  if(Array.isArray(payload?.data?.bookmakers)) return payload.data.bookmakers;
+  if(Array.isArray(payload?.bookmakers)) return payload.bookmakers;
+  if(Array.isArray(payload?.data?.data?.bookmakers)) return payload.data.data.bookmakers;
+  return [];
+}
+
 function fixtureId(f){return f?.id??f?.fixture_id??f?.fixture?.id??null;}
 function minuteOf(f){
   for(const value of [f?.minute,f?.elapsed,f?.status?.minute,f?.status?.elapsed,f?.timer?.minute,f?.timer?.elapsed]) if(finite(value)) return Number(value);
@@ -64,7 +74,7 @@ function bet365Root(f){
   const direct=f?.odds??null;
   const books=direct?.bookmakers??f?.bookmakers??f?.odds_bookmakers??null;
   if(Array.isArray(books)){
-    const bookmaker=books.find(item=>String(item?.slug??item?.name??item?.bookmaker??'').toLowerCase().replace(/[^a-z0-9]/g,'').includes('bet365'));
+    const bookmaker=books.find(item=>normalizedBookmakerKey(item?.slug??item?.name??item?.bookmaker).includes('bet365'));
     if(bookmaker) return bookmaker.odds??bookmaker.markets??bookmaker;
   }
   return direct;
@@ -131,11 +141,7 @@ async function providerRequest(url,env){
   const response=await fetch(url,{headers:authHeaders(env),cf:{cacheTtl:0,cacheEverything:false}});
   const text=await response.text();
   let payload=null;try{payload=JSON.parse(text);}catch{}
-  if(!response.ok){
-    const error=new Error(`5USD_HTTP_${response.status}`);
-    error.rate=rateMeta(response);
-    throw error;
-  }
+  if(!response.ok){const error=new Error(`5USD_HTTP_${response.status}`);error.rate=rateMeta(response);throw error;}
   if(!payload) throw new Error('5USD_INVALID_JSON');
   return {payload,rate:rateMeta(response)};
 }
@@ -153,16 +159,6 @@ async function fetchProviderLive(env){
   }
   return {rows:[...byId.values()],requests,rate:lastRate};
 }
-
-function extractBookmakers(payload){
-  if(Array.isArray(payload?.data?.bookmakers)) return payload.data.bookmakers;
-  if(Array.isArray(payload?.bookmakers)) return payload.bookmakers;
-  if(Array.isArray(payload?.data?.data?.bookmakers)) return payload.data.data.bookmakers;
-  return [];
-}
-
-const normalizedBookmakerKey=value=>String(value??'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const quarterGoal=value=>finite(value)&&Math.abs(Number(value)*4-Math.round(Number(value)*4))<1e-9;
 
 function bookmakerForDefinition(bookmakers,definition){
   const slugKey=normalizedBookmakerKey(definition.slug),nameKey=normalizedBookmakerKey(definition.bookmaker);
@@ -186,26 +182,11 @@ function normalizeReferee(definition,book,observedAt,previous=null){
   const unchanged=priceFingerprint&&priceFingerprint===previous?.priceFingerprint;
   const lastChangedAt=unchanged&&finite(previous?.lastChangedAt)?Number(previous.lastChangedAt):priceFingerprint?observedAt:null;
   return {
-    sourceId:definition.sourceId,
-    position:definition.position,
-    bookmaker:definition.bookmaker,
-    slug:definition.slug,
-    provider:'5DollarFootballAPI',
-    market:'FULL MATCH LIVE AH',
-    status,
-    line:valid?line:null,
-    awayLine:valid?-line:null,
-    homeOdds:valid?homeOdds:null,
-    awayOdds:valid?awayOdds:null,
-    bookmakerVerified:Boolean(book),
-    observedAt,
-    timestampKind:'hub_observed_at',
-    sourceUpdatedAt:null,
-    lastChangedAt,
-    lastChangedAtKind:'hub_detected_change_at',
-    priceFingerprint,
-    shadowOnly:true,
-    voteEligible:false
+    sourceId:definition.sourceId,position:definition.position,bookmaker:definition.bookmaker,slug:definition.slug,
+    provider:'5DollarFootballAPI',market:'FULL MATCH LIVE AH',status,
+    line:valid?line:null,awayLine:valid?-line:null,homeOdds:valid?homeOdds:null,awayOdds:valid?awayOdds:null,
+    bookmakerVerified:Boolean(book),observedAt,timestampKind:'hub_observed_at',sourceUpdatedAt:null,
+    lastChangedAt,lastChangedAtKind:'hub_detected_change_at',priceFingerprint,shadowOnly:true,voteEligible:false
   };
 }
 
@@ -216,10 +197,31 @@ async function fetchRefereeSnapshot(fixtureId,env,previous=null){
   const referees=REFEREE_DEFINITIONS.map(definition=>normalizeReferee(definition,bookmakerForDefinition(books,definition),observedAt,previousBySource.get(definition.sourceId)));
   const ready=referees.filter(item=>item.status==='AH READY').length;
   return {
-    ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,provider:'5DollarFootballAPI',
-    fixtureId:String(fixtureId),observedAt,observedAtIso:iso(observedAt),timestampKind:'hub_observed_at',
-    mode:'SHADOW_ONLY',refereeCount:referees.length,readyCount:ready,unavailableCount:referees.length-ready,
-    votingEnabled:false,referees,upstream:{requests:1,rate:result.rate}
+    ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,provider:'5DollarFootballAPI',fixtureId:String(fixtureId),
+    observedAt,observedAtIso:iso(observedAt),timestampKind:'hub_observed_at',mode:'SHADOW_ONLY',
+    refereeCount:referees.length,readyCount:ready,unavailableCount:referees.length-ready,votingEnabled:false,referees,
+    upstream:{requests:1,rate:result.rate}
+  };
+}
+
+function extractBet365FullOdds(payload){
+  const books=extractBookmakers(payload);
+  const bet365=books.find(book=>normalizedBookmakerKey(book?.slug??book?.name??book?.bookmaker).includes('bet365'));
+  if(bet365) return bet365?.odds??bet365?.markets??bet365;
+  return payload?.data?.odds??payload?.odds??null;
+}
+
+async function fetchFullOddsSnapshot(fixtureId,env){
+  const url=`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`;
+  const result=await providerRequest(url,env);
+  const odds=extractBet365FullOdds(result.payload);
+  if(!odds||typeof odds!=='object') throw new Error('BET365_FULL_ODDS_SHAPE');
+  const observedAt=now();
+  return {
+    ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,provider:'5DollarFootballAPI',fixtureId:String(fixtureId),
+    bookmaker:'Bet365',marketScope:'ALL AVAILABLE LIVE MARKETS',odds,
+    observedAt,observedAtIso:iso(observedAt),timestampKind:'hub_observed_at',sourceUpdatedAt:null,
+    upstream:{requests:1,rate:result.rate}
   };
 }
 
@@ -230,23 +232,23 @@ function authorized(request,env){
 }
 
 export class FiveUsdCentralState extends DurableObject{
-  constructor(ctx,env){super(ctx,env);this.refreshPromise=null;this.refereePromises=new Map();}
-
+  constructor(ctx,env){super(ctx,env);this.refreshPromise=null;this.refereePromises=new Map();this.fullOddsPromises=new Map();}
   async readCache(){return (await this.ctx.storage.get('liveCache'))??null;}
   async readMeta(){return (await this.ctx.storage.get('meta'))??{lastAttemptAt:null,lastSuccessAt:null,lastError:null,upstreamRequests:0,rate:null};}
   async readRefereeMeta(){return (await this.ctx.storage.get('refereeMeta'))??{lastAttemptAt:null,lastSuccessAt:null,lastError:null,fixtureId:null,rate:null};}
+  async readFullOddsMeta(){return (await this.ctx.storage.get('fullOddsMeta'))??{lastAttemptAt:null,lastSuccessAt:null,lastError:null,fixtureId:null,rate:null};}
   refereeKey(fixtureId){return `referee:${fixtureId}`;}
+  fullOddsKey(fixtureId){return `fullOdds:${fixtureId}`;}
 
   async health(){
-    const [cache,meta,refereeMeta]=await Promise.all([this.readCache(),this.readMeta(),this.readRefereeMeta()]);
+    const [cache,meta,refereeMeta,fullOddsMeta]=await Promise.all([this.readCache(),this.readMeta(),this.readRefereeMeta(),this.readFullOddsMeta()]);
     const ageMs=finite(cache?.observedAt)?Math.max(0,now()-Number(cache.observedAt)):null;
     return {
-      ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,
-      mode:'ISOLATED_SHADOW_NOT_CONNECTED',
-      provider:'5DollarFootballAPI',
+      ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,mode:'ISOLATED_SHADOW_NOT_CONNECTED',provider:'5DollarFootballAPI',
       cache:{present:Boolean(cache),ttlMs:LIVE_TTL_MS,ageMs,fixtureCount:Array.isArray(cache?.fixtures)?cache.fixtures.length:0,observedAt:iso(cache?.observedAt)},
       upstream:{lastAttemptAt:iso(meta.lastAttemptAt),lastSuccessAt:iso(meta.lastSuccessAt),lastError:meta.lastError??null,requestsLastRefresh:Number(meta.upstreamRequests||0),rate:meta.rate??null},
       refereeBus:{count:REFEREE_DEFINITIONS.length,ttlMs:REFEREE_TTL_MS,shadowOnly:true,votingEnabled:false,lastFixtureId:refereeMeta.fixtureId??null,lastAttemptAt:iso(refereeMeta.lastAttemptAt),lastSuccessAt:iso(refereeMeta.lastSuccessAt),lastError:refereeMeta.lastError??null,rate:refereeMeta.rate??null},
+      fullOddsBus:{bookmaker:'Bet365',ttlMs:FULL_ODDS_TTL_MS,lastFixtureId:fullOddsMeta.fixtureId??null,lastAttemptAt:iso(fullOddsMeta.lastAttemptAt),lastSuccessAt:iso(fullOddsMeta.lastSuccessAt),lastError:fullOddsMeta.lastError??null,rate:fullOddsMeta.rate??null},
       consumers:{nomad341:false,nomad343:false},
       timestampPolicy:'observedAt and lastChangedAt are HUB observation times; neither is bookmaker-native quote time'
     };
@@ -255,23 +257,16 @@ export class FiveUsdCentralState extends DurableObject{
   async refresh(){
     if(this.refreshPromise) return this.refreshPromise;
     this.refreshPromise=(async()=>{
-      const started=now();
-      const previousMeta=await this.readMeta();
+      const started=now(),previousMeta=await this.readMeta();
       await this.ctx.storage.put('meta',{...previousMeta,lastAttemptAt:started,lastError:null});
       try{
-        const upstream=await fetchProviderLive(this.env);
-        const observedAt=now();
+        const upstream=await fetchProviderLive(this.env),observedAt=now();
         const fixtures=upstream.rows.map(row=>normalizeFixture(row,observedAt)).filter(row=>row.fixtureId);
-        const cache={
-          ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,provider:'5DollarFootballAPI',
-          observedAt,observedAtIso:iso(observedAt),timestampKind:'hub_observed_at',
-          fixtureCount:fixtures.length,fixtures
-        };
+        const cache={ok:true,service:'nomadtips3-5usd-central-hub',version:VERSION,provider:'5DollarFootballAPI',observedAt,observedAtIso:iso(observedAt),timestampKind:'hub_observed_at',fixtureCount:fixtures.length,fixtures};
         await this.ctx.storage.put({liveCache:cache,meta:{lastAttemptAt:started,lastSuccessAt:observedAt,lastError:null,upstreamRequests:upstream.requests,rate:upstream.rate}});
         return cache;
       }catch(error){
-        const meta={...previousMeta,lastAttemptAt:started,lastError:String(error?.message||error),upstreamRequests:0,rate:error?.rate??previousMeta.rate??null};
-        await this.ctx.storage.put('meta',meta);
+        await this.ctx.storage.put('meta',{...previousMeta,lastAttemptAt:started,lastError:String(error?.message||error),upstreamRequests:0,rate:error?.rate??previousMeta.rate??null});
         throw error;
       }finally{this.refreshPromise=null;}
     })();
@@ -279,45 +274,36 @@ export class FiveUsdCentralState extends DurableObject{
   }
 
   async live(){
-    const cached=await this.readCache();
-    const ageMs=finite(cached?.observedAt)?Math.max(0,now()-Number(cached.observedAt)):null;
+    const cached=await this.readCache(),ageMs=finite(cached?.observedAt)?Math.max(0,now()-Number(cached.observedAt)):null;
     if(cached&&ageMs!==null&&ageMs<=LIVE_TTL_MS) return {...cached,cache:{hit:true,stale:false,ageMs,ttlMs:LIVE_TTL_MS}};
-    try{
-      const fresh=await this.refresh();
-      return {...fresh,cache:{hit:false,stale:false,ageMs:0,ttlMs:LIVE_TTL_MS}};
-    }catch(error){
-      if(cached){
-        const staleAge=Math.max(0,now()-Number(cached.observedAt||0));
-        return {...cached,cache:{hit:true,stale:true,ageMs:staleAge,ttlMs:LIVE_TTL_MS},warning:String(error?.message||error)};
-      }
-      throw error;
-    }
+    try{const fresh=await this.refresh();return {...fresh,cache:{hit:false,stale:false,ageMs:0,ttlMs:LIVE_TTL_MS}};}
+    catch(error){if(cached){const staleAge=Math.max(0,now()-Number(cached.observedAt||0));return {...cached,cache:{hit:true,stale:true,ageMs:staleAge,ttlMs:LIVE_TTL_MS},warning:String(error?.message||error)};}throw error;}
   }
 
   async referees(fixtureId){
-    const key=this.refereeKey(fixtureId),cached=(await this.ctx.storage.get(key))??null;
-    const ageMs=finite(cached?.observedAt)?Math.max(0,now()-Number(cached.observedAt)):null;
+    const key=this.refereeKey(fixtureId),cached=(await this.ctx.storage.get(key))??null,ageMs=finite(cached?.observedAt)?Math.max(0,now()-Number(cached.observedAt)):null;
     if(cached&&ageMs!==null&&ageMs<=REFEREE_TTL_MS) return {...cached,cache:{hit:true,stale:false,ageMs,ttlMs:REFEREE_TTL_MS}};
     if(this.refereePromises.has(fixtureId)) return this.refereePromises.get(fixtureId);
     const promise=(async()=>{
-      const started=now();
-      await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:null,fixtureId,rate:null});
-      try{
-        const fresh=await fetchRefereeSnapshot(fixtureId,this.env,cached);
-        await this.ctx.storage.put(key,fresh);
-        await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:fresh.observedAt,lastError:null,fixtureId,rate:fresh.upstream?.rate??null});
-        return {...fresh,cache:{hit:false,stale:false,ageMs:0,ttlMs:REFEREE_TTL_MS}};
-      }catch(error){
-        await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:String(error?.message||error),fixtureId,rate:error?.rate??null});
-        if(cached){
-          const staleAge=Math.max(0,now()-Number(cached.observedAt||0));
-          return {...cached,cache:{hit:true,stale:true,ageMs:staleAge,ttlMs:REFEREE_TTL_MS},warning:String(error?.message||error)};
-        }
-        throw error;
-      }finally{this.refereePromises.delete(fixtureId);}
+      const started=now();await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:null,fixtureId,rate:null});
+      try{const fresh=await fetchRefereeSnapshot(fixtureId,this.env,cached);await this.ctx.storage.put(key,fresh);await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:fresh.observedAt,lastError:null,fixtureId,rate:fresh.upstream?.rate??null});return {...fresh,cache:{hit:false,stale:false,ageMs:0,ttlMs:REFEREE_TTL_MS}};}
+      catch(error){await this.ctx.storage.put('refereeMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:String(error?.message||error),fixtureId,rate:error?.rate??null});if(cached){const staleAge=Math.max(0,now()-Number(cached.observedAt||0));return {...cached,cache:{hit:true,stale:true,ageMs:staleAge,ttlMs:REFEREE_TTL_MS},warning:String(error?.message||error)};}throw error;}
+      finally{this.refereePromises.delete(fixtureId);}
     })();
-    this.refereePromises.set(fixtureId,promise);
-    return promise;
+    this.refereePromises.set(fixtureId,promise);return promise;
+  }
+
+  async fullOdds(fixtureId){
+    const key=this.fullOddsKey(fixtureId),cached=(await this.ctx.storage.get(key))??null,ageMs=finite(cached?.observedAt)?Math.max(0,now()-Number(cached.observedAt)):null;
+    if(cached&&ageMs!==null&&ageMs<=FULL_ODDS_TTL_MS) return {...cached,cache:{hit:true,stale:false,ageMs,ttlMs:FULL_ODDS_TTL_MS}};
+    if(this.fullOddsPromises.has(fixtureId)) return this.fullOddsPromises.get(fixtureId);
+    const promise=(async()=>{
+      const started=now();await this.ctx.storage.put('fullOddsMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:null,fixtureId,rate:null});
+      try{const fresh=await fetchFullOddsSnapshot(fixtureId,this.env);await this.ctx.storage.put(key,fresh);await this.ctx.storage.put('fullOddsMeta',{lastAttemptAt:started,lastSuccessAt:fresh.observedAt,lastError:null,fixtureId,rate:fresh.upstream?.rate??null});return {...fresh,cache:{hit:false,stale:false,ageMs:0,ttlMs:FULL_ODDS_TTL_MS}};}
+      catch(error){await this.ctx.storage.put('fullOddsMeta',{lastAttemptAt:started,lastSuccessAt:null,lastError:String(error?.message||error),fixtureId,rate:error?.rate??null});if(cached){const staleAge=Math.max(0,now()-Number(cached.observedAt||0));return {...cached,cache:{hit:true,stale:true,ageMs:staleAge,ttlMs:FULL_ODDS_TTL_MS},warning:String(error?.message||error)};}throw error;}
+      finally{this.fullOddsPromises.delete(fixtureId);}
+    })();
+    this.fullOddsPromises.set(fixtureId,promise);return promise;
   }
 
   async fetch(request){
@@ -327,15 +313,19 @@ export class FiveUsdCentralState extends DurableObject{
     if(url.pathname==='/health') return json(await this.health());
     if(url.pathname==='/live'){
       if(!authorized(request,this.env)) return json({ok:false,error:'unauthorized'},401);
-      try{return json(await this.live());}
-      catch(error){return json({ok:false,service:'nomadtips3-5usd-central-hub',version:VERSION,error:String(error?.message||error)},503);}
+      try{return json(await this.live());}catch(error){return json({ok:false,service:'nomadtips3-5usd-central-hub',version:VERSION,error:String(error?.message||error)},503);}
     }
     if(url.pathname==='/referees'){
       if(!authorized(request,this.env)) return json({ok:false,error:'unauthorized'},401);
       const fixtureId=String(url.searchParams.get('fixtureId')??'').trim();
       if(!/^\d+$/.test(fixtureId)) return json({ok:false,error:'fixtureId_required'},400);
-      try{return json(await this.referees(fixtureId));}
-      catch(error){return json({ok:false,service:'nomadtips3-5usd-central-hub',version:VERSION,fixtureId,error:String(error?.message||error)},503);}
+      try{return json(await this.referees(fixtureId));}catch(error){return json({ok:false,service:'nomadtips3-5usd-central-hub',version:VERSION,fixtureId,error:String(error?.message||error)},503);}
+    }
+    if(url.pathname==='/odds'){
+      if(!authorized(request,this.env)) return json({ok:false,error:'unauthorized'},401);
+      const fixtureId=String(url.searchParams.get('fixtureId')??'').trim();
+      if(!/^\d+$/.test(fixtureId)) return json({ok:false,error:'fixtureId_required'},400);
+      try{return json(await this.fullOdds(fixtureId));}catch(error){return json({ok:false,service:'nomadtips3-5usd-central-hub',version:VERSION,fixtureId,error:String(error?.message||error)},503);}
     }
     return json({ok:false,error:'not_found'},404);
   }
@@ -345,7 +335,7 @@ export default{
   async fetch(request,env){
     if(request.method==='OPTIONS') return new Response(null,{status:204,headers:JSON_HEADERS});
     const url=new URL(request.url);
-    if(url.pathname==='/') return json({service:'nomadtips3-5usd-central-hub',version:VERSION,status:'isolated-shadow',connectedConsumers:[],endpoints:['/health','/live','/referees']});
+    if(url.pathname==='/') return json({service:'nomadtips3-5usd-central-hub',version:VERSION,status:'isolated-shadow',connectedConsumers:[],endpoints:['/health','/live','/referees','/odds']});
     const id=env.STATE.idFromName('primary');
     return env.STATE.get(id).fetch(new Request(`https://hub.local${url.pathname}${url.search}`,request));
   }
