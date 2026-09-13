@@ -1,8 +1,8 @@
 import app, { Nomad343State } from './index.js';
 export { Nomad343State };
 
-const VERSION = 'nomad343-paused-20260913';
-const REASON = 'OWNER_API_PAUSE';
+const VERSION = 'nomad343-paused-20260913-hardstop';
+const REASON = 'OWNER_UNUSED_HARD_PAUSE';
 const STOPPED_RUN = {over:false,under:false,oneXtwo:false,ah:false};
 const headers = {
   'access-control-allow-origin':'*',
@@ -82,6 +82,6 @@ export default {
     return app.fetch(request,env,ctx);
   },
   async scheduled(){
-    // Intentional no-op while NOMAD 3.43 is paused by owner.
+    // Intentional no-op. NOMAD 3.43 is unused and must not call 5DollarFootballAPI.
   }
 };
