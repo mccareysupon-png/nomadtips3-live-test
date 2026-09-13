@@ -170,10 +170,17 @@ function findMetricPair(text, labels){
   return {home:null,away:null};
 }
 function findStatus(text){
-  const m=text.match(/Status:\s*([^,]+),?\s*Score:\s*(\d{1,2})\s*[-–]\s*(\d{1,2})\s*,?\s*Corner:\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/i);
-  if(!m) return {minute:null,score:{home:null,away:null},corners:{home:null,away:null},status:null};
-  const raw=m[1].trim(); const mm=raw.match(/(\d{1,3})/);
-  return {minute:mm?Number(mm[1]):(/half/i.test(raw)?45:null),score:{home:Number(m[2]),away:Number(m[3])},corners:{home:Number(m[4]),away:Number(m[5])},status:raw};
+  const statusMatch=text.match(/Status:\s*([^,]*?)(?=\s*,?\s*(?:Score|Corner):|$)/i);
+  const scoreMatch=text.match(/Score:\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/i);
+  const cornerMatch=text.match(/Corner:\s*(\d{1,2})\s*[-–]\s*(\d{1,2})/i);
+  const raw=statusMatch?.[1]?.trim()||null;
+  const minute=raw?minuteValue(raw,{allowBare:true}):null;
+  return {
+    minute,
+    score:scoreMatch?{home:Number(scoreMatch[1]),away:Number(scoreMatch[2])}:{home:null,away:null},
+    corners:cornerMatch?{home:Number(cornerMatch[1]),away:Number(cornerMatch[2])}:{home:null,away:null},
+    status:raw,
+  };
 }
 export function parseLiveDetail(html){
   const full=stripHtml(html).replace(/\s+/g,' ');
@@ -186,7 +193,10 @@ export function parseLiveDetail(html){
   const shotsOn=findMetricPair(text,['Shoot on target','Shots on Target','Shot on Target']);
   const shotsOff=findMetricPair(text,['Shoot off target','Shots off Target','Shot off Target']);
   const possession=findMetricPair(text,['Possession %','Possession','Ball Possession']);
-  const valid=Number.isFinite(st.minute)&&Number.isFinite(st.score.home)&&Number.isFinite(st.score.away);
+  // TotalCorner may expose a live phase label (for example "In Play" or "2nd Half")
+  // without a numeric minute in the detail page. The engine already has the current
+  // minute from the Today row, so score + cumulative live metrics are still usable.
+  const valid=Number.isFinite(st.score.home)&&Number.isFinite(st.score.away);
   return {valid,minute:st.minute,status:st.status,score:st.score,attacks,dangerousAttack,shotsOn,shotsOff,corners:st.corners,possession,rawText:text.slice(0,4000)};
 }
 
