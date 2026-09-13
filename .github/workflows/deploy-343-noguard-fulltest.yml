@@ -6,6 +6,10 @@ on:
       - work/nomad343-remove-bottlenecks-20260913
     paths:
       - '.github/workflows/deploy-343-noguard-fulltest.yml'
+      - 'workers/nomadtips3-5usd-hub-343/**'
+      - 'workers/nomadtips3-engine-343/**'
+      - 'workers/nomadtips3-343-preview/**'
+      - 'nomad-live-343/**'
   workflow_dispatch:
 
 permissions:
