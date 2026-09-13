@@ -18,7 +18,46 @@
       if(/soccer-predictions/i.test(href))link.remove();
     });
   };
-  stripPicksNavigation();
+
+  const ensureStatisticsNavigation=()=>{
+    const statisticsHref='https://www.nomadtips3.com/statistics';
+    document.querySelectorAll('.topbar-inner.public-four-nav>.topnav,.mobile-nav.public-four-nav').forEach(nav=>{
+      const links=[...nav.querySelectorAll('a')];
+      let statisticsLink=links.find(link=>{
+        const text=String(link.textContent||'').trim();
+        let statisticsPath=false;
+        try{statisticsPath=/\/statistics(?:\.html)?\/?$/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+        return statisticsPath||/^Statistics$/i.test(text);
+      });
+      if(statisticsLink){
+        statisticsLink.href=statisticsHref;
+        statisticsLink.dataset.nomadStatisticsNav='true';
+        return;
+      }
+
+      const marketLink=links.find(link=>{
+        const text=String(link.textContent||'').trim();
+        let marketPath=false;
+        try{marketPath=/\/nomad-live-342(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+        return marketPath||/^1X2\s*[·•-]?\s*Over\/Under$/i.test(text)||/^Live\s*Score$/i.test(text);
+      });
+
+      statisticsLink=document.createElement('a');
+      statisticsLink.href=statisticsHref;
+      statisticsLink.textContent='Statistics';
+      statisticsLink.setAttribute('aria-label','Statistics');
+      statisticsLink.dataset.nomadStatisticsNav='true';
+      if(marketLink)nav.insertBefore(statisticsLink,marketLink);else nav.appendChild(statisticsLink);
+    });
+  };
+
+  const normalizePrimaryNavigation=()=>{
+    stripPicksNavigation();
+    ensureStatisticsNavigation();
+  };
+
+  normalizePrimaryNavigation();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',normalizePrimaryNavigation,{once:true});
 
   /* Scope lock:
      Page 1 Signal      -> add link rail only, below original 3.41 footer content.
@@ -27,6 +66,7 @@
      Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
      Prediction3        -> add link rail below the original 3.41 footer content.
      Information pages  -> retain their existing information-page footer behavior.
+     Primary navigation -> ensure Page 2 Statistics is present between AH and the market page wherever this module is loaded.
      Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
 
@@ -51,7 +91,7 @@
   };
 
   const attachPublicRail=()=>{
-    stripPicksNavigation();
+    normalizePrimaryNavigation();
     if(document.querySelector('.nomad-info-linkrail'))return;
 
     if(picksPath){
@@ -80,7 +120,7 @@
   }
 
   const attachToExisting=footer=>{
-    stripPicksNavigation();
+    normalizePrimaryNavigation();
     if(!footer||footer.querySelector('.nomad-info-linkrail'))return;
     const bottom=footer.querySelector('.site-footer-bottom');
     if(bottom){
@@ -118,7 +158,7 @@
   };
 
   const restoreOriginal341Footer=()=>{
-    stripPicksNavigation();
+    normalizePrimaryNavigation();
     const current=document.querySelector('.site-footer');
     if(current?.querySelector('.site-footer-certrow')){
       attachToExisting(current);
