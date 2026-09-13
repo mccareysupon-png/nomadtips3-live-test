@@ -22,6 +22,8 @@ export class EngineState extends BaseEngineState{
     this.fiveUsdNative=new FiveUsdNativeRuntime(state.storage,env);
   }
 
+  legacyShadowDisabled(){return String(this.env?.FIVEUSD_SHADOW_LEGACY_DISABLED||'false').toLowerCase()==='true';}
+
   async armAlarm(delay=1500){
     if(!this.continuousCycles()) return;
     if(await this.state.storage.getAlarm()!=null) return;
@@ -36,10 +38,12 @@ export class EngineState extends BaseEngineState{
     const cycleStartedAt=now();
     try{
       await this.fiveUsdNative.tick();
-      const [engineState,config]=await Promise.all([this.read(),this.currentConfig()]);
-      if(legacyCycleDue(engineState,config,now())&&!this.running){
-        this.running=true;
-        try{await this.runCycle();}finally{this.running=false;}
+      if(!this.legacyShadowDisabled()){
+        const [engineState,config]=await Promise.all([this.read(),this.currentConfig()]);
+        if(legacyCycleDue(engineState,config,now())&&!this.running){
+          this.running=true;
+          try{await this.runCycle();}finally{this.running=false;}
+        }
       }
     }finally{
       await this.state.storage.setAlarm(nextNativeAlarmAt(cycleStartedAt,now()));
@@ -49,7 +53,7 @@ export class EngineState extends BaseEngineState{
   async fetch(request){
     const url=new URL(request.url);
     if(url.pathname==='/fiveusd-native'&&request.method==='GET'){
-      return json({ok:true,...await this.fiveUsdNative.health(),snapshot:await this.fiveUsdNative.snapshot()});
+      return json({ok:true,...await this.fiveUsdNative.health(),legacyShadowDisabled:this.legacyShadowDisabled(),snapshot:await this.fiveUsdNative.snapshot()});
     }
 
     const response=await super.fetch(request);
@@ -57,7 +61,7 @@ export class EngineState extends BaseEngineState{
 
     let body=null;
     try{body=await response.clone().json();}catch{body={ok:false,error:'health_decode_failed'};}
-    return json({...body,fiveUsdNative:await this.fiveUsdNative.health()},response.status);
+    return json({...body,fiveUsdNative:{...await this.fiveUsdNative.health(),legacyShadowDisabled:this.legacyShadowDisabled()}},response.status);
   }
 }
 
