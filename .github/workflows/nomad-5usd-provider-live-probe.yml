@@ -1,10 +1,11 @@
-name: NOMAD 5USD Provider Live Probe
+name: NOMAD 5USD Provider + Central Hub Live Gate
 
 on:
   push:
     branches: [work/nomad341-5usd-central-rewire]
     paths:
       - '.github/workflows/nomad-5usd-provider-live-probe.yml'
+      - 'workers/nomadtips3-5usd-central-hub/**'
   workflow_dispatch:
 
 permissions:
@@ -12,45 +13,95 @@ permissions:
 
 env:
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  API_BASE: https://api.5dollarfootballapi.com/v1
+  HUB_URL: http://127.0.0.1:8787
 
 jobs:
-  live-probe:
+  live-gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Validate provider credential presence
+      - name: Validate inputs and hub code
         run: |
           set -euo pipefail
           test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
+          node --check workers/nomadtips3-5usd-central-hub/src/index.js
+          node --test workers/nomadtips3-5usd-central-hub/test/contract.test.js
 
-      - name: Probe compound live feed and ten referees
-        env:
-          API_BASE: https://api.5dollarfootballapi.com/v1
+      - name: Start isolated ephemeral hub
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const base=process.env.API_BASE;
-          const key=process.env.FIVEDOLLAR_API_KEY;
-          const books=['1xbet','bet365','macauslot','crown','easybets','vcbet','interwetten','12bet','18bet','pinnacle'];
-          const headers={accept:'application/json',authorization:`Bearer ${key}`};
-          const cleanRate=r=>({limit:r.headers.get('x-ratelimit-limit'),remaining:r.headers.get('x-ratelimit-remaining'),reset:r.headers.get('x-ratelimit-reset'),retryAfter:r.headers.get('retry-after')});
-          const rows=p=>Array.isArray(p?.data)?p.data:Array.isArray(p?.data?.data)?p.data.data:Array.isArray(p?.fixtures)?p.fixtures:[];
-          const id=f=>f?.id??f?.fixture_id??f?.fixture?.id??null;
-          const bookRows=p=>Array.isArray(p?.data?.bookmakers)?p.data.bookmakers:Array.isArray(p?.bookmakers)?p.bookmakers:Array.isArray(p?.data?.data?.bookmakers)?p.data.data.bookmakers:[];
-          const keyOf=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
-          const get=async url=>{const r=await fetch(url,{headers}); const text=await r.text(); let body=null; try{body=JSON.parse(text)}catch{}; if(!r.ok) throw new Error(`HTTP_${r.status}:${text.slice(0,200)}`); return {r,body};};
-          const live=await get(`${base}/fixtures?status=live&include=odds,events,stats&per_page=50&page=1`);
-          const fixtures=rows(live.body);
-          const fixture=fixtures.find(x=>id(x)!=null)||null;
-          console.log('LIVE_PROBE',JSON.stringify({count:fixtures.length,fixtureId:fixture?String(id(fixture)):null,rate:cleanRate(live.r)}));
-          if(!fixture){console.log('REFEREE_PROBE skipped:no_live_fixture'); process.exit(0);}
-          const odds=await get(`${base}/fixtures/${encodeURIComponent(id(fixture))}/odds?market=asian&bookmakers=${encodeURIComponent(books.join(','))}`);
-          const returned=bookRows(odds.body);
-          const status=Object.fromEntries(books.map(slug=>[slug,returned.some(b=>[b?.slug,b?.name,b?.bookmaker].map(keyOf).includes(keyOf(slug)))?'PRESENT':'MISSING']));
-          console.log('REFEREE_PROBE',JSON.stringify({fixtureId:String(id(fixture)),requested:books.length,returned:returned.length,status,rate:cleanRate(odds.r)}));
+          npx --yes wrangler@4.92.0 dev --local --config workers/nomadtips3-5usd-central-hub/wrangler.jsonc --port 8787 --var "FIVEDOLLAR_API_KEY:$FIVEDOLLAR_API_KEY" --var "CENTRAL_HUB_TOKEN:$FIVEDOLLAR_API_KEY" >/tmp/hub.log 2>&1 &
+          echo $! >/tmp/hub.pid
+          for i in $(seq 1 30); do
+            if curl -fsS --max-time 2 "$HUB_URL/health" >/tmp/health.json 2>/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS --max-time 5 "$HUB_URL/health" >/tmp/health.json || { cat /tmp/hub.log; exit 1; }
+          node -e "const j=require('/tmp/health.json'); if(j.ok!==true||j.service!=='nomadtips3-5usd-central-hub') throw new Error(JSON.stringify(j)); console.log('HUB_HEALTH_PASS', {version:j.version,mode:j.mode});"
+          code=$(curl -sS -o /tmp/unauth.json -w '%{http_code}' --max-time 5 "$HUB_URL/live")
+          test "$code" = "401" || { echo "expected 401 without token, got $code"; cat /tmp/unauth.json; exit 1; }
+
+      - name: Round 1 live parity + market buses
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 45 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-live-1.json
+          curl -fsS --max-time 45 -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$API_BASE/fixtures?status=live&include=odds,events,stats&per_page=50&page=1" -o /tmp/direct-live-1.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const hub=require('/tmp/hub-live-1.json');
+          const direct=require('/tmp/direct-live-1.json');
+          const rows=Array.isArray(direct?.data)?direct.data:Array.isArray(direct?.data?.data)?direct.data.data:Array.isArray(direct?.fixtures)?direct.fixtures:[];
+          const id=x=>String(x?.fixtureId??x?.id??x?.fixture_id??x?.fixture?.id??'').trim();
+          const byHub=new Map((hub.fixtures||[]).map(x=>[id(x),x]).filter(([k])=>k));
+          const byDirect=new Map(rows.map(x=>[id(x),x]).filter(([k])=>k));
+          const shared=[...byDirect.keys()].filter(k=>byHub.has(k));
+          if(hub.ok!==true) throw new Error('hub live not ok');
+          if(rows.length>0 && shared.length===0) throw new Error('no shared fixture ids');
+          const ratio=rows.length?shared.length/rows.length:1;
+          if(rows.length>=5 && ratio<0.70) throw new Error(`fixture parity too low ${shared.length}/${rows.length}`);
+          const checks=shared.slice(0,10).map(k=>{
+            const h=byHub.get(k),d=byDirect.get(k);
+            const hn=String(h?.home?.name??''),an=String(h?.away?.name??'');
+            const dn=String(d?.teams?.home?.name??d?.home_team?.name??d?.home?.name??d?.home_name??'');
+            const da=String(d?.teams?.away?.name??d?.away_team?.name??d?.away?.name??d?.away_name??'');
+            return {id:k,teams:hn===dn&&an===da};
+          });
+          if(checks.some(x=>!x.teams)) throw new Error('team identity mismatch '+JSON.stringify(checks));
+          console.log('ROUND1_LIVE_PASS',JSON.stringify({hub:(hub.fixtures||[]).length,directPage1:rows.length,shared:shared.length,ratio,cache:hub.cache}));
+          if(shared[0]) fs.writeFileSync('/tmp/fixture-id',shared[0]);
           NODE
+          if [ -s /tmp/fixture-id ]; then
+            ID=$(cat /tmp/fixture-id)
+            curl -fsS --max-time 30 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/odds?fixtureId=$ID" -o /tmp/hub-odds.json
+            curl -fsS --max-time 30 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/referees?fixtureId=$ID" -o /tmp/hub-refs.json
+            node - <<'NODE'
+            const odds=require('/tmp/hub-odds.json'),refs=require('/tmp/hub-refs.json');
+            const expected=['1xBet','Bet365','Macauslot','Crown','Easybets','Vcbet','Interwetten','12Bet','18Bet','Pinnacle'];
+            if(odds.ok!==true||!odds.odds||typeof odds.odds!=='object') throw new Error('hub odds failed '+JSON.stringify(odds));
+            if(refs.ok!==true||refs.refereeCount!==10||!Array.isArray(refs.referees)||refs.referees.length!==10) throw new Error('hub refs count failed '+JSON.stringify(refs));
+            const names=refs.referees.map(x=>x.bookmaker);
+            if(expected.some(x=>!names.includes(x))) throw new Error('hub referee identity mismatch '+JSON.stringify(names));
+            console.log('ROUND1_MARKETS_PASS',JSON.stringify({fixtureId:odds.fixtureId,oddsCache:odds.cache,refereeCount:refs.refereeCount,readyCount:refs.readyCount,refereeCache:refs.cache}));
+            NODE
+          fi
+
+      - name: Round 2 cache and refresh behavior
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-cache.json
+          node -e "const j=require('/tmp/hub-cache.json'); if(j.ok!==true||j.cache?.hit!==true) throw new Error('expected cache hit '+JSON.stringify(j.cache)); console.log('CACHE_HIT_PASS',j.cache);"
+          sleep 56
+          curl -fsS --max-time 45 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-refresh.json
+          node -e "const j=require('/tmp/hub-refresh.json'); if(j.ok!==true||j.cache?.stale===true) throw new Error('refresh failed '+JSON.stringify(j)); console.log('CACHE_REFRESH_PASS',{count:j.fixtureCount,cache:j.cache});"
+
+      - name: Final gate summary
+        if: always()
+        run: |
+          if [ -f /tmp/hub.log ]; then tail -n 80 /tmp/hub.log; fi
+          if [ -f /tmp/hub.pid ]; then kill $(cat /tmp/hub.pid) 2>/dev/null || true; fi
