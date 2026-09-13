@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {legacyCycleDue,nextNativeAlarmAt,refereeFreshnessView,refereeDecisionShadow} from '../src/index-fiveusd-shadow.js';
+import {legacyCycleDue,nextNativeAlarmAt,refereeFreshnessView,refereeDecisionShadow,eventFlowStateSummary} from '../src/index-fiveusd-shadow.js';
 
 test('native wrapper preserves legacy detector cadence independently of 3s fast lane',()=>{
   const at=1_000_000;
@@ -84,4 +84,19 @@ test('candidate decision shadow fails closed when no referee is eligible',()=>{
   assert.equal(decision.ok,false);
   assert.equal(decision.reason,'NO_ELIGIBLE_REFEREE');
   assert.equal(decision.signalAuthority,false);
+});
+
+test('Event Flow summary stays presentation-only with one 0-100 chart contract',()=>{
+  const summary=eventFlowStateSummary({
+    version:'341-test',updatedAt:5_000_000,
+    flows:{
+      '1':{historyPoints:4,series:[{minute:2,home:60,away:40},{minute:3,home:70,away:55}]},
+      '2':{historyPoints:3,series:[{minute:5,home:45,away:80}]},
+    },
+  });
+  assert.equal(summary.fixtureCount,2);
+  assert.equal(summary.seriesPoints,3);
+  assert.equal(summary.historyPoints,7);
+  assert.deepEqual(summary.axis,{x:'MATCH_MINUTE',yMin:0,yMax:100});
+  assert.equal(summary.independentSides,true);
 });
