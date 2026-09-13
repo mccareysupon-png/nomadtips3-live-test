@@ -3,6 +3,7 @@ import {FIVEUSD_CADENCE} from './fivedollar.js';
 import {FiveUsdNativeRuntime} from './fivedollar-runtime.js';
 import {buildNativeCandidateShadow} from './fivedollar-candidate-shadow.js';
 import {summarizeFiveUsdFreshness} from './fivedollar-freshness.js';
+import {selectFiveUsdRefereeConsensus} from './fivedollar-referee-consensus.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const MIN_ALARM_DELAY_MS=250;
@@ -42,6 +43,34 @@ export function refereeFreshnessView(snapshot,config,at=now()){
   };
 }
 
+export function refereeDecisionShadow(snapshot,config,side='home',at=now()){
+  if(!snapshot) return null;
+  const decision=selectFiveUsdRefereeConsensus(snapshot.referees,config,side,at);
+  return {
+    ok:decision.ok,
+    status:decision.status,
+    reason:decision.reason??null,
+    side:decision.side,
+    line:decision.line??null,
+    odds:decision.odds??null,
+    homeLine:decision.homeLine??null,
+    homeOdds:decision.homeOdds??null,
+    awayOdds:decision.awayOdds??null,
+    selectedSourceId:decision.selectedSourceId??null,
+    selectedBookmaker:decision.selectedBookmaker??null,
+    consensusCount:decision.consensusCount??0,
+    eligibleCount:decision.eligibleCount??0,
+    total:decision.total??0,
+    consensusMedianOdds:decision.consensusMedianOdds??null,
+    consensusBookmakers:decision.consensusBookmakers??[],
+    freshnessBasis:decision.freshnessBasis??'OBSERVED',
+    sourceUpdatedAt:null,
+    observedAt:decision.observedAt??at,
+    votingEnabled:false,
+    signalAuthority:false,
+  };
+}
+
 export class EngineState extends BaseEngineState{
   constructor(state,env){
     super(state,env);
@@ -70,6 +99,7 @@ export class EngineState extends BaseEngineState{
     const refereeRefreshMs=this.fiveUsdNative.refereeRefreshMs();
     const maximumPriceAgeSeconds=finite(config?.maximumPriceAgeSeconds)?Math.max(1,Number(config.maximumPriceAgeSeconds)):90;
     let starts=0;
+    let consensusReady=0;
     const refereeAttempts=[];
     const candidateRows=[];
     let rateBlocked=false;
@@ -86,9 +116,11 @@ export class EngineState extends BaseEngineState{
         try{
           const result=await this.fiveUsdNative.refreshReferee(candidate.fixtureId);
           const freshness=refereeFreshnessView(result,config,now());
+          const decision=refereeDecisionShadow(result,config,candidate.side,now());
           refereeAttempts.push({
             fixtureId:candidate.fixtureId,ok:true,readyCount:result?.readyCount??0,observedAt:result?.observedAt??null,
             freshCount:freshness?.fresh??0,staleCount:freshness?.stale??0,invalidCount:freshness?.invalid??0,
+            consensusOk:decision?.ok===true,consensusCount:decision?.consensusCount??0,
           });
         }catch(error){
           const message=String(error?.message||error);
@@ -99,14 +131,16 @@ export class EngineState extends BaseEngineState{
 
       const current=await this.state.storage.get(key)||previous;
       const freshness=refereeFreshnessView(current,config,at);
+      const decisionShadow=refereeDecisionShadow(current,config,candidate.side,at);
+      if(decisionShadow?.ok===true) consensusReady+=1;
       candidateRows.push({...candidate,referee:current?{
-        mode:current.mode??'SHADOW_ONLY',shadowOnly:current.shadowOnly!==false,votingEnabled:current.votingEnabled===true,
+        mode:current.mode??'SHADOW_ONLY',shadowOnly:current.shadowOnly!==false,votingEnabled:false,
         observedAt:current.observedAt??null,readyCount:current.readyCount??0,
         freshness,
         freshReadyCount:freshness?.fresh??0,
         staleCount:freshness?.stale??0,
         invalidCount:freshness?.invalid??0,
-      }:null});
+      }:null,decisionShadow});
     }
 
     const state={
@@ -117,6 +151,7 @@ export class EngineState extends BaseEngineState{
       signalAuthority:false,
       liveCount:evaluation.summary.live,
       candidateCount:evaluation.summary.candidates,
+      consensusReady,
       refereeStarts:starts,
       refereeRefreshMs,
       maximumPriceAgeSeconds,
@@ -184,6 +219,7 @@ export class EngineState extends BaseEngineState{
         signalAuthority:candidateShadow.signalAuthority,
         liveCount:candidateShadow.liveCount,
         candidateCount:candidateShadow.candidateCount,
+        consensusReady:candidateShadow.consensusReady,
         refereeStarts:candidateShadow.refereeStarts,
         refereeRefreshMs:candidateShadow.refereeRefreshMs,
         maximumPriceAgeSeconds:candidateShadow.maximumPriceAgeSeconds,
