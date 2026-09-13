@@ -16,6 +16,7 @@ const now=()=>Date.now();
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const modeOf=env=>String(env?.FIVEUSD_NATIVE_MODE||'off').trim().toLowerCase();
 const clamp=(value,min,max)=>Math.min(max,Math.max(min,value));
+const isProviderThrottle=error=>error instanceof FiveUsdRateGuardError||Number(error?.status)===429||String(error?.message||error).includes('5USD_HTTP_429');
 
 export class FiveUsdRateGuardError extends Error{
   constructor(bucket,retryAfterMs){
@@ -53,8 +54,8 @@ export class FiveUsdNativeRuntime{
   liveRefreshMs(){return this._intSetting('FIVEUSD_LIVE_REFRESH_MS',FIVEUSD_CADENCE.liveRefreshMs,{min:1000,max:60_000});}
   upcomingRefreshMs(){return this._intSetting('FIVEUSD_UPCOMING_REFRESH_MS',FIVEUSD_CADENCE.upcomingRefreshMs,{min:10_000,max:3_600_000});}
   refereeRefreshMs(){return this._intSetting('FIVEUSD_REFEREE_REFRESH_MS',60_000,{min:1000,max:3_600_000});}
-  liveMaxPages(){return this._intSetting('FIVEUSD_LIVE_MAX_PAGES',1,{min:1,max:FIVEUSD_CADENCE.liveMaxPages});}
-  upcomingMaxPages(){return this._intSetting('FIVEUSD_UPCOMING_MAX_PAGES',3,{min:1,max:10});}
+  liveMaxPages(){return this._intSetting('FIVEUSD_LIVE_MAX_PAGES',FIVEUSD_CADENCE.liveMaxPages,{min:1,max:FIVEUSD_CADENCE.liveMaxPages});}
+  upcomingMaxPages(){return this._intSetting('FIVEUSD_UPCOMING_MAX_PAGES',10,{min:1,max:10});}
   providerCeiling(){return FIVEUSD_CADENCE.providerRequestCeilingPer60s;}
   globalBudget(){return this._intSetting('FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S',this.providerCeiling(),{min:1,max:this.providerCeiling()});}
 
@@ -149,10 +150,11 @@ export class FiveUsdNativeRuntime{
   async _pageReservation(kind,configuredMaxPages){
     const capacity=await this._capacity(kind);
     if(capacity.available<1) throw new FiveUsdRateGuardError('global',capacity.retryAfterMs);
-    const allowedPages=Math.max(1,Math.min(configuredMaxPages,capacity.available));
-    const reservation=await this._reserve(kind,allowedPages);
+    // Reserve only the first actual request. Pagination is allowed to run freely;
+    // _finalize records the real request count after the provider call completes.
+    const reservation=await this._reserve(kind,1);
     if(!reservation.ok) throw new FiveUsdRateGuardError('global',reservation.retryAfterMs);
-    return {...reservation,allowedPages};
+    return {...reservation,allowedPages:configuredMaxPages};
   }
 
   async refreshLive({force=false}={}){
@@ -233,12 +235,12 @@ export class FiveUsdNativeRuntime{
       const throttled=[];
       try{live=await this.refreshLive({force});}
       catch(error){
-        if(error instanceof FiveUsdRateGuardError) throttled.push({path:'live',code:error.code,retryAfterMs:error.retryAfterMs});
+        if(isProviderThrottle(error)) throttled.push({path:'live',code:String(error?.code||error?.message||'5USD_THROTTLED'),retryAfterMs:error?.retryAfterMs??null});
         else lastError=String(error?.message||error);
       }
       try{upcoming=await this.refreshUpcoming({force:false});}
       catch(error){
-        if(error instanceof FiveUsdRateGuardError) throttled.push({path:'waiting',code:error.code,retryAfterMs:error.retryAfterMs});
+        if(isProviderThrottle(error)) throttled.push({path:'waiting',code:String(error?.code||error?.message||'5USD_THROTTLED'),retryAfterMs:error?.retryAfterMs??null});
         else lastError=lastError||String(error?.message||error);
       }
       if(!live) live=await this.storage.get(LIVE_KEY)||null;
