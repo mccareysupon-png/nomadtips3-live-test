@@ -44,6 +44,8 @@ jobs:
           grep -Fq 'main = "src/index-fiveusd-shadow.js"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_NATIVE_MODE = "shadow"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_SHADOW_LEGACY_DISABLED = "true"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_LIVE_REFRESH_MS = "3000"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S = "40"' wrangler-fiveusd-shadow.toml
 
       - name: Dry-run shadow bundle
         working-directory: nomad-live-engine
@@ -64,7 +66,7 @@ jobs:
         working-directory: nomad-live-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.131.1 secret put FIVEDOLLAR_API_KEY --config wrangler-fiveusd-shadow.toml
 
-      - name: Arm shadow engine and verify 3s cadence
+      - name: Arm shadow engine and verify configurable native lanes
         run: |
           set -euo pipefail
           probe() {
@@ -95,18 +97,24 @@ jobs:
           if(a.legacyShadowDisabled!==true) throw new Error('legacy isolation missing');
           if(a.cadence?.cycleMs!==3000||a.cadence?.noOverlap!==true) throw new Error('3s cadence contract mismatch');
           if(!a.state?.startedAt||!b.state?.startedAt) throw new Error('native alarm did not tick');
+          if(b.state?.ok!==true) throw new Error(`native state unhealthy: ${b.state?.lastError||'unknown'}`);
           if(Number(b.live?.fetchedAt||0)<=Number(a.live?.fetchedAt||0)) throw new Error('live snapshot did not advance');
           if(Number(b.board?.terminalDisplayed||0)!==0) throw new Error('terminal fixture leaked to board');
-          if(Number(b.rate?.core?.usedLast60s||0)>20) throw new Error('core rate guard exceeded');
-          if(Number(b.rate?.referee?.usedLast60s||0)>10) throw new Error('referee rate guard exceeded');
+          if(Number(b.rate?.global?.usedLast60s||0)>40) throw new Error('global provider guard exceeded');
+          if(Number(b.rate?.live?.usedLast60s||0)>20) throw new Error('configured live lane exceeded');
+          if(Number(b.rate?.upcoming?.usedLast60s||0)>3) throw new Error('configured waiting lane exceeded');
+          if(Number(b.rate?.referee?.usedLast60s||0)>10) throw new Error('configured referee lane exceeded');
           console.log('NATIVE_SHADOW_PASS',JSON.stringify({
             firstLiveAt:a.live?.fetchedAt,
             secondLiveAt:b.live?.fetchedAt,
             live:b.board?.counts?.live,
             waiting:b.board?.counts?.waiting,
             terminalDisplayed:b.board?.terminalDisplayed,
-            coreRate:b.rate?.core,
+            globalRate:b.rate?.global,
+            liveRate:b.rate?.live,
+            waitingRate:b.rate?.upcoming,
             refereeRate:b.rate?.referee,
+            candidateShadow:b.candidateShadow,
             state:b.state
           },null,2));
           NODE
