@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { overLineGap, overGapPass } from './over-gap.js';
+import { runCentralHubLiveShadow, runCentralHubOddsShadow, centralHubShadowEnabled } from './central-hub-shadow.js';
 
 const VERSION = 'nomad343-auto-v2';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
@@ -103,14 +104,14 @@ export class Nomad343State extends DurableObject {
     const s=await this.state(),t=now();if(s.lastScanAt&&t-s.lastScanAt<MIN_SCAN_GAP_MS)return {...s.board,ok:true,skipped:'SCAN_GAP',lastScanAt:s.lastScanAt};await this.ctx.storage.put('lastScanAt',t);
     if(!Object.values(s.run).some(Boolean)){const board={ok:true,version:VERSION,engineState:'STOPPED',observedAt:t,fixtures:[],candidates:[],signals:s.signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',requests:0}};await this.ctx.storage.put({board,lastSuccessAt:t,lastError:null,lastRequestCount:0});return board}
     try{
-      const upstream=await providerLive(this.env),normalized=upstream.fixtures.map(normalizeFixture).filter(x=>x.fixtureId),history=s.history,preCandidates=[];
+      const upstream=await providerLive(this.env),shadowLive=await runCentralHubLiveShadow(this.env,upstream.fixtures),normalized=upstream.fixtures.map(normalizeFixture).filter(x=>x.fixtureId),history=s.history,preCandidates=[];
       for(const f of normalized){const current=cumulativeSnapshot(f),rows=Array.isArray(history[f.fixtureId])?history[f.fixtureId]:[];rows.push(current);history[f.fixtureId]=rows.slice(-MAX_HISTORY);
         for(const market of Object.keys(DEFAULT_SETTINGS)){if(!s.run[market])continue;const cfg=s.settings[market],roll=rolling(history[f.fixtureId],current,cfg.rollingWindowMinutes),best=chooseBest(selectedSides(cfg,market).map(side=>preEvaluate(market,cfg,f,roll,side)));if(best)preCandidates.push({fixtureId:f.fixtureId,market,side:best.side,minute:f.minute,home:f.home.name,away:f.away.name,league:f.league.name,score:f.goals,evidence:best.evidence,price:best.price??null,line:best.line??null,lineGap:best.lineGap??null,observedAt:t});}
       }
       const active=new Set(normalized.map(x=>x.fixtureId));for(const id of Object.keys(history))if(!active.has(id))delete history[id];
       preCandidates.sort((a,b)=>(b.evidence?.strength??0)-(a.evidence?.strength??0));
-      let requests=upstream.requests;const fullOdds=new Map(),refereeErrors=[];
-      for(const c of preCandidates){if(c.market==='oneXtwo'||fullOdds.has(c.fixtureId))continue;if(requests>=REQUEST_BUDGET_PER_SCAN)break;try{fullOdds.set(c.fixtureId,await fetchFullOdds(c.fixtureId,this.env))}catch(error){fullOdds.set(c.fixtureId,null);refereeErrors.push({fixtureId:c.fixtureId,error:String(error?.message||error)})}requests++}
+      let requests=upstream.requests;const fullOdds=new Map(),refereeErrors=[],shadowOdds=[];
+      for(const c of preCandidates){if(c.market==='oneXtwo'||fullOdds.has(c.fixtureId))continue;if(requests>=REQUEST_BUDGET_PER_SCAN)break;try{const directOdds=await fetchFullOdds(c.fixtureId,this.env);fullOdds.set(c.fixtureId,directOdds);if(centralHubShadowEnabled(this.env)&&shadowOdds.length<2)shadowOdds.push(await runCentralHubOddsShadow(c.fixtureId,directOdds,this.env))}catch(error){fullOdds.set(c.fixtureId,null);refereeErrors.push({fixtureId:c.fixtureId,error:String(error?.message||error)})}requests++}
       const candidates=[],newSignals=[];
       for(const c of preCandidates){const cfg=s.settings[c.market];let price=c.price;if(c.market!=='oneXtwo'){const root=fullOdds.get(c.fixtureId);if(root)price=refereePrice(root,c.market,c.side);else{candidates.push({...c,stage:fullOdds.has(c.fixtureId)?'PRICE_UNAVAILABLE':'PRICE_BUDGET',price:null});continue}}
         const lineGap=c.market==='over'?overLineGap(price?.line,c.score):c.lineGap??null;
@@ -118,7 +119,7 @@ export class Nomad343State extends DurableObject {
         const candidate={...c,stage:'PASS',price,lineGap};candidates.push(candidate);
         const duplicate=s.signals.some(x=>String(x.fixtureId)===String(c.fixtureId)&&x.market===c.market);if(!duplicate){const key=`${c.fixtureId}|${c.market}`,signal={...candidate,key,lockedAt:t,status:'LOCKED'};s.signals.push(signal);newSignals.push(signal)}
       }
-      const signals=s.signals.slice(-MAX_SIGNALS),board={ok:true,version:VERSION,engineState:'RUNNING',observedAt:t,fixtures:normalized,candidates,newSignals,signals:signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',bookmaker:'Bet365',requests,requestBudget:REQUEST_BUDGET_PER_SCAN,liveCount:normalized.length},refereeErrors};
+      const signals=s.signals.slice(-MAX_SIGNALS),board={ok:true,version:VERSION,engineState:'RUNNING',observedAt:t,fixtures:normalized,candidates,newSignals,signals:signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',bookmaker:'Bet365',requests,requestBudget:REQUEST_BUDGET_PER_SCAN,liveCount:normalized.length},centralHubShadow:{mode:shadowLive.enabled?'SHADOW':'OFF',live:shadowLive,odds:shadowOdds},refereeErrors};
       await this.ctx.storage.put({history,signals,board,lastSuccessAt:t,lastError:null,lastRequestCount:requests});return board;
     }catch(error){const message=String(error?.message||error);await this.ctx.storage.put({lastError:message,lastRequestCount:0});const board={...(s.board||{}),ok:false,version:VERSION,engineState:'ERROR',observedAt:t,error:message,run:s.run};await this.ctx.storage.put('board',board);return board}
   }
