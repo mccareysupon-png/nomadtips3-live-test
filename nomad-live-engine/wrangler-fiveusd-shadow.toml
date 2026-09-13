@@ -1,11 +1,11 @@
 name = "nomadtips3-live-engine-5usd-shadow"
-main = "src/index-fiveusd-shadow.js"
+main = "src/index-fiveusd-test.js"
 compatibility_date = "2026-08-20"
 workers_dev = true
 
 [vars]
 ENGINE_CYCLE_MODE = "continuous"
-FIVEUSD_NATIVE_MODE = "shadow"
+FIVEUSD_NATIVE_MODE = "authority"
 FIVEUSD_SHADOW_LEGACY_DISABLED = "true"
 FIVEUSD_UPCOMING_WINDOW_MINUTES = "120"
 FIVEUSD_LIVE_REFRESH_MS = "3000"
