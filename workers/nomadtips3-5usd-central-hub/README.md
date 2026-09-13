@@ -1,75 +1,120 @@
-# NOMAD 5USD Central Hub — STEP 02 Skeleton
+# NOMAD 5USD Central Hub — STEP 03 Shadow Referee Bus
 
-Status: **ISOLATED / NOT CONNECTED / NOT DEPLOYED BY THIS STEP**
+Status: **ISOLATED / SHADOW ONLY / NOT CONNECTED / NOT DEPLOYED**
 
 This Worker is the planned shared 5DollarFootballAPI data hub for NOMAD 3.41 and 3.43.
-STEP 02 creates only the shared data surface. It does not change either consumer engine.
+STEP 03 adds the 10-bookmaker referee bus while preserving strict isolation from both engines.
 
 ## Isolation contract
 
-- Do not modify NOMAD 3.41 detector, signal, settlement, statistics, UI or existing sources in STEP 02.
-- Do not modify NOMAD 3.43 engine or its provider path in STEP 02.
-- Do not deploy automatically from this step.
+- Do not modify NOMAD 3.41 detector, signal, settlement, statistics, UI or existing production sources in STEP 03.
+- Do not modify NOMAD 3.43 engine or its provider path in STEP 03.
+- Do not deploy automatically.
 - Do not create signals or make betting decisions here.
-- Do not treat Hub observation time as bookmaker quote time.
+- Every referee is `shadowOnly=true` and `voteEligible=false`.
+- Do not treat Hub observation/change-detection time as bookmaker-native quote time.
 
 ## Endpoints
 
-- `GET /health`
-  - never calls 5DollarFootballAPI
-  - reports cache state, last upstream attempt/success/error and consumer connection flags
-- `GET /live`
-  - reads a 55-second shared cache when fresh
-  - when stale/missing, performs one compound upstream request:
-    - `/v1/fixtures?status=live&include=odds,events,stats&per_page=500&page=1`
-  - stores the normalized snapshot in the Durable Object
-  - if refresh fails but an older cache exists, returns it marked `cache.stale=true`
+### `GET /health`
 
-## Required secret
+- never calls 5DollarFootballAPI
+- reports live-cache telemetry and referee-bus telemetry
+- reports both NOMAD consumers as disconnected
+
+### `GET /live`
+
+- reads a 55-second shared cache when fresh
+- refreshes from `/v1/fixtures?status=live&include=odds,events,stats`
+- compound include responses are requested with `per_page=50`
+- follows provider pagination up to 10 pages and deduplicates fixtures by provider fixture id
+- stores one normalized snapshot in the Durable Object
+- if refresh fails but an older cache exists, returns it marked `cache.stale=true`
+
+### `GET /referees?fixtureId=<5USD fixture id>`
+
+- requires a numeric provider fixture id
+- reads a 55-second per-fixture referee cache when fresh
+- on refresh performs one multi-bookmaker request for the Asian Handicap market:
+  - `/v1/fixtures/{id}/odds?market=asian&bookmakers=<10 slugs>`
+- returns exactly ten mapped referee sockets in SHADOW mode
+- no referee has voting rights in STEP 03
+
+## 10 referee socket map
+
+| 3.41 socket | Position | 5USD bookmaker | Slug | STEP 03 vote |
+|---|---:|---|---|---|
+| source5 | 5 | 1xBet | `1xbet` | OFF |
+| source6 | 6 | Bet365 | `bet365` | OFF |
+| source9 | 9 | Macauslot | `macauslot` | OFF |
+| source10 | 10 | Crown | `crown` | OFF |
+| source14 | 14 | Easybets | `easybets` | OFF |
+| source15 | 15 | Vcbet | `vcbet` | OFF |
+| source16 | 16 | Interwetten | `interwetten` | OFF |
+| source18 | 18 | 12Bet | `12bet` | OFF |
+| source21 | 21 | 18Bet | `18bet` | OFF |
+| source25 | 25 | Pinnacle | `pinnacle` | OFF |
+
+The map deliberately reuses existing 3.41 socket positions. STEP 03 does not edit the 3.41 price-source registry.
+
+## Referee output contract
+
+Each referee exposes:
+
+- `sourceId`
+- `position`
+- bookmaker display name and provider slug
+- provider = `5DollarFootballAPI`
+- market = `FULL MATCH LIVE AH`
+- status = `AH READY`, `AH UNAVAILABLE`, `AH INVALID`, or `BOOKMAKER UNAVAILABLE`
+- HOME line and derived AWAY line
+- HOME / AWAY decimal prices
+- `bookmakerVerified`
+- `observedAt`
+- `timestampKind = hub_observed_at`
+- `sourceUpdatedAt = null`
+- `lastChangedAt`
+- `lastChangedAtKind = hub_detected_change_at`
+- `shadowOnly = true`
+- `voteEligible = false`
+
+## Timestamp/freshness rule
+
+`observedAt` is the time the Hub received the bookmaker snapshot.
+`lastChangedAt` is the first Hub observation of the current line/price fingerprint.
+Neither value is a provider-native bookmaker quote timestamp.
+They must not be passed to 3.41 as bookmaker-native `sourceUpdatedAt`.
+STEP 03 therefore keeps all ten referees outside real consensus voting.
+
+## Rate-safety design
+
+- Live compound feed cache: 55 seconds.
+- Compound pages: 50 fixtures per request because provider docs cap `include=` responses at 50.
+- Referee cache: 55 seconds per fixture.
+- Ten bookmakers are requested together in one fixture-odds request, not ten separate calls.
+- Concurrent duplicate requests for the same fixture share one in-flight promise inside the Durable Object.
+- Provider `X-RateLimit-*` telemetry is captured for later deployment/rate-governor work.
+
+The current 5DollarFootballAPI documentation states that Ultra uses a 40 requests/minute account-wide window and that non-Bet365 bookmakers require Ultra (or an eligible equivalent plan). This STEP does not assume spare quota exists while 3.43 still calls the provider directly; deployment remains blocked until the migration rate budget is reviewed.
+
+## Secrets
+
+Required when eventually deployed:
 
 - `FIVEDOLLAR_API_KEY`
 
 Optional read protection:
 
 - `CENTRAL_HUB_TOKEN`
-- when configured, `/live` requires header `x-central-hub-token`
-- `/health` remains non-secret telemetry and does not expose the API key
+- when configured, `/live` and `/referees` require header `x-central-hub-token`
+- `/health` remains non-secret telemetry
 
-## Normalized fixture contract
+## Gate to STEP 04
 
-Each live fixture exposes:
+Before any consumer is moved to this Hub:
 
-- `fixtureId`
-- league, home team, away team
-- minute/status
-- score
-- statistics
-  - attacks
-  - dangerousAttack
-  - shots
-  - shotsOn
-  - shotsOff
-  - corners
-  - possession
-- provider events array
-- Bet365 inline odds as supplied by the compound feed
-  - normalized best-effort AH / Goal Line / 1X2 fields
-  - raw odds object preserved for later adapters
-- kickoff time
-- `observedAt`
-- `timestampKind = hub_observed_at`
-
-## Timestamp rule
-
-`observedAt` means only: **the time this Hub received and normalized the provider snapshot**.
-It must never be presented to 3.41 as a bookmaker-native quote update timestamp.
-STEP 03 must define referee freshness semantics before any bookmaker receives voting rights.
-
-## Cache/rate rule
-
-The Durable Object is the single cache owner. Multiple future consumers should read the same cached snapshot instead of each calling 5DollarFootballAPI independently.
-The initial cache TTL is 55 seconds.
-
-## Next step
-
-STEP 03 will add the 10-bookmaker referee bus in SHADOW mode only. It must not create or select 3.41 signals until bookmaker mapping, market shape, timestamp policy and consensus tests pass.
+1. syntax + contract CI must pass;
+2. diff must show no production 3.41/3.43 files changed;
+3. a later isolated deployment must verify real provider payload shape for all ten bookmaker slugs;
+4. missing bookmaker / missing in-play AH must fail closed;
+5. rate-budget telemetry must be reviewed before 3.43 is switched from direct provider calls.
