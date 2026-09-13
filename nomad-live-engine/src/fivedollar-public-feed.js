@@ -1,7 +1,7 @@
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
 const clone=value=>value===undefined?undefined:JSON.parse(JSON.stringify(value));
 const nameOf=value=>value&&typeof value==='object'?(value.name??value.id??null):(value??null);
-const priority=state=>({'SIGNAL':0,'NEAR SIGNAL':1,'WATCHING':2,'LIVE':3,'WAITING':4}[state]??9);
+const priority=state=>({'SIGNAL':0,'NEAR SIGNAL':1,'WATCHING':2,'LIVE':3}[state]??9);
 
 function priceFromDecision(decision,side='home'){
   if(!decision?.ok) return {priceStatus:'AH WAIT',market:null,selectedPrice:null,priceSources:[]};
@@ -71,56 +71,18 @@ function liveMatch(fixture,candidate){
   };
 }
 
-function waitingMatch(fixture){
-  return {
-    id:String(fixture.fixtureId),
-    fixtureId:String(fixture.fixtureId),
-    boardState:'scheduled',
-    league:nameOf(fixture.league),
-    home:nameOf(fixture.home),
-    away:nameOf(fixture.away),
-    kickoffAt:fixture.kickoffAt??null,
-    minute:null,
-    score:clone(fixture.score||{home:null,away:null}),
-    stats:clone(fixture.stats||{}),
-    events:[],
-    rolling:{available:false,reason:'WAITING'},
-    state:'WAITING',
-    side:'home',
-    detectionPassed:false,
-    checks:{},
-    passed:0,
-    total:6,
-    hunger:null,
-    evidence:{required:false},
-    sidePressureShare:null,
-    freshness:{sourceStale:false,observedAt:fixture?.provenance?.observedAt??null,sourceUpdatedAt:null,freshnessBasis:'OBSERVED'},
-    priceStatus:'AH WAIT',
-    market:null,
-    selectedPrice:null,
-    priceSources:[],
-    signalStatus:null,
-    signalLock:null,
-  };
-}
-
 export function buildFiveUsdPublicFeed(snapshot,candidateShadow){
   const fixtures=Array.isArray(snapshot?.board?.fixtures)?snapshot.board.fixtures:[];
   const candidateById=new Map((candidateShadow?.rows||[]).map(row=>[String(row.fixtureId),row]));
   const matches=[];
   for(const fixture of fixtures){
-    if(!fixture?.fixtureId) continue;
-    if(fixture.boardState==='live') matches.push(liveMatch(fixture,candidateById.get(String(fixture.fixtureId))));
-    else if(fixture.boardState==='scheduled') matches.push(waitingMatch(fixture));
+    if(!fixture?.fixtureId||fixture.boardState!=='live') continue;
+    matches.push(liveMatch(fixture,candidateById.get(String(fixture.fixtureId))));
   }
-  matches.sort((a,b)=>{
-    if(a.boardState!==b.boardState) return a.boardState==='live'?-1:1;
-    if(a.boardState==='live') return priority(a.state)-priority(b.state)||Number(b.sidePressureShare||0)-Number(a.sidePressureShare||0);
-    return Number(a.kickoffAt||0)-Number(b.kickoffAt||0);
-  });
+  matches.sort((a,b)=>priority(a.state)-priority(b.state)||Number(b.sidePressureShare||0)-Number(a.sidePressureShare||0));
   const counts={
-    live:matches.filter(row=>row.boardState==='live').length,
-    waiting:matches.filter(row=>row.boardState==='scheduled').length,
+    live:matches.length,
+    waiting:0,
     watching:matches.filter(row=>row.state==='WATCHING').length,
     near:matches.filter(row=>row.state==='NEAR SIGNAL').length,
     signal:0,
@@ -132,6 +94,7 @@ export function buildFiveUsdPublicFeed(snapshot,candidateShadow){
     sourceOfTruth:true,
     shadowOnly:true,
     signalAuthority:false,
+    liveOnly:true,
     updatedAt:snapshot?.board?.updatedAt??snapshot?.state?.finishedAt??null,
     counts,
     priceStatuses:matches.reduce((out,row)=>{out[row.priceStatus]=(out[row.priceStatus]||0)+1;return out;},{}),

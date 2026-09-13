@@ -25,15 +25,16 @@ const candidateShadow={rows:[{
   decisionShadow:{ok:true,status:'CONSENSUS READY',side:'home',line:-0.5,odds:1.93,homeLine:-0.5,homeOdds:1.93,awayOdds:1.97,selectedSourceId:'source6',selectedBookmaker:'Bet365',freshnessBasis:'OBSERVED',observedAt:1_800_000_000_000,signalAuthority:false},
 }]};
 
-test('5USD public feed includes LIVE plus WAITING and excludes terminal fixtures',()=>{
+test('5USD public feed is LIVE-only and excludes scheduled/terminal fixtures',()=>{
   const feed=buildFiveUsdPublicFeed(snapshot,candidateShadow);
   assert.equal(feed.ok,true);
   assert.equal(feed.source,'5DollarFootballAPI');
   assert.equal(feed.sourceOfTruth,true);
   assert.equal(feed.shadowOnly,true);
   assert.equal(feed.signalAuthority,false);
-  assert.deepEqual(feed.matches.map(row=>row.id),['1','2']);
-  assert.deepEqual(feed.counts,{live:1,waiting:1,watching:0,near:1,signal:0,detectorSignal:0});
+  assert.equal(feed.liveOnly,true);
+  assert.deepEqual(feed.matches.map(row=>row.id),['1']);
+  assert.deepEqual(feed.counts,{live:1,waiting:0,watching:0,near:1,signal:0,detectorSignal:0});
 });
 
 test('live public row preserves native detector presentation fields and raw 5USD events',()=>{
@@ -63,14 +64,10 @@ test('referee decision becomes display price only and cannot create a locked sig
   assert.equal(row.signalLock,null);
 });
 
-test('waiting public row stays lightweight and never pretends detector, event, or price readiness',()=>{
-  const row=buildFiveUsdPublicFeed(snapshot,candidateShadow).matches.find(item=>item.id==='2');
-  assert.equal(row.state,'WAITING');
-  assert.equal(row.minute,null);
-  assert.equal(row.detectionPassed,false);
-  assert.deepEqual(row.events,[]);
-  assert.equal(row.priceStatus,'AH WAIT');
-  assert.equal(row.selectedPrice,null);
+test('scheduled fixtures never enter the public live page feed',()=>{
+  const feed=buildFiveUsdPublicFeed(snapshot,candidateShadow);
+  assert.equal(feed.matches.some(row=>row.boardState==='scheduled'||row.state==='WAITING'),false);
+  assert.equal(feed.counts.waiting,0);
 });
 
 test('5USD public feed JSON cannot leak legacy provider authority labels',()=>{
