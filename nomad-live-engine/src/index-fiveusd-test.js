@@ -95,6 +95,7 @@ export class EngineState extends ShadowEngineState{
       const side=String(url.searchParams.get('side')||'home').toLowerCase()==='away'?'away':'home';
       try{
         const snapshot=await this.fiveUsdNative.refreshReferee(fixtureId);
+        await this.updateFiveUsdRefereePriceFlow(snapshot,now());
         const config=await this.currentConfig();
         const decision=refereeDecisionTest(snapshot,config,side,now());
         return json({
