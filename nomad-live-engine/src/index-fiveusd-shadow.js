@@ -4,11 +4,14 @@ import {FiveUsdNativeRuntime} from './fivedollar-runtime.js';
 import {buildNativeCandidateShadow} from './fivedollar-candidate-shadow.js';
 import {summarizeFiveUsdFreshness} from './fivedollar-freshness.js';
 import {selectFiveUsdRefereeConsensus} from './fivedollar-referee-consensus.js';
+import {buildFiveUsdEventFlow,FIVEUSD_EVENT_FLOW_VERSION} from './fivedollar-event-flow.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const MIN_ALARM_DELAY_MS=250;
 const CANDIDATE_HISTORY_KEY='fiveUsdNativeCandidateHistoryV1';
 const CANDIDATE_STATE_KEY='fiveUsdNativeCandidateShadowV1';
+const EVENT_FLOW_HISTORY_KEY='fiveUsdNativeEventFlowHistoryV1';
+const EVENT_FLOW_STATE_KEY='fiveUsdNativeEventFlowStateV1';
 const REFEREE_PREFIX='fiveUsdNativeReferee:';
 const now=()=>Date.now();
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:JSON_HEADERS});
@@ -71,6 +74,20 @@ export function refereeDecisionShadow(snapshot,config,side='home',at=now()){
   };
 }
 
+export function eventFlowStateSummary(state){
+  const flows=state?.flows&&typeof state.flows==='object'?state.flows:{};
+  const rows=Object.values(flows);
+  return {
+    version:state?.version??FIVEUSD_EVENT_FLOW_VERSION,
+    updatedAt:state?.updatedAt??null,
+    fixtureCount:rows.length,
+    seriesPoints:rows.reduce((sum,row)=>sum+(Array.isArray(row?.series)?row.series.length:0),0),
+    historyPoints:rows.reduce((sum,row)=>sum+(Number(row?.historyPoints)||0),0),
+    axis:{x:'MATCH_MINUTE',yMin:0,yMax:100},
+    independentSides:true,
+  };
+}
+
 export class EngineState extends BaseEngineState{
   constructor(state,env){
     super(state,env);
@@ -87,6 +104,29 @@ export class EngineState extends BaseEngineState{
   }
 
   async candidateShadow(){return await this.state.storage.get(CANDIDATE_STATE_KEY)||null;}
+  async eventFlowState(){return await this.state.storage.get(EVENT_FLOW_STATE_KEY)||null;}
+
+  async updateFiveUsdEventFlow(at=now()){
+    const snapshot=await this.fiveUsdNative.snapshot();
+    const liveFixtures=Array.isArray(snapshot?.live?.fixtures)?snapshot.live.fixtures:[];
+    const storedHistory=await this.state.storage.get(EVENT_FLOW_HISTORY_KEY)||{};
+    const liveIds=new Set(liveFixtures.filter(row=>row?.fixtureId&&row?.boardState==='live').map(row=>String(row.fixtureId)));
+    const activeHistory={};
+    for(const [id,rows] of Object.entries(storedHistory)) if(liveIds.has(String(id))) activeHistory[String(id)]=rows;
+    const built=buildFiveUsdEventFlow(liveFixtures,activeHistory,at,{historyLimit:130});
+    const state={
+      version:FIVEUSD_EVENT_FLOW_VERSION,
+      updatedAt:at,
+      source:'5DollarFootballAPI',
+      sourceOfTruth:true,
+      presentationOnly:true,
+      signalAuthority:false,
+      flows:built.flows,
+    };
+    await this.state.storage.put(EVENT_FLOW_HISTORY_KEY,built.history);
+    await this.state.storage.put(EVENT_FLOW_STATE_KEY,state);
+    return state;
+  }
 
   async updateFiveUsdCandidateShadow(config,at=now()){
     const snapshot=await this.fiveUsdNative.snapshot();
@@ -178,6 +218,7 @@ export class EngineState extends BaseEngineState{
     try{
       const config=await this.currentConfig();
       await this.fiveUsdNative.tick();
+      await this.updateFiveUsdEventFlow(now());
       await this.updateFiveUsdCandidateShadow(config,now());
       if(!this.legacyShadowDisabled()){
         const engineState=await this.read();
@@ -193,12 +234,30 @@ export class EngineState extends BaseEngineState{
 
   async fetch(request){
     const url=new URL(request.url);
+    if(url.pathname==='/fiveusd-event-flow'&&request.method==='GET'){
+      const fixtureId=String(url.searchParams.get('fixtureId')||'').trim();
+      if(!fixtureId) return json({ok:false,error:'FIXTURE_ID_REQUIRED'},400);
+      const state=await this.eventFlowState();
+      const flow=state?.flows?.[fixtureId]||null;
+      if(!flow) return json({ok:false,error:'EVENT_FLOW_NOT_FOUND',fixtureId},404);
+      return json({
+        ok:true,
+        source:'5DollarFootballAPI',
+        sourceOfTruth:true,
+        presentationOnly:true,
+        signalAuthority:false,
+        flow,
+      });
+    }
+
     if(url.pathname==='/fiveusd-native'&&request.method==='GET'){
+      const eventFlow=await this.eventFlowState();
       return json({
         ok:true,
         ...await this.fiveUsdNative.health(),
         legacyShadowDisabled:this.legacyShadowDisabled(),
         candidateShadow:await this.candidateShadow(),
+        eventFlow:eventFlowStateSummary(eventFlow),
         snapshot:await this.fiveUsdNative.snapshot(),
       });
     }
@@ -209,9 +268,11 @@ export class EngineState extends BaseEngineState{
     let body=null;
     try{body=await response.clone().json();}catch{body={ok:false,error:'health_decode_failed'};}
     const candidateShadow=await this.candidateShadow();
+    const eventFlow=await this.eventFlowState();
     return json({...body,fiveUsdNative:{
       ...await this.fiveUsdNative.health(),
       legacyShadowDisabled:this.legacyShadowDisabled(),
+      eventFlow:eventFlowStateSummary(eventFlow),
       candidateShadow:candidateShadow?{
         updatedAt:candidateShadow.updatedAt,
         sourceOfTruth:candidateShadow.sourceOfTruth,
