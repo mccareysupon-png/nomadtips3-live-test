@@ -1,7 +1,8 @@
 import {assessFiveUsdQuoteFreshness} from './fivedollar-freshness.js';
 
 const finite=value=>value!==null&&value!==undefined&&value!==''&&typeof value!=='boolean'&&Number.isFinite(Number(value));
-const same=(a,b)=>finite(a)&&finite(b)&&Math.abs(Number(a)-Number(b))<1e-9;
+const EPSILON=1e-9;
+const same=(a,b)=>finite(a)&&finite(b)&&Math.abs(Number(a)-Number(b))<EPSILON;
 
 function median(values=[]){
   const sorted=values.filter(finite).map(Number).sort((a,b)=>a-b);
@@ -97,7 +98,8 @@ export function selectFiveUsdRefereeConsensus(referees=[],config={},side='home',
   const selected=[...group].sort((left,right)=>{
     const leftDistance=Math.abs(Number(left.odds)-Number(medianOdds));
     const rightDistance=Math.abs(Number(right.odds)-Number(medianOdds));
-    if(leftDistance!==rightDistance) return leftDistance-rightDistance;
+    const distanceDiff=leftDistance-rightDistance;
+    if(Math.abs(distanceDiff)>EPSILON) return distanceDiff;
     const seenDiff=(Number(right.freshness?.lastSeenAt)||0)-(Number(left.freshness?.lastSeenAt)||0);
     if(seenDiff!==0) return seenDiff;
     return left.position-right.position;
