@@ -98,9 +98,8 @@ export class EngineState extends BaseEngineState{
 
   maxRefereeStartsPerTick(){
     const raw=Number(this.env?.FIVEUSD_MAX_REFEREE_STARTS_PER_TICK);
-    if(!Number.isFinite(raw)||raw<0) return 1;
-    if(raw===0) return Infinity;
-    return Math.max(1,Math.min(100,Math.floor(raw)));
+    if(!Number.isFinite(raw)||raw<=0) return Infinity;
+    return Math.max(1,Math.floor(raw));
   }
 
   async candidateShadow(){return await this.state.storage.get(CANDIDATE_STATE_KEY)||null;}
@@ -165,7 +164,7 @@ export class EngineState extends BaseEngineState{
         }catch(error){
           const message=String(error?.message||error);
           refereeAttempts.push({fixtureId:candidate.fixtureId,ok:false,error:message});
-          if(message.includes('RATE_GUARD')) rateBlocked=true;
+          if(message.includes('RATE_GUARD')||message.includes('5USD_HTTP_429')) rateBlocked=true;
         }
       }
 
