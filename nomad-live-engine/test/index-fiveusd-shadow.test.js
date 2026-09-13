@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {legacyCycleDue,nextNativeAlarmAt,refereeFreshnessView} from '../src/index-fiveusd-shadow.js';
+import {legacyCycleDue,nextNativeAlarmAt,refereeFreshnessView,refereeDecisionShadow} from '../src/index-fiveusd-shadow.js';
 
 test('native wrapper preserves legacy detector cadence independently of 3s fast lane',()=>{
   const at=1_000_000;
@@ -41,4 +41,47 @@ test('candidate referee freshness reports OBSERVED basis without enabling voting
   assert.equal(view.fresh,1);
   assert.equal(view.basisCounts.OBSERVED,1);
   assert.equal(snapshot.referees[0].voteEligible,false);
+});
+
+test('candidate decision shadow selects 5USD consensus but cannot authorize a signal',()=>{
+  const at=3_000_000;
+  const make=(sourceId,position,bookmaker,homeOdds)=>({
+    sourceId,position,bookmaker,bookmakerSlug:bookmaker.toLowerCase(),
+    status:'AH READY',bookmakerVerified:true,line:-0.5,homeOdds,awayOdds:Number((3-homeOdds).toFixed(2)),
+    sourceUpdatedAt:null,observedAt:at,lastSeenAt:at,lastChangedAt:at,
+    priceFingerprint:`-0.5|${homeOdds}|${Number((3-homeOdds).toFixed(2))}`,
+    timestampKind:'adapter_observed_at',voteEligible:false,
+  });
+  const snapshot={referees:[
+    make('source5',5,'1xBet',1.88),
+    make('source6',6,'Bet365',1.90),
+    make('source9',9,'Macauslot',1.92),
+  ]};
+  const decision=refereeDecisionShadow(snapshot,{
+    maximumPriceAgeSeconds:90,allowedLinesMode:'ANY',allowedSelectionLines:[],
+    oddsMinimum:1.5,oddsMaximumEnabled:false,oddsMaximum:null,
+  },'home',at);
+  assert.equal(decision.ok,true);
+  assert.equal(decision.line,-0.5);
+  assert.equal(decision.odds,1.90);
+  assert.equal(decision.selectedBookmaker,'Bet365');
+  assert.equal(decision.consensusCount,3);
+  assert.equal(decision.freshnessBasis,'OBSERVED');
+  assert.equal(decision.sourceUpdatedAt,null);
+  assert.equal(decision.votingEnabled,false);
+  assert.equal(decision.signalAuthority,false);
+});
+
+test('candidate decision shadow fails closed when no referee is eligible',()=>{
+  const at=4_000_000;
+  const snapshot={referees:[{
+    sourceId:'source5',position:5,bookmaker:'1xBet',bookmakerSlug:'1xbet',
+    status:'AH UNAVAILABLE',bookmakerVerified:true,line:null,homeOdds:null,awayOdds:null,
+    sourceUpdatedAt:null,observedAt:at,lastSeenAt:at,lastChangedAt:null,
+    priceFingerprint:null,timestampKind:'adapter_observed_at',voteEligible:false,
+  }]};
+  const decision=refereeDecisionShadow(snapshot,{maximumPriceAgeSeconds:90,oddsMinimum:1.5},'home',at);
+  assert.equal(decision.ok,false);
+  assert.equal(decision.reason,'NO_ELIGIBLE_REFEREE');
+  assert.equal(decision.signalAuthority,false);
 });
