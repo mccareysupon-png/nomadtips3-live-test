@@ -55,6 +55,31 @@ test('source25 Pinnacle is observed but remains policy non-voter during initial 
   assert.deepEqual(decision.consensusBookmakers,['1xBet']);
 });
 
+test('isolated test authority can admit source25 so all 10 configured bookmakers may vote',()=>{
+  const rows=[
+    quote('source5',5,'1xBet',-0.5,1.88,2.02),
+    quote('source6',6,'Bet365',-0.5,1.89,2.01),
+    quote('source9',9,'Macauslot',-0.5,1.90,2.00),
+    quote('source10',10,'Crown',-0.5,1.91,1.99),
+    quote('source14',14,'Easybets',-0.5,1.92,1.98),
+    quote('source15',15,'Vcbet',-0.5,1.93,1.97),
+    quote('source16',16,'Interwetten',-0.5,1.94,1.96),
+    quote('source18',18,'12Bet',-0.5,1.95,1.95),
+    quote('source21',21,'18Bet',-0.5,1.96,1.94),
+    quote('source25',25,'Pinnacle',-0.5,1.97,1.93),
+  ];
+  const votes=buildFiveUsdRefereeVotes(rows,config,'home',at,{includeSource25:true});
+  assert.equal(votes.length,10);
+  assert.equal(votes.filter(row=>row.eligible).length,10);
+  assert.equal(votes.find(row=>row.sourceId==='source25').eligible,true);
+  const decision=selectFiveUsdRefereeConsensus(rows,config,'home',at,{includeSource25:true});
+  assert.equal(decision.ok,true);
+  assert.equal(decision.total,10);
+  assert.equal(decision.eligibleCount,10);
+  assert.equal(decision.consensusCount,10);
+  assert.equal(decision.consensusBookmakers.includes('Pinnacle'),true);
+});
+
 test('AWAY candidate mirrors HOME AH line and uses AWAY odds without swapping bookmaker identity',()=>{
   const rows=[
     quote('source5',5,'1xBet',-0.5,1.88,2.02),
