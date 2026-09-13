@@ -8,8 +8,6 @@ const MIN_ALARM_DELAY_MS=250;
 const CANDIDATE_HISTORY_KEY='fiveUsdNativeCandidateHistoryV1';
 const CANDIDATE_STATE_KEY='fiveUsdNativeCandidateShadowV1';
 const REFEREE_PREFIX='fiveUsdNativeReferee:';
-const REFEREE_REFRESH_MS=60_000;
-const MAX_REFEREE_STARTS_PER_TICK=1;
 const now=()=>Date.now();
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:JSON_HEADERS});
 const finite=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinite(Number(value));
@@ -19,8 +17,8 @@ export function legacyCycleDue(state,config,at=now()){
   return !Number.isFinite(Number(state?.lastCycle))||at-Number(state.lastCycle)>=every;
 }
 
-export function nextNativeAlarmAt(cycleStartedAt,at=now()){
-  return Math.max(at+MIN_ALARM_DELAY_MS,Number(cycleStartedAt)+FIVEUSD_CADENCE.liveRefreshMs);
+export function nextNativeAlarmAt(cycleStartedAt,at=now(),cycleMs=FIVEUSD_CADENCE.liveRefreshMs){
+  return Math.max(at+MIN_ALARM_DELAY_MS,Number(cycleStartedAt)+Math.max(1000,Number(cycleMs)||FIVEUSD_CADENCE.liveRefreshMs));
 }
 
 export class EngineState extends BaseEngineState{
@@ -31,6 +29,13 @@ export class EngineState extends BaseEngineState{
 
   legacyShadowDisabled(){return String(this.env?.FIVEUSD_SHADOW_LEGACY_DISABLED||'false').toLowerCase()==='true';}
 
+  maxRefereeStartsPerTick(){
+    const raw=Number(this.env?.FIVEUSD_MAX_REFEREE_STARTS_PER_TICK);
+    if(!Number.isFinite(raw)||raw<0) return 1;
+    if(raw===0) return Infinity;
+    return Math.max(1,Math.min(100,Math.floor(raw)));
+  }
+
   async candidateShadow(){return await this.state.storage.get(CANDIDATE_STATE_KEY)||null;}
 
   async updateFiveUsdCandidateShadow(config,at=now()){
@@ -40,24 +45,32 @@ export class EngineState extends BaseEngineState{
     const evaluation=buildNativeCandidateShadow(liveFixtures,history,config,at);
     await this.state.storage.put(CANDIDATE_HISTORY_KEY,evaluation.history);
 
-    const refereeRate=await this.fiveUsdNative.refereeRate();
+    const maxStarts=this.maxRefereeStartsPerTick();
+    const refereeRefreshMs=this.fiveUsdNative.refereeRefreshMs();
     let starts=0;
     const refereeAttempts=[];
     const candidateRows=[];
+    let rateBlocked=false;
+
     for(const candidate of evaluation.candidates){
       const key=`${REFEREE_PREFIX}${candidate.fixtureId}`;
       const previous=await this.state.storage.get(key)||null;
       const ageMs=finite(previous?.observedAt)?Math.max(0,at-Number(previous.observedAt)):null;
-      const fresh=ageMs!==null&&ageMs<REFEREE_REFRESH_MS;
-      if(!fresh&&starts<MAX_REFEREE_STARTS_PER_TICK&&Number(refereeRate.usedLast60s||0)+starts<Number(refereeRate.internalCeiling||FIVEUSD_CADENCE.refereeRequestBudgetPer60s)){
+      const fresh=ageMs!==null&&ageMs<refereeRefreshMs;
+      const canStart=!rateBlocked&&!fresh&&(maxStarts===Infinity||starts<maxStarts);
+
+      if(canStart){
         starts+=1;
         try{
           const result=await this.fiveUsdNative.refreshReferee(candidate.fixtureId);
           refereeAttempts.push({fixtureId:candidate.fixtureId,ok:true,readyCount:result?.readyCount??0,observedAt:result?.observedAt??null});
         }catch(error){
-          refereeAttempts.push({fixtureId:candidate.fixtureId,ok:false,error:String(error?.message||error)});
+          const message=String(error?.message||error);
+          refereeAttempts.push({fixtureId:candidate.fixtureId,ok:false,error:message});
+          if(message.includes('RATE_GUARD')) rateBlocked=true;
         }
       }
+
       const current=await this.state.storage.get(key)||previous;
       candidateRows.push({...candidate,referee:current?{
         mode:current.mode??'SHADOW_ONLY',shadowOnly:current.shadowOnly!==false,votingEnabled:current.votingEnabled===true,
@@ -74,6 +87,8 @@ export class EngineState extends BaseEngineState{
       liveCount:evaluation.summary.live,
       candidateCount:evaluation.summary.candidates,
       refereeStarts:starts,
+      refereeRefreshMs,
+      maxRefereeStartsPerTick:maxStarts===Infinity?0:maxStarts,
       refereeAttempts,
       rows:candidateRows,
     };
@@ -105,7 +120,7 @@ export class EngineState extends BaseEngineState{
         }
       }
     }finally{
-      await this.state.storage.setAlarm(nextNativeAlarmAt(cycleStartedAt,now()));
+      await this.state.storage.setAlarm(nextNativeAlarmAt(cycleStartedAt,now(),this.fiveUsdNative.liveRefreshMs()));
     }
   }
 
@@ -138,6 +153,8 @@ export class EngineState extends BaseEngineState{
         liveCount:candidateShadow.liveCount,
         candidateCount:candidateShadow.candidateCount,
         refereeStarts:candidateShadow.refereeStarts,
+        refereeRefreshMs:candidateShadow.refereeRefreshMs,
+        maxRefereeStartsPerTick:candidateShadow.maxRefereeStartsPerTick,
       }:null,
     }},response.status);
   }
