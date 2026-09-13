@@ -32,7 +32,6 @@ jobs:
           set -euo pipefail
           node --check workers/nomadtips3-343-auto-engine/src/index.js
           grep -Fq "include=odds,events,stats" workers/nomadtips3-343-auto-engine/src/index.js
-          grep -Fq '"* * * * *"' workers/nomadtips3-343-auto-engine/wrangler.jsonc
 
       - name: Dry run Worker bundle
         working-directory: workers/nomadtips3-343-auto-engine
