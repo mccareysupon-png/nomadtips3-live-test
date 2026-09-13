@@ -40,15 +40,16 @@ function settingsPass(projected,config={}){
   return {passed:true,reason:null};
 }
 
-export function buildFiveUsdRefereeVotes(referees=[],config={},side='home',at=Date.now()){
+export function buildFiveUsdRefereeVotes(referees=[],config={},side='home',at=Date.now(),options={}){
   const maxAgeMs=(finite(config?.maximumPriceAgeSeconds)?Math.max(1,Number(config.maximumPriceAgeSeconds)):90)*1000;
+  const includeSource25=options?.includeSource25===true;
   return (Array.isArray(referees)?referees:[]).map(quote=>{
     const freshness=assessFiveUsdQuoteFreshness(quote,{at,maxAgeMs});
     const projected=sideProjection(quote,side);
     const settings=settingsPass(projected,config);
-    // The adapter intentionally marks every quote voteEligible=false while shadowing.
-    // Consensus may simulate votes, but source25/Pinnacle remains policy non-voting until its own cutover gate.
-    const policyVoteEligible=String(quote?.sourceId||'')!=='source25';
+    // Adapter quotes stay fail-closed by default. The isolated test authority may explicitly admit source25/Pinnacle
+    // so the full 10-book panel can participate without changing production policy.
+    const policyVoteEligible=includeSource25||String(quote?.sourceId||'')!=='source25';
     const eligible=quote?.status==='AH READY'&&quote?.bookmakerVerified===true&&freshness.eligible&&settings.passed&&policyVoteEligible;
     let reason=null;
     if(quote?.status!=='AH READY'||quote?.bookmakerVerified!==true) reason='QUOTE_NOT_READY';
@@ -70,8 +71,8 @@ export function buildFiveUsdRefereeVotes(referees=[],config={},side='home',at=Da
   });
 }
 
-export function selectFiveUsdRefereeConsensus(referees=[],config={},side='home',at=Date.now()){
-  const votes=buildFiveUsdRefereeVotes(referees,config,side,at);
+export function selectFiveUsdRefereeConsensus(referees=[],config={},side='home',at=Date.now(),options={}){
+  const votes=buildFiveUsdRefereeVotes(referees,config,side,at,options);
   const eligible=votes.filter(row=>row.eligible);
   if(!eligible.length){
     return {
