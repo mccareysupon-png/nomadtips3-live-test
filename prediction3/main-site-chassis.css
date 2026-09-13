@@ -38,7 +38,7 @@ body[data-page="prediction3"] .toolbar{
   display:none!important;
 }
 
-/* Same public topbar geometry as Asian Handicap / Statistics / Live Score. */
+/* Same public topbar geometry as Asian Handicap / Statistics / Verdict of Sirius. */
 body[data-page="prediction3"] .topbar{
   height:64px!important;
   min-height:64px!important;
@@ -68,6 +68,18 @@ body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand{
 }
 body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand span{
   -webkit-text-stroke:.22px currentColor!important;
+}
+
+/* Prediction3 primary navigation is complete in the HTML from first paint.
+   Override the legacy two-destination chassis only on this page. */
+body[data-page="prediction3"] .topbar-inner.public-four-nav>.topnav a[href*="statistics"],
+body[data-page="prediction3"] .mobile-nav.public-four-nav a[href*="statistics"]{
+  display:flex!important;
+}
+@media(min-width:701px){
+  body[data-page="prediction3"] .topbar-inner.public-four-nav>.topnav a:nth-child(1){width:124px!important}
+  body[data-page="prediction3"] .topbar-inner.public-four-nav>.topnav a:nth-child(2){width:104px!important}
+  body[data-page="prediction3"] .topbar-inner.public-four-nav>.topnav a:nth-child(3){width:144px!important}
 }
 
 /* Same 1120px public content rail. Golden Prediction3 internals remain unchanged. */
@@ -120,6 +132,10 @@ body[data-page="prediction3"] .topbar-inner.public-four-nav>.brand{
   body[data-page="prediction3"] .mobile-nav.public-four-nav{
     height:58px!important;
     min-height:58px!important;
-    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  body[data-page="prediction3"] .mobile-nav.public-four-nav a{
+    min-width:0!important;
+    font-size:10.8px!important;
   }
 }
