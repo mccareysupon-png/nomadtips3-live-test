@@ -1,4 +1,4 @@
-name: NOMAD 3.41 Native 5USD Parity Probe
+name: NOMAD 3.41 Native 5USD Source Gate
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
     paths:
       - 'nomad-live-engine/scripts/fivedollar-parity-probe.mjs'
       - 'nomad-live-engine/src/fivedollar.js'
-      - 'nomad-live-engine/src/fivedollar-identity.js'
       - '.github/workflows/nomad341-5usd-parity-probe.yml'
   workflow_dispatch:
 
@@ -15,7 +14,7 @@ permissions:
   contents: read
 
 jobs:
-  parity-readonly-gate:
+  fivedollar-source-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
@@ -23,11 +22,10 @@ jobs:
         working-directory: nomad-live-engine
     env:
       FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
-      LEGACY_FEED_URL: https://nomadtips3-live-engine.mccarey-supon.workers.dev/feed
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run read-only parity gate
+      - name: Run 5USD source-of-truth gate
         run: node scripts/fivedollar-parity-probe.mjs
