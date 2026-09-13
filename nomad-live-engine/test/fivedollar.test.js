@@ -32,12 +32,14 @@ function jsonResponse(payload,{status=200,headers={}}={}){
   return new Response(JSON.stringify(payload),{status,headers:{'content-type':'application/json',...headers}});
 }
 
-test('3.41 native cadence mirrors guarded 3.43 budgets',()=>{
+test('3.41 native cadence keeps 3s compound live polling behind provider ceiling only',()=>{
   assert.equal(FIVEUSD_CADENCE.liveRefreshMs,3000);
-  assert.equal(FIVEUSD_CADENCE.liveRequestBudgetPer60s,20);
-  assert.equal(FIVEUSD_CADENCE.refereeRequestBudgetPer60s,10);
   assert.equal(FIVEUSD_CADENCE.upcomingRefreshMs,120000);
+  assert.equal(FIVEUSD_CADENCE.providerRequestCeilingPer60s,40);
   assert.equal(FIVEUSD_CADENCE.livePageSize,50);
+  assert.equal(FIVEUSD_CADENCE.liveMaxPages,10);
+  assert.equal('liveRequestBudgetPer60s' in FIVEUSD_CADENCE,false);
+  assert.equal('refereeRequestBudgetPer60s' in FIVEUSD_CADENCE,false);
 });
 
 test('normalizes every 3.41 detector metric without fabricating provider timestamp',()=>{
