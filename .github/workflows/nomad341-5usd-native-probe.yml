@@ -1,0 +1,51 @@
+name: NOMAD 3.41 Native 5USD Probe
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-native
+    paths:
+      - 'nomad-live-engine/src/fivedollar.js'
+      - 'nomad-live-engine/test/fivedollar.test.js'
+      - '.github/workflows/nomad341-5usd-native-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+
+jobs:
+  real-provider-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline contract suite
+        working-directory: nomad-live-engine
+        run: node --test test/fivedollar.test.js
+      - name: Real 5USD live and referee probe
+        working-directory: nomad-live-engine
+        run: |
+          set -euo pipefail
+          test -n "$FIVEDOLLAR_API_KEY"
+          node --input-type=module <<'NODE'
+          import {fetchLiveFixtures,fetchRefereeSnapshot} from './src/fivedollar.js';
+          const apiKey=process.env.FIVEDOLLAR_API_KEY;
+          const live=await fetchLiveFixtures({apiKey,maxPages:1});
+          if(live.requests!==1) throw new Error(`expected exactly one live request, got ${live.requests}`);
+          if((live.fixtures||[]).some(row=>row.boardState!=='live')) throw new Error('non-live fixture leaked into fast lane');
+          if((live.fixtures||[]).some(row=>row.provenance?.sourceUpdatedAt!==null)) throw new Error('adapter fabricated sourceUpdatedAt');
+          console.log('LIVE_GATE',JSON.stringify({fixtures:live.fixtures.length,truncated:live.truncated,rate:live.rate},null,2));
+          const sample=live.fixtures[0];
+          if(!sample){console.log('REFEREE_GATE skipped: no live fixture');process.exit(0);}
+          const referee=await fetchRefereeSnapshot({fixtureId:sample.fixtureId,apiKey});
+          if(referee.referees.length!==10) throw new Error(`expected 10 referee sockets, got ${referee.referees.length}`);
+          if(referee.referees.some(row=>row.shadowOnly!==true||row.voteEligible!==false)) throw new Error('referee escaped shadow contract');
+          if(referee.referees.some(row=>row.sourceUpdatedAt!==null)) throw new Error('referee fabricated sourceUpdatedAt');
+          console.log('REFEREE_GATE',JSON.stringify({fixtureId:sample.fixtureId,ready:referee.readyCount,total:referee.referees.length,rate:referee.rate},null,2));
+          NODE
