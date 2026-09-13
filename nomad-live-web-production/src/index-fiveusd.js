@@ -28,22 +28,11 @@ async function proxyFiveUsd(request,env,url){
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 
-function injectFiveUsdUi(response){
-  const type=String(response.headers.get('content-type')||'');
-  if(!/text\/html/i.test(type)||!response.body)return response;
-  return new HTMLRewriter()
-    .on('head',{element(el){el.append('<link rel="stylesheet" href="/event-flow-341.css?v=20260913-main-v1"><link rel="stylesheet" href="/referee-price-flow-341.css?v=20260913-main-v1">',{html:true});}})
-    .on('body',{element(el){el.append('<script src="/event-flow-341.js?v=20260913-main-v1" defer></script><script src="/referee-price-flow-341.js?v=20260913-main-v1" defer></script>',{html:true});}})
-    .transform(response);
-}
-
 export default {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     const fiveUsd=await proxyFiveUsd(request,env,url);
     if(fiveUsd)return fiveUsd;
-    const response=await baseWorker.fetch(request,env,ctx);
-    if((url.pathname==='/'||url.pathname==='/index.html')&&request.method==='GET')return injectFiveUsdUi(response);
-    return response;
+    return baseWorker.fetch(request,env,ctx);
   },
 };
