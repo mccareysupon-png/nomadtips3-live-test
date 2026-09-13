@@ -7,6 +7,7 @@ const fixture=(id,boardState,extra={})=>({
   league:{name:'Test League'},home:{name:`Home ${id}`},away:{name:`Away ${id}`},
   kickoffAt:1_800_000_000_000+Number(id)*1000,minute:boardState==='live'?67:null,
   score:{home:1,away:0},stats:{attacks:{home:70,away:55},dangerousAttack:{home:34,away:22},shotsOn:{home:5,away:2},shotsOff:{home:7,away:5},corners:{home:4,away:2},possession:{home:58,away:42}},
+  events:boardState==='live'?[{type:'goal',minute:61,team:'home',count:1},{type:'yellow_card',minute:64,team:'away',count:1}]:[],
   provenance:{observedAt:1_800_000_000_000,sourceUpdatedAt:null},...extra,
 });
 
@@ -35,7 +36,7 @@ test('5USD public feed includes LIVE plus WAITING and excludes terminal fixtures
   assert.deepEqual(feed.counts,{live:1,waiting:1,watching:0,near:1,signal:0,detectorSignal:0});
 });
 
-test('live public row preserves native detector presentation fields',()=>{
+test('live public row preserves native detector presentation fields and raw 5USD events',()=>{
   const row=buildFiveUsdPublicFeed(snapshot,candidateShadow).matches[0];
   assert.equal(row.id,'1');
   assert.equal(row.state,'NEAR SIGNAL');
@@ -47,6 +48,7 @@ test('live public row preserves native detector presentation fields',()=>{
   assert.equal(row.stats.attacks.home,70);
   assert.equal(row.freshness.sourceUpdatedAt,null);
   assert.equal(row.freshness.freshnessBasis,'OBSERVED');
+  assert.deepEqual(row.events,[{type:'goal',minute:61,team:'home',count:1},{type:'yellow_card',minute:64,team:'away',count:1}]);
 });
 
 test('referee decision becomes display price only and cannot create a locked signal',()=>{
@@ -61,11 +63,12 @@ test('referee decision becomes display price only and cannot create a locked sig
   assert.equal(row.signalLock,null);
 });
 
-test('waiting public row stays lightweight and never pretends detector or price readiness',()=>{
+test('waiting public row stays lightweight and never pretends detector, event, or price readiness',()=>{
   const row=buildFiveUsdPublicFeed(snapshot,candidateShadow).matches.find(item=>item.id==='2');
   assert.equal(row.state,'WAITING');
   assert.equal(row.minute,null);
   assert.equal(row.detectionPassed,false);
+  assert.deepEqual(row.events,[]);
   assert.equal(row.priceStatus,'AH WAIT');
   assert.equal(row.selectedPrice,null);
 });
