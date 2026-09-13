@@ -16,6 +16,15 @@ export class FiveUsdHub extends BaseFiveUsdHub {
     };
   }
 
+  async snapshot() {
+    const base = await super.snapshot();
+    return {
+      ...base,
+      noRateGuard: true,
+      noRateGuardVersion: VERSION,
+    };
+  }
+
   async health() {
     const base = await super.health();
     return {
