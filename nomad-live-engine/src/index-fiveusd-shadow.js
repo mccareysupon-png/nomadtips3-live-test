@@ -2,6 +2,7 @@ import baseWorker,{EngineState as BaseEngineState} from './index.js';
 import {FIVEUSD_CADENCE} from './fivedollar.js';
 import {FiveUsdNativeRuntime} from './fivedollar-runtime.js';
 import {buildNativeCandidateShadow} from './fivedollar-candidate-shadow.js';
+import {summarizeFiveUsdFreshness} from './fivedollar-freshness.js';
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const MIN_ALARM_DELAY_MS=250;
@@ -19,6 +20,26 @@ export function legacyCycleDue(state,config,at=now()){
 
 export function nextNativeAlarmAt(cycleStartedAt,at=now(),cycleMs=FIVEUSD_CADENCE.liveRefreshMs){
   return Math.max(at+MIN_ALARM_DELAY_MS,Number(cycleStartedAt)+Math.max(1000,Number(cycleMs)||FIVEUSD_CADENCE.liveRefreshMs));
+}
+
+export function refereeFreshnessView(snapshot,config,at=now()){
+  if(!snapshot) return null;
+  const maxAgeSeconds=finite(config?.maximumPriceAgeSeconds)?Math.max(1,Number(config.maximumPriceAgeSeconds)):90;
+  const summary=summarizeFiveUsdFreshness(snapshot.referees,{at,maxAgeMs:maxAgeSeconds*1000});
+  return {
+    checkedAt:summary.checkedAt,
+    maxAgeSeconds,
+    total:summary.total,
+    ready:summary.ready,
+    fresh:summary.fresh,
+    stale:summary.stale,
+    invalid:summary.invalid,
+    basisCounts:summary.rows.reduce((counts,row)=>{
+      const basis=row?.freshness?.freshnessBasis||'UNKNOWN';
+      counts[basis]=(counts[basis]||0)+1;
+      return counts;
+    },{}),
+  };
 }
 
 export class EngineState extends BaseEngineState{
@@ -47,6 +68,7 @@ export class EngineState extends BaseEngineState{
 
     const maxStarts=this.maxRefereeStartsPerTick();
     const refereeRefreshMs=this.fiveUsdNative.refereeRefreshMs();
+    const maximumPriceAgeSeconds=finite(config?.maximumPriceAgeSeconds)?Math.max(1,Number(config.maximumPriceAgeSeconds)):90;
     let starts=0;
     const refereeAttempts=[];
     const candidateRows=[];
@@ -56,14 +78,18 @@ export class EngineState extends BaseEngineState{
       const key=`${REFEREE_PREFIX}${candidate.fixtureId}`;
       const previous=await this.state.storage.get(key)||null;
       const ageMs=finite(previous?.observedAt)?Math.max(0,at-Number(previous.observedAt)):null;
-      const fresh=ageMs!==null&&ageMs<refereeRefreshMs;
-      const canStart=!rateBlocked&&!fresh&&(maxStarts===Infinity||starts<maxStarts);
+      const freshForRefresh=ageMs!==null&&ageMs<refereeRefreshMs;
+      const canStart=!rateBlocked&&!freshForRefresh&&(maxStarts===Infinity||starts<maxStarts);
 
       if(canStart){
         starts+=1;
         try{
           const result=await this.fiveUsdNative.refreshReferee(candidate.fixtureId);
-          refereeAttempts.push({fixtureId:candidate.fixtureId,ok:true,readyCount:result?.readyCount??0,observedAt:result?.observedAt??null});
+          const freshness=refereeFreshnessView(result,config,now());
+          refereeAttempts.push({
+            fixtureId:candidate.fixtureId,ok:true,readyCount:result?.readyCount??0,observedAt:result?.observedAt??null,
+            freshCount:freshness?.fresh??0,staleCount:freshness?.stale??0,invalidCount:freshness?.invalid??0,
+          });
         }catch(error){
           const message=String(error?.message||error);
           refereeAttempts.push({fixtureId:candidate.fixtureId,ok:false,error:message});
@@ -72,9 +98,14 @@ export class EngineState extends BaseEngineState{
       }
 
       const current=await this.state.storage.get(key)||previous;
+      const freshness=refereeFreshnessView(current,config,at);
       candidateRows.push({...candidate,referee:current?{
         mode:current.mode??'SHADOW_ONLY',shadowOnly:current.shadowOnly!==false,votingEnabled:current.votingEnabled===true,
         observedAt:current.observedAt??null,readyCount:current.readyCount??0,
+        freshness,
+        freshReadyCount:freshness?.fresh??0,
+        staleCount:freshness?.stale??0,
+        invalidCount:freshness?.invalid??0,
       }:null});
     }
 
@@ -88,6 +119,7 @@ export class EngineState extends BaseEngineState{
       candidateCount:evaluation.summary.candidates,
       refereeStarts:starts,
       refereeRefreshMs,
+      maximumPriceAgeSeconds,
       maxRefereeStartsPerTick:maxStarts===Infinity?0:maxStarts,
       refereeAttempts,
       rows:candidateRows,
@@ -154,6 +186,7 @@ export class EngineState extends BaseEngineState{
         candidateCount:candidateShadow.candidateCount,
         refereeStarts:candidateShadow.refereeStarts,
         refereeRefreshMs:candidateShadow.refereeRefreshMs,
+        maximumPriceAgeSeconds:candidateShadow.maximumPriceAgeSeconds,
         maxRefereeStartsPerTick:candidateShadow.maxRefereeStartsPerTick,
       }:null,
     }},response.status);
