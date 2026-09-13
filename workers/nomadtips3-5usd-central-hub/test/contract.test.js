@@ -14,12 +14,13 @@ test('live compound feed paginates safely at include cap 50',()=>{
   assert.match(source,/LIVE_TTL_MS=55_000/);
 });
 
-test('step 03 exposes health live and shadow referees only',()=>{
+test('hub exposes data-only endpoints and no signal or settlement route',()=>{
   assert.match(source,/url\.pathname==='\/health'/);
   assert.match(source,/url\.pathname==='\/live'/);
   assert.match(source,/url\.pathname==='\/referees'/);
-  assert.doesNotMatch(source,/\/signal/);
-  assert.doesNotMatch(source,/\/settle/);
+  assert.match(source,/url\.pathname==='\/odds'/);
+  assert.doesNotMatch(source,/url\.pathname==='\/signal'/);
+  assert.doesNotMatch(source,/url\.pathname==='\/settle'/);
 });
 
 test('ten referee sockets map exactly to existing 3.41 positions',()=>{
@@ -52,6 +53,14 @@ test('referee request is one multi-bookmaker asian call per fixture refresh',()=
   assert.match(source,/fixtures\/\$\{encodeURIComponent\(fixtureId\)\}\/odds\?market=asian&bookmakers=/);
   assert.match(source,/REFEREE_TTL_MS=55_000/);
   assert.match(source,/refereePromises=new Map/);
+});
+
+test('3.43 full-market Bet365 odds path is centralized and cached',()=>{
+  assert.match(source,/fixtures\/\$\{encodeURIComponent\(fixtureId\)\}\/odds\?bookmakers=bet365/);
+  assert.match(source,/FULL_ODDS_TTL_MS=55_000/);
+  assert.match(source,/fullOddsPromises=new Map/);
+  assert.match(source,/marketScope:'ALL AVAILABLE LIVE MARKETS'/);
+  assert.match(source,/bookmaker:'Bet365'/);
 });
 
 test('timestamp policy never claims bookmaker quote time',()=>{
