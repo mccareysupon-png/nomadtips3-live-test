@@ -1,0 +1,29 @@
+name: NOMAD 5USD Central Hub CI
+
+on:
+  push:
+    branches:
+      - work/nomad341-5usd-central-rewire
+    paths:
+      - 'workers/nomadtips3-5usd-central-hub/**'
+      - '.github/workflows/nomad-5usd-central-hub-ci.yml'
+  pull_request:
+    paths:
+      - 'workers/nomadtips3-5usd-central-hub/**'
+      - '.github/workflows/nomad-5usd-central-hub-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: node --check workers/nomadtips3-5usd-central-hub/src/index.js
+      - name: Contract tests
+        run: node --test workers/nomadtips3-5usd-central-hub/test/contract.test.js
