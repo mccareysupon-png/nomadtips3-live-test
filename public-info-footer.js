@@ -11,6 +11,7 @@
   const picksPath=/\/soccer-predictions(?:\/index\.html)?\/?$/i.test(path);
   const prediction3Path=/\/prediction3(?:\/index\.html)?\/?$/i.test(path);
   const publicRailPath=signalPath||statisticsPath||picksPath||prediction3Path;
+  const activePrimaryPath=signalPath||statisticsPath||prediction3Path;
 
   const stripPicksNavigation=()=>{
     document.querySelectorAll('.topnav a,.mobile-nav a').forEach(link=>{
@@ -19,54 +20,75 @@
     });
   };
 
-  const ensureStatisticsNavigation=()=>{
+  const normalizeActivePrimaryNavigation=()=>{
+    if(!activePrimaryPath)return;
     const statisticsHref='https://www.nomadtips3.com/statistics';
+    const siriusHref='https://www.nomadtips3.com/prediction3/';
+
     document.querySelectorAll('.topbar-inner.public-four-nav>.topnav,.mobile-nav.public-four-nav').forEach(nav=>{
-      const links=[...nav.querySelectorAll('a')];
+      let links=[...nav.querySelectorAll('a')];
       let statisticsLink=links.find(link=>{
         const text=String(link.textContent||'').trim();
-        let statisticsPath=false;
-        try{statisticsPath=/\/statistics(?:\.html)?\/?$/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
-        return statisticsPath||/^Statistics$/i.test(text);
+        let isStatistics=false;
+        try{isStatistics=/\/statistics(?:\.html)?\/?$/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+        return isStatistics||/^Statistics$/i.test(text);
       });
-      if(statisticsLink){
-        statisticsLink.href=statisticsHref;
-        statisticsLink.dataset.nomadStatisticsNav='true';
-        return;
-      }
 
-      const marketLink=links.find(link=>{
+      let formerMarketLink=links.find(link=>{
         const text=String(link.textContent||'').trim();
-        let marketPath=false;
-        try{marketPath=/\/nomad-live-342(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
-        return marketPath||/^1X2\s*[·•-]?\s*Over\/Under$/i.test(text)||/^Live\s*Score$/i.test(text);
+        let is342=false;
+        try{is342=/\/nomad-live-342(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+        return is342||/^1X2\s*[·•-]?\s*Over\/Under$/i.test(text)||/^Live\s*Score$/i.test(text);
       });
 
-      statisticsLink=document.createElement('a');
+      let siriusLink=links.find(link=>{
+        const text=String(link.textContent||'').trim();
+        let isSirius=false;
+        try{isSirius=/\/prediction3(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
+        return isSirius||/^Sirius$/i.test(text);
+      });
+
+      if(!statisticsLink){
+        statisticsLink=document.createElement('a');
+        statisticsLink.textContent='Statistics';
+        statisticsLink.setAttribute('aria-label','Statistics');
+        if(formerMarketLink)nav.insertBefore(statisticsLink,formerMarketLink);else if(siriusLink)nav.insertBefore(statisticsLink,siriusLink);else nav.appendChild(statisticsLink);
+      }
       statisticsLink.href=statisticsHref;
-      statisticsLink.textContent='Statistics';
-      statisticsLink.setAttribute('aria-label','Statistics');
-      statisticsLink.dataset.nomadStatisticsNav='true';
-      if(marketLink)nav.insertBefore(statisticsLink,marketLink);else nav.appendChild(statisticsLink);
+
+      if(!siriusLink&&formerMarketLink)siriusLink=formerMarketLink;
+      if(!siriusLink){
+        siriusLink=document.createElement('a');
+        nav.appendChild(siriusLink);
+      }
+      siriusLink.href=siriusHref;
+      siriusLink.textContent='Sirius';
+      siriusLink.setAttribute('aria-label','Sirius');
+      siriusLink.dataset.nomadSiriusNav='true';
+
+      if(prediction3Path){
+        nav.querySelectorAll('a').forEach(link=>{
+          link.classList.remove('active');
+          link.removeAttribute('aria-current');
+        });
+        siriusLink.classList.add('active');
+        siriusLink.setAttribute('aria-current','page');
+      }
     });
   };
 
-  const normalizePrimaryNavigation=()=>{
-    stripPicksNavigation();
-    ensureStatisticsNavigation();
-  };
-
-  normalizePrimaryNavigation();
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',normalizePrimaryNavigation,{once:true});
+  stripPicksNavigation();
+  normalizeActivePrimaryNavigation();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',normalizeActivePrimaryNavigation,{once:true});
 
   /* Scope lock:
      Page 1 Signal      -> add link rail only, below original 3.41 footer content.
      Page 2 Statistics  -> add link rail only, below original 3.41 footer content.
-     Page 3 Live Score  -> handled by the isolated 3.42 UI-only footer layer.
+     Page 3 Sirius      -> Prediction3; linked only across the active three-page primary navigation.
      Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
      Prediction3        -> add link rail below the original 3.41 footer content.
      Information pages  -> retain their existing information-page footer behavior.
-     Primary navigation -> ensure Page 2 Statistics is present between AH and the market page wherever this module is loaded.
+     Primary navigation -> only Page 1, Page 2 and Sirius are normalized to AH | Statistics | Sirius.
      Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
 
@@ -91,7 +113,8 @@
   };
 
   const attachPublicRail=()=>{
-    normalizePrimaryNavigation();
+    stripPicksNavigation();
+    normalizeActivePrimaryNavigation();
     if(document.querySelector('.nomad-info-linkrail'))return;
 
     if(picksPath){
@@ -120,7 +143,8 @@
   }
 
   const attachToExisting=footer=>{
-    normalizePrimaryNavigation();
+    stripPicksNavigation();
+    normalizeActivePrimaryNavigation();
     if(!footer||footer.querySelector('.nomad-info-linkrail'))return;
     const bottom=footer.querySelector('.site-footer-bottom');
     if(bottom){
@@ -158,7 +182,8 @@
   };
 
   const restoreOriginal341Footer=()=>{
-    normalizePrimaryNavigation();
+    stripPicksNavigation();
+    normalizeActivePrimaryNavigation();
     const current=document.querySelector('.site-footer');
     if(current?.querySelector('.site-footer-certrow')){
       attachToExisting(current);
