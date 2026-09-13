@@ -1,0 +1,56 @@
+name: Validate NOMAD 3.43 Master 15s Staging
+
+on:
+  push:
+    branches:
+      - work/nomad343-master-15s-staging-20260913
+    paths:
+      - '.github/workflows/validate-343-master15-staging.yml'
+      - 'workers/nomadtips3-5usd-hub-343/**'
+      - 'workers/nomadtips3-engine-343/**'
+      - 'nomad-live-343/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate 15s scope and syntax
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
+          node --check workers/nomadtips3-engine-343/src/index-3s.js
+          node --check nomad-live-343/stable-board-343.js
+          node --check nomad-live-343/master-cycle-343.js
+          node --check nomad-live-343/event-flow-refresh-15s.js
+          node workers/nomadtips3-engine-343/test/market-core.test.mjs
+          node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
+          grep -Fq "const MASTER_CYCLE_MS = 15_000;" workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
+          grep -Fq "const CYCLE_MS = 15_000;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "lastKnownGood: true" workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
+          grep -Fq 'master-cycle-343.js' nomad-live-343/index.html
+          grep -Fq 'event-flow-refresh-15s.js' nomad-live-343/index.html
+          grep -Fq 'master-cycle-343.js' nomad-live-343/signal.html
+          if grep -Fq 'setInterval(tick,3000)' nomad-live-343/stable-board-343.js; then
+            echo '::error::legacy viewer 3s timer remains'; exit 1
+          fi
+          if grep -Fq 'const CYCLE_MS = 3_000;' workers/nomadtips3-engine-343/src/index-3s.js; then
+            echo '::error::legacy engine 3s cadence remains'; exit 1
+          fi
+
+      - name: Dry-run 5USD Hub bundle
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Dry-run 3.43 Engine bundle
+        working-directory: workers/nomadtips3-engine-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
