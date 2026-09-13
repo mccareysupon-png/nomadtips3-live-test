@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/nomad-5usd-provider-live-probe.yml'
       - 'workers/nomadtips3-5usd-central-hub/**'
+      - 'rewire-341-5usd/validate-hub-gate.mjs'
   workflow_dispatch:
 
 permissions:
@@ -31,6 +32,7 @@ jobs:
           set -euo pipefail
           test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
           node --check workers/nomadtips3-5usd-central-hub/src/index.js
+          node --check rewire-341-5usd/validate-hub-gate.mjs
           node --test workers/nomadtips3-5usd-central-hub/test/contract.test.js
 
       - name: Start isolated ephemeral hub
@@ -52,53 +54,22 @@ jobs:
           set -euo pipefail
           curl -fsS --max-time 45 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-live-1.json
           curl -fsS --max-time 45 -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$API_BASE/fixtures?status=live&include=odds,events,stats&per_page=50&page=1" -o /tmp/direct-live-1.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const hub=require('/tmp/hub-live-1.json');
-          const direct=require('/tmp/direct-live-1.json');
-          const rows=Array.isArray(direct?.data)?direct.data:Array.isArray(direct?.data?.data)?direct.data.data:Array.isArray(direct?.fixtures)?direct.fixtures:[];
-          const id=x=>String(x?.fixtureId??x?.id??x?.fixture_id??x?.fixture?.id??'').trim();
-          const byHub=new Map((hub.fixtures||[]).map(x=>[id(x),x]).filter(([k])=>k));
-          const byDirect=new Map(rows.map(x=>[id(x),x]).filter(([k])=>k));
-          const shared=[...byDirect.keys()].filter(k=>byHub.has(k));
-          if(hub.ok!==true) throw new Error('hub live not ok');
-          if(rows.length>0 && shared.length===0) throw new Error('no shared fixture ids');
-          const ratio=rows.length?shared.length/rows.length:1;
-          if(rows.length>=5 && ratio<0.70) throw new Error(`fixture parity too low ${shared.length}/${rows.length}`);
-          const checks=shared.slice(0,10).map(k=>{
-            const h=byHub.get(k),d=byDirect.get(k);
-            const hn=String(h?.home?.name??''),an=String(h?.away?.name??'');
-            const dn=String(d?.teams?.home?.name??d?.home_team?.name??d?.home?.name??d?.home_name??'');
-            const da=String(d?.teams?.away?.name??d?.away_team?.name??d?.away?.name??d?.away_name??'');
-            return {id:k,teams:hn===dn&&an===da};
-          });
-          if(checks.some(x=>!x.teams)) throw new Error('team identity mismatch '+JSON.stringify(checks));
-          console.log('ROUND1_LIVE_PASS',JSON.stringify({hub:(hub.fixtures||[]).length,directPage1:rows.length,shared:shared.length,ratio,cache:hub.cache}));
-          if(shared[0]) fs.writeFileSync('/tmp/fixture-id',shared[0]);
-          NODE
+          node rewire-341-5usd/validate-hub-gate.mjs live /tmp/hub-live-1.json /tmp/direct-live-1.json /tmp/fixture-id
           if [ -s /tmp/fixture-id ]; then
             ID=$(cat /tmp/fixture-id)
             curl -fsS --max-time 30 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/odds?fixtureId=$ID" -o /tmp/hub-odds.json
             curl -fsS --max-time 30 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/referees?fixtureId=$ID" -o /tmp/hub-refs.json
-            node - <<'NODE'
-            const odds=require('/tmp/hub-odds.json'),refs=require('/tmp/hub-refs.json');
-            const expected=['1xBet','Bet365','Macauslot','Crown','Easybets','Vcbet','Interwetten','12Bet','18Bet','Pinnacle'];
-            if(odds.ok!==true||!odds.odds||typeof odds.odds!=='object') throw new Error('hub odds failed '+JSON.stringify(odds));
-            if(refs.ok!==true||refs.refereeCount!==10||!Array.isArray(refs.referees)||refs.referees.length!==10) throw new Error('hub refs count failed '+JSON.stringify(refs));
-            const names=refs.referees.map(x=>x.bookmaker);
-            if(expected.some(x=>!names.includes(x))) throw new Error('hub referee identity mismatch '+JSON.stringify(names));
-            console.log('ROUND1_MARKETS_PASS',JSON.stringify({fixtureId:odds.fixtureId,oddsCache:odds.cache,refereeCount:refs.refereeCount,readyCount:refs.readyCount,refereeCache:refs.cache}));
-            NODE
+            node rewire-341-5usd/validate-hub-gate.mjs markets /tmp/hub-odds.json /tmp/hub-refs.json
           fi
 
       - name: Round 2 cache and refresh behavior
         run: |
           set -euo pipefail
           curl -fsS --max-time 20 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-cache.json
-          node -e "const j=require('/tmp/hub-cache.json'); if(j.ok!==true||j.cache?.hit!==true) throw new Error('expected cache hit '+JSON.stringify(j.cache)); console.log('CACHE_HIT_PASS',j.cache);"
+          node rewire-341-5usd/validate-hub-gate.mjs cache-hit /tmp/hub-cache.json
           sleep 56
           curl -fsS --max-time 45 -H "x-central-hub-token: $FIVEDOLLAR_API_KEY" "$HUB_URL/live" -o /tmp/hub-refresh.json
-          node -e "const j=require('/tmp/hub-refresh.json'); if(j.ok!==true||j.cache?.stale===true) throw new Error('refresh failed '+JSON.stringify(j)); console.log('CACHE_REFRESH_PASS',{count:j.fixtureCount,cache:j.cache});"
+          node rewire-341-5usd/validate-hub-gate.mjs cache-refresh /tmp/hub-refresh.json
 
       - name: Final gate summary
         if: always()
