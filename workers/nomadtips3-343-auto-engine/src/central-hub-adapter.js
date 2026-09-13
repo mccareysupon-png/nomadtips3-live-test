@@ -52,6 +52,16 @@ export function adaptCentralHubLive(payload={}){
   };
 }
 
+export function adaptCentralHubFullOdds(payload={},fixtureId=null){
+  if(payload?.ok!==true) throw new Error(`CENTRAL_HUB_ODDS_NOT_OK:${payload?.error??'unknown'}`);
+  if(payload?.cache?.stale===true) throw new Error('CENTRAL_HUB_ODDS_STALE');
+  const returnedId=String(payload?.fixtureId??'').trim();
+  const expectedId=fixtureId===null?'':String(fixtureId).trim();
+  if(expectedId&&returnedId&&returnedId!==expectedId) throw new Error('CENTRAL_HUB_ODDS_FIXTURE_MISMATCH');
+  if(!payload?.odds||typeof payload.odds!=='object') throw new Error('CENTRAL_HUB_ODDS_MISSING');
+  return payload.odds;
+}
+
 function hubHeaders(env={}){
   const headers={accept:'application/json'};
   const token=String(env.CENTRAL_HUB_TOKEN??'').trim();
@@ -59,15 +69,31 @@ function hubHeaders(env={}){
   return headers;
 }
 
-export async function fetchCentralHubLive(env={},fetchImpl=fetch){
+function hubBase(env={}){
   const base=String(env.CENTRAL_HUB_URL??'').trim().replace(/\/+$/,'');
   if(!base) throw new Error('CENTRAL_HUB_URL_MISSING');
-  const response=await fetchImpl(`${base}/live`,{headers:hubHeaders(env),cf:{cacheTtl:0,cacheEverything:false}});
+  return base;
+}
+
+async function fetchHubJson(url,env,fetchImpl){
+  const response=await fetchImpl(url,{headers:hubHeaders(env),cf:{cacheTtl:0,cacheEverything:false}});
   const text=await response.text();
   let payload=null;try{payload=JSON.parse(text);}catch{}
   if(!response.ok) throw new Error(`CENTRAL_HUB_HTTP_${response.status}`);
   if(!payload) throw new Error('CENTRAL_HUB_INVALID_JSON');
+  return payload;
+}
+
+export async function fetchCentralHubLive(env={},fetchImpl=fetch){
+  const payload=await fetchHubJson(`${hubBase(env)}/live`,env,fetchImpl);
   return adaptCentralHubLive(payload);
+}
+
+export async function fetchCentralHubFullOdds(fixtureId,env={},fetchImpl=fetch){
+  const id=String(fixtureId??'').trim();
+  if(!/^\d+$/.test(id)) throw new Error('CENTRAL_HUB_FIXTURE_ID_REQUIRED');
+  const payload=await fetchHubJson(`${hubBase(env)}/odds?fixtureId=${encodeURIComponent(id)}`,env,fetchImpl);
+  return adaptCentralHubFullOdds(payload,id);
 }
 
 export function compareCentralHubToLegacyIds(hubFixtures=[],legacyFixtures=[]){
