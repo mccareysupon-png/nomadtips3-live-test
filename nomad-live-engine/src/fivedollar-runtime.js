@@ -57,16 +57,6 @@ export class FiveUsdNativeRuntime{
   upcomingMaxPages(){return this._intSetting('FIVEUSD_UPCOMING_MAX_PAGES',3,{min:1,max:10});}
   providerCeiling(){return FIVEUSD_CADENCE.providerRequestCeilingPer60s;}
   globalBudget(){return this._intSetting('FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S',this.providerCeiling(),{min:1,max:this.providerCeiling()});}
-  liveBudget(){return this._intSetting('FIVEUSD_LIVE_REQUEST_BUDGET_PER_60S',FIVEUSD_CADENCE.liveRequestBudgetPer60s,{min:0,max:this.providerCeiling()});}
-  upcomingBudget(){return this._intSetting('FIVEUSD_UPCOMING_REQUEST_BUDGET_PER_60S',3,{min:0,max:this.providerCeiling()});}
-  refereeBudget(){return this._intSetting('FIVEUSD_REFEREE_REQUEST_BUDGET_PER_60S',FIVEUSD_CADENCE.refereeRequestBudgetPer60s,{min:0,max:this.providerCeiling()});}
-
-  laneBudget(kind){
-    if(kind==='live') return this.liveBudget();
-    if(kind==='scheduled') return this.upcomingBudget();
-    if(kind==='referee') return this.refereeBudget();
-    return 0;
-  }
 
   upcomingWindowMs(){
     const configured=Number(this.env.FIVEUSD_UPCOMING_WINDOW_MINUTES);
@@ -81,23 +71,18 @@ export class FiveUsdNativeRuntime{
   _usage(rows,kind){
     const totalUsed=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
     const laneUsed=rows.filter(row=>row.kind===kind).reduce((sum,row)=>sum+Number(row.count||0),0);
-    const globalCeiling=this.globalBudget();
-    const configuredLaneCeiling=this.laneBudget(kind);
-    const laneCeiling=configuredLaneCeiling>0?configuredLaneCeiling:null;
-    return {totalUsed,laneUsed,globalCeiling,laneCeiling};
+    return {totalUsed,laneUsed,globalCeiling:this.globalBudget()};
   }
 
   async _capacity(kind){
     const rows=await this._rows();
     const at=this.clock();
-    const {totalUsed,laneUsed,globalCeiling,laneCeiling}=this._usage(rows,kind);
-    const globalRemaining=Math.max(0,globalCeiling-totalUsed);
-    const laneRemaining=laneCeiling===null?globalRemaining:Math.max(0,laneCeiling-laneUsed);
-    const available=Math.max(0,Math.min(globalRemaining,laneRemaining));
+    const {totalUsed,globalCeiling}=this._usage(rows,kind);
+    const available=Math.max(0,globalCeiling-totalUsed);
     const oldestAt=Number(rows[0]?.at||at);
     return {
       available,
-      bucket:globalRemaining<=0?'global':laneRemaining<=0?kind:null,
+      bucket:available<=0?'global':null,
       retryAfterMs:Math.max(MIN_RETRY_MS,RATE_WINDOW_MS-(at-oldestAt)),
     };
   }
@@ -108,17 +93,12 @@ export class FiveUsdNativeRuntime{
     let result=null;
     await this.storage.transaction(async tx=>{
       const rows=await this._rows(tx);
-      const {totalUsed,laneUsed,globalCeiling,laneCeiling}=this._usage(rows,kind);
+      const {totalUsed,laneUsed,globalCeiling}=this._usage(rows,kind);
       const oldestAt=Number(rows[0]?.at||at);
       const retryAfterMs=Math.max(MIN_RETRY_MS,RATE_WINDOW_MS-(at-oldestAt));
 
       if(totalUsed+wanted>globalCeiling){
         result={ok:false,bucket:'global',used:totalUsed,wanted,retryAfterMs};
-        await tx.put(REQUEST_RATE_KEY,rows);
-        return;
-      }
-      if(laneCeiling!==null&&laneUsed+wanted>laneCeiling){
-        result={ok:false,bucket:kind,used:laneUsed,wanted,retryAfterMs};
         await tx.put(REQUEST_RATE_KEY,rows);
         return;
       }
@@ -148,15 +128,15 @@ export class FiveUsdNativeRuntime{
     const rows=await this._rows();
     const globalUsed=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
     const used=kind?rows.filter(row=>row.kind===kind).reduce((sum,row)=>sum+Number(row.count||0),0):globalUsed;
-    const configuredLane=kind?this.laneBudget(kind):null;
     return {
       usedLast60s:used,
-      configuredCeiling:kind?(configuredLane>0?configuredLane:null):this.globalBudget(),
-      effectiveCeiling:kind?(configuredLane>0?Math.min(configuredLane,this.globalBudget()):this.globalBudget()):this.globalBudget(),
+      configuredCeiling:kind?null:this.globalBudget(),
+      effectiveCeiling:this.globalBudget(),
       globalUsedLast60s:globalUsed,
       globalCeiling:this.globalBudget(),
       providerCeiling:this.providerCeiling(),
-      unlocked:kind?configuredLane===0:false,
+      unlocked:Boolean(kind),
+      guardScope:kind?'GLOBAL_ONLY':'PROVIDER_GLOBAL',
     };
   }
 
@@ -168,10 +148,10 @@ export class FiveUsdNativeRuntime{
 
   async _pageReservation(kind,configuredMaxPages){
     const capacity=await this._capacity(kind);
-    if(capacity.available<1) throw new FiveUsdRateGuardError(capacity.bucket||kind,capacity.retryAfterMs);
+    if(capacity.available<1) throw new FiveUsdRateGuardError('global',capacity.retryAfterMs);
     const allowedPages=Math.max(1,Math.min(configuredMaxPages,capacity.available));
     const reservation=await this._reserve(kind,allowedPages);
-    if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
+    if(!reservation.ok) throw new FiveUsdRateGuardError('global',reservation.retryAfterMs);
     return {...reservation,allowedPages};
   }
 
@@ -250,12 +230,24 @@ export class FiveUsdNativeRuntime{
     this.tickPromise=(async()=>{
       const startedAt=this.clock();
       let live=null,upcoming=null,lastError=null;
-      try{live=await this.refreshLive({force});}catch(error){lastError=String(error?.message||error);}
-      try{upcoming=await this.refreshUpcoming({force:false});}catch(error){lastError=lastError||String(error?.message||error);}
+      const throttled=[];
+      try{live=await this.refreshLive({force});}
+      catch(error){
+        if(error instanceof FiveUsdRateGuardError) throttled.push({path:'live',code:error.code,retryAfterMs:error.retryAfterMs});
+        else lastError=String(error?.message||error);
+      }
+      try{upcoming=await this.refreshUpcoming({force:false});}
+      catch(error){
+        if(error instanceof FiveUsdRateGuardError) throttled.push({path:'waiting',code:error.code,retryAfterMs:error.retryAfterMs});
+        else lastError=lastError||String(error?.message||error);
+      }
+      if(!live) live=await this.storage.get(LIVE_KEY)||null;
+      if(!upcoming) upcoming=await this.storage.get(UPCOMING_KEY)||null;
       const board=await this.rebuildBoard(this.clock());
       const finishedAt=this.clock();
       const state={
         ok:!lastError,mode:this.mode(),shadowOnly:this.shadowOnly(),startedAt,finishedAt,lastError,
+        rateLimited:throttled.length>0,throttled,
         live:{fetchedAt:live?.fetchedAt??null,count:live?.fixtures?.length??0,truncated:Boolean(live?.truncated)},
         upcoming:{fetchedAt:upcoming?.fetchedAt??null,count:upcoming?.fixtures?.length??0,truncated:Boolean(upcoming?.truncated)},
         board:{updatedAt:board.updatedAt,counts:board.counts,terminalDisplayed:board.terminalDisplayed},
@@ -275,9 +267,9 @@ export class FiveUsdNativeRuntime{
     if(this.refereePromises.has(id)) return this.refereePromises.get(id);
     const promise=(async()=>{
       const capacity=await this._capacity('referee');
-      if(capacity.available<1) throw new FiveUsdRateGuardError(capacity.bucket||'referee',capacity.retryAfterMs);
+      if(capacity.available<1) throw new FiveUsdRateGuardError('global',capacity.retryAfterMs);
       const reservation=await this._reserve('referee',1);
-      if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
+      if(!reservation.ok) throw new FiveUsdRateGuardError('global',reservation.retryAfterMs);
       let actual=0;
       try{
         const snapshot=await fetchRefereeSnapshot({fixtureId:id,apiKey:this.apiKey(),fetchImpl:this.fetchImpl,previous,observedAt:this.clock()});
