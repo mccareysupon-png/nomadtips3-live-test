@@ -45,7 +45,7 @@
         const text=String(link.textContent||'').trim();
         let isSirius=false;
         try{isSirius=/\/prediction3(?:\/|$)/i.test(new URL(link.getAttribute('href')||'',window.location.href).pathname)}catch(_){}
-        return isSirius||/^Sirius$/i.test(text);
+        return isSirius||/^Sirius$/i.test(text)||/^Verdict of Sirius$/i.test(text);
       });
 
       if(!statisticsLink){
@@ -62,8 +62,8 @@
         nav.appendChild(siriusLink);
       }
       siriusLink.href=siriusHref;
-      siriusLink.textContent='Sirius';
-      siriusLink.setAttribute('aria-label','Sirius');
+      siriusLink.textContent='Verdict of Sirius';
+      siriusLink.setAttribute('aria-label','Verdict of Sirius');
       siriusLink.dataset.nomadSiriusNav='true';
 
       if(prediction3Path){
@@ -88,7 +88,7 @@
      Page 4 Picks       -> add link rail only at the page bottom; do not create a footer.
      Prediction3        -> add link rail below the original 3.41 footer content.
      Information pages  -> retain their existing information-page footer behavior.
-     Primary navigation -> only Page 1, Page 2 and Sirius are normalized to AH | Statistics | Sirius.
+     Primary navigation -> only Page 1, Page 2 and Verdict of Sirius are normalized to AH | Statistics | Verdict of Sirius.
      Picks navigation   -> removed from desktop/tablet/mobile navigation wherever this module is loaded. */
   if(!infoPath&&!publicRailPath)return;
 
