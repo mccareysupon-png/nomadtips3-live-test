@@ -4,8 +4,11 @@ on:
   push:
     branches: [work/nomad341-5usd-central-rewire]
     paths:
+      - 'workers/nomadtips3-343-auto-engine/src/index.js'
       - 'workers/nomadtips3-343-auto-engine/src/central-hub-adapter.js'
+      - 'workers/nomadtips3-343-auto-engine/src/central-hub-shadow.js'
       - 'workers/nomadtips3-343-auto-engine/test/central-hub-adapter.test.js'
+      - 'workers/nomadtips3-343-auto-engine/test/central-hub-shadow.test.js'
       - '.github/workflows/nomad343-central-hub-adapter-ci.yml'
   workflow_dispatch:
 
@@ -20,7 +23,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax check
-        run: node --check workers/nomadtips3-343-auto-engine/src/central-hub-adapter.js
-      - name: Adapter contract tests
-        run: node --test workers/nomadtips3-343-auto-engine/test/central-hub-adapter.test.js
+      - name: Syntax checks
+        run: |
+          node --check workers/nomadtips3-343-auto-engine/src/index.js
+          node --check workers/nomadtips3-343-auto-engine/src/central-hub-adapter.js
+          node --check workers/nomadtips3-343-auto-engine/src/central-hub-shadow.js
+      - name: Central Hub shadow contract tests
+        run: |
+          node --test workers/nomadtips3-343-auto-engine/test/central-hub-adapter.test.js
+          node --test workers/nomadtips3-343-auto-engine/test/central-hub-shadow.test.js
