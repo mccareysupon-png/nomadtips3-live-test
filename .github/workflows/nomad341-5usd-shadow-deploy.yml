@@ -166,7 +166,7 @@ jobs:
             if(!Array.isArray(x.referees)||x.referees.length!==10) throw new Error('10-book referee payload incomplete');
             if(x.decision?.testOnly!==true) throw new Error('referee decision is not test-only');
             console.log('REAL_10_BOOK_REFEREE_PASS',JSON.stringify({fixtureId:x.fixtureId,total:x.total,readyCount:x.readyCount,decision:x.decision},null,2));
-            NODE
+          NODE
           else
             echo 'REAL_10_BOOK_REFEREE_SKIPPED_NO_LIVE_FIXTURE'
           fi
