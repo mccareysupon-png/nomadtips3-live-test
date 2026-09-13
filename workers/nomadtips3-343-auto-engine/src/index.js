@@ -1,7 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { overLineGap, overGapPass } from './over-gap.js';
+import { SPECIAL341_DEFAULT, special341Rolling, special341Sides, special341PreEvaluate, special341PricePass } from './special341.js';
 
-const VERSION = 'nomad343-auto-v2';
+const VERSION = 'nomad343-auto-v3-special341';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const LIVE_PAGE_SIZE = 500;
 const REQUEST_BUDGET_PER_SCAN = 10;
@@ -13,9 +14,10 @@ const DEFAULT_SETTINGS = {
   over:{lineMin:0.5,lineGapMax:0.5,oddsMin:1.50,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:55,attackPct:55,possessionPct:50,evidenceRequired:3,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10},
   under:{sideMode:'BOTH',lineMin:0.5,oddsMin:1.50,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:45,attackPct:45,possessionPct:50,evidenceRequired:3,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10},
   oneXtwo:{sideMode:'BOTH',scoreTrailingMax:1,oddsMin:1.50,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:55,attackPct:55,possessionPct:50,evidenceRequired:3,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10},
-  ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.50,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:55,attackPct:55,possessionPct:50,evidenceRequired:3,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10}
+  ah:{sideMode:'BOTH',lineMin:-10,oddsMin:1.50,shotOnTarget:1,shotOff:1,corner:1,dangerousAttackPct:55,attackPct:55,possessionPct:50,evidenceRequired:3,minuteFrom:55,minuteTo:88,rollingWindowMinutes:10},
+  special341:{...SPECIAL341_DEFAULT}
 };
-const DEFAULT_RUN = {over:true,under:true,oneXtwo:true,ah:true};
+const DEFAULT_RUN = {over:true,under:true,oneXtwo:true,ah:true,special341:false};
 const cors = {
   'access-control-allow-origin':'*',
   'access-control-allow-methods':'GET,POST,OPTIONS',
@@ -60,10 +62,11 @@ function evidence(cfg,roll,side,under=false){
   const margin=items.filter(x=>x.pass).reduce((sum,x)=>sum+(under?(x.threshold-x.value):(x.value-x.threshold))/Math.max(1,Math.abs(x.threshold)),0);
   return {pass:count>=required,count,required,items,reason:null,strength:Number((count*100+margin).toFixed(4))};
 }
-function selectedSides(cfg,market){if(market==='over')return ['HOME','AWAY'];const mode=String(cfg.sideMode||'BOTH').toUpperCase();return mode==='HOME'?['HOME']:mode==='AWAY'?['AWAY']:['HOME','AWAY']}
-function inlineLine(f,market,side){const root=f.providerOdds||{};if(market==='over'||market==='under')return num(root?.goal_line?.inplay??root?.goalline?.inplay);if(market==='ah'){const h=num(root?.asian_handicap?.inplay??root?.asian?.inplay);return h===null?null:(side==='HOME'?h:-h)}return null}
+function selectedSides(cfg,market){if(market==='special341')return special341Sides(cfg);if(market==='over')return ['HOME','AWAY'];const mode=String(cfg.sideMode||'BOTH').toUpperCase();return mode==='HOME'?['HOME']:mode==='AWAY'?['AWAY']:['HOME','AWAY']}
+function inlineLine(f,market,side){const root=f.providerOdds||{};if(market==='over'||market==='under')return num(root?.goal_line?.inplay??root?.goalline?.inplay);if(market==='ah'||market==='special341'){const h=num(root?.asian_handicap?.inplay??root?.asian?.inplay);return h===null?null:(side==='HOME'?h:-h)}return null}
 function inline1x2Price(f,side){const p=f.providerOdds?.['1x2']?.inplay;return {line:null,odds:num(side==='HOME'?p?.home:p?.away),drawOdds:num(p?.draw),bookmaker:'Bet365',source:'bulk-live'}}
 function preEvaluate(market,cfg,f,roll,side){
+  if(market==='special341')return special341PreEvaluate(cfg,f,roll,side,inlineLine(f,market,side));
   const minute=num(f.minute);if(minute===null||minute<Number(cfg.minuteFrom)||minute>Number(cfg.minuteTo))return {pass:false,stage:'MINUTE',side};
   const ev=evidence(cfg,roll,side,market==='under');if(!ev.pass)return {pass:false,stage:'EVIDENCE',side,evidence:ev};
   if(market==='oneXtwo'){const h=num(f.goals?.home)??0,a=num(f.goals?.away)??0,trailing=side==='HOME'?Math.max(0,a-h):Math.max(0,h-a);if(trailing>Number(cfg.scoreTrailingMax??99))return {pass:false,stage:'SCORE',side,evidence:ev,trailing};const price=inline1x2Price(f,side);if(price.odds===null||price.odds<Number(cfg.oddsMin))return {pass:false,stage:'PRICE',side,evidence:ev,price};return {pass:true,stage:'PREPASS',side,evidence:ev,price};}
@@ -84,10 +87,10 @@ async function fetchFullOdds(id,env){
 }
 function refereePrice(root,market,side){
   if(market==='over'||market==='under'){const p=root?.goal_line?.inplay??root?.goalline?.inplay;return {line:num(p?.line),odds:num(market==='over'?p?.over:p?.under),bookmaker:'Bet365',source:'fixture-odds'}}
-  if(market==='ah'){const p=root?.asian_handicap?.inplay??root?.asian?.inplay;const h=num(p?.line);return {line:h===null?null:(side==='HOME'?h:-h),odds:num(side==='HOME'?p?.home:p?.away),bookmaker:'Bet365',source:'fixture-odds'}}
+  if(market==='ah'||market==='special341'){const p=root?.asian_handicap?.inplay??root?.asian?.inplay;const h=num(p?.line);return {line:h===null?null:(side==='HOME'?h:-h),odds:num(side==='HOME'?p?.home:p?.away),bookmaker:'Bet365',source:'fixture-odds'}}
   const p=root?.['1x2']?.inplay;return {line:null,odds:num(side==='HOME'?p?.home:p?.away),drawOdds:num(p?.draw),bookmaker:'Bet365',source:'fixture-odds'};
 }
-function pricePass(market,cfg,price,score){if(price?.odds===null||price?.odds===undefined||price.odds<Number(cfg.oddsMin))return false;if(market==='over')return price.line!==null&&price.line>=Number(cfg.lineMin)&&overGapPass(price.line,score,cfg.lineGapMax);if(market==='under'||market==='ah')return price.line!==null&&price.line>=Number(cfg.lineMin);return true}
+function pricePass(market,cfg,price,score,ageSeconds=0){if(market==='special341')return special341PricePass(cfg,price,ageSeconds);if(price?.odds===null||price?.odds===undefined||price.odds<Number(cfg.oddsMin))return false;if(market==='over')return price.line!==null&&price.line>=Number(cfg.lineMin)&&overGapPass(price.line,score,cfg.lineGapMax);if(market==='under'||market==='ah')return price.line!==null&&price.line>=Number(cfg.lineMin);return true}
 function sanitizeSettings(input,current=DEFAULT_SETTINGS){const out=clone(current);for(const market of Object.keys(DEFAULT_SETTINGS))if(input?.[market]&&typeof input[market]==='object')out[market]={...out[market],...input[market]};delete out.over.lineMax;return out}
 async function providerLive(env){
   if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
@@ -105,18 +108,19 @@ export class Nomad343State extends DurableObject {
     try{
       const upstream=await providerLive(this.env),normalized=upstream.fixtures.map(normalizeFixture).filter(x=>x.fixtureId),history=s.history,preCandidates=[];
       for(const f of normalized){const current=cumulativeSnapshot(f),rows=Array.isArray(history[f.fixtureId])?history[f.fixtureId]:[];rows.push(current);history[f.fixtureId]=rows.slice(-MAX_HISTORY);
-        for(const market of Object.keys(DEFAULT_SETTINGS)){if(!s.run[market])continue;const cfg=s.settings[market],roll=rolling(history[f.fixtureId],current,cfg.rollingWindowMinutes),best=chooseBest(selectedSides(cfg,market).map(side=>preEvaluate(market,cfg,f,roll,side)));if(best)preCandidates.push({fixtureId:f.fixtureId,market,side:best.side,minute:f.minute,home:f.home.name,away:f.away.name,league:f.league.name,score:f.goals,evidence:best.evidence,price:best.price??null,line:best.line??null,lineGap:best.lineGap??null,observedAt:t});}
+        for(const market of Object.keys(DEFAULT_SETTINGS)){if(!s.run[market])continue;const cfg=s.settings[market],roll=market==='special341'?special341Rolling(history[f.fixtureId],current,cfg):rolling(history[f.fixtureId],current,cfg.rollingWindowMinutes),best=chooseBest(selectedSides(cfg,market).map(side=>preEvaluate(market,cfg,f,roll,side)));if(best)preCandidates.push({fixtureId:f.fixtureId,market,side:best.side,minute:f.minute,home:f.home.name,away:f.away.name,league:f.league.name,score:f.goals,evidence:best.evidence,price:best.price??null,line:best.line??null,lineGap:best.lineGap??null,hunger:best.hunger??null,eventEvidence:best.eventEvidence??null,observedAt:t});}
       }
       const active=new Set(normalized.map(x=>x.fixtureId));for(const id of Object.keys(history))if(!active.has(id))delete history[id];
       preCandidates.sort((a,b)=>(b.evidence?.strength??0)-(a.evidence?.strength??0));
-      let requests=upstream.requests;const fullOdds=new Map(),refereeErrors=[];
-      for(const c of preCandidates){if(c.market==='oneXtwo'||fullOdds.has(c.fixtureId))continue;if(requests>=REQUEST_BUDGET_PER_SCAN)break;try{fullOdds.set(c.fixtureId,await fetchFullOdds(c.fixtureId,this.env))}catch(error){fullOdds.set(c.fixtureId,null);refereeErrors.push({fixtureId:c.fixtureId,error:String(error?.message||error)})}requests++}
+      let requests=upstream.requests;const fullOdds=new Map(),fullOddsFetchedAt=new Map(),refereeErrors=[];
+      for(const c of preCandidates){if(c.market==='oneXtwo'||fullOdds.has(c.fixtureId))continue;if(requests>=REQUEST_BUDGET_PER_SCAN)break;try{fullOdds.set(c.fixtureId,await fetchFullOdds(c.fixtureId,this.env));fullOddsFetchedAt.set(c.fixtureId,now())}catch(error){fullOdds.set(c.fixtureId,null);refereeErrors.push({fixtureId:c.fixtureId,error:String(error?.message||error)})}requests++}
       const candidates=[],newSignals=[];
       for(const c of preCandidates){const cfg=s.settings[c.market];let price=c.price;if(c.market!=='oneXtwo'){const root=fullOdds.get(c.fixtureId);if(root)price=refereePrice(root,c.market,c.side);else{candidates.push({...c,stage:fullOdds.has(c.fixtureId)?'PRICE_UNAVAILABLE':'PRICE_BUDGET',price:null});continue}}
         const lineGap=c.market==='over'?overLineGap(price?.line,c.score):c.lineGap??null;
-        if(!pricePass(c.market,cfg,price,c.score)){candidates.push({...c,stage:'PRICE_REJECT',price,lineGap});continue}
-        const candidate={...c,stage:'PASS',price,lineGap};candidates.push(candidate);
-        const duplicate=s.signals.some(x=>String(x.fixtureId)===String(c.fixtureId)&&x.market===c.market);if(!duplicate){const key=`${c.fixtureId}|${c.market}`,signal={...candidate,key,lockedAt:t,status:'LOCKED'};s.signals.push(signal);newSignals.push(signal)}
+        const ageSeconds=c.market==='special341'&&fullOddsFetchedAt.has(c.fixtureId)?Math.max(0,(now()-fullOddsFetchedAt.get(c.fixtureId))/1000):0;
+        if(!pricePass(c.market,cfg,price,c.score,ageSeconds)){candidates.push({...c,stage:'PRICE_REJECT',price,lineGap,priceAgeSeconds:ageSeconds});continue}
+        const candidate={...c,stage:'PASS',price,lineGap,priceAgeSeconds:ageSeconds};candidates.push(candidate);
+        const duplicate=cfg?.oneSignalPerMatch===false?false:s.signals.some(x=>String(x.fixtureId)===String(c.fixtureId)&&x.market===c.market);if(!duplicate){const key=`${c.fixtureId}|${c.market}${cfg?.oneSignalPerMatch===false?`|${t}`:''}`,signal={...candidate,key,lockedAt:t,status:'LOCKED'};s.signals.push(signal);newSignals.push(signal)}
       }
       const signals=s.signals.slice(-MAX_SIGNALS),board={ok:true,version:VERSION,engineState:'RUNNING',observedAt:t,fixtures:normalized,candidates,newSignals,signals:signals.slice(-100),run:s.run,provider:{name:'5DollarFootballAPI',bookmaker:'Bet365',requests,requestBudget:REQUEST_BUDGET_PER_SCAN,liveCount:normalized.length},refereeErrors};
       await this.ctx.storage.put({history,signals,board,lastSuccessAt:t,lastError:null,lastRequestCount:requests});return board;
