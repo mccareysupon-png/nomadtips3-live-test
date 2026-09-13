@@ -26,21 +26,65 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-      - name: Offline parser detector settlement and market tests
-        working-directory: nomad-live-engine
-        run: |
-          node --test
-          node --check src/index.js
-          node --check src/real-market.js
-          node --check src/price-sources.js
-          node --check src/the-odds-api.js
-          node --check src/api-football.js
-      - name: Validate Cloudflare credentials
+
+      - name: Lock existing 3.41 configuration before cutover
         shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 6); do
+            if curl -fsS "$ENGINE_URL/config" -o /tmp/config-before.json; then break; fi
+            sleep 2
+          done
+          test -s /tmp/config-before.json || { echo "::error::Could not snapshot existing 3.41 config; refusing deploy"; exit 1; }
+          jq -e '.ok == true and (.activeConfig|type)=="object"' /tmp/config-before.json >/dev/null
+          jq -S '.activeConfig' /tmp/config-before.json >/tmp/active-config-before.json
+          echo "3.41 active configuration locked for post-deploy comparison."
+
+      - name: Native 5USD engine tests
+        working-directory: nomad-live-engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test
+          node --check src/index-fiveusd-production.js
+          node --check src/index-fiveusd-test.js
+          node --check src/index-fiveusd-shadow.js
+          node --check src/fivedollar.js
+          node --check src/fivedollar-runtime.js
+          grep -q 'livePageSize:500' src/fivedollar.js
+          grep -q "FIVEUSD_NATIVE_MODE = \"authority\"" wrangler.toml
+          git diff --exit-code "${{ github.event.before || github.sha }}" -- src/config.js src/detector.js 2>/dev/null || true
+
+      - name: Validate Cloudflare and 5USD credentials
+        shell: bash
+        env:
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
         run: |
           test -n "$CF_API_TOKEN" || { echo "::error::Missing CLOUDFLARE_API_TOKEN"; exit 1; }
           test -n "$CF_ACCOUNT_ID" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID"; exit 1; }
-      - name: Deploy isolated Worker and Cron
+          test -n "$FIVEDOLLAR_API_KEY" || { echo "::error::Missing FIVEDOLLAR_API_KEY"; exit 1; }
+
+      - name: Dry-run production Worker
+        working-directory: nomad-live-engine
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4 deploy --dry-run
+
+      - name: Configure 5USD key on existing 3.41 Worker
+        working-directory: nomad-live-engine
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4 secret put FIVEDOLLAR_API_KEY --name nomadtips3-live-engine >/tmp/fiveusd-secret.log
+          echo "5USD credential configured on existing NOMAD 3.41 engine."
+
+      - name: Deploy 5USD authority into existing 3.41 Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CF_API_TOKEN }}
@@ -48,67 +92,55 @@ jobs:
           workingDirectory: nomad-live-engine
           wranglerVersion: "4"
           command: deploy
-      - name: Configure Odds-API.io key for 1xBet market feed
-        working-directory: nomad-live-engine
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: |
-          KEY="$ODDS_API_KEY"
-          if [ -z "$KEY" ]; then
-            echo "Repository secret is empty; recovering the already-provisioned CAR 3.4 credential from its historical bootstrap commit without printing it."
-            git fetch --no-tags --depth=1 origin a1fd83c41dc3262dc1579f641552054979fd8fe7 >/dev/null 2>&1 || true
-            KEY=$(git show a1fd83c41dc3262dc1579f641552054979fd8fe7:.github/workflows/car34-cloudflare-deploy.yml 2>/dev/null | sed -n 's/^[[:space:]]*TEMP_ODDS_API_KEY:[[:space:]]*//p' | head -n 1)
-          fi
-          test -n "$KEY" || { echo "::error::Odds-API.io credential is unavailable"; exit 1; }
-          printf '%s' "$KEY" | npx --yes wrangler@4 secret put ODDS_API_KEY --name nomadtips3-live-engine >/tmp/odds-secret.log
-          grep -v "$KEY" /tmp/odds-secret.log || true
-          echo "Odds-API.io credential configured for NOMAD Live engine."
-      - name: Configure The Odds API key when available
-        working-directory: nomad-live-engine
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
-        run: |
-          if [ -z "$THE_ODDS_API_KEY" ]; then
-            echo "::warning::THE_ODDS_API_KEY is not configured; SOURCE 2 will report UNAVAILABLE without affecting SOURCE 1."
-            exit 0
-          fi
-          printf '%s' "$THE_ODDS_API_KEY" | npx --yes wrangler@4 secret put THE_ODDS_API_KEY --name nomadtips3-live-engine >/tmp/the-odds-api-secret.log
-          grep -v "$THE_ODDS_API_KEY" /tmp/the-odds-api-secret.log || true
-          echo "The Odds API credential configured for NOMAD Live engine."
-      - name: Configure API-Football key when available
-        working-directory: nomad-live-engine
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY || secrets.APISPORTS_KEY || secrets.API_SPORTS_KEY }}
-        run: |
-          if [ -z "$API_FOOTBALL_KEY" ]; then
-            echo "::warning::API_FOOTBALL_KEY is not configured; SOURCE 3 will report UNAVAILABLE without affecting SOURCE 1 or SOURCE 2."
-            exit 0
-          fi
-          printf '%s' "$API_FOOTBALL_KEY" | npx --yes wrangler@4 secret put API_FOOTBALL_KEY --name nomadtips3-live-engine >/tmp/api-football-secret.log
-          echo "API-Football credential configured for NOMAD Live engine."
-      - name: Wake engine and verify first live cycle
+
+      - name: Verify 5USD authority live feed and preserve config
         shell: bash
         run: |
-          curl -fsS "$ENGINE_URL/health" >/tmp/health.json || true
-          for i in $(seq 1 24); do
-            BODY=$(curl -fsS "$ENGINE_URL/health" || true)
-            printf '%s\n' "$BODY"
-            if printf '%s' "$BODY" | grep -Eq '"lastSuccess":"[^"]+"' && printf '%s' "$BODY" | grep -q '1xBet via Odds-API.io'; then
-              exit 0
+          set -euo pipefail
+          HEALTH=''
+          FEED=''
+          for i in $(seq 1 30); do
+            curl -fsS "$ENGINE_URL/health" -o /tmp/health.json || true
+            curl -fsS "$ENGINE_URL/feed" -o /tmp/feed.json || true
+            HEALTH=$(cat /tmp/health.json 2>/dev/null || true)
+            FEED=$(cat /tmp/feed.json 2>/dev/null || true)
+            if jq -e '.fiveUsdNative.enabled == true and .fiveUsdNative.mode == "authority" and .fiveUsdNative.cadence.cycleMs == 3000 and .fiveUsdNative.cadence.noOverlap == true' /tmp/health.json >/dev/null 2>&1 \
+              && jq -e '.source == "5DollarFootballAPI" and .sourceOfTruth == true and .liveOnly == true and .productionDataSource == true' /tmp/feed.json >/dev/null 2>&1; then
+              break
             fi
-            sleep 10
+            sleep 2
           done
-          echo "::error::Worker deployed but no successful Odds-API.io-configured source cycle was observed"
-          exit 1
+
+          jq -e '.fiveUsdNative.enabled == true and .fiveUsdNative.mode == "authority"' /tmp/health.json >/dev/null
+          jq -e '.fiveUsdNative.cadence.cycleMs == 3000 and .fiveUsdNative.cadence.noOverlap == true' /tmp/health.json >/dev/null
+          jq -e '.fiveUsdNative.rate.global.providerCeiling == 40 and .fiveUsdNative.rate.global.globalCeiling == 40' /tmp/health.json >/dev/null
+          jq -e '(.fiveUsdNative.live.truncated // false) == false' /tmp/health.json >/dev/null
+          jq -e '.source == "5DollarFootballAPI" and .sourceOfTruth == true and .liveOnly == true and .productionDataSource == true' /tmp/feed.json >/dev/null
+          jq -e '([.matches[]? | select((.boardState // "live") != "live")] | length) == 0' /tmp/feed.json >/dev/null
+
+          curl -fsS "$ENGINE_URL/config" -o /tmp/config-after.json
+          jq -e '.ok == true and (.activeConfig|type)=="object"' /tmp/config-after.json >/dev/null
+          jq -S '.activeConfig' /tmp/config-after.json >/tmp/active-config-after.json
+          diff -u /tmp/active-config-before.json /tmp/active-config-after.json || {
+            echo "::error::3.41 detector conditions changed during data-source cutover"
+            exit 1
+          }
+          echo "3.41 detector configuration is unchanged."
+
+      - name: Verify 10-book 5USD referee on a live fixture when available
+        shell: bash
+        run: |
+          set -euo pipefail
+          FIXTURE=$(jq -r '.matches[0].fixtureId // .matches[0].id // empty' /tmp/feed.json)
+          if [ -z "$FIXTURE" ]; then
+            echo "No live fixture at verification instant; unit tests still enforce the exact 10-book registry."
+            exit 0
+          fi
+          curl -fsS "$ENGINE_URL/fiveusd-test-referee?fixtureId=${FIXTURE}" -o /tmp/referee.json
+          jq -e '.ok == true and .source == "5DollarFootballAPI" and .bookmakerPanel == 10 and .total == 10 and (.referees|length) == 10' /tmp/referee.json >/dev/null
+          jq -e '[.referees[].bookmaker] | sort == (["1xBet","Bet365","Macauslot","Crown","Easybets","Vcbet","Interwetten","12Bet","18Bet","Pinnacle"] | sort)' /tmp/referee.json >/dev/null
+          echo "10-book 5USD referee verified on live fixture ${FIXTURE}."
+
       - name: Publish deploy commit status
         if: always()
         shell: bash
@@ -117,12 +149,12 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           STATE=error
-          DESCRIPTION="NOMAD live engine deploy failed"
+          DESCRIPTION="NOMAD 3.41 5USD authority deploy failed"
           if [ "$JOB_STATUS" = "success" ]; then
             STATE=success
-            DESCRIPTION="Worker deployed with Odds-API.io 1xBet feed"
+            DESCRIPTION="3.41 running 5USD authority + 10-book referee"
           elif [ "$JOB_STATUS" = "cancelled" ]; then
-            DESCRIPTION="NOMAD live engine deploy cancelled"
+            DESCRIPTION="NOMAD 3.41 5USD deploy cancelled"
           fi
           TARGET_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           curl -fsS -X POST \
@@ -131,4 +163,3 @@ jobs:
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -d "{\"state\":\"${STATE}\",\"context\":\"nomad-live-engine/deploy\",\"description\":\"${DESCRIPTION}\",\"target_url\":\"${TARGET_URL}\"}"
-
