@@ -45,18 +45,22 @@ export function buildFiveUsdRefereeVotes(referees=[],config={},side='home',at=Da
     const freshness=assessFiveUsdQuoteFreshness(quote,{at,maxAgeMs});
     const projected=sideProjection(quote,side);
     const settings=settingsPass(projected,config);
-    const policyVoteEligible=quote?.voteEligible!==false&&String(quote?.sourceId||'')!=='source25';
+    // The adapter intentionally marks every quote voteEligible=false while shadowing.
+    // Consensus may simulate votes, but source25/Pinnacle remains policy non-voting until its own cutover gate.
+    const policyVoteEligible=String(quote?.sourceId||'')!=='source25';
     const eligible=quote?.status==='AH READY'&&quote?.bookmakerVerified===true&&freshness.eligible&&settings.passed&&policyVoteEligible;
     let reason=null;
     if(quote?.status!=='AH READY'||quote?.bookmakerVerified!==true) reason='QUOTE_NOT_READY';
     else if(!freshness.eligible) reason=freshness.reason;
     else if(!settings.passed) reason=settings.reason;
-    else if(!policyVoteEligible) reason=String(quote?.sourceId||'')==='source25'?'POLICY_NON_VOTER':'QUOTE_NON_VOTER';
+    else if(!policyVoteEligible) reason='POLICY_NON_VOTER';
     return {
       sourceId:quote?.sourceId??null,
       position:finite(quote?.position)?Number(quote.position):999,
       bookmaker:quote?.bookmaker??null,
       bookmakerSlug:quote?.bookmakerSlug??null,
+      adapterVoteEligible:quote?.voteEligible===true,
+      simulatedVoteEligible:eligible,
       eligible,
       reason,
       freshness,
