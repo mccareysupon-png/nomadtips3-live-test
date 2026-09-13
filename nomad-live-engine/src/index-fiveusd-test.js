@@ -132,7 +132,7 @@ export class EngineState extends ShadowEngineState{
     }
 
     const response=await super.fetch(request);
-    if(!['/fiveusd-native','/health'].includes(url.pathname)||request.method!=='GET') return response;
+    if(!['/fiveusd-native','/fiveusd-feed','/health'].includes(url.pathname)||request.method!=='GET') return response;
     let body=null;
     try{body=await response.clone().json();}catch{body={ok:false,error:'response_decode_failed'};}
     const signals=await this.testSignals();
