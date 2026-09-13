@@ -4,7 +4,7 @@ export const FIVEUSD_CADENCE=Object.freeze({
   liveRefreshMs:3_000,
   upcomingRefreshMs:120_000,
   providerRequestCeilingPer60s:40,
-  livePageSize:50,
+  livePageSize:500,
   liveMaxPages:10,
 });
 
