@@ -36,7 +36,7 @@ test('3.41 native cadence keeps 3s compound live polling behind provider ceiling
   assert.equal(FIVEUSD_CADENCE.liveRefreshMs,3000);
   assert.equal(FIVEUSD_CADENCE.upcomingRefreshMs,120000);
   assert.equal(FIVEUSD_CADENCE.providerRequestCeilingPer60s,40);
-  assert.equal(FIVEUSD_CADENCE.livePageSize,50);
+  assert.equal(FIVEUSD_CADENCE.livePageSize,500);
   assert.equal(FIVEUSD_CADENCE.liveMaxPages,10);
   assert.equal('liveRequestBudgetPer60s' in FIVEUSD_CADENCE,false);
   assert.equal('refereeRequestBudgetPer60s' in FIVEUSD_CADENCE,false);
@@ -78,18 +78,18 @@ test('board contains live plus scheduled only inside configurable waiting window
   assert.deepEqual(board.map(row=>row.fixtureId).sort(),['1','2']);
 });
 
-test('live fetch uses page size 50, paginates and deduplicates fixture ids',async()=>{
+test('live fetch uses page size 500, paginates and deduplicates fixture ids',async()=>{
   const urls=[];
   const fetchImpl=async url=>{
     urls.push(String(url));
     const page=Number(new URL(url).searchParams.get('page'));
-    if(page===1) return jsonResponse({data:[fixture({id:10}),fixture({id:11})],pagination:{has_more:true,page:1,per_page:50}});
-    return jsonResponse({data:[fixture({id:11}),fixture({id:12})],pagination:{has_more:false,page:2,per_page:50}});
+    if(page===1) return jsonResponse({data:[fixture({id:10}),fixture({id:11})],pagination:{has_more:true,page:1,per_page:500}});
+    return jsonResponse({data:[fixture({id:11}),fixture({id:12})],pagination:{has_more:false,page:2,per_page:500}});
   };
   const result=await fetchLiveFixtures({apiKey:'test-secret',fetchImpl,maxPages:4,observedAt:12345});
   assert.equal(result.requests,2);
   assert.deepEqual(result.fixtures.map(row=>row.fixtureId).sort(),['10','11','12']);
-  assert.equal(new URL(urls[0]).searchParams.get('per_page'),'50');
+  assert.equal(new URL(urls[0]).searchParams.get('per_page'),'500');
   assert.equal(new URL(urls[0]).searchParams.get('status'),'live');
   assert.equal(new URL(urls[0]).searchParams.get('include'),'odds,events,stats');
 });
