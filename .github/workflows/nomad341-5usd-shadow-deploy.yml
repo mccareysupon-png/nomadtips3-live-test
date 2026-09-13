@@ -46,6 +46,11 @@ jobs:
           grep -Fq 'FIVEUSD_SHADOW_LEGACY_DISABLED = "true"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_LIVE_REFRESH_MS = "3000"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S = "40"' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_LIVE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_UPCOMING_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_REFEREE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_MAX_REFEREE_STARTS_PER_TICK' wrangler-fiveusd-shadow.toml
+          ! grep -Fq 'FIVEUSD_LIVE_MAX_PAGES' wrangler-fiveusd-shadow.toml
 
       - name: Dry-run shadow bundle
         working-directory: nomad-live-engine
@@ -66,7 +71,7 @@ jobs:
         working-directory: nomad-live-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.131.1 secret put FIVEDOLLAR_API_KEY --config wrangler-fiveusd-shadow.toml
 
-      - name: Arm shadow engine and verify configurable native lanes
+      - name: Arm shadow engine and verify unrestricted native lanes
         run: |
           set -euo pipefail
           probe() {
@@ -100,11 +105,14 @@ jobs:
           if(b.state?.ok!==true) throw new Error(`native state unhealthy: ${b.state?.lastError||'unknown'}`);
           if(Number(b.live?.fetchedAt||0)<=Number(a.live?.fetchedAt||0)) throw new Error('live snapshot did not advance');
           if(Number(b.board?.terminalDisplayed||0)!==0) throw new Error('terminal fixture leaked to board');
-          if(Number(b.rate?.global?.usedLast60s||0)>40) throw new Error('global provider guard exceeded');
-          if(Number(b.rate?.live?.usedLast60s||0)>20) throw new Error('configured live lane exceeded');
-          if(Number(b.rate?.upcoming?.usedLast60s||0)>3) throw new Error('configured waiting lane exceeded');
-          if(Number(b.rate?.referee?.usedLast60s||0)>10) throw new Error('configured referee lane exceeded');
-          console.log('NATIVE_SHADOW_PASS',JSON.stringify({
+          if(Number(b.rate?.global?.usedLast60s||0)>40) throw new Error('provider global ceiling exceeded');
+          for(const [name,rate] of Object.entries({live:b.rate?.live,waiting:b.rate?.upcoming,referee:b.rate?.referee})){
+            if(rate?.unlocked!==true) throw new Error(`${name} lane is still locked`);
+            if(rate?.configuredCeiling!==null) throw new Error(`${name} lane still has a configured ceiling`);
+            if(rate?.guardScope!=='GLOBAL_ONLY') throw new Error(`${name} lane guard scope is not GLOBAL_ONLY`);
+          }
+          if(Number(b.candidateShadow?.maxRefereeStartsPerTick||0)!==0) throw new Error('candidate referee start cap still active');
+          console.log('NATIVE_UNRESTRICTED_PASS',JSON.stringify({
             firstLiveAt:a.live?.fetchedAt,
             secondLiveAt:b.live?.fetchedAt,
             live:b.board?.counts?.live,
@@ -114,7 +122,10 @@ jobs:
             liveRate:b.rate?.live,
             waitingRate:b.rate?.upcoming,
             refereeRate:b.rate?.referee,
+            rateLimited:b.state?.rateLimited,
+            throttled:b.state?.throttled,
             candidateShadow:b.candidateShadow,
+            eventFlow:b.eventFlow,
             state:b.state
           },null,2));
           NODE
