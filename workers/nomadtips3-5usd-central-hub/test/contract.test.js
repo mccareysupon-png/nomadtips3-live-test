@@ -59,7 +59,7 @@ test('timestamp policy never claims bookmaker quote time',()=>{
   assert.match(source,/lastChangedAtKind:'hub_detected_change_at'/);
   assert.match(source,/sourceUpdatedAt:null/);
   assert.match(source,/neither is bookmaker-native quote time/);
-  assert.match(readme,/must not be passed to 3\.41 as bookmaker-native sourceUpdatedAt/);
+  assert.match(readme,/must not be passed to 3\.41 as bookmaker-native `sourceUpdatedAt`/);
 });
 
 test('hub still does not auto scan or auto deploy by configuration',()=>{
