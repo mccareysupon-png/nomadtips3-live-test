@@ -1,15 +1,14 @@
-name: NOMAD 3.41 Native 5USD Shadow Deploy
+name: NOMAD 3.41 Native 5USD Test Authority
 
 on:
   push:
     branches:
       - work/nomad341-5usd-native
     paths:
-      - 'nomad-live-engine/src/fivedollar.js'
-      - 'nomad-live-engine/src/fivedollar-runtime.js'
-      - 'nomad-live-engine/src/index-fiveusd-shadow.js'
+      - 'nomad-live-engine/src/fivedollar*.js'
+      - 'nomad-live-engine/src/index-fiveusd-*.js'
       - 'nomad-live-engine/test/fivedollar*.test.js'
-      - 'nomad-live-engine/test/index-fiveusd-shadow.test.js'
+      - 'nomad-live-engine/test/index-fiveusd-*.test.js'
       - 'nomad-live-engine/wrangler-fiveusd-shadow.toml'
       - '.github/workflows/nomad341-5usd-shadow-deploy.yml'
   workflow_dispatch:
@@ -21,8 +20,8 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
-  SHADOW_URL: https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev
-  EXPECTED_RUNTIME_CONTRACT: 341-5usd-unrestricted-v1
+  TEST_URL: https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev
+  EXPECTED_RUNTIME_CONTRACT: 341-5usd-test-authority-v1
 
 jobs:
   validate-deploy-observe:
@@ -34,7 +33,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate native shadow code
+      - name: Validate native authority code
         working-directory: nomad-live-engine
         run: |
           set -euo pipefail
@@ -42,19 +41,22 @@ jobs:
           node --check src/fivedollar.js
           node --check src/fivedollar-runtime.js
           node --check src/index-fiveusd-shadow.js
-          grep -Fq 'main = "src/index-fiveusd-shadow.js"' wrangler-fiveusd-shadow.toml
-          grep -Fq 'FIVEUSD_NATIVE_MODE = "shadow"' wrangler-fiveusd-shadow.toml
+          node --check src/index-fiveusd-test.js
+          grep -Fq 'main = "src/index-fiveusd-test.js"' wrangler-fiveusd-shadow.toml
+          grep -Fq 'FIVEUSD_NATIVE_MODE = "authority"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_SHADOW_LEGACY_DISABLED = "true"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_LIVE_REFRESH_MS = "3000"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S = "40"' wrangler-fiveusd-shadow.toml
-          grep -Fq "341-5usd-unrestricted-v1" src/index-fiveusd-shadow.js
+          grep -Fq '341-5usd-test-authority-v1' src/index-fiveusd-test.js
+          grep -Fq '/fiveusd-test-referee' src/index-fiveusd-test.js
+          grep -Fq '/fiveusd-test-signals' src/index-fiveusd-test.js
           ! grep -Fq 'FIVEUSD_LIVE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_UPCOMING_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_REFEREE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_MAX_REFEREE_STARTS_PER_TICK' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_LIVE_MAX_PAGES' wrangler-fiveusd-shadow.toml
 
-      - name: Dry-run shadow bundle
+      - name: Dry-run authority bundle
         working-directory: nomad-live-engine
         run: npx --yes wrangler@4.131.1 deploy --dry-run --config wrangler-fiveusd-shadow.toml
 
@@ -65,11 +67,11 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$FIVEDOLLAR_API_KEY"
 
-      - name: Deploy isolated 3.41 shadow worker
+      - name: Deploy isolated 3.41 authority worker
         working-directory: nomad-live-engine
         run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml
 
-      - name: Bind 5USD secret to shadow worker
+      - name: Bind 5USD secret to test worker
         working-directory: nomad-live-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.131.1 secret put FIVEDOLLAR_API_KEY --config wrangler-fiveusd-shadow.toml
 
@@ -77,7 +79,7 @@ jobs:
         working-directory: nomad-live-engine
         run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml
 
-      - name: Arm shadow engine and verify unrestricted native lanes
+      - name: Observe 3s engine and real 10-book referee
         run: |
           set -euo pipefail
           probe() {
@@ -89,7 +91,7 @@ jobs:
               if [ "$code" = "200" ]; then return 0; fi
               sleep 2
             done
-            echo "::error::Shadow endpoint never became ready: $url"
+            echo "::error::Test endpoint never became ready: $url"
             [ -f "$out" ] && cat "$out" || true
             return 1
           }
@@ -97,7 +99,7 @@ jobs:
           wait_contract() {
             local out="$1"
             for attempt in $(seq 1 20); do
-              probe "$SHADOW_URL/fiveusd-native?contract=$RANDOM" "$out"
+              probe "$TEST_URL/fiveusd-native?contract=$RANDOM" "$out"
               actual=$(node -e "const x=require('$out');process.stdout.write(String(x.runtimeContract||''))")
               echo "runtime contract attempt $attempt -> ${actual:-missing}"
               if [ "$actual" = "$EXPECTED_RUNTIME_CONTRACT" ]; then return 0; fi
@@ -108,20 +110,23 @@ jobs:
             return 1
           }
 
-          probe "$SHADOW_URL/health?arm=$RANDOM" /tmp/health0.json
+          probe "$TEST_URL/health?arm=$RANDOM" /tmp/health0.json
           wait_contract /tmp/contract.json
           sleep 10
-          probe "$SHADOW_URL/fiveusd-native?sample=1&n=$RANDOM" /tmp/native1.json
+          probe "$TEST_URL/fiveusd-native?sample=1&n=$RANDOM" /tmp/native1.json
           sleep 8
-          probe "$SHADOW_URL/fiveusd-native?sample=2&n=$RANDOM" /tmp/native2.json
+          probe "$TEST_URL/fiveusd-native?sample=2&n=$RANDOM" /tmp/native2.json
+          probe "$TEST_URL/fiveusd-test-signals?n=$RANDOM" /tmp/signals.json
+
           node - <<'NODE'
           const fs=require('fs');
           const a=JSON.parse(fs.readFileSync('/tmp/native1.json','utf8'));
           const b=JSON.parse(fs.readFileSync('/tmp/native2.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
           const expected=process.env.EXPECTED_RUNTIME_CONTRACT;
-          if(a.runtimeContract!==expected||b.runtimeContract!==expected) throw new Error('stale runtime contract');
-          if(a.ok!==true||b.ok!==true) throw new Error('shadow endpoint not ok');
-          if(a.enabled!==true||a.mode!=='shadow'||a.shadowOnly!==true) throw new Error('shadow mode contract mismatch');
+          if(a.runtimeContract!==expected||b.runtimeContract!==expected||s.runtimeContract!==expected) throw new Error('stale runtime contract');
+          if(a.ok!==true||b.ok!==true) throw new Error('authority endpoint not ok');
+          if(a.enabled!==true||a.mode!=='authority'||a.shadowOnly!==false) throw new Error('authority mode contract mismatch');
           if(a.legacyShadowDisabled!==true) throw new Error('legacy isolation missing');
           if(a.cadence?.cycleMs!==3000||a.cadence?.noOverlap!==true) throw new Error('3s cadence contract mismatch');
           if(!a.state?.startedAt||!b.state?.startedAt) throw new Error('native alarm did not tick');
@@ -134,22 +139,34 @@ jobs:
             if(rate?.configuredCeiling!==null) throw new Error(`${name} lane still has a configured ceiling`);
             if(rate?.guardScope!=='GLOBAL_ONLY') throw new Error(`${name} lane guard scope is not GLOBAL_ONLY`);
           }
-          if(Number(b.candidateShadow?.maxRefereeStartsPerTick||0)!==0) throw new Error('candidate referee start cap still active');
-          console.log('NATIVE_UNRESTRICTED_PASS',JSON.stringify({
+          if(b.testAuthority?.enabled!==true||b.testAuthority?.isolated!==true) throw new Error('isolated test authority missing');
+          if(b.testAuthority?.bookmakerPanel!==10||b.testAuthority?.votingEnabled!==true||b.testAuthority?.signalAuthority!==true) throw new Error('10-book authority flags missing');
+          if(s.testOnly!==true||s.votingEnabled!==true||s.signalAuthority!==true) throw new Error('test signal endpoint is not authoritative');
+          console.log('NATIVE_TEST_AUTHORITY_PASS',JSON.stringify({
             runtimeContract:b.runtimeContract,
-            firstLiveAt:a.live?.fetchedAt,
-            secondLiveAt:b.live?.fetchedAt,
             live:b.board?.counts?.live,
             waiting:b.board?.counts?.waiting,
-            terminalDisplayed:b.board?.terminalDisplayed,
             globalRate:b.rate?.global,
-            liveRate:b.rate?.live,
-            waitingRate:b.rate?.upcoming,
             refereeRate:b.rate?.referee,
-            rateLimited:b.state?.rateLimited,
-            throttled:b.state?.throttled,
+            testAuthority:b.testAuthority,
             candidateShadow:b.candidateShadow,
-            eventFlow:b.eventFlow,
+            testSignals:s.count,
             state:b.state
           },null,2));
           NODE
+
+          fixture=$(node -e "const x=require('/tmp/native2.json');const f=x.snapshot?.live?.fixtures?.find(v=>v&&v.fixtureId);process.stdout.write(f?String(f.fixtureId):'')")
+          if [ -n "$fixture" ]; then
+            echo "Testing 10-book referee on live fixture $fixture"
+            probe "$TEST_URL/fiveusd-test-referee?fixtureId=$fixture&side=home&n=$RANDOM" /tmp/referee.json
+            node - <<'NODE'
+            const x=require('/tmp/referee.json');
+            if(x.ok!==true) throw new Error(`referee probe failed: ${x.error||'unknown'}`);
+            if(x.bookmakerPanel!==10||x.total!==10) throw new Error(`expected 10 referee sockets, got ${x.total}`);
+            if(!Array.isArray(x.referees)||x.referees.length!==10) throw new Error('10-book referee payload incomplete');
+            if(x.decision?.testOnly!==true) throw new Error('referee decision is not test-only');
+            console.log('REAL_10_BOOK_REFEREE_PASS',JSON.stringify({fixtureId:x.fixtureId,total:x.total,readyCount:x.readyCount,decision:x.decision},null,2));
+            NODE
+          else
+            echo 'REAL_10_BOOK_REFEREE_SKIPPED_NO_LIVE_FIXTURE'
+          fi
