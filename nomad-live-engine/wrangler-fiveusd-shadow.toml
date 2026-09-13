@@ -1,0 +1,21 @@
+name = "nomadtips3-live-engine-5usd-shadow"
+main = "src/index-fiveusd-shadow.js"
+compatibility_date = "2026-08-20"
+workers_dev = true
+
+[vars]
+ENGINE_CYCLE_MODE = "continuous"
+FIVEUSD_NATIVE_MODE = "shadow"
+FIVEUSD_SHADOW_LEGACY_DISABLED = "true"
+FIVEUSD_UPCOMING_WINDOW_MINUTES = "120"
+
+[limits]
+subrequests = 1000
+
+[[durable_objects.bindings]]
+name = "ENGINE"
+class_name = "EngineState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["EngineState"]
