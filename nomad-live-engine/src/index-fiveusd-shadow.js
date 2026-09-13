@@ -8,6 +8,7 @@ import {buildFiveUsdEventFlow,FIVEUSD_EVENT_FLOW_VERSION} from './fivedollar-eve
 
 const JSON_HEADERS={'content-type':'application/json; charset=utf-8','access-control-allow-origin':'*','cache-control':'no-store'};
 const MIN_ALARM_DELAY_MS=250;
+const RUNTIME_CONTRACT_VERSION='341-5usd-unrestricted-v1';
 const CANDIDATE_HISTORY_KEY='fiveUsdNativeCandidateHistoryV1';
 const CANDIDATE_STATE_KEY='fiveUsdNativeCandidateShadowV1';
 const EVENT_FLOW_HISTORY_KEY='fiveUsdNativeEventFlowHistoryV1';
@@ -241,6 +242,7 @@ export class EngineState extends BaseEngineState{
       if(!flow) return json({ok:false,error:'EVENT_FLOW_NOT_FOUND',fixtureId},404);
       return json({
         ok:true,
+        runtimeContract:RUNTIME_CONTRACT_VERSION,
         source:'5DollarFootballAPI',
         sourceOfTruth:true,
         presentationOnly:true,
@@ -253,6 +255,7 @@ export class EngineState extends BaseEngineState{
       const eventFlow=await this.eventFlowState();
       return json({
         ok:true,
+        runtimeContract:RUNTIME_CONTRACT_VERSION,
         ...await this.fiveUsdNative.health(),
         legacyShadowDisabled:this.legacyShadowDisabled(),
         candidateShadow:await this.candidateShadow(),
@@ -269,6 +272,7 @@ export class EngineState extends BaseEngineState{
     const candidateShadow=await this.candidateShadow();
     const eventFlow=await this.eventFlowState();
     return json({...body,fiveUsdNative:{
+      runtimeContract:RUNTIME_CONTRACT_VERSION,
       ...await this.fiveUsdNative.health(),
       legacyShadowDisabled:this.legacyShadowDisabled(),
       eventFlow:eventFlowStateSummary(eventFlow),
