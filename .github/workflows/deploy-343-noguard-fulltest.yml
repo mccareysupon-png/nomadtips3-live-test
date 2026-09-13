@@ -1,4 +1,4 @@
-name: Deploy NOMAD 3.43 No-Guard Full Test
+name: Deploy NOMAD 3.43 Master 15s Full Test
 
 on:
   push:
@@ -42,22 +42,31 @@ jobs:
           node --check workers/nomadtips3-5usd-hub-343/src/index-v4-upcoming.js
           node --check workers/nomadtips3-engine-343/src/index-3s.js
           node --check nomad-live-343/stable-board-343.js
+          node --check nomad-live-343/master-cycle-343.js
+          node --check nomad-live-343/event-flow-refresh-15s.js
           node workers/nomadtips3-engine-343/test/market-core.test.mjs
           node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
-          grep -Fq "const CYCLE_MS = 3_000;" workers/nomadtips3-engine-343/src/index-3s.js
+          grep -Fq "const MASTER_CYCLE_MS = 15_000;" workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
+          grep -Fq "const CYCLE_MS = 15_000;" workers/nomadtips3-engine-343/src/index-3s.js
           grep -Fq "rateGuardBlocksScan: false" workers/nomadtips3-engine-343/src/index-3s.js
           grep -Fq "guarded: false" workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
+          grep -Fq "lastKnownGood: true" workers/nomadtips3-5usd-hub-343/src/index-v5-noguard.js
           grep -Fq 'main = "src/index-v5-noguard.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq 'main = "src/index-3s.js"' workers/nomadtips3-engine-343/wrangler.toml
-          grep -Fq 'stable-board-343.js' nomad-live-343/index.html
+          grep -Fq 'master-cycle-343.js' nomad-live-343/index.html
+          grep -Fq 'event-flow-refresh-15s.js' nomad-live-343/index.html
+          grep -Fq 'master-cycle-343.js' nomad-live-343/signal.html
+          if grep -Fq 'setInterval(tick,3000)' nomad-live-343/stable-board-343.js; then
+            echo '::error::legacy 3s viewer timer still present'; exit 1
+          fi
 
-      - name: Deploy 5USD Hub 3s no guard
+      - name: Deploy 5USD Hub master 15s
         working-directory: workers/nomadtips3-5usd-hub-343
         run: |
           npx --yes wrangler@4.92.0 deploy --config wrangler.toml
           printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
-      - name: Deploy 3.43 Engine 3s no guard
+      - name: Deploy 3.43 Engine master 15s
         working-directory: workers/nomadtips3-engine-343
         run: |
           npx --yes wrangler@4.92.0 deploy --config wrangler.toml
@@ -67,35 +76,45 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Smoke no-guard full flow
+      - name: Smoke master 15s full flow
         run: |
           set -euo pipefail
           curl -fsS --max-time 30 "$HUB_URL/snapshot?deploy=$RANDOM" -o /tmp/hub1.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?deploy=$RANDOM" -o /tmp/engine1.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?deploy=$RANDOM" -o /tmp/board1.json
           curl -fsS --max-time 30 "$PREVIEW_URL/index.html?deploy=$RANDOM" -o /tmp/index.html
+          curl -fsS --max-time 30 "$PREVIEW_URL/signal.html?deploy=$RANDOM" -o /tmp/signal.html
           curl -fsS --max-time 30 "$PREVIEW_URL/stable-board-343.js?deploy=$RANDOM" -o /tmp/stable.js
+          curl -fsS --max-time 30 "$PREVIEW_URL/master-cycle-343.js?deploy=$RANDOM" -o /tmp/master.js
+          curl -fsS --max-time 30 "$PREVIEW_URL/event-flow-refresh-15s.js?deploy=$RANDOM" -o /tmp/flow-refresh.js
           node - <<'NODE'
           const fs=require('fs');
           const hub=require('/tmp/hub1.json');
           const eng=require('/tmp/engine1.json');
           const board=require('/tmp/board1.json');
           const html=fs.readFileSync('/tmp/index.html','utf8');
+          const signal=fs.readFileSync('/tmp/signal.html','utf8');
           const stable=fs.readFileSync('/tmp/stable.js','utf8');
+          const master=fs.readFileSync('/tmp/master.js','utf8');
+          const flowRefresh=fs.readFileSync('/tmp/flow-refresh.js','utf8');
           if(hub.ok!==true) throw Error('hub not ok');
-          if(hub.fastLive?.active!==true||hub.fastLive?.refreshMs!==3000) throw Error('hub fast live not active at 3s');
+          if(hub.fastLive?.active!==true||hub.fastLive?.refreshMs!==15000) throw Error('hub live cadence is not 15s');
+          if(hub.masterCycleMs!==15000||hub.lastKnownGood!==true) throw Error('hub master/LKG marker missing');
           if(hub.fastLive?.rate?.guarded!==false) throw Error('hub internal rate guard still active');
           if(hub.noRateGuard!==true) throw Error('hub no-guard marker missing');
           if(eng.component!=='NOMAD343_ENGINE') throw Error('engine component mismatch');
-          if(eng.cadence?.cycleMs!==3000||eng.cadence?.noOverlap!==true) throw Error('engine cadence mismatch');
+          if(eng.cadence?.cycleMs!==15000||eng.cadence?.noOverlap!==true) throw Error('engine cadence mismatch');
           if(eng.cadence?.rateGuardBlocksScan!==false) throw Error('engine rate guard still blocks scan');
           if(board.ok!==true) throw Error('board not ready');
-          if(!html.includes('stable-board-343.js')) throw Error('stable board not loaded');
-          if(!stable.includes('setInterval(tick,3000)')) throw Error('viewer 3s refresh missing');
-          console.log('FIRST',JSON.stringify({hubFixtures:hub.fixtureCount,counts:hub.counts,hubFast:hub.fastLive,engineCadence:eng.cadence,boardFixtures:board.fixtures?.length},null,2));
+          if(!html.includes('master-cycle-343.js')||!html.includes('event-flow-refresh-15s.js')) throw Error('live master-cycle assets missing');
+          if(!signal.includes('master-cycle-343.js')||!signal.includes('event-flow-refresh-15s.js')) throw Error('signal master-cycle assets missing');
+          if(stable.includes('setInterval(tick,3000)')) throw Error('legacy viewer 3s timer remains');
+          if(!master.includes('MASTER_CYCLE_MS=15_000')||!master.includes('Number(delay)===30_000')) throw Error('browser master cycle shim mismatch');
+          if(!flowRefresh.includes("API='/api/engine/history'")) throw Error('event-flow 15s refresher missing');
+          console.log('FIRST',JSON.stringify({hubFixtures:hub.fixtureCount,counts:hub.counts,hubFast:hub.fastLive,masterCycleMs:hub.masterCycleMs,engineCadence:eng.cadence,boardFixtures:board.fixtures?.length},null,2));
           NODE
 
-          sleep 8
+          sleep 18
 
           curl -fsS --max-time 30 "$HUB_URL/snapshot?verify=$RANDOM" -o /tmp/hub2.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/health?verify=$RANDOM" -o /tmp/engine2.json
@@ -104,17 +123,18 @@ jobs:
           node - <<'NODE'
           const h2=require('/tmp/hub2.json'),e2=require('/tmp/engine2.json'),b2=require('/tmp/board2.json'),s=require('/tmp/signals.json');
           if(h2.ok!==true||h2.fastLive?.active!==true) throw Error('hub verify failed');
+          if(h2.fastLive?.refreshMs!==15000||h2.masterCycleMs!==15000||h2.lastKnownGood!==true) throw Error('hub 15s/LKG verify failed');
           if(h2.fastLive?.rate?.guarded!==false||h2.noRateGuard!==true) throw Error('hub guard returned');
-          if(e2.cadence?.rateGuardBlocksScan!==false) throw Error('engine guard returned');
+          if(e2.cadence?.cycleMs!==15000||e2.cadence?.rateGuardBlocksScan!==false) throw Error('engine 15s verify failed');
           if(e2.cadence?.alarmArmed!==true) throw Error('engine alarm not armed');
           if(b2.ok!==true||s.ok!==true) throw Error('board/signals unavailable');
-          console.log('VERIFY',JSON.stringify({counts:h2.counts,hubFast:h2.fastLive,engineCycleMs:e2.cadence?.cycleMs,engineGuard:e2.cadence?.rateGuardBlocksScan,fixtures:b2.fixtures?.length,signals:s.signals?.length},null,2));
+          console.log('VERIFY',JSON.stringify({counts:h2.counts,hubFast:h2.fastLive,masterCycleMs:h2.masterCycleMs,engineCycleMs:e2.cadence?.cycleMs,engineGuard:e2.cadence?.rateGuardBlocksScan,fixtures:b2.fixtures?.length,signals:s.signals?.length},null,2));
           NODE
 
       - name: UI route smoke
         run: |
           set -euo pipefail
-          for path in / /index.html /signal.html /statistics.html /settings.html /stable-board-343.js /api/engine/registry /api/engine/board /api/engine/signals /api/engine/statistics; do
+          for path in / /index.html /signal.html /statistics.html /settings.html /stable-board-343.js /master-cycle-343.js /event-flow-refresh-15s.js /api/engine/registry /api/engine/board /api/engine/signals /api/engine/statistics; do
             code="$(curl -L -sS --max-time 30 -o /tmp/page -w '%{http_code}' "$PREVIEW_URL$path?smoke=$RANDOM$RANDOM")"
             echo "$path -> HTTP $code"
             test "$code" = "200"

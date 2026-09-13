@@ -1,7 +1,7 @@
 import baseWorker, { Nomad343Engine as BaseNomad343Engine } from './index.js';
 
-const CADENCE_VERSION = 'nomad343-engine-v5-3s-unblocked';
-const CYCLE_MS = 3_000;
+const CADENCE_VERSION = 'nomad343-engine-v6-master15-unblocked';
+const CYCLE_MS = 15_000;
 const MIN_ALARM_DELAY_MS = 250;
 const TELEMETRY_KEY = 'cadenceTelemetryV2';
 

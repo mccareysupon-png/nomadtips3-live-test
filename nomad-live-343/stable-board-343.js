@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-stable-board-v1';
+const VERSION='343-stable-board-v2-master15';
 const NATIVE=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML')||Object.getOwnPropertyDescriptor(HTMLElement.prototype,'innerHTML');
 if(!NATIVE?.get||!NATIVE?.set)return;
 
@@ -54,7 +54,5 @@ for(const board of document.querySelectorAll('[data-board]')){
   });
 }
 
-const tick=()=>window.NOMAD343_LIVE?.reload?.();
-setInterval(tick,3000);
-window.NOMAD343_STABLE_BOARD={version:VERSION};
+window.NOMAD343_STABLE_BOARD={version:VERSION,refreshOwner:'master-cycle-15s'};
 })();
