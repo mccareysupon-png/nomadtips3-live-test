@@ -22,6 +22,7 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   SHADOW_URL: https://nomadtips3-live-engine-5usd-shadow.mccarey-supon.workers.dev
+  EXPECTED_RUNTIME_CONTRACT: 341-5usd-unrestricted-v1
 
 jobs:
   validate-deploy-observe:
@@ -46,6 +47,7 @@ jobs:
           grep -Fq 'FIVEUSD_SHADOW_LEGACY_DISABLED = "true"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_LIVE_REFRESH_MS = "3000"' wrangler-fiveusd-shadow.toml
           grep -Fq 'FIVEUSD_GLOBAL_REQUEST_BUDGET_PER_60S = "40"' wrangler-fiveusd-shadow.toml
+          grep -Fq "341-5usd-unrestricted-v1" src/index-fiveusd-shadow.js
           ! grep -Fq 'FIVEUSD_LIVE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_UPCOMING_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
           ! grep -Fq 'FIVEUSD_REFEREE_REQUEST_BUDGET_PER_60S' wrangler-fiveusd-shadow.toml
@@ -71,13 +73,17 @@ jobs:
         working-directory: nomad-live-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.131.1 secret put FIVEDOLLAR_API_KEY --config wrangler-fiveusd-shadow.toml
 
+      - name: Re-deploy code after secret update
+        working-directory: nomad-live-engine
+        run: npx --yes wrangler@4.131.1 deploy --config wrangler-fiveusd-shadow.toml
+
       - name: Arm shadow engine and verify unrestricted native lanes
         run: |
           set -euo pipefail
           probe() {
             local url="$1" out="$2"
             local code=""
-            for attempt in $(seq 1 10); do
+            for attempt in $(seq 1 15); do
               code=$(curl -sS --max-time 20 -o "$out" -w '%{http_code}' "$url" || true)
               echo "probe attempt $attempt -> HTTP $code"
               if [ "$code" = "200" ]; then return 0; fi
@@ -88,7 +94,22 @@ jobs:
             return 1
           }
 
+          wait_contract() {
+            local out="$1"
+            for attempt in $(seq 1 20); do
+              probe "$SHADOW_URL/fiveusd-native?contract=$RANDOM" "$out"
+              actual=$(node -e "const x=require('$out');process.stdout.write(String(x.runtimeContract||''))")
+              echo "runtime contract attempt $attempt -> ${actual:-missing}"
+              if [ "$actual" = "$EXPECTED_RUNTIME_CONTRACT" ]; then return 0; fi
+              sleep 2
+            done
+            echo "::error::Expected runtime contract $EXPECTED_RUNTIME_CONTRACT was not active"
+            cat "$out" || true
+            return 1
+          }
+
           probe "$SHADOW_URL/health?arm=$RANDOM" /tmp/health0.json
+          wait_contract /tmp/contract.json
           sleep 10
           probe "$SHADOW_URL/fiveusd-native?sample=1&n=$RANDOM" /tmp/native1.json
           sleep 8
@@ -97,6 +118,8 @@ jobs:
           const fs=require('fs');
           const a=JSON.parse(fs.readFileSync('/tmp/native1.json','utf8'));
           const b=JSON.parse(fs.readFileSync('/tmp/native2.json','utf8'));
+          const expected=process.env.EXPECTED_RUNTIME_CONTRACT;
+          if(a.runtimeContract!==expected||b.runtimeContract!==expected) throw new Error('stale runtime contract');
           if(a.ok!==true||b.ok!==true) throw new Error('shadow endpoint not ok');
           if(a.enabled!==true||a.mode!=='shadow'||a.shadowOnly!==true) throw new Error('shadow mode contract mismatch');
           if(a.legacyShadowDisabled!==true) throw new Error('legacy isolation missing');
@@ -113,6 +136,7 @@ jobs:
           }
           if(Number(b.candidateShadow?.maxRefereeStartsPerTick||0)!==0) throw new Error('candidate referee start cap still active');
           console.log('NATIVE_UNRESTRICTED_PASS',JSON.stringify({
+            runtimeContract:b.runtimeContract,
             firstLiveAt:a.live?.fetchedAt,
             secondLiveAt:b.live?.fetchedAt,
             live:b.board?.counts?.live,
