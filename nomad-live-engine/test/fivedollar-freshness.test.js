@@ -34,8 +34,9 @@ test('a future provider-native timestamp is accepted only when explicitly declar
 });
 
 test('observed freshness expires at the configured boundary',()=>{
-  assert.equal(assessFiveUsdQuoteFreshness(ready({lastSeenAt:at-90_000}),{at,maxAgeMs:90_000}).eligible,true);
-  const stale=assessFiveUsdQuoteFreshness(ready({lastSeenAt:at-90_001}),{at,maxAgeMs:90_000});
+  const boundary=ready({lastSeenAt:at-90_000,lastChangedAt:at-90_000});
+  assert.equal(assessFiveUsdQuoteFreshness(boundary,{at,maxAgeMs:90_000}).eligible,true);
+  const stale=assessFiveUsdQuoteFreshness(ready({lastSeenAt:at-90_001,lastChangedAt:at-90_001}),{at,maxAgeMs:90_000});
   assert.equal(stale.eligible,false);
   assert.equal(stale.reason,'QUOTE_STALE');
 });
@@ -54,7 +55,7 @@ test('fingerprint and change chronology are required for an eligible observed qu
 test('freshness summary is independent from voting authority',()=>{
   const summary=summarizeFiveUsdFreshness([
     ready({sourceId:'source5',voteEligible:false}),
-    ready({sourceId:'source6',lastSeenAt:at-100_000,voteEligible:false}),
+    ready({sourceId:'source6',lastSeenAt:at-100_000,lastChangedAt:at-100_000,voteEligible:false}),
   ],{at,maxAgeMs:90_000});
   assert.equal(summary.total,2);
   assert.equal(summary.fresh,1);
