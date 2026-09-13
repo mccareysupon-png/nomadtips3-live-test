@@ -1,14 +1,11 @@
 name = "nomadtips3-engine-343"
-main = "src/index-3s.js"
+main = "src/pause.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
-# 3.43 guarded 3-second cadence wrapper; base engine stays in src/index.js
+# Temporarily paused while 3.41 is recovered. No cron and no alarm re-arm.
 
 [observability]
 enabled = true
-
-[triggers]
-crons = ["* * * * *"]
 
 [[services]]
 binding = "HUB"
