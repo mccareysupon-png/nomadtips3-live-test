@@ -78,17 +78,37 @@ export class FiveUsdNativeRuntime{
     return ((await tx.get(REQUEST_RATE_KEY))||[]).filter(row=>at-Number(row?.at||0)<RATE_WINDOW_MS&&Number(row?.count||0)>0);
   }
 
+  _usage(rows,kind){
+    const totalUsed=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
+    const laneUsed=rows.filter(row=>row.kind===kind).reduce((sum,row)=>sum+Number(row.count||0),0);
+    const globalCeiling=this.globalBudget();
+    const configuredLaneCeiling=this.laneBudget(kind);
+    const laneCeiling=configuredLaneCeiling>0?configuredLaneCeiling:null;
+    return {totalUsed,laneUsed,globalCeiling,laneCeiling};
+  }
+
+  async _capacity(kind){
+    const rows=await this._rows();
+    const at=this.clock();
+    const {totalUsed,laneUsed,globalCeiling,laneCeiling}=this._usage(rows,kind);
+    const globalRemaining=Math.max(0,globalCeiling-totalUsed);
+    const laneRemaining=laneCeiling===null?globalRemaining:Math.max(0,laneCeiling-laneUsed);
+    const available=Math.max(0,Math.min(globalRemaining,laneRemaining));
+    const oldestAt=Number(rows[0]?.at||at);
+    return {
+      available,
+      bucket:globalRemaining<=0?'global':laneRemaining<=0?kind:null,
+      retryAfterMs:Math.max(MIN_RETRY_MS,RATE_WINDOW_MS-(at-oldestAt)),
+    };
+  }
+
   async _reserve(kind,count){
     const wanted=Math.max(1,Math.round(Number(count)||1));
     const at=this.clock();
     let result=null;
     await this.storage.transaction(async tx=>{
       const rows=await this._rows(tx);
-      const totalUsed=rows.reduce((sum,row)=>sum+Number(row.count||0),0);
-      const laneUsed=rows.filter(row=>row.kind===kind).reduce((sum,row)=>sum+Number(row.count||0),0);
-      const globalCeiling=this.globalBudget();
-      const configuredLaneCeiling=this.laneBudget(kind);
-      const laneCeiling=configuredLaneCeiling>0?configuredLaneCeiling:null;
+      const {totalUsed,laneUsed,globalCeiling,laneCeiling}=this._usage(rows,kind);
       const oldestAt=Number(rows[0]?.at||at);
       const retryAfterMs=Math.max(MIN_RETRY_MS,RATE_WINDOW_MS-(at-oldestAt));
 
@@ -146,22 +166,30 @@ export class FiveUsdNativeRuntime{
   async upcomingRate(){return this._rateStats('scheduled');}
   async refereeRate(){return this._rateStats('referee');}
 
+  async _pageReservation(kind,configuredMaxPages){
+    const capacity=await this._capacity(kind);
+    if(capacity.available<1) throw new FiveUsdRateGuardError(capacity.bucket||kind,capacity.retryAfterMs);
+    const allowedPages=Math.max(1,Math.min(configuredMaxPages,capacity.available));
+    const reservation=await this._reserve(kind,allowedPages);
+    if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
+    return {...reservation,allowedPages};
+  }
+
   async refreshLive({force=false}={}){
     if(!this.enabled()) return null;
     const previous=await this.storage.get(LIVE_KEY)||null,at=this.clock();
     if(!force&&finite(previous?.fetchedAt)&&at-Number(previous.fetchedAt)<this.liveRefreshMs()) return previous;
     if(this.livePromise) return this.livePromise;
     this.livePromise=(async()=>{
-      const maxPages=this.liveMaxPages();
-      const reservation=await this._reserve('live',maxPages);
-      if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
+      const configuredMaxPages=this.liveMaxPages();
+      const reservation=await this._pageReservation('live',configuredMaxPages);
       let actual=0;
       try{
-        const result=await fetchLiveFixtures({apiKey:this.apiKey(),fetchImpl:this.fetchImpl,maxPages,observedAt:at});
+        const result=await fetchLiveFixtures({apiKey:this.apiKey(),fetchImpl:this.fetchImpl,maxPages:reservation.allowedPages,observedAt:at});
         actual=result.requests;
         const snapshot={
           fetchedAt:at,fixtures:result.fixtures,requests:result.requests,rate:result.rate,truncated:Boolean(result.truncated),
-          pageSize:FIVEUSD_CADENCE.livePageSize,refreshMs:this.liveRefreshMs(),maxPages,
+          pageSize:FIVEUSD_CADENCE.livePageSize,refreshMs:this.liveRefreshMs(),maxPages:reservation.allowedPages,configuredMaxPages,
         };
         await this.storage.put(LIVE_KEY,snapshot);
         return snapshot;
@@ -178,19 +206,18 @@ export class FiveUsdNativeRuntime{
     if(!force&&finite(previous?.fetchedAt)&&at-Number(previous.fetchedAt)<this.upcomingRefreshMs()) return previous;
     if(this.upcomingPromise) return this.upcomingPromise;
     this.upcomingPromise=(async()=>{
-      const maxPages=this.upcomingMaxPages();
-      const reservation=await this._reserve('scheduled',maxPages);
-      if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
+      const configuredMaxPages=this.upcomingMaxPages();
+      const reservation=await this._pageReservation('scheduled',configuredMaxPages);
       let actual=0;
       try{
         const endAt=at+this.upcomingWindowMs();
         const result=await fetchScheduledFixtures({
-          apiKey:this.apiKey(),fetchImpl:this.fetchImpl,startTime:at,endTime:endAt,maxPages,observedAt:at,
+          apiKey:this.apiKey(),fetchImpl:this.fetchImpl,startTime:at,endTime:endAt,maxPages:reservation.allowedPages,observedAt:at,
         });
         actual=result.requests;
         const snapshot={
           fetchedAt:at,fixtures:result.fixtures,requests:result.requests,rate:result.rate,truncated:Boolean(result.truncated),
-          refreshMs:this.upcomingRefreshMs(),windowStart:at,windowEnd:endAt,maxPages,
+          refreshMs:this.upcomingRefreshMs(),windowStart:at,windowEnd:endAt,maxPages:reservation.allowedPages,configuredMaxPages,
         };
         await this.storage.put(UPCOMING_KEY,snapshot);
         return snapshot;
@@ -247,6 +274,8 @@ export class FiveUsdNativeRuntime{
     if(!force&&finite(previous?.observedAt)&&this.clock()-Number(previous.observedAt)<this.refereeRefreshMs()) return previous;
     if(this.refereePromises.has(id)) return this.refereePromises.get(id);
     const promise=(async()=>{
+      const capacity=await this._capacity('referee');
+      if(capacity.available<1) throw new FiveUsdRateGuardError(capacity.bucket||'referee',capacity.retryAfterMs);
       const reservation=await this._reserve('referee',1);
       if(!reservation.ok) throw new FiveUsdRateGuardError(reservation.bucket,reservation.retryAfterMs);
       let actual=0;
