@@ -30,7 +30,7 @@ async function liveSnapshot(request,env){
 }
 
 const LIVE_ASSETS=new Set([
-  '/index.html','/live-stable-343.js','/live-stable-343.css','/full-odds-bulk-343.js',
+  '/index.html','/live-stable-343.js','/live-stable-343.css','/full-odds-bulk-343.js','/full-odds-10book-343.js',
   '/event-flow-343.js','/event-flow-343.css','/readability-343.css','/app.css','/engine.css',
   '/ui.js','/odds-format-343.js','/football-language-343.js','/language-menu-343.js',
   '/language-es-343.js','/language-fr-343.js','/language-pt-br-343.js','/language-ar-343.js','/language-id-343.js',
