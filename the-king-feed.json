@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-14T06:26:29Z",
+  "updated_at": "2026-09-14T14:13:13Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -1299,8 +1299,8 @@
       "edge": 41.3,
       "ev": 0.6727,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "0-1",
       "locked_at": "2026-09-14T01:44:32Z",
       "source_url": "https://www.goaloo.com/football/georgia-primera-division-fc-meshakhte-tkibuli-vs-fc-metalurgi-rustavi/h2h-2924131",
       "summary_url": "https://www.goaloo.com/football/georgia-primera-division-fc-meshakhte-tkibuli-vs-fc-metalurgi-rustavi/summary-2924131",
@@ -1360,7 +1360,12 @@
         "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T14:13:13Z"
     },
     {
       "id": "3eafe36f7254d632-AH-AWAY-1p25",
@@ -3424,8 +3429,8 @@
       "edge": 24.1,
       "ev": 0.3887,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "1-0",
       "locked_at": "2026-09-14T01:44:26Z",
       "source_url": "https://www.goaloo.com/football/singapore-league-geylang-international-vs-tanjong-pagar-utd/h2h-3047386",
       "summary_url": "https://www.goaloo.com/football/singapore-league-geylang-international-vs-tanjong-pagar-utd/summary-3047386",
@@ -3485,7 +3490,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T14:13:13Z"
     },
     {
       "id": "bfeb76241010a0fa-OU-UNDER-2p5",
@@ -66508,6 +66518,186 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-14T01:13:01Z"
+    },
+    {
+      "id": "be02e9e29c36fc12-AH-HOME-0p75",
+      "goaloo_id": "2924131",
+      "date": "2026-09-14",
+      "kickoff": "2026-09-14 12:00:00",
+      "league": "Georgia Primera Division",
+      "home": "Fc Meshakhte Tkibuli",
+      "away": "FC Metalurgi Rustavi",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Fc Meshakhte Tkibuli +0.75",
+      "side": "home",
+      "odds": 1.85,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9023,
+      "model_probability": 0.9023,
+      "market_fair_probability": 0.489,
+      "market_edge": 0.4134,
+      "edge": 41.3,
+      "ev": 0.6727,
+      "required_confidence": 0.6,
+      "result": "HALF_LOSS",
+      "ft": "0-1",
+      "locked_at": "2026-09-14T01:44:32Z",
+      "source_url": "https://www.goaloo.com/football/georgia-primera-division-fc-meshakhte-tkibuli-vs-fc-metalurgi-rustavi/h2h-2924131",
+      "summary_url": "https://www.goaloo.com/football/georgia-primera-division-fc-meshakhte-tkibuli-vs-fc-metalurgi-rustavi/summary-2924131",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.581,
+        "lambda_away": 0.559,
+        "home_win": 0.6387,
+        "draw": 0.2637,
+        "away_win": 0.0976,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2423,
+          "gd_edge": 0.6335,
+          "clean_sheet_edge": 0.2976,
+          "failed_to_score_edge": 0.1024,
+          "bounded_adjustment": 0.0279,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T14:13:13Z"
+    },
+    {
+      "id": "f16b390d3f43e6bb-OU-OVER-3p5",
+      "goaloo_id": "3047386",
+      "date": "2026-09-14",
+      "kickoff": "2026-09-14 11:30:00",
+      "league": "Singapore League",
+      "home": "Geylang International",
+      "away": "Tanjong Pagar Utd",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 3.5,
+      "pick": "Over 3.5",
+      "side": null,
+      "odds": 1.92,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7233,
+      "model_probability": 0.7233,
+      "market_fair_probability": 0.4825,
+      "market_edge": 0.2408,
+      "edge": 24.1,
+      "ev": 0.3887,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "1-0",
+      "locked_at": "2026-09-14T01:44:26Z",
+      "source_url": "https://www.goaloo.com/football/singapore-league-geylang-international-vs-tanjong-pagar-utd/h2h-3047386",
+      "summary_url": "https://www.goaloo.com/football/singapore-league-geylang-international-vs-tanjong-pagar-utd/summary-3047386",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.684,
+        "lambda_away": 3.271,
+        "home_win": 0.1361,
+        "draw": 0.1554,
+        "away_win": 0.7085,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.5122,
+          "gd_edge": -0.8759,
+          "clean_sheet_edge": 0.0,
+          "failed_to_score_edge": -0.0634,
+          "bounded_adjustment": -0.0392,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T14:13:13Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
