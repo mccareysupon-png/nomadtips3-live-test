@@ -1,0 +1,43 @@
+name: Diagnose 3.43 Bulk Bookmakers
+
+on:
+  push:
+    branches: [work/nomad343-stable-bulk-viewer-20260914]
+    paths:
+      - '.github/workflows/diag-343-bulk-bookmakers.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inspect live bulk odds payload
+        env:
+          FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+        run: |
+          node - <<'NODE'
+          const key=process.env.FIVEDOLLAR_API_KEY;
+          if(!key) throw new Error('missing key');
+          const books='bet365,pinnacle,crown,1xbet,12bet,interwetten,macauslot,18bet,vcbet,easybets';
+          async function test(label,url){
+            const r=await fetch(url,{headers:{authorization:`Bearer ${key}`,accept:'application/json'}});
+            const t=await r.text(); let j={}; try{j=JSON.parse(t)}catch{}
+            console.log(label,'HTTP',r.status,'RATE',r.headers.get('x-ratelimit-remaining'));
+            const rows=Array.isArray(j?.data)?j.data:Array.isArray(j?.data?.data)?j.data.data:Array.isArray(j?.fixtures)?j.fixtures:[];
+            console.log(label,'ROWS',rows.length);
+            const f=rows.find(x=>x?.odds||x?.bookmakers||x?.markets||x?.bet365)||rows[0]||{};
+            console.log(label,'FIXTURE',f.id||f.fixture_id||null);
+            console.log(label,'TOP_KEYS',Object.keys(f));
+            console.log(label,'ODDS_KEYS',f.odds&&typeof f.odds==='object'?Object.keys(f.odds):null);
+            console.log(label,'BOOKMAKERS_TYPE',Array.isArray(f.bookmakers)?'array':typeof f.bookmakers,'COUNT',Array.isArray(f.bookmakers)?f.bookmakers.length:null);
+            if(Array.isArray(f.bookmakers)) console.log(label,'BOOK_KEYS',f.bookmakers.map(x=>x.slug||x.name||x.bookmaker?.slug||x.bookmaker?.name).filter(Boolean));
+            if(j?.error) console.log(label,'ERROR',j.error);
+          }
+          await test('BASE','https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=odds,events,stats&per_page=500');
+          await test('WITH_BOOKS',`https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=odds,events,stats&per_page=500&bookmakers=${encodeURIComponent(books)}`);
+          NODE
