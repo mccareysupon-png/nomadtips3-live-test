@@ -1,0 +1,46 @@
+name: Verify 3.43 Signal Stable Refresh Production
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/verify-343-signal-stable-refresh-production.yml'
+  workflow_dispatch:
+
+env:
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-server-prewarm-20260914
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Wait for production Signal assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$PROD_URL/signal.html?asset=$RANDOM$(date +%s)" || true)"
+            js="$(curl -fsS "$PROD_URL/signal.js?asset=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-signal-stable-refresh-v1' <<<"$html" && grep -Fq 'reconcileSignalBoard' <<<"$js" && ! grep -Fq "board.innerHTML=groups.map(matchCard).join('')" <<<"$js"; then
+              echo "PRODUCTION SIGNAL ASSETS READY attempt=$i"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'PRODUCTION_SIGNAL_ASSET_NOT_READY'
+          exit 1
+
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+
+      - name: Verify production expanded card stays mounted
+        run: TARGET_URL="$PROD_URL" node .github/scripts/test-343-signal-stable-refresh.js
