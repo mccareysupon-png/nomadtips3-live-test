@@ -7,32 +7,28 @@ FILES = [
 ]
 
 V2 = '<style data-nomad-nav-stability="343-nav-stable-v2">html{background:#101612;overflow-y:scroll;scrollbar-gutter:stable}body{margin:0;background:#101612}</style>'
-V3_PREFIX = '<style data-nomad-nav-stability="343-nav-stable-v3">'
-V4 = '<style data-nomad-nav-stability="343-nav-stable-v4">html{background:#101612;overflow-y:scroll;scrollbar-gutter:stable;font-family:Arial,Helvetica,sans-serif}*{box-sizing:border-box}body{margin:0;background:#101612}.topbar{position:sticky;top:0;z-index:30;background:#183d27;border-bottom:1px solid rgba(255,255,255,.08)}body .topbar-inner{width:100%;max-width:none;min-height:64px;margin:0;padding:0 max(clamp(6px,.8vw,14px),env(safe-area-inset-right,0px)) 0 max(clamp(6px,.8vw,14px),env(safe-area-inset-left,0px));display:grid!important;grid-template-columns:176px minmax(0,1fr) auto 88px auto!important;column-gap:24px!important;align-items:center}body .topbar-inner>div:first-child{grid-column:1;min-width:176px;width:176px}.brand{display:block;width:176px;height:35px;font-size:0;line-height:0;background:url("ball46-logo.svg") no-repeat left center/contain}.brand span{display:none}.version{display:none!important}body .topbar-inner>.topnav{grid-column:3;margin-left:0!important;display:flex;align-items:stretch;height:64px}.topnav a{display:flex;align-items:center;padding:0 15px;text-decoration:none;font-size:12px;font-weight:800;border-bottom:3px solid transparent}body .topbar-inner>.odds-format-control{grid-column:4}body .topbar-inner>.nomad343-language{grid-column:5}.shell{width:100%;max-width:none;margin:0;padding:18px max(clamp(6px,.8vw,14px),env(safe-area-inset-right,0px)) 72px max(clamp(6px,.8vw,14px),env(safe-area-inset-left,0px))}.mobile-nav{display:none}@media(max-width:760px){body .topbar-inner{min-height:60px;padding:0 max(4px,env(safe-area-inset-right,0px)) 0 max(4px,env(safe-area-inset-left,0px));display:flex!important;justify-content:center;position:relative}body .topbar-inner>div:first-child{min-width:156px;width:auto}.brand{width:156px;height:31px;background-position:center}body .topbar-inner>.topnav{display:none}.shell{padding:12px max(4px,env(safe-area-inset-right,0px)) 72px max(4px,env(safe-area-inset-left,0px))}.mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:56px;display:grid;grid-template-columns:repeat(3,1fr)}}</style>'
+V5 = '<style data-nomad-nav-stability="343-nav-stable-v5">html{background:#101612;overflow-y:scroll;scrollbar-gutter:stable;font-family:Arial,Helvetica,sans-serif}*{box-sizing:border-box}body{margin:0;background:#101612}.topbar{position:sticky;top:0;z-index:30;background:#183d27;border-bottom:1px solid rgba(255,255,255,.08)}body .topbar-inner{position:relative;width:100%;max-width:none;min-height:64px;margin:0;padding:0 max(clamp(6px,.8vw,14px),env(safe-area-inset-right,0px)) 0 max(clamp(6px,.8vw,14px),env(safe-area-inset-left,0px));display:flex!important;align-items:center;gap:24px}.brand{display:block;width:176px;height:35px;font-size:0;line-height:0;background:url("ball46-logo.svg") no-repeat left center/contain}.brand span{display:none}.version{display:none!important}body .topbar-inner>.topnav{margin-left:auto!important;display:flex;align-items:stretch;height:64px}.topnav a{display:flex;align-items:center;padding:0 15px;text-decoration:none;font-size:12px;font-weight:800;border-bottom:3px solid transparent}body .topbar-inner>.odds-format-control{position:absolute!important;left:220px!important;right:auto!important;top:15px!important;transform:none!important;margin:0!important;z-index:34}body .topbar-inner>.nomad343-language{position:absolute!important;left:332px!important;right:auto!important;top:15px!important;transform:none!important;margin:0!important;z-index:34}.shell{width:100%;max-width:none;margin:0;padding:18px max(clamp(6px,.8vw,14px),env(safe-area-inset-right,0px)) 72px max(clamp(6px,.8vw,14px),env(safe-area-inset-left,0px))}.mobile-nav{display:none}@media(max-width:760px){body .topbar-inner{min-height:60px;padding:0 max(4px,env(safe-area-inset-right,0px)) 0 max(4px,env(safe-area-inset-left,0px));justify-content:center}.brand{width:156px;height:31px;background-position:center}body .topbar-inner>.topnav{display:none}.shell{padding:12px max(4px,env(safe-area-inset-right,0px)) 72px max(4px,env(safe-area-inset-left,0px))}.mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:56px;display:grid;grid-template-columns:repeat(3,1fr)}body .topbar-inner>.odds-format-control{left:8px!important;right:auto!important;top:50%!important;transform:translateY(-50%)!important}body .topbar-inner>.nomad343-language{left:auto!important;right:10px!important;top:50%!important;transform:translateY(-50%)!important}}</style>'
 
 
 def replace_critical(text, path):
-    if 'data-nomad-nav-stability="343-nav-stable-v4"' in text:
-        if text.count('data-nomad-nav-stability="343-nav-stable-v4"') != 1:
-            raise SystemExit(f'{path}: duplicate v4 critical style')
-        return text
+    for version in ('v5','v4','v3'):
+        marker = f'data-nomad-nav-stability="343-nav-stable-{version}"'
+        if marker in text:
+            start = text.index(f'<style {marker}>')
+            end = text.index('</style>', start) + len('</style>')
+            return text[:start] + V5 + text[end:]
     if V2 in text:
-        return text.replace(V2, V4, 1)
-    marker = 'data-nomad-nav-stability="343-nav-stable-v3"'
-    if marker in text:
-        start = text.index('<style data-nomad-nav-stability="343-nav-stable-v3">')
-        end = text.index('</style>', start) + len('</style>')
-        return text[:start] + V4 + text[end:]
-    raise SystemExit(f'{path}: expected nav critical style v2/v3/v4')
+        return text.replace(V2, V5, 1)
+    raise SystemExit(f'{path}: expected nav critical style v2-v5')
 
 for path in FILES:
     text = replace_critical(path.read_text(), path)
-    if 'app.css?v=343-nav-stable-v2' in text:
-        text = text.replace('app.css?v=343-nav-stable-v2', 'app.css?v=343-nav-stable-v4', 1)
-    elif 'app.css?v=343-nav-stable-v3' in text:
-        text = text.replace('app.css?v=343-nav-stable-v3', 'app.css?v=343-nav-stable-v4', 1)
-    elif text.count('app.css?v=343-nav-stable-v4') != 1:
-        raise SystemExit(f'{path}: expected app v2/v3/v4 exactly once')
+    for old in ('app.css?v=343-nav-stable-v2','app.css?v=343-nav-stable-v3','app.css?v=343-nav-stable-v4'):
+        if old in text:
+            text = text.replace(old, 'app.css?v=343-nav-stable-v5', 1)
+            break
+    if text.count('app.css?v=343-nav-stable-v5') != 1:
+        raise SystemExit(f'{path}: expected app v2-v5 exactly once')
     path.write_text(text)
 
 stats = Path('nomad-live-343/statistics.html')
@@ -55,11 +51,11 @@ stats.write_text(text)
 
 for path in FILES:
     text = path.read_text()
-    if text.count('data-nomad-nav-stability="343-nav-stable-v4"') != 1:
-        raise SystemExit(f'{path}: missing v4 critical nav style')
-    if text.count('app.css?v=343-nav-stable-v4') != 1:
-        raise SystemExit(f'{path}: missing app v4 cachebuster')
+    if text.count('data-nomad-nav-stability="343-nav-stable-v5"') != 1:
+        raise SystemExit(f'{path}: missing v5 critical nav style')
+    if text.count('app.css?v=343-nav-stable-v5') != 1:
+        raise SystemExit(f'{path}: missing app v5 cachebuster')
     if text.count('<nav class="topnav">') != 1 or text.count('<nav class="mobile-nav">') != 1:
         raise SystemExit(f'{path}: nav DOM not canonical')
 
-print('3.43 nav v4: reserved Logo/Nav/Odds/Language slots before JS injection; only three page HTML files')
+print('3.43 nav v5: ODDS and Language moved out of nav flow; main navigation remains fixed')
