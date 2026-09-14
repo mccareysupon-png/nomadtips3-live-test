@@ -11,31 +11,42 @@ NEW_STYLE = '<style data-nomad-nav-stability="343-nav-stable-v3">html{background
 
 for path in FILES:
     text = path.read_text()
-    if text.count(OLD_STYLE) != 1:
-        raise SystemExit(f'{path}: expected nav-stable-v2 style exactly once')
-    text = text.replace(OLD_STYLE, NEW_STYLE, 1)
-    if text.count('app.css?v=343-nav-stable-v2') != 1:
-        raise SystemExit(f'{path}: expected app v2 exactly once')
-    text = text.replace('app.css?v=343-nav-stable-v2', 'app.css?v=343-nav-stable-v3', 1)
+    if OLD_STYLE in text:
+        if text.count(OLD_STYLE) != 1:
+            raise SystemExit(f'{path}: duplicate nav-stable-v2 style')
+        text = text.replace(OLD_STYLE, NEW_STYLE, 1)
+    elif text.count(NEW_STYLE) != 1:
+        raise SystemExit(f'{path}: expected exactly one v2 or v3 critical style')
+
+    if 'app.css?v=343-nav-stable-v2' in text:
+        if text.count('app.css?v=343-nav-stable-v2') != 1:
+            raise SystemExit(f'{path}: duplicate app v2')
+        text = text.replace('app.css?v=343-nav-stable-v2', 'app.css?v=343-nav-stable-v3', 1)
+    elif text.count('app.css?v=343-nav-stable-v3') != 1:
+        raise SystemExit(f'{path}: expected exactly one app v2 or v3')
     path.write_text(text)
 
 stats = Path('nomad-live-343/statistics.html')
 text = stats.read_text()
 old_nav = '<nav class="statistics-nav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>'
 new_nav = '<nav class="topnav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>'
-if text.count(old_nav) != 1:
-    raise SystemExit('statistics.html: expected statistics-nav exactly once')
-text = text.replace(old_nav, new_nav, 1)
+if old_nav in text:
+    if text.count(old_nav) != 1:
+        raise SystemExit('statistics.html: duplicate statistics-nav')
+    text = text.replace(old_nav, new_nav, 1)
+elif text.count(new_nav) != 1:
+    raise SystemExit('statistics.html: canonical topnav missing')
+
 mobile_nav = '<nav class="mobile-nav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav>'
-if mobile_nav in text:
-    raise SystemExit('statistics.html: mobile-nav already exists unexpectedly')
-needle = '</main>\n<script src="odds-format-343.js'
-if needle not in text:
-    raise SystemExit('statistics.html: script insertion point missing')
-text = text.replace(needle, '</main>\n' + mobile_nav + '\n<script src="odds-format-343.js', 1)
+if mobile_nav not in text:
+    needle = '</main>\n<script src="odds-format-343.js'
+    if needle not in text:
+        raise SystemExit('statistics.html: script insertion point missing')
+    text = text.replace(needle, '</main>\n' + mobile_nav + '\n<script src="odds-format-343.js', 1)
+elif text.count(mobile_nav) != 1:
+    raise SystemExit('statistics.html: duplicate mobile-nav')
 stats.write_text(text)
 
-# Hard scope/invariant checks.
 for path in FILES:
     text = path.read_text()
     if text.count('data-nomad-nav-stability="343-nav-stable-v3"') != 1:
@@ -47,4 +58,4 @@ for path in FILES:
     if text.count('<nav class="mobile-nav">') != 1:
         raise SystemExit(f'{path}: mobile nav not canonical')
 
-print('patched 3.43 navigation only: canonical nav DOM + critical geometry for Live/Signals/Statistics')
+print('3.43 navigation patch verified/applied: only Live/Signals/Statistics nav shell')
