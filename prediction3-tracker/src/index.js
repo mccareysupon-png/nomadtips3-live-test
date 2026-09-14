@@ -1,4 +1,4 @@
-const LEDGER_URL='https://www.nomadtips3.com/prediction3/data/ledger.json';
+const LEDGER_URL='https://www.nomadtips3.com/prediction3/data/current.json';
 const LIVE_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/feed';
 const FINAL_URL='https://nomadtips3-live-score-feed-v3.mccarey-supon.workers.dev/finals';
 const API_FOOTBALL_BASE='https://v3.football.api-sports.io';
@@ -55,7 +55,13 @@ function editDistance(a,b){
   return prev[b.length];
 }
 function tokenLike(a,b){if(a===b)return true;if(a.length>=4&&b.length>=4&&a.slice(0,4)===b.slice(0,4))return true;return a.length>=5&&b.length>=5&&Math.abs(a.length-b.length)<=1&&editDistance(a,b)<=1;}
-export function teamScore(a,b){const aa=tokens(a),bb=tokens(b);if(!aa.length||!bb.length)return 0;let matched=0;for(const x of aa)if(bb.some(y=>tokenLike(x,y)))matched+=1;return matched/aa.length;}
+export function teamScore(a,b){
+  const aa=tokens(a),bb=tokens(b);
+  if(!aa.length||!bb.length)return 0;
+  const matchedA=aa.filter(x=>bb.some(y=>tokenLike(x,y))).length;
+  const matchedB=bb.filter(y=>aa.some(x=>tokenLike(x,y))).length;
+  return Math.max(matchedA/aa.length,matchedB/bb.length);
+}
 function rowId(row){return String(row?.id??row?.fixtureId??'');}
 export function fixtureIdentityMatches(item,row){return Boolean(item&&row&&teamScore(item?.home,row?.home)>=0.75&&teamScore(item?.away,row?.away)>=0.75);}
 export function kickoffMs(item){const raw=item?.tracking?.kickoffUtc||item?.kickoffAt||null;if(!raw)return null;const value=Date.parse(raw);return Number.isFinite(value)?value:null;}
@@ -63,7 +69,10 @@ function kickoffDate(item){const value=kickoffMs(item);return value===null?null:
 export function finalFallbackEligible(item,at=now()){const kickoff=kickoffMs(item);return kickoff!==null&&Number(at)>=kickoff+FINAL_FALLBACK_AFTER_MS;}
 export function fixtureFor(item,rows,{knownFixtureId=null,final=false,at=now()}={}){
   const configuredIds=[item?.tracking?.fixtureId,item?.fixtureId].map(value=>String(value??'').trim()).filter(Boolean);
-  for(const id of configuredIds){const exact=(rows||[]).find(row=>rowId(row)===id);if(exact)return exact;}
+  for(const id of configuredIds){
+    const exact=(rows||[]).find(row=>rowId(row)===id);
+    if(exact&&fixtureIdentityMatches(item,exact))return exact;
+  }
   const learnedId=String(knownFixtureId??'').trim();
   if(learnedId){const learned=(rows||[]).find(row=>rowId(row)===learnedId);if(learned&&fixtureIdentityMatches(item,learned))return learned;}
   if(final&&!finalFallbackEligible(item,at))return null;
@@ -128,7 +137,7 @@ export class Prediction3Tracker{
         if(!item?.id)continue;const previous=sanitizeExisting(item,byId.get(String(item.id))||{},refreshedAt);const record=recordFromPick(item,previous);const configuredFixtureId=String(item?.tracking?.fixtureId??item?.fixtureId??'').trim();let knownFixtureId=record.fixtureId||previous.fixtureId||null;
         if(knownFixtureId&&!configuredFixtureId&&!String(knownFixtureId).startsWith('api-football:')){const allRows=[...(Array.isArray(live?.matches)?live.matches:[]),...(Array.isArray(finals?.finals)?finals.finals:[])];const learnedRow=allRows.find(row=>rowId(row)===String(knownFixtureId));if(learnedRow&&!fixtureIdentityMatches(item,learnedRow)){record.fixtureId=null;knownFixtureId=null;}}
         const tcFinalRow=fixtureFor(item,Array.isArray(finals?.finals)?finals.finals:[],{knownFixtureId,final:true,at:refreshedAt});const liveRow=fixtureFor(item,Array.isArray(live?.matches)?live.matches:[],{knownFixtureId,final:false,at:refreshedAt});let apiFinalRow=null;
-        if(!tcFinalRow&&!liveRow&&!record.result&&finalFallbackEligible(item,refreshedAt)){const apiRows=await getApiFinals(item);apiFinalRow=fixtureFor(item,apiRows,{knownFixtureId,final:true,at:refreshedAt});}
+        if(!tcFinalRow&&!record.result&&finalFallbackEligible(item,refreshedAt)){const apiRows=await getApiFinals(item);apiFinalRow=fixtureFor(item,apiRows,{knownFixtureId,final:true,at:refreshedAt});}
         const finalRow=tcFinalRow||apiFinalRow;
         if(finalRow){
           const finalScore=scorePair(finalRow);const settlement=settleMarket(item,finalScore);const apiUsed=Boolean(apiFinalRow&&finalRow===apiFinalRow);record.fixtureId=rowId(finalRow)||record.fixtureId;record.fixtureProvider=apiUsed?'API-Football':'TotalCorner V3';record.settlementSource=apiUsed?'API-Football fallback':'TotalCorner V3';record.source=record.settlementSource;record.status='FT';record.score=finalScore;record.minute=null;
