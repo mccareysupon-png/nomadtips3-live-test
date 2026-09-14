@@ -1,0 +1,95 @@
+name: Verify Promote 3.43 Live Signal Summary
+on:
+  push:
+    branches:
+      - work/nomad343-live-signal-summary-20260914
+    paths:
+      - .github/workflows/verify-promote-343-live-signal-summary.yml
+jobs:
+  verify-promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: backup/pre-343-live-signal-summary-20260914
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-live-signal-summary-20260914
+          fetch-depth: 30
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify source and scope
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/live-stable-343.js
+          node --check .github/scripts/test-343-live-signal-summary.js
+          grep -Fq 'signal-lock-summary' nomad-live-343/live-stable-343.css
+          grep -Fq 'lockedSignalDetails' nomad-live-343/live-stable-343.js
+          grep -Fq '343-live-signal-summary-v1' nomad-live-343/index.html
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          changed="$(git diff --name-only "origin/$ROLLBACK_REF"..HEAD)"
+          echo "$changed"
+          if echo "$changed" | grep -Ev '^(nomad-live-343/(index.html|live-stable-343.css|live-stable-343.js)|\.github/scripts/(patch-343-live-signal-summary.py|test-343-live-signal-summary.js)|\.github/workflows/(deploy-343-live-signal-summary.yml|verify-promote-343-live-signal-summary.yml))$' | grep -q .; then
+            echo UNEXPECTED_SCOPE_CHANGE
+            exit 1
+          fi
+      - name: Dry run viewers
+        run: |
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Deploy canary viewer
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+      - name: Wait for canary assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$CANARY_URL/index.html?asset=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-live-signal-summary-v1' <<<"$html"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test canary desktop and mobile
+        run: TARGET_URL="$CANARY_URL" node .github/scripts/test-343-live-signal-summary.js
+      - name: Deploy production viewer
+        id: prod_deploy
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Wait for production assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$PROD_URL/index.html?asset=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-live-signal-summary-v1' <<<"$html"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test production desktop and mobile
+        run: TARGET_URL="$PROD_URL" node .github/scripts/test-343-live-signal-summary.js
+      - name: Promote to active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD || { echo ACTIVE_BRANCH_MOVED_OR_DIVERGED; exit 1; }
+          git push origin HEAD:"$ACTIVE_BRANCH"
+      - name: Roll back production viewer on failure after deploy
+        if: failure() && steps.prod_deploy.outcome == 'success'
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout --detach "origin/$ROLLBACK_REF"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
