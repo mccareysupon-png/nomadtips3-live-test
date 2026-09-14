@@ -1,0 +1,54 @@
+/* NOMAD Live 3.43 adaptive wide shell — presentation only.
+   Scope: public 3.43 shell + header inner width.
+   Does not alter feed, odds, event, signal, statistics or engine logic. */
+
+.shell,
+.topbar-inner{
+  width:calc(100% - 32px)!important;
+  max-width:1920px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  box-sizing:border-box!important;
+}
+
+/* Tablet: 20px breathing room per side. */
+@media (min-width:701px) and (max-width:1023px){
+  .shell,
+  .topbar-inner{
+    width:calc(100% - 40px)!important;
+  }
+}
+
+/* Laptop: 24px per side. 1280 -> 1232, 1366 -> 1318, 1440 -> 1392. */
+@media (min-width:1024px) and (max-width:1499px){
+  .shell,
+  .topbar-inner{
+    width:calc(100% - 48px)!important;
+  }
+}
+
+/* Desktop: 32px per side. 1600 -> 1536. */
+@media (min-width:1500px) and (max-width:1799px){
+  .shell,
+  .topbar-inner{
+    width:calc(100% - 64px)!important;
+  }
+}
+
+/* Large desktop: 40px per side, capped at 1920px. 1920 -> 1840. */
+@media (min-width:1800px){
+  .shell,
+  .topbar-inner{
+    width:calc(100% - 80px)!important;
+    max-width:1920px!important;
+  }
+}
+
+/* Mobile stays inset rather than edge-to-edge: 16px per side. */
+@media (max-width:700px){
+  .shell,
+  .topbar-inner{
+    width:calc(100% - 32px)!important;
+    max-width:none!important;
+  }
+}
