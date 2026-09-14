@@ -1,0 +1,132 @@
+name: Deploy 3.43 Statistics Truth
+
+on:
+  push:
+    branches:
+      - work/nomad343-statistics-truth-final-20260914
+    paths:
+      - .github/workflows/deploy-343-statistics-truth.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BASE_SHA: 2650618d373199ce136abbdc4ebd2d2f8c592aa3
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: rollback/pre-343-statistics-truth-prod-20260914
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-statistics-truth-final-20260914
+          fetch-depth: 50
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify production base
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=10
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
+          test "$(git rev-parse origin/$ROLLBACK_REF)" = "$BASE_SHA"
+      - name: Apply exact patch
+        run: python3 .github/scripts/patch-343-statistics-truth.py
+      - name: Validate four-file scope and settlement rules
+        run: |
+          set -euo pipefail
+          git diff --name-only | sort > /tmp/changed.txt
+          cat /tmp/changed.txt
+          test "$(wc -l < /tmp/changed.txt)" -eq 4
+          grep -Fxq 'nomad-live-343/statistics.html' /tmp/changed.txt
+          grep -Fxq 'nomad-live-343/statistics.js' /tmp/changed.txt
+          grep -Fxq 'workers/nomadtips3-5usd-hub-343/src/index-v5.js' /tmp/changed.txt
+          grep -Fxq 'workers/nomadtips3-engine-343/src/index.js' /tmp/changed.txt
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check nomad-live-343/statistics.js
+          grep -Fq 'status=finished' workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq 'settlement_pending' workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "function periodCompleteForSignal(s,f){return Boolean(MARKET_RULES[s?.market])&&isFinished(f)}" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq 'data-push' nomad-live-343/statistics.html
+          grep -Fq '<th>#</th>' nomad-live-343/statistics.html
+          node --input-type=module - <<'NODE'
+          import {settleOu,settleAh} from './workers/nomadtips3-engine-343/src/market-core.js';
+          if(settleOu(2,2,'OVER')!=='PUSH')process.exit(11);
+          if(settleAh(1,1,0,'HOME')!=='PUSH')process.exit(12);
+          if(settleAh(1,0,-0.75,'HOME')!=='HALF_WIN')process.exit(13);
+          console.log('settlement checks passed');
+          NODE
+      - name: Commit source patch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/statistics.html nomad-live-343/statistics.js workers/nomadtips3-5usd-hub-343/src/index-v5.js workers/nomadtips3-engine-343/src/index.js
+          git commit -m 'fix(343): settle confirmed final results and show push order [skip ci]'
+          git push origin HEAD:work/nomad343-statistics-truth-final-20260914
+      - name: Verify active branch before deploy
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=5
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
+      - name: Dry run existing workers
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
+          (cd workers/nomadtips3-engine-343 && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Deploy existing production workers
+        id: prod_deploy
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --config wrangler.toml)
+          (cd workers/nomadtips3-engine-343 && npx --yes wrangler@4.92.0 deploy --config wrangler.toml)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc)
+      - name: Smoke final statistics
+        run: |
+          set -euo pipefail
+          sleep 20
+          curl -fsS "$PROD_URL/api/live/snapshot?_=$RANDOM$(date +%s)" -o /tmp/hub.json
+          curl -fsS "$PROD_URL/api/engine/statistics?_=$RANDOM$(date +%s)" -o /tmp/stats.json
+          curl -fsS "$PROD_URL/statistics.html?_=$RANDOM$(date +%s)" -o /tmp/statistics.html
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/hub.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(h.ok!==true||h.version!=='nomad343-5usd-hub-v6-settlement-bridge')process.exit(21);
+          if(Number(h.providerRequestCount||0)>Number(h.providerRequestBudget||5))process.exit(22);
+          if(s.ok!==true||s.settlementRevision!=='bet365-rules-v3-finished-only'||typeof s.push!=='number'||!Array.isArray(s.rows))process.exit(23);
+          const sum=Number(s.win||0)+Number(s.loss||0)+Number(s.push||0)+Number(s.halfWin||0)+Number(s.halfLoss||0);
+          if(sum!==Number(s.total||0))process.exit(24);
+          console.log(JSON.stringify({hub:h.version,requests:h.providerRequestCount,budget:h.providerRequestBudget,counts:h.counts,stats:{total:s.total,win:s.win,loss:s.loss,push:s.push,halfWin:s.halfWin,halfLoss:s.halfLoss,unresolved:s.unresolved}},null,2));
+          NODE
+          grep -Fq 'data-push' /tmp/statistics.html
+          grep -Fq '<th>#</th>' /tmp/statistics.html
+          grep -Fq 'statistics.js?v=343-stat-truth-v1' /tmp/statistics.html
+      - name: Remove temporary deployment files
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/deploy-343-statistics-truth.yml .github/scripts/patch-343-statistics-truth.py
+          git commit -m 'chore(343): remove temporary statistics deployment files [skip ci]'
+          git push origin HEAD:work/nomad343-statistics-truth-final-20260914
+      - name: Promote production source branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=5
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
+          git push origin HEAD:"$ACTIVE_BRANCH"
+      - name: Roll back production workers on failure
+        if: failure() && steps.prod_deploy.outcome != 'skipped'
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout --detach "origin/$ROLLBACK_REF"
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --config wrangler.toml)
+          (cd workers/nomadtips3-engine-343 && npx --yes wrangler@4.92.0 deploy --config wrangler.toml)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc)
