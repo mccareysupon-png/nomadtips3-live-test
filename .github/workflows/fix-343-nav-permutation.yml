@@ -38,8 +38,8 @@ jobs:
           set -euo pipefail
           python .github/scripts/patch-343-nav-permutation.py
           for f in index.html signal.html statistics.html; do
-            grep -Fq 'data-nomad-nav-stability="343-nav-stable-v3"' "nomad-live-343/$f"
-            grep -Fq 'app.css?v=343-nav-stable-v3' "nomad-live-343/$f"
+            grep -Fq 'data-nomad-nav-stability="343-nav-stable-v4"' "nomad-live-343/$f"
+            grep -Fq 'app.css?v=343-nav-stable-v4' "nomad-live-343/$f"
             test "$(grep -o '<nav class="topnav">' "nomad-live-343/$f" | wc -l)" -eq 1
             test "$(grep -o '<nav class="mobile-nav">' "nomad-live-343/$f" | wc -l)" -eq 1
           done
@@ -69,7 +69,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html
-            git commit -m "fix(343): unify navigation shell across three pages"
+            git commit -m "fix(343): reserve stable header slots across three pages"
             git push origin HEAD:work/nomad343-nav-permutation-20260914
           else
             echo NAV_RUNTIME_ALREADY_COMMITTED
@@ -85,7 +85,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html; do
               html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-nav-stable-v3' <<<"$html" || ok=0
+              grep -Fq '343-nav-stable-v4' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "CANARY ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
@@ -110,7 +110,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html; do
               html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-nav-stable-v3' <<<"$html" || ok=0
+              grep -Fq '343-nav-stable-v4' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "PRODUCTION ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
