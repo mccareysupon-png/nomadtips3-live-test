@@ -1,0 +1,80 @@
+name: Fix 3.43 Signal Stable Refresh
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/fix-343-signal-stable-refresh.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: work/nomad343-server-prewarm-20260914
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch signal refresh renderer
+        run: |
+          set -euo pipefail
+          python .github/scripts/patch-343-signal-stable-refresh.py
+          node --check nomad-live-343/signal.js
+          grep -Fq 'reconcileSignalBoard' nomad-live-343/signal.js
+          grep -Fq '343-signal-stable-refresh-v1' nomad-live-343/signal.html
+
+      - name: Persist signal UI fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/signal.js nomad-live-343/signal.html
+          git commit -m 'fix(343): keep expanded signal cards stable on refresh'
+          git push origin HEAD:work/nomad343-server-prewarm-20260914
+
+      - name: Guard exact scope
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD | sort)"
+          expected="$(printf '%s\n' nomad-live-343/signal.html nomad-live-343/signal.js | sort)"
+          [ "$changed" = "$expected" ] || { echo "UNEXPECTED_SCOPE: $changed"; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341 nomad-live-343/index.html
+
+      - name: Dry run viewers
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Verify canary stable refresh
+        run: TARGET_URL="$CANARY_URL" node .github/scripts/test-343-signal-stable-refresh.js
+
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify production stable refresh
+        run: TARGET_URL="$PROD_URL" node .github/scripts/test-343-signal-stable-refresh.js
