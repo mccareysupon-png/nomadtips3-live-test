@@ -28,12 +28,10 @@ const close=(a,b,tol=.75)=>a!==null&&b!==null&&Math.abs(a-b)<=tol;
         const topEl=document.querySelector('.topbar-inner');
         const shellEl=document.querySelector('.shell');
         const navEl=[...document.querySelectorAll('.topnav,.mobile-nav')].find(el=>getComputedStyle(el).display!=='none');
+        const odds=document.querySelector('.odds-format-control');
+        const lang=document.querySelector('.nomad343-language');
         const rect=el=>el?.getBoundingClientRect();
-        const top=rect(topEl),shell=rect(shellEl),nav=rect(navEl);
-        const describe=el=>[...(el?.children||[])].map(child=>{
-          const r=child.getBoundingClientRect();
-          return {tag:child.tagName,cls:child.className||'',text:(child.textContent||'').trim().replace(/\s+/g,' ').slice(0,80),left:r.left,width:r.width,display:getComputedStyle(child).display};
-        });
+        const top=rect(topEl),shell=rect(shellEl),nav=rect(navEl),oddsRect=rect(odds),langRect=rect(lang);
         return {
           label,path:location.pathname,bodyMargin:getComputedStyle(body).margin,
           critical:document.querySelector('style[data-nomad-nav-stability]')?.getAttribute('data-nomad-nav-stability')||'',
@@ -42,8 +40,9 @@ const close=(a,b,tol=.75)=>a!==null&&b!==null&&Math.abs(a-b)<=tol;
           topLeft:top?.left??null,topTop:top?.top??null,topWidth:top?.width??null,topHeight:top?.height??null,
           shellLeft:shell?.left??null,shellTop:shell?.top??null,shellWidth:shell?.width??null,
           navLeft:nav?.left??null,navTop:nav?.top??null,navWidth:nav?.width??null,navHeight:nav?.height??null,
+          oddsPosition:odds?getComputedStyle(odds).position:null,oddsLeft:oddsRect?.left??null,
+          langPosition:lang?getComputedStyle(lang).position:null,langLeft:langRect?.left??null,
           desktopNavCount:document.querySelectorAll('.topnav').length,mobileNavCount:document.querySelectorAll('.mobile-nav').length,
-          topChildren:describe(topEl),navChildren:describe(navEl),
         };
       },label);
 
@@ -62,10 +61,16 @@ const close=(a,b,tol=.75)=>a!==null&&b!==null&&Math.abs(a-b)<=tol;
           if(!close(x,y))throw new Error(`${vp.name} ${order.join('>')} ${label} LATE_SHAKE ${name} ${x} -> ${y} INITIAL=${JSON.stringify(a)} MID=${JSON.stringify(b)} FINAL=${JSON.stringify(c)}`);
         }
         if(c.bodyMargin!=='0px')throw new Error(`${vp.name} ${label} bodyMargin=${c.bodyMargin}`);
-        if(c.critical!=='343-nav-stable-v4')throw new Error(`${vp.name} ${label} critical=${c.critical}`);
-        if(!c.appHref.includes('343-nav-stable-v4'))throw new Error(`${vp.name} ${label} appHref=${c.appHref}`);
+        if(c.critical!=='343-nav-stable-v5')throw new Error(`${vp.name} ${label} critical=${c.critical}`);
+        if(!c.appHref.includes('343-nav-stable-v5'))throw new Error(`${vp.name} ${label} appHref=${c.appHref}`);
         if(c.desktopNavCount!==1||c.mobileNavCount!==1)throw new Error(`${vp.name} ${label} noncanonical nav DOM d=${c.desktopNavCount} m=${c.mobileNavCount}`);
         if(c.scrollWidth>c.clientWidth+2)throw new Error(`${vp.name} ${label} ROOT_HORIZONTAL_OVERFLOW ${JSON.stringify(c)}`);
+        if(vp.width>760){
+          await page.waitForFunction(()=>document.querySelector('.odds-format-control')&&document.querySelector('.nomad343-language'),null,{timeout:5000});
+          const after=await snap(label);
+          if(after.oddsPosition!=='absolute'||after.langPosition!=='absolute')throw new Error(`${vp.name} ${label} CONTROLS_STILL_IN_NAV_FLOW ${JSON.stringify(after)}`);
+          if(!close(after.navLeft,c.navLeft)||!close(after.navWidth,c.navWidth))throw new Error(`${vp.name} ${label} CONTROL_INJECTION_MOVED_NAV ${JSON.stringify({c,after})}`);
+        }
         states.push(c);return c;
       };
 
