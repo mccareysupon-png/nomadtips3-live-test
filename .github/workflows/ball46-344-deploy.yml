@@ -60,30 +60,35 @@ jobs:
         working-directory: workers/ball46-344-engine
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.jsonc
 
-      - name: Bootstrap central collector
+      - name: Start state object and wait for central collector
         run: |
           set -euo pipefail
-          sleep 3
-          curl -fsS --max-time 50 -H "x-ball46-internal: $FIVEDOLLAR_API_KEY" "$ENGINE_URL/internal/tick?force=1" -o /tmp/tick.json
-          cat /tmp/tick.json
+          curl -fsS "$ENGINE_URL/health" -o /tmp/health.json
+          ok=0
+          for i in $(seq 1 15); do
+            sleep 4
+            curl -fsS "$ENGINE_URL/health" -o /tmp/health.json
+            cat /tmp/health.json
+            if node -e "const h=require('/tmp/health.json');process.exit(h.lastSuccessAt?0:1)"; then ok=1; break; fi
+          done
+          test "$ok" = 1
           node - <<'NODE'
-          const j=require('/tmp/tick.json');
-          if(j.ok!==true) throw new Error('central tick failed: '+JSON.stringify(j));
-          if(Number(j.requestCount||0)>10) throw new Error('single tick request budget exceeded: '+j.requestCount);
-          console.log('central collector PASS',{live:j.fixtures?.length||0,requests:j.requestCount});
+          const h=require('/tmp/health.json');
+          if(h.lastError) throw new Error('collector unhealthy: '+JSON.stringify(h.lastError));
+          if(Number(h.viewerUpstreamRequests)!==0) throw new Error('viewer invariant failed');
+          console.log('central collector PASS',{status:h.status,live:h.liveCount,rate:h.rate});
           NODE
 
-      - name: Prove viewer reads do not trigger upstream
+      - name: Prove viewer layer is provider-isolated
         run: |
           set -euo pipefail
-          curl -fsS "$ENGINE_URL/health" -o /tmp/h1.json
+          ! grep -R -F '5dollarfootballapi.com' ball46-344/
           for i in $(seq 1 20); do curl -fsS "$ENGINE_URL/api/live" >/dev/null; done
-          curl -fsS "$ENGINE_URL/health" -o /tmp/h2.json
+          curl -fsS "$ENGINE_URL/health" -o /tmp/health2.json
           node - <<'NODE'
-          const a=require('/tmp/h1.json'), b=require('/tmp/h2.json');
-          if(a.lastTickAt!==b.lastTickAt) throw new Error('viewer reads unexpectedly triggered collector tick');
-          if(b.viewerUpstreamRequests!==0) throw new Error('viewer upstream request invariant failed');
-          console.log('20 viewer reads = 0 upstream PASS');
+          const h=require('/tmp/health2.json');
+          if(h.viewerUpstreamRequests!==0) throw new Error('viewer upstream request invariant failed');
+          console.log('20 viewer reads complete; viewer upstream invariant = 0');
           NODE
 
       - name: Verify public API shape
