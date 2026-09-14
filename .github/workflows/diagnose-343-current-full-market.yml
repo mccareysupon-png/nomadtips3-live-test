@@ -1,0 +1,60 @@
+name: Diagnose 3.43 Current Full Market
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/diagnose-343-current-full-market.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare live fixtures with central cache
+        env:
+          BASE: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS "$BASE/api/live/snapshot?x=$(date +%s)" -o /tmp/live.json
+          curl -fsS "$BASE/api/full-market/cache-snapshot?x=$(date +%s)" -o /tmp/central.json
+          python - <<'PY'
+          import json
+          live=json.load(open('/tmp/live.json'))
+          central=json.load(open('/tmp/central.json'))
+          rows=central.get('fixtures') or []
+          cmap={str(r.get('fixtureId')):r for r in rows}
+          fixtures=live.get('fixtures') or []
+          def state(f):
+              s=str(f.get('boardState') or f.get('status') or f.get('statusCode') or '').lower()
+              if any(x in s for x in ['live','in_play','in play','playing','first half','second half','1h','2h','half-time','halftime']): return 'live'
+              try:
+                  int(str(f.get('statusCode') or ''))
+                  return 'live'
+              except: pass
+              return s
+          active=[]
+          for f in fixtures:
+              if state(f)!='live': continue
+              fid=str(f.get('fixtureId') or f.get('id') or '')
+              row=cmap.get(fid)
+              books=(row or {}).get('availableBookmakers') or []
+              provider=f.get('providerOdds')
+              active.append({
+                  'fixtureId':fid,
+                  'match':f"{(f.get('home') or {}).get('name')} vs {(f.get('away') or {}).get('name')}",
+                  'minute':f.get('minute'),
+                  'central':bool(row),
+                  'centralBooks':books,
+                  'centralBookCount':len(books),
+                  'bulkProviderOdds':bool(provider)
+              })
+          print('LIVE_FIXTURES',len(active))
+          print(json.dumps(active,ensure_ascii=False,indent=2))
+          print('CENTRAL_FIXTURE_COUNT',central.get('fixtureCount'))
+          print('LAST_TICK',json.dumps(central.get('lastTick'),ensure_ascii=False))
+          missing=[x for x in active if not x['central']]
+          thin=[x for x in active if x['central'] and x['centralBookCount']<2]
+          print('MISSING_CENTRAL',len(missing))
+          print('THIN_CENTRAL',len(thin))
+          PY
