@@ -1,0 +1,79 @@
+name: Deploy NOMAD 3.43 Full Market v4 Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  PREVIEW_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard isolated production scope
+        run: |
+          set -euo pipefail
+          git fetch origin work/nomad343-api-mixer-20260914:refs/remotes/origin/work/nomad343-api-mixer-20260914
+          git diff --name-only refs/remotes/origin/work/nomad343-api-mixer-20260914...HEAD | tee /tmp/changed.txt
+          if grep -Ev '^(workers/nomadtips3-343-full-market/(src/index-v4\.js|wrangler\.toml|wrangler\.canary\.toml)|\.github/workflows/deploy-343-full-market-v4-(canary|production)\.yml)$' /tmp/changed.txt | grep -q .; then
+            echo 'Unexpected file outside isolated Full Market v4 scope'; exit 1
+          fi
+          if ! git diff --quiet refs/remotes/origin/work/nomad343-api-mixer-20260914...HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 nomad-live-343; then
+            echo 'Engine/HUB/UI changed unexpectedly'; exit 1
+          fi
+          echo 'ISOLATED PRODUCTION SCOPE: OK'
+
+      - name: Syntax and production dry-run
+        working-directory: workers/nomadtips3-343-full-market
+        run: |
+          set -euo pipefail
+          node --check src/index.js
+          node --check src/index-v4.js
+          grep -Fq 'main = "src/index-v4.js"' wrangler.toml
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy Full Market v4 only
+        working-directory: workers/nomadtips3-343-full-market
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Bind Ultra key to Full Market only
+        working-directory: workers/nomadtips3-343-full-market
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Smoke existing preview without redeploying it
+        run: |
+          set -euo pipefail
+          sleep 5
+          curl_retry() {
+            curl -fsS --retry 8 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 30 "$1" -o "$2"
+          }
+          curl_retry "$PREVIEW_URL/api/full-market/health?smoke=$RANDOM" /tmp/health.json
+          node - <<'NODE'
+          const j=require('/tmp/health.json');
+          if(j.ok!==true) throw Error(j.error||'health failed');
+          if(j.version!=='nomad343-full-market-v4-account-orchestrator') throw Error(`wrong version ${j.version}`);
+          if(j.orchestration?.mode!=='BULK_FIRST_DETAIL_QUEUE') throw Error('wrong orchestration');
+          if(j.rate?.accountLimitPerMinute!==40||j.rate?.accountReserve!==4) throw Error('wrong rate policy');
+          console.log('PRODUCTION HEALTH OK',j.version);
+          NODE
+
+          curl_retry "$PREVIEW_URL/api/full-market/monitor?smoke=$RANDOM" /tmp/monitor.json
+          node - <<'NODE'
+          const j=require('/tmp/monitor.json');
+          if(j.version!=='nomad343-full-market-v4-account-orchestrator') throw Error('monitor version');
+          if((j.total?.provider429||0)>0) throw Error(`provider429=${j.total.provider429}`);
+          if((j.controller?.trackedAccountUsed60s||0)>36) throw Error(`tracked rate too high ${j.controller.trackedAccountUsed60s}`);
+          console.log('PRODUCTION MONITOR OK',JSON.stringify(j.controller));
+          NODE
