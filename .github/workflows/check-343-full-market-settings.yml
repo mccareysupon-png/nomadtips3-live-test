@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -38,4 +40,4 @@ jobs:
           grep -Fq "ACCOUNT_RATE_LIMIT_PER_MIN = 40" workers/nomadtips3-343-full-market/src/index.js
           grep -Fq "data-full-market-form" nomad-live-343/settings.html
           grep -Fq "full-market-event-trigger-343.js" nomad-live-343/index.html
-          git diff --exit-code HEAD~1 -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 || { echo 'Engine/HUB changed unexpectedly'; exit 1; }
+          git diff --exit-code b7f268e31bded6a2b23e6db75e9481de472d0a7c..HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 || { echo 'Engine/HUB changed unexpectedly'; exit 1; }
