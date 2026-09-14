@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-odds-format-v4-topbar-fixed';
+const VERSION='343-odds-format-v5-full-market-price';
 const STORAGE_KEY='nomad343_odds_format_v1';
 const EVENT_NAME='nomad343:odds-format-change';
 const FORMATS={decimal:'DEC',fractional:'FRA',american:'AM'};
@@ -58,7 +58,7 @@ function convertChip(strong){
   strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';setElementText(strong,format(raw));
 }
 function convertFullOddsChip(strong){
-  if(!strong.closest('.fom-chip'))return;
+  if(!strong.closest('.fom-chip,.fom-price-row'))return;
   if(strong.dataset.nomadOddsRaw){
     if(strong.dataset.nomadOddsMode==='at')setElementText(strong,`${strong.dataset.nomadOddsPrefix||''}${format(strong.dataset.nomadOddsRaw)}${strong.dataset.nomadOddsSuffix||''}`);
     else setElementText(strong,format(strong.dataset.nomadOddsRaw));
@@ -96,7 +96,7 @@ function apply(root=document){
   try{
     root.querySelectorAll?.('.b365-signal-price').forEach(convertAtElement);
     root.querySelectorAll?.('.b365-chip strong').forEach(convertChip);
-    root.querySelectorAll?.('.fom-chip strong').forEach(convertFullOddsChip);
+    root.querySelectorAll?.('.fom-chip strong,.fom-price-row .fom-price').forEach(convertFullOddsChip);
     root.querySelectorAll?.('.signal-market-chip > span').forEach(convertSignalMarket);
     root.querySelectorAll?.('.signal-entry-block > header small').forEach(convertAtElement);
     root.querySelectorAll?.('.signal-entry-grid > div').forEach(el=>convertLabelledDirect(el,'ODDS AT SIGNAL'));
