@@ -1,0 +1,146 @@
+name: Deploy 3.43 Shared 10-Book Full Market
+
+on:
+  push:
+    branches: [work/nomad343-stable-bulk-viewer-20260914]
+    paths:
+      - 'nomad-live-343/index.html'
+      - 'nomad-live-343/full-odds-10book-343.js'
+      - 'workers/nomadtips3-343-preview/src/index-stable.js'
+      - '.github/workflows/deploy-343-10book-stable.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-canary-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard exact scope
+        run: |
+          set -euo pipefail
+          BASE=928455a456984e3805b35237e824b6deec52f266
+          git diff --name-only "$BASE" HEAD | tee /tmp/changed
+          while IFS= read -r f; do
+            case "$f" in
+              nomad-live-343/index.html|nomad-live-343/full-odds-10book-343.js|workers/nomadtips3-343-preview/src/index-stable.js|.github/workflows/deploy-343-10book-stable.yml) ;;
+              *) echo "UNEXPECTED CHANGE: $f"; exit 1;;
+            esac
+          done < /tmp/changed
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-engine-343 || exit 1
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-343-full-market || exit 1
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-5usd-hub-343 || exit 1
+          git diff --quiet "$BASE" HEAD -- nomad-live-341 || exit 1
+
+      - name: Static validation
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/full-odds-10book-343.js
+          node --check workers/nomadtips3-343-preview/src/index-stable.js
+          grep -Fq 'full-odds-10book-343.js?v=343-shared-10book-v1' nomad-live-343/index.html
+          grep -Fq "'/full-odds-10book-343.js'" workers/nomadtips3-343-preview/src/index-stable.js
+          grep -Fq "const API='/api/full-market/fixture-odds'" nomad-live-343/full-odds-10book-343.js
+          grep -Fq "CLIENT_CACHE_MS=120_000" nomad-live-343/full-odds-10book-343.js
+
+      - name: Dry-run viewers
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Canary browser contract
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          TARGET_URL="$CANARY_URL" TARGET_LABEL="CANARY" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let detailRequests=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailRequests++;});
+            await page.goto(process.env.TARGET_URL+'/?tenbook='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const card=page.locator('.match-card[data-match-id]').first();
+            const row=card.locator('.match-row.scoreboard-default');
+            await row.click();
+            await page.waitForFunction(()=>{
+              const c=document.querySelector('.match-card[aria-expanded="true"] [data-full-odds-main] .fom-count');
+              return c && /10\/10 BOOKS/.test(c.textContent||'');
+            },null,{timeout:30000});
+            if(detailRequests!==1)throw Error('FIRST_OPEN_DETAIL_REQUESTS='+detailRequests);
+            const id=await card.getAttribute('data-match-id');
+            const before=await card.evaluate(el=>el.getBoundingClientRect().top);
+            await row.click();
+            await row.click();
+            await page.waitForTimeout(1000);
+            if(detailRequests!==1)throw Error('REOPEN_SHOULD_USE_CLIENT_CACHE='+detailRequests);
+            await page.waitForTimeout(16500);
+            const same=page.locator(`.match-card[data-match-id="${id}"]`);
+            if(await same.getAttribute('aria-expanded')!=='true')throw Error('REFRESH_COLLAPSED');
+            const after=await same.evaluate(el=>el.getBoundingClientRect().top);
+            if(Math.abs(after-before)>6)throw Error('CARD_JUMP '+before+' '+after);
+            if(detailRequests!==1)throw Error('15S_REFRESH_TRIGGERED_DETAIL='+detailRequests);
+            console.log(process.env.TARGET_LABEL+' 10BOOK OK',{detailRequests,topBefore:before,topAfter:after});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Production browser contract
+        run: |
+          set -euo pipefail
+          TARGET_URL="$PROD_URL" TARGET_LABEL="PRODUCTION" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let detailRequests=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailRequests++;});
+            for(let attempt=0;attempt<10;attempt++){
+              const r=await page.goto(process.env.TARGET_URL+'/?tenbook='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000}).catch(()=>null);
+              if(r&&r.ok())break;
+              await page.waitForTimeout(2500);
+            }
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const card=page.locator('.match-card[data-match-id]').first();
+            const row=card.locator('.match-row.scoreboard-default');
+            await row.click();
+            await page.waitForFunction(()=>{
+              const c=document.querySelector('.match-card[aria-expanded="true"] [data-full-odds-main] .fom-count');
+              return c && /10\/10 BOOKS/.test(c.textContent||'');
+            },null,{timeout:30000});
+            if(detailRequests!==1)throw Error('PROD_FIRST_OPEN_DETAIL_REQUESTS='+detailRequests);
+            const before=await card.evaluate(el=>el.getBoundingClientRect().top);
+            await row.click(); await row.click(); await page.waitForTimeout(1000);
+            if(detailRequests!==1)throw Error('PROD_REOPEN_CACHE='+detailRequests);
+            await page.waitForTimeout(16500);
+            const after=await card.evaluate(el=>el.getBoundingClientRect().top);
+            if(Math.abs(after-before)>6)throw Error('PROD_CARD_JUMP '+before+' '+after);
+            if(detailRequests!==1)throw Error('PROD_REFRESH_DETAIL='+detailRequests);
+            console.log('PRODUCTION 10BOOK OK',{detailRequests,topBefore:before,topAfter:after});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
