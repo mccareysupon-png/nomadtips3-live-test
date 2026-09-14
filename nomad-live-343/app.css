@@ -41,3 +41,14 @@
 .event-line.away{stroke:#e6d45a!important}
 .event-dot.home{fill:#52d985!important}
 .event-dot.away{fill:#e6d45a!important}
+
+
+/* 343 HEADER NAV GRID ONLY V1 */
+@media (min-width:761px){
+  .topbar-inner{display:grid!important;grid-template-columns:176px minmax(0,1fr) 254px 122px!important;column-gap:0!important;align-items:center!important}
+  .topbar-inner>div:first-child{grid-column:1!important;min-width:0}
+  .topbar-inner>.topnav{grid-column:3!important;margin-left:0!important;width:254px!important;height:64px!important;justify-self:stretch!important}
+  .topbar-inner>.topnav>a{flex:1 1 0!important;justify-content:center!important;padding-left:8px!important;padding-right:8px!important}
+  .topbar-inner>.nomad343-language{grid-column:4!important;margin-left:10px!important;width:112px!important;justify-self:end!important}
+  .topbar-inner>.nomad343-language select{width:112px!important;min-width:112px!important;max-width:112px!important}
+}
