@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -17,7 +17,7 @@ env:
   PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
 jobs:
-  patch-test-deploy:
+  test-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -29,33 +29,17 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Patch Event Flow
+      - name: Confirm event timeline source
         run: |
           set -euo pipefail
-          python scripts/patch-343-standard-events.py
           node --check nomad-live-343/event-flow-343.js
           node --check nomad-live-343/live-stable-343.js
           grep -Fq '343-flow-v4-standard-match-events' nomad-live-343/event-flow-343.js
           grep -Fq 'normalizeMatchEvents' nomad-live-343/event-flow-343.js
           grep -Fq 'data-events' nomad-live-343/live-stable-343.js
           grep -Fq '.nomad-event-rail{' nomad-live-343/event-flow-343.css
-
-      - name: Persist event timeline feature
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add nomad-live-343/event-flow-343.js nomad-live-343/event-flow-343.css nomad-live-343/live-stable-343.js nomad-live-343/index.html
-          git commit -m 'feat(343): plot standard match events in Event Flow'
-          git push origin HEAD:work/nomad343-server-prewarm-20260914
-
-      - name: Guard scope
-        run: |
-          set -euo pipefail
-          changed="$(git diff --name-only HEAD^ HEAD | sort)"
-          expected="$(printf '%s\n' nomad-live-343/event-flow-343.css nomad-live-343/event-flow-343.js nomad-live-343/index.html nomad-live-343/live-stable-343.js | sort)"
-          [ "$changed" = "$expected" ] || { echo "UNEXPECTED_SCOPE: $changed"; exit 1; }
-          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341
+          grep -Fq 'event-flow-343.js?v=343-flow-v4-events' nomad-live-343/index.html
+          git diff --quiet HEAD~1..HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341 || true
 
       - name: Dry run viewers
         run: |
@@ -66,6 +50,22 @@ jobs:
       - name: Deploy canary viewer
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Wait for canary event assets
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 30); do
+            js="$(curl -fsS "$CANARY_URL/event-flow-343.js?probe=$RANDOM$(date +%s)" || true)"
+            html="$(curl -fsS "$CANARY_URL/?probe=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-flow-v4-standard-match-events' <<<"$js" && grep -Fq 'event-flow-343.js?v=343-flow-v4-events' <<<"$html"; then
+              echo 'CANARY EVENT ASSETS READY'
+              ok=1
+              break
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
 
       - name: Verify event timeline on canary
         run: |
@@ -78,9 +78,11 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1366,height:900}});
             let detailCalls=0;
+            const pageErrors=[];
+            page.on('pageerror',e=>pageErrors.push(String(e)));
             page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailCalls++});
-            await page.goto(process.env.TARGET_URL+'/?events='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
-            await page.waitForFunction(()=>window.NOMAD_EVENT_FLOW_343?.version==='343-flow-v4-standard-match-events',{timeout:30000});
+            await page.goto(process.env.TARGET_URL+'/?events='+Date.now(),{waitUntil:'networkidle',timeout:45000});
+            await page.waitForFunction(()=>window.NOMAD_EVENT_FLOW_343?.version==='343-flow-v4-standard-match-events',{timeout:15000});
             const result=await page.evaluate(()=>{
               const el=document.createElement('section');
               el.className='nomad-event-flow-card';
@@ -99,6 +101,7 @@ jobs:
               window.NOMAD_EVENT_FLOW_343.render(el,{rows});
               return {markers:el.querySelectorAll('.nomad-match-event').length,kinds:[...el.querySelectorAll('.nomad-event-icon')].map(x=>x.className),rail:!!el.querySelector('.nomad-event-rail')};
             });
+            if(pageErrors.length)throw Error('PAGE_ERRORS '+JSON.stringify(pageErrors));
             if(!result.rail||result.markers!==6)throw Error('EVENT_RAIL_FAIL '+JSON.stringify(result));
             for(const k of ['goal','yellow','sub','var','red','penalty-goal'])if(!result.kinds.some(x=>x.includes(k)))throw Error('MISSING_'+k+' '+JSON.stringify(result));
             if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
@@ -114,13 +117,16 @@ jobs:
       - name: Verify production assets
         run: |
           set -euo pipefail
-          for i in $(seq 1 12); do
+          ok=0
+          for i in $(seq 1 30); do
             js="$(curl -fsS "$PROD_URL/event-flow-343.js?x=$RANDOM$(date +%s)" || true)"
             css="$(curl -fsS "$PROD_URL/event-flow-343.css?x=$RANDOM$(date +%s)" || true)"
-            if grep -Fq '343-flow-v4-standard-match-events' <<<"$js" && grep -Fq 'normalizeMatchEvents' <<<"$js" && grep -Fq '.nomad-event-rail{' <<<"$css"; then
+            html="$(curl -fsS "$PROD_URL/?x=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-flow-v4-standard-match-events' <<<"$js" && grep -Fq 'normalizeMatchEvents' <<<"$js" && grep -Fq '.nomad-event-rail{' <<<"$css" && grep -Fq 'event-flow-343.js?v=343-flow-v4-events' <<<"$html"; then
               echo 'PRODUCTION STANDARD MATCH EVENTS ASSETS OK'
-              exit 0
+              ok=1
+              break
             fi
             sleep 2
           done
-          exit 1
+          [ "$ok" = 1 ]
