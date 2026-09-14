@@ -1,0 +1,50 @@
+name: Verify 3.43 Current Live Full Market UI
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/verify-343-current-live-full-market-ui.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify production live card
+        env:
+          TARGET_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            let detailCalls=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailCalls++});
+            await page.goto(process.env.TARGET_URL+'/?verifybooks='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>window.NOMAD343_FULL_ODDS_BULK?.version==='343-full-odds-bulk-v2-fixed-10book-roster',{timeout:30000});
+            await page.waitForSelector('[data-board="live"] .match-card',{timeout:30000});
+            const card=page.locator('[data-board="live"] .match-card').first();
+            const match=await card.innerText();
+            await card.locator('.match-row').click();
+            await card.locator('.fom-market').first().waitFor({state:'visible',timeout:30000});
+            const result=await card.evaluate(el=>{
+              const market=el.querySelector('.fom-market');
+              const books=[...market.querySelectorAll('.fom-book')];
+              return {fixtureId:el.dataset.matchId,bookCount:books.length,names:books.map(x=>x.querySelector('header b')?.textContent.trim()),blankBooks:books.filter(x=>[...x.querySelectorAll('.fom-price')].every(p=>p.textContent.trim()==='')).map(x=>x.dataset.book),badge:market.querySelector('.fom-market-head>span')?.textContent};
+            });
+            if(result.bookCount!==10)throw Error('CURRENT_LIVE_BOOK_COUNT '+JSON.stringify(result));
+            if(result.badge!=='10 BOOKS')throw Error('CURRENT_LIVE_BADGE '+JSON.stringify(result));
+            if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
+            console.log('PRODUCTION CURRENT LIVE FULL MARKET OK',{match:match.split('\n').slice(0,8).join(' | '),...result,detailCalls});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
