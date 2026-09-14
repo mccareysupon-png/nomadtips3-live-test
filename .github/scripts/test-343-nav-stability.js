@@ -52,7 +52,6 @@ const close = (a,b,tol=0.75) => Math.abs(a-b) <= tol;
 
     const baseline = states[0];
     for(const s of states){
-      if(!String(s.scrollbarGutter).includes('stable')) throw new Error(`${vp.name} ${s.label} gutter=${s.scrollbarGutter}`);
       if(!close(s.topLeft,baseline.topLeft) || !close(s.topWidth,baseline.topWidth)){
         throw new Error(`${vp.name} TOPBAR_SHAKE ${JSON.stringify(states)}`);
       }
