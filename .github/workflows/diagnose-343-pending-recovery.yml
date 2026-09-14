@@ -1,0 +1,43 @@
+name: Diagnose 3.43 Pending Settlement Backlog
+on:
+  push:
+    branches:
+      - work/nomad343-settlement-tail-20260914
+    paths:
+      - .github/workflows/diagnose-343-pending-recovery.yml
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect production pending backlog
+        run: |
+          set -euo pipefail
+          URL='https://nomadtips3-engine-343.mccarey-supon.workers.dev'
+          curl -fsS --max-time 40 "$URL/signals?diag=$RANDOM$(date +%s)" -o /tmp/signals.json
+          curl -fsS --max-time 40 "$URL/statistics?diag=$RANDOM$(date +%s)" -o /tmp/statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          const rows=Array.isArray(s.signals)?s.signals:[];
+          const fixtures=new Map();
+          for(const x of rows){
+            const id=String(x.fixtureId||'');
+            if(!fixtures.has(id)) fixtures.set(id,[]);
+            fixtures.get(id).push(x);
+          }
+          const now=Date.now();
+          const groups=[...fixtures.entries()].map(([id,a])=>({
+            fixtureId:id,
+            signals:a.length,
+            oldestHours:Math.round((now-Math.min(...a.map(x=>Number(x.createdAt||now))))/360000)/10,
+            newestHours:Math.round((now-Math.max(...a.map(x=>Number(x.createdAt||now))))/360000)/10,
+            bookmakers:[...new Set(a.map(x=>x.bookmaker||'Bet365'))],
+            markets:[...new Set(a.map(x=>x.market))]
+          })).sort((a,b)=>b.oldestHours-a.oldestHours);
+          const byBook={}; for(const x of rows){const k=x.bookmaker||'Bet365';byBook[k]=(byBook[k]||0)+1;}
+          const settled=Array.isArray(st.rows)?st.rows:[];
+          const settledByBook={}; for(const x of settled){const k=x.bookmaker||'Bet365';settledByBook[k]=(settledByBook[k]||0)+1;}
+          console.log('PENDING_DIAG',JSON.stringify({signals:rows.length,uniqueFixtures:groups.length,allCount:s.allCount,byBook,oldestHours:groups[0]?.oldestHours??null,newestHours:groups.at(-1)?.newestHours??null,settled: settled.length,settledByBook},null,2));
+          console.log('PENDING_FIXTURES',JSON.stringify(groups,null,2));
+          NODE
