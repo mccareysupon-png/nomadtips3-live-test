@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-14T19:28:04Z",
+  "updated_at": "2026-09-14T23:12:12Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -5414,8 +5414,8 @@
       "edge": 13.1,
       "ev": 0.1658,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "0-0",
       "locked_at": "2026-09-14T01:46:43Z",
       "source_url": "https://www.goaloo.com/football/colombia-primera-b-tigres-zipaquira-vs-bogota-fc/h2h-3012189",
       "summary_url": "https://www.goaloo.com/football/colombia-primera-b-tigres-zipaquira-vs-bogota-fc/summary-3012189",
@@ -5475,7 +5475,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 38.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T23:12:12Z"
     },
     {
       "id": "6060f2d70d2b5cd1-OU-UNDER-2p75",
@@ -69738,6 +69743,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-14T19:28:04Z"
+    },
+    {
+      "id": "b4a206489f6231dc-AH-AWAY-0p25",
+      "goaloo_id": "3012189",
+      "date": "2026-09-14",
+      "kickoff": "2026-09-14 20:30:00",
+      "league": "Colombia Primera B",
+      "home": "Tigres Zipaquira",
+      "away": "Bogota FC",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.25,
+      "pick": "Bogota FC +0.25",
+      "side": "away",
+      "odds": 1.76,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6516,
+      "model_probability": 0.6516,
+      "market_fair_probability": 0.5204,
+      "market_edge": 0.1311,
+      "edge": 13.1,
+      "ev": 0.1658,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "0-0",
+      "locked_at": "2026-09-14T01:46:43Z",
+      "source_url": "https://www.goaloo.com/football/colombia-primera-b-tigres-zipaquira-vs-bogota-fc/h2h-3012189",
+      "summary_url": "https://www.goaloo.com/football/colombia-primera-b-tigres-zipaquira-vs-bogota-fc/summary-3012189",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.902,
+        "lambda_away": 1.183,
+        "home_win": 0.2533,
+        "draw": 0.318,
+        "away_win": 0.4287,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2699,
+          "gd_edge": -0.2792,
+          "clean_sheet_edge": -0.078,
+          "failed_to_score_edge": -0.2146,
+          "bounded_adjustment": -0.0182,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 38.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-14T23:12:12Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
