@@ -32,3 +32,12 @@
 
 @media(max-width:900px){.visual-grid{grid-template-columns:1fr}.visual-entry-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.topbar-inner{min-height:60px;padding:0 10px;justify-content:center;position:relative}.topbar-inner>div:first-child{display:flex;align-items:center;justify-content:center}.brand{width:156px;height:31px;background-position:center}.version{display:none!important}.topnav{display:none}.shell{padding:12px 8px 72px}.page-head{display:block}.source-state{margin-top:10px;display:inline-block}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.metric strong{font-size:21px}.mobile-nav{position:fixed;left:0;right:0;bottom:0;z-index:40;height:56px;display:grid;grid-template-columns:repeat(3,1fr);background:#142019;border-top:1px solid var(--line)}.mobile-nav a{display:flex;align-items:center;justify-content:center;text-decoration:none;color:#aeb9b1;font-size:10px;font-weight:900}.mobile-nav a.active{color:#fff;background:#1b3021;border-top:2px solid var(--yellow)}.data-table th{top:0}.toolbar{display:block}.toolbar>*+*{margin-top:6px}.match-row{grid-template-columns:54px minmax(0,1fr) 52px 66px;gap:6px;padding:8px}.teams{font-size:11px}.league{font-size:8px}.score-box{font-size:13px}.match-state .tag{min-width:56px;padding:4px 3px;font-size:8px}.detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.visual-head{align-items:flex-start}.visual-entry-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.visual-entry-grid article:last-child{grid-column:1/-1}.mirror-row{grid-template-columns:32px minmax(0,1fr) 76px minmax(0,1fr) 32px;gap:4px}.mirror-bars{padding:8px}.visual-card>header{align-items:flex-start;flex-direction:column}.book-legend{justify-content:flex-start}}
+/* 343 HOME AWAY TEAM PALETTE V1 */
+.visual-team-key span:first-child{color:#52d985!important}
+.visual-team-key span:last-child{color:#e6d45a!important}
+.mirror-row .home i{background:#52d985!important}
+.mirror-row .away i{background:#e6d45a!important}
+.event-line.home{stroke:#52d985!important}
+.event-line.away{stroke:#e6d45a!important}
+.event-dot.home{fill:#52d985!important}
+.event-dot.away{fill:#e6d45a!important}
