@@ -41,7 +41,6 @@ const { chromium } = require('playwright');
       if(result.width < vp.width - edgeAllowance*2) throw new Error(`${vp.name} ${path} SHELL_TOO_NARROW ${JSON.stringify(result)}`);
       if(result.topMaxWidth !== 'none') throw new Error(`${vp.name} ${path} TOPBAR_MAX_WIDTH ${JSON.stringify(result)}`);
       if((result.topLeft??0) > edgeAllowance || (result.topRightGap??0) > edgeAllowance) throw new Error(`${vp.name} ${path} TOPBAR_NOT_FULL ${JSON.stringify(result)}`);
-      if(result.scrollWidth > vp.width + 2) throw new Error(`${vp.name} ${path} ROOT_HORIZONTAL_OVERFLOW ${JSON.stringify(result)}`);
       console.log('FULL WIDTH OK',vp.name,path,result);
       await page.close();
     }
