@@ -1,0 +1,30 @@
+/* 3.43 three-page navigation stability.
+   Reserve the ODDS + Language area before JS mounts those controls so the
+   shared Live / Signals / Statistics navigation never shifts horizontally. */
+@media (min-width:761px){
+  .topbar-inner{position:relative}
+  .topbar-inner>.topnav{margin-left:auto;margin-right:290px}
+  .topbar-inner>.odds-format-control{
+    position:absolute;
+    right:190px;
+    top:50%;
+    transform:translateY(-50%);
+    margin:0;
+    z-index:2;
+  }
+  .topbar-inner>.nomad343-language{
+    position:absolute;
+    right:max(var(--edge-gutter),env(safe-area-inset-right,0px));
+    top:50%;
+    transform:translateY(-50%);
+    margin-left:0;
+    z-index:2;
+  }
+  .topbar-inner>.nomad343-language select{max-width:172px}
+}
+
+/* Mobile controls are already absolute left/right. Keep the shared bottom
+   navigation contract identical on all three pages. */
+@media (max-width:760px){
+  .topbar-inner>.topnav{margin-right:0}
+}
