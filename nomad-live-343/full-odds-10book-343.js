@@ -1,10 +1,9 @@
 (()=>{
 'use strict';
-const VERSION='343-full-odds-10book-prewarm-v3';
+const VERSION='343-full-odds-10book-prewarm-v4';
 const API='/api/full-market/fixture-odds';
 const CLIENT_CACHE_MS=120_000;
-const PREFETCH_GAP_MS=4000;
-const INITIAL_SCHEDULED_PREFETCH=12;
+const PREFETCH_GAP_MS=6000;
 const cache=new Map();
 const inflight=new Map();
 const queued=new Set();
@@ -21,8 +20,8 @@ async function fetch10(card){if(!card)return;const id=fixtureId(card);if(!id)ret
 function enqueue(card,front=false){const id=fixtureId(card);if(!id||fresh(id)||inflight.has(id)||queued.has(id))return;queued.add(id);front?queue.unshift(card):queue.push(card);pump()}
 async function pump(){if(pumping)return;pumping=true;try{while(queue.length){const card=queue.shift(),id=fixtureId(card);queued.delete(id);if(id&&!fresh(id))await fetch10(card);if(queue.length)await new Promise(r=>setTimeout(r,PREFETCH_GAP_MS))}}finally{pumping=false}}
 function cardsIn(group){return [...document.querySelectorAll(`.score-group[data-group="${group}"] .match-card[data-match-id]`)]}
-function observeCards(){if(observer)return;observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting)enqueue(e.target,true)},{rootMargin:'300px 0px'});document.querySelectorAll('.match-card[data-match-id]').forEach(c=>observer.observe(c))}
-function scan(){install();const live=cardsIn('live'),scheduled=cardsIn('scheduled');live.forEach(c=>enqueue(c,true));scheduled.slice(0,INITIAL_SCHEDULED_PREFETCH).forEach(c=>enqueue(c));observeCards();if(observer)document.querySelectorAll('.match-card[data-match-id]').forEach(c=>observer.observe(c))}
+function observeCards(){if(!observer)observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting)enqueue(e.target)},{rootMargin:'200px 0px'});document.querySelectorAll('.match-card[data-match-id]').forEach(c=>observer.observe(c))}
+function scan(){install();const first=document.querySelector('.match-card[data-match-id]');if(first)enqueue(first,true);cardsIn('live').forEach(c=>enqueue(c));observeCards()}
 function readyScan(){scan();let tries=0;const t=setInterval(()=>{scan();tries++;if(tries>=20)clearInterval(t)},1000)}
 install();queueMicrotask(readyScan);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scan()});setInterval(scan,30000);
 window.NOMAD343_FULL_ODDS_10BOOK={version:VERSION,prewarm:scan,fetch10,has:id=>Boolean(fresh(String(id))),cacheSize:()=>cache.size,mode:'PREWARMED_10BOOK_ZERO_CLICK_REQUESTS'};
