@@ -5,6 +5,12 @@ on:
       - work/nomad343-nav-3factorial-20260914
     paths:
       - .github/workflows/deploy-343-nav-3factorial.yml
+      - .github/scripts/test-343-nav-3factorial.js
+      - nomad-live-343/index.html
+      - nomad-live-343/signal.html
+      - nomad-live-343/statistics.html
+      - nomad-live-343/statistics-page-343.css
+      - nomad-live-343/nav-stability-343.css
 jobs:
   verify-promote:
     runs-on: ubuntu-latest
