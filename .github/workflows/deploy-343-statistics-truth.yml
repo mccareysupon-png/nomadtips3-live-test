@@ -35,8 +35,13 @@ jobs:
           git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=10
           test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
           test "$(git rev-parse origin/$ROLLBACK_REF)" = "$BASE_SHA"
-      - name: Apply exact patch
-        run: python3 .github/scripts/patch-343-statistics-truth.py
+      - name: Apply exact patch preserving 10-book engine
+        run: |
+          set -euo pipefail
+          sed -i "s/nomad343-engine-v3-settlement-safe/nomad343-engine-v4-10book-referee/g" .github/scripts/patch-343-statistics-truth.py
+          sed -i "s/nomad343-engine-v4-finished-settlement/nomad343-engine-v5-10book-referee-finished-settlement/g" .github/scripts/patch-343-statistics-truth.py
+          python3 .github/scripts/patch-343-statistics-truth.py
+          git checkout -- .github/scripts/patch-343-statistics-truth.py
       - name: Validate four-file scope and settlement rules
         run: |
           set -euo pipefail
@@ -50,6 +55,7 @@ jobs:
           node --check workers/nomadtips3-5usd-hub-343/src/index-v5.js
           node --check workers/nomadtips3-engine-343/src/index.js
           node --check nomad-live-343/statistics.js
+          grep -Fq "const VERSION='nomad343-engine-v5-10book-referee-finished-settlement';" workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'status=finished' workers/nomadtips3-5usd-hub-343/src/index-v5.js
           grep -Fq 'settlement_pending' workers/nomadtips3-5usd-hub-343/src/index-v5.js
           grep -Fq "function periodCompleteForSignal(s,f){return Boolean(MARKET_RULES[s?.market])&&isFinished(f)}" workers/nomadtips3-engine-343/src/index.js
@@ -101,10 +107,10 @@ jobs:
           const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
           if(h.ok!==true||h.version!=='nomad343-5usd-hub-v6-settlement-bridge')process.exit(21);
           if(Number(h.providerRequestCount||0)>Number(h.providerRequestBudget||5))process.exit(22);
-          if(s.ok!==true||s.settlementRevision!=='bet365-rules-v3-finished-only'||typeof s.push!=='number'||!Array.isArray(s.rows))process.exit(23);
+          if(s.ok!==true||s.version!=='nomad343-engine-v5-10book-referee-finished-settlement'||s.settlementRevision!=='bet365-rules-v3-finished-only'||typeof s.push!=='number'||!Array.isArray(s.rows))process.exit(23);
           const sum=Number(s.win||0)+Number(s.loss||0)+Number(s.push||0)+Number(s.halfWin||0)+Number(s.halfLoss||0);
           if(sum!==Number(s.total||0))process.exit(24);
-          console.log(JSON.stringify({hub:h.version,requests:h.providerRequestCount,budget:h.providerRequestBudget,counts:h.counts,stats:{total:s.total,win:s.win,loss:s.loss,push:s.push,halfWin:s.halfWin,halfLoss:s.halfLoss,unresolved:s.unresolved}},null,2));
+          console.log(JSON.stringify({hub:h.version,engine:s.version,requests:h.providerRequestCount,budget:h.providerRequestBudget,counts:h.counts,stats:{total:s.total,win:s.win,loss:s.loss,push:s.push,halfWin:s.halfWin,halfLoss:s.halfLoss,unresolved:s.unresolved}},null,2));
           NODE
           grep -Fq 'data-push' /tmp/statistics.html
           grep -Fq '<th>#</th>' /tmp/statistics.html
