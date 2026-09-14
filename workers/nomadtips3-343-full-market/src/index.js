@@ -1,6 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 
-const VERSION = 'nomad343-full-market-v1-ultra-10book';
+const VERSION = 'nomad343-full-market-v2-settings';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const BOOKMAKERS = [
   { slug: 'bet365', name: 'Bet365', role: 'MAIN', order: 1 },
@@ -15,10 +15,14 @@ const BOOKMAKERS = [
   { slug: 'easybets', name: 'Easybets', role: 'RESERVE', order: 10 }
 ];
 const BOOKMAKER_QUERY = BOOKMAKERS.map(x => x.slug).join(',');
-const CACHE_MS = 15_000;
-const STALE_MS = 5 * 60_000;
 const ACCOUNT_RATE_LIMIT_PER_MIN = 40;
-const SIDECAR_SOFT_LIMIT_PER_MIN = 24;
+const DEFAULT_CONTROL = Object.freeze({
+  refreshSeconds: 30,
+  workerCacheSeconds: 30,
+  eventTrigger: true,
+  softLimitPerMinute: 24
+});
+const STALE_MS = 5 * 60_000;
 const BUDGET_WINDOW_MS = 60_000;
 const MAX_RECENT_FIXTURES = 64;
 
@@ -26,6 +30,16 @@ const now = () => Date.now();
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const clone = value => value === undefined ? null : JSON.parse(JSON.stringify(value));
 const normalized = value => String(value ?? '').toLowerCase().replace(/[\s_-]/g, '');
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+function sanitizeControl(raw = {}) {
+  return {
+    refreshSeconds: clamp(Math.round(num(raw.refreshSeconds) ?? DEFAULT_CONTROL.refreshSeconds), 10, 120),
+    workerCacheSeconds: clamp(Math.round(num(raw.workerCacheSeconds) ?? DEFAULT_CONTROL.workerCacheSeconds), 10, 120),
+    eventTrigger: raw.eventTrigger === undefined ? DEFAULT_CONTROL.eventTrigger : Boolean(raw.eventTrigger),
+    softLimitPerMinute: clamp(Math.round(num(raw.softLimitPerMinute) ?? DEFAULT_CONTROL.softLimitPerMinute), 1, 36)
+  };
+}
 
 function bookmakerArray(payload) {
   const roots = [payload?.data, payload, payload?.data?.odds, payload?.odds].filter(Boolean);
@@ -68,6 +82,16 @@ export class FullMarketHub extends DurableObject {
     this.inflight = new Map();
   }
 
+  async control() {
+    return sanitizeControl(await this.ctx.storage.get('fullMarketControl') || DEFAULT_CONTROL);
+  }
+
+  async saveControl(raw) {
+    const next = sanitizeControl(raw);
+    await this.ctx.storage.put('fullMarketControl', next);
+    return next;
+  }
+
   async rateState(at = now()) {
     const raw = await this.ctx.storage.get('providerRequestTimes') || [];
     const times = raw.filter(value => Number.isFinite(Number(value)) && at - Number(value) < BUDGET_WINDOW_MS);
@@ -75,9 +99,9 @@ export class FullMarketHub extends DurableObject {
     return times;
   }
 
-  async consumeProviderBudget(at = now()) {
+  async consumeProviderBudget(control, at = now()) {
     const times = await this.rateState(at);
-    if (times.length >= SIDECAR_SOFT_LIMIT_PER_MIN) return { ok: false, used: times.length };
+    if (times.length >= control.softLimitPerMinute) return { ok: false, used: times.length };
     times.push(at);
     await this.ctx.storage.put('providerRequestTimes', times);
     return { ok: true, used: times.length };
@@ -121,8 +145,17 @@ export class FullMarketHub extends DurableObject {
     return json;
   }
 
-  async freshFixture(fixtureId, previous) {
-    const budget = await this.consumeProviderBudget();
+  rateMeta(control, usedInWindow) {
+    return {
+      accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN,
+      sidecarSoftLimitPerMinute: control.softLimitPerMinute,
+      usedInWindow,
+      burstFriendly: true
+    };
+  }
+
+  async freshFixture(fixtureId, previous, control, source = '5USD_ULTRA_10BOOK') {
+    const budget = await this.consumeProviderBudget(control);
     if (!budget.ok) {
       const staleAge = previous?.fetchedAt ? now() - Number(previous.fetchedAt) : null;
       if (previous?.fullOdds && staleAge !== null && staleAge <= STALE_MS) {
@@ -138,7 +171,8 @@ export class FullMarketHub extends DurableObject {
           stale: true,
           limited: true,
           source: 'FULL_MARKET_STALE_RATE_GUARD',
-          rate: { accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN, sidecarSoftLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN, usedInWindow: budget.used }
+          control,
+          rate: this.rateMeta(control, budget.used)
         };
       }
       const error = new Error('FULL_MARKET_SOFT_RATE_LIMIT');
@@ -168,8 +202,9 @@ export class FullMarketHub extends DurableObject {
         cached: false,
         stale: false,
         limited: false,
-        source: '5USD_ULTRA_10BOOK',
-        rate: { accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN, sidecarSoftLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN, usedInWindow: budget.used }
+        source,
+        control,
+        rate: this.rateMeta(control, budget.used)
       };
     } catch (error) {
       const staleAge = previous?.fetchedAt ? now() - Number(previous.fetchedAt) : null;
@@ -188,7 +223,8 @@ export class FullMarketHub extends DurableObject {
           source: 'FULL_MARKET_STALE_PROVIDER_FALLBACK',
           refreshError: String(error?.message || error),
           retryAfter: num(error?.retryAfter),
-          rate: { accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN, sidecarSoftLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN, usedInWindow: budget.used }
+          control,
+          rate: this.rateMeta(control, budget.used)
         };
       }
       throw error;
@@ -196,9 +232,11 @@ export class FullMarketHub extends DurableObject {
   }
 
   async fixtureOdds(fixtureId) {
+    const control = await this.control();
     const cached = await this.cached(fixtureId);
     const age = cached?.fetchedAt ? Math.max(0, now() - Number(cached.fetchedAt)) : null;
-    if (cached?.fullOdds && age !== null && age <= CACHE_MS) {
+    const freshWindowMs = Math.max(control.refreshSeconds, control.workerCacheSeconds) * 1000;
+    if (cached?.fullOdds && age !== null && age <= freshWindowMs) {
       const times = await this.rateState();
       return {
         ok: true,
@@ -212,17 +250,46 @@ export class FullMarketHub extends DurableObject {
         stale: false,
         limited: false,
         source: 'FULL_MARKET_CACHE',
-        rate: { accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN, sidecarSoftLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN, usedInWindow: times.length }
+        control,
+        rate: this.rateMeta(control, times.length)
       };
     }
 
     if (this.inflight.has(fixtureId)) return this.inflight.get(fixtureId);
-    const task = this.freshFixture(fixtureId, cached).finally(() => this.inflight.delete(fixtureId));
+    const task = this.freshFixture(fixtureId, cached, control).finally(() => this.inflight.delete(fixtureId));
     this.inflight.set(fixtureId, task);
     return task;
   }
 
+  async eventRefresh(fixtureId) {
+    const control = await this.control();
+    if (!control.eventTrigger) {
+      const times = await this.rateState();
+      return { ok: true, fixtureId, version: VERSION, skipped: true, reason: 'EVENT_TRIGGER_OFF', control, rate: this.rateMeta(control, times.length) };
+    }
+    const previous = await this.cached(fixtureId);
+    if (this.inflight.has(fixtureId)) return this.inflight.get(fixtureId);
+    const task = this.freshFixture(fixtureId, previous, control, '5USD_ULTRA_EVENT_TRIGGER').finally(() => this.inflight.delete(fixtureId));
+    this.inflight.set(fixtureId, task);
+    return task;
+  }
+
+  async settingsResponse() {
+    const control = await this.control();
+    const times = await this.rateState();
+    return {
+      ok: true,
+      component: 'NOMAD343_FULL_MARKET',
+      version: VERSION,
+      control,
+      defaults: DEFAULT_CONTROL,
+      accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN,
+      usedInWindow: times.length
+    };
+  }
+
   async health() {
+    const control = await this.control();
     const times = await this.rateState();
     return {
       ok: true,
@@ -230,20 +297,23 @@ export class FullMarketHub extends DurableObject {
       version: VERSION,
       bookmakers: BOOKMAKERS,
       bookmakerQuery: BOOKMAKER_QUERY,
-      cacheMs: CACHE_MS,
+      cacheMs: Math.max(control.refreshSeconds, control.workerCacheSeconds) * 1000,
       staleMs: STALE_MS,
-      rate: {
-        accountLimitPerMinute: ACCOUNT_RATE_LIMIT_PER_MIN,
-        sidecarSoftLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN,
-        usedInWindow: times.length,
-        burstFriendly: true
-      }
+      control,
+      rate: this.rateMeta(control, times.length)
     };
   }
 
   async fetch(request) {
     const url = new URL(request.url);
     if (request.method === 'GET' && (url.pathname === '/health' || url.pathname === '/status')) return response(await this.health());
+    if (request.method === 'GET' && url.pathname === '/settings') return response(await this.settingsResponse());
+    if (request.method === 'PUT' && url.pathname === '/settings') {
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body !== 'object') return response({ ok: false, version: VERSION, error: 'INVALID_SETTINGS_BODY' }, 400);
+      const control = await this.saveControl(body.control || body);
+      return response({ ...(await this.settingsResponse()), control });
+    }
     if (request.method === 'GET' && url.pathname === '/fixture-odds') {
       const fixtureId = String(url.searchParams.get('fixtureId') || '').trim();
       if (!fixtureId) return response({ ok: false, version: VERSION, error: 'FIXTURE_ID_REQUIRED' }, 400);
@@ -253,14 +323,19 @@ export class FullMarketHub extends DurableObject {
         const status = Number(error?.status) === 429 ? 429 : Number(error?.status) >= 400 && Number(error?.status) < 600 ? Number(error.status) : 502;
         const retryAfter = num(error?.retryAfter);
         const headers = retryAfter !== null ? { 'retry-after': String(retryAfter) } : {};
-        return response({
-          ok: false,
-          version: VERSION,
-          fixtureId,
-          error: String(error?.message || error),
-          retryAfter,
-          requestedBookmakers: BOOKMAKERS
-        }, status, headers);
+        return response({ ok: false, version: VERSION, fixtureId, error: String(error?.message || error), retryAfter, requestedBookmakers: BOOKMAKERS }, status, headers);
+      }
+    }
+    if (['GET', 'POST'].includes(request.method) && url.pathname === '/event-refresh') {
+      const fixtureId = String(url.searchParams.get('fixtureId') || '').trim();
+      if (!fixtureId) return response({ ok: false, version: VERSION, error: 'FIXTURE_ID_REQUIRED' }, 400);
+      try {
+        return response(await this.eventRefresh(fixtureId));
+      } catch (error) {
+        const status = Number(error?.status) === 429 ? 429 : Number(error?.status) >= 400 && Number(error?.status) < 600 ? Number(error.status) : 502;
+        const retryAfter = num(error?.retryAfter);
+        const headers = retryAfter !== null ? { 'retry-after': String(retryAfter) } : {};
+        return response({ ok: false, version: VERSION, fixtureId, error: String(error?.message || error), retryAfter }, status, headers);
       }
     }
     return response({ ok: false, version: VERSION, error: 'NOT_FOUND' }, 404);
@@ -275,11 +350,13 @@ function stub(env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!['GET', 'HEAD'].includes(request.method)) return response({ ok: false, version: VERSION, error: 'METHOD_NOT_ALLOWED' }, 405);
+    if (!['GET', 'HEAD', 'PUT', 'POST'].includes(request.method)) return response({ ok: false, version: VERSION, error: 'METHOD_NOT_ALLOWED' }, 405);
     const target = new URL('https://full-market.internal');
     target.pathname = url.pathname;
     target.search = url.search;
-    const r = await stub(env).fetch(new Request(target, { method: 'GET', headers: { accept: 'application/json' } }));
+    const init = { method: request.method, headers: request.headers };
+    if (!['GET', 'HEAD'].includes(request.method)) init.body = request.body;
+    const r = await stub(env).fetch(new Request(target, init));
     if (request.method === 'HEAD') return new Response(null, { status: r.status, headers: r.headers });
     return r;
   }
