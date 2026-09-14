@@ -4,6 +4,8 @@ on:
     branches:
       - work/nomad343-server-prewarm-20260914
     paths:
+      - nomad-live-343/statistics.html
+      - .github/scripts/test-343-statistics-entry-donut.js
       - .github/workflows/deploy-343-statistics-entry-donut.yml
 jobs:
   verify-deploy:
