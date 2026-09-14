@@ -23,6 +23,7 @@ function kickoffMs(f){const raw=f?.kickoffAt??f?.kickoffUtc??f?.startAt??f?.star
 function norm(v){return lower(v).replace(/[\s_-]/g,'')}
 function bookmakerRows(payload){const roots=[payload?.data,payload,payload?.data?.odds,payload?.odds].filter(Boolean);for(const root of roots){if(Array.isArray(root?.bookmakers))return root.bookmakers;if(Array.isArray(root))return root}return[]}
 function availableBookmakers(payload){const found=new Set();for(const row of bookmakerRows(payload)){const key=norm(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name);if(!key)continue;for(const book of BOOKS){const target=norm(book);if(key===target||key.includes(target)||target.includes(key))found.add(book)}}return BOOKS.filter(x=>found.has(x))}
+function authorizedTick(request,env){const expected=text(env.FIVEDOLLAR_API_KEY);if(!expected)return false;const auth=text(request.headers.get('authorization'));return auth===`Bearer ${expected}`}
 
 async function hubSnapshot(env){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),PROVIDER_TIMEOUT_MS);try{const r=await fetch(text(env.HUB_SNAPSHOT_URL)||DEFAULT_HUB,{cache:'no-store',headers:{accept:'application/json'},signal:controller.signal});const j=await r.json().catch(()=>null);if(!r.ok||j?.ok!==true)throw new Error(`HUB_HTTP_${r.status}`);return j}finally{clearTimeout(timer)}}
 
@@ -45,6 +46,6 @@ export class CentralMarketHub extends DurableObject{
 
 function stub(env){const id=env.CENTRAL_MARKET.idFromName('global');return env.CENTRAL_MARKET.get(id)}
 export default{
-  async fetch(request,env){const url=new URL(request.url),s=stub(env);if(request.method==='GET'&&url.pathname==='/health')return s.fetch('https://central.internal/health');if(request.method==='GET'&&url.pathname==='/cache-snapshot')return s.fetch('https://central.internal/cache-snapshot');if(request.method==='GET'&&url.pathname==='/fixture-odds-cache'){const u=new URL('https://central.internal/fixture-odds-cache');u.search=url.search;return s.fetch(u)}if(request.method==='POST'&&url.pathname==='/scheduler-tick')return s.fetch('https://central.internal/scheduler-tick',{method:'POST'});return json({ok:false,version:VERSION,error:'NOT_FOUND'},404)},
+  async fetch(request,env){const url=new URL(request.url),s=stub(env);if(request.method==='GET'&&url.pathname==='/health')return s.fetch('https://central.internal/health');if(request.method==='GET'&&url.pathname==='/cache-snapshot')return s.fetch('https://central.internal/cache-snapshot');if(request.method==='GET'&&url.pathname==='/fixture-odds-cache'){const u=new URL('https://central.internal/fixture-odds-cache');u.search=url.search;return s.fetch(u)}if(request.method==='POST'&&url.pathname==='/scheduler-tick'){if(!authorizedTick(request,env))return json({ok:false,version:VERSION,error:'FORBIDDEN'},403);return s.fetch('https://central.internal/scheduler-tick',{method:'POST'})}return json({ok:false,version:VERSION,error:'NOT_FOUND'},404)},
   async scheduled(_controller,env,ctx){ctx.waitUntil(stub(env).fetch('https://central.internal/scheduler-tick',{method:'POST'}))}
 };
