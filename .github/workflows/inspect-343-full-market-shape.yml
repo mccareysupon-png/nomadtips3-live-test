@@ -1,0 +1,57 @@
+name: Inspect 3.43 Full Market Shape
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/inspect-343-full-market-shape.yml'
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect live central payload shape
+        env:
+          BASE: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+        run: |
+          set -euo pipefail
+          curl -fsS "$BASE/api/live/snapshot?x=$(date +%s)" -o /tmp/live.json
+          curl -fsS "$BASE/api/full-market/cache-snapshot?x=$(date +%s)" -o /tmp/central.json
+          python - <<'PY'
+          import json
+          live=json.load(open('/tmp/live.json'))
+          central=json.load(open('/tmp/central.json'))
+          live_ids=[]
+          for f in live.get('fixtures') or []:
+              s=str(f.get('boardState') or f.get('status') or f.get('statusCode') or '').lower()
+              islive=any(x in s for x in ['live','in_play','in play','playing','first half','second half','1h','2h','half-time','halftime'])
+              try: islive=islive or str(f.get('statusCode') or '').isdigit()
+              except: pass
+              if islive: live_ids.append(str(f.get('fixtureId') or f.get('id') or ''))
+          row=next((r for r in central.get('fixtures') or [] if str(r.get('fixtureId')) in live_ids),None)
+          if not row: raise SystemExit('NO_LIVE_CENTRAL_ROW')
+          p=row.get('fullOdds')
+          print('FIXTURE',row.get('fixtureId'))
+          print('AVAILABLE_BOOKS',row.get('availableBookmakers'))
+          def describe(obj,depth=0,path='root'):
+              if depth>4:return
+              if isinstance(obj,dict):
+                  ks=list(obj.keys())
+                  print(path,'DICT_KEYS',ks[:30])
+                  for k in ks[:20]:
+                      v=obj[k]
+                      if isinstance(v,(dict,list)): describe(v,depth+1,path+'.'+str(k))
+              elif isinstance(obj,list):
+                  print(path,'LIST_LEN',len(obj))
+                  for i,v in enumerate(obj[:3]):
+                      if isinstance(v,dict):
+                          print(path+f'[{i}]','ITEM_KEYS',list(v.keys())[:30])
+                          # expose only bookmaker identity and market key names, no secrets
+                          for key in ['slug','name','bookmaker','code','id']:
+                              if key in v and not isinstance(v[key],(dict,list)): print(path+f'[{i}].{key}',repr(v[key]))
+                          for key in ['odds','markets','data']:
+                              if key in v and isinstance(v[key],dict): print(path+f'[{i}].{key}_KEYS',list(v[key].keys())[:30])
+                      describe(v,depth+1,path+f'[{i}]')
+          describe(p)
+          PY
