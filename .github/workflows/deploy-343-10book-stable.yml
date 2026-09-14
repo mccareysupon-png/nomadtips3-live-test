@@ -51,10 +51,10 @@ jobs:
           set -euo pipefail
           node --check nomad-live-343/full-odds-10book-343.js
           node --check workers/nomadtips3-343-preview/src/index-stable.js
-          grep -Fq 'full-odds-10book-343.js?v=343-prewarm-10book-v3' nomad-live-343/index.html
+          grep -Fq 'full-odds-10book-343.js?v=343-prewarm-10book-v4' nomad-live-343/index.html
           grep -Fq "'/full-odds-10book-343.js'" workers/nomadtips3-343-preview/src/index-stable.js
           grep -Fq "const API='/api/full-market/fixture-odds'" nomad-live-343/full-odds-10book-343.js
-          grep -Fq "PREFETCH_GAP_MS=4000" nomad-live-343/full-odds-10book-343.js
+          grep -Fq "PREFETCH_GAP_MS=6000" nomad-live-343/full-odds-10book-343.js
           grep -Fq "PREWARMED_10BOOK_ZERO_CLICK_REQUESTS" nomad-live-343/full-odds-10book-343.js
           if grep -Fq "document.addEventListener('click'" nomad-live-343/full-odds-10book-343.js; then echo 'CLICK REQUEST TRIGGER STILL PRESENT'; exit 1; fi
 
