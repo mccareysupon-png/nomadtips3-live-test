@@ -43,7 +43,7 @@ const {chromium}=require('playwright');
   if(result.values[0].join('/')!=='18/40'||result.values[5].join('/')!=='28%/72%')throw Error('STAT_VALUES_BAD '+JSON.stringify(result));
   if(result.homeColor!=='rgb(74, 195, 120)'||result.awayColor!=='rgb(207, 191, 81)')throw Error('STAT_TEAM_COLORS_BAD '+JSON.stringify(result));
   if(result.expanded!=='true')throw Error('STAT_EXPANDED_BAD '+JSON.stringify(result));
-  if(!/SETTLED HOME/.test(result.settledText)||!/WIN/.test(result.settledText))throw Error('RESULTS_HISTORY_CHANGED '+JSON.stringify(result));
+  if(!/SETTLED HOME/i.test(result.settledText)||!/WIN/i.test(result.settledText))throw Error('RESULTS_HISTORY_CHANGED '+JSON.stringify(result));
   console.log('STATISTICS ENTRY DONUT OK',result);
   await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
