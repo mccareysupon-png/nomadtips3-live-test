@@ -1,0 +1,90 @@
+name: Deploy 3.43 Full Market Live Green
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - 'nomad-live-343/full-odds-bulk-343.js'
+      - 'nomad-live-343/full-odds-10book-343.js'
+      - 'nomad-live-343/index.html'
+      - '.github/workflows/deploy-343-full-market-live-green.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-canary-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Guard scope and syntax
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/full-odds-bulk-343.js
+          node --check nomad-live-343/full-odds-10book-343.js
+          grep -Fq "fom-price-row${live?' live':''}" nomad-live-343/full-odds-bulk-343.js
+          grep -Fq '.fom-price-row.live .fom-price' nomad-live-343/full-odds-bulk-343.js
+          grep -Fq 'fom-refresh-sweep' nomad-live-343/full-odds-bulk-343.js
+          grep -Fq 'sweepExpanded' nomad-live-343/full-odds-10book-343.js
+          grep -Fq '343-live-green-sweep-v1' nomad-live-343/index.html
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-engine-343 || { echo ENGINE_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-343-full-market || { echo FULL_MARKET_WORKER_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-343-full-market-central || { echo CENTRAL_MARKET_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-5usd-hub-343 || { echo HUB_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- nomad-live-341 || { echo 341_CHANGED; exit 1; }
+      - name: Dry-run viewers
+        run: |
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+      - name: Canary UI contract
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          TARGET_URL="$CANARY_URL" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let providerDetail=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))providerDetail++});
+            await page.goto(process.env.TARGET_URL+'/?fx='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const card=page.locator('.match-card[data-match-id]').first();
+            await card.locator('.match-row.scoreboard-default').click();
+            await page.waitForSelector('.match-card[aria-expanded="true"] [data-full-odds-main] .fom-board',{timeout:15000});
+            await page.evaluate(()=>window.NOMAD343_FULL_ODDS_10BOOK?.refresh?.());
+            await page.waitForFunction(()=>document.querySelector('.match-card[aria-expanded="true"] .fom-board')?.classList.contains('fom-refresh-sweep'),null,{timeout:10000});
+            if(providerDetail!==0)throw Error('VIEWER_TRIGGERED_PROVIDER_DETAIL='+providerDetail);
+            console.log('CANARY FULL MARKET FX OK',{providerDetail});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Production UI contract
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/?fx=$RANDOM" -o /tmp/prod.html
+          grep -Fq '343-live-green-sweep-v1' /tmp/prod.html
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/full-odds-bulk-343.js?fx=$RANDOM" -o /tmp/bulk.js
+          grep -Fq '.fom-price-row.live .fom-price' /tmp/bulk.js
+          grep -Fq 'fom-refresh-sweep' /tmp/bulk.js
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/full-odds-10book-343.js?fx=$RANDOM" -o /tmp/cache.js
+          grep -Fq 'sweepExpanded' /tmp/cache.js
+          echo 'PRODUCTION FULL MARKET LIVE GREEN OK'
