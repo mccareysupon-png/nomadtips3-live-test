@@ -62,8 +62,8 @@ const close=(a,b,tol=.75)=>a!==null&&b!==null&&Math.abs(a-b)<=tol;
           if(!close(x,y))throw new Error(`${vp.name} ${order.join('>')} ${label} LATE_SHAKE ${name} ${x} -> ${y} INITIAL=${JSON.stringify(a)} MID=${JSON.stringify(b)} FINAL=${JSON.stringify(c)}`);
         }
         if(c.bodyMargin!=='0px')throw new Error(`${vp.name} ${label} bodyMargin=${c.bodyMargin}`);
-        if(c.critical!=='343-nav-stable-v3')throw new Error(`${vp.name} ${label} critical=${c.critical}`);
-        if(!c.appHref.includes('343-nav-stable-v3'))throw new Error(`${vp.name} ${label} appHref=${c.appHref}`);
+        if(c.critical!=='343-nav-stable-v4')throw new Error(`${vp.name} ${label} critical=${c.critical}`);
+        if(!c.appHref.includes('343-nav-stable-v4'))throw new Error(`${vp.name} ${label} appHref=${c.appHref}`);
         if(c.desktopNavCount!==1||c.mobileNavCount!==1)throw new Error(`${vp.name} ${label} noncanonical nav DOM d=${c.desktopNavCount} m=${c.mobileNavCount}`);
         if(c.scrollWidth>c.clientWidth+2)throw new Error(`${vp.name} ${label} ROOT_HORIZONTAL_OVERFLOW ${JSON.stringify(c)}`);
         states.push(c);return c;
