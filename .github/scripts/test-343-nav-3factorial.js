@@ -21,6 +21,27 @@ const permutations=[
     {name:'mobile',width:390,height:844,mobile:true},
   ];
 
+  const waitSettled=async(page,target,vp)=>{
+    await page.waitForFunction(t=>document.body?.dataset?.page===t,target,{timeout:15000});
+    await page.waitForLoadState('load',{timeout:45000});
+    await page.waitForFunction(({target,mobile})=>{
+      if(document.body?.dataset?.page!==target)return false;
+      const link=[...document.styleSheets].some(s=>String(s.href||'').includes('nav-stability-343.css'));
+      if(!link)return false;
+      if(mobile){
+        const nav=document.querySelector('.mobile-nav');
+        if(!nav)return false;
+        const r=nav.getBoundingClientRect();
+        return getComputedStyle(nav).display==='grid'&&r.width>0&&r.height>0;
+      }
+      const nav=document.querySelector('.topnav');
+      if(!nav)return false;
+      const cs=getComputedStyle(nav),r=nav.getBoundingClientRect();
+      return cs.display==='flex'&&cs.marginRight==='290px'&&r.width>0&&r.height===64;
+    },{target,mobile:vp.mobile},{timeout:15000});
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+  };
+
   const snap=async(page,label)=>page.evaluate((label)=>{
     const html=document.documentElement;
     const body=document.body;
@@ -61,14 +82,18 @@ const permutations=[
   for(const vp of viewports){
     for(const perm of permutations){
       const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
-      await page.goto(`${base}/${pages[perm[0]]}?factorial=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:45000});
-      await page.waitForTimeout(60);
+      await page.goto(`${base}/${pages[perm[0]]}?factorial=${Date.now()}`,{waitUntil:'load',timeout:45000});
+      await waitSettled(page,perm[0],vp);
       const states=[await snap(page,perm[0])];
       for(const target of perm.slice(1)){
         const link=page.locator(`a[data-nav="${target}"]:visible`).first();
         await link.waitFor({state:'visible',timeout:15000});
-        await Promise.all([page.waitForLoadState('domcontentloaded'),link.click()]);
-        await page.waitForTimeout(60);
+        const expected=`/${pages[target]}`;
+        await Promise.all([
+          page.waitForURL(url=>url.pathname.endsWith(expected),{timeout:45000}),
+          link.click(),
+        ]);
+        await waitSettled(page,target,vp);
         states.push(await snap(page,target));
       }
       const baseline=states[0];
