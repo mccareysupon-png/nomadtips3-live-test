@@ -1,0 +1,42 @@
+/* NOMAD 3.43 stable viewer: layout only, no animation-driven reflow. */
+.match-card{scroll-margin-top:76px}
+.scoreboard-default{display:block!important;min-height:60px!important;padding:5px 12px 6px!important}
+.league-scoreboard{margin:0 0 4px;color:#819087;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fixture-scoreboard{display:grid;grid-template-columns:66px minmax(0,1fr) 76px minmax(0,1fr) 88px;gap:8px;align-items:center;min-height:38px}
+.fixture-meta{display:grid;gap:3px;align-content:center;justify-items:start;font-variant-numeric:tabular-nums}
+.fixture-date{font-size:9px;color:#7f8b83;font-weight:800;letter-spacing:.02em}
+.fixture-clock{font-size:10px;color:#9ba79e;font-weight:900}
+.fixture-meta.live .fixture-clock{color:#65d985}
+.fixture-meta.unknown .fixture-clock{color:#d9a447;font-size:7px}
+.team-slot{display:flex;align-items:center;min-width:0;font-size:10.8px;font-weight:800}
+.home-slot{justify-content:flex-end;text-align:right}
+.away-slot{justify-content:flex-start;text-align:left}
+.team-slot .team-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-core{text-align:center;min-width:0;font-variant-numeric:tabular-nums}
+.score-core strong{display:block;font-size:14px;line-height:1.05;font-weight:900;white-space:nowrap}
+.score-core small{display:block;white-space:nowrap}
+.half-score{margin-top:3px;color:#6f7b73;font-size:8px;font-weight:700}
+.fixture-side{min-width:0;display:flex;justify-content:flex-end;align-items:center;text-align:right}
+.signal-state{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap;font-size:8px;line-height:1;font-weight:900;letter-spacing:.025em;color:#78837c}
+.signal-state i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#667069;flex:0 0 5px}
+.signal-state.locked{color:#69e493}.signal-state.locked i{background:#62e88f;box-shadow:0 0 6px rgba(98,232,143,.75)}
+.signal-state.unknown{color:#68736c}.signal-state.unknown i{background:#566159}
+.event-details{padding:12px}
+.evidence-card,.flow-card{background:#121914;border:1px solid #2a382e}
+.evidence-head,.flow-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid #263229}
+.evidence-head b,.flow-head b{font-size:11px}.evidence-head small,.flow-head small{font-size:8px;color:#7e8b82}
+.team-axis{display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;padding:8px 10px 2px;font-size:9px}
+.team-axis b:first-child{text-align:right;color:#77dfa0}.team-axis b:last-child{text-align:left;color:#e2aa60}
+.mirror-bars{padding:5px 10px 10px}
+.mirror-row{display:grid;grid-template-columns:42px minmax(55px,1fr) 116px minmax(55px,1fr) 42px;gap:7px;align-items:center;min-height:30px;border-bottom:1px solid rgba(255,255,255,.035)}
+.mirror-row:last-child{border-bottom:0}.mirror-row>span{text-align:center;color:#aeb9b1;font-size:9px}.mirror-num{font-size:10px}.home-num{text-align:right;color:#dff6e7}.away-num{text-align:left;color:#fae7d5}
+.mirror-track{height:7px;background:#0d120e;overflow:hidden;display:flex}.home-track{justify-content:flex-end}.away-track{justify-content:flex-start}.mirror-track i{display:block;height:100%;min-width:0}
+.details-note{margin-top:8px;color:#7e8b82;font-size:9px;line-height:1.45}
+.stable-market-slot{margin-top:8px}
+body[data-page="live"] .match-card{cursor:default}
+body[data-page="live"] .match-card>.match-row,body[data-page="live"] .match-card>.expand-cue{cursor:pointer}
+body[data-page="live"] .match-card>.event-details{cursor:default}
+body[data-page="live"] .match-card:hover,body[data-page="live"] .match-card:focus-visible,body[data-page="live"] .match-card.expanded{position:relative;z-index:2;box-shadow:0 0 0 1px #43b86a!important}
+@media(max-width:760px){
+  .scoreboard-default{padding:5px 8px 6px!important}.fixture-scoreboard{grid-template-columns:46px minmax(0,1fr) 54px minmax(0,1fr) 70px;gap:4px}.fixture-date{font-size:8px}.fixture-clock{font-size:9px}.team-slot{font-size:9px}.score-core strong{font-size:14px}.half-score{font-size:7px}.signal-state{font-size:6.8px;gap:3px}.signal-state i{width:4px;height:4px;flex-basis:4px}.event-details{padding:10px 8px}.team-axis{grid-template-columns:1fr 88px 1fr}.mirror-row{grid-template-columns:34px minmax(42px,1fr) 94px minmax(42px,1fr) 34px;gap:5px}.mirror-row>span{font-size:8px}.match-card{scroll-margin-top:64px}
+}
