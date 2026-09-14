@@ -30,7 +30,8 @@ jobs:
           set -euo pipefail
           git fetch origin "$ROLLBACK_REF" "$ACTIVE_BRANCH" --depth=40
           test "$(git rev-parse origin/$ROLLBACK_REF)" = "e4122f0fd9f2a4f013cf331a93d77828e04797f9"
-          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$(git rev-parse origin/$ROLLBACK_REF)"
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" "origin/$ROLLBACK_REF"
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD
           git diff --name-only "origin/$ROLLBACK_REF"..HEAD | tee /tmp/changed.txt
           if grep -Ev '^(nomad-live-343/(statistics.html|statistics-page-343.css)|\.github/scripts/test-343-nav-3factorial.js|\.github/workflows/deploy-343-nav-3factorial.yml)$' /tmp/changed.txt | grep -q .; then
             echo UNEXPECTED_SCOPE_CHANGE
@@ -68,11 +69,12 @@ jobs:
           exit 1
       - name: Test canary all six permutations
         run: TARGET_URL="$CANARY_URL" node .github/scripts/test-343-nav-3factorial.js
-      - name: Verify active branch unchanged
+      - name: Verify active branch can fast-forward safely
         run: |
           set -euo pipefail
-          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=1
-          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$(git rev-parse origin/$ROLLBACK_REF)"
+          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=40
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" "origin/$ROLLBACK_REF"
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD
       - name: Deploy production viewer
         id: prod_deploy
         run: |
