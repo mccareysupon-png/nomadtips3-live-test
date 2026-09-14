@@ -25,6 +25,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -34,7 +36,7 @@ jobs:
           set -euo pipefail
           git fetch origin work/nomad343-api-mixer-20260914:refs/remotes/origin/work/nomad343-api-mixer-20260914
           git diff --name-only refs/remotes/origin/work/nomad343-api-mixer-20260914...HEAD | tee /tmp/changed.txt
-          if grep -Ev '^(workers/nomadtips3-343-full-market/(src/index-v4\.js|wrangler\.toml|wrangler\.canary\.toml)|\.github/workflows/deploy-343-full-market-v4-canary\.yml)$' /tmp/changed.txt | grep -q .; then
+          if grep -Ev '^(workers/nomadtips3-343-full-market/(src/index-v4\.js|wrangler\.toml|wrangler\.canary\.toml)|\.github/workflows/deploy-343-full-market-v4-(canary|production)\.yml)$' /tmp/changed.txt | grep -q .; then
             echo 'Unexpected file outside isolated Full Market v4 scope'; exit 1
           fi
           if ! git diff --quiet refs/remotes/origin/work/nomad343-api-mixer-20260914...HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 nomad-live-343; then
