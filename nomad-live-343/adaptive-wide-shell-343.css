@@ -11,8 +11,8 @@
   box-sizing:border-box!important;
 }
 
-/* Tablet: 20px breathing room per side. */
-@media (min-width:701px) and (max-width:1023px){
+/* Tablet: 20px breathing room per side. 1024 -> 984. */
+@media (min-width:701px) and (max-width:1099px){
   .shell,
   .topbar-inner{
     width:calc(100% - 40px)!important;
@@ -20,7 +20,7 @@
 }
 
 /* Laptop: 24px per side. 1280 -> 1232, 1366 -> 1318, 1440 -> 1392. */
-@media (min-width:1024px) and (max-width:1499px){
+@media (min-width:1100px) and (max-width:1499px){
   .shell,
   .topbar-inner{
     width:calc(100% - 48px)!important;
