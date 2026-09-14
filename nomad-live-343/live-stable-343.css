@@ -21,6 +21,7 @@
 .signal-state i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#667069;flex:0 0 5px}
 .signal-state.locked{color:#69e493}.signal-state.locked i{background:#62e88f;box-shadow:0 0 6px rgba(98,232,143,.75)}
 .signal-state.unknown{color:#68736c}.signal-state.unknown i{background:#566159}
+.signal-lock-summary{margin-top:4px;padding-top:3px;border-top:1px solid rgba(98,232,143,.08);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#9fcbb0;font-size:8px;line-height:1.2;font-weight:800;letter-spacing:.012em;font-variant-numeric:tabular-nums}
 .event-details{padding:12px}
 .evidence-card,.flow-card{background:#121914;border:1px solid #2a382e}
 .evidence-head,.flow-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid #263229}
@@ -38,7 +39,7 @@ body[data-page="live"] .match-card>.match-row,body[data-page="live"] .match-card
 body[data-page="live"] .match-card>.event-details{cursor:default}
 body[data-page="live"] .match-card:hover,body[data-page="live"] .match-card:focus-visible,body[data-page="live"] .match-card.expanded{position:relative;z-index:2;box-shadow:0 0 0 1px #43b86a!important}
 @media(max-width:760px){
-  .scoreboard-default{padding:5px 8px 6px!important}.fixture-scoreboard{grid-template-columns:46px minmax(0,1fr) 54px minmax(0,1fr) 70px;gap:4px}.fixture-date{font-size:8px}.fixture-clock{font-size:9px}.team-slot{font-size:9px}.score-core strong{font-size:14px}.half-score{font-size:7px}.signal-state{font-size:6.8px;gap:3px}.signal-state i{width:4px;height:4px;flex-basis:4px}.event-details{padding:10px 8px}.team-axis{grid-template-columns:1fr 88px 1fr}.mirror-row{grid-template-columns:34px minmax(42px,1fr) 94px minmax(42px,1fr) 34px;gap:5px}.mirror-row>span{font-size:8px}.match-card{scroll-margin-top:64px}
+  .scoreboard-default{padding:5px 8px 6px!important}.fixture-scoreboard{grid-template-columns:46px minmax(0,1fr) 54px minmax(0,1fr) 70px;gap:4px}.fixture-date{font-size:8px}.fixture-clock{font-size:9px}.team-slot{font-size:9px}.score-core strong{font-size:14px}.half-score{font-size:7px}.signal-state{font-size:6.8px;gap:3px}.signal-state i{width:4px;height:4px;flex-basis:4px}.signal-lock-summary{font-size:6.9px;white-space:normal;line-height:1.25;margin-top:3px;padding-top:3px;overflow-wrap:anywhere}.event-details{padding:10px 8px}.team-axis{grid-template-columns:1fr 88px 1fr}.mirror-row{grid-template-columns:34px minmax(42px,1fr) 94px minmax(42px,1fr) 34px;gap:5px}.mirror-row>span{font-size:8px}.match-card{scroll-margin-top:64px}
 }
 
 /* 343 LIVE STAT BAR PALETTE SOURCE V1 */
