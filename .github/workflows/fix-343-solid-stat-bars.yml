@@ -1,0 +1,105 @@
+name: Fix 3.43 Solid Stat Bars
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/fix-343-solid-stat-bars.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: work/nomad343-server-prewarm-20260914
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch only six stat bars
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/app.css')
+          s=p.read_text()
+          start=s.find('.mirror-row[data-metric="0"] .home i')
+          end_marker='.mirror-row[data-metric="5"] .away i{background:#398bb4}'
+          end=s.find(end_marker)
+          if start < 0 or end < 0:
+              raise SystemExit('STAT_BAR_PALETTE_BLOCK_NOT_FOUND')
+          end += len(end_marker)
+          solid='.mirror-row .home i{background:#52d985}.mirror-row .away i{background:#e08d5f}'
+          s=s[:start]+solid+s[end:]
+          s=s.replace('.visual-team-key span:first-child{color:#78de87}', '.visual-team-key span:first-child{color:#52d985}')
+          s=s.replace('.visual-team-key span:last-child{color:#69bfe9}', '.visual-team-key span:last-child{color:#e08d5f}')
+          p.write_text(s)
+          PY
+          grep -Fq '.mirror-row .home i{background:#52d985}' nomad-live-343/app.css
+          grep -Fq '.mirror-row .away i{background:#e08d5f}' nomad-live-343/app.css
+          grep -Fq '.visual-team-key span:last-child{color:#e08d5f}' nomad-live-343/app.css
+          ! grep -Fq '.mirror-row[data-metric="0"] .home i' nomad-live-343/app.css
+          ! grep -Fq '#8bd4f5' nomad-live-343/app.css
+
+      - name: Persist exact UI change
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/app.css
+          git commit -m 'fix(343): use solid green orange stat bars'
+          git push origin HEAD:work/nomad343-server-prewarm-20260914
+
+      - name: Guard scope
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD)"
+          [ "$changed" = 'nomad-live-343/app.css' ] || { echo "UNEXPECTED_SCOPE: $changed"; exit 1; }
+
+      - name: Dry run viewers
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Verify canary bars
+        run: |
+          set -euo pipefail
+          css="$(curl -fsS "$CANARY_URL/app.css?x=$(date +%s)")"
+          grep -Fq '.mirror-row .home i{background:#52d985}' <<<"$css"
+          grep -Fq '.mirror-row .away i{background:#e08d5f}' <<<"$css"
+          ! grep -Fq '.mirror-row[data-metric="0"] .home i' <<<"$css"
+
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify production bars
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 10); do
+            css="$(curl -fsS "$PROD_URL/app.css?x=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '.mirror-row .home i{background:#52d985}' <<<"$css" && grep -Fq '.mirror-row .away i{background:#e08d5f}' <<<"$css" && ! grep -Fq '.mirror-row[data-metric="0"] .home i' <<<"$css"; then
+              echo 'PRODUCTION SOLID STAT BARS OK'
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
