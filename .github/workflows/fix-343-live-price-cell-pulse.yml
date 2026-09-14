@@ -36,37 +36,61 @@ jobs:
           from pathlib import Path
           import re
 
+          def remove_balanced(text, token):
+              start=text.find(token)
+              if start < 0: return text
+              brace=text.find('{', start)
+              if brace < 0: return text
+              depth=0
+              for i in range(brace, len(text)):
+                  if text[i]=='{': depth+=1
+                  elif text[i]=='}':
+                      depth-=1
+                      if depth==0:
+                          return text[:start]+text[i+1:]
+              raise SystemExit(f'unbalanced block: {token}')
+
           bulk=Path('nomad-live-343/full-odds-bulk-343.js')
           s=bulk.read_text()
 
-          # Make LIVE rows really carry the live class.
-          s=s.replace('class=\\"fom-price-row cols-ah\\"','class=\\"${rowClass} cols-ah\\"')
-          s=s.replace('class=\\"fom-price-row cols-1x2\\"','class=\\"${rowClass} cols-1x2\\"')
-          s=s.replace('class=\\"fom-price-row cols-total\\"','class=\\"${rowClass} cols-total\\"')
+          # LIVE row class: exact stage rows only.
+          s=s.replace('fom-price-row cols-ah','${rowClass} cols-ah')
+          s=s.replace('fom-price-row cols-1x2','${rowClass} cols-1x2')
+          s=s.replace('fom-price-row cols-total','${rowClass} cols-total')
 
-          # Remove the incorrect whole-board sweep effect.
-          s=re.sub(r'\.fom-board\.fom-refresh-sweep::after\{.*?\}', '', s)
-          s=re.sub(r'@keyframes fomRefreshSweep\{.*?\}\}', '', s)
+          # Remove wrong whole-board sweep completely.
+          s=remove_balanced(s,'.fom-board.fom-refresh-sweep::after')
+          s=remove_balanced(s,'@keyframes fomRefreshSweep')
 
-          old='.fom-price-row.live .fom-price{color:#69df8d;font-weight:900;text-shadow:0 0 8px rgba(105,223,141,.32)}'
-          new=(
-            '.fom-price-row.live .fom-price{color:#69df8d;font-weight:900;text-shadow:0 0 8px rgba(105,223,141,.36);border-radius:4px}'
+          # Keep LIVE numbers green. Refresh = soft flow inside price cell; changed = stronger flash.
+          base='.fom-price-row.live .fom-price{color:#69df8d;font-weight:900;text-shadow:0 0 8px rgba(105,223,141,.36);border-radius:4px}'
+          s=re.sub(r'\.fom-price-row\.live \.fom-price\{[^}]*\}',base,s,count=1)
+          if base not in s:
+              marker='.fom-price{text-align:center;font-size:9px;font-variant-numeric:tabular-nums}'
+              if marker not in s: raise SystemExit('price style marker missing')
+              s=s.replace(marker,marker+base,1)
+
+          fx=(
             '.fom-price-row.live .fom-price.fom-price-refresh{background:linear-gradient(90deg,rgba(40,255,110,0),rgba(40,255,110,.18),rgba(40,255,110,0));background-size:220% 100%;animation:fomPriceRefresh .58s ease-out 1}'
             '.fom-price-row.live .fom-price.fom-price-change{background:rgba(55,255,120,.22);box-shadow:0 0 12px rgba(55,255,120,.38);animation:fomPriceChange .78s ease-out 1}'
             '@keyframes fomPriceRefresh{0%{background-position:120% 0;text-shadow:0 0 4px rgba(105,223,141,.25)}45%{background-position:50% 0;text-shadow:0 0 13px rgba(105,223,141,.8)}100%{background-position:-120% 0;text-shadow:0 0 8px rgba(105,223,141,.36)}}'
             '@keyframes fomPriceChange{0%{transform:scale(1);filter:brightness(1)}25%{transform:scale(1.035);filter:brightness(1.65)}55%{transform:scale(1);filter:brightness(1.25)}100%{filter:brightness(1)}}'
           )
-          if old in s:
-              s=s.replace(old,new,1)
-          elif 'fom-price-refresh' not in s:
-              marker='.fom-price{text-align:center;font-size:9px;font-variant-numeric:tabular-nums}'
-              if marker not in s: raise SystemExit('price css marker missing')
-              s=s.replace(marker,marker+new,1)
+          if 'fom-price-refresh' not in s:
+              s=s.replace(base,base+fx,1)
+
+          assert '${rowClass} cols-ah' in s
+          assert '${rowClass} cols-1x2' in s
+          assert '${rowClass} cols-total' in s
+          assert 'fom-refresh-sweep' not in s
+          assert 'fomRefreshSweep' not in s
+          assert 'fom-price-refresh' in s and 'fom-price-change' in s
           bulk.write_text(s)
 
           cache=Path('nomad-live-343/full-odds-10book-343.js')
           s=cache.read_text()
-          s=re.sub(r'function sweepExpanded\(\)\{.*?\}\n', '', s)
+          s=remove_balanced(s,'function sweepExpanded()')
+          s=s.replace('\n\nasync function load()','\nasync function load()')
 
           helpers="""function livePriceSnapshot(){const out=new Map();document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>out.set(fixtureId(card),[...card.querySelectorAll('.fom-price-row.live .fom-price')].map(el=>el.textContent.trim())));return out}\nfunction pulseLivePrices(before){document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>{const old=before.get(fixtureId(card))||[],cells=[...card.querySelectorAll('.fom-price-row.live .fom-price')];cells.forEach((cell,i)=>{cell.classList.remove('fom-price-refresh','fom-price-change');void cell.offsetWidth;cell.classList.add(old[i]!==undefined&&old[i]!==cell.textContent.trim()?'fom-price-change':'fom-price-refresh')})})}\n"""
           if 'function livePriceSnapshot()' not in s:
@@ -74,29 +98,27 @@ jobs:
               if marker not in s: raise SystemExit('load marker missing')
               s=s.replace(marker,helpers+marker,1)
 
-          old_load="if(!r.ok||j?.ok!==true||!Array.isArray(j.fixtures))return;cache.clear();"
-          new_load="if(!r.ok||j?.ok!==true||!Array.isArray(j.fixtures))return;const before=livePriceSnapshot();cache.clear();"
-          if old_load in s:
-              s=s.replace(old_load,new_load,1)
+          marker='if(!r.ok||j?.ok!==true||!Array.isArray(j.fixtures))return;'
+          if 'const before=livePriceSnapshot();' not in s:
+              if marker not in s: raise SystemExit('response marker missing')
+              s=s.replace(marker,marker+'const before=livePriceSnapshot();',1)
 
-          s=s.replace('lastLoadedAt=Date.now();repaintExpanded();sweepExpanded()','lastLoadedAt=Date.now();repaintExpanded();pulseLivePrices(before)')
-          s=s.replace('lastLoadedAt=Date.now();repaintExpanded()','lastLoadedAt=Date.now();repaintExpanded();pulseLivePrices(before)') if 'pulseLivePrices(before)' not in s else s
+          s=s.replace('repaintExpanded();sweepExpanded()','repaintExpanded();pulseLivePrices(before)')
+          if 'repaintExpanded();pulseLivePrices(before)' not in s:
+              s=s.replace('lastLoadedAt=Date.now();repaintExpanded()','lastLoadedAt=Date.now();repaintExpanded();pulseLivePrices(before)',1)
+
+          assert 'sweepExpanded' not in s
+          assert 'livePriceSnapshot' in s
+          assert 'pulseLivePrices(before)' in s
           cache.write_text(s)
 
           index=Path('nomad-live-343/index.html')
-          h=index.read_text()
-          h=h.replace('343-live-green-sweep-v1','343-live-price-cell-pulse-v2')
+          h=index.read_text().replace('343-live-green-sweep-v1','343-live-price-cell-pulse-v2')
           index.write_text(h)
           PY
 
           node --check nomad-live-343/full-odds-bulk-343.js
           node --check nomad-live-343/full-odds-10book-343.js
-          grep -Fq 'class=\"${rowClass} cols-ah\"' nomad-live-343/full-odds-bulk-343.js
-          grep -Fq 'fom-price-refresh' nomad-live-343/full-odds-bulk-343.js
-          grep -Fq 'fom-price-change' nomad-live-343/full-odds-bulk-343.js
-          grep -Fq 'pulseLivePrices' nomad-live-343/full-odds-10book-343.js
-          ! grep -Fq 'fom-refresh-sweep' nomad-live-343/full-odds-bulk-343.js
-          ! grep -Fq 'sweepExpanded' nomad-live-343/full-odds-10book-343.js
 
       - name: Persist exact UI fix
         run: |
@@ -105,7 +127,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add nomad-live-343/full-odds-bulk-343.js nomad-live-343/full-odds-10book-343.js nomad-live-343/index.html
           if ! git diff --cached --quiet; then
-            git commit -m 'fix(343): animate live price cells instead of board sweep'
+            git commit -m 'fix(343): pulse only live price cells'
             git push origin HEAD:work/nomad343-server-prewarm-20260914
           fi
 
@@ -153,7 +175,7 @@ jobs:
               if(!liveCells)await card.locator('.match-row.scoreboard-default').click();
             }
             await page.evaluate(()=>window.NOMAD343_FULL_ODDS_10BOOK?.refresh?.());
-            await page.waitForTimeout(700);
+            await page.waitForTimeout(800);
             const boardSweep=await page.locator('.fom-refresh-sweep').count();
             if(boardSweep!==0)throw Error('BOARD_SWEEP_PRESENT');
             if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
