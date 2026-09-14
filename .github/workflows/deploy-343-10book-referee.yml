@@ -1,0 +1,102 @@
+name: Deploy 3.43 10-Book Referee
+on:
+  push:
+    branches:
+      - work/nomad343-10book-referee-20260914-wip
+    paths:
+      - .github/workflows/deploy-343-10book-referee.yml
+jobs:
+  verify-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: backup/pre-343-10book-referee-20260914
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-10book-referee-20260914-wip
+          fetch-depth: 30
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify rollback point
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git rev-parse "origin/$ROLLBACK_REF"
+
+      - name: Apply isolated referee patch
+        run: |
+          set -euo pipefail
+          python .github/scripts/patch-343-10book-referee.py
+          changed="$(git diff --name-only)"
+          echo "$changed"
+          test "$changed" = "workers/nomadtips3-engine-343/src/index.js" || { echo "UNEXPECTED_RUNTIME_SCOPE"; exit 1; }
+
+      - name: Verify source invariants
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-engine-343/src/index.js
+          python .github/scripts/test-343-10book-referee.py
+          node --test workers/nomadtips3-engine-343/test/*.test.mjs
+          grep -Fq "const MAX_ODDS_FIXTURES_PER_SCAN=4;" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const MIN_SCAN_GAP_MS=60_000;" workers/nomadtips3-engine-343/src/index.js
+          git diff --quiet -- workers/nomadtips3-engine-343/src/market-core.js workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market-central nomad-live-343 nomad-live-341
+
+      - name: Dry-run Engine only
+        working-directory: workers/nomadtips3-engine-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run
+
+      - name: Commit isolated runtime patch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m "feat(343): use 10-book best-price referee"
+          git push origin HEAD:work/nomad343-10book-referee-20260914-wip
+
+      - name: Deploy Engine production
+        id: deploy
+        working-directory: workers/nomadtips3-engine-343
+        run: npx --yes wrangler@4.92.0 deploy
+
+      - name: Verify production referee guard
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 20); do
+            curl -fsS "$ENGINE_URL/health?verify=$RANDOM$(date +%s)" -o /tmp/health.json || true
+            curl -fsS "$ENGINE_URL/board?verify=$RANDOM$(date +%s)" -o /tmp/board.json || true
+            if jq -e '.version == "nomad343-engine-v4-10book-referee"' /tmp/health.json >/dev/null 2>&1 \
+              && jq -e '.referee.bookmakersRequested == 10 and .referee.maxFixturesPerScan == 4 and (.referee.requests >= 0 and .referee.requests <= 4)' /tmp/board.json >/dev/null 2>&1; then
+              ok=1
+              break
+            fi
+            sleep 3
+          done
+          test "$ok" = 1 || { echo "PRODUCTION_REFEREE_VERIFY_FAILED"; cat /tmp/health.json || true; cat /tmp/board.json || true; exit 1; }
+          jq '{version,referee}' /tmp/board.json
+
+      - name: Promote verified commit to active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD || { echo "ACTIVE_BRANCH_MOVED_OR_DIVERGED"; exit 1; }
+          git push origin HEAD:"$ACTIVE_BRANCH"
+
+      - name: Roll back Engine runtime on failure after deploy
+        if: failure() && steps.deploy.outcome == 'success'
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout "origin/$ROLLBACK_REF" -- src/index.js
+          npx --yes wrangler@4.92.0 deploy
+          echo "ENGINE_RUNTIME_ROLLED_BACK_TO_$ROLLBACK_REF"
