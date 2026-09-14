@@ -21,6 +21,7 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   CENTRAL_CANARY_URL: https://nomadtips3-343-central-cache-canary.mccarey-supon.workers.dev
+  CENTRAL_PROD_URL: https://nomadtips3-343-central-cache.mccarey-supon.workers.dev
   VIEW_CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
   PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
@@ -66,8 +67,10 @@ jobs:
           grep -Fq "VIEWER_PROVIDER_REFRESH_DISABLED" workers/nomadtips3-343-preview/src/index-stable.js
           grep -Fq "const MAX_PROVIDER_PER_60S=18" workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq "providerCallsTriggeredByViewer:0" workers/nomadtips3-343-full-market-central/src/index.js
+          grep -Fq "authorizedTick(request,env)" workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq 'name = "nomadtips3-343-central-cache-canary"' workers/nomadtips3-343-full-market-central/wrangler.canary.toml
           grep -Fq 'name = "nomadtips3-343-central-cache"' workers/nomadtips3-343-full-market-central/wrangler.toml
+          grep -Fq 'workers_dev = true' workers/nomadtips3-343-full-market-central/wrangler.toml
           grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-343-full-market-central/wrangler.toml
           grep -Fq '"service": "nomadtips3-343-central-cache-canary"' workers/nomadtips3-343-preview/wrangler.stable.jsonc
           grep -Fq '"service": "nomadtips3-343-central-cache"' workers/nomadtips3-343-preview/wrangler.jsonc
@@ -99,13 +102,13 @@ jobs:
       - name: Exercise central scheduler canary
         run: |
           set -euo pipefail
-          curl_retry() { curl -fsS --retry 10 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 45 "$@"; }
+          curl_retry() { curl -fsS --retry 6 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 45 "$@"; }
           curl_retry "$CENTRAL_CANARY_URL/health" -o /tmp/ch.json
           node -e 'const j=require("/tmp/ch.json");if(j.ok!==true||j.component!=="NOMAD343_CENTRAL_MARKET_CACHE"||j.viewerProviderCalls!==0)throw Error("central health");console.log("CENTRAL HEALTH",j.version)'
-          curl_retry -X POST "$CENTRAL_CANARY_URL/scheduler-tick" -o /tmp/tick.json
+          curl_retry -X POST -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$CENTRAL_CANARY_URL/scheduler-tick" -o /tmp/tick.json
           node -e 'const j=require("/tmp/tick.json");if(j.ok!==true)throw Error(j.error||"scheduler failed");if(Number(j.providerCalls||0)>18)throw Error("scheduler exceeded 18/60s");console.log("SCHEDULER",{catalog:j.catalogFixtures,active:j.activeFixtures,due:j.dueFixtures,selected:j.selectedFixtures,providerCalls:j.providerCalls})'
           curl_retry "$CENTRAL_CANARY_URL/cache-snapshot" -o /tmp/fm-snapshot.json
-          node -e 'const j=require("/tmp/fm-snapshot.json");if(j.ok!==true||j.providerCallsTriggeredByViewer!==0)throw Error("cache snapshot contract");console.log("CENTRAL CACHE",j.fixtureCount)'
+          node -e 'const j=require("/tmp/fm-snapshot.json");if(j.ok!==true||j.providerCallsTriggeredByViewer!==0||!j.lastTick||Number(j.fixtureCount||0)<=0)throw Error("canary cache not ready");console.log("CENTRAL CACHE",{fixtures:j.fixtureCount,lastTick:true})'
 
       - name: Deploy canary viewer
         working-directory: workers/nomadtips3-343-preview
@@ -165,6 +168,35 @@ jobs:
         working-directory: workers/nomadtips3-343-full-market-central
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
+      - name: Prime and verify production central cache
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 12); do
+            code=$(curl -sS -o /tmp/unauth.json -w '%{http_code}' -X POST "$CENTRAL_PROD_URL/scheduler-tick" || true)
+            if [ "$code" = "403" ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = "1"
+          curl -fsS --retry 4 --retry-all-errors --retry-delay 2 \
+            -X POST -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" \
+            "$CENTRAL_PROD_URL/scheduler-tick" -o /tmp/prod-tick.json
+          node - <<'NODE'
+          const j=require('/tmp/prod-tick.json');
+          if(j.ok!==true) throw Error(j.error||'PROD_TICK_FAILED');
+          if(Number(j.providerCalls||0)>18) throw Error('PROD_RATE_GUARD_EXCEEDED');
+          console.log('PROD TICK',{active:j.activeFixtures,due:j.dueFixtures,selected:j.selectedFixtures,providerCalls:j.providerCalls});
+          NODE
+          curl -fsS --retry 4 --retry-all-errors --retry-delay 2 "$CENTRAL_PROD_URL/cache-snapshot" -o /tmp/prod-cache.json
+          node - <<'NODE'
+          const j=require('/tmp/prod-cache.json');
+          if(j.ok!==true) throw Error('PROD_CACHE_NOT_OK');
+          if(!j.lastTick) throw Error('PROD_LAST_TICK_MISSING');
+          if(Number(j.fixtureCount||0)<=0) throw Error('PROD_CACHE_EMPTY');
+          if(Number(j.providerCallsTriggeredByViewer||0)!==0) throw Error('VIEWER_PROVIDER_CALLS_NOT_ZERO');
+          console.log('PROD CENTRAL READY',{fixtureCount:j.fixtureCount,lastTick:true,viewerProviderCalls:j.providerCallsTriggeredByViewer});
+          NODE
+
       - name: Deploy production viewer
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
@@ -198,4 +230,4 @@ jobs:
           NODE
           curl -fsS -D /tmp/prodh "$PROD_URL/api/full-market/cache-snapshot?verify=$RANDOM" -o /tmp/prods.json
           tr -d '\r' < /tmp/prodh | grep -Fiq 'x-nomad-provider-trigger: 0'
-          node -e 'const j=require("/tmp/prods.json");if(j.ok!==true||j.providerCallsTriggeredByViewer!==0)throw Error("prod central snapshot");console.log("PROD CACHE",{fixtures:j.fixtureCount,lastTick:Boolean(j.lastTick),viewerProviderCalls:j.providerCallsTriggeredByViewer})'
+          node -e 'const j=require("/tmp/prods.json");if(j.ok!==true||j.providerCallsTriggeredByViewer!==0||!j.lastTick||Number(j.fixtureCount||0)<=0)throw Error("prod central snapshot not ready");console.log("PROD CACHE",{fixtures:j.fixtureCount,lastTick:true,viewerProviderCalls:j.providerCallsTriggeredByViewer})'
