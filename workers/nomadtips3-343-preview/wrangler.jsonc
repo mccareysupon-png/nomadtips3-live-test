@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
   "name": "nomadtips3-343-ultra-preview",
-  "main": "src/index.js",
+  "main": "src/index-stable.js",
   "compatibility_date": "2026-09-09",
   "workers_dev": true,
   "preview_urls": false,
@@ -13,7 +13,8 @@
   },
   "services": [
     { "binding": "ENGINE", "service": "nomadtips3-engine-343" },
-    { "binding": "FULL_MARKET", "service": "nomadtips3-343-full-market" }
+    { "binding": "FULL_MARKET", "service": "nomadtips3-343-full-market" },
+    { "binding": "HUB", "service": "nomadtips3-5usd-hub-343" }
   ],
   "observability": { "enabled": true }
 }
