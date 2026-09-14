@@ -20,7 +20,7 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
-  CENTRAL_CANARY_URL: https://nomadtips3-343-full-market-central-canary.mccarey-supon.workers.dev
+  CENTRAL_CANARY_URL: https://nomadtips3-343-central-cache-canary.mccarey-supon.workers.dev
   VIEW_CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
   PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
@@ -66,10 +66,11 @@ jobs:
           grep -Fq "VIEWER_PROVIDER_REFRESH_DISABLED" workers/nomadtips3-343-preview/src/index-stable.js
           grep -Fq "const MAX_PROVIDER_PER_60S=18" workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq "providerCallsTriggeredByViewer:0" workers/nomadtips3-343-full-market-central/src/index.js
+          grep -Fq 'name = "nomadtips3-343-central-cache-canary"' workers/nomadtips3-343-full-market-central/wrangler.canary.toml
+          grep -Fq 'name = "nomadtips3-343-central-cache"' workers/nomadtips3-343-full-market-central/wrangler.toml
           grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-343-full-market-central/wrangler.toml
-          grep -Fq 'name = "CENTRAL_MARKET"' workers/nomadtips3-343-full-market-central/wrangler.toml
-          grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.stable.jsonc
-          grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc
+          grep -Fq '"service": "nomadtips3-343-central-cache-canary"' workers/nomadtips3-343-preview/wrangler.stable.jsonc
+          grep -Fq '"service": "nomadtips3-343-central-cache"' workers/nomadtips3-343-preview/wrangler.jsonc
           grep -Fq 'full-odds-10book-343.js?v=343-central-cache-v5' nomad-live-343/index.html
 
       - name: Validate deploy credentials
@@ -79,7 +80,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$FIVEDOLLAR_API_KEY"
 
-      - name: Dry-run standalone central workers and viewers
+      - name: Dry-run central workers and viewers
         run: |
           set -euo pipefail
           (cd workers/nomadtips3-343-full-market-central && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.canary.toml)
@@ -87,11 +88,11 @@ jobs:
           (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
           (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
 
-      - name: Deploy standalone central canary
+      - name: Deploy clean central canary
         working-directory: workers/nomadtips3-343-full-market-central
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.canary.toml
 
-      - name: Bind 5USD key to standalone canary
+      - name: Bind 5USD key to canary
         working-directory: workers/nomadtips3-343-full-market-central
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.canary.toml
 
@@ -115,11 +116,11 @@ jobs:
           set -euo pipefail
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
-          TARGET_URL="$VIEW_CANARY_URL" TARGET_LABEL="CANARY" node - <<'NODE'
+          TARGET_URL="$VIEW_CANARY_URL" node - <<'NODE'
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
-            let detail=0,eventRefresh=0,snapshot=0;
+            let detail=0,eventRefresh=0,snapshot=0,clicks=0;
             const contexts=[];
             for(let i=0;i<10;i++){
               const ctx=await browser.newContext({viewport:{width:1366,height:768}});contexts.push(ctx);
@@ -129,13 +130,13 @@ jobs:
               await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
               const cards=page.locator('.match-card[data-match-id]');
               const count=Math.min(5,await cards.count());
-              for(let k=0;k<count;k++){await cards.nth(k).locator('.match-row.scoreboard-default').click();await page.waitForTimeout(80)}
+              for(let k=0;k<count;k++){await cards.nth(k).locator('.match-row.scoreboard-default').click();clicks++;await page.waitForTimeout(80)}
             }
             await new Promise(r=>setTimeout(r,1500));
             if(detail!==0)throw Error('BROWSER_DETAIL_REQUESTS='+detail);
             if(eventRefresh!==0)throw Error('BROWSER_EVENT_REFRESH_REQUESTS='+eventRefresh);
             if(snapshot<1)throw Error('CENTRAL_SNAPSHOT_NOT_READ');
-            console.log(process.env.TARGET_LABEL+' MULTI USER OK',{sessions:10,cardClicks:'up to 50',detail,eventRefresh,snapshot});
+            console.log('CANARY MULTI USER OK',{sessions:10,clicks,detail,eventRefresh,snapshot});
             await Promise.all(contexts.map(c=>c.close()));await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
@@ -171,7 +172,7 @@ jobs:
       - name: Production cache-only browser contract
         run: |
           set -euo pipefail
-          TARGET_URL="$PROD_URL" TARGET_LABEL="PRODUCTION" node - <<'NODE'
+          TARGET_URL="$PROD_URL" node - <<'NODE'
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
