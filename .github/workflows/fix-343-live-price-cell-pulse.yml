@@ -53,16 +53,13 @@ jobs:
           bulk=Path('nomad-live-343/full-odds-bulk-343.js')
           s=bulk.read_text()
 
-          # LIVE row class: exact stage rows only.
           s=s.replace('fom-price-row cols-ah','${rowClass} cols-ah')
           s=s.replace('fom-price-row cols-1x2','${rowClass} cols-1x2')
           s=s.replace('fom-price-row cols-total','${rowClass} cols-total')
 
-          # Remove wrong whole-board sweep completely.
           s=remove_balanced(s,'.fom-board.fom-refresh-sweep::after')
           s=remove_balanced(s,'@keyframes fomRefreshSweep')
 
-          # Keep LIVE numbers green. Refresh = soft flow inside price cell; changed = stronger flash.
           base='.fom-price-row.live .fom-price{color:#69df8d;font-weight:900;text-shadow:0 0 8px rgba(105,223,141,.36);border-radius:4px}'
           s=re.sub(r'\.fom-price-row\.live \.fom-price\{[^}]*\}',base,s,count=1)
           if base not in s:
@@ -92,8 +89,23 @@ jobs:
           s=remove_balanced(s,'function sweepExpanded()')
           s=s.replace('\n\nasync function load()','\nasync function load()')
 
-          helpers="""function livePriceSnapshot(){const out=new Map();document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>out.set(fixtureId(card),[...card.querySelectorAll('.fom-price-row.live .fom-price')].map(el=>el.textContent.trim())));return out}\nfunction pulseLivePrices(before){document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>{const old=before.get(fixtureId(card))||[],cells=[...card.querySelectorAll('.fom-price-row.live .fom-price')];cells.forEach((cell,i)=>{cell.classList.remove('fom-price-refresh','fom-price-change');void cell.offsetWidth;cell.classList.add(old[i]!==undefined&&old[i]!==cell.textContent.trim()?'fom-price-change':'fom-price-refresh')})})}\n"""
-          if 'function livePriceSnapshot()' not in s:
+          new_pulse="function pulseLivePrices(before){document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>{const old=before.get(fixtureId(card))||[],cells=[...card.querySelectorAll('.fom-price-row.live .fom-price')];cells.forEach((cell,i)=>{cell.classList.remove('fom-price-refresh','fom-price-change');void cell.offsetWidth;const cls=old[i]!==undefined&&old[i]!==cell.textContent.trim()?'fom-price-change':'fom-price-refresh';cell.classList.add(cls);setTimeout(()=>cell.classList.remove('fom-price-refresh','fom-price-change'),900)})})}"
+          if 'function pulseLivePrices(before)' in s:
+              start=s.find('function pulseLivePrices(before)')
+              brace=s.find('{',start)
+              depth=0
+              end=None
+              for i in range(brace,len(s)):
+                  if s[i]=='{': depth+=1
+                  elif s[i]=='}':
+                      depth-=1
+                      if depth==0:
+                          end=i+1
+                          break
+              if end is None: raise SystemExit('pulse function unbalanced')
+              s=s[:start]+new_pulse+s[end:]
+          else:
+              helpers="function livePriceSnapshot(){const out=new Map();document.querySelectorAll('.match-card[data-match-id][aria-expanded=\"true\"]').forEach(card=>out.set(fixtureId(card),[...card.querySelectorAll('.fom-price-row.live .fom-price')].map(el=>el.textContent.trim())));return out}\n"+new_pulse+'\n'
               marker='async function load(){'
               if marker not in s: raise SystemExit('load marker missing')
               s=s.replace(marker,helpers+marker,1)
@@ -107,13 +119,16 @@ jobs:
           if 'repaintExpanded();pulseLivePrices(before)' not in s:
               s=s.replace('lastLoadedAt=Date.now();repaintExpanded()','lastLoadedAt=Date.now();repaintExpanded();pulseLivePrices(before)',1)
 
+          assert 'setTimeout(()=>cell.classList.remove' in s
           assert 'sweepExpanded' not in s
           assert 'livePriceSnapshot' in s
           assert 'pulseLivePrices(before)' in s
           cache.write_text(s)
 
           index=Path('nomad-live-343/index.html')
-          h=index.read_text().replace('343-live-green-sweep-v1','343-live-price-cell-pulse-v2')
+          h=index.read_text()
+          h=h.replace('343-live-green-sweep-v1','343-live-price-cell-pulse-v3')
+          h=h.replace('343-live-price-cell-pulse-v2','343-live-price-cell-pulse-v3')
           index.write_text(h)
           PY
 
@@ -127,7 +142,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add nomad-live-343/full-odds-bulk-343.js nomad-live-343/full-odds-10book-343.js nomad-live-343/index.html
           if ! git diff --cached --quiet; then
-            git commit -m 'fix(343): pulse only live price cells'
+            git commit -m 'fix(343): auto-clear live price glow'
             git push origin HEAD:work/nomad343-server-prewarm-20260914
           fi
 
@@ -175,11 +190,15 @@ jobs:
               if(!liveCells)await card.locator('.match-row.scoreboard-default').click();
             }
             await page.evaluate(()=>window.NOMAD343_FULL_ODDS_10BOOK?.refresh?.());
-            await page.waitForTimeout(800);
+            const activeNow=await page.locator('.fom-price-refresh,.fom-price-change').count();
+            await page.waitForTimeout(1100);
+            const lingering=await page.locator('.fom-price-refresh,.fom-price-change').count();
             const boardSweep=await page.locator('.fom-refresh-sweep').count();
+            if(liveCells>0&&activeNow===0)throw Error('NO_PRICE_EFFECT_STARTED');
+            if(lingering!==0)throw Error('PRICE_EFFECT_STUCK='+lingering);
             if(boardSweep!==0)throw Error('BOARD_SWEEP_PRESENT');
             if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
-            console.log('CANARY PRICE CELL PULSE OK',{detailCalls,liveCells,boardSweep});
+            console.log('CANARY PRICE CELL AUTO-CLEAR OK',{detailCalls,liveCells,activeNow,lingering,boardSweep});
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
@@ -193,10 +212,11 @@ jobs:
           set -euo pipefail
           for i in $(seq 1 12); do
             stamp="$RANDOM$(date +%s)"
+            curl -fsS "$PROD_URL/?x=$stamp" -o /tmp/index.html || true
             curl -fsS "$PROD_URL/full-odds-bulk-343.js?x=$stamp" -o /tmp/bulk.js || true
             curl -fsS "$PROD_URL/full-odds-10book-343.js?x=$stamp" -o /tmp/cache.js || true
-            if grep -Fq 'fom-price-refresh' /tmp/bulk.js && grep -Fq 'fom-price-change' /tmp/bulk.js && grep -Fq 'pulseLivePrices' /tmp/cache.js && ! grep -Fq 'fom-refresh-sweep' /tmp/bulk.js; then
-              echo 'PRODUCTION LIVE PRICE CELL PULSE OK'
+            if grep -Fq '343-live-price-cell-pulse-v3' /tmp/index.html && grep -Fq 'fom-price-refresh' /tmp/bulk.js && grep -Fq 'fom-price-change' /tmp/bulk.js && grep -Fq 'setTimeout(()=>cell.classList.remove' /tmp/cache.js && ! grep -Fq 'fom-refresh-sweep' /tmp/bulk.js; then
+              echo 'PRODUCTION LIVE PRICE AUTO-CLEAR OK'
               exit 0
             fi
             sleep 3
