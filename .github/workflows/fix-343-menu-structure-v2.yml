@@ -1,0 +1,157 @@
+name: Fix 3.43 Menu Structure V2
+on:
+  push:
+    branches:
+      - work/nomad343-menu-structure-v2-20260914
+    paths:
+      - .github/workflows/fix-343-menu-structure-v2.yml
+jobs:
+  verify-promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      BASE_SHA: c0b789354ff706eead21c4c37a4d27b2add728a0
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-menu-structure-v2-20260914
+          fetch-depth: 40
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify strict runtime scope
+        run: |
+          set -euo pipefail
+          git diff --name-only "$BASE_SHA"..HEAD | sort -u | tee /tmp/changed.txt
+          if grep -Ev '^(nomad-live-343/statistics.html|\.github/workflows/fix-343-menu-structure-v2.yml)$' /tmp/changed.txt | grep -q .; then
+            echo UNEXPECTED_RUNTIME_CHANGE
+            exit 1
+          fi
+          grep -Fq 'app.css?v=343-full-width-v2' nomad-live-343/index.html
+          grep -Fq 'app.css?v=343-full-width-v2' nomad-live-343/signal.html
+          grep -Fq 'app.css?v=343-full-width-v2' nomad-live-343/statistics.html
+          grep -Fq 'scrollbar-gutter:auto' nomad-live-343/app.css
+          grep -Fq '343-live-signal-summary-v2-tight' nomad-live-343/index.html
+          grep -Fq 'signalSummaryText' nomad-live-343/live-stable-343.js
+          grep -Fq '<nav class="topnav"><a data-nav="live"' nomad-live-343/statistics.html
+          grep -Fq '<nav class="mobile-nav"><a data-nav="live"' nomad-live-343/statistics.html
+          ! grep -Fq 'class="statistics-nav"' nomad-live-343/statistics.html
+      - name: Dry run viewers
+        run: |
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Build six-permutation browser test
+        run: |
+          cat > /tmp/nav6.js <<'NODE'
+          const { chromium } = require('playwright');
+          const pages={live:'index.html',signal:'signal.html',statistics:'statistics.html'};
+          const perms=[
+            ['live','signal','statistics'],
+            ['live','statistics','signal'],
+            ['signal','live','statistics'],
+            ['signal','statistics','live'],
+            ['statistics','live','signal'],
+            ['statistics','signal','live'],
+          ];
+          const viewports=[
+            {name:'desktop',width:1366,height:900,mobile:false},
+            {name:'desktop-xl',width:1920,height:1000,mobile:false},
+            {name:'mobile',width:390,height:844,mobile:true},
+          ];
+          const close=(a,b,t=.75)=>Math.abs(a-b)<=t;
+          (async()=>{
+            const base=process.env.TARGET_URL;if(!base)throw new Error('TARGET_URL missing');
+            const browser=await chromium.launch({headless:true});
+            for(const vp of viewports){
+              for(const perm of perms){
+                const page=await browser.newPage({viewport:{width:vp.width,height:vp.height}});
+                const snap=async(label)=>page.evaluate(({label,mobile})=>{
+                  const r=e=>{const x=e?.getBoundingClientRect();return x?{left:x.left,top:x.top,width:x.width,height:x.height}:null};
+                  return {label,path:location.pathname,topbar:r(document.querySelector('.topbar')),inner:r(document.querySelector('.topbar-inner')),nav:r(document.querySelector(mobile?'.mobile-nav':'.topnav')),app:[...document.styleSheets].map(s=>s.href||'').some(x=>x.includes('app.css'))};
+                },{label,mobile:vp.mobile});
+                await page.goto(`${base}/${pages[perm[0]]}?nav6=${Date.now()}`,{waitUntil:'load',timeout:45000});
+                await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+                const states=[await snap(perm[0])];
+                for(const target of perm.slice(1)){
+                  const selector=`${vp.mobile?'.mobile-nav':'.topnav'} a[data-nav="${target}"]`;
+                  const link=page.locator(selector).first();
+                  await link.waitFor({state:'visible',timeout:15000});
+                  await Promise.all([page.waitForLoadState('load'),link.click()]);
+                  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+                  states.push(await snap(target));
+                }
+                const b=states[0];
+                for(const s of states){
+                  if(!s.app||!s.topbar||!s.inner||!s.nav)throw new Error(`${vp.name} ${perm.join('>')} MISSING ${JSON.stringify(states)}`);
+                  for(const k of ['left','top','width','height']){
+                    if(!close(s.topbar[k],b.topbar[k]))throw new Error(`${vp.name} ${perm.join('>')} TOPBAR_${k} ${JSON.stringify(states)}`);
+                    if(!close(s.inner[k],b.inner[k]))throw new Error(`${vp.name} ${perm.join('>')} INNER_${k} ${JSON.stringify(states)}`);
+                    if(!close(s.nav[k],b.nav[k]))throw new Error(`${vp.name} ${perm.join('>')} NAV_${k} ${JSON.stringify(states)}`);
+                  }
+                }
+                console.log('NAV6_OK',vp.name,perm.join('>'),JSON.stringify(states));
+                await page.close();
+              }
+            }
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+      - name: Deploy canary viewer
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+      - name: Wait for canary navigation
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$CANARY_URL/statistics.html?nav=$RANDOM$(date +%s)" || true)"
+            if grep -Fq 'class="topnav"' <<<"$html" && grep -Fq 'class="mobile-nav"' <<<"$html" && ! grep -Fq 'class="statistics-nav"' <<<"$html"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test canary all six permutations
+        run: TARGET_URL="$CANARY_URL" node /tmp/nav6.js
+      - name: Verify active branch still exact pre-menu snapshot
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
+      - name: Deploy production viewer
+        id: prod
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Wait for production navigation
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$PROD_URL/statistics.html?nav=$RANDOM$(date +%s)" || true)"
+            if grep -Fq 'class="topnav"' <<<"$html" && grep -Fq 'class="mobile-nav"' <<<"$html" && ! grep -Fq 'class="statistics-nav"' <<<"$html"; then exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test production all six permutations
+        run: TARGET_URL="$PROD_URL" node /tmp/nav6.js
+      - name: Promote exact tested branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$BASE_SHA"
+          git push origin HEAD:"$ACTIVE_BRANCH"
+      - name: Roll back production on failure after deploy
+        if: failure() && steps.prod.outcome == 'success'
+        run: |
+          set -euo pipefail
+          git checkout --detach "$BASE_SHA"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
