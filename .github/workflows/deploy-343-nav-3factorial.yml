@@ -33,16 +33,16 @@ jobs:
           git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" "origin/$ROLLBACK_REF"
           git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD
           git diff --name-only "origin/$ROLLBACK_REF"..HEAD | tee /tmp/changed.txt
-          if grep -Ev '^(nomad-live-343/(statistics.html|statistics-page-343.css)|\.github/scripts/test-343-nav-3factorial.js|\.github/workflows/deploy-343-nav-3factorial.yml)$' /tmp/changed.txt | grep -q .; then
+          if grep -Ev '^(nomad-live-343/(index.html|signal.html|statistics.html|statistics-page-343.css|nav-stability-343.css)|\.github/scripts/test-343-nav-3factorial.js|\.github/workflows/deploy-343-nav-3factorial.yml)$' /tmp/changed.txt | grep -q .; then
             echo UNEXPECTED_SCOPE_CHANGE
             exit 1
           fi
-          grep -Fq '<nav class="topnav">' nomad-live-343/index.html
-          grep -Fq '<nav class="topnav">' nomad-live-343/signal.html
-          grep -Fq '<nav class="topnav">' nomad-live-343/statistics.html
-          grep -Fq '<nav class="mobile-nav">' nomad-live-343/index.html
-          grep -Fq '<nav class="mobile-nav">' nomad-live-343/signal.html
-          grep -Fq '<nav class="mobile-nav">' nomad-live-343/statistics.html
+          for f in index.html signal.html statistics.html; do
+            grep -Fq '<nav class="topnav">' "nomad-live-343/$f"
+            grep -Fq '<nav class="mobile-nav">' "nomad-live-343/$f"
+            grep -Fq 'nav-stability-343.css?v=343-nav-3factorial-v1' "nomad-live-343/$f"
+          done
+          grep -Fq 'margin-right:290px' nomad-live-343/nav-stability-343.css
           ! grep -Fq 'statistics-nav' nomad-live-343/statistics.html
           ! grep -Fq '.statistics-nav' nomad-live-343/statistics-page-343.css
           git diff --quiet -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market-central workers/nomadtips3-343-full-market nomad-live-341
@@ -62,8 +62,12 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 20); do
-            html="$(curl -fsS "$CANARY_URL/statistics.html?asset=$RANDOM$(date +%s)" || true)"
-            if grep -Fq '343-stat-nav-unified-v2' <<<"$html"; then echo "CANARY READY attempt=$i"; exit 0; fi
+            ok=1
+            for f in index.html signal.html statistics.html; do
+              html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-nav-3factorial-v1' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "CANARY READY attempt=$i"; exit 0; fi
             sleep 2
           done
           exit 1
@@ -84,8 +88,12 @@ jobs:
         run: |
           set -euo pipefail
           for i in $(seq 1 20); do
-            html="$(curl -fsS "$PROD_URL/statistics.html?asset=$RANDOM$(date +%s)" || true)"
-            if grep -Fq '343-stat-nav-unified-v2' <<<"$html"; then echo "PRODUCTION READY attempt=$i"; exit 0; fi
+            ok=1
+            for f in index.html signal.html statistics.html; do
+              html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-nav-3factorial-v1' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "PRODUCTION READY attempt=$i"; exit 0; fi
             sleep 2
           done
           exit 1
