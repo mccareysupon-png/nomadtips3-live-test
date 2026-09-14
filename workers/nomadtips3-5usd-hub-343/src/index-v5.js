@@ -1,4 +1,4 @@
-const VERSION='nomad343-5usd-hub-v5-bulk-15s';
+const VERSION='nomad343-5usd-hub-v6-settlement-bridge';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const LIVE_REFRESH_MS=15_000;
 const CATALOG_REFRESH_MS=60_000;
@@ -49,8 +49,60 @@ export class FiveUsdHub{
   async readRows(meta){return this.readChunkSet('snapshot',meta)}
   async readCatalog(){const meta=await this.ctx.storage.get('catalogMeta')||null;return{meta,rows:await this.readChunkSet('catalog',meta)}}
   async refreshIfDue(){const m=await this.meta();if(m?.fetchedAt&&now()-m.fetchedAt<LIVE_REFRESH_MS)return m;if(this.refreshPromise)return this.refreshPromise;this.refreshPromise=this.refresh().finally(()=>{this.refreshPromise=null});return this.refreshPromise}
-  async refresh(){const attempt=now(),oldMeta=await this.meta(),oldRows=await this.readRows(oldMeta),oldState=await this.state();await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt});try{const w=bangkokWindow(),include='odds,events,stats',catalog=await this.readCatalog();let catalogRows=catalog.rows,catalogMeta=catalog.meta,todayRequests=0,todayGuard=false;const catalogExpired=!catalogMeta||catalogMeta.mode!=='scheduled'||catalogMeta.windowStart!==w.start||now()-Number(catalogMeta.fetchedAt||0)>=CATALOG_REFRESH_MS;if(catalogExpired){const today=await fetchPages(this.env,`start_time=${w.start}&end_time=${w.end}&status=scheduled&include=${include}`,TODAY_PAGE_SIZE,TODAY_MAX_PAGES);catalogRows=today.rows.map(normalize).filter(x=>x.fixtureId);const stored=await this.writeChunkSet('catalog',catalogRows,catalogMeta);catalogMeta={...stored,fetchedAt:now(),windowStart:w.start,windowEnd:w.end,mode:'scheduled',requests:today.requests,guardHit:today.guardHit};await this.ctx.storage.put('catalogMeta',catalogMeta);todayRequests=today.requests;todayGuard=today.guardHit}const live=await fetchPages(this.env,`status=live&include=${include}`,LIVE_PAGE_SIZE,LIVE_MAX_PAGES),requestCount=todayRequests+live.requests;if(requestCount>MAX_PROVIDER_REQUESTS_PER_REFRESH)throw new Error(`provider:REQUEST_BUDGET_${requestCount}`);const map=new Map();for(const row of catalogRows)if(row.fixtureId)map.set(row.fixtureId,row);for(const old of oldRows)if(map.has(old.fixtureId))map.set(old.fixtureId,merge(old,map.get(old.fixtureId)));for(const raw of live.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,merge(map.get(n.fixtureId),n))}const rows=[...map.values()].sort((a,b)=>(a.kickoffAt??0)-(b.kickoffAt??0)),stored=await this.writeChunkSet('snapshot',rows,oldMeta),counts={scheduled:rows.filter(x=>x.boardState==='scheduled').length,live:rows.filter(x=>x.boardState==='live').length,finished:rows.filter(x=>x.boardState==='finished').length,unknown:rows.filter(x=>x.boardState==='unknown').length};const meta={version:VERSION,fetchedAt:now(),...stored,fixtureCount:rows.length,counts,providerRequestCount:requestCount,providerRequestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH,todayRequests,liveRequests:live.requests,catalogAgeMs:Math.max(0,now()-Number(catalogMeta?.fetchedAt||now())),catalogRefreshMs:CATALOG_REFRESH_MS,liveRefreshMs:LIVE_REFRESH_MS,guardHit:Boolean(todayGuard||live.guardHit),include,todayWindow:{start:w.start,end:w.end,timeZone:'Asia/Bangkok'}};await this.ctx.storage.put('meta',meta);await this.ctx.storage.put('state',{lastAttemptAt:attempt,lastSuccessAt:meta.fetchedAt,lastError:null});return meta}catch(e){await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt,lastError:String(e?.message||e)});if(oldMeta)return oldMeta;throw e}}
-  async snapshot(){let m=await this.meta();if(!m||!m.fetchedAt||now()-m.fetchedAt>=LIVE_REFRESH_MS){try{m=await this.refreshIfDue()}catch{}}m=await this.meta();const s=await this.state();if(!m)return{ok:false,version:VERSION,error:s.lastError||'NO_SNAPSHOT'};const rows=await this.readRows(m),ageMs=Math.max(0,now()-m.fetchedAt);return{ok:true,version:VERSION,provider:'5DollarFootballAPI',fetchedAt:m.fetchedAt,ageMs,stale:ageMs>STALE_MS,fixtureCount:rows.length,counts:m.counts,providerRequestCount:m.providerRequestCount,providerRequestBudget:m.providerRequestBudget,todayRequests:m.todayRequests,liveRequests:m.liveRequests,catalogAgeMs:m.catalogAgeMs,catalogRefreshMs:m.catalogRefreshMs,liveRefreshMs:m.liveRefreshMs,guardHit:m.guardHit,include:m.include,todayWindow:m.todayWindow,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,fixtures:rows}}
+  async refresh(){
+    const attempt=now(),oldMeta=await this.meta(),oldRows=await this.readRows(oldMeta),oldState=await this.state();
+    await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt});
+    try{
+      const w=bangkokWindow(),include='odds,events,stats',catalog=await this.readCatalog(),catalogAge=catalog.meta?.fetchedAt?Math.max(0,now()-Number(catalog.meta.fetchedAt)):Infinity;
+      let catalogRows=catalog.rows,catalogMeta=catalog.meta,todayRequests=0,todayGuard=false,settlementRequests=0,settlementGuard=false;
+      const live=await fetchPages(this.env,`status=live&include=${include}`,LIVE_PAGE_SIZE,LIVE_MAX_PAGES),liveRows=live.rows.map(normalize).filter(x=>x.fixtureId),liveIds=new Set(liveRows.map(x=>String(x.fixtureId)));
+      let requestCount=live.requests;
+      const settlementCandidates=oldRows.filter(x=>['live','settlement_pending'].includes(String(x?.boardState||''))&&!liveIds.has(String(x?.fixtureId||''))),settlementIds=new Set(settlementCandidates.map(x=>String(x.fixtureId)));
+      const catalogExpired=!catalogMeta||catalogMeta.mode!=='scheduled'||catalogMeta.windowStart!==w.start||catalogAge>=CATALOG_REFRESH_MS;
+      const forceCatalog=Boolean(settlementIds.size&&catalogExpired&&catalogAge>=5*CATALOG_REFRESH_MS);
+      let settlementRows=[];
+      if(settlementIds.size&&!forceCatalog&&requestCount<MAX_PROVIDER_REQUESTS_PER_REFRESH){
+        const starts=settlementCandidates.map(x=>finite(x?.kickoffAt)).filter(x=>x!==null),baseStart=starts.length?Math.min(...starts):now()-6*60*60_000,start=Math.floor((baseStart-60*60_000)/1000),end=Math.floor((now()+2*60*60_000)/1000);
+        const done=await fetchPages(this.env,`start_time=${start}&end_time=${end}&status=finished`,100,1);
+        settlementRequests=done.requests;settlementGuard=done.guardHit;requestCount+=settlementRequests;
+        settlementRows=done.rows.map(normalize).filter(x=>x.fixtureId&&settlementIds.has(String(x.fixtureId))&&x.boardState==='finished');
+      }
+      if(catalogExpired&&(!settlementIds.size||forceCatalog)){
+        const remaining=Math.max(0,MAX_PROVIDER_REQUESTS_PER_REFRESH-requestCount);
+        if(remaining>0){
+          const today=await fetchPages(this.env,`start_time=${w.start}&end_time=${w.end}&status=scheduled&include=${include}`,TODAY_PAGE_SIZE,Math.min(TODAY_MAX_PAGES,remaining));
+          if(!today.guardHit){
+            catalogRows=today.rows.map(normalize).filter(x=>x.fixtureId);
+            const stored=await this.writeChunkSet('catalog',catalogRows,catalogMeta);
+            catalogMeta={...stored,fetchedAt:now(),windowStart:w.start,windowEnd:w.end,mode:'scheduled',requests:today.requests,guardHit:false};
+            await this.ctx.storage.put('catalogMeta',catalogMeta);
+          }
+          todayRequests=today.requests;todayGuard=today.guardHit;requestCount+=today.requests;
+        }
+      }
+      if(requestCount>MAX_PROVIDER_REQUESTS_PER_REFRESH)throw new Error(`provider:REQUEST_BUDGET_${requestCount}`);
+      const map=new Map();
+      for(const row of catalogRows)if(row.fixtureId)map.set(String(row.fixtureId),row);
+      for(const old of oldRows){
+        const id=String(old?.fixtureId||'');if(!id)continue;
+        if(map.has(id)){
+          const terminal=['finished','settlement_pending'].includes(String(old?.boardState||''));
+          map.set(id,terminal?merge(map.get(id),old):merge(old,map.get(id)));
+        }else if(['finished','settlement_pending'].includes(String(old?.boardState||''))&&(finite(old?.kickoffAt)===null||now()-Number(old.kickoffAt)<6*60*60_000))map.set(id,old);
+      }
+      for(const n of liveRows)map.set(String(n.fixtureId),merge(map.get(String(n.fixtureId)),n));
+      for(const n of settlementRows)map.set(String(n.fixtureId),merge(map.get(String(n.fixtureId)),n));
+      const confirmed=new Set(settlementRows.map(x=>String(x.fixtureId)));
+      for(const old of settlementCandidates){
+        const id=String(old?.fixtureId||'');if(!id||confirmed.has(id))continue;
+        map.set(id,{...old,boardState:'settlement_pending',status:'settlement_pending',statusReason:'AWAITING_CONFIRMED_FINISHED_RESULT'});
+      }
+      const rows=[...map.values()].sort((a,b)=>(a.kickoffAt??0)-(b.kickoffAt??0)),stored=await this.writeChunkSet('snapshot',rows,oldMeta),counts={scheduled:rows.filter(x=>x.boardState==='scheduled').length,live:rows.filter(x=>x.boardState==='live').length,finished:rows.filter(x=>x.boardState==='finished').length,unknown:rows.filter(x=>x.boardState==='unknown').length,settlementPending:rows.filter(x=>x.boardState==='settlement_pending').length};
+      const meta={version:VERSION,fetchedAt:now(),...stored,fixtureCount:rows.length,counts,providerRequestCount:requestCount,providerRequestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH,todayRequests,liveRequests:live.requests,settlementRequests,catalogAgeMs:Math.max(0,now()-Number(catalogMeta?.fetchedAt||now())),catalogRefreshMs:CATALOG_REFRESH_MS,liveRefreshMs:LIVE_REFRESH_MS,guardHit:Boolean(todayGuard||live.guardHit||settlementGuard),include,todayWindow:{start:w.start,end:w.end,timeZone:'Asia/Bangkok'}};
+      await this.ctx.storage.put('meta',meta);await this.ctx.storage.put('state',{lastAttemptAt:attempt,lastSuccessAt:meta.fetchedAt,lastError:null});return meta;
+    }catch(e){await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt,lastError:String(e?.message||e)});if(oldMeta)return oldMeta;throw e}
+  }
+  async snapshot(){let m=await this.meta();if(!m||!m.fetchedAt||now()-m.fetchedAt>=LIVE_REFRESH_MS){try{m=await this.refreshIfDue()}catch{}}m=await this.meta();const s=await this.state();if(!m)return{ok:false,version:VERSION,error:s.lastError||'NO_SNAPSHOT'};const rows=await this.readRows(m),ageMs=Math.max(0,now()-m.fetchedAt);return{ok:true,version:VERSION,provider:'5DollarFootballAPI',fetchedAt:m.fetchedAt,ageMs,stale:ageMs>STALE_MS,fixtureCount:rows.length,counts:m.counts,providerRequestCount:m.providerRequestCount,providerRequestBudget:m.providerRequestBudget,todayRequests:m.todayRequests,liveRequests:m.liveRequests,settlementRequests:m.settlementRequests??0,catalogAgeMs:m.catalogAgeMs,catalogRefreshMs:m.catalogRefreshMs,liveRefreshMs:m.liveRefreshMs,guardHit:m.guardHit,include:m.include,todayWindow:m.todayWindow,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,fixtures:rows}}
   async health(){const m=await this.meta(),s=await this.state(),ageMs=m?.fetchedAt?Math.max(0,now()-m.fetchedAt):null;return{ok:Boolean(m),component:'5USD_HUB',version:VERSION,fixtureCount:m?.fixtureCount??0,counts:m?.counts??{scheduled:0,live:0,finished:0,unknown:0},fetchedAt:m?.fetchedAt??null,ageMs,stale:ageMs===null||ageMs>STALE_MS,liveRefreshMs:LIVE_REFRESH_MS,catalogRefreshMs:CATALOG_REFRESH_MS,providerRequestCount:m?.providerRequestCount??0,providerRequestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH,lastError:s.lastError}}
   async fetch(request){const u=new URL(request.url);if(u.pathname==='/_internal/refresh'&&request.method==='POST'){try{await this.refreshIfDue();return new Response(JSON.stringify(await this.health()),{headers:{'content-type':'application/json'}})}catch(e){return new Response(JSON.stringify({ok:false,error:String(e?.message||e)}),{status:502,headers:{'content-type':'application/json'}})}}if(u.pathname==='/snapshot')return new Response(JSON.stringify(await this.snapshot()),{headers:{'content-type':'application/json'}});if(u.pathname==='/health')return new Response(JSON.stringify(await this.health()),{headers:{'content-type':'application/json'}});return new Response('Not found',{status:404})}
 }

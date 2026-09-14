@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v4-10book-referee';
+const VERSION='nomad343-engine-v5-10book-referee-finished-settlement';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
@@ -10,7 +10,7 @@ const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
 const UI_ODDS_CACHE_MS=60_000;
 const UI_ODDS_STALE_MS=15*60_000;
-const SETTLEMENT_REVISION='bet365-rules-v2';
+const SETTLEMENT_REVISION='bet365-rules-v3-finished-only';
 const REFEREE_BOOKS=Object.freeze([
   {slug:'bet365',name:'Bet365'},
   {slug:'pinnacle',name:'Pinnacle'},
@@ -106,7 +106,7 @@ function periodEligible(f,def,cfg){
   if(def.period==='HT'&&isHalfComplete(f))return false;
   return true;
 }
-function periodCompleteForSignal(s,f){const def=MARKET_RULES[s?.market];if(!def)return false;return def.period==='HT'?isHalfComplete(f):isFinished(f)}
+function periodCompleteForSignal(s,f){return Boolean(MARKET_RULES[s?.market])&&isFinished(f)}
 
 function cardPair(cards){return cardPointsPair(cards)}
 function totalPair(p){const h=num(p?.home),a=num(p?.away);return h===null||a===null?null:h+a}
@@ -262,13 +262,16 @@ function pickBestPriced(candidates,referee,f,settings){
   passed.sort((a,b)=>b.strength-a.strength);return passed[0]||null;
 }
 function storedFixture(s){return {goals:s?.finalScore??null,corners:s?.finalCorners??null,cards:s?.finalCards??null}}
-function reconcileSettled(s){
-  if(s?.status!=='SETTLED')return false;
-  const result=settleMarketSignal(s,storedFixture(s));if(!result)return false;
-  const changed=result!==s.result;
-  if(changed){s.previousResult=s.result;s.result=result;s.reconciledAt=now()}
-  s.settlementRevision=SETTLEMENT_REVISION;
-  return changed;
+function providerFinalFixture(f){return {goals:clone(f?.goals??null),corners:clone(f?.corners??null),cards:clone(f?.cards??null)}}
+function reconcileSettledFromProvider(s,f){
+  if(s?.status!=='SETTLED'||!isFinished(f))return false;
+  const current=storedFixture(s),next=providerFinalFixture(f);
+  if(JSON.stringify(current)===JSON.stringify(next))return false;
+  const result=settleMarketSignal(s,next);if(!result)return false;
+  const previous=s.result;
+  s.finalScore=clone(next.goals);s.finalCorners=clone(next.corners);s.finalCards=clone(next.cards);s.finalDataUpdatedAt=now();
+  if(result!==previous){s.previousResult=previous;s.result=result;s.reconciledAt=now()}
+  s.settlementRevision=SETTLEMENT_REVISION;return true;
 }
 function statsFrom(signals){
   const rows=signals.filter(s=>s.status==='SETTLED');const count=r=>rows.filter(x=>x.result===r).length;const win=count('WIN'),loss=count('LOSS'),push=count('PUSH'),halfWin=count('HALF_WIN'),halfLoss=count('HALF_LOSS'),denom=win+loss+halfWin+halfLoss;
@@ -323,7 +326,7 @@ export class Nomad343Engine extends DurableObject{
       }
       let reconciled=0;
       for(const s of signals){
-        if(s.status==='SETTLED'){if(reconcileSettled(s))reconciled++;continue}
+        if(s.status==='SETTLED'){const f=fixtureMap.get(String(s.fixtureId));if(f&&isFinished(f)&&reconcileSettledFromProvider(s,f))reconciled++;continue}
         if(!['PENDING','UNRESOLVED'].includes(s.status))continue;
         const f=fixtureMap.get(String(s.fixtureId));if(!f)continue;
         if(isUnknown(f)){
@@ -332,7 +335,7 @@ export class Nomad343Engine extends DurableObject{
         if(!periodCompleteForSignal(s,f))continue;
         const result=settleMarketSignal(s,f);
         if(!result){s.status='UNRESOLVED';s.settlementError='FINAL_DATA_UNAVAILABLE';s.settledAt=s.settledAt||now();s.settlementRevision=SETTLEMENT_REVISION;continue}
-        s.status='SETTLED';s.result=result;s.finalScore=clone(f.goals);s.finalCorners=clone(f.corners);s.finalCards=clone(f.cards);s.settledAt=now();s.settlementError=null;s.settlementRevision=SETTLEMENT_REVISION;
+        s.status='SETTLED';s.result=result;s.finalScore=clone(f.goals);s.finalCorners=clone(f.corners);s.finalCards=clone(f.cards);s.settledAt=now();s.finalDataUpdatedAt=s.settledAt;s.settlementError=null;s.settlementRevision=SETTLEMENT_REVISION;
       }
       await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{bookmakersRequested:REFEREE_BOOKS.length,canonicalBookmakers:REFEREE_BOOKS.map(x=>x.name),maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}});
       const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
