@@ -1,28 +1,18 @@
 (()=>{
 'use strict';
-const VERSION='343-full-odds-10book-prewarm-v4';
-const API='/api/full-market/fixture-odds';
-const CLIENT_CACHE_MS=120_000;
-const PREFETCH_GAP_MS=6000;
+const VERSION='343-full-odds-10book-central-cache-v5';
+const API='/api/full-market/cache-snapshot';
+const POLL_MS=30_000;
 const cache=new Map();
-const inflight=new Map();
-const queued=new Set();
-const queue=[];
-let baseRender=null,pumping=false,observer=null;
-const now=()=>Date.now();
+let baseRender=null,busy=false,lastLoadedAt=0;
 const fixtureId=card=>String(card?.dataset?.matchId||'').trim();
-function fresh(id){const row=cache.get(id);return row&&now()-row.at<CLIENT_CACHE_MS?row:null}
-function enrich(f,row){if(!f||!row)return f;return {...f,providerOdds:row.fullOdds,providerOddsUpdatedAt:row.fetchedAt??row.at}}
-function paintMeta(card,row){if(!card||!row)return;const count=Array.isArray(row.availableBookmakers)&&row.availableBookmakers.length?row.availableBookmakers.length:10;const head=card.querySelector('[data-full-odds-main] .fom-head b'),small=card.querySelector('[data-full-odds-main] .fom-head small'),badge=card.querySelector('[data-full-odds-main] .fom-count'),note=card.querySelector('.details-note');if(head)head.textContent='FULL MARKET · 10-BOOK BUNDLE';if(small)small.textContent='10 bookmaker ถูกเตรียมไว้ล่วงหน้าและใช้ cache กลางร่วมกัน';if(badge)badge.textContent=`${count}/10 BOOKS · PREWARMED`;if(note)note.textContent='การกดการ์ดไม่เรียก Full Market API · หน้านี้อ่านชุด 10 bookmaker ที่เตรียมไว้แล้ว'}
-function renderWithRow(card,f,row){if(!baseRender)return;baseRender(card,enrich(f,row));paintMeta(card,row)}
-function install(){const api=window.NOMAD343_FULL_ODDS_BULK;if(!api||typeof api.renderCard!=='function'||api.__tenBookInstalled)return false;baseRender=api.renderCard.bind(api);api.renderCard=(card,f)=>{const id=fixtureId(card),row=fresh(id);if(row)return renderWithRow(card,f,row);const result=baseRender(card,f);const host=card?.querySelector?.('[data-full-odds-main]');if(host){const small=host.querySelector('.fom-head small'),badge=host.querySelector('.fom-count');if(small)small.textContent='กำลังเตรียมชุด 10 bookmaker ล่วงหน้า · การกดการ์ดไม่ยิง request';if(badge)badge.textContent='PREWARMING · NO CLICK REQUEST'}return result};api.__tenBookInstalled=true;api.mode='PREWARMED_10BOOK_ZERO_CLICK_REQUESTS';return true}
-async function fetch10(card){if(!card)return;const id=fixtureId(card);if(!id)return;install();const hit=fresh(id);if(hit)return hit;if(inflight.has(id))return inflight.get(id);const p=(async()=>{try{const r=await fetch(`${API}?fixtureId=${encodeURIComponent(id)}&_=${now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);if(!r.ok||j?.ok!==true||!j?.fullOdds)return null;const row={fullOdds:j.fullOdds,fetchedAt:j.fetchedAt??now(),at:now(),source:j.source??null,availableBookmakers:Array.isArray(j.availableBookmakers)?j.availableBookmakers:[]};cache.set(id,row);const current=document.querySelector(`.match-card[data-match-id="${CSS.escape(id)}"]`);if(current?.getAttribute('aria-expanded')==='true'){const f=window.NOMAD343_LIVE?.getFixture?.(id);if(f)renderWithRow(current,f,row)}return row}catch{return null}finally{inflight.delete(id)}})();inflight.set(id,p);return p}
-function enqueue(card,front=false){const id=fixtureId(card);if(!id||fresh(id)||inflight.has(id)||queued.has(id))return;queued.add(id);front?queue.unshift(card):queue.push(card);pump()}
-async function pump(){if(pumping)return;pumping=true;try{while(queue.length){const card=queue.shift(),id=fixtureId(card);queued.delete(id);if(id&&!fresh(id))await fetch10(card);if(queue.length)await new Promise(r=>setTimeout(r,PREFETCH_GAP_MS))}}finally{pumping=false}}
-function cardsIn(group){return [...document.querySelectorAll(`.score-group[data-group="${group}"] .match-card[data-match-id]`)]}
-function observeCards(){if(!observer)observer=new IntersectionObserver(entries=>{for(const e of entries)if(e.isIntersecting)enqueue(e.target)},{rootMargin:'200px 0px'});document.querySelectorAll('.match-card[data-match-id]').forEach(c=>observer.observe(c))}
-function scan(){install();const first=document.querySelector('.match-card[data-match-id]');if(first)enqueue(first,true);cardsIn('live').forEach(c=>enqueue(c));observeCards()}
-function readyScan(){scan();let tries=0;const t=setInterval(()=>{scan();tries++;if(tries>=20)clearInterval(t)},1000)}
-install();queueMicrotask(readyScan);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scan()});setInterval(scan,30000);
-window.NOMAD343_FULL_ODDS_10BOOK={version:VERSION,prewarm:scan,fetch10,has:id=>Boolean(fresh(String(id))),cacheSize:()=>cache.size,mode:'PREWARMED_10BOOK_ZERO_CLICK_REQUESTS'};
+function enrich(f,row){if(!f||!row)return f;return {...f,providerOdds:row.fullOdds,providerOddsUpdatedAt:row.fetchedAt??null}}
+function paintMeta(card,row){if(!card)return;const host=card.querySelector('[data-full-odds-main]');if(!host)return;const head=host.querySelector('.fom-head b'),small=host.querySelector('.fom-head small'),badge=host.querySelector('.fom-count'),note=card.querySelector('.details-note');if(row){const count=Array.isArray(row.availableBookmakers)&&row.availableBookmakers.length?row.availableBookmakers.length:10;if(head)head.textContent='FULL MARKET · CENTRAL 10-BOOK CACHE';if(small)small.textContent='อ่านจาก cache กลางที่ Server เตรียมไว้ · ผู้ชมไม่เรียก 5USD';if(badge)badge.textContent=`${count}/10 BOOKS · SERVER CACHE`;if(note)note.textContent='การกดการ์ดไม่เรียก Full Market API และไม่สามารถสั่ง 5USD · อ่านจาก cache กลางเท่านั้น'}else{if(small)small.textContent='Server cache ยังไม่มีชุด 10 bookmaker สำหรับคู่นี้ · แสดงข้อมูล Bulk ที่มีอยู่ก่อน';if(badge)badge.textContent='CENTRAL CACHE PENDING · 0 PROVIDER REQUEST';if(note)note.textContent='ผู้ชมไม่มีสิทธิ์สั่ง 5USD · รอ Central Scheduler เติม Full Market เข้าคลังกลาง'}}
+function render(card,f){if(!baseRender||!card||!f)return;const row=cache.get(fixtureId(card))||null;baseRender(card,row?enrich(f,row):f);paintMeta(card,row)}
+function install(){const api=window.NOMAD343_FULL_ODDS_BULK;if(!api||typeof api.renderCard!=='function'||api.__centralCacheInstalled)return false;baseRender=api.renderCard.bind(api);api.renderCard=(card,f)=>render(card,f);api.__centralCacheInstalled=true;api.mode='CENTRAL_SERVER_CACHE_ZERO_PROVIDER_REQUESTS';return true}
+function repaintExpanded(){document.querySelectorAll('.match-card[data-match-id][aria-expanded="true"]').forEach(card=>{const id=fixtureId(card),f=window.NOMAD343_LIVE?.getFixture?.(id);if(f)render(card,f)})}
+async function load(){if(busy||document.visibilityState==='hidden')return;busy=true;try{install();const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);if(!r.ok||j?.ok!==true||!Array.isArray(j.fixtures))return;cache.clear();for(const row of j.fixtures){const id=String(row?.fixtureId||'').trim();if(id&&row?.fullOdds)cache.set(id,row)}lastLoadedAt=Date.now();repaintExpanded()}catch{}finally{busy=false}}
+function boot(){install();load();let tries=0;const t=setInterval(()=>{install();tries++;if(tries>=20)clearInterval(t)},250);setInterval(load,POLL_MS);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&Date.now()-lastLoadedAt>10_000)load()})}
+queueMicrotask(boot);
+window.NOMAD343_FULL_ODDS_10BOOK={version:VERSION,refresh:load,has:id=>cache.has(String(id)),cacheSize:()=>cache.size,mode:'CENTRAL_SERVER_CACHE_ZERO_PROVIDER_REQUESTS'};
 })();
