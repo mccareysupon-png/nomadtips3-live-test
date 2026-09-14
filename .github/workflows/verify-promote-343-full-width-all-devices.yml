@@ -1,0 +1,130 @@
+name: Verify Promote 3.43 Full Width All Devices
+on:
+  push:
+    branches:
+      - work/nomad343-full-width-all-devices-20260914
+    paths:
+      - .github/workflows/verify-promote-343-full-width-all-devices.yml
+jobs:
+  verify-promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: backup/pre-343-full-width-all-devices-20260914
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-full-width-all-devices-20260914
+          fetch-depth: 40
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify rollback point
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git rev-parse "origin/$ROLLBACK_REF"
+      - name: Apply isolated full-width patch
+        run: |
+          set -euo pipefail
+          python .github/scripts/patch-343-full-width-all-devices.py
+          grep -Fq -- '--content-max:none;--edge-gutter:' nomad-live-343/app.css
+          grep -Fq '.shell{width:100%;max-width:none' nomad-live-343/app.css
+          grep -Fq '.owner-shell{width:100%;max-width:none' nomad-live-343/settings.css
+          for f in index.html signal.html statistics.html settings.html; do
+            grep -Fq 'app.css?v=343-full-width-v1' "nomad-live-343/$f"
+          done
+          grep -Fq 'settings.css?v=343-full-width-v1' nomad-live-343/settings.html
+      - name: Verify source scope
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "origin/$ROLLBACK_REF"..HEAD; git diff --name-only)"
+          printf '%s\n' "$changed" | sed '/^$/d' | sort -u >/tmp/changed.txt
+          cat /tmp/changed.txt
+          if grep -Ev '^(nomad-live-343/(app.css|settings.css|index.html|signal.html|statistics.html|settings.html)|\.github/scripts/(patch-343-full-width-all-devices.py|test-343-full-width-all-devices.js)|\.github/workflows/verify-promote-343-full-width-all-devices.yml)$' /tmp/changed.txt | grep -q .; then
+            echo UNEXPECTED_SCOPE_CHANGE
+            exit 1
+          fi
+          git diff --quiet -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market-central workers/nomadtips3-343-full-market nomad-live-341
+      - name: Dry run viewers
+        run: |
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Commit isolated runtime patch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nomad-live-343/app.css nomad-live-343/settings.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
+          git commit -m "feat(343): expand shells to full device width"
+          git push origin HEAD:work/nomad343-full-width-all-devices-20260914
+      - name: Deploy canary viewer
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+      - name: Wait for canary assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            ok=1
+            for f in index.html signal.html statistics.html settings.html; do
+              html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-full-width-v1' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "CANARY ASSETS READY attempt=$i"; exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test canary all device widths
+        run: TARGET_URL="$CANARY_URL" node .github/scripts/test-343-full-width-all-devices.js
+      - name: Verify active branch unchanged
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=1
+          current="$(git rev-parse "origin/$ACTIVE_BRANCH")"
+          rollback="$(git rev-parse "origin/$ROLLBACK_REF")"
+          test "$current" = "$rollback" || { echo "ACTIVE_BRANCH_MOVED_BEFORE_PROD current=$current rollback=$rollback"; exit 1; }
+      - name: Deploy production viewer
+        id: prod_deploy
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Wait for production assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            ok=1
+            for f in index.html signal.html statistics.html settings.html; do
+              html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-full-width-v1' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "PRODUCTION ASSETS READY attempt=$i"; exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test production all device widths
+        run: TARGET_URL="$PROD_URL" node .github/scripts/test-343-full-width-all-devices.js
+      - name: Promote to active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD || { echo ACTIVE_BRANCH_MOVED_OR_DIVERGED; exit 1; }
+          git push origin HEAD:"$ACTIVE_BRANCH"
+      - name: Roll back production viewer on failure after deploy
+        if: failure() && steps.prod_deploy.outcome == 'success'
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout --detach "origin/$ROLLBACK_REF"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
