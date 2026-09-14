@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27">
   <title>nomadtips3 · Owner Settings 3.43</title>
-  <link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="settings.css?v=343-fullmarket-settings-v1">
+  <link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="settings.css?v=343-allmarkets-v1">
 </head>
 <body data-page="settings">
 <header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · ALL MARKET ENGINE</div></div></div></header>
@@ -14,33 +14,6 @@
     <div class="source-state"><span class="pill" data-engine-state><i class="dot stop"></i>กำลังเชื่อม Engine</span></div>
   </section>
   <div class="private-note"><strong>PRICE REFEREE</strong> · ตรวจราคา Bet365 เต็มจาก /fixtures/{id}/odds หลังผ่าน Evidence · 1 request ต่อคู่แล้วแจกให้ทุกตลาดของคู่นั้น · OVER ใช้ Gap จากค่าปัจจุบันอัตโนมัติ</div>
-
-  <section class="settings-card full-market-control-card" data-full-market-card>
-    <form data-full-market-form>
-      <header class="settings-title">
-        <div><small>FULL MARKET · 10 BOOKS · 5USD ULTRA</small><h2>ตั้งค่าการเรียก Full Market</h2></div>
-        <p><span class="pill" data-full-market-state><i class="dot stop"></i>กำลังอ่านค่า</span></p>
-      </header>
-      <section class="group">
-        <div class="group-head"><b>Request Control</b><small>กระทบเฉพาะ Full Market · ไม่แตะ Engine / Signal / Statistics</small></div>
-        <div class="grid full-market-grid">
-          <label><span>Refresh ราคาปกติ</span><div class="unit"><input name="refreshSeconds" type="number" min="10" max="120" step="1"><em>วินาที</em></div><small>Default 30 วิ · รอบขั้นต่ำก่อนยอมยิง provider ใหม่</small></label>
-          <label><span>Worker Cache</span><div class="unit"><input name="workerCacheSeconds" type="number" min="10" max="120" step="1"><em>วินาที</em></div><small>Default 30 วิ · คู่เดิมอ่าน cache ก่อนยิงใหม่</small></label>
-          <label><span>Soft Limit</span><div class="unit"><input name="softLimitPerMinute" type="number" min="1" max="36" step="1"><em>req/min</em></div><small>Default 24/min · กันพื้นที่ให้ Engine/HUB</small></label>
-          <label class="readonly-control"><span>Account Limit</span><div class="unit"><input data-account-limit type="number" value="40" readonly><em>req/min</em></div><small>ล็อกตามแพ็กบัญชี · แก้จากหน้านี้ไม่ได้</small></label>
-          <label class="wide toggle-control"><span>Event-trigger Refresh</span><div class="choice"><label><input name="eventTrigger" type="checkbox" checked> ON · Goal / Red Card / Penalty ให้ขอราคาใหม่ทันที</label></div><small>ยังอยู่ใต้ Soft Limit เสมอ · ถ้าชนเพดานจะใช้ stale cache แทน</small></label>
-        </div>
-      </section>
-      <section class="full-market-meter">
-        <div><span>ใช้ใน 60 วินาทีล่าสุด</span><b data-full-market-used>—</b></div>
-        <div><span>Soft Limit</span><b data-full-market-soft>24</b></div>
-        <div><span>Account Limit</span><b>40</b></div>
-        <div><span>สถานะ</span><b data-full-market-rate-state>—</b></div>
-      </section>
-      <footer class="actions full-market-actions"><div class="message" data-full-market-message>พร้อมตั้งค่า</div><div class="buttons"><button type="button" class="stop" data-full-market-reset>RESET DEFAULT</button><button type="submit" class="save">บันทึก Full Market</button></div></footer>
-    </form>
-  </section>
-
   <section class="status-board all-market-status" data-status-board></section>
   <nav class="market-tabs market-group-tabs">
     <button class="market-tab active" data-group-tab="FULL TIME">Full Time</button>
@@ -54,5 +27,5 @@
   <section data-group-panel="CARDS & BTTS" class="market-rule-grid" hidden></section>
   <div class="note">ไม่มีราคา IN-PLAY = ไม่ผ่าน · ไม่ใช้ราคา Closing แทน Live · ตลาดครึ่งแรกมี Guard ไม่ให้ทำงานหลังช่วงครึ่งแรก</div>
 </main>
-<script src="settings.js?v=343-fullmarket-settings-v1" defer></script>
+<script src="settings.js?v=343-allmarkets-v1" defer></script>
 </body></html>
