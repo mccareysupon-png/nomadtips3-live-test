@@ -1,0 +1,130 @@
+name: Fix 3.43 Three-Page Navigation Stability
+on:
+  push:
+    branches:
+      - work/nomad343-nav-permutation-20260914
+    paths:
+      - .github/workflows/fix-343-nav-permutation.yml
+      - .github/scripts/patch-343-nav-permutation.py
+      - .github/scripts/test-343-nav-permutation.js
+jobs:
+  verify-promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: backup/pre-343-nav-permutation-20260914
+      ROLLBACK_SHA: e4122f0fd9f2a4f013cf331a93d77828e04797f9
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-nav-permutation-20260914
+          fetch-depth: 40
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify rollback point
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          test "$(git rev-parse origin/$ROLLBACK_REF)" = "$ROLLBACK_SHA"
+      - name: Apply isolated three-page navigation patch
+        run: |
+          set -euo pipefail
+          python .github/scripts/patch-343-nav-permutation.py
+          for f in index.html signal.html statistics.html; do
+            grep -Fq 'data-nomad-nav-stability="343-nav-stable-v3"' "nomad-live-343/$f"
+            grep -Fq 'app.css?v=343-nav-stable-v3' "nomad-live-343/$f"
+            test "$(grep -o '<nav class="topnav">' "nomad-live-343/$f" | wc -l)" -eq 1
+            test "$(grep -o '<nav class="mobile-nav">' "nomad-live-343/$f" | wc -l)" -eq 1
+          done
+      - name: Verify strict source scope
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "origin/$ROLLBACK_REF"..HEAD; git diff --name-only)"
+          printf '%s\n' "$changed" | sed '/^$/d' | sort -u >/tmp/changed.txt
+          cat /tmp/changed.txt
+          if grep -Ev '^(nomad-live-343/(index.html|signal.html|statistics.html)|\.github/scripts/(patch-343-nav-permutation.py|test-343-nav-permutation.js)|\.github/workflows/fix-343-nav-permutation.yml)$' /tmp/changed.txt | grep -q .; then
+            echo UNEXPECTED_SCOPE_CHANGE
+            exit 1
+          fi
+          git diff --quiet "origin/$ROLLBACK_REF" -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market-central workers/nomadtips3-343-full-market nomad-live-341 nomad-live-343/statistics.js nomad-live-343/signal.js nomad-live-343/live-stable-343.js nomad-live-343/app.css nomad-live-343/statistics-page-343.css
+      - name: Dry run viewers
+        run: |
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+      - name: Install browser test
+        run: |
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+      - name: Commit isolated runtime patch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html
+          git commit -m "fix(343): unify navigation shell across three pages"
+          git push origin HEAD:work/nomad343-nav-permutation-20260914
+      - name: Deploy canary viewer
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+      - name: Wait for canary assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            ok=1
+            for f in index.html signal.html statistics.html; do
+              html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-nav-stable-v3' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "CANARY ASSETS READY attempt=$i"; exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test all 3 factorial canary orders
+        run: TARGET_URL="$CANARY_URL" node .github/scripts/test-343-nav-permutation.js
+      - name: Verify active branch unchanged
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=1
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$ROLLBACK_SHA" || { echo ACTIVE_BRANCH_MOVED_BEFORE_PROD; exit 1; }
+      - name: Deploy production viewer
+        id: prod_deploy
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Wait for production assets
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            ok=1
+            for f in index.html signal.html statistics.html; do
+              html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
+              grep -Fq '343-nav-stable-v3' <<<"$html" || ok=0
+            done
+            if [ "$ok" = 1 ]; then echo "PRODUCTION ASSETS READY attempt=$i"; exit 0; fi
+            sleep 2
+          done
+          exit 1
+      - name: Test all 3 factorial production orders
+        run: TARGET_URL="$PROD_URL" node .github/scripts/test-343-nav-permutation.js
+      - name: Promote to active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$ROLLBACK_SHA" || { echo ACTIVE_BRANCH_MOVED_OR_DIVERGED; exit 1; }
+          git push origin HEAD:"$ACTIVE_BRANCH"
+      - name: Roll back production viewer on failure after deploy
+        if: failure() && steps.prod_deploy.outcome == 'success'
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout --detach "origin/$ROLLBACK_REF"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
