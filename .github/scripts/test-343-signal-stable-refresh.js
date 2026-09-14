@@ -40,14 +40,13 @@ const {chromium}=require('playwright');
       sameFlow:window.__signalFlowRef===card.querySelector('.nomad-event-flow-card'),
       expanded:card.getAttribute('aria-expanded'),
       minute:card.querySelector('.active-signal-score .live-minute-343')?.textContent,
-      topDelta:Math.abs(card.getBoundingClientRect().top-window.__signalTop),
-      signalCalls
+      topDelta:Math.abs(card.getBoundingClientRect().top-window.__signalTop)
     };
   });
   if(!result.sameCard||!result.sameDetail||!result.sameFlow)throw Error('DOM_REPLACED '+JSON.stringify(result));
   if(result.expanded!=='true')throw Error('EXPANDED_LOST '+JSON.stringify(result));
   if(result.topDelta>1.5)throw Error('CARD_JUMP '+JSON.stringify(result));
-  if(result.signalCalls<2)throw Error('REFRESH_NOT_OBSERVED '+JSON.stringify(result));
-  console.log('SIGNAL STABLE REFRESH OK',result);
+  if(signalCalls<2)throw Error('REFRESH_NOT_OBSERVED '+JSON.stringify({...result,signalCalls}));
+  console.log('SIGNAL STABLE REFRESH OK',{...result,signalCalls});
   await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
