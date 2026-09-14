@@ -58,6 +58,7 @@ jobs:
           if grep -Eq "fetch\(|XMLHttpRequest|WebSocket" nomad-live-343/ai-k-343.js; then echo 'AI K MUST NOT CREATE NETWORK REQUESTS'; exit 1; fi
           grep -Fq 'ai-k-343.js?v=343-ai-k-win-only-v1' nomad-live-343/index.html
           grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v2' nomad-live-343/settings.html
+          grep -Fq 'href="/api/full-market/mixer.html"' nomad-live-343/settings.html
 
       - name: Validate deployment credentials
         run: |
@@ -75,15 +76,25 @@ jobs:
       - name: Smoke canonical settings and live pages
         run: |
           set -euo pipefail
-          for i in $(seq 1 10); do
-            if curl -fsS --max-time 30 "$PROD_URL/settings.html?ai_k=$RANDOM" -o /tmp/settings.html && \
-               curl -fsS --max-time 30 "$PROD_URL/?ai_k=$RANDOM" -o /tmp/live.html; then break; fi
-            sleep 2
-          done
+          fetch_retry(){
+            local url="$1" out="$2" ok=0
+            for i in $(seq 1 12); do
+              if curl -fsS --retry 2 --retry-all-errors --retry-delay 1 --connect-timeout 10 --max-time 30 "$url" -o "$out"; then ok=1; break; fi
+              echo "Waiting for ultra propagation ($i/12)..."
+              sleep 3
+            done
+            [ "$ok" -eq 1 ]
+          }
+          fetch_retry "$PROD_URL/settings.html?ai_k=$RANDOM" /tmp/settings.html
+          fetch_retry "$PROD_URL/?ai_k=$RANDOM" /tmp/live.html
           grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v2' /tmp/settings.html
+          grep -Fq 'href="/api/full-market/mixer.html"' /tmp/settings.html
           grep -Fq 'ai-k-343.js?v=343-ai-k-win-only-v1' /tmp/live.html
-          curl -fsS --max-time 30 "$PROD_URL/ai-k-settings-343.js?x=$RANDOM" -o /tmp/ai-settings.js
-          curl -fsS --max-time 30 "$PROD_URL/ai-k-343.js?x=$RANDOM" -o /tmp/ai.js
+          fetch_retry "$PROD_URL/ai-k-settings-343.js?x=$RANDOM" /tmp/ai-settings.js
+          fetch_retry "$PROD_URL/ai-k-343.js?x=$RANDOM" /tmp/ai.js
+          fetch_retry "$PROD_URL/api/full-market/mixer.html?x=$RANDOM" /tmp/mixer.html
           grep -Fq 'AI เซียน K' /tmp/ai-settings.js
+          grep -Fq "343-ai-k-settings-v2" /tmp/ai-settings.js
           if grep -Eq "fetch\(|XMLHttpRequest|WebSocket" /tmp/ai.js; then echo 'DEPLOYED AI K NETWORK REQUEST FOUND'; exit 1; fi
+          test -s /tmp/mixer.html
           echo "AI K ULTRA READY: $PROD_URL/settings.html"
