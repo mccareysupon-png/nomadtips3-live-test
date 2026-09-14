@@ -1,0 +1,139 @@
+name: Fix 3.43 Full Market Empty Books
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/fix-343-full-market-empty-books.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  patch-test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: work/nomad343-server-prewarm-20260914
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch Full Market bookmaker roster
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/full-odds-bulk-343.js')
+          s=p.read_text()
+          old="""function marketHtml(key,bookMarkets,card){const kind=marketKind(key),home=team(card,'home'),away=team(card,'away'),bookRows=[];for(const book of BOOKS){const market=bookMarkets.get(book.slug);if(!market)continue;const rows=stages(market).map(([label,value])=>stageRow(kind,label,value)).filter(Boolean);if(rows.length)bookRows.push(`<section class=\"fom-book\" data-book=\"${esc(book.slug)}\"><header><b>${esc(book.name)}</b><small>${esc(book.role)}</small></header>${rows.join('')}</section>`)}if(!bookRows.length)return'';const title=LABELS[key]||String(key).replaceAll('_',' ').replace(/\\b\\w/g,c=>c.toUpperCase());return `<section class=\"fom-market\"><header class=\"fom-market-head\"><div><b>${esc(title)}</b><small>${kind==='AH'?'Signed handicap shown on each team side':kind==='1X2'?'Home · Draw · Away':'Line + decimal price'}</small></div><span>${bookRows.length} BOOKS</span></header>${columnHead(kind,home,away)}<div class=\"fom-books\">${bookRows.join('')}</div></section>`}"""
+          new="""function emptyStageRow(kind,label){const live=label==='LIVE',rowClass=`fom-price-row${live?' live':''}`,stage=`<span class=\"fom-stage-label${live?' live':''}\">${live?'<i></i> LIVE':label}</span>`,blank='<strong class=\"fom-price fom-price-empty\"></strong>';if(kind==='1X2')return `<div class=\"${rowClass} cols-1x2 fom-no-data\">${stage}${blank}${blank}${blank}</div>`;return `<div class=\"${rowClass} cols-total fom-no-data\">${stage}${blank}${blank}</div>`}
+function marketHtml(key,bookMarkets,card){const kind=marketKind(key),home=team(card,'home'),away=team(card,'away'),stageLabels=[];for(const market of bookMarkets.values()){for(const [label,value] of stages(market)){if(stageRow(kind,label,value)&&!stageLabels.includes(label))stageLabels.push(label)}}const order={OPEN:0,CLOSE:1,LIVE:2};stageLabels.sort((a,b)=>(order[a]??9)-(order[b]??9));if(!stageLabels.length)return'';const bookRows=[];for(const book of BOOKS){const market=bookMarkets.get(book.slug),byStage=new Map(market?stages(market):[]),rows=stageLabels.map(label=>{const value=byStage.get(label);return(value&&stageRow(kind,label,value))||emptyStageRow(kind,label)});bookRows.push(`<section class=\"fom-book\" data-book=\"${esc(book.slug)}\" data-has-market=\"${market?'1':'0'}\"><header><b>${esc(book.name)}</b><small>${esc(book.role)}</small></header>${rows.join('')}</section>`)}const title=LABELS[key]||String(key).replaceAll('_',' ').replace(/\\b\\w/g,c=>c.toUpperCase());return `<section class=\"fom-market\"><header class=\"fom-market-head\"><div><b>${esc(title)}</b><small>${kind==='AH'?'Signed handicap shown on each team side':kind==='1X2'?'Home · Draw · Away':'Line + decimal price'}</small></div><span>${BOOKS.length} BOOKS</span></header>${columnHead(kind,home,away)}<div class=\"fom-books\">${bookRows.join('')}</div></section>`}"""
+          if old not in s:
+              raise SystemExit('marketHtml source marker missing')
+          s=s.replace(old,new,1)
+          s=s.replace("const VERSION='343-full-odds-bulk-v1-zero-click-requests';","const VERSION='343-full-odds-bulk-v2-fixed-10book-roster';",1)
+          # blank means blank: no dash placeholder, but keep cell geometry.
+          s=s.replace(".fom-price{text-align:center;font-size:9px;font-variant-numeric:tabular-nums}",".fom-price{text-align:center;font-size:9px;font-variant-numeric:tabular-nums}.fom-price-empty{min-height:1em}.fom-no-data .fom-stage-label{opacity:.72}",1)
+          p.write_text(s)
+
+          h=Path('nomad-live-343/index.html')
+          x=h.read_text()
+          x=re.sub(r'full-odds-bulk-343\\.js\\?v=[^\"\\']+','full-odds-bulk-343.js?v=343-fixed-10book-roster-v1',x)
+          h.write_text(x)
+          PY
+          node --check nomad-live-343/full-odds-bulk-343.js
+          grep -Fq "343-full-odds-bulk-v2-fixed-10book-roster" nomad-live-343/full-odds-bulk-343.js
+          grep -Fq 'data-has-market' nomad-live-343/full-odds-bulk-343.js
+
+      - name: Persist UI fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/full-odds-bulk-343.js nomad-live-343/index.html
+          git commit -m 'fix(343): preserve 10 bookmaker rows with blank odds'
+          git push origin HEAD:work/nomad343-server-prewarm-20260914
+
+      - name: Guard exact scope
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only HEAD^ HEAD | sort)"
+          expected="$(printf '%s\n' nomad-live-343/full-odds-bulk-343.js nomad-live-343/index.html | sort)"
+          [ "$changed" = "$expected" ] || { echo "UNEXPECTED_SCOPE: $changed"; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341
+
+      - name: Dry run viewers
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Verify canary 10-book blank rows
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          TARGET_URL="$CANARY_URL" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:900}});
+            let detailCalls=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailCalls++});
+            await page.goto(process.env.TARGET_URL+'/?books='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForFunction(()=>window.NOMAD343_FULL_ODDS_BULK?.version==='343-full-odds-bulk-v2-fixed-10book-roster',{timeout:30000});
+            const result=await page.evaluate(()=>{
+              const card=document.createElement('article');card.className='match-card';card.dataset.matchId='synthetic';card.innerHTML='<span class="team-name">HOME</span><span class="team-name">AWAY</span><div class="event-details"><div data-full-odds-main></div></div>';document.body.appendChild(card);
+              const fixture={fixtureId:'synthetic',providerOdds:{success:true,data:{fixture_id:'synthetic',bookmakers:[
+                {slug:'bet365',name:'Bet 365',odds:{asian_handicap:{opening:{line:-0.5,home:1.91,away:1.95},inplay:{line:-0.25,home:1.88,away:2.01}}}},
+                {slug:'pinnacle',name:'Pinnacle',odds:{}},{slug:'crown',name:'Crown',odds:{}},{slug:'1xbet',name:'1xBet',odds:{}},{slug:'12bet',name:'12Bet',odds:{}},{slug:'interwetten',name:'Interwetten',odds:{}},{slug:'macauslot',name:'Macau Slot',odds:{}},{slug:'18bet',name:'18Bet',odds:{}},{slug:'vcbet',name:'VCBet',odds:{}},{slug:'easybets',name:'Easybets',odds:{}}
+              ]}}};
+              window.NOMAD343_FULL_ODDS_BULK.renderCard(card,fixture);
+              const market=card.querySelector('.fom-market');
+              const books=[...market.querySelectorAll('.fom-book')];
+              const emptyPinnacle=market.querySelector('[data-book="pinnacle"]');
+              const out={bookCount:books.length,names:books.map(x=>x.querySelector('header b')?.textContent.trim()),pinnaclePriceText:[...emptyPinnacle.querySelectorAll('.fom-price')].map(x=>x.textContent),pinnacleRows:emptyPinnacle.querySelectorAll('.fom-price-row').length,marketBadge:market.querySelector('.fom-market-head>span')?.textContent};
+              card.remove();return out;
+            });
+            const expected=['Bet365','Pinnacle','Crown','1xBet','12Bet','Interwetten','Macau Slot','18Bet','VCBet','Easybets'];
+            if(result.bookCount!==10||JSON.stringify(result.names)!==JSON.stringify(expected))throw Error('BOOK_ROSTER '+JSON.stringify(result));
+            if(result.pinnacleRows<1||result.pinnaclePriceText.some(x=>x.trim()!==''))throw Error('BLANK_PRICE_CELLS '+JSON.stringify(result));
+            if(result.marketBadge!=='10 BOOKS')throw Error('BAD_MARKET_BADGE '+JSON.stringify(result));
+            if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
+            console.log('CANARY FULL MARKET 10 BOOK ROSTER OK',result,{detailCalls});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify production asset
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 15); do
+            js="$(curl -fsS "$PROD_URL/full-odds-bulk-343.js?x=$RANDOM$(date +%s)" || true)"
+            if grep -Fq '343-full-odds-bulk-v2-fixed-10book-roster' <<<"$js" && grep -Fq 'data-has-market' <<<"$js"; then
+              echo 'PRODUCTION FULL MARKET 10 BOOK ROSTER ASSET OK'
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
