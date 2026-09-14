@@ -50837,9 +50837,13 @@
       "engine": "add-k-multimarket-goaloo-v2-ah-sign",
       "record_version": "KING_STATS_V3",
       "stats_since": "2026-09-04",
-      "result": "PENDING",
-      "ft": null,
-      "profit": null
+      "result": "LOSS",
+      "ft": "3-1",
+      "profit": -100.0,
+      "settlement_score": -1.0,
+      "settled_at": "2026-09-14T01:24:53Z",
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1
     },
     {
       "id": "d4c4c173111377e0-AH-HOME-1p25",
@@ -51400,9 +51404,13 @@
       "engine": "add-k-multimarket-goaloo-v2-ah-sign",
       "record_version": "KING_STATS_V3",
       "stats_since": "2026-09-04",
-      "result": "PENDING",
-      "ft": null,
-      "profit": null
+      "result": "WIN",
+      "ft": "4-2",
+      "profit": 98.0,
+      "settlement_score": 1.0,
+      "settled_at": "2026-09-14T01:24:53Z",
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1
     },
     {
       "id": "ed16150ab301dde8-AH-HOME-0p75",
@@ -51433,9 +51441,13 @@
       "engine": "add-k-multimarket-goaloo-v2-ah-sign",
       "record_version": "KING_STATS_V3",
       "stats_since": "2026-09-04",
-      "result": "PENDING",
-      "ft": null,
-      "profit": null
+      "result": "HALF_LOSS",
+      "ft": "0-1",
+      "profit": -50.0,
+      "settlement_score": -0.5,
+      "settled_at": "2026-09-14T01:24:53Z",
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1
     },
     {
       "id": "eb729c344b278282-AH-AWAY-0p25",
@@ -51466,9 +51478,13 @@
       "engine": "add-k-multimarket-goaloo-v2-ah-sign",
       "record_version": "KING_STATS_V3",
       "stats_since": "2026-09-04",
-      "result": "PENDING",
-      "ft": null,
-      "profit": null
+      "result": "HALF_WIN",
+      "ft": "1-1",
+      "profit": 53.0,
+      "settlement_score": 0.5,
+      "settled_at": "2026-09-14T01:24:53Z",
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1
     },
     {
       "id": "d28c48b0b8a0e6d5-OU-OVER-2p25",
@@ -51535,31 +51551,35 @@
       "engine": "add-k-multimarket-goaloo-v2-ah-sign",
       "record_version": "KING_STATS_V3",
       "stats_since": "2026-09-04",
-      "result": "PENDING",
-      "ft": null,
-      "profit": null
+      "result": "WIN",
+      "ft": "1-2",
+      "profit": 90.0,
+      "settlement_score": 1.0,
+      "settled_at": "2026-09-14T01:24:53Z",
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1
     }
   ],
   "summary": {
-    "settled": 864,
-    "pending": 554,
+    "settled": 869,
+    "pending": 549,
     "voids": 133,
-    "wins": 372,
-    "losses": 479,
+    "wins": 375,
+    "losses": 481,
     "pushes": 13,
-    "win_rate": 43.71,
-    "avg_odds": 2.253,
-    "net": -6727.0,
-    "roi": -7.79
+    "win_rate": 43.81,
+    "avg_odds": 2.252,
+    "net": -6636.0,
+    "roi": -7.64
   },
-  "updated_at": "2026-09-13T23:21:15Z",
+  "updated_at": "2026-09-14T01:24:53Z",
   "settlement_contract": "goaloo-bf_us-direct-index",
   "settlement_status": {
     "source": "goaloo-bf_us-direct-index",
     "index_ok": true,
-    "index_rows": 259,
-    "settled": 10,
-    "matched_pending": 19,
+    "index_rows": 249,
+    "settled": 5,
+    "matched_pending": 5,
     "invalid_scores": 0,
     "invalid_market_records": 0
   },
