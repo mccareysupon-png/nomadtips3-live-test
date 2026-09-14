@@ -1,0 +1,222 @@
+name: Fix 3.43 Settlement Recovery V3
+
+on:
+  push:
+    branches:
+      - work/nomad343-settlement-tail-20260914
+    paths:
+      - .github/workflows/fix-343-settlement-recovery-v3.yml
+
+jobs:
+  verify-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+      ROLLBACK_REF: backup/pre-343-settlement-tail-20260914
+      PROD_HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+      ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-settlement-tail-20260914
+          fetch-depth: 60
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify rollback and active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" "$ACTIVE_BRANCH" --depth=1
+          test "$(git rev-parse origin/$ROLLBACK_REF)" = "e4122f0fd9f2a4f013cf331a93d77828e04797f9"
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$(git rev-parse origin/$ROLLBACK_REF)"
+
+      - name: Apply targeted recovery patch
+        run: |
+          set -euo pipefail
+          python .github/scripts/patch-343-settlement-recovery.py
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "nomad343-engine-v6-targeted-settlement-recovery" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "MAX_SETTLEMENT_RECOVERY_PER_SCAN=2" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "SETTLEMENT_RECOVERY_MIN_AGE_MS=3*60*60_000" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "GET /v1/fixtures/{id}" /dev/null || true
+          grep -Fq 'fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}`' workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "oneXtwo:'ft_1x2'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "nomad343-5usd-hub-v6-settlement-tail" workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "const MAX_ODDS_FIXTURES_PER_SCAN=4;" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const MIN_SCAN_GAP_MS=60_000;" workers/nomadtips3-engine-343/src/index.js
+
+      - name: Verify scope and existing settlement tests
+        run: |
+          set -euo pipefail
+          git diff --name-only "origin/$ROLLBACK_REF" -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 nomad-live-343 nomad-live-341 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central | sort >/tmp/runtime.txt
+          cat /tmp/runtime.txt
+          printf '%s\n' \
+            'workers/nomadtips3-5usd-hub-343/src/index-v5.js' \
+            'workers/nomadtips3-engine-343/src/index.js' | sort >/tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/runtime.txt
+          node --test workers/nomadtips3-engine-343/test/*.test.mjs
+          git diff --quiet "origin/$ROLLBACK_REF" -- workers/nomadtips3-engine-343/src/market-core.js nomad-live-343 nomad-live-341 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central
+
+      - name: Probe exact fixture recovery endpoint with current backlog
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 40 "$ENGINE_URL/signals?probe=$RANDOM$(date +%s)" -o /tmp/pre-signals.json
+          node - <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/pre-signals.json','utf8')),now=Date.now();
+          const valid=new Set(['ft_1x2','ft_ah','ft_over','ft_under','ht_1x2','ht_ah','ht_over','ht_under','ft_corner_over','ft_corner_under','ht_corner_over','ht_corner_under','ft_corner_ah','ft_cards_over','ft_cards_under','ft_cards_ah','ft_btts_yes','ft_btts_no','oneXtwo','ah','over','under']);
+          const m=new Map();
+          for(const s of j.signals||[]){const created=Number(s.createdAt||0),id=String(s.fixtureId||'');if(!id||!created||now-created<3*60*60*1000||!valid.has(s.market))continue;const x=m.get(id)||{fixtureId:id,newestCreatedAt:0};x.newestCreatedAt=Math.max(x.newestCreatedAt,created);m.set(id,x)}
+          const selected=[...m.values()].sort((a,b)=>b.newestCreatedAt-a.newestCreatedAt).slice(0,2);
+          if(!selected.length)throw Error('NO_RECOVERY_CANDIDATES');
+          fs.writeFileSync('/tmp/probe-ids.txt',selected.map(x=>x.fixtureId).join('\n')+'\n');
+          console.log('RECOVERY_PROBE_IDS',selected);
+          NODE
+          : > /tmp/probe-results.ndjson
+          while read -r id; do
+            [ -n "$id" ] || continue
+            curl -fsS --max-time 30 -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" -H 'Accept: application/json' "https://api.5dollarfootballapi.com/v1/fixtures/$id" -o "/tmp/f-$id.json"
+            node - "$id" "/tmp/f-$id.json" <<'NODE' >> /tmp/probe-results.ndjson
+          const fs=require('fs'),id=process.argv[2],j=JSON.parse(fs.readFileSync(process.argv[3],'utf8')),f=j?.data??j;
+          console.log(JSON.stringify({fixtureId:id,status:f?.status,statusCode:f?.status_code,goals:f?.goals,corners:f?.corners,cards:f?.cards}));
+          NODE
+            sleep 1
+          done < /tmp/probe-ids.txt
+          cat /tmp/probe-results.ndjson
+          node - <<'NODE'
+          const fs=require('fs'),rows=fs.readFileSync('/tmp/probe-results.ndjson','utf8').trim().split(/\n+/).filter(Boolean).map(JSON.parse);
+          if(rows.length<1)throw Error('NO_PROVIDER_PROBE_ROWS');
+          const terminal=rows.filter(x=>/finished|full/i.test(`${x.status||''} ${x.statusCode||''}`));
+          console.log('PROBE_SUMMARY',{rows:rows.length,terminal:terminal.length});
+          if(!terminal.length)throw Error('TOP_RECOVERY_CANDIDATES_NOT_TERMINAL');
+          NODE
+
+      - name: Dry-run Production HUB and Engine
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
+          (cd workers/nomadtips3-engine-343 && npx --yes wrangler@4.92.0 deploy --dry-run)
+
+      - name: Commit targeted recovery runtime
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m "fix(343): recover missing terminal fixtures by id"
+          git push origin HEAD:work/nomad343-settlement-tail-20260914
+
+      - name: Guard active branch again
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" "$ROLLBACK_REF" --depth=1
+          test "$(git rev-parse origin/$ACTIVE_BRANCH)" = "$(git rev-parse origin/$ROLLBACK_REF)"
+
+      - name: Capture pre-deploy Statistics and selected signal identity
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 40 "$ENGINE_URL/signals?pre=$RANDOM" -o /tmp/pre-signals2.json
+          curl -fsS --max-time 40 "$ENGINE_URL/statistics?pre=$RANDOM" -o /tmp/pre-statistics.json
+          node - <<'NODE'
+          const fs=require('fs'),s=JSON.parse(fs.readFileSync('/tmp/pre-signals2.json','utf8')),st=JSON.parse(fs.readFileSync('/tmp/pre-statistics.json','utf8')),ids=new Set(fs.readFileSync('/tmp/probe-ids.txt','utf8').trim().split(/\n+/));
+          const selected=(s.signals||[]).filter(x=>ids.has(String(x.fixtureId))).map(x=>({fixtureId:String(x.fixtureId),market:x.market,selection:x.selection,bookmaker:x.bookmaker||'Bet365',odds:x.odds,line:x.line}));
+          fs.writeFileSync('/tmp/expected-signals.json',JSON.stringify(selected,null,2));
+          console.log('PRE_DEPLOY',{pending:(s.signals||[]).length,settled:(st.rows||[]).length,selected,books:[...new Set((st.rows||[]).map(x=>x.bookmaker||'Bet365'))]});
+          NODE
+
+      - name: Deploy Production HUB with retry
+        id: prod_hub
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-5usd-hub-343
+          for i in 1 2 3; do
+            if npx --yes wrangler@4.92.0 deploy --config wrangler.toml; then exit 0; fi
+            echo "HUB_DEPLOY_RETRY_$i"
+            sleep $((i*6))
+          done
+          exit 1
+
+      - name: Verify Production HUB settlement tail
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 10); do
+            curl -fsS --max-time 40 "$PROD_HUB_URL/snapshot?v=$RANDOM$(date +%s)" -o /tmp/hub.json || true
+            if node - <<'NODE'
+          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/hub.json','utf8'));
+          const good=j.ok===true&&j.version==='nomad343-5usd-hub-v6-settlement-tail'&&Array.isArray(j.settlements)&&Number(j.counts?.finished||0)===0&&Number(j.providerRequestCount||0)<=5;
+          console.log('HUB_VERIFY',{good,version:j.version,counts:j.counts,settlementCount:j.settlementCount,requests:j.providerRequestCount,error:j.settlementLastError});process.exit(good?0:1);
+          NODE
+            then ok=1; break; fi
+            sleep 12
+          done
+          test "$ok" = 1
+
+      - name: Deploy Production Engine with retry
+        id: prod_engine
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-engine-343
+          for i in 1 2 3; do
+            if npx --yes wrangler@4.92.0 deploy; then exit 0; fi
+            echo "ENGINE_DEPLOY_RETRY_$i"
+            sleep $((i*8))
+          done
+          exit 1
+
+      - name: Verify Engine version and targeted recovery
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 20); do
+            curl -fsS --max-time 40 "$ENGINE_URL/health?v=$RANDOM$(date +%s)" -o /tmp/health.json || true
+            if jq -e '.version == "nomad343-engine-v6-targeted-settlement-recovery"' /tmp/health.json >/dev/null 2>&1; then ok=1; break; fi
+            sleep 3
+          done
+          test "$ok" = 1
+          curl -fsS -X POST --max-time 90 "$ENGINE_URL/scan?recover=$RANDOM$(date +%s)" -o /tmp/scan.json
+          sleep 2
+          curl -fsS --max-time 40 "$ENGINE_URL/board?post=$RANDOM" -o /tmp/board.json
+          curl -fsS --max-time 40 "$ENGINE_URL/signals?post=$RANDOM" -o /tmp/post-signals.json
+          curl -fsS --max-time 40 "$ENGINE_URL/statistics?post=$RANDOM" -o /tmp/post-statistics.json
+          node - <<'NODE'
+          const fs=require('fs'),pre=JSON.parse(fs.readFileSync('/tmp/pre-statistics.json','utf8')),post=JSON.parse(fs.readFileSync('/tmp/post-statistics.json','utf8')),pending=JSON.parse(fs.readFileSync('/tmp/post-signals.json','utf8')),board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8')),expected=JSON.parse(fs.readFileSync('/tmp/expected-signals.json','utf8'));
+          const rec=board?.settlementRecovery||{};
+          if(Number(rec.requests||0)>2)throw Error('RECOVERY_REQUEST_CAP_BROKEN');
+          if(Number(rec.requests||0)<1)throw Error('RECOVERY_DID_NOT_RUN');
+          if((post.rows||[]).length<(pre.rows||[]).length)throw Error('STATISTICS_DECREASED');
+          const pendingKeys=new Set((pending.signals||[]).map(x=>`${x.fixtureId}:${x.market}:${x.selection}`));
+          const statByKey=new Map((post.rows||[]).map(x=>[`${x.fixtureId}:${x.market}:${x.selection}`,x]));
+          let moved=0;
+          for(const x of expected){const key=`${x.fixtureId}:${x.market}:${x.selection}`;if(!pendingKeys.has(key)){const r=statByKey.get(key);if(!r)throw Error('MOVED_BUT_NOT_IN_STATS '+key);if(String(r.bookmaker||'Bet365')!==String(x.bookmaker))throw Error(`BOOKMAKER_CHANGED ${key} ${x.bookmaker}->${r.bookmaker}`);if(Number(r.odds)!==Number(x.odds))throw Error(`ODDS_CHANGED ${key}`);moved++;}}
+          if(Number(rec.recovered||0)>0&&moved<1)throw Error('RECOVERED_FIXTURE_WITHOUT_STAT_ROW');
+          const easyPending=(pending.signals||[]).filter(x=>(x.bookmaker||'')==='Easybets');const easyStats=(post.rows||[]).filter(x=>(x.bookmaker||'')==='Easybets');
+          console.log('RECOVERY_VERIFY',{preSettled:(pre.rows||[]).length,postSettled:(post.rows||[]).length,postPending:(pending.signals||[]).length,recovery:rec,moved,easyPending:easyPending.length,easyStats:easyStats.length,books:[...new Set((post.rows||[]).map(x=>x.bookmaker||'Bet365'))]});
+          NODE
+
+      - name: Promote verified recovery to active branch
+        run: |
+          set -euo pipefail
+          git fetch origin "$ACTIVE_BRANCH" --depth=1
+          git merge-base --is-ancestor "origin/$ACTIVE_BRANCH" HEAD
+          git push origin HEAD:"$ACTIVE_BRANCH"
+
+      - name: Roll back Production on failure
+        if: failure() && (steps.prod_hub.outcome == 'success' || steps.prod_engine.outcome == 'success')
+        run: |
+          set -euo pipefail
+          git fetch origin "$ROLLBACK_REF" --depth=1
+          git checkout --detach "origin/$ROLLBACK_REF"
+          cd workers/nomadtips3-5usd-hub-343
+          for i in 1 2 3; do npx --yes wrangler@4.92.0 deploy --config wrangler.toml && break || sleep $((i*6)); done
+          cd ../nomadtips3-engine-343
+          for i in 1 2 3; do npx --yes wrangler@4.92.0 deploy && break || sleep $((i*8)); done
+          echo "ROLLED_BACK_TO_$ROLLBACK_REF"
