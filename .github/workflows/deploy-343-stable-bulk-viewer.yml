@@ -1,0 +1,203 @@
+name: Deploy 3.43 Stable Bulk Viewer
+
+on:
+  push:
+    branches: [work/nomad343-stable-bulk-viewer-20260914]
+    paths:
+      - 'nomad-live-343/index.html'
+      - 'nomad-live-343/live-stable-343.js'
+      - 'nomad-live-343/live-stable-343.css'
+      - 'nomad-live-343/full-odds-bulk-343.js'
+      - 'workers/nomadtips3-5usd-hub-343/src/index-v5.js'
+      - 'workers/nomadtips3-5usd-hub-343/wrangler.toml'
+      - 'workers/nomadtips3-5usd-hub-343/wrangler.stable.toml'
+      - 'workers/nomadtips3-343-preview/src/index-stable.js'
+      - 'workers/nomadtips3-343-preview/wrangler.jsonc'
+      - 'workers/nomadtips3-343-preview/wrangler.stable.jsonc'
+      - '.github/workflows/deploy-343-stable-bulk-viewer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  CANARY_HUB_URL: https://nomadtips3-5usd-hub-343-stable-canary.mccarey-supon.workers.dev
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-canary-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard isolated 3.43 scope
+        run: |
+          set -euo pipefail
+          BASE=3a0e5ec3fbdcb1b9f1b93895b1f5d591a84c5478
+          git diff --name-only "$BASE" HEAD | tee /tmp/changed
+          while IFS= read -r f; do
+            case "$f" in
+              nomad-live-343/index.html|nomad-live-343/live-stable-343.js|nomad-live-343/live-stable-343.css|nomad-live-343/full-odds-bulk-343.js|workers/nomadtips3-5usd-hub-343/src/index-v5.js|workers/nomadtips3-5usd-hub-343/wrangler.toml|workers/nomadtips3-5usd-hub-343/wrangler.stable.toml|workers/nomadtips3-343-preview/src/index-stable.js|workers/nomadtips3-343-preview/wrangler.jsonc|workers/nomadtips3-343-preview/wrangler.stable.jsonc|.github/workflows/deploy-343-stable-bulk-viewer.yml) ;;
+              *) echo "UNEXPECTED CHANGE: $f"; exit 1;;
+            esac
+          done < /tmp/changed
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-engine-343 || { echo 'ENGINE MUST REMAIN UNCHANGED'; exit 1; }
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-343-full-market || { echo 'FULL MARKET WORKER MUST REMAIN UNCHANGED'; exit 1; }
+          git diff --quiet "$BASE" HEAD -- nomad-live-341 || { echo '3.41 MUST REMAIN UNCHANGED'; exit 1; }
+
+      - name: Static and syntax validation
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/live-stable-343.js
+          node --check nomad-live-343/full-odds-bulk-343.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          node --check workers/nomadtips3-343-preview/src/index-stable.js
+          grep -Fq "const POLL_MS=15_000" nomad-live-343/live-stable-343.js
+          grep -Fq "const LIVE_REFRESH_MS=15_000" workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "const LIVE_PAGE_SIZE=500" workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "const CATALOG_REFRESH_MS=60_000" workers/nomadtips3-5usd-hub-343/src/index-v5.js
+          grep -Fq "BULK_ONLY_ZERO_CLICK_REQUESTS" nomad-live-343/full-odds-bulk-343.js
+          if grep -Fq "fetch(" nomad-live-343/full-odds-bulk-343.js; then echo 'Full Market bulk renderer must never fetch'; exit 1; fi
+          if grep -Fq "/api/full-market/fixture-odds" nomad-live-343/full-odds-bulk-343.js; then echo 'Per-fixture market request found'; exit 1; fi
+          if grep -Fq "pollExpanded" nomad-live-343/full-odds-bulk-343.js; then echo 'Legacy expanded poll found'; exit 1; fi
+          grep -Fq "e.target.closest('.match-row.scoreboard-default')" nomad-live-343/live-stable-343.js
+          grep -Fq "'/api/live/snapshot'" workers/nomadtips3-343-preview/src/index-stable.js
+          grep -Fq 'live-stable-343.js?v=343-stable-bulk-v1' nomad-live-343/index.html
+          grep -Fq 'full-odds-bulk-343.js?v=343-bulk-market-v1' nomad-live-343/index.html
+          if grep -Fq 'live.js?v=343-public-v8-viewer-timezone' nomad-live-343/index.html; then echo 'Legacy live runtime still loaded'; exit 1; fi
+          if grep -Fq 'full-odds-main-343.js?v=343-full-odds-main-v5-ultra-10book' nomad-live-343/index.html; then echo 'Legacy full-market runtime still loaded'; exit 1; fi
+
+      - name: Validate deployment credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+
+      - name: Dry-run canary and production configs
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.toml)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-5usd-hub-343 && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Deploy canary bulk HUB
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.stable.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.stable.toml
+
+      - name: Deploy canary stable viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Canary API smoke
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 40 "$CANARY_HUB_URL/snapshot?smoke=$RANDOM" -o /tmp/canary-hub.json
+          node - <<'NODE'
+          const j=require('/tmp/canary-hub.json');
+          if(j.ok!==true)throw Error('CANARY_HUB_NOT_READY '+JSON.stringify(j));
+          if(j.version!=='nomad343-5usd-hub-v5-bulk-15s')throw Error('CANARY_HUB_VERSION '+j.version);
+          if(j.liveRefreshMs!==15000)throw Error('LIVE_REFRESH '+j.liveRefreshMs);
+          if(!j.counts||!Array.isArray(j.fixtures))throw Error('CANARY_HUB_SHAPE');
+          if(Number(j.providerRequestCount||0)>5)throw Error('PROVIDER_BUDGET');
+          console.log('CANARY HUB OK',j.fixtureCount,j.counts,'provider requests',j.providerRequestCount,'age',j.ageMs);
+          NODE
+          curl -fsS --max-time 40 -D /tmp/canary.headers "$CANARY_URL/?smoke=$RANDOM" -o /tmp/canary.html
+          grep -Fqi 'x-nomad-live-revision: 343-stable-preview-router-v1' /tmp/canary.headers
+          grep -Fq 'live-stable-343.js?v=343-stable-bulk-v1' /tmp/canary.html
+          grep -Fq 'full-odds-bulk-343.js?v=343-bulk-market-v1' /tmp/canary.html
+          if grep -Fq '343-full-market-event-trigger-v2-inline' /tmp/canary.html; then echo 'Legacy inline event poll leaked'; exit 1; fi
+          curl -fsS --max-time 40 "$CANARY_URL/api/live/snapshot?smoke=$RANDOM" -o /tmp/canary-view.json
+          node -e 'const j=require("/tmp/canary-view.json");if(j.ok!==true||j.version!=="nomad343-5usd-hub-v5-bulk-15s")throw Error("VIEW_SNAPSHOT");console.log("CANARY VIEW SNAPSHOT",j.fixtureCount,j.counts)'
+
+      - name: Browser UX test on canary
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let fixtureOddsRequests=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds')||r.url().includes('/api/engine/fixture-odds'))fixtureOddsRequests++;});
+            await page.goto(process.env.CANARY_URL+'/?ux='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const count=await page.locator('.match-card[data-match-id]').count();
+            if(count<1)throw Error('NO_MATCH_CARDS');
+            const clicks=Math.min(5,count);
+            for(let i=0;i<clicks;i++){
+              const row=page.locator('.match-card[data-match-id]').nth(i).locator('.match-row.scoreboard-default');
+              await row.click();
+              await page.waitForTimeout(150);
+            }
+            if(fixtureOddsRequests!==0)throw Error('PER_FIXTURE_REQUESTS_AFTER_'+clicks+'_CLICKS='+fixtureOddsRequests);
+            const open=page.locator('.match-card[aria-expanded="true"]').first();
+            if(await open.count()!==1)throw Error('NO_EXPANDED_CARD');
+            const id=await open.getAttribute('data-match-id');
+            const detail=open.locator('.event-details');
+            await detail.click({position:{x:8,y:8}});
+            if(await open.getAttribute('aria-expanded')!=='true')throw Error('DETAIL_CLICK_COLLAPSED_CARD');
+            const before=await open.evaluate(el=>({top:el.getBoundingClientRect().top,y:scrollY}));
+            await page.waitForTimeout(16500);
+            const same=page.locator(`.match-card[data-match-id="${id}"]`);
+            if(await same.getAttribute('aria-expanded')!=='true')throw Error('REFRESH_COLLAPSED_CARD');
+            const after=await same.evaluate(el=>({top:el.getBoundingClientRect().top,y:scrollY}));
+            if(Math.abs(after.top-before.top)>6)throw Error('CARD_JUMP '+JSON.stringify({before,after}));
+            if(fixtureOddsRequests!==0)throw Error('PER_FIXTURE_REQUEST_DURING_REFRESH='+fixtureOddsRequests);
+            const text=await same.locator('[data-full-odds-main]').innerText();
+            if(!/BULK MODE/.test(text))throw Error('BULK_MARKET_NOT_RENDERED');
+            console.log('CANARY UX OK',{cards:count,clicked:clicks,fixtureOddsRequests,topBefore:before.top,topAfter:after.top});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Promote bulk HUB to production
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Promote stable viewer to production
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Production smoke and UX contract
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 40 "$PROD_HUB_URL/snapshot?smoke=$RANDOM" -o /tmp/prod-hub.json
+          node - <<'NODE'
+          const j=require('/tmp/prod-hub.json');
+          if(j.ok!==true||j.version!=='nomad343-5usd-hub-v5-bulk-15s')throw Error('PROD_HUB');
+          if(j.liveRefreshMs!==15000)throw Error('PROD_REFRESH');
+          if(Number(j.providerRequestCount||0)>5)throw Error('PROD_PROVIDER_BUDGET');
+          console.log('PRODUCTION HUB OK',j.fixtureCount,j.counts,'requests',j.providerRequestCount,'age',j.ageMs);
+          NODE
+          curl -fsS --max-time 40 -D /tmp/prod.headers "$PROD_URL/?smoke=$RANDOM" -o /tmp/prod.html
+          grep -Fqi 'x-nomad-live-revision: 343-stable-preview-router-v1' /tmp/prod.headers
+          grep -Fq 'live-stable-343.js?v=343-stable-bulk-v1' /tmp/prod.html
+          grep -Fq 'full-odds-bulk-343.js?v=343-bulk-market-v1' /tmp/prod.html
+          if grep -Fq '343-full-market-event-trigger-v2-inline' /tmp/prod.html; then exit 1; fi
+          curl -fsS --max-time 40 "$PROD_URL/api/live/snapshot?smoke=$RANDOM" -o /tmp/prod-view.json
+          node -e 'const j=require("/tmp/prod-view.json");if(j.ok!==true||j.version!=="nomad343-5usd-hub-v5-bulk-15s")throw Error("PROD_VIEW");if(!j.counts)throw Error("COUNTS");console.log("PRODUCTION VIEW",j.fixtureCount,j.counts)'
+          curl -fsS --max-time 40 "$PROD_URL/full-odds-bulk-343.js?smoke=$RANDOM" -o /tmp/prod-market.js
+          if grep -Fq '/fixture-odds' /tmp/prod-market.js; then echo 'Production market contains per-fixture endpoint'; exit 1; fi
+          grep -Fq 'BULK_ONLY_ZERO_CLICK_REQUESTS' /tmp/prod-market.js
+          echo "PRODUCTION_URL=$PROD_URL"
