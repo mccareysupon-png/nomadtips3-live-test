@@ -28,6 +28,6 @@ jobs:
           node --check ball46-344/app.js
           git config user.name 'Ball46 Bootstrap'
           git config user.email 'actions@users.noreply.github.com'
-          git add ball46-344 workers/ball46-344-engine .github/workflows/ball46-344-deploy.yml
+          git add ball46-344 workers/ball46-344-engine
           git commit -m 'build isolated Ball46 3.44 platform'
           git push origin HEAD:main
