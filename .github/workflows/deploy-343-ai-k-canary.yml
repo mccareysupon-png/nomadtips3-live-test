@@ -1,4 +1,4 @@
-name: Deploy 3.43 AI K Canary Only
+name: Deploy 3.43 AI K Canonical Ultra Only
 
 on:
   push:
@@ -17,10 +17,10 @@ permissions:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
 jobs:
-  validate-and-deploy-canary:
+  validate-and-deploy-ultra:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -57,33 +57,33 @@ jobs:
           grep -Fq "bookmaker:'Bet365'" nomad-live-343/ai-k-343.js
           if grep -Eq "fetch\(|XMLHttpRequest|WebSocket" nomad-live-343/ai-k-343.js; then echo 'AI K MUST NOT CREATE NETWORK REQUESTS'; exit 1; fi
           grep -Fq 'ai-k-343.js?v=343-ai-k-win-only-v1' nomad-live-343/index.html
-          grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v1' nomad-live-343/settings.html
+          grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v2' nomad-live-343/settings.html
 
       - name: Validate deployment credentials
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
 
-      - name: Dry run canary viewer only
+      - name: Dry run canonical ultra viewer only
         working-directory: workers/nomadtips3-343-preview
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
 
-      - name: Deploy AI K canary viewer only
+      - name: Deploy AI K to canonical ultra viewer only
         working-directory: workers/nomadtips3-343-preview
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Smoke settings and live pages
+      - name: Smoke canonical settings and live pages
         run: |
           set -euo pipefail
           for i in $(seq 1 10); do
-            if curl -fsS --max-time 30 "$CANARY_URL/settings.html?ai_k=$RANDOM" -o /tmp/settings.html && \
-               curl -fsS --max-time 30 "$CANARY_URL/?ai_k=$RANDOM" -o /tmp/live.html; then break; fi
+            if curl -fsS --max-time 30 "$PROD_URL/settings.html?ai_k=$RANDOM" -o /tmp/settings.html && \
+               curl -fsS --max-time 30 "$PROD_URL/?ai_k=$RANDOM" -o /tmp/live.html; then break; fi
             sleep 2
           done
-          grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v1' /tmp/settings.html
+          grep -Fq 'ai-k-settings-343.js?v=343-ai-k-settings-v2' /tmp/settings.html
           grep -Fq 'ai-k-343.js?v=343-ai-k-win-only-v1' /tmp/live.html
-          curl -fsS --max-time 30 "$CANARY_URL/ai-k-settings-343.js?x=$RANDOM" -o /tmp/ai-settings.js
-          curl -fsS --max-time 30 "$CANARY_URL/ai-k-343.js?x=$RANDOM" -o /tmp/ai.js
+          curl -fsS --max-time 30 "$PROD_URL/ai-k-settings-343.js?x=$RANDOM" -o /tmp/ai-settings.js
+          curl -fsS --max-time 30 "$PROD_URL/ai-k-343.js?x=$RANDOM" -o /tmp/ai.js
           grep -Fq 'AI เซียน K' /tmp/ai-settings.js
           if grep -Eq "fetch\(|XMLHttpRequest|WebSocket" /tmp/ai.js; then echo 'DEPLOYED AI K NETWORK REQUEST FOUND'; exit 1; fi
-          echo "AI K CANARY READY: $CANARY_URL/settings.html"
+          echo "AI K ULTRA READY: $PROD_URL/settings.html"
