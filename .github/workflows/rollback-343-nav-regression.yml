@@ -1,0 +1,56 @@
+name: Restore 3.43 Pre-Nav Runtime
+on:
+  push:
+    branches:
+      - work/nomad343-rollback-nav-regression-20260914
+    paths:
+      - .github/workflows/rollback-343-nav-regression.yml
+jobs:
+  restore-prod:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+      ACTIVE_BRANCH: work/nomad343-server-prewarm-20260914
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-rollback-nav-regression-20260914
+          fetch-depth: 40
+      - name: Verify exact pre-nav runtime markers
+        run: |
+          set -euo pipefail
+          grep -Fq -- '--content-max:none' nomad-live-343/app.css
+          grep -Fq 'scrollbar-gutter:auto' nomad-live-343/app.css
+          grep -Fq 'app.css?v=343-full-width-v2' nomad-live-343/index.html
+          grep -Fq '343-live-signal-summary-v2-tight' nomad-live-343/index.html
+          grep -Fq 'signalSummaryText' nomad-live-343/live-stable-343.js
+          grep -Fq 'signal-lock-summary' nomad-live-343/live-stable-343.js
+      - name: Dry run production viewer
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy exact pre-nav runtime to production
+        run: |
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Verify production restored
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            html="$(curl -fsS "$PROD_URL/index.html?restore=$RANDOM$(date +%s)" || true)"
+            if grep -Fq 'app.css?v=343-full-width-v2' <<<"$html" && grep -Fq '343-live-signal-summary-v2-tight' <<<"$html" && ! grep -Fq '343-nav-stable-v2' <<<"$html"; then
+              echo RESTORE_OK
+              exit 0
+            fi
+            sleep 2
+          done
+          echo RESTORE_NOT_VISIBLE
+          exit 1
+      - name: Promote restored runtime to active 3.43 branch
+        run: |
+          set -euo pipefail
+          git push --force-with-lease origin HEAD:"$ACTIVE_BRANCH"
