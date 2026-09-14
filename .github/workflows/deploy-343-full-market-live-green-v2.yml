@@ -1,0 +1,164 @@
+name: Deploy 3.43 Full Market Live Green v2
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - 'nomad-live-343/full-odds-bulk-343.js'
+      - 'nomad-live-343/full-odds-10book-343.js'
+      - 'nomad-live-343/index.html'
+      - '.github/workflows/deploy-343-full-market-live-green-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-canary-promote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: work/nomad343-server-prewarm-20260914
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Patch isolated Full Market UI
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          bulk=Path('nomad-live-343/full-odds-bulk-343.js')
+          s=bulk.read_text()
+          if 'rowClass=`fom-price-row' not in s:
+              old="function stageRow(kind,label,value){const live=label==='LIVE',stage="
+              new="function stageRow(kind,label,value){const live=label==='LIVE',rowClass=`fom-price-row${live?' live':''}`,stage="
+              if old not in s: raise SystemExit('stageRow marker missing')
+              s=s.replace(old,new,1)
+              s=s.replace('class=\\"fom-price-row cols-ah\\"','class=\\"${rowClass} cols-ah\\"')
+              s=s.replace('class=\\"fom-price-row cols-1x2\\"','class=\\"${rowClass} cols-1x2\\"')
+              s=s.replace('class=\\"fom-price-row cols-total\\"','class=\\"${rowClass} cols-total\\"')
+          old='.fom-board{margin-top:8px;border:1px solid #2a3a2e;background:#0b120d}'
+          if old in s:
+              s=s.replace(old,'.fom-board{position:relative;overflow:hidden;margin-top:8px;border:1px solid #2a3a2e;background:#0b120d}',1)
+          marker='.fom-price{text-align:center;font-size:9px;font-variant-numeric:tabular-nums}'
+          if '.fom-price-row.live .fom-price' not in s:
+              fx=(marker+
+                  '.fom-price-row.live .fom-price{color:#69df8d;font-weight:900;text-shadow:0 0 8px rgba(105,223,141,.32)}'
+                  '.fom-board.fom-refresh-sweep::after{content:"";position:absolute;inset:0;z-index:6;pointer-events:none;background:linear-gradient(100deg,transparent 0 41%,rgba(80,255,140,0) 43%,rgba(80,255,140,.28) 49%,rgba(150,255,185,.18) 52%,rgba(80,255,140,0) 58%,transparent 60% 100%);transform:translateX(-120%);animation:fomRefreshSweep .9s ease-out 1}'
+                  '@keyframes fomRefreshSweep{0%{transform:translateX(-120%);opacity:0}12%{opacity:1}100%{transform:translateX(120%);opacity:0}}')
+              if marker not in s: raise SystemExit('price css marker missing')
+              s=s.replace(marker,fx,1)
+          bulk.write_text(s)
+
+          cache=Path('nomad-live-343/full-odds-10book-343.js')
+          s=cache.read_text()
+          marker="function repaintExpanded(){document.querySelectorAll('.match-card[data-match-id][aria-expanded=\\\"true\\\"]').forEach(card=>{const id=fixtureId(card),f=window.NOMAD343_LIVE?.getFixture?.(id);if(f)render(card,f)})}"
+          sweep="function sweepExpanded(){document.querySelectorAll('.match-card[data-match-id][aria-expanded=\\\"true\\\"] [data-full-odds-main] .fom-board').forEach(board=>{board.classList.remove('fom-refresh-sweep');void board.offsetWidth;board.classList.add('fom-refresh-sweep')})}"
+          if 'function sweepExpanded()' not in s:
+              if marker not in s: raise SystemExit('repaint marker missing')
+              s=s.replace(marker,marker+'\n'+sweep,1)
+          old='lastLoadedAt=Date.now();repaintExpanded()'
+          if 'lastLoadedAt=Date.now();repaintExpanded();sweepExpanded()' not in s:
+              if old not in s: raise SystemExit('load marker missing')
+              s=s.replace(old,'lastLoadedAt=Date.now();repaintExpanded();sweepExpanded()',1)
+          cache.write_text(s)
+
+          index=Path('nomad-live-343/index.html')
+          s=index.read_text()
+          s=s.replace('full-odds-bulk-343.js?v=343-bulk-market-v1','full-odds-bulk-343.js?v=343-live-green-sweep-v1')
+          s=s.replace('full-odds-10book-343.js?v=343-central-cache-v5','full-odds-10book-343.js?v=343-live-green-sweep-v1')
+          index.write_text(s)
+          PY
+          node --check nomad-live-343/full-odds-bulk-343.js
+          node --check nomad-live-343/full-odds-10book-343.js
+
+      - name: Persist UI patch
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- nomad-live-343/full-odds-bulk-343.js nomad-live-343/full-odds-10book-343.js nomad-live-343/index.html; then
+            echo 'UI patch already present'
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add nomad-live-343/full-odds-bulk-343.js nomad-live-343/full-odds-10book-343.js nomad-live-343/index.html
+            git commit -m 'style(343): green live full market with refresh sweep'
+            git push origin HEAD:work/nomad343-server-prewarm-20260914
+          fi
+
+      - name: Guard exact scope
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/full-odds-bulk-343.js
+          node --check nomad-live-343/full-odds-10book-343.js
+          grep -Fq 'rowClass=`fom-price-row${live?' nomad-live-343/full-odds-bulk-343.js
+          grep -Fq '.fom-price-row.live .fom-price' nomad-live-343/full-odds-bulk-343.js
+          grep -Fq 'fom-refresh-sweep' nomad-live-343/full-odds-bulk-343.js
+          grep -Fq 'sweepExpanded' nomad-live-343/full-odds-10book-343.js
+          grep -Fq '343-live-green-sweep-v1' nomad-live-343/index.html
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-engine-343 || { echo ENGINE_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-343-full-market || { echo FULL_MARKET_WORKER_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-343-full-market-central || { echo CENTRAL_MARKET_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- workers/nomadtips3-5usd-hub-343 || { echo HUB_CHANGED; exit 1; }
+          git diff --quiet HEAD^ HEAD -- nomad-live-341 || { echo 341_CHANGED; exit 1; }
+
+      - name: Dry-run viewer configs
+        run: |
+          set -euo pipefail
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
+          (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
+
+      - name: Deploy canary viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.stable.jsonc
+
+      - name: Canary UI contract
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          TARGET_URL="$CANARY_URL" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let detailCalls=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailCalls++});
+            await page.goto(process.env.TARGET_URL+'/?fx='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const card=page.locator('.match-card[data-match-id]').first();
+            await card.locator('.match-row.scoreboard-default').click();
+            await page.waitForSelector('.match-card[aria-expanded="true"] [data-full-odds-main] .fom-board',{timeout:15000});
+            await page.evaluate(()=>window.NOMAD343_FULL_ODDS_10BOOK?.refresh?.());
+            await page.waitForFunction(()=>document.querySelector('.match-card[aria-expanded="true"] .fom-board')?.classList.contains('fom-refresh-sweep'),null,{timeout:10000});
+            if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
+            console.log('CANARY FULL MARKET FX OK',{detailCalls});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Deploy production viewer
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify production assets
+        run: |
+          set -euo pipefail
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/?fx=$RANDOM" -o /tmp/prod.html
+          grep -Fq '343-live-green-sweep-v1' /tmp/prod.html
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/full-odds-bulk-343.js?fx=$RANDOM" -o /tmp/bulk.js
+          grep -Fq '.fom-price-row.live .fom-price' /tmp/bulk.js
+          grep -Fq 'fom-refresh-sweep' /tmp/bulk.js
+          curl -fsS --retry 6 --retry-all-errors --retry-delay 2 "$PROD_URL/full-odds-10book-343.js?fx=$RANDOM" -o /tmp/cache.js
+          grep -Fq 'sweepExpanded' /tmp/cache.js
+          echo 'PRODUCTION FULL MARKET LIVE GREEN OK'
