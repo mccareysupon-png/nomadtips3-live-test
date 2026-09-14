@@ -5,6 +5,7 @@ on:
       - work/nomad343-nav-stability-20260914
     paths:
       - .github/workflows/fix-343-nav-stability.yml
+      - .github/scripts/patch-343-nav-stability.py
       - .github/scripts/test-343-nav-stability.js
 jobs:
   verify-promote:
@@ -31,25 +32,28 @@ jobs:
           set -euo pipefail
           git fetch origin "$ROLLBACK_REF" --depth=1
           test "$(git rev-parse origin/$ROLLBACK_REF)" = "c0b789354ff706eead21c4c37a4d27b2add728a0"
-      - name: Verify or apply isolated navigation stability patch
+      - name: Apply navigation stability v2 patch
         run: |
           set -euo pipefail
-          if grep -Fq 'scrollbar-gutter:auto' nomad-live-343/app.css; then
+          if ! grep -Fq 'data-nomad-nav-stability="343-nav-stable-v2"' nomad-live-343/index.html; then
             python .github/scripts/patch-343-nav-stability.py
           else
-            echo NAV_STABILITY_RUNTIME_ALREADY_APPLIED
+            echo NAV_STABILITY_V2_ALREADY_APPLIED
           fi
           grep -Fq 'overflow-y:scroll;scrollbar-gutter:stable' nomad-live-343/app.css
+          grep -Fq 'height:64px;' nomad-live-343/statistics-page-343.css
           for f in index.html signal.html statistics.html settings.html; do
-            grep -Fq 'app.css?v=343-nav-stable-v1' "nomad-live-343/$f"
+            grep -Fq 'data-nomad-nav-stability="343-nav-stable-v2"' "nomad-live-343/$f"
+            grep -Fq 'app.css?v=343-nav-stable-v2' "nomad-live-343/$f"
           done
+          grep -Fq 'statistics-page-343.css?v=343-stat-nav-stable-v1' nomad-live-343/statistics.html
       - name: Verify source scope
         run: |
           set -euo pipefail
           changed="$(git diff --name-only "origin/$ROLLBACK_REF"..HEAD; git diff --name-only)"
           printf '%s\n' "$changed" | sed '/^$/d' | sort -u >/tmp/changed.txt
           cat /tmp/changed.txt
-          if grep -Ev '^(nomad-live-343/(app.css|index.html|signal.html|statistics.html|settings.html)|\.github/scripts/(patch-343-nav-stability.py|test-343-nav-stability.js)|\.github/workflows/fix-343-nav-stability.yml)$' /tmp/changed.txt | grep -q .; then
+          if grep -Ev '^(nomad-live-343/(app.css|statistics-page-343.css|index.html|signal.html|statistics.html|settings.html)|\.github/scripts/(patch-343-nav-stability.py|test-343-nav-stability.js)|\.github/workflows/fix-343-nav-stability.yml)$' /tmp/changed.txt | grep -q .; then
             echo UNEXPECTED_SCOPE_CHANGE
             exit 1
           fi
@@ -65,11 +69,11 @@ jobs:
       - name: Commit isolated runtime patch if needed
         run: |
           set -euo pipefail
-          if ! git diff --quiet -- nomad-live-343/app.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html; then
+          if ! git diff --quiet -- nomad-live-343/app.css nomad-live-343/statistics-page-343.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add nomad-live-343/app.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
-            git commit -m "fix(343): keep navigation width stable across pages"
+            git add nomad-live-343/app.css nomad-live-343/statistics-page-343.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
+            git commit -m "fix(343): eliminate cross-page navigation shake"
             git push origin HEAD:work/nomad343-nav-stability-20260914
           else
             echo RUNTIME_ALREADY_COMMITTED
@@ -85,7 +89,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html settings.html; do
               html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-nav-stable-v1' <<<"$html" || ok=0
+              grep -Fq '343-nav-stable-v2' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "CANARY ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
@@ -110,7 +114,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html settings.html; do
               html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-nav-stable-v1' <<<"$html" || ok=0
+              grep -Fq '343-nav-stable-v2' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "PRODUCTION ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
