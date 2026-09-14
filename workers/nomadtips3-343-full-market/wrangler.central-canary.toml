@@ -1,0 +1,22 @@
+name = "nomadtips3-343-full-market-central-canary"
+main = "src/index-central.js"
+compatibility_date = "2026-09-09"
+workers_dev = true
+preview_urls = false
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[vars]
+HUB_SNAPSHOT_URL = "https://nomadtips3-5usd-hub-343-stable-canary.mccarey-supon.workers.dev/snapshot"
+
+[[durable_objects.bindings]]
+name = "FULL_MARKET"
+class_name = "FullMarketHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FullMarketHub"]
