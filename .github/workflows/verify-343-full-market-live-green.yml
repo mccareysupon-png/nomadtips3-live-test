@@ -1,0 +1,68 @@
+name: Verify 3.43 Full Market Live Green
+
+on:
+  push:
+    branches: [work/nomad343-server-prewarm-20260914]
+    paths:
+      - '.github/workflows/verify-343-full-market-live-green.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/nomad343-server-prewarm-20260914
+      - name: Wait for production asset propagation
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 15); do
+            stamp="$RANDOM$RANDOM$(date +%s)"
+            curl -fsS --max-time 25 "$PROD_URL/?fx=$stamp" -o /tmp/prod.html || true
+            curl -fsS --max-time 25 "$PROD_URL/full-odds-bulk-343.js?fx=$stamp" -o /tmp/bulk.js || true
+            curl -fsS --max-time 25 "$PROD_URL/full-odds-10book-343.js?fx=$stamp" -o /tmp/cache.js || true
+            if grep -Fq '343-live-green-sweep-v1' /tmp/prod.html 2>/dev/null && \
+               grep -Fq '.fom-price-row.live .fom-price' /tmp/bulk.js 2>/dev/null && \
+               grep -Fq 'fom-refresh-sweep' /tmp/bulk.js 2>/dev/null && \
+               grep -Fq 'sweepExpanded' /tmp/cache.js 2>/dev/null; then
+              echo "PRODUCTION ASSETS PROPAGATED attempt=$i"
+              ok=1
+              break
+            fi
+            echo "Waiting for new assets attempt=$i"
+            sleep 3
+          done
+          test "$ok" = 1
+      - name: Production browser contract
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install chromium >/dev/null 2>&1
+          node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let detailCalls=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds'))detailCalls++});
+            await page.goto(process.env.PROD_URL+'/?verify='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const card=page.locator('.match-card[data-match-id]').first();
+            await card.locator('.match-row.scoreboard-default').click();
+            await page.waitForSelector('.match-card[aria-expanded="true"] [data-full-odds-main] .fom-board',{timeout:15000});
+            await page.evaluate(()=>window.NOMAD343_FULL_ODDS_10BOOK?.refresh?.());
+            await page.waitForFunction(()=>document.querySelector('.match-card[aria-expanded="true"] .fom-board')?.classList.contains('fom-refresh-sweep'),null,{timeout:10000});
+            if(detailCalls!==0)throw Error('VIEWER_DETAIL_CALLS='+detailCalls);
+            console.log('PRODUCTION FULL MARKET LIVE GREEN OK',{detailCalls});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
