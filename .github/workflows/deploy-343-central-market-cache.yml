@@ -67,7 +67,7 @@ jobs:
           grep -Fq "const MAX_PROVIDER_PER_60S=18" workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq "providerCallsTriggeredByViewer:0" workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-343-full-market-central/wrangler.toml
-          grep -Fq 'binding = "CENTRAL_MARKET"' workers/nomadtips3-343-full-market-central/wrangler.toml
+          grep -Fq 'name = "CENTRAL_MARKET"' workers/nomadtips3-343-full-market-central/wrangler.toml
           grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.stable.jsonc
           grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc
           grep -Fq 'full-odds-10book-343.js?v=343-central-cache-v5' nomad-live-343/index.html
