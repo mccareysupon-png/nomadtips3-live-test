@@ -7,9 +7,9 @@ const close = (a,b,tol=0.75) => Math.abs(a-b) <= tol;
   if(!base) throw new Error('TARGET_URL missing');
   const browser = await chromium.launch({headless:true});
   const viewports = [
-    {name:'desktop', width:1366, height:900, nav:'.topnav'},
-    {name:'desktop-xl', width:1920, height:1000, nav:'.topnav'},
-    {name:'mobile', width:390, height:844, nav:'.mobile-nav'},
+    {name:'desktop', width:1366, height:900},
+    {name:'desktop-xl', width:1920, height:1000},
+    {name:'mobile', width:390, height:844},
   ];
 
   for(const vp of viewports){
@@ -41,7 +41,7 @@ const close = (a,b,tol=0.75) => Math.abs(a-b) <= tol;
     states.push(await snap('live'));
 
     for(const target of ['signal','statistics','live']){
-      const link = page.locator(`${vp.nav} a[data-nav="${target}"]`);
+      const link = page.locator(`a[data-nav="${target}"]:visible`).first();
       await link.waitFor({state:'visible',timeout:15000});
       await Promise.all([
         page.waitForLoadState('domcontentloaded'),
