@@ -1,0 +1,18 @@
+name = "nomadtips3-5usd-hub-343-stable-canary"
+main = "src/index-v5.js"
+compatibility_date = "2026-09-09"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[durable_objects.bindings]]
+name = "HUB"
+class_name = "FiveUsdHub"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FiveUsdHub"]
