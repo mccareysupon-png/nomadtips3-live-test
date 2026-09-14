@@ -24,21 +24,22 @@ const { chromium } = require('playwright');
       const target = page.locator(selector);
       await target.waitFor({state:'visible',timeout:15000});
       const result = await target.evaluate((el)=>{
+        const layoutWidth = document.documentElement.clientWidth;
         const r = el.getBoundingClientRect();
         const cs = getComputedStyle(el);
         const top = document.querySelector('.topbar-inner');
         const tr = top?.getBoundingClientRect();
         const tcs = top ? getComputedStyle(top) : null;
         return {
-          left:r.left,rightGap:innerWidth-r.right,width:r.width,viewport:innerWidth,maxWidth:cs.maxWidth,
-          topLeft:tr?.left??null,topRightGap:tr?innerWidth-tr.right:null,topWidth:tr?.width??null,topMaxWidth:tcs?.maxWidth??null,
+          left:r.left,rightGap:layoutWidth-r.right,width:r.width,layoutWidth,innerWidth,maxWidth:cs.maxWidth,
+          topLeft:tr?.left??null,topRightGap:tr?layoutWidth-tr.right:null,topWidth:tr?.width??null,topMaxWidth:tcs?.maxWidth??null,
           scrollWidth:document.documentElement.scrollWidth
         };
       });
       const edgeAllowance = vp.width <= 760 ? 6 : 18;
       if(result.maxWidth !== 'none') throw new Error(`${vp.name} ${path} SHELL_MAX_WIDTH ${JSON.stringify(result)}`);
       if(result.left > edgeAllowance || result.rightGap > edgeAllowance) throw new Error(`${vp.name} ${path} SHELL_NOT_FULL ${JSON.stringify(result)}`);
-      if(result.width < vp.width - edgeAllowance*2) throw new Error(`${vp.name} ${path} SHELL_TOO_NARROW ${JSON.stringify(result)}`);
+      if(result.width < result.layoutWidth - edgeAllowance*2) throw new Error(`${vp.name} ${path} SHELL_TOO_NARROW ${JSON.stringify(result)}`);
       if(result.topMaxWidth !== 'none') throw new Error(`${vp.name} ${path} TOPBAR_MAX_WIDTH ${JSON.stringify(result)}`);
       if((result.topLeft??0) > edgeAllowance || (result.topRightGap??0) > edgeAllowance) throw new Error(`${vp.name} ${path} TOPBAR_NOT_FULL ${JSON.stringify(result)}`);
       console.log('FULL WIDTH OK',vp.name,path,result);
