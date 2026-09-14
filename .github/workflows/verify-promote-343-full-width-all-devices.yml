@@ -30,10 +30,14 @@ jobs:
           set -euo pipefail
           git fetch origin "$ROLLBACK_REF" --depth=1
           git rev-parse "origin/$ROLLBACK_REF"
-      - name: Apply isolated full-width patch
+      - name: Verify or apply isolated full-width patch
         run: |
           set -euo pipefail
-          python .github/scripts/patch-343-full-width-all-devices.py
+          if grep -Fq -- '--content-max:1240px;' nomad-live-343/app.css; then
+            python .github/scripts/patch-343-full-width-all-devices.py
+          else
+            echo "FULL_WIDTH_RUNTIME_ALREADY_APPLIED"
+          fi
           grep -Fq -- '--content-max:none;--edge-gutter:' nomad-live-343/app.css
           grep -Fq '.shell{width:100%;max-width:none' nomad-live-343/app.css
           grep -Fq '.owner-shell{width:100%;max-width:none' nomad-live-343/settings.css
@@ -60,14 +64,18 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
-      - name: Commit isolated runtime patch
+      - name: Commit isolated runtime patch if needed
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add nomad-live-343/app.css nomad-live-343/settings.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
-          git commit -m "feat(343): expand shells to full device width"
-          git push origin HEAD:work/nomad343-full-width-all-devices-20260914
+          if ! git diff --quiet -- nomad-live-343/app.css nomad-live-343/settings.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add nomad-live-343/app.css nomad-live-343/settings.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
+            git commit -m "feat(343): expand shells to full device width"
+            git push origin HEAD:work/nomad343-full-width-all-devices-20260914
+          else
+            echo "RUNTIME_ALREADY_COMMITTED"
+          fi
       - name: Deploy canary viewer
         run: |
           cd workers/nomadtips3-343-preview
