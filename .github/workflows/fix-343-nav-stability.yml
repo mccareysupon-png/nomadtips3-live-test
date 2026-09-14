@@ -5,6 +5,7 @@ on:
       - work/nomad343-nav-stability-20260914
     paths:
       - .github/workflows/fix-343-nav-stability.yml
+      - .github/scripts/test-343-nav-stability.js
 jobs:
   verify-promote:
     runs-on: ubuntu-latest
