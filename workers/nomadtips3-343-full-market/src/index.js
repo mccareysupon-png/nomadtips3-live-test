@@ -16,11 +16,12 @@ const BOOKMAKERS = [
 ];
 const BOOKMAKER_QUERY = BOOKMAKERS.map(x => x.slug).join(',');
 const ACCOUNT_RATE_LIMIT_PER_MIN = 40;
+const SIDECAR_SOFT_LIMIT_PER_MIN = 24;
 const DEFAULT_CONTROL = Object.freeze({
   refreshSeconds: 30,
   workerCacheSeconds: 30,
   eventTrigger: true,
-  softLimitPerMinute: 24
+  softLimitPerMinute: SIDECAR_SOFT_LIMIT_PER_MIN
 });
 const STALE_MS = 5 * 60_000;
 const BUDGET_WINDOW_MS = 60_000;
