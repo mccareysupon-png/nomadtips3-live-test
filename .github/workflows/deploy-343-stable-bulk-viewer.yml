@@ -32,7 +32,7 @@ env:
 jobs:
   validate-canary-promote:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -130,14 +130,14 @@ jobs:
           set -euo pipefail
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install chromium >/dev/null 2>&1
-          node - <<'NODE'
+          TARGET_URL="$CANARY_URL" TARGET_LABEL="CANARY" node - <<'NODE'
           const {chromium}=require('playwright');
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const page=await browser.newPage({viewport:{width:1366,height:768}});
             let fixtureOddsRequests=0;
             page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds')||r.url().includes('/api/engine/fixture-odds'))fixtureOddsRequests++;});
-            await page.goto(process.env.CANARY_URL+'/?ux='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.goto(process.env.TARGET_URL+'/?ux='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
             await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
             const count=await page.locator('.match-card[data-match-id]').count();
             if(count<1)throw Error('NO_MATCH_CARDS');
@@ -163,7 +163,7 @@ jobs:
             if(fixtureOddsRequests!==0)throw Error('PER_FIXTURE_REQUEST_DURING_REFRESH='+fixtureOddsRequests);
             const text=await same.locator('[data-full-odds-main]').innerText();
             if(!/BULK MODE/.test(text))throw Error('BULK_MARKET_NOT_RENDERED');
-            console.log('CANARY UX OK',{cards:count,clicked:clicks,fixtureOddsRequests,topBefore:before.top,topAfter:after.top});
+            console.log(process.env.TARGET_LABEL+' UX OK',{cards:count,clicked:clicks,fixtureOddsRequests,topBefore:before.top,topAfter:after.top});
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
@@ -179,10 +179,23 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Production smoke and UX contract
+      - name: Production propagation and smoke
         run: |
           set -euo pipefail
-          curl -fsS --max-time 40 "$PROD_HUB_URL/snapshot?smoke=$RANDOM" -o /tmp/prod-hub.json
+          fetch_retry(){
+            local url="$1" out="$2" headers="${3:-}" ok=0
+            for i in $(seq 1 12); do
+              if [ -n "$headers" ]; then
+                if curl -fsS --max-time 40 -D "$headers" "$url" -o "$out"; then ok=1; break; fi
+              else
+                if curl -fsS --max-time 40 "$url" -o "$out"; then ok=1; break; fi
+              fi
+              echo "Waiting for production propagation ($i/12)..."
+              sleep 3
+            done
+            [ "$ok" -eq 1 ]
+          }
+          fetch_retry "$PROD_HUB_URL/snapshot?smoke=$RANDOM" /tmp/prod-hub.json
           node - <<'NODE'
           const j=require('/tmp/prod-hub.json');
           if(j.ok!==true||j.version!=='nomad343-5usd-hub-v5-bulk-15s')throw Error('PROD_HUB');
@@ -190,14 +203,55 @@ jobs:
           if(Number(j.providerRequestCount||0)>5)throw Error('PROD_PROVIDER_BUDGET');
           console.log('PRODUCTION HUB OK',j.fixtureCount,j.counts,'requests',j.providerRequestCount,'age',j.ageMs);
           NODE
-          curl -fsS --max-time 40 -D /tmp/prod.headers "$PROD_URL/?smoke=$RANDOM" -o /tmp/prod.html
+          fetch_retry "$PROD_URL/?smoke=$RANDOM" /tmp/prod.html /tmp/prod.headers
           grep -Fqi 'x-nomad-live-revision: 343-stable-preview-router-v1' /tmp/prod.headers
           grep -Fq 'live-stable-343.js?v=343-stable-bulk-v1' /tmp/prod.html
           grep -Fq 'full-odds-bulk-343.js?v=343-bulk-market-v1' /tmp/prod.html
-          if grep -Fq '343-full-market-event-trigger-v2-inline' /tmp/prod.html; then exit 1; fi
-          curl -fsS --max-time 40 "$PROD_URL/api/live/snapshot?smoke=$RANDOM" -o /tmp/prod-view.json
+          if grep -Fq '343-full-market-event-trigger-v2-inline' /tmp/prod.html; then echo 'Legacy inline event poll leaked'; exit 1; fi
+          fetch_retry "$PROD_URL/api/live/snapshot?smoke=$RANDOM" /tmp/prod-view.json
           node -e 'const j=require("/tmp/prod-view.json");if(j.ok!==true||j.version!=="nomad343-5usd-hub-v5-bulk-15s")throw Error("PROD_VIEW");if(!j.counts)throw Error("COUNTS");console.log("PRODUCTION VIEW",j.fixtureCount,j.counts)'
-          curl -fsS --max-time 40 "$PROD_URL/full-odds-bulk-343.js?smoke=$RANDOM" -o /tmp/prod-market.js
+          fetch_retry "$PROD_URL/full-odds-bulk-343.js?smoke=$RANDOM" /tmp/prod-market.js
           if grep -Fq '/fixture-odds' /tmp/prod-market.js; then echo 'Production market contains per-fixture endpoint'; exit 1; fi
           grep -Fq 'BULK_ONLY_ZERO_CLICK_REQUESTS' /tmp/prod-market.js
           echo "PRODUCTION_URL=$PROD_URL"
+
+      - name: Browser UX test on production
+        run: |
+          set -euo pipefail
+          TARGET_URL="$PROD_URL" TARGET_LABEL="PRODUCTION" node - <<'NODE'
+          const {chromium}=require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const page=await browser.newPage({viewport:{width:1366,height:768}});
+            let fixtureOddsRequests=0;
+            page.on('request',r=>{if(r.url().includes('/api/full-market/fixture-odds')||r.url().includes('/api/engine/fixture-odds'))fixtureOddsRequests++;});
+            await page.goto(process.env.TARGET_URL+'/?ux='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+            await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
+            const count=await page.locator('.match-card[data-match-id]').count();
+            if(count<1)throw Error('NO_MATCH_CARDS');
+            const clicks=Math.min(5,count);
+            for(let i=0;i<clicks;i++){
+              const row=page.locator('.match-card[data-match-id]').nth(i).locator('.match-row.scoreboard-default');
+              await row.click();
+              await page.waitForTimeout(150);
+            }
+            if(fixtureOddsRequests!==0)throw Error('PER_FIXTURE_REQUESTS_AFTER_'+clicks+'_CLICKS='+fixtureOddsRequests);
+            const open=page.locator('.match-card[aria-expanded="true"]').first();
+            if(await open.count()!==1)throw Error('NO_EXPANDED_CARD');
+            const id=await open.getAttribute('data-match-id');
+            const detail=open.locator('.event-details');
+            await detail.click({position:{x:8,y:8}});
+            if(await open.getAttribute('aria-expanded')!=='true')throw Error('DETAIL_CLICK_COLLAPSED_CARD');
+            const before=await open.evaluate(el=>({top:el.getBoundingClientRect().top,y:scrollY}));
+            await page.waitForTimeout(16500);
+            const same=page.locator(`.match-card[data-match-id="${id}"]`);
+            if(await same.getAttribute('aria-expanded')!=='true')throw Error('REFRESH_COLLAPSED_CARD');
+            const after=await same.evaluate(el=>({top:el.getBoundingClientRect().top,y:scrollY}));
+            if(Math.abs(after.top-before.top)>6)throw Error('CARD_JUMP '+JSON.stringify({before,after}));
+            if(fixtureOddsRequests!==0)throw Error('PER_FIXTURE_REQUEST_DURING_REFRESH='+fixtureOddsRequests);
+            const text=await same.locator('[data-full-odds-main]').innerText();
+            if(!/BULK MODE/.test(text))throw Error('BULK_MARKET_NOT_RENDERED');
+            console.log(process.env.TARGET_LABEL+' UX OK',{cards:count,clicked:clicks,fixtureOddsRequests,topBefore:before.top,topAfter:after.top});
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
