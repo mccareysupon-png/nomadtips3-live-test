@@ -1,16 +1,10 @@
 name = "nomadtips3-343-full-market"
-main = "src/index-central.js"
+main = "src/index.js"
 compatibility_date = "2026-09-09"
 workers_dev = false
 
 [observability]
 enabled = true
-
-[triggers]
-crons = ["* * * * *"]
-
-[vars]
-HUB_SNAPSHOT_URL = "https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot"
 
 [[durable_objects.bindings]]
 name = "FULL_MARKET"
