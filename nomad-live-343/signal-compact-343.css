@@ -47,8 +47,6 @@ body[data-page="signal"] .active-signal-panel{overflow:visible}
 .signal-mirror-half{height:8px;background:#0c120d;display:flex;overflow:hidden}
 .signal-mirror-half.home{justify-content:flex-end}
 .signal-mirror-half i{display:block;height:100%}
-.signal-mirror-row[data-metric="0"] .home i{background:#96ee9e}.signal-mirror-row[data-metric="1"] .home i{background:#81df8c}.signal-mirror-row[data-metric="2"] .home i{background:#6fd17b}.signal-mirror-row[data-metric="3"] .home i{background:#5fc36d}.signal-mirror-row[data-metric="4"] .home i{background:#50b55f}.signal-mirror-row[data-metric="5"] .home i{background:#43a853}
-.signal-mirror-row[data-metric="0"] .away i{background:#8bd4f5}.signal-mirror-row[data-metric="1"] .away i{background:#73c5ed}.signal-mirror-row[data-metric="2"] .away i{background:#61b6df}.signal-mirror-row[data-metric="3"] .away i{background:#51a8d2}.signal-mirror-row[data-metric="4"] .away i{background:#4499c3}.signal-mirror-row[data-metric="5"] .away i{background:#398bb4}
 .signal-live-meta{display:grid;grid-template-columns:1fr;gap:5px;padding:10px}
 .signal-live-meta span{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px;background:#111713;border:1px solid #273128}
 .signal-live-meta small{font-size:7px;color:#7c8981}.signal-live-meta b{font-size:10px;color:#edf2ef}
@@ -101,5 +99,9 @@ body[data-page="signal"] .active-signal-panel{overflow:visible}
 }
 
 /* 343 SIGNAL HOME AWAY TEAM PALETTE V1 */
+.signal-mirror-half.home i{background:#52d985!important}
+.signal-mirror-half.away i{background:#e6d45a!important}
+
+/* 343 SIGNAL STAT BAR PALETTE SOURCE V2 */
 .signal-mirror-half.home i{background:#52d985!important}
 .signal-mirror-half.away i{background:#e6d45a!important}
