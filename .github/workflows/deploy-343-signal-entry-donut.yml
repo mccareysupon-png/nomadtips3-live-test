@@ -5,6 +5,7 @@ on:
       - work/nomad343-server-prewarm-20260914
     paths:
       - .github/workflows/deploy-343-signal-entry-donut.yml
+      - .github/scripts/test-343-signal-entry-donut.js
 jobs:
   verify-deploy:
     runs-on: ubuntu-latest
@@ -32,7 +33,7 @@ jobs:
           grep -Fq 'signal-entry-donut-343.js?v=343-entry-donut-v1' nomad-live-343/signal.html
           grep -Fq '#4ac378' nomad-live-343/signal-entry-donut-343.css
           grep -Fq '#cfbf51' nomad-live-343/signal-entry-donut-343.css
-          git diff --quiet HEAD~5..HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341 nomad-live-343/index.html nomad-live-343/statistics.html || { echo UNEXPECTED_CORE_CHANGE; exit 1; }
+          git diff --quiet HEAD~7..HEAD -- workers/nomadtips3-engine-343 workers/nomadtips3-5usd-hub-343 workers/nomadtips3-343-full-market workers/nomadtips3-343-full-market-central nomad-live-341 nomad-live-343/index.html nomad-live-343/statistics.html || { echo UNEXPECTED_CORE_CHANGE; exit 1; }
       - name: Dry run viewers
         run: |
           set -euo pipefail
