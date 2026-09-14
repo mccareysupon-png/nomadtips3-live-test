@@ -6,11 +6,10 @@ on:
     paths:
       - 'nomad-live-343/index.html'
       - 'nomad-live-343/full-odds-10book-343.js'
-      - 'workers/nomadtips3-343-full-market/src/index-central.js'
-      - 'workers/nomadtips3-343-full-market/wrangler.toml'
-      - 'workers/nomadtips3-343-full-market/wrangler.central-canary.toml'
+      - 'workers/nomadtips3-343-full-market-central/**'
       - 'workers/nomadtips3-343-preview/src/index-stable.js'
       - 'workers/nomadtips3-343-preview/wrangler.stable.jsonc'
+      - 'workers/nomadtips3-343-preview/wrangler.jsonc'
       - '.github/workflows/deploy-343-central-market-cache.yml'
   workflow_dispatch:
 
@@ -21,7 +20,7 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
-  FULL_CANARY_URL: https://nomadtips3-343-full-market-central-canary.mccarey-supon.workers.dev
+  CENTRAL_CANARY_URL: https://nomadtips3-343-full-market-central-canary.mccarey-supon.workers.dev
   VIEW_CANARY_URL: https://nomadtips3-343-stable-preview.mccarey-supon.workers.dev
   PROD_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
@@ -44,29 +43,33 @@ jobs:
           git diff --name-only "$BASE" HEAD | tee /tmp/changed
           while IFS= read -r f; do
             case "$f" in
-              nomad-live-343/index.html|nomad-live-343/full-odds-10book-343.js|workers/nomadtips3-343-full-market/src/index-central.js|workers/nomadtips3-343-full-market/wrangler.toml|workers/nomadtips3-343-full-market/wrangler.central-canary.toml|workers/nomadtips3-343-preview/src/index-stable.js|workers/nomadtips3-343-preview/wrangler.stable.jsonc|.github/workflows/deploy-343-central-market-cache.yml) ;;
+              nomad-live-343/index.html|nomad-live-343/full-odds-10book-343.js|workers/nomadtips3-343-full-market-central/*|workers/nomadtips3-343-full-market-central/*/*|workers/nomadtips3-343-preview/src/index-stable.js|workers/nomadtips3-343-preview/wrangler.stable.jsonc|workers/nomadtips3-343-preview/wrangler.jsonc|.github/workflows/deploy-343-central-market-cache.yml) ;;
               *) echo "UNEXPECTED CHANGE: $f"; exit 1;;
             esac
           done < /tmp/changed
-          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-engine-343 || exit 1
-          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-5usd-hub-343 || exit 1
-          git diff --quiet "$BASE" HEAD -- nomad-live-341 || exit 1
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-343-full-market || { echo 'LEGACY FULL MARKET CHANGED'; exit 1; }
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-engine-343 || { echo 'ENGINE CHANGED'; exit 1; }
+          git diff --quiet "$BASE" HEAD -- workers/nomadtips3-5usd-hub-343 || { echo 'HUB CHANGED'; exit 1; }
+          git diff --quiet "$BASE" HEAD -- nomad-live-341 || { echo '3.41 CHANGED'; exit 1; }
 
       - name: Static architecture validation
         run: |
           set -euo pipefail
           node --check nomad-live-343/full-odds-10book-343.js
           node --check workers/nomadtips3-343-preview/src/index-stable.js
-          node --check workers/nomadtips3-343-full-market/src/index-central.js
+          node --check workers/nomadtips3-343-full-market-central/src/index.js
           grep -Fq "CENTRAL_SERVER_CACHE_ZERO_PROVIDER_REQUESTS" nomad-live-343/full-odds-10book-343.js
           grep -Fq "const API='/api/full-market/cache-snapshot'" nomad-live-343/full-odds-10book-343.js
           if grep -Fq '/api/full-market/fixture-odds' nomad-live-343/full-odds-10book-343.js; then echo 'BROWSER DETAIL REQUEST STILL PRESENT'; exit 1; fi
           if grep -Eq 'IntersectionObserver|fetch10\(|enqueue\(|PREWARM' nomad-live-343/full-odds-10book-343.js; then echo 'BROWSER PREWARM STILL PRESENT'; exit 1; fi
-          grep -Fq "'/fixture-odds-cache'" workers/nomadtips3-343-preview/src/index-stable.js
+          grep -Fq "env.CENTRAL_MARKET.fetch" workers/nomadtips3-343-preview/src/index-stable.js
           grep -Fq "VIEWER_PROVIDER_REFRESH_DISABLED" workers/nomadtips3-343-preview/src/index-stable.js
-          grep -Fq "SCHEDULER_MAX_PROVIDER_CALLS = 18" workers/nomadtips3-343-full-market/src/index-central.js
-          grep -Fq 'main = "src/index-central.js"' workers/nomadtips3-343-full-market/wrangler.toml
-          grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-343-full-market/wrangler.toml
+          grep -Fq "const MAX_PROVIDER_PER_60S=18" workers/nomadtips3-343-full-market-central/src/index.js
+          grep -Fq "providerCallsTriggeredByViewer:0" workers/nomadtips3-343-full-market-central/src/index.js
+          grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-343-full-market-central/wrangler.toml
+          grep -Fq 'binding = "CENTRAL_MARKET"' workers/nomadtips3-343-full-market-central/wrangler.toml
+          grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.stable.jsonc
+          grep -Fq '"binding": "CENTRAL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc
           grep -Fq 'full-odds-10book-343.js?v=343-central-cache-v5' nomad-live-343/index.html
 
       - name: Validate deploy credentials
@@ -76,30 +79,31 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test -n "$FIVEDOLLAR_API_KEY"
 
-      - name: Dry-run central workers and viewers
+      - name: Dry-run standalone central workers and viewers
         run: |
           set -euo pipefail
-          (cd workers/nomadtips3-343-full-market && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.central-canary.toml)
-          (cd workers/nomadtips3-343-full-market && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
+          (cd workers/nomadtips3-343-full-market-central && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.canary.toml)
+          (cd workers/nomadtips3-343-full-market-central && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml)
           (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.stable.jsonc)
           (cd workers/nomadtips3-343-preview && npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc)
 
-      - name: Deploy isolated Full Market canary
-        working-directory: workers/nomadtips3-343-full-market
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.central-canary.toml
+      - name: Deploy standalone central canary
+        working-directory: workers/nomadtips3-343-full-market-central
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.canary.toml
 
-      - name: Bind 5USD key to isolated canary
-        working-directory: workers/nomadtips3-343-full-market
-        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.central-canary.toml
+      - name: Bind 5USD key to standalone canary
+        working-directory: workers/nomadtips3-343-full-market-central
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.canary.toml
 
-      - name: Exercise server scheduler canary
+      - name: Exercise central scheduler canary
         run: |
           set -euo pipefail
-          curl -fsS --retry 8 --retry-all-errors --retry-delay 2 "$FULL_CANARY_URL/central-health" -o /tmp/ch.json
-          node -e 'const j=require("/tmp/ch.json");if(j.ok!==true||j.component!=="NOMAD343_FULL_MARKET_CENTRAL"||j.viewerProviderCalls!==0)throw Error("central health");console.log("CENTRAL HEALTH",j.version)'
-          curl -fsS -X POST --retry 8 --retry-all-errors --retry-delay 2 "$FULL_CANARY_URL/scheduler-tick" -o /tmp/tick.json
-          node -e 'const j=require("/tmp/tick.json");if(j.ok!==true)throw Error(j.error||"scheduler failed");if(Number(j.providerCalls||0)>18)throw Error("scheduler exceeded 18/min");console.log("SCHEDULER",{catalog:j.catalogFixtures,active:j.activeFixtures,due:j.dueFixtures,selected:j.selectedFixtures,providerCalls:j.providerCalls})'
-          curl -fsS "$FULL_CANARY_URL/cache-snapshot" -o /tmp/fm-snapshot.json
+          curl_retry() { curl -fsS --retry 10 --retry-all-errors --retry-delay 2 --connect-timeout 10 --max-time 45 "$@"; }
+          curl_retry "$CENTRAL_CANARY_URL/health" -o /tmp/ch.json
+          node -e 'const j=require("/tmp/ch.json");if(j.ok!==true||j.component!=="NOMAD343_CENTRAL_MARKET_CACHE"||j.viewerProviderCalls!==0)throw Error("central health");console.log("CENTRAL HEALTH",j.version)'
+          curl_retry -X POST "$CENTRAL_CANARY_URL/scheduler-tick" -o /tmp/tick.json
+          node -e 'const j=require("/tmp/tick.json");if(j.ok!==true)throw Error(j.error||"scheduler failed");if(Number(j.providerCalls||0)>18)throw Error("scheduler exceeded 18/60s");console.log("SCHEDULER",{catalog:j.catalogFixtures,active:j.activeFixtures,due:j.dueFixtures,selected:j.selectedFixtures,providerCalls:j.providerCalls})'
+          curl_retry "$CENTRAL_CANARY_URL/cache-snapshot" -o /tmp/fm-snapshot.json
           node -e 'const j=require("/tmp/fm-snapshot.json");if(j.ok!==true||j.providerCallsTriggeredByViewer!==0)throw Error("cache snapshot contract");console.log("CENTRAL CACHE",j.fixtureCount)'
 
       - name: Deploy canary viewer
@@ -125,7 +129,7 @@ jobs:
               await page.waitForSelector('.match-card[data-match-id]',{timeout:45000});
               const cards=page.locator('.match-card[data-match-id]');
               const count=Math.min(5,await cards.count());
-              for(let k=0;k<count;k++){const row=cards.nth(k).locator('.match-row.scoreboard-default');await row.click();await page.waitForTimeout(80);}
+              for(let k=0;k<count;k++){await cards.nth(k).locator('.match-row.scoreboard-default').click();await page.waitForTimeout(80)}
             }
             await new Promise(r=>setTimeout(r,1500));
             if(detail!==0)throw Error('BROWSER_DETAIL_REQUESTS='+detail);
@@ -136,11 +140,11 @@ jobs:
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
-      - name: Verify public fixture route is cache-only
+      - name: Verify viewer routes cannot trigger provider
         run: |
           set -euo pipefail
-          curl -fsSI "$VIEW_CANARY_URL/api/full-market/cache-snapshot?verify=$RANDOM" | tr -d '\r' | tee /tmp/headers
-          grep -Fiq 'x-nomad-provider-trigger: 0' /tmp/headers
+          curl -fsS -D /tmp/sh "$VIEW_CANARY_URL/api/full-market/cache-snapshot?verify=$RANDOM" -o /tmp/sj
+          tr -d '\r' < /tmp/sh | grep -Fiq 'x-nomad-provider-trigger: 0'
           curl -fsS "$VIEW_CANARY_URL/api/live/snapshot?verify=$RANDOM" -o /tmp/board.json
           node -e 'const j=require("/tmp/board.json"),f=(j.fixtures||[]).find(x=>x.fixtureId);require("fs").writeFileSync("/tmp/id",f?String(f.fixtureId):"")'
           ID="$(cat /tmp/id)"
@@ -152,12 +156,12 @@ jobs:
           CODE=$(curl -sS -o /tmp/blocked -w '%{http_code}' "$VIEW_CANARY_URL/api/full-market/event-refresh?fixtureId=123")
           test "$CODE" = "403"
 
-      - name: Deploy production central Full Market
-        working-directory: workers/nomadtips3-343-full-market
+      - name: Deploy production central cache
+        working-directory: workers/nomadtips3-343-full-market-central
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
-      - name: Bind 5USD key to production central worker
-        working-directory: workers/nomadtips3-343-full-market
+      - name: Bind 5USD key to production central cache
+        working-directory: workers/nomadtips3-343-full-market-central
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
       - name: Deploy production viewer
