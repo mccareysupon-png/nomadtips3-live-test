@@ -30,21 +30,18 @@ jobs:
           set -euo pipefail
           git fetch origin "$ROLLBACK_REF" --depth=1
           git rev-parse "origin/$ROLLBACK_REF"
-      - name: Verify or apply isolated full-width patch
+      - name: Apply isolated full-width v2 patch
         run: |
           set -euo pipefail
-          if grep -Fq -- '--content-max:1240px;' nomad-live-343/app.css; then
-            python .github/scripts/patch-343-full-width-all-devices.py
-          else
-            echo "FULL_WIDTH_RUNTIME_ALREADY_APPLIED"
-          fi
+          python .github/scripts/patch-343-full-width-all-devices.py
           grep -Fq -- '--content-max:none;--edge-gutter:' nomad-live-343/app.css
+          grep -Fq 'scrollbar-gutter:auto' nomad-live-343/app.css
           grep -Fq '.shell{width:100%;max-width:none' nomad-live-343/app.css
           grep -Fq '.owner-shell{width:100%;max-width:none' nomad-live-343/settings.css
           for f in index.html signal.html statistics.html settings.html; do
-            grep -Fq 'app.css?v=343-full-width-v1' "nomad-live-343/$f"
+            grep -Fq 'app.css?v=343-full-width-v2' "nomad-live-343/$f"
           done
-          grep -Fq 'settings.css?v=343-full-width-v1' nomad-live-343/settings.html
+          grep -Fq 'settings.css?v=343-full-width-v2' nomad-live-343/settings.html
       - name: Verify source scope
         run: |
           set -euo pipefail
@@ -71,7 +68,7 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add nomad-live-343/app.css nomad-live-343/settings.css nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/settings.html
-            git commit -m "feat(343): expand shells to full device width"
+            git commit -m "fix(343): use all available device width"
             git push origin HEAD:work/nomad343-full-width-all-devices-20260914
           else
             echo "RUNTIME_ALREADY_COMMITTED"
@@ -87,7 +84,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html settings.html; do
               html="$(curl -fsS "$CANARY_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-full-width-v1' <<<"$html" || ok=0
+              grep -Fq '343-full-width-v2' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "CANARY ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
@@ -114,7 +111,7 @@ jobs:
             ok=1
             for f in index.html signal.html statistics.html settings.html; do
               html="$(curl -fsS "$PROD_URL/$f?asset=$RANDOM$(date +%s)" || true)"
-              grep -Fq '343-full-width-v1' <<<"$html" || ok=0
+              grep -Fq '343-full-width-v2' <<<"$html" || ok=0
             done
             if [ "$ok" = 1 ]; then echo "PRODUCTION ASSETS READY attempt=$i"; exit 0; fi
             sleep 2
