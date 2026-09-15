@@ -11,6 +11,12 @@
   box-sizing:border-box!important;
 }
 
+/* Page heads: keep only the main H1 visible on the left side. */
+.page-head > div:first-child > .eyebrow,
+.page-head > div:first-child > p:not(.eyebrow){
+  display:none!important;
+}
+
 /* Keep the primary desktop/tablet navigation centered on the header itself,
    independent of the logo width and right-side utility controls. */
 @media (min-width:761px){
