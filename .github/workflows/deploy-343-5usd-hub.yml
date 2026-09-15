@@ -32,18 +32,19 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Verify current 3.43 hub scope
+      - name: Verify 3.43 one-call live core scope
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "const VERSION='nomad343-5usd-hub-v6-safe-control'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "const OWNER_TOKEN_SHA256='2e865593c9988c1f6dd0e620ba96bd14cf607555c0f273f68e192e9accad6e9b'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const VERSION='nomad343-5usd-hub-v7-live-core-500'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'const LIVE_PAGE_SIZE=500' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'const LIVE_CORE_REQUESTS=1' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "status=live&include=\${include}" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "'LIVE_CORE'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'localKnownUsedInWindow' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'unexplainedUsedInWindow' workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'main = "src/index-v2.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
-          grep -Fq "x-ratelimit-remaining" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "providerUsedInWindow" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "UNSAFE_PROJECTED_LOAD" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "setAlarm" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
             echo '::error::3.43 hub must not depend on 3.42 runtime'; exit 1
           fi
@@ -67,7 +68,7 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
-      - name: Verify hub telemetry and guarded control without direct provider probe
+      - name: Verify one-call live core and protected direct control
         run: |
           set -euo pipefail
           get() {
@@ -91,11 +92,13 @@ jobs:
           const s=JSON.parse(fs.readFileSync('/tmp/hub-snapshot.json','utf8'));
           const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json','utf8'));
           const c=JSON.parse(fs.readFileSync('/tmp/hub-control.json','utf8'));
-          const sample=(Array.isArray(s.fixtures)?s.fixtures:[]).slice(0,3).map(x=>({fixtureId:x.fixtureId,league:x.league?.name,home:x.home?.name,away:x.away?.name,minute:x.minute}));
-          console.log(JSON.stringify({health:h,control:c,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,providerUsedInWindow:s.providerUsedInWindow,estimatedKnownRequestsPerMinute:s.estimatedKnownRequestsPerMinute,lastError:s.lastError},sample},null,2));
-          if(s.ok!==true||h.ok!==true||c.ok!==true)process.exit(1);
-          if(s.version!=='nomad343-5usd-hub-v6-safe-control'||h.version!=='nomad343-5usd-hub-v6-safe-control'||c.version!=='nomad343-5usd-hub-v6-safe-control')process.exit(2);
-          if(!Array.isArray(c.allowedIntervalsSec)||!c.allowedIntervalsSec.includes(15)||!c.allowedIntervalsSec.includes(3))process.exit(3);
-          if(!Object.prototype.hasOwnProperty.call(h,'providerHeadersAvailable'))process.exit(4);
-          if(!Object.prototype.hasOwnProperty.call(h,'providerUsedInWindow'))process.exit(5);
+          if(s.ok!==true||h.ok!==true||c.ok!==true) throw Error('hub not ready');
+          if(s.version!=='nomad343-5usd-hub-v7-live-core-500'||h.version!==s.version||c.version!==s.version) throw Error('v7 mismatch');
+          if(h.architecture!=='LIVE_CORE_1_CALL_PER_CYCLE'||Number(h.livePageSize)!==500) throw Error('live core architecture mismatch');
+          const m3=(c.modes||[]).find(x=>Number(x.intervalSec)===3);
+          const m2=(c.modes||[]).find(x=>Number(x.intervalSec)===2);
+          if(!m3||m3.allowed!==true||Number(m3.liveRequestsPerMinute)!==20||Number(m3.projectedTotalRequestsPerMinute)!==22.5) throw Error('3s projection');
+          if(!m2||m2.allowed!==true||Number(m2.liveRequestsPerMinute)!==30||Number(m2.projectedTotalRequestsPerMinute)!==32.5||Number(m2.projectedPeakMinuteRequests)!==35) throw Error('2s projection');
+          if(!Object.prototype.hasOwnProperty.call(h,'providerUsedInWindow')||!Object.prototype.hasOwnProperty.call(h,'localKnownUsedInWindow')||!Object.prototype.hasOwnProperty.call(h,'unexplainedUsedInWindow')) throw Error('account ledger missing');
+          console.log(JSON.stringify({version:h.version,architecture:h.architecture,livePageSize:h.livePageSize,current:c.intervalSec,m3,m2,providerUsed:h.providerUsedInWindow,localKnown:h.localKnownUsedInWindow,unexplained:h.unexplainedUsedInWindow},null,2));
           NODE
