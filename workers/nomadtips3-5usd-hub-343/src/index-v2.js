@@ -1,4 +1,4 @@
-const VERSION='nomad343-5usd-hub-v5-bulk-speed-control';
+const VERSION='nomad343-5usd-hub-v4-status-safe';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const DEFAULT_LIVE_REFRESH_SECONDS=120;
 const TODAY_REFRESH_MS=120_000;
