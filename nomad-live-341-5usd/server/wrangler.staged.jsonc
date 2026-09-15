@@ -5,6 +5,21 @@
   "compatibility_date": "2026-09-15",
   "workers_dev": true,
   "vars": {
-    "NOMAD341_LIVE_PROVIDER_ENABLED": "false"
-  }
+    "NOMAD341_LIVE_PROVIDER_ENABLED": "false",
+    "NOMAD341_MACHINE_ID": "341-STAGED-A"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "NOMAD341_CONTROL",
+        "class_name": "Nomad341ControlState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Nomad341ControlState"]
+    }
+  ]
 }
