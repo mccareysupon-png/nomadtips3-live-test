@@ -1,13 +1,13 @@
 (()=>{
 'use strict';
-const VERSION='343-expanded-match-v3-stable-lifecycle';
+const VERSION='343-expanded-match-v4-stable-lifecycle';
 const ODDS_RENDER_OWNER='full-market-bookmaker-only';
 const BOARD_API='/api/engine/board';
 const HISTORY_API='/api/engine/history';
 const BOARD_CACHE_MS=15000;
 const HISTORY_CACHE_MS=20000;
 const $=s=>document.querySelector(s);
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -130,7 +130,12 @@ function init(){
   const board=$('[data-board-sections]');if(!board)return;
   document.addEventListener('click',e=>{if(e.target.closest?.('[data-fmb-book]'))return;const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;openExpanded(row.dataset.matchId)},true);
   document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;openExpanded(row.dataset.matchId)},true);
-  new MutationObserver(()=>{if(!expandedId||!expandedEl)return;queuePlacement();scheduleRefresh(false)}).observe(board,{childList:true,subtree:true});
+  new MutationObserver(records=>{
+    if(!expandedId||!expandedEl)return;
+    const external=records.some(record=>!expandedEl.contains(record.target));
+    if(!external)return;
+    queuePlacement();scheduleRefresh(false);
+  }).observe(board,{childList:true,subtree:true});
   const recapture=()=>{if(expandedId&&expandedEl?.isConnected)captureAnchor()};
   window.addEventListener('scroll',recapture,{passive:true});window.addEventListener('resize',recapture,{passive:true});setInterval(recapture,500);
   window.NOMAD343_EXPANDED_MATCH={version:VERSION,oddsRenderOwner:ODDS_RENDER_OWNER,open:openExpanded,close:closeExpanded,reload:()=>expandedId&&refreshExpanded(true),getFixture:id=>{const b=boardCache.data;return b?findFixture(b,id):null}};
