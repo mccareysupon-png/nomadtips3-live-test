@@ -67,6 +67,9 @@ jobs:
           grep -Fq 'MATCH STATS AT SIGNAL' nomad-live-343/signal.js
           if grep -Fq 'liveQuick(s)' nomad-live-343/signal.js; then echo 'unexpected default-card stat pack'; exit 1; fi
           if grep -Fq 'scrollIntoView' nomad-live-343/live.js; then echo 'unexpected Live auto-scroll'; exit 1; fi
+          if grep -R -Fq 'fixture-odds' nomad-live-343 workers/nomadtips3-engine-343 workers/nomadtips3-343-preview; then echo 'per-fixture odds route is forbidden'; exit 1; fi
+          if grep -R -Fq '/api/full-market/' nomad-live-343 workers/nomadtips3-engine-343 workers/nomadtips3-343-preview; then echo 'full-market sidecar route is forbidden'; exit 1; fi
+          if grep -Fq 'full-odds-main-343.js' nomad-live-343/index.html; then echo 'per-fixture full odds client is forbidden'; exit 1; fi
           grep -Fq 'SOURCE RAW HOME LINE' nomad-live-343/bet365-board.js
           grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
           grep -Fq 'providerLine' workers/nomadtips3-engine-343/src/index.js
@@ -78,6 +81,9 @@ jobs:
           grep -Fq 'const MIN_SCAN_GAP_MS=60_000' workers/nomadtips3-engine-343/src/index.js
           grep -Fq "u.pathname==='/history'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "'/history'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "priceSource:'hub-batch'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "source:'HUB_BATCH'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq 'externalRequests:0' workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'main = "src/index.js"' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq "engineRequest(request, '/signals')" workers/nomadtips3-343-preview/src/index.js
           grep -Fq "engineRequest(request, '/board')" workers/nomadtips3-343-preview/src/index.js
@@ -109,9 +115,6 @@ jobs:
       - name: Deploy 3.43 Engine
         working-directory: workers/nomadtips3-engine-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
-      - name: Bind 5USD API key to Engine referee
-        working-directory: workers/nomadtips3-engine-343
-        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
       - name: Dry-run 3.43 preview
         working-directory: workers/nomadtips3-343-preview
