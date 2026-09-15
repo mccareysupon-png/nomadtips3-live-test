@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-odds-format-v4-topbar-fixed';
+const VERSION='343-odds-format-v5-fullmarket-rewire';
 const STORAGE_KEY='nomad343_odds_format_v1';
 const EVENT_NAME='nomad343:odds-format-change';
 const FORMATS={decimal:'DEC',fractional:'FRA',american:'AM'};
@@ -23,6 +23,11 @@ function setNodeText(node,value){if(node.nodeValue!==value)node.nodeValue=value}
 function setElementText(el,value){if(el.textContent!==value)el.textContent=value}
 function parseAt(text){const m=String(text||'').match(/^(.*?@\s*)([0-9]+(?:\.[0-9]+)?)(.*)$/);return m?{prefix:m[1],raw:m[2],suffix:m[3]}:null}
 function parseLeading(text){const m=String(text||'').match(/^\s*([0-9]+(?:\.[0-9]+)?)(.*)$/);return m?{raw:m[1],suffix:m[2]}:null}
+function resetRefreshable(el){
+  if(!el.dataset.nomadOddsRendered||el.textContent===el.dataset.nomadOddsRendered)return;
+  delete el.dataset.nomadOddsRaw;delete el.dataset.nomadOddsMode;delete el.dataset.nomadOddsPrefix;delete el.dataset.nomadOddsSuffix;delete el.dataset.nomadOddsRendered;
+}
+function writeRefreshable(el,value){setElementText(el,value);el.dataset.nomadOddsRendered=value}
 
 function convertAtElement(el){
   if(!el.dataset.nomadOddsRaw){const p=parseAt(el.textContent);if(!p)return;el.dataset.nomadOddsRaw=p.raw;el.dataset.nomadOddsPrefix=p.prefix;el.dataset.nomadOddsSuffix=p.suffix}
@@ -31,6 +36,11 @@ function convertAtElement(el){
 function convertDirectElement(el){
   if(!el.dataset.nomadOddsRaw){const raw=el.textContent.trim(),n=numeric(raw);if(n===null||n<=1)return;el.dataset.nomadOddsRaw=raw}
   setElementText(el,format(el.dataset.nomadOddsRaw));
+}
+function convertRefreshableDirect(el){
+  resetRefreshable(el);
+  if(!el.dataset.nomadOddsRaw){const raw=el.textContent.trim(),n=numeric(raw);if(n===null||n<=1)return;el.dataset.nomadOddsRaw=raw;el.dataset.nomadOddsMode='direct'}
+  writeRefreshable(el,format(el.dataset.nomadOddsRaw));
 }
 function isDirectOddsChip(label,market){
   if(!label||label.includes('LINE'))return false;
@@ -58,19 +68,19 @@ function convertChip(strong){
   strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';setElementText(strong,format(raw));
 }
 function convertFullOddsChip(strong){
-  if(!strong.closest('.fom-chip'))return;
+  if(!strong.matches?.('.fom-price')&&!strong.closest('.fom-chip'))return;
+  resetRefreshable(strong);
   if(strong.dataset.nomadOddsRaw){
-    if(strong.dataset.nomadOddsMode==='at')setElementText(strong,`${strong.dataset.nomadOddsPrefix||''}${format(strong.dataset.nomadOddsRaw)}${strong.dataset.nomadOddsSuffix||''}`);
-    else setElementText(strong,format(strong.dataset.nomadOddsRaw));
-    return;
+    const value=strong.dataset.nomadOddsMode==='at'?`${strong.dataset.nomadOddsPrefix||''}${format(strong.dataset.nomadOddsRaw)}${strong.dataset.nomadOddsSuffix||''}`:format(strong.dataset.nomadOddsRaw);
+    writeRefreshable(strong,value);return;
   }
   const at=parseAt(strong.textContent);
   if(at){
     strong.dataset.nomadOddsRaw=at.raw;strong.dataset.nomadOddsMode='at';strong.dataset.nomadOddsPrefix=at.prefix;strong.dataset.nomadOddsSuffix=at.suffix;
-    setElementText(strong,`${at.prefix}${format(at.raw)}${at.suffix}`);return;
+    writeRefreshable(strong,`${at.prefix}${format(at.raw)}${at.suffix}`);return;
   }
   const raw=strong.textContent.trim(),n=numeric(raw);if(n===null||n<=1)return;
-  strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';setElementText(strong,format(raw));
+  strong.dataset.nomadOddsRaw=raw;strong.dataset.nomadOddsMode='direct';writeRefreshable(strong,format(raw));
 }
 function convertSignalMarket(span){
   const node=[...span.childNodes].find(n=>n.nodeType===3&&String(n.nodeValue).includes('@'));if(!node)return;
@@ -96,12 +106,13 @@ function apply(root=document){
   try{
     root.querySelectorAll?.('.b365-signal-price').forEach(convertAtElement);
     root.querySelectorAll?.('.b365-chip strong').forEach(convertChip);
-    root.querySelectorAll?.('.fom-chip strong').forEach(convertFullOddsChip);
+    root.querySelectorAll?.('.fom-price,.fom-chip strong').forEach(convertFullOddsChip);
     root.querySelectorAll?.('.signal-market-chip > span').forEach(convertSignalMarket);
     root.querySelectorAll?.('.signal-entry-block > header small').forEach(convertAtElement);
     root.querySelectorAll?.('.signal-entry-grid > div').forEach(el=>convertLabelledDirect(el,'ODDS AT SIGNAL'));
     root.querySelectorAll?.('.signal-tracker > span').forEach(convertTracker);
     root.querySelectorAll?.('td.odds').forEach(convertDirectElement);
+    root.querySelectorAll?.('[data-avg-odds]').forEach(convertRefreshableDirect);
     root.querySelectorAll?.('.live-signal-sub').forEach(convertLiveInline);
   }finally{applying=false}
 }
