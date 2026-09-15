@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 
-const VERSION='343-live-stable-v10-multi-open-anchor';
+const VERSION='343-live-stable-v11-persistent-expanded-node';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
 const POLL_MS=30_000;
@@ -105,6 +105,34 @@ function card(f){
   const id=fixtureKey(f),expanded=openedIds.has(id),league=[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',homeName=f?.home?.name||'—',awayName=f?.away?.name||'—',kind=classify(f),score=kind==='scheduled'?'—':`${show(f?.goals?.home)}-${show(f?.goals?.away)}`,date=fixtureDateLabel(f),clock=clockLabel(f),half=halfScore(f),sig=signalState(f);
   return`<article class="match-card event-compact${expanded?' expanded':''}" data-match-row data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="match-row scoreboard-default"><div class="league league-scoreboard">${esc(league)}</div><div class="fixture-scoreboard"><div class="fixture-meta ${kind}"><span class="fixture-date">${esc(date)}</span><span class="fixture-clock">${esc(clock)}</span></div><div class="team-slot home-slot"><span class="team-name">${esc(homeName)}</span></div><div class="score-core"><strong>${esc(score)}</strong>${half?`<small class="half-score">HT ${esc(half)}</small>`:''}</div><div class="team-slot away-slot"><span class="team-name">${esc(awayName)}</span></div><div class="fixture-side"><span class="signal-state ${sig.key}"><i aria-hidden="true"></i>${esc(sig.text)}</span></div></div></div><span class="expand-cue" aria-hidden="true">▼</span><div class="event-details"${expanded?'':' hidden'}>${expanded?detailHtml(f):''}</div></article>`;
 }
+function cardNode(f){const t=document.createElement('template');t.innerHTML=card(f).trim();return t.content.firstElementChild}
+function patchOpenStats(detail,f){
+  if(!detail)return;
+  const axis=detail.querySelectorAll('.team-axis>b');
+  if(axis[0])axis[0].textContent=f?.home?.name||'HOME';
+  if(axis[1])axis[1].textContent=f?.away?.name||'AWAY';
+  const rows=metricRows(f),els=[...detail.querySelectorAll('.mirror-row')];
+  rows.forEach((r,i)=>{const el=els[i];if(!el)return;const[,p,pct]=r,h=p.home,a=p.away,max=pct?100:Math.max(h??0,a??0,1),hw=h===null?0:Math.min(100,h/max*100),aw=a===null?0:Math.min(100,a/max*100),homeNum=el.querySelector('.home-num'),awayNum=el.querySelector('.away-num'),homeBar=el.querySelector('.home-track i'),awayBar=el.querySelector('.away-track i');if(homeNum)homeNum.textContent=h===null?'—':`${show(h,pct?1:0)}${pct?'%':''}`;if(awayNum)awayNum.textContent=a===null?'—':`${show(a,pct?1:0)}${pct?'%':''}`;if(homeBar)homeBar.style.width=`${hw}%`;if(awayBar)awayBar.style.width=`${aw}%`});
+  const bookBody=detail.querySelector('.book-flow-single .flow-body');if(bookBody)bookBody.innerHTML=bookChart(f);
+  const note=detail.querySelector('.details-note');if(note)note.textContent=`Event Flow ใช้ประวัติกลางจาก Engine · ราคา Bookmaker แสดงเฉพาะข้อมูลที่ตรวจพบจริง${classify(f)==='unknown'?' · ผลคู่นี้ยังไม่ยืนยัน จึงห้าม Settlement':''}`;
+}
+function patchOpenCard(el,f){
+  if(!el||!f)return;
+  const kind=classify(f),league=[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',score=kind==='scheduled'?'—':`${show(f?.goals?.home)}-${show(f?.goals?.away)}`,half=halfScore(f),sig=signalState(f);
+  el.classList.add('expanded');el.setAttribute('aria-expanded','true');
+  const leagueEl=el.querySelector('.league-scoreboard');if(leagueEl)leagueEl.textContent=league;
+  const meta=el.querySelector('.fixture-meta');if(meta)meta.className=`fixture-meta ${kind}`;
+  const dateEl=el.querySelector('.fixture-date');if(dateEl)dateEl.textContent=fixtureDateLabel(f);
+  const clockEl=el.querySelector('.fixture-clock');if(clockEl)clockEl.textContent=clockLabel(f);
+  const homeEl=el.querySelector('.home-slot .team-name');if(homeEl)homeEl.textContent=f?.home?.name||'—';
+  const awayEl=el.querySelector('.away-slot .team-name');if(awayEl)awayEl.textContent=f?.away?.name||'—';
+  const scoreCore=el.querySelector('.score-core');if(scoreCore){const strong=scoreCore.querySelector('strong');if(strong)strong.textContent=score;let halfEl=scoreCore.querySelector('.half-score');if(half){if(!halfEl){halfEl=document.createElement('small');halfEl.className='half-score';scoreCore.appendChild(halfEl)}halfEl.textContent=`HT ${half}`}else halfEl?.remove()}
+  const sigEl=el.querySelector('.signal-state');if(sigEl){sigEl.className=`signal-state ${sig.key}`;sigEl.innerHTML='<i aria-hidden="true"></i>';sigEl.append(document.createTextNode(sig.text))}
+  const detail=el.querySelector('.event-details');if(!detail)return;detail.hidden=false;
+  if(kind!=='scheduled'&&!detail.querySelector('.evidence-card')){const fullOdds=detail.querySelector('[data-full-odds-main]');detail.innerHTML=detailHtml(f);if(fullOdds){const flow=detail.querySelector('.nomad-event-flow-card'),stats=detail.querySelector('.evidence-card');if(flow)flow.insertAdjacentElement('afterend',fullOdds);else if(stats)stats.insertAdjacentElement('afterend',fullOdds);else detail.appendChild(fullOdds)}}
+  patchOpenStats(detail,f);
+  window.NOMAD_EVENT_FLOW_343?.hydrate(el);
+}
 function emptyText(key){if(key==='live')return'ยังไม่มีคู่กำลังแข่งขัน';if(key==='scheduled')return'ไม่มีคู่รอเตะเพิ่มเติม';if(key==='unknown')return'ไม่มีคู่ที่ผลหรือสถานะยังไม่ยืนยัน';return'ยังไม่มีคู่จบการแข่งขัน'}
 function rowSignature(f){const id=fixtureKey(f),kind=classify(f),sig=signalState(f).key,base=[id,kind,minuteOf(f),f?.statusCode,f?.goals?.home,f?.goals?.away,f?.goals?.halfHome,f?.goals?.halfAway,sig];if(openedIds.has(id))base.push(JSON.stringify(f?.statistics||{}),JSON.stringify(f?.corners||null));return base.join('|')}
 function viewportAnchor(){
@@ -117,13 +145,22 @@ function restoreViewport(anchor){
   if(!anchor?.id)return;
   requestAnimationFrame(()=>{const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(anchor.id)}"]`);if(!el)return;const delta=el.getBoundingClientRect().top-anchor.top;if(Number.isFinite(delta)&&Math.abs(delta)>.5)window.scrollBy(0,delta)});
 }
-function renderGroup(key,rows){if(counts[key])counts[key].textContent=String(rows.length);const signature=rows.map(rowSignature).join('~');if(renderKeys.get(key)===signature)return;renderKeys.set(key,signature);if(boards[key])boards[key].innerHTML=rows.length?rows.map(card).join(''):`<div class="empty compact-empty">${emptyText(key)}</div>`}
+function renderGroup(key,rows,openNodes){
+  if(counts[key])counts[key].textContent=String(rows.length);
+  const signature=rows.map(rowSignature).join('~');if(renderKeys.get(key)===signature)return;renderKeys.set(key,signature);
+  const root=boards[key];if(!root)return;
+  if(!rows.length){root.innerHTML=`<div class="empty compact-empty">${emptyText(key)}</div>`;return}
+  const frag=document.createDocumentFragment();
+  for(const f of rows){const id=fixtureKey(f);let el=openedIds.has(id)?openNodes.get(id):null;if(el)patchOpenCard(el,f);else el=cardNode(f);if(el)frag.appendChild(el)}
+  root.replaceChildren(frag);
+}
 function render(snapshot){
   const anchor=viewportAnchor();
+  const openNodes=new Map();for(const id of openedIds){const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(id)}"]`);if(el)openNodes.set(id,el)}
   const fixtures=Array.isArray(snapshot?.fixtures)?snapshot.fixtures.slice():[];
   currentFixtures.clear();for(const f of fixtures){currentFixtures.set(fixtureKey(f),f);observe(f)}pruneHistory(fixtures);
   fixtures.sort((a,b)=>(dateMs(a?.kickoffAt??a?.kickoffUtc)??0)-(dateMs(b?.kickoffAt??b?.kickoffUtc)??0));
-  for(const key of Object.keys(boards))renderGroup(key,fixtures.filter(f=>classify(f)===key));
+  for(const key of Object.keys(boards))renderGroup(key,fixtures.filter(f=>classify(f)===key),openNodes);
   for(const id of openedIds){const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(id)}"]`);if(el)window.NOMAD_EVENT_FLOW_343?.hydrate(el)}
   restoreViewport(anchor);
 }
@@ -154,8 +191,8 @@ function toggle(el){
   if(opening)openDetail(el,id);
   requestAnimationFrame(()=>{const delta=el.getBoundingClientRect().top-before;if(Number.isFinite(delta)&&Math.abs(delta)>.5)window.scrollBy(0,delta)});
 }
-document.addEventListener('click',e=>{const el=e.target.closest('.match-card[data-match-id]');if(el)toggle(el)});
-document.addEventListener('keydown',e=>{const el=e.target.closest('.match-card[data-match-id]');if(!el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(el)}});
+document.addEventListener('click',e=>{const el=e.target.closest('.match-card[data-match-id]');if(!el||e.target.closest('.event-details'))return;toggle(el)});
+document.addEventListener('keydown',e=>{const el=e.target.closest('.match-card[data-match-id]');if(!el||e.target.closest('.event-details'))return;if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(el)}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 load();
 setInterval(load,POLL_MS);
