@@ -39,13 +39,15 @@
 .fom-colhead.cols-ah b:last-of-type,
 .fom-colhead.cols-1x2 b:last-of-type{color:var(--team-away-name)!important}
 
-/* Event Flow: line, end point and legend always follow team side. */
+/* Event Flow: line, area, end point and legend always follow team side. */
 .nomad-flow-legend .home{color:var(--team-home-name)!important}
 .nomad-flow-legend .away{color:var(--team-away-name)!important}
 .nomad-flow-legend .home i{background:var(--team-home-name)!important;box-shadow:0 0 8px rgba(111,224,139,.45)!important}
 .nomad-flow-legend .away i{background:var(--team-away-name)!important;box-shadow:0 0 8px rgba(230,207,85,.42)!important}
 .nomad-flow-line.home{stroke:var(--team-home-name)!important;filter:drop-shadow(0 1px 1.2px rgba(111,224,139,.38))!important}
 .nomad-flow-line.away{stroke:var(--team-away-name)!important;filter:drop-shadow(0 1px 1.2px rgba(230,207,85,.36))!important}
+.nomad-flow-area.home{fill:rgba(111,224,139,.16)!important}
+.nomad-flow-area.away{fill:rgba(230,207,85,.14)!important}
 .nomad-flow-end.home{fill:var(--team-home-name)!important;stroke:#c9ffd5!important}
 .nomad-flow-end.away{fill:var(--team-away-name)!important;stroke:#fff0a4!important}
 
