@@ -34,6 +34,9 @@ jobs:
           node --check workers/nomadtips3-engine-343/src/index-bulk.js
           node --check workers/nomadtips3-343-preview/src/index.js
           node --check nomad-live-343/live.js
+          node --check nomad-live-343/full-odds-main-343.js
+          node --check nomad-live-343/utility-bar-343.js
+          node --check nomad-live-343/team-sides-343.js
           grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
           grep -Fq "dataMode:'BULK_SNAPSHOT_ONLY'" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq "externalOddsRequests:0" workers/nomadtips3-engine-343/src/index-bulk.js
@@ -41,8 +44,11 @@ jobs:
           if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then
             echo 'ERROR: bulk-only engine contains direct provider URL'; exit 1
           fi
-          if grep -Fq 'full-odds-main-343.js?v=' nomad-live-343/index.html; then
-            echo 'ERROR: live page still loads per-fixture odds caller'; exit 1
+          grep -Fq 'full-odds-main-343.js?v=' nomad-live-343/index.html
+          grep -Fq "const API='/api/full-market/fixture-odds'" nomad-live-343/full-odds-main-343.js
+          grep -Fq "const FALLBACK_API='/api/engine/fixture-odds'" nomad-live-343/full-odds-main-343.js
+          if grep -Fq 'api.5dollarfootballapi.com' nomad-live-343/full-odds-main-343.js; then
+            echo 'ERROR: Full Market UI contains a direct provider URL'; exit 1
           fi
           if grep -Fq 'env.FULL_MARKET' workers/nomadtips3-343-preview/src/index.js; then
             echo 'ERROR: preview still calls FULL_MARKET binding'; exit 1
@@ -67,7 +73,7 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Smoke bulk-only runtime
+      - name: Smoke bulk-only runtime with cached Full Market
         run: |
           set -euo pipefail
           curl -fsS --max-time 30 -X POST "$BASE_URL/api/engine/scan?smoke=$RANDOM" -o /tmp/scan.json
@@ -77,6 +83,7 @@ jobs:
           curl -fsS --max-time 30 "$BASE_URL/api/full-market/health?smoke=$RANDOM" -o /tmp/fullmarket.json
           curl -fsS --max-time 30 "$BASE_URL/?smoke=$RANDOM" -o /tmp/index.html
           node - <<'NODE'
+          const fs=require('fs');
           const h=require('/tmp/health.json');
           const b=require('/tmp/board.json');
           const fm=require('/tmp/fullmarket.json');
@@ -85,10 +92,24 @@ jobs:
           if(h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('engine not bulk-only');
           if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('board not ready');
           if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0) throw Error('board referee not bulk-only');
-          if(fm.ok!==true||fm.mode!=='BULK_SNAPSHOT_ONLY'||Number(fm.externalRequestsAdded)!==0) throw Error('legacy full-market route not isolated');
+          if(fm.ok!==true||fm.mode!=='BULK_SNAPSHOT_ONLY'||Number(fm.externalRequestsAdded)!==0) throw Error('full-market compat not isolated');
+          const pick=b.fixtures.find(x=>x?.fixtureId)||null;
+          fs.writeFileSync('/tmp/fixture-id',pick?String(pick.fixtureId):'');
           console.log('BULK_ONLY_OK', b.fixtures.length, 'fixtures', b.counts, 'signals', h.signalCount||0);
           NODE
-          if grep -Fq 'full-odds-main-343.js?v=' /tmp/index.html; then
-            echo 'ERROR: deployed page still contains per-fixture caller'; exit 1
+          grep -Fq 'full-odds-main-343.js?v=' /tmp/index.html
+          grep -Fq 'nav-clean-343.css?v=' /tmp/index.html
+          grep -Fq 'utility-bar-343.js?v=' /tmp/index.html
+          FIXTURE_ID="$(cat /tmp/fixture-id)"
+          if [ -n "$FIXTURE_ID" ]; then
+            code="$(curl -sS --max-time 30 -o /tmp/fixture-odds.json -w '%{http_code}' "$BASE_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&smoke=$RANDOM")"
+            test "$code" = "200" -o "$code" = "404"
+            node - <<'NODE'
+            const j=require('/tmp/fixture-odds.json');
+            if(Number(j.externalRequestsAdded)!==0) throw Error('Full Market added provider requests');
+            if(j.ok===true&&(j.source!=='BULK_SNAPSHOT'||j.cached!==true)) throw Error('Full Market is not reading cached bulk snapshot');
+            if(j.ok!==true&&j.error!=='ODDS_UNAVAILABLE_IN_BULK_SNAPSHOT') throw Error('unexpected Full Market response');
+            console.log('FULL_MARKET_CACHE_OK',j.ok===true?'ODDS_READY':'NO_ODDS_IN_SNAPSHOT');
+            NODE
           fi
-          echo 'NO_PER_FIXTURE_CALLER_OK'
+          echo 'BULK_ONLY_WITH_CACHED_FULL_MARKET_OK'
