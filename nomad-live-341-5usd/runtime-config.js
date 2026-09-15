@@ -1,9 +1,0 @@
-(()=>{
-  window.NOMAD341_RUNTIME_CONFIG={
-    mode:'CENTRAL_SNAPSHOT',
-    snapshotEndpoint:'https://nomadtips3-341-5usd-staged.mccarey-supon.workers.dev/api/nomad341/live',
-    liveProviderEnabled:true,
-    browserDerivedEnabled:false,
-    cacheMs:5000
-  };
-})();
