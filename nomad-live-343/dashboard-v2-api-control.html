@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>NOMAD 3.43 · 5USD API Control</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;color-scheme:dark;--bg:#07100c;--panel:#0d1711;--panel2:#111d16;--line:rgba(160,190,171,.15);--text:#eef6f0;--muted:#8e9e94;--green:#71ef8b;--yellow:#f1cf56;--red:#ff7676;--blue:#7fc6ff}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 82% 0,#12372a 0,#0a1710 38%,#07100c 72%);color:var(--text);min-height:100vh}.top{min-height:66px;padding:14px 20px;border-bottom:1px solid rgba(113,239,139,.16);background:linear-gradient(90deg,#123328,#125c45,#123328);display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{font-size:21px;font-weight:900}.brand b{color:#c0f8c7}.sub{font-size:11px;color:#c2d7ca;margin-top:3px}.nav a{color:#dff7e3;text-decoration:none;font-size:10px;font-weight:900;border:1px solid rgba(255,255,255,.18);padding:7px 9px;border-radius:8px}main{max-width:1180px;margin:auto;padding:18px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}.hero h1{font-size:22px;margin:0 0 6px}.hero p{font-size:11px;color:var(--muted);line-height:1.55;margin:0;max-width:760px}.box{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));border-radius:12px;padding:16px;margin-top:12px}.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.card{border:1px solid var(--line);background:linear-gradient(180deg,var(--panel2),var(--panel));border-radius:12px;padding:14px}.eyebrow{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#7f9186;font-weight:900}.big{font-size:28px;font-weight:900;margin-top:8px}.small{font-size:9px;color:var(--muted);margin-top:7px;line-height:1.5}.green{color:var(--green)}.yellow{color:var(--yellow)}.red{color:var(--red)}.blue{color:var(--blue)}.modes{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.mode{border:1px solid rgba(255,255,255,.1);background:#0a130e;border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;min-height:98px}.mode:hover{border-color:rgba(113,239,139,.45)}.mode.active{border-color:var(--green);box-shadow:inset 0 0 0 1px rgba(113,239,139,.18)}.mode.locked{border-color:rgba(255,118,118,.25)}.mode strong{display:block;font-size:20px}.mode .label{display:block;font-size:9px;font-weight:900;margin-top:4px}.mode .rpm{display:block;font-size:8px;color:var(--muted);margin-top:7px}.mode .state{display:block;font-size:8px;margin-top:5px}.mode.locked .state{color:var(--red)}.mode:not(.locked) .state{color:var(--green)}.sectionHead{display:flex;justify-content:space-between;gap:12px;align-items:end;margin-bottom:12px}.sectionHead h2{font-size:15px;margin:0}.sectionHead small{font-size:9px;color:var(--muted)}.controls{display:grid;grid-template-columns:minmax(220px,1fr) auto auto auto;gap:8px;align-items:end}.field label{display:block;font-size:8px;color:var(--muted);font-weight:900;text-transform:uppercase;margin-bottom:5px}.field input{width:100%;background:#07100c;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:10px 11px;font:12px Arial;outline:none}.field input:focus{border-color:rgba(113,239,139,.55)}button{border:1px solid rgba(255,255,255,.15);background:#16251b;color:#eef6f0;border-radius:8px;padding:10px 13px;font:900 10px Arial;cursor:pointer}button.primary{background:#1d6039;border-color:#3a9f61}button.danger{background:#4a1f22;border-color:#874049;color:#ffdada}button:disabled{opacity:.35;cursor:not-allowed}.notice{margin-top:10px;border:1px solid rgba(255,255,255,.1);background:#08110c;border-radius:8px;padding:10px;font-size:9px;line-height:1.55;color:var(--muted)}.notice.ok{border-color:rgba(113,239,139,.35);color:#bdf6c7}.notice.warn{border-color:rgba(241,207,86,.4);color:#f5df83}.notice.bad{border-color:rgba(255,118,118,.4);color:#ffb5b5}.meter{height:22px;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:linear-gradient(90deg,#173522 0 50%,#55451a 50% 70%,#5e2f23 70% 85%,#561d21 85% 100%);position:relative}.fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(255,255,255,.18);border-right:2px solid white;transition:.2s}.foot{font-size:9px;color:var(--muted);line-height:1.6;margin-top:12px}.statusline{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:900}.dot{width:8px;height:8px;border-radius:50%;background:var(--yellow);box-shadow:0 0 10px currentColor}@media(max-width:900px){.grid4{grid-template-columns:1fr 1fr}.modes{grid-template-columns:repeat(4,1fr)}.controls{grid-template-columns:1fr 1fr}.field{grid-column:1/-1}}@media(max-width:560px){main{padding:12px}.hero{align-items:flex-start;flex-direction:column}.grid4{grid-template-columns:1fr 1fr}.modes{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:1fr}.field{grid-column:auto}.top{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<header class="top"><div><div class="brand">NOMAD <b>3.43</b></div><div class="sub">5USD ULTRA · OWNER API CONTROL</div></div><div class="nav"><a href="/dashboard-v2-api-monitor.html">API MONITOR →</a></div></header>
+<main>
+<section class="hero"><div><h1>ตั้งค่ารอบเรียก 5USD</h1><p>ปรับรอบของ HUB กลางโดยมี safety guard ฝั่ง server อีกชั้น ปุ่ม Turbo จะแสดงเพื่อเปรียบเทียบ แต่จะถูกล็อกถ้า worst-case load เกินเพดานที่กำหนด</p></div><div class="statusline"><i class="dot" id="dot"></i><span id="status">CONNECTING</span></div></section>
+
+<section class="grid4">
+  <article class="card"><div class="eyebrow">Current Interval</div><div class="big green"><span id="currentSec">—</span><span style="font-size:11px"> sec</span></div><div class="small" id="enabledText">—</div></article>
+  <article class="card"><div class="eyebrow">Actual Cycle Cost</div><div class="big blue"><span id="cycleReq">—</span><span style="font-size:11px"> req</span></div><div class="small">จำนวน request ที่ cycle ล่าสุดใช้จริง</div></article>
+  <article class="card"><div class="eyebrow">Projected Known Load</div><div class="big"><span id="knownRpm">—</span><span style="font-size:11px"> /min</span></div><div class="small">คำนวณจาก cycle ล่าสุด</div></article>
+  <article class="card"><div class="eyebrow">Worst-case Guard</div><div class="big"><span id="worstRpm">—</span><span style="font-size:11px"> /min</span></div><div class="small">ใช้ budget สูงสุด 5 request/cycle</div></article>
+</section>
+
+<section class="box">
+  <div class="sectionHead"><h2>Polling Modes</h2><small>Ultra 40/min · Safe ceiling 28/min</small></div>
+  <div class="modes" id="modes"></div>
+  <div style="margin-top:12px" class="meter"><div class="fill" id="fill"></div></div>
+  <div class="notice" id="modeNotice">เลือกโหมดเพื่อดูภาระที่คาดการณ์</div>
+</section>
+
+<section class="box">
+  <div class="sectionHead"><h2>Owner Control</h2><small>token อยู่เฉพาะใน tab นี้ ไม่บันทึกลง server log หรือ HTML</small></div>
+  <div class="controls">
+    <div class="field"><label>Owner token</label><input id="token" type="password" autocomplete="off" placeholder="ใส่ Owner token"></div>
+    <button class="primary" id="apply">APPLY MODE</button>
+    <button id="reset">RETURN 120s</button>
+    <button class="danger" id="pause">EMERGENCY STOP</button>
+  </div>
+  <div class="notice" id="result">ยังไม่มีคำสั่งเปลี่ยนค่า</div>
+  <div class="foot"><b>สำคัญ:</b> 6s / 3s / 2s ยังถูกล็อกใน runtime ปัจจุบัน เพราะ full HUB cycle ใช้ได้สูงสุด 5 requests; 6s จึงอาจแตะ 50/min ซึ่งเกิน Ultra 40/min. การปลด Turbo ต้องแยก Live Core ให้เหลือ 1 request/cycle ก่อน ไม่ใช่ฝืน guard.</div>
+</section>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),LABELS={120:'ECO',60:'NORMAL',30:'SPORT',15:'FAST',6:'TURBO',3:'TURBO+',2:'REDLINE'};
+let state=null,selected=null;
+const color=r=>r<=20?'green':r<=28?'yellow':'red';
+const req=(url,opt={})=>fetch(url,{cache:'no-store',...opt}).then(async r=>({ok:r.ok,status:r.status,data:await r.json().catch(()=>({error:'INVALID_JSON'}))}));
+function renderModes(){if(!state)return;const max=Number(state.maxRequestsPerCycle||5),ceil=Number(state.safeCeilingPerMinute||28);$('modes').innerHTML=(state.allowedIntervalsSec||[120,60,30,15,6,3,2]).map(sec=>{const rpm=Math.round(max*60/sec*10)/10,safe=rpm<=ceil,active=Number(selected)===Number(sec);return `<div class="mode ${safe?'':'locked'} ${active?'active':''}" data-sec="${sec}"><strong>${sec}s</strong><span class="label">${LABELS[sec]||'CUSTOM'}</span><span class="rpm">worst ${rpm} req/min</span><span class="state">${safe?'AVAILABLE':'LOCKED'}</span></div>`}).join('');document.querySelectorAll('.mode').forEach(el=>el.onclick=()=>{selected=Number(el.dataset.sec);renderModes();renderSelection()})}
+function renderSelection(){if(!state||selected==null)return;const max=Number(state.maxRequestsPerCycle||5),rpm=Math.round(max*60/selected*10)/10,ceil=Number(state.safeCeilingPerMinute||28),safe=rpm<=ceil;$('fill').style.width=`${Math.min(100,rpm/Number(state.accountLimitPerMinute||40)*100)}%`;$('modeNotice').className=`notice ${safe?'ok':'bad'}`;$('modeNotice').textContent=safe?`${LABELS[selected]} ${selected}s · worst-case ${rpm}/min · พร้อม Apply`:`${LABELS[selected]} ${selected}s · worst-case ${rpm}/min · LOCKED โดย server guard`;$('apply').disabled=!safe}
+function render(){if(!state)return;document.body.dataset.controlReady='1';$('currentSec').textContent=state.intervalSec??'—';$('enabledText').textContent=state.enabled?'RUNNING':'PAUSED';$('cycleReq').textContent=state.actualRequestsPerCycle??'—';$('knownRpm').textContent=state.projectedKnownRequestsPerMinute??'—';$('worstRpm').textContent=state.projectedWorstCaseRequestsPerMinute??'—';$('worstRpm').className=color(Number(state.projectedWorstCaseRequestsPerMinute||0));$('status').textContent='CONTROL ONLINE';$('dot').style.background='var(--green)';selected=selected??Number(state.intervalSec||120);renderModes();renderSelection();$('pause').textContent=state.enabled?'EMERGENCY STOP':'RESUME'}
+async function load(){const r=await req('/api/hub/control?_='+Date.now());if(!r.ok){$('status').textContent='CONTROL ERROR';$('dot').style.background='var(--red)';$('result').className='notice bad';$('result').textContent=`อ่านค่าไม่ได้ HTTP ${r.status} · ${r.data?.error||''}`;return}state=r.data;render()}
+async function send(payload){const token=$('token').value.trim();if(!token){$('result').className='notice warn';$('result').textContent='ใส่ Owner token ก่อนส่งคำสั่ง';return}sessionStorage.setItem('nomad343OwnerToken',token);$('result').className='notice';$('result').textContent='กำลังส่งคำสั่ง…';const r=await req('/api/hub/control',{method:'POST',headers:{'content-type':'application/json','x-nomad-owner-token':token},body:JSON.stringify(payload)});if(!r.ok){$('result').className='notice bad';$('result').textContent=r.status===401?'Owner token ไม่ถูกต้อง':`${r.data?.error||'CONTROL_FAILED'} · ${r.data?.message||'HTTP '+r.status}`;return}state=r.data;selected=Number(state.intervalSec);$('result').className='notice ok';$('result').textContent=`บันทึกแล้ว · ${state.enabled?'RUNNING':'PAUSED'} · ${state.intervalSec}s · worst ${state.projectedWorstCaseRequestsPerMinute}/min`;render()}
+$('token').value=sessionStorage.getItem('nomad343OwnerToken')||'';$('apply').onclick=()=>send({enabled:true,intervalSec:selected});$('reset').onclick=()=>{selected=120;send({enabled:true,intervalSec:120})};$('pause').onclick=()=>send({enabled:!state?.enabled,intervalSec:Number(state?.intervalSec||120)});load();setInterval(load,5000);
+})();
+</script>
+</body>
+</html>
