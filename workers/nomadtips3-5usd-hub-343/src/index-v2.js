@@ -60,7 +60,17 @@ function mergeProviderOdds(base,extra){
   }
   return out;
 }
-function boardState(status,statusCode){const s=`${status||''} ${statusCode||''}`.toLowerCase();if(/unknown/.test(s))return'unknown';if(/finished|full_time|full time|\bft\b|ended|\bfull\b/.test(s))return'finished';if(/in_play|in play|live|half/.test(s)||/^\d+$/.test(String(statusCode||'')))return'live';return'scheduled'}
+function boardState(status,statusCode){
+  const norm=v=>String(v??'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+  const pick=v=>{
+    if(v==='in_play'||v==='inplay'||v==='live')return'live';
+    if(v==='scheduled'||v==='not_started'||v==='upcoming')return'scheduled';
+    if(v==='finished'||v==='full_time'||v==='ft'||v==='ended')return'finished';
+    if(v==='unknown')return'unknown';
+    return null;
+  };
+  return pick(norm(status))??pick(norm(statusCode))??'unknown';
+}
 function normalize(f){const id=fixtureId(f),status=text(f?.status?.name??f?.status??null),statusReason=text(f?.status_reason??f?.status?.reason??null),statusCode=text(f?.status_code??f?.status?.code??f?.status?.short??null),minute=finite(f?.minute??f?.elapsed??f?.status?.minute??f?.status?.elapsed??statusCode),kickoff=kickoffUtc(f);return {fixtureId:id,league:league(f),home:team(f,'home'),away:team(f,'away'),kickoffUtc:kickoff,kickoffAt:kickoff&&Number.isFinite(Date.parse(kickoff))?Date.parse(kickoff):finite(f?.kickoff_ts??f?.start_time)?finite(f?.kickoff_ts??f?.start_time)*1000:null,status,statusReason,statusCode,boardState:boardState(status,statusCode),minute,goals:score(f?.goals??f?.score),corners:score(f?.corners),cards:cards(f?.cards),statistics:statistics(f?.statistics??f?.stats??null),events:Array.isArray(f?.events)?f.events:null,providerOdds:providerOddsRaw(f),providerOddsUpdatedAt:providerOddsRaw(f)?now():null}}
 function extract(payload){if(Array.isArray(payload?.data))return payload.data;if(Array.isArray(payload?.data?.data))return payload.data.data;if(Array.isArray(payload?.fixtures))return payload.fixtures;return []}
 function pageInfo(payload){const p=payload?.pagination??payload?.meta?.pagination??payload?.meta??{};const raw=p?.has_more??p?.hasMore??payload?.has_more??payload?.hasMore??false;return {hasMore:raw===true||raw===1||raw==='1'||raw==='true'}}
@@ -68,7 +78,18 @@ async function fetchJson(url,key){const ac=new AbortController(),timer=setTimeou
 async function fetchPages(env,query,perPage,maxPages){if(!env.FIVEDOLLAR_API_KEY)throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');const rows=[];let page=1,hasMore=false;do{const join=query?`&${query}`:'';const j=await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`,env.FIVEDOLLAR_API_KEY);rows.push(...extract(j));hasMore=pageInfo(j).hasMore;page+=1}while(hasMore&&page<=maxPages);return {rows,requests:page-1,guardHit:hasMore&&page>maxPages}}
 function bangkokWindow(ms=now()){const shift=7*3600_000,d=new Date(ms+shift);const start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-shift;return {startMs:start,endMs:start+86_400_000,start:Math.floor(start/1000),end:Math.floor((start+86_400_000)/1000)}}
 async function fetchProvider(env){const w=bangkokWindow();const include='odds,events,stats';const today=await fetchPages(env,`start_time=${w.start}&end_time=${w.end}&status=all&include=${include}`,TODAY_PAGE_SIZE,TODAY_MAX_PAGES);const live=await fetchPages(env,`status=live&include=${include}`,LIVE_PAGE_SIZE,LIVE_MAX_PAGES);const requests=today.requests+live.requests;if(requests>MAX_PROVIDER_REQUESTS_PER_REFRESH)throw new Error(`provider:REQUEST_BUDGET_${requests}`);return {today,live,window:w,include,requestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH}}
-function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt}}
+function merge(base,extra){
+  if(!base)return extra;if(!extra)return base;
+  const out={...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt};
+  if(base.boardState==='finished'){
+    out.status=base.status;
+    out.statusReason=base.statusReason;
+    out.statusCode=base.statusCode;
+    out.boardState='finished';
+    out.minute=base.minute;
+  }
+  return out;
+}
 function chunks(rows){const out=[];let cur=[];for(const row of rows){const next=[...cur,row];if(cur.length&&encoder.encode(JSON.stringify(next)).byteLength>CHUNK_BYTES){out.push(cur);cur=[row]}else cur=next}if(cur.length||!out.length)out.push(cur);return out}
 
 export class FiveUsdHub{
