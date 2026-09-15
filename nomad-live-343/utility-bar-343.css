@@ -1,0 +1,59 @@
+/* NOMAD 3.43 static utility bar — first-paint stable, no dropdowns. */
+.utility-bar-343{
+  min-height:40px;
+  background:linear-gradient(180deg,rgba(20,43,28,.96),rgba(14,22,16,.96));
+  border-bottom:1px solid rgba(180,190,182,.08);
+}
+.utility-bar-343-inner{
+  max-width:var(--content-max,1440px);
+  min-height:40px;
+  margin:0 auto;
+  padding:0 16px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:14px;
+  white-space:nowrap;
+}
+.utility-cluster-343{display:flex;align-items:center;gap:7px;min-width:0}
+.utility-icon-343{
+  width:20px;height:20px;object-fit:contain;display:block;flex:0 0 20px;
+  filter:saturate(.92) brightness(1.04);
+}
+.utility-label-343{font:800 8px/1 Arial,Helvetica,sans-serif;letter-spacing:.09em;color:#78847b}
+.utility-options-343{display:flex;align-items:center;gap:2px}
+.utility-option-343{
+  appearance:none;border:0;background:transparent;color:#9ba69e;
+  min-width:28px;height:28px;padding:0 6px;
+  font:900 9px/1 Arial,Helvetica,sans-serif;letter-spacing:.04em;
+  cursor:pointer;border-radius:3px;transition:color .12s ease,background .12s ease;
+}
+.utility-option-343:hover,.utility-option-343:focus-visible{
+  color:#a8f0ad;background:rgba(131,223,137,.055);outline:none;
+}
+.utility-option-343[aria-pressed="true"]{color:#83df89;background:rgba(131,223,137,.07)}
+.utility-option-343:disabled{color:#59625c;opacity:.45;cursor:default;background:transparent}
+.utility-divider-343{width:1px;height:20px;background:rgba(180,190,182,.13);flex:0 0 1px;margin:0 2px}
+
+/* Hard stop for the legacy JS-injected header controls. Logic stays alive;
+   only their visual DOM is suppressed so first-paint cannot flash. */
+.topbar-inner>.odds-format-control,
+.topbar-inner>.nomad343-language{display:none!important;visibility:hidden!important;pointer-events:none!important}
+
+html[data-utility-odds="decimal"] [data-utility-odds="decimal"],
+html[data-utility-odds="fractional"] [data-utility-odds="fractional"],
+html[data-utility-odds="american"] [data-utility-odds="american"],
+html[data-utility-lang="en"] [data-utility-lang="en"],
+html[data-utility-lang="th"] [data-utility-lang="th"]{color:#83df89;background:rgba(131,223,137,.07)}
+
+@media(max-width:760px){
+  .utility-bar-343{min-height:36px}
+  .utility-bar-343-inner{min-height:36px;padding:0 8px;gap:8px;justify-content:center;overflow:hidden}
+  .utility-icon-343{width:17px;height:17px;flex-basis:17px}
+  .utility-label-343{display:none}
+  .utility-cluster-343{gap:3px}
+  .utility-options-343{gap:0}
+  .utility-option-343{min-width:27px;height:27px;padding:0 4px;font-size:8px}
+  .utility-divider-343{height:17px;margin:0 3px}
+  .utility-option-343[data-utility-lang]:disabled{display:none}
+}
