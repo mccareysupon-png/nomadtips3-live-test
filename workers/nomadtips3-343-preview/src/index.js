@@ -16,10 +16,10 @@ async function noStoreUiAsset(request, env) {
   h.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   h.set('pragma', 'no-cache');
   h.set('expires', '0');
-  h.set('x-nomad-ui-revision', '343-full-market-one-request-v2');
+  h.set('x-nomad-ui-revision', '343-bulk-snapshot-zero-click-v3');
   if (path.startsWith('/statistics')) h.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) h.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path.startsWith('/expanded-match-343') || path.startsWith('/full-market-bookmaker-343')) h.set('x-nomad-live-revision', '343-full-market-one-request-v2');
+  if (path === '/index.html' || path.startsWith('/expanded-match-343') || path.startsWith('/full-market-bookmaker-343')) h.set('x-nomad-live-revision', '343-bulk-snapshot-zero-click-v3');
   if (path === '/dashboard-v2-api-monitor.html') h.set('x-nomad-api-center-revision', '343-api-control-monitor-v2-restored');
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
 }
@@ -96,11 +96,6 @@ async function activeSignals(request, env) {
   }, { headers: { 'cache-control': 'no-store' } });
 }
 
-async function fullMarket(request, env, path) {
-  if (!env.FULL_MARKET) return Response.json({ ok: false, error: 'FULL_MARKET_BINDING_MISSING' }, { status: 503 });
-  return env.FULL_MARKET.fetch(serviceRequest(request, 'full-market.internal', path));
-}
-
 async function hubRoute(request, env, path) {
   if (!env.HUB) return Response.json({ ok: false, error: 'HUB_BINDING_MISSING' }, { status: 503 });
   const isRead = request.method === 'GET' && ['/health', '/status', '/control'].includes(path);
@@ -147,7 +142,7 @@ export default {
       return hubRoute(request, env, u.pathname.replace('/api/hub', '') || '/');
     }
     if (u.pathname.startsWith('/api/full-market/')) {
-      return fullMarket(request, env, u.pathname.replace('/api/full-market', '') || '/');
+      return Response.json({ ok: false, error: 'FULL_MARKET_CLICK_ROUTE_REMOVED', source: 'BULK_SNAPSHOT_ONLY' }, { status: 410, headers: { 'cache-control': 'no-store' } });
     }
 
     if (request.method === 'GET' && u.pathname === '/dashboard-v2-api-control.html') {
