@@ -1,0 +1,43 @@
+/* NOMAD 3.43 unified team comparison colors.
+   Scope: Home/Away comparison bar cards only across Live, Signals and Statistics.
+   Home = green family. Away = yellow/gold family.
+   Does not alter values, widths, market logic, settlement, event flow or bookmaker series. */
+
+:root{
+  --nomad-team-home:#6fd17b;
+  --nomad-team-away:#d7c54a;
+}
+
+/* Shared legend used by public comparison cards. */
+.visual-team-key span:first-child{color:var(--nomad-team-home)!important}
+.visual-team-key span:last-child{color:var(--nomad-team-away)!important}
+
+/* Live + Statistics mirrored comparison bars. */
+.mirror-row[data-metric="0"] .home i{background:#96ee9e!important}
+.mirror-row[data-metric="1"] .home i{background:#81df8c!important}
+.mirror-row[data-metric="2"] .home i{background:#6fd17b!important}
+.mirror-row[data-metric="3"] .home i{background:#5fc36d!important}
+.mirror-row[data-metric="4"] .home i{background:#50b55f!important}
+.mirror-row[data-metric="5"] .home i{background:#43a853!important}
+
+.mirror-row[data-metric="0"] .away i{background:#f4e88a!important}
+.mirror-row[data-metric="1"] .away i{background:#e9d96d!important}
+.mirror-row[data-metric="2"] .away i{background:#ddca55!important}
+.mirror-row[data-metric="3"] .away i{background:#d2bb42!important}
+.mirror-row[data-metric="4"] .away i{background:#c5ac35!important}
+.mirror-row[data-metric="5"] .away i{background:#b89e2c!important}
+
+/* Signals mirrored comparison bars use a separate card class. */
+.signal-mirror-row[data-metric="0"] .home i{background:#96ee9e!important}
+.signal-mirror-row[data-metric="1"] .home i{background:#81df8c!important}
+.signal-mirror-row[data-metric="2"] .home i{background:#6fd17b!important}
+.signal-mirror-row[data-metric="3"] .home i{background:#5fc36d!important}
+.signal-mirror-row[data-metric="4"] .home i{background:#50b55f!important}
+.signal-mirror-row[data-metric="5"] .home i{background:#43a853!important}
+
+.signal-mirror-row[data-metric="0"] .away i{background:#f4e88a!important}
+.signal-mirror-row[data-metric="1"] .away i{background:#e9d96d!important}
+.signal-mirror-row[data-metric="2"] .away i{background:#ddca55!important}
+.signal-mirror-row[data-metric="3"] .away i{background:#d2bb42!important}
+.signal-mirror-row[data-metric="4"] .away i{background:#c5ac35!important}
+.signal-mirror-row[data-metric="5"] .away i{background:#b89e2c!important}
