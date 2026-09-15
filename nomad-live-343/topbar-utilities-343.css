@@ -2,9 +2,9 @@
    Desktop: Brand left / Navigation centered / ODDS + Language right. */
 .topbar-inner{position:relative}
 .topbar-utility-reserve{
-  flex:0 0 292px;
-  width:292px;
-  min-width:292px;
+  flex:0 0 310px;
+  width:310px;
+  min-width:310px;
   height:34px;
   margin-left:auto;
   pointer-events:none;
@@ -26,11 +26,12 @@
 }
 
 /* Utility slots are sized from the longest language label.
-   Language owns 156px; ODDS owns 88px; 24px real air gap separates them. */
+   Language owns 156px; ODDS owns 88px. ODDS is shifted 18px farther left
+   (about 20% of its own width), producing 42px of real air between controls. */
 @media(min-width:761px){
   .topbar-inner>.odds-format-control{
     position:absolute!important;
-    right:196px!important;
+    right:214px!important;
     top:50%!important;
     transform:translateY(-50%)!important;
     width:88px!important;
