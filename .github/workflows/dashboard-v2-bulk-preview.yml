@@ -10,6 +10,7 @@ on:
       - 'nomad-live-343/statistics.html'
       - 'nomad-live-343/settings.html'
       - 'nomad-live-343/v2-shared.*'
+      - 'nomad-live-343/v2-header.css'
       - 'nomad-live-343/signal.js'
       - 'nomad-live-343/statistics.js'
       - 'nomad-live-343/settings.js'
@@ -54,6 +55,16 @@ jobs:
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/signal.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/statistics.html
           grep -Fq '0 per-fixture provider requests' nomad-live-343/settings.html
+          for page in index signal statistics settings; do
+            grep -Fq 'class="v2-topbar"' "nomad-live-343/${page}.html"
+            grep -Fq 'class="v2-logo"' "nomad-live-343/${page}.html"
+            grep -Fq '<span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span>' "nomad-live-343/${page}.html"
+            grep -Fq 'v2-header.css?v=343-v2-header-v1' "nomad-live-343/${page}.html"
+          done
+          grep -Fq 'height:64px' nomad-live-343/v2-header.css
+          grep -Fq 'width:108px' nomad-live-343/v2-header.css
+          grep -Fq 'width:88px' nomad-live-343/v2-header.css
+          grep -Fq 'width:82px' nomad-live-343/v2-header.css
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
             echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
           fi
@@ -96,6 +107,7 @@ jobs:
           get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
           get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
           get SHARED_CSS "$BASE_URL/v2-shared.css?smoke=$RANDOM" /tmp/shared.css
+          get HEADER_CSS "$BASE_URL/v2-header.css?smoke=$RANDOM" /tmp/header.css
           get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
           get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
           get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
@@ -107,6 +119,12 @@ jobs:
           grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
           grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
           grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
+          grep -Fq '.v2-topbar' /tmp/header.css
+          grep -Fq 'width:108px' /tmp/header.css
+          for page in /tmp/index.html /tmp/signal.html /tmp/statistics.html /tmp/settings.html; do
+            grep -Fq 'class="v2-topbar"' "$page"
+            grep -Fq 'class="v2-logo"' "$page"
+          done
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js; then
             echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
           fi
@@ -138,4 +156,8 @@ jobs:
           grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
           grep -Fq 'data-rule=' /tmp/settings-rendered.html
+          for page in /tmp/index-rendered.html /tmp/signal-rendered.html /tmp/stat-rendered.html /tmp/settings-rendered.html; do
+            grep -Fq 'class="v2-topbar"' "$page"
+            grep -Fq 'class="v2-logo"' "$page"
+          done
           echo 'V2_BROWSER_ALL_PAGES_OK'
