@@ -5,11 +5,8 @@
   "compatibility_date": "2026-09-15",
   "workers_dev": true,
   "vars": {
-    "NOMAD341_LIVE_PROVIDER_ENABLED": "true",
+    "NOMAD341_LIVE_PROVIDER_ENABLED": "false",
     "NOMAD341_MACHINE_ID": "341-STAGED-A"
-  },
-  "triggers": {
-    "crons": ["* * * * *"]
   },
   "durable_objects": {
     "bindings": [
