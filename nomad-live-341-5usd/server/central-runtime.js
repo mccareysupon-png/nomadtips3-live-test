@@ -8,7 +8,7 @@ const DEFAULTS={
   cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY',
   targetSideMode:'HOME',oddsMinimum:1.5,oddsMaximum:6,
   maximumPriceAgeSeconds:90,oneSignalPerMatch:true,
-  maxHistoryPerFixture:60
+  maxHistoryPerFixture:240
 };
 
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -33,7 +33,7 @@ function normalizeBookmakerOdds(odds,nowIso){
     const add=(side,price)=>{
       const p=num(price);
       if(line==null&&p==null)return;
-      out.push({source:'5USD',bookmaker:bookmaker||'Bet365',market:'asian_handicap',side,line,odds:p,sourceUpdatedAt:safeIso(stamp)||nowIso});
+      out.push({source:'5USD',bookmaker:bookmaker||'Bet365',market:'asian_handicap',side,line,odds:p,sourceUpdatedAt:safeIso(stamp)});
     };
     add('home',stage.home??stage.home_price??stage.price_home);
     add('away',stage.away??stage.away_price??stage.price_away);
