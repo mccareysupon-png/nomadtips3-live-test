@@ -1,31 +1,11 @@
 <!doctype html>
-<html lang="th">
-<head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#183d27">
-  <title>nomadtips3 · Owner Settings 3.43</title>
-  <link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="settings.css?v=343-allmarkets-v1">
-</head>
-<body data-page="settings">
-<header class="topbar"><div class="topbar-inner"><div><div class="brand">nomad<span>tips3</span></div><div class="version">3.43 · ALL MARKET ENGINE</div></div></div></header>
-<main class="owner-shell">
-  <section class="owner-head">
-    <div><p class="eyebrow">DIRECT CONTROL · NOT IN PUBLIC NAV</p><h1>ตั้งค่า Engine 3.43 · Bet365 ทุกตลาด</h1><p>5USD → Rolling Evidence → Full Odds Referee → Signal → Statistics · RUN / STOP แยกทุกกฎ</p></div>
-    <div class="source-state"><span class="pill" data-engine-state><i class="dot stop"></i>กำลังเชื่อม Engine</span></div>
-  </section>
-  <div class="private-note"><strong>PRICE REFEREE</strong> · ตรวจราคา Bet365 เต็มจาก /fixtures/{id}/odds หลังผ่าน Evidence · 1 request ต่อคู่แล้วแจกให้ทุกตลาดของคู่นั้น · OVER ใช้ Gap จากค่าปัจจุบันอัตโนมัติ</div>
-  <section class="status-board all-market-status" data-status-board></section>
-  <nav class="market-tabs market-group-tabs">
-    <button class="market-tab active" data-group-tab="FULL TIME">Full Time</button>
-    <button class="market-tab" data-group-tab="FIRST HALF">First Half</button>
-    <button class="market-tab" data-group-tab="CORNERS">Corners</button>
-    <button class="market-tab" data-group-tab="CARDS & BTTS">Cards & BTTS</button>
-  </nav>
-  <section data-group-panel="FULL TIME" class="market-rule-grid"></section>
-  <section data-group-panel="FIRST HALF" class="market-rule-grid" hidden></section>
-  <section data-group-panel="CORNERS" class="market-rule-grid" hidden></section>
-  <section data-group-panel="CARDS & BTTS" class="market-rule-grid" hidden></section>
-  <div class="note">ไม่มีราคา IN-PLAY = ไม่ผ่าน · ไม่ใช้ราคา Closing แทน Live · ตลาดครึ่งแรกมี Guard ไม่ให้ทำงานหลังช่วงครึ่งแรก</div>
-</main>
-<script src="settings.js?v=343-allmarkets-v1" defer></script>
-</body></html>
+<html lang="th" data-theme="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#153f2b"><title>ball46 · Owner Settings 3.43</title><link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="settings.css?v=343-allmarkets-v1"><link rel="stylesheet" href="v2-shared.css?v=343-v2-shared-v1"><link rel="stylesheet" href="v2-header.css?v=343-v2-header-v1"></head>
+<body data-page="settings"><header class="v2-topbar"><div class="v2-topbar-inner"><a class="v2-logo" href="index.html" aria-label="ball46 home"><span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span></a><nav class="v2-mainnav" aria-label="Primary navigation"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><div class="v2-header-utils"><span class="v2-odds-chip">BULK · DEC</span><button type="button" class="v2-theme-btn" data-v2-theme aria-label="Switch theme">☾ Dark</button></div></div></header>
+<main class="owner-shell"><section class="owner-head"><div><p class="eyebrow">DIRECT CONTROL · NOT IN PUBLIC NAV</p><h1>ตั้งค่า Engine 3.43 · ทุกตลาด</h1><p>Bulk Snapshot → Rolling Evidence → Bulk Price Referee → Signal → Statistics · RUN / STOP แยกทุกกฎ</p></div><div class="source-state"><span class="pill" data-engine-state><i class="dot stop"></i>กำลังเชื่อม Engine</span></div></section>
+<div class="private-note"><strong>BULK PRICE REFEREE</strong> · อ่านราคา IN-PLAY จาก <code>providerOdds</code> ใน snapshot ชุดเดียวกับข้อมูลการแข่งขัน · ไม่มีราคาครบ = ไม่ผ่านเงื่อนไข · <strong>0 per-fixture provider requests</strong></div>
+<section class="status-board all-market-status" data-status-board></section>
+<nav class="market-tabs market-group-tabs"><button class="market-tab active" data-group-tab="FULL TIME">Full Time</button><button class="market-tab" data-group-tab="FIRST HALF">First Half</button><button class="market-tab" data-group-tab="CORNERS">Corners</button><button class="market-tab" data-group-tab="CARDS & BTTS">Cards & BTTS</button></nav>
+<section data-group-panel="FULL TIME" class="market-rule-grid"></section><section data-group-panel="FIRST HALF" class="market-rule-grid" hidden></section><section data-group-panel="CORNERS" class="market-rule-grid" hidden></section><section data-group-panel="CARDS & BTTS" class="market-rule-grid" hidden></section>
+<div class="note">ไม่มีราคา IN-PLAY ใน Bulk Snapshot = ไม่ผ่าน · ไม่ยิง API เพิ่มเพื่อเติมราคา · ตลาดครึ่งแรกมี Guard ไม่ให้ทำงานหลังช่วงครึ่งแรก</div></main>
+<nav class="mobile-nav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><script src="settings.js?v=343-allmarkets-bulk-v2" defer></script><script src="v2-shared.js?v=343-v2-shared-v1" defer></script></body></html>

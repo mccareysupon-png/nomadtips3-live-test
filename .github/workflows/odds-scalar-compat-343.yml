@@ -1,0 +1,134 @@
+name: NOMAD 3.43 Bulk Odds Scalar Guard
+
+on:
+  push:
+    branches: [work/nomad343-v2-primary-20260915]
+    paths:
+      - 'nomad-live-343/bulk-odds-compat-343.js'
+      - 'nomad-live-343/index.html'
+      - '.github/workflows/odds-scalar-compat-343.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BASE_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  scalar-odds-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Scalar and rich-object parser regression
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/bulk-odds-compat-343.js
+          node - <<'NODE'
+          (async()=>{
+            let nativeCalls=0;
+            const fixture={fixtureId:'scalar-test',providerOdds:{odds:{
+              '1x2':{inplay:{home:1.33,draw:4.33,away:9}},
+              asian_handicap:{opening:-0.25,closing:-0.5,inplay:-0.75},
+              goal_line:{opening:2.5,closing:2.75,inplay:3},
+              corner_line:{inplay:{line:9.5,over:1.91,under:1.91}}
+            }}};
+            global.window={
+              location:{href:'https://example.test/index.html'},
+              fetch:async()=>{nativeCalls++;return new Response(JSON.stringify({ok:true,fixtures:[fixture]}),{status:200,headers:{'content-type':'application/json'}})}
+            };
+            require('./nomad-live-343/bulk-odds-compat-343.js');
+            const api=window.NOMAD343_BULK_ODDS_COMPAT;
+            if(api.version!=='343-bulk-odds-compat-v1-scalar-object'||api.networkRequestsAdded!==0)throw Error('compat marker wrong');
+            const r=await window.fetch('/api/engine/board'),j=await r.json(),o=j.fixtures[0].providerOdds.odds;
+            if(nativeCalls!==1)throw Error(`compat changed request count: ${nativeCalls}`);
+            if(o.asian_handicap.inplay.line!==-0.75||o.asian_handicap.closing.line!==-0.5||o.asian_handicap.opening.line!==-0.25)throw Error('AH scalar stage lost');
+            if(o.goal_line.inplay.line!==3||o.goal_line.closing.line!==2.75||o.goal_line.opening.line!==2.5)throw Error('OU scalar stage lost');
+            if(o.corner_line.inplay.line!==9.5||o.corner_line.inplay.over!==1.91||o.corner_line.inplay.under!==1.91)throw Error('rich object damaged');
+            if(o['1x2'].inplay.home!==1.33||o['1x2'].inplay.draw!==4.33||o['1x2'].inplay.away!==9)throw Error('1X2 damaged');
+            console.log('SCALAR_OBJECT_COMPAT_OK',JSON.stringify({nativeCalls,ah:o.asian_handicap,ou:o.goal_line,corner:o.corner_line.inplay}));
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Wait for preview with compatibility parser
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 50); do
+            if curl -fsSL --max-time 20 "$BASE_URL/index.html?compat=$RANDOM" -o /tmp/index.html && grep -Fq '343-bulk-odds-compat-v1-scalar-object' /tmp/index.html; then ok=1; break; fi
+            sleep 3
+          done
+          test "$ok" = 1
+          echo PREVIEW_COMPAT_READY
+
+      - name: Audit real Bulk snapshot for Arkadag and multiple fixtures
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 30 "$BASE_URL/api/engine/board?audit=$RANDOM" -o /tmp/board.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json');
+          if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)throw Error('John bulk-only path changed');
+          const rows=Array.isArray(b.fixtures)?b.fixtures:[];
+          const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const ahKeys=new Set(['asianhandicap','asian']);
+          const ouKeys=new Set(['goalline','goalsoverunder','totalgoals']);
+          function hits(node,keys,path='',out=[]){
+            if(node===null||node===undefined)return out;
+            if(Array.isArray(node)){node.forEach((v,i)=>hits(v,keys,`${path}[${i}]`,out));return out}
+            if(typeof node!=='object')return out;
+            for(const [k,v] of Object.entries(node)){
+              const p=path?`${path}.${k}`:k;
+              if(keys.has(norm(k)))out.push({path:p,value:v});
+              if(v&&typeof v==='object')hits(v,keys,p,out);
+            }
+            return out;
+          }
+          const target=rows.find(f=>/fc\s*arkadag/i.test(String(f?.home?.name||''))&&/al[-\s]*muharraq/i.test(String(f?.away?.name||'')))||rows.find(f=>/fc\s*arkadag/i.test(String(f?.away?.name||''))&&/al[-\s]*muharraq/i.test(String(f?.home?.name||'')));
+          if(!target)throw Error('FC Arkadag - Al-Muharraq not found in current Bulk board');
+          const targetAH=hits(target.providerOdds,ahKeys),targetOU=hits(target.providerOdds,ouKeys);
+          if(!targetAH.length)throw Error(`Target fixture has no AH in Board snapshot: ${target.fixtureId}`);
+          const covered=rows.map(f=>({id:f.fixtureId,home:f?.home?.name,away:f?.away?.name,ah:hits(f.providerOdds,ahKeys),ou:hits(f.providerOdds,ouKeys)})).filter(x=>x.ah.length||x.ou.length);
+          if(covered.length<2)throw Error(`Expected multiple fixtures with AH/OU, got ${covered.length}`);
+          console.log('TARGET_BULK_ODDS',JSON.stringify({id:target.fixtureId,home:target.home?.name,away:target.away?.name,ah:targetAH,ou:targetOU}));
+          console.log('MULTI_FIXTURE_BULK_ODDS',JSON.stringify({count:covered.length,samples:covered.slice(0,6).map(x=>({id:x.id,home:x.home,away:x.away,ah:x.ah.slice(0,1),ou:x.ou.slice(0,1)}))}));
+          NODE
+
+      - name: Browser verifies small and expanded Arkadag odds with zero click requests
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
+          TARGET_URL="$BASE_URL/index.html?scalarqa=$RANDOM"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --window-size=1440,900 --remote-debugging-port=9223 --user-data-dir=/tmp/nomad343-scalar "$TARGET_URL" >/tmp/chrome-scalar.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9223/json/list >/tmp/tabs.json && break; sleep 1; done
+          node - <<'NODE'
+          (async()=>{
+            const sleep=ms=>new Promise(r=>setTimeout(r,ms));let tab=null;
+            for(let i=0;i<40;i++){const tabs=await fetch('http://127.0.0.1:9223/json/list').then(r=>r.json());tab=tabs.find(x=>x.type==='page'&&String(x.url||'').includes('nomadtips3-343-ultra-preview.mccarey-supon.workers.dev/index.html'));if(tab)break;await sleep(500)}
+            if(!tab?.webSocketDebuggerUrl)throw Error('preview CDP target not found');
+            const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej});let seq=0,pending=new Map();
+            ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}};
+            const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
+            const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.value};
+            let ready=false;for(let i=0;i<60;i++){ready=await ev("Boolean(window.NOMAD343_BULK_ODDS_COMPAT&&document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(500)}
+            if(!ready)throw Error('dashboard/compat not ready');
+            await ev("(()=>{const q=document.querySelector('[data-search]');q.value='Arkadag';q.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
+            await sleep(500);
+            const small=await ev("(()=>{const r=[...document.querySelectorAll('.match-row[data-match-id]')].find(x=>/FC Arkadag/i.test(x.innerText)&&/Al-Muharraq/i.test(x.innerText));if(!r)return null;const c=[...r.querySelectorAll('.market-cell')].map(x=>({label:x.querySelector('span')?.textContent||'',value:x.querySelector('b')?.textContent||'',book:x.querySelector('small')?.textContent||''}));return{id:r.dataset.matchId,cells:c}})()");
+            if(!small)throw Error('Arkadag row not rendered after search');
+            const ah=small.cells.find(x=>/^AH(?:\s|·|$)/i.test(x.label));if(!ah||!ah.value||ah.value.trim()==='—')throw Error(`small AH still blank ${JSON.stringify(small)}`);
+            await ev("(()=>{const r=[...document.querySelectorAll('.match-row[data-match-id]')].find(x=>x.dataset.matchId==='"+small.id+"');r.click();return true})()");
+            await sleep(1800);
+            const expanded=await ev("(()=>{const e=document.querySelector('.match-expanded'),m=e?.querySelector('[data-full-market-card] [data-market=\"asian_handicap\"]');return{expanded:!!e,market:!!m,text:m?.innerText||'',apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,compat:window.NOMAD343_BULK_ODDS_COMPAT?.version||''}})()");
+            if(!expanded.expanded||!expanded.market||!/[+-]?\d+(?:\.\d+)?/.test(expanded.text))throw Error(`expanded AH still missing ${JSON.stringify(expanded)}`);
+            if(expanded.apiHits!==0)throw Error(`click caused full-market request count=${expanded.apiHits}`);
+            if(expanded.compat!=='343-bulk-odds-compat-v1-scalar-object')throw Error('compat version missing');
+            console.log('ARKADAG_SMALL_EXPANDED_OK',JSON.stringify({small,expanded}));
+            ws.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE

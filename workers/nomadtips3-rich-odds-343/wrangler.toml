@@ -1,0 +1,22 @@
+name = "nomadtips3-rich-odds-343"
+main = "src/index.js"
+compatibility_date = "2026-09-09"
+workers_dev = true
+
+[observability]
+enabled = true
+
+# QUARANTINED: no scheduled trigger. Rich odds provider ownership belongs only
+# to nomadtips3-5usd-hub-343 central scheduler.
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[[durable_objects.bindings]]
+name = "CACHE"
+class_name = "RichOddsCache"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RichOddsCache"]

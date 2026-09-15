@@ -2,12 +2,15 @@ name: Deploy 3.43 5USD Hub
 
 on:
   push:
-    branches:
-      - work/nomad343-clean-bet365-ui
+    branches: [work/nomad343-v2-primary-20260915]
     paths:
       - 'workers/nomadtips3-5usd-hub-343/**'
       - '.github/workflows/deploy-343-5usd-hub.yml'
   workflow_dispatch:
+
+concurrency:
+  group: nomad343-5usd-hub-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -17,32 +20,41 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
-  FIVEDOLLAR_URL: https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=events,stats&per_page=500&page=1
+  BASE_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
 
 jobs:
-  deploy-probe:
+  deploy-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Verify clean 3.43 hub scope
+      - name: Validate central rich odds and split snapshot architecture
         run: |
           set -euo pipefail
-          node --check workers/nomadtips3-5usd-hub-343/src/index.js
-          grep -Fq "const VERSION = 'nomad343-5usd-hub-v1'" workers/nomadtips3-5usd-hub-343/src/index.js
-          grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
-          if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
-            echo '::error::3.43 hub must not depend on 3.42 runtime'; exit 1
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v6.js
+          grep -Fq "const VERSION='nomad343-5usd-hub-v5-central-rich-odds'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const RICH_ODDS_MAX_PER_REFRESH=24" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const RICH_ODDS_RESERVE_REMAINING=8" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "CENTRAL_SCHEDULED_PER_FIXTURE" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq '/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const include='odds,events,stats'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const VIEW_VERSION='nomad343-hub-view-v6-engine-lean-rich-ui'" workers/nomadtips3-5usd-hub-343/src/index-v6.js
+          grep -Fq "snapshotOddsView:'ENGINE_LEAN_BET365'" workers/nomadtips3-5usd-hub-343/src/index-v6.js
+          grep -Fq "snapshotMode:'RICH_UI_FULL'" workers/nomadtips3-5usd-hub-343/src/index-v6.js
+          grep -Fq "u.pathname==='/snapshot-rich'" workers/nomadtips3-5usd-hub-343/src/index-v6.js
+          grep -Fq 'main = "src/index-v6.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'crons = ["*/2 * * * *"]' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          if grep -Fq "snapshot(){let m=await this.meta();if(!m||!m.fetchedAt||now()-m.fetchedAt>=REFRESH_MS" workers/nomadtips3-5usd-hub-343/src/index-v2.js; then
+            echo '::error::Snapshot read must not trigger provider refresh'; exit 1
           fi
+          echo CENTRAL_RICH_SPLIT_SNAPSHOT_GUARD_OK
 
-      - name: Dry-run hub bundle
+      - name: Dry-run Hub
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
 
@@ -53,21 +65,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
 
-      - name: Probe 5USD batch read
-        run: |
-          set -euo pipefail
-          code="$(curl -sS --max-time 30 -o /tmp/provider.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$FIVEDOLLAR_URL")"
-          echo "5USD HTTP $code"
-          test "$code" = "200" || { head -c 2000 /tmp/provider.json; echo; exit 21; }
-          node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/provider.json','utf8'));
-          const rows=Array.isArray(j?.data)?j.data:Array.isArray(j?.data?.data)?j.data.data:Array.isArray(j?.fixtures)?j.fixtures:[];
-          const p=j?.pagination??j?.meta?.pagination??j?.meta??{};
-          console.log(JSON.stringify({live:rows.length,has_more:p?.has_more??p?.hasMore??null,sample:rows.slice(0,2).map(x=>({id:x?.id??x?.fixture_id,status:x?.status,status_code:x?.status_code,stats:x?.statistics===null?'null':typeof x?.statistics}))},null,2));
-          NODE
-
-      - name: Deploy 3.43 hub
+      - name: Deploy Hub
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
@@ -75,17 +73,96 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
-      - name: Prime and verify central snapshot
+      - name: Wait for scheduled central enrichment
         run: |
           set -euo pipefail
-          curl -fsS --max-time 45 "$HUB_URL/snapshot?_=$RANDOM$RANDOM" -o /tmp/hub-snapshot.json
-          curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/hub-health.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const s=JSON.parse(fs.readFileSync('/tmp/hub-snapshot.json','utf8'));
-          const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json','utf8'));
-          const sample=(Array.isArray(s.fixtures)?s.fixtures:[]).slice(0,3).map(x=>({fixtureId:x.fixtureId,league:x.league?.name,home:x.home?.name,away:x.away?.name,minute:x.minute,statistics:x.statistics===null?'null':'present',providerOdds:x.providerOdds==null?'absent':'present'}));
-          console.log(JSON.stringify({health:h,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,hasMoreAfterGuard:s.hasMoreAfterGuard,lastError:s.lastError},sample},null,2));
-          if(s.ok!==true||h.ok!==true)process.exit(1);
-          if(s.version!=='nomad343-5usd-hub-v1'||h.version!=='nomad343-5usd-hub-v1')process.exit(2);
+          ready=0
+          for i in $(seq 1 42); do
+            code=$(curl -sS --max-time 20 -w '%{http_code}' -o /tmp/hub-health.json "$HUB_URL/health?verify=$RANDOM" || true)
+            if [ "$code" = 200 ]; then
+              if node - <<'NODE'
+          const h=require('/tmp/hub-health.json'),r=h?.richOdds||{};
+          if(h.version!=='nomad343-5usd-hub-v5-central-rich-odds')process.exit(1);
+          if(r.mode!=='CENTRAL_SCHEDULED_PER_FIXTURE'||Number(r.clickRequests)!==0)process.exit(2);
+          if(Number(h.totalProviderRequestCount||0)>Number(h.totalProviderRequestBudget||29))process.exit(3);
+          if(Number(r.requests||0)>Number(r.maxPerRefresh||24))process.exit(4);
+          process.exit(0);
           NODE
+              then ready=1; break; fi
+            fi
+            sleep 5
+          done
+          test "$ready" = 1
+          node - <<'NODE'
+          const h=require('/tmp/hub-health.json');
+          console.log('HUB_ENRICHED',JSON.stringify({version:h.version,fixtures:h.fixtureCount,bulkRequests:h.providerRequestCount,totalRequests:h.totalProviderRequestCount,totalBudget:h.totalProviderRequestBudget,rich:h.richOdds}));
+          NODE
+
+      - name: Verify lean Engine snapshot and full rich UI snapshot
+        run: |
+          set -euo pipefail
+          curl -fsSL --max-time 45 "$HUB_URL/snapshot?lean=$RANDOM" -o /tmp/lean.json
+          curl -fsSL --max-time 45 "$HUB_URL/snapshot-rich?rich=$RANDOM" -o /tmp/rich.json
+          node - <<'NODE'
+          const lean=require('/tmp/lean.json'),rich=require('/tmp/rich.json');
+          if(lean.ok!==true||rich.ok!==true)throw Error('Hub snapshot unavailable');
+          if(lean.snapshotMode!=='ENGINE_LEAN'||lean.viewVersion!=='nomad343-hub-view-v6-engine-lean-rich-ui')throw Error(`bad lean view ${lean.snapshotMode} ${lean.viewVersion}`);
+          if(rich.snapshotMode!=='RICH_UI_FULL'||rich.viewVersion!=='nomad343-hub-view-v6-engine-lean-rich-ui')throw Error(`bad rich view ${rich.snapshotMode} ${rich.viewVersion}`);
+          for(const f of lean.fixtures||[]){
+            const rows=Array.isArray(f?.providerOdds?.bookmakers)?f.providerOdds.bookmakers:[];
+            if(rows.length>1)throw Error(`lean fixture ${f.fixtureId} has ${rows.length} bookmaker rows`);
+            if(rows.length===1&&!String(rows[0]?.slug??rows[0]?.name??'').toLowerCase().replace(/[\s_-]/g,'').includes('bet365'))throw Error(`lean fixture ${f.fixtureId} kept non-Bet365 bookmaker`);
+          }
+          const enriched=(rich.fixtures||[]).filter(f=>f.richOddsSource==='CENTRAL_SCHEDULED_PER_FIXTURE');
+          const richAh=[];
+          for(const f of enriched){
+            const books=Array.isArray(f?.providerOdds?.bookmakers)?f.providerOdds.bookmakers:[];
+            for(const book of books){
+              const m=(book?.odds??book?.markets??{})?.asian_handicap;if(!m||typeof m!=='object')continue;
+              for(const stage of ['inplay','closing','opening']){
+                const v=m[stage];
+                if(v&&typeof v==='object'&&Number.isFinite(Number(v.home))&&Number.isFinite(Number(v.away))){richAh.push({fixtureId:f.fixtureId,home:f.home?.name,away:f.away?.name,book:book.slug??book.name,stage,line:v.line,homePrice:v.home,awayPrice:v.away});break}
+              }
+              if(richAh.length&&richAh[richAh.length-1].fixtureId===f.fixtureId)break;
+            }
+          }
+          if(Number(rich?.richOdds?.richAh||0)>0&&richAh.length===0)throw Error('Hub reported rich AH but rich snapshot lost it');
+          console.log('SPLIT_SNAPSHOTS_OK',JSON.stringify({leanFixtures:lean.fixtures?.length,richFixtures:rich.fixtures?.length,enriched:enriched.length,richAh:richAh.slice(0,5)}));
+          NODE
+
+      - name: Verify Engine stays lean and Preview overlays rich snapshot
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 24); do
+            code=$(curl -sS --max-time 30 -w '%{http_code}' -o /tmp/board.json "$BASE_URL/api/engine/board?rich=$RANDOM" || true)
+            if [ "$code" = 200 ]; then
+              if node - <<'NODE'
+          const b=require('/tmp/board.json');
+          if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)process.exit(1);
+          if(b?.oddsOverlay?.source!=='HUB_RICH_SNAPSHOT_ZERO_CLICK')process.exit(2);
+          if(Number(b?.oddsOverlay?.externalRequestsAdded)!==0||Number(b?.oddsOverlay?.clickRequests)!==0)process.exit(3);
+          process.exit(0);
+          NODE
+              then ok=1; break; fi
+            fi
+            sleep 3
+          done
+          test "$ok" = 1
+          node - <<'NODE'
+          const b=require('/tmp/board.json');
+          const rows=Array.isArray(b.fixtures)?b.fixtures:[],rich=[];
+          for(const f of rows){
+            const books=Array.isArray(f?.providerOdds?.bookmakers)?f.providerOdds.bookmakers:[];
+            for(const book of books){const m=(book?.odds??book?.markets??{})?.asian_handicap;if(!m||typeof m!=='object')continue;for(const stage of ['inplay','closing','opening']){const v=m[stage];if(v&&typeof v==='object'&&Number.isFinite(Number(v.home))&&Number.isFinite(Number(v.away))){rich.push({fixtureId:f.fixtureId,home:f.home?.name,away:f.away?.name,book:book.slug??book.name,stage,line:v.line,homePrice:v.home,awayPrice:v.away});break}}if(rich.length&&rich[rich.length-1].fixtureId===f.fixtureId)break}
+          }
+          if(Number(b?.oddsOverlay?.enrichedFixtures||0)>0&&Number(b?.richOdds?.richAh||0)>0&&rich.length===0)throw Error('Preview overlay lost two-sided AH');
+          console.log('PREVIEW_RICH_OVERLAY_OK',JSON.stringify({fixtures:rows.length,overlay:b.oddsOverlay,richAh:rich.slice(0,5)}));
+          NODE
+
+      - name: Verify public clicks remain disconnected from provider
+        run: |
+          set -euo pipefail
+          code=$(curl -sS --max-time 20 -w '%{http_code}' -o /tmp/removed.json "$BASE_URL/api/full-market/fixture-odds?fixtureId=123&verify=$RANDOM" || true)
+          test "$code" = 410
+          node -e "const j=require('/tmp/removed.json');if(j.error!=='FULL_MARKET_CLICK_ROUTE_REMOVED')throw Error('click route restored');console.log('ZERO_CLICK_PROVIDER_OK')"
