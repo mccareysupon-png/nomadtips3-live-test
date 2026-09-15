@@ -1,0 +1,22 @@
+name = "nomadtips3-rich-odds-343"
+main = "src/index.js"
+compatibility_date = "2026-09-09"
+workers_dev = true
+
+[observability]
+enabled = true
+
+[triggers]
+crons = ["* * * * *"]
+
+[[services]]
+binding = "HUB"
+service = "nomadtips3-5usd-hub-343"
+
+[[durable_objects.bindings]]
+name = "CACHE"
+class_name = "RichOddsCache"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RichOddsCache"]
