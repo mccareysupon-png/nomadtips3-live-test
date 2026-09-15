@@ -127,18 +127,18 @@ jobs:
             let ready=false;for(let i=0;i<60;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(500)}
             if(!ready)throw Error('no match row');
             const layout=await ev("(()=>{const m=document.querySelector('.main-board'),b=document.querySelector('[data-board-sections]'),s=getComputedStyle(b),ms=getComputedStyle(m);return{overflowY:s.overflowY,outerOverflow:ms.overflow,client:b.clientHeight,scroll:b.scrollHeight}})()");
-            if(layout.overflowY!=='scroll'||layout.outerOverflow!=='visible'||layout.scroll<=layout.client)throw Error(`bad center scrollbar ${JSON.stringify(layout)}`);
-            await ev("(()=>{const b=document.querySelector('[data-board-sections]');b.scrollTop=180;return b.scrollTop})()");
+            if(layout.overflowY!=='scroll'||layout.outerOverflow!=='visible')throw Error(`bad center scrollbar styles ${JSON.stringify(layout)}`);
             const clicked=await ev("(()=>{const r=document.querySelector('.match-row[data-match-id]');r.click();return r.dataset.matchId})()");
             await sleep(2500);
-            const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');if(!e||!f)return null;e.__stable='same-node';return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,scrollTop:b.scrollTop}})()");
+            const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');if(!e||!f)return null;e.__stable='same-node';b.scrollTop=180;return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,client:b.clientHeight,scroll:b.scrollHeight,scrollTop:b.scrollTop}})()");
             if(!before||before.id!==clicked||before.count!==1||!before.flow||before.tabs!==19)throw Error(`bad expanded card ${JSON.stringify(before)}`);
+            if(before.scroll<=before.client||before.scrollTop<=0)throw Error(`expanded card did not activate internal scrollbar ${JSON.stringify(before)}`);
             if(!before.head.includes('BULK SNAPSHOT')||!before.head.includes('0 CLICK REQUESTS'))throw Error(`wrong full-market mode ${before.head}`);
             if(before.apiHits!==0)throw Error(`click caused full-market network request count=${before.apiHits}`);
             await sleep(33000);
-            const after=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');return e&&f?{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,stable:e.__stable,connected:e.isConnected,tabs:f.querySelectorAll('[data-fmb-book]').length,apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,scrollTop:b.scrollTop}:null})()");
-            if(!after||after.id!==before.id||after.count!==1||after.stable!=='same-node'||!after.connected||after.tabs!==19||after.apiHits!==0)throw Error(`expanded card recreated/lost/networked ${JSON.stringify({before,after})}`);
-            console.log('EXPANDED_ZERO_CLICK_STABILITY_OK',JSON.stringify({layout,before,after}));ws.close();
+            const after=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');return e&&f?{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,stable:e.__stable,connected:e.isConnected,tabs:f.querySelectorAll('[data-fmb-book]').length,apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,scrollTop:b.scrollTop,client:b.clientHeight,scroll:b.scrollHeight}:null})()");
+            if(!after||after.id!==before.id||after.count!==1||after.stable!=='same-node'||!after.connected||after.tabs!==19||after.apiHits!==0||after.scrollTop<=0)throw Error(`expanded card recreated/lost/networked/scrolled ${JSON.stringify({before,after})}`);
+            console.log('EXPANDED_ZERO_CLICK_SCROLL_STABILITY_OK',JSON.stringify({layout,before,after}));ws.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
