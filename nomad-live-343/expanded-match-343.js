@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-const VERSION='343-expanded-match-v2-single-odds-owner';
-const ODDS_RENDER_OWNER='complete-only';
+const VERSION='343-expanded-match-v3-stable-lifecycle';
+const ODDS_RENDER_OWNER='full-market-bookmaker-only';
 const BOARD_API='/api/engine/board';
 const HISTORY_API='/api/engine/history';
 const BOARD_CACHE_MS=15000;
@@ -12,10 +12,13 @@ const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFi
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
 let expandedId=null;
+let expandedEl=null;
 let boardCache={at:0,data:null,promise:null};
 const historyCache=new Map();
-let mountSeq=0;
-let mountTimer=0;
+let refreshSeq=0;
+let refreshTimer=0;
+let placementQueued=false;
+let lastAnchorTop=null;
 
 async function fetchJson(url){
   const r=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store'});
@@ -23,16 +26,16 @@ async function fetchJson(url){
   if(!r.ok||j?.ok===false)throw new Error(j?.error||`HTTP_${r.status}`);
   return j;
 }
-async function getBoard(){
+async function getBoard(force=false){
   const now=Date.now();
-  if(boardCache.data&&now-boardCache.at<BOARD_CACHE_MS)return boardCache.data;
+  if(!force&&boardCache.data&&now-boardCache.at<BOARD_CACHE_MS)return boardCache.data;
   if(boardCache.promise)return boardCache.promise;
   boardCache.promise=fetchJson(BOARD_API).then(j=>{boardCache={at:Date.now(),data:j,promise:null};return j}).catch(e=>{boardCache.promise=null;throw e});
   return boardCache.promise;
 }
-async function getHistory(id){
+async function getHistory(id,force=false){
   const now=Date.now(),hit=historyCache.get(id);
-  if(hit?.data&&now-hit.at<HISTORY_CACHE_MS)return hit.data;
+  if(!force&&hit?.data&&now-hit.at<HISTORY_CACHE_MS)return hit.data;
   if(hit?.promise)return hit.promise;
   const promise=fetchJson(`${HISTORY_API}?fixtureId=${encodeURIComponent(id)}&window=10`).then(j=>{historyCache.set(id,{at:Date.now(),data:j,promise:null});return j}).catch(e=>{historyCache.delete(id);throw e});
   historyCache.set(id,{at:now,data:null,promise});
@@ -79,31 +82,58 @@ function renderFlow(f,history){
 }
 function shell(id){
   const el=document.createElement('section');el.className='match-expanded';el.dataset.expandedMatch=id;el.dataset.oddsRenderOwner=ODDS_RENDER_OWNER;
-  el.innerHTML=`<div class="match-expanded-inner"><section class="expand-card expand-flow-card"><div class="expand-loading">Loading Event Flow…</div></section><section class="expand-card expand-odds-card" data-complete-odds-card><div class="expand-loading">Loading complete odds from Bulk Snapshot…</div></section></div>`;
+  el.innerHTML=`<div class="match-expanded-inner"><section class="expand-card expand-flow-card"><div class="expand-loading">Loading Event Flow…</div></section><section class="expand-card expand-full-market-card" data-full-market-card><div class="expand-loading">Loading Full Market from Bulk Snapshot…</div></section></div>`;
   return el;
 }
+function setHtmlIfChanged(node,html){if(node&&node.innerHTML!==html)node.innerHTML=html}
 function publishFixture(el,fixture){
-  if(!fixture||!el?.isConnected)return;
+  if(!fixture||!el)return;
   el._nomadFixture=fixture;
   el.dispatchEvent(new CustomEvent('nomad343:fixture-ready',{bubbles:true,detail:{fixtureId:fixtureId(fixture),fixture}}));
 }
-async function mountExpanded(id){
-  const row=document.querySelector(`.match-row[data-match-id="${CSS.escape(String(id))}"]`);if(!row||expandedId!==id)return;
-  document.querySelectorAll('.match-expanded').forEach(x=>x.remove());
-  const seq=++mountSeq,el=shell(id);row.insertAdjacentElement('afterend',el);row.setAttribute('aria-expanded','true');
-  const [boardRes,histRes]=await Promise.allSettled([getBoard(),getHistory(id)]);if(seq!==mountSeq||expandedId!==id||!el.isConnected)return;
-  const flow=el.querySelector('.expand-flow-card'),odds=el.querySelector('.expand-odds-card');
-  const board=boardRes.status==='fulfilled'?boardRes.value:null,fixture=board?findFixture(board,id):null;
-  if(flow)flow.innerHTML=fixture&&histRes.status==='fulfilled'?renderFlow(fixture,histRes.value):`<div class="expand-card-head"><div><span>EVENT FLOW</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(histRes.status==='rejected'?histRes.reason?.message:'Fixture not found')}</div>`;
-  if(fixture)publishFixture(el,fixture);else if(odds)odds.innerHTML=`<div class="expand-card-head"><div><span>ODDS BOARD</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(boardRes.status==='rejected'?boardRes.reason?.message:'Fixture not found')}</div>`;
+function currentRow(id=expandedId){return id?document.querySelector(`.match-row[data-match-id="${CSS.escape(String(id))}"]`):null}
+function captureAnchor(){const row=currentRow();if(!row)return;const top=row.getBoundingClientRect().top;if(Number.isFinite(top))lastAnchorTop=top}
+function ensurePlacement(){
+  placementQueued=false;if(!expandedId||!expandedEl)return;
+  const row=currentRow();if(!row)return;
+  if(expandedEl.previousElementSibling!==row)row.insertAdjacentElement('afterend',expandedEl);
+  row.setAttribute('aria-expanded','true');
+  const top=row.getBoundingClientRect().top;
+  if(lastAnchorTop!==null&&Number.isFinite(top)){const delta=top-lastAnchorTop;if(Math.abs(delta)>1&&document.visibilityState==='visible')window.scrollBy(0,delta)}
+  if(Number.isFinite(top))lastAnchorTop=row.getBoundingClientRect().top;
 }
-function scheduleMount(){clearTimeout(mountTimer);mountTimer=setTimeout(()=>{if(expandedId&&!document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(String(expandedId))}"]`))mountExpanded(expandedId)},30)}
-function closeExpanded(){expandedId=null;mountSeq++;document.querySelectorAll('.match-expanded').forEach(x=>x.remove());document.querySelectorAll('.match-row[aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'))}
+function queuePlacement(){if(placementQueued)return;placementQueued=true;queueMicrotask(ensurePlacement)}
+async function refreshExpanded(force=false){
+  const id=expandedId,el=expandedEl;if(!id||!el)return;const seq=++refreshSeq;
+  try{
+    const [boardRes,histRes]=await Promise.allSettled([getBoard(force),getHistory(id,force)]);if(seq!==refreshSeq||expandedId!==id||expandedEl!==el)return;
+    const board=boardRes.status==='fulfilled'?boardRes.value:null,fixture=board?findFixture(board,id):null,flow=el.querySelector('.expand-flow-card'),full=el.querySelector('[data-full-market-card]');
+    if(fixture&&histRes.status==='fulfilled')setHtmlIfChanged(flow,renderFlow(fixture,histRes.value));
+    else if(flow)setHtmlIfChanged(flow,`<div class="expand-card-head"><div><span>EVENT FLOW</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(histRes.status==='rejected'?histRes.reason?.message:'Fixture not found')}</div>`);
+    if(fixture)publishFixture(el,fixture);else if(full&&!full.querySelector('.fmb-head'))setHtmlIfChanged(full,`<div class="expand-card-head"><div><span>FULL MARKET</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(boardRes.status==='rejected'?boardRes.reason?.message:'Fixture not found')}</div>`);
+  }catch(err){console.warn('Expanded refresh failed',err)}
+}
+function scheduleRefresh(force=false){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{if(expandedId){queuePlacement();refreshExpanded(force)}},60)}
+function openExpanded(id){
+  const sid=String(id||'');if(!sid)return;
+  if(expandedId===sid){closeExpanded();return}
+  document.querySelectorAll('.match-row[aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));
+  expandedId=sid;refreshSeq++;lastAnchorTop=null;
+  if(expandedEl)expandedEl.remove();expandedEl=shell(sid);
+  setTimeout(()=>{const row=currentRow(sid);if(!row||expandedId!==sid)return;row.insertAdjacentElement('afterend',expandedEl);row.setAttribute('aria-expanded','true');captureAnchor();refreshExpanded(true)},0);
+}
+function closeExpanded(){
+  expandedId=null;refreshSeq++;clearTimeout(refreshTimer);if(expandedEl)expandedEl.remove();expandedEl=null;lastAnchorTop=null;
+  document.querySelectorAll('.match-row[aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'));
+}
 function init(){
   const board=$('[data-board-sections]');if(!board)return;
-  document.addEventListener('click',e=>{const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;const id=String(row.dataset.matchId||'');if(!id)return;if(expandedId===id){closeExpanded();return}expandedId=id;setTimeout(()=>mountExpanded(id),0)},true);
-  new MutationObserver(()=>{if(expandedId)scheduleMount()}).observe(board,{childList:true,subtree:true});
-  window.NOMAD343_EXPANDED_MATCH={version:VERSION,oddsRenderOwner:ODDS_RENDER_OWNER,close:closeExpanded,reload:()=>expandedId&&mountExpanded(expandedId),getFixture:id=>{const b=boardCache.data;return b?findFixture(b,id):null}};
+  document.addEventListener('click',e=>{if(e.target.closest?.('[data-fmb-book]'))return;const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;openExpanded(row.dataset.matchId)},true);
+  document.addEventListener('keydown',e=>{if(e.key!=='Enter'&&e.key!==' ')return;const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;openExpanded(row.dataset.matchId)},true);
+  new MutationObserver(()=>{if(!expandedId||!expandedEl)return;queuePlacement();scheduleRefresh(false)}).observe(board,{childList:true,subtree:true});
+  const recapture=()=>{if(expandedId&&expandedEl?.isConnected)captureAnchor()};
+  window.addEventListener('scroll',recapture,{passive:true});window.addEventListener('resize',recapture,{passive:true});setInterval(recapture,500);
+  window.NOMAD343_EXPANDED_MATCH={version:VERSION,oddsRenderOwner:ODDS_RENDER_OWNER,open:openExpanded,close:closeExpanded,reload:()=>expandedId&&refreshExpanded(true),getFixture:id=>{const b=boardCache.data;return b?findFixture(b,id):null}};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
