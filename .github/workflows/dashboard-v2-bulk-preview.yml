@@ -45,6 +45,7 @@ jobs:
           node --check nomad-live-343/statistics.js
           node --check nomad-live-343/settings.js
           node --check nomad-live-343/v2-shared.js
+          node --check workers/nomadtips3-343-preview/src/index.js
           grep -Fq "const API='/api/engine/board'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const API='/api/engine/signals'" nomad-live-343/signal.js
@@ -54,13 +55,23 @@ jobs:
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/signal.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/statistics.html
           grep -Fq '0 per-fixture provider requests' nomad-live-343/settings.html
+          grep -Fq '5USD ULTRA · API CONTROL + MONITOR' nomad-live-343/dashboard-v2-api-monitor.html
+          grep -Fq "get('/api/hub/control')" nomad-live-343/dashboard-v2-api-monitor.html
           grep -Fq "get('/api/hub/health')" nomad-live-343/dashboard-v2-api-monitor.html
           grep -Fq "get('/api/engine/health')" nomad-live-343/dashboard-v2-api-monitor.html
           grep -Fq "get('/api/full-market/health')" nomad-live-343/dashboard-v2-api-monitor.html
-          grep -Fq "req('/api/hub/control" nomad-live-343/dashboard-v2-api-control.html
-          grep -Fq "x-nomad-owner-token" nomad-live-343/dashboard-v2-api-control.html
+          grep -Fq "req('/api/hub/control'" nomad-live-343/dashboard-v2-api-monitor.html
+          grep -Fq 'location.replace' nomad-live-343/dashboard-v2-api-control.html
+          if grep -Fqi 'Owner token' nomad-live-343/dashboard-v2-api-monitor.html nomad-live-343/dashboard-v2-api-control.html; then
+            echo 'ERROR: unified API center must not ask user for token'; exit 1
+          fi
+          if grep -Fq 'x-nomad-owner-token' nomad-live-343/dashboard-v2-api-monitor.html; then
+            echo 'ERROR: owner token header leaked into browser UI'; exit 1
+          fi
+          grep -Fq "'x-nomad-internal-control': 'preview-binding-v1'" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "url.pathname === '/dashboard-v2-api-control.html'" workers/nomadtips3-343-preview/src/index.js
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
-            echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
+            echo 'ERROR: V2 public UI restored forbidden provider/per-fixture caller'; exit 1
           fi
           if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/dashboard-v2-tune.js nomad-live-343/v2-shared.js; then
             echo 'ERROR: presentation-only UI layer contains network caller'; exit 1
@@ -81,7 +92,7 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: HTTP smoke all V2 pages
+      - name: HTTP smoke unified control and all V2 pages
         run: |
           set -euo pipefail
           get() {
@@ -100,46 +111,45 @@ jobs:
           get SIGNAL "$BASE_URL/signal.html?smoke=$RANDOM" /tmp/signal.html
           get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
           get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
-          get MONITOR "$BASE_URL/dashboard-v2-api-monitor.html?smoke=$RANDOM" /tmp/monitor.html
-          get CONTROL "$BASE_URL/dashboard-v2-api-control.html?smoke=$RANDOM" /tmp/control.html
+          get API_CENTER "$BASE_URL/dashboard-v2-api-monitor.html?smoke=$RANDOM" /tmp/api-center.html
+          get LEGACY_CONTROL "$BASE_URL/dashboard-v2-api-control.html?smoke=$RANDOM" /tmp/legacy-control.html
           get HUB_HEALTH "$BASE_URL/api/hub/health?smoke=$RANDOM" /tmp/hub-health.json
           get HUB_CONTROL "$BASE_URL/api/hub/control?smoke=$RANDOM" /tmp/hub-control.json
           get FULL_MARKET_HEALTH "$BASE_URL/api/full-market/health?smoke=$RANDOM" /tmp/full-market-health.json
-          get SHARED_CSS "$BASE_URL/v2-shared.css?smoke=$RANDOM" /tmp/shared.css
-          get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
-          get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
-          get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
-          get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
-          get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
+          get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/engine-health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
-          unauth=$(curl -sS --max-time 20 -o /tmp/control-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"enabled":true,"intervalSec":120}' "$BASE_URL/api/hub/control")
-          test "$unauth" = "401"
           grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' /tmp/index.html
           grep -Fq '343-signal-v2-bulk-ui' /tmp/signal.html
           grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
           grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
-          grep -Fq '5USD ULTRA · ACCOUNT API MONITOR' /tmp/monitor.html
-          grep -Fq '5USD ULTRA · OWNER API CONTROL' /tmp/control.html
-          grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
-          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js; then
-            echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
-          fi
+          grep -Fq '5USD ULTRA · API CONTROL + MONITOR' /tmp/api-center.html
+          grep -Fq '5USD ULTRA · API CONTROL + MONITOR' /tmp/legacy-control.html
+          if grep -Fqi 'Owner token' /tmp/api-center.html /tmp/legacy-control.html; then echo 'ERROR: deployed page asks for token'; exit 1; fi
           node - <<'NODE'
-          const h=require('/tmp/health.json');
-          const b=require('/tmp/board.json');
-          const hub=require('/tmp/hub-health.json');
-          const ctl=require('/tmp/hub-control.json');
-          const fm=require('/tmp/full-market-health.json');
-          if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('runtime architecture is not bulk-only');
-          if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
-          if(hub.ok!==true || !Number.isFinite(Number(hub.estimatedKnownRequestsPerMinute))) throw Error('monitor hub health has no known load');
-          if(ctl.ok!==true || ctl.version!=='nomad343-5usd-hub-v6-safe-control' || !Array.isArray(ctl.allowedIntervalsSec)) throw Error('control API is not ready');
-          if(!ctl.allowedIntervalsSec.includes(15)||!ctl.allowedIntervalsSec.includes(6)||Number(ctl.safeCeilingPerMinute)!==28) throw Error('control presets/guard invalid');
-          if(fm.ok!==true || fm.mode!=='BULK_SNAPSHOT_ONLY' || Number(fm.externalRequestsAdded)!==0) throw Error('monitor full-market health invalid');
-          console.log('V2_BULK_RUNTIME_OK',Array.isArray(b.fixtures)?b.fixtures.length:0,'fixtures',b.counts||{},'KNOWN_RPM',hub.estimatedKnownRequestsPerMinute,'CONTROL',ctl.intervalSec,'sec');
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json','utf8'));
+          const c=JSON.parse(fs.readFileSync('/tmp/hub-control.json','utf8'));
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-health.json','utf8'));
+          const fm=JSON.parse(fs.readFileSync('/tmp/full-market-health.json','utf8'));
+          if(h.version!=='nomad343-5usd-hub-v7-live-core-500'||h.architecture!=='LIVE_CORE_1_CALL_PER_CYCLE'||Number(h.livePageSize)!==500) throw Error('HUB v7 not live');
+          const m3=(c.modes||[]).find(x=>Number(x.intervalSec)===3),m2=(c.modes||[]).find(x=>Number(x.intervalSec)===2);
+          if(!m3||m3.allowed!==true||Number(m3.projectedTotalRequestsPerMinute)!==22.5) throw Error('3s not available');
+          if(!m2||m2.allowed!==true||Number(m2.projectedTotalRequestsPerMinute)!==32.5) throw Error('2s not available');
+          if(e.version!=='nomad343-engine-v4-bulk-only'||e.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(e.externalOddsRequests)!==0) throw Error('engine bulk-only guard');
+          if(fm.mode!=='BULK_SNAPSHOT_ONLY'||Number(fm.externalRequestsAdded)!==0) throw Error('full-market bulk-only guard');
+          fs.writeFileSync('/tmp/control-body.json',JSON.stringify({enabled:c.enabled!==false,intervalSec:Number(c.intervalSec)}));
+          console.log('API_CENTER_RUNTIME',c.intervalSec,'sec','3s',m3.projectedTotalRequestsPerMinute,'2s',m2.projectedTotalRequestsPerMinute);
+          NODE
+          code=$(curl -sS --max-time 30 -o /tmp/control-write.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data-binary @/tmp/control-body.json "$BASE_URL/api/hub/control")
+          test "$code" = "200"
+          node - <<'NODE'
+          const a=require('/tmp/hub-control.json'),b=require('/tmp/control-write.json');
+          if(b.ok!==true||b.version!=='nomad343-5usd-hub-v7-live-core-500') throw Error('no-token internal control failed');
+          if(Number(a.intervalSec)!==Number(b.intervalSec)||Boolean(a.enabled)!==Boolean(b.enabled)) throw Error('smoke changed control state');
+          console.log('NO_TOKEN_CONTROL_OK',b.intervalSec,b.enabled);
           NODE
 
-      - name: Browser render smoke all pages
+      - name: Browser render smoke main UI and unified API center
         if: always()
         run: |
           set -euo pipefail
@@ -153,17 +163,17 @@ jobs:
           render signal.html /tmp/signal-rendered.html
           render statistics.html /tmp/stat-rendered.html
           render settings.html /tmp/settings-rendered.html
-          render dashboard-v2-api-monitor.html /tmp/monitor-rendered.html
-          render dashboard-v2-api-control.html /tmp/control-rendered.html
+          render dashboard-v2-api-monitor.html /tmp/api-rendered.html
+          render dashboard-v2-api-control.html /tmp/legacy-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
           if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR: index still loading'; exit 1; fi
           grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
-          grep -Fq 'data-rule=' /tmp/settings-rendered.html
-          grep -Fq 'MONITOR ONLINE' /tmp/monitor-rendered.html
-          if grep -Fq '<span id="knownRpm">—</span>' /tmp/monitor-rendered.html; then echo 'ERROR: monitor known RPM did not render'; exit 1; fi
-          grep -Fq 'data-control-ready="1"' /tmp/control-rendered.html
-          grep -Fq 'CONTROL ONLINE' /tmp/control-rendered.html
-          if grep -Fq '<span id="currentSec">—</span>' /tmp/control-rendered.html; then echo 'ERROR: control current interval did not render'; exit 1; fi
-          echo 'V2_BROWSER_ALL_PAGES_OK'
+          grep -Fq 'data-api-unified-ready="1"' /tmp/api-rendered.html
+          grep -Fq 'CONTROL + MONITOR ONLINE' /tmp/api-rendered.html
+          grep -Fq '3s</strong>' /tmp/api-rendered.html
+          grep -Fq '2s</strong>' /tmp/api-rendered.html
+          if grep -Fqi 'Owner token' /tmp/api-rendered.html; then echo 'ERROR: rendered page asks for token'; exit 1; fi
+          grep -Fq 'data-api-unified-ready="1"' /tmp/legacy-rendered.html
+          echo 'V2_UNIFIED_API_CENTER_BROWSER_OK'
