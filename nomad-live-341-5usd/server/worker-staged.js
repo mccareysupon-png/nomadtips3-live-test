@@ -1,5 +1,6 @@
 import {buildMockFullBoard} from './mock-fullboard.js';
-import {createRuntimeState,processFullBoard} from './central-runtime.js';
+import {createRuntimeState} from './central-runtime.js';
+import {processCentralCycle} from './central-cycle.js';
 
 const PROVIDER_URL='https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=odds,events,stats&per_page=500';
 let memoryState=createRuntimeState();
@@ -37,7 +38,7 @@ export async function runCentralCycle(env={}){
     const state=await loadState(env),startedAt=new Date().toISOString();
     try{
       const provider=await fetchProviderOnce(env);
-      const {snapshot,state:next}=processFullBoard(provider.payload,state,{observedAt:startedAt,provider:provider.providerLive?'5USD':'MOCK_5USD',providerLive:provider.providerLive,providerRequestCount:provider.providerRequestCount,rateLimit:provider.rateLimit});
+      const {snapshot,state:next}=processCentralCycle(provider.payload,state,{observedAt:startedAt,provider:provider.providerLive?'5USD':'MOCK_5USD',providerLive:provider.providerLive,providerRequestCount:provider.providerRequestCount,rateLimit:provider.rateLimit});
       await saveState(env,next);
       return {skipped:false,snapshot};
     }catch(error){
