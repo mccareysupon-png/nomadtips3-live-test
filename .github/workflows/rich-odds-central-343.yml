@@ -1,4 +1,4 @@
-name: NOMAD 3.43 Rich Odds Central Cache
+name: NOMAD 3.43 Rich Odds Quarantine
 
 on:
   push:
@@ -18,75 +18,59 @@ permissions:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   RICH_URL: https://nomadtips3-rich-odds-343.mccarey-supon.workers.dev
 
 jobs:
   deploy-verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Validate central-cache architecture
+      - name: Validate quarantine
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq "const MAX_PROVIDER_REQUESTS_PER_RUN=20" workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq "const MIN_FIXTURE_REFRESH_MS=120_000" workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq "STOP_REMAINING_AT=5" workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq "clickDriven:false" workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq '/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=' workers/nomadtips3-rich-odds-343/src/index.js
-          grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-rich-odds-343/wrangler.toml
-          grep -Fq 'service = "nomadtips3-5usd-hub-343"' workers/nomadtips3-rich-odds-343/wrangler.toml
-          echo CENTRAL_RICH_ODDS_GUARD_OK
+          grep -Fq "const VERSION='nomad343-rich-odds-v1-quarantined'" workers/nomadtips3-rich-odds-343/src/index.js
+          grep -Fq "providerRequests:0" workers/nomadtips3-rich-odds-343/src/index.js
+          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-rich-odds-343/src/index.js; then
+            echo '::error::Quarantined worker still contains provider caller'; exit 1
+          fi
+          if grep -Eq '^crons[[:space:]]*=' workers/nomadtips3-rich-odds-343/wrangler.toml; then
+            echo '::error::Quarantined worker still has cron trigger'; exit 1
+          fi
+          echo DUPLICATE_PROVIDER_CALLER_QUARANTINED
 
-      - name: Validate credentials
+      - name: Validate Cloudflare credentials
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          test -n "$FIVEDOLLAR_API_KEY"
 
-      - name: Dry-run rich odds cache
-        working-directory: workers/nomadtips3-rich-odds-343
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
-
-      - name: Deploy rich odds cache
+      - name: Deploy quarantined worker without cron
         working-directory: workers/nomadtips3-rich-odds-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
-      - name: Bind 5USD key
-        working-directory: workers/nomadtips3-rich-odds-343
-        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
-
-      - name: Wait for scheduled central enrichment
+      - name: Verify public worker is disabled
         run: |
           set -euo pipefail
           ok=0
-          for i in $(seq 1 40); do
-            if curl -fsSL --max-time 20 "$RICH_URL/health?wait=$RANDOM" -o /tmp/rich-health.json; then
-              if node -e "const j=require('/tmp/rich-health.json');process.exit(j.version==='nomad343-rich-odds-v1-central-cache'&&j.lastSuccessAt?0:1)"; then ok=1; break; fi
+          for i in $(seq 1 30); do
+            if curl -fsSL --max-time 20 "$RICH_URL/health?quarantine=$RANDOM" -o /tmp/rich-health.json; then
+              if node - <<'NODE'
+          const j=require('/tmp/rich-health.json');
+          if(j.version!=='nomad343-rich-odds-v1-quarantined')process.exit(1);
+          if(j.enabled!==false||j.quarantined!==true)process.exit(2);
+          if(Number(j.providerRequests)!==0||Number(j.providerRequestsAddedByRead)!==0)process.exit(3);
+          process.exit(0);
+          NODE
+              then ok=1; break; fi
             fi
-            sleep 3
+            sleep 2
           done
           test "$ok" = 1
           cat /tmp/rich-health.json
-
-      - name: Verify cache reads add zero provider requests
-        run: |
-          set -euo pipefail
-          curl -fsSL --max-time 30 "$RICH_URL/snapshot?verify=$RANDOM" -o /tmp/rich.json
-          node - <<'NODE'
-          const j=require('/tmp/rich.json');
-          if(j.ok!==true)throw Error('rich cache not ok');
-          if(j.mode!=='CENTRAL_SCHEDULED_PER_FIXTURE'||j.clickDriven!==false)throw Error('wrong request mode');
-          if(Number(j.providerRequestsAddedByRead)!==0)throw Error('cache read triggered provider request');
-          if(Number(j.maxProviderRequestsPerRun)!==20)throw Error('wrong rate guard');
-          if(Number(j.bookmakerCount)!==19)throw Error('wrong bookmaker count');
-          if(j.planRestricted)throw Error('5USD plan rejected 19-book request');
-          console.log('RICH_CACHE_OK',JSON.stringify({live:j.liveCount,cached:j.cachedFixtures,remaining:j.lastRemaining,rateLimited:j.rateLimited,stoppedLowRemaining:j.stoppedLowRemaining}));
-          NODE
+          echo RICH_ODDS_DUPLICATE_DISABLED
