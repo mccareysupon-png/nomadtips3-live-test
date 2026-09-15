@@ -1,0 +1,32 @@
+/* NOMAD 3.43 canonical team-side colors. One owner for team-name presentation. */
+:root{
+  --team-home-name:#6fe08b;
+  --team-away-name:#e6cf55;
+}
+
+/* Semantic team-name spans used by Signals / Statistics. */
+.team-home-name{color:var(--team-home-name)!important}
+.team-away-name{color:var(--team-away-name)!important}
+
+/* Live score cards. */
+.team-slot.home-slot .team-name{color:var(--team-home-name)!important}
+.team-slot.away-slot .team-name{color:var(--team-away-name)!important}
+.team-axis>b:first-child{color:var(--team-home-name)!important}
+.team-axis>b:last-child{color:var(--team-away-name)!important}
+
+/* Full Market team headers and market columns. */
+.fom-team-strip .home strong{color:var(--team-home-name)!important}
+.fom-team-strip .away strong{color:var(--team-away-name)!important}
+.fom-colhead.cols-ah b:first-of-type,
+.fom-colhead.cols-1x2 b:first-of-type{color:var(--team-home-name)!important}
+.fom-colhead.cols-ah b:last-of-type,
+.fom-colhead.cols-1x2 b:last-of-type{color:var(--team-away-name)!important}
+
+/* Event Flow / evidence legends. */
+.nomad-flow-legend .home{color:var(--team-home-name)!important}
+.nomad-flow-legend .away{color:var(--team-away-name)!important}
+.visual-team-key span:first-child{color:var(--team-home-name)!important}
+.visual-team-key span:last-child{color:var(--team-away-name)!important}
+
+/* Keep separators and neutral labels neutral when two colored team names share one line. */
+.team-separator{color:var(--muted)!important;font-weight:inherit}
