@@ -22,6 +22,10 @@ jobs:
         run: |
           grep -q "liveProviderEnabled:false" nomad-live-341-5usd/runtime-config.js
           grep -q "mode:'PREVIEW_MOCK'" nomad-live-341-5usd/runtime-config.js
+          grep -q '"NOMAD341_LIVE_PROVIDER_ENABLED": "false"' nomad-live-341-5usd/server/wrangler.staged.jsonc
       - name: Run zero-provider central runtime self-test
         working-directory: nomad-live-341-5usd/server
         run: node offline-selftest.mjs
+      - name: Dry-run Cloudflare Worker bundle only
+        working-directory: nomad-live-341-5usd/server
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.staged.jsonc --outdir .wrangler-dry-run
