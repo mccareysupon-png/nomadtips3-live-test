@@ -1,0 +1,76 @@
+name: Recover 3.43 Start Morning Ultra
+
+on:
+  push:
+    branches: [recovery/343-start-of-morning-20260915]
+    paths:
+      - '.github/workflows/recover-343-start-morning-ultra.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  BASE_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate recovered source
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-343-full-market/src/index.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          node --check nomad-live-343/live.js
+          test -s nomad-live-343/index.html
+          grep -Fq '"name": "nomadtips3-343-ultra-preview"' workers/nomadtips3-343-preview/wrangler.jsonc
+
+      - name: Deploy recovered HUB
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: |
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Deploy recovered Engine
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Deploy recovered Full Market
+        working-directory: workers/nomadtips3-343-full-market
+        run: |
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+          printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Deploy recovered Ultra Preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Verify Ultra runtime
+        run: |
+          set -euo pipefail
+          for path in / /index.html /live.js /signal.html /statistics.html /api/engine/health /api/engine/board /api/full-market/health; do
+            read code total <<<"$(curl -L -sS --connect-timeout 5 --max-time 15 -o /tmp/check -w '%{http_code} %{time_total}' "$BASE_URL$path?recover=$RANDOM")"
+            echo "$path -> HTTP $code in ${total}s"
+            test "$code" = '200'
+          done
+          curl -fsS --connect-timeout 5 --max-time 15 "$BASE_URL/api/engine/board?recover=$RANDOM" -o /tmp/board.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json');
+          if(b.ok!==true||!Array.isArray(b.fixtures)||!b.fixtures.length) throw Error('board not ready');
+          console.log('RECOVERY_BOARD_OK',b.fixtures.length);
+          NODE
+          echo 'RECOVERY_ULTRA_OK'
