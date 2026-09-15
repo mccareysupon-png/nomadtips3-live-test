@@ -351,9 +351,9 @@ function injectStyle(){
   style.textContent=`
     .nomad343-language{display:flex;align-items:center;margin-left:10px;flex:0 0 auto}
     .nomad343-language label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    .nomad343-language select{width:auto;min-width:112px;height:34px;padding:0 30px 0 10px;border:1px solid rgba(255,255,255,.14);background:#12341f;color:#dfe9e1;font-size:10px;font-weight:800;outline:none;cursor:pointer}
-    .nomad343-language select:hover,.nomad343-language select:focus{border-color:#d7c54a;color:#fff}
-    .nomad343-language option{background:#101612;color:#eef3ef}
+    .nomad343-language select{width:auto;min-width:112px;height:34px;padding:0 30px 0 10px;border:1px solid transparent;background:transparent;color:#6ee787;font-size:10px;font-weight:800;outline:none;cursor:pointer}
+    .nomad343-language select:hover,.nomad343-language select:focus{border-color:transparent;color:#8cff9a}
+    .nomad343-language option{background:#101612;color:#6ee787}
     .nomad343-language option:disabled{color:#68736c}
     @media(max-width:760px){
       .nomad343-language{position:absolute;right:10px;top:50%;transform:translateY(-50%);margin-left:0}
