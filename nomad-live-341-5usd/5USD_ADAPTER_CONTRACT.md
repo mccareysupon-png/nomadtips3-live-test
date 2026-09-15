@@ -1,6 +1,10 @@
-# 5USD Adapter Contract for 3.41 UI Clone
+# NOMAD Snapshot Adapter Contract for 3.41 UI Clone
 
-The UI must never call the legacy 3.41 engine. A 5USD adapter is injected as `window.NOMAD_5USD_ADAPTER` and must expose three async methods:
+The 3.41 clean-clone browser must **never call 5DollarFootballAPI directly**.
+
+Provider traffic belongs exclusively to the server-side Central Provider Poller defined in `5USD_ARCHITECTURE_LOCK.md`.
+
+The browser receives an already-published NOMAD snapshot and injects a UI adapter as `window.NOMAD_5USD_ADAPTER`.
 
 ```js
 window.NOMAD_5USD_ADAPTER = {
@@ -10,6 +14,29 @@ window.NOMAD_5USD_ADAPTER = {
 };
 ```
 
+A prepared, non-auto-installed implementation lives in `fiveusd-snapshot-adapter.js`.
+
+## Provider boundary
+
+Allowed:
+
+```text
+Central server/Worker -> 5USD full-board request -> NOMAD snapshot/cache -> Browser adapter -> UI
+```
+
+Forbidden:
+
+```text
+Browser -> 5USD
+Match card -> 5USD
+Price referee -> 5USD
+Derived engine -> 5USD
+Statistics page -> 5USD
+Health page -> 5USD
+```
+
+Viewer clicks and page interactions must add **zero** 5USD requests.
+
 ## getFeed()
 
 Returns a normalized object:
@@ -17,7 +44,8 @@ Returns a normalized object:
 ```js
 {
   updatedAt: ISO_DATE,
-  counts: { live, watching, near, signal },
+  cycleId,
+  counts: { live, watching, near, candidate, signal },
   matches: [
     {
       id,
@@ -28,10 +56,12 @@ Returns a normalized object:
       score: { home, away },
       side: 'home' | 'away',
       state: 'WATCHING' | 'NEAR SIGNAL' | 'SIGNAL',
+      candidate,
       passed,
       total,
-      hunger: { passedCount, total },
+      hunger: { passedCount, total, required, passed },
       rolling: {
+        available,
         windowMinutes,
         recent: {
           homePressure,
@@ -44,7 +74,10 @@ Returns a normalized object:
           }
         },
         previous: { homePressure, awayPressure, tempo },
-        sides: { home: { pressureShare }, away: { pressureShare } }
+        sides: {
+          home: { pressureShare },
+          away: { pressureShare }
+        }
       },
       stats: {
         attacks: { home, away },
@@ -54,18 +87,12 @@ Returns a normalized object:
         corners: { home, away },
         possession: { home, away }
       },
-      checks: { minute, score, hunger, evidence, market },
-      evidence: { required },
-      priceSources: [
-        { position, source, status, bookmaker, line, odds, priceAgeSeconds }
-      ],
-      selectedPrice: { source, bookmaker, line, odds, priceAgeSeconds, side } | null,
-      signalStatus: 'LOCKED' | null,
-      signalLock: {
-        status: 'LOCKED', selection, minute,
-        entryScore: { home, away }, line, odds,
-        oddsSource, bookmaker, lockedAt
-      } | null
+      checks,
+      evidence,
+      priceSources,
+      selectedPrice,
+      signalStatus,
+      signalLock
     }
   ]
 }
@@ -73,14 +100,53 @@ Returns a normalized object:
 
 ## getStatistics()
 
-Returns `{ updatedAt, rows }`. Each row contains `time`, `match`, `condition`, `pick`, `ah`, `odds`, `source`, `entry`, `final`, `result`, and `pl`.
+Returns `{ updatedAt, rows }`.
+
+Each row contains `time`, `match`, `condition`, `pick`, `ah`, `odds`, `source`, `entry`, `final`, `result`, and `pl`.
+
+Statistics must come from NOMAD's stored signal/settlement ledger. Opening the Statistics page must not create a provider request.
 
 ## getHealth()
 
-Returns `{ state, environment, cycle, lastCycle, lastSuccess, configVersion, matches, signals, lastError, sources }`.
+Returns:
+
+```js
+{
+  state,
+  environment,
+  cycle,
+  lastCycle,
+  lastSuccess,
+  configVersion,
+  matches,
+  signals,
+  lastError,
+  sources
+}
+```
+
+Health should expose provider-request telemetry from the central runtime, including the current cycle request count, but must not probe 5USD directly from the browser.
+
+## Full-board provider cycle
+
+The central provider layer owns the routine request:
+
+```text
+GET /v1/fixtures?status=live&include=odds,events,stats&per_page=500
+```
+
+The intended invariant is:
+
+```text
+1 cycle = 1 provider request
+```
+
+All score, minute, stats, events, odds and bookmaker data consumed by NOMAD for that cycle come from this full-board snapshot.
 
 ## Integration rule
 
-5DollarFootballAPI-specific response shapes, bookmaker ids, status codes, request cadence, retry logic, rate-limit handling, and secrets belong inside the adapter/data service layer only. The UI consumes only this normalized contract.
+5DollarFootballAPI response shapes, bookmaker ids, status codes, polling cadence, retries, rate-limit handling and secrets stay server-side.
 
-The current `data-core.js` falls back to mock data when `window.NOMAD_5USD_ADAPTER` is not installed, allowing UI development and visual regression testing with zero live API requests.
+The browser consumes only the normalized NOMAD snapshot contract.
+
+The current `data-core.js` falls back to mock data when `window.NOMAD_5USD_ADAPTER` is not installed. This keeps UI development and visual regression testing at zero live provider requests until the central poller is ready.
