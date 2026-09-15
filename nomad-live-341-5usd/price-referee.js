@@ -32,7 +32,8 @@
       if(q.odds==null)reasons.push('NO_ODDS');
       if(q.odds!=null&&q.odds<minOdds)reasons.push('ODDS_BELOW_MIN');
       if(q.odds!=null&&q.odds>maxOdds)reasons.push('ODDS_ABOVE_MAX');
-      if(q.priceAgeSeconds!=null&&q.priceAgeSeconds>maxAge)reasons.push('STALE');
+      if(q.priceAgeSeconds==null)reasons.push('AGE_UNKNOWN');
+      else if(q.priceAgeSeconds>maxAge)reasons.push('STALE');
       if(allowedBookmakers&&!allowedBookmakers.has(String(q.bookmaker).toLowerCase()))reasons.push('BOOKMAKER_NOT_ALLOWED');
       return {...q,status:reasons.length?'WAIT':'PASS',reasons};
     });
