@@ -10,6 +10,22 @@
   pointer-events:none;
 }
 
+/* First-paint safety gate for the custom ODDS menu.
+   The menu is always hidden unless the user has explicitly opened it. */
+.topbar .odds-format-menu{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+  transition:none!important;
+}
+.topbar .odds-format-button[aria-expanded="true"] + .odds-format-menu:not([hidden]){
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+
 /* Controls are still created by their existing UI scripts, but no longer join
    normal desktop flex flow. They occupy the already-reserved space instead. */
 @media(min-width:761px){
