@@ -139,7 +139,7 @@ jobs:
             const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej});let seq=0,pending=new Map();
             ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}};
             const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
-            const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.result?.value};
+            const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.value};
             let ready=false;for(let i=0;i<60;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(500)}
             if(!ready){const debug=await ev("({url:location.href,state:document.readyState,vis:document.visibilityState,dash:window.NOMAD343_DASHBOARD_V2?.version,text:document.body?.innerText?.slice(0,300)})");throw Error(`no match row ${JSON.stringify(debug)}`)}
             const clicked=await ev("(()=>{const r=document.querySelector('.match-row[data-match-id]');r.click();return r.dataset.matchId})()");
