@@ -7,6 +7,7 @@ on:
       - 'nomad-live-343/**'
       - 'workers/nomadtips3-5usd-hub-343/**'
       - 'workers/nomadtips3-engine-343/**'
+      - 'workers/nomadtips3-343-full-market/**'
       - 'workers/nomadtips3-343-preview/**'
       - '.github/workflows/deploy-343-preview.yml'
   workflow_dispatch:
@@ -44,6 +45,7 @@ jobs:
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
           node --check workers/nomadtips3-engine-343/src/market-core.js
           node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-343-full-market/src/index.js
           node --check workers/nomadtips3-343-preview/src/index.js
           node workers/nomadtips3-engine-343/test/market-core.test.mjs
           node workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
@@ -54,6 +56,7 @@ jobs:
           test -s nomad-live-343/signal-compact-343.css
           test -s nomad-live-343/signal-bettor-343.css
           test -s nomad-live-343/statistics.html
+          test -s workers/nomadtips3-343-full-market/src/index.js
           grep -Fq '/api/engine/history' nomad-live-343/event-flow-343.js
           grep -Fq "const VERSION='343-flow-v3-stable-momentum'" nomad-live-343/event-flow-343.js
           grep -Fq 'const EMA_ALPHA=.48' nomad-live-343/event-flow-343.js
@@ -71,7 +74,7 @@ jobs:
           grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
           grep -Fq 'providerLine' workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "if(/unknown/.test(s))return'unknown'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "return pick(norm(status))??pick(norm(statusCode))??'unknown'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const SETTLEMENT_REVISION='bet365-rules-v2'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'const HISTORY_MS=180*60_000' workers/nomadtips3-engine-343/src/index.js
@@ -112,6 +115,16 @@ jobs:
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
       - name: Bind 5USD API key to Engine referee
         working-directory: workers/nomadtips3-engine-343
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Dry-run Full Market sidecar
+        working-directory: workers/nomadtips3-343-full-market
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+      - name: Deploy Full Market sidecar
+        working-directory: workers/nomadtips3-343-full-market
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+      - name: Bind 5USD API key to Full Market sidecar
+        working-directory: workers/nomadtips3-343-full-market
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
       - name: Dry-run 3.43 preview
