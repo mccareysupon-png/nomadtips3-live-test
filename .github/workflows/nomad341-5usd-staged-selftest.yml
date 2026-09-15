@@ -1,0 +1,27 @@
+name: NOMAD 3.41 5USD staged self-test
+on:
+  push:
+    branches:
+      - work/341-ui-clone-5usd-staged-runtime
+    paths:
+      - 'nomad-live-341-5usd/**'
+      - '.github/workflows/nomad341-5usd-staged-selftest.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify provider is hard-disabled in browser config
+        run: |
+          grep -q "liveProviderEnabled:false" nomad-live-341-5usd/runtime-config.js
+          grep -q "mode:'PREVIEW_MOCK'" nomad-live-341-5usd/runtime-config.js
+      - name: Run zero-provider central runtime self-test
+        working-directory: nomad-live-341-5usd/server
+        run: node offline-selftest.mjs
