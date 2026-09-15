@@ -36,11 +36,14 @@ jobs:
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "const VERSION='nomad343-5usd-hub-v5-rate-telemetry'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const VERSION='nomad343-5usd-hub-v6-safe-control'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'main = "src/index-v2.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "x-ratelimit-remaining" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "providerUsedInWindow" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "OWNER_TOKEN_SHA256" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "UNSAFE_PROJECTED_LOAD" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "setAlarm" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
             echo '::error::3.43 hub must not depend on 3.42 runtime'; exit 1
           fi
@@ -64,19 +67,24 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
-      - name: Verify hub telemetry without direct provider probe
+      - name: Verify hub telemetry and guarded control without direct provider probe
         run: |
           set -euo pipefail
           curl -fsS --max-time 45 "$HUB_URL/snapshot?_=$RANDOM$RANDOM" -o /tmp/hub-snapshot.json
           curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/hub-health.json
+          curl -fsS --max-time 20 "$HUB_URL/control?_=$RANDOM$RANDOM" -o /tmp/hub-control.json
+          unauth=$(curl -sS --max-time 20 -o /tmp/control-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"enabled":true,"intervalSec":120}' "$HUB_URL/control")
+          test "$unauth" = "401"
           node - <<'NODE'
           const fs=require('fs');
           const s=JSON.parse(fs.readFileSync('/tmp/hub-snapshot.json','utf8'));
           const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json','utf8'));
+          const c=JSON.parse(fs.readFileSync('/tmp/hub-control.json','utf8'));
           const sample=(Array.isArray(s.fixtures)?s.fixtures:[]).slice(0,3).map(x=>({fixtureId:x.fixtureId,league:x.league?.name,home:x.home?.name,away:x.away?.name,minute:x.minute}));
-          console.log(JSON.stringify({health:h,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,providerUsedInWindow:s.providerUsedInWindow,estimatedKnownRequestsPerMinute:s.estimatedKnownRequestsPerMinute,lastError:s.lastError},sample},null,2));
-          if(s.ok!==true||h.ok!==true)process.exit(1);
-          if(s.version!=='nomad343-5usd-hub-v5-rate-telemetry'||h.version!=='nomad343-5usd-hub-v5-rate-telemetry')process.exit(2);
-          if(!Object.prototype.hasOwnProperty.call(h,'providerHeadersAvailable'))process.exit(3);
-          if(!Object.prototype.hasOwnProperty.call(h,'providerUsedInWindow'))process.exit(4);
+          console.log(JSON.stringify({health:h,control:c,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,providerUsedInWindow:s.providerUsedInWindow,estimatedKnownRequestsPerMinute:s.estimatedKnownRequestsPerMinute,lastError:s.lastError},sample},null,2));
+          if(s.ok!==true||h.ok!==true||c.ok!==true)process.exit(1);
+          if(s.version!=='nomad343-5usd-hub-v6-safe-control'||h.version!=='nomad343-5usd-hub-v6-safe-control'||c.version!=='nomad343-5usd-hub-v6-safe-control')process.exit(2);
+          if(!Array.isArray(c.allowedIntervalsSec)||!c.allowedIntervalsSec.includes(15)||!c.allowedIntervalsSec.includes(3))process.exit(3);
+          if(!Object.prototype.hasOwnProperty.call(h,'providerHeadersAvailable'))process.exit(4);
+          if(!Object.prototype.hasOwnProperty.call(h,'providerUsedInWindow'))process.exit(5);
           NODE
