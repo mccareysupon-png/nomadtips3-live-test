@@ -135,9 +135,11 @@ async function load(){
     let signals=[];
     if(sr?.ok){const sj=await sr.json().catch(()=>null);if(sj?.ok===true&&Array.isArray(sj.signals))signals=sj.signals}
     lastSnapshot=j;lastSignals=signals;decorate(j,signals);
+    window.NOMAD343_BATCH_STATE={snapshot:j,signals};
+    document.dispatchEvent(new CustomEvent('nomad343:batch-board',{detail:window.NOMAD343_BATCH_STATE}));
   }catch(e){console.warn('[NOMAD343 BET365]',e)}finally{busy=false}
 }
 const mo=new MutationObserver(records=>{if(!lastSnapshot)return;const changed=records.some(r=>[...r.addedNodes].some(n=>n?.nodeType===1&&(n.matches?.('.match-card[data-match-id]')||n.querySelector?.('.match-card[data-match-id]'))));if(changed)setTimeout(()=>decorate(lastSnapshot,lastSignals),0)});
-function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load}}
+function start(){injectStyle();mo.observe(document.body,{childList:true,subtree:true});load();setInterval(load,POLL_MS);window.NOMAD343_BET365={version:VERSION,reload:load,get snapshot(){return lastSnapshot},get signals(){return lastSignals}}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
