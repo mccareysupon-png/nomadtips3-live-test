@@ -1,6 +1,43 @@
 @import url('v2-typography.css?v=343-v2-type-v1');
 /* Dashboard V2 mobile tune: presentation-only, no data/API side effects. */
 .desktop-signal{display:inline}.mobile-clock,.mobile-signal{display:none}
+
+/* Desktop/laptop match-board viewport.
+   Keep match scrolling inside the center column so left/right rails do not move with long boards or expanded cards. */
+@media(min-width:761px){
+  .main-board{
+    min-width:0;
+    height:calc(100vh - 158px);
+    min-height:420px;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  .main-board>.board-toolbar{flex:0 0 auto}
+  .main-board>.board-sections{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    scrollbar-width:thin;
+    scrollbar-color:#9aa29e #e3e7e5;
+    padding-right:4px;
+  }
+  .main-board>.board-sections::-webkit-scrollbar{width:9px}
+  .main-board>.board-sections::-webkit-scrollbar-track{background:#e3e7e5;border-radius:999px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb{background:#9aa29e;border:2px solid #e3e7e5;border-radius:999px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#7f8984}
+
+  html[data-theme="dark"] .main-board>.board-sections{
+    scrollbar-color:#424b46 #151a17;
+  }
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#151a17}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#424b46;border-color:#151a17}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#56615b}
+}
+
 @media(max-width:760px){
   .score-cell>small:not(.half-score){display:none!important}
   .signal-cell:before{content:none!important;display:none!important}
@@ -9,4 +46,8 @@
   .mobile-clock{display:block;font-size:11.5px;font-weight:600;line-height:1.15;color:var(--text);white-space:nowrap}
   .mobile-signal{display:block;font-size:9.5px;font-weight:600;line-height:1.15;color:var(--muted);white-space:nowrap}
   .signal-cell.locked .mobile-signal{color:var(--green)}
+
+  /* Mobile stays natural page-scroll: avoid nested vertical scrolling on touch screens. */
+  .main-board{height:auto;min-height:0;display:block;overflow:visible}
+  .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto}
 }
