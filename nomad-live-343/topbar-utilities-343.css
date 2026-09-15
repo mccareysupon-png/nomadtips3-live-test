@@ -1,21 +1,35 @@
 /* NOMAD 3.43 topbar utility layout stabilizer.
-   Reserves ODDS + Language space in first paint to prevent navigation layout shift. */
-.topbar-utilities{
+   Reserve ODDS + Language space at first paint so main navigation never shifts. */
+.topbar-inner{position:relative}
+.topbar-utility-reserve{
   flex:0 0 220px;
   width:220px;
   min-width:220px;
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:10px;
+  height:34px;
   margin-left:10px;
+  pointer-events:none;
 }
-.topbar-odds-host{flex:0 0 88px;min-width:88px;min-height:34px;display:flex;align-items:center;justify-content:flex-end}
-.topbar-language-host{flex:0 0 112px;min-width:112px;min-height:34px;display:flex;align-items:center;justify-content:flex-end}
-.topbar-odds-host .odds-format-control{margin:0}
-.topbar-language-host .nomad343-language{margin-left:0}
 
+/* Controls are still created by their existing UI scripts, but no longer join
+   normal desktop flex flow. They occupy the already-reserved space instead. */
+@media(min-width:761px){
+  .topbar-inner>.odds-format-control{
+    position:absolute!important;
+    right:138px!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    margin:0!important;
+  }
+  .topbar-inner>.nomad343-language{
+    position:absolute!important;
+    right:16px!important;
+    top:50%!important;
+    transform:translateY(-50%)!important;
+    margin:0!important;
+  }
+}
+
+/* Mobile already uses left/right absolute utility controls. No reserve needed. */
 @media(max-width:760px){
-  .topbar-utilities{display:contents}
-  .topbar-odds-host,.topbar-language-host{display:contents;min-width:0;min-height:0}
+  .topbar-utility-reserve{display:none}
 }
