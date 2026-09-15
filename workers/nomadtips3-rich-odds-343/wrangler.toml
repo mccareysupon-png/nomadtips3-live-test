@@ -6,8 +6,8 @@ workers_dev = true
 [observability]
 enabled = true
 
-[triggers]
-crons = ["* * * * *"]
+# QUARANTINED: no scheduled trigger. Rich odds provider ownership belongs only
+# to nomadtips3-5usd-hub-343 central scheduler.
 
 [[services]]
 binding = "HUB"
