@@ -2,9 +2,9 @@
    Reserve ODDS + Language space at first paint so main navigation never shifts. */
 .topbar-inner{position:relative}
 .topbar-utility-reserve{
-  flex:0 0 220px;
-  width:220px;
-  min-width:220px;
+  flex:0 0 292px;
+  width:292px;
+  min-width:292px;
   height:34px;
   margin-left:10px;
   pointer-events:none;
@@ -26,26 +26,43 @@
   pointer-events:auto!important;
 }
 
-/* Controls are still created by their existing UI scripts, but no longer join
-   normal desktop flex flow. They occupy the already-reserved space instead. */
+/* Desktop utility slots are deliberately separated using the longest language
+   label as the sizing reference. Language owns a fixed opaque slot; ODDS sits
+   farther left with a real 24px air gap, so neither control can paint through
+   the other during first-frame composition. */
 @media(min-width:761px){
   .topbar-inner>.odds-format-control{
     position:absolute!important;
-    right:138px!important;
+    right:196px!important;
     top:50%!important;
     transform:translateY(-50%)!important;
+    width:88px!important;
+    min-width:88px!important;
     margin:0!important;
+    z-index:31!important;
   }
   .topbar-inner>.nomad343-language{
     position:absolute!important;
     right:16px!important;
     top:50%!important;
     transform:translateY(-50%)!important;
+    width:156px!important;
+    min-width:156px!important;
+    max-width:156px!important;
     margin:0!important;
+    z-index:32!important;
+    isolation:isolate;
+    background:#12341f;
+  }
+  .topbar-inner>.nomad343-language select{
+    width:156px!important;
+    min-width:156px!important;
+    max-width:156px!important;
+    background:#12341f!important;
   }
 }
 
-/* Mobile already uses left/right absolute utility controls. No reserve needed. */
+/* Mobile already uses opposite screen edges for the two controls. */
 @media(max-width:760px){
   .topbar-utility-reserve{display:none}
 }
