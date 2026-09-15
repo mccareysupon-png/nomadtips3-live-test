@@ -11,6 +11,45 @@
   box-sizing:border-box!important;
 }
 
+/* Keep the primary desktop/tablet navigation centered on the header itself,
+   independent of the logo width and right-side utility controls. */
+@media (min-width:761px){
+  .topbar-inner{
+    position:relative;
+  }
+
+  .topbar-inner > .topnav{
+    position:absolute;
+    left:50%;
+    top:0;
+    transform:translateX(-50%);
+    margin-left:0;
+  }
+
+  .topbar-inner > .odds-format-control{
+    margin-left:auto;
+  }
+}
+
+/* Statistics uses a dedicated nav class on desktop. Center that same nav
+   without changing its mobile/touch bottom-navigation behavior. */
+@media (min-width:1101px) and (hover:hover) and (pointer:fine){
+  body[data-page="statistics"] .topbar-inner > .statistics-nav{
+    position:absolute;
+    left:50%;
+    right:auto;
+    top:0;
+    bottom:auto;
+    transform:translateX(-50%);
+    margin-left:0;
+    height:64px;
+  }
+
+  body[data-page="statistics"] .topbar-inner > .odds-format-control{
+    margin-left:auto;
+  }
+}
+
 /* Tablet: 20px breathing room per side. 1024 -> 984. */
 @media (min-width:701px) and (max-width:1099px){
   .shell,
