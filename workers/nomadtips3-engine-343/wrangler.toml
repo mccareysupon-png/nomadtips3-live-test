@@ -5,6 +5,7 @@ workers_dev = true
 # BULK-ONLY STANDARD: pricing is read from HUB snapshot providerOdds.
 # No per-fixture provider odds fetch is allowed from the engine.
 # Runtime verification: 2026-09-15 bulk-only cutover.
+# Legacy deploy branches must not replace this entrypoint.
 
 [observability]
 enabled = true
