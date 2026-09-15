@@ -1,19 +1,16 @@
 (()=>{
 'use strict';
-const VERSION='343-expanded-match-v1-bulk-snapshot';
+const VERSION='343-expanded-match-v2-single-odds-owner';
+const ODDS_RENDER_OWNER='complete-only';
 const BOARD_API='/api/engine/board';
 const HISTORY_API='/api/engine/history';
 const BOARD_CACHE_MS=15000;
 const HISTORY_CACHE_MS=20000;
-const BOOK_PRIORITY=['bet365','pinnacle','crown','1xbet','12bet','interwetten','macauslot','18bet','vcbet','easybets'];
-const BOOK_LABELS={bet365:'Bet365',pinnacle:'Pinnacle',crown:'Crown','1xbet':'1xBet','12bet':'12Bet',interwetten:'Interwetten',macauslot:'Macau Slot','18bet':'18Bet',vcbet:'VCBet',easybets:'Easybets'};
-const SKIP_KEYS=new Set(['id','name','slug','bookmaker','bookmaker_id','bookmakerid','source','provider','updated_at','updatedat','created_at','createdat','timestamp','status','active','meta','metadata']);
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
-const pretty=v=>String(v||'Market').replace(/[._-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
 let expandedId=null;
 let boardCache={at:0,data:null,promise:null};
 const historyCache=new Map();
@@ -59,9 +56,7 @@ function flowPoints(history,current){
   }
   return out.sort((a,b)=>a.minute-b.minute);
 }
-function pathLine(points,key,w,h,pad,current){
-  return points.map((p,i)=>`${i?'L':'M'} ${xFor(p.minute,w,pad,current).toFixed(1)} ${yFor(p[key],h,pad).toFixed(1)}`).join(' ');
-}
+function pathLine(points,key,w,h,pad,current){return points.map((p,i)=>`${i?'L':'M'} ${xFor(p.minute,w,pad,current).toFixed(1)} ${yFor(p[key],h,pad).toFixed(1)}`).join(' ')}
 function areaLine(points,key,w,h,pad,current){
   if(!points.length)return'';
   const base=yFor(1,h,pad),body=points.map(p=>`L ${xFor(p.minute,w,pad,current).toFixed(1)} ${yFor(p[key],h,pad).toFixed(1)}`).join(' ');
@@ -82,69 +77,15 @@ function renderFlow(f,history){
   const w=1000,h=232,pad={left:42,right:18,top:14,bottom:30},last=points[points.length-1],hx=xFor(last.minute,w,pad,current),hy=yFor(last.home,h,pad),ay=yFor(last.away,h,pad),safe=norm(fixtureId(f))||'flow';
   return `<div class="expand-card-head"><div><span>EVENT FLOW</span><b>0' → ${current}'</b></div><small>Attack pressure · 1–100%</small></div><div class="expand-flow-legend"><span class="home"><i></i>${home} <b>${Math.round(last.home)}%</b></span><span class="away"><i></i>${away} <b>${Math.round(last.away)}%</b></span><small>${points.length} points · missing early history stays blank</small></div><div class="expand-flow-chart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Event flow from minute zero to current minute"><defs><linearGradient id="eh-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#31b878" stop-opacity=".22"/><stop offset="100%" stop-color="#31b878" stop-opacity="0"/></linearGradient><linearGradient id="ea-${safe}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2c94c" stop-opacity=".20"/><stop offset="100%" stop-color="#e2c94c" stop-opacity="0"/></linearGradient></defs>${flowGrid(w,h,pad,current)}<path d="${areaLine(points,'home',w,h,pad,current)}" fill="url(#eh-${safe})" class="expand-flow-area"/><path d="${areaLine(points,'away',w,h,pad,current)}" fill="url(#ea-${safe})" class="expand-flow-area"/><path d="${pathLine(points,'home',w,h,pad,current)}" class="expand-flow-line home"/><path d="${pathLine(points,'away',w,h,pad,current)}" class="expand-flow-line away"/><circle cx="${hx}" cy="${hy}" r="2.4" class="expand-flow-end home"/><circle cx="${hx}" cy="${ay}" r="2.4" class="expand-flow-end away"/></svg></div>`;
 }
-function bookName(row,index){return String(row?.name??row?.bookmaker?.name??row?.slug??row?.bookmaker?.slug??`Book ${index+1}`)}
-function bookSlug(row,index){return norm(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name??`book${index+1}`)}
-function bookRoot(row){return row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??row?.data??row}
-function isStageObject(v){if(!v||typeof v!=='object'||Array.isArray(v))return false;const ks=Object.keys(v).map(norm);return ks.some(k=>['opening','open','closing','close','inplay','live'].includes(k))}
-function isPriceObject(v){if(!v||typeof v!=='object'||Array.isArray(v))return false;const ks=Object.keys(v).map(norm);return ks.some(k=>['home','draw','away','over','under','line','hdp','handicap','total','yes','no'].includes(k))}
-function collectMarkets(root,prefix='',depth=0,out=new Map()){
-  if(!root||typeof root!=='object'||Array.isArray(root)||depth>4)return out;
-  for(const [key,val] of Object.entries(root)){
-    const nk=norm(key);if(SKIP_KEYS.has(nk)||val===null||val===undefined)continue;
-    const path=prefix?`${prefix}.${key}`:key;
-    if(val&&typeof val==='object'&&!Array.isArray(val)&&(isStageObject(val)||isPriceObject(val))){out.set(path,val);continue}
-    if(val&&typeof val==='object'&&!Array.isArray(val))collectMarkets(val,path,depth+1,out);
-  }
-  return out;
-}
-function providerBooks(f){
-  const root=f?.providerOdds;if(!root||typeof root!=='object')return[];
-  const rows=[];
-  const push=(name,slug,data)=>{if(!data||typeof data!=='object')return;const s=norm(slug||name);if(rows.some(x=>x.slug===s))return;rows.push({name:String(name||BOOK_LABELS[s]||s||'Bookmaker'),slug:s,root:data})};
-  const arr=[root?.bookmakers,root?.data?.bookmakers].find(Array.isArray)||[];
-  arr.forEach((row,i)=>push(bookName(row,i),bookSlug(row,i),bookRoot(row)));
-  for(const slug of BOOK_PRIORITY){const direct=root?.[slug]??root?.data?.[slug];if(direct)push(BOOK_LABELS[slug],slug,bookRoot(direct))}
-  const directRoot=root?.odds??root?.markets??root?.data?.odds??root?.data?.markets;
-  if(!rows.length&&directRoot)push('Bet365','bet365',directRoot);
-  if(!rows.length&&(isStageObject(root)||collectMarkets(root).size))push('Bet365','bet365',root);
-  return rows.sort((a,b)=>{const ai=BOOK_PRIORITY.indexOf(a.slug),bi=BOOK_PRIORITY.indexOf(b.slug);return (ai<0?999:ai)-(bi<0?999:bi)||a.name.localeCompare(b.name)});
-}
-function marketRank(key){const k=norm(key);const order=['1x2','asianhandicaphalf','asianhandicap','goallinehalf','goalline','cornerlinehalf','cornerasian','cornerline','cardasian','cardline','btts'];for(let i=0;i<order.length;i++)if(k.includes(order[i]))return i;return 100}
-function stageRows(market){
-  const rows=[['OPEN',market?.opening??market?.open],['CLOSE',market?.closing??market?.close],['LIVE',market?.inplay??market?.in_play??market?.live]].filter(([,v])=>v&&typeof v==='object');
-  return rows.length?rows:[['NOW',market]];
-}
-function fmtNum(v){const n=num(v);return n===null?'—':Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000)}
-function priceText(v){
-  if(!v||typeof v!=='object')return'—';
-  const line=num(v.line??v.hdp??v.handicap??v.total),h=num(v.home??v.home_odds??v.homeOdds),d=num(v.draw??v.draw_odds??v.drawOdds),a=num(v.away??v.away_odds??v.awayOdds),o=num(v.over??v.over_odds??v.overOdds),u=num(v.under??v.under_odds??v.underOdds),yes=num(v.yes),no=num(v.no);
-  if(h!==null||d!==null||a!==null){const parts=[];if(line!==null)parts.push(`L ${fmtNum(line)}`);if(h!==null)parts.push(`H ${h.toFixed(2)}`);if(d!==null)parts.push(`D ${d.toFixed(2)}`);if(a!==null)parts.push(`A ${a.toFixed(2)}`);return parts.join(' · ')}
-  if(o!==null||u!==null){const parts=[];if(line!==null)parts.push(`L ${fmtNum(line)}`);if(o!==null)parts.push(`O ${o.toFixed(2)}`);if(u!==null)parts.push(`U ${u.toFixed(2)}`);return parts.join(' · ')}
-  if(yes!==null||no!==null)return [`YES ${yes===null?'—':yes.toFixed(2)}`,`NO ${no===null?'—':no.toFixed(2)}`].join(' · ');
-  if(line!==null)return`Line ${fmtNum(line)}`;
-  const generic=Object.entries(v).filter(([,x])=>num(x)!==null).slice(0,4).map(([k,x])=>`${pretty(k)} ${fmtNum(x)}`);
-  return generic.length?generic.join(' · '):'—';
-}
-function marketCell(market,index,active){
-  const cls=`${active?'active-book-col ':''}expand-odds-cell`;
-  if(!market)return `<td data-book-col="${index}" class="${cls}"><span class="expand-odds-missing">—</span></td>`;
-  return `<td data-book-col="${index}" class="${cls}">${stageRows(market).map(([stage,v])=>`<div class="expand-odd-stage ${stage.toLowerCase()}"><span>${stage}</span><b>${esc(priceText(v))}</b></div>`).join('')}</td>`;
-}
-function renderOdds(f){
-  const books=providerBooks(f);
-  if(!books.length)return `<div class="expand-card-head"><div><span>ODDS BOARD</span><b>All bookmakers · All markets</b></div><small>Bulk Snapshot</small></div><div class="expand-empty">ไม่มี providerOdds ใน Bulk Snapshot ของคู่นี้</div>`;
-  const maps=books.map(b=>collectMarkets(b.root)),keys=[...new Set(maps.flatMap(m=>[...m.keys()]))].sort((a,b)=>marketRank(a)-marketRank(b)||a.localeCompare(b));
-  if(!keys.length)return `<div class="expand-card-head"><div><span>ODDS BOARD</span><b>${books.length} bookmakers</b></div><small>Bulk Snapshot</small></div><div class="expand-empty">พบ bookmaker แต่ยังไม่มี market object ที่อ่านได้</div>`;
-  const tabs=books.map((b,i)=>`<button type="button" class="expand-book-tab${i===0?' active':''}" data-expand-book-tab="${i}">${esc(b.name)}</button>`).join('');
-  const head=books.map((b,i)=>`<th data-book-col="${i}" class="${i===0?'active-book-col':''}">${esc(b.name)}</th>`).join('');
-  const body=keys.map(key=>`<tr><th class="expand-market-name">${esc(pretty(key.split('.').slice(-2).join(' · ')))}</th>${books.map((b,i)=>marketCell(maps[i].get(key),i,i===0)).join('')}</tr>`).join('');
-  return `<div class="expand-card-head"><div><span>ODDS BOARD</span><b>${books.length} bookmakers · ${keys.length} markets</b></div><small>Bulk Snapshot · 0 provider requests on click</small></div><div class="expand-book-tabs">${tabs}</div><div class="expand-odds-wrap"><table class="expand-odds-table"><thead><tr><th>Market</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-}
 function shell(id){
-  const el=document.createElement('section');el.className='match-expanded';el.dataset.expandedMatch=id;el.innerHTML=`<div class="match-expanded-inner"><section class="expand-card expand-flow-card"><div class="expand-loading">Loading Event Flow…</div></section><section class="expand-card expand-odds-card"><div class="expand-loading">Loading all bookmakers and markets…</div></section></div>`;return el;
+  const el=document.createElement('section');el.className='match-expanded';el.dataset.expandedMatch=id;el.dataset.oddsRenderOwner=ODDS_RENDER_OWNER;
+  el.innerHTML=`<div class="match-expanded-inner"><section class="expand-card expand-flow-card"><div class="expand-loading">Loading Event Flow…</div></section><section class="expand-card expand-odds-card" data-complete-odds-card><div class="expand-loading">Loading complete odds from Bulk Snapshot…</div></section></div>`;
+  return el;
 }
-function bindBookTabs(root){
-  root.querySelectorAll('[data-expand-book-tab]').forEach(btn=>btn.addEventListener('click',e=>{e.stopPropagation();const i=btn.dataset.expandBookTab;root.querySelectorAll('[data-expand-book-tab]').forEach(x=>x.classList.toggle('active',x===btn));root.querySelectorAll('[data-book-col]').forEach(x=>x.classList.toggle('active-book-col',x.dataset.bookCol===i))}))
+function publishFixture(el,fixture){
+  if(!fixture||!el?.isConnected)return;
+  el._nomadFixture=fixture;
+  el.dispatchEvent(new CustomEvent('nomad343:fixture-ready',{bubbles:true,detail:{fixtureId:fixtureId(fixture),fixture}}));
 }
 async function mountExpanded(id){
   const row=document.querySelector(`.match-row[data-match-id="${CSS.escape(String(id))}"]`);if(!row||expandedId!==id)return;
@@ -154,16 +95,15 @@ async function mountExpanded(id){
   const flow=el.querySelector('.expand-flow-card'),odds=el.querySelector('.expand-odds-card');
   const board=boardRes.status==='fulfilled'?boardRes.value:null,fixture=board?findFixture(board,id):null;
   if(flow)flow.innerHTML=fixture&&histRes.status==='fulfilled'?renderFlow(fixture,histRes.value):`<div class="expand-card-head"><div><span>EVENT FLOW</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(histRes.status==='rejected'?histRes.reason?.message:'Fixture not found')}</div>`;
-  if(odds)odds.innerHTML=fixture?renderOdds(fixture):`<div class="expand-card-head"><div><span>ODDS BOARD</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(boardRes.status==='rejected'?boardRes.reason?.message:'Fixture not found')}</div>`;
-  bindBookTabs(el);
+  if(fixture)publishFixture(el,fixture);else if(odds)odds.innerHTML=`<div class="expand-card-head"><div><span>ODDS BOARD</span><b>Unavailable</b></div></div><div class="expand-empty">${esc(boardRes.status==='rejected'?boardRes.reason?.message:'Fixture not found')}</div>`;
 }
 function scheduleMount(){clearTimeout(mountTimer);mountTimer=setTimeout(()=>{if(expandedId&&!document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(String(expandedId))}"]`))mountExpanded(expandedId)},30)}
 function closeExpanded(){expandedId=null;mountSeq++;document.querySelectorAll('.match-expanded').forEach(x=>x.remove());document.querySelectorAll('.match-row[aria-expanded="true"]').forEach(x=>x.setAttribute('aria-expanded','false'))}
 function init(){
   const board=$('[data-board-sections]');if(!board)return;
-  document.addEventListener('click',e=>{const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;const id=String(row.dataset.matchId||'');if(!id)return;const closing=expandedId===id;if(closing){closeExpanded();return}expandedId=id;setTimeout(()=>mountExpanded(id),0)},true);
+  document.addEventListener('click',e=>{const row=e.target.closest?.('.match-row[data-match-id]');if(!row)return;const id=String(row.dataset.matchId||'');if(!id)return;if(expandedId===id){closeExpanded();return}expandedId=id;setTimeout(()=>mountExpanded(id),0)},true);
   new MutationObserver(()=>{if(expandedId)scheduleMount()}).observe(board,{childList:true,subtree:true});
-  window.NOMAD343_EXPANDED_MATCH={version:VERSION,close:closeExpanded,reload:()=>expandedId&&mountExpanded(expandedId)};
+  window.NOMAD343_EXPANDED_MATCH={version:VERSION,oddsRenderOwner:ODDS_RENDER_OWNER,close:closeExpanded,reload:()=>expandedId&&mountExpanded(expandedId),getFixture:id=>{const b=boardCache.data;return b?findFixture(b,id):null}};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
