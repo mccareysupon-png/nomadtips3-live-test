@@ -1,5 +1,3 @@
-const SERVICE_TIMEOUT_MS = 8_000;
-
 function engineRequest(request, path) {
   const upstream = new URL(request.url);
   upstream.protocol = 'https:';
@@ -14,32 +12,6 @@ function fullMarketRequest(request, path) {
   upstream.hostname = 'full-market.internal';
   upstream.pathname = path;
   return new Request(upstream, request);
-}
-
-async function serviceFetch(factory, label) {
-  let timer = null;
-  try {
-    return await Promise.race([
-      Promise.resolve().then(factory),
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${label}_TIMEOUT`)), SERVICE_TIMEOUT_MS);
-      })
-    ]);
-  } catch (error) {
-    const message = String(error?.message || `${label}_FAILED`);
-    const status = message.endsWith('_TIMEOUT') ? 504 : 502;
-    return Response.json({
-      ok: false,
-      error: message,
-      source: 'NOMAD343_PREVIEW_PROXY',
-      retryable: true
-    }, {
-      status,
-      headers: { 'cache-control': 'no-store' }
-    });
-  } finally {
-    if (timer !== null) clearTimeout(timer);
-  }
 }
 
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
@@ -75,8 +47,8 @@ function liveMinute(fixture) {
 
 async function activeSignals(request, env) {
   const [signalResponse, boardResponse] = await Promise.all([
-    serviceFetch(() => env.ENGINE.fetch(engineRequest(request, '/signals')), 'ENGINE_SIGNALS'),
-    serviceFetch(() => env.ENGINE.fetch(engineRequest(request, '/board')), 'ENGINE_BOARD')
+    env.ENGINE.fetch(engineRequest(request, '/signals')),
+    env.ENGINE.fetch(engineRequest(request, '/board'))
   ]);
 
   const [signalData, boardData] = await Promise.all([
@@ -88,7 +60,7 @@ async function activeSignals(request, env) {
     return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
   }
   if (boardData?.ok !== true) {
-    return Response.json({ ok: false, error: boardData?.error || 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
+    return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
   }
 
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
@@ -153,11 +125,11 @@ export default {
       upstream.protocol = 'https:';
       upstream.hostname = 'engine.internal';
       upstream.pathname = url.pathname.replace('/api/engine', '') || '/';
-      return serviceFetch(() => env.ENGINE.fetch(new Request(upstream, request)), 'ENGINE_API');
+      return env.ENGINE.fetch(new Request(upstream, request));
     }
     if (url.pathname.startsWith('/api/full-market/')) {
       const path = url.pathname.replace('/api/full-market', '') || '/';
-      return serviceFetch(() => env.FULL_MARKET.fetch(fullMarketRequest(request, path)), 'FULL_MARKET_API');
+      return env.FULL_MARKET.fetch(fullMarketRequest(request, path));
     }
     if (request.method === 'GET' && (
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
