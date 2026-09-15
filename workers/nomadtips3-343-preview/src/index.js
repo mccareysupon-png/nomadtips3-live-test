@@ -6,14 +6,6 @@ function engineRequest(request, path) {
   return new Request(upstream, request);
 }
 
-function fullMarketRequest(request, path) {
-  const upstream = new URL(request.url);
-  upstream.protocol = 'https:';
-  upstream.hostname = 'full-market.internal';
-  upstream.pathname = path;
-  return new Request(upstream, request);
-}
-
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
@@ -24,10 +16,10 @@ async function noStoreUiAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-ui-revision', '343-bettor-view-v1');
+  headers.set('x-nomad-ui-revision', '343-bulk-only-v1');
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
+  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-bulk-only-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -114,6 +106,22 @@ async function activeSignals(request, env) {
   }, { headers: { 'cache-control': 'no-store' } });
 }
 
+async function bulkFullMarketCompat(request, env, path) {
+  if (path === '/health' || path === '/status') {
+    return Response.json({
+      ok: true,
+      component: 'NOMAD343_FULL_MARKET_COMPAT',
+      mode: 'BULK_SNAPSHOT_ONLY',
+      source: 'ENGINE_BOARD_PROVIDER_ODDS',
+      externalRequestsAdded: 0
+    }, { headers: { 'cache-control': 'no-store' } });
+  }
+  if (path === '/fixture-odds') {
+    return env.ENGINE.fetch(engineRequest(request, '/fixture-odds'));
+  }
+  return Response.json({ ok: false, error: 'FULL_MARKET_LEGACY_ROUTE_DISABLED', mode: 'BULK_SNAPSHOT_ONLY', externalRequestsAdded: 0 }, { status: 410 });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -129,7 +137,7 @@ export default {
     }
     if (url.pathname.startsWith('/api/full-market/')) {
       const path = url.pathname.replace('/api/full-market', '') || '/';
-      return env.FULL_MARKET.fetch(fullMarketRequest(request, path));
+      return bulkFullMarketCompat(request, env, path);
     }
     if (request.method === 'GET' && (
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
