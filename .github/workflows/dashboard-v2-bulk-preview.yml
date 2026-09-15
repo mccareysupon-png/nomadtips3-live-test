@@ -57,6 +57,8 @@ jobs:
           grep -Fq "get('/api/hub/health')" nomad-live-343/dashboard-v2-api-monitor.html
           grep -Fq "get('/api/engine/health')" nomad-live-343/dashboard-v2-api-monitor.html
           grep -Fq "get('/api/full-market/health')" nomad-live-343/dashboard-v2-api-monitor.html
+          grep -Fq "req('/api/hub/control" nomad-live-343/dashboard-v2-api-control.html
+          grep -Fq "x-nomad-owner-token" nomad-live-343/dashboard-v2-api-control.html
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
             echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
           fi
@@ -99,7 +101,9 @@ jobs:
           get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
           get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
           get MONITOR "$BASE_URL/dashboard-v2-api-monitor.html?smoke=$RANDOM" /tmp/monitor.html
+          get CONTROL "$BASE_URL/dashboard-v2-api-control.html?smoke=$RANDOM" /tmp/control.html
           get HUB_HEALTH "$BASE_URL/api/hub/health?smoke=$RANDOM" /tmp/hub-health.json
+          get HUB_CONTROL "$BASE_URL/api/hub/control?smoke=$RANDOM" /tmp/hub-control.json
           get FULL_MARKET_HEALTH "$BASE_URL/api/full-market/health?smoke=$RANDOM" /tmp/full-market-health.json
           get SHARED_CSS "$BASE_URL/v2-shared.css?smoke=$RANDOM" /tmp/shared.css
           get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
@@ -108,11 +112,14 @@ jobs:
           get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
           get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
+          unauth=$(curl -sS --max-time 20 -o /tmp/control-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"enabled":true,"intervalSec":120}' "$BASE_URL/api/hub/control")
+          test "$unauth" = "401"
           grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' /tmp/index.html
           grep -Fq '343-signal-v2-bulk-ui' /tmp/signal.html
           grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
           grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
           grep -Fq '5USD ULTRA · ACCOUNT API MONITOR' /tmp/monitor.html
+          grep -Fq '5USD ULTRA · OWNER API CONTROL' /tmp/control.html
           grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js; then
             echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
@@ -121,12 +128,15 @@ jobs:
           const h=require('/tmp/health.json');
           const b=require('/tmp/board.json');
           const hub=require('/tmp/hub-health.json');
+          const ctl=require('/tmp/hub-control.json');
           const fm=require('/tmp/full-market-health.json');
           if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('runtime architecture is not bulk-only');
           if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
           if(hub.ok!==true || !Number.isFinite(Number(hub.estimatedKnownRequestsPerMinute))) throw Error('monitor hub health has no known load');
+          if(ctl.ok!==true || ctl.version!=='nomad343-5usd-hub-v6-safe-control' || !Array.isArray(ctl.allowedIntervalsSec)) throw Error('control API is not ready');
+          if(!ctl.allowedIntervalsSec.includes(15)||!ctl.allowedIntervalsSec.includes(6)||Number(ctl.safeCeilingPerMinute)!==28) throw Error('control presets/guard invalid');
           if(fm.ok!==true || fm.mode!=='BULK_SNAPSHOT_ONLY' || Number(fm.externalRequestsAdded)!==0) throw Error('monitor full-market health invalid');
-          console.log('V2_BULK_RUNTIME_OK',Array.isArray(b.fixtures)?b.fixtures.length:0,'fixtures',b.counts||{},'KNOWN_RPM',hub.estimatedKnownRequestsPerMinute);
+          console.log('V2_BULK_RUNTIME_OK',Array.isArray(b.fixtures)?b.fixtures.length:0,'fixtures',b.counts||{},'KNOWN_RPM',hub.estimatedKnownRequestsPerMinute,'CONTROL',ctl.intervalSec,'sec');
           NODE
 
       - name: Browser render smoke all pages
@@ -144,6 +154,7 @@ jobs:
           render statistics.html /tmp/stat-rendered.html
           render settings.html /tmp/settings-rendered.html
           render dashboard-v2-api-monitor.html /tmp/monitor-rendered.html
+          render dashboard-v2-api-control.html /tmp/control-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
           if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR: index still loading'; exit 1; fi
           grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
@@ -152,4 +163,7 @@ jobs:
           grep -Fq 'data-rule=' /tmp/settings-rendered.html
           grep -Fq 'MONITOR ONLINE' /tmp/monitor-rendered.html
           if grep -Fq '<span id="knownRpm">—</span>' /tmp/monitor-rendered.html; then echo 'ERROR: monitor known RPM did not render'; exit 1; fi
+          grep -Fq 'data-control-ready="1"' /tmp/control-rendered.html
+          grep -Fq 'CONTROL ONLINE' /tmp/control-rendered.html
+          if grep -Fq '<span id="currentSec">—</span>' /tmp/control-rendered.html; then echo 'ERROR: control current interval did not render'; exit 1; fi
           echo 'V2_BROWSER_ALL_PAGES_OK'
