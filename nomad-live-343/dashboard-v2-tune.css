@@ -1,41 +1,52 @@
 @import url('v2-typography.css?v=343-v2-type-v1');
-/* Dashboard V2 mobile tune: presentation-only, no data/API side effects. */
+/* Dashboard V2 presentation-only tune: no data/API side effects. */
 .desktop-signal{display:inline}.mobile-clock,.mobile-signal{display:none}
 
-/* Desktop/laptop match-board viewport.
-   Keep match scrolling inside the center column so left/right rails do not move with long boards or expanded cards. */
+/* Desktop/laptop: only the center match board scrolls.
+   The outer center column must NOT clip expanded cards; the inner board owns the scroll. */
 @media(min-width:761px){
   .main-board{
     min-width:0;
     height:calc(100vh - 158px);
+    height:calc(100dvh - 158px);
     min-height:420px;
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr);
+    overflow:visible;
+    position:relative;
   }
-  .main-board>.board-toolbar{flex:0 0 auto}
+  .main-board>.board-toolbar{
+    min-width:0;
+    margin-bottom:10px;
+    position:relative;
+    z-index:2;
+  }
   .main-board>.board-sections{
-    flex:1 1 auto;
+    min-width:0;
     min-height:0;
+    height:100%;
     overflow-x:hidden;
-    overflow-y:auto;
+    overflow-y:scroll;
     overscroll-behavior:contain;
     scrollbar-gutter:stable;
-    scrollbar-width:thin;
-    scrollbar-color:#9aa29e #e3e7e5;
-    padding-right:4px;
+    scrollbar-width:auto;
+    scrollbar-color:#8f9994 #e2e7e4;
+    padding:2px 8px 14px 2px;
+    position:relative;
+    z-index:1;
+    background:transparent;
   }
-  .main-board>.board-sections::-webkit-scrollbar{width:9px}
-  .main-board>.board-sections::-webkit-scrollbar-track{background:#e3e7e5;border-radius:999px}
-  .main-board>.board-sections::-webkit-scrollbar-thumb{background:#9aa29e;border:2px solid #e3e7e5;border-radius:999px}
-  .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#7f8984}
+  .main-board>.board-sections::-webkit-scrollbar{width:11px}
+  .main-board>.board-sections::-webkit-scrollbar-track{background:#e2e7e4;border-radius:999px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb{background:#8f9994;border:2px solid #e2e7e4;border-radius:999px;min-height:44px}
+  .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#737e78}
 
   html[data-theme="dark"] .main-board>.board-sections{
-    scrollbar-color:#424b46 #151a17;
+    scrollbar-color:#3d4541 #111613;
   }
-  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#151a17}
-  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#424b46;border-color:#151a17}
-  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#56615b}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#111613}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}
+  html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#535d57}
 }
 
 @media(max-width:760px){
@@ -47,7 +58,7 @@
   .mobile-signal{display:block;font-size:9.5px;font-weight:600;line-height:1.15;color:var(--muted);white-space:nowrap}
   .signal-cell.locked .mobile-signal{color:var(--green)}
 
-  /* Mobile stays natural page-scroll: avoid nested vertical scrolling on touch screens. */
+  /* Mobile stays natural page-scroll: no nested vertical scroller. */
   .main-board{height:auto;min-height:0;display:block;overflow:visible}
   .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto}
 }
