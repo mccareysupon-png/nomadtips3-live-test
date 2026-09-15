@@ -1,0 +1,60 @@
+/* NOMAD 3.43 main navigation cleanup.
+   Presentation only: green hover/active, no active card/background frame. */
+
+:root{
+  --nav-green:#83df89;
+}
+
+/* Desktop/main navigation: text state only. */
+.topnav a,
+body[data-page="statistics"] .statistics-nav a{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  outline-offset:3px;
+}
+
+.topnav a:hover,
+.topnav a:focus-visible,
+body[data-page="statistics"] .statistics-nav a:hover,
+body[data-page="statistics"] .statistics-nav a:focus-visible{
+  color:var(--nav-green)!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+.topnav a.active,
+body[data-page="statistics"] .statistics-nav a.active{
+  color:var(--nav-green)!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* Statistics desktop nav must visually match Live / Signals — no dark card wrapper. */
+@media (min-width:1101px) and (hover:hover) and (pointer:fine){
+  body[data-page="statistics"] .statistics-nav{
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+  }
+}
+
+/* Mobile/touch: keep the navigation bar itself, but never frame the active link. */
+.mobile-nav a,
+body[data-page="statistics"] .statistics-nav a{
+  box-shadow:none!important;
+}
+.mobile-nav a:hover,
+.mobile-nav a:focus-visible,
+.mobile-nav a.active,
+body[data-page="statistics"] .statistics-nav a:hover,
+body[data-page="statistics"] .statistics-nav a:focus-visible,
+body[data-page="statistics"] .statistics-nav a.active{
+  color:var(--nav-green)!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
