@@ -82,8 +82,13 @@ jobs:
           get() {
             name="$1"; url="$2"; out="$3"
             echo "CHECK $name $url"
-            code=$(curl -sS -L --retry 8 --retry-delay 2 --retry-all-errors --max-time 30 -w '%{http_code}' -o "$out" "$url")
-            echo "$name HTTP $code"
+            code="000"
+            for attempt in $(seq 1 12); do
+              code=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$out" "$url" || true)
+              echo "$name attempt $attempt HTTP $code"
+              [ "$code" = "200" ] && break
+              sleep 2
+            done
             test "$code" = "200"
           }
           get INDEX "$BASE_URL/index.html?smoke=$RANDOM" /tmp/index.html
