@@ -101,6 +101,7 @@ jobs:
           NODE
 
       - name: Browser render smoke
+        if: always()
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
