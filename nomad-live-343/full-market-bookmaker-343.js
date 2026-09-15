@@ -1,0 +1,161 @@
+(()=>{
+'use strict';
+const VERSION='343-full-market-bookmaker-v1-bulk-stable';
+const BOOKS=[
+  ['bet365','Bet365'],['pinnacle','Pinnacle'],['williamhill','William Hill'],['ladbrokes','Ladbrokes'],['vcbet','VCBet'],
+  ['1xbet','1xBet'],['bwin','Bwin'],['easybets','Easybets'],['interwetten','Interwetten'],['betfair','Betfair'],
+  ['snai','SNAI'],['macauslot','Macau Slot'],['betsson','Betsson'],['betathome','Bet-at-home'],['18bet','18Bet'],
+  ['10bet','10BET'],['12bet','12Bet'],['coral','Coral'],['crown','Crown']
+];
+const KNOWN={
+  '1x2':{label:'1X2',group:'Main Match',period:'FT',kind:'1X2',rank:10,aliases:['1x2','matchresult']},
+  'asian_handicap':{label:'Asian Handicap',group:'Main Match',period:'FT',kind:'AH',rank:11,aliases:['asianhandicap','asian','handicap']},
+  'goal_line':{label:'Goal O/U',group:'Main Match',period:'FT',kind:'TOTAL',rank:12,aliases:['goalline','goal','totalgoals','goalsoverunder']},
+  'btts':{label:'BTTS',group:'Main Match',period:'FT',kind:'BTTS',rank:13,aliases:['btts','bothteamstoscore']},
+  '1x2_half':{label:'1X2',group:'First Half',period:'1H',kind:'1X2',rank:20,aliases:['1x2half','half1x2','1h1x2']},
+  'asian_handicap_half':{label:'Asian Handicap',group:'First Half',period:'1H',kind:'AH',rank:21,aliases:['asianhandicaphalf','asianhalf','halfasianhandicap','1hasianhandicap']},
+  'goal_line_half':{label:'Goal O/U',group:'First Half',period:'1H',kind:'TOTAL',rank:22,aliases:['goallinehalf','halfgoalline','1hgoalline']},
+  'corner_line_half':{label:'Corner O/U',group:'First Half',period:'1H',kind:'TOTAL',rank:23,aliases:['cornerlinehalf','cornerhalf','halfcornerline','1hcornerline']},
+  'corner_asian_half':{label:'Corner AH',group:'First Half',period:'1H',kind:'AH',rank:24,aliases:['cornerasianhalf','halfcornerasian','1hcornerasian']},
+  'corner_line':{label:'Corner O/U',group:'Corners',period:'FT',kind:'TOTAL',rank:30,aliases:['cornerline','corners','corner']},
+  'corner_asian':{label:'Corner AH',group:'Corners',period:'FT',kind:'AH',rank:31,aliases:['cornerasian','cornerhandicap']},
+  'card_line':{label:'Cards O/U',group:'Cards',period:'FT',kind:'TOTAL',rank:40,aliases:['cardline','cardsline','cards']},
+  'card_asian':{label:'Cards AH',group:'Cards',period:'FT',kind:'AH',rank:41,aliases:['cardasian','cardsasian','cardhandicap']}
+};
+const ALIAS=new Map();for(const [key,m] of Object.entries(KNOWN))for(const a of m.aliases)ALIAS.set(a,key);
+const META=new Set(['id','name','slug','key','market','marketname','bookmaker','bookmakerid','source','provider','updatedat','createdat','timestamp','status','active','meta','metadata','fixtureid']);
+const CONTAINERS=new Set(['data','odds','markets','prices','price','values','value']);
+const state=new Map();
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const plain=v=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
+const structured=v=>plain(v)||Array.isArray(v);
+const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
+const pretty=v=>String(v||'Market').replace(/[._-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+function fixtureId(f){return String(f?.fixtureId??f?.id??'')}
+function fmt(v,price=false){const n=num(v);if(n===null)return v===null||v===undefined||v===''?'—':String(v);if(price)return n.toFixed(2);return Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000)}
+function canonicalBook(v){const n=norm(v);if(!n)return'unknown';for(const [slug] of BOOKS){if(n===norm(slug)||n.includes(norm(slug))||norm(slug).includes(n))return slug}return n}
+function bookName(slug,fallback=''){return BOOKS.find(([s])=>s===slug)?.[1]||fallback||slug||'Bookmaker'}
+function mergeRich(a,b){
+  if(a===null||a===undefined)return b;if(b===null||b===undefined)return a;
+  if(plain(a)&&plain(b)){const out={...a};for(const [k,v] of Object.entries(b))out[k]=k in out?mergeRich(out[k],v):v;return out}
+  if(plain(a)&&!plain(b))return a;if(!plain(a)&&plain(b))return b;
+  if(Array.isArray(a)&&Array.isArray(b))return [...a,...b];if(Array.isArray(a))return a;if(Array.isArray(b))return b;
+  return b;
+}
+function bookRoot(row){return row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??row?.data??row}
+function extractBooks(f){
+  const root=f?.providerOdds,map=new Map();
+  const push=(slug,name,data)=>{if(!structured(data))return;const s=canonicalBook(slug||name);if(s==='unknown')return;const prev=map.get(s);map.set(s,{slug:s,name:bookName(s,name),data:prev?mergeRich(prev.data,data):data,found:true})};
+  const ingest=c=>{
+    if(Array.isArray(c)){for(const row of c){if(!plain(row))continue;push(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name,row?.name??row?.bookmaker?.name,bookRoot(row))}return}
+    if(!plain(c))return;
+    if(c.name||c.slug||c.bookmaker){push(c?.slug??c?.bookmaker?.slug??c?.name,c?.name??c?.bookmaker?.name,bookRoot(c));return}
+    for(const [k,row] of Object.entries(c))if(structured(row))push(k,plain(row)?(row.name||k):k,bookRoot(row));
+  };
+  if(plain(root)){
+    [root.bookmakers,root?.data?.bookmakers,root?.odds?.bookmakers,root?.markets?.bookmakers,root?.data?.odds?.bookmakers,root?.data?.markets?.bookmakers].forEach(ingest);
+    const hosts=[root,root.data,root.odds,root.markets,root?.data?.odds,root?.data?.markets].filter(plain);
+    for(const [slug,name] of BOOKS)for(const host of hosts){const hit=host?.[slug]??host?.[name]??host?.[name.toLowerCase()];if(structured(hit))push(slug,name,bookRoot(hit))}
+    if(structured(root.odds))push('bet365','Bet365',root.odds);
+    if(structured(root.markets))push('bet365','Bet365',root.markets);
+    if(structured(root.bet365))push('bet365','Bet365',bookRoot(root.bet365));
+  }
+  if(structured(f?.fullOdds))push('bet365','Bet365',f.fullOdds);
+  const ordered=BOOKS.map(([slug,name])=>map.get(slug)||{slug,name,data:null,found:false});
+  const extra=[...map.values()].filter(b=>!BOOKS.some(([s])=>s===b.slug)).sort((a,b)=>a.name.localeCompare(b.name));
+  return ordered.concat(extra);
+}
+function stageKey(k){const n=norm(k);if(['opening','open'].includes(n))return'OPEN';if(['closing','close'].includes(n))return'CLOSE';if(['inplay','live'].includes(n))return'LIVE';if(['prematch','pre'].includes(n))return'PRE';if(['current','latest'].includes(n))return'CURRENT';return null}
+function hasStages(v){return plain(v)&&Object.keys(v).some(k=>Boolean(stageKey(k)))}
+function priceLike(v){if(!plain(v))return false;const keys=Object.keys(v).map(norm);return keys.some(k=>['line','hdp','handicap','total','home','homeodds','homeprice','draw','drawodds','drawprice','away','awayodds','awayprice','over','overodds','overprice','under','underodds','underprice','yes','no'].includes(k))}
+function inferMeta(path){
+  const raw=String(path||'market'),parts=raw.split('.').filter(Boolean),clean=parts.filter(p=>!/^\d+$/.test(p)&&!CONTAINERS.has(String(p).toLowerCase()));
+  for(let i=clean.length-1;i>=0;i--){const hit=ALIAS.get(norm(clean[i]));if(hit)return{key:hit,...KNOWN[hit]}}
+  const joined=norm(clean.join(' ')),is2h=/(2h|secondhalf)/.test(joined),is1h=/(1h|firsthalf|half)/.test(joined),period=is2h?'2H':is1h?'1H':'FT';
+  let kind='OTHER',group=is2h?'Second Half':is1h?'First Half':'Other Markets';
+  if(/1x2|matchresult/.test(joined))kind='1X2';else if(/asian|handicap/.test(joined))kind='AH';else if(/goal|total|overunder|corner|card/.test(joined))kind='TOTAL';else if(/btts|bothteam/.test(joined))kind='BTTS';
+  if(/corner/.test(joined)&&period==='FT')group='Corners';if(/card/.test(joined)&&period==='FT')group='Cards';
+  const label=pretty(clean.slice(-2).join(' · ')||raw);return{key:`other:${joined||norm(raw)}`,label,group,period,kind,rank:100};
+}
+function collectMarkets(root,prefix='',depth=0,out=new Map()){
+  if(root===null||root===undefined||depth>9)return out;
+  if(Array.isArray(root)){
+    root.forEach((row,i)=>{if(!plain(row))return;const named=row.market??row.market_name??row.marketName??row.key??row.slug??row.name;if(named){const value=row.odds??row.prices??row.values??row.value??row;const m=inferMeta(prefix?`${prefix}.${named}`:String(named)),prev=out.get(m.key);out.set(m.key,{...m,rawPath:String(named),value:prev?mergeRich(prev.value,value):value})}else collectMarkets(row,`${prefix}${prefix?'.':''}${i}`,depth+1,out)});return out;
+  }
+  if(!plain(root))return out;
+  for(const [key,value] of Object.entries(root)){
+    const nk=norm(key);if(META.has(nk)||key==='bookmakers'||value===null||value===undefined)continue;
+    const path=prefix?`${prefix}.${key}`:key;
+    const alias=ALIAS.get(norm(key));
+    if(alias||hasStages(value)||priceLike(value)||!structured(value)){
+      if(alias||hasStages(value)||priceLike(value)){const m=alias?{key:alias,...KNOWN[alias]}:inferMeta(path),prev=out.get(m.key);out.set(m.key,{...m,rawPath:path,value:prev?mergeRich(prev.value,value):value});continue}
+    }
+    if(structured(value))collectMarkets(value,path,depth+1,out);
+  }
+  return out;
+}
+function stageValue(market,stage){
+  if(market===null||market===undefined)return null;
+  if(stage==='NOW')return hasStages(market)?null:market;
+  if(!plain(market))return null;
+  for(const [k,v] of Object.entries(market))if(stageKey(k)===stage&&v!==null&&v!==undefined&&v!=='')return v;
+  return null;
+}
+function stagesFor(market){const base=['OPEN','CLOSE','LIVE'],extra=[];for(const s of ['PRE','CURRENT'])if(stageValue(market,s)!==null)extra.push(s);if(stageValue(market,'NOW')!==null)extra.push('NOW');return [...base,...extra]}
+function flatten(v,prefix='',depth=0,out=[]){
+  if(depth>6||v===null||v===undefined)return out;
+  if(Array.isArray(v)){v.forEach((x,i)=>flatten(x,`${prefix}${prefix?'.':''}${i}`,depth+1,out));return out}
+  if(!plain(v)){out.push({path:prefix||'value',key:norm(prefix.split('.').pop()||'value'),value:v});return out}
+  for(const [k,x] of Object.entries(v)){const nk=norm(k);if(META.has(nk)||/(timestamp|updatedat|createdat|fixtureid|bookmakerid)$/.test(nk))continue;flatten(x,prefix?`${prefix}.${k}`:k,depth+1,out)}return out;
+}
+function first(leaves,aliases){for(const a of aliases){const hit=leaves.find(x=>x.key===a);if(hit)return hit.value}return null}
+function cell(v,kind){
+  if(v===null||v===undefined||v==='')return null;
+  if(!structured(v)){return{line:fmt(v),a:'—',b:'—',c:'—',raw:fmt(v)}}
+  const leaves=flatten(v),line=first(leaves,['line','hdp','handicap','total']);
+  if(kind==='1X2')return{line:'—',a:fmt(first(leaves,['home','homeodds','homeprice','pricehome']),true),b:fmt(first(leaves,['draw','drawodds','drawprice','pricedraw']),true),c:fmt(first(leaves,['away','awayodds','awayprice','priceaway']),true)};
+  if(kind==='AH')return{line:fmt(line),a:fmt(first(leaves,['home','homeodds','homeprice','pricehome']),true),b:fmt(first(leaves,['away','awayodds','awayprice','priceaway']),true),c:'—'};
+  if(kind==='TOTAL')return{line:fmt(line),a:fmt(first(leaves,['over','overodds','overprice','priceover']),true),b:fmt(first(leaves,['under','underodds','underprice','priceunder']),true),c:'—'};
+  if(kind==='BTTS')return{line:'—',a:fmt(first(leaves,['yes','yesodds','yesprice']),true),b:fmt(first(leaves,['no','noodds','noprice']),true),c:'—'};
+  const raw=leaves.map(x=>`${pretty(x.path.split('.').slice(-2).join(' '))} ${fmt(x.value)}`).join(' · ');return{line:fmt(line),a:'—',b:'—',c:'—',raw:raw||'—'};
+}
+function headers(kind){if(kind==='1X2')return['STAGE','HOME','DRAW','AWAY'];if(kind==='AH')return['STAGE','LINE','HOME','AWAY'];if(kind==='TOTAL')return['STAGE','LINE','OVER','UNDER'];if(kind==='BTTS')return['STAGE','YES','NO',''];return['STAGE','DATA','','']}
+function marketTable(m){
+  const heads=headers(m.kind),stages=stagesFor(m.value),rows=stages.map(stage=>{const c=cell(stageValue(m.value,stage),m.kind);if(m.kind==='OTHER')return `<tr><th>${esc(stage)}</th><td colspan="3" class="fmb-raw">${esc(c?.raw||'—')}</td></tr>`;if(m.kind==='1X2')return `<tr><th>${esc(stage)}</th><td>${esc(c?.a||'—')}</td><td>${esc(c?.b||'—')}</td><td>${esc(c?.c||'—')}</td></tr>`;return `<tr><th>${esc(stage)}</th><td>${esc(c?.line||'—')}</td><td>${esc(c?.a||'—')}</td><td>${esc(c?.b||'—')}</td></tr>`}).join('');
+  return `<article class="fmb-market" data-market="${esc(m.key)}"><header><div><b>${esc(m.label)}</b><span>${esc(m.period)}</span></div><small>${esc(m.rawPath||m.key)}</small></header><div class="fmb-table-wrap"><table><thead><tr>${heads.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></article>`;
+}
+function inspectFixture(f){
+  const books=extractBooks(f),byBook=new Map();for(const b of books)byBook.set(b.slug,b.data?collectMarkets(b.data):new Map());
+  return{books,byBook,found:books.filter(b=>b.found).map(b=>b.slug),markets:[...new Set([...byBook.values()].flatMap(m=>[...m.keys()]))]};
+}
+function renderBookHtml(f,slug='bet365'){
+  const info=inspectFixture(f),book=info.books.find(b=>b.slug===slug)||info.books[0],markets=[...(info.byBook.get(book.slug)||new Map()).values()].sort((a,b)=>(a.rank??100)-(b.rank??100)||a.label.localeCompare(b.label));
+  const groups=['Main Match','First Half','Second Half','Corners','Cards','Other Markets'],html=[];
+  for(const group of groups){const rows=markets.filter(m=>m.group===group);if(rows.length)html.push(`<section class="fmb-group"><h4>${esc(group)}</h4>${rows.map(marketTable).join('')}</section>`)}
+  const knownGroups=new Set(groups);const extras=[...new Set(markets.map(m=>m.group).filter(g=>!knownGroups.has(g)))];for(const group of extras){const rows=markets.filter(m=>m.group===group);html.push(`<section class="fmb-group"><h4>${esc(group)}</h4>${rows.map(marketTable).join('')}</section>`)}
+  return html.join('')||`<div class="fmb-empty"><b>${esc(book.name)}</b><span>No odds data in the current Bulk Snapshot.</span><small>The bookmaker slot remains available; values stay — until upstream supplies them.</small></div>`;
+}
+function shellHtml(info,active){
+  const found=new Set(info.found),tabs=info.books.map(b=>`<button type="button" class="fmb-tab${b.slug===active?' active':''}${found.has(b.slug)?' has-data':' no-data'}" data-fmb-book="${esc(b.slug)}" aria-pressed="${b.slug===active?'true':'false'}"><b>${esc(b.name)}</b><i></i></button>`).join('');
+  return `<div class="fmb-head"><div><span>FULL MARKET · BOOKMAKERS</span><b>Bulk Snapshot</b></div><small>${info.found.length}/${info.books.length} books with data · DEC</small></div><div class="fmb-tabs" data-fmb-tabs>${tabs}</div><div class="fmb-panel" data-fmb-panel></div>`;
+}
+function stableString(v){try{return JSON.stringify(v)}catch{return String(Date.now())}}
+function update(expanded,fixture){
+  if(!expanded||!fixture)return;const host=expanded.querySelector('[data-full-market-card]');if(!host)return;
+  expanded._nomadFixture=fixture;const id=fixtureId(fixture),info=inspectFixture(fixture),saved=state.get(id)||{},active=info.books.some(b=>b.slug===saved.active)?saved.active:'bet365';
+  const shellSig=info.books.map(b=>`${b.slug}:${b.found?1:0}`).join('|');
+  if(host.dataset.shellSig!==shellSig){const oldScroll=host.querySelector('[data-fmb-tabs]')?.scrollLeft||0;host.innerHTML=shellHtml(info,active);const tabs=host.querySelector('[data-fmb-tabs]');if(tabs)tabs.scrollLeft=oldScroll;host.dataset.shellSig=shellSig;host.dataset.panelSig=''}
+  host.querySelectorAll('[data-fmb-book]').forEach(btn=>{const on=btn.dataset.fmbBook===active;btn.classList.toggle('active',on);btn.setAttribute('aria-pressed',on?'true':'false')});
+  const book=info.books.find(b=>b.slug===active),bookMap=info.byBook.get(active),panelSig=stableString({active,data:book?.data||null,markets:bookMap?[...bookMap.keys()]:[]});
+  if(host.dataset.panelSig!==panelSig){const panel=host.querySelector('[data-fmb-panel]');if(panel)panel.innerHTML=renderBookHtml(fixture,active);host.dataset.panelSig=panelSig}
+  state.set(id,{...saved,active});
+}
+function chooseBook(button){const expanded=button.closest('.match-expanded'),fixture=expanded?._nomadFixture;if(!expanded||!fixture)return;const id=fixtureId(fixture),slug=String(button.dataset.fmbBook||'bet365');state.set(id,{...(state.get(id)||{}),active:slug});const host=expanded.querySelector('[data-full-market-card]');if(host){host.dataset.panelSig='';update(expanded,fixture)}}
+function start(){
+  document.addEventListener('nomad343:fixture-ready',e=>{const expanded=e.target?.closest?.('.match-expanded')||document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(String(e.detail?.fixtureId||''))}"]`);if(expanded&&e.detail?.fixture)update(expanded,e.detail.fixture)});
+  document.addEventListener('click',e=>{const btn=e.target.closest?.('[data-fmb-book]');if(btn){e.preventDefault();e.stopPropagation();chooseBook(btn)}},true);
+  window.NOMAD343_FULL_MARKET_BOOKMAKER={version:VERSION,books:BOOKS,inspectFixture,renderBookHtml,update};
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
