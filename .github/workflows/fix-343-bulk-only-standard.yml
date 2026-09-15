@@ -82,21 +82,7 @@ jobs:
           curl -fsS --max-time 30 "$BASE_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
           curl -fsS --max-time 30 "$BASE_URL/api/full-market/health?smoke=$RANDOM" -o /tmp/fullmarket.json
           curl -fsS --max-time 30 "$BASE_URL/?smoke=$RANDOM" -o /tmp/index.html
-          node - <<'NODE'
-          const fs=require('fs');
-          const h=require('/tmp/health.json');
-          const b=require('/tmp/board.json');
-          const fm=require('/tmp/fullmarket.json');
-          if(h.ok!==true) throw Error('engine health not ok');
-          if(h.version!=='nomad343-engine-v4-bulk-only') throw Error('wrong engine version');
-          if(h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('engine not bulk-only');
-          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('board not ready');
-          if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0) throw Error('board referee not bulk-only');
-          if(fm.ok!==true||fm.mode!=='BULK_SNAPSHOT_ONLY'||Number(fm.externalRequestsAdded)!==0) throw Error('full-market compat not isolated');
-          const pick=b.fixtures.find(x=>x?.fixtureId)||null;
-          fs.writeFileSync('/tmp/fixture-id',pick?String(pick.fixtureId):'');
-          console.log('BULK_ONLY_OK', b.fixtures.length, 'fixtures', b.counts, 'signals', h.signalCount||0);
-          NODE
+          node -e "const fs=require('fs'),h=require('/tmp/health.json'),b=require('/tmp/board.json'),fm=require('/tmp/fullmarket.json');if(h.ok!==true)throw Error('engine health not ok');if(h.version!=='nomad343-engine-v4-bulk-only')throw Error('wrong engine version');if(h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0)throw Error('engine not bulk-only');if(b.ok!==true||!Array.isArray(b.fixtures))throw Error('board not ready');if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)throw Error('board referee not bulk-only');if(fm.ok!==true||fm.mode!=='BULK_SNAPSHOT_ONLY'||Number(fm.externalRequestsAdded)!==0)throw Error('full-market compat not isolated');const pick=b.fixtures.find(x=>x?.fixtureId)||null;fs.writeFileSync('/tmp/fixture-id',pick?String(pick.fixtureId):'');console.log('BULK_ONLY_OK',b.fixtures.length,'fixtures',b.counts,'signals',h.signalCount||0)"
           grep -Fq 'full-odds-main-343.js?v=' /tmp/index.html
           grep -Fq 'nav-clean-343.css?v=' /tmp/index.html
           grep -Fq 'utility-bar-343.js?v=' /tmp/index.html
@@ -104,12 +90,6 @@ jobs:
           if [ -n "$FIXTURE_ID" ]; then
             code="$(curl -sS --max-time 30 -o /tmp/fixture-odds.json -w '%{http_code}' "$BASE_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&smoke=$RANDOM")"
             test "$code" = "200" -o "$code" = "404"
-            node - <<'NODE'
-            const j=require('/tmp/fixture-odds.json');
-            if(Number(j.externalRequestsAdded)!==0) throw Error('Full Market added provider requests');
-            if(j.ok===true&&(j.source!=='BULK_SNAPSHOT'||j.cached!==true)) throw Error('Full Market is not reading cached bulk snapshot');
-            if(j.ok!==true&&j.error!=='ODDS_UNAVAILABLE_IN_BULK_SNAPSHOT') throw Error('unexpected Full Market response');
-            console.log('FULL_MARKET_CACHE_OK',j.ok===true?'ODDS_READY':'NO_ODDS_IN_SNAPSHOT');
-            NODE
+            node -e "const j=require('/tmp/fixture-odds.json');if(Number(j.externalRequestsAdded)!==0)throw Error('Full Market added provider requests');if(j.ok===true&&(j.source!=='BULK_SNAPSHOT'||j.cached!==true))throw Error('Full Market is not reading cached bulk snapshot');if(j.ok!==true&&j.error!=='ODDS_UNAVAILABLE_IN_BULK_SNAPSHOT')throw Error('unexpected Full Market response');console.log('FULL_MARKET_CACHE_OK',j.ok===true?'ODDS_READY':'NO_ODDS_IN_SNAPSHOT')"
           fi
           echo 'BULK_ONLY_WITH_CACHED_FULL_MARKET_OK'
