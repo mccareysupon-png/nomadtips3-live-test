@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 
-const VERSION='343-live-stable-v9';
+const VERSION='343-live-stable-v10-multi-open-anchor';
 const API='/api/engine/board';
 const SIGNALS_API='/api/engine/signals';
 const POLL_MS=30_000;
@@ -28,7 +28,7 @@ const stateEl=document.querySelector('[data-hub-state]');
 const history=new Map();
 const currentFixtures=new Map();
 const renderKeys=new Map();
-let openedId=null;
+const openedIds=new Set();
 let busy=false;
 let lockedSignals=new Set();
 let signalsReady=false;
@@ -93,29 +93,39 @@ function observe(f){
   if(classify(f)!=='live')return;
   const id=fixtureKey(f),m=minuteOf(f),h=history.get(id)||{events:[],books:{}};
   const ev=eventValue(f);if(m!==null&&ev)addPoint(h.events,{minute:m,home:ev.home,away:ev.away,observedAt:Date.now()},'minute');
-  if(id===openedId){for(const rec of priceRecords(f?.providerOdds??f?.odds)){const arr=h.books[rec.book]||(h.books[rec.book]=[]),p={minute:m,price:rec.price,observedAt:Date.now()},last=arr[arr.length-1];if(last&&last.price===p.price&&last.minute===p.minute)last.observedAt=p.observedAt;else{arr.push(p);if(arr.length>MAX_POINTS)arr.splice(0,arr.length-MAX_POINTS)}}}
+  if(openedIds.has(id)){for(const rec of priceRecords(f?.providerOdds??f?.odds)){const arr=h.books[rec.book]||(h.books[rec.book]=[]),p={minute:m,price:rec.price,observedAt:Date.now()},last=arr[arr.length-1];if(last&&last.price===p.price&&last.minute===p.minute)last.observedAt=p.observedAt;else{arr.push(p);if(arr.length>MAX_POINTS)arr.splice(0,arr.length-MAX_POINTS)}}}
   history.set(id,h);
 }
 function pruneHistory(fixtures){const live=new Set(fixtures.filter(f=>classify(f)==='live').map(fixtureKey));for(const id of history.keys())if(!live.has(id))history.delete(id)}
-function poly(points,val,w=600,h=150,pad=14){if(points.length<2)return'';const xs=points.map((p,i)=>num(p.minute)??i),ys=points.map(p=>num(p[val])).filter(v=>v!==null);if(!ys.length)return'';let xmin=Math.min(...xs),xmax=Math.max(...xs),ymin=Math.min(...ys),ymax=Math.max(...ys);if(xmax===xmin)xmax=xmin+1;if(ymax===ymin){ymin=Math.max(0,ymin-1);ymax+=1}return points.map((p,i)=>{const yv=num(p[val]);if(yv===null)return null;const xv=num(p.minute)??i,x=pad+(xv-xmin)/(xmax-xmin)*(w-pad*2),y=h-pad-(yv-ymin)/(ymax-ymin)*(h-pad*2);return`${x.toFixed(1)},${y.toFixed(1)}`}).filter(Boolean).join(' ')}
-function eventChart(f){const pts=history.get(fixtureKey(f))?.events||[];if(pts.length<2)return'<div class="chart-empty">กำลังสะสม Event ที่ตรวจพบจริง</div>';const hp=poly(pts,'home'),ap=poly(pts,'away');return`<div class="chart-legend"><span><i class="home-dot"></i>${esc(f?.home?.name||'HOME')}</span><span><i class="away-dot"></i>${esc(f?.away?.name||'AWAY')}</span></div><svg class="flow-svg" viewBox="0 0 600 150" preserveAspectRatio="none" aria-label="Event Flow"><line x1="14" y1="136" x2="586" y2="136" class="chart-axis"/>${hp?`<polyline points="${hp}" class="event-home"/>`:''}${ap?`<polyline points="${ap}" class="event-away"/>`:''}</svg>`}
 function bookSeriesPoints(arr,w=600,h=150,pad=14){if(arr.length<2)return'';const xs=arr.map((p,i)=>p.observedAt??i),ys=arr.map(p=>p.price),xmin=Math.min(...xs),xmax0=Math.max(...xs),xmax=xmax0===xmin?xmin+1:xmax0,ymin0=Math.min(...ys),ymax0=Math.max(...ys),ymin=ymin0===ymax0?Math.max(1,ymin0-.05):ymin0,ymax=ymin0===ymax0?ymax0+.05:ymax0;return arr.map((p,i)=>{const x=pad+((p.observedAt??i)-xmin)/(xmax-xmin)*(w-pad*2),y=h-pad-(p.price-ymin)/(ymax-ymin)*(h-pad*2);return`${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')}
 function bookChart(f){const books=history.get(fixtureKey(f))?.books||{},names=Object.keys(books).filter(n=>books[n].length).slice(0,8);if(!names.length)return'<div class="chart-empty">เปิดการ์ดคู่นี้ไว้เพื่อสะสมราคาจาก Bookmaker</div>';const lines=names.map((name,i)=>{const pts=bookSeriesPoints(books[name]);return pts?`<polyline points="${pts}" fill="none" stroke="${BOOK[i%BOOK.length]}" stroke-width="3" vector-effect="non-scaling-stroke"/>`:''}).join(''),legend=names.map((name,i)=>`<span><i style="background:${BOOK[i%BOOK.length]}"></i>${esc(name)}</span>`).join('');if(!lines)return`<div class="book-legend">${legend}</div><div class="chart-empty">กำลังสะสมการเปลี่ยนแปลงราคาที่ตรวจพบจริง</div>`;return`<div class="book-legend">${legend}</div><svg class="flow-svg" viewBox="0 0 600 150" preserveAspectRatio="none" aria-label="Bookmaker Price Flow"><line x1="14" y1="136" x2="586" y2="136" class="chart-axis"/>${lines}</svg>`}
 function flowCard(f,id){return`<section class="nomad-event-flow-card" data-event-flow-fixture="${esc(id)}" data-home="${esc(f?.home?.name||'HOME')}" data-away="${esc(f?.away?.name||'AWAY')}"><div class="nomad-flow-loading">Event Flow · Engine history</div></section>`}
 function detailHtml(f){const id=fixtureKey(f),kind=classify(f);if(kind==='scheduled')return'<div class="details-note">Match data will appear when the fixture goes live.</div>';return`${mirroredBars(f)}${flowCard(f,id)}<section class="flow-card book-flow-single"><div class="flow-head"><b>Bookmaker Price Flow</b><small>Actual observations</small></div><div class="flow-body">${bookChart(f)}</div></section><div class="details-note">Event Flow ใช้ประวัติกลางจาก Engine · ราคา Bookmaker แสดงเฉพาะข้อมูลที่ตรวจพบจริง${kind==='unknown'?' · ผลคู่นี้ยังไม่ยืนยัน จึงห้าม Settlement':''}</div>`}
 function card(f){
-  const id=fixtureKey(f),expanded=id===openedId,league=[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',homeName=f?.home?.name||'—',awayName=f?.away?.name||'—',kind=classify(f),score=kind==='scheduled'?'—':`${show(f?.goals?.home)}-${show(f?.goals?.away)}`,date=fixtureDateLabel(f),clock=clockLabel(f),half=halfScore(f),sig=signalState(f);
+  const id=fixtureKey(f),expanded=openedIds.has(id),league=[f?.league?.country,f?.league?.name].filter(Boolean).join(' · ')||'—',homeName=f?.home?.name||'—',awayName=f?.away?.name||'—',kind=classify(f),score=kind==='scheduled'?'—':`${show(f?.goals?.home)}-${show(f?.goals?.away)}`,date=fixtureDateLabel(f),clock=clockLabel(f),half=halfScore(f),sig=signalState(f);
   return`<article class="match-card event-compact${expanded?' expanded':''}" data-match-row data-match-id="${esc(id)}" tabindex="0" role="button" aria-expanded="${expanded?'true':'false'}"><div class="match-row scoreboard-default"><div class="league league-scoreboard">${esc(league)}</div><div class="fixture-scoreboard"><div class="fixture-meta ${kind}"><span class="fixture-date">${esc(date)}</span><span class="fixture-clock">${esc(clock)}</span></div><div class="team-slot home-slot"><span class="team-name">${esc(homeName)}</span></div><div class="score-core"><strong>${esc(score)}</strong>${half?`<small class="half-score">HT ${esc(half)}</small>`:''}</div><div class="team-slot away-slot"><span class="team-name">${esc(awayName)}</span></div><div class="fixture-side"><span class="signal-state ${sig.key}"><i aria-hidden="true"></i>${esc(sig.text)}</span></div></div></div><span class="expand-cue" aria-hidden="true">▼</span><div class="event-details"${expanded?'':' hidden'}>${expanded?detailHtml(f):''}</div></article>`;
 }
 function emptyText(key){if(key==='live')return'ยังไม่มีคู่กำลังแข่งขัน';if(key==='scheduled')return'ไม่มีคู่รอเตะเพิ่มเติม';if(key==='unknown')return'ไม่มีคู่ที่ผลหรือสถานะยังไม่ยืนยัน';return'ยังไม่มีคู่จบการแข่งขัน'}
-function rowSignature(f){const id=fixtureKey(f),kind=classify(f),sig=signalState(f).key,base=[id,kind,minuteOf(f),f?.statusCode,f?.goals?.home,f?.goals?.away,f?.goals?.halfHome,f?.goals?.halfAway,sig];if(id===openedId)base.push(JSON.stringify(f?.statistics||{}),JSON.stringify(f?.corners||null));return base.join('|')}
+function rowSignature(f){const id=fixtureKey(f),kind=classify(f),sig=signalState(f).key,base=[id,kind,minuteOf(f),f?.statusCode,f?.goals?.home,f?.goals?.away,f?.goals?.halfHome,f?.goals?.halfAway,sig];if(openedIds.has(id))base.push(JSON.stringify(f?.statistics||{}),JSON.stringify(f?.corners||null));return base.join('|')}
+function viewportAnchor(){
+  const cards=[...document.querySelectorAll('.match-card[data-match-id]')];
+  const el=cards.find(node=>{const r=node.getBoundingClientRect();return r.bottom>0&&r.top<window.innerHeight})||cards[0];
+  if(!el)return null;
+  return{id:String(el.dataset.matchId||''),top:el.getBoundingClientRect().top};
+}
+function restoreViewport(anchor){
+  if(!anchor?.id)return;
+  requestAnimationFrame(()=>{const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(anchor.id)}"]`);if(!el)return;const delta=el.getBoundingClientRect().top-anchor.top;if(Number.isFinite(delta)&&Math.abs(delta)>.5)window.scrollBy(0,delta)});
+}
 function renderGroup(key,rows){if(counts[key])counts[key].textContent=String(rows.length);const signature=rows.map(rowSignature).join('~');if(renderKeys.get(key)===signature)return;renderKeys.set(key,signature);if(boards[key])boards[key].innerHTML=rows.length?rows.map(card).join(''):`<div class="empty compact-empty">${emptyText(key)}</div>`}
 function render(snapshot){
+  const anchor=viewportAnchor();
   const fixtures=Array.isArray(snapshot?.fixtures)?snapshot.fixtures.slice():[];
   currentFixtures.clear();for(const f of fixtures){currentFixtures.set(fixtureKey(f),f);observe(f)}pruneHistory(fixtures);
   fixtures.sort((a,b)=>(dateMs(a?.kickoffAt??a?.kickoffUtc)??0)-(dateMs(b?.kickoffAt??b?.kickoffUtc)??0));
   for(const key of Object.keys(boards))renderGroup(key,fixtures.filter(f=>classify(f)===key));
-  if(openedId){const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(openedId)}"]`);if(el)window.NOMAD_EVENT_FLOW_343?.hydrate(el)}
+  for(const id of openedIds){const el=document.querySelector(`.match-card[data-match-id="${CSS.escape(id)}"]`);if(el)window.NOMAD_EVENT_FLOW_343?.hydrate(el)}
+  restoreViewport(anchor);
 }
 function setState(snapshot,error){if(!stateEl)return;if(error){const timeout=String(error?.message||'').includes('TIMEOUT');stateEl.innerHTML=`<span class="pill"><i class="dot warn"></i>${timeout?'Live data timeout · retrying':'ข้อมูลสดไม่พร้อม · retrying'}</span>`;return}const stale=Boolean(snapshot?.stale),age=Math.round(Number(snapshot?.hubAgeMs||0)/1000);stateEl.innerHTML=`<span class="pill"><i class="dot ${stale?'warn':'live'}"></i>${stale?'ข้อมูลล่าช้า':'Live data'} · ${age}s</span>`}
 async function load(){
@@ -134,15 +144,20 @@ async function load(){
 function openDetail(el,id){const f=currentFixtures.get(id),detail=el.querySelector('.event-details');if(!detail||!f)return;if(!detail.innerHTML)detail.innerHTML=detailHtml(f);detail.hidden=false;window.NOMAD_EVENT_FLOW_343?.hydrate(el)}
 function toggle(el){
   const id=String(el?.dataset?.matchId||'');if(!id)return;
-  openedId=openedId===id?null:id;
-  renderKeys.clear();
-  document.querySelectorAll('.match-card[data-match-id]').forEach(node=>{const on=String(node.dataset.matchId||'')===openedId;node.classList.toggle('expanded',on);node.setAttribute('aria-expanded',String(on));const detail=node.querySelector('.event-details');if(detail)detail.hidden=!on;if(on)openDetail(node,id)});
-  if(openedId)el.focus({preventScroll:true});
+  const before=el.getBoundingClientRect().top;
+  const opening=!openedIds.has(id);
+  if(opening)openedIds.add(id);else openedIds.delete(id);
+  el.classList.toggle('expanded',opening);
+  el.setAttribute('aria-expanded',String(opening));
+  const detail=el.querySelector('.event-details');
+  if(detail)detail.hidden=!opening;
+  if(opening)openDetail(el,id);
+  requestAnimationFrame(()=>{const delta=el.getBoundingClientRect().top-before;if(Number.isFinite(delta)&&Math.abs(delta)>.5)window.scrollBy(0,delta)});
 }
 document.addEventListener('click',e=>{const el=e.target.closest('.match-card[data-match-id]');if(el)toggle(el)});
 document.addEventListener('keydown',e=>{const el=e.target.closest('.match-card[data-match-id]');if(!el)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(el)}});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
 load();
 setInterval(load,POLL_MS);
-window.NOMAD343_LIVE={version:VERSION,reload:load};
+window.NOMAD343_LIVE={version:VERSION,reload:load,openedIds};
 })();
