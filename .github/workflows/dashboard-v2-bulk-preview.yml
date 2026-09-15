@@ -1,0 +1,141 @@
+name: NOMAD 3.43 V2 Bulk UI
+
+on:
+  push:
+    branches: [work/nomad343-v2-primary-20260915]
+    paths:
+      - 'nomad-live-343/index.html'
+      - 'nomad-live-343/dashboard-v2*'
+      - 'nomad-live-343/signal.html'
+      - 'nomad-live-343/statistics.html'
+      - 'nomad-live-343/settings.html'
+      - 'nomad-live-343/v2-shared.*'
+      - 'nomad-live-343/signal.js'
+      - 'nomad-live-343/statistics.js'
+      - 'nomad-live-343/settings.js'
+      - 'workers/nomadtips3-343-preview/**'
+      - '.github/workflows/dashboard-v2-bulk-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASE_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  validate-deploy-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate V2 UI and bulk-only contract
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/dashboard-v2.js
+          node --check nomad-live-343/dashboard-v2-tune.js
+          node --check nomad-live-343/signal.js
+          node --check nomad-live-343/statistics.js
+          node --check nomad-live-343/settings.js
+          node --check nomad-live-343/v2-shared.js
+          grep -Fq "const API='/api/engine/board'" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "const API='/api/engine/signals'" nomad-live-343/signal.js
+          grep -Fq "const API='/api/engine/statistics'" nomad-live-343/statistics.js
+          grep -Fq "const API='/api/engine/settings'" nomad-live-343/settings.js
+          grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' nomad-live-343/index.html
+          grep -Fq 'BULK SNAPSHOT' nomad-live-343/signal.html
+          grep -Fq 'BULK SNAPSHOT' nomad-live-343/statistics.html
+          grep -Fq '0 per-fixture provider requests' nomad-live-343/settings.html
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
+            echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
+          fi
+          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/dashboard-v2-tune.js nomad-live-343/v2-shared.js; then
+            echo 'ERROR: presentation-only UI layer contains network caller'; exit 1
+          fi
+          if grep -Fq '"FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc; then
+            echo 'ERROR: Preview worker restored FULL_MARKET binding'; exit 1
+          fi
+          grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
+          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then
+            echo 'ERROR: bulk engine contains direct provider URL'; exit 1
+          fi
+
+      - name: Dry-run preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy V2 UI assets
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: HTTP smoke all V2 pages
+        run: |
+          set -euo pipefail
+          get() {
+            name="$1"; url="$2"; out="$3"
+            echo "CHECK $name $url"
+            code="000"
+            for attempt in $(seq 1 12); do
+              code=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$out" "$url" || true)
+              echo "$name attempt $attempt HTTP $code"
+              [ "$code" = "200" ] && break
+              sleep 2
+            done
+            test "$code" = "200"
+          }
+          get INDEX "$BASE_URL/index.html?smoke=$RANDOM" /tmp/index.html
+          get SIGNAL "$BASE_URL/signal.html?smoke=$RANDOM" /tmp/signal.html
+          get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
+          get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
+          get SHARED_CSS "$BASE_URL/v2-shared.css?smoke=$RANDOM" /tmp/shared.css
+          get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
+          get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
+          get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
+          get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
+          get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
+          get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
+          grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' /tmp/index.html
+          grep -Fq '343-signal-v2-bulk-ui' /tmp/signal.html
+          grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
+          grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
+          grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js; then
+            echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
+          fi
+          node - <<'NODE'
+          const h=require('/tmp/health.json');
+          const b=require('/tmp/board.json');
+          if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('runtime architecture is not bulk-only');
+          if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
+          console.log('V2_BULK_RUNTIME_OK',Array.isArray(b.fixtures)?b.fixtures.length:0,'fixtures',b.counts||{});
+          NODE
+
+      - name: Browser render smoke all pages
+        if: always()
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          render() {
+            path="$1"; out="$2"
+            "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom "$BASE_URL/$path?browser=$RANDOM" > "$out"
+          }
+          render index.html /tmp/index-rendered.html
+          render signal.html /tmp/signal-rendered.html
+          render statistics.html /tmp/stat-rendered.html
+          render settings.html /tmp/settings-rendered.html
+          grep -Fq 'class="match-row' /tmp/index-rendered.html
+          if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR: index still loading'; exit 1; fi
+          grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
+          grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
+          grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
+          grep -Fq 'data-rule=' /tmp/settings-rendered.html
+          echo 'V2_BROWSER_ALL_PAGES_OK'

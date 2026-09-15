@@ -1,0 +1,11 @@
+/* Dashboard V2 mobile tune: presentation-only, no data/API side effects. */
+.desktop-signal{display:inline}.mobile-clock,.mobile-signal{display:none}
+@media(max-width:760px){
+  .score-cell>small:not(.half-score){display:none!important}
+  .signal-cell:before{content:none!important;display:none!important}
+  .signal-cell{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);min-width:0}
+  .desktop-signal{display:none!important}
+  .mobile-clock{display:block;font-size:11px;font-weight:900;line-height:1.1;color:var(--text);white-space:nowrap}
+  .mobile-signal{display:block;font-size:6px;font-weight:900;line-height:1.1;color:var(--muted);white-space:nowrap}
+  .signal-cell.locked .mobile-signal{color:var(--green)}
+}
