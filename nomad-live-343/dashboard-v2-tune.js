@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-dashboard-v2-ui-tune-v1';
+const VERSION='343-dashboard-v2-ui-tune-v2-loop-safe';
 let autoStatusChosen=false;
 let userStatusChosen=false;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8,10 +8,11 @@ function decorateRows(){
   document.querySelectorAll('.match-row').forEach(row=>{
     const score=row.querySelector('.score-cell');
     const signal=row.querySelector('.signal-cell');
-    if(!score||!signal)return;
+    if(!score||!signal||signal.dataset.mobileTune==='1')return;
     const clock=score.querySelector('small:not(.half-score)')?.textContent?.trim()||'—';
-    const current=signal.dataset.originalSignal||signal.textContent.trim()||'WATCH';
-    if(!signal.dataset.originalSignal)signal.dataset.originalSignal=current;
+    const current=signal.textContent.trim()||'WATCH';
+    signal.dataset.mobileTune='1';
+    signal.dataset.originalSignal=current;
     signal.innerHTML=`<span class="desktop-signal">${esc(current)}</span><span class="mobile-clock">${esc(clock)}</span><small class="mobile-signal">${esc(current)}</small>`;
   });
 }
@@ -33,7 +34,8 @@ function sync(){decorateRows();chooseCompactDefault()}
 function init(){
   document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.addEventListener('click',e=>{if(e.isTrusted){userStatusChosen=true;autoStatusChosen=true}}));
   const root=document.querySelector('[data-board-sections]')||document.body;
-  new MutationObserver(()=>sync()).observe(root,{childList:true,subtree:true});
+  const observer=new MutationObserver(()=>sync());
+  observer.observe(root,{childList:true,subtree:true});
   sync();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
