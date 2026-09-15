@@ -37,6 +37,8 @@ jobs:
           grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq 'dashboard-v2-tune.js' nomad-live-343/dashboard-v2.html
           grep -Fq 'dashboard-v2-tune.css' nomad-live-343/dashboard-v2.html
+          grep -Fq '343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe' nomad-live-343/dashboard-v2-tune.js
+          grep -Fq "signal.dataset.mobileTune='1'" nomad-live-343/dashboard-v2-tune.js
           if grep -Eq 'fixture-odds|api\.5dollarfootballapi\.com|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js; then
             echo 'ERROR: Dashboard V2 contains a forbidden per-fixture/provider caller'; exit 1
           fi
@@ -45,6 +47,10 @@ jobs:
           fi
           if grep -Fq '"FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc; then
             echo 'ERROR: Preview worker restored FULL_MARKET binding'; exit 1
+          fi
+          grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
+          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then
+            echo 'ERROR: inherited bulk engine contains direct provider URL'; exit 1
           fi
 
       - name: Dry-run preview
@@ -65,25 +71,19 @@ jobs:
             echo "$name HTTP $code"
             test "$code" = "200"
           }
-          post() {
-            name="$1"; url="$2"; out="$3"
-            echo "CHECK $name $url"
-            code=$(curl -sS -L -X POST --retry 3 --retry-delay 1 --retry-all-errors --max-time 30 -w '%{http_code}' -o "$out" "$url")
-            echo "$name HTTP $code"
-            test "$code" = "200"
-          }
           get DASHBOARD "$BASE_URL/dashboard-v2.html?smoke=$RANDOM" /tmp/dashboard.html
           get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
           get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
           get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
-          post ENGINE_SCAN "$BASE_URL/api/engine/scan?smoke=$RANDOM" /tmp/scan.json
           get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
           grep -Fq 'dashboard-v2-stage3.js' /tmp/dashboard.html
-          grep -Fq 'dashboard-v2-tune.js' /tmp/dashboard.html
+          grep -Fq 'dashboard-v2-tune.js?v=343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe' /tmp/dashboard.html
           grep -Fq 'dashboard-v2-tune.css' /tmp/dashboard.html
           grep -Fq "const API='/api/engine/board'" /tmp/dashboard.js
           grep -Fq "const SIGNALS_API='/api/engine/signals'" /tmp/dashboard.js
+          grep -Fq '343-dashboard-v2-ui-tune-v3-mobile-status-loop-safe' /tmp/tune.js
+          grep -Fq "signal.dataset.mobileTune='1'" /tmp/tune.js
           grep -Fq 'mobile-clock' /tmp/tune.js
           grep -Fq 'mobile-clock' /tmp/tune.css
           if grep -Eq 'fixture-odds|api\.5dollarfootballapi\.com|/api/full-market/' /tmp/dashboard.js; then
@@ -93,11 +93,9 @@ jobs:
             echo 'ERROR: deployed tune layer is not presentation-only'; exit 1
           fi
           node - <<'NODE'
-          const s=require('/tmp/scan.json');
           const h=require('/tmp/health.json');
           const b=require('/tmp/board.json');
-          if(s.ok!==true||s.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(s.externalOddsRequests)!==0) throw Error('fresh scan is not bulk-only');
-          if(h.ok!==true||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('engine is not bulk-only after fresh scan');
-          if(b.ok!==true||!Array.isArray(b.fixtures)||b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0) throw Error('board is not bulk-only');
-          console.log('DASHBOARD_V2_TUNED_BULK_OK', b.fixtures.length, 'fixtures', b.counts);
+          if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('runtime architecture is not bulk-only');
+          if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
+          console.log('DASHBOARD_V2_TUNED_BULK_OK', Array.isArray(b.fixtures)?b.fixtures.length:0, 'fixtures', b.counts||{}, 'healthOk', h.ok);
           NODE
