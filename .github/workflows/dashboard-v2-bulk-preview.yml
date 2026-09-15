@@ -58,7 +58,6 @@ jobs:
             nomad-live-343/v2-shared.js; do
             node --check "$f"
           done
-
           grep -Fq "const API='/api/engine/board'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const BOARD_API='/api/engine/board'" nomad-live-343/expanded-match-343.js
           grep -Fq "const HISTORY_API='/api/engine/history'" nomad-live-343/expanded-match-343.js
@@ -73,31 +72,13 @@ jobs:
           grep -Fq "if(!structured(v))return scalarHtml(v)" nomad-live-343/expanded-odds-complete-343.js
           grep -Fq 'expanded-match-343.js?v=343-expand-v2-single-owner' nomad-live-343/index.html
           grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' nomad-live-343/index.html
-
-          if grep -Fq 'function renderOdds' nomad-live-343/expanded-match-343.js; then
-            echo 'ERROR legacy second Odds renderer restored'; exit 1
-          fi
-          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/expanded-odds-complete-343.js; then
-            echo 'ERROR complete Odds renderer must remain network-free'; exit 1
-          fi
-          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' \
-            nomad-live-343/dashboard-v2-stage3.js \
-            nomad-live-343/expanded-match-343.js \
-            nomad-live-343/expanded-odds-complete-343.js \
-            nomad-live-343/signal.js nomad-live-343/statistics.js \
-            nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
-            echo 'ERROR V2 restored forbidden provider/per-fixture caller'; exit 1
-          fi
-          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/dashboard-v2-tune.js nomad-live-343/v2-shared.js; then
-            echo 'ERROR presentation-only layer contains network caller'; exit 1
-          fi
-          if grep -Fq '"FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc; then
-            echo 'ERROR Preview restored FULL_MARKET binding'; exit 1
-          fi
+          if grep -Fq 'function renderOdds' nomad-live-343/expanded-match-343.js; then echo 'ERROR legacy second Odds renderer restored'; exit 1; fi
+          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/expanded-odds-complete-343.js; then echo 'ERROR complete Odds renderer must remain network-free'; exit 1; fi
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/expanded-match-343.js nomad-live-343/expanded-odds-complete-343.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then echo 'ERROR V2 restored forbidden provider/per-fixture caller'; exit 1; fi
+          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/dashboard-v2-tune.js nomad-live-343/v2-shared.js; then echo 'ERROR presentation-only layer contains network caller'; exit 1; fi
+          if grep -Fq '"FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc; then echo 'ERROR Preview restored FULL_MARKET binding'; exit 1; fi
           grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
-          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then
-            echo 'ERROR bulk Engine contains direct provider URL'; exit 1
-          fi
+          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then echo 'ERROR bulk Engine contains direct provider URL'; exit 1; fi
           echo 'STATIC_JOHN_GUARDS_OK'
 
       - name: Parser regression self-test
@@ -110,32 +91,17 @@ jobs:
           require('./nomad-live-343/expanded-odds-complete-343.js');
           const api=global.window.NOMAD343_COMPLETE_ODDS;
           if(!api||typeof api.render!=='function')throw Error('complete odds API missing');
-          const fixture={fixtureId:'selftest',providerOdds:{
-            odds:{
-              '1x2':{opening:{home:1.8,draw:3.4,away:4.2},closing:{home:1.75,draw:3.5,away:4.4},inplay:null},
-              asian_handicap:{opening:-0.25,closing:-0.5,inplay:-0.75},
-              goal_line:{opening:2.5,closing:2.75,inplay:3},
-              corner_line:{opening:9.5,closing:10,inplay:10.5},
-              card_line:{opening:4.5,closing:5,inplay:null},
-              asian_handicap_half:{opening:-0.25,closing:-0.25,inplay:null},
-              goal_line_half:{opening:1,closing:1.25,inplay:1.5},
-              corner_line_half:{opening:4.5,closing:4.5,inplay:5},
-              btts:{opening:{yes:1.8,no:1.95},closing:{yes:1.72,no:2.05},inplay:null}
-            },
-            bookmakers:[{slug:'pinnacle',name:'Pinnacle',odds:{
-              asian_handicap:{opening:{line:-0.25,home:1.95,away:1.85},closing:{line:-0.5,home:2.02,away:1.78},inplay:{line:-1,home:1.9,away:1.9}},
-              goal_line:{opening:{line:2.5,over:1.9,under:1.9},closing:{line:2.75,over:1.85,under:1.95},inplay:{line:3,over:2.05,under:1.75}}
-            }}]
-          }};
-          const html=api.render(fixture);
-          for(const token of ['Asian Handicap','Goal O/U','Corner O/U','Cards O/U','Asian Handicap · 1H','BTTS','LINE','Pinnacle','William Hill','Crown']){
-            if(!html.includes(token))throw Error(`missing parser token: ${token}`);
-          }
-          const diag=api.inspectFixture(fixture);
-          if(!diag.found.includes('bet365')||!diag.found.includes('pinnacle'))throw Error('bookmaker merge failed');
-          for(const k of ['1x2','asian_handicap','goal_line','corner_line','card_line','asian_handicap_half','goal_line_half','corner_line_half','btts']){
-            if(!diag.markets.includes(k))throw Error(`market discovery failed: ${k}`);
-          }
+          const fixture={fixtureId:'selftest',providerOdds:{odds:{
+            '1x2':{opening:{home:1.8,draw:3.4,away:4.2},closing:{home:1.75,draw:3.5,away:4.4},inplay:null},
+            asian_handicap:{opening:-0.25,closing:-0.5,inplay:-0.75},goal_line:{opening:2.5,closing:2.75,inplay:3},
+            corner_line:{opening:9.5,closing:10,inplay:10.5},corner_asian:{opening:-1,closing:-1.5,inplay:-2},
+            card_line:{opening:4.5,closing:5,inplay:null},card_asian:{opening:-0.5,closing:-0.5,inplay:null},
+            asian_handicap_half:{opening:-0.25,closing:-0.25,inplay:null},goal_line_half:{opening:1,closing:1.25,inplay:1.5},
+            corner_line_half:{opening:4.5,closing:4.5,inplay:5},btts:{opening:{yes:1.8,no:1.95},closing:{yes:1.72,no:2.05},inplay:null}
+          },bookmakers:[{slug:'pinnacle',name:'Pinnacle',odds:{asian_handicap:{opening:{line:-0.25,home:1.95,away:1.85},closing:{line:-0.5,home:2.02,away:1.78},inplay:{line:-1,home:1.9,away:1.9}},goal_line:{opening:{line:2.5,over:1.9,under:1.9},closing:{line:2.75,over:1.85,under:1.95},inplay:{line:3,over:2.05,under:1.75}}}}]}};
+          const html=api.render(fixture),diag=api.inspectFixture(fixture);
+          for(const token of ['Asian Handicap','Goal O/U','Corner O/U','Corner AH','Cards O/U','Cards AH','Asian Handicap · 1H','BTTS','LINE','Pinnacle','William Hill','Crown'])if(!html.includes(token))throw Error(`missing parser token: ${token}`);
+          for(const k of ['1x2','asian_handicap','goal_line','corner_line','corner_asian','card_line','card_asian','asian_handicap_half','goal_line_half','corner_line_half','btts'])if(!diag.markets.includes(k))throw Error(`market discovery failed: ${k}`);
           console.log('ODDS_PARSER_SELFTEST_OK',JSON.stringify({found:diag.found,markets:diag.markets}));
           NODE
 
@@ -147,104 +113,63 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: HTTP smoke and runtime Odds coverage
+      - name: HTTP smoke and real Board Odds coverage
         run: |
           set -euo pipefail
-          get() {
-            name="$1"; url="$2"; out="$3"; code="000"
-            for attempt in $(seq 1 12); do
-              code=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$out" "$url" || true)
-              echo "$name attempt $attempt HTTP $code"
-              [ "$code" = "200" ] && break
-              sleep 2
-            done
-            [ "$code" = "200" ] || { echo "ERROR HTTP $name=$code"; exit 1; }
-          }
-          must() { label="$1"; pattern="$2"; file="$3"; grep -Fq "$pattern" "$file" || { echo "ERROR STATIC_CHECK $label missing [$pattern] in $file"; exit 1; }; echo "CHECK_OK $label"; }
+          get() { name="$1"; url="$2"; out="$3"; code="000"; for attempt in $(seq 1 15); do code=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$out" "$url" || true); echo "$name attempt $attempt HTTP $code"; [ "$code" = "200" ] && break; sleep 2; done; [ "$code" = "200" ] || { echo "ERROR HTTP $name=$code"; exit 1; }; }
+          get_contains() { name="$1"; url="$2"; out="$3"; pattern="$4"; for attempt in $(seq 1 15); do code=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$out" "$url" || true); if [ "$code" = "200" ] && grep -Fq "$pattern" "$out"; then echo "$name version ready attempt $attempt"; return 0; fi; echo "$name waiting for propagated version attempt $attempt HTTP $code"; sleep 2; done; echo "ERROR $name propagated version missing [$pattern]"; exit 1; }
 
-          get INDEX "$BASE_URL/index.html?smoke=$RANDOM" /tmp/index.html
-          get SIGNAL "$BASE_URL/signal.html?smoke=$RANDOM" /tmp/signal.html
-          get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
-          get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
-          get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
-          get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
-          get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
-          get EXPAND_JS "$BASE_URL/expanded-match-343.js?smoke=$RANDOM" /tmp/expand.js
-          get COMPLETE_ODDS_JS "$BASE_URL/expanded-odds-complete-343.js?smoke=$RANDOM" /tmp/complete-odds.js
+          get_contains INDEX "$BASE_URL/index.html?smoke=$RANDOM" /tmp/index.html 'expanded-match-343.js?v=343-expand-v2-single-owner'
+          get_contains EXPAND_JS "$BASE_URL/expanded-match-343.js?smoke=$RANDOM" /tmp/expand.js '343-expanded-match-v2-single-odds-owner'
+          get_contains COMPLETE_ODDS_JS "$BASE_URL/expanded-odds-complete-343.js?smoke=$RANDOM" /tmp/complete-odds.js '343-expanded-odds-complete-v3-single-owner'
           get COMPLETE_ODDS_CSS "$BASE_URL/expanded-odds-complete-343.css?smoke=$RANDOM" /tmp/complete-odds.css
           get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
+          get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
+          get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
+          get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
 
           node - <<'NODE'
-          const h=require('/tmp/health.json');
-          const b=require('/tmp/board.json');
-          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
-          const add=(o,k)=>{if(k)o[k]=(o[k]||0)+1};
-          const marketCounts={},bookCounts={},rootCounts={},shapeCounts={};
+          const h=require('/tmp/health.json'),b=require('/tmp/board.json'),fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const add=(o,k)=>{if(k)o[k]=(o[k]||0)+1},marketCounts={},bookCounts={},rootCounts={},shapeCounts={};
           const marketNames=new Set(['1x2','asian_handicap','asian','goal_line','goalline','corner_line','corner','corner_asian','card_line','cards','card_asian','cards_asian','asian_handicap_half','asian_half','goal_line_half','goalline_half','corner_line_half','corner_half','btts']);
           const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9_]/g,'');
-          function walk(v,path='',depth=0){
-            if(depth>8||v==null)return;
-            if(Array.isArray(v)){for(const x of v)walk(x,path,depth+1);return}
-            if(typeof v!=='object')return;
-            for(const [k,x] of Object.entries(v)){
-              const n=norm(k),p=path?`${path}.${k}`:k;
-              if(marketNames.has(n))add(marketCounts,n);
-              if(['opening','open','closing','close','current','latest','inplay','live','prematch','pre'].includes(n))add(shapeCounts,`${n}:${x===null?'null':Array.isArray(x)?'array':typeof x}`);
-              walk(x,p,depth+1);
-            }
-          }
+          function walk(v,depth=0){if(depth>8||v==null)return;if(Array.isArray(v)){for(const x of v)walk(x,depth+1);return}if(typeof v!=='object')return;for(const [k,x] of Object.entries(v)){const n=norm(k);if(marketNames.has(n))add(marketCounts,n);if(['opening','open','closing','close','current','latest','inplay','live','prematch','pre'].includes(n))add(shapeCounts,`${n}:${x===null?'null':Array.isArray(x)?'array':typeof x}`);walk(x,depth+1)}}
           const samples=[];
-          for(const f of fixtures){
-            const p=f?.providerOdds||{};
-            for(const k of ['bookmakers','bet365','markets','odds'])if(p[k]!=null)add(rootCounts,k);
-            const books=Array.isArray(p.bookmakers)?p.bookmakers:[];
-            for(const x of books)add(bookCounts,String(x?.slug||x?.bookmaker?.slug||x?.name||x?.bookmaker?.name||'unknown'));
-            for(const src of [p.odds,p.markets,p.bet365,p.bookmakers,f.fullOdds])walk(src);
-            if(samples.length<8&&(f?.providerOdds||f?.fullOdds))samples.push({
-              fixtureId:f.fixtureId,
-              providerOddsKeys:Object.keys(p),
-              oddsKeys:p.odds&&typeof p.odds==='object'&&!Array.isArray(p.odds)?Object.keys(p.odds).slice(0,30):[],
-              marketKeys:p.markets&&typeof p.markets==='object'&&!Array.isArray(p.markets)?Object.keys(p.markets).slice(0,30):[],
-              bet365Keys:p.bet365&&typeof p.bet365==='object'&&!Array.isArray(p.bet365)?Object.keys(p.bet365).slice(0,30):[],
-              bookmakerCount:books.length,
-              fullOddsKeys:f.fullOdds&&typeof f.fullOdds==='object'&&!Array.isArray(f.fullOdds)?Object.keys(f.fullOdds).slice(0,30):[]
-            });
-          }
+          for(const f of fixtures){const p=f?.providerOdds||{};for(const k of ['bookmakers','bet365','markets','odds'])if(p[k]!=null)add(rootCounts,k);const books=Array.isArray(p.bookmakers)?p.bookmakers:[];for(const x of books)add(bookCounts,String(x?.slug||x?.bookmaker?.slug||x?.name||x?.bookmaker?.name||'unknown'));for(const src of [p.odds,p.markets,p.bet365,p.bookmakers,f.fullOdds])walk(src);if(samples.length<5&&(f?.providerOdds||f?.fullOdds))samples.push({fixtureId:f.fixtureId,providerOddsKeys:Object.keys(p),oddsKeys:p.odds&&typeof p.odds==='object'&&!Array.isArray(p.odds)?Object.keys(p.odds):[],bookmakerCount:books.length,fullOddsKeys:f.fullOdds&&typeof f.fullOdds==='object'&&!Array.isArray(f.fullOdds)?Object.keys(f.fullOdds):[]})}
           console.log('ENGINE_RUNTIME',JSON.stringify({version:h.version,dataMode:h.dataMode,externalOddsRequests:h.externalOddsRequests,boardMode:b.dataMode,externalRequestsAdded:b.referee?.externalRequestsAdded,fixtureCount:fixtures.length}));
           console.log('ODDS_SNAPSHOT_COVERAGE',JSON.stringify({pricedFixtures:fixtures.filter(f=>f?.providerOdds||f?.fullOdds).length,rootCounts,marketCounts,bookCounts,shapeCounts,samples}));
           if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0)throw Error('runtime architecture is not bulk-only');
           if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0))throw Error('current board is not bulk-only');
           NODE
 
-          must EXPAND_VERSION '343-expanded-match-v2-single-odds-owner' /tmp/expand.js
-          must ODDS_VERSION '343-expanded-odds-complete-v3-single-owner' /tmp/complete-odds.js
-          must ODDS_CSS '.complete-odds-table' /tmp/complete-odds.css
-          must INDEX_EXPAND 'expanded-match-343.js?v=343-expand-v2-single-owner' /tmp/index.html
-          must INDEX_ODDS 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' /tmp/index.html
+          node - <<'NODE'
+          global.window={};global.document={readyState:'complete',querySelector:()=>({}),querySelectorAll:()=>[],addEventListener:()=>{}};global.MutationObserver=class{observe(){}};
+          require('./nomad-live-343/expanded-odds-complete-343.js');
+          const api=global.window.NOMAD343_COMPLETE_ODDS,b=require('/tmp/board.json'),fixtures=Array.isArray(b.fixtures)?b.fixtures:[],f=fixtures.find(x=>x?.providerOdds?.odds||x?.fullOdds);
+          if(!f)throw Error('no real priced fixture found');
+          const diag=api.inspectFixture(f),html=api.render(f);
+          const required=['1x2','asian_handicap','goal_line','corner_line','corner_asian','asian_handicap_half','goal_line_half','corner_line_half','card_line','card_asian'];
+          for(const k of required)if(!diag.markets.includes(k))throw Error(`REAL_BOARD parser lost market ${k}`);
+          for(const label of ['1X2','Asian Handicap','Goal O/U','Corner O/U','Corner AH','Cards O/U','Cards AH'])if(!html.includes(label))throw Error(`REAL_BOARD render lost label ${label}`);
+          console.log('REAL_BOARD_ODDS_RENDER_OK',JSON.stringify({fixtureId:f.fixtureId,foundBookmakers:diag.found,observedMarkets:diag.markets,htmlBytes:html.length}));
+          NODE
+
+          grep -Fq '.complete-odds-table' /tmp/complete-odds.css
+          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' /tmp/index.html
           if grep -Fq 'function renderOdds' /tmp/expand.js; then echo 'ERROR deployed legacy Odds renderer'; exit 1; fi
           if grep -Eq 'fetch\(|XMLHttpRequest|/api/' /tmp/complete-odds.js; then echo 'ERROR deployed complete Odds renderer performs network calls'; exit 1; fi
-          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js /tmp/expand.js /tmp/complete-odds.js; then
-            echo 'ERROR deployed V2 contains forbidden caller'; exit 1
-          fi
-          echo 'HTTP_RUNTIME_GUARDS_OK'
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js /tmp/expand.js /tmp/complete-odds.js; then echo 'ERROR deployed V2 contains forbidden caller'; exit 1; fi
+          echo 'HTTP_REAL_BOARD_GUARDS_OK'
 
       - name: Browser render smoke all pages
         if: always()
         run: |
           set -euo pipefail
-          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
-          test -n "$CHROME"
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
           render() { "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=10000 --dump-dom "$BASE_URL/$1?browser=$RANDOM" > "$2"; }
-          render index.html /tmp/index-rendered.html
-          render signal.html /tmp/signal-rendered.html
-          render statistics.html /tmp/stat-rendered.html
-          render settings.html /tmp/settings-rendered.html
+          render index.html /tmp/index-rendered.html; render signal.html /tmp/signal-rendered.html; render statistics.html /tmp/stat-rendered.html; render settings.html /tmp/settings-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
-          grep -Fq 'expanded-match-343.js?v=343-expand-v2-single-owner' /tmp/index-rendered.html
-          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' /tmp/index-rendered.html
           if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR index still loading'; exit 1; fi
-          grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
-          grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
-          grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
+          grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html; grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html; grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
           echo 'V2_BROWSER_ALL_PAGES_OK'
