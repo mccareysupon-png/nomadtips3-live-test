@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-15T07:51:59Z",
+  "updated_at": "2026-09-15T13:39:41Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3594,8 +3594,8 @@
       "edge": 19.0,
       "ev": 0.2721,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-09-15T01:55:53Z",
       "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-kickstart-fc/h2h-3091423",
       "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-kickstart-fc/summary-3091423",
@@ -3655,7 +3655,12 @@
         "away_recent": 8,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 71.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
     },
     {
       "id": "bcaa30364d04bd8c-OU-OVER-2p75",
@@ -5379,8 +5384,8 @@
       "edge": 22.7,
       "ev": 0.3869,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "3-1",
       "locked_at": "2026-09-15T01:55:55Z",
       "source_url": "https://www.goaloo.com/football/thai-league-2-jl-chiangmai-united-fc-vs-khonkaen-united/h2h-3047486",
       "summary_url": "https://www.goaloo.com/football/thai-league-2-jl-chiangmai-united-fc-vs-khonkaen-united/summary-3047486",
@@ -5440,7 +5445,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 117.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
     },
     {
       "id": "90c6da273ce91643-OU-UNDER-3p25",
@@ -6144,8 +6154,8 @@
       "edge": 47.1,
       "ev": 2.5646,
       "required_confidence": 0.62,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-0",
       "locked_at": "2026-09-15T01:56:00Z",
       "source_url": "https://www.goaloo.com/football/tajikistan-vysshaya-liga-khujand-vs-fc-istiklol-dushanbe/h2h-2952364",
       "summary_url": "https://www.goaloo.com/football/tajikistan-vysshaya-liga-khujand-vs-fc-istiklol-dushanbe/summary-2952364",
@@ -6205,7 +6215,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 465.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
     },
     {
       "id": "b929314382d5b371-OU-UNDER-2p75",
@@ -71133,6 +71148,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-15T01:33:45Z"
+    },
+    {
+      "id": "2a72f5d55b864eb5-AH-HOME-m0p0",
+      "goaloo_id": "3091423",
+      "date": "2026-09-15",
+      "kickoff": "2026-09-15 10:30:00",
+      "league": "India Bangalore Super Division",
+      "home": "FC Bengaluru United",
+      "away": "Kickstart FC",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "FC Bengaluru United -0",
+      "side": "home",
+      "odds": 1.71,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7243,
+      "model_probability": 0.7243,
+      "market_fair_probability": 0.5341,
+      "market_edge": 0.1902,
+      "edge": 19.0,
+      "ev": 0.2721,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-09-15T01:55:53Z",
+      "source_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-kickstart-fc/h2h-3091423",
+      "summary_url": "https://www.goaloo.com/football/india-bangalore-super-division-fc-bengaluru-united-vs-kickstart-fc/summary-3091423",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.932,
+        "lambda_away": 0.894,
+        "home_win": 0.6376,
+        "draw": 0.2319,
+        "away_win": 0.1305,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.3642,
+          "gd_edge": 0.6552,
+          "clean_sheet_edge": 0.2439,
+          "failed_to_score_edge": 0.1317,
+          "bounded_adjustment": 0.032,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 8,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 71.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
+    },
+    {
+      "id": "731a8582471fb2e8-AH-HOME-m0p0",
+      "goaloo_id": "3047486",
+      "date": "2026-09-15",
+      "kickoff": "2026-09-15 11:00:00",
+      "league": "Thai League 2",
+      "home": "JL Chiangmai United FC",
+      "away": "Khonkaen United",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "JL Chiangmai United FC -0",
+      "side": "home",
+      "odds": 2.17,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6487,
+      "model_probability": 0.6487,
+      "market_fair_probability": 0.4213,
+      "market_edge": 0.2274,
+      "edge": 22.7,
+      "ev": 0.3869,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "3-1",
+      "locked_at": "2026-09-15T01:55:55Z",
+      "source_url": "https://www.goaloo.com/football/thai-league-2-jl-chiangmai-united-fc-vs-khonkaen-united/h2h-3047486",
+      "summary_url": "https://www.goaloo.com/football/thai-league-2-jl-chiangmai-united-fc-vs-khonkaen-united/summary-3047486",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.846,
+        "lambda_away": 1.156,
+        "home_win": 0.5424,
+        "draw": 0.2448,
+        "away_win": 0.2128,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2293,
+          "gd_edge": 0.4478,
+          "clean_sheet_edge": 0.2293,
+          "failed_to_score_edge": -0.0098,
+          "bounded_adjustment": 0.0211,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 117.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
+    },
+    {
+      "id": "28e078e5bb2d9a85-1X2-HOME",
+      "goaloo_id": "2952364",
+      "date": "2026-09-15",
+      "kickoff": "2026-09-15 11:30:00",
+      "league": "Tajikistan Vysshaya Liga",
+      "home": "Khujand",
+      "away": "FC Istiklol Dushanbe",
+      "market": "1X2",
+      "selection": "HOME",
+      "line": null,
+      "pick": "Khujand Win",
+      "side": "home",
+      "odds": 5.65,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6309,
+      "model_probability": 0.6309,
+      "market_fair_probability": 0.1596,
+      "market_edge": 0.4713,
+      "edge": 47.1,
+      "ev": 2.5646,
+      "required_confidence": 0.62,
+      "result": "WIN",
+      "ft": "1-0",
+      "locked_at": "2026-09-15T01:56:00Z",
+      "source_url": "https://www.goaloo.com/football/tajikistan-vysshaya-liga-khujand-vs-fc-istiklol-dushanbe/h2h-2952364",
+      "summary_url": "https://www.goaloo.com/football/tajikistan-vysshaya-liga-khujand-vs-fc-istiklol-dushanbe/summary-2952364",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.409,
+        "lambda_away": 0.461,
+        "home_win": 0.6309,
+        "draw": 0.2877,
+        "away_win": 0.0815,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.4715,
+          "gd_edge": 0.5909,
+          "clean_sheet_edge": 0.4585,
+          "failed_to_score_edge": 0.1122,
+          "bounded_adjustment": 0.0357,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 465.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-15T13:39:41Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
