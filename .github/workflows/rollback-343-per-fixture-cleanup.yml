@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/rollback-343-per-fixture-cleanup.yml
       - .github/scripts/cleanup_343_per_fixture.py
+      - workers/nomadtips3-engine-343/wrangler.toml
 
 permissions:
   contents: write
