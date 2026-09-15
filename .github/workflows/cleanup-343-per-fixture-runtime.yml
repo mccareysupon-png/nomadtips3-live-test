@@ -1,0 +1,52 @@
+name: Cleanup NOMAD 3.43 Per-Fixture Runtime
+
+on:
+  push:
+    branches: [work/nomad343-clean-bet365-ui]
+    paths:
+      - '.github/workflows/cleanup-343-per-fixture-runtime.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Remove obsolete Full Market worker
+        run: |
+          set -euo pipefail
+          if npx --yes wrangler@4.92.0 deployments status --name nomadtips3-343-full-market --json >/tmp/full-market-status.json 2>/tmp/full-market-status.err; then
+            npx --yes wrangler@4.92.0 delete --name nomadtips3-343-full-market
+          else
+            echo 'nomadtips3-343-full-market already absent'
+          fi
+
+      - name: Remove direct 5USD secret from Engine
+        run: |
+          set -euo pipefail
+          SECRETS="$(npx --yes wrangler@4.92.0 secret list --name nomadtips3-engine-343 --format json)"
+          if printf '%s' "$SECRETS" | grep -Fq 'FIVEDOLLAR_API_KEY'; then
+            npx --yes wrangler@4.92.0 secret delete FIVEDOLLAR_API_KEY --name nomadtips3-engine-343
+          else
+            echo 'Engine direct 5USD secret already absent'
+          fi
+
+      - name: Verify per-fixture runtime is gone
+        run: |
+          set -euo pipefail
+          if npx --yes wrangler@4.92.0 deployments status --name nomadtips3-343-full-market --json >/tmp/should-not-exist.json 2>/dev/null; then
+            echo 'obsolete Full Market worker still exists'
+            exit 1
+          fi
+          SECRETS="$(npx --yes wrangler@4.92.0 secret list --name nomadtips3-engine-343 --format json)"
+          if printf '%s' "$SECRETS" | grep -Fq 'FIVEDOLLAR_API_KEY'; then
+            echo 'Engine still has direct 5USD secret'
+            exit 1
+          fi
+          echo 'PER_FIXTURE_RUNTIME_REMOVED'
