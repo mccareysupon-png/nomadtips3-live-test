@@ -28,8 +28,7 @@ async function noStoreUiAsset(request, env) {
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
   if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-bulk-only-v1');
-  if (path === '/dashboard-v2-api-monitor.html') headers.set('x-nomad-monitor-revision', '343-api-monitor-v1');
-  if (path === '/dashboard-v2-api-control.html') headers.set('x-nomad-control-revision', '343-api-control-v1');
+  if (path === '/dashboard-v2-api-monitor.html') headers.set('x-nomad-api-center-revision', '343-api-control-monitor-v2');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -138,11 +137,30 @@ async function hubRoute(request, env, path) {
   if (!isRead && !isWrite) {
     return Response.json({ ok: false, error: 'HUB_ROUTE_NOT_ALLOWED' }, { status: 405, headers: { 'cache-control': 'no-store' } });
   }
-  const response = await env.HUB.fetch(hubRequest(request, path));
+
+  let upstreamRequest;
+  if (isWrite) {
+    const upstream = new URL(request.url);
+    upstream.protocol = 'https:';
+    upstream.hostname = 'hub.internal';
+    upstream.pathname = path;
+    upstreamRequest = new Request(upstream, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-nomad-internal-control': 'preview-binding-v1'
+      },
+      body: await request.text()
+    });
+  } else {
+    upstreamRequest = hubRequest(request, path);
+  }
+
+  const response = await env.HUB.fetch(upstreamRequest);
   const headers = new Headers(response.headers);
   headers.set('cache-control', 'no-store');
   headers.set('x-nomad-monitor-read-only', isRead ? '1' : '0');
-  if (isWrite) headers.set('x-nomad-owner-control', 'guarded');
+  if (isWrite) headers.set('x-nomad-owner-control', 'internal-service-binding');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -167,11 +185,15 @@ export default {
       const path = url.pathname.replace('/api/full-market', '') || '/';
       return bulkFullMarketCompat(request, env, path);
     }
+    if (request.method === 'GET' && url.pathname === '/dashboard-v2-api-control.html') {
+      const target = new URL('/dashboard-v2-api-monitor.html', request.url);
+      return Response.redirect(target.toString(), 302);
+    }
     if (request.method === 'GET' && (
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
       url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css' ||
-      url.pathname === '/dashboard-v2-api-monitor.html' || url.pathname === '/dashboard-v2-api-control.html'
+      url.pathname === '/dashboard-v2-api-monitor.html'
     )) {
       return noStoreUiAsset(request, env);
     }
