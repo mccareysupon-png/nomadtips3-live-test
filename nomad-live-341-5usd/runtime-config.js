@@ -1,0 +1,9 @@
+(()=>{
+  window.NOMAD341_RUNTIME_CONFIG={
+    mode:'PREVIEW_MOCK',
+    snapshotEndpoint:'/api/nomad341/live',
+    liveProviderEnabled:false,
+    browserDerivedEnabled:true,
+    cacheMs:1000
+  };
+})();
