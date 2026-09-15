@@ -1,6 +1,7 @@
 import baseWorker,{FiveUsdHub as BaseFiveUsdHub} from './index-v2.js';
 
 const VIEW_VERSION='nomad343-hub-view-v6-engine-lean-rich-ui';
+const RICH_VIEW_HEADER='x-nomad-snapshot-view';
 const plain=v=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
 const key=v=>String(v?.id??v?.slug??v?.name??v?.bookmaker?.id??v?.bookmaker?.slug??v?.bookmaker?.name??'').toLowerCase().replace(/[\s_-]/g,'');
 
@@ -31,8 +32,10 @@ export class FiveUsdHub extends BaseFiveUsdHub{
   }
   async fetch(request){
     const u=new URL(request.url);
-    if(request.method==='GET'&&u.pathname==='/snapshot')return json(await this.snapshotView('engine'));
-    if(request.method==='GET'&&u.pathname==='/snapshot-rich')return json(await this.snapshotView('rich'));
+    if(request.method==='GET'&&u.pathname==='/snapshot'){
+      const mode=String(request.headers.get(RICH_VIEW_HEADER)||'').toLowerCase()==='rich'?'rich':'engine';
+      return json(await this.snapshotView(mode));
+    }
     return super.fetch(request);
   }
 }
@@ -41,7 +44,7 @@ export default{
   async fetch(request,env){
     const u=new URL(request.url);
     if(request.method==='GET'&&u.pathname==='/snapshot-rich'){
-      const r=await stub(env).fetch('https://hub.internal/snapshot-rich');
+      const r=await stub(env).fetch(new Request('https://hub.internal/snapshot',{method:'GET',headers:{[RICH_VIEW_HEADER]:'rich'}}));
       return new Response(r.body,{status:r.status,headers:r.headers});
     }
     return baseWorker.fetch(request,env);
