@@ -8,7 +8,7 @@ const DEFAULTS={
   cornerEvidenceEnabled:true,cornerDeltaMinimum:1,evidenceMode:'ANY',
   targetSideMode:'HOME',oddsMinimum:1.5,oddsMaximum:6,
   maximumPriceAgeSeconds:90,oneSignalPerMatch:true,
-  maxHistoryPerFixture:240
+  maxHistoryPerFixture:15
 };
 
 const num=v=>Number.isFinite(Number(v))?Number(v):null;
@@ -193,7 +193,7 @@ export function processFullBoard(payload,stateInput={},options={}){
     hasMore:Boolean(payload?.pagination?.has_more),rawCount:rows.length,normalizedCount:matches.length,
     counts:counts(matches),matches,ledger:state.ledger,
     health:{
-      state:'READY',environment:options.providerLive?'5USD STAGED LIVE':'STAGED MOCK',cycle:null,lastCycle:observedAt,lastSuccess:observedAt,configVersion:'central-runtime-v1',matches:matches.length,signals:matches.filter(m=>m.state==='SIGNAL').length,lastError:'—',
+      state:'READY',environment:options.providerLive?'5USD STAGED LIVE':'STAGED MOCK',cycle:null,lastCycle:observedAt,lastSuccess:observedAt,configVersion:'central-runtime-v2',matches:matches.length,signals:matches.filter(m=>m.state==='SIGNAL').length,lastError:'—',
       sources:[
         {name:'5USD provider traffic',state:options.providerLive?'ENABLED':'DISABLED'},
         {name:'Provider requests this cycle',state:String(Number(options.providerRequestCount)||0)},
