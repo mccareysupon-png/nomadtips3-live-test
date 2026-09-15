@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-team-sides-v1';
+const VERSION='343-team-sides-v2';
 const HOME_CLASS='team-home-name';
 const AWAY_CLASS='team-away-name';
 const SEP_CLASS='team-separator';
@@ -46,9 +46,28 @@ function colorStatCaption(el,home,away){
   if(text!==`${home}${marker}${away}`)return;
   setPair(el,home,away,marker);
 }
+function processFullMarket(board){
+  const homeEl=board.querySelector('.fom-team-strip .home strong');
+  const awayEl=board.querySelector('.fom-team-strip .away strong');
+  const home=String(homeEl?.textContent||'').trim(),away=String(awayEl?.textContent||'').trim();
+  if(!home||!away)return;
+  homeEl.classList.add(HOME_CLASS);
+  awayEl.classList.add(AWAY_CLASS);
+  const head=board.querySelector('.fom-head small');
+  if(!head||head.dataset.teamSides==='1')return;
+  const raw=String(head.textContent||''),prefix=`${home} vs ${away}`;
+  if(!raw.trim().startsWith(prefix))return;
+  const start=raw.indexOf(home),suffix=raw.slice(start+prefix.length),nodes=[];
+  if(start>0)nodes.push(document.createTextNode(raw.slice(0,start)));
+  nodes.push(span(home,HOME_CLASS),span(' vs ',SEP_CLASS),span(away,AWAY_CLASS));
+  if(suffix)nodes.push(document.createTextNode(suffix));
+  head.replaceChildren(...nodes);
+  head.dataset.teamSides='1';
+}
 function processLiveCard(card){
   card.querySelector('.home-slot .team-name')?.classList.add(HOME_CLASS);
   card.querySelector('.away-slot .team-name')?.classList.add(AWAY_CLASS);
+  card.querySelectorAll('.fom-board').forEach(processFullMarket);
 }
 function processSignalCard(card){
   const title=card.querySelector('.active-signal-title h3');
@@ -78,9 +97,11 @@ function process(root=document){
   if(root.matches?.('.match-card'))processLiveCard(root);
   if(root.matches?.('.active-signal-card'))processSignalCard(root);
   if(root.matches?.('[data-stat-body] tr'))processStatisticsRow(root);
+  if(root.matches?.('.fom-board'))processFullMarket(root);
   root.querySelectorAll?.('.match-card').forEach(processLiveCard);
   root.querySelectorAll?.('.active-signal-card').forEach(processSignalCard);
   root.querySelectorAll?.('[data-stat-body] tr').forEach(processStatisticsRow);
+  root.querySelectorAll?.('.fom-board').forEach(processFullMarket);
 }
 function boot(){
   process(document);
