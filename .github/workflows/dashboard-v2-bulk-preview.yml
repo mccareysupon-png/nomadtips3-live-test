@@ -6,6 +6,7 @@ on:
     paths:
       - 'nomad-live-343/index.html'
       - 'nomad-live-343/dashboard-v2*'
+      - 'nomad-live-343/expanded-match-343.*'
       - 'nomad-live-343/signal.html'
       - 'nomad-live-343/statistics.html'
       - 'nomad-live-343/settings.html'
@@ -42,16 +43,21 @@ jobs:
           node --check nomad-live-343/dashboard-v2-stage3.js
           node --check nomad-live-343/dashboard-v2.js
           node --check nomad-live-343/dashboard-v2-tune.js
+          node --check nomad-live-343/expanded-match-343.js
           node --check nomad-live-343/signal.js
           node --check nomad-live-343/statistics.js
           node --check nomad-live-343/settings.js
           node --check nomad-live-343/v2-shared.js
           grep -Fq "const API='/api/engine/board'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "const BOARD_API='/api/engine/board'" nomad-live-343/expanded-match-343.js
+          grep -Fq "const HISTORY_API='/api/engine/history'" nomad-live-343/expanded-match-343.js
           grep -Fq "const API='/api/engine/signals'" nomad-live-343/signal.js
           grep -Fq "const API='/api/engine/statistics'" nomad-live-343/statistics.js
           grep -Fq "const API='/api/engine/settings'" nomad-live-343/settings.js
           grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' nomad-live-343/index.html
+          grep -Fq 'expanded-match-343.css?v=343-expand-v1' nomad-live-343/index.html
+          grep -Fq 'expanded-match-343.js?v=343-expand-v1' nomad-live-343/index.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/signal.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/statistics.html
           grep -Fq '0 per-fixture provider requests' nomad-live-343/settings.html
@@ -65,7 +71,7 @@ jobs:
           grep -Fq 'width:108px' nomad-live-343/v2-header.css
           grep -Fq 'width:88px' nomad-live-343/v2-header.css
           grep -Fq 'width:82px' nomad-live-343/v2-header.css
-          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/expanded-match-343.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
             echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
           fi
           if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/dashboard-v2-tune.js nomad-live-343/v2-shared.js; then
@@ -112,6 +118,8 @@ jobs:
           get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
           get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
           get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
+          get EXPAND_JS "$BASE_URL/expanded-match-343.js?smoke=$RANDOM" /tmp/expand.js
+          get EXPAND_CSS "$BASE_URL/expanded-match-343.css?smoke=$RANDOM" /tmp/expand.css
           get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
           grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' /tmp/index.html
@@ -119,13 +127,15 @@ jobs:
           grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
           grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
           grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
+          grep -Fq '343-expanded-match-v1-bulk-snapshot' /tmp/expand.js
+          grep -Fq '.match-expanded' /tmp/expand.css
           grep -Fq '.v2-topbar' /tmp/header.css
           grep -Fq 'width:108px' /tmp/header.css
           for page in /tmp/index.html /tmp/signal.html /tmp/statistics.html /tmp/settings.html; do
             grep -Fq 'class="v2-topbar"' "$page"
             grep -Fq 'class="v2-logo"' "$page"
           done
-          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js; then
+          if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js /tmp/expand.js; then
             echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
           fi
           node - <<'NODE'
@@ -151,6 +161,7 @@ jobs:
           render statistics.html /tmp/stat-rendered.html
           render settings.html /tmp/settings-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
+          grep -Fq 'expanded-match-343.js?v=343-expand-v1' /tmp/index-rendered.html
           if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR: index still loading'; exit 1; fi
           grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
