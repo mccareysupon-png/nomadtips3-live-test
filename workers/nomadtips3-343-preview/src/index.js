@@ -16,10 +16,10 @@ async function noStoreUiAsset(request, env) {
   h.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   h.set('pragma', 'no-cache');
   h.set('expires', '0');
-  h.set('x-nomad-ui-revision', '343-bulk-snapshot-zero-click-v3');
+  h.set('x-nomad-ui-revision', '343-bulk-snapshot-zero-click-v4-rich-overlay');
   if (path.startsWith('/statistics')) h.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) h.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path.startsWith('/expanded-match-343') || path.startsWith('/full-market-bookmaker-343')) h.set('x-nomad-live-revision', '343-bulk-snapshot-zero-click-v3');
+  if (path === '/index.html' || path.startsWith('/expanded-match-343') || path.startsWith('/full-market-bookmaker-343')) h.set('x-nomad-live-revision', '343-bulk-snapshot-zero-click-v4-rich-overlay');
   if (path === '/dashboard-v2-api-monitor.html') h.set('x-nomad-api-center-revision', '343-api-control-monitor-v2-restored');
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
 }
@@ -96,6 +96,52 @@ async function activeSignals(request, env) {
   }, { headers: { 'cache-control': 'no-store' } });
 }
 
+async function boardWithHubOdds(request, env) {
+  const [br, hr] = await Promise.all([
+    env.ENGINE.fetch(serviceRequest(request, 'engine.internal', '/board')),
+    env.HUB.fetch(serviceRequest(request, 'hub.internal', '/snapshot-rich'))
+  ]);
+  const [b, h] = await Promise.all([
+    br.json().catch(() => ({})),
+    hr.json().catch(() => ({}))
+  ]);
+  if (b?.ok !== true) return Response.json(b || { ok: false, error: 'BOARD_NOT_READY' }, { status: br.status || 503 });
+  const sourceRows = h?.ok === true && Array.isArray(h.fixtures) ? h.fixtures : [];
+  const rich = new Map(sourceRows.filter(x => fixtureIsLive(x) && x?.richOddsSource === 'CENTRAL_SCHEDULED_PER_FIXTURE').map(x => [String(x.fixtureId ?? ''), x]));
+  let overlaid = 0;
+  const fixtures = (Array.isArray(b.fixtures) ? b.fixtures : []).map(f => {
+    const r = rich.get(String(f?.fixtureId ?? ''));
+    if (!r) return f;
+    overlaid++;
+    return {
+      ...f,
+      providerOdds: copy(r.providerOdds),
+      providerOddsUpdatedAt: r.providerOddsUpdatedAt ?? f.providerOddsUpdatedAt ?? null,
+      richOddsUpdatedAt: r.richOddsUpdatedAt ?? null,
+      richOddsBookmakerCount: r.richOddsBookmakerCount ?? 0,
+      richOddsSource: r.richOddsSource,
+      snapshotOddsView: 'RICH_UI_FULL'
+    };
+  });
+  return Response.json({
+    ...b,
+    fixtures,
+    hubVersion: h?.version ?? b.hubVersion,
+    hubFetchedAt: h?.fetchedAt ?? b.hubFetchedAt,
+    hubAgeMs: num(h?.ageMs) ?? b.hubAgeMs,
+    stale: h?.stale ?? b.stale,
+    richOdds: h?.richOdds ?? null,
+    oddsOverlay: {
+      source: 'HUB_RICH_SNAPSHOT_ZERO_CLICK',
+      snapshotMode: h?.snapshotMode ?? null,
+      viewVersion: h?.viewVersion ?? null,
+      enrichedFixtures: overlaid,
+      externalRequestsAdded: 0,
+      clickRequests: 0
+    }
+  }, { headers: { 'cache-control': 'no-store' } });
+}
+
 async function hubRoute(request, env, path) {
   if (!env.HUB) return Response.json({ ok: false, error: 'HUB_BINDING_MISSING' }, { status: 503 });
   const isRead = request.method === 'GET' && ['/health', '/status', '/control'].includes(path);
@@ -134,6 +180,9 @@ export default {
 
     if (u.pathname === '/api/engine/signals' && request.method === 'GET') {
       return activeSignals(request, env);
+    }
+    if (u.pathname === '/api/engine/board' && request.method === 'GET') {
+      return boardWithHubOdds(request, env);
     }
     if (u.pathname.startsWith('/api/engine/')) {
       return env.ENGINE.fetch(serviceRequest(request, 'engine.internal', u.pathname.replace('/api/engine', '') || '/'));
