@@ -29,12 +29,10 @@ for line in [
 assert "const cache=new Map(),busy=new Set(),liveSnapshots=new Map();" in f
 f = f.replace("const cache=new Map(),busy=new Set(),liveSnapshots=new Map();", "const liveSnapshots=new Map();", 1)
 
-f = re.sub(
-    r"function sourceText\(payload,books\)\{.*?\}",
-    "function sourceText(_payload,books){return`${books.length}/10 BOOKS · SHARED BATCH`}",
-    f,
-    count=1,
-)
+old_source = "function sourceText(payload,books){if(payload?.fallbackOnly)return'BET365 FALLBACK';if(payload?.stale)return`${books.length}/10 BOOKS · STALE CACHE`;return`${books.length}/10 BOOKS · LIVE FEED`}"
+new_source = "function sourceText(_payload,books){return`${books.length}/10 BOOKS · SHARED BATCH`}"
+assert old_source in f, 'Full Market sourceText anchor missing'
+f = f.replace(old_source, new_source, 1)
 f = f.replace('Fixed sides: home left · away right · LIVE prices refresh while expanded', 'Fixed sides: home left · away right · shared batch feed · zero per-match API calls')
 
 start = f.index('function loading(card)')
