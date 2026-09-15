@@ -99,3 +99,16 @@ jobs:
           if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
           console.log('DASHBOARD_V2_TUNED_BULK_OK', Array.isArray(b.fixtures)?b.fixtures.length:0, 'fixtures', b.counts||{}, 'healthOk', h.ok);
           NODE
+
+      - name: Browser render smoke
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=8000 --dump-dom "$BASE_URL/dashboard-v2.html?browser=$RANDOM" > /tmp/dashboard-rendered.html
+          grep -Fq 'class="match-row' /tmp/dashboard-rendered.html
+          if grep -Fq "Loading today's match board" /tmp/dashboard-rendered.html; then
+            echo 'ERROR: browser still shows loading state after JS execution'; exit 1
+          fi
+          grep -Eq 'LIVE MATCHES|UPCOMING MATCHES|WAITING|FINISHED MATCHES' /tmp/dashboard-rendered.html
+          echo 'DASHBOARD_BROWSER_RENDER_OK'
