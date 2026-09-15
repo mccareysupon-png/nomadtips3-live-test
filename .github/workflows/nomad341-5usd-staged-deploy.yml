@@ -1,0 +1,93 @@
+name: Deploy NOMAD 3.41 5USD Central Worker
+
+on:
+  push:
+    branches:
+      - work/341-ui-clone-5usd-staged-runtime
+    paths:
+      - 'nomad-live-341-5usd/**'
+      - '.github/workflows/nomad341-5usd-staged-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  WORKER_URL: https://nomadtips3-341-5usd-staged.mccarey-supon.workers.dev
+
+jobs:
+  deploy-safe-off:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated 3.41 central runtime
+        run: |
+          set -euo pipefail
+          node --check nomad-live-341-5usd/server/worker-staged.js
+          node --check nomad-live-341-5usd/server/control-page.js
+          grep -Fq "include=odds,events,stats&per_page=500" nomad-live-341-5usd/server/worker-staged.js
+          grep -Fq "apiArmed:false" nomad-live-341-5usd/server/worker-staged.js
+          grep -Fq "priceRefereeProviderRequests:0" nomad-live-341-5usd/server/worker-staged.js
+          grep -Fq '"NOMAD341_LIVE_PROVIDER_ENABLED": "true"' nomad-live-341-5usd/server/wrangler.staged.jsonc
+          grep -Fq '"* * * * *"' nomad-live-341-5usd/server/wrangler.staged.jsonc
+
+      - name: Run offline safety tests
+        working-directory: nomad-live-341-5usd/server
+        run: |
+          set -euo pipefail
+          node offline-selftest.mjs
+          node control-selftest.mjs
+
+      - name: Dry run Worker bundle
+        working-directory: nomad-live-341-5usd/server
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.staged.jsonc --outdir .wrangler-deploy-check
+
+      - name: Validate deploy credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo 'Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$FIVEDOLLAR_API_KEY" || { echo 'Missing FIVEDOLLAR_API_KEY'; exit 1; }
+
+      - name: Deploy isolated 3.41 Worker
+        working-directory: nomad-live-341-5usd/server
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.staged.jsonc
+
+      - name: Bind 5Dollar API key server-side
+        working-directory: nomad-live-341-5usd/server
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEUSD_API_KEY --config wrangler.staged.jsonc
+
+      - name: Verify deployed worker is ready but API remains OFF
+        run: |
+          set -euo pipefail
+          sleep 4
+          curl -fsS --max-time 25 "$WORKER_URL/api/nomad341/control" -o /tmp/control.json
+          curl -fsS --max-time 25 "$WORKER_URL/api/nomad341/check" -o /tmp/check.json
+          curl -fsS --max-time 25 "$WORKER_URL/control" -o /tmp/control.html
+          node - <<'NODE'
+          const fs=require('fs');
+          const c=JSON.parse(fs.readFileSync('/tmp/control.json','utf8'));
+          const d=JSON.parse(fs.readFileSync('/tmp/check.json','utf8'));
+          if(c.hardProviderGate!==true) throw new Error('hard gate is not deploy-ready');
+          if(c.apiArmed!==false) throw new Error('API must remain OFF after deployment');
+          if(c.masterApiEnabled!==false||c.pollingEnabled!==false) throw new Error('central switches must remain OFF after deployment');
+          if(c.effectiveProviderEnabled!==false) throw new Error('provider became effective before owner click');
+          if(Number(d.request?.providerRequestsThisCycle)!==0) throw new Error('unexpected provider request during deployment');
+          const html=fs.readFileSync('/tmp/control.html','utf8');
+          if(!html.includes('OPEN API')) throw new Error('one-click OPEN API control missing');
+          console.log('NOMAD 3.41 deploy-safe probe PASS', {
+            hardGate:c.hardProviderGate,
+            apiArmed:c.apiArmed,
+            effective:c.effectiveProviderEnabled,
+            providerRequests:d.request?.providerRequestsThisCycle,
+            persistence:c.persistence
+          });
+          NODE
