@@ -105,6 +105,7 @@ assert n == 1, 'fullMarketRequest helper not removed'
 p, n = re.subn(r"\n    if \(url\.pathname\.startsWith\('/api/full-market/'\)\) \{.*?\n    \}", "", p, count=1, flags=re.S)
 assert n == 1, 'full market preview route not removed'
 p = p.replace(" || path === '/full-odds-main-343.js'", "")
+p = p.replace(" || url.pathname === '/full-odds-main-343.js'", "")
 p = p.replace("'343-live-full-market-v1'", "'343-live-flow-v3'")
 assert '/api/full-market/' not in p and 'fullMarketRequest' not in p and 'full-odds-main-343.js' not in p
 preview.write_text(p)
