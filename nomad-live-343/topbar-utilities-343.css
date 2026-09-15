@@ -1,17 +1,16 @@
 /* NOMAD 3.43 topbar utility layout stabilizer.
-   Reserve ODDS + Language space at first paint so main navigation never shifts. */
+   Desktop: Brand left / Navigation centered / ODDS + Language right. */
 .topbar-inner{position:relative}
 .topbar-utility-reserve{
   flex:0 0 292px;
   width:292px;
   min-width:292px;
   height:34px;
-  margin-left:10px;
+  margin-left:auto;
   pointer-events:none;
 }
 
-/* First-paint safety gate for the custom ODDS menu.
-   The menu is always hidden unless the user has explicitly opened it. */
+/* First-paint safety gate for the custom ODDS menu. */
 .topbar .odds-format-menu{
   display:none!important;
   visibility:hidden!important;
@@ -26,10 +25,8 @@
   pointer-events:auto!important;
 }
 
-/* Desktop utility slots are deliberately separated using the longest language
-   label as the sizing reference. Language owns a fixed opaque slot; ODDS sits
-   farther left with a real 24px air gap, so neither control can paint through
-   the other during first-frame composition. */
+/* Utility slots are sized from the longest language label.
+   Language owns 156px; ODDS owns 88px; 24px real air gap separates them. */
 @media(min-width:761px){
   .topbar-inner>.odds-format-control{
     position:absolute!important;
@@ -62,7 +59,36 @@
   }
 }
 
-/* Mobile already uses opposite screen edges for the two controls. */
+/* Clearly desktop/laptop view: navigation is independent of flex flow and
+   anchored to the true center of the header. This leaves the entire right
+   utility zone to ODDS + Language and prevents cross-paint overlap. */
+@media(min-width:1101px){
+  .topbar-inner>.topnav{
+    position:absolute!important;
+    left:50%!important;
+    right:auto!important;
+    top:0!important;
+    transform:translateX(-50%)!important;
+    margin:0!important;
+    height:64px!important;
+    z-index:20!important;
+  }
+}
+@media (min-width:1101px) and (hover:hover) and (pointer:fine){
+  body[data-page="statistics"] .topbar-inner>.statistics-nav{
+    position:absolute!important;
+    left:50%!important;
+    right:auto!important;
+    top:0!important;
+    bottom:auto!important;
+    transform:translateX(-50%)!important;
+    margin:0!important;
+    height:64px!important;
+    z-index:20!important;
+  }
+}
+
+/* Mobile keeps the existing bottom navigation and opposite-edge utilities. */
 @media(max-width:760px){
   .topbar-utility-reserve{display:none}
 }
