@@ -1,60 +1,33 @@
 /* NOMAD 3.43 main navigation cleanup.
    Presentation only: green hover/active, no active card/background frame. */
 
-:root{
-  --nav-green:#83df89;
-}
+:root{--nav-green:#83df89}
+.topnav a,body[data-page="statistics"] .statistics-nav a{background:transparent!important;border-color:transparent!important;box-shadow:none!important;border-radius:0!important;outline-offset:3px}
+.topnav a:hover,.topnav a:focus-visible,body[data-page="statistics"] .statistics-nav a:hover,body[data-page="statistics"] .statistics-nav a:focus-visible{color:var(--nav-green)!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+.topnav a.active,body[data-page="statistics"] .statistics-nav a.active{color:var(--nav-green)!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important}
+@media (min-width:1101px) and (hover:hover) and (pointer:fine){body[data-page="statistics"] .statistics-nav{background:transparent!important;border:0!important;box-shadow:none!important}}
+.mobile-nav a,body[data-page="statistics"] .statistics-nav a{box-shadow:none!important}
+.mobile-nav a:hover,.mobile-nav a:focus-visible,.mobile-nav a.active,body[data-page="statistics"] .statistics-nav a:hover,body[data-page="statistics"] .statistics-nav a:focus-visible,body[data-page="statistics"] .statistics-nav a.active{color:var(--nav-green)!important;background:transparent!important;border-color:transparent!important;box-shadow:none!important}
 
-/* Desktop/main navigation: text state only. */
-.topnav a,
-body[data-page="statistics"] .statistics-nav a{
-  background:transparent!important;
-  border-color:transparent!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-  outline-offset:3px;
-}
-
-.topnav a:hover,
-.topnav a:focus-visible,
-body[data-page="statistics"] .statistics-nav a:hover,
-body[data-page="statistics"] .statistics-nav a:focus-visible{
-  color:var(--nav-green)!important;
-  background:transparent!important;
-  border-color:transparent!important;
-  box-shadow:none!important;
-}
-
-.topnav a.active,
-body[data-page="statistics"] .statistics-nav a.active{
-  color:var(--nav-green)!important;
-  background:transparent!important;
-  border-color:transparent!important;
-  box-shadow:none!important;
-}
-
-/* Statistics desktop nav must visually match Live / Signals — no dark card wrapper. */
-@media (min-width:1101px) and (hover:hover) and (pointer:fine){
-  body[data-page="statistics"] .statistics-nav{
-    background:transparent!important;
-    border:0!important;
-    box-shadow:none!important;
-  }
-}
-
-/* Mobile/touch: keep the navigation bar itself, but never frame the active link. */
-.mobile-nav a,
-body[data-page="statistics"] .statistics-nav a{
-  box-shadow:none!important;
-}
-.mobile-nav a:hover,
-.mobile-nav a:focus-visible,
-.mobile-nav a.active,
-body[data-page="statistics"] .statistics-nav a:hover,
-body[data-page="statistics"] .statistics-nav a:focus-visible,
-body[data-page="statistics"] .statistics-nav a.active{
-  color:var(--nav-green)!important;
-  background:transparent!important;
-  border-color:transparent!important;
-  box-shadow:none!important;
-}
+/* 3.43 page promo strip — presentation only. Same shell width as main navigation. */
+body[data-page="live"] .page-head,body[data-page="signal"] .page-head,body[data-page="statistics"] .page-head{position:relative;isolation:isolate;height:64px;min-height:64px;margin:0 0 12px;padding:0 12px;overflow:hidden;display:grid;grid-template-columns:minmax(210px,.72fr) minmax(0,1.25fr) minmax(0,.95fr) auto;gap:12px;align-items:center;border:1px solid #2b382e;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.18);background-color:#0b140f;background-repeat:no-repeat;background-position:right center;background-size:560px 64px}
+body[data-page="live"] .page-head{background-image:linear-gradient(90deg,#0a140e 0%,rgba(10,20,14,.98) 46%,rgba(10,20,14,.72) 68%,rgba(10,20,14,.32) 100%),url("promo-live-343.svg")}
+body[data-page="signal"] .page-head{background-image:linear-gradient(90deg,#0a140e 0%,rgba(10,20,14,.98) 46%,rgba(10,20,14,.72) 68%,rgba(10,20,14,.32) 100%),url("promo-signal-343.svg")}
+body[data-page="statistics"] .page-head{background-image:linear-gradient(90deg,#0a140e 0%,rgba(10,20,14,.98) 46%,rgba(10,20,14,.72) 68%,rgba(10,20,14,.32) 100%),url("promo-stat-343.svg")}
+body[data-page="live"] .page-head::after,body[data-page="signal"] .page-head::after,body[data-page="statistics"] .page-head::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(115deg,transparent 0 55%,rgba(47,158,86,.08) 55% 57%,transparent 57% 100%)}
+body[data-page="live"] .page-head>div:first-child,body[data-page="signal"] .page-head>div:first-child,body[data-page="statistics"] .page-head>div:first-child{display:contents}
+body[data-page="live"] .page-head .eyebrow,body[data-page="signal"] .page-head .eyebrow,body[data-page="statistics"] .page-head .eyebrow{display:none!important}
+body[data-page="live"] .page-head h1,body[data-page="signal"] .page-head h1,body[data-page="statistics"] .page-head h1{grid-column:1;min-width:0;margin:0;color:transparent;font-size:0;line-height:1;white-space:nowrap}
+body[data-page="live"] .page-head h1::before,body[data-page="signal"] .page-head h1::before,body[data-page="statistics"] .page-head h1::before{display:block;color:#eef3ef;font:900 18px/1 Arial,Helvetica,sans-serif;letter-spacing:-.02em;text-shadow:0 1px 12px rgba(0,0,0,.32)}
+body[data-page="live"] .page-head h1::before{content:"Live Match Center"}body[data-page="signal"] .page-head h1::before{content:"Smart Live Signals"}body[data-page="statistics"] .page-head h1::before{content:"Performance & Statistics"}
+body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow){grid-column:2/4;min-width:0;margin:0;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:center;color:transparent;font-size:0;line-height:1.2}
+body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::before,body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::before,body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::before{color:#c9d2cb;font:700 10px/1.22 Arial,Helvetica,sans-serif}
+body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::after,body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::after,body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::after{padding-left:10px;border-left:2px solid #d7c54a;color:#d7c54a;font:700 9px/1.22 Arial,Helvetica,sans-serif}
+body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::before{content:"Real-time football scores, match stats, event flow and 10-book full markets for today’s fixtures."}body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::after{content:"Follow the action, read the momentum and track every market in one place."}
+body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::before{content:"Data-driven football signals powered by live momentum, match context and market confirmation."}body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::after{content:"Spot the move faster with sharper live reads across key betting markets."}
+body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::before{content:"Review verified results, win-loss-push records and market-by-market performance with transparent tracking."}body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::after{content:"Measure consistency, study outcomes and understand the edge behind every signal."}
+body[data-page="live"] .page-head .source-state,body[data-page="signal"] .page-head .source-state,body[data-page="statistics"] .page-head .source-state{grid-column:4;margin:0;padding:6px 8px;min-width:150px;max-width:210px;border:1px solid rgba(83,125,94,.62);border-radius:6px;background:rgba(8,17,11,.78);backdrop-filter:blur(3px);box-shadow:none}
+body[data-page="live"] .page-head .source-state .pill,body[data-page="signal"] .page-head .source-state .pill,body[data-page="statistics"] .page-head .source-state .pill{border:0;background:transparent;padding:0;white-space:nowrap;font-size:9px}
+@media (min-width:1500px){body[data-page="live"] .page-head h1::before,body[data-page="signal"] .page-head h1::before,body[data-page="statistics"] .page-head h1::before{font-size:20px}body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::before,body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::before,body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::before{font-size:10.5px}}
+@media (max-width:1100px){body[data-page="live"] .page-head,body[data-page="signal"] .page-head,body[data-page="statistics"] .page-head{grid-template-columns:minmax(180px,.75fr) minmax(0,1fr) auto;background-size:500px 64px}body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow){grid-column:2;display:block}body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow)::after,body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow)::after,body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow)::after{display:none}body[data-page="live"] .page-head .source-state,body[data-page="signal"] .page-head .source-state,body[data-page="statistics"] .page-head .source-state{grid-column:3;min-width:136px}}
+@media (max-width:760px){body[data-page="live"] .page-head,body[data-page="signal"] .page-head,body[data-page="statistics"] .page-head{height:60px;min-height:60px;padding:0 9px;grid-template-columns:minmax(0,1fr) auto;gap:8px;background-size:420px 60px;background-position:72% center}body[data-page="live"] .page-head h1,body[data-page="signal"] .page-head h1,body[data-page="statistics"] .page-head h1{grid-column:1}body[data-page="live"] .page-head h1::before,body[data-page="signal"] .page-head h1::before,body[data-page="statistics"] .page-head h1::before{font-size:15px;white-space:normal}body[data-page="live"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="signal"] .page-head>div:first-child>p:not(.eyebrow),body[data-page="statistics"] .page-head>div:first-child>p:not(.eyebrow){display:none}body[data-page="live"] .page-head .source-state,body[data-page="signal"] .page-head .source-state,body[data-page="statistics"] .page-head .source-state{grid-column:2;min-width:0;max-width:130px;padding:5px 6px}body[data-page="live"] .page-head .source-state .pill,body[data-page="signal"] .page-head .source-state .pill,body[data-page="statistics"] .page-head .source-state .pill{max-width:116px;overflow:hidden;text-overflow:ellipsis;font-size:8px}}
