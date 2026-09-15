@@ -25,6 +25,8 @@
     min-width:0;
     min-height:0;
     height:100%;
+    align-content:start;
+    grid-auto-rows:max-content;
     overflow-x:hidden;
     overflow-y:scroll;
     overscroll-behavior:contain;
@@ -60,5 +62,5 @@
 
   /* Mobile stays natural page-scroll: no nested vertical scroller. */
   .main-board{height:auto;min-height:0;display:block;overflow:visible}
-  .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto}
+  .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto;align-content:normal;grid-auto-rows:auto}
 }
