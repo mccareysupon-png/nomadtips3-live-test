@@ -161,3 +161,120 @@ body{font-family:Arial,Helvetica,sans-serif}
   .metric strong{font-size:20px}
   .page-head h1{font-size:20px}
 }
+
+/* 3.43 CLEAN LAYER v2 — fewer borders, tonal separation, short dividers. */
+:root{
+  --line:rgba(190,198,191,.085);
+  --line-soft:rgba(190,198,191,.055);
+  --line-strong:rgba(205,214,207,.13);
+  --surface-0:#10120f;
+  --surface-1:#141713;
+  --surface-2:#181c17;
+  --surface-3:#1d221c;
+}
+
+/* Let tone and spacing separate content instead of boxes. */
+.metric,.panel,.score-group,.match-card,.active-signal-card,.active-signal-empty,
+.evidence-card,.flow-card,.signal-evidence-card,.signal-entry-block,
+.signal-entry-detail-grid section,.visual-card,.visual-entry-grid,
+.nomad-event-flow-card,.fom-board,.fom-market{
+  border:0!important;
+}
+.metric,.panel{box-shadow:0 7px 18px rgba(0,0,0,.11)}
+.score-group{background:transparent!important}
+.score-group+.score-group{margin-top:9px}
+.score-group-head{background:var(--surface-1)!important;border:0!important;border-bottom:1px solid var(--line-strong)!important}
+.score-group-head b{border:0!important;background:#0f130f!important}
+.match-stack{display:grid;gap:5px}
+.match-card{box-shadow:none!important;background:var(--surface-2)!important}
+.match-card:nth-child(even){background:#1a1f19!important}
+.match-card:hover,.match-card:focus-visible{background:#20271f!important}
+.match-card.expanded{background:linear-gradient(145deg,#213c26,#18301d 55%,#131a14)!important}
+.event-details,.active-signal-detail{border:0!important;border-top:1px solid var(--line-strong)!important;background:#111611!important}
+.evidence-card,.flow-card{background:var(--surface-1)!important}
+.evidence-head,.flow-head{border:0!important;border-bottom:1px solid var(--line-strong)!important;background:#121612!important}
+
+/* Match statistics: short horizontal dividers only, never full-row rules. */
+.mirror-row,.signal-mirror-row{position:relative;border:0!important}
+.mirror-row:not(:last-child)::after,.signal-mirror-row:not(:last-child)::after{
+  content:"";position:absolute;left:48px;right:48px;bottom:0;height:1px;pointer-events:none;
+  background:linear-gradient(90deg,transparent,var(--line-soft) 16%,var(--line-soft) 84%,transparent)
+}
+.signal-mirror-row:not(:last-child)::after{left:40px;right:40px}
+.mirror-track,.signal-mirror-half{box-shadow:none!important}
+
+/* Signals: layered surfaces, minimal outlines. */
+.active-signal-card{box-shadow:none!important;background:var(--surface-2)!important}
+.active-signal-card:nth-child(even){background:#1a1f19!important}
+.active-signal-card:hover,.active-signal-card:focus-visible{border:0!important;background:#20271f!important}
+.active-signal-card.expanded{border:0!important;box-shadow:none!important;background:linear-gradient(145deg,#213c26,#18301d 55%,#131a14)!important}
+.signal-market-chip,.signal-entry-quick span,.signal-live-quick span,.signal-live-meta span,
+.signal-rule-item,.signal-technical{border:0!important;background:#121612!important}
+.signal-evidence-card>header,.signal-entry-detail-grid section>header,.signal-entry-block>header{
+  border:0!important;border-bottom:1px solid var(--line-strong)!important;background:#121612!important
+}
+.signal-entry-grid,.signal-technical-grid{gap:3px!important;background:transparent!important}
+.signal-entry-grid>div,.signal-technical-grid span{background:#141914!important}
+.signal-entry-detail-grid{gap:7px}
+.signal-rule-item.pass{border:0!important;background:#132219!important}
+
+/* Statistics: no spreadsheet grid. Use header rule + zebra tones. */
+.table-wrap{background:transparent!important}
+.data-table{border-collapse:separate;border-spacing:0 2px}
+.data-table th{border:0!important;border-bottom:1px solid var(--line-strong)!important;background:#141914!important}
+.data-table td{border:0!important}
+.data-table tbody tr{background:#151915}
+.data-table tbody tr:nth-child(even){background:#191e18}
+.data-table tbody tr:hover{background:#1f281f!important}
+.public-stat-table tbody tr.selected{background:#203025!important;box-shadow:inset 2px 0 0 rgba(242,210,27,.65)}
+.visual-card{box-shadow:0 6px 16px rgba(0,0,0,.10)!important}
+.visual-head,.visual-card>header{border:0!important;border-bottom:1px solid var(--line-strong)!important}
+.visual-entry-grid{gap:4px!important;background:transparent!important;box-shadow:none!important}
+.visual-entry-grid article{background:#151915!important}
+
+/* Event Flow: remove cage lines. Keep only quiet horizontal guides. */
+.nomad-event-flow-card{box-shadow:none!important;background:var(--surface-0)!important}
+.nomad-flow-head{border:0!important;border-bottom:1px solid var(--line-strong)!important}
+.nomad-flow-foot{border:0!important;border-top:1px solid var(--line-soft)!important}
+.nomad-flow-grid-line{stroke:rgba(190,198,191,.07)!important}
+.nomad-flow-grid-line.mid{stroke:rgba(205,214,207,.13)!important}
+.nomad-flow-grid-line.vertical{stroke-opacity:0!important}
+.chart-axis{stroke:rgba(205,214,207,.14)!important;stroke-width:.7!important}
+
+/* Full Market: no box grid. Alternate tonal rows and use short vertical separators. */
+.fom-board,.fom-market{box-shadow:none!important;background:var(--surface-1)!important}
+.fom-head,.fom-market-head{border:0!important;border-bottom:1px solid var(--line-strong)!important;background:#121612!important}
+.fom-grid{gap:6px!important}
+.fom-colhead{border:0!important;border-bottom:1px solid var(--line-soft)!important}
+.fom-team-strip{border:0!important;border-bottom:1px solid var(--line-strong)!important}
+.fom-book{border:0!important;background:#151915!important}
+.fom-book:nth-child(even){background:#191e18!important}
+.fom-book>header{background:rgba(255,255,255,.012)!important}
+.fom-price-row{border:0!important;background:transparent!important}
+.fom-price-row:nth-child(even){background:rgba(255,255,255,.012)!important}
+.fom-colhead>*,.fom-price-row>*{position:relative;border-right:0!important}
+.fom-colhead>*+*::before,.fom-price-row>*+*::before{
+  content:"";position:absolute;left:0;top:22%;bottom:22%;width:1px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,var(--line-soft) 22%,var(--line-soft) 78%,transparent)
+}
+.fom-team-strip>i{position:relative;border-left:0!important;border-right:0!important}
+.fom-team-strip>i::before,.fom-team-strip>i::after{
+  content:"";position:absolute;top:22%;bottom:22%;width:1px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,var(--line-soft) 22%,var(--line-soft) 78%,transparent)
+}
+.fom-team-strip>i::before{left:0}.fom-team-strip>i::after{right:0}
+
+/* Pills/controls can keep a faint outline; navigation keeps one important divider. */
+.source-state,.pill{border-color:var(--line-soft)!important}
+.search input,.control,select,input[type="number"]{border-color:var(--line-soft)!important}
+.mobile-nav,body[data-page="statistics"] .statistics-nav{border-top:1px solid var(--line-strong)!important}
+
+@media(max-width:760px){
+  .match-stack,.active-signal-board{gap:4px}
+  .mirror-row:not(:last-child)::after{left:38px;right:38px}
+  .signal-mirror-row:not(:last-child)::after{left:32px;right:32px}
+  .metric,.panel{box-shadow:none}
+  .data-table{border-spacing:0 1px}
+  .fom-grid{gap:5px!important}
+  .fom-colhead>*+*::before,.fom-price-row>*+*::before{top:27%;bottom:27%}
+}
