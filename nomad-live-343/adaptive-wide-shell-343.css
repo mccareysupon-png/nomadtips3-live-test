@@ -26,8 +26,16 @@
     margin-left:0;
   }
 
+  /* Right-side utility order: Language first, then ODDS. */
+  .topbar-inner > .nomad343-language{
+    order:1;
+    margin-left:auto!important;
+    margin-right:6px;
+  }
+
   .topbar-inner > .odds-format-control{
-    margin-left:auto;
+    order:2;
+    margin-left:0!important;
   }
 }
 
@@ -43,10 +51,6 @@
     transform:translateX(-50%);
     margin-left:0;
     height:64px;
-  }
-
-  body[data-page="statistics"] .topbar-inner > .odds-format-control{
-    margin-left:auto;
   }
 }
 
