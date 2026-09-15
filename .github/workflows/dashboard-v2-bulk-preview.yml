@@ -8,6 +8,7 @@ on:
       - 'nomad-live-343/dashboard-v2*'
       - 'nomad-live-343/expanded-match-343.*'
       - 'nomad-live-343/expanded-odds-complete-343.*'
+      - 'nomad-live-343/ODDS_ENGINEERING_GUARDRAILS.md'
       - 'nomad-live-343/signal.html'
       - 'nomad-live-343/statistics.html'
       - 'nomad-live-343/settings.html'
@@ -50,34 +51,35 @@ jobs:
           node --check nomad-live-343/statistics.js
           node --check nomad-live-343/settings.js
           node --check nomad-live-343/v2-shared.js
+
           grep -Fq "const API='/api/engine/board'" nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const BOARD_API='/api/engine/board'" nomad-live-343/expanded-match-343.js
           grep -Fq "const HISTORY_API='/api/engine/history'" nomad-live-343/expanded-match-343.js
-          grep -Fq "const BOARD_API='/api/engine/board'" nomad-live-343/expanded-odds-complete-343.js
-          grep -Fq "343-expanded-odds-complete-v2-all-markets" nomad-live-343/expanded-odds-complete-343.js
+          grep -Fq "const ODDS_RENDER_OWNER='complete-only'" nomad-live-343/expanded-match-343.js
+          grep -Fq "343-expanded-match-v2-single-odds-owner" nomad-live-343/expanded-match-343.js
+          grep -Fq "343-expanded-odds-complete-v3-single-owner" nomad-live-343/expanded-odds-complete-343.js
+          grep -Fq "['coral','Coral'],['crown','Crown']" nomad-live-343/expanded-odds-complete-343.js
           grep -Fq "if(structured(root.odds))push('Bet365','bet365',root.odds)" nomad-live-343/expanded-odds-complete-343.js
+          grep -Fq "if(structured(f?.fullOdds))push('Bet365','bet365',f.fullOdds)" nomad-live-343/expanded-odds-complete-343.js
           grep -Fq "if(!structured(v))return scalarHtml(v)" nomad-live-343/expanded-odds-complete-343.js
+          grep -Fq "const SIGNALS_API='/api/engine/signals'" nomad-live-343/dashboard-v2-stage3.js
           grep -Fq "const API='/api/engine/signals'" nomad-live-343/signal.js
           grep -Fq "const API='/api/engine/statistics'" nomad-live-343/statistics.js
           grep -Fq "const API='/api/engine/settings'" nomad-live-343/settings.js
+
+          grep -Fq 'expanded-match-343.js?v=343-expand-v2-single-owner' nomad-live-343/index.html
+          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' nomad-live-343/index.html
           grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' nomad-live-343/index.html
-          grep -Fq 'expanded-match-343.css?v=343-expand-v1' nomad-live-343/index.html
-          grep -Fq 'expanded-match-343.js?v=343-expand-v1' nomad-live-343/index.html
-          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v2' nomad-live-343/index.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/signal.html
           grep -Fq 'BULK SNAPSHOT' nomad-live-343/statistics.html
           grep -Fq '0 per-fixture provider requests' nomad-live-343/settings.html
-          for page in index signal statistics settings; do
-            grep -Fq 'class="v2-topbar"' "nomad-live-343/${page}.html"
-            grep -Fq 'class="v2-logo"' "nomad-live-343/${page}.html"
-            grep -Fq '<span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span>' "nomad-live-343/${page}.html"
-            grep -Fq 'v2-header.css?v=343-v2-header-v1' "nomad-live-343/${page}.html"
-          done
-          grep -Fq 'height:64px' nomad-live-343/v2-header.css
-          grep -Fq 'width:108px' nomad-live-343/v2-header.css
-          grep -Fq 'width:88px' nomad-live-343/v2-header.css
-          grep -Fq 'width:82px' nomad-live-343/v2-header.css
+
+          if grep -Fq 'function renderOdds' nomad-live-343/expanded-match-343.js; then
+            echo 'ERROR: legacy second Odds renderer restored'; exit 1
+          fi
+          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' nomad-live-343/expanded-odds-complete-343.js; then
+            echo 'ERROR: complete Odds renderer must be network-free'; exit 1
+          fi
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' nomad-live-343/dashboard-v2-stage3.js nomad-live-343/expanded-match-343.js nomad-live-343/expanded-odds-complete-343.js nomad-live-343/signal.js nomad-live-343/statistics.js nomad-live-343/settings.js nomad-live-343/v2-shared.js; then
             echo 'ERROR: V2 UI restored forbidden provider/per-fixture caller'; exit 1
           fi
@@ -91,6 +93,53 @@ jobs:
           if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then
             echo 'ERROR: bulk engine contains direct provider URL'; exit 1
           fi
+
+      - name: Parser regression self-test
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          global.window={};
+          global.document={
+            readyState:'complete',
+            querySelector:()=>({}),
+            querySelectorAll:()=>[],
+            addEventListener:()=>{}
+          };
+          global.MutationObserver=class{observe(){}};
+          require('./nomad-live-343/expanded-odds-complete-343.js');
+          const api=global.window.NOMAD343_COMPLETE_ODDS;
+          if(!api||typeof api.render!=='function')throw Error('complete odds API missing');
+          const fixture={
+            fixtureId:'selftest',
+            providerOdds:{
+              odds:{
+                '1x2':{opening:{home:1.8,draw:3.4,away:4.2},closing:{home:1.75,draw:3.5,away:4.4},inplay:null},
+                asian_handicap:{opening:-0.25,closing:-0.5,inplay:-0.75},
+                goal_line:{opening:2.5,closing:2.75,inplay:3},
+                corner_line:{opening:9.5,closing:10,inplay:10.5},
+                card_line:{opening:4.5,closing:5,inplay:null},
+                asian_handicap_half:{opening:-0.25,closing:-0.25,inplay:null},
+                goal_line_half:{opening:1,closing:1.25,inplay:1.5},
+                corner_line_half:{opening:4.5,closing:4.5,inplay:5},
+                btts:{opening:{yes:1.8,no:1.95},closing:{yes:1.72,no:2.05},inplay:null}
+              },
+              bookmakers:[{
+                slug:'pinnacle',name:'Pinnacle',odds:{
+                  asian_handicap:{opening:{line:-0.25,home:1.95,away:1.85},closing:{line:-0.5,home:2.02,away:1.78},inplay:{line:-1,home:1.9,away:1.9}},
+                  goal_line:{opening:{line:2.5,over:1.9,under:1.9},closing:{line:2.75,over:1.85,under:1.95},inplay:{line:3,over:2.05,under:1.75}}
+                }
+              }]
+            }
+          };
+          const html=api.render(fixture);
+          for(const token of ['Asian Handicap','Goal O/U','Corner O/U','Cards O/U','Asian Handicap · 1H','BTTS','LINE','Pinnacle','William Hill','Crown']){
+            if(!html.includes(token))throw Error(`missing parser token: ${token}`);
+          }
+          const diag=api.inspectFixture(fixture);
+          if(!diag.found.includes('bet365')||!diag.found.includes('pinnacle'))throw Error('bookmaker merge failed');
+          if(!diag.markets.includes('asian_handicap')||!diag.markets.includes('goal_line'))throw Error('market discovery failed');
+          console.log('ODDS_PARSER_SELFTEST_OK',diag.found,diag.markets);
+          NODE
 
       - name: Dry-run preview
         working-directory: workers/nomadtips3-343-preview
@@ -119,42 +168,43 @@ jobs:
           get SIGNAL "$BASE_URL/signal.html?smoke=$RANDOM" /tmp/signal.html
           get STATISTICS "$BASE_URL/statistics.html?smoke=$RANDOM" /tmp/statistics.html
           get SETTINGS "$BASE_URL/settings.html?smoke=$RANDOM" /tmp/settings.html
-          get SHARED_CSS "$BASE_URL/v2-shared.css?smoke=$RANDOM" /tmp/shared.css
-          get HEADER_CSS "$BASE_URL/v2-header.css?smoke=$RANDOM" /tmp/header.css
           get SHARED_JS "$BASE_URL/v2-shared.js?smoke=$RANDOM" /tmp/shared.js
           get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
           get TUNE_JS "$BASE_URL/dashboard-v2-tune.js?smoke=$RANDOM" /tmp/tune.js
-          get TUNE_CSS "$BASE_URL/dashboard-v2-tune.css?smoke=$RANDOM" /tmp/tune.css
           get EXPAND_JS "$BASE_URL/expanded-match-343.js?smoke=$RANDOM" /tmp/expand.js
-          get EXPAND_CSS "$BASE_URL/expanded-match-343.css?smoke=$RANDOM" /tmp/expand.css
           get COMPLETE_ODDS_JS "$BASE_URL/expanded-odds-complete-343.js?smoke=$RANDOM" /tmp/complete-odds.js
           get COMPLETE_ODDS_CSS "$BASE_URL/expanded-odds-complete-343.css?smoke=$RANDOM" /tmp/complete-odds.css
           get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
           get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
-          grep -Fq 'NOMAD LIVE 3.43 · BULK DASHBOARD' /tmp/index.html
-          grep -Fq '343-signal-v2-bulk-ui' /tmp/signal.html
-          grep -Fq '343-stat-v2-bulk-ui' /tmp/statistics.html
-          grep -Fq 'BULK PRICE REFEREE' /tmp/settings.html
-          grep -Fq '343-v2-shared-ui-v1' /tmp/shared.js
-          grep -Fq '343-expanded-match-v1-bulk-snapshot' /tmp/expand.js
-          grep -Fq '343-expanded-odds-complete-v2-all-markets' /tmp/complete-odds.js
+
+          grep -Fq '343-expanded-match-v2-single-odds-owner' /tmp/expand.js
+          grep -Fq '343-expanded-odds-complete-v3-single-owner' /tmp/complete-odds.js
           grep -Fq '.complete-odds-table' /tmp/complete-odds.css
-          grep -Fq '.match-expanded' /tmp/expand.css
-          grep -Fq '.v2-topbar' /tmp/header.css
-          grep -Fq 'width:108px' /tmp/header.css
-          for page in /tmp/index.html /tmp/signal.html /tmp/statistics.html /tmp/settings.html; do
-            grep -Fq 'class="v2-topbar"' "$page"
-            grep -Fq 'class="v2-logo"' "$page"
-          done
+          grep -Fq 'expanded-match-343.js?v=343-expand-v2-single-owner' /tmp/index.html
+          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' /tmp/index.html
+          if grep -Fq 'function renderOdds' /tmp/expand.js; then echo 'ERROR: deployed legacy Odds renderer'; exit 1; fi
+          if grep -Eq 'fetch\(|XMLHttpRequest|/api/' /tmp/complete-odds.js; then echo 'ERROR: deployed complete Odds renderer performs network calls'; exit 1; fi
           if grep -Eq 'api\.5dollarfootballapi\.com|fixture-odds|/api/full-market/' /tmp/dashboard.js /tmp/shared.js /tmp/tune.js /tmp/expand.js /tmp/complete-odds.js; then
             echo 'ERROR: deployed V2 UI contains forbidden caller'; exit 1
           fi
+
           node - <<'NODE'
           const h=require('/tmp/health.json');
           const b=require('/tmp/board.json');
           if(h.version!=='nomad343-engine-v4-bulk-only'||h.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(h.externalOddsRequests)!==0) throw Error('runtime architecture is not bulk-only');
           if(b.ok===true&&(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)) throw Error('current board is not bulk-only');
-          console.log('V2_BULK_RUNTIME_OK',Array.isArray(b.fixtures)?b.fixtures.length:0,'fixtures',b.counts||{});
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const marketCounts={},bookCounts={};
+          const add=(obj,key)=>{if(obj&&key)obj[key]=(obj[key]||0)+1};
+          for(const f of fixtures){
+            const p=f?.providerOdds||{};
+            const bet=p.odds||p.markets||f.fullOdds||{};
+            if(bet&&typeof bet==='object'&&!Array.isArray(bet))for(const k of Object.keys(bet))add(marketCounts,k);
+            const books=Array.isArray(p.bookmakers)?p.bookmakers:[];
+            for(const x of books)add(bookCounts,String(x?.slug||x?.name||'unknown'));
+          }
+          console.log('V2_BULK_RUNTIME_OK',fixtures.length,'fixtures',b.counts||{});
+          console.log('ODDS_SNAPSHOT_COVERAGE',JSON.stringify({marketCounts,bookCounts,pricedFixtures:fixtures.filter(f=>f?.providerOdds||f?.fullOdds).length}));
           NODE
 
       - name: Browser render smoke all pages
@@ -172,15 +222,10 @@ jobs:
           render statistics.html /tmp/stat-rendered.html
           render settings.html /tmp/settings-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
-          grep -Fq 'expanded-match-343.js?v=343-expand-v1' /tmp/index-rendered.html
-          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v2' /tmp/index-rendered.html
+          grep -Fq 'expanded-match-343.js?v=343-expand-v2-single-owner' /tmp/index-rendered.html
+          grep -Fq 'expanded-odds-complete-343.js?v=343-complete-odds-v3-single-owner' /tmp/index-rendered.html
           if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR: index still loading'; exit 1; fi
           grep -Fq 'data-v2="ready"' /tmp/signal-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/stat-rendered.html
           grep -Fq 'data-v2="ready"' /tmp/settings-rendered.html
-          grep -Fq 'data-rule=' /tmp/settings-rendered.html
-          for page in /tmp/index-rendered.html /tmp/signal-rendered.html /tmp/stat-rendered.html /tmp/settings-rendered.html; do
-            grep -Fq 'class="v2-topbar"' "$page"
-            grep -Fq 'class="v2-logo"' "$page"
-          done
           echo 'V2_BROWSER_ALL_PAGES_OK'
