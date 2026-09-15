@@ -52,10 +52,17 @@ jobs:
       - name: Smoke Dashboard V2 on bulk-only runtime
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$BASE_URL/dashboard-v2.html?smoke=$RANDOM" -o /tmp/dashboard.html
-          curl -fsS --max-time 30 "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" -o /tmp/dashboard.js
-          curl -fsS --max-time 30 "$BASE_URL/api/engine/health?smoke=$RANDOM" -o /tmp/health.json
-          curl -fsS --max-time 30 "$BASE_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
+          get() {
+            name="$1"; url="$2"; out="$3"
+            echo "CHECK $name $url"
+            code=$(curl -sS -L --retry 6 --retry-delay 2 --retry-all-errors --max-time 30 -w '%{http_code}' -o "$out" "$url")
+            echo "$name HTTP $code"
+            test "$code" = "200"
+          }
+          get DASHBOARD "$BASE_URL/dashboard-v2.html?smoke=$RANDOM" /tmp/dashboard.html
+          get DASHBOARD_JS "$BASE_URL/dashboard-v2-stage3.js?smoke=$RANDOM" /tmp/dashboard.js
+          get ENGINE_HEALTH "$BASE_URL/api/engine/health?smoke=$RANDOM" /tmp/health.json
+          get ENGINE_BOARD "$BASE_URL/api/engine/board?smoke=$RANDOM" /tmp/board.json
           grep -Fq 'dashboard-v2-stage3.js' /tmp/dashboard.html
           grep -Fq "const API='/api/engine/board'" /tmp/dashboard.js
           grep -Fq "const SIGNALS_API='/api/engine/signals'" /tmp/dashboard.js
