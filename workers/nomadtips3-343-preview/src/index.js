@@ -6,14 +6,6 @@ function engineRequest(request, path) {
   return new Request(upstream, request);
 }
 
-function fullMarketRequest(request, path) {
-  const upstream = new URL(request.url);
-  upstream.protocol = 'https:';
-  upstream.hostname = 'full-market.internal';
-  upstream.pathname = path;
-  return new Request(upstream, request);
-}
-
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
@@ -24,10 +16,10 @@ async function noStoreUiAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-ui-revision', '343-bettor-view-v1');
+  headers.set('x-nomad-ui-revision', '343-bulk-only-v1');
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
+  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-bulk-only-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -41,8 +33,7 @@ function liveMinute(fixture) {
   const direct = num(fixture?.minute);
   if (direct !== null) return direct;
   const match = String(fixture?.statusCode ?? '').match(/\d+/);
-  if (match) return Number(match[0]);
-  return null;
+  return match ? Number(match[0]) : null;
 }
 
 async function activeSignals(request, env) {
@@ -50,52 +41,41 @@ async function activeSignals(request, env) {
     env.ENGINE.fetch(engineRequest(request, '/signals')),
     env.ENGINE.fetch(engineRequest(request, '/board'))
   ]);
-
   const [signalData, boardData] = await Promise.all([
     signalResponse.json().catch(() => ({})),
     boardResponse.json().catch(() => ({}))
   ]);
-
-  if (signalData?.ok !== true) {
-    return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
-  }
-  if (boardData?.ok !== true) {
-    return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
-  }
+  if (signalData?.ok !== true) return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
+  if (boardData?.ok !== true) return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
 
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
   const liveFixtures = fixtures.filter(fixtureIsLive);
   const liveFixtureMap = new Map(liveFixtures.map(f => [String(f?.fixtureId ?? ''), f]));
   const pending = Array.isArray(signalData?.signals) ? signalData.signals : [];
   let hiddenPendingSignals = 0;
+  const signals = pending.filter(signal => {
+    const visible = liveFixtureMap.has(String(signal?.fixtureId ?? ''));
+    if (!visible) hiddenPendingSignals += 1;
+    return visible;
+  }).map(signal => {
+    const fixture = liveFixtureMap.get(String(signal.fixtureId));
+    return {
+      ...signal,
+      mirrorMinute: liveMinute(fixture),
+      mirrorScore: copy(fixture?.goals),
+      mirrorState: 'LIVE',
+      mirrorSource: 'ENGINE_BOARD_LIVE',
+      liveStatistics: copy(fixture?.statistics),
+      liveCorners: copy(fixture?.corners),
+      liveCards: copy(fixture?.cards),
+      liveEvents: Array.isArray(fixture?.events) ? copy(fixture.events) : [],
+      liveStatus: fixture?.status ?? null,
+      liveStatusCode: fixture?.statusCode ?? null,
+      liveUpdatedAt: boardData?.hubFetchedAt ?? null,
+      liveAgeMs: num(boardData?.hubAgeMs)
+    };
+  }).sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
 
-  const signals = pending
-    .filter(signal => {
-      const visible = liveFixtureMap.has(String(signal?.fixtureId ?? ''));
-      if (!visible) hiddenPendingSignals += 1;
-      return visible;
-    })
-    .map(signal => {
-      const fixture = liveFixtureMap.get(String(signal.fixtureId));
-      return {
-        ...signal,
-        mirrorMinute: liveMinute(fixture),
-        mirrorScore: copy(fixture?.goals),
-        mirrorState: 'LIVE',
-        mirrorSource: 'ENGINE_BOARD_LIVE',
-        liveStatistics: copy(fixture?.statistics),
-        liveCorners: copy(fixture?.corners),
-        liveCards: copy(fixture?.cards),
-        liveEvents: Array.isArray(fixture?.events) ? copy(fixture.events) : [],
-        liveStatus: fixture?.status ?? null,
-        liveStatusCode: fixture?.statusCode ?? null,
-        liveUpdatedAt: boardData?.hubFetchedAt ?? null,
-        liveAgeMs: num(boardData?.hubAgeMs)
-      };
-    })
-    .sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
-
-  const activeMatches = new Set(signals.map(s => String(s.fixtureId))).size;
   return Response.json({
     ...signalData,
     signals,
@@ -104,7 +84,7 @@ async function activeSignals(request, env) {
       externalRequestsAdded: 0,
       boardFixtures: fixtures.length,
       liveFixtures: liveFixtures.length,
-      activeMatches,
+      activeMatches: new Set(signals.map(s => String(s.fixtureId))).size,
       activeSignals: signals.length,
       hiddenPendingSignals,
       hubFetchedAt: boardData?.hubFetchedAt ?? null,
@@ -114,30 +94,31 @@ async function activeSignals(request, env) {
   }, { headers: { 'cache-control': 'no-store' } });
 }
 
+function fullMarketCompat(request, env, path) {
+  if (path === '/health' || path === '/status') {
+    return Response.json({ ok: true, component: 'NOMAD343_FULL_MARKET_COMPAT', mode: 'BULK_SNAPSHOT_ONLY', externalRequestsAdded: 0 }, { headers: { 'cache-control': 'no-store' } });
+  }
+  if (path === '/fixture-odds') return env.ENGINE.fetch(engineRequest(request, '/fixture-odds'));
+  return Response.json({ ok: false, error: 'FULL_MARKET_LEGACY_WORKER_TERMINATED', mode: 'BULK_SNAPSHOT_ONLY', externalRequestsAdded: 0 }, { status: 410, headers: { 'cache-control': 'no-store' } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/engine/signals' && request.method === 'GET') {
-      return activeSignals(request, env);
-    }
+    if (url.pathname === '/api/engine/signals' && request.method === 'GET') return activeSignals(request, env);
     if (url.pathname.startsWith('/api/engine/')) {
-      const upstream = new URL(request.url);
-      upstream.protocol = 'https:';
-      upstream.hostname = 'engine.internal';
-      upstream.pathname = url.pathname.replace('/api/engine', '') || '/';
-      return env.ENGINE.fetch(new Request(upstream, request));
+      const path = url.pathname.replace('/api/engine', '') || '/';
+      return env.ENGINE.fetch(engineRequest(request, path));
     }
     if (url.pathname.startsWith('/api/full-market/')) {
       const path = url.pathname.replace('/api/full-market', '') || '/';
-      return env.FULL_MARKET.fetch(fullMarketRequest(request, path));
+      return fullMarketCompat(request, env, path);
     }
     if (request.method === 'GET' && (
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
       url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css'
-    )) {
-      return noStoreUiAsset(request, env);
-    }
+    )) return noStoreUiAsset(request, env);
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url);
       assetUrl.pathname = '/index.html';
