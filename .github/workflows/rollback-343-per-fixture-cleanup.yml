@@ -6,6 +6,7 @@ on:
       - work/nomad343-remove-per-fixture-full-market
     paths:
       - .github/workflows/rollback-343-per-fixture-cleanup.yml
+      - .github/scripts/cleanup_343_per_fixture.py
 
 permissions:
   contents: write
