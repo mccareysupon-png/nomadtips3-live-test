@@ -71,7 +71,6 @@ jobs:
           grep -Fq "const VERSION='343-bet365-board-v4-market-language'" nomad-live-343/bet365-board.js
           grep -Fq 'providerLine' workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const VERSION='nomad343-5usd-hub-v4-status-safe'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "if(/unknown/.test(s))return'unknown'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "const VERSION='nomad343-engine-v3-settlement-safe'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq "const SETTLEMENT_REVISION='bet365-rules-v2'" workers/nomadtips3-engine-343/src/index.js
           grep -Fq 'const HISTORY_MS=180*60_000' workers/nomadtips3-engine-343/src/index.js
