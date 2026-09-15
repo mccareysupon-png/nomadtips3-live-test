@@ -367,6 +367,7 @@ function mount(){
   const host=document.querySelector('.topbar-inner');
   if(!host||host.querySelector('[data-language-343]'))return;
   injectStyle();
+  currentLanguage=safeStoredLanguage();
   const wrap=document.createElement('div');
   wrap.className='nomad343-language';
   wrap.dataset.language343='1';
@@ -383,10 +384,9 @@ function mount(){
     option.disabled=!language.ready;
     select.appendChild(option);
   }
+  select.value=currentLanguage;
   wrap.append(label,select);
   host.appendChild(wrap);
-  currentLanguage=safeStoredLanguage();
-  select.value=currentLanguage;
   startObserver();
   setLanguage(currentLanguage);
   select.addEventListener('change',()=>setLanguage(select.value,{persist:true,emit:true}));
