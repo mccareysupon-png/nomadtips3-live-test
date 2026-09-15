@@ -122,24 +122,28 @@ jobs:
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/tmp/nomad343-chrome about:blank >/tmp/chrome.log 2>&1 &
+          TARGET_URL="$BASE_URL/index.html?qa=$RANDOM"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/tmp/nomad343-chrome "$TARGET_URL" >/tmp/chrome.log 2>&1 &
           PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
-          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
-          TARGET_URL="$BASE_URL/index.html?qa=$RANDOM" node - <<'NODE'
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9222/json/list >/tmp/tabs.json && break; sleep 1; done
+          node - <<'NODE'
           (async()=>{
             const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-            const tab=await fetch(`http://127.0.0.1:9222/json/new?${encodeURIComponent(process.env.TARGET_URL)}`,{method:'PUT'}).then(r=>r.json());
+            let tab=null;
+            for(let i=0;i<30;i++){
+              const tabs=await fetch('http://127.0.0.1:9222/json/list').then(r=>r.json());
+              tab=tabs.find(x=>x.type==='page'&&String(x.url||'').includes('nomadtips3-343-ultra-preview.mccarey-supon.workers.dev/index.html'));
+              if(tab)break;await sleep(500);
+            }
+            if(!tab?.webSocketDebuggerUrl)throw Error('preview CDP target not found');
             const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej});let seq=0,pending=new Map();
             ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}};
             const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
             const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.result?.value};
-            await send('Page.bringToFront');
-            await sleep(1500);
-            await ev("(()=>{try{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'})}catch{};window.NOMAD343_DASHBOARD_V2?.reload?.();return true})()");
-            let ready=false;for(let i=0;i<50;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(400)}
-            if(!ready)throw Error('no match row after forced visible reload');
+            let ready=false;for(let i=0;i<60;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(500)}
+            if(!ready){const debug=await ev("({url:location.href,state:document.readyState,vis:document.visibilityState,dash:window.NOMAD343_DASHBOARD_V2?.version,text:document.body?.innerText?.slice(0,300)})");throw Error(`no match row ${JSON.stringify(debug)}`)}
             const clicked=await ev("(()=>{const r=document.querySelector('.match-row[data-match-id]');r.click();return r.dataset.matchId})()");
-            await sleep(8000);
+            await sleep(10000);
             const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]');if(!e||!f)return null;e.__stable='same-node';return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',panel:f.querySelector('[data-fmb-panel]')?.innerText||''}})()");
             if(!before||before.id!==clicked||before.count!==1||!before.flow||before.tabs!==19)throw Error(`bad expanded card ${JSON.stringify(before)}`);
             if(!before.head.includes('ONE REQUEST'))throw Error(`full-market source not active ${before.head}`);
