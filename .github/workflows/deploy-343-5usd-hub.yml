@@ -37,11 +37,11 @@ jobs:
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "const VERSION='nomad343-5usd-hub-v6-safe-control'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "const OWNER_TOKEN_SHA256='2e865593c9988c1f6dd0e620ba96bd14cf607555c0f273f68e192e9accad6e9b'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'main = "src/index-v2.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "x-ratelimit-remaining" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "providerUsedInWindow" workers/nomadtips3-5usd-hub-343/src/index-v2.js
-          grep -Fq "OWNER_TOKEN_SHA256" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "UNSAFE_PROJECTED_LOAD" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "setAlarm" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
@@ -70,9 +70,20 @@ jobs:
       - name: Verify hub telemetry and guarded control without direct provider probe
         run: |
           set -euo pipefail
-          curl -fsS --max-time 45 "$HUB_URL/snapshot?_=$RANDOM$RANDOM" -o /tmp/hub-snapshot.json
-          curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/hub-health.json
-          curl -fsS --max-time 20 "$HUB_URL/control?_=$RANDOM$RANDOM" -o /tmp/hub-control.json
+          get() {
+            name="$1"; url="$2"; out="$3"; max="$4"
+            code="000"
+            for attempt in $(seq 1 12); do
+              code=$(curl -sS --max-time "$max" -w '%{http_code}' -o "$out" "$url" || true)
+              echo "$name attempt $attempt HTTP $code"
+              [ "$code" = "200" ] && break
+              sleep 2
+            done
+            test "$code" = "200"
+          }
+          get SNAPSHOT "$HUB_URL/snapshot?_=$RANDOM$RANDOM" /tmp/hub-snapshot.json 45
+          get HEALTH "$HUB_URL/health?_=$RANDOM$RANDOM" /tmp/hub-health.json 20
+          get CONTROL "$HUB_URL/control?_=$RANDOM$RANDOM" /tmp/hub-control.json 20
           unauth=$(curl -sS --max-time 20 -o /tmp/control-unauth.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"enabled":true,"intervalSec":120}' "$HUB_URL/control")
           test "$unauth" = "401"
           node - <<'NODE'
