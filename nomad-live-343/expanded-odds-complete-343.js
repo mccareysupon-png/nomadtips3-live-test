@@ -19,15 +19,15 @@ let boardCache={at:0,data:null,promise:null};
 
 async function fetchJson(url){const r=await fetch(`${url}${url.includes('?')?'&':'?'}_=${Date.now()}`,{cache:'no-store'});const j=await r.json().catch(()=>({}));if(!r.ok||j?.ok===false)throw new Error(j?.error||`HTTP_${r.status}`);return j}
 async function getBoard(){const now=Date.now();if(boardCache.data&&now-boardCache.at<CACHE_MS)return boardCache.data;if(boardCache.promise)return boardCache.promise;boardCache.promise=fetchJson(BOARD_API).then(j=>{boardCache={at:Date.now(),data:j,promise:null};return j}).catch(e=>{boardCache.promise=null;throw e});return boardCache.promise}
-function canonicalBook(raw){const n=norm(raw);for(const [slug] of CANON){if(n===slug||n.includes(slug)||slug.includes(n))return slug}return n||'unknown'}
+function canonicalBook(raw){const n=norm(raw);if(!n)return'unknown';for(const [slug] of CANON){if(n===slug||n.includes(slug)||slug.includes(n))return slug}return n}
 function bookLabel(slug,fallback){return CANON.find(([s])=>s===slug)?.[1]||String(fallback||slug||'Bookmaker')}
-function rowBookName(row,key=''){return String(row?.name??row?.bookmaker?.name??row?.slug??row?.bookmaker?.slug??key||'Bookmaker')}
+function rowBookName(row,key=''){return String((row?.name??row?.bookmaker?.name??row?.slug??row?.bookmaker?.slug??key)||'Bookmaker')}
 function rowBookSlug(row,key=''){return canonicalBook(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name??key)}
 function bookRoot(row){return row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??row?.data??row}
 function mergeObj(a,b){if(!plain(a))return b;if(!plain(b))return a;const out={...a};for(const [k,v] of Object.entries(b)){out[k]=plain(out[k])&&plain(v)?mergeObj(out[k],v):v}return out}
 function providerBookMap(f){
   const root=f?.providerOdds,map=new Map();if(!plain(root))return map;
-  const push=(name,slug,data)=>{if(!plain(data))return;const s=canonicalBook(slug||name);const prev=map.get(s);map.set(s,{slug:s,name:bookLabel(s,name),root:prev?mergeObj(prev.root,data):data,found:true})};
+  const push=(name,slug,data)=>{if(!plain(data))return;const s=canonicalBook(slug||name);if(s==='unknown')return;const prev=map.get(s);map.set(s,{slug:s,name:bookLabel(s,name),root:prev?mergeObj(prev.root,data):data,found:true})};
   const ingest=container=>{
     if(Array.isArray(container)){container.forEach((row,i)=>push(rowBookName(row,`Book ${i+1}`),rowBookSlug(row,`book${i+1}`),bookRoot(row)));return}
     if(!plain(container))return;
@@ -70,13 +70,13 @@ function collectMarkets(root,prefix='',depth=0,out=new Map()){
   }
   return out;
 }
+function stageLookup(market,aliases){if(!plain(market))return null;for(const [k,v] of Object.entries(market)){if(aliases.includes(norm(k))&&plain(v))return v}return null}
 function stageValue(market,stage){
   if(!plain(market))return null;
-  const get=(...keys)=>{for(const k of keys)if(plain(market[k]))return market[k];return null};
-  if(stage==='OPEN')return get('opening','open');
-  if(stage==='CLOSE')return get('closing','close');
-  if(stage==='PRE')return get('prematch','pre_match','preMatch','pre');
-  if(stage==='LIVE')return get('inplay','in_play','live');
+  if(stage==='OPEN')return stageLookup(market,['opening','open']);
+  if(stage==='CLOSE')return stageLookup(market,['closing','close']);
+  if(stage==='PRE')return stageLookup(market,['prematch','pre']);
+  if(stage==='LIVE')return stageLookup(market,['inplay','live']);
   if(stage==='NOW')return isStageObject(market)?null:market;
   return null;
 }
@@ -90,7 +90,7 @@ function fmt(v,odds=false){const n=num(v);if(n===null)return'—';if(odds)return
 function priceHtml(v){
   if(!plain(v))return'<span class="complete-odds-empty">—</span>';
   const leaves=flattenNumeric(v),used=new Set(),parts=[];
-  const take=(label,aliases,odds=false)=>{const hit=leaves.find((x,i)=>!used.has(i)&&aliases.includes(x.norm));if(!hit)return;const i=leaves.indexOf(hit);used.add(i);parts.push(`<span><i>${esc(label)}</i><b>${esc(fmt(hit.value,odds))}</b></span>`)};
+  const take=(label,aliases,odds=false)=>{const i=leaves.findIndex((x,j)=>!used.has(j)&&aliases.includes(x.norm));if(i<0)return;used.add(i);parts.push(`<span><i>${esc(label)}</i><b>${esc(fmt(leaves[i].value,odds))}</b></span>`)};
   take('L',['line','hdp','handicap','total']);take('H',['home','homeodds'],true);take('D',['draw','drawodds'],true);take('A',['away','awayodds'],true);take('O',['over','overodds'],true);take('U',['under','underodds'],true);take('YES',['yes'],true);take('NO',['no'],true);
   leaves.forEach((x,i)=>{if(used.has(i))return;parts.push(`<span><i>${esc(pretty(x.path.split('.').slice(-2).join(' ')))}</i><b>${esc(fmt(x.value,false))}</b></span>`)});
   return parts.length?`<div class="complete-odd-values">${parts.join('')}</div>`:'<span class="complete-odds-empty">—</span>';
