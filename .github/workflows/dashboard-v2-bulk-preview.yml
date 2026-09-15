@@ -1,4 +1,4 @@
-name: NOMAD 3.43 V2 Full Market
+name: NOMAD 3.43 V2 Bulk Snapshot
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
       - 'nomad-live-343/dashboard-v2*'
       - 'nomad-live-343/expanded-match-343.*'
       - 'nomad-live-343/full-market-bookmaker-343.*'
-      - 'workers/nomadtips3-343-full-market/**'
       - 'workers/nomadtips3-343-preview/**'
+      - 'workers/nomadtips3-5usd-hub-343/**'
       - '.github/workflows/dashboard-v2-bulk-preview.yml'
   workflow_dispatch:
 
@@ -35,123 +35,110 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate architecture and syntax
+      - name: Validate John bulk-only architecture
         run: |
           set -euo pipefail
           node --check nomad-live-343/dashboard-v2-stage3.js
           node --check nomad-live-343/expanded-match-343.js
           node --check nomad-live-343/full-market-bookmaker-343.js
-          node --check workers/nomadtips3-343-full-market/src/index.js
           node --check workers/nomadtips3-343-preview/src/index.js
           grep -Fq "const ODDS_RENDER_OWNER='full-market-bookmaker-only'" nomad-live-343/expanded-match-343.js
-          grep -Fq "const FULL_API='/api/full-market/fixture-odds'" nomad-live-343/full-market-bookmaker-343.js
-          grep -Fq '343-full-market-bookmaker-v2-one-request' nomad-live-343/full-market-bookmaker-343.js
-          grep -Fq '343-fmb-v2-one-request' nomad-live-343/index.html
-          grep -Fq 'nomad343-full-market-v2-one-request-19book' workers/nomadtips3-343-full-market/src/index.js
-          grep -Fq '"binding": "FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc
+          grep -Fq '343-full-market-bookmaker-v3-bulk-snapshot-zero-click' nomad-live-343/full-market-bookmaker-343.js
+          grep -Fq "networkMode:'NONE'" nomad-live-343/full-market-bookmaker-343.js
+          grep -Fq "source:'BULK_SNAPSHOT_ONLY'" nomad-live-343/full-market-bookmaker-343.js
+          grep -Fq '343-fmb-v3-bulk-snapshot-zero-click' nomad-live-343/index.html
+          grep -Fq 'FULL_MARKET_CLICK_ROUTE_REMOVED' workers/nomadtips3-343-preview/src/index.js
+          if grep -Eq "FULL_API|/api/full-market/fixture-odds|api\.5dollarfootballapi\.com|fetch\(" nomad-live-343/full-market-bookmaker-343.js; then echo 'ERROR click renderer contains network/provider path'; exit 1; fi
+          if grep -Fq '"binding": "FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc; then echo 'ERROR FULL_MARKET service binding restored'; exit 1; fi
+          if [ -d workers/nomadtips3-343-full-market ]; then echo 'ERROR per-fixture full-market worker restored'; exit 1; fi
           if grep -Eq 'expanded-odds-complete-343|full-odds-main-343' nomad-live-343/index.html; then echo 'ERROR old renderer restored'; exit 1; fi
-          if grep -Fq 'api.5dollarfootballapi.com' nomad-live-343/full-market-bookmaker-343.js; then echo 'ERROR browser calls provider directly'; exit 1; fi
-          grep -Fq 'bookmakers=${encodeURIComponent(BOOKMAKER_QUERY)}' workers/nomadtips3-343-full-market/src/index.js
           grep -Fq 'main = "src/index-bulk.js"' workers/nomadtips3-engine-343/wrangler.toml
           if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-engine-343/src/index-bulk.js; then echo 'ERROR Engine direct provider call restored'; exit 1; fi
-          echo ARCHITECTURE_OK
+          grep -Fq "const include='odds,events,stats'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          echo JOHN_BULK_ZERO_CLICK_GUARD_OK
 
-      - name: Full Market rich-price parser regression
+      - name: Bulk snapshot parser regression
         run: |
           set -euo pipefail
           node - <<'NODE'
-          global.window={};global.document={readyState:'complete',addEventListener:()=>{},querySelector:()=>null};global.CSS={escape:v=>String(v)};
-          global.fetch=()=>Promise.reject(new Error('network disabled in parser test'));
+          global.window={};
+          global.document={readyState:'complete',addEventListener:()=>{},querySelector:()=>null};
+          global.CSS={escape:v=>String(v)};
+          global.fetch=()=>{throw new Error('NETWORK_FORBIDDEN_IN_FULL_MARKET_RENDERER')};
           require('./nomad-live-343/full-market-bookmaker-343.js');
           const api=window.NOMAD343_FULL_MARKET_BOOKMAKER;
-          const fixture={fixtureId:'x',fullMarket:{data:{bookmakers:[
-            {slug:'bet365',name:'Bet 365',odds:{
-              '1x2':{opening:{home:1.8,draw:3.4,away:4.2},closing:{home:1.75,draw:3.5,away:4.4},inplay:{home:1.5,draw:4.1,away:6}},
-              asian_handicap:{opening:{line:-0.25,home:1.95,away:1.85},closing:{line:-0.5,home:2.02,away:1.78},inplay:{line:-1,home:1.90,away:1.90}},
-              goal_line:{opening:{line:2.5,over:1.90,under:1.90},closing:{line:2.75,over:1.85,under:1.95},inplay:{line:3,over:2.05,under:1.75}},
-              corner_line:{opening:{line:9.5,over:1.85,under:1.85}},card_line:{opening:{line:4.5,over:1.95,under:1.75}},btts:{opening:{yes:1.80,no:1.95}}
+          if(api.networkMode!=='NONE'||api.source!=='BULK_SNAPSHOT_ONLY')throw Error('renderer not snapshot-only');
+          const fixture={fixtureId:'x',providerOdds:{bookmakers:[
+            {slug:'bet365',name:'Bet365',odds:{
+              '1x2':{opening:{home:1.8,draw:3.4,away:4.2},inplay:{home:1.5,draw:4.1,away:6}},
+              asian_handicap:{opening:{line:-0.25,home:1.95,away:1.85},inplay:{line:-1,home:1.90,away:1.90}},
+              goal_line:{opening:{line:2.5,over:1.90,under:1.90},inplay:{line:3,over:2.05,under:1.75}}
             }},
-            {slug:'pinnacle',name:'Pinnacle',odds:{asian_handicap:{closing:{line:-0.5,home:1.97,away:1.91}},goal_line:{closing:{line:2.75,over:1.91,under:1.97}}}}
-          ]}}};
+            {slug:'pinnacle',name:'Pinnacle',odds:{asian_handicap:{closing:{line:-0.5,home:1.97,away:1.91}}}}
+          ]}};
           const d=api.inspectFixture(fixture),bet=api.renderBookHtml(fixture,'bet365'),pin=api.renderBookHtml(fixture,'pinnacle');
           if(d.books.length!==19)throw Error(`expected 19 slots got ${d.books.length}`);
-          if(!d.found.includes('bet365')||!d.found.includes('pinnacle'))throw Error('full-market bookmaker discovery failed');
-          for(const t of ['-0.5','2.02','1.78','2.75','1.85','1.95'])if(!bet.includes(t))throw Error(`Bet365 rich price lost ${t}`);
-          for(const t of ['1.97','1.91'])if(!pin.includes(t))throw Error(`Pinnacle rich price lost ${t}`);
-          console.log('RICH_PRICE_PARSER_OK',JSON.stringify({found:d.found,markets:d.markets}));
+          if(!d.found.includes('bet365')||!d.found.includes('pinnacle'))throw Error('bulk bookmaker discovery failed');
+          for(const t of ['-1','1.90','3','2.05','1.75'])if(!bet.includes(t))throw Error(`bulk price lost ${t}`);
+          for(const t of ['-0.5','1.97','1.91'])if(!pin.includes(t))throw Error(`bulk price lost ${t}`);
+          console.log('BULK_SNAPSHOT_PARSER_OK',JSON.stringify({found:d.found,markets:d.markets}));
           NODE
-
-      - name: Deploy Full Market source
-        working-directory: workers/nomadtips3-343-full-market
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
       - name: Deploy Preview
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
 
-      - name: Verify live one-request data path
+      - name: Verify runtime zero-click data path
         run: |
           set -euo pipefail
           get() { n="$1"; u="$2"; o="$3"; for i in $(seq 1 20); do c=$(curl -sS -L --max-time 30 -w '%{http_code}' -o "$o" "$u" || true); if [ "$c" = 200 ]; then echo "$n HTTP 200"; return; fi; sleep 2; done; echo "ERROR $n HTTP $c"; exit 1; }
           get INDEX "$BASE_URL/index.html?verify=$RANDOM" /tmp/index.html
           get BOARD "$BASE_URL/api/engine/board?verify=$RANDOM" /tmp/board.json
-          get FM_HEALTH "$BASE_URL/api/full-market/health?verify=$RANDOM" /tmp/fm-health.json
-          FIXTURE_ID=$(node -e "const b=require('/tmp/board.json'); const f=(b.fixtures||[]).find(x=>x.fixtureId); if(!f)process.exit(2); process.stdout.write(String(f.fixtureId))")
-          get FULL_MARKET "$BASE_URL/api/full-market/fixture-odds?fixtureId=$FIXTURE_ID&verify=$RANDOM" /tmp/full.json
+          get HUB "$BASE_URL/api/hub/health?verify=$RANDOM" /tmp/hub.json
+          CODE=$(curl -sS -L --max-time 30 -w '%{http_code}' -o /tmp/full-removed.json "$BASE_URL/api/full-market/fixture-odds?fixtureId=123&verify=$RANDOM" || true)
+          test "$CODE" = 410
           node - <<'NODE'
-          const h=require('/tmp/fm-health.json'),f=require('/tmp/full.json'),b=require('/tmp/board.json');
-          if(h.version!=='nomad343-full-market-v2-one-request-19book')throw Error(`wrong Full Market version ${h.version}`);
-          if(h.bookmakerCount!==19)throw Error(`expected 19 bookmakers, got ${h.bookmakerCount}`);
-          if(f.ok!==true||f.requestedBookmakers?.length!==19)throw Error('one-request 19-book response incomplete');
-          if(![0,1].includes(Number(f.providerRequestsAdded)))throw Error(`unexpected provider request count ${f.providerRequestsAdded}`);
-          const rows=f.fullOdds?.data?.bookmakers||f.fullOdds?.bookmakers||[];
-          if(!Array.isArray(rows)||!rows.length)throw Error('provider returned no bookmaker rows');
-          const bet=rows.find(x=>String(x.slug||'').toLowerCase()==='bet365');
-          if(!bet?.odds)throw Error('Bet365 full odds missing');
-          const rich=['asian_handicap','goal_line','corner_line','corner_asian','card_line','card_asian','asian_handicap_half','goal_line_half','corner_line_half'].some(k=>{
-            const m=bet.odds[k];
-            if(!m)return false;
-            return ['opening','closing','inplay'].some(s=>{const v=m[s];return v&&typeof v==='object'&&('line' in v)&&(('home' in v&&'away' in v)||('over' in v&&'under' in v));});
-          });
-          if(!rich)throw Error('Bet365 response has no Line + side prices');
+          const b=require('/tmp/board.json'),h=require('/tmp/hub.json'),r=require('/tmp/full-removed.json');
           if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)throw Error('main Board John path changed');
-          console.log('LIVE_ONE_REQUEST_FULL_MARKET_OK',JSON.stringify({fixtureId:f.fixtureId,providerRequestsAdded:f.providerRequestsAdded,available:f.availableBookmakers?.map(x=>x.slug),betMarkets:Object.keys(bet.odds)}));
+          if(h.include!=='odds,events,stats')throw Error(`hub include changed: ${h.include}`);
+          if(r.error!=='FULL_MARKET_CLICK_ROUTE_REMOVED'||r.source!=='BULK_SNAPSHOT_ONLY')throw Error('click route not hard-disabled');
+          const f=(b.fixtures||[]).find(x=>x.providerOdds);
+          if(!f)throw Error('no bulk odds fixture in Board');
+          console.log('RUNTIME_ZERO_CLICK_OK',JSON.stringify({fixtures:b.fixtures?.length,include:h.include,providerRequestCount:h.providerRequestCount,fixtureId:f.fixtureId}));
           NODE
 
-      - name: Browser expand and refresh stability
+      - name: Browser expand scroll and refresh stability
         run: |
           set -euo pipefail
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
           TARGET_URL="$BASE_URL/index.html?qa=$RANDOM"
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/tmp/nomad343-chrome "$TARGET_URL" >/tmp/chrome.log 2>&1 &
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --window-size=1440,900 --remote-debugging-port=9222 --user-data-dir=/tmp/nomad343-chrome "$TARGET_URL" >/tmp/chrome.log 2>&1 &
           PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9222/json/list >/tmp/tabs.json && break; sleep 1; done
           node - <<'NODE'
           (async()=>{
-            const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-            let tab=null;
-            for(let i=0;i<30;i++){
-              const tabs=await fetch('http://127.0.0.1:9222/json/list').then(r=>r.json());
-              tab=tabs.find(x=>x.type==='page'&&String(x.url||'').includes('nomadtips3-343-ultra-preview.mccarey-supon.workers.dev/index.html'));
-              if(tab)break;await sleep(500);
-            }
+            const sleep=ms=>new Promise(r=>setTimeout(r,ms));let tab=null;
+            for(let i=0;i<30;i++){const tabs=await fetch('http://127.0.0.1:9222/json/list').then(r=>r.json());tab=tabs.find(x=>x.type==='page'&&String(x.url||'').includes('nomadtips3-343-ultra-preview.mccarey-supon.workers.dev/index.html'));if(tab)break;await sleep(500)}
             if(!tab?.webSocketDebuggerUrl)throw Error('preview CDP target not found');
             const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej});let seq=0,pending=new Map();
             ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}};
             const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
             const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.value};
             let ready=false;for(let i=0;i<60;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(500)}
-            if(!ready){const debug=await ev("({url:location.href,state:document.readyState,vis:document.visibilityState,dash:window.NOMAD343_DASHBOARD_V2?.version,text:document.body?.innerText?.slice(0,300)})");throw Error(`no match row ${JSON.stringify(debug)}`)}
+            if(!ready)throw Error('no match row');
+            const layout=await ev("(()=>{const m=document.querySelector('.main-board'),b=document.querySelector('[data-board-sections]'),s=getComputedStyle(b),ms=getComputedStyle(m);return{overflowY:s.overflowY,outerOverflow:ms.overflow,client:b.clientHeight,scroll:b.scrollHeight}})()");
+            if(layout.overflowY!=='scroll'||layout.outerOverflow!=='visible'||layout.scroll<=layout.client)throw Error(`bad center scrollbar ${JSON.stringify(layout)}`);
+            await ev("(()=>{const b=document.querySelector('[data-board-sections]');b.scrollTop=180;return b.scrollTop})()");
             const clicked=await ev("(()=>{const r=document.querySelector('.match-row[data-match-id]');r.click();return r.dataset.matchId})()");
-            await sleep(10000);
-            const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]');if(!e||!f)return null;e.__stable='same-node';return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',panel:f.querySelector('[data-fmb-panel]')?.innerText||''}})()");
+            await sleep(2500);
+            const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');if(!e||!f)return null;e.__stable='same-node';return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,scrollTop:b.scrollTop}})()");
             if(!before||before.id!==clicked||before.count!==1||!before.flow||before.tabs!==19)throw Error(`bad expanded card ${JSON.stringify(before)}`);
-            if(!before.head.includes('ONE REQUEST'))throw Error(`full-market source not active ${before.head}`);
-            if(!/HOME|OVER|YES/.test(before.panel))throw Error('full-price columns not rendered');
+            if(!before.head.includes('BULK SNAPSHOT')||!before.head.includes('0 CLICK REQUESTS'))throw Error(`wrong full-market mode ${before.head}`);
+            if(before.apiHits!==0)throw Error(`click caused full-market network request count=${before.apiHits}`);
             await sleep(33000);
-            const after=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]');return e&&f?{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,stable:e.__stable,connected:e.isConnected,tabs:f.querySelectorAll('[data-fmb-book]').length}:null})()");
-            if(!after||after.id!==before.id||after.count!==1||after.stable!=='same-node'||!after.connected||after.tabs!==19)throw Error(`expanded card recreated/lost ${JSON.stringify({before,after})}`);
-            console.log('EXPANDED_STABILITY_OK',JSON.stringify({before:{id:before.id,tabs:before.tabs,head:before.head},after}));ws.close();
+            const after=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]'),b=document.querySelector('[data-board-sections]');return e&&f?{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,stable:e.__stable,connected:e.isConnected,tabs:f.querySelectorAll('[data-fmb-book]').length,apiHits:performance.getEntriesByType('resource').filter(x=>x.name.includes('/api/full-market/')).length,scrollTop:b.scrollTop}:null})()");
+            if(!after||after.id!==before.id||after.count!==1||after.stable!=='same-node'||!after.connected||after.tabs!==19||after.apiHits!==0)throw Error(`expanded card recreated/lost/networked ${JSON.stringify({before,after})}`);
+            console.log('EXPANDED_ZERO_CLICK_STABILITY_OK',JSON.stringify({layout,before,after}));ws.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
