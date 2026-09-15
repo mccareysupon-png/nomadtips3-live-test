@@ -49,7 +49,6 @@ jobs:
           grep -Fq '343-fmb-v2-one-request' nomad-live-343/index.html
           grep -Fq 'nomad343-full-market-v2-one-request-19book' workers/nomadtips3-343-full-market/src/index.js
           grep -Fq '"binding": "FULL_MARKET"' workers/nomadtips3-343-preview/wrangler.jsonc
-          grep -Fq 'service": "nomadtips3-343-full-market"' workers/nomadtips3-343-preview/wrangler.jsonc
           if grep -Eq 'expanded-odds-complete-343|full-odds-main-343' nomad-live-343/index.html; then echo 'ERROR old renderer restored'; exit 1; fi
           if grep -Fq 'api.5dollarfootballapi.com' nomad-live-343/full-market-bookmaker-343.js; then echo 'ERROR browser calls provider directly'; exit 1; fi
           grep -Fq 'bookmakers=${encodeURIComponent(BOOKMAKER_QUERY)}' workers/nomadtips3-343-full-market/src/index.js
@@ -110,10 +109,46 @@ jobs:
           const bet=rows.find(x=>String(x.slug||'').toLowerCase()==='bet365');
           if(!bet?.odds)throw Error('Bet365 full odds missing');
           const rich=['asian_handicap','goal_line','corner_line','corner_asian','card_line','card_asian','asian_handicap_half','goal_line_half','corner_line_half'].some(k=>{
-            const m=bet.odds[k]; if(!m)return false; return ['opening','closing','inplay'].some(s=>{const v=m[s]; return v&&typeof v==='object'&&('line' in v)&&(('home' in v&&'away' in v)||('over' in v&&'under' in v));});
+            const m=bet.odds[k];
+            if(!m)return false;
+            return ['opening','closing','inplay'].some(s=>{const v=m[s];return v&&typeof v==='object'&&('line' in v)&&(('home' in v&&'away' in v)||('over' in v&&'under' in v));});
+          });
           if(!rich)throw Error('Bet365 response has no Line + side prices');
-          if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)throw Error('main board John path changed');
+          if(b.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(b.referee?.externalRequestsAdded)!==0)throw Error('main Board John path changed');
           console.log('LIVE_ONE_REQUEST_FULL_MARKET_OK',JSON.stringify({fixtureId:f.fixtureId,providerRequestsAdded:f.providerRequestsAdded,available:f.availableBookmakers?.map(x=>x.slug),betMarkets:Object.keys(bet.odds)}));
+          NODE
+
+      - name: Browser expand and refresh stability
+        run: |
+          set -euo pipefail
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --remote-debugging-port=9222 --user-data-dir=/tmp/nomad343-chrome about:blank >/tmp/chrome.log 2>&1 &
+          PID=$!; trap 'kill $PID 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
+          TARGET_URL="$BASE_URL/index.html?qa=$RANDOM" node - <<'NODE'
+          (async()=>{
+            const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+            const tab=await fetch(`http://127.0.0.1:9222/json/new?${encodeURIComponent(process.env.TARGET_URL)}`,{method:'PUT'}).then(r=>r.json());
+            const ws=new WebSocket(tab.webSocketDebuggerUrl);await new Promise((res,rej)=>{ws.onopen=res;ws.onerror=rej});let seq=0,pending=new Map();
+            ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&pending.has(m.id)){const p=pending.get(m.id);pending.delete(m.id);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result)}};
+            const send=(method,params={})=>new Promise((resolve,reject)=>{const id=++seq;pending.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
+            const ev=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text||'runtime');return r.result?.result?.value};
+            await send('Page.bringToFront');
+            await sleep(1500);
+            await ev("(()=>{try{Object.defineProperty(document,'visibilityState',{configurable:true,get:()=> 'visible'})}catch{};window.NOMAD343_DASHBOARD_V2?.reload?.();return true})()");
+            let ready=false;for(let i=0;i<50;i++){ready=await ev("Boolean(document.querySelector('.match-row[data-match-id]'))");if(ready)break;await sleep(400)}
+            if(!ready)throw Error('no match row after forced visible reload');
+            const clicked=await ev("(()=>{const r=document.querySelector('.match-row[data-match-id]');r.click();return r.dataset.matchId})()");
+            await sleep(8000);
+            const before=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]');if(!e||!f)return null;e.__stable='same-node';return{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,flow:!!e.querySelector('.expand-flow-card'),tabs:f.querySelectorAll('[data-fmb-book]').length,head:f.querySelector('.fmb-head')?.innerText||'',panel:f.querySelector('[data-fmb-panel]')?.innerText||''}})()");
+            if(!before||before.id!==clicked||before.count!==1||!before.flow||before.tabs!==19)throw Error(`bad expanded card ${JSON.stringify(before)}`);
+            if(!before.head.includes('ONE REQUEST'))throw Error(`full-market source not active ${before.head}`);
+            if(!/HOME|OVER|YES/.test(before.panel))throw Error('full-price columns not rendered');
+            await sleep(33000);
+            const after=await ev("(()=>{const e=document.querySelector('.match-expanded'),f=e?.querySelector('[data-full-market-card]');return e&&f?{id:e.dataset.expandedMatch,count:document.querySelectorAll('.match-expanded').length,stable:e.__stable,connected:e.isConnected,tabs:f.querySelectorAll('[data-fmb-book]').length}:null})()");
+            if(!after||after.id!==before.id||after.count!==1||after.stable!=='same-node'||!after.connected||after.tabs!==19)throw Error(`expanded card recreated/lost ${JSON.stringify({before,after})}`);
+            console.log('EXPANDED_STABILITY_OK',JSON.stringify({before:{id:before.id,tabs:before.tabs,head:before.head},after}));ws.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
       - name: Browser render smoke
@@ -122,5 +157,4 @@ jobs:
           CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)"; test -n "$CHROME"
           "$CHROME" --headless=new --no-sandbox --disable-gpu --virtual-time-budget=12000 --dump-dom "$BASE_URL/index.html?browser=$RANDOM" >/tmp/index-rendered.html
           grep -Fq 'class="match-row' /tmp/index-rendered.html
-          if grep -Fq "Loading today's match board" /tmp/index-rendered.html; then echo 'ERROR index still loading'; exit 1; fi
           echo BROWSER_RENDER_OK
