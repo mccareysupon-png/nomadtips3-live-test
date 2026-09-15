@@ -70,6 +70,8 @@ jobs:
       - name: Smoke bulk-only runtime
         run: |
           set -euo pipefail
+          curl -fsS --max-time 30 -X POST "$BASE_URL/api/engine/scan?smoke=$RANDOM" -o /tmp/scan.json
+          node -e "const s=require('/tmp/scan.json');if(s.ok!==true||s.dataMode!=='BULK_SNAPSHOT_ONLY'||Number(s.externalOddsRequests)!==0)throw Error('fresh bulk scan failed');console.log('SCAN_OK',s.fixtureCount,'fixtures')"
           curl -fsS --max-time 30 "$BASE_URL/api/engine/health?smoke=$RANDOM" -o /tmp/health.json
           curl -fsS --max-time 30 "$BASE_URL/api/engine/board?smoke=$RANDOM" -o /tmp/board.json
           curl -fsS --max-time 30 "$BASE_URL/api/full-market/health?smoke=$RANDOM" -o /tmp/fullmarket.json
