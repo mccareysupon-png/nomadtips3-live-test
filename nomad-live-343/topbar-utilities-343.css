@@ -1,0 +1,32 @@
+/* NOMAD 3.43 header stabilizer.
+   Utilities now live in the static bar below the header. */
+.topbar-inner{position:relative}
+.topbar-utility-reserve{display:none!important}
+
+/* Desktop/laptop: keep main navigation anchored to the true center while the
+   header contains only brand + primary navigation. */
+@media(min-width:1101px){
+  .topbar-inner>.topnav{
+    position:absolute!important;
+    left:50%!important;
+    right:auto!important;
+    top:0!important;
+    transform:translateX(-50%)!important;
+    margin:0!important;
+    height:64px!important;
+    z-index:20!important;
+  }
+}
+@media (min-width:1101px) and (hover:hover) and (pointer:fine){
+  body[data-page="statistics"] .topbar-inner>.statistics-nav{
+    position:absolute!important;
+    left:50%!important;
+    right:auto!important;
+    top:0!important;
+    bottom:auto!important;
+    transform:translateX(-50%)!important;
+    margin:0!important;
+    height:64px!important;
+    z-index:20!important;
+  }
+}
