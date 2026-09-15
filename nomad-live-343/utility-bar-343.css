@@ -5,10 +5,12 @@
   border-bottom:1px solid rgba(180,190,182,.08);
 }
 .utility-bar-343-inner{
-  max-width:var(--content-max,1440px);
+  width:calc(100% - 32px);
+  max-width:1920px;
   min-height:40px;
   margin:0 auto;
   padding:0 16px;
+  box-sizing:border-box;
   display:flex;
   align-items:center;
   justify-content:flex-end;
@@ -46,9 +48,23 @@ html[data-utility-odds="american"] [data-utility-odds="american"],
 html[data-utility-lang="en"] [data-utility-lang="en"],
 html[data-utility-lang="th"] [data-utility-lang="th"]{color:#83df89;background:rgba(131,223,137,.07)}
 
+/* Keep the utility row on the exact same responsive shell rails as page content. */
+@media (min-width:701px) and (max-width:1099px){
+  .utility-bar-343-inner{width:calc(100% - 40px)}
+}
+@media (min-width:1100px) and (max-width:1499px){
+  .utility-bar-343-inner{width:calc(100% - 48px)}
+}
+@media (min-width:1500px) and (max-width:1799px){
+  .utility-bar-343-inner{width:calc(100% - 64px)}
+}
+@media (min-width:1800px){
+  .utility-bar-343-inner{width:calc(100% - 80px);max-width:1920px}
+}
+
 @media(max-width:760px){
   .utility-bar-343{min-height:36px}
-  .utility-bar-343-inner{min-height:36px;padding:0 8px;gap:8px;justify-content:center;overflow:hidden}
+  .utility-bar-343-inner{min-height:36px;padding:0 8px;gap:8px;justify-content:flex-end;overflow:hidden}
   .utility-icon-343{width:22px;height:22px;flex-basis:22px}
   .utility-label-343{display:none}
   .utility-cluster-343{gap:3px}
