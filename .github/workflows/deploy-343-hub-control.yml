@@ -1,0 +1,66 @@
+name: Deploy NOMAD 3.43 5USD HUB Control
+
+on:
+  push:
+    branches: [work/nomad343-clean-bet365-ui]
+    paths:
+      - 'workers/nomadtips3-5usd-hub-343/**'
+      - '.github/workflows/deploy-343-hub-control.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
+  ULTRA_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  deploy-hub-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate HUB control source
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'DEFAULT_LIVE_REFRESH_SECONDS=120' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'LIVE_PAGE_SIZE=500' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'PRESET_SECONDS=new Set([2,3,6,15,30,60,120])' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "u.pathname==='/control'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'ACCOUNT_LIMIT_PER_MINUTE=40' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq 'name = "nomadtips3-5usd-hub-343"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+
+      - name: Validate Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run 5USD HUB only
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy 5USD HUB control only
+        working-directory: workers/nomadtips3-5usd-hub-343
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Smoke HUB controls at safe 120s
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$HUB_URL/control?verify=$RANDOM" -o /tmp/control-before.json
+          node -e 'const j=require("/tmp/control-before.json");if(j.ok!==true||!Array.isArray(j.presets)||!j.presets.includes(120)||!j.presets.includes(2))throw Error("control GET mismatch");console.log("GET CONTROL",j.control?.liveRefreshSeconds,j.presets)'
+          curl -fsS --max-time 30 -X PUT -H 'content-type: application/json' --data '{"liveRefreshSeconds":120,"autoReturnMinutes":0}' "$HUB_URL/control" -o /tmp/control-put.json
+          node -e 'const j=require("/tmp/control-put.json");if(j.ok!==true||Number(j.control?.liveRefreshSeconds)!==120)throw Error("control PUT mismatch");console.log("PUT CONTROL safe",j.control.liveRefreshSeconds)'
+          curl -fsS --max-time 30 "$ULTRA_URL/api/hub/health?verify=$RANDOM" -o /tmp/health.json
+          node -e 'const j=require("/tmp/health.json");if(j.component!=="5USD_HUB"||!j.control||Number(j.control.liveRefreshSeconds)!==120)throw Error("Ultra HUB health mismatch");console.log("ULTRA HUB",j.ok,"cycle",j.control.liveRefreshSeconds,"rpm",j.estimatedBulkRequestsPerMinute,"limit",j.accountLimitPerMinute)'
+          curl -fsS --max-time 30 "$ULTRA_URL/api/hub/control?verify=$RANDOM" -o /tmp/ultra-control.json
+          node -e 'const j=require("/tmp/ultra-control.json");if(j.ok!==true||!Array.isArray(j.presets))throw Error("Ultra control proxy mismatch");console.log("ULTRA CONTROL PASS",j.presets.join(","))'
