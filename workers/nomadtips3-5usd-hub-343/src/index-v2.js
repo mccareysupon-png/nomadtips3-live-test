@@ -4,7 +4,7 @@ const REFRESH_MS=120_000;
 const STALE_MS=180_000;
 const TIMEOUT_MS=15_000;
 const TODAY_PAGE_SIZE=50;
-const LIVE_PAGE_SIZE=50;
+const LIVE_PAGE_SIZE=500;
 const TODAY_MAX_PAGES=4;
 const LIVE_MAX_PAGES=1;
 const MAX_PROVIDER_REQUESTS_PER_REFRESH=5;
@@ -83,6 +83,11 @@ function mergeProviderOdds(base,extra){
   return out;
 }
 function bookmakerRows(payload){if(Array.isArray(payload?.bookmakers))return payload.bookmakers;if(Array.isArray(payload?.data?.bookmakers))return payload.data.bookmakers;return[]}
+function bookmakerCoverage(providerOdds){
+  const seen=new Set(bookmakerRows(providerOdds).map((row,i)=>bookmakerKey(row,i)).filter(Boolean));
+  if(providerOdds?.bet365!==undefined||providerOdds?.odds!==undefined||providerOdds?.markets!==undefined)seen.add('bet365');
+  return seen.size;
+}
 function richAhPresent(providerOdds){
   const stages=['opening','open','closing','close','inplay','in_play','live'];
   for(const row of bookmakerRows(providerOdds)){
@@ -115,6 +120,7 @@ async function fetchRichOdds(env,fixtureId){
 }
 function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt,richOddsUpdatedAt:extra.richOddsUpdatedAt??base.richOddsUpdatedAt??null,richOddsBookmakerCount:extra.richOddsBookmakerCount??base.richOddsBookmakerCount??0,richOddsSource:extra.richOddsSource??base.richOddsSource??null}}
 function chunks(rows){const out=[];let cur=[];for(const row of rows){const next=[...cur,row];if(cur.length&&encoder.encode(JSON.stringify(next)).byteLength>CHUNK_BYTES){out.push(cur);cur=[row]}else cur=next}if(cur.length||!out.length)out.push(cur);return out}
+function rotateRows(rows,start){if(!rows.length)return[];return [...rows.slice(start),...rows.slice(0,start)]}
 
 export class FiveUsdHub{
   constructor(ctx,env){this.ctx=ctx;this.env=env;this.refreshPromise=null}
@@ -123,23 +129,30 @@ export class FiveUsdHub{
   async readRows(meta){if(!meta)return[];const out=[];for(let i=0;i<Number(meta.chunkCount||0);i++){const raw=await this.ctx.storage.get(`snapshot:${meta.snapshotId}:${i}`);if(!raw)continue;try{const rows=JSON.parse(raw);if(Array.isArray(rows))out.push(...rows)}catch{}}return out}
   async refreshIfDue(){const m=await this.meta();if(m?.fetchedAt&&now()-m.fetchedAt<REFRESH_MS)return m;if(this.refreshPromise)return this.refreshPromise;this.refreshPromise=this.refresh().finally(()=>{this.refreshPromise=null});return this.refreshPromise}
   async enrichRichOdds(rows){
-    const eligible=rows.filter(x=>x?.fixtureId&&x?.boardState==='live'&&x?.providerOdds);
-    if(!eligible.length){await this.ctx.storage.put('richCursor',0);return {eligible:0,selected:0,requests:0,enriched:0,richAh:0,queued:0,errors:[],stoppedReason:null,lastRate:null}}
-    const rawCursor=Number(await this.ctx.storage.get('richCursor')||0),start=((rawCursor%eligible.length)+eligible.length)%eligible.length,rotated=[...eligible.slice(start),...eligible.slice(0,start)],selected=rotated.slice(0,RICH_ODDS_MAX_PER_REFRESH);
-    let requests=0,enriched=0,richAh=0,attempted=0,stoppedReason=null,lastRate=null;const errors=[];
+    const liveEligible=rows.filter(x=>x?.fixtureId&&x?.boardState==='live');
+    const scheduledEligible=rows.filter(x=>x?.fixtureId&&x?.boardState==='scheduled');
+    const eligibleCount=liveEligible.length+scheduledEligible.length;
+    if(!eligibleCount){await this.ctx.storage.put('richLiveCursor',0);await this.ctx.storage.put('richScheduledCursor',0);return {coveragePolicy:'LIVE_FIRST_THEN_SCHEDULED',eligible:0,liveEligible:0,scheduledEligible:0,selected:0,requests:0,enriched:0,richAh:0,queued:0,errors:[],stoppedReason:null,lastRate:null}}
+    const rawLiveCursor=Number(await this.ctx.storage.get('richLiveCursor')||0),liveStart=liveEligible.length?((rawLiveCursor%liveEligible.length)+liveEligible.length)%liveEligible.length:0;
+    const liveRotated=rotateRows(liveEligible,liveStart),liveSelected=liveRotated.slice(0,RICH_ODDS_MAX_PER_REFRESH),remaining=Math.max(0,RICH_ODDS_MAX_PER_REFRESH-liveSelected.length);
+    const rawScheduledCursor=Number(await this.ctx.storage.get('richScheduledCursor')||0),scheduledStart=scheduledEligible.length?((rawScheduledCursor%scheduledEligible.length)+scheduledEligible.length)%scheduledEligible.length:0;
+    const scheduledRotated=rotateRows(scheduledEligible,scheduledStart),scheduledSelected=scheduledRotated.slice(0,remaining),selected=[...liveSelected,...scheduledSelected];
+    let requests=0,enriched=0,richAh=0,liveAttempted=0,scheduledAttempted=0,stoppedReason=null,lastRate=null;const errors=[];
     for(const row of selected){
-      attempted++;requests++;
+      if(row.boardState==='live')liveAttempted++;else scheduledAttempted++;
+      requests++;
       try{
         const result=await fetchRichOdds(this.env,row.fixtureId);lastRate=result.rate;
-        if(result.providerOdds){row.providerOdds=mergeProviderOdds(row.providerOdds,result.providerOdds);row.richOddsUpdatedAt=now();row.richOddsBookmakerCount=bookmakerRows(result.providerOdds).length;row.richOddsSource='CENTRAL_SCHEDULED_PER_FIXTURE';enriched++;if(richAhPresent(result.providerOdds))richAh++}
+        if(result.providerOdds){row.providerOdds=mergeProviderOdds(row.providerOdds,result.providerOdds);row.richOddsUpdatedAt=now();row.richOddsBookmakerCount=bookmakerCoverage(row.providerOdds);row.richOddsSource='CENTRAL_SCHEDULED_PER_FIXTURE';enriched++;if(richAhPresent(row.providerOdds))richAh++}
         if(result.rate?.remaining!==null&&result.rate?.remaining!==undefined&&Number(result.rate.remaining)<=RICH_ODDS_RESERVE_REMAINING){stoppedReason='RATE_RESERVE';break}
       }catch(e){
         const status=Number(e?.status)||null;lastRate=e?.rate??lastRate;errors.push({fixtureId:String(row.fixtureId),status,error:String(e?.message||e),retryAfter:finite(e?.retryAfter)});
         if(status===429){stoppedReason='PROVIDER_429';break}
       }
     }
-    const next=(start+attempted)%eligible.length;await this.ctx.storage.put('richCursor',next);
-    return {eligible:eligible.length,selected:selected.length,requests,enriched,richAh,queued:Math.max(0,eligible.length-attempted),errors:errors.slice(0,8),stoppedReason,lastRate,cursorStart:start,cursorNext:next};
+    const liveNext=liveEligible.length?(liveStart+liveAttempted)%liveEligible.length:0,scheduledNext=scheduledEligible.length?(scheduledStart+scheduledAttempted)%scheduledEligible.length:0;
+    await this.ctx.storage.put('richLiveCursor',liveNext);await this.ctx.storage.put('richScheduledCursor',scheduledNext);
+    return {coveragePolicy:'LIVE_FIRST_THEN_SCHEDULED',eligible:eligibleCount,liveEligible:liveEligible.length,scheduledEligible:scheduledEligible.length,selected:selected.length,liveSelected:liveSelected.length,scheduledSelected:scheduledSelected.length,requests,enriched,richAh,queued:Math.max(0,eligibleCount-liveAttempted-scheduledAttempted),errors:errors.slice(0,8),stoppedReason,lastRate,liveCursorStart:liveStart,liveCursorNext:liveNext,scheduledCursorStart:scheduledStart,scheduledCursorNext:scheduledNext};
   }
   async refresh(){const attempt=now(),oldMeta=await this.meta(),oldRows=await this.readRows(oldMeta),oldState=await this.state();await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt});try{const p=await fetchProvider(this.env);const map=new Map();for(const raw of p.today.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,n)}for(const old of oldRows){if(map.has(old.fixtureId))map.set(old.fixtureId,merge(old,map.get(old.fixtureId)))}for(const raw of p.live.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,merge(map.get(n.fixtureId),n))}const rows=[...map.values()].sort((a,b)=>(a.kickoffAt??0)-(b.kickoffAt??0)),rich=await this.enrichRichOdds(rows);const dataChunks=chunks(rows),snapshotId=attempt.toString(36);for(let i=0;i<dataChunks.length;i++)await this.ctx.storage.put(`snapshot:${snapshotId}:${i}`,JSON.stringify(dataChunks[i]));const counts={scheduled:rows.filter(x=>x.boardState==='scheduled').length,live:rows.filter(x=>x.boardState==='live').length,finished:rows.filter(x=>x.boardState==='finished').length,unknown:rows.filter(x=>x.boardState==='unknown').length};const bulkRequests=p.today.requests+p.live.requests,meta={version:VERSION,fetchedAt:now(),snapshotId,chunkCount:dataChunks.length,fixtureCount:rows.length,counts,providerRequestCount:bulkRequests,providerRequestBudget:p.requestBudget,totalProviderRequestCount:bulkRequests+rich.requests,totalProviderRequestBudget:TOTAL_PROVIDER_REQUEST_BUDGET,todayRequests:p.today.requests,liveRequests:p.live.requests,guardHit:Boolean(p.today.guardHit||p.live.guardHit),include:p.include,todayWindow:{start:p.window.start,end:p.window.end,timeZone:'Asia/Bangkok'},richOdds:{mode:'CENTRAL_SCHEDULED_PER_FIXTURE',clickRequests:0,bookmakerCount:BOOKMAKERS.length,maxPerRefresh:RICH_ODDS_MAX_PER_REFRESH,reserveRemaining:RICH_ODDS_RESERVE_REMAINING,...rich}};await this.ctx.storage.put('meta',meta);await this.ctx.storage.put('state',{lastAttemptAt:attempt,lastSuccessAt:meta.fetchedAt,lastError:null});if(oldMeta?.snapshotId&&oldMeta.snapshotId!==snapshotId){for(let i=0;i<Number(oldMeta.chunkCount||0);i++)await this.ctx.storage.delete(`snapshot:${oldMeta.snapshotId}:${i}`)}return meta}catch(e){await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt,lastError:String(e?.message||e)});if(oldMeta)return oldMeta;throw e}}
   async snapshot(){const m=await this.meta(),s=await this.state();if(!m)return {ok:false,version:VERSION,error:s.lastError||'NO_SNAPSHOT'};const rows=await this.readRows(m),ageMs=Math.max(0,now()-m.fetchedAt);return {ok:true,version:VERSION,provider:'5DollarFootballAPI',fetchedAt:m.fetchedAt,ageMs,stale:ageMs>STALE_MS,fixtureCount:rows.length,counts:m.counts,providerRequestCount:m.providerRequestCount,providerRequestBudget:m.providerRequestBudget,totalProviderRequestCount:m.totalProviderRequestCount??m.providerRequestCount,totalProviderRequestBudget:m.totalProviderRequestBudget??m.providerRequestBudget,todayRequests:m.todayRequests,liveRequests:m.liveRequests,guardHit:m.guardHit,include:m.include,todayWindow:m.todayWindow,richOdds:m.richOdds??{mode:'WAITING_FOR_NEXT_SCHEDULED_REFRESH',clickRequests:0},lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,fixtures:rows}}
