@@ -35,8 +35,10 @@ jobs:
       - name: Verify clean 3.43 hub scope
         run: |
           set -euo pipefail
-          node --check workers/nomadtips3-5usd-hub-343/src/index.js
-          grep -Fq "const VERSION = 'nomad343-5usd-hub-v1'" workers/nomadtips3-5usd-hub-343/src/index.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq 'main = "src/index-rich-odds.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'class_name = "RichOddsGate"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
           if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
             echo '::error::3.43 hub must not depend on 3.42 runtime'; exit 1
@@ -87,5 +89,8 @@ jobs:
           const sample=(Array.isArray(s.fixtures)?s.fixtures:[]).slice(0,3).map(x=>({fixtureId:x.fixtureId,league:x.league?.name,home:x.home?.name,away:x.away?.name,minute:x.minute,statistics:x.statistics===null?'null':'present',providerOdds:x.providerOdds==null?'absent':'present'}));
           console.log(JSON.stringify({health:h,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,hasMoreAfterGuard:s.hasMoreAfterGuard,lastError:s.lastError},sample},null,2));
           if(s.ok!==true||h.ok!==true)process.exit(1);
-          if(s.version!=='nomad343-5usd-hub-v1'||h.version!=='nomad343-5usd-hub-v1')process.exit(2);
+          if(h.component!=='5USD_HUB')process.exit(2);
+          if(s.provider!=='5DollarFootballAPI')process.exit(3);
+          if(!String(s.version||'').startsWith('nomad343-5usd-hub-')||!String(h.version||'').startsWith('nomad343-5usd-hub-'))process.exit(4);
+          if(!Number(h.control?.liveRefreshSeconds)||Number(h.accountLimitPerMinute)!==40)process.exit(5);
           NODE
