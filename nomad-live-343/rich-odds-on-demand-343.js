@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-rich-odds-on-demand-v1-yellow-fix';
+const VERSION='343-rich-odds-on-demand-v2-one-per-open-yellow';
 const API='/api/hub/rich-odds';
 const CLIENT_CACHE_MS=20_000;
 const cache=new Map();
@@ -53,7 +53,9 @@ async function requestRich(id){
 }
 async function hydrate(expanded,fixture){
   const id=fixtureId(fixture);
-  if(!id||!isLive(fixture))return;
+  if(!id||!isLive(fixture)||!expanded)return;
+  if(expanded.dataset.richOddsAttemptedFor===id)return;
+  expanded.dataset.richOddsAttemptedFor=id;
   try{
     mark(expanded,'RICH ODDS · LOADING','yellow');
     const rich=await requestRich(id);
@@ -63,7 +65,7 @@ async function hydrate(expanded,fixture){
     fixture._nomadRichOdds={fetchedAt:rich.fetchedAt,cache:rich.cache,clientCache:rich.clientCache,guard:rich.guard||null};
     publish(expanded,fixture,id,fixture._nomadRichOdds);
     const cacheLabel=rich.clientCache==='HIT'?'CLIENT CACHE':rich.cache==='HIT'?'HUB CACHE':'LIVE FETCH';
-    mark(expanded,`RICH ODDS · ${cacheLabel}`,'green');
+    mark(expanded,`RICH ODDS · ${cacheLabel}`,'yellow');
   }catch(err){
     const retry=Number(err?.retryAfterSec||0);
     mark(expanded,retry?`BULK SNAPSHOT · RICH WAIT ${retry}s`:'BULK SNAPSHOT · RICH UNAVAILABLE','yellow');
@@ -77,7 +79,7 @@ function start(){
     const expanded=e.target?.closest?.('.match-expanded')||document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);
     if(expanded&&e.detail?.fixture)hydrate(expanded,e.detail.fixture);
   });
-  window.NOMAD343_RICH_ODDS={version:VERSION,mode:'ON_DEMAND_GUARDED',clientCacheMs:CLIENT_CACHE_MS,clear:id=>id?cache.delete(String(id)):cache.clear()};
+  window.NOMAD343_RICH_ODDS={version:VERSION,mode:'ON_DEMAND_GUARDED_ONE_PER_OPEN',clientCacheMs:CLIENT_CACHE_MS,clear:id=>id?cache.delete(String(id)):cache.clear()};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
