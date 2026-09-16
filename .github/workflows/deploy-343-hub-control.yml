@@ -28,15 +28,22 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Validate HUB control source
+      - name: Validate HUB control and Rich Odds source
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
           grep -Fq 'DEFAULT_LIVE_REFRESH_SECONDS=120' workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'LIVE_PAGE_SIZE=500' workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'PRESET_SECONDS=new Set([2,3,6,15,30,60,120])' workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq "u.pathname==='/control'" workers/nomadtips3-5usd-hub-343/src/index-v2.js
           grep -Fq 'ACCOUNT_LIMIT_PER_MINUTE=40' workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "url.pathname === '/rich-odds'" workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq 'RICH_CACHE_MS = 20_000' workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq 'RICH_MAX_PROVIDER_CALLS_PER_MINUTE = 15' workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq 'RESERVED_HEADROOM_PER_MINUTE = 8' workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq 'main = "src/index-rich-odds.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'name = "RICH_GATE"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq 'name = "nomadtips3-5usd-hub-343"' workers/nomadtips3-5usd-hub-343/wrangler.toml
 
       - name: Validate Cloudflare credentials
@@ -53,7 +60,7 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
-      - name: Smoke HUB controls without changing owner settings
+      - name: Smoke HUB controls and guarded Rich Odds route
         run: |
           set -euo pipefail
           curl -fsS --max-time 30 "$HUB_URL/control?verify=$RANDOM" -o /tmp/control.json
@@ -62,3 +69,6 @@ jobs:
           node -e 'const j=require("/tmp/health.json");if(j.component!=="5USD_HUB"||!j.control||!Number(j.control.liveRefreshSeconds))throw Error("Ultra HUB health mismatch");console.log("ULTRA HUB",j.ok,"cycle",j.control.liveRefreshSeconds,"rpm",j.estimatedBulkRequestsPerMinute,"limit",j.accountLimitPerMinute)'
           curl -fsS --max-time 30 "$ULTRA_URL/api/hub/control?verify=$RANDOM" -o /tmp/ultra-control.json
           node -e 'const j=require("/tmp/ultra-control.json");if(j.ok!==true||!Array.isArray(j.presets))throw Error("Ultra control proxy mismatch");console.log("ULTRA CONTROL PASS",j.presets.join(","))'
+          status=$(curl -sS --max-time 30 -o /tmp/rich-invalid.json -w '%{http_code}' "$ULTRA_URL/api/hub/rich-odds?verify=$RANDOM")
+          test "$status" = "400"
+          node -e 'const j=require("/tmp/rich-invalid.json");if(j.ok!==false||j.error!=="INVALID_FIXTURE_ID")throw Error("Rich Odds guarded route mismatch");console.log("RICH ROUTE PASS",j.error)'
