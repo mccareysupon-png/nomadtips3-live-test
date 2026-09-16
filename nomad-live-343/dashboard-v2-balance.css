@@ -1,0 +1,73 @@
+/* ball46 3.43 · Match Row balance fix · presentation only */
+@media(min-width:761px){
+  .match-row{
+    grid-template-columns:minmax(190px,1fr) 58px 116px 92px 92px 68px!important;
+    gap:8px!important;
+    min-height:68px!important;
+    padding:7px 10px!important;
+  }
+  .teams-cell{min-width:0!important;padding-right:6px!important}
+  .teams-cell b{font-size:12px!important;font-weight:600!important;line-height:1.45!important;letter-spacing:0!important}
+  .teams-cell small{margin-top:3px!important;font-size:9px!important;line-height:1.25!important}
+
+  .score-cell{min-width:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important}
+  .score-cell strong{font-size:15.5px!important;font-weight:600!important;line-height:1.16!important;letter-spacing:0!important}
+  .score-cell small{margin-top:2px!important;font-size:9px!important;line-height:1.15!important;white-space:nowrap!important}
+  .score-cell .half-score{font-size:8.5px!important}
+
+  .market-cell{
+    width:100%!important;
+    min-width:0!important;
+    min-height:50px!important;
+    padding:6px 5px!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    justify-content:center!important;
+    overflow:hidden!important;
+  }
+  .market-cell span{
+    width:100%!important;
+    font-size:8px!important;
+    font-weight:600!important;
+    line-height:1.15!important;
+    letter-spacing:0!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  .market-cell b{
+    width:100%!important;
+    margin-top:4px!important;
+    font-size:9.5px!important;
+    font-weight:600!important;
+    line-height:1.15!important;
+    letter-spacing:-.1px!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:clip!important;
+    text-align:center!important;
+  }
+  .market-cell small{
+    width:100%!important;
+    margin-top:3px!important;
+    font-size:8px!important;
+    line-height:1.1!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    text-align:center!important;
+  }
+  .signal-cell{min-width:0!important;font-size:9px!important;font-weight:600!important;letter-spacing:.01em!important;white-space:nowrap!important}
+}
+
+@media(min-width:761px) and (max-width:1180px){
+  .match-row{grid-template-columns:minmax(180px,1fr) 56px 112px 90px 90px 66px!important}
+}
+
+@media(max-width:760px){
+  .teams-cell b{font-size:11px!important;font-weight:600!important}
+  .score-cell strong{font-size:15px!important;font-weight:600!important}
+  .mobile-clock{font-size:10.5px!important;font-weight:600!important}
+  .mobile-signal{font-size:9px!important;font-weight:600!important}
+}

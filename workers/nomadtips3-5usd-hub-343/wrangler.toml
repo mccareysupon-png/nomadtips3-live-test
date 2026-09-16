@@ -1,5 +1,5 @@
 name = "nomadtips3-5usd-hub-343"
-main = "src/index-v2.js"
+main = "src/index-v6.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
 
@@ -16,3 +16,7 @@ class_name = "FiveUsdHub"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["FiveUsdHub"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RichOddsGate"]

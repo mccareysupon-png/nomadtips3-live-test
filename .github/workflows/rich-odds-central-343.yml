@@ -1,0 +1,76 @@
+name: NOMAD 3.43 Rich Odds Quarantine
+
+on:
+  push:
+    branches: [work/nomad343-v2-primary-20260915]
+    paths:
+      - 'workers/nomadtips3-rich-odds-343/**'
+      - '.github/workflows/rich-odds-central-343.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: nomad343-rich-odds-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  RICH_URL: https://nomadtips3-rich-odds-343.mccarey-supon.workers.dev
+
+jobs:
+  deploy-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate quarantine
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-rich-odds-343/src/index.js
+          grep -Fq "const VERSION='nomad343-rich-odds-v1-quarantined'" workers/nomadtips3-rich-odds-343/src/index.js
+          grep -Fq "providerRequests:0" workers/nomadtips3-rich-odds-343/src/index.js
+          if grep -Fq 'api.5dollarfootballapi.com' workers/nomadtips3-rich-odds-343/src/index.js; then
+            echo '::error::Quarantined worker still contains provider caller'; exit 1
+          fi
+          if grep -Eq '^crons[[:space:]]*=' workers/nomadtips3-rich-odds-343/wrangler.toml; then
+            echo '::error::Quarantined worker still has cron trigger'; exit 1
+          fi
+          echo DUPLICATE_PROVIDER_CALLER_QUARANTINED
+
+      - name: Validate Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Deploy quarantined worker without cron
+        working-directory: workers/nomadtips3-rich-odds-343
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify public worker is disabled
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in $(seq 1 30); do
+            if curl -fsSL --max-time 20 "$RICH_URL/health?quarantine=$RANDOM" -o /tmp/rich-health.json; then
+              if node - <<'NODE'
+          const j=require('/tmp/rich-health.json');
+          if(j.version!=='nomad343-rich-odds-v1-quarantined')process.exit(1);
+          if(j.enabled!==false||j.quarantined!==true)process.exit(2);
+          if(Number(j.providerRequests)!==0||Number(j.providerRequestsAddedByRead)!==0)process.exit(3);
+          process.exit(0);
+          NODE
+              then ok=1; break; fi
+            fi
+            sleep 2
+          done
+          test "$ok" = 1
+          cat /tmp/rich-health.json
+          echo RICH_ODDS_DUPLICATE_DISABLED

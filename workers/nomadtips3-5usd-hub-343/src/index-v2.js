@@ -1,14 +1,25 @@
-const VERSION='nomad343-5usd-hub-v4-status-safe';
+const VERSION='nomad343-5usd-hub-v5-central-rich-odds';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const REFRESH_MS=120_000;
 const STALE_MS=180_000;
 const TIMEOUT_MS=15_000;
 const TODAY_PAGE_SIZE=50;
-const LIVE_PAGE_SIZE=50;
+const LIVE_PAGE_SIZE=500;
 const TODAY_MAX_PAGES=4;
 const LIVE_MAX_PAGES=1;
 const MAX_PROVIDER_REQUESTS_PER_REFRESH=5;
+const RICH_ODDS_MAX_PER_REFRESH=24;
+const RICH_ODDS_RESERVE_REMAINING=8;
+const RICH_ODDS_TIMEOUT_MS=15_000;
+const TOTAL_PROVIDER_REQUEST_BUDGET=MAX_PROVIDER_REQUESTS_PER_REFRESH+RICH_ODDS_MAX_PER_REFRESH;
 const CHUNK_BYTES=72_000;
+const BOOKMAKERS=[
+  ['bet365','Bet365'],['pinnacle','Pinnacle'],['williamhill','William Hill'],['ladbrokes','Ladbrokes'],['vcbet','VCBet'],
+  ['1xbet','1xBet'],['bwin','Bwin'],['easybets','Easybets'],['interwetten','Interwetten'],['betfair','Betfair'],
+  ['snai','SNAI'],['macauslot','Macau Slot'],['betsson','Betsson'],['betathome','Bet-at-home'],['18bet','18Bet'],
+  ['10bet','10BET'],['12bet','12Bet'],['coral','Coral'],['crown','Crown']
+];
+const BOOKMAKER_QUERY=BOOKMAKERS.map(([slug])=>slug).join(',');
 const encoder=new TextEncoder();
 const now=()=>Date.now();
 const finite=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
@@ -51,6 +62,17 @@ function providerOddsRaw(f){
   if(f?.odds!==undefined&&f?.odds!==null)out.odds=f.odds;
   return Object.keys(out).length?out:null;
 }
+function richProviderOdds(payload){
+  const src=plainObject(payload?.data)?payload.data:payload;
+  if(!plainObject(src))return null;
+  const direct=providerOddsRaw(src);if(direct)return direct;
+  const rows=[];
+  for(const [slug,name] of BOOKMAKERS){
+    const hit=src?.[slug]??src?.[name]??src?.[name.toLowerCase()];
+    if(plainObject(hit))rows.push({slug,name,...hit});
+  }
+  return rows.length?{bookmakers:rows}:null;
+}
 function mergeProviderOdds(base,extra){
   if(!base)return extra;if(!extra)return base;
   const out={...base};
@@ -60,6 +82,22 @@ function mergeProviderOdds(base,extra){
   }
   return out;
 }
+function bookmakerRows(payload){if(Array.isArray(payload?.bookmakers))return payload.bookmakers;if(Array.isArray(payload?.data?.bookmakers))return payload.data.bookmakers;return[]}
+function bookmakerCoverage(providerOdds){
+  const seen=new Set(bookmakerRows(providerOdds).map((row,i)=>bookmakerKey(row,i)).filter(Boolean));
+  if(providerOdds?.bet365!==undefined||providerOdds?.odds!==undefined||providerOdds?.markets!==undefined)seen.add('bet365');
+  return seen.size;
+}
+function richAhPresent(providerOdds){
+  const stages=['opening','open','closing','close','inplay','in_play','live'];
+  for(const row of bookmakerRows(providerOdds)){
+    const odds=row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??row;
+    const market=odds?.asian_handicap??odds?.asianHandicap;
+    if(!plainObject(market))continue;
+    for(const stage of stages){const v=market?.[stage];if(plainObject(v)&&finite(v.home??v.home_odds??v.homeOdds)!==null&&finite(v.away??v.away_odds??v.awayOdds)!==null)return true}
+  }
+  return false;
+}
 function boardState(status,statusCode){const s=`${status||''} ${statusCode||''}`.toLowerCase();if(/unknown/.test(s))return'unknown';if(/finished|full_time|full time|\bft\b|ended|\bfull\b/.test(s))return'finished';if(/in_play|in play|live|half/.test(s)||/^\d+$/.test(String(statusCode||'')))return'live';return'scheduled'}
 function normalize(f){const id=fixtureId(f),status=text(f?.status?.name??f?.status??null),statusReason=text(f?.status_reason??f?.status?.reason??null),statusCode=text(f?.status_code??f?.status?.code??f?.status?.short??null),minute=finite(f?.minute??f?.elapsed??f?.status?.minute??f?.status?.elapsed??statusCode),kickoff=kickoffUtc(f);return {fixtureId:id,league:league(f),home:team(f,'home'),away:team(f,'away'),kickoffUtc:kickoff,kickoffAt:kickoff&&Number.isFinite(Date.parse(kickoff))?Date.parse(kickoff):finite(f?.kickoff_ts??f?.start_time)?finite(f?.kickoff_ts??f?.start_time)*1000:null,status,statusReason,statusCode,boardState:boardState(status,statusCode),minute,goals:score(f?.goals??f?.score),corners:score(f?.corners),cards:cards(f?.cards),statistics:statistics(f?.statistics??f?.stats??null),events:Array.isArray(f?.events)?f.events:null,providerOdds:providerOddsRaw(f),providerOddsUpdatedAt:providerOddsRaw(f)?now():null}}
 function extract(payload){if(Array.isArray(payload?.data))return payload.data;if(Array.isArray(payload?.data?.data))return payload.data.data;if(Array.isArray(payload?.fixtures))return payload.fixtures;return []}
@@ -68,8 +106,21 @@ async function fetchJson(url,key){const ac=new AbortController(),timer=setTimeou
 async function fetchPages(env,query,perPage,maxPages){if(!env.FIVEDOLLAR_API_KEY)throw new Error('provider:FIVEDOLLAR_API_KEY_MISSING');const rows=[];let page=1,hasMore=false;do{const join=query?`&${query}`:'';const j=await fetchJson(`${API_BASE}/fixtures?per_page=${perPage}&page=${page}${join}`,env.FIVEDOLLAR_API_KEY);rows.push(...extract(j));hasMore=pageInfo(j).hasMore;page+=1}while(hasMore&&page<=maxPages);return {rows,requests:page-1,guardHit:hasMore&&page>maxPages}}
 function bangkokWindow(ms=now()){const shift=7*3600_000,d=new Date(ms+shift);const start=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-shift;return {startMs:start,endMs:start+86_400_000,start:Math.floor(start/1000),end:Math.floor((start+86_400_000)/1000)}}
 async function fetchProvider(env){const w=bangkokWindow();const include='odds,events,stats';const today=await fetchPages(env,`start_time=${w.start}&end_time=${w.end}&status=all&include=${include}`,TODAY_PAGE_SIZE,TODAY_MAX_PAGES);const live=await fetchPages(env,`status=live&include=${include}`,LIVE_PAGE_SIZE,LIVE_MAX_PAGES);const requests=today.requests+live.requests;if(requests>MAX_PROVIDER_REQUESTS_PER_REFRESH)throw new Error(`provider:REQUEST_BUDGET_${requests}`);return {today,live,window:w,include,requestBudget:MAX_PROVIDER_REQUESTS_PER_REFRESH}}
-function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt}}
+function rateInfo(response){return {limit:finite(response.headers.get('x-ratelimit-limit')),remaining:finite(response.headers.get('x-ratelimit-remaining')),reset:text(response.headers.get('x-ratelimit-reset')),retryAfter:finite(response.headers.get('retry-after'))}}
+async function fetchRichOdds(env,fixtureId){
+  if(!env.FIVEDOLLAR_API_KEY)throw Object.assign(new Error('provider:FIVEDOLLAR_API_KEY_MISSING'),{status:500});
+  const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),RICH_ODDS_TIMEOUT_MS);
+  try{
+    const url=`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=${encodeURIComponent(BOOKMAKER_QUERY)}`;
+    const r=await fetch(url,{cache:'no-store',signal:ac.signal,headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}}),rate=rateInfo(r),raw=await r.text();let body=null;try{body=JSON.parse(raw)}catch{}
+    if(!r.ok){const e=new Error(`provider:RICH_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=rate.retryAfter;e.rate=rate;throw e}
+    if(!body||typeof body!=='object')throw Object.assign(new Error('provider:RICH_ODDS_INVALID_JSON'),{status:502,rate});
+    return {providerOdds:richProviderOdds(body),body,rate};
+  }catch(e){if(e?.name==='AbortError')throw Object.assign(new Error('provider:RICH_ODDS_TIMEOUT'),{status:504});throw e}finally{clearTimeout(timer)}
+}
+function merge(base,extra){if(!base)return extra;if(!extra)return base;return {...base,...extra,league:{...(base.league||{}),...(extra.league||{})},home:{...(base.home||{}),...(extra.home||{})},away:{...(base.away||{}),...(extra.away||{})},kickoffUtc:extra.kickoffUtc??base.kickoffUtc,kickoffAt:extra.kickoffAt??base.kickoffAt,goals:extra.goals??base.goals,corners:extra.corners??base.corners,cards:extra.cards??base.cards,statistics:extra.statistics??base.statistics,events:extra.events??base.events,providerOdds:mergeProviderOdds(base.providerOdds,extra.providerOdds),providerOddsUpdatedAt:extra.providerOdds?(extra.providerOddsUpdatedAt??now()):base.providerOddsUpdatedAt,richOddsUpdatedAt:extra.richOddsUpdatedAt??base.richOddsUpdatedAt??null,richOddsBookmakerCount:extra.richOddsBookmakerCount??base.richOddsBookmakerCount??0,richOddsSource:extra.richOddsSource??base.richOddsSource??null}}
 function chunks(rows){const out=[];let cur=[];for(const row of rows){const next=[...cur,row];if(cur.length&&encoder.encode(JSON.stringify(next)).byteLength>CHUNK_BYTES){out.push(cur);cur=[row]}else cur=next}if(cur.length||!out.length)out.push(cur);return out}
+function rotateRows(rows,start){if(!rows.length)return[];return [...rows.slice(start),...rows.slice(0,start)]}
 
 export class FiveUsdHub{
   constructor(ctx,env){this.ctx=ctx;this.env=env;this.refreshPromise=null}
@@ -77,9 +128,35 @@ export class FiveUsdHub{
   async state(){return await this.ctx.storage.get('state')||{lastAttemptAt:null,lastSuccessAt:null,lastError:null}}
   async readRows(meta){if(!meta)return[];const out=[];for(let i=0;i<Number(meta.chunkCount||0);i++){const raw=await this.ctx.storage.get(`snapshot:${meta.snapshotId}:${i}`);if(!raw)continue;try{const rows=JSON.parse(raw);if(Array.isArray(rows))out.push(...rows)}catch{}}return out}
   async refreshIfDue(){const m=await this.meta();if(m?.fetchedAt&&now()-m.fetchedAt<REFRESH_MS)return m;if(this.refreshPromise)return this.refreshPromise;this.refreshPromise=this.refresh().finally(()=>{this.refreshPromise=null});return this.refreshPromise}
-  async refresh(){const attempt=now(),oldMeta=await this.meta(),oldRows=await this.readRows(oldMeta),oldState=await this.state();await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt});try{const p=await fetchProvider(this.env);const map=new Map();for(const raw of p.today.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,n)}for(const old of oldRows){if(map.has(old.fixtureId))map.set(old.fixtureId,merge(old,map.get(old.fixtureId)))}for(const raw of p.live.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,merge(map.get(n.fixtureId),n))}const rows=[...map.values()].sort((a,b)=>(a.kickoffAt??0)-(b.kickoffAt??0));const dataChunks=chunks(rows),snapshotId=attempt.toString(36);for(let i=0;i<dataChunks.length;i++)await this.ctx.storage.put(`snapshot:${snapshotId}:${i}`,JSON.stringify(dataChunks[i]));const counts={scheduled:rows.filter(x=>x.boardState==='scheduled').length,live:rows.filter(x=>x.boardState==='live').length,finished:rows.filter(x=>x.boardState==='finished').length,unknown:rows.filter(x=>x.boardState==='unknown').length};const meta={version:VERSION,fetchedAt:now(),snapshotId,chunkCount:dataChunks.length,fixtureCount:rows.length,counts,providerRequestCount:p.today.requests+p.live.requests,providerRequestBudget:p.requestBudget,todayRequests:p.today.requests,liveRequests:p.live.requests,guardHit:Boolean(p.today.guardHit||p.live.guardHit),include:p.include,todayWindow:{start:p.window.start,end:p.window.end,timeZone:'Asia/Bangkok'}};await this.ctx.storage.put('meta',meta);await this.ctx.storage.put('state',{lastAttemptAt:attempt,lastSuccessAt:meta.fetchedAt,lastError:null});if(oldMeta?.snapshotId&&oldMeta.snapshotId!==snapshotId){for(let i=0;i<Number(oldMeta.chunkCount||0);i++)await this.ctx.storage.delete(`snapshot:${oldMeta.snapshotId}:${i}`)}return meta}catch(e){await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt,lastError:String(e?.message||e)});if(oldMeta)return oldMeta;throw e}}
-  async snapshot(){let m=await this.meta();if(!m||!m.fetchedAt||now()-m.fetchedAt>=REFRESH_MS){try{m=await this.refreshIfDue()}catch{}}m=await this.meta();const s=await this.state();if(!m)return {ok:false,version:VERSION,error:s.lastError||'NO_SNAPSHOT'};const rows=await this.readRows(m),ageMs=Math.max(0,now()-m.fetchedAt);return {ok:true,version:VERSION,provider:'5DollarFootballAPI',fetchedAt:m.fetchedAt,ageMs,stale:ageMs>STALE_MS,fixtureCount:rows.length,counts:m.counts,providerRequestCount:m.providerRequestCount,providerRequestBudget:m.providerRequestBudget,todayRequests:m.todayRequests,liveRequests:m.liveRequests,guardHit:m.guardHit,include:m.include,todayWindow:m.todayWindow,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,fixtures:rows}}
-  async health(){const m=await this.meta(),s=await this.state(),ageMs=m?.fetchedAt?Math.max(0,now()-m.fetchedAt):null;return {ok:Boolean(m),component:'5USD_HUB',version:VERSION,fixtureCount:m?.fixtureCount??0,counts:m?.counts??{scheduled:0,live:0,finished:0,unknown:0},fetchedAt:m?.fetchedAt??null,ageMs,stale:ageMs===null||ageMs>STALE_MS,refreshMs:REFRESH_MS,providerRequestCount:m?.providerRequestCount??0,providerRequestBudget:m?.providerRequestBudget??MAX_PROVIDER_REQUESTS_PER_REFRESH,include:m?.include??null,lastError:s.lastError}}
+  async enrichRichOdds(rows){
+    const liveEligible=rows.filter(x=>x?.fixtureId&&x?.boardState==='live');
+    const scheduledEligible=rows.filter(x=>x?.fixtureId&&x?.boardState==='scheduled');
+    const eligibleCount=liveEligible.length+scheduledEligible.length;
+    if(!eligibleCount){await this.ctx.storage.put('richLiveCursor',0);await this.ctx.storage.put('richScheduledCursor',0);return {coveragePolicy:'LIVE_FIRST_THEN_SCHEDULED',eligible:0,liveEligible:0,scheduledEligible:0,selected:0,requests:0,enriched:0,richAh:0,queued:0,errors:[],stoppedReason:null,lastRate:null}}
+    const rawLiveCursor=Number(await this.ctx.storage.get('richLiveCursor')||0),liveStart=liveEligible.length?((rawLiveCursor%liveEligible.length)+liveEligible.length)%liveEligible.length:0;
+    const liveRotated=rotateRows(liveEligible,liveStart),liveSelected=liveRotated.slice(0,RICH_ODDS_MAX_PER_REFRESH),remaining=Math.max(0,RICH_ODDS_MAX_PER_REFRESH-liveSelected.length);
+    const rawScheduledCursor=Number(await this.ctx.storage.get('richScheduledCursor')||0),scheduledStart=scheduledEligible.length?((rawScheduledCursor%scheduledEligible.length)+scheduledEligible.length)%scheduledEligible.length:0;
+    const scheduledRotated=rotateRows(scheduledEligible,scheduledStart),scheduledSelected=scheduledRotated.slice(0,remaining),selected=[...liveSelected,...scheduledSelected];
+    let requests=0,enriched=0,richAh=0,liveAttempted=0,scheduledAttempted=0,stoppedReason=null,lastRate=null;const errors=[];
+    for(const row of selected){
+      if(row.boardState==='live')liveAttempted++;else scheduledAttempted++;
+      requests++;
+      try{
+        const result=await fetchRichOdds(this.env,row.fixtureId);lastRate=result.rate;
+        if(result.providerOdds){row.providerOdds=mergeProviderOdds(row.providerOdds,result.providerOdds);row.richOddsUpdatedAt=now();row.richOddsBookmakerCount=bookmakerCoverage(row.providerOdds);row.richOddsSource='CENTRAL_SCHEDULED_PER_FIXTURE';enriched++;if(richAhPresent(row.providerOdds))richAh++}
+        if(result.rate?.remaining!==null&&result.rate?.remaining!==undefined&&Number(result.rate.remaining)<=RICH_ODDS_RESERVE_REMAINING){stoppedReason='RATE_RESERVE';break}
+      }catch(e){
+        const status=Number(e?.status)||null;lastRate=e?.rate??lastRate;errors.push({fixtureId:String(row.fixtureId),status,error:String(e?.message||e),retryAfter:finite(e?.retryAfter)});
+        if(status===429){stoppedReason='PROVIDER_429';break}
+      }
+    }
+    const liveNext=liveEligible.length?(liveStart+liveAttempted)%liveEligible.length:0,scheduledNext=scheduledEligible.length?(scheduledStart+scheduledAttempted)%scheduledEligible.length:0;
+    await this.ctx.storage.put('richLiveCursor',liveNext);await this.ctx.storage.put('richScheduledCursor',scheduledNext);
+    return {coveragePolicy:'LIVE_FIRST_THEN_SCHEDULED',eligible:eligibleCount,liveEligible:liveEligible.length,scheduledEligible:scheduledEligible.length,selected:selected.length,liveSelected:liveSelected.length,scheduledSelected:scheduledSelected.length,requests,enriched,richAh,queued:Math.max(0,eligibleCount-liveAttempted-scheduledAttempted),errors:errors.slice(0,8),stoppedReason,lastRate,liveCursorStart:liveStart,liveCursorNext:liveNext,scheduledCursorStart:scheduledStart,scheduledCursorNext:scheduledNext};
+  }
+  async refresh(){const attempt=now(),oldMeta=await this.meta(),oldRows=await this.readRows(oldMeta),oldState=await this.state();await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt});try{const p=await fetchProvider(this.env);const map=new Map();for(const raw of p.today.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,n)}for(const old of oldRows){if(map.has(old.fixtureId))map.set(old.fixtureId,merge(old,map.get(old.fixtureId)))}for(const raw of p.live.rows){const n=normalize(raw);if(n.fixtureId)map.set(n.fixtureId,merge(map.get(n.fixtureId),n))}const rows=[...map.values()].sort((a,b)=>(a.kickoffAt??0)-(b.kickoffAt??0)),rich=await this.enrichRichOdds(rows);const dataChunks=chunks(rows),snapshotId=attempt.toString(36);for(let i=0;i<dataChunks.length;i++)await this.ctx.storage.put(`snapshot:${snapshotId}:${i}`,JSON.stringify(dataChunks[i]));const counts={scheduled:rows.filter(x=>x.boardState==='scheduled').length,live:rows.filter(x=>x.boardState==='live').length,finished:rows.filter(x=>x.boardState==='finished').length,unknown:rows.filter(x=>x.boardState==='unknown').length};const bulkRequests=p.today.requests+p.live.requests,meta={version:VERSION,fetchedAt:now(),snapshotId,chunkCount:dataChunks.length,fixtureCount:rows.length,counts,providerRequestCount:bulkRequests,providerRequestBudget:p.requestBudget,totalProviderRequestCount:bulkRequests+rich.requests,totalProviderRequestBudget:TOTAL_PROVIDER_REQUEST_BUDGET,todayRequests:p.today.requests,liveRequests:p.live.requests,guardHit:Boolean(p.today.guardHit||p.live.guardHit),include:p.include,todayWindow:{start:p.window.start,end:p.window.end,timeZone:'Asia/Bangkok'},richOdds:{mode:'CENTRAL_SCHEDULED_PER_FIXTURE',clickRequests:0,bookmakerCount:BOOKMAKERS.length,maxPerRefresh:RICH_ODDS_MAX_PER_REFRESH,reserveRemaining:RICH_ODDS_RESERVE_REMAINING,...rich}};await this.ctx.storage.put('meta',meta);await this.ctx.storage.put('state',{lastAttemptAt:attempt,lastSuccessAt:meta.fetchedAt,lastError:null});if(oldMeta?.snapshotId&&oldMeta.snapshotId!==snapshotId){for(let i=0;i<Number(oldMeta.chunkCount||0);i++)await this.ctx.storage.delete(`snapshot:${oldMeta.snapshotId}:${i}`)}return meta}catch(e){await this.ctx.storage.put('state',{...oldState,lastAttemptAt:attempt,lastError:String(e?.message||e)});if(oldMeta)return oldMeta;throw e}}
+  async snapshot(){const m=await this.meta(),s=await this.state();if(!m)return {ok:false,version:VERSION,error:s.lastError||'NO_SNAPSHOT'};const rows=await this.readRows(m),ageMs=Math.max(0,now()-m.fetchedAt);return {ok:true,version:VERSION,provider:'5DollarFootballAPI',fetchedAt:m.fetchedAt,ageMs,stale:ageMs>STALE_MS,fixtureCount:rows.length,counts:m.counts,providerRequestCount:m.providerRequestCount,providerRequestBudget:m.providerRequestBudget,totalProviderRequestCount:m.totalProviderRequestCount??m.providerRequestCount,totalProviderRequestBudget:m.totalProviderRequestBudget??m.providerRequestBudget,todayRequests:m.todayRequests,liveRequests:m.liveRequests,guardHit:m.guardHit,include:m.include,todayWindow:m.todayWindow,richOdds:m.richOdds??{mode:'WAITING_FOR_NEXT_SCHEDULED_REFRESH',clickRequests:0},lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,fixtures:rows}}
+  async health(){const m=await this.meta(),s=await this.state(),ageMs=m?.fetchedAt?Math.max(0,now()-m.fetchedAt):null;return {ok:Boolean(m),component:'5USD_HUB',version:VERSION,fixtureCount:m?.fixtureCount??0,counts:m?.counts??{scheduled:0,live:0,finished:0,unknown:0},fetchedAt:m?.fetchedAt??null,ageMs,stale:ageMs===null||ageMs>STALE_MS,refreshMs:REFRESH_MS,providerRequestCount:m?.providerRequestCount??0,providerRequestBudget:m?.providerRequestBudget??MAX_PROVIDER_REQUESTS_PER_REFRESH,totalProviderRequestCount:m?.totalProviderRequestCount??m?.providerRequestCount??0,totalProviderRequestBudget:m?.totalProviderRequestBudget??TOTAL_PROVIDER_REQUEST_BUDGET,include:m?.include??null,richOdds:m?.richOdds??{mode:'WAITING_FOR_NEXT_SCHEDULED_REFRESH',clickRequests:0,maxPerRefresh:RICH_ODDS_MAX_PER_REFRESH,reserveRemaining:RICH_ODDS_RESERVE_REMAINING},lastError:s.lastError}}
   async fetch(request){const u=new URL(request.url);if(u.pathname==='/_internal/refresh'&&request.method==='POST'){try{await this.refreshIfDue();return new Response(JSON.stringify(await this.health()),{headers:{'content-type':'application/json'}})}catch(e){return new Response(JSON.stringify({ok:false,error:String(e?.message||e)}),{status:502,headers:{'content-type':'application/json'}})}}if(u.pathname==='/snapshot')return new Response(JSON.stringify(await this.snapshot()),{headers:{'content-type':'application/json'}});if(u.pathname==='/health')return new Response(JSON.stringify(await this.health()),{headers:{'content-type':'application/json'}});return new Response('Not found',{status:404})}
 }
 function stub(env){return env.HUB.get(env.HUB.idFromName('global'))}
