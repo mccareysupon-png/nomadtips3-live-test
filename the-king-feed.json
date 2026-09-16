@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-16T20:13:57Z",
+  "updated_at": "2026-09-16T23:01:18Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -12639,8 +12639,8 @@
       "edge": 9.8,
       "ev": 0.1066,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-1",
       "locked_at": "2026-09-16T01:51:13Z",
       "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-portuguesa-fc-vs-estudiantes-merida-fc/h2h-3090250",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-portuguesa-fc-vs-estudiantes-merida-fc/summary-3090250",
@@ -12700,7 +12700,12 @@
         "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 79.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-16T23:01:18Z"
     },
     {
       "id": "cf14d1012de3ce6c-AH-HOME-0p25",
@@ -88418,6 +88423,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-16T20:13:57Z"
+    },
+    {
+      "id": "846ccfd36e8b9546-OU-OVER-2p25",
+      "goaloo_id": "3090250",
+      "date": "2026-09-16",
+      "kickoff": "2026-09-16 21:00:00",
+      "league": "Primera Division de Venezuela",
+      "home": "Portuguesa FC",
+      "away": "Estudiantes Merida FC",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 1.79,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6111,
+      "model_probability": 0.6111,
+      "market_fair_probability": 0.5136,
+      "market_edge": 0.0975,
+      "edge": 9.8,
+      "ev": 0.1066,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "2-1",
+      "locked_at": "2026-09-16T01:51:13Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-portuguesa-fc-vs-estudiantes-merida-fc/h2h-3090250",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-portuguesa-fc-vs-estudiantes-merida-fc/summary-3090250",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.41,
+        "lambda_away": 1.476,
+        "home_win": 0.3405,
+        "draw": 0.267,
+        "away_win": 0.3925,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0992,
+          "gd_edge": -0.1281,
+          "clean_sheet_edge": 0.2244,
+          "failed_to_score_edge": -0.2829,
+          "bounded_adjustment": -0.0063,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 79.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-16T23:01:18Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
