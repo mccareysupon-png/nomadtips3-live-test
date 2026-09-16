@@ -107,7 +107,7 @@ async function boardWithHubOdds(request, env) {
   ]);
   if (b?.ok !== true) return Response.json(b || { ok: false, error: 'BOARD_NOT_READY' }, { status: br.status || 503 });
   const sourceRows = h?.ok === true && Array.isArray(h.fixtures) ? h.fixtures : [];
-  const rich = new Map(sourceRows.filter(x => fixtureIsLive(x) && x?.richOddsSource === 'CENTRAL_SCHEDULED_PER_FIXTURE').map(x => [String(x.fixtureId ?? ''), x]));
+  const rich = new Map(sourceRows.filter(x => x?.fixtureId && x?.providerOdds && x?.richOddsSource === 'CENTRAL_SCHEDULED_PER_FIXTURE').map(x => [String(x.fixtureId), x]));
   let overlaid = 0;
   const fixtures = (Array.isArray(b.fixtures) ? b.fixtures : []).map(f => {
     const r = rich.get(String(f?.fixtureId ?? ''));
