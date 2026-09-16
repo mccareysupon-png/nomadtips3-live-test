@@ -1,5 +1,5 @@
 name = "nomadtips3-5usd-hub-343"
-main = "src/index-v2.js"
+main = "src/index-rich-odds.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
 
@@ -13,6 +13,14 @@ crons = ["*/2 * * * *"]
 name = "HUB"
 class_name = "FiveUsdHub"
 
+[[durable_objects.bindings]]
+name = "RICH_GATE"
+class_name = "RichOddsGate"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["FiveUsdHub"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RichOddsGate"]
