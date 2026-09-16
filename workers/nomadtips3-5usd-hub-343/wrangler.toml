@@ -15,12 +15,12 @@ class_name = "FiveUsdHub"
 
 [[durable_objects.bindings]]
 name = "RICH_GATE"
-class_name = "RichOddsGate"
+class_name = "RichOddsGate20260916"
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["FiveUsdHub"]
 
 [[migrations]]
-tag = "v2"
-new_sqlite_classes = ["RichOddsGate"]
+tag = "v2-rich-odds-20260916b"
+new_sqlite_classes = ["RichOddsGate20260916"]
