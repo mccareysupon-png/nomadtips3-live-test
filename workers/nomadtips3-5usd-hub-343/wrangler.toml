@@ -13,6 +13,10 @@ crons = ["*/2 * * * *"]
 name = "HUB"
 class_name = "FiveUsdHub"
 
-[exports.FiveUsdHub]
-type = "durable-object"
-storage = "sqlite"
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FiveUsdHub"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RichOddsGate"]
