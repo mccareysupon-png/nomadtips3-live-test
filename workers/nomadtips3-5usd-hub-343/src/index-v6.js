@@ -40,6 +40,15 @@ export class FiveUsdHub extends BaseFiveUsdHub{
   }
 }
 
+// Compatibility export only. The v2 Durable Object namespace already exists in
+// Cloudflare migration history, but all legacy request-driven rich-odds behavior
+// is intentionally disabled. Central scheduled enrichment in FiveUsdHub is the
+// only code allowed to call the 5USD provider.
+export class RichOddsGate{
+  constructor(ctx,env){this.ctx=ctx;this.env=env}
+  async fetch(){return json({ok:false,error:'LEGACY_RICH_GATE_DISABLED',source:'CENTRAL_SCHEDULED_ONLY'},410)}
+}
+
 export default{
   async fetch(request,env){
     const u=new URL(request.url);
