@@ -74,7 +74,7 @@ async function providerJson(url, key) {
   }
 }
 
-export class RichOddsGate {
+export class RichOddsGate20260916 {
   constructor(ctx, env) {
     this.ctx = ctx;
     this.env = env;
