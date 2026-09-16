@@ -1,0 +1,243 @@
+/* NOMAD LIVE 3.43 — clean light theme.
+   Presentation only: no API, engine, polling, signals or statistics logic. */
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f4f7f4;
+  --panel:#ffffff;
+  --panel-2:#f8faf8;
+  --panel-3:#eef4ef;
+  --line:rgba(39,67,48,.12);
+  --line-soft:rgba(39,67,48,.075);
+  --line-strong:rgba(39,67,48,.17);
+  --text:#17231b;
+  --muted:#6d786f;
+  --green:#2f8f4e;
+  --green-2:#3ca75c;
+  --yellow:#9b7600;
+  --mint:#158d75;
+  --red:#c64d4d;
+  --amber:#a76f22;
+  --shadow:0 8px 22px rgba(35,65,43,.08);
+  --team-home-name:#2f8f4e;
+  --team-away-name:#9b7600;
+  --team-home-soft:#5bad70;
+  --team-away-soft:#b59022;
+  --surface-0:#f4f7f4;
+  --surface-1:#ffffff;
+  --surface-2:#f8faf8;
+  --surface-3:#eef4ef;
+}
+
+html[data-theme="light"],html[data-theme="light"] body{
+  background:#f4f7f4!important;
+  color:var(--text)!important;
+}
+html[data-theme="light"] body{font-family:Arial,Helvetica,sans-serif}
+
+/* Header / navigation */
+html[data-theme="light"] .topbar{
+  background:rgba(255,255,255,.96)!important;
+  border-bottom:1px solid #dfe7e0!important;
+  box-shadow:0 6px 18px rgba(35,65,43,.07)!important;
+  backdrop-filter:blur(10px);
+}
+html[data-theme="light"] .brand{color:#173c2a!important}
+html[data-theme="light"] .brand span{color:#3c9c58!important}
+html[data-theme="light"] .version{color:#77827a!important}
+html[data-theme="light"] .topnav a,
+html[data-theme="light"] .statistics-nav a{color:#667269!important}
+html[data-theme="light"] .topnav a:hover,
+html[data-theme="light"] .topnav a:focus-visible,
+html[data-theme="light"] .statistics-nav a:hover,
+html[data-theme="light"] .statistics-nav a:focus-visible{color:#8a6900!important}
+html[data-theme="light"] .topnav a.active,
+html[data-theme="light"] .statistics-nav a.active{color:#2f8f4e!important}
+
+/* Utility row */
+html[data-theme="light"] .utility-bar-343,
+html[data-theme="light"] .utility-bar-343-inner,
+html[data-theme="light"] .utility-cluster-343,
+html[data-theme="light"] .utility-options-343{background:transparent!important}
+html[data-theme="light"] .utility-label-343{color:#7b867e!important}
+html[data-theme="light"] .utility-option-343{color:#78837b!important}
+html[data-theme="light"] .utility-option-343:hover,
+html[data-theme="light"] .utility-option-343:focus-visible{color:#226f3d!important}
+html[data-theme="light"] .utility-option-343[aria-pressed="true"]{color:#2f8f4e!important}
+
+/* Page text and controls */
+html[data-theme="light"] .page-head .eyebrow,
+html[data-theme="light"] .visual-head .eyebrow{color:#77847a!important}
+html[data-theme="light"] .page-head h1,
+html[data-theme="light"] .panel-head h2,
+html[data-theme="light"] h1,
+html[data-theme="light"] h2,
+html[data-theme="light"] h3{color:#17231b!important}
+html[data-theme="light"] .page-head p,
+html[data-theme="light"] .panel-head p,
+html[data-theme="light"] .muted,
+html[data-theme="light"] .note{color:#6d786f!important}
+html[data-theme="light"] .source-state,
+html[data-theme="light"] .pill{background:#ffffff!important;border-color:#dfe7e0!important;color:#536159!important}
+html[data-theme="light"] .toolbar{background:rgba(255,255,255,.58)!important}
+html[data-theme="light"] .search input,
+html[data-theme="light"] .control,
+html[data-theme="light"] select,
+html[data-theme="light"] input[type="number"]{
+  background:#ffffff!important;
+  border-color:#d9e3da!important;
+  color:#17231b!important;
+  box-shadow:0 2px 8px rgba(35,65,43,.035);
+}
+html[data-theme="light"] .search input::placeholder{color:#8b958e!important}
+html[data-theme="light"] .search input:focus,
+html[data-theme="light"] .control:focus,
+html[data-theme="light"] select:focus,
+html[data-theme="light"] input[type="number"]:focus{border-color:rgba(47,143,78,.45)!important}
+
+/* Cards / panels / KPIs */
+html[data-theme="light"] .metric,
+html[data-theme="light"] .panel,
+html[data-theme="light"] .active-signal-card,
+html[data-theme="light"] .active-signal-empty,
+html[data-theme="light"] .evidence-card,
+html[data-theme="light"] .flow-card,
+html[data-theme="light"] .detail-item,
+html[data-theme="light"] .odds-panel,
+html[data-theme="light"] .signal-evidence-card,
+html[data-theme="light"] .signal-entry-block,
+html[data-theme="light"] .signal-entry-detail-grid section,
+html[data-theme="light"] .visual-card{
+  background:#ffffff!important;
+  color:#17231b!important;
+  border-color:#e0e8e1!important;
+  box-shadow:var(--shadow)!important;
+}
+html[data-theme="light"] .metric.good,
+html[data-theme="light"] .metric.signal{background:#eef8f0!important}
+html[data-theme="light"] .metric.warn{background:#fff9e9!important}
+html[data-theme="light"] .metric span,
+html[data-theme="light"] .metric small{color:#748078!important}
+html[data-theme="light"] .metric strong{color:#1d2b21!important}
+html[data-theme="light"] .metric.good strong{color:#2f8f4e!important}
+html[data-theme="light"] .metric.warn strong{color:#8f6a00!important}
+html[data-theme="light"] .panel-head,
+html[data-theme="light"] .evidence-head,
+html[data-theme="light"] .flow-head,
+html[data-theme="light"] .signal-evidence-card>header,
+html[data-theme="light"] .signal-entry-detail-grid section>header,
+html[data-theme="light"] .signal-entry-block>header{
+  background:#f8faf8!important;
+  border-color:#e1e8e2!important;
+}
+
+/* Live score groups / match cards */
+html[data-theme="light"] .score-group{background:transparent!important}
+html[data-theme="light"] .score-group-head{background:#edf3ee!important;border-bottom:1px solid #dfe7e0!important}
+html[data-theme="light"] .score-group-head h2{color:#253329!important}
+html[data-theme="light"] .score-group-head b{background:#ffffff!important;border-color:#dce5dd!important;color:#647168!important}
+html[data-theme="light"] .match-stack{background:transparent!important}
+html[data-theme="light"] .match-card{background:#ffffff!important;color:#17231b!important;box-shadow:0 3px 11px rgba(35,65,43,.045)!important}
+html[data-theme="light"] .match-card:nth-child(even){background:#fbfcfb!important}
+html[data-theme="light"] .match-card:hover,
+html[data-theme="light"] .match-card:focus-visible{background:#f2f8f3!important}
+html[data-theme="light"] .match-card.expanded{background:#edf8f0!important;box-shadow:inset 3px 0 0 #4aa164,0 5px 16px rgba(35,65,43,.07)!important}
+html[data-theme="light"] .event-details,
+html[data-theme="light"] .active-signal-detail{background:#f8faf8!important;border-top-color:#dfe7e0!important}
+html[data-theme="light"] .fixture-date,
+html[data-theme="light"] .half-score,
+html[data-theme="light"] .details-note,
+html[data-theme="light"] .league-scoreboard{color:#748078!important}
+html[data-theme="light"] .empty,
+html[data-theme="light"] .compact-empty{color:#7a867e!important;background:transparent!important}
+
+/* Signals */
+html[data-theme="light"] .active-signal-card:hover,
+html[data-theme="light"] .active-signal-card:focus-visible{background:#f3f8f4!important;border-color:#dbe7dc!important}
+html[data-theme="light"] .active-signal-card.expanded{background:#edf8f0!important;box-shadow:inset 3px 0 0 #4aa164,0 5px 16px rgba(35,65,43,.07)!important}
+html[data-theme="light"] .active-signal-title h3,
+html[data-theme="light"] .active-signal-score b{color:#17231b!important}
+html[data-theme="light"] .active-signal-title small,
+html[data-theme="light"] .active-signal-cue{color:#738078!important}
+html[data-theme="light"] .active-signal-live-dot,
+html[data-theme="light"] .signal-live-badge,
+html[data-theme="light"] .signal-rule-item.pass{background:#edf8f0!important;border-color:#cde2d1!important;color:#2f8f4e!important}
+html[data-theme="light"] .signal-entry-badge{background:#fff8df!important;border-color:#eadca9!important;color:#8f6a00!important}
+html[data-theme="light"] .signal-market-chip,
+html[data-theme="light"] .signal-entry-quick span,
+html[data-theme="light"] .signal-live-quick span,
+html[data-theme="light"] .signal-live-meta span,
+html[data-theme="light"] .signal-rule-item,
+html[data-theme="light"] .signal-technical{background:#f7faf7!important;border-color:#e0e8e1!important;color:#39483e!important}
+
+/* Statistics tables */
+html[data-theme="light"] .table-wrap{background:#ffffff!important}
+html[data-theme="light"] .data-table{background:#ffffff!important;color:#253329!important}
+html[data-theme="light"] .data-table th{background:#eef4ef!important;color:#657168!important;border-bottom-color:#dce5dd!important}
+html[data-theme="light"] .data-table td{border-bottom-color:#e8eee9!important;color:#334139!important}
+html[data-theme="light"] .data-table tbody tr:hover{background:#f3f8f4!important}
+html[data-theme="light"] .public-stat-table tbody tr.selected{background:#edf8f0!important;box-shadow:inset 3px 0 0 #b28a12!important}
+html[data-theme="light"] .tag.win{color:#2f8f4e!important}
+html[data-theme="light"] .tag.loss{color:#bd4545!important}
+html[data-theme="light"] .tag.push{color:#9b7600!important}
+
+/* Event flow */
+html[data-theme="light"] .nomad-event-flow-card{background:#ffffff!important;border-color:#e0e8e1!important;box-shadow:var(--shadow)!important}
+html[data-theme="light"] .nomad-flow-head,
+html[data-theme="light"] .nomad-flow-foot{background:#f8faf8!important;border-color:#e0e8e1!important}
+html[data-theme="light"] .nomad-flow-chart,
+html[data-theme="light"] .nomad-flow-legend,
+html[data-theme="light"] .nomad-flow-svg,
+html[data-theme="light"] .nomad-flow-loading,
+html[data-theme="light"] .nomad-flow-empty{background:#ffffff!important;color:#617067!important}
+html[data-theme="light"] .nomad-flow-grid-line{stroke:rgba(45,76,55,.11)!important}
+html[data-theme="light"] .nomad-flow-grid-line.mid{stroke:rgba(45,76,55,.21)!important}
+html[data-theme="light"] .mirror-track,
+html[data-theme="light"] .signal-mirror-half{background:#e8eee9!important}
+
+/* Full market / bookmakers */
+html[data-theme="light"] [data-b365-addon],
+html[data-theme="light"] .fom-wrap,
+html[data-theme="light"] .fom-panel,
+html[data-theme="light"] .fom-market,
+html[data-theme="light"] .fom-book-row{color:#26352b!important}
+html[data-theme="light"] .fom-wrap,
+html[data-theme="light"] .fom-panel,
+html[data-theme="light"] .fom-market{background:#ffffff!important;border-color:#dde6de!important;box-shadow:var(--shadow)!important}
+html[data-theme="light"] .fom-head,
+html[data-theme="light"] .fom-market-head,
+html[data-theme="light"] .fom-colhead,
+html[data-theme="light"] .fom-team-strip{background:#eef4ef!important;border-color:#dce5dd!important}
+html[data-theme="light"] .fom-book-row{background:#ffffff!important;border-color:#e6ede7!important}
+html[data-theme="light"] .fom-book-row:hover{background:#f3f8f4!important}
+
+/* Mobile navigation */
+html[data-theme="light"] .mobile-nav,
+html[data-theme="light"] body[data-page="statistics"] .statistics-nav{
+  background:rgba(255,255,255,.97)!important;
+  border-color:#dfe7e0!important;
+  box-shadow:0 -8px 20px rgba(35,65,43,.07)!important;
+}
+html[data-theme="light"] .mobile-nav a,
+html[data-theme="light"] body[data-page="statistics"] .statistics-nav a{color:#6e7a71!important}
+html[data-theme="light"] .mobile-nav a:hover,
+html[data-theme="light"] .mobile-nav a:focus-visible{color:#8a6900!important}
+html[data-theme="light"] .mobile-nav a.active,
+html[data-theme="light"] body[data-page="statistics"] .statistics-nav a.active{color:#2f8f4e!important}
+
+/* Keep semantic home/away identity readable on white surfaces. */
+html[data-theme="light"] .team-home-name,
+html[data-theme="light"] .team-slot.home-slot .team-name,
+html[data-theme="light"] .team-axis>b:first-child,
+html[data-theme="light"] .fom-team-strip .home strong{color:#2f8f4e!important}
+html[data-theme="light"] .team-away-name,
+html[data-theme="light"] .team-slot.away-slot .team-name,
+html[data-theme="light"] .team-axis>b:last-child,
+html[data-theme="light"] .fom-team-strip .away strong{color:#9b7600!important}
+html[data-theme="light"] .home-num{color:#256f3d!important}
+html[data-theme="light"] .away-num{color:#8a6900!important}
+
+@media(max-width:760px){
+  html[data-theme="light"] .match-card,
+  html[data-theme="light"] .active-signal-card,
+  html[data-theme="light"] .nomad-event-flow-card{box-shadow:none!important}
+}
