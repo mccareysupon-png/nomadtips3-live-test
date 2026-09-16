@@ -15,7 +15,7 @@
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap:22px;
+  gap:18px;
   white-space:nowrap;
   background:transparent;
   border:0;
@@ -34,13 +34,14 @@
   appearance:none;border:0;background:transparent;color:#9ba69e;
   min-width:28px;height:28px;padding:0 6px;
   font:900 9px/1 Arial,Helvetica,sans-serif;letter-spacing:.04em;
-  cursor:pointer;border-radius:0;box-shadow:none;transition:color .12s ease;
+  cursor:pointer;border-radius:0;box-shadow:none;transition:color .12s ease,opacity .12s ease;
 }
 .utility-option-343:hover,.utility-option-343:focus-visible{
   color:#a8f0ad;background:transparent;outline:none;box-shadow:none;
 }
 .utility-option-343[aria-pressed="true"]{color:#83df89;background:transparent;box-shadow:none}
 .utility-option-343:disabled{color:#59625c;opacity:.45;cursor:default;background:transparent;box-shadow:none}
+.theme-cluster-343 .utility-option-343{min-width:42px;padding:0 5px}
 .utility-divider-343{display:none!important}
 
 /* Hard stop for the legacy JS-injected header controls. Logic stays alive;
@@ -52,7 +53,9 @@ html[data-utility-odds="decimal"] [data-utility-odds="decimal"],
 html[data-utility-odds="fractional"] [data-utility-odds="fractional"],
 html[data-utility-odds="american"] [data-utility-odds="american"],
 html[data-utility-lang="en"] [data-utility-lang="en"],
-html[data-utility-lang="th"] [data-utility-lang="th"]{color:#83df89;background:transparent;box-shadow:none}
+html[data-utility-lang="th"] [data-utility-lang="th"],
+html[data-theme="dark"] [data-theme-choice="dark"],
+html[data-theme="light"] [data-theme-choice="light"]{color:#83df89;background:transparent;box-shadow:none}
 
 /* Keep the utility row on the exact same responsive shell rails as page content. */
 @media (min-width:701px) and (max-width:1099px){
@@ -70,11 +73,12 @@ html[data-utility-lang="th"] [data-utility-lang="th"]{color:#83df89;background:t
 
 @media(max-width:760px){
   .utility-bar-343{min-height:36px;background:transparent;border:0;box-shadow:none}
-  .utility-bar-343-inner{min-height:36px;padding:0 8px;gap:12px;justify-content:flex-end;overflow:hidden;background:transparent;border:0;box-shadow:none}
+  .utility-bar-343-inner{min-height:36px;padding:0 8px;gap:8px;justify-content:flex-end;overflow:hidden;background:transparent;border:0;box-shadow:none}
   .utility-icon-343{width:22px;height:22px;flex-basis:22px}
   .utility-label-343{display:none}
   .utility-cluster-343{gap:3px}
   .utility-options-343{gap:0}
   .utility-option-343{min-width:27px;height:27px;padding:0 4px;font-size:8px;background:transparent;border:0;box-shadow:none}
+  .theme-cluster-343 .utility-option-343{min-width:36px;padding:0 3px;font-size:7.5px}
   .utility-option-343[data-utility-lang]:disabled{display:none}
 }
