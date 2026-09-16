@@ -53,14 +53,12 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
 
-      - name: Smoke HUB controls at safe 120s
+      - name: Smoke HUB controls without changing owner settings
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$HUB_URL/control?verify=$RANDOM" -o /tmp/control-before.json
-          node -e 'const j=require("/tmp/control-before.json");if(j.ok!==true||!Array.isArray(j.presets)||!j.presets.includes(120)||!j.presets.includes(2))throw Error("control GET mismatch");console.log("GET CONTROL",j.control?.liveRefreshSeconds,j.presets)'
-          curl -fsS --max-time 30 -X PUT -H 'content-type: application/json' --data '{"liveRefreshSeconds":120,"autoReturnMinutes":0}' "$HUB_URL/control" -o /tmp/control-put.json
-          node -e 'const j=require("/tmp/control-put.json");if(j.ok!==true||Number(j.control?.liveRefreshSeconds)!==120)throw Error("control PUT mismatch");console.log("PUT CONTROL safe",j.control.liveRefreshSeconds)'
+          curl -fsS --max-time 30 "$HUB_URL/control?verify=$RANDOM" -o /tmp/control.json
+          node -e 'const j=require("/tmp/control.json");if(j.ok!==true||!Array.isArray(j.presets)||!j.presets.includes(120)||!j.presets.includes(2)||!Number(j.control?.liveRefreshSeconds))throw Error("control GET mismatch");console.log("CONTROL",j.control.liveRefreshSeconds,j.presets)'
           curl -fsS --max-time 30 "$ULTRA_URL/api/hub/health?verify=$RANDOM" -o /tmp/health.json
-          node -e 'const j=require("/tmp/health.json");if(j.component!=="5USD_HUB"||!j.control||Number(j.control.liveRefreshSeconds)!==120)throw Error("Ultra HUB health mismatch");console.log("ULTRA HUB",j.ok,"cycle",j.control.liveRefreshSeconds,"rpm",j.estimatedBulkRequestsPerMinute,"limit",j.accountLimitPerMinute)'
+          node -e 'const j=require("/tmp/health.json");if(j.component!=="5USD_HUB"||!j.control||!Number(j.control.liveRefreshSeconds))throw Error("Ultra HUB health mismatch");console.log("ULTRA HUB",j.ok,"cycle",j.control.liveRefreshSeconds,"rpm",j.estimatedBulkRequestsPerMinute,"limit",j.accountLimitPerMinute)'
           curl -fsS --max-time 30 "$ULTRA_URL/api/hub/control?verify=$RANDOM" -o /tmp/ultra-control.json
           node -e 'const j=require("/tmp/ultra-control.json");if(j.ok!==true||!Array.isArray(j.presets))throw Error("Ultra control proxy mismatch");console.log("ULTRA CONTROL PASS",j.presets.join(","))'
