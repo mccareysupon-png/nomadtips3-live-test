@@ -115,7 +115,6 @@ jobs:
             sleep 2
           done
           test "$ready" = 1
-
           retry_api() {
             local path="$1" outfile="$2"
             for n in $(seq 1 20); do
@@ -132,12 +131,24 @@ jobs:
           node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE unhealthy");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
           retry_api '/api/engine/signals' /tmp/www-signals.json
           node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www SIGNALS unhealthy");console.log("WWW_SIGNALS_OK",j.signals.length)'
-
           for page in index.html signal.html statistics.html settings.html api-monitor.html; do
             curl -fsS --max-time 25 "$CUSTOM_URL/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
             test -s "/tmp/$page"
           done
           echo 'NOMAD 3.43 production cutover PASS'
+
+      - name: Inspect Ball46 Cloudflare state
+        if: ${{ success() }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          echo 'BALL46_ZONE_QUERY'
+          curl -sS -w '\nHTTP=%{http_code}\n' "${auth[@]}" 'https://api.cloudflare.com/client/v4/zones?name=ball46.com' -o /tmp/ball46-zone.json
+          cat /tmp/ball46-zone.json | jq '{success,errors,result:[.result[]? | {id,name,status,account_id:.account.id}]}' || cat /tmp/ball46-zone.json
+          echo 'BALL46_WORKERS_DOMAINS'
+          curl -sS -w '\nHTTP=%{http_code}\n' "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/ball46-domains.json
+          cat /tmp/ball46-domains.json | jq '{success,errors,result:[.result[]? | select(.hostname|contains("ball46.com")) | {id,hostname,service,environment,zone_id,zone_name}]}' || cat /tmp/ball46-domains.json
 
       - name: Roll back existing production Worker service to 3.41 if verification fails
         if: ${{ failure() && steps.cutover.outputs.attempted == 'true' }}
