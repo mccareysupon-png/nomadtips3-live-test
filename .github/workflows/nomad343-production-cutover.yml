@@ -1,0 +1,134 @@
+name: NOMAD 3.43 Production Cutover
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/nomad343-clean-bet365-ui]
+    paths:
+      - 'nomad-live-343/**'
+      - 'workers/nomadtips3-343-preview/**'
+      - '.github/workflows/nomad343-production-cutover.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-343-production-canary.mccarey-supon.workers.dev
+  CUSTOM_URL: https://www.nomadtips3.com
+
+jobs:
+  guarded-cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate 3.43 production source and isolation
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-343-preview/src/index.js
+          test -s nomad-live-343/index.html
+          test -s nomad-live-343/live.js
+          grep -Fq '"name": "nomadtips3-live-web-production"' workers/nomadtips3-343-preview/wrangler.production.jsonc
+          grep -Fq '"name": "nomadtips3-343-production-canary"' workers/nomadtips3-343-preview/wrangler.production-canary.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
+          grep -Fq '"workers_dev": false' workers/nomadtips3-343-preview/wrangler.production.jsonc
+          if grep -Fq '"routes"' workers/nomadtips3-343-preview/wrangler.production.jsonc; then
+            echo '::error::Production route must remain dashboard-managed'; exit 1
+          fi
+          if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-343-preview; then
+            echo '::error::3.43 production web must not depend on 3.42 runtime'; exit 1
+          fi
+
+      - name: Validate Cloudflare credentials
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
+          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+
+      - name: Dry-run canary and production bundles
+        working-directory: workers/nomadtips3-343-preview
+        run: |
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production-canary.jsonc
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
+
+      - name: Deploy isolated 3.43 canary
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-343-preview
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.production-canary.jsonc
+
+      - name: Smoke-test 3.43 canary
+        run: |
+          set -euo pipefail
+          retry() {
+            local url="$1" out="$2"
+            for n in $(seq 1 12); do
+              if curl -fsS --max-time 25 "$url" -o "$out"; then return 0; fi
+              sleep 5
+            done
+            return 1
+          }
+          retry "$CANARY_URL/api/engine/health?verify=$RANDOM" /tmp/engine.json
+          retry "$CANARY_URL/api/hub/health?verify=$RANDOM" /tmp/hub.json
+          retry "$CANARY_URL/index.html?verify=$RANDOM" /tmp/index.html
+          node - <<'NODE'
+          const e=require('/tmp/engine.json');
+          const h=require('/tmp/hub.json');
+          if(e?.component!=='NOMAD343_ENGINE' || e?.ok===false) throw Error('3.43 engine health failed');
+          if(h?.component!=='5USD_HUB' || h?.ok===false) throw Error('3.43 hub health failed');
+          if(Number(h?.accountLimitPerMinute)!==40) throw Error('5USD account limit guard changed');
+          console.log('CANARY ENGINE',e.version,'HUB',h.version,'cycle',h.control?.liveRefreshSeconds);
+          NODE
+          grep -Eiq '3\.43|NOMAD LIVE' /tmp/index.html
+          headers="$(curl -fsSI --max-time 25 "$CANARY_URL/index.html?verify=$RANDOM")"
+          echo "$headers" | grep -Fqi 'x-nomad-live-revision: 343-live-bulk-only-v1'
+          echo '3.43 CANARY PASS'
+
+      - name: Deploy 3.43 to existing dashboard-managed www Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: workers/nomadtips3-343-preview
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.production.jsonc
+
+      - name: Verify www is serving 3.43 and wheel data path is live
+        run: |
+          set -euo pipefail
+          retry() {
+            local url="$1" out="$2"
+            for n in $(seq 1 12); do
+              if curl -fsS --max-time 25 "$url" -o "$out"; then return 0; fi
+              sleep 5
+            done
+            return 1
+          }
+          retry "$CUSTOM_URL/api/engine/health?verify=$RANDOM" /tmp/www-engine.json
+          retry "$CUSTOM_URL/api/hub/health?verify=$RANDOM" /tmp/www-hub.json
+          retry "$CUSTOM_URL/api/engine/board?verify=$RANDOM" /tmp/www-board.json
+          retry "$CUSTOM_URL/index.html?verify=$RANDOM" /tmp/www-index.html
+          node - <<'NODE'
+          const e=require('/tmp/www-engine.json');
+          const h=require('/tmp/www-hub.json');
+          const b=require('/tmp/www-board.json');
+          if(e?.component!=='NOMAD343_ENGINE' || e?.ok===false) throw Error('www engine is not 3.43');
+          if(h?.component!=='5USD_HUB' || h?.ok===false) throw Error('www hub is not 3.43');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('3.43 board data path not ready');
+          console.log('WWW 3.43 OK fixtures=',b.fixtures.length,'engine=',e.version,'hub=',h.version,'ageMs=',b.hubAgeMs);
+          NODE
+          grep -Eiq '3\.43|NOMAD LIVE' /tmp/www-index.html
+          headers="$(curl -fsSI --max-time 25 "$CUSTOM_URL/index.html?verify=$RANDOM")"
+          echo "$headers" | grep -Fqi 'x-nomad-live-revision: 343-live-bulk-only-v1'
+          echo 'NOMAD 3.43 PRODUCTION CUTOVER PASS'
