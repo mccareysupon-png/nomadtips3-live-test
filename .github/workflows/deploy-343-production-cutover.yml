@@ -1,4 +1,4 @@
-name: Deploy NOMAD 3.43 Production Cutover
+name: Deploy 3.43 Production
 
 on:
   workflow_dispatch:
@@ -7,6 +7,7 @@ on:
     paths:
       - 'workers/nomadtips3-343-preview/wrangler.production.jsonc'
       - 'workers/nomadtips3-343-preview/wrangler.cutover.jsonc'
+      - 'workers/nomadtips3-343-preview/wrangler.ball46.jsonc'
       - '.github/workflows/deploy-343-production-cutover.yml'
 
 permissions:
@@ -15,17 +16,18 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  PROD_URL: https://nomadtips3-343-production.mccarey-supon.workers.dev
-  CUSTOM_URL: https://www.nomadtips3.com
 
 jobs:
-  deploy-cutover:
+  deploy-nomad:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      PROD_URL: https://nomadtips3-343-production.mccarey-supon.workers.dev
+      CUSTOM_URL: https://www.nomadtips3.com
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate release source and credentials
+      - name: Validate NOMAD 3.43 source
         shell: bash
         run: |
           set -euo pipefail
@@ -41,7 +43,7 @@ jobs:
           grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.cutover.jsonc
           node --check workers/nomadtips3-343-preview/src/index.js
 
-      - name: Dry-run isolated and cutover bundles
+      - name: Dry-run NOMAD bundles
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
@@ -51,47 +53,31 @@ jobs:
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.cutover.jsonc
 
-      - name: Deploy isolated 3.43 production Worker
+      - name: Deploy isolated NOMAD 3.43 Worker
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
 
-      - name: Smoke-test isolated 3.43 before cutover
+      - name: Smoke-test isolated NOMAD 3.43
         shell: bash
         run: |
           set -euo pipefail
-          retry_page() {
-            for n in $(seq 1 20); do
-              code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$PROD_URL/?precutover=${GITHUB_RUN_ID}-${n}" || true)"
-              rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
-              echo "page attempt=$n code=$code revision=$rev"
-              if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then return 0; fi
-              sleep 2
-            done
-            return 1
-          }
-          retry_json() {
-            local path="$1" outfile="$2"
-            for n in $(seq 1 20); do
-              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$PROD_URL$path?verify=${GITHUB_RUN_ID}&attempt=$n" || true)"
-              echo "api $path attempt=$n code=$code"
-              if [ "$code" = 200 ] && node -e 'const fs=require("fs");JSON.parse(fs.readFileSync(process.argv[1],"utf8"))' "$outfile" 2>/dev/null; then return 0; fi
-              sleep 2
-            done
-            return 1
-          }
-          retry_page || { echo '::error::3.43 UI not ready; production service untouched'; exit 1; }
-          retry_json '/api/hub/health' /tmp/hub.json || { echo '::error::HUB not ready; production service untouched'; exit 1; }
-          node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB"||j.ok!==true)throw Error("HUB unhealthy");console.log("HUB_OK refreshMs",j.refreshMs,"fixtures",j.fixtureCount)'
-          retry_json '/api/engine/board' /tmp/board.json || { echo '::error::ENGINE not ready; production service untouched'; exit 1; }
-          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE unhealthy");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
-          retry_json '/api/engine/signals' /tmp/signals.json || { echo '::error::SIGNALS not ready; production service untouched'; exit 1; }
-          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("SIGNALS unhealthy");console.log("SIGNALS_OK",j.signals.length)'
+          for n in $(seq 1 20); do
+            code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$PROD_URL/?verify=${GITHUB_RUN_ID}-${n}" || true)"
+            rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
+            if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "${ready:-0}" = 1
+          for path in /api/hub/health /api/engine/board /api/engine/signals; do
+            curl -fsS --max-time 30 "$PROD_URL$path?verify=${GITHUB_RUN_ID}" -o /tmp/check.json
+            node -e 'const j=require("/tmp/check.json");if(j.ok!==true)throw Error(JSON.stringify(j));'
+          done
 
-      - name: Cut over existing production Worker service to 3.43
-        id: cutover
+      - name: Cut over existing NOMAD production Worker service to 3.43
+        id: nomad_cutover
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
@@ -100,58 +86,28 @@ jobs:
           set -euo pipefail
           echo 'attempted=true' >> "$GITHUB_OUTPUT"
           npx --yes wrangler@4.92.0 deploy --config wrangler.cutover.jsonc
-          echo 'CUTOVER deployed 3.43 into existing nomadtips3-live-web-production service'
 
-      - name: Verify www is 3.43 and flow is alive
+      - name: Verify NOMAD production
+        id: verify_nomad
         shell: bash
         run: |
           set -euo pipefail
           ready=0
           for n in $(seq 1 30); do
-            code="$(curl -sS --max-time 25 -D /tmp/www-h -o /tmp/www-home -w '%{http_code}' "$CUSTOM_URL/?cutover=${GITHUB_RUN_ID}-${n}" || true)"
-            rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/www-h)"
-            echo "www attempt=$n code=$code revision=$rev"
+            code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/home -w '%{http_code}' "$CUSTOM_URL/?verify=${GITHUB_RUN_ID}-${n}" || true)"
+            rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
             if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
             sleep 2
           done
           test "$ready" = 1
-          retry_api() {
-            local path="$1" outfile="$2"
-            for n in $(seq 1 20); do
-              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$CUSTOM_URL$path?verify=${GITHUB_RUN_ID}&attempt=$n" || true)"
-              echo "www api $path attempt=$n code=$code"
-              if [ "$code" = 200 ] && node -e 'const fs=require("fs");JSON.parse(fs.readFileSync(process.argv[1],"utf8"))' "$outfile" 2>/dev/null; then return 0; fi
-              sleep 2
-            done
-            return 1
-          }
-          retry_api '/api/hub/health' /tmp/www-hub.json
-          node -e 'const j=require("/tmp/www-hub.json");if(j.component!=="5USD_HUB"||j.ok!==true)throw Error("www HUB unhealthy");console.log("WWW_HUB_OK refreshMs",j.refreshMs,"fixtures",j.fixtureCount)'
-          retry_api '/api/engine/board' /tmp/www-board.json
-          node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE unhealthy");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
-          retry_api '/api/engine/signals' /tmp/www-signals.json
-          node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www SIGNALS unhealthy");console.log("WWW_SIGNALS_OK",j.signals.length)'
-          for page in index.html signal.html statistics.html settings.html api-monitor.html; do
-            curl -fsS --max-time 25 "$CUSTOM_URL/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
-            test -s "/tmp/$page"
+          for path in /api/hub/health /api/engine/board /api/engine/signals; do
+            curl -fsS --max-time 30 "$CUSTOM_URL$path?verify=${GITHUB_RUN_ID}" -o /tmp/check.json
+            node -e 'const j=require("/tmp/check.json");if(j.ok!==true)throw Error(JSON.stringify(j));'
           done
-          echo 'NOMAD 3.43 production cutover PASS'
+          echo 'NOMAD_343_PRODUCTION_PASS'
 
-      - name: Inspect Ball46 Cloudflare state
-        if: ${{ success() }}
-        continue-on-error: true
-        shell: bash
-        run: |
-          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          echo 'BALL46_ZONE_QUERY'
-          curl -sS -w '\nHTTP=%{http_code}\n' "${auth[@]}" 'https://api.cloudflare.com/client/v4/zones?name=ball46.com' -o /tmp/ball46-zone.json
-          cat /tmp/ball46-zone.json | jq '{success,errors,result:[.result[]? | {id,name,status,account_id:.account.id}]}' || cat /tmp/ball46-zone.json
-          echo 'BALL46_WORKERS_DOMAINS'
-          curl -sS -w '\nHTTP=%{http_code}\n' "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/ball46-domains.json
-          cat /tmp/ball46-domains.json | jq '{success,errors,result:[.result[]? | select(.hostname|contains("ball46.com")) | {id,hostname,service,environment,zone_id,zone_name}]}' || cat /tmp/ball46-domains.json
-
-      - name: Roll back existing production Worker service to 3.41 if verification fails
-        if: ${{ failure() && steps.cutover.outputs.attempted == 'true' }}
+      - name: Roll back NOMAD to repository 3.41 bundle
+        if: ${{ failure() && steps.nomad_cutover.outputs.attempted == 'true' }}
         working-directory: nomad-live-web-production
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
@@ -159,4 +115,155 @@ jobs:
         run: |
           set -euo pipefail
           npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
-          echo 'ROLLBACK restored repository 3.41 production Worker bundle'
+          echo 'NOMAD_ROLLBACK_COMPLETE'
+
+  deploy-ball46:
+    needs: deploy-nomad
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BALL46_SERVICE: ball46-production
+      BALL46_WORKER_URL: https://ball46-production.mccarey-supon.workers.dev
+      BALL46_APEX: https://ball46.com
+      BALL46_WWW: https://www.ball46.com
+      BALL46_ZONE_ID: d491ee30b7a87a6c37e6a4dacf00ae8d
+      BALL46_ZONE_NAME: ball46.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Ball46 3.43 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          node --check workers/nomadtips3-343-preview/src/index.js
+
+      - name: Dry-run Ball46 production bundle
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy isolated Ball46 production Worker
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Smoke-test Ball46 Worker before domain cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 20); do
+            code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/home -w '%{http_code}' "$BALL46_WORKER_URL/?verify=${GITHUB_RUN_ID}-${n}" || true)"
+            rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
+            echo "worker attempt=$n code=$code revision=$rev"
+            if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          curl -fsS --max-time 30 "$BALL46_WORKER_URL/api/hub/health?verify=${GITHUB_RUN_ID}" -o /tmp/hub.json
+          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_HUB_OK",j.fixtureCount,j.refreshMs)'
+          curl -fsS --max-time 30 "$BALL46_WORKER_URL/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error(JSON.stringify(j));console.log("BALL46_ENGINE_OK",j.fixtures.length)'
+          curl -fsS --max-time 30 "$BALL46_WORKER_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error(JSON.stringify(j));console.log("BALL46_SIGNALS_OK",j.signals.length)'
+
+      - name: Snapshot current Ball46 custom-domain owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains.json
+          test "$(jq -r '.success' /tmp/domains.json)" = true
+          OLD_APEX_SERVICE="$(jq -r '.result[] | select(.hostname=="ball46.com") | .service' /tmp/domains.json)"
+          OLD_APEX_ENV="$(jq -r '.result[] | select(.hostname=="ball46.com") | .environment' /tmp/domains.json)"
+          OLD_WWW_SERVICE="$(jq -r '.result[] | select(.hostname=="www.ball46.com") | .service' /tmp/domains.json)"
+          OLD_WWW_ENV="$(jq -r '.result[] | select(.hostname=="www.ball46.com") | .environment' /tmp/domains.json)"
+          test -n "$OLD_APEX_SERVICE"
+          test -n "$OLD_WWW_SERVICE"
+          echo "OLD_APEX_SERVICE=$OLD_APEX_SERVICE" >> "$GITHUB_ENV"
+          echo "OLD_APEX_ENV=${OLD_APEX_ENV:-production}" >> "$GITHUB_ENV"
+          echo "OLD_WWW_SERVICE=$OLD_WWW_SERVICE" >> "$GITHUB_ENV"
+          echo "OLD_WWW_ENV=${OLD_WWW_ENV:-production}" >> "$GITHUB_ENV"
+          echo "BALL46_BACKUP apex=$OLD_APEX_SERVICE www=$OLD_WWW_SERVICE"
+
+      - name: Cut over Ball46 custom domains to 3.43
+        id: ball46_attach
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'attempted=true' >> "$GITHUB_OUTPUT"
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          attach() {
+            local host="$1"
+            payload="$(jq -nc --arg hostname "$host" --arg service "$BALL46_SERVICE" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:"production",hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
+            code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/attach.json -w '%{http_code}')"
+            cat /tmp/attach.json
+            test "$code" = 200
+            test "$(jq -r '.success' /tmp/attach.json)" = true
+          }
+          attach ball46.com
+          attach www.ball46.com
+          echo 'BALL46_DOMAIN_CUTOVER_SENT'
+
+      - name: Verify Ball46 production and flow
+        id: verify_ball46
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_host() {
+            local base="$1" label="$2"
+            local ready=0
+            for n in $(seq 1 30); do
+              code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/home -w '%{http_code}' "$base/?verify=${GITHUB_RUN_ID}-${n}" || true)"
+              rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
+              echo "$label attempt=$n code=$code revision=$rev"
+              if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
+              sleep 2
+            done
+            test "$ready" = 1
+          }
+          verify_host "$BALL46_APEX" APEX
+          verify_host "$BALL46_WWW" WWW
+
+          curl -fsS --max-time 30 "$BALL46_APEX/api/hub/health?verify=${GITHUB_RUN_ID}" -o /tmp/hub.json
+          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_HUB_OK",j.fixtureCount,j.refreshMs)'
+          curl -fsS --max-time 30 "$BALL46_APEX/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_ENGINE_OK",j.fixtures.length,j.hubAgeMs)'
+          curl -fsS --max-time 30 "$BALL46_APEX/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_SIGNALS_OK",j.signals.length)'
+
+          for page in index.html signal.html statistics.html settings.html api-monitor.html; do
+            curl -fsS --max-time 25 "$BALL46_APEX/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
+            test -s "/tmp/$page"
+          done
+
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains-after.json
+          test "$(jq -r '.result[] | select(.hostname=="ball46.com") | .service' /tmp/domains-after.json)" = "$BALL46_SERVICE"
+          test "$(jq -r '.result[] | select(.hostname=="www.ball46.com") | .service' /tmp/domains-after.json)" = "$BALL46_SERVICE"
+          echo 'BALL46_343_PRODUCTION_PASS'
+
+      - name: Roll back Ball46 domains to previous service if verification fails
+        if: ${{ failure() && steps.ball46_attach.outputs.attempted == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          restore() {
+            local host="$1" service="$2" environment="$3"
+            payload="$(jq -nc --arg hostname "$host" --arg service "$service" --arg environment "$environment" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:$environment,hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
+            curl -fsS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/restore.json
+            cat /tmp/restore.json
+            test "$(jq -r '.success' /tmp/restore.json)" = true
+          }
+          restore ball46.com "$OLD_APEX_SERVICE" "$OLD_APEX_ENV"
+          restore www.ball46.com "$OLD_WWW_SERVICE" "$OLD_WWW_ENV"
+          echo 'BALL46_ROLLBACK_COMPLETE'
