@@ -24,7 +24,7 @@ env:
 jobs:
   deploy-cutover:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -32,53 +32,68 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$CF_API_TOKEN" || { echo '::error::Missing CLOUDFLARE_API_TOKEN'; exit 1; }
-          test -n "$CF_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
           test -s nomad-live-343/index.html
           test -s workers/nomadtips3-343-preview/src/index.js
           test -s workers/nomadtips3-343-preview/wrangler.production.jsonc
           grep -Fq '"name": "nomadtips3-343-production"' workers/nomadtips3-343-preview/wrangler.production.jsonc
           grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
           grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
-          grep -Fq "343-bulk-only-v1" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '343-bulk-only-v1' workers/nomadtips3-343-preview/src/index.js
           node --check workers/nomadtips3-343-preview/src/index.js
 
       - name: Dry-run production bundle
         working-directory: workers/nomadtips3-343-preview
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
 
       - name: Deploy isolated 3.43 production Worker
         working-directory: workers/nomadtips3-343-preview
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
 
       - name: Smoke-test isolated 3.43 before domain cutover
         shell: bash
         run: |
           set -euo pipefail
-          ok=0
-          for n in $(seq 1 15); do
-            code="$(curl -sS --max-time 25 -D /tmp/prod-h -o /tmp/prod-home -w '%{http_code}' "$PROD_URL/?precutover=${GITHUB_RUN_ID}-${n}" || true)"
-            marker="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/prod-h)"
-            echo "attempt=$n code=$code marker=$marker"
-            if [ "$code" = 200 ] && [ "$marker" = "343-bulk-only-v1" ]; then ok=1; break; fi
-            sleep 2
-          done
-          test "$ok" = 1 || { echo '::error::Isolated 3.43 production Worker failed smoke test; www left untouched'; exit 1; }
 
-          curl -fsS --max-time 30 "$PROD_URL/api/hub/health?verify=${GITHUB_RUN_ID}" -o /tmp/hub.json
-          node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB")throw Error("HUB binding mismatch");console.log("HUB_OK",j.ok,"cycle",j.control?.liveRefreshSeconds)'
+          retry_page() {
+            local url="$1" marker="$2"
+            for n in $(seq 1 20); do
+              code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$url&attempt=$n" || true)"
+              rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
+              echo "page attempt=$n code=$code revision=$rev"
+              if [ "$code" = 200 ] && [ "$rev" = "$marker" ]; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
 
-          curl -fsS --max-time 30 "$PROD_URL/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
-          node -e 'const j=require("/tmp/board.json");if(j.ok!==true)throw Error("ENGINE board not ready: "+JSON.stringify(j));if(!Array.isArray(j.fixtures))throw Error("ENGINE fixtures missing");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
+          retry_json() {
+            local url="$1" outfile="$2"
+            for n in $(seq 1 20); do
+              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$url&attempt=$n" || true)"
+              echo "api attempt=$n code=$code url=$url"
+              if [ "$code" = 200 ] && node -e 'const fs=require("fs");JSON.parse(fs.readFileSync(process.argv[1],"utf8"))' "$outfile" 2>/dev/null; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
 
-          curl -fsS --max-time 30 "$PROD_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
-          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true)throw Error("SIGNALS not ready: "+JSON.stringify(j));if(!Array.isArray(j.signals))throw Error("signals missing");console.log("SIGNALS_OK",j.signals.length)'
+          retry_page "$PROD_URL/?precutover=${GITHUB_RUN_ID}" '343-bulk-only-v1' || { echo '::error::3.43 UI did not become ready; www untouched'; exit 1; }
+          retry_json "$PROD_URL/api/hub/health?verify=${GITHUB_RUN_ID}" /tmp/hub.json || { echo '::error::3.43 HUB route did not become ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB")throw Error("HUB binding mismatch");console.log("HUB_OK",j.ok,"refreshMs",j.refreshMs,"cycle",j.control?.liveRefreshSeconds)'
+
+          retry_json "$PROD_URL/api/engine/board?verify=${GITHUB_RUN_ID}" /tmp/board.json || { echo '::error::3.43 ENGINE board route did not become ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE board not ready");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
+
+          retry_json "$PROD_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" /tmp/signals.json || { echo '::error::3.43 SIGNALS route did not become ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("SIGNALS not ready");console.log("SIGNALS_OK",j.signals.length)'
 
       - name: Snapshot current www custom-domain owner
         shell: bash
@@ -88,7 +103,7 @@ jobs:
           curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains-before.json
           jq --arg h "$WWW_HOST" '[.result[]? | select(.hostname==$h)][0] // null' /tmp/domains-before.json | tee /tmp/www-before.json
           OLD_SERVICE="$(jq -r '.service // empty' /tmp/www-before.json)"
-          test -n "$OLD_SERVICE" || { echo '::error::Could not identify existing www Worker owner; refusing cutover'; exit 1; }
+          test -n "$OLD_SERVICE" || { echo '::error::Existing www owner not found; refusing cutover'; exit 1; }
           echo "OLD_SERVICE=$OLD_SERVICE" >> "$GITHUB_ENV"
           echo "Rollback owner captured: $OLD_SERVICE"
 
@@ -96,38 +111,47 @@ jobs:
         id: cutover
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           echo 'attempted=true' >> "$GITHUB_OUTPUT"
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
           payload="$(jq -nc --arg hostname "$WWW_HOST" --arg service "$PROD_SERVICE" --arg zone_id "$ZONE_ID" --arg zone_name "$ZONE_NAME" '{hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
           code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/cutover.json -w '%{http_code}')"
           cat /tmp/cutover.json
-          if [ "$code" != 200 ] || [ "$(jq -r '.success' /tmp/cutover.json)" != true ]; then
-            echo "::error::Cloudflare www cutover failed HTTP=$code"
-            exit 1
-          fi
+          test "$code" = 200
+          test "$(jq -r '.success' /tmp/cutover.json)" = true
 
       - name: Verify production domain is 3.43 and flow is alive
         shell: bash
         run: |
           set -euo pipefail
-          ok=0
-          for n in $(seq 1 20); do
+
+          for n in $(seq 1 25); do
             code="$(curl -sS --max-time 25 -D /tmp/www-h -o /tmp/www-home -w '%{http_code}' "$CUSTOM_URL/?cutover=${GITHUB_RUN_ID}-${n}" || true)"
-            marker="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/www-h)"
-            echo "attempt=$n code=$code marker=$marker"
-            if [ "$code" = 200 ] && [ "$marker" = "343-bulk-only-v1" ]; then ok=1; break; fi
+            rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/www-h)"
+            echo "www attempt=$n code=$code revision=$rev"
+            if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
             sleep 2
           done
-          test "$ok" = 1 || { echo '::error::www did not become healthy NOMAD 3.43'; exit 1; }
+          test "${ready:-0}" = 1
 
-          curl -fsS --max-time 30 "$CUSTOM_URL/api/hub/health?verify=${GITHUB_RUN_ID}" -o /tmp/www-hub.json
-          node -e 'const j=require("/tmp/www-hub.json");if(j.component!=="5USD_HUB")throw Error("www HUB mismatch");console.log("WWW_HUB_OK",j.ok,"cycle",j.control?.liveRefreshSeconds)'
+          retry_api() {
+            local path="$1" outfile="$2"
+            for n in $(seq 1 20); do
+              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$CUSTOM_URL$path?verify=${GITHUB_RUN_ID}&attempt=$n" || true)"
+              echo "www api $path attempt=$n code=$code"
+              if [ "$code" = 200 ] && node -e 'const fs=require("fs");JSON.parse(fs.readFileSync(process.argv[1],"utf8"))' "$outfile" 2>/dev/null; then return 0; fi
+              sleep 2
+            done
+            return 1
+          }
 
-          curl -fsS --max-time 30 "$CUSTOM_URL/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/www-board.json
+          retry_api '/api/hub/health' /tmp/www-hub.json
+          node -e 'const j=require("/tmp/www-hub.json");if(j.component!=="5USD_HUB")throw Error("www HUB mismatch");console.log("WWW_HUB_OK",j.ok,"refreshMs",j.refreshMs,"cycle",j.control?.liveRefreshSeconds)'
+
+          retry_api '/api/engine/board' /tmp/www-board.json
           node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE board failed");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
 
-          curl -fsS --max-time 30 "$CUSTOM_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/www-signals.json
+          retry_api '/api/engine/signals' /tmp/www-signals.json
           node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www signals failed");console.log("WWW_SIGNALS_OK",j.signals.length)'
 
           for page in index.html signal.html statistics.html settings.html api-monitor.html; do
