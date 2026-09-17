@@ -1,0 +1,28 @@
+name: Inspect Ball46 Cloudflare
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [release/nomad343-production-20260917]
+    paths:
+      - '.github/workflows/inspect-ball46-cloudflare.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect Ball46 zone and Workers domains
+        shell: bash
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          echo '--- zones?name=ball46.com ---'
+          curl -sS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones?name=ball46.com" | jq '{success,errors,result:[.result[]? | {id,name,status,account:{id:.account.id,name:.account.name}}]}'
+          echo '--- workers custom domains ---'
+          curl -sS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" | jq '{success,errors,result:[.result[]? | select(.hostname|contains("ball46.com")) | {id,hostname,service,environment,zone_id,zone_name}]}'
