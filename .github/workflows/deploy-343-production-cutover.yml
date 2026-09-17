@@ -6,6 +6,7 @@ on:
     branches: [release/nomad343-production-20260917]
     paths:
       - 'workers/nomadtips3-343-preview/wrangler.production.jsonc'
+      - 'workers/nomadtips3-343-preview/wrangler.cutover.jsonc'
       - '.github/workflows/deploy-343-production-cutover.yml'
 
 permissions:
@@ -14,9 +15,6 @@ permissions:
 env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  ZONE_ID: 35badb923b6451ed5109276f20b6c749
-  WWW_HOST: www.nomadtips3.com
-  PROD_SERVICE: nomadtips3-343-production
   PROD_URL: https://nomadtips3-343-production.mccarey-supon.workers.dev
   CUSTOM_URL: https://www.nomadtips3.com
 
@@ -27,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate release source and Cloudflare credentials
+      - name: Validate release source and credentials
         shell: bash
         run: |
           set -euo pipefail
@@ -36,18 +34,22 @@ jobs:
           test -s nomad-live-343/index.html
           test -s workers/nomadtips3-343-preview/src/index.js
           test -s workers/nomadtips3-343-preview/wrangler.production.jsonc
+          test -s workers/nomadtips3-343-preview/wrangler.cutover.jsonc
           grep -Fq '"name": "nomadtips3-343-production"' workers/nomadtips3-343-preview/wrangler.production.jsonc
-          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
-          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.production.jsonc
-          grep -Fq '343-bulk-only-v1' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '"name": "nomadtips3-live-web-production"' workers/nomadtips3-343-preview/wrangler.cutover.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.cutover.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.cutover.jsonc
           node --check workers/nomadtips3-343-preview/src/index.js
 
-      - name: Dry-run production bundle
+      - name: Dry-run isolated and cutover bundles
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.production.jsonc
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.cutover.jsonc
 
       - name: Deploy isolated 3.43 production Worker
         working-directory: workers/nomadtips3-343-preview
@@ -56,14 +58,13 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
 
-      - name: Smoke-test isolated 3.43 before domain cutover
+      - name: Smoke-test isolated 3.43 before cutover
         shell: bash
         run: |
           set -euo pipefail
           retry_page() {
-            local url="$1"
             for n in $(seq 1 20); do
-              code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$url&attempt=$n" || true)"
+              code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$PROD_URL/?precutover=${GITHUB_RUN_ID}-${n}" || true)"
               rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
               echo "page attempt=$n code=$code revision=$rev"
               if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then return 0; fi
@@ -72,62 +73,41 @@ jobs:
             return 1
           }
           retry_json() {
-            local url="$1" outfile="$2"
+            local path="$1" outfile="$2"
             for n in $(seq 1 20); do
-              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$url&attempt=$n" || true)"
-              echo "api attempt=$n code=$code url=$url"
+              code="$(curl -sS --max-time 30 -o "$outfile" -w '%{http_code}' "$PROD_URL$path?verify=${GITHUB_RUN_ID}&attempt=$n" || true)"
+              echo "api $path attempt=$n code=$code"
               if [ "$code" = 200 ] && node -e 'const fs=require("fs");JSON.parse(fs.readFileSync(process.argv[1],"utf8"))' "$outfile" 2>/dev/null; then return 0; fi
               sleep 2
             done
             return 1
           }
-          retry_page "$PROD_URL/?precutover=${GITHUB_RUN_ID}" || { echo '::error::3.43 UI not ready; www untouched'; exit 1; }
-          retry_json "$PROD_URL/api/hub/health?verify=${GITHUB_RUN_ID}" /tmp/hub.json || { echo '::error::3.43 HUB not ready; www untouched'; exit 1; }
+          retry_page || { echo '::error::3.43 UI not ready; production service untouched'; exit 1; }
+          retry_json '/api/hub/health' /tmp/hub.json || { echo '::error::HUB not ready; production service untouched'; exit 1; }
           node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB"||j.ok!==true)throw Error("HUB unhealthy");console.log("HUB_OK refreshMs",j.refreshMs,"fixtures",j.fixtureCount)'
-          retry_json "$PROD_URL/api/engine/board?verify=${GITHUB_RUN_ID}" /tmp/board.json || { echo '::error::3.43 ENGINE not ready; www untouched'; exit 1; }
-          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE board unhealthy");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
-          retry_json "$PROD_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" /tmp/signals.json || { echo '::error::3.43 SIGNALS not ready; www untouched'; exit 1; }
+          retry_json '/api/engine/board' /tmp/board.json || { echo '::error::ENGINE not ready; production service untouched'; exit 1; }
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE unhealthy");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
+          retry_json '/api/engine/signals' /tmp/signals.json || { echo '::error::SIGNALS not ready; production service untouched'; exit 1; }
           node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("SIGNALS unhealthy");console.log("SIGNALS_OK",j.signals.length)'
 
-      - name: Snapshot dashboard-managed www Worker route
-        shell: bash
-        run: |
-          set -euo pipefail
-          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes" -o /tmp/routes-before.json
-          test "$(jq -r '.success' /tmp/routes-before.json)" = true
-          jq --arg h "$WWW_HOST" '[.result[]? | select((.pattern|startswith($h)) or (.pattern|startswith("*://"+$h)) or (.pattern|contains($h)))][0] // null' /tmp/routes-before.json | tee /tmp/www-route-before.json
-          ROUTE_ID="$(jq -r '.id // empty' /tmp/www-route-before.json)"
-          ROUTE_PATTERN="$(jq -r '.pattern // empty' /tmp/www-route-before.json)"
-          OLD_SERVICE="$(jq -r '.script // empty' /tmp/www-route-before.json)"
-          test -n "$ROUTE_ID" || { echo '::error::www Worker route not found; refusing cutover'; cat /tmp/routes-before.json; exit 1; }
-          test -n "$ROUTE_PATTERN" || { echo '::error::www route pattern missing'; exit 1; }
-          test -n "$OLD_SERVICE" || { echo '::error::www route old script missing'; exit 1; }
-          echo "ROUTE_ID=$ROUTE_ID" >> "$GITHUB_ENV"
-          echo "ROUTE_PATTERN=$ROUTE_PATTERN" >> "$GITHUB_ENV"
-          echo "OLD_SERVICE=$OLD_SERVICE" >> "$GITHUB_ENV"
-          echo "Rollback captured route=$ROUTE_PATTERN old_script=$OLD_SERVICE"
-
-      - name: Cut over www.nomadtips3.com Worker route to 3.43
+      - name: Cut over existing production Worker service to 3.43
         id: cutover
-        shell: bash
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           echo 'attempted=true' >> "$GITHUB_OUTPUT"
-          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          payload="$(jq -nc --arg pattern "$ROUTE_PATTERN" --arg script "$PROD_SERVICE" '{pattern:$pattern,script:$script}')"
-          code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes/${ROUTE_ID}" --data "$payload" -o /tmp/cutover.json -w '%{http_code}')"
-          cat /tmp/cutover.json
-          test "$code" = 200
-          test "$(jq -r '.success' /tmp/cutover.json)" = true
-          echo "CUTOVER route=$ROUTE_PATTERN -> $PROD_SERVICE"
+          npx --yes wrangler@4.92.0 deploy --config wrangler.cutover.jsonc
+          echo 'CUTOVER deployed 3.43 into existing nomadtips3-live-web-production service'
 
-      - name: Verify production domain is 3.43 and flow is alive
+      - name: Verify www is 3.43 and flow is alive
         shell: bash
         run: |
           set -euo pipefail
           ready=0
-          for n in $(seq 1 25); do
+          for n in $(seq 1 30); do
             code="$(curl -sS --max-time 25 -D /tmp/www-h -o /tmp/www-home -w '%{http_code}' "$CUSTOM_URL/?cutover=${GITHUB_RUN_ID}-${n}" || true)"
             rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/www-h)"
             echo "www attempt=$n code=$code revision=$rev"
@@ -135,6 +115,7 @@ jobs:
             sleep 2
           done
           test "$ready" = 1
+
           retry_api() {
             local path="$1" outfile="$2"
             for n in $(seq 1 20); do
@@ -151,23 +132,20 @@ jobs:
           node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE unhealthy");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
           retry_api '/api/engine/signals' /tmp/www-signals.json
           node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www SIGNALS unhealthy");console.log("WWW_SIGNALS_OK",j.signals.length)'
+
           for page in index.html signal.html statistics.html settings.html api-monitor.html; do
             curl -fsS --max-time 25 "$CUSTOM_URL/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
             test -s "/tmp/$page"
           done
           echo 'NOMAD 3.43 production cutover PASS'
 
-      - name: Roll back www Worker route if cutover verification fails
+      - name: Roll back existing production Worker service to 3.41 if verification fails
         if: ${{ failure() && steps.cutover.outputs.attempted == 'true' }}
-        shell: bash
+        working-directory: nomad-live-web-production
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          test -n "${ROUTE_ID:-}"
-          test -n "${ROUTE_PATTERN:-}"
-          test -n "${OLD_SERVICE:-}"
-          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          payload="$(jq -nc --arg pattern "$ROUTE_PATTERN" --arg script "$OLD_SERVICE" '{pattern:$pattern,script:$script}')"
-          curl -fsS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes/${ROUTE_ID}" --data "$payload" -o /tmp/rollback.json
-          cat /tmp/rollback.json
-          test "$(jq -r '.success' /tmp/rollback.json)" = true
-          echo "ROLLBACK route=$ROUTE_PATTERN -> $OLD_SERVICE"
+          npx --yes wrangler@4.92.0 deploy --config wrangler.production.jsonc
+          echo 'ROLLBACK restored repository 3.41 production Worker bundle'
