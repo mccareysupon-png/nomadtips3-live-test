@@ -15,7 +15,6 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   ZONE_ID: 35badb923b6451ed5109276f20b6c749
-  ZONE_NAME: nomadtips3.com
   WWW_HOST: www.nomadtips3.com
   PROD_SERVICE: nomadtips3-343-production
   PROD_URL: https://nomadtips3-343-production.mccarey-supon.workers.dev
@@ -61,19 +60,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           retry_page() {
-            local url="$1" marker="$2"
+            local url="$1"
             for n in $(seq 1 20); do
               code="$(curl -sS --max-time 25 -D /tmp/h -o /tmp/body -w '%{http_code}' "$url&attempt=$n" || true)"
               rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)"
               echo "page attempt=$n code=$code revision=$rev"
-              if [ "$code" = 200 ] && [ "$rev" = "$marker" ]; then return 0; fi
+              if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then return 0; fi
               sleep 2
             done
             return 1
           }
-
           retry_json() {
             local url="$1" outfile="$2"
             for n in $(seq 1 20); do
@@ -84,47 +81,52 @@ jobs:
             done
             return 1
           }
+          retry_page "$PROD_URL/?precutover=${GITHUB_RUN_ID}" || { echo '::error::3.43 UI not ready; www untouched'; exit 1; }
+          retry_json "$PROD_URL/api/hub/health?verify=${GITHUB_RUN_ID}" /tmp/hub.json || { echo '::error::3.43 HUB not ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB"||j.ok!==true)throw Error("HUB unhealthy");console.log("HUB_OK refreshMs",j.refreshMs,"fixtures",j.fixtureCount)'
+          retry_json "$PROD_URL/api/engine/board?verify=${GITHUB_RUN_ID}" /tmp/board.json || { echo '::error::3.43 ENGINE not ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE board unhealthy");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
+          retry_json "$PROD_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" /tmp/signals.json || { echo '::error::3.43 SIGNALS not ready; www untouched'; exit 1; }
+          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("SIGNALS unhealthy");console.log("SIGNALS_OK",j.signals.length)'
 
-          retry_page "$PROD_URL/?precutover=${GITHUB_RUN_ID}" '343-bulk-only-v1' || { echo '::error::3.43 UI did not become ready; www untouched'; exit 1; }
-          retry_json "$PROD_URL/api/hub/health?verify=${GITHUB_RUN_ID}" /tmp/hub.json || { echo '::error::3.43 HUB route did not become ready; www untouched'; exit 1; }
-          node -e 'const j=require("/tmp/hub.json");if(j.component!=="5USD_HUB")throw Error("HUB binding mismatch");console.log("HUB_OK",j.ok,"refreshMs",j.refreshMs,"cycle",j.control?.liveRefreshSeconds)'
-
-          retry_json "$PROD_URL/api/engine/board?verify=${GITHUB_RUN_ID}" /tmp/board.json || { echo '::error::3.43 ENGINE board route did not become ready; www untouched'; exit 1; }
-          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("ENGINE board not ready");console.log("ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
-
-          retry_json "$PROD_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" /tmp/signals.json || { echo '::error::3.43 SIGNALS route did not become ready; www untouched'; exit 1; }
-          node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("SIGNALS not ready");console.log("SIGNALS_OK",j.signals.length)'
-
-      - name: Snapshot current www custom-domain owner
+      - name: Snapshot dashboard-managed www Worker route
         shell: bash
         run: |
           set -euo pipefail
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains-before.json
-          jq --arg h "$WWW_HOST" '[.result[]? | select(.hostname==$h)][0] // null' /tmp/domains-before.json | tee /tmp/www-before.json
-          OLD_SERVICE="$(jq -r '.service // empty' /tmp/www-before.json)"
-          test -n "$OLD_SERVICE" || { echo '::error::Existing www owner not found; refusing cutover'; exit 1; }
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes" -o /tmp/routes-before.json
+          test "$(jq -r '.success' /tmp/routes-before.json)" = true
+          jq --arg h "$WWW_HOST" '[.result[]? | select((.pattern|startswith($h)) or (.pattern|startswith("*://"+$h)) or (.pattern|contains($h)))][0] // null' /tmp/routes-before.json | tee /tmp/www-route-before.json
+          ROUTE_ID="$(jq -r '.id // empty' /tmp/www-route-before.json)"
+          ROUTE_PATTERN="$(jq -r '.pattern // empty' /tmp/www-route-before.json)"
+          OLD_SERVICE="$(jq -r '.script // empty' /tmp/www-route-before.json)"
+          test -n "$ROUTE_ID" || { echo '::error::www Worker route not found; refusing cutover'; cat /tmp/routes-before.json; exit 1; }
+          test -n "$ROUTE_PATTERN" || { echo '::error::www route pattern missing'; exit 1; }
+          test -n "$OLD_SERVICE" || { echo '::error::www route old script missing'; exit 1; }
+          echo "ROUTE_ID=$ROUTE_ID" >> "$GITHUB_ENV"
+          echo "ROUTE_PATTERN=$ROUTE_PATTERN" >> "$GITHUB_ENV"
           echo "OLD_SERVICE=$OLD_SERVICE" >> "$GITHUB_ENV"
-          echo "Rollback owner captured: $OLD_SERVICE"
+          echo "Rollback captured route=$ROUTE_PATTERN old_script=$OLD_SERVICE"
 
-      - name: Cut over www.nomadtips3.com to 3.43
+      - name: Cut over www.nomadtips3.com Worker route to 3.43
         id: cutover
         shell: bash
         run: |
           set -euo pipefail
           echo 'attempted=true' >> "$GITHUB_OUTPUT"
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          payload="$(jq -nc --arg hostname "$WWW_HOST" --arg service "$PROD_SERVICE" --arg zone_id "$ZONE_ID" --arg zone_name "$ZONE_NAME" '{hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
-          code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/cutover.json -w '%{http_code}')"
+          payload="$(jq -nc --arg pattern "$ROUTE_PATTERN" --arg script "$PROD_SERVICE" '{pattern:$pattern,script:$script}')"
+          code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes/${ROUTE_ID}" --data "$payload" -o /tmp/cutover.json -w '%{http_code}')"
           cat /tmp/cutover.json
           test "$code" = 200
           test "$(jq -r '.success' /tmp/cutover.json)" = true
+          echo "CUTOVER route=$ROUTE_PATTERN -> $PROD_SERVICE"
 
       - name: Verify production domain is 3.43 and flow is alive
         shell: bash
         run: |
           set -euo pipefail
-
+          ready=0
           for n in $(seq 1 25); do
             code="$(curl -sS --max-time 25 -D /tmp/www-h -o /tmp/www-home -w '%{http_code}' "$CUSTOM_URL/?cutover=${GITHUB_RUN_ID}-${n}" || true)"
             rev="$(awk 'BEGIN{IGNORECASE=1} /^x-nomad-ui-revision:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/www-h)"
@@ -132,8 +134,7 @@ jobs:
             if [ "$code" = 200 ] && [ "$rev" = '343-bulk-only-v1' ]; then ready=1; break; fi
             sleep 2
           done
-          test "${ready:-0}" = 1
-
+          test "$ready" = 1
           retry_api() {
             local path="$1" outfile="$2"
             for n in $(seq 1 20); do
@@ -144,31 +145,29 @@ jobs:
             done
             return 1
           }
-
           retry_api '/api/hub/health' /tmp/www-hub.json
-          node -e 'const j=require("/tmp/www-hub.json");if(j.component!=="5USD_HUB")throw Error("www HUB mismatch");console.log("WWW_HUB_OK",j.ok,"refreshMs",j.refreshMs,"cycle",j.control?.liveRefreshSeconds)'
-
+          node -e 'const j=require("/tmp/www-hub.json");if(j.component!=="5USD_HUB"||j.ok!==true)throw Error("www HUB unhealthy");console.log("WWW_HUB_OK refreshMs",j.refreshMs,"fixtures",j.fixtureCount)'
           retry_api '/api/engine/board' /tmp/www-board.json
-          node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE board failed");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
-
+          node -e 'const j=require("/tmp/www-board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error("www ENGINE unhealthy");console.log("WWW_ENGINE_OK fixtures",j.fixtures.length,"age",j.hubAgeMs)'
           retry_api '/api/engine/signals' /tmp/www-signals.json
-          node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www signals failed");console.log("WWW_SIGNALS_OK",j.signals.length)'
-
+          node -e 'const j=require("/tmp/www-signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error("www SIGNALS unhealthy");console.log("WWW_SIGNALS_OK",j.signals.length)'
           for page in index.html signal.html statistics.html settings.html api-monitor.html; do
             curl -fsS --max-time 25 "$CUSTOM_URL/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
             test -s "/tmp/$page"
           done
           echo 'NOMAD 3.43 production cutover PASS'
 
-      - name: Roll back www to previous Worker if cutover verification fails
+      - name: Roll back www Worker route if cutover verification fails
         if: ${{ failure() && steps.cutover.outputs.attempted == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${OLD_SERVICE:-}" || { echo '::error::Rollback owner missing'; exit 1; }
+          test -n "${ROUTE_ID:-}"
+          test -n "${ROUTE_PATTERN:-}"
+          test -n "${OLD_SERVICE:-}"
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
-          payload="$(jq -nc --arg hostname "$WWW_HOST" --arg service "$OLD_SERVICE" --arg zone_id "$ZONE_ID" --arg zone_name "$ZONE_NAME" '{hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
-          curl -fsS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/rollback.json
+          payload="$(jq -nc --arg pattern "$ROUTE_PATTERN" --arg script "$OLD_SERVICE" '{pattern:$pattern,script:$script}')"
+          curl -fsS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/workers/routes/${ROUTE_ID}" --data "$payload" -o /tmp/rollback.json
           cat /tmp/rollback.json
           test "$(jq -r '.success' /tmp/rollback.json)" = true
-          echo "Rollback completed: www -> $OLD_SERVICE"
+          echo "ROLLBACK route=$ROUTE_PATTERN -> $OLD_SERVICE"
