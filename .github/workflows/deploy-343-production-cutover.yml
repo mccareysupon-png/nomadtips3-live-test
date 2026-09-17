@@ -203,7 +203,7 @@ jobs:
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
           attach() {
             local host="$1"
-            payload="$(jq -nc --arg hostname "$host" --arg service "$BALL46_SERVICE" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:"production",hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
+            payload="$(jq -nc --arg hostname "$host" --arg service "$BALL46_SERVICE" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:"production",hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name,override_existing_origin:true}')"
             code="$(curl -sS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/attach.json -w '%{http_code}')"
             cat /tmp/attach.json
             test "$code" = 200
@@ -232,19 +232,16 @@ jobs:
           }
           verify_host "$BALL46_APEX" APEX
           verify_host "$BALL46_WWW" WWW
-
           curl -fsS --max-time 30 "$BALL46_APEX/api/hub/health?verify=${GITHUB_RUN_ID}" -o /tmp/hub.json
           node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_HUB_OK",j.fixtureCount,j.refreshMs)'
           curl -fsS --max-time 30 "$BALL46_APEX/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
           node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_ENGINE_OK",j.fixtures.length,j.hubAgeMs)'
           curl -fsS --max-time 30 "$BALL46_APEX/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
           node -e 'const j=require("/tmp/signals.json");if(j.ok!==true||!Array.isArray(j.signals))throw Error(JSON.stringify(j));console.log("BALL46_DOMAIN_SIGNALS_OK",j.signals.length)'
-
           for page in index.html signal.html statistics.html settings.html api-monitor.html; do
             curl -fsS --max-time 25 "$BALL46_APEX/$page?verify=${GITHUB_RUN_ID}" -o "/tmp/$page"
             test -s "/tmp/$page"
           done
-
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
           curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" -o /tmp/domains-after.json
           test "$(jq -r '.result[] | select(.hostname=="ball46.com") | .service' /tmp/domains-after.json)" = "$BALL46_SERVICE"
@@ -259,7 +256,7 @@ jobs:
           auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
           restore() {
             local host="$1" service="$2" environment="$3"
-            payload="$(jq -nc --arg hostname "$host" --arg service "$service" --arg environment "$environment" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:$environment,hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name}')"
+            payload="$(jq -nc --arg hostname "$host" --arg service "$service" --arg environment "$environment" --arg zone_id "$BALL46_ZONE_ID" --arg zone_name "$BALL46_ZONE_NAME" '{environment:$environment,hostname:$hostname,service:$service,zone_id:$zone_id,zone_name:$zone_name,override_existing_origin:true}')"
             curl -fsS "${auth[@]}" -X PUT "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/domains" --data "$payload" -o /tmp/restore.json
             cat /tmp/restore.json
             test "$(jq -r '.success' /tmp/restore.json)" = true
