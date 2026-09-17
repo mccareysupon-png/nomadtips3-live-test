@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "nomadtips3-343-production",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-09",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../../nomad-live-343",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none"
+  },
+  "services": [
+    { "binding": "ENGINE", "service": "nomadtips3-engine-343" },
+    { "binding": "HUB", "service": "nomadtips3-5usd-hub-343" }
+  ],
+  "observability": { "enabled": true }
+}
