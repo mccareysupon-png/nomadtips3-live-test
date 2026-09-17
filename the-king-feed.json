@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-17T01:48:29Z",
+  "updated_at": "2026-09-17T07:47:36Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -279,8 +279,8 @@
       "edge": 48.2,
       "ev": 0.7498,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "1-1",
       "locked_at": "2026-09-17T01:44:49Z",
       "source_url": "https://www.goaloo.com/football/asian-games-football-women-uzbekistan-w-font-color-880000-n-font-vs-china-w/h2h-3088014",
       "summary_url": "https://www.goaloo.com/football/asian-games-football-women-uzbekistan-w-font-color-880000-n-font-vs-china-w/summary-3088014",
@@ -340,7 +340,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 75.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-17T07:47:36Z"
     },
     {
       "id": "a706b99503815dde-AH-AWAY-2p5",
@@ -82333,6 +82338,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-17T01:30:40Z"
+    },
+    {
+      "id": "3a66b02180206769-AH-HOME-3p25",
+      "goaloo_id": "3088014",
+      "date": "2026-09-17",
+      "kickoff": "2026-09-17 05:00:00",
+      "league": "Asian Games football Women",
+      "home": "Uzbekistan (W)<font color=#880000>(N)</font>",
+      "away": "China (W)",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 3.25,
+      "pick": "Uzbekistan (W)<font color=#880000>(N)</font> +3.25",
+      "side": "home",
+      "odds": 1.75,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9998,
+      "model_probability": 0.9998,
+      "market_fair_probability": 0.5179,
+      "market_edge": 0.4819,
+      "edge": 48.2,
+      "ev": 0.7498,
+      "required_confidence": 0.6,
+      "result": "WIN",
+      "ft": "1-1",
+      "locked_at": "2026-09-17T01:44:49Z",
+      "source_url": "https://www.goaloo.com/football/asian-games-football-women-uzbekistan-w-font-color-880000-n-font-vs-china-w/h2h-3088014",
+      "summary_url": "https://www.goaloo.com/football/asian-games-football-women-uzbekistan-w-font-color-880000-n-font-vs-china-w/summary-3088014",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 3.16,
+        "lambda_away": 0.406,
+        "home_win": 0.9086,
+        "draw": 0.0818,
+        "away_win": 0.0096,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.5512,
+          "gd_edge": 0.9743,
+          "clean_sheet_edge": 0.6537,
+          "failed_to_score_edge": 0.4049,
+          "bounded_adjustment": 0.0525,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 75.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-17T07:47:36Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
