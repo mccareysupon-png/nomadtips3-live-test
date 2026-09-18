@@ -1,6 +1,6 @@
 name: Trigger Ball46 Viewer-Safe Deploy 20260918
 
-# retrigger: restore all-book odds assets on Live Scores 20260918-1845
+# retrigger: board fallback to John continuity snapshot 20260918-1905
 on:
   push:
     branches: [main]
@@ -52,6 +52,8 @@ jobs:
           grep -Fq '343-expanded-full-market-bulk-only-v6-market-alias-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
           grep -Fq "['bet365','Bet365']" nomad-live-343/full-market-bookmaker-343.js
           grep -Fq "['crown','Crown']" nomad-live-343/full-market-bookmaker-343.js
+          grep -Fq 'engineBoardFallback' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '/snapshot' workers/nomadtips3-343-preview/src/index.js
 
       - name: Commit Live Scores odds asset refs if changed
         shell: bash
