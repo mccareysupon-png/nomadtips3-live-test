@@ -1,0 +1,53 @@
+name: Verify Ball46 Three Fix 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-ball46-three-fix-20260919.yml'
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect production markers
+        shell: bash
+        run: |
+          set -u
+          BASE='https://ball46.com'
+          curl -sS --max-time 30 "$BASE/?_=${GITHUB_RUN_ID}" -o /tmp/index.html
+          curl -sS --max-time 30 "$BASE/signal.html?_=${GITHUB_RUN_ID}" -o /tmp/signal.html
+          curl -sS --max-time 30 "$BASE/statistics.html?_=${GITHUB_RUN_ID}" -o /tmp/statistics.html
+          curl -sS --max-time 30 "$BASE/api/full-market/health?_=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -sS --max-time 30 "$BASE/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          echo 'INDEX_PREDICTION_CARD='$(grep -Fc 'data-prediction-card' /tmp/index.html)
+          echo 'INDEX_DASH_V4='$(grep -Fc '343-dashboard-v2-stage3-v4-last-good-odds-prediction-card' /tmp/index.html)
+          echo 'INDEX_RICH_V6='$(grep -Fc '343-live-summary-john-gated-v6-last-good-persistent' /tmp/index.html)
+          echo 'SIGNAL_LIGHT='$(grep -Fc '<html lang="en" data-theme="light">' /tmp/signal.html)
+          echo 'SIGNAL_V2_HEADER='$(grep -Fc 'class="v2-topbar"' /tmp/signal.html)
+          echo 'SIGNAL_OLD_UTILITY='$(grep -Fc 'class="utility-bar-343"' /tmp/signal.html)
+          echo 'STAT_LIGHT='$(grep -Fc '<html lang="en" data-theme="light">' /tmp/statistics.html)
+          echo 'STAT_V2_HEADER='$(grep -Fc 'class="v2-topbar"' /tmp/statistics.html)
+          echo 'STAT_OLD_UTILITY='$(grep -Fc 'class="utility-bar-343"' /tmp/statistics.html)
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const [name,path] of [['health','/tmp/health.json'],['board','/tmp/board.json']]){
+            try{
+              const j=JSON.parse(fs.readFileSync(path,'utf8'));
+              if(name==='health') console.log('HEALTH=',JSON.stringify({ok:j.ok,version:j.version,policy:j.staleCachePolicy,staleCacheMs:j.staleCacheMs,mode:j.mode,retryAfterSec:j.retryAfterSec}));
+              else {
+                const rows=Array.isArray(j.fixtures)?j.fixtures:[];
+                const withOdds=rows.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
+                console.log('BOARD=',JSON.stringify({ok:j.ok,fixtures:rows.length,withOdds,version:j.version,hubVersion:j.hubVersion}));
+                const c=rows.find(f=>String(f?.fixtureId||'').trim()); if(c)fs.writeFileSync('/tmp/id',String(c.fixtureId));
+              }
+            }catch(e){console.log(name.toUpperCase()+'_PARSE_ERROR',String(e),fs.readFileSync(path,'utf8').slice(0,500))}
+          }
+          NODE
+          if [ -s /tmp/id ]; then
+            id=$(cat /tmp/id)
+            code=$(curl -sS --max-time 30 -o /tmp/rich.json -w '%{http_code}' "$BASE/api/full-market/fixture-odds?fixtureId=$id&_=${GITHUB_RUN_ID}" || true)
+            echo "RICH_HTTP=$code ID=$id"
+            head -c 1200 /tmp/rich.json; echo
+          fi
