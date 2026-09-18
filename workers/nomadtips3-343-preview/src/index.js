@@ -54,18 +54,48 @@ function liveMinute(fixture) {
   return match ? Number(match[0]) : null;
 }
 
+function oddsContainerHasData(value) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (!value || typeof value !== 'object') return false;
+  if (!Object.keys(value).length) return false;
+  const containers = [
+    value.bookmakers, value.odds, value.markets,
+    value?.data?.bookmakers, value?.data?.odds, value?.data?.markets
+  ];
+  if (containers.some(v => Array.isArray(v) ? v.length > 0 : Boolean(v && typeof v === 'object' && Object.keys(v).length))) return true;
+  return Object.keys(value).some(k => /bet365|pinnacle|williamhill|ladbrokes|vcbet|1xbet|bwin|easybets|interwetten|betfair|snai|macauslot|betsson|betathome|18bet|10bet|12bet|coral|crown|bookmaker/i.test(String(k)));
+}
+
+function boardHasBookmakerOdds(board) {
+  const fixtures = Array.isArray(board?.fixtures) ? board.fixtures : [];
+  return fixtures.some(fixture =>
+    oddsContainerHasData(fixture?.providerOdds) ||
+    oddsContainerHasData(fixture?.fullOdds) ||
+    oddsContainerHasData(fixture?.odds)
+  );
+}
+
 async function engineBoardResponse(request, env) {
   const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
-  if (engineResponse.ok) return engineResponse;
+  const engineBoard = engineResponse.ok ? await engineResponse.clone().json().catch(() => null) : null;
+  const engineHasOdds = boardHasBookmakerOdds(engineBoard);
+  if (engineResponse.ok && engineBoard?.ok === true && engineHasOdds) return engineResponse;
+
   const hubResponse = await env.HUB.fetch(hubRequest(request, '/snapshot'));
   if (!hubResponse.ok) return engineResponse;
   const hub = await hubResponse.json().catch(() => null);
   if (!hub || hub.ok !== true || !Array.isArray(hub.fixtures)) return engineResponse;
+  const hubHasOdds = boardHasBookmakerOdds(hub);
+  if (engineResponse.ok && !hubHasOdds) return engineResponse;
+
   return Response.json({
     ...hub,
-    version: 'ball46-board-fallback-john-continuity-v1',
+    version: 'ball46-board-fallback-john-continuity-v2-odds-aware',
     engineBoardFallback: true,
+    engineBoardFallbackReason: engineResponse.ok ? 'ENGINE_BOARD_ODDS_EMPTY' : 'ENGINE_BOARD_ERROR',
     engineBoardStatus: engineResponse.status,
+    engineBoardHasOdds: engineHasOdds,
+    hubBoardHasOdds: hubHasOdds,
     hubVersion: hub.version,
     hubFetchedAt: hub.fetchedAt ?? null,
     hubAgeMs: hub.ageMs ?? null,
