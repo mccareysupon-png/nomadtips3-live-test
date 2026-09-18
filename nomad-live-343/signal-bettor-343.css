@@ -20,6 +20,14 @@
 .signal-technical-grid small{display:block;font-size:6px;color:#78867d;letter-spacing:.05em}
 .signal-technical-grid b{display:block;margin-top:3px;font-size:9px;color:#cfd8d1;overflow-wrap:anywhere}
 body[data-page="statistics"] .active-signal-panel{margin-bottom:12px}
+
+/* Active signal attention state: visible SIGNAL badge + gentle default-card pulse. */
+body[data-page="signal"] .active-signal-card{position:relative;overflow:visible;animation:nomad343SignalPulse 2.4s ease-in-out infinite}
+body[data-page="signal"] .active-signal-card::before{content:'SIGNAL';position:absolute;z-index:4;top:-7px;right:10px;padding:4px 8px;border:1px solid #d4bd45;background:#2a2510;color:#f1dc65;font-size:8px;font-weight:900;letter-spacing:.12em;line-height:1;box-shadow:0 0 0 2px rgba(212,189,69,.08)}
+body[data-page="signal"] .active-signal-card.expanded{animation:none}
+@keyframes nomad343SignalPulse{0%,100%{border-color:#334239;box-shadow:0 0 0 rgba(212,189,69,0)}50%{border-color:#bda83d;box-shadow:0 0 0 2px rgba(212,189,69,.10),0 0 16px rgba(212,189,69,.08)}}
+@media(prefers-reduced-motion:reduce){body[data-page="signal"] .active-signal-card{animation:none}}
+
 @media(max-width:760px){
   .signal-entry-quick{grid-column:2/3;grid-row:2;min-width:132px}
   .active-signal-markets{grid-column:1/-1}
@@ -27,5 +35,6 @@ body[data-page="statistics"] .active-signal-panel{margin-bottom:12px}
   .signal-technical-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .active-signal-score .live-minute-343{font-size:10px!important}
   .active-signal-score b{font-size:14px!important}
+  body[data-page="signal"] .active-signal-card::before{top:-6px;right:8px;font-size:7px;padding:4px 7px}
 }
 @media(max-width:420px){.signal-entry-quick{min-width:118px}}
