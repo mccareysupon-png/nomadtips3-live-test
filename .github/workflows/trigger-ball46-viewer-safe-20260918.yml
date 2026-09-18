@@ -1,0 +1,22 @@
+name: Trigger Ball46 Viewer-Safe Deploy 20260918
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trigger-ball46-viewer-safe-20260918.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Dispatch protected Ball46 deploy workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy-ball46-full-market-20260918.yml --ref main
