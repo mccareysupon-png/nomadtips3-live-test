@@ -54,10 +54,29 @@ function liveMinute(fixture) {
   return match ? Number(match[0]) : null;
 }
 
+async function engineBoardResponse(request, env) {
+  const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
+  if (engineResponse.ok) return engineResponse;
+  const hubResponse = await env.HUB.fetch(hubRequest(request, '/snapshot'));
+  if (!hubResponse.ok) return engineResponse;
+  const hub = await hubResponse.json().catch(() => null);
+  if (!hub || hub.ok !== true || !Array.isArray(hub.fixtures)) return engineResponse;
+  return Response.json({
+    ...hub,
+    version: 'ball46-board-fallback-john-continuity-v1',
+    engineBoardFallback: true,
+    engineBoardStatus: engineResponse.status,
+    hubVersion: hub.version,
+    hubFetchedAt: hub.fetchedAt ?? null,
+    hubAgeMs: hub.ageMs ?? null,
+    referee: { mode: 'HUB_SNAPSHOT_FALLBACK', externalRequestsAdded: 0, requests: 0, queued: 0, errors: [] }
+  }, { headers: { 'cache-control': 'no-store', 'x-ball46-board-source': 'hub-snapshot-fallback' } });
+}
+
 async function activeSignals(request, env) {
   const [signalResponse, boardResponse] = await Promise.all([
     env.ENGINE.fetch(engineRequest(request, '/signals')),
-    env.ENGINE.fetch(engineRequest(request, '/board'))
+    engineBoardResponse(request, env)
   ]);
   const [signalData, boardData] = await Promise.all([
     signalResponse.json().catch(() => ({})),
@@ -79,19 +98,19 @@ async function activeSignals(request, env) {
     const fixture = liveFixtureMap.get(String(signal.fixtureId));
     return {
       ...signal,
-      mirrorMinute: liveMinute(fixture), mirrorScore:copy(fixture?.goals), mirrorState:'LIVE', mirrorSource:'ENGINE_BOARD_LIVE',
+      mirrorMinute: liveMinute(fixture), mirrorScore:copy(fixture?.goals), mirrorState:'LIVE', mirrorSource:boardData?.engineBoardFallback?'HUB_SNAPSHOT_FALLBACK':'ENGINE_BOARD_LIVE',
       liveStatistics:copy(fixture?.statistics), liveCorners:copy(fixture?.corners), liveCards:copy(fixture?.cards),
       liveEvents:Array.isArray(fixture?.events)?copy(fixture.events):[], liveStatus:fixture?.status??null, liveStatusCode:fixture?.statusCode??null,
-      liveUpdatedAt:boardData?.hubFetchedAt??null, liveAgeMs:num(boardData?.hubAgeMs)
+      liveUpdatedAt:boardData?.hubFetchedAt??boardData?.fetchedAt??null, liveAgeMs:num(boardData?.hubAgeMs??boardData?.ageMs)
     };
   }).sort((a,b)=>Number(b?.createdAt||0)-Number(a?.createdAt||0));
 
   return Response.json({
     ...signalData,
     signals,
-    mirror:{ source:'ENGINE_BOARD_LIVE', externalRequestsAdded:0, boardFixtures:fixtures.length, liveFixtures:liveFixtures.length,
+    mirror:{ source:boardData?.engineBoardFallback?'HUB_SNAPSHOT_FALLBACK':'ENGINE_BOARD_LIVE', externalRequestsAdded:0, boardFixtures:fixtures.length, liveFixtures:liveFixtures.length,
       activeMatches:new Set(signals.map(s=>String(s.fixtureId))).size, activeSignals:signals.length, hiddenPendingSignals,
-      hubFetchedAt:boardData?.hubFetchedAt??null, hubAgeMs:num(boardData?.hubAgeMs), stale:Boolean(boardData?.stale) }
+      hubFetchedAt:boardData?.hubFetchedAt??boardData?.fetchedAt??null, hubAgeMs:num(boardData?.hubAgeMs??boardData?.ageMs), stale:Boolean(boardData?.stale) }
   }, { headers:{'cache-control':'no-store'} });
 }
 
@@ -110,6 +129,7 @@ export default {
       const path = url.pathname.replace('/api/hub', '') || '/';
       return env.HUB.fetch(hubRequest(request, path));
     }
+    if (url.pathname === '/api/engine/board' && request.method === 'GET') return engineBoardResponse(request, env);
     if (url.pathname === '/api/engine/signals' && request.method === 'GET') return activeSignals(request, env);
     if (url.pathname.startsWith('/api/engine/')) {
       const path = url.pathname.replace('/api/engine', '') || '/';
