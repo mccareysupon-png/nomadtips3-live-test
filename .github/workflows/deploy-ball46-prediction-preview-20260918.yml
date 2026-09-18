@@ -11,8 +11,8 @@ jobs:
   preview:
     runs-on: ubuntu-latest
     env:
-      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       SOURCE_REF: work/ball46-live-prediction-v1-current
       BASE_REF: work/ball46-full-market-20260918
       PREVIEW_URL: https://nomadtips3-343-prediction-preview.mccarey-supon.workers.dev
@@ -26,6 +26,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
           git fetch origin "$BASE_REF" --depth=1
           changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
           printf '%s\n' "$changed"
