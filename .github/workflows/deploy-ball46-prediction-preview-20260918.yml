@@ -1,0 +1,80 @@
+name: Deploy Ball46 Prediction Preview 20260918
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-prediction-preview-20260918.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    env:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      SOURCE_REF: work/ball46-live-prediction-v1-current
+      BASE_REF: work/ball46-full-market-20260918
+      PREVIEW_URL: https://nomadtips3-343-prediction-preview.mccarey-supon.workers.dev
+    steps:
+      - name: Checkout prediction branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_REF }}
+          fetch-depth: 0
+      - name: Safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$BASE_REF" --depth=1
+          changed="$(git diff --name-only "origin/$BASE_REF"...HEAD)"
+          printf '%s\n' "$changed"
+          bad="$(printf '%s\n' "$changed" | grep -Ev '^(nomad-live-343/index.html|nomad-live-343/live-prediction-v1.js|nomad-live-343/live-prediction-v1.css|workers/nomadtips3-343-preview/wrangler.prediction-preview.jsonc)$' || true)"
+          test -z "$bad" || { echo "PROTECTED_CHANGE_DETECTED"; printf '%s\n' "$bad"; exit 1; }
+          git diff --quiet "origin/$BASE_REF"...HEAD -- workers/nomadtips3-5usd-hub-343 workers/nomadtips3-engine-343 workers/add-k-ah-detector nomad-live-343/signal.html nomad-live-343/signal.js nomad-live-343/statistics.html nomad-live-343/statistics.js nomad-live-343/dashboard-v2-stage3.js
+          echo SAFE_BOUNDARY_PASS
+      - name: Validate isolated module
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/live-prediction-v1.js
+          grep -Fq "READ_ONLY_SHARED_BOARD" nomad-live-343/live-prediction-v1.js
+          grep -Fq "networkRequestsAdded:0" nomad-live-343/live-prediction-v1.js
+          grep -Fq "live-prediction-v1.js" nomad-live-343/index.html
+          grep -Fq "live-prediction-v1.css" nomad-live-343/index.html
+          python3 - <<'PY'
+          from pathlib import Path
+          h=Path('nomad-live-343/index.html').read_text()
+          a=h.index('bulk-odds-compat-343.js')
+          p=h.index('live-prediction-v1.js')
+          d=h.index('dashboard-v2-stage3.js')
+          assert a < p < d, (a,p,d)
+          print('SCRIPT_ORDER_PASS')
+          PY
+      - name: Dry-run isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.prediction-preview.jsonc
+      - name: Deploy isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.prediction-preview.jsonc
+      - name: Verify preview only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 20 "$PREVIEW_URL/live-prediction-v1.js?_=$GITHUB_RUN_ID-$i" -o /tmp/pred.js && grep -Fq "343-live-prediction-v1-readonly" /tmp/pred.js; then break; fi
+            sleep 2
+          done
+          grep -Fq "343-live-prediction-v1-readonly" /tmp/pred.js
+          curl -fsS --max-time 25 "$PREVIEW_URL/api/engine/board?_=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||j.fixtures.length===0) throw Error('BOARD_NOT_READY');
+          console.log('PREDICTION_PREVIEW_BOARD_PASS',j.fixtures.length);
+          NODE
+          echo PREDICTION_PREVIEW_PASS
