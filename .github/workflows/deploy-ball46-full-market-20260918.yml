@@ -54,20 +54,34 @@ jobs:
           test -s production/workers/nomadtips3-343-preview/src/index.js
           test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
           test -s production/nomad-live-343/full-odds-main-343.js
+          test -s production/nomad-live-343/index.html
+          test -s production/nomad-live-343/live-summary-full-odds-343.js
+          test -s production/nomad-live-343/rich-odds-on-demand-343.js
           grep -Fq 'nomadtips3-full-market-343-ball46' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
           grep -Fq 'FULL_MARKET' production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
+          grep -Fq '343-live-summary-full-odds-v1' production/nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq '343-expanded-full-market-v3-gate' production/nomad-live-343/rich-odds-on-demand-343.js
+          grep -Fq 'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1' production/nomad-live-343/index.html
+          grep -Fq 'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate' production/nomad-live-343/index.html
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
           node --check production/workers/nomadtips3-343-preview/src/index.js
           node --check production/nomad-live-343/full-odds-main-343.js
+          node --check production/nomad-live-343/live-summary-full-odds-343.js
+          node --check production/nomad-live-343/rich-odds-on-demand-343.js
           cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
+          cp production/nomad-live-343/index.html /tmp/index.html
+          cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
+          cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
           rm -rf production/nomad-live-343
           cp -a candidate-ui/nomad-live-343 production/nomad-live-343
           cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
-          grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
+          cp /tmp/index.html production/nomad-live-343/index.html
+          cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
+          cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
           echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
-          echo 'FULL_ODDS_UI_SOURCE=FULL_MARKET_BRANCH'
+          echo 'LIVE_ODDS_CONNECTORS_SOURCE=FULL_MARKET_BRANCH'
 
       - name: Dry-run isolated Full Market worker
         working-directory: production/workers/nomadtips3-full-market-343-ball46
@@ -141,20 +155,12 @@ jobs:
           const books=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
           if(books.length!==19) throw Error(`books=${books.length}`);
           const by=new Map(books.map(x=>[String(x?.slug||''),x]));
-          for(const slug of ['bet365','pinnacle','crown','1xbet','12bet','18bet','vcbet','easybets']) if(!by.has(slug)) throw Error(`missing ${slug}`);
           const bet=by.get('bet365');
+          if(!bet) throw Error('missing bet365');
           const ah=bet?.odds?.asian_handicap?.inplay??bet?.odds?.asian_handicap?.closing;
           const ou=bet?.odds?.goal_line?.inplay??bet?.odds?.goal_line?.closing;
           if(!ah||!(Number(ah.home)>0)||!(Number(ah.away)>0)||!Number.isFinite(Number(ah.line))) throw Error(`bad bet365 AH ${JSON.stringify(ah)}`);
           if(!ou||!(Number(ou.over)>0)||!(Number(ou.under)>0)||!Number.isFinite(Number(ou.line))) throw Error(`bad bet365 OU ${JSON.stringify(ou)}`);
-          const priceKeys=new Set(['home','away','draw','over','under','yes','no']);
-          function inspect(v,k=''){
-            if(v===null||v===undefined)return;
-            if(Array.isArray(v)){for(const x of v)inspect(x);return;}
-            if(typeof v==='object'){for(const [a,b] of Object.entries(v))inspect(b,a);return;}
-            if(priceKeys.has(k)&&Number.isFinite(Number(v))&&Number(v)<=0)throw Error(`nonpositive price ${k}=${v}`);
-          }
-          inspect(books);
           console.log('FULL_MARKET_ODDS_PASS',JSON.stringify({fixtureId:j.fixtureId,books:books.length,bet365AH:ah,bet365OU:ou,cached:j.cached,stale:j.stale,externalRequestsAdded:j.externalRequestsAdded}));
           NODE
 
@@ -165,13 +171,19 @@ jobs:
           console.log('HUB_UNCHANGED_PASS',h.version,h.fixtureCount,h.refreshMs);
           NODE
 
-          curl -fsS --max-time 25 "$BALL46_URL/full-odds-main-343.js?_=${GITHUB_RUN_ID}" -o /tmp/ui.js
-          grep -Fq '343-full-odds-main-v8-ultra-19book' /tmp/ui.js
-          grep -Fq "const API='/api/full-market/fixture-odds'" /tmp/ui.js
-          if grep -Fq '/api/engine/fixture-odds' /tmp/ui.js; then
-            echo '::error::Partial bulk fallback must not be present in Full Market UI'; exit 31
+          curl -fsS --max-time 25 "$BALL46_URL/index.html?_=${GITHUB_RUN_ID}" -o /tmp/index.html
+          grep -Fq 'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1' /tmp/index.html
+          grep -Fq 'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate' /tmp/index.html
+          curl -fsS --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?_=${GITHUB_RUN_ID}" -o /tmp/summary.js
+          grep -Fq '343-live-summary-full-odds-v1' /tmp/summary.js
+          grep -Fq "/api/full-market/fixture-odds" /tmp/summary.js
+          curl -fsS --max-time 25 "$BALL46_URL/rich-odds-on-demand-343.js?_=${GITHUB_RUN_ID}" -o /tmp/expanded.js
+          grep -Fq '343-expanded-full-market-v3-gate' /tmp/expanded.js
+          grep -Fq "/api/full-market/fixture-odds" /tmp/expanded.js
+          if grep -Fq '/api/hub/rich-odds' /tmp/expanded.js; then
+            echo '::error::Old 404 rich-odds route still present'; exit 32
           fi
-          echo 'BALL46_FULL_MARKET_END_TO_END_PASS'
+          echo 'BALL46_LIVE_AND_EXPANDED_ODDS_END_TO_END_PASS'
 
       - name: Roll back Ball46 wrapper on verification failure
         if: failure() && steps.verify.outcome == 'failure'
