@@ -39,12 +39,11 @@ for (const sel of ['HOME', 'DRAW', 'AWAY']) {
 }
 if (!chosen) throw new Error('No 1X2 selection passed existing price rule on sample fixture');
 
-const id = encodeURIComponent(chosen.fixtureId);
 let sameLineChecks = 0;
 for (const [market, selection] of [['ft_ah','HOME'],['ft_ah','AWAY'],['ft_over','OVER'],['ft_under','UNDER']]) {
-  const { status, j } = await get(`/referee?fixtureId=${id}&market=${market}&selection=${selection}`);
+  const { status, j } = await get(`/referee?market=${market}&selection=${selection}`);
   if (status === 409 && j?.error === 'CANONICAL_BULK_LINE_UNAVAILABLE') {
-    console.log('BEST19_CANONICAL_LINE_SKIP', market, selection, chosen.fixtureId);
+    console.log('BEST19_CANONICAL_LINE_SKIP', market, selection, j?.fixtureId || 'none');
     continue;
   }
   if (status !== 200) throw new Error(`${market}/${selection}: HTTP ${status} ${JSON.stringify(j)}`);
@@ -55,7 +54,7 @@ for (const [market, selection] of [['ft_ah','HOME'],['ft_ah','AWAY'],['ft_over',
     }
   }
   sameLineChecks += 1;
-  console.log('BEST19_SAME_LINE_PASS', market, selection, 'canonical', j.canonicalProviderLine, 'best', j.best, 'offers', j.offerCount, 'valid', valid.length, j.fullMarket);
+  console.log('BEST19_SAME_LINE_PASS', market, selection, 'fixture', j.fixtureId, 'canonical', j.canonicalProviderLine, 'best', j.best, 'offers', j.offerCount, 'valid', valid.length, j.fullMarket);
 }
-if (!sameLineChecks) throw new Error('No AH/O-U canonical line available on sample fixture');
-console.log('ENGINE343_BEST19_CANARY_PASS', chosen.fixtureId, 'sameLineChecks', sameLineChecks);
+if (!sameLineChecks) throw new Error('No AH/O-U canonical line available on live board');
+console.log('ENGINE343_BEST19_CANARY_PASS', '1X2fixture', chosen.fixtureId, 'sameLineChecks', sameLineChecks);
