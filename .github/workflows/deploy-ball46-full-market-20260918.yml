@@ -1,0 +1,177 @@
+name: Deploy Ball46 Full Market 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-full-market-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  BALL46_URL: https://ball46.com
+  FULL_MARKET_BRANCH: work/ball46-full-market-20260918
+  KNOWN_GOOD_UI: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
+  OLD_WRAPPER_REF: 9ea1ec399ba27e946f271f6ca925f4daa2a7f850
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full-market candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FULL_MARKET_BRANCH }}
+          path: production
+
+      - name: Checkout known-good 3.43 UI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.KNOWN_GOOD_UI }}
+          path: candidate-ui
+
+      - name: Checkout rollback wrapper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.OLD_WRAPPER_REF }}
+          path: rollback
+
+      - name: Validate scope and overlay known-good UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+          test -s production/workers/nomadtips3-full-market-343-ball46/src/index.js
+          test -s production/workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          test -s production/workers/nomadtips3-343-preview/src/index.js
+          test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq 'nomadtips3-full-market-343-ball46' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq 'FULL_MARKET' production/workers/nomadtips3-343-preview/src/index.js
+          node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
+          node --check production/workers/nomadtips3-343-preview/src/index.js
+          rm -rf production/nomad-live-343
+          cp -a candidate-ui/nomad-live-343 production/nomad-live-343
+          grep -Fq '343-full-odds-main-v5-ultra-10book' production/nomad-live-343/full-odds-main-343.js
+          echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
+          echo "UI_SOURCE=$KNOWN_GOOD_UI"
+
+      - name: Dry-run isolated Full Market worker
+        working-directory: production/workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy isolated Full Market worker
+        working-directory: production/workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Bind provider API key only to Full Market worker
+        working-directory: production/workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Dry-run Ball46 wrapper with Full Market binding
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 wrapper only
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Ball46 Full Market end-to-end
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            code="$(curl -sS --max-time 25 -o /tmp/health.json -w '%{http_code}' "$BALL46_URL/api/full-market/health?_=${GITHUB_RUN_ID}-${n}" || true)"
+            if [ "$code" = 200 ]; then break; fi
+            sleep 2
+          done
+          node - <<'NODE'
+          const h=require('/tmp/health.json');
+          if(h.ok!==true||h.component!=='BALL46_FULL_MARKET_GATE') throw Error(JSON.stringify(h));
+          if(Number(h.bookmakerCount)!==19) throw Error(`bookmakerCount=${h.bookmakerCount}`);
+          if(Number(h.maxFullMarketCallsPerMinute)!==15) throw Error(`guard=${h.maxFullMarketCallsPerMinute}`);
+          console.log('FULL_MARKET_HEALTH_PASS',h.version,h.bookmakerCount,h.callsLast60s);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const live=j.fixtures.find(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live')||String(f?.status||'').toLowerCase().includes('in_play'))||j.fixtures[0];
+          if(!live?.fixtureId) throw Error('NO_FIXTURE');
+          require('fs').writeFileSync('/tmp/id',String(live.fixtureId));
+          console.log('BOARD_PASS',j.fixtures.length,'fixture',live.fixtureId);
+          NODE
+
+          ID="$(cat /tmp/id)"
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${ID}&_=${GITHUB_RUN_ID}" -o /tmp/full.json
+          node - <<'NODE'
+          const j=require('/tmp/full.json');
+          if(j.ok!==true) throw Error(JSON.stringify(j));
+          const books=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
+          if(books.length!==19) throw Error(`books=${books.length}`);
+          const by=new Map(books.map(x=>[String(x?.slug||''),x]));
+          for(const slug of ['bet365','pinnacle','crown','1xbet','12bet','18bet','vcbet','easybets']) if(!by.has(slug)) throw Error(`missing ${slug}`);
+          const bet=by.get('bet365');
+          const ah=bet?.odds?.asian_handicap?.inplay??bet?.odds?.asian_handicap?.closing;
+          const ou=bet?.odds?.goal_line?.inplay??bet?.odds?.goal_line?.closing;
+          if(!ah||!(Number(ah.home)>0)||!(Number(ah.away)>0)||!Number.isFinite(Number(ah.line))) throw Error(`bad bet365 AH ${JSON.stringify(ah)}`);
+          if(!ou||!(Number(ou.over)>0)||!(Number(ou.under)>0)||!Number.isFinite(Number(ou.line))) throw Error(`bad bet365 OU ${JSON.stringify(ou)}`);
+          const priceKeys=new Set(['home','away','draw','over','under','yes','no']);
+          function inspect(v,k=''){
+            if(v===null||v===undefined)return;
+            if(Array.isArray(v)){for(const x of v)inspect(x);return;}
+            if(typeof v==='object'){for(const [a,b] of Object.entries(v))inspect(b,a);return;}
+            if(priceKeys.has(k)&&Number.isFinite(Number(v))&&Number(v)<=0)throw Error(`nonpositive price ${k}=${v}`);
+          }
+          inspect(books);
+          console.log('FULL_MARKET_ODDS_PASS',JSON.stringify({fixtureId:j.fixtureId,books:books.length,bet365AH:ah,bet365OU:ou,cached:j.cached,stale:j.stale,externalRequestsAdded:j.externalRequestsAdded}));
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?_=${GITHUB_RUN_ID}" -o /tmp/hub.json
+          node - <<'NODE'
+          const h=require('/tmp/hub.json');
+          if(h.ok!==true||h.component!=='5USD_HUB') throw Error(JSON.stringify(h));
+          console.log('HUB_UNCHANGED_PASS',h.version,h.fixtureCount,h.refreshMs);
+          NODE
+
+          curl -fsS --max-time 25 "$BALL46_URL/full-odds-main-343.js?_=${GITHUB_RUN_ID}" -o /tmp/ui.js
+          grep -Fq '343-full-odds-main-v5-ultra-10book' /tmp/ui.js
+          echo 'BALL46_FULL_MARKET_END_TO_END_PASS'
+
+      - name: Roll back Ball46 wrapper on verification failure
+        if: failure() && steps.verify.outcome == 'failure'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          rm -rf rollback/nomad-live-343
+          cp -a candidate-ui/nomad-live-343 rollback/nomad-live-343
+          cd rollback/workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          echo 'BALL46_WRAPPER_ROLLBACK_DEPLOYED'
