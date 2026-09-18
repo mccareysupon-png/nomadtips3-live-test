@@ -42,11 +42,12 @@ if (!chosen) throw new Error('No 1X2 selection passed existing price rule on sam
 let sameLineChecks = 0;
 for (const [market, selection] of [['ft_ah','HOME'],['ft_ah','AWAY'],['ft_over','OVER'],['ft_under','UNDER']]) {
   const { status, j } = await get(`/referee?market=${market}&selection=${selection}`);
-  if (status === 409 && j?.error === 'CANONICAL_BULK_LINE_UNAVAILABLE') {
-    console.log('BEST19_CANONICAL_LINE_SKIP', market, selection, j?.fixtureId || 'none');
+  if (status === 409 && j?.error === 'BET365_REFERENCE_LINE_UNAVAILABLE') {
+    console.log('BEST19_REFERENCE_LINE_SKIP', market, selection);
     continue;
   }
   if (status !== 200) throw new Error(`${market}/${selection}: HTTP ${status} ${JSON.stringify(j)}`);
+  if (j.canonicalSource !== 'BET365_FULL_MARKET') throw new Error(`${market}/${selection}: wrong canonical source ${j.canonicalSource}`);
   const { offers, valid } = validateSorted(j, `${market}/${selection}`);
   for (const x of offers) {
     if (Math.abs(Number(x.providerLine) - Number(j.canonicalProviderLine)) > 0.001) {
@@ -56,5 +57,5 @@ for (const [market, selection] of [['ft_ah','HOME'],['ft_ah','AWAY'],['ft_over',
   sameLineChecks += 1;
   console.log('BEST19_SAME_LINE_PASS', market, selection, 'fixture', j.fixtureId, 'canonical', j.canonicalProviderLine, 'best', j.best, 'offers', j.offerCount, 'valid', valid.length, j.fullMarket);
 }
-if (!sameLineChecks) throw new Error('No AH/O-U canonical line available on live board');
+if (!sameLineChecks) throw new Error('No Bet365 AH/O-U Full Market reference line available on live board');
 console.log('ENGINE343_BEST19_CANARY_PASS', '1X2fixture', chosen.fixtureId, 'sameLineChecks', sameLineChecks);
