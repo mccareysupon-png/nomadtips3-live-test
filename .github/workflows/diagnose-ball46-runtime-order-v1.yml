@@ -1,0 +1,67 @@
+name: Diagnose Ball46 Runtime Order v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-ball46-runtime-order-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect production runtime and feeds
+        shell: bash
+        run: |
+          set -u
+          BASE='https://ball46.com'
+          echo '=== INDEX ==='
+          for n in $(seq 1 5); do
+            code=$(curl -sS --max-time 25 -D /tmp/index.h -o /tmp/index.html -w '%{http_code}' "$BASE/?diag=${GITHUB_RUN_ID}-${n}" || true)
+            echo "INDEX_HTTP=$code TRY=$n"
+            grep -o '343-live-summary-[^"& ]*' /tmp/index.html | head -3 || true
+            grep -o '343-live-prediction-[^"& ]*' /tmp/index.html | head -3 || true
+            grep -o 'rich-odds-on-demand-343.js' /tmp/index.html | head -1 || true
+            if grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html && grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html; then break; fi
+            sleep 2
+          done
+          echo "INDEX_HAS_RICH_V5=$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html || true)"
+          echo "INDEX_HAS_PRED_V2=$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html || true)"
+          echo "INDEX_HAS_OLD_RICH_SHIM=$(grep -Fqc 'rich-odds-on-demand-343.js' /tmp/index.html || true)"
+
+          echo '=== ASSETS ==='
+          code=$(curl -sS --max-time 25 -o /tmp/rich.js -w '%{http_code}' "$BASE/live-summary-full-odds-343.js?diag=${GITHUB_RUN_ID}" || true)
+          echo "RICH_JS_HTTP=$code V5=$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/rich.js || true)"
+          code=$(curl -sS --max-time 25 -o /tmp/pred.js -w '%{http_code}' "$BASE/live-signal-inline-343.js?diag=${GITHUB_RUN_ID}" || true)
+          echo "PRED_JS_HTTP=$code V2=$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/pred.js || true)"
+          code=$(curl -sS --max-time 25 -o /tmp/shim.js -w '%{http_code}' "$BASE/rich-odds-on-demand-343.js?diag=${GITHUB_RUN_ID}" || true)
+          echo "SHIM_JS_HTTP=$code NOOP=$(grep -Fqc '343-rich-odds-compat-v7-no-fetch-wrapper' /tmp/shim.js || true) FETCH_WRAPS=$(grep -Fcc 'window.fetch=' /tmp/shim.js || true)"
+
+          echo '=== FEEDS ==='
+          bcode=$(curl -sS --max-time 30 -o /tmp/board.json -w '%{http_code}' "$BASE/api/engine/board?diag=${GITHUB_RUN_ID}" || true)
+          scode=$(curl -sS --max-time 30 -o /tmp/signals.json -w '%{http_code}' "$BASE/api/engine/signals?diag=${GITHUB_RUN_ID}" || true)
+          hcode=$(curl -sS --max-time 30 -o /tmp/full.json -w '%{http_code}' "$BASE/api/full-market/health?diag=${GITHUB_RUN_ID}" || true)
+          echo "BOARD_HTTP=$bcode SIGNALS_HTTP=$scode FULL_HEALTH_HTTP=$hcode"
+          node - <<'NODE'
+          const fs=require('fs');
+          const read=p=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){return {parseError:String(e),raw:(()=>{try{return fs.readFileSync(p,'utf8').slice(0,500)}catch{return''}})()}}};
+          const b=read('/tmp/board.json'),s=read('/tmp/signals.json'),h=read('/tmp/full.json');
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const withOdds=fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
+          console.log('BOARD',JSON.stringify({ok:b.ok,version:b.version,fixtures:fixtures.length,withOdds,source:b.source,fallback:b.fallback||null,parseError:b.parseError||null}));
+          console.log('SIGNALS',JSON.stringify({ok:s.ok,version:s.version,count:Array.isArray(s.signals)?s.signals.length:null,activeSignals:s.activeSignals,activeMatches:s.activeMatches,parseError:s.parseError||null}));
+          console.log('FULL',JSON.stringify({ok:h.ok,version:h.version,mode:h.mode,cacheMs:h.cacheMs,staleCacheMs:h.staleCacheMs,callsLast60s:h.callsLast60s,retryAfterSec:h.retryAfterSec,providerMeta:h.providerMeta||null,parseError:h.parseError||null}));
+          NODE
+
+          echo '=== FINAL ASSERTIONS ==='
+          test "$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html || true)" -gt 0
+          test "$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html || true)" -gt 0
+          test "$(grep -Fqc 'rich-odds-on-demand-343.js' /tmp/index.html || true)" -eq 0
+          test "$bcode" = 200
+          test "$scode" = 200
+          test "$hcode" = 200
