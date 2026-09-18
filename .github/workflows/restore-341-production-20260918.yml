@@ -1,0 +1,97 @@
+name: Restore NOMAD Live 3.41 Production 20260918
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-341-production-20260918.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CANARY_URL: https://nomadtips3-live-web-production-canary.mccarey-supon.workers.dev
+  CUSTOM_URL: https://www.nomadtips3.com
+
+jobs:
+  restore-341:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Validate exact 3.41 source before production restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-web-production/src/index.js
+          node --check nomad-live/runtime.js
+          node --check nomad-live/live-filter-lock.js
+          node --check nomad-live/statistics-live.js
+          grep -Fq 'Live Asian Handicap scanner' nomad-live/index.html
+          grep -Fq 'nomadtips3-live-engine.mccarey-supon.workers.dev' nomad-live/runtime-config.js
+          grep -Fq '"name": "nomadtips3-live-web-production"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"service": "nomadtips3-live-engine"' nomad-live-web-production/wrangler.production.jsonc
+          grep -Fq '"workers_dev": false' nomad-live-web-production/wrangler.production.jsonc
+          if grep -Fq '"routes"' nomad-live-web-production/wrangler.production.jsonc; then
+            echo '::error::Production route must remain dashboard-managed.'
+            exit 1
+          fi
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+
+      - name: Verify healthy 3.41 canary already deployed
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$CANARY_URL/__nomad_release?t=$(date +%s)" -o /tmp/release.json
+          grep -Fq 'nomadtips3-live-web-production' /tmp/release.json
+          grep -Fq '"version":"3.41"' /tmp/release.json
+          curl -fsSL --max-time 35 "$CANARY_URL/?t=$(date +%s)" -o /tmp/home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/home.html
+          curl -fsS --max-time 35 "$CANARY_URL/api/health?t=$(date +%s)" -o /tmp/health.json
+          test -s /tmp/health.json
+          curl -fsS --max-time 35 "$CANARY_URL/api/config?t=$(date +%s)" -o /tmp/config.json
+          test -s /tmp/config.json
+          echo '3.41 canary verified. Proceeding to restore Production.'
+
+      - name: Restore 3.41 Production Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CF_API_TOKEN }}
+          accountId: ${{ env.CF_ACCOUNT_ID }}
+          workingDirectory: nomad-live-web-production
+          wranglerVersion: '4.92.0'
+          command: deploy --config wrangler.production.jsonc
+
+      - name: Verify www.nomadtips3.com is back on 3.41
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 12); do
+            if curl -fsS --max-time 30 "$CUSTOM_URL/__nomad_release?t=$(date +%s)" -o /tmp/custom-release.json \
+              && grep -Fq 'nomadtips3-live-web-production' /tmp/custom-release.json \
+              && grep -Fq '"version":"3.41"' /tmp/custom-release.json; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1 || { echo '::error::www.nomadtips3.com did not switch to 3.41'; exit 1; }
+          curl -fsSL --max-time 35 "$CUSTOM_URL/?t=$(date +%s)" -o /tmp/custom-home.html
+          grep -Fq 'Live Asian Handicap scanner' /tmp/custom-home.html
+          curl -fsSL --max-time 35 "$CUSTOM_URL/statistics.html?t=$(date +%s)" -o /tmp/custom-statistics.html
+          grep -Fq 'Statistics' /tmp/custom-statistics.html
+          curl -fsS --max-time 35 "$CUSTOM_URL/api/health?t=$(date +%s)" -o /tmp/custom-health.json
+          test -s /tmp/custom-health.json
+          curl -fsS --max-time 35 "$CUSTOM_URL/api/config?t=$(date +%s)" -o /tmp/custom-config.json
+          test -s /tmp/custom-config.json
+          echo 'SUCCESS: www.nomadtips3.com restored to NOMAD Live 3.41.'
