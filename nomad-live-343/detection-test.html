@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#eef2f1">
+<title>ball46 · Detection Test</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:#edf1f0;color:#152019}.top{min-height:58px;background:#153f2b;color:#fff;display:flex;align-items:center;padding:0 18px}.brand{font-size:22px;font-weight:900}.brand span{color:#d8c858}.wrap{max-width:1100px;margin:0 auto;padding:22px 14px 40px}.head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}.head h1{margin:0;font-size:25px}.head p{margin:5px 0 0;color:#728078;font-size:12px}.back{color:#0f8f5f;text-decoration:none;font-size:11px;font-weight:800}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border:1px solid #dfe6e2;border-radius:14px;padding:15px;box-shadow:0 10px 28px rgba(28,54,40,.06)}.wide{grid-column:1/-1}.title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.title b{font-size:14px}.pill{font-size:9px;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef2f0;color:#728078}.pill.green{background:#e8f7ef;color:#0f8f5f}.pill.yellow{background:#fff6dc;color:#9a741f}.pill.red{background:#fdeaea;color:#c34b4b}.formgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.field{display:flex;flex-direction:column;gap:5px}.field span{font-size:9px;color:#728078;font-weight:800}.field input,.field select{width:100%;border:1px solid #dfe6e2;background:#f8faf9;color:#152019;border-radius:9px;padding:9px 10px;font-size:12px;outline:none}.field input:focus,.field select:focus{border-color:#0f8f5f}.section{margin-top:14px;padding-top:13px;border-top:1px solid #eef2f0}.section:first-child{margin-top:0;padding-top:0;border-top:0}.section h3{margin:0 0 9px;font-size:11px}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.btn{border:1px solid #dfe6e2;background:#fff;color:#152019;border-radius:9px;padding:9px 12px;font-size:10px;font-weight:900;cursor:pointer}.btn.save{background:#153f2b;color:#fff;border-color:#153f2b}.btn.run{background:#e8f7ef;color:#0f8f5f;border-color:#9ed4bd}.btn.stop{background:#fdeaea;color:#b64545;border-color:#efbaba}.btn.scan{background:#fff6dc;color:#8a681e;border-color:#ead99f}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#f6f8f7;border:1px solid #e4ebe7;border-radius:10px;padding:10px}.stat span{display:block;font-size:8px;color:#728078;font-weight:900}.stat b{display:block;margin-top:4px;font-size:16px}.statusline{margin-top:10px;font-size:10px;color:#728078;min-height:16px;line-height:1.5}.note{font-size:10px;color:#728078;line-height:1.5}.hide{display:none!important}@media(max-width:760px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.head{display:block}.back{display:inline-block;margin-top:9px}.formgrid{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}.wrap{padding:14px 8px 28px}}@media(max-width:480px){.formgrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">ball<span>46</span> · DETECTION TEST</div></header>
+<main class="wrap">
+<section class="head"><div><h1>ตั้งค่าเงื่อนไขตรวจจับ</h1><p>ตั้งง่าย · แก้ Engine จริง · ใช้ทดสอบ RUN / STOP / Scan ได้ทันที</p></div><a class="back" href="index.html">← กลับ Live Scores</a></section>
+<div class="grid">
+<section class="card wide">
+  <div class="title"><b>ตลาดที่ต้องการทดสอบ</b><span class="pill" id="engineState">CHECKING</span></div>
+  <div class="formgrid"><label class="field" style="grid-column:1/-1"><span>MARKET</span><select id="market"></select></label></div>
+  <div class="stats" style="margin-top:12px"><div class="stat"><span>RUN STATE</span><b id="runState">—</b></div><div class="stat"><span>ENGINE</span><b id="engineVersion">—</b></div><div class="stat"><span>BOARD</span><b id="fixtureCount">—</b></div><div class="stat"><span>PENDING SIGNAL</span><b id="signalCount">—</b></div></div>
+</section>
+<section class="card wide">
+  <div class="section"><h3>เวลา</h3><div class="formgrid">
+    <label class="field"><span>นาทีเริ่ม</span><input id="minuteFrom" type="number" min="0" max="120"></label>
+    <label class="field"><span>นาทีจบ</span><input id="minuteTo" type="number" min="0" max="120"></label>
+    <label class="field"><span>Rolling Window (นาที)</span><input id="rollingWindowMinutes" type="number" min="2" max="30"></label>
+  </div></div>
+  <div class="section"><h3>Evidence</h3><div class="formgrid">
+    <label class="field"><span>Shot On Target</span><input id="shotOnTarget" type="number" min="0" max="50"></label>
+    <label class="field"><span>Shot Off</span><input id="shotOff" type="number" min="0" max="50"></label>
+    <label class="field"><span>Corner</span><input id="corner" type="number" min="0" max="50"></label>
+    <label class="field"><span>Attack %</span><input id="attackPct" type="number" min="0" max="100"></label>
+    <label class="field"><span>Dangerous Attack %</span><input id="dangerousAttackPct" type="number" min="0" max="100"></label>
+    <label class="field"><span>Possession %</span><input id="possessionPct" type="number" min="0" max="100"></label>
+    <label class="field"><span>Evidence Required</span><input id="evidenceRequired" type="number" min="1" max="6"></label>
+    <label class="field" id="sideWrap"><span>Side</span><select id="sideMode"><option>HOME</option><option>AWAY</option><option>BOTH</option><option>DRAW</option><option>ALL</option></select></label>
+  </div></div>
+  <div class="section"><h3>ราคา / Line</h3><div class="formgrid">
+    <label class="field"><span>Odds Min</span><input id="oddsMin" type="number" min="1.01" step="0.01"></label>
+    <label class="field"><span>Odds Max</span><input id="oddsMax" type="number" min="1.01" step="0.01"></label>
+    <label class="field" id="lineMinWrap"><span>Line Min</span><input id="lineMin" type="number" step="0.25"></label>
+    <label class="field" id="lineMaxWrap"><span>Line Max</span><input id="lineMax" type="number" step="0.25"></label>
+    <label class="field" id="gapWrap"><span>Line Gap Max</span><select id="lineGapMax"><option value="0.5">0.5</option><option value="1">1.0</option><option value="1.5">1.5</option><option value="2">2.0</option><option value="2.5">2.5</option><option value="999">ไม่จำกัด</option></select></label>
+    <label class="field" id="scoreWrap"><span>ตามหลังได้ไม่เกิน</span><input id="scoreTrailingMax" type="number" min="0" max="10"></label>
+  </div></div>
+  <div class="actions"><button class="btn save" id="save">บันทึก</button><button class="btn run" id="run">RUN</button><button class="btn stop" id="stop">STOP</button><button class="btn scan" id="scan">SCAN NOW</button><button class="btn" id="refresh">รีเฟรช</button></div>
+  <div class="statusline" id="message">กำลังอ่าน Engine…</div>
+</section>
+<section class="card wide"><div class="title"><b>หมายเหตุ</b><span class="pill green">OWNER TEST</span></div><div class="note">RUN จะบันทึกค่าบนฟอร์มแล้วเปิดกฎนั้นทันที · STOP ปิดเฉพาะตลาดที่เลือก · SCAN NOW สั่ง Engine ตรวจรอบทันที · หน้านี้ไม่แก้ 5USD call mode และไม่แก้กฎของตลาดอื่น.</div></section>
+</div>
+</main>
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);let settings={},runState={},markets={},active='';
+const fields=['minuteFrom','minuteTo','rollingWindowMinutes','shotOnTarget','shotOff','corner','attackPct','dangerousAttackPct','possessionPct','evidenceRequired','sideMode','oddsMin','oddsMax','lineMin','lineMax','lineGapMax','scoreTrailingMax'];
+async function api(url,opt={}){const r=await fetch(url,{cache:'no-store',...opt});const j=await r.json().catch(()=>({}));if(!r.ok||j?.ok!==true)throw new Error(j?.error||`HTTP_${r.status}`);return j}
+function setPill(text,type=''){const e=$('engineState');e.textContent=text;e.className='pill '+type}
+function n(v){return v===null||v===undefined||v===''?null:Number(v)}
+function has(cfg,k){return Object.prototype.hasOwnProperty.call(cfg||{},k)}
+function setVisibility(cfg,def){$('sideWrap').classList.toggle('hide',!has(cfg,'sideMode'));$('lineMinWrap').classList.toggle('hide',!has(cfg,'lineMin'));$('lineMaxWrap').classList.toggle('hide',!has(cfg,'lineMax'));$('gapWrap').classList.toggle('hide',!has(cfg,'lineGapMax'));$('scoreWrap').classList.toggle('hide',!has(cfg,'scoreTrailingMax'))}
+function fill(){const cfg=settings[active]||{},def=markets[active]||{};for(const k of fields){const e=$(k);if(!e)continue;if(has(cfg,k))e.value=String(cfg[k]);else e.value=''}setVisibility(cfg,def);$('runState').textContent=runState[active]?'RUN':'STOP';$('runState').style.color=runState[active]?'#0f8f5f':'#b64545'}
+function read(){const base={...(settings[active]||{})};for(const k of fields){const e=$(k);if(!e||e.closest('.hide')||e.value==='')continue;base[k]=k==='sideMode'?e.value:n(e.value)}return base}
+function validate(cfg){if(n(cfg.minuteFrom)!==null&&n(cfg.minuteTo)!==null&&cfg.minuteFrom>cfg.minuteTo)return'ช่วงนาทีไม่ถูกต้อง';if(n(cfg.rollingWindowMinutes)!==null&&(cfg.rollingWindowMinutes<2||cfg.rollingWindowMinutes>30))return'Rolling Window ต้อง 2–30 นาที';if(n(cfg.evidenceRequired)!==null&&(cfg.evidenceRequired<1||cfg.evidenceRequired>6))return'Evidence Required ต้อง 1–6';if(n(cfg.oddsMin)!==null&&n(cfg.oddsMax)!==null&&cfg.oddsMin>cfg.oddsMax)return'Odds Min ต้องไม่มากกว่า Odds Max';if(n(cfg.lineMin)!==null&&n(cfg.lineMax)!==null&&cfg.lineMin>cfg.lineMax)return'Line Min ต้องไม่มากกว่า Line Max';return''}
+async function load(){const [s,b,g]=await Promise.all([api('/api/engine/settings?_='+Date.now()),api('/api/engine/board?_='+Date.now()).catch(()=>null),api('/api/engine/signals?_='+Date.now()).catch(()=>null)]);settings=s.settings||{};runState=s.runState||{};markets=s.markets||{};$('engineVersion').textContent=s.version||'ONLINE';$('fixtureCount').textContent=Array.isArray(b?.fixtures)?b.fixtures.length:'—';$('signalCount').textContent=Array.isArray(g?.signals)?g.signals.length:'—';const sel=$('market'),old=active;sel.innerHTML='';for(const [k,d] of Object.entries(markets)){const o=document.createElement('option');o.value=k;o.textContent=`${d.label||k} · ${k}`;sel.appendChild(o)}active=(old&&markets[old])?old:(markets.ft_ah?'ft_ah':Object.keys(markets)[0]||'');sel.value=active;fill();setPill('ENGINE ONLINE','green');$('message').textContent='พร้อมทดสอบ · '+new Date().toLocaleTimeString('th-TH')}
+async function push(nextRun){if(!active)return;const cfg=read(),err=validate(cfg);if(err){$('message').textContent=err;return}settings[active]=cfg;if(nextRun!==undefined)runState[active]=nextRun;$('message').textContent='กำลังบันทึก…';const j=await api('/api/engine/settings',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({settings,runState})});settings=j.settings||settings;runState=j.runState||runState;markets=j.markets||markets;fill();$('message').textContent=`บันทึกแล้ว · ${active} · ${runState[active]?'RUN':'STOP'}`}
+$('market').addEventListener('change',e=>{active=e.target.value;fill();$('message').textContent='เลือก '+active});$('save').addEventListener('click',()=>push().catch(e=>$('message').textContent='บันทึกไม่สำเร็จ · '+e.message));$('run').addEventListener('click',()=>push(true).catch(e=>$('message').textContent='RUN ไม่สำเร็จ · '+e.message));$('stop').addEventListener('click',()=>push(false).catch(e=>$('message').textContent='STOP ไม่สำเร็จ · '+e.message));$('scan').addEventListener('click',async()=>{try{$('message').textContent='กำลังสแกน…';const j=await api('/api/engine/scan',{method:'POST'});$('message').textContent=`SCAN เสร็จ · fixtures ${j.fixtureCount??'—'} · live ${j.liveCount??'—'} · pending ${j.signalCount??'—'}${j.lastError?' · '+j.lastError:''}`;await load()}catch(e){$('message').textContent='SCAN ไม่สำเร็จ · '+e.message}});$('refresh').addEventListener('click',()=>load().catch(e=>{setPill('ENGINE OFFLINE','red');$('message').textContent=e.message}));load().catch(e=>{setPill('ENGINE OFFLINE','red');$('message').textContent='เชื่อม Engine ไม่สำเร็จ · '+e.message});
+})();
+</script>
+</body></html>
