@@ -1,0 +1,99 @@
+name: Deploy Ball46 Full Market v4 Hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-full-market-v4-hotfix.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  BALL46_URL: https://ball46.com
+  SOURCE_REF: work/ball46-full-market-20260918
+
+jobs:
+  deploy-full-market-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout hotfix source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_REF }}
+
+      - name: Validate John-safe v4 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+          test -s workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq 'nomad343-ball46-full-market-v4-john-backoff-safe' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq 'const STALE_CACHE_MS = 900_000' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "fast: { mode:'fast', label:'เร็ว', cacheMs:45_000, maxCallsPerMinute:10 }" workers/nomadtips3-full-market-343-ball46/src/index.js
+          node --check workers/nomadtips3-full-market-343-ball46/src/index.js
+
+      - name: Deploy Full Market worker only
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Rebind provider key
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Verify production v4 health and rich odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            code="$(curl -sS --max-time 25 -o /tmp/health.json -w '%{http_code}' "$BALL46_URL/api/full-market/health?_=${GITHUB_RUN_ID}-${n}" || true)"
+            if [ "$code" = 200 ]; then
+              if node -e "const h=require('/tmp/health.json');process.exit(h.version==='nomad343-ball46-full-market-v4-john-backoff-safe'?0:1)"; then break; fi
+            fi
+            sleep 2
+          done
+          node - <<'NODE'
+          const h=require('/tmp/health.json');
+          if(h.ok!==true) throw Error(JSON.stringify(h));
+          if(h.version!=='nomad343-ball46-full-market-v4-john-backoff-safe') throw Error(`version=${h.version}`);
+          if(Number(h.bookmakerCount)!==19) throw Error(`books=${h.bookmakerCount}`);
+          if(Number(h.staleCacheMs)!==900000) throw Error(`stale=${h.staleCacheMs}`);
+          if(h.mode==='fast' && (Number(h.cacheMs)!==45000 || Number(h.maxFullMarketCallsPerMinute)!==10)) throw Error(JSON.stringify(h));
+          if(h.mode==='normal' && (Number(h.cacheMs)!==60000 || Number(h.maxFullMarketCallsPerMinute)!==8)) throw Error(JSON.stringify(h));
+          if(h.mode==='eco' && (Number(h.cacheMs)!==90000 || Number(h.maxFullMarketCallsPerMinute)!==5)) throw Error(JSON.stringify(h));
+          console.log('FULL_MARKET_V4_HEALTH_PASS',h.version,h.mode,h.cacheMs,h.maxFullMarketCallsPerMinute,h.staleCacheMs,h.retryAfterSec);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          const fs=Array.isArray(j.fixtures)?j.fixtures:[];
+          const live=fs.find(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live')||String(f?.status||'').toLowerCase().includes('in_play'))||fs[0];
+          if(!live?.fixtureId) throw Error('NO_FIXTURE');
+          require('fs').writeFileSync('/tmp/id',String(live.fixtureId));
+          console.log('FIXTURE',live.fixtureId);
+          NODE
+          ID="$(cat /tmp/id)"
+          code="$(curl -sS --max-time 30 -D /tmp/rich.headers -o /tmp/rich.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${ID}&_=${GITHUB_RUN_ID}" || true)"
+          echo "BALL46_FULL_MARKET_HTTP $code"
+          test "$code" = 200
+          node - <<'NODE'
+          const j=require('/tmp/rich.json');
+          const rows=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
+          if(j?.ok!==true) throw Error(JSON.stringify(j));
+          if(!rows.length) throw Error('NO_BOOKMAKER_ROWS');
+          console.log('BALL46_RICH_ODDS_PASS',JSON.stringify({fixtureId:j.fixtureId,books:rows.length,cached:j.cached,stale:j.stale,ageMs:j.ageMs,externalRequestsAdded:j.externalRequestsAdded,guard:j.guard||null}));
+          NODE
