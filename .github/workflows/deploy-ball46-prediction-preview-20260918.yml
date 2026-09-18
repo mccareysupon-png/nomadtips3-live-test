@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check nomad-live-343/live-prediction-v1.js
-          grep -Fq "343-live-prediction-v1-readonly-market-safe" nomad-live-343/live-prediction-v1.js
+          grep -Fq "343-live-prediction-v1-readonly-market-ht-safe" nomad-live-343/live-prediction-v1.js
           grep -Fq "READ_ONLY_SHARED_BOARD" nomad-live-343/live-prediction-v1.js
           grep -Fq "networkRequestsAdded:0" nomad-live-343/live-prediction-v1.js
           ! grep -Fq "clamp(p,0.50" nomad-live-343/live-prediction-v1.js
@@ -57,7 +57,10 @@ jobs:
           grep -Fq "key==='corner_asian_half')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
           grep -Fq "key==='card_line_half')candidates.push(...evalTotal" nomad-live-343/live-prediction-v1.js
           grep -Fq "key==='card_asian_half')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "function firstHalfClosed" nomad-live-343/live-prediction-v1.js
           grep -Fq "sit.minute>45" nomad-live-343/live-prediction-v1.js
+          grep -Fq "half.?time" nomad-live-343/live-prediction-v1.js
+          grep -Fq "marketEligible(key,f,sit,kind)" nomad-live-343/live-prediction-v1.js
           grep -Fq "MATCH FINISHED" nomad-live-343/live-prediction-v1.js
           grep -Fq "MODEL PROBABILITY" nomad-live-343/live-prediction-v1.js
           grep -Fq "live-prediction-v1.js" nomad-live-343/index.html
@@ -71,6 +74,29 @@ jobs:
           assert a < p < d, (a,p,d)
           print('SCRIPT_ORDER_PASS')
           PY
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          global.location={href:'https://preview.test/'};
+          global.document={readyState:'loading',addEventListener(){},querySelector(){return null;}};
+          global.MutationObserver=class{observe(){}};
+          global.window={fetch:async()=>{throw new Error('NETWORK_NOT_EXPECTED')}};
+          vm.runInThisContext(fs.readFileSync('nomad-live-343/live-prediction-v1.js','utf8'));
+          const evaluate=window.NOMAD343_LIVE_PREDICTION.evaluateFixture;
+          const stats={shotsOnTarget:{home:2,away:1},shotsOffTarget:{home:3,away:2},attacks:{home:40,away:30},dangerousAttacks:{home:20,away:12},possession:{home:55,away:45}};
+          const oneHalf={bookmakers:[{name:'Bet365',slug:'bet365',odds:{'1x2_half':{inplay:{home:1.90,draw:3.20,away:4.10}}}}]};
+          const ftOnly={bookmakers:[{name:'Bet365',slug:'bet365',odds:{'1x2':{inplay:{home:1.90,draw:3.20,away:4.10}}}}]};
+          const base={fixtureId:'guard',boardState:'live',minute:45,goals:{home:0,away:0},corners:{home:2,away:1},statistics:stats};
+          const first=evaluate({...base,status:'First Half',statusCode:'1H',providerOdds:oneHalf});
+          if(!first.best||first.best.market!=='1X2 1H') throw new Error('FIRST_HALF_45_SHOULD_ALLOW_1H');
+          const ht=evaluate({...base,status:'Half Time',statusCode:'HT',providerOdds:oneHalf});
+          if(ht.best) throw new Error('HT_SHOULD_BLOCK_1H');
+          const second=evaluate({...base,minute:46,status:'Second Half',statusCode:'2H',providerOdds:oneHalf});
+          if(second.best) throw new Error('SECOND_HALF_SHOULD_BLOCK_1H');
+          const htFt=evaluate({...base,status:'Half Time',statusCode:'HT',providerOdds:ftOnly});
+          if(!htFt.best||htFt.best.market!=='1X2') throw new Error('HT_SHOULD_KEEP_FULL_TIME_MARKETS');
+          if(window.NOMAD343_LIVE_PREDICTION.networkRequestsAdded!==0) throw new Error('NETWORK_REQUEST_REGRESSION');
+          console.log('HALFTIME_GUARD_PASS');
+          NODE
           echo PREDICTION_MARKET_LOGIC_PASS
 
       - name: Dry-run isolated preview
@@ -95,7 +121,7 @@ jobs:
           board_ok=0
           for i in $(seq 1 30); do
             code="$(curl -sS --max-time 20 -o /tmp/pred.js -w '%{http_code}' "$PREVIEW_URL/live-prediction-v1.js?_=$GITHUB_RUN_ID-$i" || true)"
-            if [ "$code" = 200 ] && grep -Fq "343-live-prediction-v1-readonly-market-safe" /tmp/pred.js; then asset_ok=1; break; fi
+            if [ "$code" = 200 ] && grep -Fq "343-live-prediction-v1-readonly-market-ht-safe" /tmp/pred.js; then asset_ok=1; break; fi
             sleep 2
           done
           test "$asset_ok" = 1
