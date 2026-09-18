@@ -49,6 +49,16 @@
   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-track{background:#111613}
   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}
   html[data-theme="dark"] .main-board>.board-sections::-webkit-scrollbar-thumb:hover{background:#535d57}
+
+  /* Dark mode: match left/right rail scrollbar colors to the center board. */
+  html[data-theme="dark"] .left-rail,
+  html[data-theme="dark"] .right-rail{scrollbar-color:#3d4541 #111613}
+  html[data-theme="dark"] .left-rail::-webkit-scrollbar-track,
+  html[data-theme="dark"] .right-rail::-webkit-scrollbar-track{background:#111613}
+  html[data-theme="dark"] .left-rail::-webkit-scrollbar-thumb,
+  html[data-theme="dark"] .right-rail::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}
+  html[data-theme="dark"] .left-rail::-webkit-scrollbar-thumb:hover,
+  html[data-theme="dark"] .right-rail::-webkit-scrollbar-thumb:hover{background:#535d57}
 }
 
 @media(max-width:760px){
