@@ -1,20 +1,23 @@
 (()=>{
 'use strict';
-// John-safe full-market restore for Ball46.
-// The shared bulk board remains the default source for score/minute/events/stats/basic odds.
-// Rich 19-book prices are requested ONLY for the single fixture the viewer expands,
-// through Ball46's central Durable Object gate. The browser never calls 5USD directly,
-// never fans out across the live board, and never polls rich odds automatically.
-const VERSION='343-live-summary-john-gated-v4';
+// Ball46 rich-odds render owner.
+// John-safe architecture:
+// - shared bulk board for live board data
+// - one central per-fixture request only when a viewer expands a fixture
+// - never call 5USD directly from the browser
+// - never poll rich odds automatically
+// - never let a later bulk fixture event overwrite a rich 19-book render
+const VERSION='343-live-summary-john-gated-v5-rich-owner';
 const API='/api/full-market/fixture-odds';
 const CLIENT_CACHE_MS=45_000;
-const STALE_KEEP_MS=180_000;
+const STALE_KEEP_MS=900_000;
 const cache=new Map();
 const inflight=new Map();
 let retryUntil=0;
 
 const now=()=>Date.now();
 const idOf=f=>String(f?.fixtureId??f?.id??'').trim();
+const defer=fn=>typeof queueMicrotask==='function'?queueMicrotask(fn):Promise.resolve().then(fn);
 
 function cached(id,allowStale=false){
   const hit=cache.get(id);
@@ -35,14 +38,28 @@ function richFixture(base,hit){
     providerOddsHeld:Boolean(hit.stale),
     fullMarketSource:'CENTRAL_ON_DEMAND_GATE',
     fullMarketCached:Boolean(hit.cached),
-    fullMarketStale:Boolean(hit.stale)
+    fullMarketStale:Boolean(hit.stale),
+    fullMarketRenderOwner:'RICH_ODDS'
   };
 }
 
+function renderPinned(expanded,fixture){
+  if(!expanded?.isConnected||!fixture)return;
+  // Run after every listener for nomad343:fixture-ready has completed.
+  // This guarantees the bulk renderer cannot paint over the richer fixture.
+  defer(()=>{
+    if(!expanded?.isConnected)return;
+    const renderer=window.NOMAD343_FULL_MARKET_BOOKMAKER;
+    if(!renderer?.update)return;
+    expanded._nomadRichFixture=fixture;
+    expanded.dataset.oddsRenderOwner='rich-odds-final';
+    renderer.update(expanded,fixture);
+  });
+}
+
 function paint(expanded,fixture,hit){
-  const renderer=window.NOMAD343_FULL_MARKET_BOOKMAKER;
-  if(!renderer?.update||!expanded?.isConnected||!fixture||!hit?.fullOdds)return;
-  renderer.update(expanded,richFixture(fixture,hit));
+  if(!expanded?.isConnected||!fixture||!hit?.fullOdds)return;
+  renderPinned(expanded,richFixture(fixture,hit));
 }
 
 async function requestRich(id){
@@ -89,14 +106,24 @@ function onFixtureReady(e){
   const expanded=e.target?.closest?.('.match-expanded')||document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);
   if(!id||!expanded)return;
 
+  // If this expanded row already owns a rich fixture, keep it pinned.
+  // Repeated bulk refresh events must never downgrade it back to bulk-only odds.
+  const pinned=expanded._nomadRichFixture;
+  if(idOf(pinned)===id&&pinned?.fullMarketRenderOwner==='RICH_ODDS'){
+    renderPinned(expanded,pinned);
+    return;
+  }
+
   const fresh=cached(id,false);
-  if(fresh){paint(expanded,fixture,fresh);return}
+  if(fresh){
+    paint(expanded,fixture,fresh);
+    return;
+  }
 
   requestRich(id)
     .then(hit=>paint(expanded,fixture,hit))
     .catch(err=>{
-      // Keep the shared bulk snapshot visible. A 429 is only a slow-down signal;
-      // never blank prices and never start a retry loop from the browser.
+      // 429 means account rate-limit only. Keep bulk/last-good visible and obey backoff.
       if(Number(err?.status)!==429)console.warn('Full-market enrichment unavailable',err);
     });
 }
@@ -105,7 +132,8 @@ function start(){
   document.addEventListener('nomad343:fixture-ready',onFixtureReady);
   window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={
     version:VERSION,
-    mode:'BULK_PLUS_ON_DEMAND_RICH',
+    mode:'BULK_PLUS_ON_DEMAND_RICH_FINAL_OWNER',
+    renderOwner:'RICH_ODDS_FINAL',
     networkMode:'CENTRAL_GATE_ONLY',
     automaticPolling:false,
     fanout:false,
@@ -113,6 +141,7 @@ function start(){
     staleKeepMs:STALE_KEEP_MS,
     source:'ENGINE_BOARD_BULK_PLUS_FULL_MARKET_GATE',
     upstreamRequestsPerExpandedFixture:'0-or-1 (shared server cache)',
+    current:id=>cache.get(String(id))||null,
     clear:()=>cache.clear()
   };
 }
