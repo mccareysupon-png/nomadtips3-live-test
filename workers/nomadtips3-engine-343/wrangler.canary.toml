@@ -1,17 +1,13 @@
-name = "nomadtips3-engine-343"
+name = "nomadtips3-engine-343-best19-canary"
 main = "src/index-bulk.js"
 compatibility_date = "2026-09-09"
 workers_dev = true
-# BULK-ONLY STANDARD: pricing is read from HUB snapshot providerOdds.
-# No per-fixture provider odds fetch is allowed from the engine.
-# Runtime verification: 2026-09-15 bulk-only cutover.
-# Legacy deploy branches must not replace this entrypoint.
 
 [observability]
 enabled = true
 
-[triggers]
-crons = ["* * * * *"]
+[vars]
+CANARY_DIAGNOSTIC = "1"
 
 [[services]]
 binding = "HUB"
