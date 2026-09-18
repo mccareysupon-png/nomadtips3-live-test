@@ -1,4 +1,4 @@
-name: Deploy Engine343 Best19 Referee
+name: Engine343 Best19 Canary
 
 on:
   workflow_dispatch:
@@ -14,172 +14,30 @@ env:
   CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   WORK_BRANCH: work/343-best-price-19book-20260918
-  ROLLBACK_REF: fix/343-bulk-only-standard-20260915
   CANARY_URL: https://nomadtips3-engine-343-best19-canary.mccarey-supon.workers.dev
-  BALL46_URL: https://ball46.com
 
 jobs:
-  canary-and-deploy:
+  canary:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
     steps:
-      - name: Checkout best19 work branch
+      - name: Checkout work branch
         uses: actions/checkout@v4
         with:
           ref: ${{ env.WORK_BRANCH }}
           fetch-depth: 1
           token: ${{ github.token }}
 
-      - name: Patch production source with one Best19 referee
-        shell: bash
+      - name: Apply deterministic Best19 patch
         run: |
           set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('workers/nomadtips3-engine-343/src/index-bulk.js')
-          s=p.read_text()
-          s=s.replace("const VERSION='nomad343-engine-v4-bulk-only';", "const VERSION='nomad343-engine-v5-best19-referee';")
-          s=s.replace("const REVISION='343-bulk-snapshot-only-20260915';", "const REVISION='343-best19-referee-20260918';")
-          old_start=s.index('function pickBestPriced(candidates,root,f,settings){')
-          old_end=s.index('function storedFixture(s){', old_start)
-          helper=r'''function bookmakerRows(payload){
-            const full=payload?.fullOdds??payload?.data?.fullOdds??payload?.data??payload;
-            return Array.isArray(full?.bookmakers)?full.bookmakers:[];
-          }
-          function bookmakerIdentity(row){
-            const slug=String(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name??'').trim();
-            const name=String(row?.name??row?.bookmaker?.name??row?.slug??row?.bookmaker?.slug??'').trim();
-            return {slug:slug||name||'unknown',name:name||slug||'Unknown'};
-          }
-          function bookmakerRoot(row){return row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??null}
-          function sameProviderLine(a,b){const x=num(a),y=num(b);return x!==null&&y!==null&&Math.abs(x-y)<=0.001}
-          function offersFor(payload,key,selection,canonicalProviderLine,f,cfg){
-            const def=MARKET_RULES[key],lineMarket=def.kind==='AH'||def.kind==='OU',offers=[];
-            for(const row of bookmakerRows(payload)){
-              const root=bookmakerRoot(row);if(!root)continue;
-              const price=priceFor(root,key,selection);if(!price||!(price.odds>0))continue;
-              if(lineMarket&&!sameProviderLine(price.providerLine,canonicalProviderLine))continue;
-              const id=bookmakerIdentity(row),pass=pricePass(key,cfg,price,f);
-              offers.push({bookmaker:id.name,bookmakerSlug:id.slug,price,pass,bookRoot:root});
-            }
-            offers.sort((a,b)=>b.price.odds-a.price.odds||a.bookmakerSlug.localeCompare(b.bookmakerSlug));
-            return offers;
-          }
-          function pickBestPriced(candidates,fullPayload,bulkRoot,f,settings){
-            const passed=[];
-            for(const c of candidates){
-              const def=MARKET_RULES[c.market],cfg=settings[c.market],lineMarket=def.kind==='AH'||def.kind==='OU';
-              const canonical=priceFor(bulkRoot,c.market,c.selection);
-              if(lineMarket&&(canonical?.providerLine===null||canonical?.providerLine===undefined))continue;
-              const offers=offersFor(fullPayload,c.market,c.selection,canonical?.providerLine??null,f,cfg);
-              const offer=offers.find(x=>x.pass);if(!offer)continue;
-              passed.push({...c,price:offer.price,bookmaker:offer.bookmaker,bookmakerSlug:offer.bookmakerSlug,bookRoot:offer.bookRoot,offerCount:offers.length,bookCount:bookmakerRows(fullPayload).length});
-            }
-            passed.sort((a,b)=>b.strength-a.strength||b.price.odds-a.price.odds||a.bookmakerSlug.localeCompare(b.bookmakerSlug));
-            return passed[0]||null;
-          }
-          '''
-          s=s[:old_start]+helper+s[old_end:]
-          old="const histories={},board=[],seen=new Set(signals.filter(s=>s.status==='PENDING').map(s=>`${s.fixtureId}:${s.market}`)),at=Number(hub.fetchedAt||now());"
-          new="const histories={},board=[],seen=new Set(signals.filter(s=>s.status==='PENDING').map(s=>`${s.fixtureId}:${s.market}`)),at=Number(hub.fetchedAt||now());\n      let refereeRequests=0,externalOddsRequests=0,refereeQueued=0;const refereeErrors=[];"
-          if old not in s: raise SystemExit('counter anchor not found')
-          s=s.replace(old,new,1)
-          start=s.index('          if(marketCandidates.length){')
-          end=s.index('        board.push(',start)
-          block=r'''          if(marketCandidates.length){
-            refereeQueued++;
-            let full=null;
-            if(!this.env.FULL_MARKET){refereeErrors.push({fixtureId:id,error:'FULL_MARKET_SERVICE_NOT_BOUND'});}
-            else{
-              try{
-                const rr=await this.env.FULL_MARKET.fetch(`https://full-market.internal/fixture-odds?fixtureId=${encodeURIComponent(id)}`),j=await rr.json();
-                refereeRequests++;
-                if(!rr.ok||j?.ok!==true)throw new Error(j?.error||`FULL_MARKET_HTTP_${rr.status}`);
-                full=j;externalOddsRequests+=Math.max(0,num(j.externalRequestsAdded)??0);
-              }catch(error){refereeErrors.push({fixtureId:id,error:String(error?.message||error)});}
-            }
-            if(!full){
-              for(const c of marketCandidates)analysis[c.market]={state:'PRICE_REFEREE_UNAVAILABLE'};
-            }else{
-              const grouped=new Map();for(const c of marketCandidates){if(!grouped.has(c.market))grouped.set(c.market,[]);grouped.get(c.market).push(c)}
-              for(const [key,cands] of grouped){
-                const best=pickBestPriced(cands,full,root,f,settings);
-                if(!best){analysis[key]={state:'NO_MATCHING_LINE_PRICE',priceSource:'BEST_OF_19_INPLAY'};continue}
-                const def=MARKET_RULES[key],price=best.price,selectedRoot=best.bookRoot,historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,observedAt:at};
-                const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:clone(f.league),home:clone(f.home),away:clone(f.away),market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,priceStage:'inplay',priceSource:'BEST_OF_19_INPLAY',refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount,openingPrice:stageSnapshot(selectedRoot,def,'opening'),closingPrice:stageSnapshot(selectedRoot,def,'closing'),inplayPrice:stageSnapshot(selectedRoot,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
-                signals.push(sig);seen.add(`${id}:${key}`);analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,evidence:best.evidence,priceSource:'BEST_OF_19_INPLAY',refereeOfferCount:best.offerCount};
-              }
-            }
-          }
-        }
-'''
-          s=s[:start]+block+s[end:]
-          old_store="await this.ctx.storage.put('board',{ok:true,version:VERSION,revision:REVISION,dataMode:'BULK_SNAPSHOT_ONLY',hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{mode:'BULK_SNAPSHOT_ONLY',externalRequestsAdded:0,requests:0,queued:0,errors:[]}});"
-          new_store="await this.ctx.storage.put('board',{ok:true,version:VERSION,revision:REVISION,dataMode:'BULK_PLUS_BEST19_REFEREE',hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{mode:'BEST_OF_19_INPLAY',externalRequestsAdded:externalOddsRequests,requests:refereeRequests,queued:refereeQueued,errors:refereeErrors}});"
-          if old_store not in s: raise SystemExit('board store anchor not found')
-          s=s.replace(old_store,new_store,1)
-          old_meta="const meta={ok:true,version:VERSION,revision:REVISION,dataMode:'BULK_SNAPSHOT_ONLY',startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:capped.filter(s=>s.status==='PENDING').length,unresolvedCount:capped.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests:0,refereeQueued:0,externalOddsRequests:0,lastError:null};"
-          new_meta="const meta={ok:true,version:VERSION,revision:REVISION,dataMode:'BULK_PLUS_BEST19_REFEREE',startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:capped.filter(s=>s.status==='PENDING').length,unresolvedCount:capped.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued,externalOddsRequests,refereeErrors,lastError:null};"
-          if old_meta not in s: raise SystemExit('meta anchor not found')
-          s=s.replace(old_meta,new_meta,1)
-          old_catch="}catch(e){const meta={ok:false,version:VERSION,revision:REVISION,dataMode:'BULK_SNAPSHOT_ONLY',startedAt,finishedAt:now(),externalOddsRequests:0,lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}"
-          new_catch="}catch(e){const meta={ok:false,version:VERSION,revision:REVISION,dataMode:'BULK_PLUS_BEST19_REFEREE',startedAt,finishedAt:now(),externalOddsRequests:0,lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}"
-          if old_catch not in s: raise SystemExit('catch anchor not found')
-          s=s.replace(old_catch,new_catch,1)
-          old_fetch="const u=new URL(request.url);if(!['/settings','/registry','/fixture-odds'].includes(u.pathname))await this.scanIfDue();"
-          new_fetch="const u=new URL(request.url);if(!['/settings','/registry','/fixture-odds','/referee'].includes(u.pathname))await this.scanIfDue();"
-          if old_fetch not in s: raise SystemExit('fetch anchor not found')
-          s=s.replace(old_fetch,new_fetch,1)
-          insert_at=s.index("    if(u.pathname==='/fixture-odds'&&request.method==='GET'){")
-          diagnostic=r'''    if(u.pathname==='/referee'&&request.method==='GET'){
-      if(String(this.env.CANARY_DIAGNOSTIC||'')!=='1')return Response.json({ok:false,error:'NOT_FOUND'},{status:404});
-      const key=String(u.searchParams.get('market')||'ft_ah'),selection=String(u.searchParams.get('selection')||'HOME').toUpperCase();
-      if(!MARKET_RULES[key])return Response.json({ok:false,error:'INVALID_MARKET'},{status:400});
-      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot'),hub=await hr.json();if(!hub?.ok)return Response.json({ok:false,error:'HUB_NOT_READY'},{status:503});
-      let fixtureId=String(u.searchParams.get('fixtureId')||'').trim(),f=fixtureId?(hub.fixtures||[]).find(x=>String(x?.fixtureId??'')===fixtureId):null;
-      if(!f){f=(hub.fixtures||[]).find(x=>isLive(x)&&oddsRoot(x.providerOdds));fixtureId=String(f?.fixtureId??'')}
-      if(!f)return Response.json({ok:false,error:'NO_LIVE_FIXTURE'},{status:404});
-      const bulkRoot=oddsRoot(f.providerOdds),def=MARKET_RULES[key],canonical=priceFor(bulkRoot,key,selection),lineMarket=def.kind==='AH'||def.kind==='OU';
-      if(lineMarket&&(canonical?.providerLine===null||canonical?.providerLine===undefined))return Response.json({ok:false,fixtureId,market:key,selection,error:'CANONICAL_BULK_LINE_UNAVAILABLE'},{status:409});
-      const rr=await this.env.FULL_MARKET.fetch(`https://full-market.internal/fixture-odds?fixtureId=${encodeURIComponent(fixtureId)}`),full=await rr.json();
-      if(!rr.ok||full?.ok!==true)return Response.json({ok:false,fixtureId,error:full?.error||`FULL_MARKET_HTTP_${rr.status}`},{status:rr.status||502});
-      const cfg=(await this.readSettings())[key],offers=offersFor(full,key,selection,canonical?.providerLine??null,f,cfg),best=offers.find(x=>x.pass)||null;
-      const safeOffers=offers.map(x=>({bookmaker:x.bookmaker,bookmakerSlug:x.bookmakerSlug,odds:x.price.odds,line:x.price.line,providerLine:x.price.providerLine,pass:x.pass}));
-      return Response.json({ok:true,version:VERSION,revision:REVISION,fixtureId,market:key,selection,canonicalProviderLine:canonical?.providerLine??null,bookmakerCount:bookmakerRows(full).length,offerCount:safeOffers.length,best:best?{bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,odds:best.price.odds,line:best.price.line,providerLine:best.price.providerLine}:null,offers:safeOffers,fullMarket:{cached:full.cached,stale:full.stale,externalRequestsAdded:full.externalRequestsAdded}});
-    }
-'''
-          s=s[:insert_at]+diagnostic+s[insert_at:]
-          old_health="if(u.pathname==='/health'){const m=await this.ctx.storage.get('lastScan');return Response.json({ok:Boolean(m?.ok),component:'NOMAD343_ENGINE',version:VERSION,revision:REVISION,dataMode:'BULK_SNAPSHOT_ONLY',externalOddsRequests:0,...m})}"
-          new_health="if(u.pathname==='/health'){const m=await this.ctx.storage.get('lastScan');return Response.json({ok:Boolean(m?.ok),component:'NOMAD343_ENGINE',version:VERSION,revision:REVISION,dataMode:'BULK_PLUS_BEST19_REFEREE',...(m||{})})}"
-          if old_health not in s: raise SystemExit('health anchor not found')
-          s=s.replace(old_health,new_health,1)
-          old_allowed="const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds'];"
-          new_allowed="const u=new URL(request.url),allowed=['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds','/referee'];"
-          if old_allowed not in s: raise SystemExit('allowed anchor not found')
-          s=s.replace(old_allowed,new_allowed,1)
-          p.write_text(s)
-          print('PATCHED',p,len(s))
-          PY
-
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('workers/nomadtips3-engine-343/wrangler.toml')
-          s=p.read_text()
-          if 'binding = "FULL_MARKET"' not in s:
-              anchor='[[services]]\nbinding = "HUB"\nservice = "nomadtips3-5usd-hub-343"\n'
-              if anchor not in s: raise SystemExit('HUB binding anchor missing')
-              s=s.replace(anchor,anchor+'\n[[services]]\nbinding = "FULL_MARKET"\nservice = "nomadtips3-full-market-343-ball46"\n',1)
-          p.write_text(s)
-          canary=Path('workers/nomadtips3-engine-343/wrangler.canary.toml')
-          canary.write_text('''name = "nomadtips3-engine-343-best19-canary"\nmain = "src/index-bulk.js"\ncompatibility_date = "2026-09-09"\nworkers_dev = true\n\n[observability]\nenabled = true\n\n[vars]\nCANARY_DIAGNOSTIC = "1"\n\n[[services]]\nbinding = "HUB"\nservice = "nomadtips3-5usd-hub-343"\n\n[[services]]\nbinding = "FULL_MARKET"\nservice = "nomadtips3-full-market-343-ball46"\n\n[[durable_objects.bindings]]\nname = "ENGINE"\nclass_name = "Nomad343Engine"\n\n[[migrations]]\ntag = "v1"\nnew_sqlite_classes = ["Nomad343Engine"]\n''')
-          PY
+          python scripts/patch_engine343_best19.py
           node --check workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq "nomad343-engine-v5-best19-referee" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq "BEST_OF_19_INPLAY" workers/nomadtips3-engine-343/src/index-bulk.js
           grep -Fq 'binding = "FULL_MARKET"' workers/nomadtips3-engine-343/wrangler.toml
 
-      - name: Persist work branch patch
-        shell: bash
+      - name: Save patched work branch
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -202,105 +60,43 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.canary.toml
 
-      - name: Verify canary Best19 with live fixture
-        shell: bash
+      - name: Verify Best19 live price referee
         run: |
           set -euo pipefail
           sleep 3
-          curl -fsS --max-time 30 "$CANARY_URL/referee?market=ft_1x2&selection=HOME" -o /tmp/r1.json
+          curl -fsS --max-time 30 "$CANARY_URL/referee?market=ft_1x2&selection=HOME" -o /tmp/one.json
           node - <<'NODE'
           const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/r1.json'));
+          const j=JSON.parse(fs.readFileSync('/tmp/one.json'));
           if(j.ok!==true) throw Error(JSON.stringify(j));
           if(Number(j.bookmakerCount)!==19) throw Error(`books=${j.bookmakerCount}`);
-          if(!j.best||!(Number(j.best.odds)>0)) throw Error('no best 1X2 '+JSON.stringify(j));
           const valid=(j.offers||[]).filter(x=>x.pass&&Number(x.odds)>0);
+          if(!valid.length||!j.best) throw Error('No valid 1X2 offers');
           const max=Math.max(...valid.map(x=>Number(x.odds)));
-          if(Math.abs(Number(j.best.odds)-max)>1e-9) throw Error(`1X2 not max best=${j.best.odds} max=${max}`);
+          if(Math.abs(Number(j.best.odds)-max)>1e-9) throw Error(`best=${j.best.odds} max=${max}`);
           fs.writeFileSync('/tmp/id',String(j.fixtureId));
-          console.log('CANARY_1X2_BEST19_PASS',j.fixtureId,j.best.bookmaker,j.best.odds,j.offerCount,j.fullMarket);
+          console.log('BEST19_1X2_PASS',j.fixtureId,j.best.bookmaker,j.best.odds,j.offerCount,j.fullMarket);
           NODE
           ID="$(cat /tmp/id)"
-          for spec in 'ft_ah HOME' 'ft_over OVER'; do
-            set -- $spec; market="$1"; selection="$2"
-            code="$(curl -sS --max-time 30 -o /tmp/rx.json -w '%{http_code}' "$CANARY_URL/referee?fixtureId=$ID&market=$market&selection=$selection")"
-            if [ "$code" = 409 ]; then echo "CANARY_${market}_SKIP_CANONICAL_LINE"; continue; fi
+          for item in "ft_ah HOME" "ft_over OVER"; do
+            market="${item%% *}"; selection="${item##* }"
+            code="$(curl -sS --max-time 30 -o /tmp/line.json -w '%{http_code}' "$CANARY_URL/referee?fixtureId=$ID&market=$market&selection=$selection")"
+            if [ "$code" = 409 ]; then echo "${market}: canonical line unavailable on sample; skipped"; continue; fi
             test "$code" = 200
             MARKET="$market" node - <<'NODE'
-            const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/rx.json')); const market=process.env.MARKET;
+            const fs=require('fs');
+            const j=JSON.parse(fs.readFileSync('/tmp/line.json'));
+            const market=process.env.MARKET;
             if(j.ok!==true||Number(j.bookmakerCount)!==19) throw Error(JSON.stringify(j));
-            const offers=(j.offers||[]).filter(x=>x.pass&&Number(x.odds)>0);
-            if(offers.length){
-              const max=Math.max(...offers.map(x=>Number(x.odds)));
-              if(!j.best||Math.abs(Number(j.best.odds)-max)>1e-9) throw Error(`${market} not max`);
-              for(const x of offers) if(Math.abs(Number(x.providerLine)-Number(j.canonicalProviderLine))>0.001) throw Error(`${market} line mismatch`);
+            const valid=(j.offers||[]).filter(x=>x.pass&&Number(x.odds)>0);
+            if(valid.length){
+              const max=Math.max(...valid.map(x=>Number(x.odds)));
+              if(!j.best||Math.abs(Number(j.best.odds)-max)>1e-9) throw Error(`${market}: best price is not maximum`);
+              for(const x of valid){
+                if(Math.abs(Number(x.providerLine)-Number(j.canonicalProviderLine))>0.001) throw Error(`${market}: mixed market lines`);
+              }
             }
-            console.log('CANARY_SAMELINE_PASS',market,j.canonicalProviderLine,j.best,j.offerCount,j.fullMarket);
+            console.log('BEST19_SAME_LINE_PASS',market,j.canonicalProviderLine,j.best,j.offerCount,j.fullMarket);
             NODE
           done
-          echo 'CANARY_BEST19_END_TO_END_PASS'
-
-      - name: Snapshot production settings before cutover
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS --max-time 25 "$BALL46_URL/api/engine/settings?_=$GITHUB_RUN_ID" -o /tmp/pre-settings.json
-          node -e "const j=require('/tmp/pre-settings.json');if(j.ok!==true)throw Error('settings unavailable');console.log('PRE_SETTINGS_PASS',Object.values(j.runState||{}).filter(Boolean).length,'running rules')"
-
-      - name: Dry-run production Engine
-        working-directory: workers/nomadtips3-engine-343
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
-
-      - name: Deploy Best19 referee to production Engine
-        id: prod
-        working-directory: workers/nomadtips3-engine-343
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
-
-      - name: Verify production Engine and preserved rules
-        id: verifyprod
-        shell: bash
-        run: |
-          set -euo pipefail
-          sleep 3
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?_=$GITHUB_RUN_ID" -o /tmp/post-settings.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?_=$GITHUB_RUN_ID" -o /tmp/health.json
-          node - <<'NODE'
-          const fs=require('fs'),a=JSON.parse(fs.readFileSync('/tmp/pre-settings.json')),b=JSON.parse(fs.readFileSync('/tmp/post-settings.json')),h=JSON.parse(fs.readFileSync('/tmp/health.json'));
-          if(b.ok!==true) throw Error('post settings unavailable');
-          if(JSON.stringify(a.settings)!==JSON.stringify(b.settings)) throw Error('SETTINGS_CHANGED');
-          if(JSON.stringify(a.runState)!==JSON.stringify(b.runState)) throw Error('RUN_STATE_CHANGED');
-          if(h.version!=='nomad343-engine-v5-best19-referee'||h.revision!=='343-best19-referee-20260918') throw Error('wrong engine '+JSON.stringify(h));
-          console.log('PROD_SETTINGS_PRESERVED_PASS',Object.values(b.runState||{}).filter(Boolean).length);
-          console.log('PROD_ENGINE_BEST19_PASS',h.version,h.revision,h.dataMode);
-          NODE
-          curl -fsS --max-time 30 -X POST "$BALL46_URL/api/engine/scan" -o /tmp/scan.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=$GITHUB_RUN_ID" -o /tmp/board.json
-          node - <<'NODE'
-          const fs=require('fs'),j=JSON.parse(fs.readFileSync('/tmp/board.json'));
-          if(j.ok!==true||!Array.isArray(j.fixtures)) throw Error('board unavailable '+JSON.stringify(j));
-          if(j.dataMode!=='BULK_PLUS_BEST19_REFEREE') throw Error('wrong board mode '+j.dataMode);
-          if(j.referee?.mode!=='BEST_OF_19_INPLAY') throw Error('wrong referee '+JSON.stringify(j.referee));
-          console.log('PROD_BOARD_PASS',j.fixtures.length,j.referee);
-          NODE
-          curl -fsS --max-time 25 "$BALL46_URL/api/hub/health?_=$GITHUB_RUN_ID" -o /tmp/hub.json
-          node -e "const h=require('/tmp/hub.json');if(h.ok!==true||Number(h.refreshMs)!==120000)throw Error('HUB_CHANGED');console.log('HUB_UNCHANGED_PASS',h.version,h.refreshMs)"
-          echo 'ENGINE343_BEST19_PRODUCTION_END_TO_END_PASS'
-
-      - name: Roll back production Engine on verification failure
-        if: failure() && steps.prod.outcome == 'success' && steps.verifyprod.outcome == 'failure'
-        shell: bash
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
-        run: |
-          set -euo pipefail
-          git worktree add /tmp/rollback "$ROLLBACK_REF"
-          cd /tmp/rollback/workers/nomadtips3-engine-343
-          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
-          echo 'ENGINE343_BULK_ONLY_ROLLBACK_DEPLOYED'
+          echo 'ENGINE343_BEST19_CANARY_PASS'
