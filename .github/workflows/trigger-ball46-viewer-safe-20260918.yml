@@ -1,6 +1,6 @@
 name: Trigger Ball46 Viewer-Safe Deploy 20260918
 
-# retrigger: deployed rich odds array-safe shim 20260918-1533
+# retrigger: restore all-book odds assets on Live Scores 20260918-1845
 on:
   push:
     branches: [main]
@@ -10,12 +10,63 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 jobs:
   dispatch:
     runs-on: ubuntu-24.04
     steps:
+      - name: Checkout Ball46 source branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-full-market-20260918
+          fetch-depth: 1
+
+      - name: Force current all-book odds assets on Live Scores only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          replacements={
+            'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v1-scalar-object':'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&restore=allbooks-20260918-1',
+            'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1&fix=343-live-summary-full-odds-v2-no-dom-loop':'live-summary-full-odds-343.js?v=343-live-summary-bulk-only-v3-viewer-safe&restore=allbooks-20260918-1',
+            'full-market-bookmaker-343.js?v=343-fmb-v3-bulk-snapshot-zero-click':'full-market-bookmaker-343.js?v=343-fmb-v3-bulk-snapshot-zero-click&restore=allbooks-20260918-1',
+            'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate':'rich-odds-on-demand-343.js?v=343-expanded-full-market-bulk-only-v6-market-alias-safe&restore=allbooks-20260918-1',
+            'full-market-bookmaker-343.css?v=343-fmb-v2-rich-yellow':'full-market-bookmaker-343.css?v=343-fmb-v2-rich-yellow&restore=allbooks-20260918-1',
+          }
+          changed=False
+          for old,new in replacements.items():
+            if old in s:
+              s=s.replace(old,new)
+              changed=True
+            elif new not in s:
+              raise SystemExit(f'MISSING_EXPECTED_REF: {old}')
+          p.write_text(s)
+          print('LIVE_ODDS_ASSET_REFS_READY', 'changed='+str(changed).lower())
+          PY
+          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
+          grep -Fq '343-live-summary-bulk-only-v3-viewer-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
+          grep -Fq '343-expanded-full-market-bulk-only-v6-market-alias-safe&restore=allbooks-20260918-1' nomad-live-343/index.html
+          grep -Fq "['bet365','Bet365']" nomad-live-343/full-market-bookmaker-343.js
+          grep -Fq "['crown','Crown']" nomad-live-343/full-market-bookmaker-343.js
+
+      - name: Commit Live Scores odds asset refs if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- nomad-live-343/index.html; then
+            echo 'NO_SOURCE_CHANGE_NEEDED'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/index.html
+          git commit -m 'fix(ball46): restore all-book odds viewer assets'
+          git push origin HEAD:work/ball46-full-market-20260918
+
       - name: Dispatch protected Ball46 deploy workflow
         env:
           GH_TOKEN: ${{ github.token }}
