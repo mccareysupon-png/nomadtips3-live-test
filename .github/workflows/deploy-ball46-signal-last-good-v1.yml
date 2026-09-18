@@ -1,0 +1,99 @@
+name: Deploy Ball46 Signal Last Good v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-signal-last-good-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+
+jobs:
+  patch-and-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Ball46 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Preserve last-good signal state and bump runtime ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          js=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=js.read_text()
+          old="catch{signalMap=new Map();signalMirror={}}"
+          new="catch(err){console.warn('Signals refresh failed; keeping last-good signal state',err)}"
+          if old in s:
+              s=s.replace(old,new,1)
+          elif new not in s:
+              raise SystemExit('loadSignals catch pattern not found')
+          js.write_text(s)
+
+          idx=Path('nomad-live-343/index.html')
+          h=idx.read_text()
+          oldref='dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-1'
+          newref='dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-2&signal-last-good=v1'
+          if oldref in h:
+              h=h.replace(oldref,newref,1)
+          elif newref not in h:
+              raise SystemExit('dashboard index ref pattern not found')
+          idx.write_text(h)
+          PY
+          grep -Fq "Signals refresh failed; keeping last-good signal state" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'signal-last-good=v1' nomad-live-343/index.html
+          node --check nomad-live-343/dashboard-v2-stage3.js
+
+      - name: Commit source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- nomad-live-343/dashboard-v2-stage3.js nomad-live-343/index.html; then
+            git config user.name 'Ball46 Runtime Bot'
+            git config user.email 'actions@users.noreply.github.com'
+            git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/index.html
+            git commit -m 'fix(ball46): preserve last-good live prediction state'
+            git push origin HEAD:${SOURCE_BRANCH}
+          fi
+
+      - name: Deploy Ball46 wrapper and assets only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production signal resilience
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
+            curl -fsS --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/dash.js || true
+            if grep -Fq 'signal-last-good=v1' /tmp/index.html && grep -Fq 'keeping last-good signal state' /tmp/dash.js; then break; fi
+            sleep 2
+          done
+          grep -Fq 'signal-last-good=v1' /tmp/index.html
+          grep -Fq 'keeping last-good signal state' /tmp/dash.js
+          grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html
+          grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html
+          if grep -Fq 'rich-odds-on-demand-343.js' /tmp/index.html; then echo 'OLD_SHIM_RELOADED'; exit 20; fi
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          node - <<'NODE'
+          const s=require('/tmp/signals.json');
+          if(s.ok!==true||!Array.isArray(s.signals)) throw Error(JSON.stringify(s));
+          console.log('SIGNAL_LAST_GOOD_PROD_PASS',JSON.stringify({version:s.version,count:s.signals.length}));
+          NODE
