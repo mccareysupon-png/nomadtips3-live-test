@@ -1,0 +1,131 @@
+name: Deploy Ball46 Runtime Order v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-runtime-order-v1.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy-runtime-order:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Ball46 source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Enforce one-owner script order
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          start=s.index('<script src="bulk-odds-compat-343.js')
+          end_marker='<script src="v2-shared.js?v=343-v2-shared-v1" defer></script>'
+          end=s.index(end_marker,start)+len(end_marker)
+          block=''.join([
+            '<script src="bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&order=20260918-1" defer></script>',
+            '<script src="dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-1" defer></script>',
+            '<script src="dashboard-v2-tune.js?v=343-dashboard-v2-ui-tune-v4-scroll-safe&order=20260918-1" defer></script>',
+            '<script src="expanded-match-343.js?v=343-expand-v4-stable-lifecycle&order=20260918-1" defer></script>',
+            '<script src="full-market-bookmaker-343.js?v=343-fmb-v3-bulk-snapshot-zero-click&order=20260918-1" defer></script>',
+            '<script src="live-summary-full-odds-343.js?v=343-live-summary-john-gated-v5-rich-owner&order=20260918-1" defer></script>',
+            '<script src="live-signal-inline-343.js?v=343-live-prediction-inline-v2-v2rows-resilient&order=20260918-1" defer></script>',
+            '<script src="v2-shared.js?v=343-v2-shared-v1&order=20260918-1" defer></script>',
+          ])
+          p.write_text(s[:start]+block+s[end:])
+          PY
+
+          grep -Fq '343-live-summary-john-gated-v5-rich-owner' nomad-live-343/index.html
+          grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' nomad-live-343/index.html
+          ! grep -Fq 'rich-odds-on-demand-343.js' nomad-live-343/index.html
+          grep -Fq "343-rich-odds-compat-v7-no-fetch-wrapper" nomad-live-343/rich-odds-on-demand-343.js
+          grep -Fq "343-live-prediction-inline-v2-v2rows-resilient" nomad-live-343/live-signal-inline-343.js
+          grep -Fq "343-live-summary-john-gated-v5-rich-owner" nomad-live-343/live-summary-full-odds-343.js
+          node --check nomad-live-343/bulk-odds-compat-343.js
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/expanded-match-343.js
+          node --check nomad-live-343/full-market-bookmaker-343.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          node --check nomad-live-343/live-signal-inline-343.js
+          node --check nomad-live-343/rich-odds-on-demand-343.js
+
+          # Only the bulk compatibility layer may own window.fetch among live-page runtime files.
+          count=$(grep -l 'window.fetch=' \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/live-signal-inline-343.js \
+            nomad-live-343/rich-odds-on-demand-343.js | wc -l)
+          test "$count" = 1
+          echo "FETCH_OWNER_COUNT=$count"
+
+      - name: Persist ordered index on source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- nomad-live-343/index.html; then
+            echo 'Index already ordered'
+          else
+            git config user.name 'Ball46 Runtime Bot'
+            git config user.email 'actions@users.noreply.github.com'
+            git add nomad-live-343/index.html
+            git commit -m 'fix(ball46): order live runtime owners and restore prediction'
+            git push origin HEAD:${SOURCE_BRANCH}
+          fi
+
+      - name: Deploy Ball46 wrapper and assets only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production runtime order and feeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            code=$(curl -sS --max-time 25 -o /tmp/index.html -w '%{http_code}' "$BALL46_URL/?_=${GITHUB_RUN_ID}-${n}" || true)
+            if [ "$code" = 200 ] && grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html; then break; fi
+            sleep 2
+          done
+          grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html
+          grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html
+          ! grep -Fq 'rich-odds-on-demand-343.js' /tmp/index.html
+
+          curl -fsS --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?_=${GITHUB_RUN_ID}" -o /tmp/rich.js
+          grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/rich.js
+          curl -fsS --max-time 25 "$BALL46_URL/live-signal-inline-343.js?_=${GITHUB_RUN_ID}" -o /tmp/pred.js
+          grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/pred.js
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?_=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?_=${GITHUB_RUN_ID}" -o /tmp/full-health.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json');
+          const s=require('/tmp/signals.json');
+          const h=require('/tmp/full-health.json');
+          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          if(s.ok!==true||!Array.isArray(s.signals)) throw Error('SIGNALS_FAIL');
+          if(h.ok!==true||h.component!=='BALL46_FULL_MARKET_GATE') throw Error('FULL_MARKET_HEALTH_FAIL');
+          const oddsFixtures=b.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
+          console.log('BALL46_RUNTIME_PASS',JSON.stringify({fixtures:b.fixtures.length,fixturesWithOdds:oddsFixtures,signals:s.signals.length,fullMarketVersion:h.version,fullMarketMode:h.mode,retryAfterSec:h.retryAfterSec}));
+          NODE
