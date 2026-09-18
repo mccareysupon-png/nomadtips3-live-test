@@ -25,7 +25,11 @@ jobs:
         run: |
           set -u
           probe() {
-            local label="$1" url="$2" out="/tmp/${label}.body" hdr="/tmp/${label}.hdr"
+            local label="$1"
+            local url="$2"
+            local out="/tmp/${label}.body"
+            local hdr="/tmp/${label}.hdr"
+            local code
             code="$(curl -sS --max-time 20 -D "$hdr" -o "$out" -w '%{http_code}' "$url" || true)"
             echo "=== $label ==="
             echo "URL=$url"
