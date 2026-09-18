@@ -1,27 +1,33 @@
-(()=>{'use strict';
-const API='/api/engine/signals',POLL=30000;
-let groups=new Map(),ready=false,busy=false;
+(()=>{
+'use strict';
+const VERSION='343-live-prediction-inline-v2-v2rows-resilient';
+const API='/api/engine/signals';
+const POLL_MS=30000;
+let groups=new Map();
+let ready=false;
+let busy=false;
+let lastGoodAt=0;
+
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const num=v=>{if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(v);return Number.isFinite(n)?n:null};
+const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const show=v=>v===null||v===undefined||v===''?'—':String(v);
+const marketKey=s=>String(s?.market||s?.providerMarket||'').toLowerCase();
 function numberText(v){const n=num(v);if(n===null)return'—';return Number.isInteger(n)?String(n):String(Math.round(n*1000)/1000)}
-function signedLineText(v){const n=num(v);if(n===null)return'—';const t=numberText(n);return n>0?`+${t}`:t}
-function marketKey(s){return String(s?.market||s?.providerMarket||'').toLowerCase()}
-function isAsian(s){const k=marketKey(s);return /(^|_)(ah|asian)(_|$)/.test(k)||k.includes('handicap')}
+function signed(v){const n=num(v);if(n===null)return'';const t=numberText(n);return n>0?`+${t}`:t}
+function marketShort(s){const k=marketKey(s);if(k==='ft_1x2')return'1X2';if(k==='ft_ah')return'AH';if(k==='ft_over'||k==='ft_under')return'O/U';if(k==='ht_1x2')return'HT 1X2';if(k==='ht_ah')return'HT AH';if(k==='ht_over'||k==='ht_under')return'HT O/U';if(k.includes('corner'))return k.includes('ah')?'COR AH':'COR O/U';if(k.includes('card'))return k.includes('ah')?'CARDS AH':'CARDS O/U';if(k.includes('btts'))return'BTTS';return String(s?.marketLabel||s?.market||'SIGNAL').trim().slice(0,14)||'SIGNAL'}
+function isAsian(s){const k=marketKey(s);return k.includes('ah')||k.includes('asian')||k.includes('handicap')}
 function isTotal(s){const k=marketKey(s),sel=String(s?.selection||'').toUpperCase();return sel==='OVER'||sel==='UNDER'||k.includes('over')||k.includes('under')||k.includes('goal_line')||k.includes('corner_line')||k.includes('card_line')}
-function lineText(s){const n=num(s?.line);if(n===null)return'';return isAsian(s)?signedLineText(n):numberText(n)}
-function marketShort(s){const k=marketKey(s);if(k==='ft_1x2')return'1X2';if(k==='ft_ah')return'AH';if(k==='ft_over'||k==='ft_under')return'O/U';if(k==='ht_1x2')return'HT 1X2';if(k==='ht_ah')return'HT AH';if(k==='ht_over'||k==='ht_under')return'HT O/U';if(k==='ft_corner_ah')return'COR AH';if(k==='ft_corner_over'||k==='ft_corner_under')return'COR O/U';if(k==='ht_corner_over'||k==='ht_corner_under')return'HT COR O/U';if(k==='ft_cards_ah')return'CARDS AH';if(k==='ft_cards_over'||k==='ft_cards_under')return'CARDS O/U';if(k==='ft_btts_yes'||k==='ft_btts_no')return'BTTS';const label=String(s?.marketLabel||s?.market||'SIGNAL').trim();return label.length>12?label.slice(0,12):label}
-function pickText(s){const sel=String(s?.selection||'').toUpperCase()||'—',line=lineText(s);if(isAsian(s)||isTotal(s))return line?`${sel} ${line}`:sel;return sel}
-function scoreText(v){if(typeof v==='string'&&v.trim())return v;if(Array.isArray(v))return`${show(v[0])}-${show(v[1])}`;if(v&&typeof v==='object')return`${show(v.home??v.h)}-${show(v.away??v.a)}`;return'—'}
-function entryMinute(s){const m=s?.entryMinute??s?.minute;return m===null||m===undefined||m===''?'—':`${show(m)}'`}
-function entryScore(s){return scoreText(s?.entryScore??s?.scoreAt)}
+function pickText(s){const sel=String(s?.selection||'').trim().toUpperCase()||'—';const line=num(s?.line);if(line===null)return sel;return`${sel} ${isAsian(s)?signed(line):numberText(line)}`}
 function group(rows){const map=new Map();for(const s of rows){const id=String(s?.fixtureId??'').trim();if(!id)continue;const a=map.get(id)||[];a.push(s);map.set(id,a)}for(const a of map.values())a.sort((x,y)=>Number(y?.createdAt||0)-Number(x?.createdAt||0));return map}
-function injectStyle(){if(document.getElementById('nomad343-live-signal-inline'))return;const s=document.createElement('style');s.id='nomad343-live-signal-inline';s.textContent=`.fixture-scoreboard{grid-template-columns:66px minmax(0,1fr) 76px minmax(0,1fr) 118px!important}.fixture-side{min-width:0}.live-signal-link{display:grid;gap:3px;justify-items:end;max-width:118px;text-align:right;text-decoration:none}.live-signal-head{display:inline-flex;align-items:center;gap:4px;font-size:8px;line-height:1;font-weight:900;letter-spacing:.025em;color:#69e493;white-space:nowrap}.live-signal-head i{width:5px;height:5px;border-radius:50%;background:#62e88f;box-shadow:0 0 6px rgba(98,232,143,.78);animation:liveSignalPulse 1.25s ease-in-out infinite}.live-signal-sub,.live-signal-entry{display:block;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#89958d;font-size:7px;line-height:1.08;font-weight:500;letter-spacing:.005em}.live-signal-entry{color:#717d75}.live-signal-more{color:#5fcf86}.live-no-signal{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;color:#78837c;font-size:8px;font-weight:800;white-space:nowrap}.live-no-signal i{width:5px;height:5px;border-radius:50%;background:#667069}.live-signal-link:hover .live-signal-head{color:#8af0ad}@keyframes liveSignalPulse{0%,100%{opacity:1}50%{opacity:.35}}@media(prefers-reduced-motion:reduce){.live-signal-head i{animation:none}}@media(max-width:760px){.fixture-scoreboard{grid-template-columns:46px minmax(0,1fr) 54px minmax(0,1fr) 88px!important}.live-signal-link{max-width:88px;gap:2px}.live-signal-head,.live-no-signal{font-size:6.8px}.live-signal-head i,.live-no-signal i{width:4px;height:4px}.live-signal-sub,.live-signal-entry{max-width:88px;font-size:6.1px}}`;document.head.appendChild(s)}
-function renderSide(id,side){if(!side)return;if(!ready){side.innerHTML='<span class="live-no-signal"><i></i>SIGNAL —</span>';return}const rows=groups.get(id)||[];if(!rows.length){side.innerHTML='<span class="live-no-signal"><i></i>NO SIGNAL</span>';return}const s=rows[0],count=rows.length,head=count>1?`${count} SIGNALS LOCKED`:'SIGNAL LOCKED',detail=`${marketShort(s)} · ${pickText(s)} @ ${show(s.odds)}`,more=count>1?` · +${count-1} MORE`:'';side.innerHTML=`<a class="live-signal-link" data-signal-link href="signal.html?fixture=${encodeURIComponent(id)}" aria-label="Open ${esc(head)} details"><span class="live-signal-head"><i aria-hidden="true"></i>${esc(head)}</span><span class="live-signal-sub">${esc(detail)}</span><span class="live-signal-entry">ENTRY ${esc(entryMinute(s))} · ${esc(entryScore(s))}<span class="live-signal-more">${esc(more)}</span></span></a>`}
-function decorate(){document.querySelectorAll('.match-card[data-match-id]').forEach(card=>{const id=String(card.dataset.matchId||''),side=card.querySelector('.fixture-side');renderSide(id,side)})}
-async function load(){if(busy)return;busy=true;try{const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);const j=await r.json();if(j?.ok!==true||!Array.isArray(j.signals))throw new Error('SIGNALS_NOT_READY');groups=group(j.signals);ready=true;decorate()}catch{ready=false;decorate()}finally{busy=false}}
-document.addEventListener('click',e=>{if(e.target.closest('[data-signal-link]'))e.stopPropagation()},true);
-document.addEventListener('keydown',e=>{if(e.target.closest('[data-signal-link]'))e.stopPropagation()},true);
-const observer=new MutationObserver(()=>decorate());document.querySelectorAll('[data-board]').forEach(el=>observer.observe(el,{childList:true}));
-injectStyle();load();setInterval(load,POLL);
+function style(){if(document.getElementById('nomad343-live-prediction-inline-style'))return;const s=document.createElement('style');s.id='nomad343-live-prediction-inline-style';s.textContent=`.signal-cell.prediction-live{display:flex!important;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;min-width:0}.signal-cell.prediction-live .pred-main{font-size:8px;font-weight:900;line-height:1;color:#15945f;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.signal-cell.prediction-live .pred-sub{font-size:7px;font-weight:700;line-height:1;color:var(--muted);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.signal-cell.prediction-live.no-pick .pred-main{color:var(--muted)}@media(max-width:760px){.signal-cell.prediction-live .pred-main{font-size:6.8px}.signal-cell.prediction-live .pred-sub{font-size:6px}}`;document.head.appendChild(s)}
+function decorateRow(row){const id=String(row?.dataset?.matchId||'').trim(),cell=row?.querySelector?.('.signal-cell');if(!id||!cell)return;const rows=groups.get(id)||[];cell.classList.add('prediction-live');if(rows.length){const s=rows[0],odds=num(s?.odds),count=rows.length;cell.classList.add('locked');cell.classList.remove('no-pick');cell.innerHTML=`<span class="pred-main">${esc(marketShort(s))} · ${esc(pickText(s))}</span><span class="pred-sub">${odds===null?'LIVE':`@ ${odds.toFixed(2)}`}${count>1?` · +${count-1}`:''}</span>`;cell.title=`Live prediction · ${marketShort(s)} · ${pickText(s)}${odds===null?'':` @ ${odds.toFixed(2)}`}`;return}cell.classList.remove('locked');cell.classList.add('no-pick');cell.innerHTML='<span class="pred-main">WATCH</span><span class="pred-sub">NO LIVE PICK</span>';cell.title=ready?'No active live prediction':'Waiting for signal feed'}
+function decorate(){document.querySelectorAll('.match-row[data-match-id]').forEach(decorateRow)}
+async function load(){if(busy)return;busy=true;try{const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'});if(!r.ok)throw new Error(`HTTP_${r.status}`);const j=await r.json();if(j?.ok!==true||!Array.isArray(j.signals))throw new Error('SIGNALS_NOT_READY');groups=group(j.signals);ready=true;lastGoodAt=Date.now();decorate()}catch(err){
+  // Never blank a last-good live prediction because of one transient signals request.
+  if(!lastGoodAt)ready=false;
+  decorate();
+  console.warn('Live prediction refresh unavailable',err);
+}finally{busy=false}}
+function start(){style();const host=document.querySelector('[data-board-sections]');if(host)new MutationObserver(()=>decorate()).observe(host,{childList:true,subtree:true});load();setInterval(load,POLL_MS);window.NOMAD343_LIVE_PREDICTION_INLINE={version:VERSION,source:'ENGINE_SIGNALS',pollMs:POLL_MS,lastGoodAt:()=>lastGoodAt,reload:load,decorate}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
