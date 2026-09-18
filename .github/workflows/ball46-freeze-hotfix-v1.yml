@@ -1,0 +1,129 @@
+name: Ball46 Freeze Hotfix v1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ball46-freeze-hotfix-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+
+jobs:
+  patch-deploy-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Ball46 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Make Dashboard the single Live Prediction owner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          dash=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=dash.read_text()
+          s=s.replace("const VERSION='343-dashboard-v2-stage3-schema-accurate-v2';","const VERSION='343-dashboard-v2-stage3-schema-accurate-v3-single-signal-owner';",1)
+
+          helper=r'''function inlineSignalHtml(s){
+            if(!s)return '<div class="signal-cell prediction-live no-pick"><span class="pred-main">WATCH</span><span class="pred-sub">NO LIVE PICK</span></div>';
+            const market=String(s?.marketLabel||s?.market||'SIGNAL').replace(/^FT_/i,'').replaceAll('_',' ').trim().toUpperCase()||'SIGNAL';
+            const selection=String(s?.selection||'—').trim().toUpperCase()||'—';
+            const line=num(s?.line??s?.selectionLine),odds=num(s?.odds);
+            const lineText=line===null?'':`${line>0?'+':''}${show(line,2)}`;
+            const pick=[selection,lineText].filter(Boolean).join(' ');
+            return `<div class="signal-cell locked prediction-live"><span class="pred-main">${esc(market)} · ${esc(pick)}</span><span class="pred-sub">${odds===null?'LIVE':`@ ${odds.toFixed(2)}`}</span></div>`;
+          }
+          '''
+          if 'function inlineSignalHtml(s)' not in s:
+              marker='function rowHtml(f)'
+              if marker not in s: raise SystemExit('rowHtml marker missing')
+              s=s.replace(marker,helper+marker,1)
+
+          old='<div class="signal-cell ${sig?\'locked\':\'\'}">${sig?\'SIGNAL\':\'WATCH\'}</div>'
+          if old in s:
+              s=s.replace(old,'${inlineSignalHtml(sig)}',1)
+          elif '${inlineSignalHtml(sig)}' not in s:
+              raise SystemExit('signal cell replacement target missing')
+          dash.write_text(s)
+
+          idx=Path('nomad-live-343/index.html')
+          h=idx.read_text()
+          h=re.sub(r'<script src="live-signal-inline-343\.js[^>]*></script>','',h,count=1)
+          h=h.replace('dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-2&signal-last-good=v1','dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-3&signal-owner=dashboard-v1',1)
+          css='.signal-cell.prediction-live{display:flex!important;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;min-width:0}.signal-cell.prediction-live .pred-main{font-size:8px;font-weight:900;line-height:1;color:#15945f;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.signal-cell.prediction-live .pred-sub{font-size:7px;font-weight:700;line-height:1;color:var(--muted);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}.signal-cell.prediction-live.no-pick .pred-main{color:var(--muted)}@media(max-width:760px){.signal-cell.prediction-live .pred-main{font-size:6.8px}.signal-cell.prediction-live .pred-sub{font-size:6px}}'
+          if 'signal-cell.prediction-live' not in h:
+              h=h.replace('</style>',css+'</style>',1)
+          if 'live-signal-inline-343.js' in h: raise SystemExit('live signal observer still loaded')
+          if 'signal-owner=dashboard-v1' not in h: raise SystemExit('dashboard cache-bust missing')
+          idx.write_text(h)
+
+          retired=Path('nomad-live-343/live-signal-inline-343.js')
+          retired.write_text("(()=>{'use strict';window.NOMAD343_LIVE_PREDICTION_INLINE={version:'343-live-prediction-inline-v3-retired-observer-free',source:'DASHBOARD_SINGLE_OWNER',retired:true,reload:()=>window.NOMAD343_DASHBOARD_V2?.reload?.(),decorate:()=>{}};})();\n")
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/live-signal-inline-343.js
+          grep -Fq 'function inlineSignalHtml(s)' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'signal-owner=dashboard-v1' nomad-live-343/index.html
+          ! grep -Fq 'live-signal-inline-343.js' nomad-live-343/index.html
+          ! grep -Fq 'MutationObserver' nomad-live-343/live-signal-inline-343.js
+
+      - name: Commit source hotfix
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- nomad-live-343/dashboard-v2-stage3.js nomad-live-343/index.html nomad-live-343/live-signal-inline-343.js; then
+            git config user.name 'Ball46 Runtime Bot'
+            git config user.email 'actions@users.noreply.github.com'
+            git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/index.html nomad-live-343/live-signal-inline-343.js
+            git commit -m 'fix(ball46): remove recursive live prediction DOM observer'
+            git push origin HEAD:${SOURCE_BRANCH}
+          fi
+
+      - name: Deploy Ball46 assets and wrapper only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify freeze hotfix in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/?freezehotfix=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
+            curl -fsS --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?freezehotfix=${GITHUB_RUN_ID}-${n}" -o /tmp/dash.js || true
+            curl -fsS --max-time 25 "$BALL46_URL/live-signal-inline-343.js?freezehotfix=${GITHUB_RUN_ID}-${n}" -o /tmp/retired.js || true
+            if grep -Fq 'signal-owner=dashboard-v1' /tmp/index.html && grep -Fq 'inlineSignalHtml' /tmp/dash.js && grep -Fq 'retired-observer-free' /tmp/retired.js; then break; fi
+            sleep 2
+          done
+          grep -Fq 'signal-owner=dashboard-v1' /tmp/index.html
+          ! grep -Fq 'live-signal-inline-343.js' /tmp/index.html
+          grep -Fq 'inlineSignalHtml' /tmp/dash.js
+          grep -Fq 'retired-observer-free' /tmp/retired.js
+          ! grep -Fq 'MutationObserver' /tmp/retired.js
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?freezehotfix=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?freezehotfix=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?freezehotfix=${GITHUB_RUN_ID}" -o /tmp/full.json
+          node - <<'NODE'
+          const b=require('/tmp/board.json'),s=require('/tmp/signals.json'),f=require('/tmp/full.json');
+          if(b.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_BAD '+JSON.stringify(b));
+          if(s.ok!==true||!Array.isArray(s.signals))throw Error('SIGNALS_BAD '+JSON.stringify(s));
+          if(f.ok!==true)throw Error('FULL_BAD '+JSON.stringify(f));
+          console.log('FREEZE_HOTFIX_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,fullVersion:f.version}));
+          NODE
