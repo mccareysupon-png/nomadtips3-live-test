@@ -1,0 +1,56 @@
+name: Diagnose Ball46 Prediction Preview 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-ball46-prediction-preview-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  PREVIEW_URL: https://nomadtips3-343-prediction-preview.mccarey-supon.workers.dev
+  BALL46_URL: https://ball46.com
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe preview vs production read-only
+        shell: bash
+        run: |
+          set -u
+          probe() {
+            local label="$1" url="$2" out="/tmp/${label}.body" hdr="/tmp/${label}.hdr"
+            code="$(curl -sS --max-time 20 -D "$hdr" -o "$out" -w '%{http_code}' "$url" || true)"
+            echo "=== $label ==="
+            echo "URL=$url"
+            echo "HTTP=$code"
+            grep -Ei '^(content-type|server|cf-ray|x-nomad-|cache-control):' "$hdr" || true
+            echo 'BODY:'
+            head -c 1200 "$out" 2>/dev/null || true
+            echo
+          }
+
+          probe preview_asset "$PREVIEW_URL/live-prediction-v1.js?diag=$GITHUB_RUN_ID"
+          probe preview_root "$PREVIEW_URL/?diag=$GITHUB_RUN_ID"
+          probe preview_engine_health "$PREVIEW_URL/api/engine/health?diag=$GITHUB_RUN_ID"
+          probe preview_engine_registry "$PREVIEW_URL/api/engine/registry?diag=$GITHUB_RUN_ID"
+          probe preview_engine_board "$PREVIEW_URL/api/engine/board?diag=$GITHUB_RUN_ID"
+          probe preview_hub_health "$PREVIEW_URL/api/hub/health?diag=$GITHUB_RUN_ID"
+          probe preview_hub_snapshot "$PREVIEW_URL/api/hub/snapshot?limit=1&diag=$GITHUB_RUN_ID"
+
+          probe engine_direct_health "$ENGINE_URL/health?diag=$GITHUB_RUN_ID"
+          probe engine_direct_registry "$ENGINE_URL/registry?diag=$GITHUB_RUN_ID"
+          probe engine_direct_board "$ENGINE_URL/board?diag=$GITHUB_RUN_ID"
+
+          probe production_engine_health "$BALL46_URL/api/engine/health?diag=$GITHUB_RUN_ID"
+          probe production_engine_registry "$BALL46_URL/api/engine/registry?diag=$GITHUB_RUN_ID"
+          probe production_engine_board "$BALL46_URL/api/engine/board?diag=$GITHUB_RUN_ID"
+          probe production_hub_health "$BALL46_URL/api/hub/health?diag=$GITHUB_RUN_ID"
+
+          echo DIAGNOSTIC_COMPLETE
