@@ -78,47 +78,28 @@ async function activeSignals(request, env) {
     const fixture = liveFixtureMap.get(String(signal.fixtureId));
     return {
       ...signal,
-      mirrorMinute: liveMinute(fixture),
-      mirrorScore: copy(fixture?.goals),
-      mirrorState: 'LIVE',
-      mirrorSource: 'ENGINE_BOARD_LIVE',
-      liveStatistics: copy(fixture?.statistics),
-      liveCorners: copy(fixture?.corners),
-      liveCards: copy(fixture?.cards),
-      liveEvents: Array.isArray(fixture?.events) ? copy(fixture.events) : [],
-      liveStatus: fixture?.status ?? null,
-      liveStatusCode: fixture?.statusCode ?? null,
-      liveUpdatedAt: boardData?.hubFetchedAt ?? null,
-      liveAgeMs: num(boardData?.hubAgeMs)
+      mirrorMinute: liveMinute(fixture), mirrorScore:copy(fixture?.goals), mirrorState:'LIVE', mirrorSource:'ENGINE_BOARD_LIVE',
+      liveStatistics:copy(fixture?.statistics), liveCorners:copy(fixture?.corners), liveCards:copy(fixture?.cards),
+      liveEvents:Array.isArray(fixture?.events)?copy(fixture.events):[], liveStatus:fixture?.status??null, liveStatusCode:fixture?.statusCode??null,
+      liveUpdatedAt:boardData?.hubFetchedAt??null, liveAgeMs:num(boardData?.hubAgeMs)
     };
-  }).sort((a, b) => Number(b?.createdAt || 0) - Number(a?.createdAt || 0));
+  }).sort((a,b)=>Number(b?.createdAt||0)-Number(a?.createdAt||0));
 
   return Response.json({
     ...signalData,
     signals,
-    mirror: {
-      source: 'ENGINE_BOARD_LIVE',
-      externalRequestsAdded: 0,
-      boardFixtures: fixtures.length,
-      liveFixtures: liveFixtures.length,
-      activeMatches: new Set(signals.map(s => String(s.fixtureId))).size,
-      activeSignals: signals.length,
-      hiddenPendingSignals,
-      hubFetchedAt: boardData?.hubFetchedAt ?? null,
-      hubAgeMs: num(boardData?.hubAgeMs),
-      stale: Boolean(boardData?.stale)
-    }
-  }, { headers: { 'cache-control': 'no-store' } });
+    mirror:{ source:'ENGINE_BOARD_LIVE', externalRequestsAdded:0, boardFixtures:fixtures.length, liveFixtures:liveFixtures.length,
+      activeMatches:new Set(signals.map(s=>String(s.fixtureId))).size, activeSignals:signals.length, hiddenPendingSignals,
+      hubFetchedAt:boardData?.hubFetchedAt??null, hubAgeMs:num(boardData?.hubAgeMs), stale:Boolean(boardData?.stale) }
+  }, { headers:{'cache-control':'no-store'} });
 }
 
 async function fullMarketCompat(request, env, path) {
-  if (!env.FULL_MARKET) {
-    return Response.json({ ok: false, error: 'FULL_MARKET_SERVICE_NOT_BOUND' }, { status: 503, headers: { 'cache-control': 'no-store' } });
-  }
+  if (!env.FULL_MARKET) return Response.json({ok:false,error:'FULL_MARKET_SERVICE_NOT_BOUND'},{status:503,headers:{'cache-control':'no-store'}});
   if (path === '/health' || path === '/status') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
   if (path === '/fixture-odds') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
   if (path === '/settings') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/settings'));
-  return Response.json({ ok: false, error: 'FULL_MARKET_ROUTE_NOT_FOUND' }, { status: 404, headers: { 'cache-control': 'no-store' } });
+  return Response.json({ok:false,error:'FULL_MARKET_ROUTE_NOT_FOUND'},{status:404,headers:{'cache-control':'no-store'}});
 }
 
 export default {
@@ -133,6 +114,10 @@ export default {
       const path = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(engineRequest(request, path));
     }
+    if (url.pathname === '/api/full-market/settings') {
+      if (!env.FULL_MARKET) return Response.json({ok:false,error:'FULL_MARKET_SERVICE_NOT_BOUND'},{status:503});
+      return env.FULL_MARKET.fetch(fullMarketRequest(request, '/settings'));
+    }
     if (url.pathname.startsWith('/api/full-market/')) {
       const path = url.pathname.replace('/api/full-market', '') || '/';
       return fullMarketCompat(request, env, path);
@@ -144,9 +129,7 @@ export default {
       url.pathname === '/5usd-control.html'
     )) return noStoreUiAsset(request, env);
     if (url.pathname === '/') {
-      const assetUrl = new URL(request.url);
-      assetUrl.pathname = '/index.html';
-      return noStoreUiAsset(new Request(assetUrl, request), env);
+      const assetUrl = new URL(request.url); assetUrl.pathname='/index.html'; return noStoreUiAsset(new Request(assetUrl,request),env);
     }
     return env.ASSETS.fetch(request);
   }
