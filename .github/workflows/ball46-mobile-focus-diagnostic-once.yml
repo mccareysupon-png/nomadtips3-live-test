@@ -20,7 +20,7 @@ jobs:
           set -u
           for base in https://ball46-production.mccarey-supon.workers.dev https://ball46.com; do
             echo "=== $base ==="
-            for path in /index.html /mobile-match-focus-343.js /mobile-match-focus-343.css /api/hub/health /api/engine/board; do
+            for path in /index.html /mobile-match-focus-343.js /mobile-match-focus-343.css /api/hub/health /api/engine/board /api/engine/signals; do
               code=$(curl -sS --max-time 25 -D /tmp/h -o /tmp/b -w '%{http_code}' "$base$path?diag=${GITHUB_RUN_ID}" || true)
               type=$(awk 'BEGIN{IGNORECASE=1} /^content-type:/{gsub(/\r/,"");sub(/^[^:]*:[[:space:]]*/,"");print;exit}' /tmp/h)
               size=$(wc -c </tmp/b 2>/dev/null || echo 0)
@@ -28,5 +28,6 @@ jobs:
               if [ "$path" = '/index.html' ]; then grep -o 'mobile-match-focus-343[^"<]*' /tmp/b || true; fi
               if [ "$path" = '/mobile-match-focus-343.js' ]; then grep -o '343-mobile-match-focus-v1' /tmp/b | head -1 || true; fi
               if [ "$path" = '/mobile-match-focus-343.css' ]; then grep -o '@media(max-width:900px)' /tmp/b | head -1 || true; fi
+              if [[ "$path" == /api/* ]]; then node -e 'const fs=require("fs");const j=JSON.parse(fs.readFileSync("/tmp/b","utf8"));if(j.ok!==true)process.exit(2);' || echo "API_JSON_NOT_OK $path"; fi
             done
           done
