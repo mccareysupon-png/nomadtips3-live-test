@@ -105,6 +105,13 @@ jobs:
           const books=new Set();
           for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
           console.log('BALL46_HUB_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
+          if(withOdds[0]){
+            const po=withOdds[0].providerOdds||{};
+            const shape={fixtureId:withOdds[0].fixtureId,providerOddsKeys:Object.keys(po),nested:{}};
+            for(const [k,v] of Object.entries(po).slice(0,10)) shape.nested[k]=v&&typeof v==='object'?Object.keys(v).slice(0,30):typeof v;
+            console.log('BALL46_HUB_ODDS_SHAPE',JSON.stringify(shape));
+            console.log('BALL46_HUB_ODDS_SAMPLE',JSON.stringify(po).slice(0,5000));
+          }
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?recover=${GITHUB_RUN_ID}" -o /tmp/board.json
@@ -118,6 +125,12 @@ jobs:
           for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
           console.log('BALL46_ENGINE_PASS',fs.length);
           console.log('BALL46_ENGINE_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
+          if(withOdds[0]){
+            const po=withOdds[0].providerOdds||{};
+            const shape={fixtureId:withOdds[0].fixtureId,providerOddsKeys:Object.keys(po),nested:{}};
+            for(const [k,v] of Object.entries(po).slice(0,10)) shape.nested[k]=v&&typeof v==='object'?Object.keys(v).slice(0,30):typeof v;
+            console.log('BALL46_ENGINE_ODDS_SHAPE',JSON.stringify(shape));
+          }
           NODE
 
           for page in signal.html statistics.html settings.html; do
