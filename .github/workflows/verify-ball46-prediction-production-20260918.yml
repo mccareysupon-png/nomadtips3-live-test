@@ -1,0 +1,80 @@
+name: Verify Ball46 Prediction Production 20260918
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-ball46-prediction-production-20260918.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      BALL46_URL: https://ball46.com
+    steps:
+      - name: Verify prediction assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          retry_get(){
+            local url="$1" out="$2" needle="$3"
+            for i in $(seq 1 30); do
+              code="$(curl -sS --max-time 20 -o "$out" -w '%{http_code}' "${url}?verify=${GITHUB_RUN_ID}-${i}" || true)"
+              if [ "$code" = 200 ] && grep -Fq "$needle" "$out"; then return 0; fi
+              sleep 2
+            done
+            echo "VERIFY_FAILED $url"; return 1
+          }
+          retry_get "$BALL46_URL/" /tmp/index.html 'live-prediction-v1.js'
+          retry_get "$BALL46_URL/live-prediction-v1.js" /tmp/pred.js '343-live-prediction-v1-readonly-market-ht-safe'
+          retry_get "$BALL46_URL/live-prediction-v1.css" /tmp/pred.css '.live-prediction-card'
+          grep -Fq 'READ_ONLY_SHARED_BOARD' /tmp/pred.js
+          grep -Fq 'networkRequestsAdded:0' /tmp/pred.js
+          grep -Fq 'function firstHalfClosed' /tmp/pred.js
+          echo PREDICTION_ASSETS_PASS
+
+      - name: Verify protected pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in signal.html statistics.html settings.html dashboard-v2-stage3.js; do
+            code="$(curl -sS --max-time 20 -o "/tmp/${p//\//_}" -w '%{http_code}' "$BALL46_URL/$p?verify=$GITHUB_RUN_ID" || true)"
+            test "$code" = 200 || { echo "PROTECTED_PAGE_FAIL $p $code"; exit 1; }
+          done
+          echo PROTECTED_PAGES_PASS
+
+      - name: Verify HUB and Engine unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 "$BALL46_URL/api/hub/health?verify=$GITHUB_RUN_ID" -o /tmp/hub.json
+          node - <<'NODE'
+          const h=require('/tmp/hub.json');
+          if(h.ok!==true) throw Error(JSON.stringify(h));
+          if(h.version!=='nomad343-5usd-hub-v5-last-good-continuity') throw Error(`hubVersion=${h.version}`);
+          if(Number(h.refreshMs)!==30000) throw Error(`refreshMs=${h.refreshMs}`);
+          console.log('HUB_PASS',h.version,h.refreshMs,h.fixtureCount);
+          NODE
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/settings?verify=$GITHUB_RUN_ID" -o /tmp/settings.json
+          node - <<'NODE'
+          const j=require('/tmp/settings.json');
+          if(j.ok!==true||!j.settings||!j.markets||!j.runState) throw Error(JSON.stringify(j));
+          console.log('ENGINE_PASS',j.version,Object.keys(j.markets).length,j.runState);
+          NODE
+
+      - name: Verify board and odds coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const live=j.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live').length;
+          const withOdds=j.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object').length;
+          if(withOdds===0) throw Error('NO_PROVIDER_ODDS');
+          console.log('BOARD_PASS',JSON.stringify({fixtures:j.fixtures.length,live,withOdds,stale:j.stale,hubVersion:j.hubVersion}));
+          NODE
+          echo BALL46_PREDICTION_READONLY_VERIFY_PASS
