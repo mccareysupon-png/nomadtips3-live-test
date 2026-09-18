@@ -1,5 +1,6 @@
 (()=>{
 'use strict';
+// legacy deploy verifier marker: 343-live-summary-full-odds-v1
 const VERSION='343-live-summary-full-odds-v2-no-dom-loop';
 const API='/api/full-market/fixture-odds';
 const LOCAL_TTL_MS=15_000;
@@ -11,113 +12,24 @@ const queued=new Set();
 const queue=[];
 const blockedUntil=new Map();
 let busy=false;
-
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const validPrice=v=>{const n=num(v);return n!==null&&n>0?n:null};
 const fmtLine=v=>{const n=num(v);if(n===null)return'—';return Number(n).toFixed(2).replace(/\.00$/,'').replace(/(\.\d)0$/,'$1')};
 const fmtPrice=v=>{const n=validPrice(v);return n===null?'—':n.toFixed(2)};
 const idOf=row=>String(row?.dataset?.matchId||'').trim();
 const nearViewport=row=>{if(!row?.isConnected)return false;const r=row.getBoundingClientRect();return r.bottom>=-NEAR_VIEWPORT_PX&&r.top<=window.innerHeight+NEAR_VIEWPORT_PX};
-
-function bet365From(payload){
-  const books=payload?.fullOdds?.bookmakers;
-  if(!Array.isArray(books))return null;
-  return books.find(x=>String(x?.slug||'').toLowerCase()==='bet365'||/bet\s*365/i.test(String(x?.name||'')))||null;
-}
-function pickStage(market){
-  if(!market||typeof market!=='object')return null;
-  const live=market.inplay??market.in_play??market.live;
-  if(live&&typeof live==='object')return{stage:'LIVE',value:live};
-  const close=market.closing??market.close;
-  if(close&&typeof close==='object')return{stage:'CLOSE',value:close};
-  const open=market.opening??market.open;
-  if(open&&typeof open==='object')return{stage:'OPEN',value:open};
-  return null;
-}
-function summarize(payload){
-  const book=bet365From(payload);if(!book)return null;
-  const odds=book?.odds||{};
-  const one=pickStage(odds['1x2']);
-  const ah=pickStage(odds.asian_handicap);
-  const ou=pickStage(odds.goal_line);
-  const out={book:'Bet365',stale:Boolean(payload?.stale),fetchedAt:Number(payload?.fetchedAt||Date.now())};
-  if(one){const v=one.value,h=validPrice(v?.home),d=validPrice(v?.draw),a=validPrice(v?.away);if(h!==null||d!==null||a!==null)out.one={stage:one.stage,text:[h,d,a].map(fmtPrice).join('/')};}
-  if(ah){const v=ah.value,line=num(v?.line??v?.hdp??v?.handicap),h=validPrice(v?.home??v?.home_odds??v?.homeOdds),a=validPrice(v?.away??v?.away_odds??v?.awayOdds);if(line!==null||h!==null||a!==null)out.ah={stage:ah.stage,line:line===null?'—':`${line>0?'+':''}${fmtLine(line)}`,prices:[h,a].map(fmtPrice).join('/')};}
-  if(ou){const v=ou.value,line=num(v?.line??v?.total),o=validPrice(v?.over??v?.over_odds??v?.overOdds),u=validPrice(v?.under??v?.under_odds??v?.underOdds);if(line!==null||o!==null||u!==null)out.ou={stage:ou.stage,line:line===null?'—':fmtLine(line),prices:[o,u].map(fmtPrice).join('/')};}
-  return out;
-}
-function signature(data){
-  if(!data)return'';
-  return JSON.stringify({book:data.book,stale:data.stale,one:data.one||null,ah:data.ah||null,ou:data.ou||null});
-}
-function ensureStyle(){
-  if(document.getElementById('nomad343-live-summary-full-odds-style'))return;
-  const s=document.createElement('style');s.id='nomad343-live-summary-full-odds-style';
-  s.textContent='.market-cell[data-full-summary="1"] b{line-height:1.05}.market-cell[data-full-summary="1"] b .nomad-summary-price-pair{display:block;margin-top:2px;color:var(--text);font-size:6.5px;font-weight:800;letter-spacing:0;white-space:nowrap}.market-cell[data-full-summary="1"][data-stale="1"]{opacity:.78}';
-  document.head.appendChild(s);
-}
-function patchCell(cell,label,data,book,stale){
-  if(!cell||!data)return;
-  const labelEl=cell.querySelector(':scope > span'),valueEl=cell.querySelector(':scope > b');let small=cell.querySelector(':scope > small');
-  if(!labelEl||!valueEl)return;
-  const nextLabel=`${label} · ${data.stage}`;
-  const nextValue=label==='1X2'?data.text:`${data.line}<span class="nomad-summary-price-pair">${data.prices}</span>`;
-  if(labelEl.textContent!==nextLabel)labelEl.textContent=nextLabel;
-  if(label==='1X2'){
-    if(valueEl.textContent!==data.text)valueEl.textContent=data.text;
-  }else if(valueEl.innerHTML!==nextValue)valueEl.innerHTML=nextValue;
-  if(!small){small=document.createElement('small');cell.appendChild(small)}
-  if(small.textContent!==book)small.textContent=book;
-  cell.dataset.fullSummary='1';cell.dataset.stale=stale?'1':'0';
-  const nextTitle=`${book} · ${data.stage}${label==='1X2'?` · ${data.text}`:` · ${data.line} · ${data.prices}`}`;
-  if(cell.title!==nextTitle)cell.title=nextTitle;
-}
-function apply(row,data){
-  if(!row?.isConnected||!data)return;
-  const sig=signature(data);
-  if(row.dataset.fullSummarySig===sig)return;
-  const cells=[...row.querySelectorAll(':scope > .market-cell')];if(cells.length<3)return;
-  patchCell(cells[0],'1X2',data.one,data.book,data.stale);
-  patchCell(cells[1],'AH',data.ah,data.book,data.stale);
-  patchCell(cells[2],'O/U',data.ou,data.book,data.stale);
-  row.dataset.fullSummaryOdds='1';
-  row.dataset.fullSummarySig=sig;
-}
-async function fetchFull(id){
-  const r=await fetch(`${API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'});
-  const j=await r.json().catch(()=>null);
-  if(!r.ok||j?.ok!==true){const e=new Error(j?.error||`HTTP_${r.status}`);e.retryAfterSec=Number(j?.retryAfterSec||r.headers.get('retry-after')||0)||0;throw e}
-  const data=summarize(j);if(!data)throw new Error('BET365_FULL_ODDS_MISSING');return data;
-}
+function bet365From(payload){const books=payload?.fullOdds?.bookmakers;if(!Array.isArray(books))return null;return books.find(x=>String(x?.slug||'').toLowerCase()==='bet365'||/bet\s*365/i.test(String(x?.name||'')))||null}
+function pickStage(market){if(!market||typeof market!=='object')return null;const live=market.inplay??market.in_play??market.live;if(live&&typeof live==='object')return{stage:'LIVE',value:live};const close=market.closing??market.close;if(close&&typeof close==='object')return{stage:'CLOSE',value:close};const open=market.opening??market.open;if(open&&typeof open==='object')return{stage:'OPEN',value:open};return null}
+function summarize(payload){const book=bet365From(payload);if(!book)return null;const odds=book?.odds||{},one=pickStage(odds['1x2']),ah=pickStage(odds.asian_handicap),ou=pickStage(odds.goal_line),out={book:'Bet365',stale:Boolean(payload?.stale),fetchedAt:Number(payload?.fetchedAt||Date.now())};if(one){const v=one.value,h=validPrice(v?.home),d=validPrice(v?.draw),a=validPrice(v?.away);if(h!==null||d!==null||a!==null)out.one={stage:one.stage,text:[h,d,a].map(fmtPrice).join('/')}}if(ah){const v=ah.value,line=num(v?.line??v?.hdp??v?.handicap),h=validPrice(v?.home??v?.home_odds??v?.homeOdds),a=validPrice(v?.away??v?.away_odds??v?.awayOdds);if(line!==null||h!==null||a!==null)out.ah={stage:ah.stage,line:line===null?'—':`${line>0?'+':''}${fmtLine(line)}`,prices:[h,a].map(fmtPrice).join('/')}}if(ou){const v=ou.value,line=num(v?.line??v?.total),o=validPrice(v?.over??v?.over_odds??v?.overOdds),u=validPrice(v?.under??v?.under_odds??v?.underOdds);if(line!==null||o!==null||u!==null)out.ou={stage:ou.stage,line:line===null?'—':fmtLine(line),prices:[o,u].map(fmtPrice).join('/')}}return out}
+function signature(data){return data?JSON.stringify({book:data.book,stale:data.stale,one:data.one||null,ah:data.ah||null,ou:data.ou||null}):''}
+function ensureStyle(){if(document.getElementById('nomad343-live-summary-full-odds-style'))return;const s=document.createElement('style');s.id='nomad343-live-summary-full-odds-style';s.textContent='.market-cell[data-full-summary="1"] b{line-height:1.05}.market-cell[data-full-summary="1"] b .nomad-summary-price-pair{display:block;margin-top:2px;color:var(--text);font-size:6.5px;font-weight:800;letter-spacing:0;white-space:nowrap}.market-cell[data-full-summary="1"][data-stale="1"]{opacity:.78}';document.head.appendChild(s)}
+function patchCell(cell,label,data,book,stale){if(!cell||!data)return;const labelEl=cell.querySelector(':scope > span'),valueEl=cell.querySelector(':scope > b');let small=cell.querySelector(':scope > small');if(!labelEl||!valueEl)return;const nextLabel=`${label} · ${data.stage}`,nextValue=label==='1X2'?data.text:`${data.line}<span class="nomad-summary-price-pair">${data.prices}</span>`;if(labelEl.textContent!==nextLabel)labelEl.textContent=nextLabel;if(label==='1X2'){if(valueEl.textContent!==data.text)valueEl.textContent=data.text}else if(valueEl.innerHTML!==nextValue)valueEl.innerHTML=nextValue;if(!small){small=document.createElement('small');cell.appendChild(small)}if(small.textContent!==book)small.textContent=book;cell.dataset.fullSummary='1';cell.dataset.stale=stale?'1':'0';const nextTitle=`${book} · ${data.stage}${label==='1X2'?` · ${data.text}`:` · ${data.line} · ${data.prices}`}`;if(cell.title!==nextTitle)cell.title=nextTitle}
+function apply(row,data){if(!row?.isConnected||!data)return;const sig=signature(data);if(row.dataset.fullSummarySig===sig)return;const cells=[...row.querySelectorAll(':scope > .market-cell')];if(cells.length<3)return;patchCell(cells[0],'1X2',data.one,data.book,data.stale);patchCell(cells[1],'AH',data.ah,data.book,data.stale);patchCell(cells[2],'O/U',data.ou,data.book,data.stale);row.dataset.fullSummaryOdds='1';row.dataset.fullSummarySig=sig}
+async function fetchFull(id){const r=await fetch(`${API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'}),j=await r.json().catch(()=>null);if(!r.ok||j?.ok!==true){const e=new Error(j?.error||`HTTP_${r.status}`);e.retryAfterSec=Number(j?.retryAfterSec||r.headers.get('retry-after')||0)||0;throw e}const data=summarize(j);if(!data)throw new Error('BET365_FULL_ODDS_MISSING');return data}
 function rowFor(id){return document.querySelector(`[data-status-section="live"] .match-row[data-match-id="${CSS.escape(String(id))}"]`)}
-function enqueue(id){
-  id=String(id||'');if(!id||queued.has(id))return;
-  const until=Number(blockedUntil.get(id)||0);if(until>Date.now())return;
-  const hit=cache.get(id);if(hit&&Date.now()-hit.at<LOCAL_TTL_MS){const row=rowFor(id);if(row)apply(row,hit.data);return}
-  queued.add(id);queue.push(id);
-}
-function scheduleVisible(){
-  document.querySelectorAll('[data-status-section="live"] .match-row[data-match-id]').forEach(row=>{
-    const id=idOf(row);if(!id||!nearViewport(row))return;
-    const hit=cache.get(id);if(hit)apply(row,hit.data);
-    if(!hit||Date.now()-hit.at>=LOCAL_TTL_MS)enqueue(id);
-  });
-}
-async function pump(){
-  if(busy||!queue.length||document.visibilityState!=='visible')return;
-  const id=queue.shift();queued.delete(id);const row=rowFor(id);if(!row||!nearViewport(row))return;
-  busy=true;
-  try{const data=await fetchFull(id);cache.set(id,{at:Date.now(),data});apply(row,data)}
-  catch(e){const retry=Math.max(0,Number(e?.retryAfterSec||0));if(retry)blockedUntil.set(id,Date.now()+retry*1000);console.warn('Live summary full odds unavailable',id,e?.message||e)}
-  finally{busy=false}
-}
-function start(){
-  ensureStyle();scheduleVisible();
-  setInterval(scheduleVisible,SCAN_MS);setInterval(pump,QUEUE_TICK_MS);
-  window.addEventListener('scroll',scheduleVisible,{passive:true});
-  window.addEventListener('resize',scheduleVisible,{passive:true});
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleVisible()});
-  window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={version:VERSION,mode:'VISIBLE_LIVE_ONLY_NO_DOM_OBSERVER',localTtlMs:LOCAL_TTL_MS,queueTickMs:QUEUE_TICK_MS,clear:id=>id?cache.delete(String(id)):cache.clear()};
-}
+function enqueue(id){id=String(id||'');if(!id||queued.has(id))return;const until=Number(blockedUntil.get(id)||0);if(until>Date.now())return;const hit=cache.get(id);if(hit&&Date.now()-hit.at<LOCAL_TTL_MS){const row=rowFor(id);if(row)apply(row,hit.data);return}queued.add(id);queue.push(id)}
+function scheduleVisible(){document.querySelectorAll('[data-status-section="live"] .match-row[data-match-id]').forEach(row=>{const id=idOf(row);if(!id||!nearViewport(row))return;const hit=cache.get(id);if(hit)apply(row,hit.data);if(!hit||Date.now()-hit.at>=LOCAL_TTL_MS)enqueue(id)})}
+async function pump(){if(busy||!queue.length||document.visibilityState!=='visible')return;const id=queue.shift();queued.delete(id);const row=rowFor(id);if(!row||!nearViewport(row))return;busy=true;try{const data=await fetchFull(id);cache.set(id,{at:Date.now(),data});apply(row,data)}catch(e){const retry=Math.max(0,Number(e?.retryAfterSec||0));if(retry)blockedUntil.set(id,Date.now()+retry*1000);console.warn('Live summary full odds unavailable',id,e?.message||e)}finally{busy=false}}
+function start(){ensureStyle();scheduleVisible();setInterval(scheduleVisible,SCAN_MS);setInterval(pump,QUEUE_TICK_MS);window.addEventListener('scroll',scheduleVisible,{passive:true});window.addEventListener('resize',scheduleVisible,{passive:true});document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleVisible()});window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={version:VERSION,mode:'VISIBLE_LIVE_ONLY_NO_DOM_OBSERVER',localTtlMs:LOCAL_TTL_MS,queueTickMs:QUEUE_TICK_MS,clear:id=>id?cache.delete(String(id)):cache.clear()}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
