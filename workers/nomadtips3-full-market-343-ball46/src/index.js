@@ -1,10 +1,10 @@
-const VERSION = 'nomad343-ball46-full-market-v4-john-backoff-safe';
+const VERSION = 'nomad343-ball46-full-market-v5-last-good-persistent';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const BOOKMAKERS = Object.freeze([
   'bet365','pinnacle','williamhill','ladbrokes','vcbet','1xbet','bwin','easybets','interwetten',
   'betfair','snai','macauslot','betsson','betathome','18bet','10bet','12bet','coral','crown'
 ]);
-const STALE_CACHE_MS = 900_000;
+const STALE_CACHE_MS = null; // LAST_GOOD_UNTIL_REPLACED
 const PROVIDER_LIMIT_PER_MINUTE = 40;
 const TIMEOUT_MS = 15_000;
 const PRICE_KEYS = new Set(['home','away','draw','over','under','yes','no']);
@@ -59,6 +59,32 @@ function sanitizeProviderPayload(payload) {
   const clean = sanitizeValue(data);
   if (Array.isArray(clean.bookmakers)) clean.bookmakers = clean.bookmakers.map(row => ({ ...row, odds: row?.odds && typeof row.odds === 'object' ? row.odds : {} }));
   return clean;
+}
+function mergeLastGood(previous, incoming) {
+  if (incoming === null || incoming === undefined || incoming === '') return previous;
+  if (Array.isArray(incoming)) return incoming.length ? incoming : previous;
+  if (typeof incoming !== 'object') return incoming;
+  const prev = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {};
+  const out = { ...prev };
+  for (const [key, value] of Object.entries(incoming)) out[key] = mergeLastGood(prev[key], value);
+  return out;
+}
+function bookKey(row) {
+  return String(row?.slug ?? row?.bookmaker?.slug ?? row?.name ?? row?.bookmaker?.name ?? '').toLowerCase().replace(/[\s_-]/g,'');
+}
+function mergeFullOdds(previous, incoming) {
+  if (!previous || typeof previous !== 'object') return incoming;
+  if (!incoming || typeof incoming !== 'object') return previous;
+  const out = mergeLastGood(previous, incoming);
+  const oldBooks = Array.isArray(previous.bookmakers) ? previous.bookmakers : [];
+  const newBooks = Array.isArray(incoming.bookmakers) ? incoming.bookmakers : [];
+  if (oldBooks.length || newBooks.length) {
+    const oldMap = new Map(oldBooks.map(row => [bookKey(row), row]));
+    const newMap = new Map(newBooks.map(row => [bookKey(row), row]));
+    const keys = [...new Set([...oldMap.keys(), ...newMap.keys()])].filter(Boolean);
+    out.bookmakers = keys.map(key => mergeLastGood(oldMap.get(key), newMap.get(key))).filter(Boolean);
+  }
+  return out;
 }
 
 async function providerRequest(fixtureId, key) {
@@ -128,14 +154,14 @@ export class FullMarketGate {
     if (cached && at - Number(cached.fetchedAt || 0) < cfg.cacheMs) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:false });
     const blockedUntil = finite(await this.ctx.storage.get('blockedUntil'));
     if (blockedUntil !== null && at < blockedUntil) {
-      if (cached && at - Number(cached.fetchedAt || 0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'PROVIDER_BACKOFF', retryAfterSec:Math.max(1,Math.ceil((blockedUntil-at)/1000)) } });
+      if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'PROVIDER_BACKOFF', retryAfterSec:Math.max(1,Math.ceil((blockedUntil-at)/1000)) } });
       const err = new Error('FULL_MARKET_PROVIDER_BACKOFF'); err.status=429; err.retryAfter=Math.max(1,Math.ceil((blockedUntil-at)/1000)); throw err;
     }
     const calls = await this.callWindow();
     if (calls.length >= cfg.maxCallsPerMinute) {
       const oldest = Number(calls[0] || at);
       const retryAfter = Math.max(1, Math.ceil((60_000-(at-oldest))/1000));
-      if (cached && at - Number(cached.fetchedAt || 0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'LOCAL_RATE_GUARD', retryAfterSec:retryAfter, callsLast60s:calls.length } });
+      if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'LOCAL_RATE_GUARD', retryAfterSec:retryAfter, callsLast60s:calls.length } });
       const err = new Error('FULL_MARKET_LOCAL_RATE_GUARD'); err.status=429; err.retryAfter=retryAfter; err.guard={callsLast60s:calls.length}; throw err;
     }
     if (!this.env.FIVEDOLLAR_API_KEY) { const err=new Error('FIVEDOLLAR_API_KEY_MISSING'); err.status=503; throw err; }
@@ -143,8 +169,9 @@ export class FullMarketGate {
     await this.saveCallWindow(nextCalls);
     try {
       const result = await providerRequest(fixtureId, this.env.FIVEDOLLAR_API_KEY);
-      const fullOdds = sanitizeProviderPayload(result.payload);
-      if (!fullOdds) throw Object.assign(new Error('FULL_MARKET_EMPTY_PROVIDER_DATA'), {status:502});
+      const incomingOdds = sanitizeProviderPayload(result.payload);
+      if (!incomingOdds) throw Object.assign(new Error('FULL_MARKET_EMPTY_PROVIDER_DATA'), {status:502});
+      const fullOdds = mergeFullOdds(cached?.fullOdds, incomingOdds);
       const guard = { accountLimitPerMinute:PROVIDER_LIMIT_PER_MINUTE, fullMarketMaxPerMinute:cfg.maxCallsPerMinute, callsLast60s:nextCalls.length, providerLimit:result.limit, providerRemaining:result.remaining, providerReset:result.reset };
       await this.ctx.storage.put('providerMeta', { at:now(), limit:result.limit, remaining:result.remaining, reset:result.reset, lastStatus:200 });
       const entry = { fetchedAt:now(), fullOdds, guard };
@@ -156,7 +183,7 @@ export class FullMarketGate {
         const retryAfter = Math.max(1, Number(err?.retryAfter || 5));
         await this.ctx.storage.put('blockedUntil', now()+retryAfter*1000);
       }
-      if (cached && now()-Number(cached.fetchedAt||0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{reason:String(err?.message||err),retryAfterSec:finite(err?.retryAfter)} });
+      if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{reason:String(err?.message||err),retryAfterSec:finite(err?.retryAfter)} });
       throw err;
     }
   }
@@ -165,7 +192,7 @@ export class FullMarketGate {
     const blocked = finite(blockedUntil);
     return {
       ok:true, component:'BALL46_FULL_MARKET_GATE', version:VERSION, bookmakerCount:BOOKMAKERS.length, bookmakers:BOOKMAKERS,
-      mode:cfg.mode, modeLabel:cfg.label, cacheMs:cfg.cacheMs, staleCacheMs:STALE_CACHE_MS,
+      mode:cfg.mode, modeLabel:cfg.label, cacheMs:cfg.cacheMs, staleCacheMs:STALE_CACHE_MS, staleCachePolicy:'LAST_GOOD_UNTIL_REPLACED',
       accountLimitPerMinute:PROVIDER_LIMIT_PER_MINUTE, maxFullMarketCallsPerMinute:cfg.maxCallsPerMinute,
       callsLast60s:calls.length, remainingLocalBudget:Math.max(0,cfg.maxCallsPerMinute-calls.length),
       blockedUntil:blocked, retryAfterSec:blocked&&blocked>now()?Math.max(1,Math.ceil((blocked-now())/1000)):0,

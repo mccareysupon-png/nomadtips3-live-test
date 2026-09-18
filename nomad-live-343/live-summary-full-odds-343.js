@@ -7,10 +7,10 @@
 // - never call 5USD directly from the browser
 // - never poll rich odds automatically
 // - never let a later bulk fixture event overwrite a rich 19-book render
-const VERSION='343-live-summary-john-gated-v5-rich-owner';
+const VERSION='343-live-summary-john-gated-v6-last-good-persistent';
 const API='/api/full-market/fixture-odds';
 const CLIENT_CACHE_MS=45_000;
-const STALE_KEEP_MS=900_000;
+const STALE_KEEP_MS=Number.POSITIVE_INFINITY;
 const cache=new Map();
 const inflight=new Map();
 let retryUntil=0;
@@ -24,7 +24,6 @@ function cached(id,allowStale=false){
   if(!hit)return null;
   const age=now()-Number(hit.at||0);
   if(age<(allowStale?STALE_KEEP_MS:CLIENT_CACHE_MS))return hit;
-  if(age>=STALE_KEEP_MS)cache.delete(id);
   return null;
 }
 
