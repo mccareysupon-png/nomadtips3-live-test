@@ -1,0 +1,228 @@
+name: Deploy Ball46 Three Fix 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-three-fix-20260919.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Ball46 source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Apply three scoped fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          # 1) Full Market: permanent last-good hold + non-destructive merge.
+          p=Path('workers/nomadtips3-full-market-343-ball46/src/index.js')
+          s=p.read_text()
+          s=s.replace("const VERSION = 'nomad343-ball46-full-market-v4-john-backoff-safe';","const VERSION = 'nomad343-ball46-full-market-v5-last-good-persistent';")
+          s=s.replace("const STALE_CACHE_MS = 900_000;","const STALE_CACHE_MS = null; // LAST_GOOD_UNTIL_REPLACED")
+          anchor="function sanitizeProviderPayload(payload) {\n  const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;\n  if (!data || typeof data !== 'object') return null;\n  const clean = sanitizeValue(data);\n  if (Array.isArray(clean.bookmakers)) clean.bookmakers = clean.bookmakers.map(row => ({ ...row, odds: row?.odds && typeof row.odds === 'object' ? row.odds : {} }));\n  return clean;\n}\n"
+          helper=r'''function sanitizeProviderPayload(payload) {
+  const data = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+  if (!data || typeof data !== 'object') return null;
+  const clean = sanitizeValue(data);
+  if (Array.isArray(clean.bookmakers)) clean.bookmakers = clean.bookmakers.map(row => ({ ...row, odds: row?.odds && typeof row.odds === 'object' ? row.odds : {} }));
+  return clean;
+}
+function mergeLastGood(previous, incoming) {
+  if (incoming === null || incoming === undefined || incoming === '') return previous;
+  if (Array.isArray(incoming)) return incoming.length ? incoming : previous;
+  if (typeof incoming !== 'object') return incoming;
+  const prev = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {};
+  const out = { ...prev };
+  for (const [key, value] of Object.entries(incoming)) out[key] = mergeLastGood(prev[key], value);
+  return out;
+}
+function bookKey(row) {
+  return String(row?.slug ?? row?.bookmaker?.slug ?? row?.name ?? row?.bookmaker?.name ?? '').toLowerCase().replace(/[\s_-]/g,'');
+}
+function mergeFullOdds(previous, incoming) {
+  if (!previous || typeof previous !== 'object') return incoming;
+  if (!incoming || typeof incoming !== 'object') return previous;
+  const out = mergeLastGood(previous, incoming);
+  const oldBooks = Array.isArray(previous.bookmakers) ? previous.bookmakers : [];
+  const newBooks = Array.isArray(incoming.bookmakers) ? incoming.bookmakers : [];
+  if (oldBooks.length || newBooks.length) {
+    const oldMap = new Map(oldBooks.map(row => [bookKey(row), row]));
+    const newMap = new Map(newBooks.map(row => [bookKey(row), row]));
+    const keys = [...new Set([...oldMap.keys(), ...newMap.keys()])].filter(Boolean);
+    out.bookmakers = keys.map(key => mergeLastGood(oldMap.get(key), newMap.get(key))).filter(Boolean);
+  }
+  return out;
+}
+'''
+          if anchor not in s: raise SystemExit('sanitize anchor missing')
+          s=s.replace(anchor,helper)
+          s=s.replace("if (cached && at - Number(cached.fetchedAt || 0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'PROVIDER_BACKOFF', retryAfterSec:Math.max(1,Math.ceil((blockedUntil-at)/1000)) } });","if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'PROVIDER_BACKOFF', retryAfterSec:Math.max(1,Math.ceil((blockedUntil-at)/1000)) } });")
+          s=s.replace("if (cached && at - Number(cached.fetchedAt || 0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'LOCAL_RATE_GUARD', retryAfterSec:retryAfter, callsLast60s:calls.length } });","if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{ reason:'LOCAL_RATE_GUARD', retryAfterSec:retryAfter, callsLast60s:calls.length } });")
+          s=s.replace("const fullOdds = sanitizeProviderPayload(result.payload);\n      if (!fullOdds) throw Object.assign(new Error('FULL_MARKET_EMPTY_PROVIDER_DATA'), {status:502});","const incomingOdds = sanitizeProviderPayload(result.payload);\n      if (!incomingOdds) throw Object.assign(new Error('FULL_MARKET_EMPTY_PROVIDER_DATA'), {status:502});\n      const fullOdds = mergeFullOdds(cached?.fullOdds, incomingOdds);")
+          s=s.replace("if (cached && now()-Number(cached.fetchedAt||0) < STALE_CACHE_MS) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{reason:String(err?.message||err),retryAfterSec:finite(err?.retryAfter)} });","if (cached) return this.buildBody(fixtureId, cached, cfg, { cached:true, stale:true, guard:{reason:String(err?.message||err),retryAfterSec:finite(err?.retryAfter)} });")
+          s=s.replace("mode:cfg.mode, modeLabel:cfg.label, cacheMs:cfg.cacheMs, staleCacheMs:STALE_CACHE_MS,","mode:cfg.mode, modeLabel:cfg.label, cacheMs:cfg.cacheMs, staleCacheMs:STALE_CACHE_MS, staleCachePolicy:'LAST_GOOD_UNTIL_REPLACED',")
+          p.write_text(s)
+
+          # 1b) Browser rich odds: never expire last-good in memory.
+          p=Path('nomad-live-343/live-summary-full-odds-343.js')
+          s=p.read_text()
+          s=s.replace("const VERSION='343-live-summary-john-gated-v5-rich-owner';","const VERSION='343-live-summary-john-gated-v6-last-good-persistent';")
+          s=s.replace("const STALE_KEEP_MS=900_000;","const STALE_KEEP_MS=Number.POSITIVE_INFINITY;")
+          s=s.replace("  if(age>=STALE_KEEP_MS)cache.delete(id);\n  return null;","  return null;")
+          p.write_text(s)
+
+          # 1c) Main board: keep prior providerOdds when a later bulk refresh is empty/partial.
+          p=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=p.read_text()
+          s=s.replace("const VERSION='343-dashboard-v2-stage3-schema-accurate-v3-single-signal-owner';","const VERSION='343-dashboard-v2-stage3-v4-last-good-odds-prediction-card';")
+          anchor="function fixtureKey(f){return String(f?.fixtureId??[f?.home?.name,f?.away?.name,f?.kickoffAt??f?.kickoffUtc].join('|'))}\n"
+          helper=anchor+r'''function mergeLastGoodValue(previous,incoming){if(incoming===null||incoming===undefined||incoming==='')return previous;if(Array.isArray(incoming))return incoming.length?incoming:previous;if(typeof incoming!=='object')return incoming;const prev=previous&&typeof previous==='object'&&!Array.isArray(previous)?previous:{};const out={...prev};for(const [k,v] of Object.entries(incoming))out[k]=mergeLastGoodValue(prev[k],v);return out}
+function holdLastGoodOdds(rows){const old=new Map(fixtures.map(f=>[fixtureKey(f),f]));return rows.map(f=>{const prev=old.get(fixtureKey(f));if(!prev)return f;const merged={...f};merged.providerOdds=mergeLastGoodValue(prev?.providerOdds,f?.providerOdds);if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsUpdatedAt)merged.providerOddsUpdatedAt=prev.providerOddsUpdatedAt;if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsFreshAt)merged.providerOddsFreshAt=prev.providerOddsFreshAt;return merged})}
+'''
+          if anchor not in s: raise SystemExit('fixtureKey anchor missing')
+          s=s.replace(anchor,helper,1)
+          old="const rows=Array.isArray(board?.fixtures)?board.fixtures:[];boardMeta=board;fixtures=rows.slice().sort((a,b)=>(dateMs(a?.kickoffAt??a?.kickoffUtc)??0)-(dateMs(b?.kickoffAt??b?.kickoffUtc)??0));"
+          new="const rows=Array.isArray(board?.fixtures)?board.fixtures:[];boardMeta=board;fixtures=holdLastGoodOdds(rows).slice().sort((a,b)=>(dateMs(a?.kickoffAt??a?.kickoffUtc)??0)-(dateMs(b?.kickoffAt??b?.kickoffUtc)??0));"
+          if old not in s: raise SystemExit('board replace anchor missing')
+          s=s.replace(old,new,1)
+
+          # Prediction card owner stays dashboard only; no observer, no extra API request.
+          old="const signal=$('[data-featured-signal]'),s=signalFor(f);if(signal){signal.innerHTML=signalDetailsHtml(s);signal.classList.toggle('locked',Boolean(s));signal.title=s?signalSummary(s):''}const facts=$('[data-featured-facts]');"
+          new="const signal=$('[data-featured-signal]'),s=signalFor(f);if(signal){signal.innerHTML=signalDetailsHtml(s);signal.classList.toggle('locked',Boolean(s));signal.title=s?signalSummary(s):''}const prediction=$('[data-prediction-content]');if(prediction){prediction.innerHTML=s?signalDetailsHtml(s):'<div class=\"feature-empty\">WATCH · NO LIVE PICK</div>';prediction.classList.toggle('locked',Boolean(s));prediction.title=s?signalSummary(s):'No active live prediction'}const facts=$('[data-featured-facts]');"
+          if old not in s: raise SystemExit('featured anchor missing')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          # 2 + 3) Page 1 prediction card and page 2/3 V2 white header/menu.
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          marker='<section class="side-card overview-card">'
+          pred='<section class="side-card prediction-card" data-prediction-card><div class="card-title"><div><span class="kicker">LIVE PREDICTION</span><h2>Current selection</h2></div><span class="mini-live">LIVE</span></div><div class="feature-signal" data-prediction-content><div class="feature-empty">WATCH · NO LIVE PICK</div></div></section>\n'
+          if 'data-prediction-card' not in s:
+              if marker not in s: raise SystemExit('prediction insertion marker missing')
+              s=s.replace(marker,pred+marker,1)
+          s=s.replace('343-dashboard-v2-stage3-schema-accurate-20260915c&order=20260918-3&signal-owner=dashboard-v1','343-dashboard-v2-stage3-v4-last-good-odds-prediction-card&order=20260919-1&signal-owner=dashboard-v1')
+          s=s.replace('343-live-summary-john-gated-v5-rich-owner','343-live-summary-john-gated-v6-last-good-persistent')
+          p.write_text(s)
+
+          v2header='<header class="v2-topbar"><div class="v2-topbar-inner"><a class="v2-logo" href="index.html" aria-label="ball46 home"><span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span></a><nav class="v2-mainnav" aria-label="Primary navigation"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><div class="v2-header-utils"><span class="v2-odds-chip">BULK · DEC</span><span class="v2-theme-btn" aria-label="Light theme">☀ Light</span></div></div></header>'
+          for name in ['signal.html','statistics.html']:
+              p=Path('nomad-live-343')/name
+              s=p.read_text()
+              s=re.sub(r'<html lang="en">', '<html lang="en" data-theme="light">', s, count=1)
+              s=re.sub(r'<script>try\{const t=localStorage\.getItem\(\'nomad343_theme_v1\'\);.*?</script>', "<script>document.documentElement.dataset.theme='light';try{localStorage.setItem('nomad343_theme_v1','light')}catch(_){};</script>", s, count=1, flags=re.S)
+              if 'v2-shared.css' not in s:
+                  s=s.replace('<link rel="stylesheet" href="app.css?v=343-public-v1">','<link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="v2-shared.css?v=343-v2-shared-v1"><link rel="stylesheet" href="v2-header.css?v=343-v2-header-v1">',1)
+              s=re.sub(r'<header class="(?:topbar)">.*?</header>\n<div class="utility-bar-343".*?</div>\n(?=<main)',v2header+'\n',s,count=1,flags=re.S)
+              s=s.replace('<script src="theme-toggle-343.js?v=343-theme-toggle-v1" defer></script>','')
+              p.write_text(s)
+          PY
+
+          grep -Fq 'nomad343-ball46-full-market-v5-last-good-persistent' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "staleCachePolicy:'LAST_GOOD_UNTIL_REPLACED'" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq '343-live-summary-john-gated-v6-last-good-persistent' nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq 'holdLastGoodOdds(rows)' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'data-prediction-card' nomad-live-343/index.html
+          for f in signal.html statistics.html; do
+            grep -Fq '<html lang="en" data-theme="light">' "nomad-live-343/$f"
+            grep -Fq 'class="v2-topbar"' "nomad-live-343/$f"
+            grep -Fq 'class="v2-logo"' "nomad-live-343/$f"
+            ! grep -Fq 'class="utility-bar-343"' "nomad-live-343/$f"
+            ! grep -Fq 'theme-toggle-343.js' "nomad-live-343/$f"
+          done
+          node --check workers/nomadtips3-full-market-343-ball46/src/index.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          node --check nomad-live-343/dashboard-v2-stage3.js
+
+      - name: Persist source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Ball46 Repair Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add workers/nomadtips3-full-market-343-ball46/src/index.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/dashboard-v2-stage3.js nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html
+          if git diff --cached --quiet; then echo 'No source changes'; else git commit -m 'fix(ball46): hold odds unify white headers restore prediction'; git push origin HEAD:${SOURCE_BRANCH}; fi
+
+      - name: Deploy Full Market gate
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy
+
+      - name: Deploy Ball46 wrapper and assets
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production all three fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/?_=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
+            if grep -Fq 'data-prediction-card' /tmp/index.html 2>/dev/null && grep -Fq '343-live-summary-john-gated-v6-last-good-persistent' /tmp/index.html; then break; fi
+            sleep 2
+          done
+          grep -Fq 'data-prediction-card' /tmp/index.html
+          grep -Fq '343-dashboard-v2-stage3-v4-last-good-odds-prediction-card' /tmp/index.html
+          grep -Fq '343-live-summary-john-gated-v6-last-good-persistent' /tmp/index.html
+
+          curl -fsS --max-time 25 "$BALL46_URL/signal.html?_=${GITHUB_RUN_ID}" -o /tmp/signal.html
+          curl -fsS --max-time 25 "$BALL46_URL/statistics.html?_=${GITHUB_RUN_ID}" -o /tmp/statistics.html
+          for f in /tmp/signal.html /tmp/statistics.html; do
+            grep -Fq '<html lang="en" data-theme="light">' "$f"
+            grep -Fq 'class="v2-topbar"' "$f"
+            grep -Fq 'class="v2-logo"' "$f"
+            grep -Fq '>Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a>' "$f"
+            ! grep -Fq 'class="utility-bar-343"' "$f"
+          done
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?_=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          if(h.ok!==true||h.version!=='nomad343-ball46-full-market-v5-last-good-persistent'||h.staleCachePolicy!=='LAST_GOOD_UNTIL_REPLACED') throw Error('FULL_MARKET_V5_FAIL');
+          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          const withOdds=b.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
+          const candidate=b.fixtures.find(f=>String(f?.fixtureId||'').trim());
+          console.log('BALL46_THREE_FIX_BASE_PASS',JSON.stringify({fixtures:b.fixtures.length,fixturesWithOdds:withOdds,fullMarketVersion:h.version,stalePolicy:h.staleCachePolicy,candidate: candidate?.fixtureId||null}));
+          if(candidate) fs.writeFileSync('/tmp/fixture-id',String(candidate.fixtureId));
+          NODE
+          if [ -s /tmp/fixture-id ]; then
+            id=$(cat /tmp/fixture-id)
+            code=$(curl -sS --max-time 30 -o /tmp/rich.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=$id&_=${GITHUB_RUN_ID}" || true)
+            echo "RICH_HTTP=$code FIXTURE=$id"
+            if [ "$code" = 200 ]; then
+              node - <<'NODE'
+              const j=require('/tmp/rich.json');
+              if(j.ok!==true||!j.fullOdds) throw Error('RICH_BODY_FAIL');
+              console.log('BALL46_RICH_LAST_GOOD_PASS',JSON.stringify({fixtureId:j.fixtureId,books:Array.isArray(j.fullOdds.bookmakers)?j.fullOdds.bookmakers.length:0,cached:j.cached,stale:j.stale,ageMs:j.ageMs,guard:j.guard||null}));
+              NODE
+            fi
+          fi
