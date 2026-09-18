@@ -1,0 +1,111 @@
+name: Deploy Ball46 Odds Continuity 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-odds-continuity-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
+  SOURCE_REF: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout continuity source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_REF }}
+
+      - name: Validate continuity source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test -n "$FIVEDOLLAR_API_KEY"
+          test -s workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          test -s workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+          grep -Fq "nomad343-5usd-hub-v5-last-good-continuity" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "merge(oldById.get(n.fixtureId),n)" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          grep -Fq "continuityHeldFixtures" workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
+          node --check workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
+
+      - name: Dry-run 5USD Hub
+        working-directory: workers/nomadtips3-5usd-hub-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy 5USD Hub continuity
+        working-directory: workers/nomadtips3-5usd-hub-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Ensure provider key on Hub
+        working-directory: workers/nomadtips3-5usd-hub-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
+
+      - name: Set central live refresh standard
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl -sS --max-time 20 -o /tmp/control.json -w '%{http_code}' -X PUT -H 'content-type: application/json' --data '{"liveRefreshSeconds":30,"autoReturnMinutes":0}' "$BALL46_URL/api/hub/control")"
+          test "$code" = 200
+          node - <<'NODE'
+          const j=require('/tmp/control.json');
+          if(j.ok!==true) throw Error(JSON.stringify(j));
+          if(Number(j.control?.liveRefreshSeconds)!==30) throw Error(`refresh=${j.control?.liveRefreshSeconds}`);
+          console.log('HUB_CONTROL_PASS',j.control.liveRefreshSeconds);
+          NODE
+
+      - name: Verify continuity production
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 25); do
+            curl -fsS --max-time 25 "$BALL46_URL/api/hub/health?_=${GITHUB_RUN_ID}-${n}" -o /tmp/health.json || true
+            if node - <<'NODE'
+          const fs=require('fs');
+          let h={};try{h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'))}catch{}
+          process.exit(h.ok===true && h.version==='nomad343-5usd-hub-v5-last-good-continuity' && h.continuityEnabled===true && Number(h.refreshMs)===30000 ? 0 : 1);
+          NODE
+            then ok=1; break; fi
+            sleep 3
+          done
+          test "$ok" = 1
+          node - <<'NODE'
+          const h=require('/tmp/health.json');
+          console.log('HUB_CONTINUITY_PASS',h.version,'refreshMs='+h.refreshMs,'held='+h.continuityHeldFixtures,'fixtures='+h.fixtureCount);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const counts={fixtures:j.fixtures.length,withOdds:0,oneXtwo:0,asian:0,goal:0,corner:0,held:0};
+          const scan=(node,depth=0)=>{if(depth>8||node==null)return;if(Array.isArray(node)){for(const x of node)scan(x,depth+1);return}if(typeof node!=='object')return;for(const [k,v] of Object.entries(node)){const n=norm(k);if(n==='1x2'||n==='matchresult')counts.oneXtwo++;if(/asian|handicap|hdp/.test(n)&&!/corner|card/.test(n))counts.asian++;if(/goalline|goaloverunder|goalsoverunder|totalgoals|overunder/.test(n)||n==='goal'||n==='total')counts.goal++;if(/corner/.test(n))counts.corner++;scan(v,depth+1)}};
+          for(const f of j.fixtures){const p=f?.providerOdds;if(p&&typeof p==='object'&&(Array.isArray(p)?p.length:Object.keys(p).length)){counts.withOdds++;scan(p)}if(f?.providerOddsHeld===true)counts.held++}
+          if(counts.withOdds===0) throw Error('NO_PROVIDER_ODDS');
+          if(counts.oneXtwo===0||counts.asian===0||counts.goal===0) throw Error(`MARKET_COVERAGE_BAD ${JSON.stringify(counts)}`);
+          console.log('BOARD_MARKET_COVERAGE_PASS',JSON.stringify(counts));
+          NODE
