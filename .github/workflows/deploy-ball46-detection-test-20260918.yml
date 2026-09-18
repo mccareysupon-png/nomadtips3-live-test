@@ -1,0 +1,100 @@
+name: Deploy Ball46 Detection Test 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-detection-test-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WORK_BRANCH: work/ball46-full-market-20260918
+  KNOWN_GOOD_UI: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
+  BALL46_URL: https://ball46.com
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Ball46 candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.WORK_BRANCH }}
+          path: production
+
+      - name: Checkout known-good UI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.KNOWN_GOOD_UI }}
+          path: base-ui
+
+      - name: Build wrapper assets without touching Engine HUB or Full Market
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s production/nomad-live-343/detection-test.html
+          test -s production/nomad-live-343/5usd-control.html
+          test -s production/nomad-live-343/index.html
+          test -s production/nomad-live-343/full-odds-main-343.js
+          test -s production/nomad-live-343/live-summary-full-odds-343.js
+          test -s production/nomad-live-343/rich-odds-on-demand-343.js
+          test -s production/workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'DETECTION TEST' production/nomad-live-343/detection-test.html
+          grep -Fq '/api/engine/settings' production/nomad-live-343/detection-test.html
+          grep -Fq '/api/engine/scan' production/nomad-live-343/detection-test.html
+          grep -Fq "'/detection-test.html'" production/workers/nomadtips3-343-preview/src/index.js
+          cp production/nomad-live-343/detection-test.html /tmp/detection-test.html
+          cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
+          cp production/nomad-live-343/index.html /tmp/index.html
+          cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
+          cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
+          cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
+          rm -rf production/nomad-live-343
+          cp -a base-ui/nomad-live-343 production/nomad-live-343
+          cp /tmp/detection-test.html production/nomad-live-343/detection-test.html
+          cp /tmp/5usd-control.html production/nomad-live-343/5usd-control.html
+          cp /tmp/index.html production/nomad-live-343/index.html
+          cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
+          cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
+          cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
+          node --check production/workers/nomadtips3-343-preview/src/index.js
+
+      - name: Dry-run Ball46 wrapper only
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 wrapper only
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Detection Test after propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            code="$(curl -sS --max-time 15 -D /tmp/h -o /tmp/p -w '%{http_code}' "$BALL46_URL/detection-test.html?_=${GITHUB_RUN_ID}-${n}" || true)"
+            if [ "$code" = 200 ] && grep -Fq 'DETECTION TEST' /tmp/p && grep -Fq '/api/engine/settings' /tmp/p; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = 1
+          grep -Fiq 'x-nomad-detection-revision: 343-detection-test-v1' /tmp/h
+          curl -fsS --max-time 20 "$BALL46_URL/api/engine/settings?_=${GITHUB_RUN_ID}" -o /tmp/settings.json
+          node - <<'NODE'
+          const j=require('/tmp/settings.json');
+          if(j.ok!==true||!j.settings||!j.markets||!j.runState) throw Error(JSON.stringify(j));
+          if(!Object.keys(j.markets).length) throw Error('NO_MARKETS');
+          console.log('BALL46_DETECTION_TEST_PASS',j.version,Object.keys(j.markets).length);
+          NODE
