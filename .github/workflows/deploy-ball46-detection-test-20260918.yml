@@ -44,17 +44,21 @@ jobs:
           test -s production/nomad-live-343/full-odds-main-343.js
           test -s production/nomad-live-343/live-summary-full-odds-343.js
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
+          test -s production/nomad-live-343/signal-bettor-343.css
           test -s production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq 'DETECTION TEST' production/nomad-live-343/detection-test.html
           grep -Fq '/api/engine/settings' production/nomad-live-343/detection-test.html
           grep -Fq '/api/engine/scan' production/nomad-live-343/detection-test.html
           grep -Fq "'/detection-test.html'" production/workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'nomad343SignalPulse' production/nomad-live-343/signal-bettor-343.css
+          grep -Fq "content:'SIGNAL'" production/nomad-live-343/signal-bettor-343.css
           cp production/nomad-live-343/detection-test.html /tmp/detection-test.html
           cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
           cp production/nomad-live-343/index.html /tmp/index.html
           cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
           cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
           cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
+          cp production/nomad-live-343/signal-bettor-343.css /tmp/signal-bettor-343.css
           rm -rf production/nomad-live-343
           cp -a base-ui/nomad-live-343 production/nomad-live-343
           cp /tmp/detection-test.html production/nomad-live-343/detection-test.html
@@ -63,6 +67,7 @@ jobs:
           cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
           cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
           cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
+          cp /tmp/signal-bettor-343.css production/nomad-live-343/signal-bettor-343.css
           node --check production/workers/nomadtips3-343-preview/src/index.js
 
       - name: Dry-run Ball46 wrapper only
@@ -79,7 +84,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify Detection Test after propagation
+      - name: Verify Detection Test and Signal alert after propagation
         shell: bash
         run: |
           set -euo pipefail
@@ -98,3 +103,7 @@ jobs:
           if(!Object.keys(j.markets).length) throw Error('NO_MARKETS');
           console.log('BALL46_DETECTION_TEST_PASS',j.version,Object.keys(j.markets).length);
           NODE
+          curl -fsS --max-time 20 "$BALL46_URL/signal-bettor-343.css?_=${GITHUB_RUN_ID}" -o /tmp/signal.css
+          grep -Fq 'nomad343SignalPulse' /tmp/signal.css
+          grep -Fq "content:'SIGNAL'" /tmp/signal.css
+          echo 'BALL46_SIGNAL_ALERT_STYLE_PASS'
