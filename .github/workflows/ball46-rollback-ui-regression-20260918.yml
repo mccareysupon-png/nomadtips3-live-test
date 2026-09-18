@@ -1,0 +1,123 @@
+name: Ball46 Rollback UI Regression 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-rollback-ui-regression-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  INCIDENT_VERSION: f161b734-4b64-4758-ac09-ebba566a2813
+
+jobs:
+  rollback-wrapper-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Capture backend invariants before rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$BALL46_URL/api/engine/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS "$BALL46_URL/api/hub/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          curl -fsS "$BALL46_URL/api/full-market/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-before.json'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));
+          if(e.ok!==true||e.version!=='nomad343-engine-v4-autonomous-settlement') throw Error('ENGINE_BAD '+JSON.stringify(e));
+          if(h.ok!==true) throw Error('HUB_BAD '+JSON.stringify(h));
+          if(f.ok!==true) throw Error('FULL_MARKET_BAD '+JSON.stringify(f));
+          const keep={engine:e.version,hub:h.version||null,full:f.version||null};
+          fs.writeFileSync('/tmp/backend-before.txt',JSON.stringify(keep));
+          console.log('BACKEND_BEFORE',keep);
+          NODE
+
+      - name: Inspect Ball46 deployment history and select exact previous version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json > /tmp/deployments.json
+          cat /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const data=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          if(!Array.isArray(data)||data.length<2) throw Error('DEPLOYMENT_HISTORY_TOO_SHORT');
+          const ids=d=>(d?.versions||[]).map(v=>v?.version_id||v?.id).filter(Boolean);
+          const current=ids(data[0]);
+          const incident=process.env.INCIDENT_VERSION;
+          if(!current.includes(incident)) throw Error('CURRENT_NOT_INCIDENT '+JSON.stringify({current,incident}));
+          let previous=null;
+          for(let i=1;i<data.length;i++){
+            const candidate=ids(data[i]).find(x=>x&&x!==incident);
+            if(candidate){ previous=candidate; break; }
+          }
+          if(!previous) throw Error('NO_PREVIOUS_VERSION_FOUND');
+          fs.appendFileSync(process.env.GITHUB_ENV,`ROLLBACK_VERSION=${previous}\n`);
+          console.log('ROLLBACK_TARGET',previous);
+          NODE
+
+      - name: Roll back only ball46-production wrapper/assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$ROLLBACK_VERSION" --name ball46-production --message "Rollback UI regression: restore last complete Ball46 deployment before odds/prediction loss"
+
+      - name: Verify restored Ball46 complete surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          for path in index.html signal.html statistics.html 5usd-control.html detection-test.html; do
+            code=$(curl -sS -o "/tmp/${path//\//_}" -w '%{http_code}' "$BALL46_URL/$path?rollback=${GITHUB_RUN_ID}")
+            echo "$path -> $code"
+            test "$code" = 200
+          done
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/index.html
+          grep -Fq 'rich-odds-on-demand-343.js' /tmp/index.html
+          grep -Fq '/api/engine/' /tmp/detection-test.html
+          grep -Fq '/api/full-market/' /tmp/5usd-control.html
+
+          echo 'Prediction links discovered after rollback:'
+          grep -Eoi 'href=["'"'][^"'"']*predict[^"'"']*["'"']' /tmp/index.html /tmp/signal.html /tmp/statistics.html || true
+
+          curl -fsS "$BALL46_URL/api/engine/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS "$BALL46_URL/api/hub/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          curl -fsS "$BALL46_URL/api/full-market/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          curl -fsS "$BALL46_URL/api/engine/board?rbpost=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS "$BALL46_URL/api/engine/signals?rbpost=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?rbpost=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const before=JSON.parse(fs.readFileSync('/tmp/backend-before.txt','utf8'));
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-after.json'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const sig=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const stat=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          if(e.ok!==true||e.version!==before.engine) throw Error('ENGINE_CHANGED '+JSON.stringify(e));
+          if(h.ok!==true) throw Error('HUB_FAIL '+JSON.stringify(h));
+          if(f.ok!==true) throw Error('FULL_MARKET_FAIL '+JSON.stringify(f));
+          if(board.ok!==true||!Array.isArray(board.fixtures)) throw Error('BOARD_FAIL');
+          if(sig.ok!==true||!Array.isArray(sig.signals)) throw Error('SIGNALS_FAIL');
+          if(stat.ok!==true) throw Error('STATISTICS_FAIL');
+          console.log('ROLLBACK_COMPLETE_PASS',JSON.stringify({rollback:process.env.ROLLBACK_VERSION,engine:e.version,hub:h.version||null,full:f.version||null,fixtures:board.fixtures.length,signals:sig.signals.length}));
+          NODE
+
+      - name: Show active deployment after rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json | head -c 12000
