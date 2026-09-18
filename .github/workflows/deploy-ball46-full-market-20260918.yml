@@ -57,6 +57,7 @@ jobs:
           test -s production/nomad-live-343/index.html
           test -s production/nomad-live-343/live-summary-full-odds-343.js
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
+          test -s production/nomad-live-343/bulk-odds-compat-343.js
           test -s production/nomad-live-343/5usd-control.html
           test -s production/nomad-live-343/detection-test.html
           test -s production/nomad-live-343/ball46-logo.svg
@@ -70,6 +71,7 @@ jobs:
           grep -Fq '/api/engine/scan' production/nomad-live-343/detection-test.html
           grep -Fq "'/detection-test.html'" production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
+          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe' production/nomad-live-343/bulk-odds-compat-343.js
           grep -Fq 'ball46-premium-v1' production/nomad-live-343/ball46-logo.svg
           grep -Fq '343-premium-logo-v1' production/nomad-live-343/v2-header.css
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
@@ -77,10 +79,12 @@ jobs:
           node --check production/nomad-live-343/full-odds-main-343.js
           node --check production/nomad-live-343/live-summary-full-odds-343.js
           node --check production/nomad-live-343/rich-odds-on-demand-343.js
+          node --check production/nomad-live-343/bulk-odds-compat-343.js
           cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
           cp production/nomad-live-343/index.html /tmp/index.html
           cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
           cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
+          cp production/nomad-live-343/bulk-odds-compat-343.js /tmp/bulk-odds-compat-343.js
           cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
           cp production/nomad-live-343/detection-test.html /tmp/detection-test.html
           cp production/nomad-live-343/ball46-logo.svg /tmp/ball46-logo.svg
@@ -91,12 +95,14 @@ jobs:
           cp /tmp/index.html production/nomad-live-343/index.html
           cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
           cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
+          cp /tmp/bulk-odds-compat-343.js production/nomad-live-343/bulk-odds-compat-343.js
           cp /tmp/5usd-control.html production/nomad-live-343/5usd-control.html
           cp /tmp/detection-test.html production/nomad-live-343/detection-test.html
           cp /tmp/ball46-logo.svg production/nomad-live-343/ball46-logo.svg
           cp /tmp/v2-header.css production/nomad-live-343/v2-header.css
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
           echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
+          echo 'BULK_ODDS_COMPAT_SOURCE=FULL_MARKET_BRANCH'
           echo '5USD_CONTROL_SOURCE=FULL_MARKET_BRANCH'
           echo 'DETECTION_TEST_SOURCE=FULL_MARKET_BRANCH'
           echo 'PREMIUM_LOGO_SOURCE=FULL_MARKET_BRANCH'
@@ -173,7 +179,31 @@ jobs:
           node - <<'NODE'
           const j=require('/tmp/board.json');
           if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const counts={arrayRoot:0,objectRoot:0,withOdds:0,oneXtwo:0,asian:0,goal:0,corner:0};
+          const samples=[];
+          const scan=(node,depth=0)=>{
+            if(depth>8||node==null)return;
+            if(Array.isArray(node)){for(const x of node)scan(x,depth+1);return}
+            if(typeof node!=='object')return;
+            for(const [k,v] of Object.entries(node)){
+              const n=norm(k);
+              if(n==='1x2'||n==='matchresult')counts.oneXtwo++;
+              if(/asian|handicap|hdp/.test(n)&&!/corner|card/.test(n))counts.asian++;
+              if(/goalline|goaloverunder|goalsoverunder|totalgoals|overunder/.test(n)||n==='goal'||n==='total')counts.goal++;
+              if(/corner/.test(n))counts.corner++;
+              scan(v,depth+1);
+            }
+          };
+          for(const f of j.fixtures){
+            const p=f?.providerOdds;
+            if(Array.isArray(p))counts.arrayRoot++;
+            else if(p&&typeof p==='object')counts.objectRoot++;
+            if(p&&((Array.isArray(p)&&p.length)||(!Array.isArray(p)&&typeof p==='object'&&Object.keys(p).length))){counts.withOdds++;scan(p);if(samples.length<3)samples.push({fixtureId:f.fixtureId,root:Array.isArray(p)?'array':'object',keys:Array.isArray(p)?Object.keys(p[0]||{}):Object.keys(p).slice(0,20)})}
+          }
           console.log('BOARD_PASS',j.fixtures.length);
+          console.log('BOARD_ODDS_SHAPES',JSON.stringify(counts));
+          console.log('BOARD_ODDS_SAMPLES',JSON.stringify(samples));
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?_=${GITHUB_RUN_ID}" -o /tmp/hub.json
@@ -182,6 +212,10 @@ jobs:
           if(h.ok!==true||h.component!=='5USD_HUB') throw Error(JSON.stringify(h));
           console.log('HUB_UNCHANGED_PASS',h.version,h.fixtureCount,h.refreshMs);
           NODE
+
+          curl -fsS --max-time 25 "$BALL46_URL/bulk-odds-compat-343.js?_=${GITHUB_RUN_ID}" -o /tmp/bulk-odds-compat-343.js
+          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe' /tmp/bulk-odds-compat-343.js
+          echo 'BULK_ODDS_COMPAT_PASS'
 
           curl -fsS --max-time 25 "$BALL46_URL/5usd-control.html?_=${GITHUB_RUN_ID}" -o /tmp/control.html
           grep -Fq '5USD CONTROL' /tmp/control.html
