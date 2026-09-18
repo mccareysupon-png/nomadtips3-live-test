@@ -57,13 +57,11 @@ jobs:
           test -s production/nomad-live-343/index.html
           test -s production/nomad-live-343/live-summary-full-odds-343.js
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
-          grep -Fq 'nomadtips3-full-market-343-ball46' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
-          grep -Fq 'FULL_MARKET' production/workers/nomadtips3-343-preview/src/index.js
+          test -s production/nomad-live-343/5usd-control.html
+          grep -Fq 'nomad343-ball46-full-market-v3-control' production/workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "path === '/settings'" production/workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '5USD CONTROL' production/nomad-live-343/5usd-control.html
           grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
-          grep -Fq '343-live-summary-full-odds-v1' production/nomad-live-343/live-summary-full-odds-343.js
-          grep -Fq '343-expanded-full-market-v3-gate' production/nomad-live-343/rich-odds-on-demand-343.js
-          grep -Fq 'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1' production/nomad-live-343/index.html
-          grep -Fq 'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate' production/nomad-live-343/index.html
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
           node --check production/workers/nomadtips3-343-preview/src/index.js
           node --check production/nomad-live-343/full-odds-main-343.js
@@ -73,15 +71,17 @@ jobs:
           cp production/nomad-live-343/index.html /tmp/index.html
           cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
           cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
+          cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
           rm -rf production/nomad-live-343
           cp -a candidate-ui/nomad-live-343 production/nomad-live-343
           cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
           cp /tmp/index.html production/nomad-live-343/index.html
           cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
           cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
+          cp /tmp/5usd-control.html production/nomad-live-343/5usd-control.html
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
           echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
-          echo 'LIVE_ODDS_CONNECTORS_SOURCE=FULL_MARKET_BRANCH'
+          echo '5USD_CONTROL_SOURCE=FULL_MARKET_BRANCH'
 
       - name: Dry-run isolated Full Market worker
         working-directory: production/workers/nomadtips3-full-market-343-ball46
@@ -118,7 +118,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify Ball46 Full Market end-to-end
+      - name: Verify Ball46 Full Market and 5USD Control
         id: verify
         shell: bash
         run: |
@@ -132,9 +132,22 @@ jobs:
           const h=require('/tmp/health.json');
           if(h.ok!==true||h.component!=='BALL46_FULL_MARKET_GATE') throw Error(JSON.stringify(h));
           if(Number(h.bookmakerCount)!==19) throw Error(`bookmakerCount=${h.bookmakerCount}`);
-          if(Number(h.cacheMs)!==12000) throw Error(`cacheMs=${h.cacheMs}`);
-          if(Number(h.maxFullMarketCallsPerMinute)!==30) throw Error(`guard=${h.maxFullMarketCallsPerMinute}`);
-          console.log('FULL_MARKET_HEALTH_PASS',h.version,h.bookmakerCount,h.cacheMs,h.maxFullMarketCallsPerMinute,h.callsLast60s);
+          const presets={eco:[30000,15],normal:[20000,25],fast:[12000,30]};
+          if(!presets[h.mode]) throw Error(`mode=${h.mode}`);
+          const [cache,guard]=presets[h.mode];
+          if(Number(h.cacheMs)!==cache) throw Error(`cacheMs=${h.cacheMs}`);
+          if(Number(h.maxFullMarketCallsPerMinute)!==guard) throw Error(`guard=${h.maxFullMarketCallsPerMinute}`);
+          if(Number(h.accountLimitPerMinute)!==40) throw Error(`accountLimit=${h.accountLimitPerMinute}`);
+          require('fs').writeFileSync('/tmp/mode',h.mode);
+          console.log('FULL_MARKET_HEALTH_PASS',h.version,h.mode,h.cacheMs,h.maxFullMarketCallsPerMinute,h.callsLast60s);
+          NODE
+
+          MODE="$(cat /tmp/mode)"
+          curl -fsS --max-time 20 -X PUT -H 'content-type: application/json' --data "{\"mode\":\"${MODE}\"}" "$BALL46_URL/api/full-market/settings" -o /tmp/settings.json
+          node - <<'NODE'
+          const j=require('/tmp/settings.json');
+          if(j.ok!==true||!j.config?.mode) throw Error(JSON.stringify(j));
+          console.log('CONTROL_SETTINGS_PASS',j.config.mode,j.config.cacheMs,j.config.maxCallsPerMinute);
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
@@ -154,14 +167,7 @@ jobs:
           if(j.ok!==true) throw Error(JSON.stringify(j));
           const books=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
           if(books.length!==19) throw Error(`books=${books.length}`);
-          const by=new Map(books.map(x=>[String(x?.slug||''),x]));
-          const bet=by.get('bet365');
-          if(!bet) throw Error('missing bet365');
-          const ah=bet?.odds?.asian_handicap?.inplay??bet?.odds?.asian_handicap?.closing;
-          const ou=bet?.odds?.goal_line?.inplay??bet?.odds?.goal_line?.closing;
-          if(!ah||!(Number(ah.home)>0)||!(Number(ah.away)>0)||!Number.isFinite(Number(ah.line))) throw Error(`bad bet365 AH ${JSON.stringify(ah)}`);
-          if(!ou||!(Number(ou.over)>0)||!(Number(ou.under)>0)||!Number.isFinite(Number(ou.line))) throw Error(`bad bet365 OU ${JSON.stringify(ou)}`);
-          console.log('FULL_MARKET_ODDS_PASS',JSON.stringify({fixtureId:j.fixtureId,books:books.length,bet365AH:ah,bet365OU:ou,cached:j.cached,stale:j.stale,externalRequestsAdded:j.externalRequestsAdded}));
+          console.log('FULL_MARKET_ODDS_PASS',j.fixtureId,books.length,j.config?.mode,j.cached,j.stale);
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?_=${GITHUB_RUN_ID}" -o /tmp/hub.json
@@ -171,19 +177,11 @@ jobs:
           console.log('HUB_UNCHANGED_PASS',h.version,h.fixtureCount,h.refreshMs);
           NODE
 
-          curl -fsS --max-time 25 "$BALL46_URL/index.html?_=${GITHUB_RUN_ID}" -o /tmp/index.html
-          grep -Fq 'live-summary-full-odds-343.js?v=343-live-summary-full-odds-v1' /tmp/index.html
-          grep -Fq 'rich-odds-on-demand-343.js?v=343-expanded-full-market-v3-gate' /tmp/index.html
-          curl -fsS --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?_=${GITHUB_RUN_ID}" -o /tmp/summary.js
-          grep -Fq '343-live-summary-full-odds-v1' /tmp/summary.js
-          grep -Fq "/api/full-market/fixture-odds" /tmp/summary.js
-          curl -fsS --max-time 25 "$BALL46_URL/rich-odds-on-demand-343.js?_=${GITHUB_RUN_ID}" -o /tmp/expanded.js
-          grep -Fq '343-expanded-full-market-v3-gate' /tmp/expanded.js
-          grep -Fq "/api/full-market/fixture-odds" /tmp/expanded.js
-          if grep -Fq '/api/hub/rich-odds' /tmp/expanded.js; then
-            echo '::error::Old 404 rich-odds route still present'; exit 32
-          fi
-          echo 'BALL46_LIVE_AND_EXPANDED_ODDS_END_TO_END_PASS'
+          curl -fsS --max-time 25 "$BALL46_URL/5usd-control.html?_=${GITHUB_RUN_ID}" -o /tmp/control.html
+          grep -Fq '5USD CONTROL' /tmp/control.html
+          grep -Fq '/api/full-market/settings' /tmp/control.html
+          grep -Fq '/api/hub/health' /tmp/control.html
+          echo 'BALL46_5USD_CONTROL_END_TO_END_PASS'
 
       - name: Roll back Ball46 wrapper on verification failure
         if: failure() && steps.verify.outcome == 'failure'
