@@ -1,0 +1,278 @@
+name: Deploy Ball46 Prediction Production 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-prediction-production-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREDICTION_REF: 649a553fddcb4f41b58fff983ecb0ba59204490c
+  FULL_MARKET_REF: 4dff0fd052ac3600f526cc487b847d873db3fd75
+  KNOWN_GOOD_UI: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
+  BALL46_URL: https://ball46.com
+  BALL46_WORKER_URL: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  deploy-prediction-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout frozen Prediction source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PREDICTION_REF }}
+          path: source
+          fetch-depth: 0
+
+      - name: Checkout frozen Ball46 production base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.FULL_MARKET_REF }}
+          path: production
+
+      - name: Checkout known-good 3.43 UI base
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.KNOWN_GOOD_UI }}
+          path: base-ui
+
+      - name: Safety boundary and source validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test "$(git -C source rev-parse HEAD)" = "$PREDICTION_REF"
+          test "$(git -C production rev-parse HEAD)" = "$FULL_MARKET_REF"
+
+          changed="$(git -C source diff --name-only "$FULL_MARKET_REF"...HEAD)"
+          printf '%s\n' "$changed"
+          bad="$(printf '%s\n' "$changed" | grep -Ev '^(nomad-live-343/index.html|nomad-live-343/live-prediction-v1.js|nomad-live-343/live-prediction-v1.css|workers/nomadtips3-343-preview/wrangler.prediction-preview.jsonc)$' || true)"
+          test -z "$bad" || { echo 'PROTECTED_CHANGE_DETECTED'; printf '%s\n' "$bad"; exit 1; }
+
+          git -C source diff --quiet "$FULL_MARKET_REF"...HEAD -- \
+            workers/nomadtips3-5usd-hub-343 \
+            workers/nomadtips3-engine-343 \
+            workers/add-k-ah-detector \
+            nomad-live-343/signal.html \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.html \
+            nomad-live-343/statistics.js \
+            nomad-live-343/dashboard-v2-stage3.js
+
+          test -s source/nomad-live-343/live-prediction-v1.js
+          test -s source/nomad-live-343/live-prediction-v1.css
+          node --check source/nomad-live-343/live-prediction-v1.js
+          grep -Fq '343-live-prediction-v1-readonly-market-ht-safe' source/nomad-live-343/live-prediction-v1.js
+          grep -Fq 'READ_ONLY_SHARED_BOARD' source/nomad-live-343/live-prediction-v1.js
+          grep -Fq 'networkRequestsAdded:0' source/nomad-live-343/live-prediction-v1.js
+          grep -Fq 'function firstHalfClosed' source/nomad-live-343/live-prediction-v1.js
+          grep -Fq 'live-prediction-v1.css' source/nomad-live-343/index.html
+          grep -Fq 'live-prediction-v1.js' source/nomad-live-343/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          base=Path('production/nomad-live-343/index.html').read_text()
+          pred=Path('source/nomad-live-343/index.html').read_text()
+          css='<link rel="stylesheet" href="live-prediction-v1.css?v=343-live-prediction-v1-readonly">'
+          js='<script src="live-prediction-v1.js?v=343-live-prediction-v1-readonly" defer></script>'
+          assert pred.count(css)==1
+          assert pred.count(js)==1
+          stripped=pred.replace(css,'').replace(js,'')
+          assert stripped==base, 'INDEX_CHANGED_BEYOND_PREDICTION_LOADERS'
+          assert pred.index('bulk-odds-compat-343.js') < pred.index('live-prediction-v1.js') < pred.index('dashboard-v2-stage3.js')
+          print('INDEX_PREDICTION_ONLY_PASS')
+          PY
+          echo SAFE_BOUNDARY_PASS
+
+      - name: Assemble current Ball46 UI without changing protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s production/workers/nomadtips3-343-preview/src/index.js
+          test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"name": "ball46-production"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"FULL_MARKET", "service": "nomadtips3-full-market-343-ball46"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          node --check production/workers/nomadtips3-343-preview/src/index.js
+
+          for f in \
+            full-odds-main-343.js \
+            index.html \
+            live-summary-full-odds-343.js \
+            rich-odds-on-demand-343.js \
+            bulk-odds-compat-343.js \
+            5usd-control.html \
+            detection-test.html \
+            ball46-logo.svg \
+            v2-header.css; do
+            test -s "production/nomad-live-343/$f"
+            cp "production/nomad-live-343/$f" "/tmp/$f"
+          done
+
+          rm -rf production/nomad-live-343
+          cp -a base-ui/nomad-live-343 production/nomad-live-343
+          for f in \
+            full-odds-main-343.js \
+            index.html \
+            live-summary-full-odds-343.js \
+            rich-odds-on-demand-343.js \
+            bulk-odds-compat-343.js \
+            5usd-control.html \
+            detection-test.html \
+            ball46-logo.svg \
+            v2-header.css; do
+            cp "/tmp/$f" "production/nomad-live-343/$f"
+          done
+
+          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe' production/nomad-live-343/bulk-odds-compat-343.js
+          grep -Fq '343-expanded-full-market-bulk-only-v6-market-alias-safe' production/nomad-live-343/rich-odds-on-demand-343.js
+          cp source/nomad-live-343/live-prediction-v1.js production/nomad-live-343/live-prediction-v1.js
+          cp source/nomad-live-343/live-prediction-v1.css production/nomad-live-343/live-prediction-v1.css
+          cp source/nomad-live-343/index.html production/nomad-live-343/index.html
+          echo ASSEMBLY_PASS
+
+      - name: Preflight exact current-production match before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Current production must match the frozen base assembly on every protected surface.
+          # index.html is compared after removing only the two Prediction loader tags locally.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('production/nomad-live-343/index.html')
+          text=p.read_text()
+          text=text.replace('<link rel="stylesheet" href="live-prediction-v1.css?v=343-live-prediction-v1-readonly">','')
+          text=text.replace('<script src="live-prediction-v1.js?v=343-live-prediction-v1-readonly" defer></script>','')
+          Path('/tmp/local-index-base.html').write_text(text)
+          PY
+
+          curl -fsS --max-time 25 "$BALL46_URL/?preflight=${GITHUB_RUN_ID}" -o /tmp/live-index.html
+          cmp -s /tmp/live-index.html /tmp/local-index-base.html || { echo 'STOP_CURRENT_INDEX_DIFFERS_FROM_FROZEN_BASE'; exit 1; }
+
+          for f in \
+            signal.html \
+            statistics.html \
+            settings.html \
+            dashboard-v2-stage3.js \
+            bulk-odds-compat-343.js \
+            rich-odds-on-demand-343.js \
+            full-market-bookmaker-343.js; do
+            curl -fsS --max-time 25 "$BALL46_URL/$f?preflight=${GITHUB_RUN_ID}" -o "/tmp/live-$f"
+            cmp -s "/tmp/live-$f" "production/nomad-live-343/$f" || { echo "STOP_PROTECTED_ASSET_DIFF $f"; exit 1; }
+            sha256sum "/tmp/live-$f" | awk -v f="$f" '{print f" "$1}' >> /tmp/protected-before.sha
+          done
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?preflight=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          node - <<'NODE'
+          const h=require('/tmp/hub-before.json');
+          if(h.ok!==true||h.version!=='nomad343-5usd-hub-v5-last-good-continuity'||Number(h.refreshMs)!==30000) throw Error(JSON.stringify(h));
+          console.log('HUB_PREFLIGHT_PASS',h.version,h.refreshMs);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?preflight=${GITHUB_RUN_ID}" -o /tmp/engine-settings-before.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const j=require('/tmp/engine-settings-before.json');
+          if(j.ok!==true||!j.settings||!j.markets) throw Error(JSON.stringify(j));
+          const stable=JSON.stringify({settings:j.settings,markets:j.markets});
+          fs.writeFileSync('/tmp/engine-settings-before.sha',crypto.createHash('sha256').update(stable).digest('hex'));
+          console.log('ENGINE_SETTINGS_PREFLIGHT_PASS',j.version,Object.keys(j.markets).length);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?preflight=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          node - <<'NODE'
+          const j=require('/tmp/board-before.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const withOdds=j.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object').length;
+          if(withOdds===0) throw Error('NO_PROVIDER_ODDS');
+          console.log('BOARD_PREFLIGHT_PASS',j.fixtures.length,withOdds);
+          NODE
+          echo PRODUCTION_PREFLIGHT_PASS
+
+      - name: Dry-run Ball46 Prediction-only bundle
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Prediction production and protected surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 30); do
+            code="$(curl -sS --max-time 25 -o /tmp/home-after.html -w '%{http_code}' "$BALL46_URL/?prediction=${GITHUB_RUN_ID}-${n}" || true)"
+            if [ "$code" = 200 ] && grep -Fq 'live-prediction-v1.css' /tmp/home-after.html && grep -Fq 'live-prediction-v1.js' /tmp/home-after.html; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          cmp -s /tmp/home-after.html production/nomad-live-343/index.html || { echo 'PRODUCTION_INDEX_NOT_EXPECTED'; exit 1; }
+
+          curl -fsS --max-time 25 "$BALL46_URL/live-prediction-v1.js?prediction=${GITHUB_RUN_ID}" -o /tmp/pred-after.js
+          cmp -s /tmp/pred-after.js production/nomad-live-343/live-prediction-v1.js
+          grep -Fq '343-live-prediction-v1-readonly-market-ht-safe' /tmp/pred-after.js
+          grep -Fq 'networkRequestsAdded:0' /tmp/pred-after.js
+          curl -fsS --max-time 25 "$BALL46_URL/live-prediction-v1.css?prediction=${GITHUB_RUN_ID}" -o /tmp/pred-after.css
+          cmp -s /tmp/pred-after.css production/nomad-live-343/live-prediction-v1.css
+          echo PREDICTION_ASSETS_PASS
+
+          while read -r f before; do
+            curl -fsS --max-time 25 "$BALL46_URL/$f?post=${GITHUB_RUN_ID}" -o "/tmp/post-$f"
+            after="$(sha256sum "/tmp/post-$f" | awk '{print $1}')"
+            test "$after" = "$before" || { echo "PROTECTED_ASSET_CHANGED $f"; exit 1; }
+          done < /tmp/protected-before.sha
+          echo PROTECTED_ASSETS_UNCHANGED_PASS
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?post=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          node - <<'NODE'
+          const h=require('/tmp/hub-after.json');
+          if(h.ok!==true||h.version!=='nomad343-5usd-hub-v5-last-good-continuity'||Number(h.refreshMs)!==30000) throw Error(JSON.stringify(h));
+          console.log('HUB_UNCHANGED_PASS',h.version,h.refreshMs,h.fixtureCount);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?post=${GITHUB_RUN_ID}" -o /tmp/engine-settings-after.json
+          node - <<'NODE'
+          const fs=require('fs'),crypto=require('crypto');
+          const j=require('/tmp/engine-settings-after.json');
+          if(j.ok!==true||!j.settings||!j.markets) throw Error(JSON.stringify(j));
+          const stable=JSON.stringify({settings:j.settings,markets:j.markets});
+          const after=crypto.createHash('sha256').update(stable).digest('hex');
+          const before=fs.readFileSync('/tmp/engine-settings-before.sha','utf8').trim();
+          if(after!==before) throw Error('ENGINE_SETTINGS_CHANGED');
+          console.log('ENGINE_SETTINGS_UNCHANGED_PASS',j.version,Object.keys(j.markets).length);
+          NODE
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?post=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          node - <<'NODE'
+          const j=require('/tmp/board-after.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
+          const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const counts={fixtures:j.fixtures.length,withOdds:0,oneXtwo:0,asian:0,goal:0,corner:0};
+          const scan=(node,depth=0)=>{if(depth>8||node==null)return;if(Array.isArray(node)){for(const x of node)scan(x,depth+1);return}if(typeof node!=='object')return;for(const [k,v] of Object.entries(node)){const n=norm(k);if(n==='1x2'||n==='matchresult')counts.oneXtwo++;if(/asian|handicap|hdp/.test(n)&&!/corner|card/.test(n))counts.asian++;if(/goalline|goaloverunder|goalsoverunder|totalgoals|overunder/.test(n)||n==='goal'||n==='total')counts.goal++;if(/corner/.test(n))counts.corner++;scan(v,depth+1)}};
+          for(const f of j.fixtures){const p=f?.providerOdds;if(p&&typeof p==='object'){counts.withOdds++;scan(p)}}
+          if(counts.withOdds===0||counts.oneXtwo===0||counts.asian===0||counts.goal===0) throw Error(JSON.stringify(counts));
+          console.log('BOARD_MARKET_COVERAGE_PASS',JSON.stringify(counts));
+          NODE
+
+          for base in "$BALL46_WORKER_URL" "$BALL46_URL"; do
+            curl -fsS --max-time 25 "$base/live-prediction-v1.js?post=${GITHUB_RUN_ID}" -o /tmp/pred-host.js
+            grep -Fq '343-live-prediction-v1-readonly-market-ht-safe' /tmp/pred-host.js
+          done
+          echo BALL46_PREDICTION_PRODUCTION_PASS
