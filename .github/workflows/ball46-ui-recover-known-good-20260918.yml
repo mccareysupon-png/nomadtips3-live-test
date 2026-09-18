@@ -101,17 +101,7 @@ jobs:
           const j=require('/tmp/hub-snapshot.json');
           const fs=Array.isArray(j.fixtures)?j.fixtures:[];
           const withOdds=fs.filter(f=>f&&f.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length>0);
-          const fresh=withOdds.filter(f=>f.providerOddsUpdatedAt);
-          const books=new Set();
-          for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
-          console.log('BALL46_HUB_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
-          if(withOdds[0]){
-            const po=withOdds[0].providerOdds||{};
-            const shape={fixtureId:withOdds[0].fixtureId,providerOddsKeys:Object.keys(po),nested:{}};
-            for(const [k,v] of Object.entries(po).slice(0,10)) shape.nested[k]=v&&typeof v==='object'?Object.keys(v).slice(0,30):typeof v;
-            console.log('BALL46_HUB_ODDS_SHAPE',JSON.stringify(shape));
-            console.log('BALL46_HUB_ODDS_SAMPLE',JSON.stringify(po).slice(0,5000));
-          }
+          console.log('BALL46_HUB_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:withOdds.filter(f=>f.providerOddsUpdatedAt).length}));
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?recover=${GITHUB_RUN_ID}" -o /tmp/board.json
@@ -120,17 +110,31 @@ jobs:
           if(j.ok!==true||!Array.isArray(j.fixtures)) throw Error(JSON.stringify(j));
           const fs=j.fixtures;
           const withOdds=fs.filter(f=>f&&f.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length>0);
-          const fresh=withOdds.filter(f=>f.providerOddsUpdatedAt);
-          const books=new Set();
-          for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
           console.log('BALL46_ENGINE_PASS',fs.length);
-          console.log('BALL46_ENGINE_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
-          if(withOdds[0]){
-            const po=withOdds[0].providerOdds||{};
-            const shape={fixtureId:withOdds[0].fixtureId,providerOddsKeys:Object.keys(po),nested:{}};
-            for(const [k,v] of Object.entries(po).slice(0,10)) shape.nested[k]=v&&typeof v==='object'?Object.keys(v).slice(0,30):typeof v;
-            console.log('BALL46_ENGINE_ODDS_SHAPE',JSON.stringify(shape));
-          }
+          console.log('BALL46_ENGINE_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:withOdds.filter(f=>f.providerOddsUpdatedAt).length}));
+          const live=fs.find(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live')||String(f?.status||'').toLowerCase().includes('in_play'))||fs[0];
+          if(!live?.fixtureId) throw Error('NO_FIXTURE_FOR_FULL_MARKET_TEST');
+          require('fs').writeFileSync('/tmp/fixture-id',String(live.fixtureId));
+          console.log('BALL46_FULL_MARKET_TEST_FIXTURE',live.fixtureId);
+          NODE
+
+          FIXTURE_ID="$(cat /tmp/fixture-id)"
+          code="$(curl -sS --max-time 30 -o /tmp/full-market.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${FIXTURE_ID}&recover=${GITHUB_RUN_ID}" || true)"
+          echo "BALL46_FULL_MARKET_HTTP $code"
+          node - <<'NODE'
+          const fs=require('fs');
+          const text=fs.readFileSync('/tmp/full-market.json','utf8');
+          let j={}; try{j=JSON.parse(text)}catch{}
+          const root=j.fullOdds??j.data??j.provider??j;
+          const books=root?.data?.bookmakers??root?.bookmakers??j?.bookmakers??j?.data?.bookmakers??[];
+          const keyed=[];
+          if(root&&typeof root==='object'&&!Array.isArray(root)) for(const k of ['bet365','pinnacle','crown','1xbet','12bet','interwetten','macauslot','18bet','vcbet','easybets']) if(root[k]&&typeof root[k]==='object') keyed.push(k);
+          const rows=Array.isArray(books)?books:[];
+          const names=rows.map(x=>x?.slug??x?.name??x?.bookmaker?.slug??x?.bookmaker?.name).filter(Boolean);
+          const sample=rows[0]?.odds??rows[0]?.markets??rows[0]?.data?.odds??rows[0]?.data?.markets??null;
+          const marketKeys=sample&&typeof sample==='object'?Object.keys(sample):[];
+          console.log('BALL46_FULL_MARKET_SHAPE',JSON.stringify({ok:j?.ok,httpBodyKeys:Object.keys(j||{}),bookCount:rows.length||keyed.length,books:names.length?names:keyed,marketKeys:marketKeys.slice(0,30),error:j?.error||null,fallbackOnly:j?.fallbackOnly||false}));
+          console.log('BALL46_FULL_MARKET_SAMPLE',JSON.stringify(j).slice(0,7000));
           NODE
 
           for page in signal.html statistics.html settings.html; do
