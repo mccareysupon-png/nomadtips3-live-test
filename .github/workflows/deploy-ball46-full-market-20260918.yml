@@ -58,10 +58,15 @@ jobs:
           test -s production/nomad-live-343/live-summary-full-odds-343.js
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
           test -s production/nomad-live-343/5usd-control.html
+          test -s production/nomad-live-343/detection-test.html
           grep -Fq 'nomad343-ball46-full-market-v3-control' production/workers/nomadtips3-full-market-343-ball46/src/index.js
           grep -Fq "/api/full-market/settings" production/nomad-live-343/5usd-control.html
           grep -Fq "url.pathname === '/api/full-market/settings'" production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '5USD CONTROL' production/nomad-live-343/5usd-control.html
+          grep -Fq 'DETECTION TEST' production/nomad-live-343/detection-test.html
+          grep -Fq '/api/engine/settings' production/nomad-live-343/detection-test.html
+          grep -Fq '/api/engine/scan' production/nomad-live-343/detection-test.html
+          grep -Fq "'/detection-test.html'" production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
           node --check production/workers/nomadtips3-343-preview/src/index.js
@@ -73,6 +78,7 @@ jobs:
           cp production/nomad-live-343/live-summary-full-odds-343.js /tmp/live-summary-full-odds-343.js
           cp production/nomad-live-343/rich-odds-on-demand-343.js /tmp/rich-odds-on-demand-343.js
           cp production/nomad-live-343/5usd-control.html /tmp/5usd-control.html
+          cp production/nomad-live-343/detection-test.html /tmp/detection-test.html
           rm -rf production/nomad-live-343
           cp -a candidate-ui/nomad-live-343 production/nomad-live-343
           cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
@@ -80,9 +86,11 @@ jobs:
           cp /tmp/live-summary-full-odds-343.js production/nomad-live-343/live-summary-full-odds-343.js
           cp /tmp/rich-odds-on-demand-343.js production/nomad-live-343/rich-odds-on-demand-343.js
           cp /tmp/5usd-control.html production/nomad-live-343/5usd-control.html
+          cp /tmp/detection-test.html production/nomad-live-343/detection-test.html
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
           echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
           echo '5USD_CONTROL_SOURCE=FULL_MARKET_BRANCH'
+          echo 'DETECTION_TEST_SOURCE=FULL_MARKET_BRANCH'
 
       - name: Dry-run isolated Full Market worker
         working-directory: production/workers/nomadtips3-full-market-343-ball46
@@ -119,7 +127,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify Ball46 Full Market and 5USD Control
+      - name: Verify Ball46 Full Market and controls
         id: verify
         shell: bash
         run: |
@@ -183,7 +191,20 @@ jobs:
           grep -Fq '5USD CONTROL' /tmp/control.html
           grep -Fq '/api/full-market/settings' /tmp/control.html
           grep -Fq '/api/hub/health' /tmp/control.html
-          echo 'BALL46_5USD_CONTROL_END_TO_END_PASS'
+
+          curl -fsS --max-time 25 "$BALL46_URL/detection-test.html?_=${GITHUB_RUN_ID}" -D /tmp/detection.headers -o /tmp/detection.html
+          grep -Fq 'DETECTION TEST' /tmp/detection.html
+          grep -Fq '/api/engine/settings' /tmp/detection.html
+          grep -Fq '/api/engine/scan' /tmp/detection.html
+          grep -Fiq 'x-nomad-detection-revision: 343-detection-test-v1' /tmp/detection.headers
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/settings?_=${GITHUB_RUN_ID}" -o /tmp/engine-settings.json
+          node - <<'NODE'
+          const j=require('/tmp/engine-settings.json');
+          if(j.ok!==true||!j.settings||!j.markets||!j.runState) throw Error(JSON.stringify(j));
+          if(!Object.keys(j.markets).length) throw Error('NO_MARKETS');
+          console.log('DETECTION_SETTINGS_PASS',j.version,Object.keys(j.markets).length);
+          NODE
+          echo 'BALL46_CONTROLS_END_TO_END_PASS'
 
       - name: Roll back Ball46 wrapper on verification failure
         if: failure() && steps.verify.outcome == 'failure'
