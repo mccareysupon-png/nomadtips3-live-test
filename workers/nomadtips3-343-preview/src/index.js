@@ -14,6 +14,14 @@ function hubRequest(request, path) {
   return new Request(upstream, request);
 }
 
+function fullMarketRequest(request, path) {
+  const upstream = new URL(request.url);
+  upstream.protocol = 'https:';
+  upstream.hostname = 'full-market.internal';
+  upstream.pathname = path;
+  return new Request(upstream, request);
+}
+
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
@@ -24,10 +32,10 @@ async function noStoreUiAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-ui-revision', '343-bulk-only-v1');
+  headers.set('x-nomad-ui-revision', '343-full-market-v1');
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-bulk-only-v1');
+  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -102,12 +110,17 @@ async function activeSignals(request, env) {
   }, { headers: { 'cache-control': 'no-store' } });
 }
 
-function fullMarketCompat(request, env, path) {
-  if (path === '/health' || path === '/status') {
-    return Response.json({ ok: true, component: 'NOMAD343_FULL_MARKET_COMPAT', mode: 'BULK_SNAPSHOT_ONLY', externalRequestsAdded: 0 }, { headers: { 'cache-control': 'no-store' } });
+async function fullMarketCompat(request, env, path) {
+  if (!env.FULL_MARKET) {
+    return Response.json({ ok: false, error: 'FULL_MARKET_SERVICE_NOT_BOUND' }, { status: 503, headers: { 'cache-control': 'no-store' } });
   }
-  if (path === '/fixture-odds') return env.ENGINE.fetch(engineRequest(request, '/fixture-odds'));
-  return Response.json({ ok: false, error: 'FULL_MARKET_LEGACY_WORKER_TERMINATED', mode: 'BULK_SNAPSHOT_ONLY', externalRequestsAdded: 0 }, { status: 410, headers: { 'cache-control': 'no-store' } });
+  if (path === '/health' || path === '/status') {
+    return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
+  }
+  if (path === '/fixture-odds') {
+    return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
+  }
+  return Response.json({ ok: false, error: 'FULL_MARKET_ROUTE_NOT_FOUND' }, { status: 404, headers: { 'cache-control': 'no-store' } });
 }
 
 export default {
