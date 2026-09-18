@@ -1,0 +1,332 @@
+name: Ball46 UI Polish 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-ui-polish-20260918.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+
+jobs:
+  ui-polish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Ball46 work branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch presentation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          ROOT=Path('nomad-live-343')
+
+          def text(path):
+              return path.read_text()
+          def write(path,s):
+              path.write_text(s)
+          def replace_idempotent(path, old, new, count=None):
+              s=text(path)
+              if old in s:
+                  s=s.replace(old,new) if count is None else s.replace(old,new,count)
+                  write(path,s)
+                  return
+              if new in s:
+                  return
+              raise SystemExit(f'Expected token missing in {path}: {old[:100]}')
+          def append_once(path, marker, block):
+              s=text(path)
+              if marker not in s:
+                  if not s.endswith('\n'): s+='\n'
+                  s+='\n'+block.strip()+'\n'
+                  write(path,s)
+
+          # Page 2/3 match-stat bars: canonical HOME green / AWAY yellow.
+          p=ROOT/'signal-compact-343.css'
+          color_map={
+            '#8bd4f5':'#f0de6a','#73c5ed':'#e8d45d','#61b6df':'#dfc84f',
+            '#51a8d2':'#d8bd45','#4499c3':'#cfb23d','#398bb4':'#c5a636'
+          }
+          s=text(p)
+          for old,new in color_map.items(): s=s.replace(old,new)
+          write(p,s)
+
+          # Event Flow fallback/base colors must match canonical side colors too.
+          p=ROOT/'event-flow-343.css'
+          s=text(p)
+          s=s.replace('#e08d5f','#e6cf55')
+          s=s.replace('rgba(224,141,95,.4)','rgba(230,207,85,.42)')
+          s=s.replace('rgba(224,141,95,.34)','rgba(230,207,85,.36)')
+          s=s.replace('#ffd4bc','#fff0a4')
+          write(p,s)
+
+          # Live minute + LIVE score share one green visual language on Signals/Statistics.
+          append_once(ROOT/'live-minute-343.css','BALL46_LIVE_SCORE_GREEN_V2',r'''
+          /* BALL46_LIVE_SCORE_GREEN_V2 — live time and live score are always green. */
+          .active-signal-score b,
+          .signal-live-badge,
+          .signal-tracker span:nth-child(2) b{
+            color:#65d985!important;
+            font-weight:900;
+            font-variant-numeric:tabular-nums;
+          }
+          ''')
+
+          # Finish the Light Theme inside expanded Signal/Statistics cards.
+          append_once(ROOT/'theme-light-343.css','BALL46_SIGNAL_STATS_LIGHT_V2',r'''
+          /* BALL46_SIGNAL_STATS_LIGHT_V2 — no dark islands inside Signals/Statistics light mode. */
+          html[data-theme="light"] .signal-match-detail,
+          html[data-theme="light"] .signal-entry-blocks,
+          html[data-theme="light"] .signal-live-grid,
+          html[data-theme="light"] .signal-entry-detail-grid{
+            background:transparent!important;
+            color:#17231b!important;
+          }
+          html[data-theme="light"] .signal-live-section>header,
+          html[data-theme="light"] .signal-entries-section>header,
+          html[data-theme="light"] .signal-evidence-card,
+          html[data-theme="light"] .signal-evidence-card>header,
+          html[data-theme="light"] .signal-entry-block,
+          html[data-theme="light"] .signal-entry-block>header,
+          html[data-theme="light"] .signal-entry-detail-grid section,
+          html[data-theme="light"] .signal-entry-detail-grid section>header,
+          html[data-theme="light"] .signal-technical,
+          html[data-theme="light"] .signal-technical-grid,
+          html[data-theme="light"] .signal-technical-grid span,
+          html[data-theme="light"] .signal-live-meta span,
+          html[data-theme="light"] .signal-rule-item,
+          html[data-theme="light"] .signal-entry-grid>div{
+            background:#ffffff!important;
+            border-color:#e0e8e1!important;
+            color:#17231b!important;
+          }
+          html[data-theme="light"] .signal-live-section>header,
+          html[data-theme="light"] .signal-entries-section>header,
+          html[data-theme="light"] .signal-evidence-card>header,
+          html[data-theme="light"] .signal-entry-block>header,
+          html[data-theme="light"] .signal-entry-detail-grid section>header{
+            background:#f8faf8!important;
+          }
+          html[data-theme="light"] .signal-entry-grid,
+          html[data-theme="light"] .signal-technical-grid{
+            background:#e0e8e1!important;
+          }
+          html[data-theme="light"] .signal-mirror-half{
+            background:#edf2ee!important;
+          }
+          html[data-theme="light"] .signal-mirror-row+.signal-mirror-row{
+            border-top-color:#edf1ee!important;
+          }
+          html[data-theme="light"] .signal-mirror-row>strong,
+          html[data-theme="light"] .signal-live-meta b,
+          html[data-theme="light"] .signal-entry-grid strong,
+          html[data-theme="light"] .signal-entry-block>header b,
+          html[data-theme="light"] .signal-technical-grid b,
+          html[data-theme="light"] .signal-market-chip span,
+          html[data-theme="light"] .signal-market-chip span strong,
+          html[data-theme="light"] .nomad-flow-head b,
+          html[data-theme="light"] .nomad-flow-legend b{
+            color:#253329!important;
+          }
+          html[data-theme="light"] .signal-mirror-row>span,
+          html[data-theme="light"] .signal-live-meta small,
+          html[data-theme="light"] .signal-entry-grid span,
+          html[data-theme="light"] .signal-entry-block>header small,
+          html[data-theme="light"] .signal-technical-grid small,
+          html[data-theme="light"] .nomad-flow-head small,
+          html[data-theme="light"] .nomad-flow-foot,
+          html[data-theme="light"] .nomad-flow-axis-label{
+            color:#6d786f!important;
+            fill:#6d786f!important;
+          }
+          html[data-theme="light"] .signal-rule-item.pass{
+            background:#edf8f0!important;
+            border-color:#cde2d1!important;
+          }
+          html[data-theme="light"] .signal-rule-item.fail{
+            background:#fff7f6!important;
+            border-color:#ead8d5!important;
+          }
+          html[data-theme="light"] .active-signal-score .live-minute-343,
+          html[data-theme="light"] .active-signal-score b,
+          html[data-theme="light"] .signal-live-badge,
+          html[data-theme="light"] .signal-tracker span:nth-child(2) b{
+            color:#2f8f4e!important;
+          }
+          ''')
+
+          # Page 1: same team colors and green LIVE score/minute.
+          p=ROOT/'dashboard-v2.css'
+          s=text(p).replace('.stat-track.away i{background:#73889d}', '.stat-track.away i{background:var(--yellow)}')
+          write(p,s)
+          append_once(p,'BALL46_TEAM_LIVE_COLORS_V2',r'''
+          /* BALL46_TEAM_LIVE_COLORS_V2 — canonical team/live identity on Live Scores. */
+          .match-row .teams-cell>b:first-child,
+          .feature-score>div:first-child b{color:var(--green)!important}
+          .match-row .teams-cell>b:nth-child(2),
+          .feature-score>.away b{color:var(--yellow)!important}
+          .status-section[data-status-section="live"] .match-row .score-cell>strong,
+          .status-section[data-status-section="live"] .match-row .score-cell>small:not(.half-score),
+          .status-section[data-status-section="live"] .match-row .teams-cell>small{
+            color:var(--green)!important;
+            font-weight:900;
+          }
+          .featured-card.is-live [data-featured-score],
+          .featured-card.is-live [data-featured-status]{
+            color:var(--green)!important;
+            font-weight:900;
+          }
+          ''')
+
+          # Presentation-only state class for the featured card; no data/logic changes.
+          p=ROOT/'dashboard-v2-stage3.js'
+          old="selectedId=fixtureKey(f);setText('[data-featured-league]',leagueName(f));"
+          new="selectedId=fixtureKey(f);const featured=$('[data-featured]');if(featured)featured.classList.toggle('is-live',classify(f)==='live');setText('[data-featured-league]',leagueName(f));"
+          replace_idempotent(p,old,new,1)
+
+          # Cache-bust changed UI assets on all three public pages.
+          replacements={
+            ROOT/'signal.html':[
+              ('live-minute-343.css?v=343-live-minute-v1','live-minute-343.css?v=343-live-minute-v2-live-score'),
+              ('signal-compact-343.css?v=343-signal-active-v2','signal-compact-343.css?v=343-signal-active-v3-team-light'),
+              ('event-flow-343.css?v=343-flow-v3','event-flow-343.css?v=343-flow-v4-team-colors'),
+              ('team-sides-343.css?v=343-team-sides-v2','team-sides-343.css?v=343-team-sides-v3-home-green-away-yellow'),
+              ('theme-light-343.css?v=343-light-v1','theme-light-343.css?v=343-light-v2-signal-stats'),
+              ('team-sides-343.js?v=343-team-sides-v1','team-sides-343.js?v=343-team-sides-v2')
+            ],
+            ROOT/'statistics.html':[
+              ('live-minute-343.css?v=343-live-minute-v1','live-minute-343.css?v=343-live-minute-v2-live-score'),
+              ('signal-compact-343.css?v=343-signal-active-v2','signal-compact-343.css?v=343-signal-active-v3-team-light'),
+              ('event-flow-343.css?v=343-flow-v3','event-flow-343.css?v=343-flow-v4-team-colors'),
+              ('team-sides-343.css?v=343-team-sides-v2','team-sides-343.css?v=343-team-sides-v3-home-green-away-yellow'),
+              ('theme-light-343.css?v=343-light-v1','theme-light-343.css?v=343-light-v2-signal-stats'),
+              ('team-sides-343.js?v=343-team-sides-v1','team-sides-343.js?v=343-team-sides-v2')
+            ],
+            ROOT/'index.html':[
+              ('dashboard-v2.css?v=343-dashboard-v2-stage1-20260915c','dashboard-v2.css?v=343-dashboard-v2-ui-colors-20260918'),
+              ('dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-schema-accurate-20260915c','dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-live-color-20260918')
+            ]
+          }
+          for path,pairs in replacements.items():
+              for old,new in pairs: replace_idempotent(path,old,new,1)
+          PY
+
+      - name: Validate UI-only diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          git diff --check
+          grep -Fq 'BALL46_SIGNAL_STATS_LIGHT_V2' nomad-live-343/theme-light-343.css
+          grep -Fq 'BALL46_LIVE_SCORE_GREEN_V2' nomad-live-343/live-minute-343.css
+          grep -Fq 'BALL46_TEAM_LIVE_COLORS_V2' nomad-live-343/dashboard-v2.css
+          grep -Fq '#f0de6a' nomad-live-343/signal-compact-343.css
+          grep -Fq '#e6cf55' nomad-live-343/event-flow-343.css
+          grep -Fq '343-light-v2-signal-stats' nomad-live-343/signal.html
+          grep -Fq '343-light-v2-signal-stats' nomad-live-343/statistics.html
+          grep -Fq '343-dashboard-v2-ui-colors-20260918' nomad-live-343/index.html
+          bad="$(git diff --name-only | grep -Ev '^(nomad-live-343/(signal-compact-343\.css|event-flow-343\.css|live-minute-343\.css|theme-light-343\.css|dashboard-v2\.css|dashboard-v2-stage3\.js|signal\.html|statistics\.html|index\.html))$' || true)"
+          if [ -n "$bad" ]; then echo "Unexpected non-UI changes:"; echo "$bad"; exit 1; fi
+          echo 'UI_ONLY_DIFF_PASS'
+
+      - name: Preflight backend untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$BALL46_URL/api/engine/health?preui=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS "$BALL46_URL/api/hub/health?preui=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          curl -fsS "$BALL46_URL/api/full-market/health?preui=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-before.json'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));
+          if(e.ok!==true||e.version!=='nomad343-engine-v4-autonomous-settlement') throw Error('ENGINE_PREFLIGHT_FAIL '+JSON.stringify(e));
+          if(h.ok!==true) throw Error('HUB_PREFLIGHT_FAIL '+JSON.stringify(h));
+          if(f.ok!==true) throw Error('FULL_MARKET_PREFLIGHT_FAIL '+JSON.stringify(f));
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,hub:h.version||null,full:f.version||null}));
+          console.log('BACKEND_PREFLIGHT_PASS',fs.readFileSync('/tmp/backend-before.json','utf8'));
+          NODE
+
+      - name: Dry-run Ball46 wrapper only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 UI wrapper only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Production UI and backend invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            q="ui=${GITHUB_RUN_ID}-${n}"
+            curl -fsS "$BALL46_URL/signal.html?$q" -o /tmp/signal.html || true
+            curl -fsS "$BALL46_URL/statistics.html?$q" -o /tmp/statistics.html || true
+            curl -fsS "$BALL46_URL/index.html?$q" -o /tmp/index.html || true
+            if grep -Fq '343-light-v2-signal-stats' /tmp/signal.html 2>/dev/null && \
+               grep -Fq '343-light-v2-signal-stats' /tmp/statistics.html 2>/dev/null && \
+               grep -Fq '343-dashboard-v2-ui-colors-20260918' /tmp/index.html 2>/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = 1
+          curl -fsS "$BALL46_URL/theme-light-343.css?ui=${GITHUB_RUN_ID}" -o /tmp/light.css
+          curl -fsS "$BALL46_URL/team-sides-343.css?ui=${GITHUB_RUN_ID}" -o /tmp/sides.css
+          curl -fsS "$BALL46_URL/live-minute-343.css?ui=${GITHUB_RUN_ID}" -o /tmp/live.css
+          curl -fsS "$BALL46_URL/dashboard-v2.css?ui=${GITHUB_RUN_ID}" -o /tmp/dashboard.css
+          grep -Fq 'BALL46_SIGNAL_STATS_LIGHT_V2' /tmp/light.css
+          grep -Fq -- '--team-away-name:#e6cf55' /tmp/sides.css
+          grep -Fq 'BALL46_LIVE_SCORE_GREEN_V2' /tmp/live.css
+          grep -Fq 'BALL46_TEAM_LIVE_COLORS_V2' /tmp/dashboard.css
+
+          curl -fsS "$BALL46_URL/api/engine/health?postui=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS "$BALL46_URL/api/hub/health?postui=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          curl -fsS "$BALL46_URL/api/full-market/health?postui=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const before=JSON.parse(fs.readFileSync('/tmp/backend-before.json'));
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-after.json'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
+          const after={engine:e.version,hub:h.version||null,full:f.version||null};
+          if(e.ok!==true||h.ok!==true||f.ok!==true) throw Error('BACKEND_POSTCHECK_FAIL');
+          if(JSON.stringify(before)!==JSON.stringify(after)) throw Error('BACKEND_VERSION_CHANGED '+JSON.stringify({before,after}));
+          console.log('BALL46_UI_PRODUCTION_PASS',JSON.stringify(after));
+          NODE
+
+      - name: Persist verified UI source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/signal-compact-343.css nomad-live-343/event-flow-343.css nomad-live-343/live-minute-343.css nomad-live-343/theme-light-343.css nomad-live-343/dashboard-v2.css nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/index.html
+          if git diff --cached --quiet; then echo 'UI_SOURCE_ALREADY_PERSISTED'; exit 0; fi
+          git commit -m 'fix(ball46): unify light UI and team colors [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo 'BALL46_UI_SOURCE_PERSISTED'
