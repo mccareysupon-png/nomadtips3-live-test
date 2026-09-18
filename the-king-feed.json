@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-17T22:15:47Z",
+  "updated_at": "2026-09-18T00:28:43Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3779,8 +3779,8 @@
       "edge": 18.1,
       "ev": 0.2532,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-2",
       "locked_at": "2026-09-17T01:48:29Z",
       "source_url": "https://www.goaloo.com/football/bolivia-primera-division-real-tomayapo-vs-oriente-petrolero/h2h-3059141",
       "summary_url": "https://www.goaloo.com/football/bolivia-primera-division-real-tomayapo-vs-oriente-petrolero/summary-3059141",
@@ -3840,7 +3840,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-18T00:28:43Z"
     },
     {
       "id": "0f435bfda6bc8895-AH-HOME-m0p0",
@@ -86228,6 +86233,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-17T22:15:47Z"
+    },
+    {
+      "id": "68df70bbf925fbda-AH-HOME-m0p0",
+      "goaloo_id": "3059141",
+      "date": "2026-09-17",
+      "kickoff": "2026-09-17 22:00:00",
+      "league": "Bolivia Primera Division",
+      "home": "Real Tomayapo",
+      "away": "Oriente Petrolero",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "Real Tomayapo -0",
+      "side": "home",
+      "odds": 1.71,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.7154,
+      "model_probability": 0.7154,
+      "market_fair_probability": 0.5341,
+      "market_edge": 0.1814,
+      "edge": 18.1,
+      "ev": 0.2532,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "0-2",
+      "locked_at": "2026-09-17T01:48:29Z",
+      "source_url": "https://www.goaloo.com/football/bolivia-primera-division-real-tomayapo-vs-oriente-petrolero/h2h-3059141",
+      "summary_url": "https://www.goaloo.com/football/bolivia-primera-division-real-tomayapo-vs-oriente-petrolero/summary-3059141",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 2.31,
+        "lambda_away": 1.208,
+        "home_win": 0.6357,
+        "draw": 0.2054,
+        "away_win": 0.1589,
+        "h2h_adjustment": -0.005,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.3528,
+          "gd_edge": 0.6853,
+          "clean_sheet_edge": 0.1024,
+          "failed_to_score_edge": -0.2341,
+          "bounded_adjustment": 0.0281,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-18T00:28:43Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
