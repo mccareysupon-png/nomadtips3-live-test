@@ -1,0 +1,47 @@
+name: Ball46 Rich Odds Check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ball46-rich-odds-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check-rich-odds:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Probe live fixture and rich odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46.com'
+          curl -fsS --max-time 30 "$BASE/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          const fs=Array.isArray(j.fixtures)?j.fixtures:[];
+          const live=fs.find(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live')||String(f?.status||'').toLowerCase().includes('in_play'))||fs[0];
+          if(!live?.fixtureId) throw Error('NO_FIXTURE');
+          require('fs').writeFileSync('/tmp/id',String(live.fixtureId));
+          console.log('FIXTURE',live.fixtureId);
+          NODE
+          ID="$(cat /tmp/id)"
+          code="$(curl -sS --max-time 30 -o /tmp/rich.json -w '%{http_code}' "$BASE/api/hub/rich-odds?fixtureId=${ID}&_=${GITHUB_RUN_ID}" || true)"
+          echo "RICH_HTTP $code"
+          node - <<'NODE'
+          const fs=require('fs'); const text=fs.readFileSync('/tmp/rich.json','utf8');
+          let j={}; try{j=JSON.parse(text)}catch{}
+          const p=j.provider??j.data??j;
+          const books=p?.data?.bookmakers??p?.bookmakers??j?.bookmakers??j?.data?.bookmakers??[];
+          const rows=Array.isArray(books)?books:[];
+          const keyed=[];
+          if(p&&typeof p==='object'&&!Array.isArray(p)) for(const k of Object.keys(p)) if(/bet|pinn|crown|365|book/i.test(k)) keyed.push(k);
+          const first=rows[0]||null;
+          const odds=first?.odds??first?.markets??first?.data?.odds??first?.data?.markets??null;
+          console.log('RICH_SHAPE',JSON.stringify({ok:j?.ok,keys:Object.keys(j||{}),providerKeys:p&&typeof p==='object'?Object.keys(p).slice(0,40):[],bookCount:rows.length,books:rows.map(x=>x?.slug??x?.name??x?.bookmaker?.slug??x?.bookmaker?.name).filter(Boolean).slice(0,25),keyed:keyed.slice(0,25),marketKeys:odds&&typeof odds==='object'?Object.keys(odds).slice(0,40):[],error:j?.error||null,guard:j?.guard||null,cache:j?.cache||null}));
+          console.log('RICH_SAMPLE',JSON.stringify(j).slice(0,12000));
+          NODE
