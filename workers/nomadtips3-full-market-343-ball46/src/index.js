@@ -1,17 +1,17 @@
-const VERSION = 'nomad343-ball46-full-market-v3-control';
+const VERSION = 'nomad343-ball46-full-market-v4-john-backoff-safe';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const BOOKMAKERS = Object.freeze([
   'bet365','pinnacle','williamhill','ladbrokes','vcbet','1xbet','bwin','easybets','interwetten',
   'betfair','snai','macauslot','betsson','betathome','18bet','10bet','12bet','coral','crown'
 ]);
-const STALE_CACHE_MS = 180_000;
+const STALE_CACHE_MS = 900_000;
 const PROVIDER_LIMIT_PER_MINUTE = 40;
 const TIMEOUT_MS = 15_000;
 const PRICE_KEYS = new Set(['home','away','draw','over','under','yes','no']);
 const PRESETS = Object.freeze({
-  eco: { mode:'eco', label:'ประหยัด', cacheMs:30_000, maxCallsPerMinute:15 },
-  normal: { mode:'normal', label:'ปกติ', cacheMs:20_000, maxCallsPerMinute:25 },
-  fast: { mode:'fast', label:'เร็ว', cacheMs:12_000, maxCallsPerMinute:30 }
+  eco: { mode:'eco', label:'ประหยัด', cacheMs:90_000, maxCallsPerMinute:5 },
+  normal: { mode:'normal', label:'ปกติ', cacheMs:60_000, maxCallsPerMinute:8 },
+  fast: { mode:'fast', label:'เร็ว', cacheMs:45_000, maxCallsPerMinute:10 }
 });
 const DEFAULT_MODE = 'normal';
 const now = () => Date.now();
