@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-bulk-odds-compat-v1-scalar-object';
+const VERSION='343-bulk-odds-compat-v2-array-object';
 const BOARD_PATH='/api/engine/board';
 const nativeFetch=window.fetch.bind(window);
 const LINE_MARKETS=new Set([
@@ -46,9 +46,12 @@ function normalizeTree(node,depth=0){
   return changed?out:node;
 }
 function normalizeFixture(fixture){
-  if(!plain(fixture)||!plain(fixture.providerOdds))return fixture;
-  const providerOdds=normalizeTree(fixture.providerOdds);
-  return providerOdds===fixture.providerOdds?fixture:{...fixture,providerOdds};
+  if(!plain(fixture))return fixture;
+  const raw=fixture.providerOdds;
+  if(Array.isArray(raw))return {...fixture,providerOdds:{bookmakers:normalizeTree(raw)}};
+  if(!plain(raw))return fixture;
+  const providerOdds=normalizeTree(raw);
+  return providerOdds===raw?fixture:{...fixture,providerOdds};
 }
 function normalizeBoard(payload){
   if(!plain(payload)||!Array.isArray(payload.fixtures))return payload;
