@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-live-summary-full-odds-v1';
+const VERSION='343-live-summary-full-odds-v2-no-dom-loop';
 const API='/api/full-market/fixture-odds';
 const LOCAL_TTL_MS=15_000;
 const QUEUE_TICK_MS=2_200;
@@ -46,6 +46,10 @@ function summarize(payload){
   if(ou){const v=ou.value,line=num(v?.line??v?.total),o=validPrice(v?.over??v?.over_odds??v?.overOdds),u=validPrice(v?.under??v?.under_odds??v?.underOdds);if(line!==null||o!==null||u!==null)out.ou={stage:ou.stage,line:line===null?'—':fmtLine(line),prices:[o,u].map(fmtPrice).join('/')};}
   return out;
 }
+function signature(data){
+  if(!data)return'';
+  return JSON.stringify({book:data.book,stale:data.stale,one:data.one||null,ah:data.ah||null,ou:data.ou||null});
+}
 function ensureStyle(){
   if(document.getElementById('nomad343-live-summary-full-odds-style'))return;
   const s=document.createElement('style');s.id='nomad343-live-summary-full-odds-style';
@@ -56,21 +60,28 @@ function patchCell(cell,label,data,book,stale){
   if(!cell||!data)return;
   const labelEl=cell.querySelector(':scope > span'),valueEl=cell.querySelector(':scope > b');let small=cell.querySelector(':scope > small');
   if(!labelEl||!valueEl)return;
-  labelEl.textContent=`${label} · ${data.stage}`;
-  if(label==='1X2')valueEl.textContent=data.text;
-  else valueEl.innerHTML=`${data.line}<span class="nomad-summary-price-pair">${data.prices}</span>`;
+  const nextLabel=`${label} · ${data.stage}`;
+  const nextValue=label==='1X2'?data.text:`${data.line}<span class="nomad-summary-price-pair">${data.prices}</span>`;
+  if(labelEl.textContent!==nextLabel)labelEl.textContent=nextLabel;
+  if(label==='1X2'){
+    if(valueEl.textContent!==data.text)valueEl.textContent=data.text;
+  }else if(valueEl.innerHTML!==nextValue)valueEl.innerHTML=nextValue;
   if(!small){small=document.createElement('small');cell.appendChild(small)}
-  small.textContent=book;
+  if(small.textContent!==book)small.textContent=book;
   cell.dataset.fullSummary='1';cell.dataset.stale=stale?'1':'0';
-  cell.title=`${book} · ${data.stage}${label==='1X2'?` · ${data.text}`:` · ${data.line} · ${data.prices}`}`;
+  const nextTitle=`${book} · ${data.stage}${label==='1X2'?` · ${data.text}`:` · ${data.line} · ${data.prices}`}`;
+  if(cell.title!==nextTitle)cell.title=nextTitle;
 }
 function apply(row,data){
   if(!row?.isConnected||!data)return;
+  const sig=signature(data);
+  if(row.dataset.fullSummarySig===sig)return;
   const cells=[...row.querySelectorAll(':scope > .market-cell')];if(cells.length<3)return;
   patchCell(cells[0],'1X2',data.one,data.book,data.stale);
   patchCell(cells[1],'AH',data.ah,data.book,data.stale);
   patchCell(cells[2],'O/U',data.ou,data.book,data.stale);
   row.dataset.fullSummaryOdds='1';
+  row.dataset.fullSummarySig=sig;
 }
 async function fetchFull(id){
   const r=await fetch(`${API}?fixtureId=${encodeURIComponent(id)}&_=${Date.now()}`,{cache:'no-store'});
@@ -106,8 +117,7 @@ function start(){
   window.addEventListener('scroll',scheduleVisible,{passive:true});
   window.addEventListener('resize',scheduleVisible,{passive:true});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')scheduleVisible()});
-  const root=document.querySelector('[data-board-sections]');if(root)new MutationObserver(scheduleVisible).observe(root,{childList:true,subtree:true});
-  window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={version:VERSION,mode:'VISIBLE_LIVE_ONLY',localTtlMs:LOCAL_TTL_MS,queueTickMs:QUEUE_TICK_MS,clear:id=>id?cache.delete(String(id)):cache.clear()};
+  window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={version:VERSION,mode:'VISIBLE_LIVE_ONLY_NO_DOM_OBSERVER',localTtlMs:LOCAL_TTL_MS,queueTickMs:QUEUE_TICK_MS,clear:id=>id?cache.delete(String(id)):cache.clear()};
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
