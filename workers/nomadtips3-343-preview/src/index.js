@@ -36,6 +36,7 @@ async function noStoreUiAsset(request, env) {
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
   if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
+  if (path === '/5usd-control.html') headers.set('x-nomad-control-revision', '343-5usd-control-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -114,12 +115,9 @@ async function fullMarketCompat(request, env, path) {
   if (!env.FULL_MARKET) {
     return Response.json({ ok: false, error: 'FULL_MARKET_SERVICE_NOT_BOUND' }, { status: 503, headers: { 'cache-control': 'no-store' } });
   }
-  if (path === '/health' || path === '/status') {
-    return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
-  }
-  if (path === '/fixture-odds') {
-    return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
-  }
+  if (path === '/health' || path === '/status') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
+  if (path === '/fixture-odds') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
+  if (path === '/settings') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/settings'));
   return Response.json({ ok: false, error: 'FULL_MARKET_ROUTE_NOT_FOUND' }, { status: 404, headers: { 'cache-control': 'no-store' } });
 }
 
@@ -142,7 +140,8 @@ export default {
     if (request.method === 'GET' && (
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
-      url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css'
+      url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css' ||
+      url.pathname === '/5usd-control.html'
     )) return noStoreUiAsset(request, env);
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url);
