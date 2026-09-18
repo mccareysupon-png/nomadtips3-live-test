@@ -1,0 +1,49 @@
+name: Diagnose Ball46 Default Odds Shape 20260919
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/diag-ball46-default-odds-shape-20260919.yml']
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Inspect production board odds shapes
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "https://ball46.com/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const rows=Array.isArray(j.fixtures)?j.fixtures:[];
+          const norm=v=>String(v??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const plain=v=>v&&typeof v==='object'&&!Array.isArray(v);
+          function walk(node,path=[],out=[],depth=0){
+            if(depth>6||!plain(node))return out;
+            for(const [k,v] of Object.entries(node)){
+              const n=norm(k);
+              if(/1x2|asian|handicap|hdp|goal|overunder|total/.test(n))out.push({path:[...path,k].join('.'),keys:plain(v)?Object.keys(v):[],sample:plain(v)?undefined:v});
+              if(plain(v))walk(v,[...path,k],out,depth+1);
+              else if(Array.isArray(v)&&depth<4&&v.length&&plain(v[0]))walk(v[0],[...path,k,'[0]'],out,depth+1);
+            }
+            return out;
+          }
+          let shown=0;
+          for(const f of rows){
+            if(!plain(f.providerOdds))continue;
+            const hits=walk(f.providerOdds);
+            const has1=hits.some(x=>/1x2/.test(norm(x.path)));
+            const hasAH=hits.some(x=>/asian|handicap|hdp/.test(norm(x.path)));
+            const hasOU=hits.some(x=>/goalline|overunder|total/.test(norm(x.path)));
+            if(has1||hasAH||hasOU){
+              console.log('FIXTURE',f.fixtureId,f.home?.name,'vs',f.away?.name,'status',f.boardState||f.status,'minute',f.minute);
+              console.log('ROOT_KEYS',Object.keys(f.providerOdds));
+              console.log('MARKET_HITS',JSON.stringify(hits.slice(0,60)));
+              console.log('PROVIDER_ODDS_SAMPLE',JSON.stringify(f.providerOdds).slice(0,12000));
+              console.log('FLAGS',JSON.stringify({has1,hasAH,hasOU}));
+              if(++shown>=3)break;
+            }
+          }
+          console.log('SUMMARY',JSON.stringify({ok:j.ok,version:j.version,hubVersion:j.hubVersion,fixtures:rows.length,shown}));
+          NODE
