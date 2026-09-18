@@ -53,15 +53,21 @@ jobs:
           test -s production/workers/nomadtips3-full-market-343-ball46/wrangler.toml
           test -s production/workers/nomadtips3-343-preview/src/index.js
           test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          test -s production/nomad-live-343/full-odds-main-343.js
           grep -Fq 'nomadtips3-full-market-343-ball46' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
           grep -Fq 'FULL_MARKET' production/workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
           node --check production/workers/nomadtips3-343-preview/src/index.js
+          node --check production/nomad-live-343/full-odds-main-343.js
+          cp production/nomad-live-343/full-odds-main-343.js /tmp/full-odds-main-343.js
           rm -rf production/nomad-live-343
           cp -a candidate-ui/nomad-live-343 production/nomad-live-343
-          grep -Fq '343-full-odds-main-v5-ultra-10book' production/nomad-live-343/full-odds-main-343.js
+          cp /tmp/full-odds-main-343.js production/nomad-live-343/full-odds-main-343.js
+          grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
           echo "FULL_MARKET_SOURCE=$(git -C production rev-parse HEAD)"
-          echo "UI_SOURCE=$KNOWN_GOOD_UI"
+          echo "BASE_UI_SOURCE=$KNOWN_GOOD_UI"
+          echo 'FULL_ODDS_UI_SOURCE=FULL_MARKET_BRANCH'
 
       - name: Dry-run isolated Full Market worker
         working-directory: production/workers/nomadtips3-full-market-343-ball46
@@ -112,8 +118,9 @@ jobs:
           const h=require('/tmp/health.json');
           if(h.ok!==true||h.component!=='BALL46_FULL_MARKET_GATE') throw Error(JSON.stringify(h));
           if(Number(h.bookmakerCount)!==19) throw Error(`bookmakerCount=${h.bookmakerCount}`);
-          if(Number(h.maxFullMarketCallsPerMinute)!==15) throw Error(`guard=${h.maxFullMarketCallsPerMinute}`);
-          console.log('FULL_MARKET_HEALTH_PASS',h.version,h.bookmakerCount,h.callsLast60s);
+          if(Number(h.cacheMs)!==12000) throw Error(`cacheMs=${h.cacheMs}`);
+          if(Number(h.maxFullMarketCallsPerMinute)!==30) throw Error(`guard=${h.maxFullMarketCallsPerMinute}`);
+          console.log('FULL_MARKET_HEALTH_PASS',h.version,h.bookmakerCount,h.cacheMs,h.maxFullMarketCallsPerMinute,h.callsLast60s);
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
@@ -159,7 +166,11 @@ jobs:
           NODE
 
           curl -fsS --max-time 25 "$BALL46_URL/full-odds-main-343.js?_=${GITHUB_RUN_ID}" -o /tmp/ui.js
-          grep -Fq '343-full-odds-main-v5-ultra-10book' /tmp/ui.js
+          grep -Fq '343-full-odds-main-v8-ultra-19book' /tmp/ui.js
+          grep -Fq "const API='/api/full-market/fixture-odds'" /tmp/ui.js
+          if grep -Fq '/api/engine/fixture-odds' /tmp/ui.js; then
+            echo '::error::Partial bulk fallback must not be present in Full Market UI'; exit 31
+          fi
           echo 'BALL46_FULL_MARKET_END_TO_END_PASS'
 
       - name: Roll back Ball46 wrapper on verification failure
