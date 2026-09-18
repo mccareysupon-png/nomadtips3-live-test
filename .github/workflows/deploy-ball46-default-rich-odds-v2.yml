@@ -1,0 +1,154 @@
+name: Deploy Ball46 Default Rich Odds v2
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-default-rich-odds-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+  BALL46_URL: https://ball46.com
+
+jobs:
+  patch-and-deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Ball46 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Patch default card rich bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          dash=Path('nomad-live-343/dashboard-v2-stage3.js')
+          s=dash.read_text()
+          s=s.replace("const VERSION='343-dashboard-v2-stage3-v4-last-good-odds-prediction-card';","const VERSION='343-dashboard-v2-stage3-v5-default-rich-bridge';")
+          anchor="function holdLastGoodOdds(rows){const old=new Map(fixtures.map(f=>[fixtureKey(f),f]));return rows.map(f=>{const prev=old.get(fixtureKey(f));if(!prev)return f;const merged={...f};merged.providerOdds=mergeLastGoodValue(prev?.providerOdds,f?.providerOdds);if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsUpdatedAt)merged.providerOddsUpdatedAt=prev.providerOddsUpdatedAt;if((!f?.providerOdds||!Object.keys(f.providerOdds||{}).length)&&prev?.providerOddsFreshAt)merged.providerOddsFreshAt=prev.providerOddsFreshAt;return merged})}\n"
+          if 'function applyRichOdds(' not in s:
+              if anchor not in s: raise SystemExit('holdLastGoodOdds anchor missing')
+              s=s.replace(anchor,anchor+"""let richRenderFrame=0;
+function scheduleRichRender(){if(richRenderFrame)return;const run=()=>{richRenderFrame=0;renderBoard();renderFeatured()};if(typeof requestAnimationFrame==='function')richRenderFrame=requestAnimationFrame(run);else{richRenderFrame=1;setTimeout(run,0)}}
+function applyRichOdds(fixtureId,fullOdds,fetchedAt){const id=String(fixtureId??'').trim();if(!id||!fullOdds||typeof fullOdds!=='object')return false;const idx=fixtures.findIndex(f=>fixtureKey(f)===id);if(idx<0)return false;const prev=fixtures[idx];fixtures[idx]={...prev,providerOdds:mergeLastGoodValue(prev?.providerOdds,fullOdds),providerOddsUpdatedAt:fetchedAt??prev?.providerOddsUpdatedAt??Date.now(),providerOddsFreshAt:fetchedAt??prev?.providerOddsFreshAt??Date.now(),providerOddsHeld:true,defaultRichOdds:true};scheduleRichRender();return true}
+""",1)
+          old="function start(){initControls();load();setInterval(load,POLL_MS);window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_SNAPSHOT_ONLY'}}"
+          new="function start(){initControls();load();setInterval(load,POLL_MS);window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_PLUS_CENTRAL_RICH_VISIBLE',applyRichOdds,getFixture:id=>fixtures.find(f=>fixtureKey(f)===String(id))||null}}"
+          if old in s: s=s.replace(old,new,1)
+          elif new not in s: raise SystemExit('dashboard start anchor missing')
+          dash.write_text(s)
+
+          rich=Path('nomad-live-343/live-summary-full-odds-343.js')
+          r=rich.read_text()
+          r=r.replace("const VERSION='343-live-summary-john-gated-v6-last-good-persistent';","const VERSION='343-live-summary-john-gated-v7-default-visible-rich';")
+          insert="const cache=new Map();\nconst inflight=new Map();\nlet retryUntil=0;\n"
+          if 'DEFAULT_MAX_PER_MINUTE' not in r:
+              if insert not in r: raise SystemExit('rich state anchor missing')
+              r=r.replace(insert,"""const cache=new Map();
+const inflight=new Map();
+let retryUntil=0;
+const DEFAULT_MAX_PER_MINUTE=6;
+const defaultQueue=[];
+const defaultQueued=new Set();
+const defaultDone=new Set();
+const defaultCalls=[];
+let defaultBusy=false;
+let defaultObserver=null;
+const observedRows=new WeakSet();
+""",1)
+          before="function onFixtureReady(e){\n"
+          if 'function startDefaultVisibleEnrichment()' not in r:
+              if before not in r: raise SystemExit('fixture-ready anchor missing')
+              helpers="""function trimDefaultCalls(){const cutoff=now()-60_000;while(defaultCalls.length&&defaultCalls[0]<cutoff)defaultCalls.shift()}
+function applyDefaultRich(id,hit){if(!hit?.fullOdds)return false;const dash=window.NOMAD343_DASHBOARD_V2;if(!dash?.applyRichOdds)return false;return dash.applyRichOdds(id,hit.fullOdds,hit.fetchedAt)}
+function pumpDefaultQueue(){if(defaultBusy||!defaultQueue.length)return;trimDefaultCalls();if(defaultCalls.length>=DEFAULT_MAX_PER_MINUTE){const wait=Math.max(1000,60_000-(now()-defaultCalls[0])+250);setTimeout(pumpDefaultQueue,wait);return}const id=defaultQueue.shift();defaultQueued.delete(id);if(defaultDone.has(id)){pumpDefaultQueue();return}defaultBusy=true;defaultCalls.push(now());requestRich(id).then(hit=>{if(applyDefaultRich(id,hit))defaultDone.add(id)}).catch(err=>{const retry=Math.max(5,Number(err?.retryAfter||0));setTimeout(()=>enqueueDefault(id),retry*1000)}).finally(()=>{defaultBusy=false;setTimeout(pumpDefaultQueue,350)})}
+function enqueueDefault(id){id=String(id||'').trim();if(!id||defaultDone.has(id)||defaultQueued.has(id))return;defaultQueued.add(id);defaultQueue.push(id);pumpDefaultQueue()}
+function scanDefaultRows(){if(!defaultObserver)return;document.querySelectorAll('.match-row[data-match-id]').forEach(row=>{if(observedRows.has(row))return;observedRows.add(row);defaultObserver.observe(row)})}
+function startDefaultVisibleEnrichment(){if(typeof IntersectionObserver!=='function')return;defaultObserver=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const row=entry.target;defaultObserver.unobserve(row);enqueueDefault(row?.dataset?.matchId)}},{root:null,rootMargin:'220px 0px',threshold:0.01});scanDefaultRows();setInterval(scanDefaultRows,1500)}
+
+"""
+              r=r.replace(before,helpers+before,1)
+          oldstart="function start(){\n  document.addEventListener('nomad343:fixture-ready',onFixtureReady);\n  window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={"
+          newstart="function start(){\n  document.addEventListener('nomad343:fixture-ready',onFixtureReady);\n  startDefaultVisibleEnrichment();\n  window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={"
+          if oldstart in r: r=r.replace(oldstart,newstart,1)
+          elif newstart not in r: raise SystemExit('rich start anchor missing')
+          r=r.replace("mode:'BULK_PLUS_ON_DEMAND_RICH_FINAL_OWNER',","mode:'BULK_PLUS_ON_DEMAND_AND_VISIBLE_DEFAULT_RICH',")
+          r=r.replace("automaticPolling:false,","automaticPolling:false,\n    defaultCardVisibleEnrichment:true,\n    defaultCardMaxRequestsPerMinute:DEFAULT_MAX_PER_MINUTE,")
+          rich.write_text(r)
+
+          idx=Path('nomad-live-343/index.html')
+          h=idx.read_text()
+          h=h.replace('343-dashboard-v2-stage3-v4-last-good-odds-prediction-card&order=20260919-1','343-dashboard-v2-stage3-v5-default-rich-bridge&order=20260919-2')
+          h=h.replace('343-live-summary-john-gated-v6-last-good-persistent&order=20260918-1','343-live-summary-john-gated-v7-default-visible-rich&order=20260919-2')
+          idx.write_text(h)
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' nomad-live-343/index.html
+          grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' nomad-live-343/index.html
+          grep -Fq 'applyRichOdds' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' nomad-live-343/live-summary-full-odds-343.js
+          if grep -Fq 'MutationObserver' nomad-live-343/live-summary-full-odds-343.js; then exit 31; fi
+
+      - name: Commit source patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- nomad-live-343/dashboard-v2-stage3.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/index.html; then
+            git config user.name 'Ball46 Runtime Bot'
+            git config user.email 'actions@users.noreply.github.com'
+            git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/index.html
+            git commit -m 'fix(ball46): enrich default cards with centrally cached rich odds'
+            git push origin HEAD:${SOURCE_BRANCH}
+          fi
+
+      - name: Deploy Ball46 wrapper and assets only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production default rich bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
+            curl -fsS --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/dash.js || true
+            curl -fsS --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/rich.js || true
+            if grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' /tmp/index.html && grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' /tmp/index.html && grep -Fq 'applyRichOdds' /tmp/dash.js && grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' /tmp/rich.js; then break; fi
+            sleep 2
+          done
+          grep -Fq '343-dashboard-v2-stage3-v5-default-rich-bridge' /tmp/index.html
+          grep -Fq '343-live-summary-john-gated-v7-default-visible-rich' /tmp/index.html
+          grep -Fq 'applyRichOdds' /tmp/dash.js
+          grep -Fq 'DEFAULT_MAX_PER_MINUTE=6' /tmp/rich.js
+          if grep -Fq 'MutationObserver' /tmp/rich.js; then exit 32; fi
+          code=$(curl -sS --max-time 30 -o /tmp/full.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=200500874&verify=${GITHUB_RUN_ID}" || true)
+          echo "FULL_HTTP=$code"
+          if [ "$code" = 200 ]; then
+            node - <<'NODE'
+            const j=require('/tmp/full.json');
+            const books=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
+            const b=books.find(x=>x?.odds?.asian_handicap&&x?.odds?.goal_line);
+            if(!b)throw Error('NO_RICH_AH_OU_BOOK');
+            const ah=b.odds.asian_handicap.inplay||b.odds.asian_handicap.closing||b.odds.asian_handicap.opening;
+            const ou=b.odds.goal_line.inplay||b.odds.goal_line.closing||b.odds.goal_line.opening;
+            if(!ah||typeof ah!=='object'||(!Number.isFinite(Number(ah.home))&&!Number.isFinite(Number(ah.away))))throw Error('AH_PRICE_PAIR_MISSING');
+            if(!ou||typeof ou!=='object'||(!Number.isFinite(Number(ou.over))&&!Number.isFinite(Number(ou.under))))throw Error('OU_PRICE_PAIR_MISSING');
+            console.log('DEFAULT_RICH_SOURCE_PASS',JSON.stringify({fixtureId:j.fixtureId,book:b.name||b.slug,ah,ou,cached:j.cached,stale:j.stale}));
+            NODE
+          fi
