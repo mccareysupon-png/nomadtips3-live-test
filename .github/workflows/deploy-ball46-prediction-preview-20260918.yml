@@ -9,7 +9,8 @@ permissions:
   contents: read
 jobs:
   preview:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     env:
       CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -22,6 +23,7 @@ jobs:
         with:
           ref: ${{ env.SOURCE_REF }}
           fetch-depth: 0
+
       - name: Safety boundary
         shell: bash
         run: |
@@ -35,12 +37,29 @@ jobs:
           test -z "$bad" || { echo "PROTECTED_CHANGE_DETECTED"; printf '%s\n' "$bad"; exit 1; }
           git diff --quiet "origin/$BASE_REF"...HEAD -- workers/nomadtips3-5usd-hub-343 workers/nomadtips3-engine-343 workers/add-k-ah-detector nomad-live-343/signal.html nomad-live-343/signal.js nomad-live-343/statistics.html nomad-live-343/statistics.js nomad-live-343/dashboard-v2-stage3.js
           echo SAFE_BOUNDARY_PASS
-      - name: Validate isolated module
+
+      - name: Validate prediction market logic
+        shell: bash
         run: |
           set -euo pipefail
           node --check nomad-live-343/live-prediction-v1.js
+          grep -Fq "343-live-prediction-v1-readonly-market-safe" nomad-live-343/live-prediction-v1.js
           grep -Fq "READ_ONLY_SHARED_BOARD" nomad-live-343/live-prediction-v1.js
           grep -Fq "networkRequestsAdded:0" nomad-live-343/live-prediction-v1.js
+          ! grep -Fq "clamp(p,0.50" nomad-live-343/live-prediction-v1.js
+          grep -Fq "const probability=clamp(p,0.01,0.99)" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='corner_asian')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='card_asian')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='1x2_half')candidates.push(...eval1x2" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='asian_handicap_half')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='goal_line_half')candidates.push(...evalTotal" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='corner_line_half')candidates.push(...evalTotal" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='corner_asian_half')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='card_line_half')candidates.push(...evalTotal" nomad-live-343/live-prediction-v1.js
+          grep -Fq "key==='card_asian_half')candidates.push(...evalAsian" nomad-live-343/live-prediction-v1.js
+          grep -Fq "sit.minute>45" nomad-live-343/live-prediction-v1.js
+          grep -Fq "MATCH FINISHED" nomad-live-343/live-prediction-v1.js
+          grep -Fq "MODEL PROBABILITY" nomad-live-343/live-prediction-v1.js
           grep -Fq "live-prediction-v1.js" nomad-live-343/index.html
           grep -Fq "live-prediction-v1.css" nomad-live-343/index.html
           python3 - <<'PY'
@@ -52,31 +71,47 @@ jobs:
           assert a < p < d, (a,p,d)
           print('SCRIPT_ORDER_PASS')
           PY
+          echo PREDICTION_MARKET_LOGIC_PASS
+
       - name: Dry-run isolated preview
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.prediction-preview.jsonc
-      - name: Deploy isolated preview
+
+      - name: Deploy isolated preview only
         working-directory: workers/nomadtips3-343-preview
         env:
           CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.prediction-preview.jsonc
-      - name: Verify preview only
+
+      - name: Verify preview assets and shared board
         shell: bash
         run: |
           set -euo pipefail
-          for i in $(seq 1 20); do
-            if curl -fsS --max-time 20 "$PREVIEW_URL/live-prediction-v1.js?_=$GITHUB_RUN_ID-$i" -o /tmp/pred.js && grep -Fq "343-live-prediction-v1-readonly" /tmp/pred.js; then break; fi
+          asset_ok=0
+          board_ok=0
+          for i in $(seq 1 30); do
+            code="$(curl -sS --max-time 20 -o /tmp/pred.js -w '%{http_code}' "$PREVIEW_URL/live-prediction-v1.js?_=$GITHUB_RUN_ID-$i" || true)"
+            if [ "$code" = 200 ] && grep -Fq "343-live-prediction-v1-readonly-market-safe" /tmp/pred.js; then asset_ok=1; break; fi
             sleep 2
           done
-          grep -Fq "343-live-prediction-v1-readonly" /tmp/pred.js
-          curl -fsS --max-time 25 "$PREVIEW_URL/api/engine/board?_=$GITHUB_RUN_ID" -o /tmp/board.json
+          test "$asset_ok" = 1
+          for i in $(seq 1 30); do
+            code="$(curl -sS --max-time 25 -o /tmp/board.json -w '%{http_code}' "$PREVIEW_URL/api/engine/board?_=$GITHUB_RUN_ID-$i" || true)"
+            if [ "$code" = 200 ] && node -e 'const j=require("/tmp/board.json");process.exit(j.ok===true&&Array.isArray(j.fixtures)&&j.fixtures.length>0?0:1)'; then board_ok=1; break; fi
+            sleep 2
+          done
+          test "$board_ok" = 1
           node - <<'NODE'
           const j=require('/tmp/board.json');
-          if(j.ok!==true||!Array.isArray(j.fixtures)||j.fixtures.length===0) throw Error('BOARD_NOT_READY');
-          console.log('PREDICTION_PREVIEW_BOARD_PASS',j.fixtures.length);
+          const live=j.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live').length;
+          const withOdds=j.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object').length;
+          console.log('PREDICTION_PREVIEW_BOARD_PASS',JSON.stringify({fixtures:j.fixtures.length,live,withOdds,hubVersion:j.hubVersion,stale:j.stale}));
           NODE
+          curl -fsS --max-time 20 "$PREVIEW_URL/?_=$GITHUB_RUN_ID" -o /tmp/index.html
+          grep -Fq 'live-prediction-v1.css' /tmp/index.html
+          grep -Fq 'live-prediction-v1.js' /tmp/index.html
           echo PREDICTION_PREVIEW_PASS
