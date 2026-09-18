@@ -229,15 +229,21 @@ function offersFor(payload,key,selection,canonicalProviderLine,f,cfg){
   offers.sort((x,y)=>y.price.odds-x.price.odds||x.bookmakerSlug.localeCompare(y.bookmakerSlug));
   return offers;
 }
+function referencePrice(payload,key,selection){
+  const row=bookmakerRows(payload).find(x=>bookmakerIdentity(x).slug.toLowerCase()==='bet365');
+  const root=bookmakerRoot(row);const price=root?priceFor(root,key,selection):null;
+  return price?{price,bookmaker:'Bet 365',bookmakerSlug:'bet365',bookRoot:root}:null;
+}
 function pickBestPriced(candidates,fullPayload,bulkRoot,f,settings){
   const passed=[];
   for(const c of candidates){
     const def=MARKET_RULES[c.market],cfg=settings[c.market],lineMarket=def.kind==='AH'||def.kind==='OU';
-    const canonical=priceFor(bulkRoot,c.market,c.selection);
-    if(lineMarket&&(canonical?.providerLine===null||canonical?.providerLine===undefined))continue;
-    const offers=offersFor(fullPayload,c.market,c.selection,canonical?.providerLine??null,f,cfg);
+    const reference=referencePrice(fullPayload,c.market,c.selection);
+    const canonicalLine=reference?.price?.providerLine??null;
+    if(lineMarket&&canonicalLine===null)continue;
+    const offers=offersFor(fullPayload,c.market,c.selection,canonicalLine,f,cfg);
     const offer=offers.find(x=>x.pass);if(!offer)continue;
-    passed.push({...c,price:offer.price,bookmaker:offer.bookmaker,bookmakerSlug:offer.bookmakerSlug,bookRoot:offer.bookRoot,offerCount:offers.length,bookCount:bookmakerRows(fullPayload).length});
+    passed.push({...c,price:offer.price,bookmaker:offer.bookmaker,bookmakerSlug:offer.bookmakerSlug,bookRoot:offer.bookRoot,offerCount:offers.length,bookCount:bookmakerRows(fullPayload).length,referenceBookmaker:reference?.bookmaker??null,referenceBookmakerSlug:reference?.bookmakerSlug??null,referenceProviderLine:canonicalLine});
   }
   passed.sort((x,y)=>y.strength-x.strength||y.price.odds-x.price.odds||x.bookmakerSlug.localeCompare(y.bookmakerSlug));
   return passed[0]||null;
@@ -304,9 +310,9 @@ export class Nomad343Engine extends DurableObject{
                 if(!best){analysis[key]={state:'NO_MATCHING_LINE_PRICE',priceSource:'BEST_OF_19_INPLAY'};continue}
                 const def=MARKET_RULES[key],price=best.price,selectedRoot=best.bookRoot;
                 const historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,observedAt:at};
-                const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:clone(f.league),home:clone(f.home),away:clone(f.away),market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,priceStage:'inplay',priceSource:'BEST_OF_19_INPLAY',refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount,openingPrice:stageSnapshot(selectedRoot,def,'opening'),closingPrice:stageSnapshot(selectedRoot,def,'closing'),inplayPrice:stageSnapshot(selectedRoot,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
+                const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:clone(f.league),home:clone(f.home),away:clone(f.away),market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,priceStage:'inplay',priceSource:'BEST_OF_19_INPLAY',priceReference:'BET365_FULL_MARKET',referenceProviderLine:best.referenceProviderLine??null,refereeBookCount:best.bookCount,refereeOfferCount:best.offerCount,openingPrice:stageSnapshot(selectedRoot,def,'opening'),closingPrice:stageSnapshot(selectedRoot,def,'closing'),inplayPrice:stageSnapshot(selectedRoot,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
                 signals.push(sig);seen.add(`${id}:${key}`);
-                analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,evidence:best.evidence,priceSource:'BEST_OF_19_INPLAY',refereeOfferCount:best.offerCount};
+                analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,evidence:best.evidence,priceSource:'BEST_OF_19_INPLAY',priceReference:'BET365_FULL_MARKET',referenceProviderLine:best.referenceProviderLine??null,refereeOfferCount:best.offerCount};
               }
             }
           }
@@ -340,26 +346,23 @@ export class Nomad343Engine extends DurableObject{
       const key=String(u.searchParams.get('market')||'ft_ah'),selection=String(u.searchParams.get('selection')||'HOME').toUpperCase();
       if(!MARKET_RULES[key])return Response.json({ok:false,error:'INVALID_MARKET'},{status:400});
       const hr=await this.env.HUB.fetch('https://hub.internal/snapshot'),hub=await hr.json();if(!hub?.ok)return Response.json({ok:false,error:'HUB_NOT_READY'},{status:503});
-      let fixtureId=String(u.searchParams.get('fixtureId')||'').trim(),f=fixtureId?(hub.fixtures||[]).find(x=>String(x?.fixtureId??'')===fixtureId):null;
-      if(!f){
-        const wantLine=MARKET_RULES[key]?.kind==='AH'||MARKET_RULES[key]?.kind==='OU';
-        f=(hub.fixtures||[]).find(x=>{
-          if(!isLive(x))return false;
-          const r=oddsRoot(x.providerOdds);if(!r)return false;
-          if(!wantLine)return true;
-          const p=priceFor(r,key,selection);
-          return p?.providerLine!==null&&p?.providerLine!==undefined;
-        });
-        fixtureId=String(f?.fixtureId??'')
+      const requestedId=String(u.searchParams.get('fixtureId')||'').trim();
+      const pool=requestedId?(hub.fixtures||[]).filter(x=>String(x?.fixtureId??'')===requestedId):(hub.fixtures||[]).filter(isLive).slice(0,8);
+      const def=MARKET_RULES[key],lineMarket=def.kind==='AH'||def.kind==='OU';
+      let f=null,fixtureId='',full=null,reference=null;
+      for(const candidate of pool){
+        const id=String(candidate?.fixtureId??'');if(!id)continue;
+        const rr=await this.env.FULL_MARKET.fetch(`https://full-market.internal/fixture-odds?fixtureId=${encodeURIComponent(id)}`),j=await rr.json();
+        if(!rr.ok||j?.ok!==true)continue;
+        const ref=referencePrice(j,key,selection);
+        if(lineMarket&&(ref?.price?.providerLine===null||ref?.price?.providerLine===undefined))continue;
+        f=candidate;fixtureId=id;full=j;reference=ref;break;
       }
-      if(!f)return Response.json({ok:false,error:'NO_LIVE_FIXTURE'},{status:404});
-      const bulkRoot=oddsRoot(f.providerOdds),def=MARKET_RULES[key],canonical=priceFor(bulkRoot,key,selection),lineMarket=def.kind==='AH'||def.kind==='OU';
-      if(lineMarket&&(canonical?.providerLine===null||canonical?.providerLine===undefined))return Response.json({ok:false,fixtureId,market:key,selection,error:'CANONICAL_BULK_LINE_UNAVAILABLE'},{status:409});
-      const rr=await this.env.FULL_MARKET.fetch(`https://full-market.internal/fixture-odds?fixtureId=${encodeURIComponent(fixtureId)}`),full=await rr.json();
-      if(!rr.ok||full?.ok!==true)return Response.json({ok:false,fixtureId,error:full?.error||`FULL_MARKET_HTTP_${rr.status}`},{status:rr.status||502});
-      const cfg=(await this.readSettings())[key],offers=offersFor(full,key,selection,canonical?.providerLine??null,f,cfg),best=offers.find(x=>x.pass)||null;
+      if(!f||!full)return Response.json({ok:false,error:lineMarket?'BET365_REFERENCE_LINE_UNAVAILABLE':'NO_LIVE_FIXTURE',market:key,selection},{status:409});
+      const canonicalLine=reference?.price?.providerLine??null,cfg=(await this.readSettings())[key];
+      const offers=offersFor(full,key,selection,canonicalLine,f,cfg),best=offers.find(x=>x.pass)||null;
       const safeOffers=offers.map(x=>({bookmaker:x.bookmaker,bookmakerSlug:x.bookmakerSlug,odds:x.price.odds,line:x.price.line,providerLine:x.price.providerLine,pass:x.pass}));
-      return Response.json({ok:true,version:VERSION,revision:REVISION,fixtureId,market:key,selection,canonicalProviderLine:canonical?.providerLine??null,bookmakerCount:bookmakerRows(full).length,offerCount:safeOffers.length,best:best?{bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,odds:best.price.odds,line:best.price.line,providerLine:best.price.providerLine}:null,offers:safeOffers,fullMarket:{cached:full.cached,stale:full.stale,externalRequestsAdded:full.externalRequestsAdded}});
+      return Response.json({ok:true,version:VERSION,revision:REVISION,fixtureId,market:key,selection,canonicalProviderLine:canonicalLine,canonicalSource:lineMarket?'BET365_FULL_MARKET':'NONE',bookmakerCount:bookmakerRows(full).length,offerCount:safeOffers.length,best:best?{bookmaker:best.bookmaker,bookmakerSlug:best.bookmakerSlug,odds:best.price.odds,line:best.price.line,providerLine:best.price.providerLine}:null,offers:safeOffers,fullMarket:{cached:full.cached,stale:full.stale,externalRequestsAdded:full.externalRequestsAdded}});
     }
     if(u.pathname==='/fixture-odds'&&request.method==='GET'){
       const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});
