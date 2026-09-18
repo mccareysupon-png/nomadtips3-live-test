@@ -1,0 +1,181 @@
+name: Restore and Deploy Ball46 3.43 Engine
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/restore-deploy-ball46-engine-20260918.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  ENGINE_SERVICE: nomadtips3-engine-343
+  BASE_ENGINE_COMMIT: f2977f8ce23105b793a8d9611539831f3a7c6344
+
+jobs:
+  restore-deploy-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore last known production Engine source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p workers/nomadtips3-engine-343/src
+          git cat-file -e "${BASE_ENGINE_COMMIT}^{commit}"
+          git show "${BASE_ENGINE_COMMIT}:workers/nomadtips3-engine-343/src/index.js" > workers/nomadtips3-engine-343/src/index.js
+          git show "${BASE_ENGINE_COMMIT}:workers/nomadtips3-engine-343/wrangler.toml" > workers/nomadtips3-engine-343/wrangler.toml
+          test -s workers/nomadtips3-engine-343/src/index.js
+          test -s workers/nomadtips3-engine-343/src/market-core.js
+          test -s workers/nomadtips3-engine-343/wrangler.toml
+
+      - name: Harden autonomous scan and one-signal lock
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          old="const VERSION='nomad343-engine-v3-settlement-safe';"
+          new="const VERSION='nomad343-engine-v4-autonomous-settlement';"
+          assert old in s
+          s=s.replace(old,new,1)
+
+          old="const pendingFixtureIds=new Set(signals.filter(s=>s.status==='PENDING').map(s=>String(s.fixtureId)));"
+          new="const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));"
+          assert old in s
+          s=s.replace(old,new,1)
+
+          old="const histories={},board=[],seen=new Set(signals.filter(s=>s.status==='PENDING').map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());"
+          new="const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());"
+          assert old in s
+          s=s.replace(old,new,1)
+
+          old="if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));"
+          new="if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));"
+          assert old in s
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          grep -Fq "nomad343-engine-v4-autonomous-settlement" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "seen=new Set(signals.map" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "crons = [\"* * * * *\"]" workers/nomadtips3-engine-343/wrangler.toml
+          grep -Fq 'service = "nomadtips3-5usd-hub-343"' workers/nomadtips3-engine-343/wrangler.toml
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+
+      - name: Preflight Ball46 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in health settings board signals statistics; do
+            code="$(curl -sS --max-time 30 -o "/tmp/pre-$path.json" -w '%{http_code}' "$BALL46_URL/api/engine/$path?preflight=${GITHUB_RUN_ID}" || true)"
+            echo "PRE $path HTTP=$code"
+            test "$code" = 200
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const p of ['health','settings','board','signals','statistics']){
+            const j=JSON.parse(fs.readFileSync('/tmp/pre-'+p+'.json','utf8'));
+            if(j.ok!==true) throw new Error('preflight '+p+' '+JSON.stringify(j));
+          }
+          NODE
+
+      - name: Dry-run Engine bundle
+        working-directory: workers/nomadtips3-engine-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy Ball46 Engine service only
+        working-directory: workers/nomadtips3-engine-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify autonomous Engine flow
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 20); do
+            curl -sS --max-time 30 "$BALL46_URL/api/engine/health?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/health.json || true
+            if node -e 'const j=require("/tmp/health.json");process.exit(j.ok===true&&j.component==="NOMAD343_ENGINE"&&j.version==="nomad343-engine-v4-autonomous-settlement"?0:1)' 2>/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+
+          for path in settings board signals statistics; do
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/$path?verify=${GITHUB_RUN_ID}" -o "/tmp/$path.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const settings=JSON.parse(fs.readFileSync('/tmp/settings.json','utf8'));
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const signals=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const stats=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          if(settings.ok!==true||!settings.settings||!settings.runState) throw Error('SETTINGS_CONTRACT_FAIL');
+          if(board.ok!==true||!Array.isArray(board.fixtures)) throw Error('BOARD_CONTRACT_FAIL');
+          if(signals.ok!==true||!Array.isArray(signals.signals)) throw Error('SIGNALS_CONTRACT_FAIL');
+          if(stats.ok!==true||!Array.isArray(stats.rows)) throw Error('STATISTICS_CONTRACT_FAIL');
+          const settled=stats.rows.filter(x=>x.status==='SETTLED');
+          const dup=new Map();
+          for(const s of settled){const k=`${s.fixtureId}:${s.market}`;dup.set(k,(dup.get(k)||0)+1)}
+          const duplicates=[...dup.entries()].filter(([,n])=>n>1);
+          console.log('ENGINE_FLOW_PASS', JSON.stringify({
+            version:stats.version,
+            fixtures:board.fixtures.length,
+            activeSignals:signals.signals.length,
+            settled:stats.total,
+            win:stats.win,loss:stats.loss,push:stats.push,halfWin:stats.halfWin,halfLoss:stats.halfLoss,
+            duplicateSettledKeys:duplicates.length
+          }));
+          NODE
+
+          code="$(curl -sS --max-time 20 -o /tmp/legacy-odds.txt -w '%{http_code}' "$BALL46_URL/api/engine/fixture-odds?fixtureId=verification" || true)"
+          test "$code" = 404
+          echo 'LEGACY_ENGINE_ODDS_ROUTE_CLOSED'
+
+      - name: Verify Cloudflare cron is server-side
+        shell: bash
+        run: |
+          set -euo pipefail
+          auth=(-H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json')
+          curl -fsS "${auth[@]}" "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${ENGINE_SERVICE}/schedules" -o /tmp/schedules.json
+          test "$(jq -r '.success' /tmp/schedules.json)" = true
+          jq -e '.result | any(.cron == "* * * * *")' /tmp/schedules.json >/dev/null
+          echo 'SERVER_CRON_PASS * * * * *'
+
+      - name: Persist recovered production source on branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js workers/nomadtips3-engine-343/wrangler.toml
+          if git diff --cached --quiet; then
+            echo 'SOURCE_ALREADY_PERSISTED'
+            exit 0
+          fi
+          git commit -m 'fix(ball46): restore autonomous Engine source [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo 'ENGINE_SOURCE_PERSISTED'
