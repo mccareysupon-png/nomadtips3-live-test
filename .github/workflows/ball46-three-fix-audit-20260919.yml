@@ -1,0 +1,44 @@
+name: Ball46 Three Fix Audit 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ball46-three-fix-audit-20260919.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-full-market-20260918
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+      - name: Inspect exact runtime owners
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          files=['nomad-live-343/dashboard-v2-stage3.js','nomad-live-343/live-summary-full-odds-343.js','workers/nomadtips3-full-market-343-ball46/src/index.js','nomad-live-343/signal.html','nomad-live-343/statistics.html','nomad-live-343/index.html']
+          for name in files:
+              print('\n### FILE',name)
+              s=Path(name).read_text()
+              for needle in ['async function loadBoard','async function loadSignals','fixtures=','providerOdds','STALE_KEEP_MS','STALE_CACHE_MS','data-theme','theme-toggle-343.js','data-featured-signal','prediction-card','inlineSignalHtml']:
+                  pos=s.find(needle)
+                  if pos>=0:
+                      a=max(0,pos-600); b=min(len(s),pos+1800)
+                      print('\n---',needle,'---\n',s[a:b])
+          PY
+      - name: Syntax checks
+        run: |
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          node --check workers/nomadtips3-full-market-343-ball46/src/index.js
