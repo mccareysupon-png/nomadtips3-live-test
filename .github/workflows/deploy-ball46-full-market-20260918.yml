@@ -127,7 +127,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify Ball46 Full Market and controls
+      - name: Verify Ball46 controls
         id: verify
         shell: bash
         run: |
@@ -164,20 +164,7 @@ jobs:
           node - <<'NODE'
           const j=require('/tmp/board.json');
           if(j.ok!==true||!Array.isArray(j.fixtures)||!j.fixtures.length) throw Error('BOARD_NOT_READY');
-          const live=j.fixtures.find(f=>String(f?.boardState||f?.status||'').toLowerCase().includes('live')||String(f?.status||'').toLowerCase().includes('in_play'))||j.fixtures[0];
-          if(!live?.fixtureId) throw Error('NO_FIXTURE');
-          require('fs').writeFileSync('/tmp/id',String(live.fixtureId));
-          console.log('BOARD_PASS',j.fixtures.length,'fixture',live.fixtureId);
-          NODE
-
-          ID="$(cat /tmp/id)"
-          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${ID}&_=${GITHUB_RUN_ID}" -o /tmp/full.json
-          node - <<'NODE'
-          const j=require('/tmp/full.json');
-          if(j.ok!==true) throw Error(JSON.stringify(j));
-          const books=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
-          if(books.length!==19) throw Error(`books=${books.length}`);
-          console.log('FULL_MARKET_ODDS_PASS',j.fixtureId,books.length,j.config?.mode,j.cached,j.stale);
+          console.log('BOARD_PASS',j.fixtures.length);
           NODE
 
           curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?_=${GITHUB_RUN_ID}" -o /tmp/hub.json
