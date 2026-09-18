@@ -1,0 +1,111 @@
+name: Finalize Ball46 Engine Source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/finalize-ball46-engine-source-20260918.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  ENGINE_SERVICE: nomadtips3-engine-343
+  BASE_ENGINE_COMMIT: f2977f8ce23105b793a8d9611539831f3a7c6344
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild exact deployed Engine source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p workers/nomadtips3-engine-343/src
+          git show "${BASE_ENGINE_COMMIT}:workers/nomadtips3-engine-343/src/index.js" > workers/nomadtips3-engine-343/src/index.js
+          git show "${BASE_ENGINE_COMMIT}:workers/nomadtips3-engine-343/wrangler.toml" > workers/nomadtips3-engine-343/wrangler.toml
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          reps=[
+            ("const VERSION='nomad343-engine-v3-settlement-safe';","const VERSION='nomad343-engine-v4-autonomous-settlement';"),
+            ("const pendingFixtureIds=new Set(signals.filter(s=>s.status==='PENDING').map(s=>String(s.fixtureId)));","const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));"),
+            ("const histories={},board=[],seen=new Set(signals.filter(s=>s.status==='PENDING').map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());","const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());"),
+            ("if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history','/fixture-odds'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));","if(!['/health','/registry','/settings','/scan','/board','/signals','/statistics','/history'].includes(u.pathname))return cors(request,new Response('Not found',{status:404}));")
+          ]
+          for old,new in reps:
+            assert old in s, old[:80]
+            s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+          grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-engine-343/wrangler.toml
+
+      - name: Verify deployed Ball46 Engine v4 and contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in health settings board signals statistics; do
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/$p?finalize=${GITHUB_RUN_ID}" -o "/tmp/$p.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/settings.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const a=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          if(h.ok!==true||h.version!=='nomad343-engine-v4-autonomous-settlement') throw Error('ENGINE_V4_NOT_LIVE');
+          if(s.ok!==true||!s.settings||!s.runState) throw Error('SETTINGS_FAIL');
+          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          if(a.ok!==true||!Array.isArray(a.signals)) throw Error('SIGNALS_FAIL');
+          if(t.ok!==true||!Array.isArray(t.rows)) throw Error('STATS_FAIL');
+          const groups=new Map();
+          for(const row of t.rows){
+            if(row.status!=='SETTLED') continue;
+            const k=`${row.fixtureId}:${row.market}`;
+            if(!groups.has(k)) groups.set(k,[]);
+            groups.get(k).push({id:row.id,createdAt:row.createdAt,result:row.result,line:row.line,odds:row.odds});
+          }
+          const dups=[...groups.entries()].filter(([,v])=>v.length>1);
+          console.log('BALL46_ENGINE_V4_PASS',JSON.stringify({fixtures:b.fixtures.length,activeSignals:a.signals.length,settled:t.total,win:t.win,loss:t.loss,push:t.push,legacyDuplicateKeys:dups.length}));
+          if(dups.length) console.log('LEGACY_DUPLICATE_DETAIL',JSON.stringify(dups));
+          NODE
+          code="$(curl -sS --max-time 20 -o /tmp/legacy.txt -w '%{http_code}' "$BALL46_URL/api/engine/fixture-odds?fixtureId=verification" || true)"
+          test "$code" = 404
+
+      - name: Verify server cron from Cloudflare
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${ENGINE_SERVICE}/schedules" -o /tmp/schedules.json
+          test "$(jq -r '.success' /tmp/schedules.json)" = true
+          jq -e '.. | strings | select(. == "* * * * *")' /tmp/schedules.json >/dev/null
+          echo 'SERVER_CRON_PASS * * * * *'
+
+      - name: Persist Engine source and cron config
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js workers/nomadtips3-engine-343/wrangler.toml
+          if git diff --cached --quiet; then
+            echo SOURCE_ALREADY_PERSISTED
+            exit 0
+          fi
+          git commit -m 'fix(ball46): persist autonomous Engine v4 source [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo ENGINE_SOURCE_PERSISTED
