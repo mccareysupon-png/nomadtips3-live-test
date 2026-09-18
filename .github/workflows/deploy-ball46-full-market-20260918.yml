@@ -17,7 +17,7 @@ env:
   BALL46_URL: https://ball46.com
   FULL_MARKET_BRANCH: work/ball46-full-market-20260918
   KNOWN_GOOD_UI: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
-  OLD_WRAPPER_REF: 9ea1ec399ba27e946f271f6ca925f4daa2a7f850
+  OLD_WRAPPER_REF: 686ac60bf0127443f9a392f5b9a91378a16274a7
 
 jobs:
   deploy:
@@ -59,7 +59,8 @@ jobs:
           test -s production/nomad-live-343/rich-odds-on-demand-343.js
           test -s production/nomad-live-343/5usd-control.html
           grep -Fq 'nomad343-ball46-full-market-v3-control' production/workers/nomadtips3-full-market-343-ball46/src/index.js
-          grep -Fq "path === '/settings'" production/workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "/api/full-market/settings" production/nomad-live-343/5usd-control.html
+          grep -Fq "url.pathname === '/api/full-market/settings'" production/workers/nomadtips3-343-preview/src/index.js
           grep -Fq '5USD CONTROL' production/nomad-live-343/5usd-control.html
           grep -Fq '343-full-odds-main-v8-ultra-19book' production/nomad-live-343/full-odds-main-343.js
           node --check production/workers/nomadtips3-full-market-343-ball46/src/index.js
@@ -143,7 +144,8 @@ jobs:
           NODE
 
           MODE="$(cat /tmp/mode)"
-          curl -fsS --max-time 20 -X PUT -H 'content-type: application/json' --data "{\"mode\":\"${MODE}\"}" "$BALL46_URL/api/full-market/settings" -o /tmp/settings.json
+          code="$(curl -sS --max-time 20 -o /tmp/settings.json -w '%{http_code}' -X POST -H 'content-type: application/json' --data "{\"mode\":\"${MODE}\"}" "$BALL46_URL/api/full-market/settings")"
+          test "$code" = 200
           node - <<'NODE'
           const j=require('/tmp/settings.json');
           if(j.ok!==true||!j.config?.mode) throw Error(JSON.stringify(j));
