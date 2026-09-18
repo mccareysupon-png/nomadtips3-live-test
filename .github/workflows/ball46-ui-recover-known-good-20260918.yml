@@ -1,0 +1,103 @@
+name: Ball46 3.43 UI Recovery 20260918
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ball46-ui-recover-known-good-20260918.yml'
+
+permissions:
+  contents: read
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  BALL46_WORKER_URL: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  deploy-ball46-ui-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout known-good 3.43 UI
+        uses: actions/checkout@v4
+        with:
+          ref: 2e92b012f5046a10b7c5124b9984b5fd8fb0f722
+          path: candidate
+
+      - name: Checkout current Ball46 production wrapper
+        uses: actions/checkout@v4
+        with:
+          ref: 9ea1ec399ba27e946f271f6ca925f4daa2a7f850
+          path: production
+
+      - name: Validate isolated Ball46 recovery source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test -s candidate/nomad-live-343/index.html
+          test -s candidate/nomad-live-343/signal.html
+          test -s candidate/nomad-live-343/statistics.html
+          test -s candidate/nomad-live-343/settings.html
+          grep -Fq 'ball46 · Live Scores 3.43' candidate/nomad-live-343/index.html
+          test -s production/workers/nomadtips3-343-preview/src/index.js
+          test -s production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"name": "ball46-production"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' production/workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          node --check production/workers/nomadtips3-343-preview/src/index.js
+
+      - name: Overlay known-good UI only
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf production/nomad-live-343
+          cp -a candidate/nomad-live-343 production/nomad-live-343
+          echo 'BALL46_UI_SOURCE=2e92b012f5046a10b7c5124b9984b5fd8fb0f722'
+
+      - name: Dry-run Ball46 bundle
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 only
+        working-directory: production/workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Ball46 worker and custom domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_host() {
+            local base="$1" label="$2" ready=0
+            for n in $(seq 1 20); do
+              code="$(curl -sS --max-time 25 -o /tmp/home -w '%{http_code}' "$base/?recover=${GITHUB_RUN_ID}-${n}" || true)"
+              if [ "$code" = 200 ] && grep -Fq 'ball46 · Live Scores 3.43' /tmp/home; then
+                echo "$label UI PASS"
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            test "$ready" = 1
+          }
+          verify_host "$BALL46_WORKER_URL" WORKER
+          verify_host "$BALL46_URL" BALL46
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?recover=${GITHUB_RUN_ID}" -o /tmp/hub.json
+          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_HUB_PASS",j.fixtureCount,j.refreshMs)'
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?recover=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error(JSON.stringify(j));console.log("BALL46_ENGINE_PASS",j.fixtures.length)'
+          for page in signal.html statistics.html settings.html; do
+            curl -fsS --max-time 25 "$BALL46_URL/$page?recover=${GITHUB_RUN_ID}" -o "/tmp/$page"
+            test -s "/tmp/$page"
+          done
+          echo 'BALL46_343_KNOWN_GOOD_UI_PASS'
