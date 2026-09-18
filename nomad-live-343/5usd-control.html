@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="th" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#eef2f1">
+<title>ball46 · 5USD Control</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:#edf1f0;color:#152019}.top{min-height:58px;background:#153f2b;color:#fff;display:flex;align-items:center;padding:0 18px}.brand{font-size:22px;font-weight:900}.brand span{color:#d8c858}.wrap{max-width:1050px;margin:0 auto;padding:22px 14px 40px}.head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:14px}.head h1{margin:0;font-size:25px}.head p{margin:5px 0 0;color:#728078;font-size:12px}.back{color:#0f8f5f;text-decoration:none;font-size:11px;font-weight:800}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{background:#fff;border:1px solid #dfe6e2;border-radius:14px;padding:15px;box-shadow:0 10px 28px rgba(28,54,40,.06)}.wide{grid-column:1/-1}.title{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.title b{font-size:14px}.pill{font-size:9px;font-weight:900;padding:5px 8px;border-radius:999px;background:#eef2f0;color:#728078}.pill.green{background:#e8f7ef;color:#0f8f5f}.pill.yellow{background:#fff6dc;color:#9a741f}.pill.red{background:#fdeaea;color:#c34b4b}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{background:#f6f8f7;border:1px solid #e4ebe7;border-radius:10px;padding:10px}.stat span{display:block;font-size:8px;color:#728078;font-weight:900}.stat b{display:block;margin-top:4px;font-size:17px}.note{margin-top:10px;font-size:10px;line-height:1.5;color:#728078}.modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.mode{border:1px solid #dfe6e2;background:#f6f8f7;border-radius:11px;padding:12px;text-align:left;cursor:pointer}.mode:hover{border-color:#9ecdb8}.mode.active{background:#e8f7ef;border-color:#0f8f5f;box-shadow:inset 0 0 0 1px #0f8f5f}.mode b{display:block;font-size:12px}.mode span{display:block;margin-top:5px;color:#728078;font-size:9px;line-height:1.4}.bar{height:11px;border-radius:999px;background:#eef2f0;overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;width:0;background:#32b878;transition:width .2s ease}.bar.yellow i{background:#d5a63d}.bar.red i{background:#d45f5f}.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid #eef2f0;font-size:10px}.row:first-of-type{border-top:0}.row span{color:#728078}.row b{text-align:right}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}.btn{border:1px solid #dfe6e2;background:#fff;color:#152019;border-radius:9px;padding:9px 12px;font-size:10px;font-weight:800;cursor:pointer}.btn.primary{background:#0f8f5f;color:#fff;border-color:#0f8f5f}.statusline{margin-top:9px;font-size:10px;color:#728078;min-height:16px}.warnbox{margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff8e7;border:1px solid #efdfb1;color:#7e6425;font-size:10px;line-height:1.45}@media(max-width:760px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.head{display:block}.back{display:inline-block;margin-top:9px}.stats{grid-template-columns:1fr 1fr}.modes{grid-template-columns:1fr}.wrap{padding:14px 8px 28px}}
+</style>
+</head>
+<body>
+<header class="top"><div class="brand">ball<span>46</span> · 5USD CONTROL</div></header>
+<main class="wrap">
+<section class="head"><div><h1>ตั้งค่าและมอนิเตอร์ 5USD</h1><p>เอาเฉพาะค่าที่สำคัญ · Bulk เป็นฐาน · Full Odds เรียกเฉพาะเมื่อจำเป็น</p></div><a class="back" href="index.html">← กลับ Live Scores</a></section>
+<div class="grid">
+<section class="card">
+  <div class="title"><b>Bulk Live Board</b><span class="pill" id="hubState">CHECKING</span></div>
+  <div class="stats"><div class="stat"><span>รอบ Bulk</span><b id="bulkRefresh">120s</b></div><div class="stat"><span>Fixtures</span><b id="bulkFixtures">—</b></div><div class="stat"><span>Data Age</span><b id="bulkAge">—</b></div></div>
+  <div class="note">ล็อกไว้ตามแนวทาง John: 1 request ต่อรอบ ได้ทุกคู่สดพร้อม score / events / stats / bulk odds. หน้านี้ไม่เปลี่ยนรอบ Bulk เพื่อไม่ให้ HUB v5 เสีย.</div>
+</section>
+<section class="card">
+  <div class="title"><b>Full Odds Monitor</b><span class="pill" id="fullState">CHECKING</span></div>
+  <div class="stats"><div class="stat"><span>Calls / 60s</span><b id="calls">—</b></div><div class="stat"><span>Guard</span><b id="guard">—</b></div><div class="stat"><span>Ultra Limit</span><b id="limit">40</b></div></div>
+  <div class="bar" id="rateBar"><i></i></div>
+  <div class="row"><span>Provider remaining</span><b id="providerRemaining">—</b></div>
+  <div class="row"><span>429 / Backoff</span><b id="backoff">—</b></div>
+  <div class="row"><span>Bookmakers</span><b id="books">19</b></div>
+</section>
+<section class="card wide">
+  <div class="title"><b>โหมดเรียก Full Odds</b><span class="pill green" id="modeBadge">—</span></div>
+  <div class="modes">
+    <button class="mode" data-mode="eco"><b>ประหยัด</b><span>Cache 30s · Guard 15/min<br>เหมาะช่วงคู่สดเยอะมาก</span></button>
+    <button class="mode" data-mode="normal"><b>ปกติ · แนะนำ</b><span>Cache 20s · Guard 25/min<br>สมดุลความสดกับความปลอดภัย</span></button>
+    <button class="mode" data-mode="fast"><b>เร็ว</b><span>Cache 12s · Guard 30/min<br>เหมาะช่วงคู่สดไม่หนาแน่น</span></button>
+  </div>
+  <div class="warnbox">Ultra มี 40 requests/minute ต่อบัญชี และทุก key ใช้ counter เดียวกัน. จึงไม่ควรตั้ง Full Odds ชน 40 เต็ม เพราะต้องเหลือช่องให้ Bulk และงานอื่น.</div>
+  <div class="actions"><button class="btn" id="refreshBtn">รีเฟรช Monitor</button></div>
+  <div class="statusline" id="message">กำลังอ่านสถานะ…</div>
+</section>
+</div>
+</main>
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);const num=v=>Number.isFinite(Number(v))?Number(v):null;
+const fmtMs=v=>{const n=num(v);if(n===null)return'—';if(n<1000)return Math.round(n)+'ms';if(n<60000)return Math.round(n/1000)+'s';return Math.floor(n/60000)+'m '+Math.round((n%60000)/1000)+'s'};
+async function json(url,opt){const r=await fetch(url,{cache:'no-store',...(opt||{})});const j=await r.json().catch(()=>({}));if(!r.ok||j?.ok!==true)throw new Error(j?.error||'HTTP_'+r.status);return j}
+function pill(el,text,type){el.textContent=text;el.className='pill '+(type||'')}
+function setMode(mode,label){document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));$('#modeBadge').textContent=label||mode||'—'}
+async function refresh(){
+  const msg=$('#message');msg.textContent='กำลังอ่านสถานะ…';
+  const [hubR,fullR,boardR]=await Promise.allSettled([json('/api/hub/health?_='+Date.now()),json('/api/full-market/health?_='+Date.now()),json('/api/engine/board?_='+Date.now())]);
+  const hub=hubR.status==='fulfilled'?hubR.value:null, full=fullR.status==='fulfilled'?fullR.value:null, board=boardR.status==='fulfilled'?boardR.value:null;
+  if(hub){pill($('#hubState'),'ONLINE','green');$('#bulkRefresh').textContent=fmtMs(hub.refreshMs??120000);$('#bulkFixtures').textContent=hub.fixtureCount??board?.fixtures?.length??'—'}else pill($('#hubState'),'OFFLINE','red');
+  const age=board?.hubAgeMs??hub?.ageMs??hub?.snapshotAgeMs;$('#bulkAge').textContent=fmtMs(age);
+  if(full){
+    const calls=num(full.callsLast60s)??0,limit=num(full.accountLimitPerMinute)??40,guard=num(full.maxFullMarketCallsPerMinute)??0,pct=Math.min(100,Math.round(calls/Math.max(1,limit)*100));
+    const state=full.retryAfterSec>0?'BACKOFF':pct>=80?'HIGH':pct>=60?'WATCH':'ONLINE';const type=full.retryAfterSec>0||pct>=80?'red':pct>=60?'yellow':'green';
+    pill($('#fullState'),state,type);$('#calls').textContent=calls;$('#guard').textContent=guard+'/min';$('#limit').textContent=limit+'/min';$('#books').textContent=full.bookmakerCount??19;
+    const rem=full.providerMeta?.remaining;$('#providerRemaining').textContent=rem==null?'—':rem;$('#backoff').textContent=full.retryAfterSec>0?full.retryAfterSec+'s':'NO';
+    const bar=$('#rateBar');bar.className='bar '+(type==='green'?'':type);bar.querySelector('i').style.width=pct+'%';setMode(full.mode,full.modeLabel);
+  }else{pill($('#fullState'),'OFFLINE','red');}
+  msg.textContent='Monitor อัปเดต '+new Date().toLocaleTimeString('th-TH')+' · การรีเฟรชหน้านี้ไม่กิน 5USD request';
+}
+async function applyMode(mode){const msg=$('#message');msg.textContent='กำลังบันทึกโหมด…';try{const j=await json('/api/full-market/settings',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({mode})});setMode(j.config.mode,j.config.label);msg.textContent='บันทึกแล้ว · '+j.config.label+' · cache '+Math.round(j.config.cacheMs/1000)+'s · guard '+j.config.maxCallsPerMinute+'/min';await refresh()}catch(e){msg.textContent='บันทึกไม่สำเร็จ · '+e.message}}
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>applyMode(b.dataset.mode)));$('#refreshBtn').addEventListener('click',refresh);refresh();setInterval(refresh,5000);
+})();
+</script>
+</body>
+</html>
