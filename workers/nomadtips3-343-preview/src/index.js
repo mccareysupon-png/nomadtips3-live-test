@@ -37,6 +37,7 @@ async function noStoreUiAsset(request, env) {
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
   if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
   if (path === '/5usd-control.html') headers.set('x-nomad-control-revision', '343-5usd-control-v1');
+  if (path === '/detection-test.html') headers.set('x-nomad-detection-revision', '343-detection-test-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
@@ -126,7 +127,7 @@ export default {
       url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
       url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css' ||
-      url.pathname === '/5usd-control.html'
+      url.pathname === '/5usd-control.html' || url.pathname === '/detection-test.html'
     )) return noStoreUiAsset(request, env);
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url); assetUrl.pathname='/index.html'; return noStoreUiAsset(new Request(assetUrl,request),env);
