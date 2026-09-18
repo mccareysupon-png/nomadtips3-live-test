@@ -18,12 +18,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Probe live fixture and provider full odds
+      - name: Probe all-bookmaker full odds in one request
         shell: bash
         run: |
           set -euo pipefail
           test -n "$FIVEDOLLAR_API_KEY"
           BASE='https://ball46.com'
+          BOOKS='bet365,pinnacle,williamhill,ladbrokes,vcbet,1xbet,bwin,easybets,interwetten,betfair,snai,macauslot,betsson,betathome,18bet,10bet,12bet,coral,crown'
           curl -fsS --max-time 30 "$BASE/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
           node - <<'NODE'
           const j=require('/tmp/board.json');
@@ -34,22 +35,19 @@ jobs:
           console.log('FIXTURE',live.fixtureId);
           NODE
           ID="$(cat /tmp/id)"
-
-          code="$(curl -sS --max-time 30 -o /tmp/provider.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "https://api.5dollarfootballapi.com/v1/fixtures/${ID}/odds" || true)"
-          echo "PROVIDER_FULL_ODDS_HTTP $code"
+          code="$(curl -sS --max-time 30 -o /tmp/provider.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "https://api.5dollarfootballapi.com/v1/fixtures/${ID}/odds?bookmakers=${BOOKS}" || true)"
+          echo "PROVIDER_ALL_BOOKS_HTTP $code"
           node - <<'NODE'
           const fs=require('fs'); const text=fs.readFileSync('/tmp/provider.json','utf8');
           let j={}; try{j=JSON.parse(text)}catch{}
           const root=j?.data??j;
-          const books=root?.bookmakers??j?.bookmakers??[];
-          const rows=Array.isArray(books)?books:[];
-          const first=rows[0]||null;
-          const odds=first?.odds??first?.markets??first?.data?.odds??first?.data?.markets??null;
-          console.log('PROVIDER_FULL_ODDS_SHAPE',JSON.stringify({keys:Object.keys(j||{}),rootKeys:root&&typeof root==='object'?Object.keys(root).slice(0,60):[],bookCount:rows.length,books:rows.map(x=>x?.slug??x?.name??x?.bookmaker?.slug??x?.bookmaker?.name).filter(Boolean).slice(0,30),firstBookKeys:first&&typeof first==='object'?Object.keys(first):[],marketKeys:odds&&typeof odds==='object'?Object.keys(odds).slice(0,60):[],error:j?.error||null}));
-          console.log('PROVIDER_FULL_ODDS_SAMPLE',JSON.stringify(j).slice(0,14000));
+          const rows=Array.isArray(root?.bookmakers)?root.bookmakers:[];
+          const summarize=x=>{
+            const odds=x?.odds||{};
+            const ah=odds.asian_handicap?.inplay??odds.asian_handicap?.closing??null;
+            const ou=odds.goal_line?.inplay??odds.goal_line?.closing??null;
+            return {slug:x?.slug??x?.name,markets:Object.keys(odds),ah:ah&&typeof ah==='object'?{line:ah.line,home:ah.home,away:ah.away}:ah,ou:ou&&typeof ou==='object'?{line:ou.line,over:ou.over,under:ou.under}:ou};
+          };
+          console.log('ALL_BOOKS_SUMMARY',JSON.stringify({success:j?.success,fixtureId:root?.fixture_id,bookCount:rows.length,books:rows.map(x=>x?.slug),details:rows.map(summarize)},null,2));
+          if(!j?.success||!rows.length) process.exit(21);
           NODE
-
-          code2="$(curl -sS --max-time 30 -o /tmp/rich.json -w '%{http_code}' "$BASE/api/hub/rich-odds?fixtureId=${ID}&_=${GITHUB_RUN_ID}" || true)"
-          echo "CURRENT_HUB_RICH_HTTP $code2"
-          head -c 1200 /tmp/rich.json || true
-          echo
