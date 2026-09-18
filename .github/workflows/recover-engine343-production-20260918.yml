@@ -34,7 +34,7 @@ jobs:
           curl -fsS \
             -H "Authorization: Bearer $CF_API_TOKEN" \
             -D /tmp/engine343.headers \
-            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content/v2" \
             -o /tmp/engine343.body
           python - <<'PY'
           from pathlib import Path
@@ -57,14 +57,12 @@ jobs:
           msg=BytesParser(policy=default).parsebytes((f'Content-Type: {ct}\r\nMIME-Version: 1.0\r\n\r\n').encode()+body)
           count=0
           for part in msg.iter_parts():
-              cd=part.get('Content-Disposition','')
               name=part.get_param('name', header='Content-Disposition')
               filename=part.get_filename()
               payload=part.get_payload(decode=True) or b''
               candidate=filename or name or f'part-{count}.bin'
               candidate=re.sub(r'[^A-Za-z0-9._-]+','_',candidate)
-              path=out/candidate
-              path.write_bytes(payload)
+              (out/candidate).write_bytes(payload)
               print('RECOVERED_PART', candidate, len(payload), part.get_content_type())
               count+=1
           if count == 0:
