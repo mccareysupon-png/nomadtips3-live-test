@@ -92,10 +92,34 @@ jobs:
           }
           verify_host "$BALL46_WORKER_URL" WORKER
           verify_host "$BALL46_URL" BALL46
-          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?recover=${GITHUB_RUN_ID}" -o /tmp/hub.json
-          node -e 'const j=require("/tmp/hub.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_HUB_PASS",j.fixtureCount,j.refreshMs)'
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?recover=${GITHUB_RUN_ID}" -o /tmp/hub-health.json
+          node -e 'const j=require("/tmp/hub-health.json");if(j.ok!==true||j.component!=="5USD_HUB")throw Error(JSON.stringify(j));console.log("BALL46_HUB_PASS",j.fixtureCount,j.refreshMs)'
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?limit=200&recover=${GITHUB_RUN_ID}" -o /tmp/hub-snapshot.json
+          node - <<'NODE'
+          const j=require('/tmp/hub-snapshot.json');
+          const fs=Array.isArray(j.fixtures)?j.fixtures:[];
+          const withOdds=fs.filter(f=>f&&f.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length>0);
+          const fresh=withOdds.filter(f=>f.providerOddsUpdatedAt);
+          const books=new Set();
+          for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
+          console.log('BALL46_HUB_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
+          NODE
+
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?recover=${GITHUB_RUN_ID}" -o /tmp/board.json
-          node -e 'const j=require("/tmp/board.json");if(j.ok!==true||!Array.isArray(j.fixtures))throw Error(JSON.stringify(j));console.log("BALL46_ENGINE_PASS",j.fixtures.length)'
+          node - <<'NODE'
+          const j=require('/tmp/board.json');
+          if(j.ok!==true||!Array.isArray(j.fixtures)) throw Error(JSON.stringify(j));
+          const fs=j.fixtures;
+          const withOdds=fs.filter(f=>f&&f.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length>0);
+          const fresh=withOdds.filter(f=>f.providerOddsUpdatedAt);
+          const books=new Set();
+          for(const f of withOdds){ for(const k of Object.keys(f.providerOdds||{})) books.add(k); }
+          console.log('BALL46_ENGINE_PASS',fs.length);
+          console.log('BALL46_ENGINE_ODDS_COVERAGE',JSON.stringify({fixtures:fs.length,withProviderOdds:withOdds.length,withOddsTimestamp:fresh.length,bookmakers:[...books].slice(0,20)}));
+          NODE
+
           for page in signal.html statistics.html settings.html; do
             curl -fsS --max-time 25 "$BALL46_URL/$page?recover=${GITHUB_RUN_ID}" -o "/tmp/$page"
             test -s "/tmp/$page"
