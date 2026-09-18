@@ -1,0 +1,94 @@
+name: Recover Engine343 Production Source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/recover-engine343-production-20260918.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  SCRIPT_NAME: nomadtips3-engine-343
+  RECOVERY_BRANCH: recovery/engine343-production-20260918
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download deployed Worker script
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          curl -fsS \
+            -H "Authorization: Bearer $CF_API_TOKEN" \
+            -D /tmp/engine343.headers \
+            "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/workers/scripts/$SCRIPT_NAME/content" \
+            -o /tmp/engine343.body
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          headers=Path('/tmp/engine343.headers').read_text(errors='replace')
+          body=Path('/tmp/engine343.body').read_bytes()
+          ct=''
+          for line in headers.splitlines():
+              if line.lower().startswith('content-type:'):
+                  ct=line.split(':',1)[1].strip()
+          out=Path('recovered-engine343')
+          out.mkdir(exist_ok=True)
+          (out/'response-content-type.txt').write_text(ct+'\n')
+          if 'multipart/' not in ct.lower():
+              (out/'worker.js').write_bytes(body)
+              print('RECOVERED_SINGLE', len(body))
+              raise SystemExit(0)
+          from email.parser import BytesParser
+          from email.policy import default
+          msg=BytesParser(policy=default).parsebytes((f'Content-Type: {ct}\r\nMIME-Version: 1.0\r\n\r\n').encode()+body)
+          count=0
+          for part in msg.iter_parts():
+              cd=part.get('Content-Disposition','')
+              name=part.get_param('name', header='Content-Disposition')
+              filename=part.get_filename()
+              payload=part.get_payload(decode=True) or b''
+              candidate=filename or name or f'part-{count}.bin'
+              candidate=re.sub(r'[^A-Za-z0-9._-]+','_',candidate)
+              path=out/candidate
+              path.write_bytes(payload)
+              print('RECOVERED_PART', candidate, len(payload), part.get_content_type())
+              count+=1
+          if count == 0:
+              raise SystemExit('No multipart parts recovered')
+          PY
+          find recovered-engine343 -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
+
+      - name: Sanity check recovered source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -RIl --include='*.js' --include='*.mjs' --include='*.ts' --include='*.txt' -E 'NOMAD|nomad|fixture|board|settings' recovered-engine343 >/tmp/candidates || true
+          cat /tmp/candidates || true
+          test -s /tmp/candidates
+          echo 'ENGINE343_RECOVERY_SANITY_PASS'
+
+      - name: Commit recovery snapshot to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -B "$RECOVERY_BRANCH"
+          git add recovered-engine343
+          git commit -m 'backup(343): recover deployed nomadtips3-engine-343 source' || true
+          git push --force origin "$RECOVERY_BRANCH"
+          echo "RECOVERY_BRANCH=$RECOVERY_BRANCH"
