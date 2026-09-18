@@ -13,34 +13,33 @@ permissions:
 jobs:
   diagnose:
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Inspect production runtime and feeds
         shell: bash
         run: |
-          set -u
+          set -euo pipefail
           BASE='https://ball46.com'
+          has(){ if grep -Fq "$1" "$2"; then echo 1; else echo 0; fi; }
+
           echo '=== INDEX ==='
-          for n in $(seq 1 5); do
-            code=$(curl -sS --max-time 25 -D /tmp/index.h -o /tmp/index.html -w '%{http_code}' "$BASE/?diag=${GITHUB_RUN_ID}-${n}" || true)
+          for n in $(seq 1 8); do
+            code=$(curl -sS --max-time 25 -o /tmp/index.html -w '%{http_code}' "$BASE/?diag=${GITHUB_RUN_ID}-${n}" || true)
             echo "INDEX_HTTP=$code TRY=$n"
-            grep -o '343-live-summary-[^"& ]*' /tmp/index.html | head -3 || true
-            grep -o '343-live-prediction-[^"& ]*' /tmp/index.html | head -3 || true
-            grep -o 'rich-odds-on-demand-343.js' /tmp/index.html | head -1 || true
-            if grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html && grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html; then break; fi
+            if [ "$code" = 200 ] && grep -Fq '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html && grep -Fq '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html; then break; fi
             sleep 2
           done
-          echo "INDEX_HAS_RICH_V5=$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html || true)"
-          echo "INDEX_HAS_PRED_V2=$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html || true)"
-          echo "INDEX_HAS_OLD_RICH_SHIM=$(grep -Fqc 'rich-odds-on-demand-343.js' /tmp/index.html || true)"
+          echo "INDEX_HAS_RICH_V5=$(has '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html)"
+          echo "INDEX_HAS_PRED_V2=$(has '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html)"
+          echo "INDEX_HAS_OLD_RICH_SHIM=$(has 'rich-odds-on-demand-343.js' /tmp/index.html)"
 
           echo '=== ASSETS ==='
-          code=$(curl -sS --max-time 25 -o /tmp/rich.js -w '%{http_code}' "$BASE/live-summary-full-odds-343.js?diag=${GITHUB_RUN_ID}" || true)
-          echo "RICH_JS_HTTP=$code V5=$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/rich.js || true)"
-          code=$(curl -sS --max-time 25 -o /tmp/pred.js -w '%{http_code}' "$BASE/live-signal-inline-343.js?diag=${GITHUB_RUN_ID}" || true)
-          echo "PRED_JS_HTTP=$code V2=$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/pred.js || true)"
-          code=$(curl -sS --max-time 25 -o /tmp/shim.js -w '%{http_code}' "$BASE/rich-odds-on-demand-343.js?diag=${GITHUB_RUN_ID}" || true)
-          echo "SHIM_JS_HTTP=$code NOOP=$(grep -Fqc '343-rich-odds-compat-v7-no-fetch-wrapper' /tmp/shim.js || true) FETCH_WRAPS=$(grep -Fcc 'window.fetch=' /tmp/shim.js || true)"
+          rcode=$(curl -sS --max-time 25 -o /tmp/rich.js -w '%{http_code}' "$BASE/live-summary-full-odds-343.js?diag=${GITHUB_RUN_ID}" || true)
+          pcode=$(curl -sS --max-time 25 -o /tmp/pred.js -w '%{http_code}' "$BASE/live-signal-inline-343.js?diag=${GITHUB_RUN_ID}" || true)
+          xcode=$(curl -sS --max-time 25 -o /tmp/shim.js -w '%{http_code}' "$BASE/rich-odds-on-demand-343.js?diag=${GITHUB_RUN_ID}" || true)
+          echo "RICH_JS_HTTP=$rcode V5=$(has '343-live-summary-john-gated-v5-rich-owner' /tmp/rich.js)"
+          echo "PRED_JS_HTTP=$pcode V2=$(has '343-live-prediction-inline-v2-v2rows-resilient' /tmp/pred.js)"
+          echo "SHIM_JS_HTTP=$xcode NOOP=$(has '343-rich-odds-compat-v7-no-fetch-wrapper' /tmp/shim.js) FETCH_WRAPS=$(grep -Fc 'window.fetch=' /tmp/shim.js || true)"
 
           echo '=== FEEDS ==='
           bcode=$(curl -sS --max-time 30 -o /tmp/board.json -w '%{http_code}' "$BASE/api/engine/board?diag=${GITHUB_RUN_ID}" || true)
@@ -49,19 +48,40 @@ jobs:
           echo "BOARD_HTTP=$bcode SIGNALS_HTTP=$scode FULL_HEALTH_HTTP=$hcode"
           node - <<'NODE'
           const fs=require('fs');
-          const read=p=>{try{return JSON.parse(fs.readFileSync(p,'utf8'))}catch(e){return {parseError:String(e),raw:(()=>{try{return fs.readFileSync(p,'utf8').slice(0,500)}catch{return''}})()}}};
-          const b=read('/tmp/board.json'),s=read('/tmp/signals.json'),h=read('/tmp/full.json');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
           const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          const signals=Array.isArray(s.signals)?s.signals:[];
+          const byId=new Map(fixtures.map(f=>[String(f.fixtureId??f.id??''),f]));
           const withOdds=fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
-          console.log('BOARD',JSON.stringify({ok:b.ok,version:b.version,fixtures:fixtures.length,withOdds,source:b.source,fallback:b.fallback||null,parseError:b.parseError||null}));
-          console.log('SIGNALS',JSON.stringify({ok:s.ok,version:s.version,count:Array.isArray(s.signals)?s.signals.length:null,activeSignals:s.activeSignals,activeMatches:s.activeMatches,parseError:s.parseError||null}));
-          console.log('FULL',JSON.stringify({ok:h.ok,version:h.version,mode:h.mode,cacheMs:h.cacheMs,staleCacheMs:h.staleCacheMs,callsLast60s:h.callsLast60s,retryAfterSec:h.retryAfterSec,providerMeta:h.providerMeta||null,parseError:h.parseError||null}));
+          const mapped=signals.map(x=>{
+            const id=String(x.fixtureId??''); const f=byId.get(id);
+            return {fixtureId:id,onBoard:!!f,status:f?.status??f?.boardState??null,home:f?.home?.name??null,away:f?.away?.name??null,market:x.market??x.marketLabel??null,selection:x.selection??null,line:x.line??null,odds:x.odds??null};
+          });
+          console.log('BOARD',JSON.stringify({ok:b.ok,version:b.version,fixtures:fixtures.length,withOdds}));
+          console.log('SIGNALS',JSON.stringify({ok:s.ok,version:s.version,count:signals.length,mapped}));
+          console.log('FULL',JSON.stringify({ok:h.ok,version:h.version,mode:h.mode,cacheMs:h.cacheMs,staleCacheMs:h.staleCacheMs,callsLast60s:h.callsLast60s,retryAfterSec:h.retryAfterSec,providerMeta:h.providerMeta||null}));
+          if(signals.some(x=>!byId.has(String(x.fixtureId??'')))) throw Error('SIGNAL_FIXTURE_NOT_ON_BOARD');
           NODE
 
+          echo '=== BROWSER DOM ==='
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          echo "CHROME=$CHROME"
+          if [ -n "$CHROME" ]; then
+            "$CHROME" --headless --no-sandbox --disable-gpu --disable-dev-shm-usage --virtual-time-budget=12000 --dump-dom "$BASE/?browserdiag=${GITHUB_RUN_ID}" > /tmp/dom.html 2>/tmp/chrome.err || true
+            echo "DOM_MATCH_ROWS=$(grep -o 'class=\"match-row' /tmp/dom.html | wc -l)"
+            echo "DOM_PREDICTION_CELLS=$(grep -o 'prediction-live' /tmp/dom.html | wc -l)"
+            echo "DOM_LIVE_PICK_CELLS=$(grep -o 'pred-main' /tmp/dom.html | wc -l)"
+            grep -o '<div class="signal-cell[^>]*>[^<]*\|<span class="pred-main">[^<]*' /tmp/dom.html | head -10 || true
+          fi
+
           echo '=== FINAL ASSERTIONS ==='
-          test "$(grep -Fqc '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html || true)" -gt 0
-          test "$(grep -Fqc '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html || true)" -gt 0
-          test "$(grep -Fqc 'rich-odds-on-demand-343.js' /tmp/index.html || true)" -eq 0
+          test "$(has '343-live-summary-john-gated-v5-rich-owner' /tmp/index.html)" = 1
+          test "$(has '343-live-prediction-inline-v2-v2rows-resilient' /tmp/index.html)" = 1
+          test "$(has 'rich-odds-on-demand-343.js' /tmp/index.html)" = 0
+          test "$rcode" = 200
+          test "$pcode" = 200
           test "$bcode" = 200
           test "$scode" = 200
           test "$hcode" = 200
