@@ -341,7 +341,17 @@ export class Nomad343Engine extends DurableObject{
       if(!MARKET_RULES[key])return Response.json({ok:false,error:'INVALID_MARKET'},{status:400});
       const hr=await this.env.HUB.fetch('https://hub.internal/snapshot'),hub=await hr.json();if(!hub?.ok)return Response.json({ok:false,error:'HUB_NOT_READY'},{status:503});
       let fixtureId=String(u.searchParams.get('fixtureId')||'').trim(),f=fixtureId?(hub.fixtures||[]).find(x=>String(x?.fixtureId??'')===fixtureId):null;
-      if(!f){f=(hub.fixtures||[]).find(x=>isLive(x)&&oddsRoot(x.providerOdds));fixtureId=String(f?.fixtureId??'')}
+      if(!f){
+        const wantLine=MARKET_RULES[key]?.kind==='AH'||MARKET_RULES[key]?.kind==='OU';
+        f=(hub.fixtures||[]).find(x=>{
+          if(!isLive(x))return false;
+          const r=oddsRoot(x.providerOdds);if(!r)return false;
+          if(!wantLine)return true;
+          const p=priceFor(r,key,selection);
+          return p?.providerLine!==null&&p?.providerLine!==undefined;
+        });
+        fixtureId=String(f?.fixtureId??'')
+      }
       if(!f)return Response.json({ok:false,error:'NO_LIVE_FIXTURE'},{status:404});
       const bulkRoot=oddsRoot(f.providerOdds),def=MARKET_RULES[key],canonical=priceFor(bulkRoot,key,selection),lineMarket=def.kind==='AH'||def.kind==='OU';
       if(lineMarket&&(canonical?.providerLine===null||canonical?.providerLine===undefined))return Response.json({ok:false,fixtureId,market:key,selection,error:'CANONICAL_BULK_LINE_UNAVAILABLE'},{status:409});
