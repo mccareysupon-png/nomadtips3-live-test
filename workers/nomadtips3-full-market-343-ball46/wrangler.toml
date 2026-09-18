@@ -1,0 +1,15 @@
+name = "nomadtips3-full-market-343-ball46"
+main = "src/index.js"
+compatibility_date = "2026-09-18"
+workers_dev = false
+
+[observability]
+enabled = true
+
+[[durable_objects.bindings]]
+name = "FULL_MARKET_GATE"
+class_name = "FullMarketGate"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["FullMarketGate"]
