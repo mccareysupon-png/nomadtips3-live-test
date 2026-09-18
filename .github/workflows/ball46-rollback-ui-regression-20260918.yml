@@ -1,4 +1,4 @@
-name: Ball46 Rollback UI Regression 20260918
+name: Ball46 Restore Verified Complete Snapshot 20260918
 
 on:
   workflow_dispatch:
@@ -14,38 +14,36 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   BALL46_URL: https://ball46.com
-  INCIDENT_VERSION: f161b734-4b64-4758-ac09-ebba566a2813
-  ROLLBACK_VERSION: f189828f-5c79-41dc-a8ea-38660035110f
+  COMPLETE_VERSION: 1da8cedb-667b-43b5-972f-3eeabd7087e2
 
 jobs:
-  rollback-wrapper-only:
+  restore-complete-wrapper:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Capture backend invariants before rollback
+      - name: Capture backend state before wrapper rollback
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS "$BALL46_URL/api/engine/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
-          curl -fsS "$BALL46_URL/api/hub/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
-          curl -fsS "$BALL46_URL/api/full-market/health?rbpre=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          curl -fsS "$BALL46_URL/api/engine/health?completepre=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS "$BALL46_URL/api/hub/health?completepre=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          curl -fsS "$BALL46_URL/api/full-market/health?completepre=${GITHUB_RUN_ID}" -o /tmp/full-before.json
           node - <<'NODE'
           const fs=require('fs');
           const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json'));
           const h=JSON.parse(fs.readFileSync('/tmp/hub-before.json'));
           const f=JSON.parse(fs.readFileSync('/tmp/full-before.json'));
           if(e.ok!==true||e.version!=='nomad343-engine-v4-autonomous-settlement') throw Error('ENGINE_BAD '+JSON.stringify(e));
-          if(h.ok!==true) throw Error('HUB_BAD '+JSON.stringify(h));
+          if(h.ok!==true||h.version!=='nomad343-5usd-hub-v5-last-good-continuity') throw Error('HUB_BAD '+JSON.stringify(h));
           if(f.ok!==true) throw Error('FULL_MARKET_BAD '+JSON.stringify(f));
-          const keep={engine:e.version,hub:h.version||null,full:f.version||null};
-          fs.writeFileSync('/tmp/backend-before.txt',JSON.stringify(keep));
-          console.log('BACKEND_BEFORE',keep);
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify({engine:e.version,hub:h.version,full:f.version||null}));
+          console.log('BACKEND_STATE_CAPTURED',JSON.stringify({engine:e.version,hub:h.version,full:f.version||null}));
           NODE
 
-      - name: Confirm exact incident and last-good deployment adjacency
+      - name: Confirm verified complete version exists
         shell: bash
         run: |
           set -euo pipefail
@@ -53,80 +51,102 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const data=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
-          const ids=d=>(d?.versions||[]).map(v=>v?.version_id||v?.id).filter(Boolean);
-          const flat=data.map((d,i)=>({i,created:d.created_on,ids:ids(d)}));
-          const incident=process.env.INCIDENT_VERSION,target=process.env.ROLLBACK_VERSION;
-          const ii=flat.findIndex(x=>x.ids.includes(incident));
-          const ti=flat.findIndex(x=>x.ids.includes(target));
-          console.log('DEPLOYMENT_ORDER',flat);
-          if(ii<0||ti<0) throw Error('TARGET_OR_INCIDENT_NOT_FOUND');
-          if(ti!==ii-1) throw Error('TARGET_NOT_IMMEDIATELY_BEFORE_INCIDENT '+JSON.stringify({targetIndex:ti,incidentIndex:ii}));
-          const newest=flat[flat.length-1];
-          if(!newest.ids.includes(incident)) throw Error('INCIDENT_NOT_CURRENT '+JSON.stringify(newest));
-          console.log('EXACT_LAST_GOOD_CONFIRMED',JSON.stringify({target,created:flat[ti].created,incident,incidentCreated:flat[ii].created}));
+          const target=process.env.COMPLETE_VERSION;
+          const hit=data.find(d=>(d.versions||[]).some(v=>(v.version_id||v.id)===target));
+          if(!hit) throw Error('COMPLETE_VERSION_NOT_FOUND '+target);
+          console.log('COMPLETE_VERSION_FOUND',target,hit.created_on);
           NODE
 
-      - name: Roll back only ball46-production wrapper and its exact asset snapshot
+      - name: Restore exact verified complete Ball46 wrapper and asset snapshot
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4.92.0 rollback "$ROLLBACK_VERSION" --name ball46-production --message "Restore exact last-good Ball46 deployment before UI regression (odds/prediction loss)"
+          npx --yes wrangler@4.92.0 rollback "$COMPLETE_VERSION" --name ball46-production --message "Restore verified complete Ball46 snapshot: Prediction + Odds + Controls + Detection"
 
-      - name: Verify restored Ball46 core and backend invariants
+      - name: Verify complete public surface on ball46.com
         shell: bash
         run: |
           set -euo pipefail
           sleep 3
-          for path in index.html signal.html statistics.html 5usd-control.html detection-test.html; do
-            outfile="/tmp/${path//\//_}"
-            code=$(curl -sS -o "$outfile" -w '%{http_code}' "$BALL46_URL/$path?rollback=${GITHUB_RUN_ID}")
+          fetch_page(){
+            local path="$1" out="$2"
+            local code
+            code=$(curl -sS --max-time 25 -o "$out" -w '%{http_code}' "$BALL46_URL/$path?complete=${GITHUB_RUN_ID}-$(date +%s%N)")
             echo "$path -> $code"
             test "$code" = 200
-          done
+          }
 
-          # Odds UI plumbing that existed in the last-good screen.
+          fetch_page index.html /tmp/index.html
+          fetch_page signal.html /tmp/signal.html
+          fetch_page statistics.html /tmp/statistics.html
+          fetch_page settings.html /tmp/settings.html
+          fetch_page 5usd-control.html /tmp/control.html
+          fetch_page detection-test.html /tmp/detection.html
+          fetch_page live-prediction-v1.js /tmp/prediction.js
+          fetch_page live-prediction-v1.css /tmp/prediction.css
+          fetch_page bulk-odds-compat-343.js /tmp/bulk-odds.js
+          fetch_page rich-odds-on-demand-343.js /tmp/rich-odds.js
+          fetch_page full-market-bookmaker-343.js /tmp/full-market-ui.js
+
+          # Prediction must be loaded by the homepage and both assets must be the verified read-only build.
+          grep -Fq 'live-prediction-v1.css' /tmp/index.html
+          grep -Fq 'live-prediction-v1.js' /tmp/index.html
+          grep -Fq '343-live-prediction-v1-readonly-market-ht-safe' /tmp/prediction.js
+          grep -Fq 'READ_ONLY_SHARED_BOARD' /tmp/prediction.js
+          grep -Fq 'networkRequestsAdded:0' /tmp/prediction.js
+
+          # Odds plumbing from the verified production assembly.
           grep -Fq 'full-market-bookmaker-343.js' /tmp/index.html
           grep -Fq 'rich-odds-on-demand-343.js' /tmp/index.html
-          grep -Fq '/api/engine/' /tmp/detection-test.html
-          grep -Fq '/api/full-market/' /tmp/5usd-control.html
+          grep -Fq '343-bulk-odds-compat-v3-market-alias-safe' /tmp/bulk-odds.js
+          grep -Fq '343-expanded-full-market-bulk-only-v6-market-alias-safe' /tmp/rich-odds.js
 
-          echo 'Prediction references restored in public surfaces (diagnostic):'
-          grep -Eio '([^"'"' <>]*predict[^"'"' <>]*)' /tmp/index.html /tmp/signal.html /tmp/statistics.html | head -30 || true
+          # Owner control pages must be present and wired to their real APIs.
+          grep -Fq '/api/full-market/' /tmp/control.html
+          grep -Fq '/api/engine/' /tmp/detection.html
+          echo 'PUBLIC_SURFACE_COMPLETE_PASS'
 
-          curl -fsS "$BALL46_URL/api/engine/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
-          curl -fsS "$BALL46_URL/api/hub/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
-          curl -fsS "$BALL46_URL/api/full-market/health?rbpost=${GITHUB_RUN_ID}" -o /tmp/full-after.json
-          curl -fsS "$BALL46_URL/api/engine/board?rbpost=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS "$BALL46_URL/api/engine/signals?rbpost=${GITHUB_RUN_ID}" -o /tmp/signals.json
-          curl -fsS "$BALL46_URL/api/engine/statistics?rbpost=${GITHUB_RUN_ID}" -o /tmp/stats.json
-          node - <<'NODE'
-          const fs=require('fs');
-          const before=JSON.parse(fs.readFileSync('/tmp/backend-before.txt','utf8'));
-          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json'));
-          const h=JSON.parse(fs.readFileSync('/tmp/hub-after.json'));
-          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
-          const board=JSON.parse(fs.readFileSync('/tmp/board.json'));
-          const sig=JSON.parse(fs.readFileSync('/tmp/signals.json'));
-          const stat=JSON.parse(fs.readFileSync('/tmp/stats.json'));
-          if(e.ok!==true||e.version!==before.engine) throw Error('ENGINE_CHANGED '+JSON.stringify(e));
-          if(h.ok!==true||h.version!==before.hub) throw Error('HUB_CHANGED '+JSON.stringify({before:before.hub,after:h.version}));
-          if(f.ok!==true||f.version!==before.full) throw Error('FULL_MARKET_CHANGED '+JSON.stringify({before:before.full,after:f.version}));
-          if(board.ok!==true||!Array.isArray(board.fixtures)) throw Error('BOARD_FAIL');
-          if(sig.ok!==true||!Array.isArray(sig.signals)) throw Error('SIGNALS_FAIL');
-          if(stat.ok!==true) throw Error('STATISTICS_FAIL');
-          console.log('ROLLBACK_COMPLETE_PASS',JSON.stringify({rollback:process.env.ROLLBACK_VERSION,engine:e.version,hub:h.version,full:f.version,fixtures:board.fixtures.length,signals:sig.signals.length}));
-          NODE
-
-      - name: Confirm target version is active after rollback
+      - name: Verify backend, board, odds, signals and statistics unchanged
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json > /tmp/after-deployments.json
+          curl -fsS "$BALL46_URL/api/engine/health?completepost=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS "$BALL46_URL/api/hub/health?completepost=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          curl -fsS "$BALL46_URL/api/full-market/health?completepost=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          curl -fsS "$BALL46_URL/api/engine/board?completepost=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS "$BALL46_URL/api/engine/signals?completepost=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?completepost=${GITHUB_RUN_ID}" -o /tmp/statistics.json
           node - <<'NODE'
           const fs=require('fs');
-          const data=JSON.parse(fs.readFileSync('/tmp/after-deployments.json','utf8'));
+          const before=JSON.parse(fs.readFileSync('/tmp/backend-before.json'));
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-after.json'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const st=JSON.parse(fs.readFileSync('/tmp/statistics.json'));
+          if(e.ok!==true||e.version!==before.engine) throw Error('ENGINE_CHANGED '+JSON.stringify({before:before.engine,after:e.version}));
+          if(h.ok!==true||h.version!==before.hub) throw Error('HUB_CHANGED '+JSON.stringify({before:before.hub,after:h.version}));
+          if(f.ok!==true) throw Error('FULL_MARKET_FAIL '+JSON.stringify(f));
+          if(before.full&&f.version&&before.full!==f.version) throw Error('FULL_MARKET_VERSION_CHANGED '+JSON.stringify({before:before.full,after:f.version}));
+          if(b.ok!==true||!Array.isArray(b.fixtures)||b.fixtures.length===0) throw Error('BOARD_FAIL');
+          const withOdds=b.fixtures.filter(x=>x?.providerOdds&&typeof x.providerOdds==='object').length;
+          if(withOdds===0) throw Error('BOARD_ODDS_MISSING');
+          if(s.ok!==true||!Array.isArray(s.signals)) throw Error('SIGNALS_FAIL');
+          if(st.ok!==true) throw Error('STATISTICS_FAIL');
+          console.log('COMPLETE_BACKEND_PASS',JSON.stringify({engine:e.version,hub:h.version,full:f.version||null,fixtures:b.fixtures.length,fixturesWithOdds:withOdds,activeSignals:s.signals.length}));
+          NODE
+
+      - name: Confirm complete version active
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json > /tmp/after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const data=JSON.parse(fs.readFileSync('/tmp/after.json','utf8'));
           const newest=data[data.length-1];
           const ids=(newest?.versions||[]).map(v=>v.version_id||v.id).filter(Boolean);
-          if(!ids.includes(process.env.ROLLBACK_VERSION)) throw Error('ROLLBACK_TARGET_NOT_ACTIVE '+JSON.stringify(newest));
-          console.log('ACTIVE_LAST_GOOD_CONFIRMED',process.env.ROLLBACK_VERSION,newest.created_on);
+          if(!ids.includes(process.env.COMPLETE_VERSION)) throw Error('COMPLETE_VERSION_NOT_ACTIVE '+JSON.stringify(newest));
+          console.log('BALL46_COMPLETE_RESTORE_PASS',process.env.COMPLETE_VERSION,newest.created_on);
           NODE
