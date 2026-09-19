@@ -1,0 +1,128 @@
+name: Deploy Ball46 CEO Condition v1 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-ceo-v1-20260919.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-ceo-v1-production-base-20260919
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-ceo-v1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout verified production-base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Capture protected Production identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?ceo=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?ceo=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          cp workers/nomadtips3-engine-343/src/index.js /tmp/index-before.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const fm=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          const en=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          if(en.version!=='nomad343-engine-v5-multibook-referee-bestprice') throw Error(`UNEXPECTED_ENGINE_BASE:${en.version}`);
+          fs.writeFileSync('/tmp/full-version',String(fm.version||''));
+          console.log('BASELINE',JSON.stringify({engine:en.version,fullMarket:fm.version}));
+          NODE
+
+      - name: Apply CEO v1 patch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/patch_ball46_ceo_v1_20260919.py
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/ceo-condition.js
+          node --test workers/nomadtips3-engine-343/test/ceo-condition.test.mjs workers/nomadtips3-engine-343/test/market-core.test.mjs workers/nomadtips3-engine-343/test/settlement-30000.test.mjs
+          grep -Fq "nomad343-engine-v6-ceo-auto-v1" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "ceoCandidatesForFixture" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "CEO_PRICE_SETTINGS" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "const MAX_ODDS_FIXTURES_PER_SCAN=4;" workers/nomadtips3-engine-343/src/index.js
+
+      - name: Prove Odds implementation is byte-identical
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          before=Path('/tmp/index-before.js').read_text()
+          after=Path('workers/nomadtips3-engine-343/src/index.js').read_text()
+          names=['extractBookRoots','findMarket','stageValue','stageSnapshot','priceFor','pricePass','fetchFullOdds','dominantLineOffers','pickBestPriced']
+          def block(src,name):
+              m=re.search(r'(?:async\s+)?function\s+'+re.escape(name)+r'\s*\(',src)
+              if not m: raise SystemExit(f'MISSING_ODDS_FUNCTION:{name}')
+              n=re.search(r'\n(?:async\s+)?function\s+\w+\s*\(',src[m.end():])
+              end=m.end()+n.start() if n else len(src)
+              return src[m.start():end]
+          for name in names:
+              if block(before,name)!=block(after,name):
+                  raise SystemExit(f'ODDS_FUNCTION_CHANGED:{name}')
+          print('ODDS_BYTE_GUARD_PASS',','.join(names))
+          PY
+
+      - name: Guard changed source scope and commit CEO Engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only)
+          printf 'Changed files:\n%s\n' "${changed[*]}"
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = 'workers/nomadtips3-engine-343/src/index.js'
+          git config user.name 'github-actions[bot]'
+          git config user.email '418982+cicd@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m 'feat(ball46): run CEO auto v1 beside OWNER'
+          git push origin HEAD:${SOURCE_BRANCH}
+
+      - name: Deploy Engine only
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify CEO Engine and protected Odds service
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/engine-after.json || true
+            if grep -Fq 'nomad343-engine-v6-ceo-auto-v1' /tmp/engine-after.json; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?ceo=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?ceo=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?ceo=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?ceo=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const en=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const fm=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(en.version!=='nomad343-engine-v6-ceo-auto-v1') throw Error('ENGINE_VERSION_MISMATCH');
+          if(String(fm.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(st?.ok!==true||!Array.isArray(st?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('CEO_V1_DEPLOY_PASS',JSON.stringify({engine:en.version,fullMarket:fm.version,fixtures:b.fixtures.length,pendingSignals:s.signals.length,settled:st.total,referee:b.referee||null}));
+          NODE
