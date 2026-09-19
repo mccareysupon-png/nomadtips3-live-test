@@ -1,0 +1,190 @@
+name: NOMADTIPS3 SEO Foundation 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomadtips3-seo-foundation-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  seo-foundation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch technical SEO only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+
+          pages={
+            'index.html': {
+              'title':'Live Soccer Analysis, Match Stats & Football Signals | NOMADTIPS3',
+              'description':'NOMADTIPS3 provides live soccer analysis, live match statistics, transparent football signals and reviewable performance history.',
+              'canonical':'https://www.nomadtips3.com/',
+              'type':'WebSite'
+            },
+            'statistics.html': {
+              'title':'Football Signal Statistics, Win Rate & Results | NOMADTIPS3',
+              'description':'Review NOMADTIPS3 football signal statistics, settled results, win rate, average locked odds and transparent long-term performance history.',
+              'canonical':'https://www.nomadtips3.com/statistics',
+              'type':'WebPage'
+            },
+            'soccer-predictions/index.html': {
+              'title':'Soccer Predictions & Match Analysis | NOMADTIPS3',
+              'description':'Explore NOMADTIPS3 soccer predictions, curated match analysis, today’s selections and previous settled results with transparent supporting data.',
+              'canonical':'https://www.nomadtips3.com/soccer-predictions/',
+              'type':'WebPage'
+            },
+            'about/index.html': {
+              'title':'About NOMADTIPS3 | Independent Football Analysis',
+              'description':'Learn how NOMADTIPS3 approaches independent football analysis, live match monitoring, transparent records and market-reference methodology.',
+              'canonical':'https://www.nomadtips3.com/about/',
+              'type':'AboutPage'
+            },
+            'alerts.html': {
+              'title':'Live Football Alerts | NOMADTIPS3',
+              'description':'NOMADTIPS3 live football alerts deliver qualified match-analysis signals with market, locked odds, detected minute and result updates.',
+              'canonical':'https://www.nomadtips3.com/alerts',
+              'type':'WebPage'
+            }
+          }
+
+          def body(s):
+            i=s.find('<body')
+            assert i>=0
+            return s[i:]
+
+          def schema(cfg):
+            if cfg['type']=='WebSite':
+              return {
+                '@context':'https://schema.org',
+                '@graph':[
+                  {'@type':'WebSite','@id':'https://www.nomadtips3.com/#website','url':'https://www.nomadtips3.com/','name':'NOMADTIPS3','description':cfg['description'],'inLanguage':'en'},
+                  {'@type':'Organization','@id':'https://www.nomadtips3.com/#organization','name':'NOMADTIPS3','url':'https://www.nomadtips3.com/'}
+                ]
+              }
+            return {
+              '@context':'https://schema.org','@type':cfg['type'],
+              '@id':cfg['canonical']+'#webpage','url':cfg['canonical'],
+              'name':cfg['title'],'description':cfg['description'],'inLanguage':'en',
+              'isPartOf':{'@id':'https://www.nomadtips3.com/#website'},
+              'about':{'@type':'Thing','name':'Association football'}
+            }
+
+          def block(cfg):
+            j=json.dumps(schema(cfg),separators=(',',':'))
+            return ''.join([
+              '<!-- NOMADTIPS3 SEO START -->',
+              f'<meta name="description" content="{cfg["description"]}">',
+              '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">',
+              f'<link rel="canonical" href="{cfg["canonical"]}">',
+              '<meta property="og:type" content="website">',
+              '<meta property="og:locale" content="en_US">',
+              '<meta property="og:site_name" content="NOMADTIPS3">',
+              f'<meta property="og:title" content="{cfg["title"]}">',
+              f'<meta property="og:description" content="{cfg["description"]}">',
+              f'<meta property="og:url" content="{cfg["canonical"]}">',
+              '<meta name="twitter:card" content="summary">',
+              f'<meta name="twitter:title" content="{cfg["title"]}">',
+              f'<meta name="twitter:description" content="{cfg["description"]}">',
+              f'<script type="application/ld+json">{j}</script>',
+              '<!-- NOMADTIPS3 SEO END -->'
+            ])
+
+          for name,cfg in pages.items():
+            p=Path(name); s=p.read_text(); original_body=body(s)
+            s=re.sub(r'<!-- NOMADTIPS3 SEO START -->.*?<!-- NOMADTIPS3 SEO END -->','',s,flags=re.S)
+            s=re.sub(r'<meta name="description" content="[^"]*">','',s,count=1)
+            s=re.sub(r'<meta name="robots" content="[^"]*">','',s,count=1)
+            s=re.sub(r'<link rel="canonical" href="[^"]*">','',s,count=1)
+            s=re.sub(r'<title>.*?</title>',f'<title>{cfg["title"]}</title>',s,count=1,flags=re.S)
+            marker=f'<title>{cfg["title"]}</title>'
+            assert marker in s, name
+            s=s.replace(marker,marker+block(cfg),1)
+            assert body(s)==original_body, f'BODY_CHANGED:{name}'
+            p.write_text(s)
+
+          sp=Path('sitemap.xml')
+          sitemap=sp.read_text()
+          for loc in [
+            'https://www.nomadtips3.com/',
+            'https://www.nomadtips3.com/statistics',
+            'https://www.nomadtips3.com/soccer-predictions/',
+            'https://www.nomadtips3.com/about/'
+          ]:
+            sitemap=re.sub(rf'<url><loc>{re.escape(loc)}</loc>(?:<lastmod>[^<]+</lastmod>)?</url>',f'<url><loc>{loc}</loc><lastmod>2026-09-19</lastmod></url>',sitemap)
+          if 'https://www.nomadtips3.com/alerts' not in sitemap:
+            sitemap=sitemap.replace('</urlset>','  <url><loc>https://www.nomadtips3.com/alerts</loc><lastmod>2026-09-19</lastmod></url>\n</urlset>')
+          sp.write_text(sitemap)
+          PY
+
+          git diff --check
+          for p in index.html statistics.html soccer-predictions/index.html about/index.html alerts.html; do
+            grep -Fq 'NOMADTIPS3 SEO START' "$p"
+            grep -Fq 'content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"' "$p"
+          done
+          grep -Fq 'https://www.nomadtips3.com/statistics</loc><lastmod>2026-09-19</lastmod>' sitemap.xml
+          grep -Fq 'https://www.nomadtips3.com/alerts</loc>' sitemap.xml
+
+      - name: Guard UI and runtime scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git diff --name-only)
+          printf 'SEO-only changes:\n%s\n' "${files[*]}"
+          test "${#files[@]}" -eq 6
+          for p in index.html statistics.html soccer-predictions/index.html about/index.html alerts.html sitemap.xml; do
+            printf '%s\n' "${files[@]}" | grep -Fxq "$p"
+          done
+          if printf '%s\n' "${files[@]}" | grep -E '(\.js$|\.css$|odds|worker|engine|api)'; then
+            echo 'RUNTIME_OR_UI_CHANGE_BLOCKED'; exit 1
+          fi
+          echo 'PASS: no JS, CSS, odds, API, worker or engine files changed.'
+
+      - name: Commit SEO foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html statistics.html soccer-predictions/index.html about/index.html alerts.html sitemap.xml
+          git commit -m 'seo(nomadtips3): strengthen titles canonicals and structured metadata [skip ci]'
+          git push origin HEAD:main
+
+      - name: Verify repository SEO state
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html statistics.html soccer-predictions/index.html about/index.html alerts.html; do
+            curl -fsSL --retry 5 --retry-delay 2 "https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/$p?seo=$GITHUB_RUN_ID" | grep -Fq 'NOMADTIPS3 SEO START'
+          done
+          curl -fsSL --retry 5 --retry-delay 2 "https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/sitemap.xml?seo=$GITHUB_RUN_ID" | grep -Fq 'https://www.nomadtips3.com/alerts</loc>'
+          echo 'NOMADTIPS3_REPO_SEO_PASS'
+
+      - name: Verify public site when deployment propagates
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 12); do
+            if curl -fsSL --max-time 20 "https://www.nomadtips3.com/statistics?seo=$GITHUB_RUN_ID-$n" -o /tmp/stats.html 2>/dev/null && grep -Fq 'Football Signal Statistics, Win Rate & Results | NOMADTIPS3' /tmp/stats.html; then
+              ok=1; break
+            fi
+            sleep 5
+          done
+          if [ "$ok" = 1 ]; then
+            echo 'NOMADTIPS3_PUBLIC_SEO_PROPAGATED'
+          else
+            echo 'PUBLIC_PROPAGATION_PENDING_REPO_STATE_IS_COMPLETE'
+          fi
