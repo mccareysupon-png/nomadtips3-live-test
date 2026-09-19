@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v4-autonomous-settlement';
+const VERSION='nomad343-engine-v5-multibook-referee-bestprice';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
@@ -174,9 +174,17 @@ function preCandidatesForRule(key,f,history,cfg){
   return {state:rows.length?'EVIDENCE_PASS':'EVIDENCE',candidates:rows};
 }
 
-function oddsRoot(payload){
-  const books=payload?.data?.bookmakers??payload?.bookmakers;if(Array.isArray(books)){const b=books.find(x=>String(x?.slug??x?.name??'').toLowerCase().replace(/[\s_-]/g,'').includes('bet365'));if(b?.odds)return b.odds}
-  return payload?.data?.odds??payload?.odds??payload?.data??null;
+const REFEREE_ANCHORS=new Set(['pinnacle','bet365','1xbet']);
+function bookKey(row){return String(row?.slug??row?.bookmaker?.slug??row?.name??row?.bookmaker?.name??'').toLowerCase().replace(/[\s_-]/g,'')}
+function bookName(row){return String(row?.name??row?.bookmaker?.name??row?.slug??row?.bookmaker?.slug??'Bookmaker').trim()||'Bookmaker'}
+function extractBookRoots(payload){
+  const full=payload?.fullOdds??payload?.data??payload;
+  const raw=Array.isArray(full?.bookmakers)?full.bookmakers:Array.isArray(full?.data?.bookmakers)?full.data.bookmakers:[];
+  const out=[];
+  for(const row of raw){const root=row?.odds??row?.markets??row?.data?.odds??row?.data?.markets??null;if(root&&typeof root==='object'&&!Array.isArray(root))out.push({slug:bookKey(row),name:bookName(row),root})}
+  if(out.length)return out;
+  const root=full?.odds??full?.markets??full;
+  return root&&typeof root==='object'&&!Array.isArray(root)?[{slug:'bet365',name:'Bet365',root}]:[];
 }
 function findMarket(root,def){if(!root||typeof root!=='object')return null;for(const k of def.aliases||[]){if(root[k]!==undefined&&root[k]!==null)return root[k]}return null}
 function stageValue(market,stage){if(!market||typeof market!=='object')return null;return market[stage]??(stage==='inplay'?market.in_play??market.live:null)??null}
@@ -204,13 +212,38 @@ function pricePass(key,cfg,price,f){
   return true;
 }
 async function fetchFullOdds(fixtureId,env){
+  if(env.FULL_MARKET){
+    try{
+      const r=await env.FULL_MARKET.fetch(`https://full-market.internal/fixture-odds?fixtureId=${encodeURIComponent(fixtureId)}`);
+      const j=await r.json().catch(()=>null);
+      if(r.ok&&j?.ok===true&&j?.fullOdds&&typeof j.fullOdds==='object')return j.fullOdds;
+      if(!r.ok){const e=new Error(`FULL_MARKET_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(j?.retryAfterSec??r.headers.get('retry-after'));throw e}
+    }catch(e){if(!env.FIVEDOLLAR_API_KEY)throw e}
+  }
   if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');
   const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}/odds?bookmakers=bet365`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}
-  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}const root=oddsRoot(j);if(!root)throw new Error('5USD_ODDS_SHAPE');return root;
+  if(!r.ok){const e=new Error(`5USD_ODDS_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}
+  const full=j?.data??j;if(!full||typeof full!=='object')throw new Error('5USD_ODDS_SHAPE');return full;
 }
-function pickBestPriced(candidates,root,f,settings){
-  const passed=[];for(const c of candidates){const price=priceFor(root,c.market,c.selection),cfg=settings[c.market];if(!pricePass(c.market,cfg,price,f))continue;passed.push({...c,price})}
-  passed.sort((a,b)=>b.strength-a.strength||a.price.odds-b.price.odds);return passed[0]||null;
+function dominantLineOffers(offers,def){
+  if(def.kind==='1X2'||def.kind==='BTTS')return offers;
+  const groups=new Map();
+  for(const o of offers){const n=num(o?.price?.line);if(n===null)continue;const k=(Math.round(n*1000)/1000).toFixed(3);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(o)}
+  const ranked=[...groups.entries()].map(([line,rows])=>({line:Number(line),rows,anchors:rows.filter(x=>REFEREE_ANCHORS.has(x.bookSlug)).length,bestOdds:Math.max(...rows.map(x=>Number(x.price.odds)||0))})).sort((a,b)=>b.rows.length-a.rows.length||b.anchors-a.anchors||b.bestOdds-a.bestOdds);
+  return ranked[0]?.rows||[];
+}
+function pickBestPriced(candidates,fullOdds,f,settings){
+  const books=extractBookRoots(fullOdds),passed=[];
+  for(const c of candidates){
+    const cfg=settings[c.market],def=MARKET_RULES[c.market],offers=[];
+    for(const book of books){const price=priceFor(book.root,c.market,c.selection);if(!pricePass(c.market,cfg,price,f))continue;offers.push({bookmaker:book.name,bookSlug:book.slug,bookRoot:book.root,price})}
+    if(!offers.length)continue;
+    const consensus=dominantLineOffers(offers,def);if(!consensus.length)continue;
+    consensus.sort((a,b)=>Number(b.price.odds)-Number(a.price.odds));const chosen=consensus[0];
+    const referee={mode:'MULTI_BOOK_BEST_PRICE_SOFT_CONSENSUS',availableBookmakers:books.length,validOffers:offers.length,consensusOffers:consensus.length,agreementPct:offers.length?Math.round(consensus.length/offers.length*1000)/10:0,consensusLine:chosen.price.line,selectedBookmaker:chosen.bookmaker,selectedOdds:chosen.price.odds,offers:offers.map(o=>({bookmaker:o.bookmaker,line:o.price.line,odds:o.price.odds}))};
+    passed.push({...c,price:chosen.price,bookmaker:chosen.bookmaker,bookSlug:chosen.bookSlug,bookRoot:chosen.bookRoot,referee});
+  }
+  passed.sort((a,b)=>b.strength-a.strength||b.referee.consensusOffers-a.referee.consensusOffers||Number(b.price.odds)-Number(a.price.odds));return passed[0]||null;
 }
 function storedFixture(s){return {goals:s?.finalScore??null,corners:s?.finalCorners??null,cards:s?.finalCards??null}}
 function reconcileSettled(s){
@@ -258,18 +291,18 @@ export class Nomad343Engine extends DurableObject{
           if(marketCandidates.length)fixtureCandidates.push({fixture:f,candidates:marketCandidates,maxStrength:Math.max(...marketCandidates.map(c=>c.strength))});
         }
         const prev=prevById.get(String(f.fixtureId)),prevAt=num(prev?.fullOddsFetchedAt),keepFullOdds=Boolean(prev?.fullOdds)&&(pendingFixtureIds.has(String(f.fixtureId))||(isLive(f)&&prevAt!==null&&at-prevAt<=15*60_000));
-        board.push({...f,analysis,fullOdds:keepFullOdds?prev.fullOdds:null,fullOddsFetchedAt:keepFullOdds?prevAt:null,fullOddsSource:keepFullOdds?'ENGINE_REFEREE':null});
+        board.push({...f,analysis,fullOdds:keepFullOdds?prev.fullOdds:null,fullOddsFetchedAt:keepFullOdds?prevAt:null,fullOddsSource:keepFullOdds?'ENGINE_MULTI_BOOK_REFEREE':null});
       }
-      fixtureCandidates.sort((a,b)=>b.maxStrength-a.maxStrength);const backfill=board.filter(b=>isLive(b)&&pendingFixtureIds.has(String(b.fixtureId))&&!b.fullOdds).map(b=>({fixture:b})),backfillSelected=backfill.slice(0,MAX_ODDS_FIXTURES_PER_SCAN),backfillIds=new Set(backfillSelected.map(x=>String(x.fixture.fixtureId))),remaining=Math.max(0,MAX_ODDS_FIXTURES_PER_SCAN-backfillSelected.length),selected=fixtureCandidates.filter(x=>!backfillIds.has(String(x.fixture.fixtureId))).slice(0,remaining),selectedIds=new Set(selected.map(x=>String(x.fixture.fixtureId)));let refereeRequests=0,refereeErrors=[];for(const item of backfillSelected){const id=String(item.fixture.fixtureId);try{const root=await fetchFullOdds(id,this.env);refereeRequests++;const b=board.find(x=>String(x.fixtureId)===id);if(b){b.fullOdds=clone(root);b.fullOddsFetchedAt=now();b.fullOddsSource='ENGINE_REFEREE_BACKFILL'}}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e),scope:'PENDING_BACKFILL'})}}
+      fixtureCandidates.sort((a,b)=>b.maxStrength-a.maxStrength);const backfill=board.filter(b=>isLive(b)&&pendingFixtureIds.has(String(b.fixtureId))&&!b.fullOdds).map(b=>({fixture:b})),backfillSelected=backfill.slice(0,MAX_ODDS_FIXTURES_PER_SCAN),backfillIds=new Set(backfillSelected.map(x=>String(x.fixture.fixtureId))),remaining=Math.max(0,MAX_ODDS_FIXTURES_PER_SCAN-backfillSelected.length),selected=fixtureCandidates.filter(x=>!backfillIds.has(String(x.fixture.fixtureId))).slice(0,remaining),selectedIds=new Set(selected.map(x=>String(x.fixture.fixtureId)));let refereeRequests=0,refereeErrors=[];for(const item of backfillSelected){const id=String(item.fixture.fixtureId);try{const root=await fetchFullOdds(id,this.env);refereeRequests++;const b=board.find(x=>String(x.fixtureId)===id);if(b){b.fullOdds=clone(root);b.fullOddsFetchedAt=now();b.fullOddsSource='ENGINE_MULTI_BOOK_REFEREE_BACKFILL'}}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e),scope:'PENDING_BACKFILL'})}}
       for(const item of fixtureCandidates){if(!selectedIds.has(String(item.fixture.fixtureId))){const b=board.find(x=>String(x.fixtureId)===String(item.fixture.fixtureId));if(b)for(const c of item.candidates)b.analysis[c.market]={state:'QUEUED_PRICE_REFEREE'};}}
       for(const item of selected){
         const f=item.fixture,id=String(f.fixtureId);let root=null;try{root=await fetchFullOdds(id,this.env);refereeRequests++}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e)});const b=board.find(x=>String(x.fixtureId)===id);if(b)for(const c of item.candidates)b.analysis[c.market]={state:'PRICE_REFEREE_ERROR'};continue}
-        const fullOddsBoardRow=board.find(x=>String(x.fixtureId)===id);if(fullOddsBoardRow){fullOddsBoardRow.fullOdds=clone(root);fullOddsBoardRow.fullOddsFetchedAt=now();fullOddsBoardRow.fullOddsSource='ENGINE_REFEREE'}
+        const fullOddsBoardRow=board.find(x=>String(x.fixtureId)===id);if(fullOddsBoardRow){fullOddsBoardRow.fullOdds=clone(root);fullOddsBoardRow.fullOddsFetchedAt=now();fullOddsBoardRow.fullOddsSource='ENGINE_MULTI_BOOK_REFEREE'}
         const grouped=new Map();for(const c of item.candidates){if(!grouped.has(c.market))grouped.set(c.market,[]);grouped.get(c.market).push(c)}
         for(const [key,cands] of grouped){const best=pickBestPriced(cands,root,f,settings);const b=board.find(x=>String(x.fixtureId)===id);if(!best){if(b)b.analysis[key]={state:'NO_PRICE_PASS'};continue}
-          const def=MARKET_RULES[key],price=best.price,historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:'Bet365',observedAt:now()};
-          const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:'Bet365',priceStage:'inplay',priceSource:'fixture-odds',openingPrice:stageSnapshot(root,def,'opening'),closingPrice:stageSnapshot(root,def,'closing'),inplayPrice:stageSnapshot(root,def,'inplay'),createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
-          signals.push(sig);seen.add(`${id}:${key}`);if(b)b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,evidence:best.evidence};
+          const def=MARKET_RULES[key],price=best.price,historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:best.bookmaker,observedAt:now()};
+          const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,priceStage:'inplay',priceSource:'multi-book-referee',openingPrice:stageSnapshot(best.bookRoot,def,'opening'),closingPrice:stageSnapshot(best.bookRoot,def,'closing'),inplayPrice:stageSnapshot(best.bookRoot,def,'inplay'),referee:best.referee,createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
+          signals.push(sig);seen.add(`${id}:${key}`);if(b)b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,referee:best.referee,evidence:best.evidence};
         }
       }
       let reconciled=0;
