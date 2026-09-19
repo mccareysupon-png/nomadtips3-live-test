@@ -1,0 +1,131 @@
+name: Deploy Ball46 Market + CEO Statistics 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-stat-market-ceo-performance-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-stat-market-ceo-performance-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-stat-market-ceo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Statistics UI branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Production Statistics and protect Odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          for name in statistics.html statistics-next.js full-market-bookmaker-343.js bulk-odds-compat-343.js live-summary-full-odds-343.js signal-next.js; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$name?stat-ceo=${GITHUB_RUN_ID}" -o "/tmp/prod/$name"
+          done
+          cp /tmp/prod/statistics.html nomad-live-343/statistics.html
+          cp /tmp/prod/statistics-next.js nomad-live-343/statistics-next.js
+          sha256sum /tmp/prod/full-market-bookmaker-343.js > /tmp/full-market-asset.sha
+          sha256sum /tmp/prod/bulk-odds-compat-343.js > /tmp/bulk-compat.sha
+          sha256sum /tmp/prod/live-summary-full-odds-343.js > /tmp/live-summary.sha
+          sha256sum /tmp/prod/signal-next.js > /tmp/signal-ui.sha
+          grep -o 'fetch(' /tmp/prod/statistics-next.js | wc -l > /tmp/fetch-count
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?stat-ceo=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?stat-ceo=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(e.version!=='nomad343-engine-v6-ceo-auto-v1') throw Error(`UNEXPECTED_ENGINE:${e.version}`);
+          fs.writeFileSync('/tmp/engine-version',String(e.version||''));
+          fs.writeFileSync('/tmp/full-version',String(f.version||''));
+          console.log('STAT_CEO_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
+
+      - name: Apply Statistics presentation patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/patch_ball46_statistics_market_ceo_20260920.py
+          node --check nomad-live-343/statistics-next.js
+          grep -Fq 'CEO · ADD K PERFORMANCE' nomad-live-343/statistics.html
+          grep -Fq 'function renderCEO' nomad-live-343/statistics-next.js
+          grep -Fq 'market-performance-card' nomad-live-343/statistics-performance.css
+          grep -Fq 'statistics-performance.css?v=343-stat-market-ceo-v1' nomad-live-343/statistics.html
+          test "$(grep -o 'fetch(' nomad-live-343/statistics-next.js | wc -l)" = "$(cat /tmp/fetch-count)"
+          ! grep -Fq '/api/full-market' nomad-live-343/statistics-next.js
+          ! grep -Fq 'fixture-odds' nomad-live-343/statistics-next.js
+          echo STAT_CEO_PRESENTATION_GUARD_PASS
+
+      - name: Commit Statistics UI source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/statistics.html nomad-live-343/statistics-next.js nomad-live-343/statistics-performance.css
+          mapfile -t changed < <(git diff --cached --name-only)
+          printf 'Changed files:\n%s\n' "${changed[*]}"
+          for f in "${changed[@]}"; do
+            case "$f" in
+              nomad-live-343/statistics.html|nomad-live-343/statistics-next.js|nomad-live-343/statistics-performance.css) ;;
+              *) echo "UNEXPECTED_FILE:$f"; exit 1;;
+            esac
+          done
+          git commit -m 'feat(ball46): show WLP market performance and CEO statistics' || true
+          git push origin HEAD:${SOURCE_BRANCH}
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Statistics UI and protected services
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics.html?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.html || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-next.js?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.js || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-performance.css?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.css || true
+            if grep -Fq 'CEO · ADD K PERFORMANCE' /tmp/stat-after.html && grep -Fq 'function renderCEO' /tmp/stat-after.js && grep -Fq '.market-performance-card' /tmp/stat-after.css; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/stat-after.js
+          test "$(grep -o 'fetch(' /tmp/stat-after.js | wc -l)" = "$(cat /tmp/fetch-count)"
+          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-bookmaker-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/bulk-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/live-summary-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/signal-next.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/signal-after.js
+          test "$(sha256sum /tmp/fm-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/full-market-asset.sha)"
+          test "$(sha256sum /tmp/bulk-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/bulk-compat.sha)"
+          test "$(sha256sum /tmp/live-summary-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/live-summary.sha)"
+          test "$(sha256sum /tmp/signal-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/signal-ui.sha)"
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?stat-ceo=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(s?.ok!==true||!Array.isArray(s.rows)) throw Error('STATS_UNHEALTHY');
+          const ceo=s.rows.filter(x=>String(x?.strategy||'').toUpperCase()==='CEO').length;
+          console.log('STAT_CEO_DEPLOY_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settled:s.rows.length,settledCEO:ceo}));
+          NODE
