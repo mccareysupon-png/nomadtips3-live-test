@@ -32,12 +32,21 @@ function chooseCompactDefault(){
   btn.click();
 }
 function sync(){decorateRows();chooseCompactDefault()}
+function loadPrediction(){
+  if(document.body?.dataset?.page!=='live'||document.querySelector('script[data-live-prediction-343]'))return;
+  const s=document.createElement('script');
+  s.src='live-prediction-343.js?v=343-live-prediction-v1-read-only';
+  s.async=true;
+  s.dataset.livePrediction343='1';
+  document.head.appendChild(s);
+}
 function init(){
   document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.addEventListener('click',e=>{if(e.isTrusted){userStatusChosen=true;autoStatusChosen=true}}));
   const root=document.querySelector('[data-board-sections]')||document.body;
   const observer=new MutationObserver(()=>sync());
   observer.observe(root,{childList:true,subtree:true});
   sync();
+  loadPrediction();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 window.NOMAD343_DASHBOARD_TUNE={version:VERSION};
