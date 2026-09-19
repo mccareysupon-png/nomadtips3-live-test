@@ -1,8 +1,65 @@
 <!doctype html>
-<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#edf1f0"><meta name="nomad-signal-revision" content="343-signal-v2-clean-20260919"><title>ball46 · Signals 3.43</title><script>(()=>{try{const t=localStorage.getItem('nomad343_dashboard_theme_v1')||localStorage.getItem('nomad343_theme_v1');document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(_){}})();</script><link rel="stylesheet" href="app.css?v=343-public-v1"><link rel="stylesheet" href="v2-shared.css?v=343-v2-shared-v1"><link rel="stylesheet" href="v2-header.css?v=343-v2-header-v1"><link rel="stylesheet" href="metric-scale-343.css?v=343-metric-60pct-v1"><link rel="stylesheet" href="metric-layout-343.css?v=343-metric-layout-v2"><link rel="stylesheet" href="live-minute-343.css?v=343-live-minute-v1"><link rel="stylesheet" href="signal-compact-343.css?v=343-signal-active-v2"><link rel="stylesheet" href="signal-bettor-343.css?v=343-signal-bettor-v2-alert"><link rel="stylesheet" href="event-flow-343.css?v=343-flow-v3"><link rel="stylesheet" href="readability-343.css?v=343-card-interaction-v2"><link rel="stylesheet" href="adaptive-wide-shell-343.css?v=343-wide-shell-v1"><link rel="stylesheet" href="team-sides-343.css?v=343-team-sides-v2"><link rel="stylesheet" href="nav-clean-343.css?v=343-nav-clean-v1"><link rel="stylesheet" href="topbar-utilities-343.css?v=343-topbar-utilities-v6-static-bar"><link rel="stylesheet" href="utility-bar-343.css?v=343-utility-bar-v7-theme"><link rel="stylesheet" href="signal-v2-clean-343.css?v=343-signal-v2-clean-20260919a"></head>
-<body data-page="signal"><header class="v2-topbar"><div class="v2-topbar-inner"><a class="v2-logo" href="index.html" aria-label="ball46 home"><span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span></a><nav class="v2-mainnav" aria-label="Primary navigation"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><div class="v2-header-utils"><span class="v2-odds-chip">BULK · DEC</span><button type="button" class="v2-theme-btn" data-v2-theme aria-label="Switch theme">☾ Dark</button></div></div></header>
-<main class="shell"><section class="page-head"><div><p class="eyebrow">NOMAD LIVE 3.43</p><h1>Active Signals</h1><p>Live selections with entry odds, entry score and current match status in one clean workspace.</p></div><div class="source-state" data-signal-state><span class="pill"><i class="dot stop"></i>Connecting to Active Signals</span></div></section>
-<section class="summary-grid"><article class="metric good"><span>Active Matches</span><strong data-active-matches>—</strong><small>Matches with a live signal</small></article><article class="metric"><span>Active Signals</span><strong data-active-signals>—</strong><small>Signals currently being tracked</small></article><article class="metric"><span>Live Tracking</span><strong>Now</strong><small>Minute · Score · Match Data</small></article><article class="metric warn"><span>Settled Results</span><strong>Statistics</strong><small>Completed signals move to Statistics</small></article></section>
-<section class="summary-grid" data-signal-market-summary></section>
-<section class="panel active-signal-panel"><div class="panel-head"><div><h2>Live Signal Center</h2><p>Current selections, entry information and live match status. Select a match to inspect supporting details.</p></div><span class="pill"><i class="dot live"></i>Active Only</span></div><div class="active-signal-board" data-signal-body><div class="active-signal-empty">Waiting for Live Signals</div></div></section><div class="note">Settled Win, Loss or Push results automatically leave this page and appear in Statistics.</div></main>
-<nav class="mobile-nav"><a data-nav="live" href="index.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics.html">Statistics</a></nav><script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed" defer></script><script src="ui.js?v=343-engine-v1" defer></script><script src="football-language-343.js?v=343-football-english-v1-qa1" defer></script><script src="language-menu-343.js?v=343-language-menu-v3-thai-freeze" defer></script><script src="language-es-343.js?v=343-language-es-v1" defer></script><script src="language-fr-343.js?v=343-language-fr-v1" defer></script><script src="language-pt-br-343.js?v=343-language-pt-br-v1" defer></script><script src="language-ar-343.js?v=343-language-ar-v1" defer></script><script src="language-id-343.js?v=343-language-id-v1" defer></script><script src="utility-bar-343.js?v=343-utility-bar-v1-static" defer></script><script src="event-flow-343.js?v=343-flow-v3" defer></script><script src="signal.js?v=343-signal-bettor-v4" defer></script><script src="team-sides-343.js?v=343-team-sides-v1" defer></script><script src="v2-shared.js?v=343-v2-shared-ui-v2-theme-flow" defer></script></body></html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f4f7f5">
+<meta name="ball46-page-revision" content="343-signal-next-production-20260919">
+<title>ball46 · Signals</title>
+<script>(()=>{try{const t=localStorage.getItem('nomad343_dashboard_theme_v1')||'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(_){}})();</script>
+<link rel="stylesheet" href="ball46-next.css?v=343-next-production-v1">
+</head>
+<body>
+<header class="next-topbar">
+  <div class="next-topbar-inner">
+    <a class="next-logo" href="index.html" aria-label="ball46 home"><span class="ball">ball</span><span class="num">46</span></a>
+    <nav class="next-nav" aria-label="Primary navigation">
+      <a href="index.html">Live Scores</a>
+      <a href="signal.html" class="active">Signals</a>
+      <a href="statistics.html">Statistics</a>
+    </nav>
+    <div class="next-utils">
+      <span class="next-chip">BULK · DEC</span>
+      <button type="button" class="next-theme" data-next-theme>☾ Dark</button>
+    </div>
+  </div>
+</header>
+<main class="next-shell">
+  <section class="next-page-head">
+    <div>
+      <p class="eyebrow">NOMAD LIVE 3.43</p>
+      <h1>Active Signals</h1>
+      <p>A clean live signal workspace built on the existing Ball46 signal engine. Entry data stays locked while live match context keeps updating.</p>
+    </div>
+    <div class="next-status" data-next-signal-state><span class="next-dot"></span>Connecting to signal feed</div>
+  </section>
+
+  <section class="next-kpis">
+    <article class="next-kpi good"><span class="label">Active Matches</span><strong data-next-active-matches>—</strong><small>Matches with at least one active signal</small></article>
+    <article class="next-kpi"><span class="label">Active Signals</span><strong data-next-active-signals>—</strong><small>Signals currently being tracked</small></article>
+    <article class="next-kpi"><span class="label">Markets</span><strong data-next-markets>—</strong><small>Active signal market types</small></article>
+    <article class="next-kpi warn"><span class="label">Tracking</span><strong data-next-tracking>—</strong><small>Live score and match data</small></article>
+  </section>
+
+  <section class="next-market-strip" data-next-market-summary></section>
+
+  <section class="next-panel">
+    <div class="next-panel-head">
+      <div><h2>Live Signal Center</h2><p>Scan the match, entry point and active pick first. Open a card when you want the supporting live evidence.</p></div>
+      <span class="next-panel-badge"><span class="next-dot live"></span>Active only</span>
+    </div>
+    <div class="next-signal-list" data-next-signal-list><div class="next-empty">Waiting for active signals…</div></div>
+  </section>
+
+  <p class="next-note">Existing Signal Engine, rules and Odds services remain unchanged.</p>
+</main>
+<nav class="next-mobile-nav" aria-label="Mobile navigation">
+  <a href="index.html">Live Scores</a><a href="signal.html" class="active">Signals</a><a href="statistics.html">Statistics</a>
+</nav>
+<script>
+(()=>{const b=document.querySelector('[data-next-theme]');if(!b)return;const paint=()=>{const d=document.documentElement.dataset.theme==='dark';b.textContent=d?'☀ Light':'☾ Dark'};paint();b.addEventListener('click',()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('nomad343_dashboard_theme_v1',t)}catch(_){}paint()})})();
+</script>
+<script src="signal-next.js?v=343-next-production-v1" defer></script>
+</body>
+</html>
