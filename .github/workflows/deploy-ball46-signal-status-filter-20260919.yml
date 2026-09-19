@@ -86,7 +86,7 @@ jobs:
           import re
           p=Path('nomad-live-343/index.html')
           s=p.read_text()
-          pat=r'v2-shared\.js\?v=[^"&]+' 
+          pat=r'v2-shared\.js\?v=[^"&]+'
           if not re.search(pat,s): raise SystemExit('V2_SHARED_LOADER_MISSING')
           s,n=re.subn(pat,'v2-shared.js?v=343-v2-shared-ui-v3-signal-status-filter',s,count=1)
           if n!=1: raise SystemExit('V2_SHARED_LOADER_PATCH_FAIL')
@@ -153,3 +153,5 @@ jobs:
           if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
           console.log('SIGNAL_STATUS_FILTER_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
           NODE
+
+# trigger-2
