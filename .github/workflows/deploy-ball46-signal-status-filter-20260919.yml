@@ -1,0 +1,155 @@
+name: Deploy Ball46 Signal Status Filter 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-signal-status-filter-20260919.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-signal-status-filter-20260919
+  APPROVED_BASE: e3165e6301d8a1393974455ace6d56b345bb6c8f
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-ui-filter-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated UI branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Guard UI-only source boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "$APPROVED_BASE...HEAD")
+          printf 'Changed from approved base:\n%s\n' "${changed[*]}"
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = 'nomad-live-343/v2-shared.js'
+          node --check nomad-live-343/v2-shared.js
+          grep -Fq "343-v2-shared-ui-v3-signal-status-filter" nomad-live-343/v2-shared.js
+          grep -Fq "data-signal-status-filter" nomad-live-343/v2-shared.js
+          grep -Fq ".signal-cell.locked" nomad-live-343/v2-shared.js
+          ! grep -Fq '/api/' nomad-live-343/v2-shared.js
+          ! grep -Fq 'fetch(' nomad-live-343/v2-shared.js
+          echo UI_SOURCE_BOUNDARY_PASS
+
+      - name: Preserve intended UI file and mirror current production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp nomad-live-343/v2-shared.js /tmp/v2-shared-signal-filter.js
+          mkdir -p /tmp/prod /tmp/hdr
+          : > /tmp/protected.tsv
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?sf=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          test -s /tmp/prod/index.html
+          test -s /tmp/prod/dashboard-v2-stage3.js
+          test -s /tmp/prod/full-market-bookmaker-343.js
+          test -s /tmp/prod/live-summary-full-odds-343.js
+          test -s /tmp/prod/signal.html
+          test -s /tmp/prod/statistics.html
+          for name in dashboard-v2-stage3.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal.html statistics.html; do
+            safe="${name//\//_}"
+            sha=$(sha256sum "/tmp/prod/$safe" | awk '{print $1}')
+            printf '%s\t%s\n' "$name" "$sha" >> /tmp/protected.tsv
+          done
+          cp /tmp/v2-shared-signal-filter.js nomad-live-343/v2-shared.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          pat=r'v2-shared\.js\?v=[^"&]+' 
+          if not re.search(pat,s): raise SystemExit('V2_SHARED_LOADER_MISSING')
+          s,n=re.subn(pat,'v2-shared.js?v=343-v2-shared-ui-v3-signal-status-filter',s,count=1)
+          if n!=1: raise SystemExit('V2_SHARED_LOADER_PATCH_FAIL')
+          p.write_text(s)
+          PY
+          node --check nomad-live-343/v2-shared.js
+          grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v3-signal-status-filter' nomad-live-343/index.html
+          echo PRODUCTION_MIRROR_AND_UI_PATCH_PASS
+
+      - name: Record protected backend identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?sf=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));
+          fs.writeFileSync('/tmp/fm-version',String(h.version||''));
+          fs.writeFileSync('/tmp/fm-policy',String(h.staleCachePolicy||''));
+          console.log('FULL_MARKET_BEFORE',h.version,h.staleCachePolicy||'');
+          NODE
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Signal filter and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 25 "$BALL46_URL/index.html?sf=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/v2-shared.js?sf=${GITHUB_RUN_ID}-${n}" -o /tmp/v2-after.js || true
+            if grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v3-signal-status-filter' /tmp/index-after.html && grep -Fq '343-v2-shared-ui-v3-signal-status-filter' /tmp/v2-after.js; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/v2-after.js
+          grep -Fq 'data-signal-status-filter' /tmp/v2-after.js
+          grep -Fq '.signal-cell.locked' /tmp/v2-after.js
+          ! grep -Fq '/api/' /tmp/v2-after.js
+          ! grep -Fq 'fetch(' /tmp/v2-after.js
+          while IFS=$'\t' read -r name before; do
+            safe="${name//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$name?sf=${GITHUB_RUN_ID}-after" -o "/tmp/after-$safe"
+            after=$(sha256sum "/tmp/after-$safe" | awk '{print $1}')
+            [ "$before" = "$after" ] || { echo "PROTECTED_ASSET_CHANGED: $name"; exit 1; }
+          done < /tmp/protected.tsv
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?sf=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?sf=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?sf=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?sf=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(h.version||'')!==fs.readFileSync('/tmp/fm-version','utf8')) throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('SIGNAL_STATUS_FILTER_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
+          NODE
