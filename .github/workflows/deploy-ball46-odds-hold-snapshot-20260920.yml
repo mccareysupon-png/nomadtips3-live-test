@@ -1,0 +1,123 @@
+name: Deploy Ball46 Odds Hold Snapshot 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-odds-hold-snapshot-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-stat-market-ceo-performance-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-odds-hold:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Capture Production guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          for name in dashboard-v2-stage3.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$name?odds-hold-before=${GITHUB_RUN_ID}" -o "/tmp/prod/$name"
+            sha256sum "/tmp/prod/$name" > "/tmp/${name}.sha"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?odds-hold-before=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?odds-hold-before=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e?.version) throw Error('ENGINE_HEALTH_MISSING_VERSION');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f?.version||''));
+          console.log('ODDS_HOLD_BASELINE',JSON.stringify({engine:e.version,fullMarket:f?.version||''}));
+          NODE
+
+      - name: Checkout Ball46 source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Validate hold-last-good asset and bump loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/bulk-odds-compat-343.js
+          grep -Fq "343-bulk-odds-compat-v4-hold-last-good" nomad-live-343/bulk-odds-compat-343.js
+          grep -Fq "networkRequestsAdded:0" nomad-live-343/bulk-odds-compat-343.js
+          grep -Fq "holdMode:'LAST_GOOD_UNTIL_VALID_BULK'" nomad-live-343/bulk-odds-compat-343.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          old='bulk-odds-compat-343.js?v=343-bulk-odds-compat-v3-market-alias-safe&order=20260918-1'
+          new='bulk-odds-compat-343.js?v=343-bulk-odds-compat-v4-hold-last-good&order=20260920-1'
+          if old not in s and new not in s:
+              raise SystemExit('EXPECTED_BULK_LOADER_NOT_FOUND')
+          if old in s:
+              s=s.replace(old,new,1)
+              p.write_text(s)
+          PY
+          grep -Fq 'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v4-hold-last-good&order=20260920-1' nomad-live-343/index.html
+
+      - name: Commit loader bump only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/index.html
+          mapfile -t changed < <(git diff --cached --name-only)
+          for f in "${changed[@]}"; do
+            [ "$f" = 'nomad-live-343/index.html' ] || { echo "UNEXPECTED_FILE:$f"; exit 1; }
+          done
+          git commit -m 'fix(ball46): load hold-last-good bulk odds guard' || true
+          git push origin HEAD:${SOURCE_BRANCH}
+
+      - name: Deploy Ball46 wrapper
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify live hold behavior asset and protected services
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/?odds-hold=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?odds-hold=${GITHUB_RUN_ID}-${n}" -o /tmp/bulk-after.js || true
+            if grep -Fq '343-bulk-odds-compat-v4-hold-last-good' /tmp/bulk-after.js && grep -Fq '343-bulk-odds-compat-v4-hold-last-good' /tmp/index-after.html; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/bulk-after.js
+          grep -Fq "networkRequestsAdded:0" /tmp/bulk-after.js
+          grep -Fq "holdMode:'LAST_GOOD_UNTIL_VALID_BULK'" /tmp/bulk-after.js
+          for name in dashboard-v2-stage3.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$name?odds-hold-after=${GITHUB_RUN_ID}" -o "/tmp/${name}.after"
+            test "$(sha256sum "/tmp/${name}.after" | awk '{print $1}')" = "$(awk '{print $1}' "/tmp/${name}.sha")"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?odds-hold-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?odds-hold-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?odds-hold-after=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          if(String(e?.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f?.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          console.log('ODDS_HOLD_DEPLOY_PASS',JSON.stringify({engine:e.version,fullMarket:f?.version||'',fixtures:b.fixtures.length}));
+          NODE
