@@ -1,0 +1,46 @@
+name: Diagnose Ball46 CEO AH 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-ceo-ah-tuning-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch live statistics
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 'https://ball46.com/api/engine/statistics?diag=ceo-ah-${{ github.run_id }}' -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const j=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(j?.ok!==true||!Array.isArray(j.rows)) throw new Error('statistics unavailable');
+          const rows=j.rows;
+          const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
+          const strat=r=>String(r?.strategy||'OWNER').toUpperCase();
+          const res=r=>String(r?.result||'').toUpperCase();
+          const isAh=r=>String(r?.market||'').toLowerCase()==='ft_ah';
+          function summary(rs){
+            let w=0,hw=0,l=0,hl=0,p=0,profit=0,priced=0;
+            for(const r of rs){const x=res(r),o=num(r.odds);if(x==='WIN')w++;else if(x==='HALF_WIN')hw++;else if(x==='LOSS')l++;else if(x==='HALF_LOSS')hl++;else if(x==='PUSH')p++;if(o&&o>1){priced++;if(x==='WIN')profit+=o-1;else if(x==='HALF_WIN')profit+=(o-1)/2;else if(x==='LOSS')profit-=1;else if(x==='HALF_LOSS')profit-=.5;}}
+            const decisions=w+hw+l+hl;return {n:rs.length,w,hw,l,hl,p,winRate:decisions?+(((w+.5*hw)/decisions)*100).toFixed(1):null,roi:priced?+((profit/priced)*100).toFixed(1):null,profit:+profit.toFixed(2)};
+          }
+          const owner=rows.filter(r=>isAh(r)&&strat(r)==='OWNER');
+          const ceo=rows.filter(r=>isAh(r)&&strat(r)==='CEO');
+          console.log('AH_COMPARE',JSON.stringify({owner:summary(owner),ceo:summary(ceo)}));
+          const buckets=[['MIN_32_44',32,44],['MIN_45_59',45,59],['MIN_60_74',60,74],['MIN_75_84',75,84]];
+          for(const [name,a,b] of buckets){const rs=ceo.filter(r=>{const m=num(r.entryMinute??r.minute);return m!==null&&m>=a&&m<=b});console.log(name,JSON.stringify(summary(rs)));}
+          for(const [name,a,b] of [['ODDS_158_169',1.58,1.6999],['ODDS_170_184',1.70,1.8499],['ODDS_185_200',1.85,2.0099],['ODDS_201_235',2.01,2.35]]){const rs=ceo.filter(r=>{const o=num(r.odds);return o!==null&&o>=a&&o<=b});console.log(name,JSON.stringify(summary(rs)));}
+          const lineGroups=new Map();
+          for(const r of ceo){const line=num(r.line);const k=line===null?'NA':String(Math.round(Math.abs(line)*4)/4);if(!lineGroups.has(k))lineGroups.set(k,[]);lineGroups.get(k).push(r)}
+          console.log('BY_ABS_LINE',JSON.stringify([...lineGroups.entries()].map(([k,rs])=>[k,summary(rs)])));
+          const scoreGroups=[['SCORE_LT75',0,74.999],['SCORE_75_79',75,79.999],['SCORE_80_84',80,84.999],['SCORE_85_PLUS',85,1000]];
+          for(const [name,a,b] of scoreGroups){const rs=ceo.filter(r=>{const s=num(r.ceoScore);return s!==null&&s>=a&&s<=b});console.log(name,JSON.stringify(summary(rs)));}
+          const losses=ceo.filter(r=>['LOSS','HALF_LOSS'].includes(res(r))).map(r=>({id:r.id,minute:r.entryMinute??r.minute,line:r.line,odds:r.odds,score:r.ceoScore,selection:r.selection,result:r.result,entryScore:r.entryScore,finalScore:r.finalScore,reasons:r.ceoReasonCodes||r.evidence?.reasonCodes||[]}));
+          console.log('CEO_AH_LOSSES',JSON.stringify(losses));
+          NODE
