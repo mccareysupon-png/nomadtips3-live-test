@@ -52,20 +52,16 @@ jobs:
           new_version="const VERSION='nomad343-engine-v5-stale-guard';"
           assert old_version in s, 'unexpected engine version'
           s=s.replace(old_version,new_version,1)
-
-          old="""      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
-      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};"""
-          new="""      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
-      const hubAgeMs=num(hub?.ageMs),hubStale=hub?.stale===true||(hubAgeMs!==null&&hubAgeMs>180_000);
-      if(hubStale){
-        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.ctx.storage.get('signals')||[],fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];
-        await this.ctx.storage.put('board',{...prevBoard,ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs,stale:true,staleGuard:true});
-        const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:fixtures.length,liveCount:fixtures.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled:0,refereeRequests:0,refereeQueued:0,staleGuard:true,skipReason:'HUB_STALE',lastError:null};
-        await this.ctx.storage.put('lastScan',meta);return meta;
-      }
-      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};"""
+          old="      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');"
+          guard=("\n      const hubAgeMs=num(hub?.ageMs),hubStale=hub?.stale===true||(hubAgeMs!==null&&hubAgeMs>180_000);"
+                 "\n      if(hubStale){"
+                 "\n        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.ctx.storage.get('signals')||[],fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];"
+                 "\n        await this.ctx.storage.put('board',{...prevBoard,ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs,stale:true,staleGuard:true});"
+                 "\n        const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:fixtures.length,liveCount:fixtures.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled:0,refereeRequests:0,refereeQueued:0,staleGuard:true,skipReason:'HUB_STALE',lastError:null};"
+                 "\n        await this.ctx.storage.put('lastScan',meta);return meta;"
+                 "\n      }")
           assert old in s, 'scan insertion point changed'
-          s=s.replace(old,new,1)
+          s=s.replace(old,old+guard,1)
           p.write_text(s)
           PY
           node --check workers/nomadtips3-engine-343/src/index.js
