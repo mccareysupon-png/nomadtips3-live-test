@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const VERSION='343-v2-shared-ui-v4-signal-status-filter-lite';
+const VERSION='343-v2-shared-ui-v5-signal-official-only';
 const THEME_KEY='nomad343_dashboard_theme_v1';
 const LEGACY_THEME_KEY='nomad343_theme_v1';
 const ROOT=document.documentElement;
@@ -84,7 +84,7 @@ function ensureSignalFilterStyle(){
 function restoreSignalView(){
   const host=document.querySelector('[data-board-sections]');
   if(!host)return;
-  host.querySelectorAll('[data-match-id],.league-block,.show-more').forEach(el=>{el.hidden=false});
+  host.querySelectorAll('[data-status-section],[data-match-id],.league-block,.show-more').forEach(el=>{el.hidden=false});
   host.querySelector('.signal-status-filter-empty')?.remove();
 }
 function scheduleSignalFilter(){
@@ -101,6 +101,7 @@ function applySignalStatusFilter(){
     const host=document.querySelector('[data-board-sections]');
     const section=host?.querySelector('[data-status-section="live"]');
     if(!section){syncSignalBadge(0);return}
+    host.querySelectorAll('[data-status-section]').forEach(other=>{other.hidden=other!==section});
     const expand=section.querySelector('[data-expand-group="live"]');
     if(expand&&/view all/i.test(expand.textContent||'')){
       expandedForSignal=true;
@@ -108,16 +109,16 @@ function applySignalStatusFilter(){
       scheduleSignalFilter();
       return;
     }
-    const rows=section.querySelectorAll('[data-match-id]');
+    const rows=section.querySelectorAll('.match-row[data-match-id]');
     let count=0;
     for(const row of rows){
-      const hasSignal=Boolean(row.querySelector('.signal-cell.locked'));
+      const hasSignal=Boolean(row.querySelector(':scope > .signal-cell.locked:not(.no-pick)'));
       row.hidden=!hasSignal;
       if(hasSignal)count++;
     }
     section.querySelectorAll('.league-block').forEach(block=>{
       let visible=false;
-      for(const row of block.querySelectorAll('[data-match-id]')){if(!row.hidden){visible=true;break}}
+      for(const row of block.querySelectorAll('.match-row[data-match-id]')){if(!row.hidden){visible=true;break}}
       block.hidden=!visible;
     });
     const more=section.querySelector('.show-more');
@@ -138,9 +139,9 @@ function applySignalStatusFilter(){
 }
 function activateSignalStatusFilter(){
   if(signalStatusMode){scheduleSignalFilter();return}
-  signalStatusMode=true;
   const live=document.querySelector('[data-status-filter="live"]');
   if(live&&!live.classList.contains('active'))live.click();
+  signalStatusMode=true;
   document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.classList.remove('active'));
   document.querySelector('[data-signal-status-filter]')?.classList.add('active');
   scheduleSignalFilter();
