@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#f4f7f5">
+<title>ball46 · Statistics Preview</title>
+<script>(()=>{try{const t=localStorage.getItem('nomad343_dashboard_theme_v1')||'light';document.documentElement.dataset.theme=t==='dark'?'dark':'light'}catch(_){}})();</script>
+<link rel="stylesheet" href="ball46-next.css?v=343-next-preview-v1">
+</head>
+<body>
+<header class="next-topbar">
+  <div class="next-topbar-inner">
+    <a class="next-logo" href="index.html" aria-label="ball46 home"><span class="ball">ball</span><span class="num">46</span></a>
+    <nav class="next-nav" aria-label="Primary navigation">
+      <a href="index.html">Live Scores</a>
+      <a href="signal-next.html">Signals</a>
+      <a href="statistics-next.html" class="active">Statistics</a>
+    </nav>
+    <div class="next-utils">
+      <span class="next-chip">PREVIEW · DEC</span>
+      <button type="button" class="next-theme" data-next-theme>☾ Dark</button>
+    </div>
+  </div>
+</header>
+<main class="next-shell">
+  <section class="next-page-head">
+    <div>
+      <p class="eyebrow">NOMAD LIVE 3.43 · PREVIEW</p>
+      <h1>Statistics</h1>
+      <p>Performance, market distribution and settled signal history presented in a clean Ball46 dashboard without changing settlement or signal logic.</p>
+    </div>
+    <div class="next-status" data-next-stat-state><span class="next-dot"></span>Connecting to statistics</div>
+  </section>
+
+  <section class="next-kpis five">
+    <article class="next-kpi"><span class="label">Settled Signals</span><strong data-next-total>—</strong><small>Signals with a completed result</small></article>
+    <article class="next-kpi good"><span class="label">Wins</span><strong data-next-win>—</strong><small>Full wins from settled signals</small></article>
+    <article class="next-kpi"><span class="label">Losses</span><strong data-next-loss>—</strong><small>Full losses from settled signals</small></article>
+    <article class="next-kpi warn"><span class="label">Win Rate</span><strong data-next-win-rate>—</strong><small>Push excluded · half results follow engine rules</small></article>
+    <article class="next-kpi"><span class="label">Average Entry Odds</span><strong data-next-avg-odds>—</strong><small>Read-only average from recorded entry prices</small></article>
+  </section>
+
+  <section class="next-market-strip" data-next-stat-markets></section>
+
+  <section class="next-panel">
+    <div class="next-panel-head">
+      <div><h2>Results History</h2><p>Settled signals across all active markets · Viewer time zone: <span data-next-timezone>Local</span></p></div>
+      <span class="next-panel-badge">Settled results</span>
+    </div>
+    <div class="next-table-wrap">
+      <table class="next-table">
+        <thead><tr><th>Date & Time</th><th>League / Match</th><th>Signal Time</th><th>Market</th><th>Pick</th><th>Line</th><th>Entry Odds</th><th>Bookmaker</th><th>Entry Score</th><th>Full-Time Score</th><th>Result</th></tr></thead>
+        <tbody data-next-stat-body><tr><td colspan="11"><div class="next-empty">Waiting for settled results…</div></td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="next-panel">
+    <div class="next-panel-head">
+      <div><h2>Live Signal Tracker</h2><p>Compact live context from the existing Signal Engine. This does not change settlement or create new signals.</p></div>
+      <span class="next-panel-badge"><span class="next-dot live"></span>Live context</span>
+    </div>
+    <div class="next-live-mini" data-next-live-tracker><div class="next-empty">Waiting for active signals…</div></div>
+  </section>
+
+  <p class="next-note">Preview page only · Existing Statistics Engine, settlement rules, Signal Engine and Odds services are unchanged.</p>
+</main>
+<nav class="next-mobile-nav" aria-label="Mobile navigation">
+  <a href="index.html">Live Scores</a><a href="signal-next.html">Signals</a><a href="statistics-next.html" class="active">Statistics</a>
+</nav>
+<script>
+(()=>{const b=document.querySelector('[data-next-theme]');if(!b)return;const paint=()=>{const d=document.documentElement.dataset.theme==='dark';b.textContent=d?'☀ Light':'☾ Dark'};paint();b.addEventListener('click',()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('nomad343_dashboard_theme_v1',t)}catch(_){}paint()})})();
+</script>
+<script src="statistics-next.js?v=343-next-preview-v1" defer></script>
+</body>
+</html>
