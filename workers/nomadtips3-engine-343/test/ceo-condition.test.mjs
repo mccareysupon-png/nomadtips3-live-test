@@ -39,3 +39,31 @@ test('CEO referee gate accepts consensus and rejects a one-book price',()=>{
   assert.equal(ceoPostPricePass(base).pass,true);
   assert.equal(ceoPostPricePass({...base,referee:{validOffers:1,consensusOffers:1,agreementPct:100,offers:[{line:-0.5,odds:1.82}]}}).pass,false);
 });
+
+
+test('CEO v1.1 blocks early-leading FT AH before minute 60',()=>{
+  const history=[
+    snap(t0,40,{gH:1,gA:0}),
+    snap(t0+5*60_000,45,{sotH:1,soffH:2,cH:1,aH:16,aA:7,dH:9,dA:3,pH:62,pA:38,gH:1,gA:0}),
+    snap(t0+10*60_000,50,{sotH:3,soffH:5,cH:3,aH:35,aA:13,dH:21,dA:6,pH:65,pA:35,gH:1,gA:0})
+  ];
+  const rows=ceoCandidatesForFixture({fixtureId:'EARLY-LEAD',minute:50,goals:{home:1,away:0},events:[]},history,['ft_ah']);
+  assert.deepEqual(rows,[]);
+});
+
+test('CEO v1.1 may evaluate a leading FT AH side from minute 60 onward',()=>{
+  const rows=ceoCandidatesForFixture({fixtureId:'LATE-LEAD',minute:60,goals:{home:1,away:0},events:[]},strongHomeHistory,['ft_ah']);
+  assert.equal(rows.length,1);
+  assert.equal(rows[0].selection,'HOME');
+  assert.equal(rows[0].strategyVersion,'1.1');
+});
+
+test('CEO v1.1 caps FT live AH at plus/minus 0.5 without tightening other AH markets',()=>{
+  assert.equal(CEO_PRICE_SETTINGS.ft_ah.lineMin,-0.5);
+  assert.equal(CEO_PRICE_SETTINGS.ft_ah.lineMax,0.5);
+  const ft={strategy:'CEO',market:'ft_ah',ceoScore:82,price:{line:-0.75,odds:1.88},referee:{validOffers:4,consensusOffers:3,agreementPct:75,offers:[{line:-0.75,odds:1.84},{line:-0.75,odds:1.86},{line:-0.75,odds:1.88}]}};
+  assert.equal(ceoPostPricePass(ft).pass,false);
+  assert.equal(ceoPostPricePass(ft).reason,'LINE_RISK');
+  const ht={...ft,market:'ht_ah',price:{line:-1,odds:1.88},referee:{validOffers:3,consensusOffers:3,agreementPct:100,offers:[{line:-1,odds:1.84},{line:-1,odds:1.86},{line:-1,odds:1.88}]}};
+  assert.equal(ceoPostPricePass(ht).pass,true);
+});

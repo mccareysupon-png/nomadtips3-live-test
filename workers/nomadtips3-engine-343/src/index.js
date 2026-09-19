@@ -2,7 +2,7 @@ import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 import { CEO_STRATEGY, CEO_VERSION, CEO_PRICE_SETTINGS, ceoCandidatesForFixture, ceoPostPricePass } from './ceo-condition.js';
 
-const VERSION='nomad343-engine-v6-ceo-auto-v1';
+const VERSION='nomad343-engine-v6-ceo-auto-v1.1-ah-guard';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;

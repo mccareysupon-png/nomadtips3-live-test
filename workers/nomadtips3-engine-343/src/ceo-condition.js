@@ -1,5 +1,5 @@
 export const CEO_STRATEGY='CEO';
-export const CEO_VERSION='1.0';
+export const CEO_VERSION='1.1';
 
 const num=v=>v===null||v===undefined||v===''||typeof v==='boolean'||!Number.isFinite(Number(v))?null:Number(v);
 const pair=v=>v&&typeof v==='object'?{home:num(v.home),away:num(v.away)}:{home:null,away:null};
@@ -69,7 +69,8 @@ function sideCandidate(key,f,short,trend,selection,minScore){
   const opp=selection==='HOME'?'AWAY':'HOME',oa=activity(short,opp);
   let score=35+(pressure-50)*0.72+(trendPressure-50)*0.34+a.sot*7+a.soff*2.3+a.corners*2.8;
   if(a.da>oa.da)score+=4;if(a.shots>=2)score+=4;if(pressure>=64&&trendPressure>=58)score+=5;
-  const g=pair(f?.goals),trail=selection==='HOME'?(g.away??0)-(g.home??0):(g.home??0)-(g.away??0);
+  const g=pair(f?.goals),trail=selection==='HOME'?(g.away??0)-(g.home??0):(g.home??0)-(g.away??0),minute=num(f?.minute);
+  if(key==='ft_ah'&&minute!==null&&minute<60&&trail<0)return null;
   if(key.includes('1x2')&&trail>0)score-=18;if(key.includes('_ah')&&trail>1)score-=16;
   score=clamp(score,0,100);
   if(score<minScore||pressure<60||a.sot<1||(a.shots<2&&a.corners<1))return null;
@@ -128,7 +129,7 @@ const MIN_SCORE={
 };
 
 export const CEO_PRICE_SETTINGS=Object.freeze({
-  ft_1x2:{oddsMin:1.62,oddsMax:2.55},ft_ah:{oddsMin:1.58,oddsMax:2.35,lineMin:-1.25,lineMax:1.25},
+  ft_1x2:{oddsMin:1.62,oddsMax:2.55},ft_ah:{oddsMin:1.58,oddsMax:2.35,lineMin:-.5,lineMax:.5},
   ft_over:{oddsMin:1.58,oddsMax:2.30,lineMin:.5,lineGapMax:1},ft_under:{oddsMin:1.58,oddsMax:2.30,lineMin:.5,lineMax:20},
   ht_1x2:{oddsMin:1.62,oddsMax:2.45},ht_ah:{oddsMin:1.58,oddsMax:2.30,lineMin:-1,lineMax:1},
   ht_over:{oddsMin:1.58,oddsMax:2.25,lineMin:.5,lineGapMax:.75},ht_under:{oddsMin:1.58,oddsMax:2.25,lineMin:.5,lineMax:10},
@@ -156,7 +157,7 @@ export function ceoCandidatesForFixture(f,history,marketKeys=[]){
     else if(key.endsWith('_under')){r=underCandidate(key,short,trend,MIN_SCORE[key]);if(r)r.selection='UNDER'}
     else if(key.startsWith('ft_btts_'))r=bttsCandidate(key,short,trend,MIN_SCORE[key]);
     if(!r)continue;
-    out.push({market:key,selection:r.selection,strategy:CEO_STRATEGY,strategyVersion:CEO_VERSION,ceoScore:Math.round(r.score*10)/10,strength:500+r.score,evidence:{pass:true,mode:'CEO_AUTO_V1',score:Math.round(r.score*10)/10,reasonCodes:r.reasonCodes||[]},rolling:short,reasonCodes:r.reasonCodes||[]});
+    out.push({market:key,selection:r.selection,strategy:CEO_STRATEGY,strategyVersion:CEO_VERSION,ceoScore:Math.round(r.score*10)/10,strength:500+r.score,evidence:{pass:true,mode:'CEO_AUTO_V1_1',score:Math.round(r.score*10)/10,reasonCodes:r.reasonCodes||[]},rolling:short,reasonCodes:r.reasonCodes||[]});
   }
   return out;
 }
@@ -168,7 +169,7 @@ export function ceoPostPricePass(best){
   if(odds===null)return {pass:false,reason:'NO_PRICE'};
   if(Number(r.validOffers||0)<2||Number(r.consensusOffers||0)<2)return {pass:false,reason:'REFEREE_QUORUM'};
   if(Number(r.agreementPct||0)<50)return {pass:false,reason:'REFEREE_AGREEMENT'};
-  const line=num(best?.price?.line);if(best.market?.includes('_ah')&&line!==null&&Math.abs(line)>1.25)return {pass:false,reason:'LINE_RISK'};
+  const line=num(best?.price?.line);if(best.market==='ft_ah'&&line!==null&&Math.abs(line)>.5)return {pass:false,reason:'LINE_RISK'};if(best.market!=='ft_ah'&&best.market?.includes('_ah')&&line!==null&&Math.abs(line)>1.25)return {pass:false,reason:'LINE_RISK'};
   const scoreNeed=odds<1.65?78:odds<1.80?72:odds<=2.00?69:75;
   if(score<scoreNeed)return {pass:false,reason:'PRICE_SCORE_FIT'};
   const sameLine=(Array.isArray(r.offers)?r.offers:[]).filter(o=>line===null||num(o?.line)===line).map(o=>num(o?.odds)).filter(v=>v!==null),med=median(sameLine);
