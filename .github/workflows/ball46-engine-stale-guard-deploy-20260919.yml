@@ -137,7 +137,7 @@ jobs:
           curl -fsS -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${ENGINE_SERVICE}/schedules" -o /tmp/schedules.json
           test "$(jq -r '.success' /tmp/schedules.json)" = true
-          jq -e '.result | any(.cron == "* * * * *")' /tmp/schedules.json >/dev/null
+          jq -e '.. | strings | select(. == "* * * * *")' /tmp/schedules.json >/dev/null
           echo 'SERVER_CRON_PASS * * * * *'
 
       - name: Persist Engine source only
