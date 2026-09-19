@@ -1,0 +1,156 @@
+name: Deploy Ball46 Prediction Owner Lock 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-prediction-owner-lock-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-live-prediction-percent-20260919
+  APPROVED_BASE: ac53b8442ee7bdbf110dcc05a93e04669dc67c2d
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-owner-lock-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout isolated prediction branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Guard source boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "$APPROVED_BASE...HEAD")
+          printf 'Changed from approved production source:\n%s\n' "${changed[*]}"
+          test "${#changed[@]}" -eq 2
+          printf '%s\n' "${changed[@]}" | grep -Fxq 'nomad-live-343/index.html'
+          printf '%s\n' "${changed[@]}" | grep -Fxq 'nomad-live-343/prediction-owner-lock-343.js'
+          git diff --quiet "$APPROVED_BASE...HEAD" -- \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            workers/nomadtips3-full-market-343-ball46 \
+            workers/nomadtips3-5usd-hub-343 \
+            workers/nomadtips3-engine-343 \
+            workers/nomadtips3-343-preview/src \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          node --check nomad-live-343/prediction-owner-lock-343.js
+          grep -Fq "html.includes('lp2-')" nomad-live-343/prediction-owner-lock-343.js
+          echo SOURCE_BOUNDARY_PASS
+
+      - name: Mirror current production assets and patch only owner lock loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ball46-prod /tmp/ball46-hdr
+          : > /tmp/protected-assets.tsv
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            [ "$name" = 'prediction-owner-lock-343.js' ] && continue
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/ball46-hdr/$safe" -o "/tmp/ball46-prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?lock=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/ball46-hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            sha=$(sha256sum "/tmp/ball46-prod/$safe" | awk '{print $1}')
+            printf '%s\t%s\n' "$name" "$sha" >> /tmp/protected-assets.tsv
+            cp "/tmp/ball46-prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          grep -Fq $'index.html\t' /tmp/protected-assets.tsv
+          grep -Fq $'dashboard-v2-stage3.js\t' /tmp/protected-assets.tsv
+          grep -Fq $'signal.html\t' /tmp/protected-assets.tsv
+          grep -Fq $'statistics.html\t' /tmp/protected-assets.tsv
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          pred='<script src="live-prediction-percent-343.js?v=343-live-prediction-percent-v1&order=20260919-1" defer></script>'
+          lock='<script src="prediction-owner-lock-343.js?v=343-prediction-owner-lock-v1&order=20260919-2" defer></script>'
+          if lock not in s:
+              if pred not in s: raise SystemExit('PREDICTION_LOADER_MISSING')
+              s=s.replace(pred,pred+lock,1)
+          if s.count(lock)!=1: raise SystemExit('OWNER_LOCK_LOADER_COUNT_FAIL')
+          if s.index(lock)<s.index(pred): raise SystemExit('OWNER_LOCK_ORDER_FAIL')
+          p.write_text(s)
+          PY
+          grep -Fq 'prediction-owner-lock-343.js?v=343-prediction-owner-lock-v1' nomad-live-343/index.html
+          echo PRODUCTION_MIRROR_AND_PATCH_PASS
+
+      - name: Record protected service state
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?lock=${GITHUB_RUN_ID}" -o /tmp/health-before.json
+          node - <<'NODE'
+          const fs=require('fs'); const h=JSON.parse(fs.readFileSync('/tmp/health-before.json','utf8'));
+          fs.writeFileSync('/tmp/fm-version',String(h.version||''));
+          fs.writeFileSync('/tmp/fm-policy',String(h.staleCachePolicy||''));
+          console.log('FULL_MARKET_BEFORE',h.version,h.staleCachePolicy||'');
+          NODE
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify owner lock and protected surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            code=$(curl -sS -L --max-time 25 -o /tmp/index-after.html -w '%{http_code}' "$BALL46_URL/index.html?lock=${GITHUB_RUN_ID}-${n}" || true)
+            if [ "$code" = 200 ] && grep -Fq 'prediction-owner-lock-343.js?v=343-prediction-owner-lock-v1' /tmp/index-after.html; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          curl -fsS -L --max-time 25 "$BALL46_URL/prediction-owner-lock-343.js?lock=${GITHUB_RUN_ID}" -o /tmp/lock.js
+          node --check /tmp/lock.js
+          grep -Fq "html.includes('lp2-')" /tmp/lock.js
+          while IFS=$'\t' read -r name before; do
+            [ "$name" = 'index.html' ] && continue
+            safe="${name//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$name?lock=${GITHUB_RUN_ID}-after" -o "/tmp/after-$safe"
+            after=$(sha256sum "/tmp/after-$safe" | awk '{print $1}')
+            [ "$before" = "$after" ] || { echo "PROTECTED_ASSET_CHANGED: $name"; exit 1; }
+          done < /tmp/protected-assets.tsv
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?lock=${GITHUB_RUN_ID}-after" -o /tmp/health-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?lock=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?lock=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?lock=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(h.version||'')!==fs.readFileSync('/tmp/fm-version','utf8')) throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(st?.ok!==true||!Array.isArray(st?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('OWNER_LOCK_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
+          NODE
