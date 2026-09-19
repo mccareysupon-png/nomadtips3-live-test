@@ -1,4 +1,4 @@
-name: Deploy Ball46 Prediction Owner Lock 20260919
+name: Deploy Ball46 Shared Signal Visuals 20260919
 
 on:
   push:
@@ -8,60 +8,36 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   SOURCE_BRANCH: work/ball46-live-prediction-percent-20260919
-  APPROVED_BASE: ac53b8442ee7bdbf110dcc05a93e04669dc67c2d
   BALL46_URL: https://ball46.com
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  deploy-owner-lock-only:
+  deploy-shared-signal-visuals:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout current Ball46 source
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.SOURCE_BRANCH }}
           fetch-depth: 0
 
-      - name: Guard prediction-only source
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t changed < <(git diff --name-only "$APPROVED_BASE...HEAD")
-          test "${#changed[@]}" -eq 2
-          printf '%s\n' "${changed[@]}" | grep -Fxq 'nomad-live-343/index.html'
-          printf '%s\n' "${changed[@]}" | grep -Fxq 'nomad-live-343/prediction-owner-lock-343.js'
-          git diff --quiet "$APPROVED_BASE...HEAD" -- \
-            nomad-live-343/dashboard-v2-stage3.js \
-            nomad-live-343/bulk-odds-compat-343.js \
-            nomad-live-343/full-market-bookmaker-343.js \
-            nomad-live-343/live-summary-full-odds-343.js \
-            nomad-live-343/signal.html \
-            nomad-live-343/statistics.html \
-            workers/nomadtips3-full-market-343-ball46 \
-            workers/nomadtips3-5usd-hub-343 \
-            workers/nomadtips3-engine-343 \
-            workers/nomadtips3-343-preview/src \
-            workers/nomadtips3-343-preview/wrangler.ball46.jsonc
-          node --check nomad-live-343/prediction-owner-lock-343.js
-          grep -Fq "html.includes('lp2-')" nomad-live-343/prediction-owner-lock-343.js
-          echo OWNER_LOCK_SOURCE_PASS
-
-      - name: Mirror current production assets
+      - name: Mirror current production and protect untouched assets
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/prod /tmp/hdr
+          : > /tmp/protected-assets.tsv
           while IFS= read -r f; do
             name="${f#nomad-live-343/}"
-            [ "$name" = 'prediction-owner-lock-343.js' ] && continue
             case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
             safe="${name//\//_}"
-            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?lock=${GITHUB_RUN_ID}") || true
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?visual=${GITHUB_RUN_ID}") || true
             [ "$code" = 200 ] || continue
             ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
             case "$name" in
@@ -71,25 +47,110 @@ jobs:
               *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
             esac
             cp "/tmp/prod/$safe" "$f"
+            case "$name" in
+              signal.js|signal-compact-343.css|event-flow-343.css|event-flow-343.js|signal.html|statistics.html) ;;
+              *) sha=$(sha256sum "$f" | awk '{print $1}'); printf '%s\t%s\n' "$name" "$sha" >> /tmp/protected-assets.tsv ;;
+            esac
           done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
-          grep -Fq 'live-prediction-percent-343.js?v=343-live-prediction-percent-v1' nomad-live-343/index.html
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('nomad-live-343/index.html')
-          s=p.read_text()
-          pred='<script src="live-prediction-percent-343.js?v=343-live-prediction-percent-v1&order=20260919-1" defer></script>'
-          lock='<script src="prediction-owner-lock-343.js?v=343-prediction-owner-lock-v1&order=20260919-2" defer></script>'
-          if lock not in s: s=s.replace(pred,pred+lock,1)
-          if s.count(lock)!=1: raise SystemExit('OWNER_LOCK_LOADER_FAIL')
-          p.write_text(s)
-          PY
+          grep -Fq $'dashboard-v2-stage3.js\t' /tmp/protected-assets.tsv
+          grep -Fq $'index.html\t' /tmp/protected-assets.tsv
           echo PRODUCTION_MIRROR_PASS
 
-      - name: Record protected state
+      - name: Apply shared Page 2 and Page 3 presentation only
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS "$BALL46_URL/api/full-market/health?lock=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # Shared signal renderer: keep one Event Flow and place it inside Live Match Statistics.
+          p=Path('nomad-live-343/signal.js')
+          s=p.read_text()
+          old="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div></section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
+          new="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div>${flowCard(g)}</section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
+          if old not in s: raise SystemExit('LIVE_STATS_FLOW_ANCHOR_MISSING')
+          s=s.replace(old,new,1)
+          old2="</section></div>${flowCard(g)}</section><section class=\"signal-entries-section\">"
+          new2="</section></div></section><section class=\"signal-entries-section\">"
+          if old2 not in s: raise SystemExit('OLD_FLOW_POSITION_MISSING')
+          s=s.replace(old2,new2,1)
+          p.write_text(s)
+
+          # Remove old blue Away palette from Signal stats: Home green, Away yellow.
+          p=Path('nomad-live-343/signal-compact-343.css')
+          s=p.read_text()
+          repl={
+            '#8bd4f5':'#f0de6a','#73c5ed':'#e8d45d','#61b6df':'#dfc84f',
+            '#51a8d2':'#d8bd45','#4499c3':'#cfb23d','#398bb4':'#c5a636'
+          }
+          for a,b in repl.items(): s=s.replace(a,b)
+          p.write_text(s)
+
+          # Event Flow base palette itself now uses canonical team colors, not orange fallback.
+          p=Path('nomad-live-343/event-flow-343.css')
+          s=p.read_text()
+          s=s.replace('#52d985','var(--team-home-name,#6fe08b)')
+          s=s.replace('#e08d5f','var(--team-away-name,#e6cf55)')
+          s=s.replace('#b8ffd0','#c9ffd5').replace('#ffd4bc','#fff0a4')
+          s=s.replace('rgba(82,217,133,.45)','rgba(111,224,139,.45)')
+          s=s.replace('rgba(224,141,95,.4)','rgba(230,207,85,.42)')
+          s=s.replace('rgba(82,217,133,.38)','rgba(111,224,139,.38)')
+          s=s.replace('rgba(224,141,95,.34)','rgba(230,207,85,.36)')
+          p.write_text(s)
+
+          # SVG gradient fallback follows the same Home/Away language.
+          p=Path('nomad-live-343/event-flow-343.js')
+          s=p.read_text()
+          s=s.replace("const VERSION='343-flow-v3-stable-momentum';","const VERSION='343-flow-v4-team-sides';")
+          s=s.replace('stop-color=\"#52d985\"','stop-color=\"#6fe08b\"')
+          s=s.replace('stop-color=\"#e08d5f\"','stop-color=\"#e6cf55\"')
+          p.write_text(s)
+
+          # Cache-bust the exact shared assets on both Page 2 and Page 3.
+          for name in ['signal.html','statistics.html']:
+            p=Path('nomad-live-343')/name
+            s=p.read_text()
+            s=s.replace('signal-compact-343.css?v=343-signal-active-v2','signal-compact-343.css?v=343-signal-active-v3-team-sides')
+            s=s.replace('event-flow-343.css?v=343-flow-v3','event-flow-343.css?v=343-flow-v4-team-sides')
+            s=s.replace('team-sides-343.css?v=343-team-sides-v2','team-sides-343.css?v=343-team-sides-v3-shared')
+            s=s.replace('event-flow-343.js?v=343-flow-v3','event-flow-343.js?v=343-flow-v4-team-sides')
+            s=s.replace('signal.js?v=343-signal-bettor-v4','signal.js?v=343-signal-bettor-v5-flow-inside-stats')
+            p.write_text(s)
+          PY
+
+          node --check nomad-live-343/signal.js
+          node --check nomad-live-343/event-flow-343.js
+          grep -Fq '${flowCard(g)}</section><section class="signal-evidence-card"><header><b>SIGNAL TRACKER' nomad-live-343/signal.js
+          ! grep -Fq '#8bd4f5' nomad-live-343/signal-compact-343.css
+          grep -Fq '#f0de6a' nomad-live-343/signal-compact-343.css
+          grep -Fq "343-flow-v4-team-sides" nomad-live-343/event-flow-343.js
+          for f in signal.html statistics.html; do
+            grep -Fq '343-signal-active-v3-team-sides' "nomad-live-343/$f"
+            grep -Fq '343-flow-v4-team-sides' "nomad-live-343/$f"
+            grep -Fq '343-team-sides-v3-shared' "nomad-live-343/$f"
+            grep -Fq '343-signal-bettor-v5-flow-inside-stats' "nomad-live-343/$f"
+          done
+          echo SCOPED_PRESENTATION_PATCH_PASS
+
+      - name: Persist only shared presentation files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Ball46 UI Repair Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add nomad-live-343/signal.js nomad-live-343/signal-compact-343.css nomad-live-343/event-flow-343.css nomad-live-343/event-flow-343.js nomad-live-343/signal.html nomad-live-343/statistics.html
+          if git diff --cached --quiet; then
+            echo 'No source changes to persist'
+          else
+            git commit -m 'ui(ball46): green home yellow away and shared event flow'
+            git push origin HEAD:${SOURCE_BRANCH}
+          fi
+
+      - name: Record protected services
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS "$BALL46_URL/api/full-market/health?visual=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
           node - <<'NODE'
           const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));
           fs.writeFileSync('/tmp/fm-version',String(h.version||''));
@@ -100,20 +161,39 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify owner lock and protected services
+      - name: Verify Pages 2 and 3 plus protected systems
         shell: bash
         run: |
           set -euo pipefail
           sleep 3
-          curl -fsS -L "$BALL46_URL/index.html?lock=${GITHUB_RUN_ID}" -o /tmp/index.html
-          curl -fsS -L "$BALL46_URL/prediction-owner-lock-343.js?lock=${GITHUB_RUN_ID}" -o /tmp/lock.js
-          grep -Fq 'prediction-owner-lock-343.js?v=343-prediction-owner-lock-v1' /tmp/index.html
-          node --check /tmp/lock.js
-          grep -Fq "html.includes('lp2-')" /tmp/lock.js
-          curl -fsS "$BALL46_URL/api/full-market/health?lock=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
-          curl -fsS "$BALL46_URL/api/engine/board?lock=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS "$BALL46_URL/api/engine/signals?lock=${GITHUB_RUN_ID}" -o /tmp/signals.json
-          curl -fsS "$BALL46_URL/api/engine/statistics?lock=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          curl -fsS -L "$BALL46_URL/signal.html?visual=${GITHUB_RUN_ID}" -o /tmp/signal.html
+          curl -fsS -L "$BALL46_URL/statistics.html?visual=${GITHUB_RUN_ID}" -o /tmp/statistics.html
+          curl -fsS -L "$BALL46_URL/signal.js?visual=${GITHUB_RUN_ID}" -o /tmp/signal.js
+          curl -fsS -L "$BALL46_URL/signal-compact-343.css?visual=${GITHUB_RUN_ID}" -o /tmp/signal.css
+          curl -fsS -L "$BALL46_URL/event-flow-343.js?visual=${GITHUB_RUN_ID}" -o /tmp/flow.js
+          node --check /tmp/signal.js
+          node --check /tmp/flow.js
+          for f in /tmp/signal.html /tmp/statistics.html; do
+            grep -Fq '343-signal-active-v3-team-sides' "$f"
+            grep -Fq '343-flow-v4-team-sides' "$f"
+            grep -Fq '343-team-sides-v3-shared' "$f"
+            grep -Fq '343-signal-bettor-v5-flow-inside-stats' "$f"
+          done
+          grep -Fq '#f0de6a' /tmp/signal.css
+          ! grep -Fq '#8bd4f5' /tmp/signal.css
+          grep -Fq '343-flow-v4-team-sides' /tmp/flow.js
+
+          while IFS=$'\t' read -r name before; do
+            safe="${name//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$name?visual=${GITHUB_RUN_ID}-after" -o "/tmp/after-$safe"
+            after=$(sha256sum "/tmp/after-$safe" | awk '{print $1}')
+            [ "$before" = "$after" ] || { echo "PROTECTED_ASSET_CHANGED: $name"; exit 1; }
+          done < /tmp/protected-assets.tsv
+
+          curl -fsS "$BALL46_URL/api/full-market/health?visual=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
+          curl -fsS "$BALL46_URL/api/engine/board?visual=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS "$BALL46_URL/api/engine/signals?visual=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS "$BALL46_URL/api/engine/statistics?visual=${GITHUB_RUN_ID}" -o /tmp/stats.json
           node - <<'NODE'
           const fs=require('fs');
           const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8'));
@@ -125,5 +205,5 @@ jobs:
           if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
           if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
-          console.log('OWNER_LOCK_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
+          console.log('SHARED_VISUALS_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
           NODE
