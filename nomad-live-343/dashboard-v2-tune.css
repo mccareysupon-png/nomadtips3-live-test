@@ -64,3 +64,20 @@
   .main-board{height:auto;min-height:0;display:block;overflow:visible}
   .main-board>.board-sections{height:auto;max-height:none;overflow:visible;padding-right:0;scrollbar-gutter:auto;align-content:normal;grid-auto-rows:auto}
 }
+
+/* Ball46 summary market-card containment.
+   Layout only: preserve odds values, formatter, bindings, APIs and JS renderers unchanged. */
+@media(min-width:901px){
+  .match-row{
+    grid-template-columns:minmax(72px,1fr) 64px 96px 118px 118px 72px;
+  }
+  .market-cell{min-width:0}
+}
+
+@media(min-width:761px) and (max-width:900px){
+  .match-row{
+    grid-template-columns:minmax(0,1fr) 58px 88px 102px 102px 64px;
+    gap:4px;
+  }
+  .market-cell{min-width:0}
+}
