@@ -1,0 +1,181 @@
+name: Deploy Ball46 Odds Performance Phase B 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-odds-performance-phase-b-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-native-signal-odds-performance-20260919
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  odds-performance-phase-b:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Phase A source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Production odds presentation assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod
+          for name in index.html dashboard-v2-stage3.js live-summary-full-odds-343.js full-market-bookmaker-343.js bulk-odds-compat-343.js; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$name?odds-b=${GITHUB_RUN_ID}" -o "/tmp/prod/$name"
+          done
+          cp /tmp/prod/index.html nomad-live-343/index.html
+          cp /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cp /tmp/prod/live-summary-full-odds-343.js nomad-live-343/live-summary-full-odds-343.js
+          sha256sum /tmp/prod/full-market-bookmaker-343.js > /tmp/full-market.sha
+          sha256sum /tmp/prod/bulk-odds-compat-343.js > /tmp/bulk-compat.sha
+          grep -Fq '343-dashboard-v2-stage3-v6-native-signal' nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq 'data-status-filter="signal"' nomad-live-343/index.html
+
+      - name: Replace Rich Odds visible scan with Signal and expanded priority
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > nomad-live-343/live-summary-full-odds-343.js <<'JS'
+          (()=>{
+          'use strict';
+          // Ball46 Rich Odds performance owner.
+          // Compact card odds stay on the shared engine board + dashboard last-good merge.
+          // Rich 19-book odds are fetched only for: (1) Signal view, (2) a fixture the viewer expands.
+          // No visible-card scan, no IntersectionObserver, no automatic rich-odds polling.
+          const VERSION='343-live-summary-john-gated-v8-signal-expanded-only';
+          const API='/api/full-market/fixture-odds';
+          const CLIENT_CACHE_MS=45_000;
+          const STALE_KEEP_MS=Number.POSITIVE_INFINITY;
+          const SIGNAL_PREFETCH_LIMIT=8;
+          const cache=new Map();
+          const inflight=new Map();
+          let retryUntil=0;
+          let signalBatch=0;
+          const now=()=>Date.now();
+          const idOf=f=>String(f?.fixtureId??f?.id??'').trim();
+          const defer=fn=>typeof queueMicrotask==='function'?queueMicrotask(fn):Promise.resolve().then(fn);
+          function cached(id,allowStale=false){const hit=cache.get(id);if(!hit)return null;const age=now()-Number(hit.at||0);if(age<(allowStale?STALE_KEEP_MS:CLIENT_CACHE_MS))return hit;return null}
+          function richFixture(base,hit){if(!base||!hit?.fullOdds)return base;return{...base,providerOdds:hit.fullOdds,providerOddsUpdatedAt:hit.fetchedAt??base.providerOddsUpdatedAt??null,providerOddsFreshAt:hit.fetchedAt??base.providerOddsFreshAt??null,providerOddsHeld:Boolean(hit.stale),fullMarketSource:'CENTRAL_ON_DEMAND_GATE',fullMarketCached:Boolean(hit.cached),fullMarketStale:Boolean(hit.stale),fullMarketRenderOwner:'RICH_ODDS'}}
+          function renderPinned(expanded,fixture){if(!expanded?.isConnected||!fixture)return;defer(()=>{if(!expanded?.isConnected)return;const renderer=window.NOMAD343_FULL_MARKET_BOOKMAKER;if(!renderer?.update)return;expanded._nomadRichFixture=fixture;expanded.dataset.oddsRenderOwner='rich-odds-final';renderer.update(expanded,fixture)})}
+          function paint(expanded,fixture,hit){if(!expanded?.isConnected||!fixture||!hit?.fullOdds)return;renderPinned(expanded,richFixture(fixture,hit))}
+          async function requestRich(id){
+            id=String(id||'').trim();if(!id)throw new Error('FIXTURE_ID_REQUIRED');
+            const fresh=cached(id,false);if(fresh)return fresh;if(inflight.has(id))return inflight.get(id);
+            if(now()<retryUntil){const stale=cached(id,true);if(stale)return{...stale,stale:true};throw Object.assign(new Error('FULL_MARKET_BACKOFF'),{status:429})}
+            const task=(async()=>{const r=await fetch(`${API}?fixtureId=${encodeURIComponent(id)}&_=${now()}`,{cache:'no-store'});const j=await r.json().catch(()=>null);if(!r.ok||j?.ok!==true){const retry=Math.max(0,Number(j?.retryAfterSec||r.headers.get('retry-after')||0));if(r.status===429&&retry>0)retryUntil=Math.max(retryUntil,now()+retry*1000);const stale=cached(id,true);if(stale)return{...stale,stale:true};throw Object.assign(new Error(j?.error||`HTTP_${r.status}`),{status:r.status,retryAfter:retry})}const fullOdds=j?.fullOdds;if(!fullOdds||typeof fullOdds!=='object')throw new Error('FULL_MARKET_EMPTY');const hit={at:now(),fetchedAt:Number(j?.fetchedAt||now()),fullOdds,cached:Boolean(j?.cached),stale:Boolean(j?.stale),bookmakerCount:Number(j?.bookmakerCount||0),source:j?.source||'5DollarFootballAPI_FULL_MARKET'};cache.set(id,hit);return hit})().finally(()=>inflight.delete(id));
+            inflight.set(id,task);return task;
+          }
+          async function warmSignalFixtures(ids){
+            const list=[...new Set((Array.isArray(ids)?ids:[]).map(v=>String(v||'').trim()).filter(Boolean))].slice(0,SIGNAL_PREFETCH_LIMIT);
+            if(!list.length)return;
+            const batch=++signalBatch;
+            const settled=await Promise.allSettled(list.map(id=>requestRich(id)));
+            if(batch!==signalBatch)return;
+            const dash=window.NOMAD343_DASHBOARD_V2;
+            settled.forEach((result,i)=>{if(result.status!=='fulfilled'||!result.value?.fullOdds)return;dash?.applyRichOdds?.(list[i],result.value.fullOdds,result.value.fetchedAt)});
+          }
+          function onSignalFilter(e){warmSignalFixtures(e?.detail?.fixtureIds).catch(()=>{})}
+          function onFixtureReady(e){
+            const fixture=e?.detail?.fixture,id=idOf(fixture);
+            const expanded=e.target?.closest?.('.match-expanded')||document.querySelector(`.match-expanded[data-expanded-match="${CSS.escape(id)}"]`);
+            if(!id||!expanded)return;
+            const pinned=expanded._nomadRichFixture;if(idOf(pinned)===id&&pinned?.fullMarketRenderOwner==='RICH_ODDS'){renderPinned(expanded,pinned);return}
+            const fresh=cached(id,false);if(fresh){paint(expanded,fixture,fresh);return}
+            requestRich(id).then(hit=>paint(expanded,fixture,hit)).catch(err=>{if(Number(err?.status)!==429)console.warn('Full-market enrichment unavailable',err)});
+          }
+          function start(){
+            document.addEventListener('nomad343:fixture-ready',onFixtureReady);
+            document.addEventListener('nomad343:signal-filter-active',onSignalFilter);
+            window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={version:VERSION,mode:'BULK_PLUS_SIGNAL_AND_EXPANDED_RICH',renderOwner:'RICH_ODDS_FINAL',networkMode:'CENTRAL_GATE_SIGNAL_AND_EXPANDED_ONLY',automaticPolling:false,defaultCardVisibleEnrichment:false,signalFilterPrefetch:true,signalPrefetchLimit:SIGNAL_PREFETCH_LIMIT,fanout:false,clientCacheMs:CLIENT_CACHE_MS,staleKeepMs:STALE_KEEP_MS,source:'ENGINE_BOARD_BULK_PLUS_FULL_MARKET_GATE',upstreamRequestsPerViewer:'0 default; 0-or-1 per signal/expanded fixture via shared server cache',current:id=>cache.get(String(id))||null,clear:()=>cache.clear()};
+          }
+          if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+          })();
+          JS
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          s,n=re.subn(r'live-summary-full-odds-343\.js\?v=[^"&]+','live-summary-full-odds-343.js?v=343-live-summary-john-gated-v8-signal-expanded-only',s,count=1)
+          if n!=1: raise SystemExit('LIVE_SUMMARY_LOADER_MISSING')
+          p.write_text(s)
+          PY
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          ! grep -Fq 'IntersectionObserver' nomad-live-343/live-summary-full-odds-343.js
+          ! grep -Fq 'setInterval' nomad-live-343/live-summary-full-odds-343.js
+          ! grep -Fq 'scanDefaultRows' nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq 'nomad343:signal-filter-active' nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq 'defaultCardVisibleEnrichment:false' nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq '343-dashboard-v2-stage3-v6-native-signal' nomad-live-343/dashboard-v2-stage3.js
+          echo ODDS_PERFORMANCE_PATCH_PASS
+
+      - name: Commit Phase B source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/index.html nomad-live-343/live-summary-full-odds-343.js
+          test "$(git diff --cached --name-only | wc -l)" -eq 2
+          git commit -m 'perf(ball46): prioritize Rich Odds for Signal and expanded fixtures' || true
+          git push origin HEAD:${SOURCE_BRANCH}
+
+      - name: Record Full Market backend identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?odds-b=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));fs.writeFileSync('/tmp/fm-ver',String(h.version||''));fs.writeFileSync('/tmp/fm-pol',String(h.staleCachePolicy||''));console.log('FULL_MARKET_BEFORE',h.version,h.staleCachePolicy||'');
+          NODE
+
+      - name: Deploy Phase B wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Odds performance and protected backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/index.html?odds-b=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?odds-b=${GITHUB_RUN_ID}-${n}" -o /tmp/ls-after.js || true
+            if grep -Fq '343-live-summary-john-gated-v8-signal-expanded-only' /tmp/index-after.html && grep -Fq '343-live-summary-john-gated-v8-signal-expanded-only' /tmp/ls-after.js; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node --check /tmp/ls-after.js
+          ! grep -Fq 'IntersectionObserver' /tmp/ls-after.js
+          ! grep -Fq 'setInterval' /tmp/ls-after.js
+          grep -Fq 'nomad343:signal-filter-active' /tmp/ls-after.js
+          grep -Fq 'defaultCardVisibleEnrichment:false' /tmp/ls-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-bookmaker-343.js?odds-b=${GITHUB_RUN_ID}-after" -o /tmp/fm-asset-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?odds-b=${GITHUB_RUN_ID}-after" -o /tmp/bc-asset-after.js
+          test "$(sha256sum /tmp/fm-asset-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/full-market.sha)"
+          test "$(sha256sum /tmp/bc-asset-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/bulk-compat.sha)"
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?odds-b=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?odds-b=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?odds-b=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?odds-b=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8'));const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(h.version||'')!==fs.readFileSync('/tmp/fm-ver','utf8'))throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-pol','utf8'))throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_UNHEALTHY');if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');if(st?.ok!==true||!Array.isArray(st.rows))throw Error('STATS_UNHEALTHY');
+          const live=b.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live').length;const withOdds=b.fixtures.filter(f=>f?.providerOdds&&typeof f.providerOdds==='object'&&Object.keys(f.providerOdds).length).length;
+          console.log('PHASE_B_PASS',JSON.stringify({fixtures:b.fixtures.length,live,fixturesWithProviderOdds:withOdds,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
+          NODE
