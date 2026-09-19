@@ -1,0 +1,79 @@
+name: Ball46 CSS-only Market Card Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-css-only-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: 7e9169e5498791619178cebd52b451df92c648c0
+
+jobs:
+  deploy-css-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard approved application delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-css-only-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved Ball46 base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 1
+          test "${APP_CHANGED[0]}" = 'nomad-live-343/dashboard-v2-tune.css'
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/dashboard-v2-tune.css
+          git diff --quiet "$APPROVED_BASE"..HEAD -- 'nomad-live-343/*.js'
+          git diff --quiet "$APPROVED_BASE"..HEAD -- workers/nomadtips3-343-preview/src/index.js
+          echo 'PASS: only dashboard-v2-tune.css differs; odds/API/worker JS unchanged.'
+
+      - name: Validate CSS-only patch markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Ball46 summary market-card containment' nomad-live-343/dashboard-v2-tune.css
+          grep -Fq 'grid-template-columns:minmax(72px,1fr) 64px 96px 118px 118px 72px' nomad-live-343/dashboard-v2-tune.css
+          grep -Fq 'grid-template-columns:minmax(0,1fr) 58px 88px 102px 102px 64px' nomad-live-343/dashboard-v2-tune.css
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 current tree
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify CSS is live and board remains healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/dashboard-v2-tune.css?verify=$GITHUB_RUN_ID" -o /tmp/dashboard-v2-tune.css
+          grep -Fq 'Ball46 summary market-card containment' /tmp/dashboard-v2-tune.css
+          grep -Fq 'grid-template-columns:minmax(72px,1fr) 64px 96px 118px 118px 72px' /tmp/dashboard-v2-tune.css
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("Ball46 board unhealthy"); console.log("Ball46 board PASS fixtures=",j.fixtures.length);'
+          echo 'PASS: CSS-only market card patch is live; board endpoint healthy.'
