@@ -1,0 +1,26 @@
+name: Verify Ball46 CEO AH v1.1 Live 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-ceo-ah-tuning-20260920
+    paths:
+      - .github/workflows/verify-ball46-ceo-ah-v11-live-20260920.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live Engine Full Market Board Signals Statistics
+        run: |
+          set -euo pipefail
+          BASE='https://ball46.com'
+          curl -fsS --max-time 30 "$BASE/api/engine/health?verify=${GITHUB_RUN_ID}" -o /tmp/engine.json
+          curl -fsS --max-time 30 "$BASE/api/full-market/health?verify=${GITHUB_RUN_ID}" -o /tmp/full.json
+          curl -fsS --max-time 30 "$BASE/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BASE/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BASE/api/engine/statistics?verify=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node -e "const fs=require('fs');const e=JSON.parse(fs.readFileSync('/tmp/engine.json'));const f=JSON.parse(fs.readFileSync('/tmp/full.json'));const b=JSON.parse(fs.readFileSync('/tmp/board.json'));const g=JSON.parse(fs.readFileSync('/tmp/signals.json'));const s=JSON.parse(fs.readFileSync('/tmp/stats.json'));if(e.version!=='nomad343-engine-v6-ceo-auto-v1.1-ah-guard')throw Error('ENGINE_VERSION:'+e.version);if(f.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache')throw Error('FULL_MARKET_VERSION:'+f.version);if(!Array.isArray(b.fixtures))throw Error('BOARD');if(!Array.isArray(g.signals))throw Error('SIGNALS');if(s?.ok!==true||!Array.isArray(s.rows))throw Error('STATS');const v1=s.rows.filter(r=>String(r.strategy||'').toUpperCase()==='CEO'&&String(r.strategyVersion||'')==='1.0').length;if(v1<59)throw Error('CEO_V1_HISTORY:'+v1);const v11=s.rows.filter(r=>String(r.strategy||'').toUpperCase()==='CEO'&&String(r.strategyVersion||'')==='1.1').length;console.log('CEO_AH_V11_LIVE_VERIFIED',JSON.stringify({engine:e.version,fullMarket:f.version,fixtures:b.fixtures.length,signals:g.signals.length,settled:s.rows.length,ceoV1History:v1,ceoV11Settled:v11}));"
