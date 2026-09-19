@@ -1,0 +1,125 @@
+name: Ball46 Content Rails Sync Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-content-rails-sync-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: e929e739bff995bfb0a66414ea487f00ed2651e2
+
+jobs:
+  deploy-content-rails:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact content-rail application delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-content-rails-sync-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 6
+          for p in \
+            nomad-live-343/dashboard-v2-tune.css \
+            nomad-live-343/content-rails-343.css \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/statistics-next.html; do
+            printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq "$p"
+          done
+          git diff --check "$APPROVED_BASE"..HEAD
+
+      - name: Guard engines Odds and Page 1 structure untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            nomad-live-343/index.html \
+            nomad-live-343/v2-header.css \
+            nomad-live-343/dashboard-v2.css \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/statistics-next.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+          done
+          echo 'PASS: Page 1 structure, Odds, engines and renderers are unchanged.'
+
+      - name: Validate matching left and right rails
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Ball46 master content rails' nomad-live-343/dashboard-v2-tune.css
+          grep -Fq 'padding-left:clamp(10px,1.6vw,24px)' nomad-live-343/dashboard-v2-tune.css
+          grep -Fq 'padding-right:clamp(10px,1.6vw,24px)' nomad-live-343/dashboard-v2-tune.css
+          grep -Fq 'Ball46 shared content rails' nomad-live-343/content-rails-343.css
+          grep -Fq 'max-width:1920px' nomad-live-343/content-rails-343.css
+          grep -Fq 'padding-left:clamp(10px,1.6vw,24px)' nomad-live-343/content-rails-343.css
+          grep -Fq 'padding-right:clamp(10px,1.6vw,24px)' nomad-live-343/content-rails-343.css
+          grep -Fq 'padding-left:8px' nomad-live-343/content-rails-343.css
+          grep -Fq 'padding-right:8px' nomad-live-343/content-rails-343.css
+          for p in signal.html statistics.html signal-next.html statistics-next.html; do
+            grep -Fq 'content-rails-343.css?v=343-content-rails-v1' "nomad-live-343/$p"
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy synchronized content rails
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production rails and engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/dashboard-v2-tune.css?verify=$GITHUB_RUN_ID" -o /tmp/page1-tune.css
+          grep -Fq 'Ball46 master content rails' /tmp/page1-tune.css
+          curl -fsS --max-time 30 "$BALL46_URL/content-rails-343.css?verify=$GITHUB_RUN_ID" -o /tmp/content-rails.css
+          grep -Fq 'Ball46 shared content rails' /tmp/content-rails.css
+          for p in signal.html statistics.html signal-next.html statistics-next.html; do
+            curl -fsS --max-time 30 "$BALL46_URL/$p?verify=$GITHUB_RUN_ID" -o "/tmp/$p"
+            grep -Fq 'content-rails-343.css?v=343-content-rails-v1' "/tmp/$p"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("board unhealthy")'
+          node -e 'const j=require("/tmp/signals.json"); if(j?.ok!==true) throw Error("signals unhealthy")'
+          node -e 'const j=require("/tmp/statistics.json"); if(j?.ok!==true) throw Error("statistics unhealthy")'
+          echo 'PASS: left/right content rails are synchronized and engines remain healthy.'
