@@ -1,4 +1,4 @@
-name: Deploy Ball46 Shared Signal Visuals 20260919
+name: Diagnose Ball46 Signal Asset Graph 20260919
 
 on:
   push:
@@ -8,185 +8,45 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
-  SOURCE_BRANCH: work/ball46-live-prediction-percent-20260919
   BALL46_URL: https://ball46.com
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
 jobs:
-  deploy-shared-signal-visuals:
+  diagnose-production-assets:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ env.SOURCE_BRANCH }}
-          fetch-depth: 0
-
-      - name: Mirror production and protect untouched assets
+      - name: Inspect live Page 2 and Page 3 assets
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/prod /tmp/hdr
-          : > /tmp/protected-assets.tsv
-          while IFS= read -r f; do
-            name="${f#nomad-live-343/}"
-            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
-            safe="${name//\//_}"
-            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?visual=${GITHUB_RUN_ID}") || true
-            [ "$code" = 200 ] || continue
-            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
-            case "$name" in
-              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
-              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
-              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
-              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
-            esac
-            cp "/tmp/prod/$safe" "$f"
-            case "$name" in signal.js|signal-compact-343.css|event-flow-343.css|event-flow-343.js|signal.html|statistics.html) ;;
-              *) printf '%s\t%s\n' "$name" "$(sha256sum "$f"|awk '{print $1}')" >> /tmp/protected-assets.tsv ;;
-            esac
-          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
-          grep -Fq $'dashboard-v2-stage3.js\t' /tmp/protected-assets.tsv
-          grep -Fq $'index.html\t' /tmp/protected-assets.tsv
-          echo MIRROR_PASS
-
-      - name: Patch shared Page 2 and Page 3 presentation
-        shell: bash
-        run: |
-          set -euo pipefail
+          curl -fsS -L "$BALL46_URL/signal.html?diag=${GITHUB_RUN_ID}" -o /tmp/signal.html
+          curl -fsS -L "$BALL46_URL/statistics.html?diag=${GITHUB_RUN_ID}" -o /tmp/statistics.html
           python3 - <<'PY'
           from pathlib import Path
           import re
-
-          # Event Flow moves into the LIVE MATCH STATISTICS card; exactly one instance remains.
-          p=Path('nomad-live-343/signal.js'); s=p.read_text()
-          token='${flowCard(g)}'
-          if s.count(token)!=1: raise SystemExit(f'FLOW_COUNT_BEFORE={s.count(token)}')
-          live=s.find('<b>LIVE MATCH STATISTICS</b>'); tracker=s.find('<b>SIGNAL TRACKER</b>',live); flow=s.find(token,live)
-          if min(live,tracker,flow)<0: raise SystemExit('FLOW_MARKERS_MISSING')
-          if not live < flow < tracker:
-              insert="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div></section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
-              repl="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div>${flowCard(g)}</section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
-              tail="</section></div>${flowCard(g)}</section><section class=\"signal-entries-section\">"
-              if insert not in s or tail not in s: raise SystemExit('FLOW_MOVE_ANCHOR_MISSING')
-              s=s.replace(insert,repl,1).replace(tail,"</section></div></section><section class=\"signal-entries-section\">",1)
-          if s.count(token)!=1: raise SystemExit('FLOW_COUNT_AFTER')
-          live=s.index('<b>LIVE MATCH STATISTICS</b>'); tracker=s.index('<b>SIGNAL TRACKER</b>',live); flow=s.index(token,live)
-          if not live<flow<tracker: raise SystemExit('FLOW_POSITION_FAIL')
-          p.write_text(s)
-
-          # Remove legacy blue Away bars; canonical Home green / Away yellow in the base CSS itself.
-          p=Path('nomad-live-343/signal-compact-343.css'); s=p.read_text()
-          palette={'#8bd4f5':'#f0de6a','#73c5ed':'#e8d45d','#61b6df':'#dfc84f','#51a8d2':'#d8bd45','#4499c3':'#cfb23d','#398bb4':'#c5a636'}
-          for a,b in palette.items(): s=s.replace(a,b)
-          if any(a in s for a in palette): raise SystemExit('AWAY_BLUE_REMAINS')
-          p.write_text(s)
-
-          # Event Flow fallback palette becomes green/yellow, matching team-sides owner.
-          p=Path('nomad-live-343/event-flow-343.css'); s=p.read_text()
-          s=s.replace('#52d985','var(--team-home-name,#6fe08b)').replace('#e08d5f','var(--team-away-name,#e6cf55)')
-          s=s.replace('#b8ffd0','#c9ffd5').replace('#ffd4bc','#fff0a4')
-          s=s.replace('rgba(82,217,133,.45)','rgba(111,224,139,.45)').replace('rgba(224,141,95,.4)','rgba(230,207,85,.42)')
-          s=s.replace('rgba(82,217,133,.38)','rgba(111,224,139,.38)').replace('rgba(224,141,95,.34)','rgba(230,207,85,.36)')
-          p.write_text(s)
-
-          p=Path('nomad-live-343/event-flow-343.js'); s=p.read_text()
-          s=re.sub(r"const VERSION='[^']+';","const VERSION='343-flow-v4-team-sides';",s,count=1)
-          s=s.replace('stop-color=\"#52d985\"','stop-color=\"#6fe08b\"').replace('stop-color=\"#e08d5f\"','stop-color=\"#e6cf55\"')
-          p.write_text(s)
-
-          # Replace by asset filename, regardless of whatever cache version production currently carries.
-          assets={
-            'signal-compact-343.css':'signal-compact-343.css?v=343-signal-active-v3-team-sides',
-            'event-flow-343.css':'event-flow-343.css?v=343-flow-v4-team-sides',
-            'team-sides-343.css':'team-sides-343.css?v=343-team-sides-v3-shared',
-            'event-flow-343.js':'event-flow-343.js?v=343-flow-v4-team-sides',
-            'signal.js':'signal.js?v=343-signal-bettor-v5-flow-inside-stats'
-          }
-          for name in ['signal.html','statistics.html']:
-              p=Path('nomad-live-343')/name; s=p.read_text()
-              for asset,new in assets.items():
-                  pattern=re.escape(asset)+r'(?:\?[^\"\']*)?'
-                  s,n=re.subn(pattern,new,s,count=1)
-                  if n!=1: raise SystemExit(f'{name}:ASSET_NOT_FOUND:{asset}')
-              p.write_text(s)
-          print('PATCH_PASS')
+          for path in ['/tmp/signal.html','/tmp/statistics.html']:
+              text=Path(path).read_text(errors='replace')
+              print('\n===',Path(path).name,'===')
+              refs=re.findall(r'(?:href|src)=["\']([^"\']+)["\']',text,re.I)
+              for ref in refs:
+                  if '.css' in ref or '.js' in ref: print(ref)
+              print('HAS_LIVE_MATCH_STATISTICS=', 'LIVE MATCH STATISTICS' in text)
+              print('HAS_LIVE_SIGNAL_TRACKER=', 'Live Signal Tracker' in text)
           PY
-          node --check nomad-live-343/signal.js
-          node --check nomad-live-343/event-flow-343.js
-
-      - name: Persist six presentation files only
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'Ball46 UI Repair Bot'
-          git config user.email 'actions@users.noreply.github.com'
-          git add nomad-live-343/signal.js nomad-live-343/signal-compact-343.css nomad-live-343/event-flow-343.css nomad-live-343/event-flow-343.js nomad-live-343/signal.html nomad-live-343/statistics.html
-          if ! git diff --cached --quiet; then git commit -m 'ui(ball46): green home yellow away and shared event flow'; git push origin HEAD:${SOURCE_BRANCH}; fi
-
-      - name: Record protected backend state
-        shell: bash
-        run: |
-          set -euo pipefail
-          curl -fsS "$BALL46_URL/api/full-market/health?visual=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
-          node - <<'NODE'
-          const fs=require('fs'),h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));
-          fs.writeFileSync('/tmp/fm-version',String(h.version||''));fs.writeFileSync('/tmp/fm-policy',String(h.staleCachePolicy||''));
-          NODE
-
-      - name: Deploy wrapper assets only
-        working-directory: workers/nomadtips3-343-preview
-        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
-
-      - name: Verify shared visuals and protected systems
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=0
-          for n in $(seq 1 15); do
-            curl -fsS -L "$BALL46_URL/signal.html?visual=${GITHUB_RUN_ID}-${n}" -o /tmp/signal.html || true
-            curl -fsS -L "$BALL46_URL/statistics.html?visual=${GITHUB_RUN_ID}-${n}" -o /tmp/statistics.html || true
-            if grep -Fq '343-signal-bettor-v5-flow-inside-stats' /tmp/signal.html 2>/dev/null && grep -Fq '343-signal-bettor-v5-flow-inside-stats' /tmp/statistics.html 2>/dev/null; then ok=1; break; fi
-            sleep 2
+          echo '=== CANDIDATE HTTP ==='
+          for f in signal.js event-flow-343.js event-flow-343.css team-sides-343.css signal-compact-343.css signal-v2-clean-343.css statistics-v2-clean-343.css; do
+            code=$(curl -sS -L -o "/tmp/${f//\//_}" -w '%{http_code}' "$BALL46_URL/$f?diag=${GITHUB_RUN_ID}") || true
+            ctype=$(curl -sSI -L "$BALL46_URL/$f?diag=${GITHUB_RUN_ID}" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print $0}' | tail -1 || true)
+            echo "$f | $code | $ctype"
           done
-          [ "$ok" = 1 ]
-          curl -fsS -L "$BALL46_URL/signal.js?visual=${GITHUB_RUN_ID}" -o /tmp/signal.js
-          curl -fsS -L "$BALL46_URL/signal-compact-343.css?visual=${GITHUB_RUN_ID}" -o /tmp/signal.css
-          curl -fsS -L "$BALL46_URL/event-flow-343.js?visual=${GITHUB_RUN_ID}" -o /tmp/flow.js
-          node --check /tmp/signal.js; node --check /tmp/flow.js
-          python3 - <<'PY'
-          from pathlib import Path
-          s=Path('/tmp/signal.js').read_text(); token='${flowCard(g)}'
-          if s.count(token)!=1: raise SystemExit('PROD_FLOW_COUNT_FAIL')
-          a=s.index('<b>LIVE MATCH STATISTICS</b>'); b=s.index('<b>SIGNAL TRACKER</b>',a); f=s.index(token,a)
-          if not a<f<b: raise SystemExit('PROD_FLOW_POSITION_FAIL')
-          css=Path('/tmp/signal.css').read_text()
-          if '#8bd4f5' in css: raise SystemExit('PROD_BLUE_REMAINS')
-          for c in ['#f0de6a','#e8d45d','#dfc84f','#d8bd45','#cfb23d','#c5a636']:
-              if c not in css: raise SystemExit('PROD_YELLOW_MISSING')
-          for html in ['/tmp/signal.html','/tmp/statistics.html']:
-              t=Path(html).read_text()
-              for marker in ['343-signal-active-v3-team-sides','343-flow-v4-team-sides','343-team-sides-v3-shared','343-signal-bettor-v5-flow-inside-stats']:
-                  if marker not in t: raise SystemExit(f'{html}:{marker}:MISSING')
-          PY
-          while IFS=$'\t' read -r name before; do
-            safe="${name//\//_}"; curl -fsS -L "$BALL46_URL/$name?visual=${GITHUB_RUN_ID}-after" -o "/tmp/after-$safe"
-            [ "$before" = "$(sha256sum "/tmp/after-$safe"|awk '{print $1}')" ] || { echo "PROTECTED_ASSET_CHANGED:$name"; exit 1; }
-          done < /tmp/protected-assets.tsv
-          curl -fsS "$BALL46_URL/api/full-market/health?visual=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
-          curl -fsS "$BALL46_URL/api/engine/board?visual=${GITHUB_RUN_ID}" -o /tmp/board.json
-          curl -fsS "$BALL46_URL/api/engine/signals?visual=${GITHUB_RUN_ID}" -o /tmp/signals.json
-          curl -fsS "$BALL46_URL/api/engine/statistics?visual=${GITHUB_RUN_ID}" -o /tmp/stats.json
-          node - <<'NODE'
-          const fs=require('fs'),h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8')),b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8')),st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
-          if(String(h.version||'')!==fs.readFileSync('/tmp/fm-version','utf8')) throw Error('FULL_MARKET_VERSION_CHANGED');
-          if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
-          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
-          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
-          if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
-          console.log('SHARED_VISUALS_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
-          NODE
+          echo '=== SIGNAL BAR SELECTORS IN LIVE CSS CANDIDATES ==='
+          for f in /tmp/*.css; do
+            [ -f "$f" ] || continue
+            if grep -Eq 'signal-mirror-row|signal-mirror-half|nomad-flow-line|team-away-name' "$f"; then
+              echo "--- $(basename "$f") ---"
+              grep -Eo '.{0,90}(signal-mirror-row|signal-mirror-half|nomad-flow-line|team-away-name).{0,160}' "$f" | head -20 || true
+            fi
+          done
