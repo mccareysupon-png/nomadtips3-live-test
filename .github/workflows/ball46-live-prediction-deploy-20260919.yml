@@ -1,0 +1,111 @@
+name: Ball46 Isolated Live Prediction Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-live-prediction-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: 5ea59f0975972f9afcd7ed83142db69873c5e650
+
+jobs:
+  deploy-isolated-live-prediction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact application delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-live-prediction-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved Ball46 base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 2
+          printf '%s\n' "${APP_CHANGED[@]}" | sort > /tmp/app-changed.txt
+          printf '%s\n' \
+            'nomad-live-343/dashboard-v2-tune.js' \
+            'nomad-live-343/live-prediction-343.js' | sort > /tmp/allowed.txt
+          diff -u /tmp/allowed.txt /tmp/app-changed.txt
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/dashboard-v2-tune.js nomad-live-343/live-prediction-343.js
+          echo 'PASS: exact isolated prediction delta only.'
+
+      - name: Guard fragile Odds and engine files unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/settings.js \
+            nomad-live-343/statistics.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$path"
+          done
+          echo 'PASS: Odds/API/Engine/Signal/Settings/Statistics files unchanged.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate prediction isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/live-prediction-343.js
+          node --check nomad-live-343/dashboard-v2-tune.js
+          grep -Fq "343-live-prediction-v1-read-only" nomad-live-343/live-prediction-343.js
+          grep -Fq "READ_ONLY_NO_ODDS_NO_SIGNAL_NO_STATS" nomad-live-343/live-prediction-343.js
+          grep -Fq "live-prediction-343.js?v=343-live-prediction-v1-read-only" nomad-live-343/dashboard-v2-tune.js
+          if grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|WebSocket|providerOdds|fullOdds|/api/' nomad-live-343/live-prediction-343.js; then
+            echo 'FAIL: prediction file contains forbidden network/Odds access pattern'
+            exit 1
+          fi
+          echo 'PASS: prediction is local/read-only and contains no API/Odds access.'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 current tree
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify prediction live and board healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/dashboard-v2-tune.js?verify=$GITHUB_RUN_ID" -o /tmp/dashboard-v2-tune.js
+          grep -Fq "live-prediction-343.js?v=343-live-prediction-v1-read-only" /tmp/dashboard-v2-tune.js
+          curl -fsS --max-time 30 "$BALL46_URL/live-prediction-343.js?verify=$GITHUB_RUN_ID" -o /tmp/live-prediction-343.js
+          grep -Fq "343-live-prediction-v1-read-only" /tmp/live-prediction-343.js
+          if grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|WebSocket|providerOdds|fullOdds|/api/' /tmp/live-prediction-343.js; then
+            echo 'FAIL: live prediction asset contains forbidden network/Odds access pattern'
+            exit 1
+          fi
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("Ball46 board unhealthy"); console.log("Ball46 board PASS fixtures=",j.fixtures.length);'
+          echo 'PASS: isolated LIVE PREDICTION is live; Ball46 board remains healthy.'
