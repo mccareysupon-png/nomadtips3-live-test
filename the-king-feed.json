@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-18T22:39:16Z",
+  "updated_at": "2026-09-19T01:16:37Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -13839,8 +13839,8 @@
       "edge": 14.7,
       "ev": 0.1994,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "1-1",
       "locked_at": "2026-09-18T01:41:53Z",
       "source_url": "https://www.goaloo.com/football/paraguayan-division-2-3-de-noviembre-vs-guairena/h2h-3074453",
       "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-3-de-noviembre-vs-guairena/summary-3074453",
@@ -13900,7 +13900,12 @@
         "away_recent": 8,
         "h2h_n": 4,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T01:16:37Z"
     },
     {
       "id": "c194fe015bc1ee82-OU-OVER-2p5",
@@ -107098,6 +107103,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-18T22:39:16Z"
+    },
+    {
+      "id": "dce7a2ba0c3785e8-OU-OVER-2p25",
+      "goaloo_id": "3074453",
+      "date": "2026-09-18",
+      "kickoff": "2026-09-18 22:00:00",
+      "league": "Paraguayan Division 2",
+      "home": "3 de Noviembre",
+      "away": "Guairena",
+      "market": "OU",
+      "selection": "OVER",
+      "line": 2.25,
+      "pick": "Over 2.25",
+      "side": null,
+      "odds": 1.87,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6374,
+      "model_probability": 0.6374,
+      "market_fair_probability": 0.4905,
+      "market_edge": 0.1469,
+      "edge": 14.7,
+      "ev": 0.1994,
+      "required_confidence": 0.6,
+      "result": "HALF_LOSS",
+      "ft": "1-1",
+      "locked_at": "2026-09-18T01:41:53Z",
+      "source_url": "https://www.goaloo.com/football/paraguayan-division-2-3-de-noviembre-vs-guairena/h2h-3074453",
+      "summary_url": "https://www.goaloo.com/football/paraguayan-division-2-3-de-noviembre-vs-guairena/summary-3074453",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.454,
+        "lambda_away": 1.558,
+        "home_win": 0.3231,
+        "draw": 0.26,
+        "away_win": 0.4169,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0732,
+          "gd_edge": -0.1776,
+          "clean_sheet_edge": -0.0195,
+          "failed_to_score_edge": -0.2537,
+          "bounded_adjustment": -0.0091,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 9,
+        "away_recent": 8,
+        "h2h_n": 4,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T01:16:37Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
