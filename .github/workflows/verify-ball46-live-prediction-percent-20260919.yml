@@ -1,0 +1,78 @@
+name: Verify Ball46 Live Prediction Percent 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-ball46-live-prediction-percent-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  WORKER_URL: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  verify-readonly:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Verify deployed Prediction on both routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$BALL46_URL" "$WORKER_URL"; do
+            echo "VERIFY_ROUTE $base"
+            ok=0
+            for n in $(seq 1 20); do
+              code=$(curl -sS -L --max-time 25 -o /tmp/index.html -w '%{http_code}' "$base/index.html?verify=${GITHUB_RUN_ID}-${n}" || true)
+              if [ "$code" = 200 ] && grep -Fq 'live-prediction-percent-343.js?v=343-live-prediction-percent-v1' /tmp/index.html; then
+                ok=1
+                break
+              fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "INDEX_OR_LOADER_FAIL $base"; exit 1; }
+            code=$(curl -sS -L --max-time 25 -o /tmp/prediction.js -w '%{http_code}' "$base/live-prediction-percent-343.js?verify=${GITHUB_RUN_ID}")
+            [ "$code" = 200 ] || { echo "PREDICTION_JS_HTTP_$code $base"; exit 1; }
+            node --check /tmp/prediction.js
+            grep -Fq '343-live-prediction-percent-v1-rolling5-stability10-readonly' /tmp/prediction.js
+            grep -Fq 'networkRequestsAdded:0' /tmp/prediction.js
+            grep -Fq "mode:'READ_ONLY_SHARED_BOARD'" /tmp/prediction.js
+            grep -Fq 'const UPDATE_MS=60_000' /tmp/prediction.js
+            grep -Fq 'const ROLLING_MS=5*60_000' /tmp/prediction.js
+            grep -Fq 'const STABILITY_MS=10*60_000' /tmp/prediction.js
+            echo "PREDICTION_ROUTE_PASS $base"
+          done
+
+      - name: Verify protected services and pages read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/full-market/health?verify=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/board?verify=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/signals?verify=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/statistics?verify=${GITHUB_RUN_ID}" -o /tmp/statistics.json
+          for f in signal.html statistics.html dashboard-v2-stage3.js; do
+            code=$(curl -sS -L --max-time 25 -o "/tmp/${f//\//_}" -w '%{http_code}' "$BALL46_URL/$f?verify=${GITHUB_RUN_ID}")
+            [ "$code" = 200 ] || { echo "PROTECTED_PAGE_HTTP_$code $f"; exit 1; }
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const health=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const signals=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const stats=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          if(String(health.version||'')!=='nomad343-ball46-full-market-v5-last-good-persistent') throw Error('FULL_MARKET_VERSION_CHANGED:'+health.version);
+          if(String(health.staleCachePolicy||'')!=='LAST_GOOD_UNTIL_REPLACED') throw Error('FULL_MARKET_POLICY_CHANGED:'+health.staleCachePolicy);
+          if(board?.ok!==true||!Array.isArray(board?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(signals?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(stats?.ok!==true||!Array.isArray(stats?.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('FULL_MARKET_UNCHANGED',health.version,health.staleCachePolicy);
+          console.log('BOARD_OK fixtures='+board.fixtures.length);
+          console.log('SIGNALS_OK signals='+signals.signals.length);
+          console.log('STATISTICS_OK rows='+stats.rows.length);
+          NODE
+          echo BALL46_READONLY_VERIFY_PASS
