@@ -11,8 +11,8 @@ permissions:
   contents: write
 
 env:
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   BALL46_URL: https://www.ball46.com
   APPROVED_BASE: 95ff87940fd879de6aacbb0570eb4dd679f084cf
 
@@ -43,83 +43,78 @@ jobs:
           import re, json
 
           root=Path('nomad-live-343')
-          canonical_pages={
-            'index.html': {
-              'title':'Live Football Scores, Soccer Odds & Match Data | Ball46',
-              'description':'Ball46 provides live football scores, soccer match data, decimal odds, live statistics and transparent match signals in one fast dashboard.',
-              'canonical':'https://www.ball46.com/',
-              'page_type':'WebSite'
-            },
-            'signal.html': {
-              'title':'Live Football Signals & Soccer Match Analysis | Ball46',
-              'description':'Track active Ball46 football signals with match time, score, market, selection, line, entry odds and live supporting match context.',
-              'canonical':'https://www.ball46.com/signal.html',
-              'page_type':'WebPage'
-            },
-            'statistics.html': {
-              'title':'Football Signal Statistics & Results | Ball46',
-              'description':'Review Ball46 settled football signal results, win and loss totals, win rate, average entry odds, market performance and transparent result history.',
-              'canonical':'https://www.ball46.com/statistics.html',
-              'page_type':'WebPage'
-            }
+          pages={
+            'index.html':(
+              'Live Football Scores, Soccer Odds & Match Data | Ball46',
+              'Ball46 provides live football scores, soccer match data, decimal odds, live statistics and transparent match signals in one fast dashboard.',
+              'https://www.ball46.com/',
+              'WebSite'
+            ),
+            'signal.html':(
+              'Live Football Signals & Soccer Match Analysis | Ball46',
+              'Track active Ball46 football signals with match time, score, market, selection, line, entry odds and live supporting match context.',
+              'https://www.ball46.com/signal.html',
+              'WebPage'
+            ),
+            'statistics.html':(
+              'Football Signal Statistics & Results | Ball46',
+              'Review Ball46 settled football signal results, win and loss totals, win rate, average entry odds, market performance and transparent result history.',
+              'https://www.ball46.com/statistics.html',
+              'WebPage'
+            )
           }
 
-          def body_part(s):
+          def body(s):
             i=s.find('<body')
             assert i>=0
             return s[i:]
 
-          def seo_block(title,desc,canonical,page_type):
+          def block(title,description,canonical,page_type):
             if page_type=='WebSite':
               data={
                 '@context':'https://schema.org',
                 '@graph':[
-                  {'@type':'WebSite','@id':'https://www.ball46.com/#website','url':'https://www.ball46.com/','name':'Ball46','description':desc,'inLanguage':'en'},
+                  {'@type':'WebSite','@id':'https://www.ball46.com/#website','url':'https://www.ball46.com/','name':'Ball46','description':description,'inLanguage':'en'},
                   {'@type':'Organization','@id':'https://www.ball46.com/#organization','name':'Ball46','url':'https://www.ball46.com/','logo':{'@type':'ImageObject','url':'https://www.ball46.com/ball46-logo.svg'}}
                 ]
               }
             else:
               data={
-                '@context':'https://schema.org',
-                '@type':'WebPage',
-                '@id':canonical+'#webpage',
-                'url':canonical,
-                'name':title,
-                'description':desc,
-                'inLanguage':'en',
+                '@context':'https://schema.org','@type':'WebPage','@id':canonical+'#webpage',
+                'url':canonical,'name':title,'description':description,'inLanguage':'en',
                 'isPartOf':{'@id':'https://www.ball46.com/#website'},
                 'about':{'@type':'Thing','name':'Football'}
               }
-            return (
-              '<!-- BALL46 SEO START -->'
-              f'<meta name="description" content="{desc}">'
-              '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">'
-              f'<link rel="canonical" href="{canonical}">'
-              '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">'
-              '<meta property="og:type" content="website">'
-              '<meta property="og:locale" content="en_US">'
-              '<meta property="og:site_name" content="Ball46">'
-              f'<meta property="og:title" content="{title}">'
-              f'<meta property="og:description" content="{desc}">'
-              f'<meta property="og:url" content="{canonical}">'
-              '<meta name="twitter:card" content="summary">'
-              f'<meta name="twitter:title" content="{title}">'
-              f'<meta name="twitter:description" content="{desc}">'
-              '<script type="application/ld+json">'+json.dumps(data,separators=(',',':'))+'</script>'
+            return ''.join([
+              '<!-- BALL46 SEO START -->',
+              f'<meta name="description" content="{description}">',
+              '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">',
+              f'<link rel="canonical" href="{canonical}">',
+              '<link rel="icon" href="/ball46-logo.svg" type="image/svg+xml">',
+              '<meta property="og:type" content="website">',
+              '<meta property="og:locale" content="en_US">',
+              '<meta property="og:site_name" content="Ball46">',
+              f'<meta property="og:title" content="{title}">',
+              f'<meta property="og:description" content="{description}">',
+              f'<meta property="og:url" content="{canonical}">',
+              '<meta name="twitter:card" content="summary">',
+              f'<meta name="twitter:title" content="{title}">',
+              f'<meta name="twitter:description" content="{description}">',
+              '<script type="application/ld+json">'+json.dumps(data,separators=(',',':'))+'</script>',
               '<!-- BALL46 SEO END -->'
-            )
+            ])
 
-          for name,cfg in canonical_pages.items():
+          for name,(title,description,canonical,page_type) in pages.items():
             p=root/name
             s=p.read_text()
-            before=body_part(s)
+            original_body=body(s)
             s=re.sub(r'<meta name="robots" content="[^"]*">','',s,count=1)
-            s=re.sub(r'<title>.*?</title>',f'<title>{cfg["title"]}</title>',s,count=1,flags=re.S)
             s=re.sub(r'<!-- BALL46 SEO START -->.*?<!-- BALL46 SEO END -->','',s,flags=re.S)
-            marker=f'<title>{cfg["title"]}</title>'
+            s=re.sub(r'<title>.*?</title>',f'<title>{title}</title>',s,count=1,flags=re.S)
+            marker=f'<title>{title}</title>'
             assert marker in s
-            s=s.replace(marker,marker+seo_block(**cfg),1)
-            assert body_part(s)==before, f'body changed: {name}'
+            s=s.replace(marker,marker+block(title,description,canonical,page_type),1)
+            assert body(s)==original_body, f'BODY_CHANGED:{name}'
             assert 'noindex' not in s.split('<body',1)[0].lower(), name
             p.write_text(s)
 
@@ -129,16 +124,31 @@ jobs:
           }
           for name,canonical in previews.items():
             p=root/name
-            s=p.read_text(); before=body_part(s)
+            s=p.read_text(); original_body=body(s)
             s=re.sub(r'<meta name="robots" content="[^"]*">','<meta name="robots" content="noindex,follow">',s,count=1)
             s=re.sub(r'<link rel="canonical" href="[^"]*">','',s,count=1)
-            title_match=re.search(r'<title>.*?</title>',s,re.S); assert title_match
-            s=s.replace(title_match.group(0),title_match.group(0)+f'<link rel="canonical" href="{canonical}">',1)
-            assert body_part(s)==before, f'preview body changed: {name}'
+            m=re.search(r'<title>.*?</title>',s,re.S); assert m
+            s=s.replace(m.group(0),m.group(0)+f'<link rel="canonical" href="{canonical}">',1)
+            assert body(s)==original_body, f'PREVIEW_BODY_CHANGED:{name}'
             p.write_text(s)
 
-          (root/'robots.txt').write_text('''User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /5usd-control.html\nDisallow: /api-monitor.html\nDisallow: /detection-test.html\n\nSitemap: https://www.ball46.com/sitemap.xml\n''')
-          (root/'sitemap.xml').write_text('''<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://www.ball46.com/</loc><lastmod>2026-09-19</lastmod></url>\n  <url><loc>https://www.ball46.com/signal.html</loc><lastmod>2026-09-19</lastmod></url>\n  <url><loc>https://www.ball46.com/statistics.html</loc><lastmod>2026-09-19</lastmod></url>\n</urlset>\n''')
+          (root/'robots.txt').write_text(
+            'User-agent: *\n'
+            'Allow: /\n'
+            'Disallow: /api/\n'
+            'Disallow: /5usd-control.html\n'
+            'Disallow: /api-monitor.html\n'
+            'Disallow: /detection-test.html\n\n'
+            'Sitemap: https://www.ball46.com/sitemap.xml\n'
+          )
+          (root/'sitemap.xml').write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            '  <url><loc>https://www.ball46.com/</loc><lastmod>2026-09-19</lastmod></url>\n'
+            '  <url><loc>https://www.ball46.com/signal.html</loc><lastmod>2026-09-19</lastmod></url>\n'
+            '  <url><loc>https://www.ball46.com/statistics.html</loc><lastmod>2026-09-19</lastmod></url>\n'
+            '</urlset>\n'
+          )
           PY
 
           git diff --check
@@ -155,12 +165,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          changed="$(git diff --name-only)"
-          printf '%s\n' "$changed"
           for p in \
             nomad-live-343/dashboard-v2.css \
             nomad-live-343/dashboard-v2-tune.css \
             nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
             nomad-live-343/bulk-odds-compat-343.js \
             nomad-live-343/odds-format-343.js \
             nomad-live-343/full-market-bookmaker-343.js \
@@ -169,13 +178,22 @@ jobs:
             nomad-live-343/statistics-next.js \
             workers/nomadtips3-343-preview/src/index.js \
             workers/nomadtips3-engine-343/src/index.js; do
-            git diff --quiet -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+            git diff --quiet -- "$p" || { echo "FORBIDDEN_CHANGE:$p"; exit 1; }
           done
-          mapfile -t files < <(git diff --name-only)
+          mapfile -t files < <({ git diff --name-only; git ls-files --others --exclude-standard -- nomad-live-343; } | sort -u)
+          printf 'SEO files:\n%s\n' "${files[*]}"
           test "${#files[@]}" -eq 7
-          for p in nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/signal-next.html nomad-live-343/statistics-next.html nomad-live-343/robots.txt nomad-live-343/sitemap.xml; do
+          for p in \
+            nomad-live-343/index.html \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/statistics-next.html \
+            nomad-live-343/robots.txt \
+            nomad-live-343/sitemap.xml; do
             printf '%s\n' "${files[@]}" | grep -Fxq "$p"
           done
+          echo 'PASS: UI body, Odds, renderers, Worker and Engine untouched.'
 
       - uses: actions/setup-node@v4
         with:
@@ -208,8 +226,8 @@ jobs:
           grep -Fq '<loc>https://www.ball46.com/</loc>' /tmp/sitemap.xml
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?seo=$GITHUB_RUN_ID" -o /tmp/health.json
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?seo=$GITHUB_RUN_ID" -o /tmp/board.json
-          node -e 'const j=require("/tmp/health.json"); if(j?.ok!==true) throw Error("engine unhealthy")'
-          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("board unhealthy")'
+          node -e 'const j=require("/tmp/health.json"); if(j?.ok!==true) throw Error("ENGINE_UNHEALTHY")'
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("BOARD_UNHEALTHY")'
           echo 'BALL46_SEO_FOUNDATION_PASS'
 
       - name: Persist SEO files only
@@ -218,7 +236,14 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/signal-next.html nomad-live-343/statistics-next.html nomad-live-343/robots.txt nomad-live-343/sitemap.xml
+          git add \
+            nomad-live-343/index.html \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/statistics-next.html \
+            nomad-live-343/robots.txt \
+            nomad-live-343/sitemap.xml
           mapfile -t staged < <(git diff --cached --name-only)
           test "${#staged[@]}" -eq 7
           git commit -m 'seo(ball46): enable indexing and add canonical crawl foundation [skip ci]'
