@@ -1,4 +1,4 @@
-const VERSION = 'nomad343-ball46-full-market-v5-last-good-persistent';
+const VERSION = 'nomad343-ball46-full-market-v6-server-prewarm-cache';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const BOOKMAKERS = Object.freeze([
   'bet365','pinnacle','williamhill','ladbrokes','vcbet','1xbet','bwin','easybets','interwetten',
@@ -7,6 +7,7 @@ const BOOKMAKERS = Object.freeze([
 const STALE_CACHE_MS = null; // LAST_GOOD_UNTIL_REPLACED
 const PROVIDER_LIMIT_PER_MINUTE = 40;
 const TIMEOUT_MS = 15_000;
+const PREWARM_MAX_PER_RUN = 6;
 const PRICE_KEYS = new Set(['home','away','draw','over','under','yes','no']);
 const PRESETS = Object.freeze({
   eco: { mode:'eco', label:'ประหยัด', cacheMs:90_000, maxCallsPerMinute:5 },
@@ -31,12 +32,26 @@ function safeFixtureId(value) {
   const id = String(value ?? '').trim();
   return /^[A-Za-z0-9_-]{1,96}$/.test(id) ? id : null;
 }
+function safeFixtureIds(values) {
+  const out = [];
+  const seen = new Set();
+  for (const value of Array.isArray(values) ? values : []) {
+    const id = safeFixtureId(value);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= 128) break;
+  }
+  return out;
+}
 function preset(mode) { return PRESETS[String(mode || '').toLowerCase()] || PRESETS[DEFAULT_MODE]; }
 function routeOf(pathname) {
   const p = String(pathname || '');
   if (p === '/health' || p.endsWith('/health')) return '/health';
   if (p === '/settings' || p.endsWith('/settings')) return '/settings';
   if (p === '/fixture-odds' || p.endsWith('/fixture-odds')) return '/fixture-odds';
+  if (p === '/board-cache' || p.endsWith('/board-cache')) return '/board-cache';
+  if (p === '/prewarm' || p.endsWith('/prewarm')) return '/prewarm';
   return p;
 }
 function sanitizeValue(value, key = '', depth = 0) {
@@ -147,6 +162,87 @@ export class FullMarketGate {
       requestedBookmakers:BOOKMAKERS, cached, stale, externalRequestsAdded:cached?0:1, config:cfg, guard:guard ?? entry?.guard ?? null
     };
   }
+  async cacheSnapshot(fixtureIds) {
+    const ids = safeFixtureIds(fixtureIds);
+    const cfg = await this.config();
+    const entries = {};
+    let staleHits = 0;
+    for (const fixtureId of ids) {
+      const hit = await this.cached(fixtureId);
+      if (!hit) continue;
+      const ageMs = Math.max(0, now() - Number(hit.fetchedAt || 0));
+      const stale = ageMs >= cfg.cacheMs;
+      if (stale) staleHits += 1;
+      entries[fixtureId] = {
+        fullOdds: hit.fullOdds,
+        fetchedAt: Number(hit.fetchedAt || 0),
+        ageMs,
+        stale,
+        bookmakerCount: Array.isArray(hit?.fullOdds?.bookmakers) ? hit.fullOdds.bookmakers.length : 0
+      };
+    }
+    return {
+      ok:true, version:VERSION, mode:'CENTRAL_CACHE_READ_ONLY', fixtureCount:ids.length,
+      hits:Object.keys(entries).length, staleHits, externalRequestsAdded:0, entries
+    };
+  }
+  async prewarm(fixtureIds) {
+    const ids = safeFixtureIds(fixtureIds);
+    const cfg = await this.config();
+    if (!ids.length) return {ok:true,version:VERSION,mode:'SERVER_PREWARM',requested:0,attempted:0,warmed:0,cacheHits:0,errors:[],externalRequestsAdded:0};
+
+    const lockUntil = finite(await this.ctx.storage.get('prewarmBusyUntil'));
+    if (lockUntil !== null && lockUntil > now()) {
+      return {ok:true,version:VERSION,mode:'SERVER_PREWARM',requested:ids.length,skipped:true,reason:'PREWARM_BUSY',retryAfterSec:Math.max(1,Math.ceil((lockUntil-now())/1000)),externalRequestsAdded:0};
+    }
+    await this.ctx.storage.put('prewarmBusyUntil', now() + 55_000);
+
+    let attempted = 0;
+    let warmed = 0;
+    let cacheHits = 0;
+    const errors = [];
+    try {
+      const calls = await this.callWindow();
+      const budget = Math.max(0, Math.min(PREWARM_MAX_PER_RUN, cfg.maxCallsPerMinute - calls.length));
+      const savedCursor = Math.max(0, Number(await this.ctx.storage.get('prewarmCursor') || 0));
+      const start = ids.length ? savedCursor % ids.length : 0;
+      let visited = 0;
+
+      while (visited < ids.length && attempted < budget) {
+        const fixtureId = ids[(start + visited) % ids.length];
+        visited += 1;
+        const hit = await this.cached(fixtureId);
+        const fresh = hit && now() - Number(hit.fetchedAt || 0) < cfg.cacheMs;
+        if (fresh) {
+          cacheHits += 1;
+          continue;
+        }
+        attempted += 1;
+        try {
+          const body = await this.loadDeduped(fixtureId);
+          if (body?.ok && !body.cached) warmed += 1;
+          else if (body?.ok && body.cached) cacheHits += 1;
+        } catch (err) {
+          errors.push({fixtureId,error:String(err?.message||err),status:Number(err?.status||0),retryAfterSec:finite(err?.retryAfter)});
+          if (Number(err?.status) === 429) break;
+        }
+      }
+      await this.ctx.storage.put('prewarmCursor', ids.length ? (start + Math.max(1, visited)) % ids.length : 0);
+      await this.ctx.storage.put('prewarmMeta', {at:now(),requested:ids.length,attempted,warmed,cacheHits,errors:errors.slice(-8)});
+      return {
+        ok:true, version:VERSION, mode:'SERVER_PREWARM', requested:ids.length, budget, attempted, warmed, cacheHits,
+        errors, externalRequestsAdded:warmed, cursor:ids.length ? (start + Math.max(1, visited)) % ids.length : 0
+      };
+    } finally {
+      await this.ctx.storage.delete('prewarmBusyUntil');
+    }
+  }
+  async loadDeduped(fixtureId) {
+    if (this.inflight.has(fixtureId)) return this.inflight.get(fixtureId);
+    const task = this.load(fixtureId).finally(() => this.inflight.delete(fixtureId));
+    this.inflight.set(fixtureId, task);
+    return task;
+  }
   async load(fixtureId) {
     const at = now();
     const cfg = await this.config();
@@ -188,11 +284,14 @@ export class FullMarketGate {
     }
   }
   async health() {
-    const [calls,cfg,blockedUntil,providerMeta] = await Promise.all([this.callWindow(), this.config(), this.ctx.storage.get('blockedUntil'), this.ctx.storage.get('providerMeta')]);
+    const [calls,cfg,blockedUntil,providerMeta,prewarmMeta] = await Promise.all([
+      this.callWindow(), this.config(), this.ctx.storage.get('blockedUntil'), this.ctx.storage.get('providerMeta'), this.ctx.storage.get('prewarmMeta')
+    ]);
     const blocked = finite(blockedUntil);
     return {
       ok:true, component:'BALL46_FULL_MARKET_GATE', version:VERSION, bookmakerCount:BOOKMAKERS.length, bookmakers:BOOKMAKERS,
       mode:cfg.mode, modeLabel:cfg.label, cacheMs:cfg.cacheMs, staleCacheMs:STALE_CACHE_MS, staleCachePolicy:'LAST_GOOD_UNTIL_REPLACED',
+      serverPrewarm:true, prewarmMaxPerRun:PREWARM_MAX_PER_RUN, prewarmMeta:prewarmMeta||null,
       accountLimitPerMinute:PROVIDER_LIMIT_PER_MINUTE, maxFullMarketCallsPerMinute:cfg.maxCallsPerMinute,
       callsLast60s:calls.length, remainingLocalBudget:Math.max(0,cfg.maxCallsPerMinute-calls.length),
       blockedUntil:blocked, retryAfterSec:blocked&&blocked>now()?Math.max(1,Math.ceil((blocked-now())/1000)):0,
@@ -214,20 +313,27 @@ export class FullMarketGate {
       }
       return response({ok:false,version:VERSION,error:'METHOD_NOT_ALLOWED'},405);
     }
+    if (route === '/board-cache') {
+      if (request.method !== 'POST') return response({ok:false,version:VERSION,error:'METHOD_NOT_ALLOWED'},405);
+      const body = await request.json().catch(()=>({}));
+      return response(await this.cacheSnapshot(body?.fixtureIds));
+    }
+    if (route === '/prewarm') {
+      if (request.method !== 'POST') return response({ok:false,version:VERSION,error:'METHOD_NOT_ALLOWED'},405);
+      const body = await request.json().catch(()=>({}));
+      return response(await this.prewarm(body?.fixtureIds));
+    }
     if (route !== '/fixture-odds') return response({ok:false,version:VERSION,error:'NOT_FOUND',path:url.pathname},404);
     if (request.method !== 'GET') return response({ok:false,version:VERSION,error:'METHOD_NOT_ALLOWED'},405);
     const fixtureId = safeFixtureId(url.searchParams.get('fixtureId') || url.searchParams.get('fixture_id') || url.searchParams.get('id'));
     if (!fixtureId) return response({ok:false,version:VERSION,error:'INVALID_FIXTURE_ID'},400);
-    if (this.inflight.has(fixtureId)) return this.inflight.get(fixtureId);
-    const task = this.load(fixtureId)
-      .then(body=>response(body,200,{'x-nomad-full-market-cache':body.cached?(body.stale?'STALE':'HIT'):'MISS'}))
-      .catch(err=>{
-        const status=Number(err?.status||502), retryAfter=finite(err?.retryAfter);
-        return response({ok:false,version:VERSION,fixtureId,error:String(err?.message||err),retryAfterSec:retryAfter,guard:err?.guard||null},status,retryAfter?{'retry-after':String(retryAfter)}:{});
-      })
-      .finally(()=>this.inflight.delete(fixtureId));
-    this.inflight.set(fixtureId,task);
-    return task;
+    try {
+      const body = await this.loadDeduped(fixtureId);
+      return response(body,200,{'x-nomad-full-market-cache':body.cached?(body.stale?'STALE':'HIT'):'MISS'});
+    } catch (err) {
+      const status=Number(err?.status||502), retryAfter=finite(err?.retryAfter);
+      return response({ok:false,version:VERSION,fixtureId,error:String(err?.message||err),retryAfterSec:retryAfter,guard:err?.guard||null},status,retryAfter?{'retry-after':String(retryAfter)}:{});
+    }
   }
 }
 
@@ -236,7 +342,7 @@ function gate(env) { return env.FULL_MARKET_GATE.get(env.FULL_MARKET_GATE.idFrom
 export default {
   async fetch(request, env) {
     const route = routeOf(new URL(request.url).pathname);
-    if (!['/fixture-odds','/health','/settings'].includes(route)) return response({ok:false,version:VERSION,error:'NOT_FOUND'},404);
+    if (!['/fixture-odds','/health','/settings','/board-cache','/prewarm'].includes(route)) return response({ok:false,version:VERSION,error:'NOT_FOUND'},404);
     return gate(env).fetch(request);
   }
 };
