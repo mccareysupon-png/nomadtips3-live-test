@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-19T01:54:49Z",
+  "updated_at": "2026-09-19T06:00:21Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -109,8 +109,8 @@
       "edge": 48.9,
       "ev": 0.79,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "10-0",
       "locked_at": "2026-09-19T01:40:21Z",
       "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-monterrey-w-vs-club-necaxa-w/h2h-3046026",
       "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-monterrey-w-vs-club-necaxa-w/summary-3046026",
@@ -170,7 +170,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
     },
     {
       "id": "76a1b9b4b4c8c3c2-AH-AWAY-2p75",
@@ -4444,8 +4449,8 @@
       "edge": 43.7,
       "ev": 0.7443,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "4-1",
       "locked_at": "2026-09-19T01:40:21Z",
       "source_url": "https://www.goaloo.com/football/japan-regional-league-veroskronos-tsuno-vs-kmg-holdings/h2h-3092759",
       "summary_url": "https://www.goaloo.com/football/japan-regional-league-veroskronos-tsuno-vs-kmg-holdings/summary-3092759",
@@ -4505,7 +4510,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
     },
     {
       "id": "09292ec81c70b2bb-AH-HOME-m0p0",
@@ -19234,8 +19244,8 @@
       "edge": 26.1,
       "ev": 0.4536,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "2-0",
       "locked_at": "2026-09-19T01:40:19Z",
       "source_url": "https://www.goaloo.com/football/primera-division-liga-mx-fc-juarez-vs-tigres-uanl/h2h-2997412",
       "summary_url": "https://www.goaloo.com/football/primera-division-liga-mx-fc-juarez-vs-tigres-uanl/summary-2997412",
@@ -19295,7 +19305,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 114.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
     },
     {
       "id": "2cb032445786b3fb-OU-UNDER-2p5",
@@ -122833,6 +122848,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-19T01:16:37Z"
+    },
+    {
+      "id": "fa08643483efac70-AH-AWAY-4p25",
+      "goaloo_id": "3046026",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 03:00:00",
+      "league": "Mexico Liga MX Femenil",
+      "home": "Monterrey (W)",
+      "away": "Club Necaxa (W)",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 4.25,
+      "pick": "Club Necaxa (W) +4.25",
+      "side": "away",
+      "odds": 1.79,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 1.0,
+      "model_probability": 1.0,
+      "market_fair_probability": 0.5109,
+      "market_edge": 0.4891,
+      "edge": 48.9,
+      "ev": 0.79,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "10-0",
+      "locked_at": "2026-09-19T01:40:21Z",
+      "source_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-monterrey-w-vs-club-necaxa-w/h2h-3046026",
+      "summary_url": "https://www.goaloo.com/football/mexico-liga-mx-femenil-monterrey-w-vs-club-necaxa-w/summary-3046026",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.368,
+        "lambda_away": 3.6,
+        "home_win": 0.0095,
+        "draw": 0.0564,
+        "away_win": 0.9341,
+        "h2h_adjustment": 0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -1.0,
+          "gd_edge": -0.9971,
+          "clean_sheet_edge": -0.8244,
+          "failed_to_score_edge": -0.7756,
+          "bounded_adjustment": -0.0717,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
+    },
+    {
+      "id": "6103d485f6bba11b-AH-AWAY-1p5",
+      "goaloo_id": "3092759",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 03:15:00",
+      "league": "Japan Regional League",
+      "home": "Veroskronos Tsuno",
+      "away": "KMG Holdings",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.5,
+      "pick": "KMG Holdings +1.5",
+      "side": "away",
+      "odds": 1.9,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9181,
+      "model_probability": 0.9181,
+      "market_fair_probability": 0.4809,
+      "market_edge": 0.4372,
+      "edge": 43.7,
+      "ev": 0.7443,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "4-1",
+      "locked_at": "2026-09-19T01:40:21Z",
+      "source_url": "https://www.goaloo.com/football/japan-regional-league-veroskronos-tsuno-vs-kmg-holdings/h2h-3092759",
+      "summary_url": "https://www.goaloo.com/football/japan-regional-league-veroskronos-tsuno-vs-kmg-holdings/summary-3092759",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.047,
+        "lambda_away": 1.762,
+        "home_win": 0.1917,
+        "draw": 0.2524,
+        "away_win": 0.5559,
+        "h2h_adjustment": 0.01,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3707,
+          "gd_edge": -0.5896,
+          "clean_sheet_edge": -0.4195,
+          "failed_to_score_edge": -0.2878,
+          "bounded_adjustment": -0.0335,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
+    },
+    {
+      "id": "81ad26d4781fc69a-AH-HOME-0p25",
+      "goaloo_id": "2997412",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 03:00:00",
+      "league": "Primera Division Liga MX",
+      "home": "FC Juarez",
+      "away": "Tigres UANL",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.25,
+      "pick": "FC Juarez +0.25",
+      "side": "home",
+      "odds": 2.14,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.684,
+      "model_probability": 0.684,
+      "market_fair_probability": 0.4232,
+      "market_edge": 0.2608,
+      "edge": 26.1,
+      "ev": 0.4536,
+      "required_confidence": 0.56,
+      "result": "WIN",
+      "ft": "2-0",
+      "locked_at": "2026-09-19T01:40:19Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-liga-mx-fc-juarez-vs-tigres-uanl/h2h-2997412",
+      "summary_url": "https://www.goaloo.com/football/primera-division-liga-mx-fc-juarez-vs-tigres-uanl/summary-2997412",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.408,
+        "lambda_away": 0.948,
+        "home_win": 0.4793,
+        "draw": 0.2906,
+        "away_win": 0.2301,
+        "h2h_adjustment": -0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.2195,
+          "gd_edge": 0.2484,
+          "clean_sheet_edge": -0.1463,
+          "failed_to_score_edge": 0.5122,
+          "bounded_adjustment": 0.0158,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 114.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-19T06:00:21Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
