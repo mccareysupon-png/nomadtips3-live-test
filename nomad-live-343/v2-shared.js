@@ -1,14 +1,15 @@
 (()=>{
 'use strict';
-const VERSION='343-v2-shared-ui-v3-signal-status-filter';
+const VERSION='343-v2-shared-ui-v4-signal-status-filter-lite';
 const THEME_KEY='nomad343_dashboard_theme_v1';
 const LEGACY_THEME_KEY='nomad343_theme_v1';
 const ROOT=document.documentElement;
 let signalStatusMode=false;
-let signalStatusObserver=null;
+let signalBoardObserver=null;
 let signalCountObserver=null;
 let expandedForSignal=false;
 let applyingSignalFilter=false;
+let signalFilterFrame=0;
 
 function storedTheme(){
   try{
@@ -54,8 +55,6 @@ function ensureUtils(){
   inner.appendChild(wrap);
 }
 function bindThemeControls(){
-  /* Page 1 dashboard owns its existing toggle to avoid double handlers.
-     Pages 2/3 and legacy V2 pages are owned here. */
   if(document.body?.dataset?.page==='live')return;
   document.querySelectorAll('[data-v2-theme],[data-theme-toggle]').forEach(btn=>{
     if(btn.dataset.themeBound==='1')return;
@@ -72,7 +71,8 @@ function syncSignalBadge(value=null){
   const badge=document.querySelector('[data-signal-status-count]');
   if(!badge)return;
   const next=value===null?signalBadgeValue():Number(value);
-  badge.textContent=String(Number.isFinite(next)?Math.max(0,next):0);
+  const text=String(Number.isFinite(next)?Math.max(0,next):0);
+  if(badge.textContent!==text)badge.textContent=text;
 }
 function ensureSignalFilterStyle(){
   if(document.getElementById('signal-status-filter-style'))return;
@@ -84,8 +84,15 @@ function ensureSignalFilterStyle(){
 function restoreSignalView(){
   const host=document.querySelector('[data-board-sections]');
   if(!host)return;
-  host.querySelectorAll('[data-match-id],[data-board-sections] .league-block,[data-board-sections] .show-more').forEach(el=>{el.hidden=false});
+  host.querySelectorAll('[data-match-id],.league-block,.show-more').forEach(el=>{el.hidden=false});
   host.querySelector('.signal-status-filter-empty')?.remove();
+}
+function scheduleSignalFilter(){
+  if(!signalStatusMode||signalFilterFrame)return;
+  signalFilterFrame=requestAnimationFrame(()=>{
+    signalFilterFrame=0;
+    applySignalStatusFilter();
+  });
 }
 function applySignalStatusFilter(){
   if(!signalStatusMode||applyingSignalFilter)return;
@@ -98,10 +105,10 @@ function applySignalStatusFilter(){
     if(expand&&/view all/i.test(expand.textContent||'')){
       expandedForSignal=true;
       expand.click();
-      requestAnimationFrame(applySignalStatusFilter);
+      scheduleSignalFilter();
       return;
     }
-    const rows=[...section.querySelectorAll('[data-match-id]')];
+    const rows=section.querySelectorAll('[data-match-id]');
     let count=0;
     for(const row of rows){
       const hasSignal=Boolean(row.querySelector('.signal-cell.locked'));
@@ -109,14 +116,17 @@ function applySignalStatusFilter(){
       if(hasSignal)count++;
     }
     section.querySelectorAll('.league-block').forEach(block=>{
-      block.hidden=![...block.querySelectorAll('[data-match-id]')].some(row=>!row.hidden);
+      let visible=false;
+      for(const row of block.querySelectorAll('[data-match-id]')){if(!row.hidden){visible=true;break}}
+      block.hidden=!visible;
     });
     const more=section.querySelector('.show-more');
     if(more)more.hidden=true;
     const title=section.querySelector('.status-head h2');
-    if(title)title.textContent='SIGNAL MATCHES';
+    if(title&&title.textContent!=='SIGNAL MATCHES')title.textContent='SIGNAL MATCHES';
     const total=section.querySelector('.status-head>b');
-    if(total)total.textContent=String(count);
+    const countText=String(count);
+    if(total&&total.textContent!==countText)total.textContent=countText;
     let empty=section.querySelector('.signal-status-filter-empty');
     if(count===0){
       if(!empty){empty=document.createElement('div');empty.className='signal-status-filter-empty';empty.textContent='No active signals right now.';section.appendChild(empty)}
@@ -127,17 +137,18 @@ function applySignalStatusFilter(){
   }
 }
 function activateSignalStatusFilter(){
-  if(signalStatusMode){applySignalStatusFilter();return}
+  if(signalStatusMode){scheduleSignalFilter();return}
   signalStatusMode=true;
   const live=document.querySelector('[data-status-filter="live"]');
   if(live&&!live.classList.contains('active'))live.click();
   document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.classList.remove('active'));
   document.querySelector('[data-signal-status-filter]')?.classList.add('active');
-  requestAnimationFrame(applySignalStatusFilter);
+  scheduleSignalFilter();
 }
 function exitSignalStatusFilter(){
   if(!signalStatusMode)return;
   signalStatusMode=false;
+  if(signalFilterFrame){cancelAnimationFrame(signalFilterFrame);signalFilterFrame=0}
   document.querySelector('[data-signal-status-filter]')?.classList.remove('active');
   restoreSignalView();
   if(expandedForSignal){
@@ -162,11 +173,8 @@ function installSignalStatusFilter(){
   document.querySelectorAll('[data-status-filter]').forEach(btn=>btn.addEventListener('click',()=>{if(signalStatusMode)exitSignalStatusFilter()},{capture:true}));
   const host=document.querySelector('[data-board-sections]');
   if(host){
-    signalStatusObserver=new MutationObserver(()=>{
-      if(signalStatusMode)queueMicrotask(applySignalStatusFilter);
-      else syncSignalBadge();
-    });
-    signalStatusObserver.observe(host,{childList:true,subtree:true});
+    signalBoardObserver=new MutationObserver(()=>{if(signalStatusMode)scheduleSignalFilter()});
+    signalBoardObserver.observe(host,{childList:true});
   }
   const activeMatches=document.querySelector('[data-active-match-count]');
   if(activeMatches){
