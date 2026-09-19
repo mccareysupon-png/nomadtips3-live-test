@@ -62,75 +62,81 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
-          # Shared signal renderer: keep one Event Flow and place it inside Live Match Statistics.
+          # One Event Flow owner: place it inside LIVE MATCH STATISTICS on shared signal renderer.
           p=Path('nomad-live-343/signal.js')
           s=p.read_text()
-          old="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div></section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
-          new="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div>${flowCard(g)}</section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
-          if old not in s: raise SystemExit('LIVE_STATS_FLOW_ANCHOR_MISSING')
-          s=s.replace(old,new,1)
-          old2="</section></div>${flowCard(g)}</section><section class=\"signal-entries-section\">"
-          new2="</section></div></section><section class=\"signal-entries-section\">"
-          if old2 not in s: raise SystemExit('OLD_FLOW_POSITION_MISSING')
-          s=s.replace(old2,new2,1)
+          if s.count('${flowCard(g)}') != 1:
+              raise SystemExit(f'FLOW_COUNT_BEFORE={s.count("${flowCard(g)}")}')
+          live=s.find('<b>LIVE MATCH STATISTICS</b>')
+          tracker=s.find('<b>SIGNAL TRACKER</b>', live)
+          flow=s.find('${flowCard(g)}', live)
+          if min(live,tracker,flow) < 0:
+              raise SystemExit('FLOW_MARKERS_MISSING')
+          if not (live < flow < tracker):
+              # Current production has flow after the two-column grid: move the single token into stats card.
+              old="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div></section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
+              new="</header><div class=\"signal-mirror-bars\">${bars(liveStatSource(s),'live')}</div>${flowCard(g)}</section><section class=\"signal-evidence-card\"><header><b>SIGNAL TRACKER</b>"
+              if old not in s: raise SystemExit('LIVE_STATS_INSERT_ANCHOR_MISSING')
+              s=s.replace(old,new,1)
+              # Remove the old occurrence after the grid only; now there are two until this replacement.
+              tail="</section></div>${flowCard(g)}</section><section class=\"signal-entries-section\">"
+              if tail not in s: raise SystemExit('OLD_FLOW_TAIL_MISSING')
+              s=s.replace(tail,"</section></div></section><section class=\"signal-entries-section\">",1)
+          if s.count('${flowCard(g)}') != 1: raise SystemExit('FLOW_COUNT_AFTER_FAIL')
+          live=s.index('<b>LIVE MATCH STATISTICS</b>')
+          tracker=s.index('<b>SIGNAL TRACKER</b>',live)
+          flow=s.index('${flowCard(g)}',live)
+          if not (live < flow < tracker): raise SystemExit('FLOW_NOT_INSIDE_LIVE_STATS')
           p.write_text(s)
 
-          # Remove old blue Away palette from Signal stats: Home green, Away yellow.
+          # Home green / Away yellow directly in the base signal bar CSS.
           p=Path('nomad-live-343/signal-compact-343.css')
           s=p.read_text()
-          repl={
-            '#8bd4f5':'#f0de6a','#73c5ed':'#e8d45d','#61b6df':'#dfc84f',
-            '#51a8d2':'#d8bd45','#4499c3':'#cfb23d','#398bb4':'#c5a636'
-          }
-          for a,b in repl.items(): s=s.replace(a,b)
+          colors={'#8bd4f5':'#f0de6a','#73c5ed':'#e8d45d','#61b6df':'#dfc84f','#51a8d2':'#d8bd45','#4499c3':'#cfb23d','#398bb4':'#c5a636'}
+          for old,new in colors.items(): s=s.replace(old,new)
+          if any(x in s for x in colors): raise SystemExit('LEGACY_AWAY_BLUE_REMAINS')
+          if not all(x in s for x in colors.values()): raise SystemExit('AWAY_YELLOW_PALETTE_INCOMPLETE')
           p.write_text(s)
 
-          # Event Flow base palette itself now uses canonical team colors, not orange fallback.
+          # Event Flow base palette also becomes canonical green/yellow (not relying on override order).
           p=Path('nomad-live-343/event-flow-343.css')
           s=p.read_text()
-          s=s.replace('#52d985','var(--team-home-name,#6fe08b)')
-          s=s.replace('#e08d5f','var(--team-away-name,#e6cf55)')
+          s=s.replace('#52d985','var(--team-home-name,#6fe08b)').replace('#e08d5f','var(--team-away-name,#e6cf55)')
           s=s.replace('#b8ffd0','#c9ffd5').replace('#ffd4bc','#fff0a4')
-          s=s.replace('rgba(82,217,133,.45)','rgba(111,224,139,.45)')
-          s=s.replace('rgba(224,141,95,.4)','rgba(230,207,85,.42)')
-          s=s.replace('rgba(82,217,133,.38)','rgba(111,224,139,.38)')
-          s=s.replace('rgba(224,141,95,.34)','rgba(230,207,85,.36)')
+          s=s.replace('rgba(82,217,133,.45)','rgba(111,224,139,.45)').replace('rgba(224,141,95,.4)','rgba(230,207,85,.42)')
+          s=s.replace('rgba(82,217,133,.38)','rgba(111,224,139,.38)').replace('rgba(224,141,95,.34)','rgba(230,207,85,.36)')
           p.write_text(s)
 
-          # SVG gradient fallback follows the same Home/Away language.
           p=Path('nomad-live-343/event-flow-343.js')
           s=p.read_text()
-          s=s.replace("const VERSION='343-flow-v3-stable-momentum';","const VERSION='343-flow-v4-team-sides';")
-          s=s.replace('stop-color=\"#52d985\"','stop-color=\"#6fe08b\"')
-          s=s.replace('stop-color=\"#e08d5f\"','stop-color=\"#e6cf55\"')
+          s=re.sub(r"const VERSION='343-flow-v[^']+';","const VERSION='343-flow-v4-team-sides';",s,count=1)
+          s=s.replace('stop-color=\"#52d985\"','stop-color=\"#6fe08b\"').replace('stop-color=\"#e08d5f\"','stop-color=\"#e6cf55\"')
+          if "343-flow-v4-team-sides" not in s: raise SystemExit('FLOW_VERSION_FAIL')
           p.write_text(s)
 
-          # Cache-bust the exact shared assets on both Page 2 and Page 3.
+          # Cache-bust shared assets robustly regardless of prior version strings.
+          replacements={
+            r'signal-compact-343\.css\?v=[^\"]+':'signal-compact-343.css?v=343-signal-active-v3-team-sides',
+            r'event-flow-343\.css\?v=[^\"]+':'event-flow-343.css?v=343-flow-v4-team-sides',
+            r'team-sides-343\.css\?v=[^\"]+':'team-sides-343.css?v=343-team-sides-v3-shared',
+            r'event-flow-343\.js\?v=[^\"]+':'event-flow-343.js?v=343-flow-v4-team-sides',
+            r'signal\.js\?v=[^\"]+':'signal.js?v=343-signal-bettor-v5-flow-inside-stats'
+          }
           for name in ['signal.html','statistics.html']:
-            p=Path('nomad-live-343')/name
-            s=p.read_text()
-            s=s.replace('signal-compact-343.css?v=343-signal-active-v2','signal-compact-343.css?v=343-signal-active-v3-team-sides')
-            s=s.replace('event-flow-343.css?v=343-flow-v3','event-flow-343.css?v=343-flow-v4-team-sides')
-            s=s.replace('team-sides-343.css?v=343-team-sides-v2','team-sides-343.css?v=343-team-sides-v3-shared')
-            s=s.replace('event-flow-343.js?v=343-flow-v3','event-flow-343.js?v=343-flow-v4-team-sides')
-            s=s.replace('signal.js?v=343-signal-bettor-v4','signal.js?v=343-signal-bettor-v5-flow-inside-stats')
-            p.write_text(s)
+              p=Path('nomad-live-343')/name
+              s=p.read_text()
+              for pattern,value in replacements.items():
+                  s,n=re.subn(pattern,value,s,count=1)
+                  if n!=1: raise SystemExit(f'{name}:CACHE_BUST_MISSING:{value}')
+              for value in replacements.values():
+                  if value not in s: raise SystemExit(f'{name}:CACHE_BUST_VERIFY:{value}')
+              p.write_text(s)
+          print('SEMANTIC_PRESENTATION_PATCH_PASS')
           PY
-
           node --check nomad-live-343/signal.js
           node --check nomad-live-343/event-flow-343.js
-          grep -Fq '${flowCard(g)}</section><section class="signal-evidence-card"><header><b>SIGNAL TRACKER' nomad-live-343/signal.js
-          ! grep -Fq '#8bd4f5' nomad-live-343/signal-compact-343.css
-          grep -Fq '#f0de6a' nomad-live-343/signal-compact-343.css
-          grep -Fq "343-flow-v4-team-sides" nomad-live-343/event-flow-343.js
-          for f in signal.html statistics.html; do
-            grep -Fq '343-signal-active-v3-team-sides' "nomad-live-343/$f"
-            grep -Fq '343-flow-v4-team-sides' "nomad-live-343/$f"
-            grep -Fq '343-team-sides-v3-shared' "nomad-live-343/$f"
-            grep -Fq '343-signal-bettor-v5-flow-inside-stats' "nomad-live-343/$f"
-          done
-          echo SCOPED_PRESENTATION_PATCH_PASS
 
       - name: Persist only shared presentation files
         shell: bash
@@ -139,12 +145,7 @@ jobs:
           git config user.name 'Ball46 UI Repair Bot'
           git config user.email 'actions@users.noreply.github.com'
           git add nomad-live-343/signal.js nomad-live-343/signal-compact-343.css nomad-live-343/event-flow-343.css nomad-live-343/event-flow-343.js nomad-live-343/signal.html nomad-live-343/statistics.html
-          if git diff --cached --quiet; then
-            echo 'No source changes to persist'
-          else
-            git commit -m 'ui(ball46): green home yellow away and shared event flow'
-            git push origin HEAD:${SOURCE_BRANCH}
-          fi
+          if git diff --cached --quiet; then echo 'No source changes'; else git commit -m 'ui(ball46): green home yellow away and shared event flow'; git push origin HEAD:${SOURCE_BRANCH}; fi
 
       - name: Record protected services
         shell: bash
@@ -152,9 +153,8 @@ jobs:
           set -euo pipefail
           curl -fsS "$BALL46_URL/api/full-market/health?visual=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
           node - <<'NODE'
-          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));
-          fs.writeFileSync('/tmp/fm-version',String(h.version||''));
-          fs.writeFileSync('/tmp/fm-policy',String(h.staleCachePolicy||''));
+          const fs=require('fs'),h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));
+          fs.writeFileSync('/tmp/fm-version',String(h.version||''));fs.writeFileSync('/tmp/fm-policy',String(h.staleCachePolicy||''));
           NODE
 
       - name: Deploy Ball46 wrapper assets only
@@ -165,23 +165,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sleep 3
-          curl -fsS -L "$BALL46_URL/signal.html?visual=${GITHUB_RUN_ID}" -o /tmp/signal.html
-          curl -fsS -L "$BALL46_URL/statistics.html?visual=${GITHUB_RUN_ID}" -o /tmp/statistics.html
+          ok=0
+          for n in $(seq 1 15); do
+            curl -fsS -L "$BALL46_URL/signal.html?visual=${GITHUB_RUN_ID}-${n}" -o /tmp/signal.html || true
+            curl -fsS -L "$BALL46_URL/statistics.html?visual=${GITHUB_RUN_ID}-${n}" -o /tmp/statistics.html || true
+            if grep -Fq '343-signal-active-v3-team-sides' /tmp/signal.html 2>/dev/null && grep -Fq '343-signal-active-v3-team-sides' /tmp/statistics.html 2>/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
           curl -fsS -L "$BALL46_URL/signal.js?visual=${GITHUB_RUN_ID}" -o /tmp/signal.js
           curl -fsS -L "$BALL46_URL/signal-compact-343.css?visual=${GITHUB_RUN_ID}" -o /tmp/signal.css
           curl -fsS -L "$BALL46_URL/event-flow-343.js?visual=${GITHUB_RUN_ID}" -o /tmp/flow.js
           node --check /tmp/signal.js
           node --check /tmp/flow.js
-          for f in /tmp/signal.html /tmp/statistics.html; do
-            grep -Fq '343-signal-active-v3-team-sides' "$f"
-            grep -Fq '343-flow-v4-team-sides' "$f"
-            grep -Fq '343-team-sides-v3-shared' "$f"
-            grep -Fq '343-signal-bettor-v5-flow-inside-stats' "$f"
-          done
-          grep -Fq '#f0de6a' /tmp/signal.css
-          ! grep -Fq '#8bd4f5' /tmp/signal.css
-          grep -Fq '343-flow-v4-team-sides' /tmp/flow.js
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/signal.js').read_text()
+          if s.count('${flowCard(g)}') != 1: raise SystemExit('PROD_FLOW_COUNT_FAIL')
+          a=s.index('<b>LIVE MATCH STATISTICS</b>');b=s.index('<b>SIGNAL TRACKER</b>',a);f=s.index('${flowCard(g)}',a)
+          if not (a<f<b): raise SystemExit('PROD_FLOW_POSITION_FAIL')
+          css=Path('/tmp/signal.css').read_text()
+          if '#8bd4f5' in css: raise SystemExit('PROD_LEGACY_BLUE_REMAINS')
+          for c in ['#f0de6a','#e8d45d','#dfc84f','#d8bd45','#cfb23d','#c5a636']:
+              if c not in css: raise SystemExit('PROD_YELLOW_PALETTE_FAIL')
+          for html in ['/tmp/signal.html','/tmp/statistics.html']:
+              t=Path(html).read_text()
+              for marker in ['343-signal-active-v3-team-sides','343-flow-v4-team-sides','343-team-sides-v3-shared','343-signal-bettor-v5-flow-inside-stats']:
+                  if marker not in t: raise SystemExit(f'{html}:{marker}:MISSING')
+          PY
 
           while IFS=$'\t' read -r name before; do
             safe="${name//\//_}"
@@ -196,10 +207,7 @@ jobs:
           curl -fsS "$BALL46_URL/api/engine/statistics?visual=${GITHUB_RUN_ID}" -o /tmp/stats.json
           node - <<'NODE'
           const fs=require('fs');
-          const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8'));
-          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
-          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
-          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8')),b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8')),s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8')),st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
           if(String(h.version||'')!==fs.readFileSync('/tmp/fm-version','utf8')) throw Error('FULL_MARKET_VERSION_CHANGED');
           if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
           if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
