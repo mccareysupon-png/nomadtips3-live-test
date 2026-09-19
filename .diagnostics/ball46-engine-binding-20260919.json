@@ -1,0 +1,118 @@
+{
+  "generatedAtMs": 1789825227703,
+  "directEngine": {
+    "httpStatus": 200,
+    "body": {
+      "ok": true,
+      "component": "NOMAD343_ENGINE",
+      "version": "nomad343-engine-v5-multibook-referee-bestprice",
+      "startedAt": 1789825220068,
+      "finishedAt": 1789825220866,
+      "fixtureCount": 401,
+      "liveCount": 201,
+      "signalCount": 45,
+      "unresolvedCount": 0,
+      "reconciled": 0,
+      "refereeRequests": 4,
+      "refereeQueued": 37,
+      "lastError": null
+    }
+  },
+  "ball46Engine": {
+    "httpStatus": 200,
+    "body": {
+      "ok": true,
+      "component": "NOMAD343_ENGINE",
+      "version": "nomad343-engine-v5-multibook-referee-bestprice",
+      "startedAt": 1789825220068,
+      "finishedAt": 1789825220866,
+      "fixtureCount": 401,
+      "liveCount": 201,
+      "signalCount": 45,
+      "unresolvedCount": 0,
+      "reconciled": 0,
+      "refereeRequests": 4,
+      "refereeQueued": 37,
+      "lastError": null
+    }
+  },
+  "ball46FullMarket": {
+    "httpStatus": 200,
+    "body": {
+      "ok": true,
+      "component": "BALL46_FULL_MARKET_GATE",
+      "version": "nomad343-ball46-full-market-v6-server-prewarm-cache",
+      "bookmakerCount": 19,
+      "bookmakers": [
+        "bet365",
+        "pinnacle",
+        "williamhill",
+        "ladbrokes",
+        "vcbet",
+        "1xbet",
+        "bwin",
+        "easybets",
+        "interwetten",
+        "betfair",
+        "snai",
+        "macauslot",
+        "betsson",
+        "betathome",
+        "18bet",
+        "10bet",
+        "12bet",
+        "coral",
+        "crown"
+      ],
+      "mode": "normal",
+      "modeLabel": "ปกติ",
+      "cacheMs": 60000,
+      "staleCacheMs": null,
+      "staleCachePolicy": "LAST_GOOD_UNTIL_REPLACED",
+      "serverPrewarm": true,
+      "prewarmMaxPerRun": 6,
+      "prewarmMeta": {
+        "at": 1789819335557,
+        "requested": 128,
+        "attempted": 4,
+        "warmed": 4,
+        "cacheHits": 0,
+        "errors": []
+      },
+      "accountLimitPerMinute": 40,
+      "maxFullMarketCallsPerMinute": 8,
+      "callsLast60s": 4,
+      "remainingLocalBudget": 4,
+      "blockedUntil": 1789825261025,
+      "retryAfterSec": 34,
+      "providerMeta": {
+        "at": 1789825220025,
+        "limit": 40,
+        "remaining": 0,
+        "reset": 1789825260,
+        "lastStatus": 429,
+        "retryAfterSec": 41
+      },
+      "presets": [
+        {
+          "mode": "eco",
+          "label": "ประหยัด",
+          "cacheMs": 90000,
+          "maxCallsPerMinute": 5
+        },
+        {
+          "mode": "normal",
+          "label": "ปกติ",
+          "cacheMs": 60000,
+          "maxCallsPerMinute": 8
+        },
+        {
+          "mode": "fast",
+          "label": "เร็ว",
+          "cacheMs": 45000,
+          "maxCallsPerMinute": 10
+        }
+      ]
+    }
+  }
+}
