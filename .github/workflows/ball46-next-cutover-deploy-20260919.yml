@@ -1,0 +1,120 @@
+name: Ball46 Page 2-3 NEXT Production Cutover 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-next-cutover-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: 1a78bf0e99113059c8a6cc79153152bd4ad48d0f
+
+jobs:
+  deploy-next-cutover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact production cutover delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-next-cutover-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved preview base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 2
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics.html'
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/signal.html nomad-live-343/statistics.html
+
+      - name: Guard Page 1 and engines untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            nomad-live-343/index.html \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2.css \
+            nomad-live-343/dashboard-v2-tune.css \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+          done
+          echo 'PASS: Page 1, Odds, API, Signal runtime, Statistics runtime and Worker are unchanged.'
+
+      - name: Validate production pages use isolated NEXT presentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '343-signal-next-production-20260919' nomad-live-343/signal.html
+          grep -Fq '343-statistics-next-production-20260919' nomad-live-343/statistics.html
+          grep -Fq 'ball46-next.css?v=343-next-production-v1' nomad-live-343/signal.html
+          grep -Fq 'ball46-next.css?v=343-next-production-v1' nomad-live-343/statistics.html
+          grep -Fq 'signal-next.js?v=343-next-production-v1' nomad-live-343/signal.html
+          grep -Fq 'statistics-next.js?v=343-next-production-v1' nomad-live-343/statistics.html
+          ! grep -Fq 'theme-341-343.css' nomad-live-343/signal.html
+          ! grep -Fq 'theme-341-343.css' nomad-live-343/statistics.html
+          ! grep -Fq 'signal.js?' nomad-live-343/signal.html
+          ! grep -Fq 'statistics.js?' nomad-live-343/statistics.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate isolated renderers
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/signal-next.js
+          node --check nomad-live-343/statistics-next.js
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy clean Page 2-3 as production routes
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production pages and engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/signal.html?verify=$GITHUB_RUN_ID" -o /tmp/signal.html
+          curl -fsS --max-time 30 "$BALL46_URL/statistics.html?verify=$GITHUB_RUN_ID" -o /tmp/statistics.html
+          grep -Fq '343-signal-next-production-20260919' /tmp/signal.html
+          grep -Fq '343-statistics-next-production-20260919' /tmp/statistics.html
+          curl -fsS --max-time 30 "$BALL46_URL/ball46-next.css?verify=$GITHUB_RUN_ID" -o /tmp/next.css
+          test -s /tmp/next.css
+          curl -fsS --max-time 30 "$BALL46_URL/signal-next.js?verify=$GITHUB_RUN_ID" -o /tmp/signal-next.js
+          curl -fsS --max-time 30 "$BALL46_URL/statistics-next.js?verify=$GITHUB_RUN_ID" -o /tmp/statistics-next.js
+          node --check /tmp/signal-next.js
+          node --check /tmp/statistics-next.js
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node -e 'const b=require("/tmp/board.json"),s=require("/tmp/signals.json"),t=require("/tmp/statistics.json"); if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error("board unhealthy"); if(s?.ok!==true||!Array.isArray(s?.signals)) throw Error("signals unhealthy"); if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error("statistics unhealthy"); console.log("PASS",{fixtures:b.fixtures.length,signals:s.signals.length,results:t.rows.length});'
+          echo 'PASS: clean Page 2-3 are live; Page 1 and engines remain healthy.'
