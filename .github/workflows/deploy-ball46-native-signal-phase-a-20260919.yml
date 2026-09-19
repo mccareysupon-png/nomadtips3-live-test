@@ -1,0 +1,159 @@
+name: Deploy Ball46 Native Signal Phase A 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-native-signal-phase-a-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-native-signal-odds-performance-20260919
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  native-signal-phase-a:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Ball46 presentation assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          for f in nomad-live-343/index.html nomad-live-343/dashboard-v2-stage3.js nomad-live-343/v2-shared.js nomad-live-343/full-market-bookmaker-343.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/bulk-odds-compat-343.js; do
+            name="${f#nomad-live-343/}"
+            safe="${name//\//_}"
+            curl -fsS -L --max-time 30 -D "/tmp/hdr/$safe" "$BALL46_URL/$name?native-a=${GITHUB_RUN_ID}" -o "/tmp/prod/$safe"
+          done
+          cp /tmp/prod/index.html nomad-live-343/index.html
+          cp /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cp /tmp/prod/v2-shared.js nomad-live-343/v2-shared.js
+          sha256sum /tmp/prod/full-market-bookmaker-343.js > /tmp/full-market.sha
+          sha256sum /tmp/prod/live-summary-full-odds-343.js > /tmp/live-summary.sha
+          sha256sum /tmp/prod/bulk-odds-compat-343.js > /tmp/bulk-compat.sha
+
+      - name: Patch native Signal data filter
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          index=Path('nomad-live-343/index.html')
+          s=index.read_text()
+          live='<button class="filter" data-status-filter="live"><span><i class="status-dot live"></i>Live</span><b data-filter-count="live">0</b></button>'
+          signal='<button class="filter" data-status-filter="signal"><span><i class="signal-native-mark">◆</i>Signal</span><b data-filter-count="signal">0</b></button>'
+          if 'data-status-filter="signal"' not in s:
+              if live not in s: raise SystemExit('LIVE_FILTER_ANCHOR_MISSING')
+              s=s.replace(live,live+signal,1)
+          s=re.sub(r'dashboard-v2-stage3\.js\?v=[^"&]+','dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-v6-native-signal',s,count=1)
+          s=re.sub(r'v2-shared\.js\?v=[^"&]+','v2-shared.js?v=343-v2-shared-v6-native-clean',s,count=1)
+          style='.signal-native-mark{display:inline-block;margin-right:8px;color:#e3b84f;font-size:9px;line-height:1}.filter.active .signal-native-mark{color:#f1ca64}'
+          if style not in s:
+              s=s.replace('</style></head>',style+'</style></head>',1)
+          index.write_text(s)
+
+          dash=Path('nomad-live-343/dashboard-v2-stage3.js')
+          d=dash.read_text()
+          d=d.replace("const VERSION='343-dashboard-v2-stage3-v5-default-rich-bridge';","const VERSION='343-dashboard-v2-stage3-v6-native-signal';",1)
+          old="function visibleRows(){return fixtures.filter(f=>{if(statusFilter!=='all'&&classify(f)!==statusFilter)return false;if(leagueFilter!=='all'&&leagueName(f)!==leagueFilter)return false;if(query){const hay=[leagueName(f),f?.home?.name,f?.away?.name].filter(Boolean).join(' ').toLowerCase();if(!hay.includes(query))return false}return true})}"
+          new="function visibleRows(){return fixtures.filter(f=>{const kind=classify(f);if(statusFilter==='signal'){if(kind!=='live'||!signalFor(f))return false}else if(statusFilter!=='all'&&kind!==statusFilter)return false;if(leagueFilter!=='all'&&leagueName(f)!==leagueFilter)return false;if(query){const hay=[leagueName(f),f?.home?.name,f?.away?.name].filter(Boolean).join(' ').toLowerCase();if(!hay.includes(query))return false}return true})}"
+          if old not in d: raise SystemExit('VISIBLE_ROWS_ANCHOR_MISSING')
+          d=d.replace(old,new,1)
+          old_head='<h2>${statusLabel(key)}</h2>'
+          new_head="<h2>${statusFilter==='signal'&&key==='live'?'SIGNAL MATCHES':statusLabel(key)}</h2>"
+          if old_head not in d: raise SystemExit('STATUS_HEAD_ANCHOR_MISSING')
+          d=d.replace(old_head,new_head,1)
+          old_count="const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=num(signalMirror?.activeMatches)??new Set(signalMap.keys()).size;setText('[data-signal-count]',activeSignals);setText('[data-active-match-count]',activeMatches);"
+          new_count="const activeSignals=num(signalMirror?.activeSignals)??signalMap.size,activeMatches=num(signalMirror?.activeMatches)??new Set(signalMap.keys()).size;setText('[data-filter-count=\"signal\"]',activeMatches);setText('[data-signal-count]',activeSignals);setText('[data-active-match-count]',activeMatches);"
+          if old_count not in d: raise SystemExit('SIGNAL_COUNT_ANCHOR_MISSING')
+          d=d.replace(old_count,new_count,1)
+          old_click="$$('[data-status-filter]').forEach(btn=>btn.addEventListener('click',()=>{statusFilter=btn.dataset.statusFilter;$$('[data-status-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderBoard()}));"
+          new_click="$$('[data-status-filter]').forEach(btn=>btn.addEventListener('click',()=>{statusFilter=btn.dataset.statusFilter;$$('[data-status-filter]').forEach(x=>x.classList.toggle('active',x===btn));renderBoard();if(statusFilter==='signal')document.dispatchEvent(new CustomEvent('nomad343:signal-filter-active',{detail:{fixtureIds:[...signalMap.keys()]}}))}));"
+          if old_click not in d: raise SystemExit('FILTER_CLICK_ANCHOR_MISSING')
+          d=d.replace(old_click,new_click,1)
+          dash.write_text(d)
+
+          shared=Path('nomad-live-343/v2-shared.js')
+          shared.write_text("""(()=>{\n'use strict';\nconst VERSION='343-v2-shared-v6-native-clean';\nconst THEME_KEY='nomad343_dashboard_theme_v1';\nconst LEGACY_THEME_KEY='nomad343_theme_v1';\nconst ROOT=document.documentElement;\nfunction storedTheme(){try{const current=localStorage.getItem(THEME_KEY);if(current==='dark'||current==='light')return current;const legacy=localStorage.getItem(LEGACY_THEME_KEY);return legacy==='dark'?'dark':'light'}catch{return'light'}}\nfunction paintThemeButtons(theme){const isLight=theme==='light';document.querySelectorAll('[data-v2-theme],[data-theme-toggle]').forEach(btn=>{btn.textContent=isLight?'☾ Dark':'☀ Light';btn.setAttribute('aria-label',isLight?'Switch to dark theme':'Switch to light theme');btn.setAttribute('aria-pressed',String(!isLight))});const meta=document.querySelector('meta[name=\"theme-color\"]');if(meta)meta.setAttribute('content',isLight?'#edf1f0':'#101512')}\nfunction setTheme(theme,{persist=true}={}){const next=theme==='dark'?'dark':'light';ROOT.dataset.theme=next;paintThemeButtons(next);if(persist){try{localStorage.setItem(THEME_KEY,next)}catch{}}document.dispatchEvent(new CustomEvent('nomad343:theme-change',{detail:{theme:next}}));return next}\nfunction toggleTheme(){setTheme(ROOT.dataset.theme==='dark'?'light':'dark')}\nfunction markActive(){const page=document.body?.dataset?.page||'';document.querySelectorAll('[data-nav]').forEach(a=>{const active=a.dataset.nav===page||(page==='settings'&&a.dataset.nav==='settings');a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')})}\nfunction ensureUtils(){const inner=document.querySelector('.topbar-inner');if(!inner||inner.querySelector('.v2-utils'))return;const wrap=document.createElement('div');wrap.className='v2-utils';wrap.innerHTML='<span class=\"v2-chip\">BULK · DEC</span><button type=\"button\" class=\"v2-theme\" data-v2-theme>☾ Dark</button>';inner.appendChild(wrap)}\nfunction bindThemeControls(){if(document.body?.dataset?.page==='live')return;document.querySelectorAll('[data-v2-theme],[data-theme-toggle]').forEach(btn=>{if(btn.dataset.themeBound==='1')return;btn.dataset.themeBound='1';btn.addEventListener('click',toggleTheme)})}\nfunction init(){ensureUtils();setTheme(storedTheme(),{persist:true});bindThemeControls();markActive();window.addEventListener('storage',e=>{if(e.key===THEME_KEY&&(e.newValue==='dark'||e.newValue==='light'))setTheme(e.newValue,{persist:false})});ROOT.dataset.v2='ready'}\nif(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();\nwindow.NOMAD343_V2_SHARED={version:VERSION,setTheme,toggleTheme};\n})();\n""")
+          PY
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/v2-shared.js
+          grep -Fq 'data-status-filter="signal"' nomad-live-343/index.html
+          grep -Fq "statusFilter==='signal'" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "343-dashboard-v2-stage3-v6-native-signal" nomad-live-343/dashboard-v2-stage3.js
+          ! grep -Fq 'MutationObserver' nomad-live-343/v2-shared.js
+          ! grep -Fq 'signalStatusMode' nomad-live-343/v2-shared.js
+          echo NATIVE_SIGNAL_PATCH_PASS
+
+      - name: Commit Phase A source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nomad-live-343/index.html nomad-live-343/dashboard-v2-stage3.js nomad-live-343/v2-shared.js
+          git diff --cached --name-only
+          test "$(git diff --cached --name-only | wc -l)" -eq 3
+          git commit -m 'perf(ball46): move Signal filter into dashboard data path' || true
+          git push origin HEAD:${SOURCE_BRANCH}
+
+      - name: Record protected Odds identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?native-a=${GITHUB_RUN_ID}" -o /tmp/fm-before.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-before.json','utf8'));fs.writeFileSync('/tmp/fm-ver',String(h.version||''));fs.writeFileSync('/tmp/fm-pol',String(h.staleCachePolicy||''));console.log('FULL_MARKET_BEFORE',h.version,h.staleCachePolicy||'');
+          NODE
+
+      - name: Deploy Phase A wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify native Signal and protected Odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/index.html?native-a=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/dashboard-v2-stage3.js?native-a=${GITHUB_RUN_ID}-${n}" -o /tmp/dash-after.js || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/v2-shared.js?native-a=${GITHUB_RUN_ID}-${n}" -o /tmp/shared-after.js || true
+            if grep -Fq 'data-status-filter="signal"' /tmp/index-after.html && grep -Fq "343-dashboard-v2-stage3-v6-native-signal" /tmp/dash-after.js && grep -Fq '343-v2-shared-v6-native-clean' /tmp/shared-after.js; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          grep -Fq "statusFilter==='signal'" /tmp/dash-after.js
+          ! grep -Fq 'MutationObserver' /tmp/shared-after.js
+          ! grep -Fq 'signalStatusMode' /tmp/shared-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-bookmaker-343.js?native-a=${GITHUB_RUN_ID}-after" -o /tmp/fm-asset-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?native-a=${GITHUB_RUN_ID}-after" -o /tmp/ls-asset-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?native-a=${GITHUB_RUN_ID}-after" -o /tmp/bc-asset-after.js
+          test "$(sha256sum /tmp/fm-asset-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/full-market.sha)"
+          test "$(sha256sum /tmp/ls-asset-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/live-summary.sha)"
+          test "$(sha256sum /tmp/bc-asset-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/bulk-compat.sha)"
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?native-a=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?native-a=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?native-a=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          node - <<'NODE'
+          const fs=require('fs');const h=JSON.parse(fs.readFileSync('/tmp/fm-after.json','utf8'));const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          if(String(h.version||'')!==fs.readFileSync('/tmp/fm-ver','utf8'))throw Error('FULL_MARKET_VERSION_CHANGED');
+          if(String(h.staleCachePolicy||'')!==fs.readFileSync('/tmp/fm-pol','utf8'))throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('BOARD_UNHEALTHY');if(!Array.isArray(s?.signals))throw Error('SIGNALS_UNHEALTHY');
+          console.log('PHASE_A_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,fullMarket:h.version}));
+          NODE
