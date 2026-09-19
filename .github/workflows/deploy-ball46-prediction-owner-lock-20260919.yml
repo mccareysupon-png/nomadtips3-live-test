@@ -154,3 +154,5 @@ jobs:
           if(st?.ok!==true||!Array.isArray(st?.rows)) throw Error('STATISTICS_UNHEALTHY');
           console.log('OWNER_LOCK_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
           NODE
+
+# trigger-2
