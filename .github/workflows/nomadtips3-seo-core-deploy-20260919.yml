@@ -1,0 +1,109 @@
+name: NOMADTIPS3 Core SEO Deploy 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomadtips3-seo-core-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  core-seo:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch head metadata only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,json
+          pages={
+            'index.html':('Live Soccer Analysis, Match Stats & Football Signals | NOMADTIPS3','NOMADTIPS3 provides live soccer analysis, live match statistics, transparent football signals and reviewable performance history.','https://www.nomadtips3.com/','WebSite'),
+            'statistics.html':('Football Signal Statistics, Win Rate & Results | NOMADTIPS3','Review NOMADTIPS3 football signal statistics, settled results, win rate, average locked odds and transparent long-term performance history.','https://www.nomadtips3.com/statistics','WebPage'),
+            'soccer-predictions/index.html':('Soccer Predictions & Match Analysis | NOMADTIPS3','Explore NOMADTIPS3 soccer predictions, curated match analysis, today’s selections and previous settled results with transparent supporting data.','https://www.nomadtips3.com/soccer-predictions/','WebPage')
+          }
+          def body(s):
+            i=s.find('<body'); assert i>=0; return s[i:]
+          for name,(title,desc,canonical,typ) in pages.items():
+            p=Path(name); s=p.read_text(); before=body(s)
+            s=re.sub(r'<!-- NOMADTIPS3 SEO START -->.*?<!-- NOMADTIPS3 SEO END -->','',s,flags=re.S)
+            s=re.sub(r'^[ \t]*<meta name="description" content="[^"]*">[ \t]*\n?','',s,count=1,flags=re.M)
+            s=re.sub(r'^[ \t]*<meta name="robots" content="[^"]*">[ \t]*\n?','',s,count=1,flags=re.M)
+            s=re.sub(r'^[ \t]*<link rel="canonical" href="[^"]*">[ \t]*\n?','',s,count=1,flags=re.M)
+            s=re.sub(r'<title>.*?</title>',f'<title>{title}</title>',s,count=1,flags=re.S)
+            if typ=='WebSite':
+              data={'@context':'https://schema.org','@graph':[{'@type':'WebSite','@id':'https://www.nomadtips3.com/#website','url':'https://www.nomadtips3.com/','name':'NOMADTIPS3','description':desc,'inLanguage':'en'},{'@type':'Organization','@id':'https://www.nomadtips3.com/#organization','name':'NOMADTIPS3','url':'https://www.nomadtips3.com/'}]}
+            else:
+              data={'@context':'https://schema.org','@type':'WebPage','@id':canonical+'#webpage','url':canonical,'name':title,'description':desc,'inLanguage':'en','isPartOf':{'@id':'https://www.nomadtips3.com/#website'},'about':{'@type':'Thing','name':'Association football'}}
+            block=''.join([
+              '<!-- NOMADTIPS3 SEO START -->',
+              f'<meta name="description" content="{desc}">',
+              '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">',
+              f'<link rel="canonical" href="{canonical}">',
+              '<meta property="og:type" content="website"><meta property="og:locale" content="en_US"><meta property="og:site_name" content="NOMADTIPS3">',
+              f'<meta property="og:title" content="{title}"><meta property="og:description" content="{desc}"><meta property="og:url" content="{canonical}">',
+              '<meta name="twitter:card" content="summary">',
+              f'<meta name="twitter:title" content="{title}"><meta name="twitter:description" content="{desc}">',
+              '<script type="application/ld+json">'+json.dumps(data,separators=(',',':'))+'</script>',
+              '<!-- NOMADTIPS3 SEO END -->'
+            ])
+            marker=f'<title>{title}</title>'; assert marker in s
+            s=s.replace(marker,marker+block,1)
+            assert body(s)==before, f'BODY_CHANGED:{name}'
+            p.write_text(s)
+          PY
+          for p in index.html statistics.html soccer-predictions/index.html; do
+            grep -Fq 'NOMADTIPS3 SEO START' "$p"
+            grep -Fq 'content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"' "$p"
+          done
+
+      - name: Prove runtime and visible UI untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git diff --name-only)
+          printf 'Changed:\n%s\n' "${files[*]}"
+          test "${#files[@]}" -eq 3
+          test "${files[0]}" = 'index.html'
+          test "${files[1]}" = 'soccer-predictions/index.html'
+          test "${files[2]}" = 'statistics.html'
+          echo 'PASS: only HTML head metadata changed; no JS, CSS, odds, API, worker or engine files.'
+
+      - name: Persist core SEO
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html statistics.html soccer-predictions/index.html
+          git commit -m 'seo(nomadtips3): optimize core search pages [skip ci]'
+          git push origin HEAD:main
+
+      - name: Verify repository state
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html statistics.html soccer-predictions/index.html; do
+            curl -fsSL --retry 6 --retry-delay 2 "https://raw.githubusercontent.com/mccareysupon-png/nomadtips3-live-test/main/$p?seo=$GITHUB_RUN_ID" | grep -Fq 'NOMADTIPS3 SEO START'
+          done
+          echo 'NOMADTIPS3_CORE_SEO_REPO_PASS'
+
+      - name: Verify public propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 18); do
+            if curl -fsSL --max-time 20 "https://www.nomadtips3.com/statistics?seo=$GITHUB_RUN_ID-$n" -o /tmp/stats.html 2>/dev/null && grep -Fq 'Football Signal Statistics, Win Rate & Results | NOMADTIPS3' /tmp/stats.html; then ok=1; break; fi
+            sleep 5
+          done
+          if [ "$ok" = 1 ]; then echo 'NOMADTIPS3_PUBLIC_SEO_PROPAGATED'; else echo 'PUBLIC_PROPAGATION_PENDING'; fi
