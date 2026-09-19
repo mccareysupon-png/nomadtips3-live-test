@@ -1,0 +1,121 @@
+name: Ball46 Header Sync Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-header-sync-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: a5c288218a35f18366398789d74f73ec922dfee1
+
+jobs:
+  deploy-header-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact header-only application delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-header-sync-deploy-20260919\.yml$' || true)
+          printf 'Application files changed:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 4
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal-next.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics-next.html'
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/signal-next.html nomad-live-343/statistics-next.html
+
+      - name: Guard Page 1 and engines completely untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            nomad-live-343/index.html \
+            nomad-live-343/dashboard-v2.css \
+            nomad-live-343/dashboard-v2-tune.css \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/statistics-next.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+          done
+          echo 'PASS: Page 1, Odds, API, engine and renderers are unchanged.'
+
+      - name: Validate Page 1 master header on all Page 2-3 versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/signal-next.html nomad-live-343/statistics-next.html; do
+            grep -Fq 'v2-shared.css?v=343-v2-shared-v1' "$p"
+            grep -Fq 'v2-header.css?v=343-v2-header-v1' "$p"
+            grep -Fq 'class="v2-topbar"' "$p"
+            grep -Fq 'class="v2-topbar-inner"' "$p"
+            grep -Fq 'class="v2-logo"' "$p"
+            grep -Fq 'class="v2-mainnav"' "$p"
+            grep -Fq 'class="v2-header-utils"' "$p"
+            grep -Fq 'class="v2-odds-chip">BULK · DEC' "$p"
+            grep -Fq 'class="v2-theme-btn" data-theme-toggle' "$p"
+            grep -Fq 'class="mobile-nav"' "$p"
+            ! grep -Fq 'class="next-topbar"' "$p"
+            ! grep -Fq 'class="next-mobile-nav"' "$p"
+          done
+          echo 'PASS: Page 2-3 production and preview versions use the Page 1 header system.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy synchronized headers
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production headers and engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          for page in signal.html statistics.html; do
+            curl -fsS --max-time 30 "$BALL46_URL/$page?verify=$GITHUB_RUN_ID" -o "/tmp/$page"
+            grep -Fq 'class="v2-topbar"' "/tmp/$page"
+            grep -Fq 'class="v2-mainnav"' "/tmp/$page"
+            grep -Fq 'class="v2-header-utils"' "/tmp/$page"
+            grep -Fq 'class="mobile-nav"' "/tmp/$page"
+            ! grep -Fq 'class="next-topbar"' "/tmp/$page"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node -e 'for(const f of ["/tmp/board.json","/tmp/signals.json","/tmp/statistics.json"]){const j=require(f);if(j?.ok!==true)throw Error(f+" unhealthy")} console.log("Ball46 board/signals/statistics PASS")'
+          echo 'PASS: Headers match Page 1 system and engines remain healthy.'
