@@ -1,0 +1,144 @@
+name: Ball46 Central Odds Cache Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-central-odds-cache-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+
+jobs:
+  deploy-central-odds-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact backend-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-central-odds-cache-deploy-20260919\.yml$' || true)
+          printf 'Application files changed:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 3
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'workers/nomadtips3-full-market-343-ball46/src/index.js'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'workers/nomadtips3-343-preview/src/index.js'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'workers/nomadtips3-343-preview/wrangler.ball46.jsonc'
+          git diff --check "$APPROVED_BASE"..HEAD -- \
+            workers/nomadtips3-full-market-343-ball46/src/index.js \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Guard all UI and frontend Odds files untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet "$APPROVED_BASE"..HEAD -- nomad-live-343 || { echo 'FORBIDDEN: nomad-live-343 UI/frontend changed'; exit 1; }
+          echo 'PASS: Page 1, CSS, dashboard renderer, odds formatter and all UI assets are byte-unchanged.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate backend cache implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-full-market-343-ball46/src/index.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "nomad343-ball46-full-market-v6-server-prewarm-cache" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "CENTRAL_CACHE_READ_ONLY" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "SERVER_PREWARM" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "PREWARM_MAX_PER_RUN = 6" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "SERVER_CENTRAL_LAST_GOOD" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "fullMarketCacheSnapshot" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "async scheduled" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq '"crons": ["* * * * *"]' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Full Market cache worker
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Dry-run Ball46 production worker
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy central Full Market cache worker
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Deploy Ball46 board cache bridge and cron
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production backend and cache continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?verify=$GITHUB_RUN_ID" -o /tmp/full-health.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/full-health.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          if(h?.ok!==true) throw Error('full market health failed');
+          if(h?.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache') throw Error('wrong full market version');
+          if(h?.serverPrewarm!==true || h?.staleCachePolicy!=='LAST_GOOD_UNTIL_REPLACED') throw Error('prewarm/last-good policy missing');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('board unhealthy');
+          if(s?.ok!==true || !Array.isArray(s?.signals)) throw Error('signals unhealthy');
+          if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('statistics unhealthy');
+          const live=b.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live'||/live|in_play|playing|first|second/i.test(String(f?.status||f?.statusCode||'')));
+          console.log('BASE_PASS',{fullMarketVersion:h.version,live:live.length,fixtures:b.fixtures.length,signals:s.signals.length,results:t.rows.length,cache:b.fullMarketCache||null});
+          fs.writeFileSync('/tmp/live-count',String(live.length));
+          NODE
+
+          live_count=$(cat /tmp/live-count)
+          if [ "$live_count" -gt 0 ]; then
+            cache_ok=0
+            for n in 1 2 3 4; do
+              sleep 20
+              curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID-$n" -o /tmp/board-later.json
+              if node -e 'const b=require("/tmp/board-later.json"); process.exit(Number(b?.fullMarketCache?.hits||0)>0?0:1)'; then
+                cache_ok=1
+                break
+              fi
+            done
+            test "$cache_ok" -eq 1
+            node - <<'NODE'
+            const b=require('/tmp/board-later.json');
+            const c=b.fullMarketCache||{};
+            if(c.mode!=='SERVER_CENTRAL_LAST_GOOD') throw Error('central board cache mode missing');
+            if(Number(c.externalRequestsAdded||0)!==0) throw Error('board cache read unexpectedly adds provider requests');
+            console.log('CENTRAL_CACHE_PASS',c);
+            NODE
+          else
+            echo 'No live fixtures during deploy verification; health/cron configuration verified and live-cache assertion skipped.'
+          fi
+
+          curl -fsS --max-time 30 "$BALL46_URL/index.html?verify=$GITHUB_RUN_ID" -o /tmp/index.html
+          test -s /tmp/index.html
+          echo 'PASS: backend central cache is live; UI assets were not changed.'
