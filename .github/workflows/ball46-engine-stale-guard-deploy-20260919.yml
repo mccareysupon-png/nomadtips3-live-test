@@ -1,0 +1,157 @@
+name: Ball46 Engine Stale Feed Safety 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-engine-stale-guard-deploy-20260919.yml'
+
+permissions:
+  contents: write
+
+env:
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  ENGINE_SERVICE: nomadtips3-engine-343
+  APPROVED_BASE: 76febcd52caf87996b1f56efe0d27adf3878eb1c
+
+jobs:
+  deploy-engine-stale-guard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard change scope before patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t changed < <(git diff --name-only "${APPROVED_BASE}..HEAD")
+          printf 'Changed before runtime patch:\n%s\n' "${changed[*]:-none}"
+          test "${#changed[@]}" -eq 1
+          test "${changed[0]}" = '.github/workflows/ball46-engine-stale-guard-deploy-20260919.yml'
+          if git diff --name-only "${APPROVED_BASE}..HEAD" | grep -E '^nomad-live-343/'; then
+            echo 'UI_CHANGE_BLOCKED'
+            exit 1
+          fi
+
+      - name: Patch Engine stale-feed hard guard only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          old_version="const VERSION='nomad343-engine-v4-autonomous-settlement';"
+          new_version="const VERSION='nomad343-engine-v5-stale-guard';"
+          assert old_version in s, 'unexpected engine version'
+          s=s.replace(old_version,new_version,1)
+
+          old="""      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
+      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};"""
+          new="""      const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
+      const hubAgeMs=num(hub?.ageMs),hubStale=hub?.stale===true||(hubAgeMs!==null&&hubAgeMs>180_000);
+      if(hubStale){
+        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.ctx.storage.get('signals')||[],fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];
+        await this.ctx.storage.put('board',{...prevBoard,ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs,stale:true,staleGuard:true});
+        const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:fixtures.length,liveCount:fixtures.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled:0,refereeRequests:0,refereeQueued:0,staleGuard:true,skipReason:'HUB_STALE',lastError:null};
+        await this.ctx.storage.put('lastScan',meta);return meta;
+      }
+      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};"""
+          assert old in s, 'scan insertion point changed'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check workers/nomadtips3-engine-343/src/index.js
+          node --check workers/nomadtips3-engine-343/src/market-core.js
+          grep -Fq "nomad343-engine-v5-stale-guard" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "skipReason:'HUB_STALE'" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq "hubAgeMs>180_000" workers/nomadtips3-engine-343/src/index.js
+          grep -Fq 'crons = ["* * * * *"]' workers/nomadtips3-engine-343/wrangler.toml
+          grep -Fq 'service = "nomadtips3-5usd-hub-343"' workers/nomadtips3-engine-343/wrangler.toml
+
+      - name: Prove UI and Odds files untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only | grep -E '^nomad-live-343/' || true)"
+          test -z "$(git diff --name-only | grep -E 'odds|full-market|dashboard-v2|signal\.js|statistics\.js' || true)"
+          changed="$(git diff --name-only)"
+          test "$changed" = 'workers/nomadtips3-engine-343/src/index.js'
+          echo 'UI_ODDS_UNTOUCHED'
+
+      - name: Dry-run Engine bundle
+        working-directory: workers/nomadtips3-engine-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+
+      - name: Deploy Engine service only
+        working-directory: workers/nomadtips3-engine-343
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify production contracts and stale guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 20); do
+            curl -sS --max-time 30 "$BALL46_URL/api/engine/health?staleguard=${GITHUB_RUN_ID}-${n}" -o /tmp/health.json || true
+            if node -e 'const j=require("/tmp/health.json");process.exit(j.ok===true&&j.component==="NOMAD343_ENGINE"&&j.version==="nomad343-engine-v5-stale-guard"?0:1)' 2>/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          test "$ready" = 1
+          for path in settings board signals statistics; do
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/$path?staleguard=${GITHUB_RUN_ID}" -o "/tmp/$path.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/settings.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const a=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          if(h.ok!==true||h.version!=='nomad343-engine-v5-stale-guard') throw Error('HEALTH_FAIL');
+          if(s.ok!==true||!s.settings||!s.runState) throw Error('SETTINGS_FAIL');
+          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          if(a.ok!==true||!Array.isArray(a.signals)) throw Error('SIGNALS_FAIL');
+          if(t.ok!==true||!Array.isArray(t.rows)) throw Error('STATS_FAIL');
+          if(b.stale===true&&b.staleGuard!==true) throw Error('STALE_WITHOUT_GUARD');
+          console.log('ENGINE_STALE_GUARD_PASS',JSON.stringify({version:h.version,hubAgeMs:b.hubAgeMs,stale:b.stale===true,staleGuard:b.staleGuard===true,fixtures:b.fixtures.length,activeSignals:a.signals.length,settled:t.total}));
+          NODE
+
+      - name: Verify server cron remains active
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -H "Authorization: Bearer $CF_API_TOKEN" -H 'Content-Type: application/json' \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${ENGINE_SERVICE}/schedules" -o /tmp/schedules.json
+          test "$(jq -r '.success' /tmp/schedules.json)" = true
+          jq -e '.result | any(.cron == "* * * * *")' /tmp/schedules.json >/dev/null
+          echo 'SERVER_CRON_PASS * * * * *'
+
+      - name: Persist Engine source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js
+          test -z "$(git diff --cached --name-only | grep -v '^workers/nomadtips3-engine-343/src/index.js$' || true)"
+          git commit -m 'fix(ball46): block new signals on stale hub feed [skip ci]'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo 'ENGINE_STALE_GUARD_PERSISTED'
