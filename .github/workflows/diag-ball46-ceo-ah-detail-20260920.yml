@@ -1,0 +1,28 @@
+name: Diagnose Ball46 CEO AH Detail 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-ceo-ah-tuning-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  detail:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Analyze signed line and game state
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 'https://ball46.com/api/engine/statistics?diag=ceo-ah-detail-${{ github.run_id }}' -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));const rows=(j.rows||[]).filter(r=>String(r.strategy||'').toUpperCase()==='CEO'&&String(r.market||'')==='ft_ah');
+          const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v);const res=r=>String(r.result||'').toUpperCase();
+          function summary(rs){let w=0,hw=0,l=0,hl=0,p=0,profit=0;for(const r of rs){const x=res(r),o=num(r.odds);if(x==='WIN')w++;else if(x==='HALF_WIN')hw++;else if(x==='LOSS')l++;else if(x==='HALF_LOSS')hl++;else if(x==='PUSH')p++;if(o&&o>1){if(x==='WIN')profit+=o-1;else if(x==='HALF_WIN')profit+=(o-1)/2;else if(x==='LOSS')profit-=1;else if(x==='HALF_LOSS')profit-=.5;}}const d=w+hw+l+hl;return{n:rs.length,w,hw,l,hl,p,wr:d?+(((w+.5*hw)/d)*100).toFixed(1):null,roi:rs.length?+((profit/rs.length)*100).toFixed(1):null,profit:+profit.toFixed(2)}}
+          const exact=new Map();for(const r of rows){const k=String(r.line);if(!exact.has(k))exact.set(k,[]);exact.get(k).push(r)}console.log('EXACT_LINE',JSON.stringify([...exact.entries()].sort((a,b)=>Number(a[0])-Number(b[0])).map(([k,v])=>[k,summary(v)])));
+          function gameState(r){const g=r.entryScore||r.scoreAt||{};const h=num(g.home)??0,a=num(g.away)??0,sel=String(r.selection||'').toUpperCase();const diff=sel==='HOME'?h-a:a-h;return diff>0?'SELECTED_LEADING':diff<0?'SELECTED_TRAILING':'DRAW'}
+          for(const state of ['SELECTED_LEADING','DRAW','SELECTED_TRAILING'])console.log('STATE_'+state,JSON.stringify(summary(rows.filter(r=>gameState(r)===state))));
+          for(const state of ['SELECTED_LEADING','DRAW','SELECTED_TRAILING'])for(const [lo,hi,name] of [[32,44,'32_44'],[45,59,'45_59'],[60,74,'60_74'],[75,84,'75_84']])console.log(`STATE_${state}_MIN_${name}`,JSON.stringify(summary(rows.filter(r=>gameState(r)===state&&Number(r.entryMinute??r.minute)>=lo&&Number(r.entryMinute??r.minute)<=hi))));
+          console.log('LINE_HALF_ROWS',JSON.stringify(rows.filter(r=>Math.abs(Number(r.line))===0.5).map(r=>({minute:r.entryMinute??r.minute,line:r.line,odds:r.odds,score:r.ceoScore,selection:r.selection,state:gameState(r),entry:r.entryScore,result:r.result,final:r.finalScore}))));
+          NODE
