@@ -37,9 +37,9 @@ jobs:
           test "${#changed[@]}" -eq 1
           test "${changed[0]}" = 'nomad-live-343/v2-shared.js'
           node --check nomad-live-343/v2-shared.js
-          grep -Fq "343-v2-shared-ui-v4-signal-status-filter-lite" nomad-live-343/v2-shared.js
+          grep -Fq "343-v2-shared-ui-v5-signal-official-only" nomad-live-343/v2-shared.js
           grep -Fq "data-signal-status-filter" nomad-live-343/v2-shared.js
-          grep -Fq ".signal-cell.locked" nomad-live-343/v2-shared.js
+          grep -Fq ".signal-cell.locked:not(.no-pick)" nomad-live-343/v2-shared.js
           ! grep -Fq '/api/' nomad-live-343/v2-shared.js
           ! grep -Fq 'fetch(' nomad-live-343/v2-shared.js
           echo UI_SOURCE_BOUNDARY_PASS
@@ -88,12 +88,12 @@ jobs:
           s=p.read_text()
           pat=r'v2-shared\.js\?v=[^"&]+'
           if not re.search(pat,s): raise SystemExit('V2_SHARED_LOADER_MISSING')
-          s,n=re.subn(pat,'v2-shared.js?v=343-v2-shared-ui-v4-signal-status-filter-lite',s,count=1)
+          s,n=re.subn(pat,'v2-shared.js?v=343-v2-shared-ui-v5-signal-official-only',s,count=1)
           if n!=1: raise SystemExit('V2_SHARED_LOADER_PATCH_FAIL')
           p.write_text(s)
           PY
           node --check nomad-live-343/v2-shared.js
-          grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v4-signal-status-filter-lite' nomad-live-343/index.html
+          grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v5-signal-official-only' nomad-live-343/index.html
           echo PRODUCTION_MIRROR_AND_UI_PATCH_PASS
 
       - name: Record protected backend identity
@@ -121,13 +121,13 @@ jobs:
           for n in $(seq 1 20); do
             curl -fsS -L --max-time 25 "$BALL46_URL/index.html?sf=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
             curl -fsS -L --max-time 25 "$BALL46_URL/v2-shared.js?sf=${GITHUB_RUN_ID}-${n}" -o /tmp/v2-after.js || true
-            if grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v4-signal-status-filter-lite' /tmp/index-after.html && grep -Fq '343-v2-shared-ui-v4-signal-status-filter-lite' /tmp/v2-after.js; then ok=1; break; fi
+            if grep -Fq 'v2-shared.js?v=343-v2-shared-ui-v5-signal-official-only' /tmp/index-after.html && grep -Fq '343-v2-shared-ui-v5-signal-official-only' /tmp/v2-after.js; then ok=1; break; fi
             sleep 2
           done
           [ "$ok" = 1 ]
           node --check /tmp/v2-after.js
           grep -Fq 'data-signal-status-filter' /tmp/v2-after.js
-          grep -Fq '.signal-cell.locked' /tmp/v2-after.js
+          grep -Fq '.signal-cell.locked:not(.no-pick)' /tmp/v2-after.js
           ! grep -Fq '/api/' /tmp/v2-after.js
           ! grep -Fq 'fetch(' /tmp/v2-after.js
           while IFS=$'\t' read -r name before; do
@@ -151,5 +151,5 @@ jobs:
           if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
           if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
           if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
-          console.log('SIGNAL_STATUS_FILTER_HOTFIX_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
+          console.log('SIGNAL_STATUS_FILTER_OFFICIAL_ONLY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,fullMarket:h.version}));
           NODE
