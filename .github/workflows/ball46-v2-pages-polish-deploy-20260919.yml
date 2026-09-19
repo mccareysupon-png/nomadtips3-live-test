@@ -1,4 +1,4 @@
-name: Ball46 V2 Pages Polish Deploy 20260919
+name: Ball46 Page 2-3 Clean V2 Deploy 20260919
 
 on:
   push:
@@ -14,10 +14,10 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   BALL46_URL: https://www.ball46.com
-  APPROVED_BASE: ea8342dd5692ce952ff88262273b711bae008828
+  APPROVED_BASE: 395c1a87d85c0d3e1f117bb1f577789a7fb5f05e
 
 jobs:
-  deploy-v2-pages-polish:
+  deploy-page23-clean-v2:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -25,7 +25,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Guard exact presentation delta
+      - name: Guard exact Page 2-3 presentation delta
         shell: bash
         run: |
           set -euo pipefail
@@ -35,11 +35,25 @@ jobs:
           test "${#APP_CHANGED[@]}" -eq 4
           printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal.html'
           printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics.html'
-          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/v2-pages-polish-343.css'
-          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/v2-shared.js'
-          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/v2-pages-polish-343.css nomad-live-343/v2-shared.js
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal-v2-clean-343.css'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics-v2-clean-343.css'
+          git diff --check "$APPROVED_BASE"..HEAD -- \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            nomad-live-343/signal-v2-clean-343.css \
+            nomad-live-343/statistics-v2-clean-343.css
 
-      - name: Guard fragile Odds and engine files unchanged
+      - name: Guard Page 1 completely untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet "$APPROVED_BASE"..HEAD -- nomad-live-343/index.html || { echo 'FORBIDDEN: Page 1 index.html changed'; exit 1; }
+          git diff --quiet "$APPROVED_BASE"..HEAD -- nomad-live-343/dashboard-v2.css || { echo 'FORBIDDEN: Page 1 dashboard-v2.css changed'; exit 1; }
+          git diff --quiet "$APPROVED_BASE"..HEAD -- nomad-live-343/dashboard-v2-tune.css || { echo 'FORBIDDEN: Page 1 dashboard-v2-tune.css changed'; exit 1; }
+          git diff --quiet "$APPROVED_BASE"..HEAD -- nomad-live-343/dashboard-v2-stage3.js || { echo 'FORBIDDEN: Page 1 dashboard runtime changed'; exit 1; }
+          echo 'PASS: Page 1 Golden Reference is unchanged.'
+
+      - name: Guard Odds Engine API and runtimes unchanged
         shell: bash
         run: |
           set -euo pipefail
@@ -48,32 +62,44 @@ jobs:
             nomad-live-343/odds-format-343.js \
             nomad-live-343/full-market-bookmaker-343.js \
             nomad-live-343/live-summary-full-odds-343.js \
-            nomad-live-343/dashboard-v2-stage3.js \
             nomad-live-343/signal.js \
             nomad-live-343/statistics.js \
+            nomad-live-343/v2-shared.js \
             workers/nomadtips3-343-preview/src/index.js; do
             git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
           done
-          echo 'PASS: Odds, engine, signal runtime and statistics runtime are unchanged.'
+          JS_CHANGED="$(git diff --name-only "$APPROVED_BASE"..HEAD -- 'nomad-live-343/*.js' || true)"
+          test -z "$JS_CHANGED" || { echo "FORBIDDEN JS CHANGE(S): $JS_CHANGED"; exit 1; }
+          echo 'PASS: Odds, API, engine, Signal runtime and Statistics runtime are unchanged.'
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Validate theme and presentation files
+      - name: Validate clean Page 2 and Page 3 presentation
         shell: bash
         run: |
           set -euo pipefail
-          node --check nomad-live-343/v2-shared.js
-          grep -Fq 'Page 2/3 V2 visual consolidation' nomad-live-343/v2-pages-polish-343.css
-          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' nomad-live-343/signal.html
-          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' nomad-live-343/statistics.html
+          grep -Fq 'Page 2 Signals visual system' nomad-live-343/signal-v2-clean-343.css
+          grep -Fq 'Page 3 Statistics visual system' nomad-live-343/statistics-v2-clean-343.css
+          grep -Fq 'signal-v2-clean-343.css?v=343-signal-v2-clean-20260919a' nomad-live-343/signal.html
+          grep -Fq 'statistics-v2-clean-343.css?v=343-stat-v2-clean-20260919a' nomad-live-343/statistics.html
           grep -Fq 'data-v2-theme' nomad-live-343/signal.html
           grep -Fq 'data-v2-theme' nomad-live-343/statistics.html
           grep -Fq 'nomad343_dashboard_theme_v1' nomad-live-343/signal.html
           grep -Fq 'nomad343_dashboard_theme_v1' nomad-live-343/statistics.html
-          ! grep -Fq "localStorage.setItem('nomad343_theme_v1','light')" nomad-live-343/signal.html
-          ! grep -Fq "localStorage.setItem('nomad343_theme_v1','light')" nomad-live-343/statistics.html
+          ! grep -Fq 'theme-341-343.css' nomad-live-343/signal.html
+          ! grep -Fq 'theme-light-343.css' nomad-live-343/signal.html
+          ! grep -Fq 'v2-pages-polish-343.css' nomad-live-343/signal.html
+          ! grep -Fq 'theme-341-343.css' nomad-live-343/statistics.html
+          ! grep -Fq 'theme-light-343.css' nomad-live-343/statistics.html
+          ! grep -Fq 'v2-pages-polish-343.css' nomad-live-343/statistics.html
+          grep -Fq 'script src="signal.js?v=343-signal-bettor-v4"' nomad-live-343/signal.html
+          grep -Fq 'script src="signal.js?v=343-signal-bettor-v4"' nomad-live-343/statistics.html
+          grep -Fq 'script src="statistics.js?v=343-stat-avg-entry-odds-v1"' nomad-live-343/statistics.html
+          grep -Fq 'script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed"' nomad-live-343/signal.html
+          grep -Fq 'script src="odds-format-343.js?v=343-odds-format-v4-topbar-fixed"' nomad-live-343/statistics.html
+          echo 'PASS: clean presentation layer is isolated to Page 2 and Page 3.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Validate Cloudflare credentials
         shell: bash
@@ -90,19 +116,26 @@ jobs:
         working-directory: workers/nomadtips3-343-preview
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
 
-      - name: Verify polished pages live and board healthy
+      - name: Verify Page 2-3 live and engines healthy
         shell: bash
         run: |
           set -euo pipefail
           sleep 3
-          curl -fsS --max-time 30 "$BALL46_URL/v2-pages-polish-343.css?verify=$GITHUB_RUN_ID" -o /tmp/polish.css
-          grep -Fq 'Page 2/3 V2 visual consolidation' /tmp/polish.css
+          curl -fsS --max-time 30 "$BALL46_URL/signal-v2-clean-343.css?verify=$GITHUB_RUN_ID" -o /tmp/signal.css
+          curl -fsS --max-time 30 "$BALL46_URL/statistics-v2-clean-343.css?verify=$GITHUB_RUN_ID" -o /tmp/stat.css
+          grep -Fq 'Page 2 Signals visual system' /tmp/signal.css
+          grep -Fq 'Page 3 Statistics visual system' /tmp/stat.css
+
           curl -fsS --max-time 30 "$BALL46_URL/signal.html?verify=$GITHUB_RUN_ID" -o /tmp/signal.html
           curl -fsS --max-time 30 "$BALL46_URL/statistics.html?verify=$GITHUB_RUN_ID" -o /tmp/statistics.html
-          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' /tmp/signal.html
-          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' /tmp/statistics.html
-          grep -Fq 'data-v2-theme' /tmp/signal.html
-          grep -Fq 'data-v2-theme' /tmp/statistics.html
+          grep -Fq '343-signal-v2-clean-20260919' /tmp/signal.html
+          grep -Fq '343-stat-v2-clean-20260919' /tmp/statistics.html
+          grep -Fq 'signal-v2-clean-343.css?v=343-signal-v2-clean-20260919a' /tmp/signal.html
+          grep -Fq 'statistics-v2-clean-343.css?v=343-stat-v2-clean-20260919a' /tmp/statistics.html
+
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
           node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("Ball46 board unhealthy"); console.log("Ball46 board PASS fixtures=",j.fixtures.length);'
-          echo 'PASS: Page 2/3 polish is live; board endpoint remains healthy.'
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node -e 'for(const p of ["/tmp/signals.json","/tmp/statistics.json"]){const j=require(p); if(!j || typeof j!=="object") throw Error(p+" invalid JSON"); console.log(p,"PASS");}'
+          echo 'PASS: Page 2-3 clean V2 is live; Page 1 stayed untouched; engine endpoints remain healthy.'
