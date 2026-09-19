@@ -1,0 +1,35 @@
+name: Simulate Ball46 CEO AH v1.1 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-ceo-ah-tuning-20260920
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Replay candidate filters on settled CEO AH
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 'https://ball46.com/api/engine/statistics?sim=ceo-ah-v11-${{ github.run_id }}' -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');const j=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));const rows=(j.rows||[]).filter(r=>String(r.strategy||'').toUpperCase()==='CEO'&&String(r.market||'')==='ft_ah');
+          const num=v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v))?null:Number(v),res=r=>String(r.result||'').toUpperCase();
+          function state(r){const g=r.entryScore||r.scoreAt||{},h=num(g.home)??0,a=num(g.away)??0,s=String(r.selection||'').toUpperCase(),d=s==='HOME'?h-a:a-h;return d>0?'LEAD':d<0?'TRAIL':'DRAW'}
+          function sum(rs){let w=0,hw=0,l=0,hl=0,p=0,profit=0;for(const r of rs){const x=res(r),o=num(r.odds);if(x==='WIN')w++;else if(x==='HALF_WIN')hw++;else if(x==='LOSS')l++;else if(x==='HALF_LOSS')hl++;else if(x==='PUSH')p++;if(o&&o>1){if(x==='WIN')profit+=o-1;else if(x==='HALF_WIN')profit+=(o-1)/2;else if(x==='LOSS')profit-=1;else if(x==='HALF_LOSS')profit-=.5;}}const d=w+hw+l+hl;return{n:rs.length,w,hw,l,hl,p,wr:d?+(((w+.5*hw)/d)*100).toFixed(1):null,roi:rs.length?+((profit/rs.length)*100).toFixed(1):null,profit:+profit.toFixed(2)}}
+          const variants={
+            BASE:r=>true,
+            V1_ABS05:r=>Math.abs(Number(r.line))<=.5,
+            V2_ABS05_NO_EARLY_LEAD:r=>Math.abs(Number(r.line))<=.5 && !(state(r)==='LEAD' && Number(r.entryMinute??r.minute)<60),
+            V3_ABS05_NO_LEAD:r=>Math.abs(Number(r.line))<=.5 && state(r)!=='LEAD',
+            V4_ABS05_ODDS185:r=>Math.abs(Number(r.line))<=.5 && Number(r.odds)>=1.85,
+            V5_ABS05_ODDS185_NO_EARLY_LEAD:r=>Math.abs(Number(r.line))<=.5 && Number(r.odds)>=1.85 && !(state(r)==='LEAD' && Number(r.entryMinute??r.minute)<60),
+            V6_MINUS05:r=>Number(r.line)===-.5,
+            V7_MINUS05_NOT_LEAD:r=>Number(r.line)===-.5 && state(r)!=='LEAD'
+          };
+          for(const [k,fn] of Object.entries(variants)) console.log(k,JSON.stringify(sum(rows.filter(fn))));
+          NODE
