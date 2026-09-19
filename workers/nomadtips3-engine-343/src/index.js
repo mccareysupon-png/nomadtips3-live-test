@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v4-autonomous-settlement';
+const VERSION='nomad343-engine-v5-stale-guard';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
@@ -236,6 +236,13 @@ export class Nomad343Engine extends DurableObject{
     const startedAt=now();
     try{
       const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
+      const hubAgeMs=num(hub?.ageMs),hubStale=hub?.stale===true||(hubAgeMs!==null&&hubAgeMs>180_000);
+      if(hubStale){
+        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.ctx.storage.get('signals')||[],fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];
+        await this.ctx.storage.put('board',{...prevBoard,ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs,stale:true,staleGuard:true});
+        const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:fixtures.length,liveCount:fixtures.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled:0,refereeRequests:0,refereeQueued:0,staleGuard:true,skipReason:'HUB_STALE',lastError:null};
+        await this.ctx.storage.put('lastScan',meta);return meta;
+      }
       const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};
       const prevById=new Map((Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[]).map(x=>[String(x?.fixtureId??''),x]));
       const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));
