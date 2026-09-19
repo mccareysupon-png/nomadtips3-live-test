@@ -1,7 +1,8 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
+import { CEO_STRATEGY, CEO_VERSION, CEO_PRICE_SETTINGS, ceoCandidatesForFixture, ceoPostPricePass } from './ceo-condition.js';
 
-const VERSION='nomad343-engine-v5-multibook-referee-bestprice';
+const VERSION='nomad343-engine-v6-ceo-auto-v1';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
@@ -77,6 +78,7 @@ function sanitizeSettings(raw={}){
   return out;
 }
 function sanitizeRun(raw={}){const src=migrateLegacyRun(raw);return Object.fromEntries(MARKET_KEYS.map(k=>[k,Boolean(src[k]??DEFAULT_RUN[k])]))}
+function strategyOf(v){return String(v?.strategy||'OWNER').toUpperCase()===CEO_STRATEGY?CEO_STRATEGY:'OWNER'}
 
 function fixtureStatus(f){return String(f?.boardState??f?.status??f?.statusCode??'').toLowerCase()}
 function isLive(f){const s=fixtureStatus(f);return f?.boardState==='live'||/live|in_play|in play|playing|first|second|\b1h\b|\b2h\b|\bhalf\b/.test(s)}
@@ -272,7 +274,7 @@ export class Nomad343Engine extends DurableObject{
       const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};
       const prevById=new Map((Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[]).map(x=>[String(x?.fixtureId??''),x]));
       const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));
-      const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());
+      const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}:${strategyOf(s)}`));const at=Number(hub.fetchedAt||now());
       const fixtureMap=new Map();for(const f of hub.fixtures||[])fixtureMap.set(String(f.fixtureId),f);
       for(const f of hub.fixtures||[]){
         const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];
@@ -285,24 +287,27 @@ export class Nomad343Engine extends DurableObject{
           const id=String(f.fixtureId),marketCandidates=[];
           for(const key of MARKET_KEYS){
             if(!run[key]){analysis[key]={state:'STOP'};continue}
-            if(seen.has(`${id}:${key}`)){analysis[key]={state:'LOCKED'};continue}
+            if(seen.has(`${id}:${key}:OWNER`)){analysis[key]={state:'LOCKED'};continue}
             const pre=preCandidatesForRule(key,f,histories[id]||[],settings[key]);analysis[key]={state:pre.state};if(pre.candidates.length)marketCandidates.push(...pre.candidates);
           }
-          if(marketCandidates.length)fixtureCandidates.push({fixture:f,candidates:marketCandidates,maxStrength:Math.max(...marketCandidates.map(c=>c.strength))});
+          const ceoCandidates=ceoCandidatesForFixture(f,histories[id]||[],MARKET_KEYS).filter(c=>!seen.has(`${id}:${c.market}:${CEO_STRATEGY}`));
+          if(ceoCandidates.length)marketCandidates.push(...ceoCandidates);
+          if(marketCandidates.length){const ownerCandidates=marketCandidates.filter(c=>strategyOf(c)==='OWNER');fixtureCandidates.push({fixture:f,candidates:marketCandidates,hasOwner:ownerCandidates.length>0,ownerStrength:ownerCandidates.length?Math.max(...ownerCandidates.map(c=>c.strength)):-1,maxStrength:Math.max(...marketCandidates.map(c=>c.strength))});}
         }
         const prev=prevById.get(String(f.fixtureId)),prevAt=num(prev?.fullOddsFetchedAt),keepFullOdds=Boolean(prev?.fullOdds)&&(pendingFixtureIds.has(String(f.fixtureId))||(isLive(f)&&prevAt!==null&&at-prevAt<=15*60_000));
         board.push({...f,analysis,fullOdds:keepFullOdds?prev.fullOdds:null,fullOddsFetchedAt:keepFullOdds?prevAt:null,fullOddsSource:keepFullOdds?'ENGINE_MULTI_BOOK_REFEREE':null});
       }
-      fixtureCandidates.sort((a,b)=>b.maxStrength-a.maxStrength);const backfill=board.filter(b=>isLive(b)&&pendingFixtureIds.has(String(b.fixtureId))&&!b.fullOdds).map(b=>({fixture:b})),backfillSelected=backfill.slice(0,MAX_ODDS_FIXTURES_PER_SCAN),backfillIds=new Set(backfillSelected.map(x=>String(x.fixture.fixtureId))),remaining=Math.max(0,MAX_ODDS_FIXTURES_PER_SCAN-backfillSelected.length),selected=fixtureCandidates.filter(x=>!backfillIds.has(String(x.fixture.fixtureId))).slice(0,remaining),selectedIds=new Set(selected.map(x=>String(x.fixture.fixtureId)));let refereeRequests=0,refereeErrors=[];for(const item of backfillSelected){const id=String(item.fixture.fixtureId);try{const root=await fetchFullOdds(id,this.env);refereeRequests++;const b=board.find(x=>String(x.fixtureId)===id);if(b){b.fullOdds=clone(root);b.fullOddsFetchedAt=now();b.fullOddsSource='ENGINE_MULTI_BOOK_REFEREE_BACKFILL'}}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e),scope:'PENDING_BACKFILL'})}}
-      for(const item of fixtureCandidates){if(!selectedIds.has(String(item.fixture.fixtureId))){const b=board.find(x=>String(x.fixtureId)===String(item.fixture.fixtureId));if(b)for(const c of item.candidates)b.analysis[c.market]={state:'QUEUED_PRICE_REFEREE'};}}
+      fixtureCandidates.sort((a,b)=>Number(b.hasOwner)-Number(a.hasOwner)||(a.hasOwner?b.ownerStrength-a.ownerStrength:b.maxStrength-a.maxStrength));const backfill=board.filter(b=>isLive(b)&&pendingFixtureIds.has(String(b.fixtureId))&&!b.fullOdds).map(b=>({fixture:b})),backfillSelected=backfill.slice(0,MAX_ODDS_FIXTURES_PER_SCAN),backfillIds=new Set(backfillSelected.map(x=>String(x.fixture.fixtureId))),remaining=Math.max(0,MAX_ODDS_FIXTURES_PER_SCAN-backfillSelected.length),selected=fixtureCandidates.filter(x=>!backfillIds.has(String(x.fixture.fixtureId))).slice(0,remaining),selectedIds=new Set(selected.map(x=>String(x.fixture.fixtureId)));let refereeRequests=0,refereeErrors=[];for(const item of backfillSelected){const id=String(item.fixture.fixtureId);try{const root=await fetchFullOdds(id,this.env);refereeRequests++;const b=board.find(x=>String(x.fixtureId)===id);if(b){b.fullOdds=clone(root);b.fullOddsFetchedAt=now();b.fullOddsSource='ENGINE_MULTI_BOOK_REFEREE_BACKFILL'}}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e),scope:'PENDING_BACKFILL'})}}
+      for(const item of fixtureCandidates){if(!selectedIds.has(String(item.fixture.fixtureId))){const b=board.find(x=>String(x.fixtureId)===String(item.fixture.fixtureId));if(b)for(const c of item.candidates)if(strategyOf(c)==='OWNER')b.analysis[c.market]={state:'QUEUED_PRICE_REFEREE'};}}
       for(const item of selected){
-        const f=item.fixture,id=String(f.fixtureId);let root=null;try{root=await fetchFullOdds(id,this.env);refereeRequests++}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e)});const b=board.find(x=>String(x.fixtureId)===id);if(b)for(const c of item.candidates)b.analysis[c.market]={state:'PRICE_REFEREE_ERROR'};continue}
+        const f=item.fixture,id=String(f.fixtureId);let root=null;try{root=await fetchFullOdds(id,this.env);refereeRequests++}catch(e){refereeErrors.push({fixtureId:id,error:String(e?.message||e)});const b=board.find(x=>String(x.fixtureId)===id);if(b)for(const c of item.candidates)if(strategyOf(c)==='OWNER')b.analysis[c.market]={state:'PRICE_REFEREE_ERROR'};continue}
         const fullOddsBoardRow=board.find(x=>String(x.fixtureId)===id);if(fullOddsBoardRow){fullOddsBoardRow.fullOdds=clone(root);fullOddsBoardRow.fullOddsFetchedAt=now();fullOddsBoardRow.fullOddsSource='ENGINE_MULTI_BOOK_REFEREE'}
-        const grouped=new Map();for(const c of item.candidates){if(!grouped.has(c.market))grouped.set(c.market,[]);grouped.get(c.market).push(c)}
-        for(const [key,cands] of grouped){const best=pickBestPriced(cands,root,f,settings);const b=board.find(x=>String(x.fixtureId)===id);if(!best){if(b)b.analysis[key]={state:'NO_PRICE_PASS'};continue}
+        const grouped=new Map();for(const c of item.candidates){const groupKey=`${strategyOf(c)}:${c.market}`;if(!grouped.has(groupKey))grouped.set(groupKey,[]);grouped.get(groupKey).push(c)}
+        for(const [groupKey,cands] of grouped){const split=groupKey.indexOf(':'),strategy=groupKey.slice(0,split),key=groupKey.slice(split+1),priceSettings=strategy===CEO_STRATEGY?CEO_PRICE_SETTINGS:settings;const best=pickBestPriced(cands,root,f,priceSettings);const b=board.find(x=>String(x.fixtureId)===id);if(!best){if(b&&strategy==='OWNER')b.analysis[key]={state:'NO_PRICE_PASS'};continue}
+          let ceoPriceGate=null;if(strategy===CEO_STRATEGY){ceoPriceGate=ceoPostPricePass(best);if(!ceoPriceGate.pass)continue}
           const def=MARKET_RULES[key],price=best.price,historyPoint={minute:num(f.minute),odds:price.odds,line:price.line,providerLine:price.providerLine,bookmaker:best.bookmaker,observedAt:now()};
-          const sig={id:`${id}-${key}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,priceStage:'inplay',priceSource:'multi-book-referee',openingPrice:stageSnapshot(best.bookRoot,def,'opening'),closingPrice:stageSnapshot(best.bookRoot,def,'closing'),inplayPrice:stageSnapshot(best.bookRoot,def,'inplay'),referee:best.referee,createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
-          signals.push(sig);seen.add(`${id}:${key}`);if(b)b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,referee:best.referee,evidence:best.evidence};
+          const sig={id:`${id}-${key}-${strategy.toLowerCase()}-${now().toString(36)}`,fixtureId:id,league:f.league,home:f.home,away:f.away,strategy,strategyVersion:strategy===CEO_STRATEGY?CEO_VERSION:'OWNER_CURRENT',ceoScore:strategy===CEO_STRATEGY?best.ceoScore:null,ceoReasonCodes:strategy===CEO_STRATEGY?(best.reasonCodes||best.evidence?.reasonCodes||[]):[],ceoPriceGate:strategy===CEO_STRATEGY?ceoPriceGate:null,market:key,marketLabel:def.label,providerMarket:def.provider,period:def.period,selection:best.selection,line:price.line,selectionLine:price.line,providerLine:price.providerLine,providerLineSide:price.providerLineSide??null,odds:price.odds,bookmaker:best.bookmaker,priceStage:'inplay',priceSource:'multi-book-referee',openingPrice:stageSnapshot(best.bookRoot,def,'opening'),closingPrice:stageSnapshot(best.bookRoot,def,'closing'),inplayPrice:stageSnapshot(best.bookRoot,def,'inplay'),referee:best.referee,createdAt:now(),entryMinute:num(f.minute),minute:num(f.minute),entryScore:clone(f.goals),scoreAt:clone(f.goals),entryCorners:clone(f.corners),entryCards:clone(f.cards),entryStats:clone(f.statistics),statisticsAtEntry:clone(f.statistics),eventHistory:Array.isArray(f.events)?clone(f.events):[],bookmakerHistory:[historyPoint],evidence:best.evidence,rolling:best.rolling,status:'PENDING',result:null,finalScore:null,finalCorners:null,finalCards:null,settlementBasis:def.basis||'goals',settlementRevision:SETTLEMENT_REVISION,lineGap:def.gap?lineGap(price.line,currentBasisTotal(f,def.basis)):null};
+          signals.push(sig);seen.add(`${id}:${key}:${strategy}`);if(b&&strategy==='OWNER')b.analysis[key]={state:'PASS',selection:best.selection,line:price.line,providerLine:price.providerLine,odds:price.odds,bookmaker:best.bookmaker,referee:best.referee,evidence:best.evidence};
         }
       }
       let reconciled=0;
