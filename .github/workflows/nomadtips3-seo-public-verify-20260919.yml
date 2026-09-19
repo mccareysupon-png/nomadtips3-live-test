@@ -15,22 +15,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     steps:
-      - name: Verify public SEO metadata
+      - name: Diagnose and verify public SEO metadata
         shell: bash
         run: |
           set -euo pipefail
           check_page() {
             url="$1"; title="$2"; canonical="$3"; out="$4"
-            ok=0
-            for n in $(seq 1 30); do
-              if curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 --max-time 30 "$url?seo_verify=${GITHUB_RUN_ID}-${n}" -o "$out"; then
-                if grep -Fq "$title" "$out" && grep -Fq "rel=\"canonical\" href=\"$canonical\"" "$out" && grep -Fq 'content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"' "$out"; then
-                  ok=1; break
-                fi
-              fi
-              sleep 5
-            done
-            test "$ok" = 1
+            curl -fsSL --retry 5 --retry-delay 2 --connect-timeout 10 --max-time 30 "$url?seo_verify=${GITHUB_RUN_ID}" -o "$out"
+            echo "CHECK $url"
+            grep -o '<title>[^<]*</title>' "$out" | head -1 || true
+            grep -o '<link rel="canonical" href="[^"]*">' "$out" | head -1 || true
+            grep -o '<meta name="robots" content="[^"]*">' "$out" | head -1 || true
+            grep -Fq "$title" "$out" || { echo "TITLE_MISMATCH $url"; return 1; }
+            grep -Fq "rel=\"canonical\" href=\"$canonical\"" "$out" || { echo "CANONICAL_MISMATCH $url"; return 1; }
+            grep -Fq 'content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"' "$out" || { echo "ROBOTS_MISMATCH $url"; return 1; }
           }
           check_page 'https://www.nomadtips3.com/' 'Live Soccer Analysis, Match Stats & Football Signals | NOMADTIPS3' 'https://www.nomadtips3.com/' /tmp/home.html
           check_page 'https://www.nomadtips3.com/statistics' 'Football Signal Statistics, Win Rate & Results | NOMADTIPS3' 'https://www.nomadtips3.com/statistics' /tmp/stats.html
