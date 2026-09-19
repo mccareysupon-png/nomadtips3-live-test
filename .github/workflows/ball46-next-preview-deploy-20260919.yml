@@ -1,0 +1,124 @@
+name: Ball46 Page 2-3 NEXT Preview Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-next-preview-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: d6f1a08ab9b95ca6904f17b591fb09b210183303
+
+jobs:
+  deploy-next-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard preview-only additions
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-next-preview-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 5
+          for p in \
+            nomad-live-343/ball46-next.css \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/statistics-next.html \
+            nomad-live-343/statistics-next.js; do
+            printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq "$p"
+          done
+          git diff --diff-filter=AM --name-status "$APPROVED_BASE"..HEAD -- nomad-live-343/ | grep -E '^A[[:space:]]' | wc -l | grep -Fxq '5'
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/ball46-next.css nomad-live-343/signal-next.html nomad-live-343/signal-next.js nomad-live-343/statistics-next.html nomad-live-343/statistics-next.js
+
+      - name: Guard Page 1 Page 2 Page 3 and engines untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            nomad-live-343/index.html \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2.css \
+            nomad-live-343/dashboard-v2-tune.css \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+          done
+          echo 'PASS: existing pages, Odds, API and engines are untouched.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate preview assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/signal-next.js
+          node --check nomad-live-343/statistics-next.js
+          grep -Fq 'ball46-next.css?v=343-next-preview-v1' nomad-live-343/signal-next.html
+          grep -Fq 'ball46-next.css?v=343-next-preview-v1' nomad-live-343/statistics-next.html
+          grep -Fq "const API='/api/engine/signals'" nomad-live-343/signal-next.js
+          grep -Fq "const STAT_API='/api/engine/statistics'" nomad-live-343/statistics-next.js
+          grep -Fq "const SIGNAL_API='/api/engine/signals'" nomad-live-343/statistics-next.js
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy preview files without switching existing pages
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify previews and existing engines
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/signal-next.html?verify=$GITHUB_RUN_ID" -o /tmp/signal-next.html
+          curl -fsS --max-time 30 "$BALL46_URL/statistics-next.html?verify=$GITHUB_RUN_ID" -o /tmp/statistics-next.html
+          curl -fsS --max-time 30 "$BALL46_URL/ball46-next.css?verify=$GITHUB_RUN_ID" -o /tmp/next.css
+          grep -Fq 'Active Signals' /tmp/signal-next.html
+          grep -Fq 'Statistics' /tmp/statistics-next.html
+          grep -Fq 'Ball46 Page 2/3 NEXT preview' /tmp/next.css
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/statistics.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const sig=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const stat=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          if(board?.ok!==true||!Array.isArray(board?.fixtures)) throw Error('board unhealthy');
+          if(!Array.isArray(sig?.signals)) throw Error('signals unhealthy');
+          if(stat?.ok!==true||!Array.isArray(stat?.rows)) throw Error('statistics unhealthy');
+          console.log('PASS board=',board.fixtures.length,'signals=',sig.signals.length,'stats=',stat.rows.length);
+          NODE
+          echo 'PASS: NEXT previews are live; old pages and engines remain unchanged.'
