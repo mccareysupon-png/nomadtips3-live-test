@@ -1,0 +1,16 @@
+/* Ball46 shared content rails.
+   Presentation only: align Page 2/3 content to the Page 1 header/logo rails on both left and right. */
+.next-shell{
+  width:100%;
+  max-width:1920px;
+  margin-left:auto;
+  margin-right:auto;
+  padding-left:clamp(10px,1.6vw,24px);
+  padding-right:clamp(10px,1.6vw,24px);
+}
+@media(max-width:760px){
+  .next-shell{
+    padding-left:8px;
+    padding-right:8px;
+  }
+}
