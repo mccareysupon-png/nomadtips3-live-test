@@ -1,0 +1,150 @@
+name: Deploy Ball46 Live Prediction Percent 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-live-prediction-percent-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-live-prediction-percent-20260919
+  BASE_SHA: 049161799cd2d7899bf944b3ed72f4a9a0c5bebd
+  BALL46_URL: https://ball46.com
+  CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-prediction-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated prediction branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Production/source preflight on protected surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CF_API_TOKEN"
+          test -n "$CF_ACCOUNT_ID"
+          test "$(git rev-parse "$BASE_SHA")" = "$BASE_SHA"
+          for f in \
+            nomad-live-343/index.html \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics.html; do
+            name="${f#nomad-live-343/}"
+            curl -fsS --max-time 25 "$BALL46_URL/$name?_=${GITHUB_RUN_ID}" -o "/tmp/prod-${name//\//_}"
+            cmp -s "$f" "/tmp/prod-${name//\//_}" || { echo "PRODUCTION_SOURCE_MISMATCH: $f"; exit 1; }
+          done
+          echo PRODUCTION_SOURCE_PREFLIGHT_PASS
+
+      - name: Wire prediction-only loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/live-prediction-percent-343.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          loader='<script src="live-prediction-percent-343.js?v=343-live-prediction-percent-v1&order=20260919-1" defer></script>'
+          marker='<script src="dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-v5-default-rich-bridge&order=20260919-2&signal-owner=dashboard-v1" defer></script>'
+          if loader not in s:
+              if marker not in s: raise SystemExit('DASHBOARD_LOADER_MARKER_MISSING')
+              s=s.replace(marker,loader+marker,1)
+          if s.count(loader)!=1: raise SystemExit('PREDICTION_LOADER_COUNT_FAIL')
+          if s.index(loader)>s.index(marker): raise SystemExit('PREDICTION_LOADER_ORDER_FAIL')
+          p.write_text(s)
+          PY
+          grep -Fq "343-live-prediction-percent-v1-rolling5-stability10-readonly" nomad-live-343/live-prediction-percent-343.js
+          grep -Fq "networkRequestsAdded:0" nomad-live-343/live-prediction-percent-343.js
+          grep -Fq "mode:'READ_ONLY_SHARED_BOARD'" nomad-live-343/live-prediction-percent-343.js
+          grep -Fq 'const UPDATE_MS=60_000' nomad-live-343/live-prediction-percent-343.js
+          grep -Fq 'const ROLLING_MS=5*60_000' nomad-live-343/live-prediction-percent-343.js
+          grep -Fq 'const STABILITY_MS=10*60_000' nomad-live-343/live-prediction-percent-343.js
+          grep -Fq 'data-prediction-card' nomad-live-343/index.html
+          grep -Fq 'live-prediction-percent-343.js?v=343-live-prediction-percent-v1' nomad-live-343/index.html
+
+      - name: Enforce prediction-only change boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only "$BASE_SHA")"
+          printf '%s\n' "$changed"
+          python3 - <<'PY'
+          import subprocess
+          allowed={'nomad-live-343/index.html','nomad-live-343/live-prediction-percent-343.js'}
+          changed=set(filter(None,subprocess.check_output(['git','diff','--name-only','049161799cd2d7899bf944b3ed72f4a9a0c5bebd']).decode().splitlines()))
+          bad=changed-allowed
+          if bad: raise SystemExit('PROTECTED_CHANGE_DETECTED: '+', '.join(sorted(bad)))
+          if 'nomad-live-343/live-prediction-percent-343.js' not in changed: raise SystemExit('PREDICTION_JS_MISSING')
+          if 'nomad-live-343/index.html' not in changed: raise SystemExit('INDEX_LOADER_MISSING')
+          print('PREDICTION_ONLY_BOUNDARY_PASS',sorted(changed))
+          PY
+          git diff --quiet "$BASE_SHA" -- \
+            workers/nomadtips3-full-market-343-ball46 \
+            workers/nomadtips3-5usd-hub-343 \
+            workers/nomadtips3-engine-343 \
+            workers/add-k-ah-detector \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/full-odds-main-343.js \
+            nomad-live-343/rich-odds-on-demand-343.js \
+            nomad-live-343/signal.html \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.html \
+            nomad-live-343/statistics.js
+          echo PROTECTED_ODDS_API_SIGNAL_STATS_UNCHANGED
+
+      - name: Persist loader on isolated branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Ball46 Prediction Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add nomad-live-343/index.html nomad-live-343/live-prediction-percent-343.js
+          if git diff --cached --quiet; then echo 'No new source changes'; else git commit -m 'feat(ball46): wire rolling live prediction percentages'; git push origin HEAD:${SOURCE_BRANCH}; fi
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ env.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ env.CF_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify production prediction-only deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 15); do
+            curl -fsS --max-time 25 "$BALL46_URL/index.html?_=${GITHUB_RUN_ID}-${n}" -o /tmp/index.html || true
+            if grep -Fq 'live-prediction-percent-343.js?v=343-live-prediction-percent-v1' /tmp/index.html 2>/dev/null; then break; fi
+            sleep 2
+          done
+          grep -Fq 'data-prediction-card' /tmp/index.html
+          grep -Fq 'live-prediction-percent-343.js?v=343-live-prediction-percent-v1' /tmp/index.html
+          curl -fsS --max-time 25 "$BALL46_URL/live-prediction-percent-343.js?_=${GITHUB_RUN_ID}" -o /tmp/prediction.js
+          node --check /tmp/prediction.js
+          grep -Fq '343-live-prediction-percent-v1-rolling5-stability10-readonly' /tmp/prediction.js
+          grep -Fq 'networkRequestsAdded:0' /tmp/prediction.js
+          grep -Fq "mode:'READ_ONLY_SHARED_BOARD'" /tmp/prediction.js
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?_=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_FAIL');
+          console.log('BALL46_PREDICTION_PERCENT_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,version:'343-live-prediction-percent-v1-rolling5-stability10-readonly',networkRequestsAdded:0}));
+          NODE
