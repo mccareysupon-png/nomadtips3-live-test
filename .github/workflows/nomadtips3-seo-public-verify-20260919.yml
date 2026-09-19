@@ -1,0 +1,43 @@
+name: NOMADTIPS3 SEO Public Verify 20260919
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/nomadtips3-seo-public-verify-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Verify public SEO metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_page() {
+            url="$1"; title="$2"; canonical="$3"; out="$4"
+            ok=0
+            for n in $(seq 1 18); do
+              if curl -fsSL --retry 2 --retry-delay 1 --connect-timeout 10 --max-time 30 "$url?seo_verify=${GITHUB_RUN_ID}-${n}" -o "$out"; then
+                if grep -Fq "$title" "$out" && grep -Fq "rel=\"canonical\" href=\"$canonical\"" "$out" && grep -Fq 'content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1"' "$out"; then
+                  ok=1; break
+                fi
+              fi
+              sleep 5
+            done
+            test "$ok" = 1
+          }
+          check_page 'https://www.nomadtips3.com/' 'Live Soccer Analysis, Match Stats & Football Signals | NOMADTIPS3' 'https://www.nomadtips3.com/' /tmp/home.html
+          check_page 'https://www.nomadtips3.com/statistics' 'Football Signal Statistics, Win Rate & Results | NOMADTIPS3' 'https://www.nomadtips3.com/statistics' /tmp/stats.html
+          check_page 'https://www.nomadtips3.com/soccer-predictions/' 'Soccer Predictions & Match Analysis | NOMADTIPS3' 'https://www.nomadtips3.com/soccer-predictions/' /tmp/picks.html
+          curl -fsSL --max-time 30 'https://www.nomadtips3.com/robots.txt' -o /tmp/robots.txt
+          curl -fsSL --max-time 30 'https://www.nomadtips3.com/sitemap.xml' -o /tmp/sitemap.xml
+          grep -Fq 'Sitemap: https://www.nomadtips3.com/sitemap.xml' /tmp/robots.txt
+          grep -Fq '<loc>https://www.nomadtips3.com/statistics</loc>' /tmp/sitemap.xml
+          grep -Fq '<loc>https://www.nomadtips3.com/soccer-predictions/</loc>' /tmp/sitemap.xml
+          echo 'NOMADTIPS3_PUBLIC_SEO_PASS'
