@@ -81,3 +81,16 @@
   }
   .market-cell{min-width:0}
 }
+
+/* Ball46 master content rails.
+   Presentation only: align Page 1 content to the Page 1 header/logo on both left and right. */
+.dash-shell{
+  padding-left:clamp(10px,1.6vw,24px);
+  padding-right:clamp(10px,1.6vw,24px);
+}
+@media(max-width:760px){
+  .dash-shell{
+    padding-left:8px;
+    padding-right:8px;
+  }
+}
