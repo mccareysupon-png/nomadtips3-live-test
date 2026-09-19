@@ -112,29 +112,31 @@ jobs:
           if(s?.ok!==true || !Array.isArray(s?.signals)) throw Error('signals unhealthy');
           if(t?.ok!==true || !Array.isArray(t?.rows)) throw Error('statistics unhealthy');
           const live=b.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live'||/live|in_play|playing|first|second/i.test(String(f?.status||f?.statusCode||'')));
-          console.log('BASE_PASS',{fullMarketVersion:h.version,live:live.length,fixtures:b.fixtures.length,signals:s.signals.length,results:t.rows.length,cache:b.fullMarketCache||null});
+          const cache=b?.fullMarketCache||null;
+          if(cache){
+            if(cache.mode!=='SERVER_CENTRAL_LAST_GOOD') throw Error('central board cache mode missing');
+            if(Number(cache.externalRequestsAdded||0)!==0) throw Error('board cache read unexpectedly adds provider requests');
+          }
+          console.log('BASE_PASS',{fullMarketVersion:h.version,live:live.length,fixtures:b.fixtures.length,signals:s.signals.length,results:t.rows.length,cache});
           fs.writeFileSync('/tmp/live-count',String(live.length));
+          fs.writeFileSync('/tmp/cache-hits',String(Number(cache?.hits||0)));
           NODE
 
           live_count=$(cat /tmp/live-count)
-          if [ "$live_count" -gt 0 ]; then
+          cache_hits=$(cat /tmp/cache-hits)
+          if [ "$live_count" -gt 0 ] && [ "$cache_hits" -eq 0 ]; then
             cache_ok=0
             for n in 1 2 3 4; do
               sleep 20
               curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID-$n" -o /tmp/board-later.json
-              if node -e 'const b=require("/tmp/board-later.json"); process.exit(Number(b?.fullMarketCache?.hits||0)>0?0:1)'; then
+              if node -e 'const b=require("/tmp/board-later.json"); const c=b?.fullMarketCache||{}; process.exit(Number(c.hits||0)>0&&c.mode==="SERVER_CENTRAL_LAST_GOOD"&&Number(c.externalRequestsAdded||0)===0?0:1)'; then
                 cache_ok=1
                 break
               fi
             done
             test "$cache_ok" -eq 1
-            node - <<'NODE'
-            const b=require('/tmp/board-later.json');
-            const c=b.fullMarketCache||{};
-            if(c.mode!=='SERVER_CENTRAL_LAST_GOOD') throw Error('central board cache mode missing');
-            if(Number(c.externalRequestsAdded||0)!==0) throw Error('board cache read unexpectedly adds provider requests');
-            console.log('CENTRAL_CACHE_PASS',c);
-            NODE
+          elif [ "$live_count" -gt 0 ]; then
+            echo "CENTRAL_CACHE_PASS hits=$cache_hits"
           else
             echo 'No live fixtures during deploy verification; health/cron configuration verified and live-cache assertion skipped.'
           fi
