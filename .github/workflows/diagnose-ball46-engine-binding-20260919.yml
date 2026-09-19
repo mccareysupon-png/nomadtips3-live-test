@@ -1,0 +1,65 @@
+name: Diagnose Ball46 Engine Binding 20260919
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-ball46-engine-binding-20260919.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-multibook-referee-bestprice-20260919
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout task branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+      - name: Probe direct and bound services
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .diagnostics
+          direct='https://nomadtips3-engine-343.mccarey-supon.workers.dev/health'
+          bound='https://ball46.com/api/engine/health'
+          full='https://ball46.com/api/full-market/health'
+          curl -sS -L --max-time 25 -w '\nHTTP_STATUS:%{http_code}\n' "$direct?diag=${GITHUB_RUN_ID}" > /tmp/direct.txt || true
+          curl -sS -L --max-time 25 -w '\nHTTP_STATUS:%{http_code}\n' "$bound?diag=${GITHUB_RUN_ID}" > /tmp/bound.txt || true
+          curl -sS -L --max-time 25 -w '\nHTTP_STATUS:%{http_code}\n' "$full?diag=${GITHUB_RUN_ID}" > /tmp/full.txt || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,time
+          def parse(path):
+              raw=Path(path).read_text(errors='replace')
+              m=re.search(r'\nHTTP_STATUS:(\d+)\s*$',raw)
+              status=int(m.group(1)) if m else None
+              body=re.sub(r'\nHTTP_STATUS:\d+\s*$','',raw)
+              try: data=json.loads(body)
+              except Exception: data={'raw':body[:4000]}
+              return {'httpStatus':status,'body':data}
+          out={
+            'generatedAtMs':int(time.time()*1000),
+            'directEngine':parse('/tmp/direct.txt'),
+            'ball46Engine':parse('/tmp/bound.txt'),
+            'ball46FullMarket':parse('/tmp/full.txt')
+          }
+          Path('.diagnostics/ball46-engine-binding-20260919.json').write_text(json.dumps(out,ensure_ascii=False,indent=2))
+          print(json.dumps(out,ensure_ascii=False))
+          PY
+      - name: Commit diagnostic result
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .diagnostics/ball46-engine-binding-20260919.json
+          git commit -m 'diag(ball46): record engine binding versions' || true
+          git push origin HEAD:${SOURCE_BRANCH}
