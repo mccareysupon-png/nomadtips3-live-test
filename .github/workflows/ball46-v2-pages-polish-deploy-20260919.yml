@@ -1,0 +1,108 @@
+name: Ball46 V2 Pages Polish Deploy 20260919
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-v2-pages-polish-deploy-20260919.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  APPROVED_BASE: ea8342dd5692ce952ff88262273b711bae008828
+
+jobs:
+  deploy-v2-pages-polish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact presentation delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-v2-pages-polish-deploy-20260919\.yml$' || true)
+          printf 'Application files changed from approved Ball46 base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 4
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/signal.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/statistics.html'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/v2-pages-polish-343.css'
+          printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq 'nomad-live-343/v2-shared.js'
+          git diff --check "$APPROVED_BASE"..HEAD -- nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/v2-pages-polish-343.css nomad-live-343/v2-shared.js
+
+      - name: Guard fragile Odds and engine files unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/statistics.js \
+            workers/nomadtips3-343-preview/src/index.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN CHANGE: $p"; exit 1; }
+          done
+          echo 'PASS: Odds, engine, signal runtime and statistics runtime are unchanged.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate theme and presentation files
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/v2-shared.js
+          grep -Fq 'Page 2/3 V2 visual consolidation' nomad-live-343/v2-pages-polish-343.css
+          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' nomad-live-343/signal.html
+          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' nomad-live-343/statistics.html
+          grep -Fq 'data-v2-theme' nomad-live-343/signal.html
+          grep -Fq 'data-v2-theme' nomad-live-343/statistics.html
+          grep -Fq 'nomad343_dashboard_theme_v1' nomad-live-343/signal.html
+          grep -Fq 'nomad343_dashboard_theme_v1' nomad-live-343/statistics.html
+          ! grep -Fq "localStorage.setItem('nomad343_theme_v1','light')" nomad-live-343/signal.html
+          ! grep -Fq "localStorage.setItem('nomad343_theme_v1','light')" nomad-live-343/statistics.html
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 current tree
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify polished pages live and board healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 3
+          curl -fsS --max-time 30 "$BALL46_URL/v2-pages-polish-343.css?verify=$GITHUB_RUN_ID" -o /tmp/polish.css
+          grep -Fq 'Page 2/3 V2 visual consolidation' /tmp/polish.css
+          curl -fsS --max-time 30 "$BALL46_URL/signal.html?verify=$GITHUB_RUN_ID" -o /tmp/signal.html
+          curl -fsS --max-time 30 "$BALL46_URL/statistics.html?verify=$GITHUB_RUN_ID" -o /tmp/statistics.html
+          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' /tmp/signal.html
+          grep -Fq 'v2-pages-polish-343.css?v=343-v2-pages-polish-v1' /tmp/statistics.html
+          grep -Fq 'data-v2-theme' /tmp/signal.html
+          grep -Fq 'data-v2-theme' /tmp/statistics.html
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          node -e 'const j=require("/tmp/board.json"); if(j?.ok!==true || !Array.isArray(j?.fixtures)) throw Error("Ball46 board unhealthy"); console.log("Ball46 board PASS fixtures=",j.fixtures.length);'
+          echo 'PASS: Page 2/3 polish is live; board endpoint remains healthy.'
