@@ -1,0 +1,107 @@
+name: Restore Ball46 Pre Bad Rollback 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-ball46-pre-bad-rollback-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+  TARGET_WRAPPER_VERSION: de051ac2-48b2-4618-aca2-79e4b69472ff
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  restore-wrapper-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout config only
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Capture protected backend versions and current deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$WRAPPER_CFG"
+          grep -Fq '"name": "ball46-production"' "$WRAPPER_CFG"
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?restore-before=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/hub/health?restore-before=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/deployments-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-before.json','utf8'));
+          if(!e?.version) throw Error('ENGINE_HEALTH_MISSING_VERSION');
+          if(!h?.version) throw Error('HUB_HEALTH_MISSING_VERSION');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/hub-version',String(h.version));
+          const d=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          const last=d[d.length-1];
+          const active=last?.versions?.find(v=>Number(v.percentage)===100)?.version_id||'';
+          console.log('BEFORE_RESTORE',JSON.stringify({active,engine:e.version,hub:h.version,target:process.env.TARGET_WRAPPER_VERSION}));
+          NODE
+          grep -Fq "$TARGET_WRAPPER_VERSION" /tmp/deployments-before.json
+
+      - name: Roll back wrapper only to exact pre-incident version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_WRAPPER_VERSION" --config "$WRAPPER_CFG"
+
+      - name: Verify exact wrapper and real Odds data
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/deployments-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?restore-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/hub/health?restore-after=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/board?restore-after=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/signals?restore-after=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          set +e
+          curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_URL/api/full-market/health?restore-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          full_rc=$?
+          set -e
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          if(String(e?.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(h?.version||'')!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
+          const deps=JSON.parse(fs.readFileSync('/tmp/deployments-after.json','utf8'));
+          const last=deps[deps.length-1];
+          const active=last?.versions?.find(v=>Number(v.percentage)===100)?.version_id||'';
+          if(active!==process.env.TARGET_WRAPPER_VERSION) throw Error(`WRAPPER_NOT_TARGET:${active}`);
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(s?.ok!==true||!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          const KEYS=new Set(['line','hdp','handicap','total','home','homeodds','homeprice','draw','drawodds','drawprice','away','awayodds','awayprice','over','overodds','overprice','under','underodds','underprice','yes','no']);
+          const norm=x=>String(x??'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          const scalar=v=>v!==null&&v!==undefined&&v!==''&&typeof v!=='boolean'&&Number.isFinite(Number(v));
+          function usable(node,d=0){
+            if(d>14||node==null)return false;
+            if(Array.isArray(node))return node.some(v=>usable(v,d+1));
+            if(typeof node!=='object')return false;
+            for(const [k,v] of Object.entries(node)){
+              if(KEYS.has(norm(k))&&scalar(v))return true;
+              if(usable(v,d+1))return true;
+            }
+            return false;
+          }
+          const fixtures=b.fixtures;
+          const withOdds=fixtures.filter(f=>usable(f?.providerOdds)||usable(f?.fullOdds)||usable(f?.odds)).length;
+          let fullMarket=null;
+          try{fullMarket=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'))?.version||null}catch{}
+          const report={active,engine:e.version,hub:h.version,fullMarket,fixtures:fixtures.length,fixturesWithUsableOdds:withOdds,signals:s.signals.length};
+          console.log('BALL46_PRE_BAD_ROLLBACK_RESTORE_PASS',JSON.stringify(report));
+          if(fixtures.length>0&&withOdds===0) throw Error('ODDS_STILL_ZERO');
+          NODE
