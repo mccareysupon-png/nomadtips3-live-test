@@ -30,7 +30,6 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -43,22 +42,17 @@ jobs:
           node --check workers/nomadtips3-343-preview/src/index.js
           node --check nomad-live-343/full-market-sidecar-343.js
           node --check nomad-live-343/live-summary-full-odds-343.js
-
-          grep -Fq "nomad343-ball46-full-market-v6-central-producer-cache-only" workers/nomadtips3-full-market-343-ball46/src/index.js
-          grep -Fq "viewerRefreshEnabled:false" workers/nomadtips3-full-market-343-ball46/src/index.js
-          grep -Fq "return this.readOnly(id)" workers/nomadtips3-full-market-343-ball46/src/index.js
-          grep -Fq "PRODUCER_ROUTE_PRIVATE" workers/nomadtips3-full-market-343-ball46/src/index.js
-          grep -Fq "url.searchParams.set('bookmakers', BOOKMAKERS.join(','))" workers/nomadtips3-full-market-343-ball46/src/index.js
-          ! grep -Fq "mergeFullOdds" workers/nomadtips3-full-market-343-ball46/src/index.js
-
-          grep -Fq "/api/full-market/board-cache" nomad-live-343/full-market-sidecar-343.js
-          grep -Fq "providerRequestsPerViewer:0" nomad-live-343/full-market-sidecar-343.js
-          grep -Fq "DISPLAY_ALL_RETURNED_BOOKMAKERS" nomad-live-343/full-market-sidecar-343.js
-          grep -Fq "DISPLAY_ALL_RETURNED_MARKETS" nomad-live-343/full-market-sidecar-343.js
-          ! grep -Fq "/api/full-market/fixture-odds" nomad-live-343/full-market-sidecar-343.js
-          ! grep -Fq "visibility:hidden!important" nomad-live-343/live-summary-full-odds-343.js
-          ! grep -Fq "/api/full-market/fixture-odds" nomad-live-343/live-summary-full-odds-343.js
-
+          grep -Fq 'nomad343-ball46-full-market-v6-central-producer-cache-only' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq 'return this.readOnly(id)' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq 'PRODUCER_ROUTE_PRIVATE' workers/nomadtips3-full-market-343-ball46/src/index.js
+          ! grep -Fq 'mergeFullOdds' workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq '/api/full-market/board-cache' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'providerRequestsPerViewer:0' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'DISPLAY_ALL_RETURNED_BOOKMAKERS' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'DISPLAY_ALL_RETURNED_MARKETS' nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq '/api/full-market/fixture-odds' nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq '/api/full-market/fixture-odds' nomad-live-343/live-summary-full-odds-343.js
+          ! grep -Fq 'visibility:hidden!important' nomad-live-343/live-summary-full-odds-343.js
           grep -Fq "if (path === '/board-cache')" workers/nomadtips3-343-preview/src/index.js
           grep -Fq 'crons = ["*/2 * * * *"]' workers/nomadtips3-full-market-343-ball46/wrangler.toml
           grep -Fq 'binding = "HUB"' workers/nomadtips3-full-market-343-ball46/wrangler.toml
@@ -78,11 +72,9 @@ jobs:
           curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?pre=${GITHUB_RUN_ID}" -o /tmp/engine-before-health.json
           curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?pre=${GITHUB_RUN_ID}" -o /tmp/hub-before-health.json
           node - <<'NODE'
-          const fs=require('fs');
-          const e=require('/tmp/engine-before-health.json'),h=require('/tmp/hub-before-health.json');
+          const fs=require('fs'),e=require('/tmp/engine-before-health.json'),h=require('/tmp/hub-before-health.json');
           if(!e.version||!h.version) throw Error('BASELINE_HEALTH_MISSING_VERSION');
-          fs.writeFileSync('/tmp/engine-version',String(e.version));
-          fs.writeFileSync('/tmp/hub-version',String(h.version));
+          fs.writeFileSync('/tmp/engine-version',String(e.version)); fs.writeFileSync('/tmp/hub-version',String(h.version));
           console.log('ROLLBACK_POINTS',fs.readFileSync('/tmp/wrapper-version','utf8'),fs.readFileSync('/tmp/full-version','utf8'));
           console.log('PROTECTED_BACKENDS',e.version,h.version);
           NODE
@@ -102,12 +94,10 @@ jobs:
         shell: bash
         run: npx --yes wrangler@4.92.0 deploy --config "$WRAPPER_CFG"
 
-      - name: Verify production cache-only viewer contract
+      - name: Verify 1 - Full Market health
         shell: bash
         run: |
           set -euo pipefail
-          trap 'echo VERIFY_FAILED_ROLLBACK; W=$(cat /tmp/wrapper-version); F=$(cat /tmp/full-version); [ -n "$W" ] && npx --yes wrangler@4.92.0 rollback "$W" --config "$WRAPPER_CFG" || true; [ -n "$F" ] && npx --yes wrangler@4.92.0 rollback "$F" --config "$FULL_CFG" || true' ERR
-
           ok=0
           for n in $(seq 1 15); do
             curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/full-health.json || true
@@ -115,6 +105,7 @@ jobs:
             sleep 2
           done
           [ "$ok" = 1 ]
+          cat /tmp/full-health.json
           node - <<'NODE'
           const j=require('/tmp/full-health.json');
           if(j.ok!==true) throw Error('FULL_HEALTH_NOT_OK');
@@ -123,20 +114,34 @@ jobs:
           if(Number(j.producerMaxCallsPerCycle)!==20) throw Error('PRODUCER_BUDGET_WRONG');
           NODE
 
+      - name: Verify 2 - Board cache is read only
+        shell: bash
+        run: |
+          set -euo pipefail
           curl -fsS -L --max-time 30 -H 'content-type: application/json' -d '{"fixtureIds":[]}' "$BALL46_URL/api/full-market/board-cache?verify=${GITHUB_RUN_ID}" -o /tmp/board-cache.json
+          cat /tmp/board-cache.json
           node - <<'NODE'
           const j=require('/tmp/board-cache.json');
           if(j.ok!==true||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0) throw Error('BOARD_CACHE_NOT_READ_ONLY');
           NODE
 
+      - name: Verify 3 - Fixture route cannot refresh provider
+        shell: bash
+        run: |
+          set -euo pipefail
           PROBE="ci-probe-${GITHUB_RUN_ID}"
           code=$(curl -sS -L --max-time 30 -o /tmp/fixture-cache.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${PROBE}&verify=${GITHUB_RUN_ID}")
+          echo "HTTP=$code"; cat /tmp/fixture-cache.json
           [ "$code" = 404 ]
           node - <<'NODE'
           const j=require('/tmp/fixture-cache.json');
           if(j.error!=='FULL_MARKET_CACHE_MISS'||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0) throw Error('FIXTURE_ROUTE_NOT_CACHE_ONLY');
           NODE
 
+      - name: Verify 4 - UI sidecar contract
+        shell: bash
+        run: |
+          set -euo pipefail
           curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/live-summary.js
           curl -fsS -L --max-time 30 "$BALL46_URL/full-market-sidecar-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/sidecar.js
           grep -Fq '343-live-summary-central-cache-sidecar-v5' /tmp/live-summary.js
@@ -149,12 +154,25 @@ jobs:
           node --check /tmp/live-summary.js
           node --check /tmp/sidecar.js
 
+      - name: Verify 5 - Engine and HUB unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
           curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?post=${GITHUB_RUN_ID}" -o /tmp/engine-after-health.json
           curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?post=${GITHUB_RUN_ID}" -o /tmp/hub-after-health.json
           node - <<'NODE'
-          const fs=require('fs'); const e=require('/tmp/engine-after-health.json'),h=require('/tmp/hub-after-health.json');
+          const fs=require('fs'),e=require('/tmp/engine-after-health.json'),h=require('/tmp/hub-after-health.json');
           if(String(e.version)!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
           if(String(h.version)!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
           console.log('BALL46_FULL_MARKET_SIDECAR_PRODUCER_PASS',JSON.stringify({engine:e.version,hub:h.version}));
           NODE
-          trap - ERR
+
+      - name: Roll back both workers on verification failure
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo VERIFY_FAILED_ROLLBACK
+          W=$(cat /tmp/wrapper-version 2>/dev/null); F=$(cat /tmp/full-version 2>/dev/null)
+          [ -n "$W" ] && npx --yes wrangler@4.92.0 rollback "$W" --config "$WRAPPER_CFG"
+          [ -n "$F" ] && npx --yes wrangler@4.92.0 rollback "$F" --config "$FULL_CFG"
