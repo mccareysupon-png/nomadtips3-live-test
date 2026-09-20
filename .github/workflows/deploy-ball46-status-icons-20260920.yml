@@ -1,0 +1,149 @@
+name: Deploy Ball46 Official Status Icons 20260920
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-status-icons-20260920.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-status-icons-ui-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-status-icons-ui-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated UI branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Ball46 production and protect runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          : > /tmp/protected.tsv
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?status-icons=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          test -s /tmp/prod/index.html
+          grep -Fq 'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v4-hold-last-good' /tmp/prod/index.html
+
+          for name in dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js expanded-match-343.js v2-shared.js signal.html statistics.html; do
+            safe="${name//\//_}"
+            test -s "/tmp/prod/$safe"
+            sha=$(sha256sum "/tmp/prod/$safe" | awk '{print $1}')
+            printf '%s\t%s\n' "$name" "$sha" >> /tmp/protected.tsv
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?status-icons=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?status-icons=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version) throw Error('ENGINE_VERSION_MISSING');
+          if(!f.version) throw Error('FULL_MARKET_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          console.log('STATUS_ICONS_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
+
+      - name: Apply status icon presentation patch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp nomad-live-343/index.html /tmp/index-before-patch.html
+          python3 .github/scripts/patch_ball46_status_icons_20260920.py
+          grep -Fq 'id="ball46-status-icons-v1"' nomad-live-343/index.html
+          grep -Fq 'status-icon-live' nomad-live-343/index.html
+          grep -Fq 'status-icon-signal' nomad-live-343/index.html
+          grep -Fq 'status-icon-upcoming' nomad-live-343/index.html
+          grep -Fq 'status-icon-waiting' nomad-live-343/index.html
+          grep -Fq 'status-icon-finished' nomad-live-343/index.html
+          grep -Fq 'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v4-hold-last-good' nomad-live-343/index.html
+          cmp -s /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cmp -s /tmp/prod/bulk-odds-compat-343.js nomad-live-343/bulk-odds-compat-343.js
+          cmp -s /tmp/prod/full-market-bookmaker-343.js nomad-live-343/full-market-bookmaker-343.js
+          cmp -s /tmp/prod/live-summary-full-odds-343.js nomad-live-343/live-summary-full-odds-343.js
+          echo STATUS_ICONS_UI_ONLY_GUARD_PASS
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify live UI and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 25 "$BALL46_URL/index.html?status-icons=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            if grep -Fq 'id="ball46-status-icons-v1"' /tmp/index-after.html && \
+               grep -Fq 'status-icon-live' /tmp/index-after.html && \
+               grep -Fq 'status-icon-signal' /tmp/index-after.html && \
+               grep -Fq 'status-icon-upcoming' /tmp/index-after.html && \
+               grep -Fq 'status-icon-waiting' /tmp/index-after.html && \
+               grep -Fq 'status-icon-finished' /tmp/index-after.html; then
+              ok=1; break
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          grep -Fq 'bulk-odds-compat-343.js?v=343-bulk-odds-compat-v4-hold-last-good' /tmp/index-after.html
+
+          while IFS=$'\t' read -r name before; do
+            safe="${name//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$name?status-icons=${GITHUB_RUN_ID}-after" -o "/tmp/after-$safe"
+            after=$(sha256sum "/tmp/after-$safe" | awk '{print $1}')
+            [ "$before" = "$after" ] || { echo "PROTECTED_ASSET_CHANGED:$name"; exit 1; }
+          done < /tmp/protected.tsv
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?status-icons=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?status-icons=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?status-icons=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?status-icons=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?status-icons=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_STATUS_ICONS_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,engine:e.version,fullMarket:f.version}));
+          NODE
