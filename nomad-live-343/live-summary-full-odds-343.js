@@ -1,23 +1,24 @@
 (()=>{
 'use strict';
-// BALL46_VIEWER_ZERO_NETWORK_FULL_MARKET_V6
-// Full-Market cache is bridged into the dashboard's existing odds cells only.
+// BALL46_VIEWER_ZERO_NETWORK_FULL_MARKET_V7
+// Central Full-Market cache feeds the existing default and expanded odds slots only.
 // No extra card/panel/monitor is created here and no viewer action can call 5USD.
-const VERSION='343-live-summary-existing-odds-cells-v6';
-const SIDECAR_SRC='full-market-sidecar-343.js?v=343-full-market-bridge-v3-existing-cells-only';
+const VERSION='343-live-summary-existing-odds-slots-v7';
+const SIDECAR_SRC='full-market-sidecar-343.js?v=343-full-market-bridge-v4-existing-slots';
 const idOf=f=>String(f?.fixtureId??f?.id??'').trim();
-const plain=v=>Boolean(v)&&typeof v==='object'&&!Array.isArray(v);
-const hasData=v=>plain(v)&&Object.keys(v).length>0;
 const defer=fn=>typeof queueMicrotask==='function'?queueMicrotask(fn):Promise.resolve().then(fn);
 function renderExpanded(expanded,fixture){
-  if(!expanded?.isConnected||!fixture||!hasData(fixture?.providerOdds))return;
+  if(!expanded?.isConnected||!fixture)return;
   defer(()=>{
     if(!expanded?.isConnected)return;
+    const id=idOf(fixture);
+    const cached=window.NOMAD343_FULL_MARKET_SIDECAR?.getEntry?.(id);
+    const rich=cached?.fullOdds?{...fixture,fullOdds:cached.fullOdds,providerOddsUpdatedAt:cached.fetchedAt??fixture?.providerOddsUpdatedAt}:fixture;
     const renderer=window.NOMAD343_FULL_MARKET_BOOKMAKER;
     if(!renderer?.update)return;
-    expanded._nomadRichFixture=fixture;
-    expanded.dataset.oddsRenderOwner='central-cache-existing-data';
-    renderer.update(expanded,fixture);
+    expanded._nomadRichFixture=rich;
+    expanded._nomadFixture=rich;
+    renderer.update(expanded,rich);
   });
 }
 function onFixtureReady(e){
@@ -27,9 +28,9 @@ function onFixtureReady(e){
 }
 function loadSidecar(){
   const current=document.querySelector('script[data-ball46-full-market-sidecar]');
-  if(window.NOMAD343_FULL_MARKET_SIDECAR?.version==='343-full-market-bridge-v3-existing-cells-only')return;
+  if(window.NOMAD343_FULL_MARKET_SIDECAR?.version==='343-full-market-bridge-v4-existing-slots')return;
   if(current)current.remove();
-  const s=document.createElement('script');s.src=SIDECAR_SRC;s.defer=true;s.dataset.ball46FullMarketSidecar='v3';document.head.appendChild(s);
+  const s=document.createElement('script');s.src=SIDECAR_SRC;s.defer=true;s.dataset.ball46FullMarketSidecar='v4';document.head.appendChild(s);
 }
 function start(){
   document.querySelectorAll('.b46-fm-sidecar').forEach(el=>el.remove());
@@ -42,6 +43,7 @@ function start(){
     mode:'VIEWER_READ_ONLY',
     networkMode:'CENTRAL_CACHE_READ_ONLY',
     defaultCardVisibleEnrichment:true,
+    expandedCardVisibleEnrichment:true,
     createsExtraUi:false,
     viewerTriggeredProviderFetch:false,
     viewerTriggeredProducerRefresh:false,
