@@ -1,0 +1,104 @@
+name: Rollback Ball46 Noon 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rollback-ball46-noon-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ROLLBACK_SHA: 1e403d0e0aff3935c1dbc836d895458d67d45835
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  rollback-ball46-noon:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Capture current production service versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?rb-noon-before=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/full-market/health?rb-noon-before=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e?.version) throw Error('ENGINE_HEALTH_MISSING_VERSION');
+          if(!f?.version) throw Error('FULL_MARKET_HEALTH_MISSING_VERSION');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          console.log('PRE_ROLLBACK',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
+
+      - name: Checkout pinned noon snapshot
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.ROLLBACK_SHA }}
+          fetch-depth: 1
+
+      - name: Validate exact rollback target
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$ROLLBACK_SHA"
+          test -s workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"service": "nomadtips3-full-market-343-ball46"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          node --check workers/nomadtips3-343-preview/src/index.js
+          node --check nomad-live-343/signal-next.js
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/bulk-odds-compat-343.js
+          node --check nomad-live-343/full-market-bookmaker-343.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+          grep -Fq 'signal-next.js' nomad-live-343/signal.html
+          grep -Fq 'bulk-odds-compat-343.js' nomad-live-343/index.html
+
+      - name: Deploy pinned noon Ball46 wrapper and assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify rollback and protected services
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in index.html signal.html statistics.html signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js; do
+            ok=0
+            for n in $(seq 1 20); do
+              code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/${path//\//_}.after" -w '%{http_code}' "$BALL46_URL/$path?rb-noon=${GITHUB_RUN_ID}-${n}") || code=000
+              if [ "$code" = 200 ]; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "ROLLBACK_ASSET_FAILED:$path"; exit 1; }
+          done
+
+          grep -Fq 'signal-next.js' /tmp/signal.html.after
+          grep -Fq 'bulk-odds-compat-343.js' /tmp/index.html.after
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?rb-noon-after=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/full-market/health?rb-noon-after=${GITHUB_RUN_ID}" -o /tmp/full-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/board?rb-noon-after=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/signals?rb-noon-after=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          if(String(e?.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED_DURING_ROLLBACK');
+          if(String(f?.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED_DURING_ROLLBACK');
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY_AFTER_ROLLBACK');
+          if(s?.ok!==true||!Array.isArray(s?.signals)) throw Error('SIGNAL_ENDPOINT_UNHEALTHY_AFTER_ROLLBACK');
+          console.log('BALL46_NOON_ROLLBACK_PASS',JSON.stringify({sha:process.env.ROLLBACK_SHA,engine:e.version,fullMarket:f.version,fixtures:b.fixtures.length,signals:s.signals.length}));
+          NODE
