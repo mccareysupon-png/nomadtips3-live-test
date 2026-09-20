@@ -1,0 +1,237 @@
+name: Deploy Ball46 Statistics Sidebar Parity V1 20260920
+
+on:
+  push:
+    branches: [work/ball46-statistics-workspace-v2-20260920]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-sidebar-parity-v1-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PATCH_CSS: statistics-workspace-v2.css
+  PATCH_JS: statistics-workspace-v2.js
+  PATCH_VER: 343-stat-sidebar-parity-v1-20260920a
+  EXPECT_ENGINE: nomad343-engine-v6.2-viewer-readonly-cron-referee-lock-v1
+  EXPECT_HUB: nomad343-5usd-hub-v6-viewer-cache-only
+  EXPECT_FULL_MARKET: nomad343-ball46-full-market-v6-server-prewarm-cache
+  API_CANONICAL_BRANCH: work/ball46-viewer-readonly-lock-v1-20260920
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preflight current Production and backend identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/before /tmp/patch
+          for page in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$page?stat-sidebar-before=$GITHUB_RUN_ID" -o "/tmp/prod/$page"
+            test -s "/tmp/prod/$page"
+          done
+          grep -Fq 'data-next-stat-markets' /tmp/prod/statistics.html
+          grep -Fq 'Results History' /tmp/prod/statistics.html
+
+          cp "nomad-live-343/$PATCH_CSS" "/tmp/patch/$PATCH_CSS"
+          cp "nomad-live-343/$PATCH_JS" "/tmp/patch/$PATCH_JS"
+          grep -Fq 'BALL46_STAT_WORKSPACE_V2' "/tmp/patch/$PATCH_CSS"
+          grep -Fq 'BALL46_STAT_WORKSPACE_V2' "/tmp/patch/$PATCH_JS"
+          grep -Fq 'grid-template-columns: 190px minmax(0, 1fr)' "/tmp/patch/$PATCH_CSS"
+          grep -Fq 'min-height: 34px' "/tmp/patch/$PATCH_CSS"
+          ! grep -Fq 'Statistics Center' "/tmp/patch/$PATCH_JS"
+          ! grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|/api/' "/tmp/patch/$PATCH_JS"
+
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?stat-sidebar-before=$GITHUB_RUN_ID" -o "/tmp/before/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const exp={engine:process.env.EXPECT_ENGINE,hub:process.env.EXPECT_HUB,'full-market':process.env.EXPECT_FULL_MARKET};
+          const out={};
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/before/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`PREFLIGHT_${n}_FAIL`);
+            out[n]={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+            if(out[n].version!==exp[n]) throw Error(`${n}_BASE_CHANGED:${out[n].version}`);
+          }
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify(out,null,2));
+          console.log('BACKEND_BEFORE',JSON.stringify(out));
+          NODE
+
+          scan_code=$(curl -sS -L --max-time 25 -o /tmp/before/engine-scan.json -w '%{http_code}' "$BALL46_URL/api/engine/scan?stat-sidebar-lock=$GITHUB_RUN_ID")
+          [ "$scan_code" = 403 ] || { echo "VIEWER_ENGINE_LOCK_MISSING:$scan_code"; exit 1; }
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/before/engine-scan.json
+          fm_code=$(curl -sS -L --max-time 25 -o /tmp/before/fixture-odds.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?stat-sidebar-lock=$GITHUB_RUN_ID")
+          [ "$fm_code" = 410 ] || { echo "VIEWER_FULLMARKET_LOCK_MISSING:$fm_code"; exit 1; }
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/before/fixture-odds.json
+          echo 'SIDEBAR_PREFLIGHT_PASS'
+
+      - name: Load exact current canonical deploy harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "$API_CANONICAL_BRANCH" --no-tags
+          git show FETCH_HEAD:workers/nomadtips3-343-preview/src/index.js > /tmp/canonical-index.js
+          git show FETCH_HEAD:workers/nomadtips3-343-preview/wrangler.ball46.jsonc > /tmp/canonical-wrangler.jsonc
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/canonical-index.js
+          cp /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cp /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          cmp -s /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cmp -s /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'CANONICAL_HARNESS_LOADED'
+
+      - name: Build staging from current Production bytes only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv nomad-live-343 /tmp/repo-assets
+          mkdir -p nomad-live-343 /tmp/names
+          find /tmp/repo-assets -maxdepth 1 -type f -printf '%f\n' > /tmp/names/workspace.txt
+          git ls-tree -r --name-only FETCH_HEAD nomad-live-343/ | sed 's#^nomad-live-343/##' | awk 'index($0,"/")==0' > /tmp/names/api-canonical.txt
+          cat /tmp/names/workspace.txt /tmp/names/api-canonical.txt | sort -u > /tmp/names/all.txt
+
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            [ "$name" = "$PATCH_CSS" ] && continue
+            [ "$name" = "$PATCH_JS" ] && continue
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.txt|*.xml|*.png|*.webp|*.jpg|*.jpeg|*.ico|*.woff|*.woff2) ;; *) continue ;; esac
+            tmp="/tmp/prod-file-${name//\//_}"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$name?stat-sidebar-mirror=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then cp "$tmp" "nomad-live-343/$name"; fi
+          done < /tmp/names/all.txt
+
+          cp /tmp/prod/index.html nomad-live-343/index.html
+          cp /tmp/prod/signal.html nomad-live-343/signal.html
+          cp /tmp/prod/statistics.html nomad-live-343/statistics.html
+
+          for f in signal-next.js statistics-next.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js full-odds-main-343.js live-summary-full-odds-343.js dashboard-v2-stage3.js; do
+            tmp="/tmp/protected-$f"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$f?stat-sidebar-protected=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then cp "$tmp" "nomad-live-343/$f"; fi
+          done
+
+          test -s nomad-live-343/index.html
+          test -s nomad-live-343/signal.html
+          test -s nomad-live-343/statistics.html
+          count=$(find nomad-live-343 -maxdepth 1 -type f | wc -l)
+          echo "PRODUCTION_STAGING_FILES=$count"
+          [ "$count" -ge 100 ] || { echo STAGING_ASSET_COUNT_TOO_LOW; exit 1; }
+          cp -a nomad-live-343 /tmp/sidebar-before
+
+      - name: Apply Page3 sidebar parity overlay only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "/tmp/patch/$PATCH_CSS" "nomad-live-343/$PATCH_CSS"
+          cp "/tmp/patch/$PATCH_JS" "nomad-live-343/$PATCH_JS"
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, os
+          p=Path('nomad-live-343/statistics.html')
+          s=p.read_text()
+          css=os.environ['PATCH_CSS']; js=os.environ['PATCH_JS']; ver=os.environ['PATCH_VER']
+          s=re.sub(r'\s*<link[^>]+href=["\'][^"\']*statistics-workspace-v2\.css[^"\']*["\'][^>]*>','',s,flags=re.I)
+          s=re.sub(r'\s*<script[^>]+src=["\'][^"\']*statistics-workspace-v2\.js[^"\']*["\'][^>]*>\s*</script>','',s,flags=re.I)
+          if '</head>' not in s.lower() or '</body>' not in s.lower(): raise SystemExit('STATISTICS_HTML_STRUCTURE_INVALID')
+          s=re.sub(r'</head>',f'\n<link rel="stylesheet" href="{css}?v={ver}" data-ball46-phase="statistics-sidebar-parity-v1">\n</head>',s,count=1,flags=re.I)
+          s=re.sub(r'</body>',f'\n<script src="{js}?v={ver}" defer data-ball46-phase="statistics-sidebar-parity-v1"></script>\n</body>',s,count=1,flags=re.I)
+          p.write_text(s)
+          PY
+          grep -Fq "$PATCH_CSS?v=$PATCH_VER" nomad-live-343/statistics.html
+          grep -Fq "$PATCH_JS?v=$PATCH_VER" nomad-live-343/statistics.html
+
+      - name: Scope guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          diff -qr /tmp/sidebar-before nomad-live-343 > /tmp/sidebar.diff || true
+          cat /tmp/sidebar.diff
+          [ -s /tmp/sidebar.diff ]
+          if grep -Ev 'statistics\.html|statistics-workspace-v2\.css|statistics-workspace-v2\.js' /tmp/sidebar.diff | grep -q .; then echo 'UNEXPECTED_SIDEBAR_DIFF'; exit 1; fi
+          cmp -s /tmp/prod/index.html nomad-live-343/index.html || { echo PAGE1_HTML_CHANGED; exit 1; }
+          cmp -s /tmp/prod/signal.html nomad-live-343/signal.html || { echo PAGE2_HTML_CHANGED; exit 1; }
+          echo 'SIDEBAR_SCOPE_GUARD_PASS'
+
+      - name: Guard protected runtime byte-for-byte
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in signal-next.js statistics-next.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js full-odds-main-343.js live-summary-full-odds-343.js dashboard-v2-stage3.js; do
+            [ -f "nomad-live-343/$f" ] || continue
+            tmp="/tmp/runtime-check-$f"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/$f?stat-sidebar-guard=$GITHUB_RUN_ID" -o "$tmp"
+            cmp -s "$tmp" "nomad-live-343/$f" || { echo "PROTECTED_RUNTIME_DIFF:$f"; exit 1; }
+          done
+          cmp -s /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cmp -s /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'SIDEBAR_RUNTIME_GUARD_PASS'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Syntax and dry-run
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check "nomad-live-343/$PATCH_JS"
+          node --check workers/nomadtips3-343-preview/src/index.js
+          ! grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|/api/' "nomad-live-343/$PATCH_JS"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Deploy sidebar parity only
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Verify UI and all backend invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/after
+          for n in $(seq 1 15); do
+            if curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?stat-sidebar-after=$GITHUB_RUN_ID-$n" -o /tmp/after/statistics.html && grep -Fq "$PATCH_CSS?v=$PATCH_VER" /tmp/after/statistics.html && grep -Fq "$PATCH_JS?v=$PATCH_VER" /tmp/after/statistics.html; then break; fi
+            sleep 2
+          done
+          grep -Fq "$PATCH_CSS?v=$PATCH_VER" /tmp/after/statistics.html
+          grep -Fq "$PATCH_JS?v=$PATCH_VER" /tmp/after/statistics.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/$PATCH_CSS?v=$PATCH_VER" -o /tmp/after/$PATCH_CSS
+          curl -fsS -L --max-time 25 "$BALL46_URL/$PATCH_JS?v=$PATCH_VER" -o /tmp/after/$PATCH_JS
+          grep -Fq 'grid-template-columns: 190px minmax(0, 1fr)' /tmp/after/$PATCH_CSS
+          grep -Fq 'min-height: 34px' /tmp/after/$PATCH_CSS
+          ! grep -Fq 'Statistics Center' /tmp/after/$PATCH_JS
+
+          curl -fsS -L --max-time 25 "$BALL46_URL/index.html?stat-sidebar-page1=$GITHUB_RUN_ID" -o /tmp/after/index.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?stat-sidebar-page2=$GITHUB_RUN_ID" -o /tmp/after/signal.html
+          cmp -s /tmp/prod/index.html /tmp/after/index.html || { echo PAGE1_POSTDEPLOY_CHANGED; exit 1; }
+          cmp -s /tmp/prod/signal.html /tmp/after/signal.html || { echo PAGE2_POSTDEPLOY_CHANGED; exit 1; }
+
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?stat-sidebar-after=$GITHUB_RUN_ID" -o "/tmp/after/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs'); const before=JSON.parse(fs.readFileSync('/tmp/backend-before.json','utf8'));
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/after/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`POST_${n}_FAIL`);
+            for(const k of ['version','component','staleCachePolicy']){
+              const now=String(j[k]||''); if(now!==before[n][k]) throw Error(`${n}_${k}_CHANGED`);
+            }
+          }
+          NODE
+
+          scan_code=$(curl -sS -L --max-time 25 -o /tmp/after/engine-scan.json -w '%{http_code}' "$BALL46_URL/api/engine/scan?stat-sidebar-lock-after=$GITHUB_RUN_ID")
+          [ "$scan_code" = 403 ] && grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/after/engine-scan.json
+          fm_code=$(curl -sS -L --max-time 25 -o /tmp/after/fixture-odds.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?stat-sidebar-lock-after=$GITHUB_RUN_ID")
+          [ "$fm_code" = 410 ] && grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/after/fixture-odds.json
+          echo 'BALL46_STAT_SIDEBAR_PARITY_V1_PASS'
