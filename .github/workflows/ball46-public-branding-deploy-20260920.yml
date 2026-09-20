@@ -1,0 +1,176 @@
+name: Ball46 Public Branding Deploy 20260920
+
+on:
+  push:
+    branches: [work/ball46-master-shell-page2-20260920]
+    paths:
+      - '.github/workflows/ball46-public-branding-deploy-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://ball46.com
+  APPROVED_BASE: 1235da8fadc7978c84054d27ba1d8fb49972fe45
+
+jobs:
+  deploy-public-branding:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Ball46 branding branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard exact branding-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$APPROVED_BASE^{commit}"
+          mapfile -t APP_CHANGED < <(git diff --name-only "$APPROVED_BASE"..HEAD | grep -v '^\.github/workflows/ball46-public-branding-deploy-20260920\.yml$' || true)
+          printf 'Branding application files changed from approved rollback base:\n%s\n' "${APP_CHANGED[*]:-<none>}"
+          test "${#APP_CHANGED[@]}" -eq 10
+          for p in \
+            add-k-ah/index.html \
+            nomad-live-343/api-monitor.html \
+            nomad-live-343/dashboard-v2.html \
+            nomad-live-343/index.html \
+            nomad-live-343/public-labels-343.js \
+            nomad-live-343/settings.html \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics-next.html \
+            nomad-live-343/statistics.html; do
+            printf '%s\n' "${APP_CHANGED[@]}" | grep -Fxq "$p" || { echo "MISSING APPROVED BRANDING FILE: $p"; exit 1; }
+          done
+          git diff --check "$APPROVED_BASE"..HEAD -- \
+            add-k-ah/index.html \
+            nomad-live-343/api-monitor.html \
+            nomad-live-343/dashboard-v2.html \
+            nomad-live-343/index.html \
+            nomad-live-343/public-labels-343.js \
+            nomad-live-343/settings.html \
+            nomad-live-343/signal-next.html \
+            nomad-live-343/signal.html \
+            nomad-live-343/statistics-next.html \
+            nomad-live-343/statistics.html
+          echo 'PASS: exact branding-only delta.'
+
+      - name: Guard backend Odds API Engine and runtimes untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git diff --name-only "$APPROVED_BASE"..HEAD -- workers/ || true)" || { echo 'FORBIDDEN: workers/ changed'; exit 1; }
+          for p in \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/odds-format-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/statistics.js \
+            nomad-live-343/statistics-next.js \
+            nomad-live-343/v2-shared.js; do
+            git diff --quiet "$APPROVED_BASE"..HEAD -- "$p" || { echo "FORBIDDEN RUNTIME CHANGE: $p"; exit 1; }
+          done
+          JS_CHANGED="$(git diff --name-only "$APPROVED_BASE"..HEAD -- 'nomad-live-343/*.js' | grep -v '^nomad-live-343/public-labels-343\.js$' || true)"
+          test -z "$JS_CHANGED" || { echo "FORBIDDEN JS CHANGE(S): $JS_CHANGED"; exit 1; }
+          echo 'PASS: backend, Odds, API, Engine and existing runtimes unchanged.'
+
+      - name: Validate presentation alias layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/public-labels-343.js
+          grep -Fq 'ANALYSIS ENGINE 01' nomad-live-343/public-labels-343.js
+          grep -Fq 'ANALYSIS ENGINE 02' nomad-live-343/public-labels-343.js
+          grep -Fq 'DUAL ANALYSIS' nomad-live-343/public-labels-343.js
+          grep -Fq 'BALL46 · LIVE MATCH CENTER' nomad-live-343/index.html
+          grep -Fq 'BALL46 · LIVE SIGNAL CENTER' nomad-live-343/signal.html
+          grep -Fq 'BALL46 · PERFORMANCE CENTER' nomad-live-343/statistics.html
+          grep -Fq 'ANALYSIS ENGINE PERFORMANCE' nomad-live-343/statistics.html
+          grep -Fq 'public-labels-343.js' nomad-live-343/signal.html
+          grep -Fq 'public-labels-343.js' nomad-live-343/statistics.html
+          ! grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|/api/' nomad-live-343/public-labels-343.js
+          echo 'PASS: public label alias is presentation-only.'
+
+      - name: Preflight Ball46 backend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?prebrand=$GITHUB_RUN_ID" -o /tmp/engine-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?prebrand=$GITHUB_RUN_ID" -o /tmp/hub-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?prebrand=$GITHUB_RUN_ID" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const p of ['/tmp/engine-before.json','/tmp/hub-before.json','/tmp/full-before.json']){
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            if(j?.ok!==true) throw Error('PREFLIGHT_FAIL '+p+' '+JSON.stringify(j));
+            console.log('PREFLIGHT_PASS',p,j.version||j.component||'ok');
+          }
+          NODE
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 current tree
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 branding UI wrapper only
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify branding live and backend invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            q="brand=${GITHUB_RUN_ID}-${n}"
+            curl -fsS --max-time 30 "$BALL46_URL/index.html?$q" -o /tmp/index.html || true
+            curl -fsS --max-time 30 "$BALL46_URL/signal.html?$q" -o /tmp/signal.html || true
+            curl -fsS --max-time 30 "$BALL46_URL/statistics.html?$q" -o /tmp/statistics.html || true
+            curl -fsS --max-time 30 "$BALL46_URL/public-labels-343.js?$q" -o /tmp/labels.js || true
+            if grep -Fq 'BALL46 · LIVE MATCH CENTER' /tmp/index.html 2>/dev/null && \
+               grep -Fq 'BALL46 · LIVE SIGNAL CENTER' /tmp/signal.html 2>/dev/null && \
+               grep -Fq 'BALL46 · PERFORMANCE CENTER' /tmp/statistics.html 2>/dev/null && \
+               grep -Fq 'ANALYSIS ENGINE 01' /tmp/labels.js 2>/dev/null; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" -eq 1 || { echo 'BRANDING_NOT_VISIBLE_AFTER_DEPLOY'; exit 1; }
+          grep -Fq 'ANALYSIS ENGINE PERFORMANCE' /tmp/statistics.html
+          ! grep -Fq 'NOMAD LIVE 3.43' /tmp/index.html
+          ! grep -Fq 'NOMAD LIVE 3.43' /tmp/signal.html
+          ! grep -Fq 'NOMAD LIVE 3.43' /tmp/statistics.html
+          node --check /tmp/labels.js
+
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?postbrand=$GITHUB_RUN_ID" -o /tmp/engine-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?postbrand=$GITHUB_RUN_ID" -o /tmp/hub-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?postbrand=$GITHUB_RUN_ID" -o /tmp/full-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?postbrand=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const p of ['/tmp/engine-after.json','/tmp/hub-after.json','/tmp/full-after.json']){
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            if(j?.ok!==true) throw Error('POST_DEPLOY_BACKEND_FAIL '+p+' '+JSON.stringify(j));
+            console.log('POST_DEPLOY_PASS',p,j.version||j.component||'ok');
+          }
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          if(board?.ok!==true || !Array.isArray(board?.fixtures)) throw Error('BOARD_FAIL '+JSON.stringify(board));
+          console.log('BOARD_PASS fixtures=',board.fixtures.length);
+          NODE
+          echo 'PASS: Ball46 public branding is live and backend invariants remain healthy.'
