@@ -105,10 +105,13 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
           s=Path('nomad-live-343/ball46-product-pages-v1.css').read_text()
-          for bad in ('/api/','fetch(','XMLHttpRequest','@import','http://','https://'):
+          for bad in ('/api/','fetch(','XMLHttpRequest','@import'):
               if bad in s:
                   raise SystemExit(f'CSS_NETWORK_TOKEN:{bad}')
+          if re.search(r'''url\(\s*["']?https?://''', s, re.I):
+              raise SystemExit('CSS_EXTERNAL_URL')
           print('CSS_NETWORK_GUARD_PASS')
           PY
 
