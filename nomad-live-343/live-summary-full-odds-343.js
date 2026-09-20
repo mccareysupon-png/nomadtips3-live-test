@@ -1,10 +1,10 @@
 (()=>{
 'use strict';
-// BALL46_VIEWER_ZERO_NETWORK_FULL_MARKET_V7
+// BALL46_VIEWER_ZERO_NETWORK_FULL_MARKET_V8
 // Central Full-Market cache feeds the existing default and expanded odds slots only.
 // No extra card/panel/monitor is created here and no viewer action can call 5USD.
-const VERSION='343-live-summary-existing-odds-slots-v7';
-const SIDECAR_SRC='full-market-sidecar-343.js?v=343-full-market-bridge-v4-existing-slots';
+const VERSION='343-live-summary-existing-odds-slots-v8';
+const SIDECAR_SRC='full-market-sidecar-343.js?v=343-full-market-bridge-v5-dynamic-api-data';
 const idOf=f=>String(f?.fixtureId??f?.id??'').trim();
 const defer=fn=>typeof queueMicrotask==='function'?queueMicrotask(fn):Promise.resolve().then(fn);
 function renderExpanded(expanded,fixture){
@@ -13,7 +13,7 @@ function renderExpanded(expanded,fixture){
     if(!expanded?.isConnected)return;
     const id=idOf(fixture);
     const cached=window.NOMAD343_FULL_MARKET_SIDECAR?.getEntry?.(id);
-    const rich=cached?.fullOdds?{...fixture,fullOdds:cached.fullOdds,providerOddsUpdatedAt:cached.fetchedAt??fixture?.providerOddsUpdatedAt}:fixture;
+    const rich=cached?.fullOdds?{...fixture,providerOdds:cached.fullOdds,fullOdds:cached.fullOdds,providerOddsUpdatedAt:cached.fetchedAt??fixture?.providerOddsUpdatedAt}:fixture;
     const renderer=window.NOMAD343_FULL_MARKET_BOOKMAKER;
     if(!renderer?.update)return;
     expanded._nomadRichFixture=rich;
@@ -28,9 +28,9 @@ function onFixtureReady(e){
 }
 function loadSidecar(){
   const current=document.querySelector('script[data-ball46-full-market-sidecar]');
-  if(window.NOMAD343_FULL_MARKET_SIDECAR?.version==='343-full-market-bridge-v4-existing-slots')return;
+  if(window.NOMAD343_FULL_MARKET_SIDECAR?.version==='343-full-market-bridge-v5-dynamic-api-data')return;
   if(current)current.remove();
-  const s=document.createElement('script');s.src=SIDECAR_SRC;s.defer=true;s.dataset.ball46FullMarketSidecar='v4';document.head.appendChild(s);
+  const s=document.createElement('script');s.src=SIDECAR_SRC;s.defer=true;s.dataset.ball46FullMarketSidecar='v5';document.head.appendChild(s);
 }
 function start(){
   document.querySelectorAll('.b46-fm-sidecar').forEach(el=>el.remove());
