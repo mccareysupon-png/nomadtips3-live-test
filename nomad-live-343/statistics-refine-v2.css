@@ -1,6 +1,15 @@
 /* Ball46 Statistics refinement v2 — presentation only.
    Thin crisp chart strokes + compact ADD K performance card grouped with market cards. */
 
+/* Prevent ADD K from flashing in its legacy position before statistics-refine-v2.js
+   moves it into the market cluster. Once clustered, reveal it immediately. */
+.ceo-performance-shell{
+  display:none!important;
+}
+.market-performance-cluster-v2 > .ceo-performance-shell{
+  display:block!important;
+}
+
 /* Every Statistics unit chart: thinnest practical crisp line. */
 .b46-unit-performance-v1 .unit-main-line,
 .b46-unit-performance-v1 .unit-spark-line{
