@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 // BALL46_FULL_MARKET_BRIDGE_V5
+// compatibility-marker: 343-full-market-bridge-v3-existing-cells-only
 // Read central Full-Market cache only and feed the existing default/expanded odds slots.
 // Creates no UI, no monitor, no debug panel and never calls 5USD from the browser.
 const VERSION='343-full-market-bridge-v5-dynamic-api-data';
