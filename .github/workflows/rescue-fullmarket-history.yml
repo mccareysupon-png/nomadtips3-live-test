@@ -1,0 +1,39 @@
+name: Rescue Full Market History
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-fullmarket-history.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+          fetch-depth: 1
+      - name: List Full Market versions and active deployment
+        working-directory: workers/nomadtips3-full-market-343-ball46
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== FULL MARKET DEPLOYMENTS ==='
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.toml --json | tee /tmp/fm-deployments.json
+          echo '=== FULL MARKET VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --config wrangler.toml --json | tee /tmp/fm-versions.json
+          echo '=== RELEVANT WINDOW ==='
+          node - <<'NODE'
+          const fs=require('fs');
+          const x=JSON.parse(fs.readFileSync('/tmp/fm-versions.json','utf8'));
+          const a=Array.isArray(x)?x:(x.versions||[]);
+          for(const v of a){
+            const t=v?.metadata?.created_on||v?.created_on||v?.created_at||'';
+            if(t >= '2026-09-18T00:00:00Z') console.log(JSON.stringify(v));
+          }
+          NODE
