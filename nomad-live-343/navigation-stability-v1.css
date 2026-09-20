@@ -1,0 +1,12 @@
+/* Ball46 Navigation Stability V1 — presentation only.
+   Prevent viewport-width shifts and hide Page 2 raw layout until its workspace is assembled. */
+@media (min-width:821px){
+  html{
+    overflow-y:scroll;
+    scrollbar-gutter:stable;
+  }
+}
+
+html.b46-page2-prep body.ball46-product-signals .next-shell{
+  visibility:hidden!important;
+}
