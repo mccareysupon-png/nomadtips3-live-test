@@ -1,0 +1,210 @@
+name: Deploy Ball46 Statistics Units V1 20260920
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy or rollback Statistics unit performance overlay
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-units-v1-20260920.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-statistics-units-v1-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-statistics-units:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout isolated Statistics source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror production and lock protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in statistics-units-v1.js|statistics-units-v1.css) continue ;; esac
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?stat-units-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html v2-header.css signal-next.js statistics-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css'
+          for f in $protected; do
+            sha256sum "/tmp/prod/${f//\//_}" | awk '{print $1}' > "/tmp/${f//\//_}.sha"
+          done
+
+          cp /tmp/prod/statistics.html /tmp/statistics.original.html
+          cp /tmp/prod/statistics-next.js /tmp/statistics-next.original.js
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?stat-units-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?stat-units-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Validate isolated unit module
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/statistics-units-v1.js
+          test -s nomad-live-343/statistics-units-v1.css
+          node --check nomad-live-343/statistics-units-v1.js
+          ! grep -Fq 'fetch(' nomad-live-343/statistics-units-v1.js
+          ! grep -Fq '/api/' nomad-live-343/statistics-units-v1.js
+          grep -Fq "if(x==='WIN') return o!==null&&o>1?o-1:null;" nomad-live-343/statistics-units-v1.js
+          grep -Fq "if(x==='HALF_WIN') return o!==null&&o>1?(o-1)/2:null;" nomad-live-343/statistics-units-v1.js
+          grep -Fq "if(x==='LOSS') return -1;" nomad-live-343/statistics-units-v1.js
+          grep -Fq "if(x==='HALF_LOSS') return -.5;" nomad-live-343/statistics-units-v1.js
+          grep -Fq "if(x==='PUSH') return 0;" nomad-live-343/statistics-units-v1.js
+          grep -Fq 'maxDrawdown' nomad-live-343/statistics-units-v1.js
+          grep -Fq 'Last 10' nomad-live-343/statistics-units-v1.js
+          grep -Fq 'unit-zero-line' nomad-live-343/statistics-units-v1.css
+          grep -Fq 'html[data-theme="dark"]' nomad-live-343/statistics-units-v1.css
+
+      - name: Apply Statistics presentation hook only
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,re
+          mode=os.environ.get('MODE','deploy')
+          html=Path('nomad-live-343/statistics.html')
+          js=Path('nomad-live-343/statistics-next.js')
+          h=html.read_text()
+          s=js.read_text()
+          css_tag='<link rel="stylesheet" href="statistics-units-v1.css?v=343-stat-units-v1-20260920a">'
+          unit_script='<script src="statistics-units-v1.js?v=343-stat-units-v1-20260920a" defer></script>'
+          hook="try{window.dispatchEvent(new CustomEvent('ball46:statistics',{detail:sj}))}catch(_){}"
+          # Always normalize any earlier attempt first.
+          h=re.sub(r'\s*<link[^>]+statistics-units-v1\.css[^>]*>','',h,flags=re.I)
+          h=re.sub(r'\s*<script[^>]+statistics-units-v1\.js[^>]*></script>','',h,flags=re.I)
+          h=re.sub(r'statistics-next\.js\?v=[^"\']+','statistics-next.js?v=343-stat-market-ceo-v1',h,flags=re.I)
+          s=s.replace(hook,'')
+          if mode=='deploy':
+              if '</head>' not in h: raise SystemExit('HEAD_ANCHOR_MISSING')
+              h=h.replace('</head>',css_tag+'\n</head>',1)
+              marker='<script src="statistics-next.js?v=343-stat-market-ceo-v1" defer></script>'
+              if marker not in h: raise SystemExit('STAT_SCRIPT_MARKER_MISSING')
+              h=h.replace(marker,unit_script+'<script src="statistics-next.js?v=343-stat-units-v1-20260920a" defer></script>',1)
+              target='renderStats(sj);'
+              if s.count(target)!=1: raise SystemExit('RENDER_STATS_TARGET_COUNT:'+str(s.count(target)))
+              s=s.replace(target,target+hook,1)
+          elif mode=='rollback':
+              pass
+          else:
+              raise SystemExit('UNKNOWN_MODE:'+mode)
+          html.write_text(h)
+          js.write_text(s)
+          PY
+
+          # Exact-scope validation: only Statistics HTML + additive Statistics event hook may differ.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,os
+          mode=os.environ.get('MODE','deploy')
+          prod=Path('/tmp/statistics.original.html').read_text()
+          now=Path('nomad-live-343/statistics.html').read_text()
+          def norm_html(s):
+              s=re.sub(r'\s*<link[^>]+statistics-units-v1\.css[^>]*>','',s,flags=re.I)
+              s=re.sub(r'\s*<script[^>]+statistics-units-v1\.js[^>]*></script>','',s,flags=re.I)
+              s=re.sub(r'statistics-next\.js\?v=[^"\']+','statistics-next.js?v=343-stat-market-ceo-v1',s,flags=re.I)
+              s=re.sub(r'>\s+<','><',s).strip()
+              return s
+          if norm_html(now)!=norm_html(prod): raise SystemExit('NON_STAT_PRESENTATION_HTML_CHANGED')
+          hook="try{window.dispatchEvent(new CustomEvent('ball46:statistics',{detail:sj}))}catch(_){}"
+          old=Path('/tmp/statistics-next.original.js').read_text().replace(hook,'')
+          cur=Path('nomad-live-343/statistics-next.js').read_text().replace(hook,'')
+          if cur!=old: raise SystemExit('STATISTICS_RENDERER_CHANGED_OUTSIDE_HOOK')
+          if mode=='deploy' and hook not in Path('nomad-live-343/statistics-next.js').read_text(): raise SystemExit('STATISTICS_EVENT_HOOK_MISSING')
+          PY
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css'
+          for f in $protected; do
+            cmp -s "/tmp/prod/${f//\//_}" "nomad-live-343/$f" || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Statistics units and protected systems
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          for p in statistics.html statistics-next.js statistics-units-v1.js statistics-units-v1.css; do
+            curl -fsS -L --max-time 25 "$BALL46_URL/$p?stat-units=${GITHUB_RUN_ID}" -o "/tmp/${p//\//_}.after"
+          done
+          if [ "$MODE" = deploy ]; then
+            grep -Fq 'statistics-units-v1.css?v=343-stat-units-v1-20260920a' /tmp/statistics.html.after
+            grep -Fq 'statistics-units-v1.js?v=343-stat-units-v1-20260920a' /tmp/statistics.html.after
+            grep -Fq 'statistics-next.js?v=343-stat-units-v1-20260920a' /tmp/statistics.html.after
+            grep -Fq "ball46:statistics" /tmp/statistics-next.js.after
+            grep -Fq 'Overall Cumulative Net Units' /tmp/statistics-units-v1.js.after
+            grep -Fq 'unit-zero-line' /tmp/statistics-units-v1.css.after
+          else
+            ! grep -Fq 'statistics-units-v1.css' /tmp/statistics.html.after
+            ! grep -Fq 'statistics-units-v1.js' /tmp/statistics.html.after
+            ! grep -Fq "ball46:statistics" /tmp/statistics-next.js.after
+          fi
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css'
+          for f in $protected; do
+            safe="${f//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?stat-units=${GITHUB_RUN_ID}-protected" -o "/tmp/$safe.after"
+            test "$(sha256sum "/tmp/$safe.after" | awk '{print $1}')" = "$(cat "/tmp/$safe.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?stat-units=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?stat-units=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BALL46_STATISTICS_UNITS_V1_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
