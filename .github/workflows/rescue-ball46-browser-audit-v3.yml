@@ -1,0 +1,57 @@
+name: Rescue Ball46 Browser Audit V3
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-ball46-browser-audit-v3.yml']
+permissions:
+  contents: read
+jobs:
+  browser-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render all pages in Chrome and verify visible systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)
+          test -n "$CHROME"
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          CHROME_PATH="$CHROME" node - <<'NODE'
+          const p=require('puppeteer-core');
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            const browser=await p.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const out=[];
+            for(const file of ['index.html','signal.html','statistics.html']){
+              const page=await browser.newPage();
+              await page.setViewport({width:1440,height:1000,deviceScaleFactor:1});
+              const errors=[]; const failed=[];
+              page.on('pageerror',e=>errors.push(String(e.message||e)));
+              page.on('requestfailed',r=>failed.push(r.url()+' :: '+(r.failure()?.errorText||'')));
+              await page.goto('https://ball46.com/'+file+'?auditBrowser3='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});
+              await sleep(file==='index.html'?10000:5000);
+              const m=await page.evaluate(()=>{
+                const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}};
+                const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>1&&r.height>1&&s.display!=='none'&&s.visibility!=='hidden'};
+                const headers=[...document.querySelectorAll('header,.topbar,[class*="header"],[class*="topbar"]')].filter(e=>e.getBoundingClientRect().width>300&&visible(e));
+                const header=headers[0]||null;
+                const charts=[...document.querySelectorAll('canvas,svg,[class*="chart"],[id*="chart"]')].filter(e=>{const r=e.getBoundingClientRect();return visible(e)&&r.width>40&&r.height>30});
+                const text=document.body.innerText||'';
+                const books=['Bet 365','Bet365','Pinnacle','William Hill','Ladbrokes','Vcbet','1xBet','Bwin','Easybets','Interwetten','Betfair','SNAI','Macauslot','Betsson','Bet-at-home','18Bet','10BET','12bet','Coral','Crown'].filter(n=>text.toLowerCase().includes(n.toLowerCase()));
+                const oddsLike=[...document.querySelectorAll('*')].filter(e=>visible(e)&&/\b(1\.\d{2}|2\.\d{2}|3\.\d{2})\b/.test((e.textContent||'').trim())&&(e.children.length<5)).length;
+                return {bodyW:document.body.scrollWidth,viewportW:window.innerWidth,header:rect(header),charts:charts.length,books:[...new Set(books)],oddsLike,textLength:text.length,title:document.title};
+              });
+              out.push({file,...m,pageErrors:errors.slice(0,12),requestFailures:failed.filter(x=>!x.includes('favicon')).slice(0,12)});
+              await page.close();
+            }
+            await browser.close();
+            console.log('BROWSER_AUDIT_V3',JSON.stringify(out));
+            for(const x of out){if(x.bodyW>x.viewportW+20) throw Error('HORIZONTAL_OVERFLOW:'+x.file+':'+x.bodyW+'/'+x.viewportW);}
+            const hs=out.map(x=>x.header?.h).filter(Number.isFinite); if(hs.length!==3) throw Error('HEADER_NOT_FOUND_ALL:'+JSON.stringify(hs)); if(Math.max(...hs)-Math.min(...hs)>10) throw Error('HEADER_HEIGHT_MISMATCH:'+hs.join(','));
+            const stat=out.find(x=>x.file==='statistics.html'); if(!stat||stat.charts<1) throw Error('PAGE3_CHART_RENDER_MISSING');
+            const idx=out.find(x=>x.file==='index.html'); if(!idx) throw Error('INDEX_MISSING'); if(idx.oddsLike<1) throw Error('INDEX_NO_ODDS_LIKE_VALUES');
+            console.log('BROWSER_VISUAL_PASS',JSON.stringify({headerHeights:hs,page3Charts:stat.charts,indexBooks:idx.books,indexOddsLike:idx.oddsLike}));
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
