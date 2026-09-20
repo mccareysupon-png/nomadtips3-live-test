@@ -1,0 +1,38 @@
+name: Audit Ball46 HUB Quota 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-fullmarket-sidecar-producer-v1-20260920
+    paths:
+      - '.github/workflows/audit-ball46-hub-quota-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read HUB health and snapshot only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?audit=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/snapshot?audit=${GITHUB_RUN_ID}" -o /tmp/snapshot.json
+          node - <<'NODE'
+          const fs=require('fs'),h=require('/tmp/health.json'),s=require('/tmp/snapshot.json');
+          const report={at:new Date().toISOString(),health:h,snapshot:{ok:s.ok,version:s.version,cacheOnly:s.cacheOnly,viewerRefreshEnabled:s.viewerRefreshEnabled,externalRequestsAdded:s.externalRequestsAdded,fetchedAt:s.fetchedAt,ageMs:s.ageMs,fixtureCount:s.fixtureCount,counts:s.counts,providerRequestCount:s.providerRequestCount,providerRequestBudget:s.providerRequestBudget,todayRequests:s.todayRequests,liveRequests:s.liveRequests,guardHit:s.guardHit,refreshKind:s.refreshKind,control:s.control,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,lastError:s.lastError,lastRateLimitAt:s.lastRateLimitAt,retryAfterSec:s.retryAfterSec}};
+          fs.writeFileSync('ball46-hub-quota-audit.json',JSON.stringify(report,null,2));
+          console.log(JSON.stringify(report));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-hub-quota-audit
+          path: ball46-hub-quota-audit.json
+          retention-days: 1
