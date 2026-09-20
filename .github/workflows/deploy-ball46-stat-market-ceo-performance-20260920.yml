@@ -1,4 +1,4 @@
-name: Deploy Ball46 Market + CEO Statistics 20260920
+name: Deploy Ball46 CEO Statistics + Page50 20260920
 
 on:
   push:
@@ -51,10 +51,10 @@ jobs:
           if(e.version!=='nomad343-engine-v6-ceo-auto-v1') throw Error(`UNEXPECTED_ENGINE:${e.version}`);
           fs.writeFileSync('/tmp/engine-version',String(e.version||''));
           fs.writeFileSync('/tmp/full-version',String(f.version||''));
-          console.log('STAT_CEO_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          console.log('STAT_PAGE50_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
           NODE
 
-      - name: Apply Statistics presentation patch
+      - name: Apply Statistics CEO + Page50 presentation patch
         shell: bash
         run: |
           set -euo pipefail
@@ -62,12 +62,17 @@ jobs:
           node --check nomad-live-343/statistics-next.js
           grep -Fq 'CEO · ADD K PERFORMANCE' nomad-live-343/statistics.html
           grep -Fq 'function renderCEO' nomad-live-343/statistics-next.js
+          grep -Fq 'const HISTORY_PAGE_SIZE=50;' nomad-live-343/statistics-next.js
+          grep -Fq 'function renderHistoryPagination' nomad-live-343/statistics-next.js
+          grep -Fq 'historyPageTokens' nomad-live-343/statistics-next.js
           grep -Fq 'market-performance-card' nomad-live-343/statistics-performance.css
-          grep -Fq 'statistics-performance.css?v=343-stat-market-ceo-v1' nomad-live-343/statistics.html
+          grep -Fq '.history-pagination' nomad-live-343/statistics-performance.css
+          grep -Fq 'statistics-performance.css?v=343-stat-market-ceo-page50-v2' nomad-live-343/statistics.html
+          grep -Fq 'statistics-next.js?v=343-stat-market-ceo-page50-v2' nomad-live-343/statistics.html
           test "$(grep -o 'fetch(' nomad-live-343/statistics-next.js | wc -l)" = "$(cat /tmp/fetch-count)"
           ! grep -Fq '/api/full-market' nomad-live-343/statistics-next.js
           ! grep -Fq 'fixture-odds' nomad-live-343/statistics-next.js
-          echo STAT_CEO_PRESENTATION_GUARD_PASS
+          echo STAT_CEO_PAGE50_PRESENTATION_GUARD_PASS
 
       - name: Commit Statistics UI source only
         shell: bash
@@ -84,7 +89,7 @@ jobs:
               *) echo "UNEXPECTED_FILE:$f"; exit 1;;
             esac
           done
-          git commit -m 'feat(ball46): show WLP market performance and CEO statistics' || true
+          git commit -m 'feat(ball46): restore CEO stats and paginate history at 50 rows' || true
           git push origin HEAD:${SOURCE_BRANCH}
 
       - name: Deploy Ball46 wrapper assets only
@@ -98,26 +103,28 @@ jobs:
           set -euo pipefail
           ok=0
           for n in $(seq 1 20); do
-            curl -fsS -L --max-time 30 "$BALL46_URL/statistics.html?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.html || true
-            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-next.js?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.js || true
-            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-performance.css?stat-ceo=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.css || true
-            if grep -Fq 'CEO · ADD K PERFORMANCE' /tmp/stat-after.html && grep -Fq 'function renderCEO' /tmp/stat-after.js && grep -Fq '.market-performance-card' /tmp/stat-after.css; then ok=1; break; fi
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics.html?stat-page50=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.html || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-next.js?stat-page50=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.js || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/statistics-performance.css?stat-page50=${GITHUB_RUN_ID}-${n}" -o /tmp/stat-after.css || true
+            if grep -Fq 'CEO · ADD K PERFORMANCE' /tmp/stat-after.html && grep -Fq 'const HISTORY_PAGE_SIZE=50;' /tmp/stat-after.js && grep -Fq 'function renderHistoryPagination' /tmp/stat-after.js && grep -Fq '.history-pagination' /tmp/stat-after.css; then ok=1; break; fi
             sleep 2
           done
           [ "$ok" = 1 ]
           node --check /tmp/stat-after.js
+          grep -Fq 'statistics-performance.css?v=343-stat-market-ceo-page50-v2' /tmp/stat-after.html
+          grep -Fq 'statistics-next.js?v=343-stat-market-ceo-page50-v2' /tmp/stat-after.html
           test "$(grep -o 'fetch(' /tmp/stat-after.js | wc -l)" = "$(cat /tmp/fetch-count)"
-          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-bookmaker-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.js
-          curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/bulk-after.js
-          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/live-summary-after.js
-          curl -fsS -L --max-time 30 "$BALL46_URL/signal-next.js?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/signal-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-bookmaker-343.js?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/fm-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/bulk-odds-compat-343.js?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/bulk-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/live-summary-after.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/signal-next.js?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/signal-after.js
           test "$(sha256sum /tmp/fm-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/full-market-asset.sha)"
           test "$(sha256sum /tmp/bulk-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/bulk-compat.sha)"
           test "$(sha256sum /tmp/live-summary-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/live-summary.sha)"
           test "$(sha256sum /tmp/signal-after.js | awk '{print $1}')" = "$(awk '{print $1}' /tmp/signal-ui.sha)"
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?stat-ceo=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?stat-ceo=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?stat-page50=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?stat-page50=${GITHUB_RUN_ID}" -o /tmp/stats.json
           node - <<'NODE'
           const fs=require('fs');
           const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
@@ -127,5 +134,6 @@ jobs:
           if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
           if(s?.ok!==true||!Array.isArray(s.rows)) throw Error('STATS_UNHEALTHY');
           const ceo=s.rows.filter(x=>String(x?.strategy||'').toUpperCase()==='CEO').length;
-          console.log('STAT_CEO_DEPLOY_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settled:s.rows.length,settledCEO:ceo}));
+          const newest=s.rows.reduce((m,x)=>Math.max(m,Number(x?.createdAt||0)),0);
+          console.log('STAT_CEO_PAGE50_DEPLOY_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settled:s.rows.length,settledCEO:ceo,newestCreatedAt:newest}));
           NODE
