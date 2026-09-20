@@ -1,0 +1,41 @@
+name: Deploy Ball46 Full Odds 19Book Restore V4 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-full-odds-19book-restore-v1-20260920
+    paths:
+      - .github/workflows/deploy-ball46-full-odds-19book-restore-v4-20260920.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  EXPECTED_PROD_VERSION: 4ffb5681-89aa-47b3-b2b3-75c25dfb231c
+  EXPECT_ENGINE: nomad343-engine-v6.2-viewer-readonly-cron-referee-lock-v1
+  EXPECT_HUB: nomad343-5usd-hub-v6-viewer-cache-only
+  EXPECT_FULLMARKET: nomad343-ball46-full-market-v6-server-prewarm-cache
+  CANONICAL_BRANCH: work/ball46-viewer-readonly-lock-v1-20260920
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Make post-deploy verification propagation-aware
+        shell: bash
+        run: |
+          python3 -c "from pathlib import Path; p=Path('ops/ball46-full-odds-19book-restore-v3.sh'); s=p.read_text(); s=s.replace('set -euo pipefail','set -euxo pipefail',1); needle='npx --yes wrangler@4.92.0 deploy --config \"$CFG\"\ntrap rollback ERR'; repl='npx --yes wrangler@4.92.0 deploy --config \"$CFG\"\ntrap rollback ERR\necho POST_DEPLOY_PROPAGATION_WAIT\nsleep 8'; assert needle in s; p.write_text(s.replace(needle,repl,1))"
+      - name: Guarded restore and verified production cutover
+        shell: bash
+        run: bash ops/ball46-full-odds-19book-restore-v3.sh
