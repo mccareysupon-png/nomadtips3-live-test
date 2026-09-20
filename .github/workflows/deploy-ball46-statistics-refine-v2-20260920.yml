@@ -1,0 +1,156 @@
+name: Deploy Ball46 Statistics Refine V2 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-refine-v2-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-statistics-units-v1-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-statistics-refine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated Statistics source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror production and lock protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in statistics-refine-v2.css|statistics-refine-v2.js) continue ;; esac
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?stat-refine-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+            sha256sum "/tmp/prod/${f//\//_}" | awk '{print $1}' > "/tmp/${f//\//_}.sha"
+          done
+          cp /tmp/prod/statistics.html /tmp/statistics.original.html
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?stat-refine-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?stat-refine-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Validate isolated presentation refinement
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/statistics-refine-v2.css
+          test -s nomad-live-343/statistics-refine-v2.js
+          node --check nomad-live-343/statistics-refine-v2.js
+          ! grep -Fq 'fetch(' nomad-live-343/statistics-refine-v2.js
+          ! grep -Fq '/api/' nomad-live-343/statistics-refine-v2.js
+          grep -Fq 'stroke-width:1!important' nomad-live-343/statistics-refine-v2.css
+          grep -Fq 'market-performance-cluster-v2' nomad-live-343/statistics-refine-v2.css
+          grep -Fq 'market-performance-cluster-v2' nomad-live-343/statistics-refine-v2.js
+
+      - name: Apply Statistics presentation loaders only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/statistics.html')
+          h=p.read_text()
+          h=re.sub(r'\s*<link[^>]+statistics-refine-v2\.css[^>]*>','',h,flags=re.I)
+          h=re.sub(r'\s*<script[^>]+statistics-refine-v2\.js[^>]*></script>','',h,flags=re.I)
+          css='<link rel="stylesheet" href="statistics-refine-v2.css?v=343-stat-refine-v2-20260920a">'
+          js='<script src="statistics-refine-v2.js?v=343-stat-refine-v2-20260920a" defer></script>'
+          if '</head>' not in h or '</body>' not in h: raise SystemExit('HTML_ANCHOR_MISSING')
+          h=h.replace('</head>',css+'\n</head>',1)
+          h=h.replace('</body>',js+'\n</body>',1)
+          p.write_text(h)
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          prod=Path('/tmp/statistics.original.html').read_text()
+          now=Path('nomad-live-343/statistics.html').read_text()
+          def norm(s):
+              s=re.sub(r'\s*<link[^>]+statistics-refine-v2\.css[^>]*>','',s,flags=re.I)
+              s=re.sub(r'\s*<script[^>]+statistics-refine-v2\.js[^>]*></script>','',s,flags=re.I)
+              return re.sub(r'>\s+<','><',s).strip()
+          if norm(now)!=norm(prod): raise SystemExit('NON_REFINEMENT_HTML_CHANGED')
+          PY
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            cmp -s "/tmp/prod/${f//\//_}" "nomad-live-343/$f" || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done
+
+      - name: Deploy Ball46 wrapper assets only
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify refinement and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in statistics.html statistics-refine-v2.css statistics-refine-v2.js; do
+            ok=0
+            for n in $(seq 1 12); do
+              code=$(curl -sS -L --max-time 20 -o "/tmp/${p//\//_}.after" -w '%{http_code}' "$BALL46_URL/$p?stat-refine=${GITHUB_RUN_ID}-${n}") || code=000
+              if [ "$code" = 200 ]; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "REFINE_ASSET_FAILED:$p"; exit 1; }
+          done
+          grep -Fq 'statistics-refine-v2.css?v=343-stat-refine-v2-20260920a' /tmp/statistics.html.after
+          grep -Fq 'statistics-refine-v2.js?v=343-stat-refine-v2-20260920a' /tmp/statistics.html.after
+          grep -Fq 'stroke-width:1!important' /tmp/statistics-refine-v2.css.after
+          grep -Fq 'market-performance-cluster-v2' /tmp/statistics-refine-v2.js.after
+
+          protected='index.html signal.html v2-header.css signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            safe="${f//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?stat-refine=${GITHUB_RUN_ID}-protected" -o "/tmp/$safe.after"
+            test "$(sha256sum "/tmp/$safe.after" | awk '{print $1}')" = "$(cat "/tmp/$safe.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?stat-refine=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?stat-refine=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BALL46_STATISTICS_REFINE_V2_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
