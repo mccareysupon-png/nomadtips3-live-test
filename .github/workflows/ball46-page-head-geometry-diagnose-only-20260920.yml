@@ -1,0 +1,105 @@
+name: Ball46 Page Head Geometry Diagnose Only 20260920
+
+on:
+  push:
+    branches: [work/ball46-page-head-stability-v1-current-20260920]
+    paths:
+      - '.github/workflows/ball46-page-head-geometry-diagnose-only-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  TARGET_BASE_VERSION: 9019cd81-673d-488d-b36d-7ae15d4cc6cc
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-page-head-stability-v1-current-20260920
+          fetch-depth: 1
+
+      - name: Guard current production version
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/deployments.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          const x=d[d.length-1],t=process.env.TARGET_BASE_VERSION;
+          if(!x?.versions?.some(v=>v.version_id===t&&Number(v.percentage)===100)){
+            console.error('ACTIVE_PRODUCTION_CHANGED',JSON.stringify(x));process.exit(1);
+          }
+          console.log('PRODUCTION_LOCKED',t);
+          NODE
+
+      - name: Measure LIVE production with candidate CSS injected locally only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/page-head-stability-v1.css
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          [ -n "$CHROME" ] || { echo CHROME_NOT_FOUND; exit 1; }
+          npm install --no-save --no-package-lock puppeteer-core@24.16.0 >/dev/null 2>&1
+          CHROME_BIN="$CHROME" node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const fs=require('fs');
+          const css=fs.readFileSync('nomad-live-343/page-head-stability-v1.css','utf8');
+          const base=process.env.BALL46_URL;
+          const pages=[
+            {name:'P1',path:'index.html',head:'.dash-heading',shell:'.dash-shell'},
+            {name:'P2',path:'signal.html',head:'.next-page-head',shell:'.next-shell'},
+            {name:'P3',path:'statistics.html',head:'.next-page-head',shell:'.next-shell'}
+          ];
+          const vps=[
+            {width:1920,height:1080,name:'desktop-1920'},
+            {width:1366,height:900,name:'desktop-1366'},
+            {width:390,height:844,name:'mobile-390'}
+          ];
+          function spread(rows,key,axis){return Math.max(...rows.map(r=>r[key][axis]))-Math.min(...rows.map(r=>r[key][axis]));}
+          (async()=>{
+            const browser=await puppeteer.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+            try{
+              for(const vp of vps){
+                const rows=[];
+                for(const spec of pages){
+                  const page=await browser.newPage();
+                  await page.setJavaScriptEnabled(false);
+                  await page.setViewport({width:vp.width,height:vp.height,deviceScaleFactor:1});
+                  await page.goto(`${base}/${spec.path}?diag=${Date.now()}-${Math.random()}`,{waitUntil:'networkidle0',timeout:30000});
+                  await page.addStyleTag({content:css});
+                  await page.waitForSelector(spec.head,{timeout:10000});
+                  const data=await page.evaluate((spec)=>{
+                    const el=document.querySelector(spec.head), shell=document.querySelector(spec.shell);
+                    const eb=el.querySelector('.eyebrow'), h1=el.querySelector('h1'), desc=el.querySelector(':scope > div:first-child > p:last-child');
+                    const R=n=>{const r=n.getBoundingClientRect();return {left:+r.left.toFixed(2),top:+r.top.toFixed(2),right:+r.right.toFixed(2),bottom:+r.bottom.toFixed(2),width:+r.width.toFixed(2),height:+r.height.toFixed(2)}};
+                    const C=n=>{const s=getComputedStyle(n);return {position:s.position,left:s.left,width:s.width,padL:s.paddingLeft,padR:s.paddingRight,marginL:s.marginLeft,transform:s.transform,fontSize:s.fontSize,lineHeight:s.lineHeight}};
+                    return {page:spec.name,shell:R(shell),shellCss:C(shell),head:R(el),headCss:C(el),eyebrow:R(eb),h1:R(h1),desc:R(desc),sizes:{eyebrow:parseFloat(getComputedStyle(eb).fontSize),h1:parseFloat(getComputedStyle(h1).fontSize),desc:parseFloat(getComputedStyle(desc).fontSize)}};
+                  },spec);
+                  rows.push(data);
+                  await page.close();
+                }
+                console.log('GEOMETRY_ROWS',vp.name,JSON.stringify(rows));
+                console.log('GEOMETRY_SPREAD',vp.name,JSON.stringify({
+                  headLeft:spread(rows,'head','left'),headTop:spread(rows,'head','top'),
+                  eyebrowLeft:spread(rows,'eyebrow','left'),eyebrowTop:spread(rows,'eyebrow','top'),
+                  h1Left:spread(rows,'h1','left'),h1Top:spread(rows,'h1','top'),
+                  descLeft:spread(rows,'desc','left'),descTop:spread(rows,'desc','top')
+                }));
+              }
+            } finally { await browser.close(); }
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Confirm diagnose-only no deployment action
+        run: echo DIAGNOSE_ONLY_NO_DEPLOY
