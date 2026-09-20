@@ -1,0 +1,160 @@
+name: Deploy Ball46 Statistics Remove Anchor V1 20260920
+
+on:
+  push:
+    branches: [work/ball46-statistics-workspace-v2-20260920]
+    paths:
+      - '.github/workflows/deploy-ball46-statistics-remove-anchor-v1-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preflight current Production and backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/before
+          for page in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$page?remove-anchor-before=$GITHUB_RUN_ID" -o "/tmp/prod/$page"
+            test -s "/tmp/prod/$page"
+          done
+          grep -Fq 'statistics-tabs-v1.css' /tmp/prod/statistics.html
+          grep -Fq 'statistics-tabs-v1.js' /tmp/prod/statistics.html
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?remove-anchor-before=$GITHUB_RUN_ID" -o "/tmp/before/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs'); const out={};
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/before/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`PREFLIGHT_${n}_FAIL`);
+            out[n]={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+          }
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify(out,null,2));
+          console.log('BACKEND_BEFORE',JSON.stringify(out));
+          NODE
+
+      - name: Build staging only from files that exist on current Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv nomad-live-343 /tmp/repo-assets
+          mkdir -p nomad-live-343
+          while IFS= read -r f; do
+            name="${f#/tmp/repo-assets/}"
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.txt|*.xml|*.png|*.webp|*.jpg|*.jpeg|*.ico|*.woff|*.woff2) ;; *) continue ;; esac
+            tmp="/tmp/prod-file-${name//\//_}"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$name?remove-anchor-mirror=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then
+              mkdir -p "nomad-live-343/$(dirname "$name")"
+              cp "$tmp" "nomad-live-343/$name"
+            fi
+          done < <(find /tmp/repo-assets -maxdepth 1 -type f | sort)
+          cp /tmp/prod/index.html nomad-live-343/index.html
+          cp /tmp/prod/signal.html nomad-live-343/signal.html
+          cp /tmp/prod/statistics.html nomad-live-343/statistics.html
+          test -s nomad-live-343/index.html
+          test -s nomad-live-343/signal.html
+          test -s nomad-live-343/statistics.html
+          cp -a nomad-live-343 /tmp/phase1-before
+
+      - name: Remove only the current anchor navigation loaders
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/statistics.html')
+          s=p.read_text()
+          s,n1=re.subn(r'\s*<link[^>]+href=["\'][^"\']*statistics-tabs-v1\.css[^"\']*["\'][^>]*>','',s,flags=re.I)
+          s,n2=re.subn(r'\s*<script[^>]+src=["\'][^"\']*statistics-tabs-v1\.js[^"\']*["\'][^>]*>\s*</script>','',s,flags=re.I)
+          if n1!=1 or n2!=1: raise SystemExit(f'ANCHOR_LOADER_COUNT css={n1} js={n2}')
+          p.write_text(s)
+          PY
+          ! grep -Fq 'statistics-tabs-v1.css' nomad-live-343/statistics.html
+          ! grep -Fq 'statistics-tabs-v1.js' nomad-live-343/statistics.html
+
+      - name: Scope guard - statistics HTML only
+        shell: bash
+        run: |
+          set -euo pipefail
+          diff -qr /tmp/phase1-before nomad-live-343 > /tmp/phase1.diff || true
+          cat /tmp/phase1.diff
+          [ -s /tmp/phase1.diff ]
+          if grep -Ev 'statistics\.html' /tmp/phase1.diff | grep -q .; then
+            echo 'UNEXPECTED_PHASE1_DIFF'; exit 1
+          fi
+          grep -Eq 'statistics\.html' /tmp/phase1.diff
+          cmp -s /tmp/prod/index.html nomad-live-343/index.html || { echo PAGE1_HTML_CHANGED; exit 1; }
+          cmp -s /tmp/prod/signal.html nomad-live-343/signal.html || { echo PAGE2_HTML_CHANGED; exit 1; }
+          echo 'REMOVE_ANCHOR_SCOPE_PASS'
+
+      - name: Guard protected runtime unchanged from Production
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in signal-next.js statistics-next.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js full-odds-main-343.js live-summary-full-odds-343.js dashboard-v2-stage3.js; do
+            [ -f "nomad-live-343/$f" ] || continue
+            tmp="/tmp/runtime-$f"
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/$f?remove-anchor-guard=$GITHUB_RUN_ID" -o "$tmp"
+            cmp -s "$tmp" "nomad-live-343/$f" || { echo "PROTECTED_RUNTIME_DIFF:$f"; exit 1; }
+          done
+          git diff --quiet HEAD -- workers/nomadtips3-343-preview/src/index.js
+          git diff --quiet HEAD -- workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'PROTECTED_RUNTIME_GUARD_PASS'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Dry run only after all guards pass
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Deploy remove-anchor Phase 1
+        run: npx --yes wrangler@4.92.0 deploy --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Verify Production and backend invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/after
+          for n in $(seq 1 15); do
+            if curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?remove-anchor-after=$GITHUB_RUN_ID-$n" -o /tmp/after/statistics.html && ! grep -Fq 'statistics-tabs-v1.css' /tmp/after/statistics.html && ! grep -Fq 'statistics-tabs-v1.js' /tmp/after/statistics.html; then break; fi
+            sleep 2
+          done
+          ! grep -Fq 'statistics-tabs-v1.css' /tmp/after/statistics.html
+          ! grep -Fq 'statistics-tabs-v1.js' /tmp/after/statistics.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/index.html?remove-anchor-page1=$GITHUB_RUN_ID" -o /tmp/after/index.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?remove-anchor-page2=$GITHUB_RUN_ID" -o /tmp/after/signal.html
+          cmp -s /tmp/prod/index.html /tmp/after/index.html || { echo PAGE1_POSTDEPLOY_CHANGED; exit 1; }
+          cmp -s /tmp/prod/signal.html /tmp/after/signal.html || { echo PAGE2_POSTDEPLOY_CHANGED; exit 1; }
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?remove-anchor-after=$GITHUB_RUN_ID" -o "/tmp/after/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs'); const before=JSON.parse(fs.readFileSync('/tmp/backend-before.json','utf8'));
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/after/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`POST_${n}_FAIL`);
+            for(const k of ['version','component','staleCachePolicy']){
+              const now=String(j[k]||''); if(before[n][k] && now!==before[n][k]) throw Error(`${n}_${k}_CHANGED`);
+            }
+          }
+          console.log('BALL46_REMOVE_ANCHOR_V1_PASS');
+          NODE
