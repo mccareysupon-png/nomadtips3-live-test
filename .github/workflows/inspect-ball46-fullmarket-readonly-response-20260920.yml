@@ -1,0 +1,51 @@
+name: Inspect Ball46 FullMarket Readonly Response 20260920
+
+on:
+  push:
+    branches: [work/ball46-statistics-workspace-v2-20260920]
+    paths:
+      - '.github/workflows/inspect-ball46-fullmarket-readonly-response-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect readonly routes only - NO DEPLOY
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/inspect-lock
+
+          echo '=== ENGINE HEALTH ==='
+          curl -fsS -L --max-time 20 "$BALL46_URL/api/engine/health?readonly-inspect=$GITHUB_RUN_ID" | tee /tmp/inspect-lock/engine-health.json
+          echo
+
+          echo '=== HUB HEALTH ==='
+          curl -fsS -L --max-time 20 "$BALL46_URL/api/hub/health?readonly-inspect=$GITHUB_RUN_ID" | tee /tmp/inspect-lock/hub-health.json
+          echo
+
+          echo '=== FULL MARKET HEALTH ==='
+          curl -fsS -L --max-time 20 "$BALL46_URL/api/full-market/health?readonly-inspect=$GITHUB_RUN_ID" | tee /tmp/inspect-lock/fullmarket-health.json
+          echo
+
+          for url in \
+            "$BALL46_URL/api/full-market/fixture-odds" \
+            "$BALL46_URL/api/full-market/fixture-odds?readonly-inspect=$GITHUB_RUN_ID" \
+            "$BALL46_URL/api/engine/scan"; do
+            echo "=== $url ==="
+            code=$(curl -sS -L --max-time 20 -o /tmp/inspect-lock/body.txt -w '%{http_code}' "$url" || true)
+            echo "HTTP=$code"
+            cat /tmp/inspect-lock/body.txt || true
+            echo
+          done
+
+          echo 'INSPECT_ONLY_NO_DEPLOY_COMPLETE'
