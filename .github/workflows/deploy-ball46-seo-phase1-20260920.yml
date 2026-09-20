@@ -1,0 +1,281 @@
+name: Deploy Ball46 SEO Phase 1 20260920
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-seo-phase1-20260920.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-seo-phase1-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  seo-phase1:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout isolated SEO branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Ball46 production and record guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            # New SEO assets intentionally do not exist on production yet.
+            case "$name" in
+              ball46-favicon.svg) continue ;;
+            esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?seo-phase1=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js statistics-next.js ball46-logo.svg; do
+            test -s "nomad-live-343/$f" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          cp nomad-live-343/index.html /tmp/index-before.html
+          cp nomad-live-343/signal.html /tmp/signal-before.html
+          cp nomad-live-343/statistics.html /tmp/statistics-before.html
+          for f in dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js statistics-next.js; do
+            sha256sum "nomad-live-343/$f" | awk '{print $1}' > "/tmp/${f}.sha"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ('index','signal','statistics'):
+              s=Path(f'/tmp/{name}-before.html').read_text()
+              i=s.find('<body')
+              if i < 0: raise SystemExit(f'BODY_MISSING:{name}')
+              Path(f'/tmp/{name}-body-before.html').write_text(s[i:])
+          PY
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?seo-phase1=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?seo-phase1=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version) throw Error('ENGINE_VERSION_MISSING');
+          if(!f.version) throw Error('FULL_MARKET_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          console.log('SEO_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
+
+      - name: Apply Ball46 SEO Phase 1 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          body_before=s[s.find('<body'):]
+
+          title='Ball46 | Live Scores, Odds, Predictions & Signals'
+          desc='Live football scores, live odds, match predictions, market signals, real-time stats and verified results. Ball46 — Beyond the Score.'
+          canonical='https://www.ball46.com/'
+
+          s=re.sub(r'<!-- BALL46 SEO START -->.*?<!-- BALL46 SEO END -->','',s,flags=re.S)
+          s=re.sub(r'<title>.*?</title>',f'<title>{title}</title>',s,count=1,flags=re.S)
+
+          data={
+            '@context':'https://schema.org',
+            '@graph':[
+              {
+                '@type':'WebSite',
+                '@id':'https://www.ball46.com/#website',
+                'url':'https://www.ball46.com/',
+                'name':'Ball46',
+                'alternateName':'Ball46 Football Intelligence',
+                'description':desc,
+                'inLanguage':'en'
+              },
+              {
+                '@type':'Organization',
+                '@id':'https://www.ball46.com/#organization',
+                'name':'Ball46',
+                'url':'https://www.ball46.com/',
+                'slogan':'Beyond the Score.',
+                'logo':{
+                  '@type':'ImageObject',
+                  'url':'https://www.ball46.com/ball46-logo.svg'
+                }
+              }
+            ]
+          }
+
+          block=''.join([
+            '<!-- BALL46 SEO START -->',
+            f'<meta name="description" content="{desc}">',
+            '<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">',
+            f'<link rel="canonical" href="{canonical}">',
+            '<link rel="icon" href="/ball46-favicon.svg" type="image/svg+xml" sizes="any">',
+            '<meta property="og:type" content="website">',
+            '<meta property="og:locale" content="en_US">',
+            '<meta property="og:site_name" content="Ball46">',
+            f'<meta property="og:title" content="{title}">',
+            f'<meta property="og:description" content="{desc}">',
+            f'<meta property="og:url" content="{canonical}">',
+            '<meta property="og:image" content="https://www.ball46.com/ball46-logo.svg">',
+            '<meta name="twitter:card" content="summary">',
+            f'<meta name="twitter:title" content="{title}">',
+            f'<meta name="twitter:description" content="{desc}">',
+            '<meta name="twitter:image" content="https://www.ball46.com/ball46-logo.svg">',
+            '<script type="application/ld+json">'+json.dumps(data,separators=(',',':'),ensure_ascii=False)+'</script>',
+            '<!-- BALL46 SEO END -->'
+          ])
+          marker=f'<title>{title}</title>'
+          if marker not in s: raise SystemExit('TITLE_PATCH_FAILED')
+          s=s.replace(marker,marker+block,1)
+          if s[s.find('<body'):] != body_before: raise SystemExit('INDEX_BODY_CHANGED')
+          p.write_text(s)
+          PY
+
+          cat > nomad-live-343/robots.txt <<'EOF'
+          User-agent: *
+          Allow: /
+          Disallow: /settings.html
+          Disallow: /api-monitor.html
+          Disallow: /5usd-control.html
+          Disallow: /api/
+
+          Sitemap: https://www.ball46.com/sitemap.xml
+          EOF
+
+          cat > nomad-live-343/sitemap.xml <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+            <url><loc>https://www.ball46.com/</loc><changefreq>hourly</changefreq><priority>1.0</priority></url>
+            <url><loc>https://www.ball46.com/signal.html</loc><changefreq>hourly</changefreq><priority>0.9</priority></url>
+            <url><loc>https://www.ball46.com/statistics.html</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+          </urlset>
+          EOF
+
+          test -s nomad-live-343/ball46-favicon.svg
+          grep -Fq 'BALL46 SEO START' nomad-live-343/index.html
+          grep -Fq 'Ball46 | Live Scores, Odds, Predictions & Signals' nomad-live-343/index.html
+          grep -Fq 'Beyond the Score.' nomad-live-343/index.html
+          grep -Fq '/ball46-favicon.svg' nomad-live-343/index.html
+          grep -Fq 'ball46-logo.svg' nomad-live-343/index.html
+          grep -Fq 'Sitemap: https://www.ball46.com/sitemap.xml' nomad-live-343/robots.txt
+          grep -Fq 'https://www.ball46.com/statistics.html' nomad-live-343/sitemap.xml
+
+          python3 - <<'PY'
+          from pathlib import Path
+          for name in ('index','signal','statistics'):
+              s=Path(f'nomad-live-343/{name}.html').read_text()
+              i=s.find('<body')
+              if i < 0: raise SystemExit(f'BODY_MISSING_AFTER:{name}')
+              before=Path(f'/tmp/{name}-body-before.html').read_text()
+              if s[i:] != before: raise SystemExit(f'VISIBLE_OR_RUNTIME_BODY_CHANGED:{name}')
+          PY
+
+          for f in dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js statistics-next.js; do
+            test "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" = "$(cat "/tmp/${f}.sha")"
+          done
+          echo BALL46_SEO_PHASE1_GUARD_PASS
+
+      - name: Persist SEO source of truth
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nomad-live-343/index.html nomad-live-343/ball46-favicon.svg nomad-live-343/robots.txt nomad-live-343/sitemap.xml
+          if git diff --cached --quiet; then
+            echo "SEO source already current"
+          else
+            git commit -m "seo(ball46): launch Beyond the Score search branding"
+            git push origin "HEAD:${SOURCE_BRANCH}"
+          fi
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify public SEO and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 25 "$BALL46_URL/?seo-phase1=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/ball46-favicon.svg?seo-phase1=${GITHUB_RUN_ID}-${n}" -o /tmp/favicon-after.svg || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/robots.txt?seo-phase1=${GITHUB_RUN_ID}-${n}" -o /tmp/robots-after.txt || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/sitemap.xml?seo-phase1=${GITHUB_RUN_ID}-${n}" -o /tmp/sitemap-after.xml || true
+            if grep -Fq 'Ball46 | Live Scores, Odds, Predictions & Signals' /tmp/index-after.html 2>/dev/null && \
+               grep -Fq 'BALL46 SEO START' /tmp/index-after.html 2>/dev/null && \
+               grep -Fq 'viewBox="0 0 512 512"' /tmp/favicon-after.svg 2>/dev/null && \
+               grep -Fq 'Sitemap: https://www.ball46.com/sitemap.xml' /tmp/robots-after.txt 2>/dev/null && \
+               grep -Fq 'https://www.ball46.com/statistics.html' /tmp/sitemap-after.xml 2>/dev/null; then
+              ok=1; break
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/index-after.html').read_text()
+          i=s.find('<body')
+          if i < 0: raise SystemExit('LIVE_BODY_MISSING')
+          before=Path('/tmp/index-body-before.html').read_text()
+          if s[i:] != before: raise SystemExit('LIVE_INDEX_BODY_CHANGED')
+          PY
+
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?seo-phase1=${GITHUB_RUN_ID}-after" -o /tmp/signal-after.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?seo-phase1=${GITHUB_RUN_ID}-after" -o /tmp/statistics-after.html
+          cmp -s /tmp/signal-before.html /tmp/signal-after.html
+          cmp -s /tmp/statistics-before.html /tmp/statistics-after.html
+
+          for f in dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js statistics-next.js; do
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?seo-phase1=${GITHUB_RUN_ID}-after" -o "/tmp/$f.after"
+            test "$(sha256sum "/tmp/$f.after" | awk '{print $1}')" = "$(cat "/tmp/${f}.sha")"
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?seo-phase1=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?seo-phase1=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?seo-phase1=${GITHUB_RUN_ID}-after" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
+          console.log('BALL46_SEO_PHASE1_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,engine:e.version,fullMarket:f.version}));
+          NODE
