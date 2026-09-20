@@ -103,11 +103,14 @@ jobs:
           grep -Fq 'class="ball46-product-page ball46-product-statistics"' nomad-live-343/statistics.html
           grep -Fq 'Ball46 Product Pages v1' nomad-live-343/ball46-product-pages-v1.css
 
-          ! grep -Fq '/api/' nomad-live-343/ball46-product-pages-v1.css
-          ! grep -Fq 'fetch(' nomad-live-343/ball46-product-pages-v1.css
-          ! grep -Fq 'XMLHttpRequest' nomad-live-343/ball46-product-pages-v1.css
-          ! grep -Fq '@import' nomad-live-343/ball46-product-pages-v1.css
-          ! grep -Eq 'url\(["'"']?https?://' nomad-live-343/ball46-product-pages-v1.css
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('nomad-live-343/ball46-product-pages-v1.css').read_text()
+          for bad in ('/api/','fetch(','XMLHttpRequest','@import','http://','https://'):
+              if bad in s:
+                  raise SystemExit(f'CSS_NETWORK_TOKEN:{bad}')
+          print('CSS_NETWORK_GUARD_PASS')
+          PY
 
           cmp -s /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
           cmp -s /tmp/prod/bulk-odds-compat-343.js nomad-live-343/bulk-odds-compat-343.js
