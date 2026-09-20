@@ -1,0 +1,153 @@
+name: Rescue Ball46 Restore Proven Noon Pair
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-ball46-restore-noon-pair.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BALL46_URL: https://ball46.com
+      BASE_REF: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+      WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+      FULL_CFG: workers/nomadtips3-full-market-343-ball46/wrangler.toml
+      TARGET_WRAPPER: 3f531205-db00-4942-8242-2d68108ac4e6
+      TARGET_FULL: 4f372440-f064-40be-ac74-067f191624db
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          fetch-depth: 1
+
+      - name: Capture current production and guard targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$WRAPPER_CFG"; test -s "$FULL_CFG"
+          grep -Fq 'ball46-production' "$WRAPPER_CFG"
+          curl -fsSL --retry 4 "$BALL46_URL/api/engine/health?rescue-before=$GITHUB_RUN_ID" -o /tmp/engine-before.json
+          curl -fsSL --retry 4 "$BALL46_URL/api/hub/health?rescue-before=$GITHUB_RUN_ID" -o /tmp/hub-before.json
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/wrapper-before.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FULL_CFG" --json > /tmp/full-before.json
+          npx --yes wrangler@4.92.0 versions list --config "$WRAPPER_CFG" --json > /tmp/wrapper-versions.json
+          npx --yes wrangler@4.92.0 versions list --config "$FULL_CFG" --json > /tmp/full-versions.json
+          grep -Fq "$TARGET_WRAPPER" /tmp/wrapper-versions.json
+          grep -Fq "$TARGET_FULL" /tmp/full-versions.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8')); const d=a[a.length-1]||{}; return d?.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8')); const h=JSON.parse(fs.readFileSync('/tmp/hub-before.json','utf8'));
+          if(!e.version||!h.version) throw Error('backend health missing');
+          fs.writeFileSync('/tmp/engine-version',String(e.version)); fs.writeFileSync('/tmp/hub-version',String(h.version));
+          fs.writeFileSync('/tmp/wrapper-prev',active('/tmp/wrapper-before.json')); fs.writeFileSync('/tmp/full-prev',active('/tmp/full-before.json'));
+          console.log('BEFORE',JSON.stringify({wrapper:active('/tmp/wrapper-before.json'),full:active('/tmp/full-before.json'),engine:e.version,hub:h.version,targetWrapper:process.env.TARGET_WRAPPER,targetFull:process.env.TARGET_FULL}));
+          NODE
+
+      - name: Restore exact Full Market version used through noon
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_FULL" --config "$FULL_CFG"
+
+      - name: Restore exact Ball46 wrapper and asset bundle from 12:20 Bangkok
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_WRAPPER" --config "$WRAPPER_CFG"
+
+      - name: Verify exact active versions and protected backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/wrapper-after.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FULL_CFG" --json > /tmp/full-after-dep.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/health?rescue-after=$GITHUB_RUN_ID" -o /tmp/engine-after.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/hub/health?rescue-after=$GITHUB_RUN_ID" -o /tmp/hub-after.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/full-market/health?rescue-after=$GITHUB_RUN_ID" -o /tmp/full-health.json
+          node - <<'NODE'
+          const fs=require('fs'); const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8')); const d=a[a.length-1]||{}; return d?.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};
+          const w=active('/tmp/wrapper-after.json'), f=active('/tmp/full-after-dep.json');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8')), h=JSON.parse(fs.readFileSync('/tmp/hub-after.json','utf8')), fm=JSON.parse(fs.readFileSync('/tmp/full-health.json','utf8'));
+          if(w!==process.env.TARGET_WRAPPER) throw Error('WRAPPER_TARGET_NOT_ACTIVE:'+w);
+          if(f!==process.env.TARGET_FULL) throw Error('FULL_TARGET_NOT_ACTIVE:'+f);
+          if(String(e.version)!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(h.version)!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
+          if(fm.ok!==true) throw Error('FULL_HEALTH_BAD');
+          if(Number(fm.bookmakerCount||fm.bookmakerRequestCount||0)<19) throw Error('FULL_BOOK_CONFIG_LT19');
+          if(fm.cacheOnlyViewer===true) throw Error('STILL_CACHE_ONLY_VIEWER');
+          console.log('PAIR_ACTIVE_PASS',JSON.stringify({wrapper:w,full:f,fullVersion:fm.version,bookmakerCount:fm.bookmakerCount||fm.bookmakerRequestCount,engine:e.version,hub:h.version}));
+          NODE
+
+      - name: Verify UI bundle completeness and page parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pages
+          for f in index.html signal.html statistics.html; do curl -fsSL --retry 5 "$BALL46_URL/$f?rescue-ui=$GITHUB_RUN_ID" -o "/tmp/pages/$f"; done
+          for f in index.html signal.html statistics.html; do
+            grep -Fq 'v2-shared.css' "/tmp/pages/$f" || { echo "MISSING_SHARED:$f"; exit 1; }
+            grep -Fq 'v2-header.css' "/tmp/pages/$f" || { echo "MISSING_HEADER:$f"; exit 1; }
+          done
+          grep -Eq 'bulk-odds-compat-343\.js' /tmp/pages/index.html
+          grep -Eq 'full-market-bookmaker-343\.js' /tmp/pages/index.html
+          grep -Eq 'live-summary-full-odds-343\.js' /tmp/pages/index.html
+          grep -Eq 'signal-next\.js' /tmp/pages/signal.html
+          grep -Eq 'page2-workspace-v1\.js' /tmp/pages/signal.html
+          grep -Eq 'statistics-units-v1\.(js|css)' /tmp/pages/statistics.html
+          grep -Eq 'statistics-addk-expand-v1\.(js|css)' /tmp/pages/statistics.html
+          grep -Eq 'statistics-refine-v2\.(js|css)' /tmp/pages/statistics.html
+          grep -Eq 'statistics-market-rank-v1\.js' /tmp/pages/statistics.html
+          grep -Fq 'navigation-stability-v1.css' /tmp/pages/index.html
+          grep -Fq 'navigation-stability-v1.css' /tmp/pages/signal.html
+          grep -Fq 'navigation-stability-v1.css' /tmp/pages/statistics.html
+          echo 'UI_COMPLETENESS_PASS'
+          grep -Eo '(src|href)="[^"]+\.(js|css)[^"]*"' /tmp/pages/statistics.html | sed 's/^/STAT_ASSET /'
+
+      - name: Verify real multi-book odds not Bet365-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/board?rescue-odds=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs'), b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8')); if(b.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_BAD');
+          const live=b.fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live'||/live|in_play|playing|first|second/i.test(String(f?.status||f?.statusCode||'')));
+          const pick=(live.length?live:b.fixtures).filter(f=>f?.fixtureId).slice(0,5).map(f=>String(f.fixtureId)); if(!pick.length) throw Error('NO_FIXTURE_IDS');
+          fs.writeFileSync('/tmp/fixture-ids',pick.join('\n')); console.log('TEST_IDS',pick.join(','));
+          NODE
+          best=0; best_id=''; best_names=''
+          while IFS= read -r id; do
+            code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 -o /tmp/rich.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=$id&rescue=$GITHUB_RUN_ID" || true)
+            echo "RICH_HTTP id=$id code=$code"
+            if [ "$code" = 200 ]; then
+              result=$(node - <<'NODE'
+              const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/rich.json','utf8')); const rows=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
+              const names=rows.map(x=>String(x?.name||x?.slug||x?.bookmaker?.name||x?.bookmaker?.slug||'').trim()).filter(Boolean);
+              console.log(rows.length+'|'+names.join(','));
+              NODE
+              )
+              n=${result%%|*}; names=${result#*|}; echo "BOOKS id=$id count=$n names=$names"
+              if [ "$n" -gt "$best" ]; then best=$n; best_id=$id; best_names=$names; fi
+            fi
+          done < /tmp/fixture-ids
+          echo "MULTIBOOK_BEST id=$best_id count=$best names=$best_names"
+          test "$best" -ge 2 || { echo 'FAIL_BET365_ONLY_OR_NO_RICH_ODDS'; exit 1; }
+
+      - name: Verify Signal and Statistics endpoints remain healthy
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/signals?rescue-final=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/statistics?rescue-final=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const s=require('/tmp/signals.json'), t=require('/tmp/stats.json');
+          if(s.ok!==true||!Array.isArray(s.signals)) throw Error('SIGNAL_ENDPOINT_BAD');
+          if(t.ok!==true||!Array.isArray(t.rows)) throw Error('STATS_ENDPOINT_BAD');
+          console.log('FINAL_ENDPOINTS_PASS',JSON.stringify({signals:s.signals.length,statistics:t.rows.length}));
+          NODE
