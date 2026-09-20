@@ -1,0 +1,63 @@
+name: Diagnose Ball46 Statistics Refine V2 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-ball46-statistics-refine-v2-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify deployed refinement with content retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46.com'
+          mkdir -p /tmp/refine
+
+          check_marker(){
+            file="$1"; marker="$2"; ok=0
+            for n in $(seq 1 15); do
+              code=$(curl -sS -L --max-time 20 -o "/tmp/refine/${file}" -w '%{http_code}' "$base/$file?refine-diag=${GITHUB_RUN_ID}-${n}") || code=000
+              has=0
+              if [ "$code" = 200 ] && grep -Fq "$marker" "/tmp/refine/${file}"; then has=1; ok=1; fi
+              echo "CHECK $file attempt=$n status=$code marker=$has"
+              [ "$ok" = 1 ] && break
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "MARKER_FAILED:$file"; exit 1; }
+          }
+
+          check_marker statistics.html 'statistics-refine-v2.css?v=343-stat-refine-v2-20260920a'
+          grep -Fq 'statistics-refine-v2.js?v=343-stat-refine-v2-20260920a' /tmp/refine/statistics.html
+          check_marker statistics-refine-v2.css 'stroke-width:1!important'
+          grep -Fq 'stroke-width:.75!important' /tmp/refine/statistics-refine-v2.css
+          grep -Fq 'market-performance-cluster-v2' /tmp/refine/statistics-refine-v2.css
+          check_marker statistics-refine-v2.js 'market-performance-cluster-v2'
+          ! grep -Fq 'fetch(' /tmp/refine/statistics-refine-v2.js
+          ! grep -Fq '/api/' /tmp/refine/statistics-refine-v2.js
+          echo 'STATISTICS_REFINE_ASSETS_PASS'
+
+      - name: Verify backend identities unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 'https://ball46.com/api/engine/health?refine-diag=1' -o /tmp/engine.json
+          curl -fsS --max-time 20 'https://ball46.com/api/full-market/health?refine-diag=1' -o /tmp/full.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
+          const expectedEngine='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1';
+          const expectedFull='nomad343-ball46-full-market-v6-server-prewarm-cache';
+          if(String(e.version||'')!==expectedEngine) throw Error('ENGINE_IDENTITY_CHANGED:'+String(e.version||''));
+          if(String(f.version||'')!==expectedFull) throw Error('FULL_MARKET_IDENTITY_CHANGED:'+String(f.version||''));
+          if(String(f.staleCachePolicy||'')!=='LAST_GOOD_UNTIL_REPLACED') throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BACKEND_IDENTITIES_PASS', JSON.stringify({engine:e.version,fullMarket:f.version,policy:f.staleCachePolicy}));
+          NODE
