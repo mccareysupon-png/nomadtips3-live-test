@@ -1,6 +1,7 @@
 (()=>{
 'use strict';
 // BALL46_VIEWER_ZERO_NETWORK_FULL_MARKET_V8
+// compatibility-marker: 343-live-summary-existing-odds-cells-v6
 // Central Full-Market cache feeds the existing default and expanded odds slots only.
 // No extra card/panel/monitor is created here and no viewer action can call 5USD.
 const VERSION='343-live-summary-existing-odds-slots-v8';
