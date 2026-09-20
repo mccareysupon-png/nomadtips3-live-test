@@ -1,0 +1,181 @@
+name: Rescue Ball46 Engine History Shard V1
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-engine-history-shard-v1.yml']
+permissions:
+  contents: read
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      SOURCE_REF: efb5da1920183b6034dc41ced0eb119929a182d9
+      ENGINE_DIR: workers/nomadtips3-engine-343
+      BALL46_URL: https://ball46.com
+      EXPECTED_WRAPPER: 3f531205-db00-4942-8242-2d68108ac4e6
+      EXPECTED_FULL: 4f372440-f064-40be-ac74-067f191624db
+      EXPECTED_ENGINE: 18f72c6a-c69b-4593-9b01-dc08ddffde33
+      BASE_VERSION: nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1
+      NEW_VERSION: nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1-history-shard-v1
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_REF }}
+          fetch-depth: 1
+
+      - name: Freeze production and guard exact noon pair
+        shell: bash
+        run: |
+          set -euo pipefail
+          WCFG=workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          FCFG=workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          ECFG="$ENGINE_DIR/wrangler.toml"
+          npx --yes wrangler@4.92.0 deployments list --config "$WCFG" --json >/tmp/w.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FCFG" --json >/tmp/f.json
+          npx --yes wrangler@4.92.0 deployments list --config "$ECFG" --json >/tmp/e.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/statistics?shard-before=$GITHUB_RUN_ID" -o /tmp/stats-before.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/signals?shard-before=$GITHUB_RUN_ID" -o /tmp/signals-before.json
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/board?shard-before=$GITHUB_RUN_ID" -o /tmp/board-before.json
+          node - <<'NODE'
+          const fs=require('fs'); const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8'));const d=a[a.length-1]||{};return d.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};
+          const w=active('/tmp/w.json'),f=active('/tmp/f.json'),e=active('/tmp/e.json');
+          const s=require('/tmp/stats-before.json'),g=require('/tmp/signals-before.json'),b=require('/tmp/board-before.json');
+          console.log('FREEZE',JSON.stringify({wrapper:w,full:f,engine:e,stats:Array.isArray(s.rows)?s.rows.length:null,signals:Array.isArray(g.signals)?g.signals.length:null,allSignals:g.allCount,fixtures:Array.isArray(b.fixtures)?b.fixtures.length:null}));
+          if(w!==process.env.EXPECTED_WRAPPER)throw Error('WRAPPER_DRIFT:'+w); if(f!==process.env.EXPECTED_FULL)throw Error('FULL_DRIFT:'+f); if(e!==process.env.EXPECTED_ENGINE)throw Error('ENGINE_DRIFT:'+e);
+          if(!Array.isArray(s.rows)||!Array.isArray(g.signals)||!Array.isArray(b.fixtures))throw Error('BASELINE_ENDPOINT_BAD');
+          fs.writeFileSync('/tmp/stats-count',String(s.rows.length)); fs.writeFileSync('/tmp/all-signals',String(g.allCount??0));
+          NODE
+
+      - name: Apply history sharding only to exact noon Engine source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$ENGINE_DIR/src/index.js" /tmp/index-before.js
+          cp "$ENGINE_DIR/src/ceo-condition.js" /tmp/ceo-before.js
+          cp "$ENGINE_DIR/src/market-core.js" /tmp/market-before.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          old="const VERSION='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1';"
+          new="const VERSION='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1-history-shard-v1';"
+          if s.count(old)!=1: raise SystemExit('BASE_VERSION_ANCHOR_BAD')
+          s=s.replace(old,new,1)
+          anchor="const now=()=>Date.now();"
+          helper=r'''const now=()=>Date.now();
+          async function storageGetMany(storage,keys){
+            const out=new Map();
+            for(let i=0;i<keys.length;i+=64){
+              const part=keys.slice(i,i+64);if(!part.length)continue;
+              const got=await storage.get(part);
+              if(got&&typeof got[Symbol.iterator]==='function')for(const [k,v] of got)out.set(k,v);
+            }
+            return out;
+          }
+          async function storagePutMany(storage,entries){
+            for(let i=0;i<entries.length;i+=64){
+              const part=entries.slice(i,i+64);if(!part.length)continue;
+              await storage.put(Object.fromEntries(part));
+            }
+          }'''
+          if s.count(anchor)!=1: raise SystemExit('HELPER_ANCHOR_BAD')
+          s=s.replace(anchor,helper,1)
+          oldread="const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};"
+          newread="const settings=await this.readSettings(),run=await this.readRun(),legacyHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};const historyKeys=(hub.fixtures||[]).map(f=>`history:${String(f.fixtureId)}`),shardedHist=await storageGetMany(this.ctx.storage,historyKeys);"
+          if s.count(oldread)!=1: raise SystemExit('READ_ANCHOR_BAD')
+          s=s.replace(oldread,newread,1)
+          oldloop="const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];"
+          newloop="const id=String(f.fixtureId),shardKey=`history:${id}`,storedHist=shardedHist.get(shardKey),arr=Array.isArray(storedHist)?storedHist.slice():(Array.isArray(legacyHist[id])?legacyHist[id].slice():[]);"
+          if s.count(oldloop)!=1: raise SystemExit('LOOP_ANCHOR_BAD')
+          s=s.replace(oldloop,newloop,1)
+          oldwrite="await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));"
+          newwrite="const mergedHist={...(legacyHist&&typeof legacyHist==='object'?legacyHist:{}),...histories},historyEntries=Object.entries(mergedHist).map(([id,rows])=>[`history:${id}`,rows]);await storagePutMany(this.ctx.storage,historyEntries);if(legacyHist&&typeof legacyHist==='object'&&Object.keys(legacyHist).length)await this.ctx.storage.delete('histories');await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));"
+          if s.count(oldwrite)!=1: raise SystemExit('WRITE_ANCHOR_BAD')
+          s=s.replace(oldwrite,newwrite,1)
+          oldhist="const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];"
+          newhist="const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),shard=await this.ctx.storage.get(`history:${fixtureId}`),legacyHist=await this.ctx.storage.get('histories')||{},rows=Array.isArray(shard)?shard:(Array.isArray(legacyHist[fixtureId])?legacyHist[fixtureId]:[]);"
+          if s.count(oldhist)!=1: raise SystemExit('HISTORY_ENDPOINT_ANCHOR_BAD')
+          s=s.replace(oldhist,newhist,1)
+          p.write_text(s)
+          PY
+          node --check "$ENGINE_DIR/src/index.js"
+          cmp /tmp/ceo-before.js "$ENGINE_DIR/src/ceo-condition.js"
+          cmp /tmp/market-before.js "$ENGINE_DIR/src/market-core.js"
+          grep -Fq "$NEW_VERSION" "$ENGINE_DIR/src/index.js"
+          grep -Fq 'history:${id}' "$ENGINE_DIR/src/index.js"
+          grep -Fq "storage.delete('histories')" "$ENGINE_DIR/src/index.js"
+          python3 - <<'PY'
+          from pathlib import Path
+          before=Path('/tmp/index-before.js').read_text(); after=Path('workers/nomadtips3-engine-343/src/index.js').read_text()
+          # No new provider/network requests are allowed in the storage repair.
+          if after.count('fetch(')!=before.count('fetch('): raise SystemExit('FETCH_COUNT_CHANGED')
+          for token in ['ceoCandidatesForFixture','ceoPostPricePass','MAX_ODDS_FIXTURES_PER_SCAN=4','MAX_SETTLEMENT_RECOVERY_PER_SCAN=2']:
+              if token not in after: raise SystemExit('PROTECTED_ENGINE_TOKEN_MISSING:'+token)
+          print('HISTORY_SHARD_SCOPE_PASS')
+          PY
+          node --test "$ENGINE_DIR"/test/*.test.mjs
+
+      - name: Deploy repaired Engine only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml" | tee /tmp/deploy.txt
+
+      - name: Force first migration scan and verify preserved data
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -L --retry 3 -X POST -o /tmp/scan1.json -w '%{http_code}' "$BALL46_URL/api/engine/scan?historyShard=$GITHUB_RUN_ID-first")
+          echo "SCAN1_HTTP=$code $(cat /tmp/scan1.json)"; test "$code" = 200
+          curl -fsSL "$BALL46_URL/api/engine/health?historyShard=$GITHUB_RUN_ID-health1" -o /tmp/health1.json
+          curl -fsSL "$BALL46_URL/api/engine/statistics?historyShard=$GITHUB_RUN_ID-stats1" -o /tmp/stats1.json
+          curl -fsSL "$BALL46_URL/api/engine/signals?historyShard=$GITHUB_RUN_ID-signals1" -o /tmp/signals1.json
+          curl -fsSL "$BALL46_URL/api/engine/board?historyShard=$GITHUB_RUN_ID-board1" -o /tmp/board1.json
+          node - <<'NODE'
+          const fs=require('fs'),h=require('/tmp/health1.json'),s=require('/tmp/stats1.json'),g=require('/tmp/signals1.json'),b=require('/tmp/board1.json');
+          console.log('AFTER_MIGRATION',JSON.stringify({health:h,stats:Array.isArray(s.rows)?s.rows.length:null,allSignals:g.allCount,visibleSignals:Array.isArray(g.signals)?g.signals.length:null,fixtures:Array.isArray(b.fixtures)?b.fixtures.length:null}));
+          if(h.ok!==true||h.version!==process.env.NEW_VERSION)throw Error('MIGRATION_SCAN_NOT_HEALTHY:'+String(h.lastError||''));
+          if(!Array.isArray(s.rows)||s.rows.length<Number(fs.readFileSync('/tmp/stats-count','utf8')))throw Error('STATISTICS_DROPPED');
+          if(Number(g.allCount??0)<Number(fs.readFileSync('/tmp/all-signals','utf8')))throw Error('SIGNALS_DROPPED');
+          if(!Array.isArray(b.fixtures)||b.fixtures.length<1)throw Error('BOARD_EMPTY');
+          const id=String(b.fixtures.find(x=>x.fixtureId)?.fixtureId||'');if(!id)throw Error('NO_HISTORY_TEST_FIXTURE');fs.writeFileSync('/tmp/test-fixture',id);
+          NODE
+          id=$(cat /tmp/test-fixture)
+          curl -fsSL "$BALL46_URL/api/engine/history?fixtureId=$id&window=10&historyShard=$GITHUB_RUN_ID" -o /tmp/history.json
+          node - <<'NODE'
+          const j=require('/tmp/history.json'); if(j.ok!==true||!Array.isArray(j.rows))throw Error('HISTORY_ENDPOINT_BAD'); console.log('HISTORY_ENDPOINT_PASS',JSON.stringify({fixtureId:j.fixtureId,rows:j.rows.length,firstAt:j.firstAt,lastAt:j.lastAt}));
+          NODE
+
+      - name: Cross a real scan interval and verify SQLITE_TOOBIG does not recur
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 65
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/health?historyShard=$GITHUB_RUN_ID-health2" -o /tmp/health2.json
+          sleep 3
+          curl -fsSL --retry 5 "$BALL46_URL/api/engine/health?historyShard=$GITHUB_RUN_ID-health3" -o /tmp/health3.json
+          node - <<'NODE'
+          const h2=require('/tmp/health2.json'),h3=require('/tmp/health3.json'); console.log('CROSS_INTERVAL',JSON.stringify({h2,h3}));
+          for(const h of [h2,h3]){if(h.version!==process.env.NEW_VERSION)throw Error('ENGINE_VERSION_DRIFT');if(h.ok!==true)throw Error('ENGINE_STILL_UNHEALTHY:'+String(h.lastError||''));if(String(h.lastError||'').includes('SQLITE_TOOBIG'))throw Error('SQLITE_TOOBIG_RECURRED')}
+          NODE
+
+      - name: Final guard wrapper Full Market UI graph and 19-book Odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          WCFG=workers/nomadtips3-343-preview/wrangler.ball46.jsonc; FCFG=workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          npx --yes wrangler@4.92.0 deployments list --config "$WCFG" --json >/tmp/w-final.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FCFG" --json >/tmp/f-final.json
+          node - <<'NODE'
+          const fs=require('fs');const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8'));const d=a[a.length-1]||{};return d.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};if(active('/tmp/w-final.json')!==process.env.EXPECTED_WRAPPER)throw Error('WRAPPER_CHANGED');if(active('/tmp/f-final.json')!==process.env.EXPECTED_FULL)throw Error('FULL_CHANGED');console.log('NOON_PAIR_STILL_LOCKED');
+          NODE
+          CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); test -n "$CHROME"
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          CHROME_PATH="$CHROME" node - <<'NODE'
+          const p=require('puppeteer-core'),sleep=ms=>new Promise(r=>setTimeout(r,ms));const books=['Bet365','Pinnacle','William Hill','Ladbrokes','VCBet','1xBet','Bwin','Easybets','Interwetten','Betfair','SNAI','Macau Slot','Betsson','Bet-at-home','18Bet','10BET','12Bet','Coral','Crown'];
+          (async()=>{const br=await p.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});const out=[];
+          for(const file of ['index.html','signal.html','statistics.html']){const pg=await br.newPage();await pg.setViewport({width:1440,height:1000});const errs=[];pg.on('pageerror',e=>errs.push(String(e.message||e)));await pg.goto('https://ball46.com/'+file+'?shardFinal='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await sleep(file==='index.html'?8000:4000);let d=await pg.evaluate(()=>{const vis=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>1&&r.height>1&&s.display!=='none'&&s.visibility!=='hidden'};const h=[...document.querySelectorAll('header,.topbar,[class*="header"],[class*="topbar"]')].find(e=>e.getBoundingClientRect().width>300&&vis(e));const charts=[...document.querySelectorAll('canvas,svg,[class*="chart"],[id*="chart"]')].filter(e=>{const r=e.getBoundingClientRect();return vis(e)&&r.width>40&&r.height>30});return{w:document.body.scrollWidth,vw:innerWidth,hh:h?Math.round(h.getBoundingClientRect().height):null,charts:charts.length}});if(file==='index.html'){const c=await pg.evaluate(()=>{const vis=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>80&&r.height>30&&s.display!=='none'&&s.visibility!=='hidden'};const e=[...document.querySelectorAll('.match-row,article')].find(x=>vis(x)&&(x.innerText||'').trim());if(!e)return false;e.click();return true});if(!c)throw Error('NO_CARD');await sleep(6000);d.books=await pg.evaluate(bs=>{const t=document.body.innerText||'';return [...new Set(bs.filter(n=>t.toLowerCase().includes(n.toLowerCase())))]},books)}out.push({file,...d,errors:errs});await pg.close()}await br.close();console.log('FINAL_BROWSER',JSON.stringify(out));for(const x of out){if(x.w>x.vw+20)throw Error('OVERFLOW:'+x.file);if(x.hh!==64)throw Error('HEADER_MISMATCH:'+x.file+':'+x.hh);if(x.errors.length)throw Error('PAGE_ERROR:'+x.file+':'+x.errors.join('|'))}const st=out.find(x=>x.file==='statistics.html');if(!st||st.charts<1)throw Error('PAGE3_GRAPH_MISSING');const ix=out.find(x=>x.file==='index.html');if(!ix||!ix.books||ix.books.length<19)throw Error('19_BOOKS_MISSING:'+JSON.stringify(ix?.books));console.log('BALL46_FULL_RESTORE_PASS')})().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
