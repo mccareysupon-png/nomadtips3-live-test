@@ -1,0 +1,47 @@
+name: Audit Ball46 Full Market Cache 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-fullmarket-sidecar-producer-v1-20260920
+    paths:
+      - '.github/workflows/audit-ball46-fullmarket-cache-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read only production cache audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?audit=${GITHUB_RUN_ID}" -o /tmp/health.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/board?audit=${GITHUB_RUN_ID}" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs'); const h=require('/tmp/health.json'),b=require('/tmp/board.json');
+          const a=Array.isArray(b.fixtures)?b.fixtures:[];
+          const live=a.filter(f=>String(f.boardState||'').toLowerCase()==='live'||/in_play|live|half/.test(String(f.status||'').toLowerCase()));
+          const ids=[...new Set(live.map(f=>String(f.fixtureId||'').trim()).filter(Boolean))].slice(0,64);
+          fs.writeFileSync('/tmp/ids.json',JSON.stringify({fixtureIds:ids}));
+          fs.writeFileSync('/tmp/base.json',JSON.stringify({health:h,board:{version:b.version,fixtureCount:a.length,liveCount:live.length,liveIds:ids}},null,2));
+          NODE
+          curl -fsS -L --max-time 30 -H 'content-type: application/json' --data-binary @/tmp/ids.json "$BALL46_URL/api/full-market/board-cache?audit=${GITHUB_RUN_ID}" -o /tmp/cache.json
+          node - <<'NODE'
+          const fs=require('fs'),base=require('/tmp/base.json'),c=require('/tmp/cache.json'); const e=c.entries||{};
+          const entries=Object.values(e).map(x=>({fixtureId:x.fixtureId,bookmakerCount:x.bookmakerCount,marketCount:x.marketCount,numericValueCount:x.numericValueCount,held:x.held,ageMs:x.ageMs,lastError:x.lastError||null,actualBookmakers:Array.isArray(x?.fullOdds?.bookmakers)?x.fullOdds.bookmakers.map(b=>b?.slug??b?.name).filter(Boolean):[]}));
+          const report={at:new Date().toISOString(),producer:base.health.producer||null,providerMeta:base.health.providerMeta||null,callsLast60s:base.health.callsLast60s,cacheOnlyViewer:base.health.cacheOnlyViewer,viewerRefreshEnabled:base.health.viewerRefreshEnabled,board:base.board,cache:{requested:c.requested,returned:c.returned,externalRequestsAdded:c.externalRequestsAdded,entries}};
+          fs.writeFileSync('ball46-fullmarket-audit.json',JSON.stringify(report,null,2)); console.log(JSON.stringify(report));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-fullmarket-audit
+          path: ball46-fullmarket-audit.json
+          retention-days: 1
