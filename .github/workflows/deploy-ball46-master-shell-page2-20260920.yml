@@ -1,0 +1,209 @@
+name: Deploy Ball46 Page2 Master Shell 20260920
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy Page 2 master shell or restore prior geometry loaders
+        required: true
+        default: deploy
+        type: choice
+        options: [deploy, rollback]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-master-shell-page2-20260920.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-master-shell-page2-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-master-shell:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout isolated master-shell source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror production and lock non-geometry systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            [ "$name" = 'ball46-master-shell-page2-v1.css' ] && continue
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?master-shell-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html v2-header.css signal-next.js statistics-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          for f in v2-header.css signal-next.js statistics-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css; do
+            sha256sum "/tmp/prod/${f//\//_}" | awk '{print $1}' > "/tmp/${f//\//_}.sha"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          names=('index.html','signal.html','statistics.html')
+          for name in names:
+              s=Path('/tmp/prod/'+name).read_text()
+              scripts='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              Path('/tmp/'+name+'.scripts').write_text(scripts)
+              # Geometry loader tags are the only HTML changes permitted.
+              norm=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',s,flags=re.I)
+              Path('/tmp/'+name+'.normalized').write_text(norm)
+          PY
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?master-shell-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?master-shell-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Apply Page 2 master shell only
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/ball46-master-shell-page2-v1.css
+          grep -Fq -- '--b46-master-shell-max:1600px' nomad-live-343/ball46-master-shell-page2-v1.css
+          grep -Fq 'v2-topbar .v2-topbar-inner' nomad-live-343/ball46-master-shell-page2-v1.css
+          grep -Fq 'body[data-page="live"] .dash-shell' nomad-live-343/ball46-master-shell-page2-v1.css
+          grep -Fq '.ball46-product-page .next-shell' nomad-live-343/ball46-master-shell-page2-v1.css
+          ! grep -Fq 'fetch(' nomad-live-343/ball46-master-shell-page2-v1.css
+          ! grep -Fq '/api/' nomad-live-343/ball46-master-shell-page2-v1.css
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,re
+          mode=os.environ.get('MODE','deploy')
+          master='<link rel="stylesheet" href="ball46-master-shell-page2-v1.css?v=343-master-shell-page2-v1-20260920a">'
+          old_parity='<link rel="stylesheet" href="page23-shell-parity-v1.css?v=343-page23-shell-parity-v1-20260920">'
+          old_hard='<link rel="stylesheet" href="page2-shell-master-v2.css?v=343-page2-shell-master-v2-20260920a">'
+          for name in ('index.html','signal.html','statistics.html'):
+              p=Path('nomad-live-343')/name
+              s=p.read_text()
+              s=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',s,flags=re.I)
+              if mode=='deploy':
+                  if '</head>' not in s: raise SystemExit('HEAD_ANCHOR_MISSING:'+name)
+                  s=s.replace('</head>',master+'\n</head>',1)
+              elif mode=='rollback':
+                  tags=[]
+                  if name in ('signal.html','statistics.html'): tags.append(old_parity)
+                  if name=='signal.html': tags.append(old_hard)
+                  if tags:
+                      s=s.replace('</head>','\n'.join(tags)+'\n</head>',1)
+              else:
+                  raise SystemExit('UNKNOWN_MODE:'+mode)
+              p.write_text(s)
+          PY
+
+          # Nothing except geometry stylesheet links may differ in the three HTML pages.
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ('index.html','signal.html','statistics.html'):
+              s=(Path('nomad-live-343')/name).read_text()
+              scripts='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              if scripts != Path('/tmp/'+name+'.scripts').read_text(): raise SystemExit('SCRIPT_LIST_CHANGED:'+name)
+              norm=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',s,flags=re.I)
+              if norm != Path('/tmp/'+name+'.normalized').read_text(): raise SystemExit('NON_GEOMETRY_HTML_CHANGED:'+name)
+          PY
+
+          # Protect all previously-built UI/data/runtime files byte-for-byte.
+          for f in v2-header.css signal-next.js statistics-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css; do
+            cmp -s "/tmp/prod/${f//\//_}" "nomad-live-343/$f" || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify master shell and protected systems
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            for p in index.html signal.html statistics.html; do
+              curl -fsS -L --max-time 25 "$BALL46_URL/$p?master-shell=${GITHUB_RUN_ID}-${n}" -o "/tmp/$p.after"
+            done
+            if [ "$MODE" = deploy ]; then
+              curl -fsS -L --max-time 25 "$BALL46_URL/ball46-master-shell-page2-v1.css?master-shell=${GITHUB_RUN_ID}-${n}" -o /tmp/master-shell.after.css || true
+              if grep -Fq 'ball46-master-shell-page2-v1.css?v=343-master-shell-page2-v1-20260920a' /tmp/index.html.after \
+                 && grep -Fq 'ball46-master-shell-page2-v1.css?v=343-master-shell-page2-v1-20260920a' /tmp/signal.html.after \
+                 && grep -Fq 'ball46-master-shell-page2-v1.css?v=343-master-shell-page2-v1-20260920a' /tmp/statistics.html.after \
+                 && grep -Fq -- '--b46-master-shell-max:1600px' /tmp/master-shell.after.css \
+                 && ! grep -Fq 'page23-shell-parity-v1.css' /tmp/signal.html.after \
+                 && ! grep -Fq 'page2-shell-master-v2.css' /tmp/signal.html.after \
+                 && ! grep -Fq 'page23-shell-parity-v1.css' /tmp/statistics.html.after; then ok=1; break; fi
+            else
+              if ! grep -Fq 'ball46-master-shell-page2-v1.css' /tmp/index.html.after \
+                 && grep -Fq 'page23-shell-parity-v1.css' /tmp/signal.html.after \
+                 && grep -Fq 'page2-shell-master-v2.css' /tmp/signal.html.after \
+                 && grep -Fq 'page23-shell-parity-v1.css' /tmp/statistics.html.after; then ok=1; break; fi
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ('index.html','signal.html','statistics.html'):
+              s=Path('/tmp/'+name+'.after').read_text()
+              scripts='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              if scripts != Path('/tmp/'+name+'.scripts').read_text(): raise SystemExit('LIVE_SCRIPT_LIST_CHANGED:'+name)
+              norm=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',s,flags=re.I)
+              if norm != Path('/tmp/'+name+'.normalized').read_text(): raise SystemExit('LIVE_NON_GEOMETRY_HTML_CHANGED:'+name)
+          PY
+
+          for f in v2-header.css signal-next.js statistics-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css; do
+            safe="${f//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?master-shell=${GITHUB_RUN_ID}-protected" -o "/tmp/$safe.after"
+            test "$(sha256sum "/tmp/$safe.after" | awk '{print $1}')" = "$(cat "/tmp/$safe.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?master-shell=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?master-shell=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BALL46_PAGE2_MASTER_SHELL_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
