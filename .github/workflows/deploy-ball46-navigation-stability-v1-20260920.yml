@@ -1,0 +1,184 @@
+name: Deploy Ball46 Navigation Stability V1 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-navigation-stability-v1-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-navigation-stability-v1-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-navigation-stability:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated navigation stability source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror production and lock protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in navigation-stability-v1.css|navigation-stability-v1.js) continue ;; esac
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?nav-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html; do
+            test -s "/tmp/prod/$f" || { echo "PRODUCTION_HTML_MISSING:$f"; exit 1; }
+            cp "/tmp/prod/$f" "/tmp/$f.original"
+          done
+
+          protected='v2-header.css v2-shared.css v2-shared.js dashboard-v2.css dashboard-v2-stage3.js signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css statistics-addk-expand-v1.js statistics-addk-expand-v1.css statistics-market-rank-v1.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js'
+          for f in $protected; do
+            test -s "/tmp/prod/$f" || { echo "PROTECTED_PROD_MISSING:$f"; exit 1; }
+            sha256sum "/tmp/prod/$f" | awk '{print $1}' > "/tmp/${f}.sha"
+          done
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?nav-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/full-market/health?nav-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Validate isolated stability layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/navigation-stability-v1.js
+          grep -Fq 'scrollbar-gutter:stable' nomad-live-343/navigation-stability-v1.css
+          grep -Fq 'overflow-y:scroll' nomad-live-343/navigation-stability-v1.css
+          grep -Fq 'b46-page2-prep' nomad-live-343/navigation-stability-v1.css
+          grep -Fq 'data-b46-page2-workspace' nomad-live-343/navigation-stability-v1.js
+          ! grep -Fq 'fetch(' nomad-live-343/navigation-stability-v1.js
+          ! grep -Fq '/api/' nomad-live-343/navigation-stability-v1.js
+
+      - name: Apply navigation stability presentation only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          files=['index.html','signal.html','statistics.html']
+          css='<link rel="stylesheet" href="navigation-stability-v1.css?v=343-nav-stability-v1-20260920a">'
+          for name in files:
+              p=Path('nomad-live-343')/name
+              h=p.read_text()
+              h=re.sub(r'\s*<link[^>]+navigation-stability-v1\.css[^>]*>','',h,flags=re.I)
+              h=re.sub(r'\s*<script[^>]+navigation-stability-v1\.js[^>]*></script>','',h,flags=re.I)
+              h=re.sub(r'\s*<script[^>]+data-b46-theme-prepaint[^>]*>.*?</script>','',h,flags=re.I|re.S)
+              h=re.sub(r'\s*<script[^>]+data-b46-page2-prep[^>]*>.*?</script>','',h,flags=re.I|re.S)
+              if '</head>' not in h: raise SystemExit(f'HEAD_ANCHOR_MISSING:{name}')
+              h=h.replace('</head>',css+'\n</head>',1)
+              if name=='index.html':
+                  theme='<script data-b46-theme-prepaint>(()=>{try{const t=localStorage.getItem("nomad343_dashboard_theme_v1")||"light";document.documentElement.dataset.theme=t==="dark"?"dark":"light"}catch(_){}})();</script>'
+                  m=re.search(r'<link\s+rel=["\']stylesheet["\']',h,re.I)
+                  if not m: raise SystemExit('INDEX_STYLESHEET_ANCHOR_MISSING')
+                  h=h[:m.start()]+theme+'\n'+h[m.start():]
+              if name=='signal.html':
+                  prep='<script data-b46-page2-prep>document.documentElement.classList.add("b46-page2-prep")</script>'
+                  m=re.search(r'<link\s+rel=["\']stylesheet["\']',h,re.I)
+                  if not m: raise SystemExit('SIGNAL_STYLESHEET_ANCHOR_MISSING')
+                  h=h[:m.start()]+prep+'\n'+h[m.start():]
+                  js='<script src="navigation-stability-v1.js?v=343-nav-stability-v1-20260920a" defer></script>'
+                  anchor=re.search(r'<script[^>]+src=["\']page2-workspace-v1\.js[^"\']*["\'][^>]*></script>',h,re.I)
+                  if not anchor: raise SystemExit('PAGE2_WORKSPACE_SCRIPT_ANCHOR_MISSING')
+                  h=h[:anchor.start()]+js+h[anchor.start():]
+              p.write_text(h)
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          def strip_ours(s):
+              s=re.sub(r'\s*<link[^>]+navigation-stability-v1\.css[^>]*>','',s,flags=re.I)
+              s=re.sub(r'\s*<script[^>]+navigation-stability-v1\.js[^>]*></script>','',s,flags=re.I)
+              s=re.sub(r'\s*<script[^>]+data-b46-theme-prepaint[^>]*>.*?</script>','',s,flags=re.I|re.S)
+              s=re.sub(r'\s*<script[^>]+data-b46-page2-prep[^>]*>.*?</script>','',s,flags=re.I|re.S)
+              return re.sub(r'>\s+<','><',s).strip()
+          for name in ['index.html','signal.html','statistics.html']:
+              prod=Path('/tmp/'+name+'.original').read_text()
+              now=(Path('nomad-live-343')/name).read_text()
+              if strip_ours(now)!=strip_ours(prod): raise SystemExit('NON_STABILITY_HTML_CHANGED:'+name)
+          PY
+
+          protected='v2-header.css v2-shared.css v2-shared.js dashboard-v2.css dashboard-v2-stage3.js signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css statistics-addk-expand-v1.js statistics-addk-expand-v1.css statistics-market-rank-v1.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js'
+          for f in $protected; do
+            cmp -s "/tmp/prod/$f" "nomad-live-343/$f" || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify stability layer and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          check_marker(){
+            file="$1"; marker="$2"; ok=0
+            for n in $(seq 1 15); do
+              code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 -o "/tmp/${file}.after" -w '%{http_code}' "$BALL46_URL/$file?nav=${GITHUB_RUN_ID}-${n}") || code=000
+              if [ "$code" = 200 ] && grep -Fq "$marker" "/tmp/${file}.after"; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "STABILITY_MARKER_FAILED:$file"; exit 1; }
+          }
+          check_marker index.html 'navigation-stability-v1.css?v=343-nav-stability-v1-20260920a'
+          grep -Fq 'data-b46-theme-prepaint' /tmp/index.html.after
+          check_marker signal.html 'data-b46-page2-prep'
+          grep -Fq 'navigation-stability-v1.js?v=343-nav-stability-v1-20260920a' /tmp/signal.html.after
+          check_marker statistics.html 'navigation-stability-v1.css?v=343-nav-stability-v1-20260920a'
+          check_marker navigation-stability-v1.css 'scrollbar-gutter:stable'
+          check_marker navigation-stability-v1.js 'data-b46-page2-workspace'
+
+          protected='v2-header.css v2-shared.css v2-shared.js dashboard-v2.css dashboard-v2-stage3.js signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css statistics-addk-expand-v1.js statistics-addk-expand-v1.css statistics-market-rank-v1.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js'
+          for f in $protected; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/$f?nav=${GITHUB_RUN_ID}-protected" -o "/tmp/$f.after"
+            test "$(sha256sum "/tmp/$f.after" | awk '{print $1}')" = "$(cat "/tmp/${f}.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/engine/health?nav=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/api/full-market/health?nav=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BALL46_NAV_STABILITY_V1_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
