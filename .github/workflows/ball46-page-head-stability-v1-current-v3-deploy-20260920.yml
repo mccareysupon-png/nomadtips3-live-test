@@ -1,0 +1,225 @@
+name: Ball46 Page Head Stability V1 Current V3 Deploy 20260920
+
+on:
+  push:
+    branches: [work/ball46-page-head-stability-v1-current-20260920]
+    paths:
+      - '.github/workflows/ball46-page-head-stability-v1-current-v3-deploy-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  SOURCE_BRANCH: work/ball46-page-head-stability-v1-current-20260920
+  TARGET_BASE_VERSION: 9019cd81-673d-488d-b36d-7ae15d4cc6cc
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout exact presentation branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Guard production version and worker code
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --quiet d0f5787c401d158d10c58b279117ede9d94d2bca..HEAD -- workers/nomadtips3-343-preview/src/index.js
+          git diff --quiet d0f5787c401d158d10c58b279117ede9d94d2bca..HEAD -- workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/deployments-before.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          const x=d[d.length-1],t=process.env.TARGET_BASE_VERSION;
+          if(!x?.versions?.some(v=>v.version_id===t&&Number(v.percentage)===100)){
+            console.error('ACTIVE_PRODUCTION_CHANGED',JSON.stringify(x)); process.exit(1);
+          }
+          console.log('BASE_VERSION_LOCKED',t);
+          NODE
+
+      - name: Mirror all existing branch assets from live production
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp nomad-live-343/page-head-stability-v1.css /tmp/page-head-stability-v1.css
+          mkdir -p /tmp/prod /tmp/before
+          : >/tmp/protected.tsv
+
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            [ "$name" = page-head-stability-v1.css ] && continue
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.txt|*.xml|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            tmp="/tmp/prod/${name//\//_}"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$name?headmirror=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then
+              cp "$tmp" "$f"
+              case "$name" in index.html|signal.html|statistics.html) ;; *)
+                printf '%s\t%s\n' "$(sha256sum "$tmp"|awk '{print $1}')" "$name" >>/tmp/protected.tsv
+              ;; esac
+            else
+              echo "LIVE_ASSET_NOT_PRESENT_KEEPING_SOURCE:$name:$code"
+            fi
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          cp /tmp/page-head-stability-v1.css nomad-live-343/page-head-stability-v1.css
+
+          for f in index.html signal.html statistics.html v2-header.css dashboard-v2.css ball46-next.css ball46-product-pages-v1.css page2-workspace-v1.css statistics-refine-v2.css; do
+            test -s "nomad-live-343/$f" || { echo "MISSING_REQUIRED_BASE:$f"; exit 1; }
+          done
+          cp nomad-live-343/index.html /tmp/index.original.html
+          cp nomad-live-343/signal.html /tmp/signal.original.html
+          cp nomad-live-343/statistics.html /tmp/statistics.original.html
+
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?headbefore=$GITHUB_RUN_ID" -o "/tmp/before/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs'),o={};
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/before/${n}.json`,'utf8'));
+            if(j?.ok!==true||!j.version) throw Error('HEALTH_'+n);
+            o[n]={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+          }
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify(o));
+          console.log('BACKEND_BEFORE',JSON.stringify(o));
+          NODE
+
+      - name: Validate CSS and add loader only
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'body[data-page="live"] .dash-heading' nomad-live-343/page-head-stability-v1.css
+          grep -Fq '.ball46-product-page .next-page-head' nomad-live-343/page-head-stability-v1.css
+          ! grep -Fq 'fetch(' nomad-live-343/page-head-stability-v1.css
+          ! grep -Fq '/api/' nomad-live-343/page-head-stability-v1.css
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          css=Path('nomad-live-343/page-head-stability-v1.css').read_text()
+          if css.count('{')!=css.count('}'): raise SystemExit('CSS_BRACE_MISMATCH')
+          loader='<link rel="stylesheet" href="page-head-stability-v1.css?v=343-page-head-stability-v1-20260920a">'
+          for n in ('index','signal','statistics'):
+              p=Path(f'nomad-live-343/{n}.html')
+              s=p.read_text()
+              s=re.sub(r'\s*<link[^>]+page-head-stability-v1\.css[^>]*>','',s,flags=re.I)
+              if '</head>' not in s: raise SystemExit('NO_HEAD:'+n)
+              p.write_text(s.replace('</head>',loader+'\n</head>',1))
+          def strip_loader(s):
+              s=re.sub(r'\s*<link[^>]+page-head-stability-v1\.css[^>]*>','',s,flags=re.I)
+              return re.sub(r'>\s+<','><',s).strip()
+          for n in ('index','signal','statistics'):
+              before=Path(f'/tmp/{n}.original.html').read_text()
+              after=Path(f'nomad-live-343/{n}.html').read_text()
+              if strip_loader(before)!=strip_loader(after): raise SystemExit('NON_LOADER_HTML_CHANGED:'+n)
+          print('HTML_PARITY_PASS')
+          PY
+
+      - name: Geometry gate locally BEFORE deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)
+          [ -n "$CHROME" ] || { echo CHROME_NOT_FOUND; exit 1; }
+          npm install --no-save --no-package-lock puppeteer-core@24.16.0 >/dev/null 2>&1
+          python3 -m http.server 4173 --directory nomad-live-343 >/tmp/head-http.log 2>&1 & PID=$!
+          trap 'kill $PID 2>/dev/null || true' EXIT
+          for n in $(seq 1 20); do curl -fsS http://127.0.0.1:4173/index.html >/dev/null && break || sleep .25; done
+          CHROME_BIN="$CHROME" BASE_URL=http://127.0.0.1:4173 node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const pages=[['index.html','.dash-heading'],['signal.html','.next-page-head'],['statistics.html','.next-page-head']];
+          const viewports=[[1920,1080,'desktop-1920'],[1366,900,'desktop-1366'],[390,844,'mobile-390']];
+          (async()=>{const browser=await puppeteer.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});try{
+            for(const [w,h,name] of viewports){const rows=[];
+              for(const [path,sel] of pages){const page=await browser.newPage();await page.setJavaScriptEnabled(false);await page.setViewport({width:w,height:h,deviceScaleFactor:1});await page.goto(process.env.BASE_URL+'/'+path,{waitUntil:'networkidle0',timeout:30000});
+                rows.push(await page.$eval(sel,e=>{const R=z=>{const r=z.getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height}};const eb=e.querySelector('.eyebrow'),h=e.querySelector('h1'),d=e.querySelector(':scope > div:first-child > p:last-child');return {head:R(e),eyebrow:R(eb),h1:R(h),desc:R(d),sizes:[parseFloat(getComputedStyle(eb).fontSize),parseFloat(getComputedStyle(h).fontSize),parseFloat(getComputedStyle(d).fontSize)]}}));await page.close();}
+              const spread=(k,a)=>Math.max(...rows.map(r=>r[k][a]))-Math.min(...rows.map(r=>r[k][a]));
+              for(const [k,a] of [['head','left'],['head','top'],['eyebrow','left'],['eyebrow','top'],['h1','left'],['h1','top'],['desc','left'],['desc','top']]){const s=spread(k,a);if(s>1.5)throw Error(`LOCAL_GEOMETRY_MISMATCH:${name}:${k}.${a}:${s.toFixed(2)}px`)}
+              for(let i=0;i<3;i++){const s=Math.max(...rows.map(r=>r.sizes[i]))-Math.min(...rows.map(r=>r.sizes[i]));if(s>.1)throw Error(`LOCAL_FONT_MISMATCH:${name}:${i}:${s}`)}
+              console.log('LOCAL_GEOMETRY_PASS',name,JSON.stringify(rows));
+            }
+          }finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Dry run and final race guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc --dry-run
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/predeploy.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs'),d=JSON.parse(fs.readFileSync('/tmp/predeploy.json','utf8')),x=d[d.length-1],t=process.env.TARGET_BASE_VERSION;
+          if(!x?.versions?.some(v=>v.version_id===t&&Number(v.percentage)===100)){console.error('PRODUCTION_CHANGED_DURING_GATES',JSON.stringify(x));process.exit(1)}
+          console.log('PREDEPLOY_LOCK_PASS',t);
+          NODE
+
+      - name: Deploy presentation overlay
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc | tee /tmp/deploy.txt
+          touch /tmp/deployed
+
+      - name: Verify live backend protected assets and geometry
+        shell: bash
+        run: |
+          set -euo pipefail
+          marker='page-head-stability-v1.css?v=343-page-head-stability-v1-20260920a'
+          for f in index.html signal.html statistics.html; do
+            ok=0
+            for n in $(seq 1 15); do
+              code=$(curl -sS -L --retry 2 --retry-all-errors --max-time 25 -o "/tmp/$f.after" -w '%{http_code}' "$BALL46_URL/$f?headafter=$GITHUB_RUN_ID-$n") || code=000
+              if [ "$code" = 200 ] && grep -Fq "$marker" "/tmp/$f.after"; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo LOADER_VERIFY_FAIL:$f; exit 1; }
+          done
+
+          while IFS=$'\t' read -r hash name; do
+            [ -n "$name" ] || continue
+            out="/tmp/${name//\//_}.after"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --max-time 25 -o "$out" -w '%{http_code}' "$BALL46_URL/$name?protect=$GITHUB_RUN_ID") || code=000
+            [ "$code" = 200 ] || { echo PROTECTED_HTTP_FAIL:$name:$code; exit 1; }
+            [ "$(sha256sum "$out"|awk '{print $1}')" = "$hash" ] || { echo PROTECTED_CHANGED:$name; exit 1; }
+          done </tmp/protected.tsv
+
+          mkdir -p /tmp/after
+          for ep in engine hub full-market; do curl -fsS -L --retry 4 --retry-all-errors --max-time 30 "$BALL46_URL/api/$ep/health?headafter=$GITHUB_RUN_ID" -o "/tmp/after/$ep.json"; done
+          node - <<'NODE'
+          const fs=require('fs'),before=JSON.parse(fs.readFileSync('/tmp/backend-before.json','utf8'));
+          for(const n of ['engine','hub','full-market']){const j=JSON.parse(fs.readFileSync(`/tmp/after/${n}.json`,'utf8'));if(j?.ok!==true)throw Error(n+'_HEALTH_FAIL');for(const k of ['version','component','staleCachePolicy'])if(before[n][k]&&String(j[k]||'')!==before[n][k])throw Error(n+'_'+k+'_CHANGED')}
+          console.log('BACKEND_INVARIANTS_PASS');
+          NODE
+
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium)
+          CHROME_BIN="$CHROME" BASE_URL="$BALL46_URL" node - <<'NODE'
+          const puppeteer=require('puppeteer-core');
+          const pages=[['index.html','.dash-heading'],['signal.html','.next-page-head'],['statistics.html','.next-page-head']],viewports=[[1920,1080,'desktop-1920'],[1366,900,'desktop-1366'],[390,844,'mobile-390']];
+          (async()=>{const browser=await puppeteer.launch({executablePath:process.env.CHROME_BIN,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});try{for(const [w,h,name] of viewports){const rows=[];for(const [path,sel] of pages){const page=await browser.newPage();await page.setJavaScriptEnabled(false);await page.setViewport({width:w,height:h});await page.goto(process.env.BASE_URL+'/'+path+'?geom='+Date.now()+Math.random(),{waitUntil:'networkidle0',timeout:30000});rows.push(await page.$eval(sel,e=>{const R=z=>{const r=z.getBoundingClientRect();return {left:r.left,top:r.top}};const eb=e.querySelector('.eyebrow'),h=e.querySelector('h1'),d=e.querySelector(':scope > div:first-child > p:last-child');return {head:R(e),eyebrow:R(eb),h1:R(h),desc:R(d),sizes:[parseFloat(getComputedStyle(eb).fontSize),parseFloat(getComputedStyle(h).fontSize),parseFloat(getComputedStyle(d).fontSize)]}}));await page.close()}const spread=(k,a)=>Math.max(...rows.map(r=>r[k][a]))-Math.min(...rows.map(r=>r[k][a]));for(const [k,a] of [['head','left'],['head','top'],['eyebrow','left'],['eyebrow','top'],['h1','left'],['h1','top'],['desc','left'],['desc','top']]){const s=spread(k,a);if(s>1.5)throw Error(`LIVE_GEOMETRY_MISMATCH:${name}:${k}.${a}:${s.toFixed(2)}px`)}for(let i=0;i<3;i++){const s=Math.max(...rows.map(r=>r.sizes[i]))-Math.min(...rows.map(r=>r.sizes[i]));if(s>.1)throw Error(`LIVE_FONT_MISMATCH:${name}:${i}:${s}`)}console.log('LIVE_GEOMETRY_PASS',name,JSON.stringify(rows))}}finally{await browser.close()}})().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Report active version
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json | tail -c 12000
+
+      - name: Auto rollback if anything failed after deploy
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -f /tmp/deployed ] || { echo NO_DEPLOY_OCCURRED; exit 0; }
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 rollback "$TARGET_BASE_VERSION" --config wrangler.ball46.jsonc --message "Auto rollback page-head stability verification failure"
+          echo AUTO_ROLLBACK_COMPLETE:$TARGET_BASE_VERSION
