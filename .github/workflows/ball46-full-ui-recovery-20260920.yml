@@ -1,0 +1,356 @@
+name: Ball46 Full UI Recovery 20260920
+
+on:
+  push:
+    branches: [work/ball46-full-ui-recovery-20260920]
+    paths:
+      - '.github/workflows/ball46-full-ui-recovery-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  recover-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - name: Checkout recovery source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Preflight backend and capture rollback baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr /tmp/before
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?ui-recovery-before=${GITHUB_RUN_ID}" -o "/tmp/before/$ep.json"
+          done
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/engine/board?ui-recovery-before=${GITHUB_RUN_ID}" -o /tmp/before/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const names=['engine','hub','full-market'];
+          const out={};
+          for(const n of names){
+            const j=JSON.parse(fs.readFileSync(`/tmp/before/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`PREFLIGHT_${n.toUpperCase()}_FAIL ${JSON.stringify(j)}`);
+            out[n]={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+          }
+          const b=JSON.parse(fs.readFileSync('/tmp/before/board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('PREFLIGHT_BOARD_FAIL');
+          out.boardFixtures=b.fixtures.length;
+          fs.writeFileSync('/tmp/backend-before.json',JSON.stringify(out));
+          console.log('RECOVERY_PREFLIGHT_PASS',JSON.stringify(out));
+          NODE
+
+      - name: Mirror current Production and preserve trusted UI recovery modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          test -s workers/nomadtips3-343-preview/src/index.js
+
+          trusted_re='^(navigation-stability-v1\.(css|js)|page2-workspace-v1\.(css|js)|page2-hide-kpis-v1\.css|page2-scroll-five-v1\.css|page2-signal-team-name-colors-v1\.(css|js)|statistics-units-v1\.(css|js)|statistics-refine-v2\.(css|js)|statistics-outcome-labels-v1\.(css|js)|statistics-addk-expand-v1\.(css|js)|statistics-market-rank-v1\.js|public-labels-343\.js)$'
+
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            if [[ "$name" =~ $trusted_re ]]; then continue; fi
+            safe="${name//\//_}"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?ui-recovery-rb0=${GITHUB_RUN_ID}") || code=000
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html statistics-next.js; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$f?ui-recovery-rb0-force=${GITHUB_RUN_ID}" -o "/tmp/prod/$f"
+            test -s "/tmp/prod/$f"
+            cp "/tmp/prod/$f" "nomad-live-343/$f"
+          done
+
+          protected='v2-header.css v2-shared.css v2-shared.js signal-next.js signal.js dashboard-v2-stage3.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js full-odds-main-343.js event-flow-343.js event-flow-343.css ball46-next.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$f?ui-recovery-protect=${GITHUB_RUN_ID}" -o "/tmp/prod/$f"
+            test -s "/tmp/prod/$f" || { echo "PROTECTED_PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+            cp "/tmp/prod/$f" "nomad-live-343/$f"
+            sha256sum "/tmp/prod/$f" | awk '{print $1}' > "/tmp/${f}.sha"
+          done
+
+          cp /tmp/prod/statistics-next.js /tmp/statistics-next.original.js
+          sha256sum workers/nomadtips3-343-preview/src/index.js | awk '{print $1}' > /tmp/worker-wrapper.sha
+          sha256sum workers/nomadtips3-343-preview/wrangler.ball46.jsonc | awk '{print $1}' > /tmp/wrangler.sha
+
+      - name: Validate known-good presentation modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          modules='navigation-stability-v1.js page2-workspace-v1.js page2-signal-team-name-colors-v1.js statistics-units-v1.js statistics-refine-v2.js statistics-outcome-labels-v1.js statistics-addk-expand-v1.js statistics-market-rank-v1.js public-labels-343.js'
+          for f in $modules; do
+            test -s "nomad-live-343/$f" || { echo "RECOVERY_MODULE_MISSING:$f"; exit 1; }
+            node --check "nomad-live-343/$f"
+          done
+          for f in navigation-stability-v1.js page2-signal-team-name-colors-v1.js statistics-units-v1.js statistics-refine-v2.js statistics-outcome-labels-v1.js statistics-addk-expand-v1.js statistics-market-rank-v1.js public-labels-343.js; do
+            ! grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|/api/' "nomad-live-343/$f" || { echo "UNEXPECTED_NETWORK_IN_PRESENTATION_MODULE:$f"; exit 1; }
+          done
+          grep -Fq 'scrollbar-gutter:stable' nomad-live-343/navigation-stability-v1.css
+          grep -Fq '.b46-signal-page-v2 .next-kpis' nomad-live-343/page2-hide-kpis-v1.css
+          grep -Fq 'nth-child(5 of .next-signal-card:not([hidden]))' nomad-live-343/page2-scroll-five-v1.css
+          grep -Fq -- '--next-home' nomad-live-343/page2-signal-team-name-colors-v1.css
+          grep -Fq -- '--next-away' nomad-live-343/page2-signal-team-name-colors-v1.css
+          grep -Fq 'Overall Cumulative Net Units' nomad-live-343/statistics-units-v1.js
+          grep -Fq 'b46-addk-expand-v1' nomad-live-343/statistics-addk-expand-v1.js
+          grep -Fq 'net-units-desc' nomad-live-343/statistics-market-rank-v1.js
+          grep -Fq 'ANALYSIS ENGINE 01' nomad-live-343/public-labels-343.js
+
+      - name: Restore additive Statistics event hook only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/statistics-next.js')
+          s=p.read_text()
+          hook="try{window.dispatchEvent(new CustomEvent('ball46:statistics',{detail:sj}))}catch(_){}"
+          s=s.replace(hook,'')
+          target='renderStats(sj);'
+          if s.count(target)!=1:
+              raise SystemExit('RENDER_STATS_TARGET_COUNT:'+str(s.count(target)))
+          s=s.replace(target,target+hook,1)
+          p.write_text(s)
+          old=Path('/tmp/statistics-next.original.js').read_text().replace(hook,'')
+          cur=p.read_text().replace(hook,'')
+          if cur!=old:
+              raise SystemExit('STATISTICS_NEXT_CHANGED_OUTSIDE_ADDITIVE_HOOK')
+          if p.read_text().count(hook)!=1:
+              raise SystemExit('STATISTICS_EVENT_HOOK_COUNT_INVALID')
+          PY
+          node --check nomad-live-343/statistics-next.js
+
+      - name: Rebuild three page presentation shells from Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          master='''<style id="ball46-page2-master-lock-v2">
+:root{--b46-master-shell-max:1600px;--b46-master-shell-gutter:24px;--b46-master-shell-gutter-mobile:12px}
+.v2-topbar .v2-topbar-inner{width:100%!important;max-width:var(--b46-master-shell-max)!important;margin-left:auto!important;margin-right:auto!important}
+body[data-page="live"] .dash-shell,.ball46-product-page .next-shell{width:100%!important;max-width:var(--b46-master-shell-max)!important;margin-left:auto!important;margin-right:auto!important;padding-left:var(--b46-master-shell-gutter)!important;padding-right:var(--b46-master-shell-gutter)!important}
+.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{width:100%!important;max-width:none!important}
+@media(max-width:820px){body[data-page="live"] .dash-shell,.ball46-product-page .next-shell{padding-left:var(--b46-master-shell-gutter-mobile)!important;padding-right:var(--b46-master-shell-gutter-mobile)!important}}
+</style>'''
+
+          common_css='<link rel="stylesheet" href="navigation-stability-v1.css?v=343-ui-recovery-20260920a">'
+          public_js='<script src="public-labels-343.js?v=343-ui-recovery-20260920a" defer></script>'
+
+          def strip_tag(h, kind, name):
+              if kind=='css':
+                  return re.sub(r'\s*<link[^>]+(?:'+re.escape(name)+r')[^>]*>','',h,flags=re.I)
+              return re.sub(r'\s*<script[^>]+(?:'+re.escape(name)+r')[^>]*></script>','',h,flags=re.I)
+
+          for name in ('index.html','signal.html','statistics.html'):
+              p=Path('nomad-live-343')/name
+              h=p.read_text()
+              h=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',h,flags=re.I)
+              h=re.sub(r'\s*<style[^>]+id=["\']ball46-page2-master-lock-v2["\'][^>]*>.*?</style>','',h,flags=re.I|re.S)
+              h=strip_tag(h,'css','navigation-stability-v1.css')
+              h=strip_tag(h,'js','public-labels-343.js')
+              h=re.sub(r'\s*<script[^>]+data-b46-theme-prepaint[^>]*>.*?</script>','',h,flags=re.I|re.S)
+              h=re.sub(r'\s*<script[^>]+data-b46-page2-prep[^>]*>.*?</script>','',h,flags=re.I|re.S)
+
+              if name=='signal.html':
+                  for f in ('page2-workspace-v1.css','page2-hide-kpis-v1.css','page2-scroll-five-v1.css','page2-signal-team-name-colors-v1.css'):
+                      h=strip_tag(h,'css',f)
+                  for f in ('navigation-stability-v1.js','page2-workspace-v1.js','page2-signal-team-name-colors-v1.js'):
+                      h=strip_tag(h,'js',f)
+              if name=='statistics.html':
+                  for f in ('statistics-units-v1.css','statistics-refine-v2.css','statistics-outcome-labels-v1.css','statistics-addk-expand-v1.css'):
+                      h=strip_tag(h,'css',f)
+                  for f in ('statistics-units-v1.js','statistics-refine-v2.js','statistics-outcome-labels-v1.js','statistics-addk-expand-v1.js','statistics-market-rank-v1.js'):
+                      h=strip_tag(h,'js',f)
+
+              css=[common_css]
+              if name=='signal.html':
+                  css += [
+                    '<link rel="stylesheet" href="page2-workspace-v1.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="page2-hide-kpis-v1.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="page2-scroll-five-v1.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="page2-signal-team-name-colors-v1.css?v=343-ui-recovery-20260920a">'
+                  ]
+              if name=='statistics.html':
+                  css += [
+                    '<link rel="stylesheet" href="statistics-units-v1.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="statistics-refine-v2.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="statistics-outcome-labels-v1.css?v=343-ui-recovery-20260920a">',
+                    '<link rel="stylesheet" href="statistics-addk-expand-v1.css?v=343-ui-recovery-20260920a">'
+                  ]
+              if '</head>' not in h: raise SystemExit('HEAD_ANCHOR_MISSING:'+name)
+              h=h.replace('</head>','\n'.join(css)+'\n'+master+'\n</head>',1)
+
+              if name=='index.html':
+                  theme='<script data-b46-theme-prepaint>(()=>{try{const t=localStorage.getItem("nomad343_dashboard_theme_v1")||"light";document.documentElement.dataset.theme=t==="dark"?"dark":"light"}catch(_){}})();</script>'
+                  m=re.search(r'<link\s+rel=["\']stylesheet["\']',h,re.I)
+                  if not m: raise SystemExit('INDEX_STYLESHEET_ANCHOR_MISSING')
+                  h=h[:m.start()]+theme+'\n'+h[m.start():]
+                  if '</body>' not in h: raise SystemExit('INDEX_BODY_ANCHOR_MISSING')
+                  h=h.replace('</body>',public_js+'\n</body>',1)
+
+              elif name=='signal.html':
+                  prep='<script data-b46-page2-prep>document.documentElement.classList.add("b46-page2-prep")</script>'
+                  m=re.search(r'<link\s+rel=["\']stylesheet["\']',h,re.I)
+                  if not m: raise SystemExit('SIGNAL_STYLESHEET_ANCHOR_MISSING')
+                  h=h[:m.start()]+prep+'\n'+h[m.start():]
+                  scripts=''.join([
+                    '<script src="navigation-stability-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="page2-workspace-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="page2-signal-team-name-colors-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    public_js
+                  ])
+                  if '</body>' not in h: raise SystemExit('SIGNAL_BODY_ANCHOR_MISSING')
+                  h=h.replace('</body>',scripts+'\n</body>',1)
+
+              else:
+                  stat_anchor=re.search(r'<script[^>]+src=["\']statistics-next\.js[^"\']*["\'][^>]*></script>',h,re.I)
+                  if not stat_anchor: raise SystemExit('STATISTICS_NEXT_SCRIPT_ANCHOR_MISSING')
+                  pre=''.join([
+                    '<script src="statistics-units-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="statistics-refine-v2.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="statistics-outcome-labels-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="statistics-addk-expand-v1.js?v=343-ui-recovery-20260920a" defer></script>',
+                    '<script src="statistics-market-rank-v1.js?v=343-ui-recovery-20260920a" defer></script>'
+                  ])
+                  h=h[:stat_anchor.start()]+pre+h[stat_anchor.start():]
+                  if '</body>' not in h: raise SystemExit('STATISTICS_BODY_ANCHOR_MISSING')
+                  h=h.replace('</body>',public_js+'\n</body>',1)
+
+              p.write_text(h)
+          PY
+
+      - name: Validate exact recovery invariants before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in index.html signal.html statistics.html; do
+            grep -Fq 'id="ball46-page2-master-lock-v2"' "nomad-live-343/$f"
+            grep -Fq -- '--b46-master-shell-max:1600px' "nomad-live-343/$f"
+            grep -Fq 'navigation-stability-v1.css?v=343-ui-recovery-20260920a' "nomad-live-343/$f"
+            grep -Fq 'public-labels-343.js?v=343-ui-recovery-20260920a' "nomad-live-343/$f"
+            ! grep -Eq '(page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css' "nomad-live-343/$f"
+          done
+          grep -Fq 'data-b46-theme-prepaint' nomad-live-343/index.html
+          grep -Fq 'data-b46-page2-prep' nomad-live-343/signal.html
+          for marker in page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css page2-signal-team-name-colors-v1.css navigation-stability-v1.js page2-workspace-v1.js page2-signal-team-name-colors-v1.js; do
+            grep -Fq "$marker" nomad-live-343/signal.html || { echo "PAGE2_RECOVERY_LOADER_MISSING:$marker"; exit 1; }
+          done
+          for marker in statistics-units-v1.css statistics-refine-v2.css statistics-outcome-labels-v1.css statistics-addk-expand-v1.css statistics-units-v1.js statistics-refine-v2.js statistics-outcome-labels-v1.js statistics-addk-expand-v1.js statistics-market-rank-v1.js; do
+            grep -Fq "$marker" nomad-live-343/statistics.html || { echo "PAGE3_RECOVERY_LOADER_MISSING:$marker"; exit 1; }
+          done
+          grep -Fq "ball46:statistics" nomad-live-343/statistics-next.js
+
+          protected='v2-header.css v2-shared.css v2-shared.js signal-next.js signal.js dashboard-v2-stage3.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js full-odds-main-343.js event-flow-343.js event-flow-343.css ball46-next.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            cmp -s "/tmp/prod/$f" "nomad-live-343/$f" || { echo "PROTECTED_RUNTIME_CHANGED_BEFORE_DEPLOY:$f"; exit 1; }
+          done
+          test "$(sha256sum workers/nomadtips3-343-preview/src/index.js | awk '{print $1}')" = "$(cat /tmp/worker-wrapper.sha)"
+          test "$(sha256sum workers/nomadtips3-343-preview/wrangler.ball46.jsonc | awk '{print $1}')" = "$(cat /tmp/wrangler.sha)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Dry-run recovery deployment
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy recovered Ball46 UI
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify recovered UI and backend invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          get(){
+            file="$1"; out="$2"; ok=0
+            for n in $(seq 1 18); do
+              code=$(curl -sS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 25 -o "$out" -w '%{http_code}' "$BALL46_URL/$file?ui-recovery=${GITHUB_RUN_ID}-${n}") || code=000
+              if [ "$code" = 200 ] && [ -s "$out" ]; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "POST_DEPLOY_FETCH_FAILED:$file"; exit 1; }
+          }
+          get index.html /tmp/index.after.html
+          get signal.html /tmp/signal.after.html
+          get statistics.html /tmp/statistics.after.html
+          get statistics-next.js /tmp/statistics-next.after.js
+
+          for f in /tmp/index.after.html /tmp/signal.after.html /tmp/statistics.after.html; do
+            grep -Fq 'id="ball46-page2-master-lock-v2"' "$f"
+            grep -Fq -- '--b46-master-shell-max:1600px' "$f"
+            grep -Fq 'navigation-stability-v1.css?v=343-ui-recovery-20260920a' "$f"
+            grep -Fq 'public-labels-343.js?v=343-ui-recovery-20260920a' "$f"
+          done
+          grep -Fq 'BALL46 · LIVE MATCH CENTER' /tmp/index.after.html
+          grep -Fq 'BALL46 · LIVE SIGNAL CENTER' /tmp/signal.after.html
+          grep -Fq 'BALL46 · PERFORMANCE CENTER' /tmp/statistics.after.html
+          grep -Fq 'data-b46-theme-prepaint' /tmp/index.after.html
+          grep -Fq 'data-b46-page2-prep' /tmp/signal.after.html
+
+          for marker in page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css page2-signal-team-name-colors-v1.css navigation-stability-v1.js page2-workspace-v1.js page2-signal-team-name-colors-v1.js; do
+            grep -Fq "$marker" /tmp/signal.after.html || { echo "PAGE2_LIVE_LOADER_MISSING:$marker"; exit 1; }
+          done
+          for marker in statistics-units-v1.css statistics-refine-v2.css statistics-outcome-labels-v1.css statistics-addk-expand-v1.css statistics-units-v1.js statistics-refine-v2.js statistics-outcome-labels-v1.js statistics-addk-expand-v1.js statistics-market-rank-v1.js; do
+            grep -Fq "$marker" /tmp/statistics.after.html || { echo "PAGE3_LIVE_LOADER_MISSING:$marker"; exit 1; }
+          done
+          grep -Fq "ball46:statistics" /tmp/statistics-next.after.js
+
+          get statistics-units-v1.js /tmp/stat-units.after.js
+          get statistics-addk-expand-v1.js /tmp/stat-addk.after.js
+          get statistics-market-rank-v1.js /tmp/stat-rank.after.js
+          get page2-signal-team-name-colors-v1.js /tmp/page2-colors.after.js
+          get public-labels-343.js /tmp/public-labels.after.js
+          grep -Fq 'Overall Cumulative Net Units' /tmp/stat-units.after.js
+          grep -Fq 'b46-addk-expand-v1' /tmp/stat-addk.after.js
+          grep -Fq 'net-units-desc' /tmp/stat-rank.after.js
+          grep -Fq 'b46-team-name-home' /tmp/page2-colors.after.js
+          grep -Fq 'ANALYSIS ENGINE 01' /tmp/public-labels.after.js
+
+          protected='v2-header.css v2-shared.css v2-shared.js signal-next.js signal.js dashboard-v2-stage3.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js full-odds-main-343.js event-flow-343.js event-flow-343.css ball46-next.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            get "$f" "/tmp/$f.after"
+            test "$(sha256sum "/tmp/$f.after" | awk '{print $1}')" = "$(cat "/tmp/${f}.sha")" || { echo "PROTECTED_RUNTIME_CHANGED_AFTER_DEPLOY:$f"; exit 1; }
+          done
+
+          mkdir -p /tmp/after
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?ui-recovery-after=${GITHUB_RUN_ID}" -o "/tmp/after/$ep.json"
+          done
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/engine/board?ui-recovery-after=${GITHUB_RUN_ID}" -o /tmp/after/board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const before=JSON.parse(fs.readFileSync('/tmp/backend-before.json','utf8'));
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/after/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`POST_${n.toUpperCase()}_FAIL`);
+            const now={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+            for(const k of ['version','component','staleCachePolicy']) if(before[n][k]&&now[k]!==before[n][k]) throw Error(`${n}_${k}_CHANGED before=${before[n][k]} after=${now[k]}`);
+          }
+          const b=JSON.parse(fs.readFileSync('/tmp/after/board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('POST_BOARD_FAIL');
+          console.log('BALL46_FULL_UI_RECOVERY_PASS',JSON.stringify({fixtures:b.fixtures.length,backend:before}));
+          NODE
