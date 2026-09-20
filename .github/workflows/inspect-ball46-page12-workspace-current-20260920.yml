@@ -1,0 +1,89 @@
+name: Inspect Ball46 Page1-2 Workspace Current 20260920
+
+on:
+  push:
+    branches: [work/ball46-statistics-workspace-v2-20260920]
+    paths:
+      - '.github/workflows/inspect-ball46-page12-workspace-current-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture current Production pages and UI refs only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/inspect/pages /tmp/inspect/assets /tmp/inspect/backend
+          for page in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$page?inspect=$GITHUB_RUN_ID" -o "/tmp/inspect/pages/$page"
+            test -s "/tmp/inspect/pages/$page"
+          done
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?inspect=$GITHUB_RUN_ID" -o "/tmp/inspect/backend/$ep.json"
+          done
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, urllib.request, urllib.parse, json
+          base='https://ball46.com/'
+          pages=Path('/tmp/inspect/pages')
+          refs=set()
+          for p in pages.glob('*.html'):
+              h=p.read_text(errors='ignore')
+              for ref in re.findall(r'(?:src|href)=["\']([^"\']+)["\']',h,re.I):
+                  path=ref.split('#',1)[0].split('?',1)[0].lstrip('/')
+                  if path and re.search(r'\.(?:css|js)$',path,re.I): refs.add(path)
+          wanted=[x for x in sorted(refs) if any(k in x.lower() for k in ('page2','workspace','v2-shared','v2-header','navigation-stability','product-pages','dashboard-v2','statistics-workspace'))]
+          print('CURRENT_UI_REFS',json.dumps(wanted))
+          for path in wanted:
+              try:
+                  req=urllib.request.Request(base+urllib.parse.quote(path),headers={'User-Agent':'ball46-page12-inspect'})
+                  data=urllib.request.urlopen(req,timeout=15).read()
+                  if data:
+                      dst=Path('/tmp/inspect/assets')/path
+                      dst.parent.mkdir(parents=True,exist_ok=True); dst.write_bytes(data)
+              except Exception as e:
+                  print('MISSING',path,str(e))
+          PY
+      - name: Report current Production structure signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== PAGE1 BODY/MAIN SIGNATURES ==='
+          grep -Eo 'class="[^"]*(next-shell|workspace|dashboard|rail|sidebar)[^"]*"' /tmp/inspect/pages/index.html | head -40 || true
+          echo '=== PAGE2 BODY/MAIN SIGNATURES ==='
+          grep -Eo 'class="[^"]*(next-shell|workspace|dashboard|rail|sidebar)[^"]*"' /tmp/inspect/pages/signal.html | head -60 || true
+          echo '=== PAGE3 CURRENT WORKSPACE MARKERS ==='
+          grep -Eo 'statistics-workspace-v2[^" ]*|data-ball46-phase="[^"]+"' /tmp/inspect/pages/statistics.html | head -20 || true
+          echo '=== PAGE2 WORKSPACE CSS KEY GEOMETRY ==='
+          for f in /tmp/inspect/assets/*page2*workspace*.css /tmp/inspect/assets/page2-workspace-v1.css; do
+            [ -f "$f" ] || continue
+            echo "--- $f"
+            grep -nE 'grid-template-columns|column-gap|gap:|width:|min-width|max-width|position: sticky|top:|border-radius|padding:' "$f" | head -80 || true
+          done
+          echo '=== SHARED GEOMETRY ==='
+          for f in /tmp/inspect/assets/v2-shared.css /tmp/inspect/assets/v2-header.css /tmp/inspect/assets/navigation-stability-v1.css; do
+            [ -f "$f" ] || continue
+            echo "--- $f"
+            grep -nE 'max-width|padding|margin|scrollbar-gutter|position: sticky|top:' "$f" | head -80 || true
+          done
+          echo '=== BACKEND IDENTITY ==='
+          node - <<'NODE'
+          const fs=require('fs'); const out={};
+          for(const n of ['engine','hub','full-market']){const j=JSON.parse(fs.readFileSync(`/tmp/inspect/backend/${n}.json`,'utf8')); out[n]={ok:j.ok,version:j.version,component:j.component,staleCachePolicy:j.staleCachePolicy||''};}
+          console.log(JSON.stringify(out));
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ball46-page12-current-inspect-${{ github.run_id }}
+          path: /tmp/inspect
+          retention-days: 7
