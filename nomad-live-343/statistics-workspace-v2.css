@@ -1,0 +1,157 @@
+/* BALL46_STAT_WORKSPACE_V2
+   Phase 2: desktop workspace shell + sidebar only.
+   Presentation layer only. No API / odds / engine / settlement logic. */
+
+@media (min-width: 821px) {
+  body.ball46-product-statistics main.next-shell {
+    display: grid !important;
+    grid-template-columns: 204px minmax(0, 1fr);
+    column-gap: 16px;
+    align-items: start;
+  }
+
+  body.ball46-product-statistics main.next-shell > .next-page-head {
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+
+  body.ball46-product-statistics main.next-shell > :not(.next-page-head):not(.b46-stat-sidebar-v2) {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  body.ball46-product-statistics .b46-stat-sidebar-v2 {
+    grid-column: 1;
+    grid-row: 2 / span 40;
+    align-self: start;
+    position: sticky;
+    top: 86px;
+    z-index: 7;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px;
+    border: 1px solid var(--border, #dce5df);
+    border-radius: 14px;
+    background: var(--panel, var(--card, #ffffff));
+    box-shadow: 0 8px 22px rgba(18, 38, 29, 0.05);
+  }
+
+  body.ball46-product-statistics .b46-stat-sidebar-v2__head {
+    padding: 2px 4px 10px;
+    border-bottom: 1px solid var(--border, #e2e9e4);
+    margin-bottom: 10px;
+  }
+
+  body.ball46-product-statistics .b46-stat-sidebar-v2__eyebrow {
+    display: block;
+    margin: 0 0 3px;
+    color: var(--muted, #6d7c74);
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  body.ball46-product-statistics .b46-stat-sidebar-v2__title {
+    display: block;
+    color: var(--text, #17241d);
+    font-size: 14px;
+    line-height: 1.25;
+    font-weight: 850;
+  }
+
+  body.ball46-product-statistics .b46-stat-sidebar-v2__list {
+    display: grid;
+    gap: 8px;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2 {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    min-height: 58px;
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    border: 1px solid var(--border, #dfe7e2);
+    border-radius: 11px;
+    background: var(--surface, rgba(255,255,255,.72));
+    color: var(--text, #17241d);
+    text-align: left;
+    font: inherit;
+    cursor: default;
+    transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, transform .16s ease;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2__icon {
+    width: 30px;
+    height: 30px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 9px;
+    border: 1px solid var(--border, #dfe7e2);
+    background: var(--panel-2, rgba(245,248,246,.9));
+    color: var(--muted, #64746b);
+    font-size: 15px;
+    line-height: 1;
+    font-weight: 900;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2__copy {
+    min-width: 0;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2__label {
+    display: block;
+    overflow: hidden;
+    color: inherit;
+    font-size: 12px;
+    line-height: 1.2;
+    font-weight: 850;
+    letter-spacing: .035em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2__meta {
+    display: block;
+    overflow: hidden;
+    margin-top: 3px;
+    color: var(--muted, #6f7e76);
+    font-size: 10px;
+    line-height: 1.25;
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2.is-active {
+    border-color: rgba(33, 153, 92, .58);
+    background: rgba(33, 153, 92, .075);
+    box-shadow: inset 3px 0 0 rgba(33, 153, 92, .88);
+  }
+
+  body.ball46-product-statistics .b46-stat-nav-card-v2.is-active .b46-stat-nav-card-v2__icon {
+    border-color: rgba(33, 153, 92, .42);
+    color: #16844c;
+    background: rgba(33, 153, 92, .09);
+  }
+
+  html[data-theme="dark"] body.ball46-product-statistics .b46-stat-sidebar-v2 {
+    box-shadow: 0 10px 24px rgba(0,0,0,.16);
+  }
+
+  html[data-theme="dark"] body.ball46-product-statistics .b46-stat-nav-card-v2.is-active .b46-stat-nav-card-v2__icon {
+    color: #67d79a;
+  }
+}
+
+@media (max-width: 820px) {
+  body.ball46-product-statistics .b46-stat-sidebar-v2 {
+    display: none !important;
+  }
+}
