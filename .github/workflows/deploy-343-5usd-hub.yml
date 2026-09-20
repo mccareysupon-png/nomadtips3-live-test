@@ -17,7 +17,6 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
-  FIVEDOLLAR_URL: https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=odds,events,stats&per_page=500&page=1
 
 jobs:
   deploy-probe:
@@ -59,20 +58,6 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
 
-      - name: Probe 5USD bulk read
-        run: |
-          set -euo pipefail
-          code="$(curl -sS --max-time 30 -o /tmp/provider.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$FIVEDOLLAR_URL")"
-          echo "5USD HTTP $code"
-          test "$code" = "200" || { head -c 2000 /tmp/provider.json; echo; exit 21; }
-          node - <<'NODE'
-          const fs=require('fs');
-          const j=JSON.parse(fs.readFileSync('/tmp/provider.json','utf8'));
-          const rows=Array.isArray(j?.data)?j.data:Array.isArray(j?.data?.data)?j.data.data:Array.isArray(j?.fixtures)?j.fixtures:[];
-          const p=j?.pagination??j?.meta?.pagination??j?.meta??{};
-          console.log(JSON.stringify({live:rows.length,has_more:p?.has_more??p?.hasMore??null,sample:rows.slice(0,2).map(x=>({id:x?.id??x?.fixture_id,status:x?.status,status_code:x?.status_code,odds:Boolean(x?.bookmakers||x?.bet365||x?.markets||x?.odds)}))},null,2));
-          NODE
-
       - name: Deploy 3.43 hub
         working-directory: workers/nomadtips3-5usd-hub-343
         run: npx --yes wrangler@4.92.0 deploy --config wrangler.toml
@@ -84,6 +69,8 @@ jobs:
       - name: Verify shared cache and zero-viewer fanout
         run: |
           set -euo pipefail
+          # Deliberately do NOT call 5USD directly here. CI is a viewer/verification
+          # client and must not consume the provider account quota.
           curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/health-before.json
           for i in 1 2 3 4 5; do
             curl -fsS --max-time 45 "$HUB_URL/snapshot?viewer_test=$i&_=$RANDOM$RANDOM" -o "/tmp/snapshot-$i.json"
@@ -108,7 +95,5 @@ jobs:
           if(after.cacheOnlyViewer!==true||after.viewerRefreshEnabled!==false||Number(after.externalRequestsPerViewer)!==0)process.exit(6);
           if(!Number(after.control?.liveRefreshSeconds)||Number(after.accountLimitPerMinute)!==40)process.exit(7);
           if(rich.error!=='VIEWER_RICH_ODDS_DISABLED_USE_BULK_SNAPSHOT'||Number(rich.externalRequestsAdded)!==0)process.exit(8);
-          // Five rapid snapshot reads must not cause a HUB provider attempt. A cron can
-          // legitimately run concurrently, so only report a timestamp change here.
           if(before.lastAttemptAt!==after.lastAttemptAt) console.log('NOTE: scheduled producer ran during viewer test window');
           NODE
