@@ -16,8 +16,9 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   PATCH_CSS: statistics-workspace-v2.css
   PATCH_JS: statistics-workspace-v2.js
-  PATCH_VER: 343-stat-workspace-v2-phase2-20260920a
+  PATCH_VER: 343-stat-workspace-v2-phase2-20260920b
   EXPECT_ENGINE: nomad343-engine-v6.2-viewer-readonly-cron-referee-lock-v1
+  API_CANONICAL_BRANCH: work/ball46-viewer-readonly-lock-v1-20260920
 
 jobs:
   deploy:
@@ -28,7 +29,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Preflight latest Production after API work
+      - name: Preflight latest Production and prove viewer-readonly lock
         shell: bash
         run: |
           set -euo pipefail
@@ -64,14 +65,27 @@ jobs:
           console.log('BACKEND_BEFORE',JSON.stringify(out));
           NODE
 
-      - name: Verify deploy harness matches latest API canonical branch
+          scan_code=$(curl -sS -L --max-time 25 -o /tmp/before/engine-scan.json -w '%{http_code}' "$BALL46_URL/api/engine/scan?workspace2-p2-lock=$GITHUB_RUN_ID")
+          [ "$scan_code" = 403 ] || { echo "VIEWER_ENGINE_LOCK_MISSING:$scan_code"; exit 1; }
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/before/engine-scan.json
+          fm_code=$(curl -sS -L --max-time 25 -o /tmp/before/fixture-odds.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?workspace2-p2-lock=$GITHUB_RUN_ID")
+          [ "$fm_code" = 410 ] || { echo "VIEWER_FULLMARKET_LOCK_MISSING:$fm_code"; exit 1; }
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/before/fixture-odds.json
+          echo 'PRODUCTION_VIEWER_READONLY_LOCK_CONFIRMED'
+
+      - name: Load exact current canonical deploy harness without modifying it
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin work/ball46-viewer-readonly-lock-v1-20260920 --no-tags
-          git diff --quiet HEAD FETCH_HEAD -- workers/nomadtips3-343-preview/src/index.js || { echo BALL46_WRAPPER_DIFF_FROM_API_CANONICAL; exit 1; }
-          git diff --quiet HEAD FETCH_HEAD -- workers/nomadtips3-343-preview/wrangler.ball46.jsonc || { echo BALL46_CONFIG_DIFF_FROM_API_CANONICAL; exit 1; }
-          echo 'DEPLOY_HARNESS_CANONICAL_GUARD_PASS'
+          git fetch origin "$API_CANONICAL_BRANCH" --no-tags
+          git show FETCH_HEAD:workers/nomadtips3-343-preview/src/index.js > /tmp/canonical-index.js
+          git show FETCH_HEAD:workers/nomadtips3-343-preview/wrangler.ball46.jsonc > /tmp/canonical-wrangler.jsonc
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/canonical-index.js
+          cp /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cp /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          cmp -s /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cmp -s /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'CURRENT_API_CANONICAL_HARNESS_LOADED_BYTE_FOR_BYTE'
 
       - name: Build staging from current Production bytes only
         shell: bash
@@ -91,16 +105,13 @@ jobs:
             case "$name" in *.html|*.js|*.css|*.svg|*.json|*.txt|*.xml|*.png|*.webp|*.jpg|*.jpeg|*.ico|*.woff|*.woff2) ;; *) continue ;; esac
             tmp="/tmp/prod-file-${name//\//_}"
             code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$name?workspace2-p2-mirror=$GITHUB_RUN_ID") || code=000
-            if [ "$code" = 200 ] && [ -s "$tmp" ]; then
-              cp "$tmp" "nomad-live-343/$name"
-            fi
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then cp "$tmp" "nomad-live-343/$name"; fi
           done < /tmp/names/all.txt
 
           cp /tmp/prod/index.html nomad-live-343/index.html
           cp /tmp/prod/signal.html nomad-live-343/signal.html
           cp /tmp/prod/statistics.html nomad-live-343/statistics.html
 
-          # Explicitly preserve every protected runtime from current Production.
           for f in signal-next.js statistics-next.js bulk-odds-compat-343.js odds-format-343.js full-market-bookmaker-343.js full-odds-main-343.js live-summary-full-odds-343.js dashboard-v2-stage3.js; do
             tmp="/tmp/protected-$f"
             code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$f?workspace2-p2-protected=$GITHUB_RUN_ID") || code=000
@@ -146,9 +157,7 @@ jobs:
           diff -qr /tmp/phase2-before nomad-live-343 > /tmp/phase2.diff || true
           cat /tmp/phase2.diff
           [ -s /tmp/phase2.diff ]
-          if grep -Ev 'statistics\.html|statistics-workspace-v2\.css|statistics-workspace-v2\.js' /tmp/phase2.diff | grep -q .; then
-            echo 'UNEXPECTED_PHASE2_DIFF'; exit 1
-          fi
+          if grep -Ev 'statistics\.html|statistics-workspace-v2\.css|statistics-workspace-v2\.js' /tmp/phase2.diff | grep -q .; then echo 'UNEXPECTED_PHASE2_DIFF'; exit 1; fi
           grep -Eq 'statistics\.html' /tmp/phase2.diff
           cmp -s /tmp/prod/index.html nomad-live-343/index.html || { echo PAGE1_HTML_CHANGED; exit 1; }
           cmp -s /tmp/prod/signal.html nomad-live-343/signal.html || { echo PAGE2_HTML_CHANGED; exit 1; }
@@ -164,7 +173,9 @@ jobs:
             curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_URL/$f?workspace2-p2-guard=$GITHUB_RUN_ID" -o "$tmp"
             cmp -s "$tmp" "nomad-live-343/$f" || { echo "PROTECTED_RUNTIME_DIFF:$f"; exit 1; }
           done
-          echo 'PROTECTED_RUNTIME_GUARD_PASS'
+          cmp -s /tmp/canonical-index.js workers/nomadtips3-343-preview/src/index.js
+          cmp -s /tmp/canonical-wrangler.jsonc workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'PROTECTED_RUNTIME_AND_CANONICAL_HARNESS_GUARD_PASS'
 
       - uses: actions/setup-node@v4
         with:
@@ -175,14 +186,15 @@ jobs:
         run: |
           set -euo pipefail
           node --check "nomad-live-343/$PATCH_JS"
+          node --check workers/nomadtips3-343-preview/src/index.js
           ! grep -Eq 'fetch[[:space:]]*\(|XMLHttpRequest|/api/' "nomad-live-343/$PATCH_JS"
           npx --yes wrangler@4.92.0 deploy --dry-run --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
 
-      - name: Deploy Phase 2 shell only
+      - name: Deploy Phase 2 shell only with current canonical wrapper
         shell: bash
         run: npx --yes wrangler@4.92.0 deploy --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc
 
-      - name: Verify Page3 overlay and backend invariants
+      - name: Verify Page3 overlay and all system invariants
         shell: bash
         run: |
           set -euo pipefail
@@ -218,5 +230,10 @@ jobs:
             }
           }
           if(before.engine.version !== process.env.EXPECT_ENGINE) throw Error('ENGINE_BASE_NOT_EXPECTED');
-          console.log('BALL46_STAT_WORKSPACE_V2_PHASE2_PASS');
           NODE
+
+          scan_code=$(curl -sS -L --max-time 25 -o /tmp/after/engine-scan.json -w '%{http_code}' "$BALL46_URL/api/engine/scan?workspace2-p2-lock-after=$GITHUB_RUN_ID")
+          [ "$scan_code" = 403 ] && grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/after/engine-scan.json
+          fm_code=$(curl -sS -L --max-time 25 -o /tmp/after/fixture-odds.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?workspace2-p2-lock-after=$GITHUB_RUN_ID")
+          [ "$fm_code" = 410 ] && grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/after/fixture-odds.json
+          echo 'BALL46_STAT_WORKSPACE_V2_PHASE2_PASS'
