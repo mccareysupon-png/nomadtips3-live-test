@@ -48,7 +48,7 @@ jobs:
               *) continue ;;
             esac
             case "$name" in
-              page2-workspace-v1.js|page2-workspace-v1.css) continue ;;
+              page2-workspace-v1.js|page2-workspace-v1.css|page2-hide-kpis-v1.css) continue ;;
             esac
             safe="${name//\//_}"
             code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?page2-rb0=${GITHUB_RUN_ID}") || true
@@ -94,11 +94,14 @@ jobs:
           node --check nomad-live-343/page2-workspace-v1.js
           grep -Fq "343-page2-workspace-v1-20260920" nomad-live-343/page2-workspace-v1.js
           grep -Fq ".b46-signal-page-v2" nomad-live-343/page2-workspace-v1.css
+          grep -Fq ".b46-signal-page-v2 .next-kpis" nomad-live-343/page2-hide-kpis-v1.css
           ! grep -Fq 'fetch(' nomad-live-343/page2-workspace-v1.js
           ! grep -Fq '/api/' nomad-live-343/page2-workspace-v1.js
           ! grep -Fq 'XMLHttpRequest' nomad-live-343/page2-workspace-v1.js
           ! grep -Fq 'fetch(' nomad-live-343/page2-workspace-v1.css
           ! grep -Fq '/api/' nomad-live-343/page2-workspace-v1.css
+          ! grep -Fq 'fetch(' nomad-live-343/page2-hide-kpis-v1.css
+          ! grep -Fq '/api/' nomad-live-343/page2-hide-kpis-v1.css
 
           python3 - <<'PY'
           from pathlib import Path
@@ -106,13 +109,15 @@ jobs:
           p=Path('nomad-live-343/signal.html')
           s=p.read_text()
           css='<link rel="stylesheet" href="page2-workspace-v1.css?v=343-page2-workspace-v1-20260920">'
+          hide_css='<link rel="stylesheet" href="page2-hide-kpis-v1.css?v=343-page2-hide-kpis-v1-20260920">'
           js='<script src="page2-workspace-v1.js?v=343-page2-workspace-v1-20260920" defer></script>'
           s=re.sub(r'\s*<link[^>]+page2-workspace-v1\.css[^>]*>','',s,flags=re.I)
+          s=re.sub(r'\s*<link[^>]+page2-hide-kpis-v1\.css[^>]*>','',s,flags=re.I)
           s=re.sub(r'\s*<script[^>]+page2-workspace-v1\.js[^>]*>\s*</script>','',s,flags=re.I)
           mode=os.environ.get('MODE','deploy')
           if mode=='deploy':
               if '</head>' not in s or '</body>' not in s: raise SystemExit('PAGE2_LOADER_ANCHOR_MISSING')
-              s=s.replace('</head>',css+'\n</head>',1)
+              s=s.replace('</head>',css+'\n'+hide_css+'\n</head>',1)
               s=s.replace('</body>',js+'\n</body>',1)
           elif mode!='rollback':
               raise SystemExit('UNKNOWN_MODE:'+mode)
@@ -130,9 +135,11 @@ jobs:
 
           if [ "$MODE" = deploy ]; then
             grep -Fq 'page2-workspace-v1.css?v=343-page2-workspace-v1-20260920' nomad-live-343/signal.html
+            grep -Fq 'page2-hide-kpis-v1.css?v=343-page2-hide-kpis-v1-20260920' nomad-live-343/signal.html
             grep -Fq 'page2-workspace-v1.js?v=343-page2-workspace-v1-20260920' nomad-live-343/signal.html
           else
             ! grep -Fq 'page2-workspace-v1.css' nomad-live-343/signal.html
+            ! grep -Fq 'page2-hide-kpis-v1.css' nomad-live-343/signal.html
             ! grep -Fq 'page2-workspace-v1.js' nomad-live-343/signal.html
           fi
           echo PAGE2_SOURCE_BOUNDARY_PASS
@@ -154,9 +161,10 @@ jobs:
             if [ "$MODE" = deploy ]; then
               curl -fsS -L --max-time 25 "$BALL46_URL/page2-workspace-v1.js?page2=${GITHUB_RUN_ID}-${n}" -o /tmp/page2-after.js || true
               curl -fsS -L --max-time 25 "$BALL46_URL/page2-workspace-v1.css?page2=${GITHUB_RUN_ID}-${n}" -o /tmp/page2-after.css || true
-              if grep -Fq 'page2-workspace-v1.js?v=343-page2-workspace-v1-20260920' /tmp/signal-after.html && grep -Fq '343-page2-workspace-v1-20260920' /tmp/page2-after.js && grep -Fq '.b46-signal-page-v2' /tmp/page2-after.css; then ok=1; break; fi
+              curl -fsS -L --max-time 25 "$BALL46_URL/page2-hide-kpis-v1.css?page2=${GITHUB_RUN_ID}-${n}" -o /tmp/page2-hide-after.css || true
+              if grep -Fq 'page2-workspace-v1.js?v=343-page2-workspace-v1-20260920' /tmp/signal-after.html && grep -Fq 'page2-hide-kpis-v1.css?v=343-page2-hide-kpis-v1-20260920' /tmp/signal-after.html && grep -Fq '343-page2-workspace-v1-20260920' /tmp/page2-after.js && grep -Fq '.b46-signal-page-v2' /tmp/page2-after.css && grep -Fq '.b46-signal-page-v2 .next-kpis' /tmp/page2-hide-after.css; then ok=1; break; fi
             else
-              if ! grep -Fq 'page2-workspace-v1.js' /tmp/signal-after.html && ! grep -Fq 'page2-workspace-v1.css' /tmp/signal-after.html; then ok=1; break; fi
+              if ! grep -Fq 'page2-workspace-v1.js' /tmp/signal-after.html && ! grep -Fq 'page2-workspace-v1.css' /tmp/signal-after.html && ! grep -Fq 'page2-hide-kpis-v1.css' /tmp/signal-after.html; then ok=1; break; fi
             fi
             sleep 2
           done
@@ -180,5 +188,5 @@ jobs:
           if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
           if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
           if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
-          console.log('BALL46_PAGE2_WORKSPACE_PASS',JSON.stringify({signals:s.signals.length,engine:e.version,fullMarket:f.version}));
+          console.log('BALL46_PAGE2_WORKSPACE_PASS',JSON.stringify({signals:s.signals.length,engine:e.version,fullMarket:f.version,kpis:'hidden'}));
           NODE
