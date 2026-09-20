@@ -1,0 +1,14 @@
+/* Ball46 page-head stability v1 — presentation geometry only.
+   Scope: Live Scores / Signals / Statistics intro blocks.
+   No API, Odds, Engine, Signal, polling or settlement logic. */
+:root{--b46-head-x:clamp(10px,1.4vw,22px)}
+body[data-page="live"] .dash-heading,.ball46-product-page .next-page-head{box-sizing:border-box;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;min-height:64px;margin:0 0 14px;padding:0;border:0}
+.ball46-product-page .next-shell{padding-top:18px}
+.ball46-product-page .next-page-head{position:relative;left:50%;width:calc(min(100vw, 1920px) - var(--b46-head-x) - var(--b46-head-x));max-width:none;transform:translateX(-50%)}
+.ball46-product-page .next-page-head::before{display:none;content:none}
+body[data-page="live"] .dash-heading>div:first-child,.ball46-product-page .next-page-head>div:first-child{flex:1 1 auto;min-width:0}
+body[data-page="live"] .dash-heading .eyebrow,.ball46-product-page .next-page-head .eyebrow{margin:0 0 5px;font-family:Arial,Helvetica,sans-serif;font-size:9px;font-weight:900;line-height:1.2;letter-spacing:.12em;text-transform:none}
+body[data-page="live"] .dash-heading h1,.ball46-product-page .next-page-head h1{margin:0;font-family:Arial,Helvetica,sans-serif;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.4px}
+body[data-page="live"] .dash-heading>div:first-child>p:last-child,.ball46-product-page .next-page-head>div:first-child>p:last-child{display:block;max-width:800px;height:17px;margin:5px 0 0;overflow:hidden;color:var(--muted);font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;line-height:17px;white-space:nowrap;text-overflow:ellipsis}
+body[data-page="live"] .data-state,.ball46-product-page .next-status{box-sizing:border-box;flex:0 0 auto;min-height:34px;margin:0;padding:0 11px;display:flex;align-items:center;gap:8px;border-radius:10px;font-family:Arial,Helvetica,sans-serif;font-size:10px;font-weight:800;line-height:32px;white-space:nowrap}
+@media(max-width:760px){:root{--b46-head-x:6px}.ball46-product-page .next-shell{padding-top:10px}body[data-page="live"] .dash-heading,.ball46-product-page .next-page-head{display:block;min-height:0;margin-bottom:14px;gap:0}.ball46-product-page .next-page-head{width:calc(100vw - 12px)}body[data-page="live"] .dash-heading h1,.ball46-product-page .next-page-head h1{font-size:20px;line-height:1.2}body[data-page="live"] .dash-heading>div:first-child>p:last-child,.ball46-product-page .next-page-head>div:first-child>p:last-child{display:-webkit-box;max-width:none;height:32px;margin-top:5px;overflow:hidden;font-size:12px;line-height:16px;white-space:normal;-webkit-box-orient:vertical;-webkit-line-clamp:2}body[data-page="live"] .data-state,.ball46-product-page .next-status{display:inline-flex;min-height:34px;margin-top:9px;line-height:32px}}
