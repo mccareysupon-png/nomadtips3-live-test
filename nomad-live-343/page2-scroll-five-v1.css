@@ -1,0 +1,24 @@
+/* Ball46 Page 2 — match-list scrollbar from 5 visible matches upward only.
+   Presentation-only. Keeps the existing cards and data flow unchanged. */
+@media (min-width:821px){
+  .b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden]))){
+    max-height:min(560px,calc(100vh - 220px));
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-gutter:stable;
+    scrollbar-width:thin;
+    scrollbar-color:#555d59 #edf1ef;
+    padding-right:6px;
+  }
+  .b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar{width:10px}
+  .b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-track{background:#edf1ef;border-radius:999px}
+  .b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-thumb{background:#555d59;border:2px solid #edf1ef;border-radius:999px}
+  .b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-thumb:hover{background:#3f4743}
+
+  html[data-theme="dark"] body.b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden]))){
+    scrollbar-color:#3d4541 #111613;
+  }
+  html[data-theme="dark"] body.b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-track{background:#111613}
+  html[data-theme="dark"] body.b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-thumb{background:#3d4541;border-color:#111613}
+  html[data-theme="dark"] body.b46-signal-page-v2 .next-signal-list:has(> :nth-child(5 of .next-signal-card:not([hidden])))::-webkit-scrollbar-thumb:hover{background:#535d57}
+}
