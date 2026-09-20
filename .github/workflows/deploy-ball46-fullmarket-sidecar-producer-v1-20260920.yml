@@ -48,8 +48,12 @@ jobs:
           ! grep -Fq 'mergeFullOdds' workers/nomadtips3-full-market-343-ball46/src/index.js
           grep -Fq '/api/full-market/board-cache' nomad-live-343/full-market-sidecar-343.js
           grep -Fq 'providerRequestsPerViewer:0' nomad-live-343/full-market-sidecar-343.js
-          grep -Fq 'DISPLAY_ALL_RETURNED_BOOKMAKERS' nomad-live-343/full-market-sidecar-343.js
-          grep -Fq 'DISPLAY_ALL_RETURNED_MARKETS' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'applyRichOdds' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'createsUi:false' nomad-live-343/full-market-sidecar-343.js
+          grep -Fq 'createsMonitor:false' nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq 'insertAdjacentElement' nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq 'fm-monitor' nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq 'fm-books' nomad-live-343/full-market-sidecar-343.js
           ! grep -Fq '/api/full-market/fixture-odds' nomad-live-343/full-market-sidecar-343.js
           ! grep -Fq '/api/full-market/fixture-odds' nomad-live-343/live-summary-full-odds-343.js
           ! grep -Fq 'visibility:hidden!important' nomad-live-343/live-summary-full-odds-343.js
@@ -138,19 +142,28 @@ jobs:
           if(j.error!=='FULL_MARKET_CACHE_MISS'||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0) throw Error('FIXTURE_ROUTE_NOT_CACHE_ONLY');
           NODE
 
-      - name: Verify 4 - UI sidecar contract
+      - name: Verify 4 - Existing odds cells only
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/live-summary.js
-          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-sidecar-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/sidecar.js
-          grep -Fq '343-live-summary-central-cache-sidecar-v5' /tmp/live-summary.js
+          ok=0
+          for n in $(seq 1 15); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/live-summary.js || true
+            curl -fsS -L --max-time 30 "$BALL46_URL/full-market-sidecar-343.js?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/sidecar.js || true
+            if grep -Fq '343-live-summary-existing-odds-cells-v6' /tmp/live-summary.js && grep -Fq '343-full-market-bridge-v3-existing-cells-only' /tmp/sidecar.js; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
           ! grep -Fq '/api/full-market/fixture-odds' /tmp/live-summary.js
           ! grep -Fq 'visibility:hidden!important' /tmp/live-summary.js
           grep -Fq '/api/full-market/board-cache' /tmp/sidecar.js
           grep -Fq 'providerRequestsPerViewer:0' /tmp/sidecar.js
-          grep -Fq 'DISPLAY_ALL_RETURNED_BOOKMAKERS' /tmp/sidecar.js
-          grep -Fq 'DISPLAY_ALL_RETURNED_MARKETS' /tmp/sidecar.js
+          grep -Fq 'applyRichOdds' /tmp/sidecar.js
+          grep -Fq 'createsUi:false' /tmp/sidecar.js
+          grep -Fq 'createsMonitor:false' /tmp/sidecar.js
+          ! grep -Fq 'insertAdjacentElement' /tmp/sidecar.js
+          ! grep -Fq 'fm-monitor' /tmp/sidecar.js
+          ! grep -Fq 'fm-books' /tmp/sidecar.js
           node --check /tmp/live-summary.js
           node --check /tmp/sidecar.js
 
@@ -164,7 +177,7 @@ jobs:
           const fs=require('fs'),e=require('/tmp/engine-after-health.json'),h=require('/tmp/hub-after-health.json');
           if(String(e.version)!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
           if(String(h.version)!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
-          console.log('BALL46_FULL_MARKET_SIDECAR_PRODUCER_PASS',JSON.stringify({engine:e.version,hub:h.version}));
+          console.log('BALL46_FULL_MARKET_EXISTING_CELLS_PASS',JSON.stringify({engine:e.version,hub:h.version}));
           NODE
 
       - name: Roll back both workers on verification failure
