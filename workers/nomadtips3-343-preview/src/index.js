@@ -147,7 +147,11 @@ async function activeSignals(request, env) {
 async function fullMarketCompat(request, env, path) {
   if (!env.FULL_MARKET) return Response.json({ok:false,error:'FULL_MARKET_SERVICE_NOT_BOUND'},{status:503,headers:{'cache-control':'no-store'}});
   if (path === '/health' || path === '/status') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
-  if (path === '/fixture-odds') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
+  if (path === '/fixture-odds') return Response.json({ok:false,error:'VIEWER_PROVIDER_FETCH_DISABLED',mode:'CENTRAL_CACHE_READ_ONLY',externalRequestsAdded:0,lock:'BALL46_VIEWER_READONLY_LOCK_V1'},{status:410,headers:{'cache-control':'no-store'}});
+  if (path === '/board-cache') {
+    if (request.method !== 'POST') return Response.json({ok:false,error:'METHOD_NOT_ALLOWED'},{status:405,headers:{'cache-control':'no-store'}});
+    return env.FULL_MARKET.fetch(fullMarketRequest(request, '/board-cache'));
+  }
   if (path === '/settings') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/settings'));
   return Response.json({ok:false,error:'FULL_MARKET_ROUTE_NOT_FOUND'},{status:404,headers:{'cache-control':'no-store'}});
 }
@@ -161,6 +165,9 @@ export default {
     }
     if (url.pathname === '/api/engine/board' && request.method === 'GET') return engineBoardResponse(request, env);
     if (url.pathname === '/api/engine/signals' && request.method === 'GET') return activeSignals(request, env);
+    if (url.pathname === '/api/engine/scan' || url.pathname === '/api/engine/fixture-odds') {
+      return Response.json({ok:false,error:'VIEWER_ENGINE_TRIGGER_DISABLED',lock:'BALL46_VIEWER_READONLY_LOCK_V1'},{status:403,headers:{'cache-control':'no-store'}});
+    }
     if (url.pathname.startsWith('/api/engine/')) {
       const path = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(engineRequest(request, path));
