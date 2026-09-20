@@ -1,0 +1,97 @@
+/* Ball46 Page 2 Workspace v1 — presentation only.
+   Scoped to .b46-signal-page-v2. No API, odds, engine, polling or settlement logic. */
+.b46-signal-page-v2 .next-shell{max-width:1600px}
+.b46-signal-page-v2 .b46-page2-workspace{display:grid;grid-template-columns:190px minmax(0,1fr) 286px;gap:12px;align-items:start;margin-top:14px}
+.b46-signal-page-v2 .b46-page2-left,.b46-signal-page-v2 .b46-page2-right{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;scrollbar-width:thin}
+.b46-signal-page-v2 .b46-page2-center{min-width:0}
+.b46-signal-page-v2 .b46-page2-center>.next-market-strip{margin:0 0 10px}
+.b46-signal-page-v2 .b46-page2-center>.next-panel{margin-top:0}
+.b46-signal-page-v2 .b46-page2-rail-card,.b46-signal-page-v2 .b46-page2-intel{border:1px solid var(--line);border-radius:13px;background:var(--surface);box-shadow:0 5px 18px rgba(25,48,34,.04);overflow:hidden}
+.b46-signal-page-v2 .b46-page2-rail-card+.b46-page2-rail-card{margin-top:10px}
+.b46-signal-page-v2 .b46-page2-rail-title{padding:10px 11px 7px;color:var(--muted);font-size:8px;font-weight:800;letter-spacing:.09em}
+.b46-signal-page-v2 .b46-page2-filter,.b46-signal-page-v2 .b46-page2-league-filter{width:100%;min-height:34px;padding:7px 9px;border:0;border-top:1px solid color-mix(in srgb,var(--line) 72%,transparent);background:transparent;color:var(--text-2);display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;cursor:pointer;font-size:9.5px;font-weight:650;transition:background .16s ease,color .16s ease}
+.b46-signal-page-v2 .b46-page2-filter span,.b46-signal-page-v2 .b46-page2-league-filter span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b46-signal-page-v2 .b46-page2-filter b,.b46-signal-page-v2 .b46-page2-league-filter b{flex:0 0 auto;min-width:20px;text-align:right;color:var(--muted);font-size:8.5px;font-variant-numeric:tabular-nums}
+.b46-signal-page-v2 .b46-page2-filter:hover,.b46-signal-page-v2 .b46-page2-league-filter:hover{background:var(--surface-2);color:var(--text)}
+.b46-signal-page-v2 .b46-page2-filter.active,.b46-signal-page-v2 .b46-page2-league-filter.active{background:var(--green-soft);color:var(--green-strong)}
+.b46-signal-page-v2 .b46-page2-filter.active b,.b46-signal-page-v2 .b46-page2-league-filter.active b{color:var(--green-strong)}
+.b46-signal-page-v2 .b46-page2-dot{display:inline-block;width:6px;height:6px;margin-right:6px;border-radius:50%;background:var(--muted)}
+.b46-signal-page-v2 .b46-page2-dot.live{background:var(--green)}
+.b46-signal-page-v2 .b46-page2-dot.goals{background:var(--product-gold,#b88a2d)}
+.b46-signal-page-v2 .b46-page2-dot.one-x-two{background:color-mix(in srgb,var(--green) 55%,var(--text))}
+.b46-signal-page-v2 .b46-page2-rail-empty{padding:13px 10px;color:var(--muted);font-size:9px;text-align:center}
+
+.b46-signal-page-v2 .next-signal-card{transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.b46-signal-page-v2 .next-signal-card.b46-page2-selected{border-color:color-mix(in srgb,var(--green) 50%,var(--line));box-shadow:0 7px 20px rgba(21,148,90,.07)}
+.b46-signal-page-v2 .next-signal-main{cursor:pointer;position:relative;transition:background .18s ease}
+.b46-signal-page-v2 .next-signal-main:hover{background:color-mix(in srgb,var(--green-soft) 30%,var(--surface))}
+.b46-signal-page-v2 .next-signal-main:focus-visible{outline:2px solid color-mix(in srgb,var(--green) 68%,transparent);outline-offset:-2px}
+.b46-signal-page-v2 .next-score{padding:7px 6px;border-left:1px solid var(--line);border-right:1px solid var(--line);border-radius:8px;background:color-mix(in srgb,var(--surface-2) 88%,var(--green-soft))}
+.b46-signal-page-v2 .next-expand{transition:transform .2s ease,border-color .2s ease,background .2s ease}
+.b46-signal-page-v2 .next-signal-card.open .next-expand{transform:rotate(180deg);border-color:color-mix(in srgb,var(--green) 42%,var(--line));background:var(--green-soft)}
+.b46-signal-page-v2 .next-signal-card.open .next-signal-detail{transform-origin:top;animation:b46Page2Reveal .22s ease both}
+.b46-signal-page-v2 .next-signal-card.b46-page2-pending-toggle{border-color:color-mix(in srgb,var(--green) 34%,var(--line))}
+@keyframes b46Page2Reveal{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+
+.b46-signal-page-v2 .b46-page2-intel{padding:0}
+.b46-signal-page-v2 .b46-page2-intel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:12px 13px;border-bottom:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-intel-head span,.b46-signal-page-v2 .b46-page2-intel-section>span,.b46-signal-page-v2 .b46-page2-intel-grid span{display:block;color:var(--muted);font-size:7.5px;font-weight:800;letter-spacing:.07em}
+.b46-signal-page-v2 .b46-page2-intel-head h2{margin:3px 0 0;font-size:11px;font-weight:700;line-height:1.3}
+.b46-signal-page-v2 .b46-page2-intel-head>b{padding:4px 6px;border-radius:999px;background:var(--green-soft);color:var(--green-strong);font-size:7px;letter-spacing:.06em}
+.b46-signal-page-v2 .b46-page2-intel-score{padding:14px 13px;text-align:center;border-bottom:1px solid var(--line);background:linear-gradient(180deg,color-mix(in srgb,var(--green-soft) 42%,var(--surface)),var(--surface))}
+.b46-signal-page-v2 .b46-page2-intel-score span{display:block;color:var(--text-2);font-size:10px;font-weight:700;line-height:1.35}
+.b46-signal-page-v2 .b46-page2-intel-score strong{display:block;margin-top:7px;font-size:27px;line-height:1;font-weight:760;font-variant-numeric:tabular-nums}
+.b46-signal-page-v2 .b46-page2-intel-score em{display:block;margin-top:5px;color:var(--green);font-size:9px;font-style:normal;font-weight:750}
+.b46-signal-page-v2 .b46-page2-intel-section{padding:11px 13px;border-bottom:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-intel-section strong{display:block;margin-top:5px;font-size:10.5px;font-weight:720;line-height:1.35;overflow-wrap:anywhere}
+.b46-signal-page-v2 .b46-page2-intel-section small{display:block;margin-top:3px;color:var(--muted);font-size:8px;line-height:1.4}
+.b46-signal-page-v2 .b46-page2-intel-grid{display:grid;grid-template-columns:1fr 1.35fr;border-bottom:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-intel-grid>div{min-width:0;padding:10px 12px}
+.b46-signal-page-v2 .b46-page2-intel-grid>div+div{border-left:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-intel-grid strong{display:block;margin-top:4px;font-size:10px;font-weight:720;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.b46-signal-page-v2 .b46-page2-intel-foot,.b46-signal-page-v2 .b46-page2-intel-empty{padding:11px 13px;color:var(--muted);font-size:8.5px;line-height:1.55}
+.b46-signal-page-v2 .b46-page2-overview{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-overview>div{padding:14px 7px;text-align:center}
+.b46-signal-page-v2 .b46-page2-overview>div+div{border-left:1px solid var(--line)}
+.b46-signal-page-v2 .b46-page2-overview strong{display:block;font-size:18px;font-weight:740;font-variant-numeric:tabular-nums}
+.b46-signal-page-v2 .b46-page2-overview span{display:block;margin-top:4px;color:var(--muted);font-size:7.5px;line-height:1.25}
+.b46-signal-page-v2 .b46-page2-filter-empty{border:1px dashed var(--line);border-radius:10px;margin:8px}
+
+@media(max-width:1280px){
+  .b46-signal-page-v2 .b46-page2-workspace{grid-template-columns:170px minmax(0,1fr) 244px;gap:9px}
+  .b46-signal-page-v2 .next-signal-main{grid-template-columns:minmax(190px,1.25fr) 76px 104px minmax(190px,1fr) 48px;gap:8px;padding-left:10px;padding-right:10px}
+}
+@media(max-width:1020px){
+  .b46-signal-page-v2 .b46-page2-workspace{grid-template-columns:168px minmax(0,1fr)}
+  .b46-signal-page-v2 .b46-page2-right{position:static;grid-column:1/-1;max-height:none;overflow:visible}
+  .b46-signal-page-v2 .b46-page2-intel{display:grid;grid-template-columns:minmax(210px,.8fr) repeat(3,minmax(0,1fr))}
+  .b46-signal-page-v2 .b46-page2-intel-head{grid-column:1/-1}
+  .b46-signal-page-v2 .b46-page2-intel-score{border-right:1px solid var(--line);border-bottom:0}
+  .b46-signal-page-v2 .b46-page2-intel-section{border-right:1px solid var(--line);border-bottom:0}
+  .b46-signal-page-v2 .b46-page2-intel-grid{display:block;border-bottom:0}
+  .b46-signal-page-v2 .b46-page2-intel-grid>div+div{border-left:0;border-top:1px solid var(--line)}
+  .b46-signal-page-v2 .b46-page2-intel-foot,.b46-signal-page-v2 .b46-page2-intel-empty{grid-column:1/-1;border-top:1px solid var(--line)}
+  .b46-signal-page-v2 .b46-page2-overview{grid-column:1/-1}
+}
+@media(max-width:820px){
+  .b46-signal-page-v2 .b46-page2-workspace{display:block;margin-top:9px}
+  .b46-signal-page-v2 .b46-page2-left,.b46-signal-page-v2 .b46-page2-right{position:static;max-height:none;overflow:visible}
+  .b46-signal-page-v2 .b46-page2-left{margin-bottom:9px}
+  .b46-signal-page-v2 .b46-page2-rail-card{display:flex;align-items:center;gap:5px;padding:6px;overflow-x:auto;border-radius:10px}
+  .b46-signal-page-v2 .b46-page2-rail-card+.b46-page2-rail-card{margin-top:6px}
+  .b46-signal-page-v2 .b46-page2-rail-title{display:none}
+  .b46-signal-page-v2 .b46-page2-filter,.b46-signal-page-v2 .b46-page2-league-filter{width:auto;min-width:max-content;min-height:31px;border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+  .b46-signal-page-v2 .b46-page2-league-list{display:flex;gap:5px}
+  .b46-signal-page-v2 .b46-page2-center>.next-market-strip{margin-bottom:7px}
+  .b46-signal-page-v2 .next-signal-main{cursor:pointer}
+  .b46-signal-page-v2 .b46-page2-right{margin-top:9px}
+  .b46-signal-page-v2 .b46-page2-intel{display:block}
+  .b46-signal-page-v2 .b46-page2-intel-score,.b46-signal-page-v2 .b46-page2-intel-section{border-right:0;border-bottom:1px solid var(--line)}
+  .b46-signal-page-v2 .b46-page2-intel-grid{display:grid;border-bottom:1px solid var(--line)}
+  .b46-signal-page-v2 .b46-page2-intel-grid>div+div{border-top:0;border-left:1px solid var(--line)}
+  .b46-signal-page-v2 .b46-page2-intel-foot,.b46-signal-page-v2 .b46-page2-intel-empty{border-top:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .b46-signal-page-v2 .next-signal-card,.b46-signal-page-v2 .next-signal-main,.b46-signal-page-v2 .next-expand{transition:none}
+  .b46-signal-page-v2 .next-signal-card.open .next-signal-detail{animation:none}
+}
