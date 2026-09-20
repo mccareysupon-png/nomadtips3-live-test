@@ -1,0 +1,54 @@
+name: Rescue Engine Health History Audit
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-engine-health-history-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BASE_REF: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          fetch-depth: 1
+      - name: Poll live engine health for recurrence
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in 1 2 3 4 5; do
+            ts=$(date -u +%FT%TZ)
+            code=$(curl -sS -L --retry 3 -o "/tmp/health-$n.json" -w '%{http_code}' "https://ball46.com/api/engine/health?engineAudit=${GITHUB_RUN_ID}-$n")
+            echo "POLL $n $ts HTTP=$code $(cat /tmp/health-$n.json)"
+            test "$code" = 200
+            [ "$n" = 5 ] || sleep 12
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const rows=[];
+          for(let i=1;i<=5;i++){const j=JSON.parse(fs.readFileSync(`/tmp/health-${i}.json`,'utf8'));rows.push({ok:j.ok,version:j.version,startedAt:j.startedAt,finishedAt:j.finishedAt,lastError:j.lastError||null})}
+          console.log('HEALTH_SERIES',JSON.stringify(rows));
+          const keys=new Set(rows.map(x=>`${x.startedAt}|${x.finishedAt}|${x.lastError}`));
+          console.log('DISTINCT_HEALTH_STATES',keys.size);
+          NODE
+      - name: List exact engine Cloudflare deployment history
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== CONFIG ==='; cat wrangler.toml
+          echo '=== DEPLOYMENTS ==='
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.toml --json | tee /tmp/engine-deployments.json
+          echo '=== VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --config wrangler.toml --json | tee /tmp/engine-versions.json
+          echo '=== NOON WINDOW 2026-09-20 04:00Z..07:00Z ==='
+          node - <<'NODE'
+          const fs=require('fs'); const x=JSON.parse(fs.readFileSync('/tmp/engine-versions.json','utf8')); const a=Array.isArray(x)?x:(x.versions||[]);
+          for(const v of a){const t=v?.metadata?.created_on||v?.created_on||v?.created_at||''; if(t>='2026-09-20T04:00:00Z'&&t<='2026-09-20T07:00:00Z') console.log(JSON.stringify(v));}
+          NODE
