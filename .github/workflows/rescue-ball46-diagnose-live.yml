@@ -1,0 +1,72 @@
+name: Rescue Ball46 Diagnose Live
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-ball46-diagnose-live.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect live pages and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          B=https://ball46.com
+          mkdir -p /tmp/b46
+          for f in index.html signal.html statistics.html; do
+            curl -fsSL --retry 4 --retry-all-errors "$B/$f?rescue=${GITHUB_RUN_ID}" -o "/tmp/b46/$f"
+            echo "=== $f bytes=$(wc -c </tmp/b46/$f) ==="
+            grep -Eo '(src|href)="[^"]+\.(js|css)[^"]*"' "/tmp/b46/$f" | sed 's/^/ASSET /' || true
+          done
+          echo '=== CHART MARKERS ==='
+          grep -Ei 'chart|statistics-addk-expand|statistics-units|canvas|svg' /tmp/b46/statistics.html | head -120 || true
+          echo '=== SIGNAL MARKERS ==='
+          grep -Ei 'signal-next|event-flow|page2-workspace|navigation-stability' /tmp/b46/signal.html | head -80 || true
+          echo '=== API HEALTH ==='
+          curl -fsSL "$B/api/engine/health?rescue=${GITHUB_RUN_ID}" | tee /tmp/b46/engine-health.json
+          echo
+          curl -fsSL "$B/api/full-market/health?rescue=${GITHUB_RUN_ID}" | tee /tmp/b46/full-health.json
+          echo
+          echo '=== BOARD ANALYSIS ==='
+          curl -fsSL "$B/api/engine/board?rescue=${GITHUB_RUN_ID}" -o /tmp/b46/board.json
+          node - <<'NODE'
+          const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/b46/board.json','utf8'));
+          console.log('TOP_KEYS',Object.keys(j));
+          const arr=j.fixtures||j.matches||j.data||j.board||[];
+          console.log('FIXTURES',Array.isArray(arr)?arr.length:'NOT_ARRAY');
+          const names=new Map(); let withOdds=0;
+          function walk(x,depth=0){if(depth>6||x==null)return; if(Array.isArray(x)){for(const v of x.slice(0,200))walk(v,depth+1);return;} if(typeof x!=='object')return; for(const [k,v] of Object.entries(x)){
+            if(/book|bookmaker|provider/i.test(k)){
+              if(typeof v==='string'&&v.length<80) names.set(v,(names.get(v)||0)+1);
+              if(Array.isArray(v)) for(const z of v){ if(typeof z==='string')names.set(z,(names.get(z)||0)+1); else if(z&&typeof z==='object'){const n=z.name||z.bookmaker||z.provider||z.key; if(n) names.set(String(n),(names.get(String(n))||0)+1)} }
+              if(v&&typeof v==='object'&&!Array.isArray(v)) for(const z of Object.keys(v)) names.set(z,(names.get(z)||0)+1);
+            }
+            walk(v,depth+1);
+          }}
+          for(const m of (Array.isArray(arr)?arr:[])){ if(JSON.stringify(m).match(/odds|bookmaker|providerOdds/i)) withOdds++; walk(m); }
+          console.log('FIXTURES_WITH_ODDS_MARKER',withOdds);
+          console.log('BOOKMAKERS',JSON.stringify([...names.entries()].sort((a,b)=>b[1]-a[1]).slice(0,40)));
+          console.log('SAMPLE',JSON.stringify(Array.isArray(arr)?arr[0]:j).slice(0,5000));
+          NODE
+          echo '=== SIGNAL ANALYSIS ==='
+          curl -fsSL "$B/api/engine/signals?rescue=${GITHUB_RUN_ID}" -o /tmp/b46/signals.json
+          node - <<'NODE'
+          const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/b46/signals.json','utf8'));
+          const a=j.signals||j.data||j.items||[]; console.log('SIGNAL_KEYS',Object.keys(j)); console.log('SIGNALS',Array.isArray(a)?a.length:'NA'); console.log(JSON.stringify(j).slice(0,3000));
+          NODE
+      - name: Inspect Cloudflare Ball46 version history read-only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --depth=1 origin af999592ea6e84fe72cb984670723d52673a5b5e || true
+          git show af999592ea6e84fe72cb984670723d52673a5b5e:workers/nomadtips3-343-preview/wrangler.ball46.jsonc >/tmp/wrangler.ball46.jsonc
+          echo '=== VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --config /tmp/wrangler.ball46.jsonc --json | tee /tmp/versions.json
