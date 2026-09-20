@@ -1,0 +1,38 @@
+name: Inspect Ball46 Worker History 20260920
+on:
+  push:
+    paths:
+      - '.github/workflows/inspect-ball46-worker-history-20260920.yml'
+jobs:
+  inspect-only:
+    runs-on: ubuntu-latest
+    env:
+      CONFIG_REF: af999592ea6e84fe72cb984670723d52673a5b5e
+      WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout known-good config only
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.CONFIG_REF }}
+          fetch-depth: 1
+      - name: List deployment and version history
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== DEPLOYMENTS ==='
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json | tee /tmp/deployments.json
+          echo '=== VERSIONS ==='
+          npx --yes wrangler@4.92.0 versions list --config "$WRAPPER_CFG" --json | tee /tmp/versions.json
+          echo '=== WINDOW 2026-09-20 04:30Z..06:30Z (11:30..13:30 Bangkok) ==='
+          node - <<'NODE'
+          const fs=require('fs');
+          const v=JSON.parse(fs.readFileSync('/tmp/versions.json','utf8'));
+          const arr=Array.isArray(v)?v:(v.versions||[]);
+          const lo=Date.parse('2026-09-20T04:30:00Z'), hi=Date.parse('2026-09-20T06:30:00Z');
+          for(const x of arr){
+            const t=Date.parse(x.created_on||x.created_at||x.created||'');
+            if(Number.isFinite(t)&&t>=lo&&t<=hi) console.log(JSON.stringify(x));
+          }
+          NODE
