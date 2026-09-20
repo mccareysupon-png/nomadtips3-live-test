@@ -3,7 +3,7 @@ name: Deploy 3.43 5USD Hub
 on:
   push:
     branches:
-      - work/nomad343-clean-bet365-ui
+      - work/ball46-bulk-provider-odds-display-fix-v1-20260920
     paths:
       - 'workers/nomadtips3-5usd-hub-343/**'
       - '.github/workflows/deploy-343-5usd-hub.yml'
@@ -17,7 +17,7 @@ env:
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   FIVEDOLLAR_API_KEY: ${{ secrets.FIVEDOLLAR_API_KEY }}
   HUB_URL: https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev
-  FIVEDOLLAR_URL: https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=events,stats&per_page=500&page=1
+  FIVEDOLLAR_URL: https://api.5dollarfootballapi.com/v1/fixtures?status=live&include=odds,events,stats&per_page=500&page=1
 
 jobs:
   deploy-probe:
@@ -32,14 +32,18 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Verify clean 3.43 hub scope
+      - name: Verify Ball46 viewer-safe hub scope
         run: |
           set -euo pipefail
           node --check workers/nomadtips3-5usd-hub-343/src/index-v2.js
           node --check workers/nomadtips3-5usd-hub-343/src/index-rich-odds.js
-          grep -Fq 'main = "src/index-rich-odds.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          node --check workers/nomadtips3-5usd-hub-343/src/index-viewer-safe.js
+          grep -Fq 'main = "src/index-viewer-safe.js"' workers/nomadtips3-5usd-hub-343/wrangler.toml
           grep -Fq 'class_name = "RichOddsGate"' workers/nomadtips3-5usd-hub-343/wrangler.toml
-          grep -Fq "crons = [\"*/2 * * * *\"]" workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'crons = ["*/2 * * * *"]' workers/nomadtips3-5usd-hub-343/wrangler.toml
+          grep -Fq 'viewerRefreshEnabled: false' workers/nomadtips3-5usd-hub-343/src/index-viewer-safe.js
+          grep -Fq 'externalRequestsAdded: 0' workers/nomadtips3-5usd-hub-343/src/index-viewer-safe.js
+          grep -Fq 'VIEWER_RICH_ODDS_DISABLED_USE_BULK_SNAPSHOT' workers/nomadtips3-5usd-hub-343/src/index-viewer-safe.js
           if grep -R "nomadtips3-shot-sidecar-342\|nomadtips3-342-signal-engine" workers/nomadtips3-5usd-hub-343; then
             echo '::error::3.43 hub must not depend on 3.42 runtime'; exit 1
           fi
@@ -55,7 +59,7 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo '::error::Missing CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           test -n "$FIVEDOLLAR_API_KEY" || { echo '::error::Missing FIVEDOLLAR_API_KEY'; exit 1; }
 
-      - name: Probe 5USD batch read
+      - name: Probe 5USD bulk read
         run: |
           set -euo pipefail
           code="$(curl -sS --max-time 30 -o /tmp/provider.json -w '%{http_code}' -H 'Accept: application/json' -H "Authorization: Bearer $FIVEDOLLAR_API_KEY" "$FIVEDOLLAR_URL")"
@@ -66,7 +70,7 @@ jobs:
           const j=JSON.parse(fs.readFileSync('/tmp/provider.json','utf8'));
           const rows=Array.isArray(j?.data)?j.data:Array.isArray(j?.data?.data)?j.data.data:Array.isArray(j?.fixtures)?j.fixtures:[];
           const p=j?.pagination??j?.meta?.pagination??j?.meta??{};
-          console.log(JSON.stringify({live:rows.length,has_more:p?.has_more??p?.hasMore??null,sample:rows.slice(0,2).map(x=>({id:x?.id??x?.fixture_id,status:x?.status,status_code:x?.status_code,stats:x?.statistics===null?'null':typeof x?.statistics}))},null,2));
+          console.log(JSON.stringify({live:rows.length,has_more:p?.has_more??p?.hasMore??null,sample:rows.slice(0,2).map(x=>({id:x?.id??x?.fixture_id,status:x?.status,status_code:x?.status_code,odds:Boolean(x?.bookmakers||x?.bet365||x?.markets||x?.odds)}))},null,2));
           NODE
 
       - name: Deploy 3.43 hub
@@ -77,20 +81,34 @@ jobs:
         working-directory: workers/nomadtips3-5usd-hub-343
         run: printf '%s' "$FIVEDOLLAR_API_KEY" | npx --yes wrangler@4.92.0 secret put FIVEDOLLAR_API_KEY --config wrangler.toml
 
-      - name: Prime and verify central snapshot
+      - name: Verify shared cache and zero-viewer fanout
         run: |
           set -euo pipefail
-          curl -fsS --max-time 45 "$HUB_URL/snapshot?_=$RANDOM$RANDOM" -o /tmp/hub-snapshot.json
-          curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/hub-health.json
+          curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/health-before.json
+          for i in 1 2 3 4 5; do
+            curl -fsS --max-time 45 "$HUB_URL/snapshot?viewer_test=$i&_=$RANDOM$RANDOM" -o "/tmp/snapshot-$i.json"
+          done
+          curl -fsS --max-time 20 "$HUB_URL/health?_=$RANDOM$RANDOM" -o /tmp/health-after.json
+          rich_code="$(curl -sS --max-time 20 -o /tmp/rich.json -w '%{http_code}' "$HUB_URL/rich-odds?fixture_id=viewer-test")"
+          test "$rich_code" = "410" || { echo "::error::public rich-odds must be disabled, got $rich_code"; cat /tmp/rich.json; exit 31; }
           node - <<'NODE'
           const fs=require('fs');
-          const s=JSON.parse(fs.readFileSync('/tmp/hub-snapshot.json','utf8'));
-          const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json','utf8'));
-          const sample=(Array.isArray(s.fixtures)?s.fixtures:[]).slice(0,3).map(x=>({fixtureId:x.fixtureId,league:x.league?.name,home:x.home?.name,away:x.away?.name,minute:x.minute,statistics:x.statistics===null?'null':'present',providerOdds:x.providerOdds==null?'absent':'present'}));
-          console.log(JSON.stringify({health:h,snapshot:{ok:s.ok,version:s.version,provider:s.provider,fixtureCount:s.fixtureCount,ageMs:s.ageMs,stale:s.stale,providerRequestCount:s.providerRequestCount,hasMoreAfterGuard:s.hasMoreAfterGuard,lastError:s.lastError},sample},null,2));
-          if(s.ok!==true||h.ok!==true)process.exit(1);
-          if(h.component!=='5USD_HUB')process.exit(2);
+          const before=JSON.parse(fs.readFileSync('/tmp/health-before.json','utf8'));
+          const after=JSON.parse(fs.readFileSync('/tmp/health-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/snapshot-5.json','utf8'));
+          const rich=JSON.parse(fs.readFileSync('/tmp/rich.json','utf8'));
+          const rows=Array.isArray(s.fixtures)?s.fixtures:[];
+          const oddsRows=rows.filter(x=>x?.providerOdds&&typeof x.providerOdds==='object'&&Object.keys(x.providerOdds).length>0).length;
+          console.log(JSON.stringify({before,after,snapshot:{ok:s.ok,version:s.version,fixtureCount:s.fixtureCount,counts:s.counts,cacheOnly:s.cacheOnly,viewerRefreshEnabled:s.viewerRefreshEnabled,externalRequestsAdded:s.externalRequestsAdded,continuityHeldFixtures:s.continuityHeldFixtures,oddsRows},rich},null,2));
+          if(s.ok!==true||before.ok!==true||after.ok!==true)process.exit(1);
+          if(after.component!=='5USD_HUB')process.exit(2);
           if(s.provider!=='5DollarFootballAPI')process.exit(3);
-          if(!String(s.version||'').startsWith('nomad343-5usd-hub-')||!String(h.version||'').startsWith('nomad343-5usd-hub-'))process.exit(4);
-          if(!Number(h.control?.liveRefreshSeconds)||Number(h.accountLimitPerMinute)!==40)process.exit(5);
+          if(s.version!=='nomad343-5usd-hub-v6-viewer-cache-only'||after.version!=='nomad343-5usd-hub-v6-viewer-cache-only')process.exit(4);
+          if(s.cacheOnly!==true||s.viewerRefreshEnabled!==false||Number(s.externalRequestsAdded)!==0)process.exit(5);
+          if(after.cacheOnlyViewer!==true||after.viewerRefreshEnabled!==false||Number(after.externalRequestsPerViewer)!==0)process.exit(6);
+          if(!Number(after.control?.liveRefreshSeconds)||Number(after.accountLimitPerMinute)!==40)process.exit(7);
+          if(rich.error!=='VIEWER_RICH_ODDS_DISABLED_USE_BULK_SNAPSHOT'||Number(rich.externalRequestsAdded)!==0)process.exit(8);
+          // Five rapid snapshot reads must not cause a HUB provider attempt. A cron can
+          // legitimately run concurrently, so only report a timestamp change here.
+          if(before.lastAttemptAt!==after.lastAttemptAt) console.log('NOTE: scheduled producer ran during viewer test window');
           NODE
