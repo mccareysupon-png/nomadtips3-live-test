@@ -1,0 +1,34 @@
+name: Diagnose Ball46 Settlement Runtime 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-ceo-ah-tuning-20260920
+    paths:
+      - .github/workflows/diag-ball46-settlement-runtime-20260920.yml
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Ball46 settlement runtime
+        run: |
+          set -euo pipefail
+          base='https://ball46.com/api/engine'
+          for ep in health board signals statistics; do
+            curl -fsS -L --max-time 45 "$base/$ep?runtime-diag=${GITHUB_RUN_ID}" -o "/tmp/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const g=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/statistics.json','utf8'));
+          const rows=Array.isArray(s.rows)?s.rows:[];
+          const newest=rows.reduce((m,x)=>Math.max(m,Number(x?.createdAt||0)),0);
+          console.log('BALL46_SETTLEMENT_RUNTIME',JSON.stringify({engine:h.version,lastScan:h.lastScan,boardFixtures:Array.isArray(b.fixtures)?b.fixtures.length:null,settlementRecovery:b.settlementRecovery??null,visiblePending:Array.isArray(g.signals)?g.signals.length:null,allSignalCount:g.allCount,hiddenPendingSignals:g?.mirror?.hiddenPendingSignals,liveFixtures:g?.mirror?.liveFixtures,statsRows:rows.length,unresolved:s.unresolved,newestStatsCreatedAt:newest,newestStatsISO:newest?new Date(newest).toISOString():null}));
+          if(!h?.ok||!b?.ok||!g?.ok||!s?.ok) throw Error('RUNTIME_UNHEALTHY');
+          NODE
