@@ -5,6 +5,7 @@ on:
     branches: [work/ball46-page-head-stability-v1-current-20260920]
     paths:
       - '.github/workflows/ball46-page-head-geometry-diagnose-only-20260920.yml'
+      - 'nomad-live-343/page-head-stability-v1.css'
   workflow_dispatch:
 
 permissions:
@@ -90,12 +91,17 @@ jobs:
                   await page.close();
                 }
                 console.log('GEOMETRY_ROWS',vp.name,JSON.stringify(rows));
-                console.log('GEOMETRY_SPREAD',vp.name,JSON.stringify({
+                const spreads={
                   headLeft:spread(rows,'head','left'),headTop:spread(rows,'head','top'),
                   eyebrowLeft:spread(rows,'eyebrow','left'),eyebrowTop:spread(rows,'eyebrow','top'),
                   h1Left:spread(rows,'h1','left'),h1Top:spread(rows,'h1','top'),
                   descLeft:spread(rows,'desc','left'),descTop:spread(rows,'desc','top')
-                }));
+                };
+                console.log('GEOMETRY_SPREAD',vp.name,JSON.stringify(spreads));
+                for(const [k,v] of Object.entries(spreads)) if(v>1.5) throw Error(`GEOMETRY_NOT_READY:${vp.name}:${k}:${v.toFixed(2)}px`);
+                const fsKeys=['eyebrow','h1','desc'];
+                for(const k of fsKeys){const d=Math.max(...rows.map(r=>r.sizes[k]))-Math.min(...rows.map(r=>r.sizes[k]));if(d>.1)throw Error(`FONT_NOT_READY:${vp.name}:${k}:${d}`)}
+                console.log('CANDIDATE_GEOMETRY_PASS',vp.name);
               }
             } finally { await browser.close(); }
           })().catch(e=>{console.error(e);process.exit(1)});
