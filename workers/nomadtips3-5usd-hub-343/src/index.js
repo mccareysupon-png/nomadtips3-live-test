@@ -1,13 +1,16 @@
-const VERSION = 'nomad343-5usd-hub-v1';
+const VERSION = 'nomad343-5usd-hub-v2-scheduled-last-good';
 const PROVIDER = '5DollarFootballAPI';
 const API_BASE = 'https://api.5dollarfootballapi.com/v1';
 const PAGE_SIZE = 500;
 const REFRESH_MS = 120_000;
 const STALE_AFTER_MS = 180_000;
+const EMPTY_SNAPSHOT_HOLD_MS = 600_000;
 const PROVIDER_TIMEOUT_MS = 15_000;
 const MAX_PAGES = 5;
 const CHUNK_TARGET_BYTES = 72_000;
 const ALLOWED_ORIGINS = new Set([
+  'https://ball46.com',
+  'https://www.ball46.com',
   'https://www.nomadtips3.com',
   'https://nomadtips3.com',
   'https://mccareysupon-png.github.io',
@@ -34,7 +37,7 @@ function cors(request) {
     vary: 'Origin'
   });
   if (ALLOWED_ORIGINS.has(origin)) headers.set('access-control-allow-origin', origin);
-  else headers.set('access-control-allow-origin', 'https://www.nomadtips3.com');
+  else headers.set('access-control-allow-origin', 'https://ball46.com');
   return headers;
 }
 function json(request, body, status = 200) {
@@ -151,6 +154,12 @@ function pagination(payload) {
     total: finite(p?.total)
   };
 }
+function hasProviderOdds(value) {
+  if (value === null || value === undefined) return false;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value).length > 0;
+  return String(value).trim() !== '';
+}
 async function fetchJson(url, headers) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
@@ -215,12 +224,59 @@ export class FiveUsdHub {
     return await this.ctx.storage.get('state') || {
       lastAttemptAt: null,
       lastSuccessAt: null,
-      lastError: null
+      lastError: null,
+      providerRequestsTotal: 0
     };
   }
 
   async meta() {
     return await this.ctx.storage.get('meta') || null;
+  }
+
+  async readStoredSnapshot(metaInput = null) {
+    const meta = metaInput || await this.meta();
+    const state = await this.state();
+    if (!meta) {
+      return {
+        ok: false,
+        version: VERSION,
+        provider: PROVIDER,
+        cacheOnly: true,
+        externalRequestsAdded: 0,
+        error: state.lastError || 'NO_SNAPSHOT',
+        fixtures: []
+      };
+    }
+    const fixtures = [];
+    for (let i = 0; i < Number(meta.chunkCount || 0); i += 1) {
+      const raw = await this.ctx.storage.get(`snapshot:${meta.snapshotId}:${i}`);
+      if (!raw) continue;
+      try {
+        const rows = JSON.parse(raw);
+        if (Array.isArray(rows)) fixtures.push(...rows);
+      } catch {}
+    }
+    const ageMs = Math.max(0, now() - meta.fetchedAt);
+    return {
+      ok: true,
+      version: VERSION,
+      provider: PROVIDER,
+      cacheOnly: true,
+      externalRequestsAdded: 0,
+      fetchedAt: meta.fetchedAt,
+      ageMs,
+      stale: ageMs > STALE_AFTER_MS,
+      fixtureCount: fixtures.length,
+      providerRequestCount: meta.providerRequestCount,
+      providerRequestsTotal: state.providerRequestsTotal || 0,
+      hasMoreAfterGuard: meta.hasMoreAfterGuard,
+      include: meta.include,
+      pageSize: meta.pageSize,
+      lastAttemptAt: state.lastAttemptAt,
+      lastSuccessAt: state.lastSuccessAt,
+      lastError: state.lastError,
+      fixtures
+    };
   }
 
   async refreshIfDue(force = false) {
@@ -237,8 +293,46 @@ export class FiveUsdHub {
     const previousState = await this.state();
     await this.ctx.storage.put('state', { ...previousState, lastAttemptAt: attemptAt });
     try {
+      const previousSnapshot = previousMeta ? await this.readStoredSnapshot(previousMeta) : null;
       const provider = await fetchAllLive(this.env);
-      const normalized = provider.fixtures.map(normalizeFixture).filter((fixture) => fixture.fixtureId);
+      let normalized = provider.fixtures.map(normalizeFixture).filter((fixture) => fixture.fixtureId);
+      const providerRequestsTotal = Number(previousState.providerRequestsTotal || 0) + Number(provider.requestCount || 0);
+
+      if (
+        normalized.length === 0 &&
+        previousMeta?.fixtureCount > 0 &&
+        previousMeta?.fetchedAt &&
+        attemptAt - previousMeta.fetchedAt < EMPTY_SNAPSHOT_HOLD_MS
+      ) {
+        await this.ctx.storage.put('state', {
+          ...previousState,
+          lastAttemptAt: attemptAt,
+          providerRequestsTotal,
+          lastError: 'provider:EMPTY_LIVE_SNAPSHOT_KEPT_LAST_GOOD'
+        });
+        return previousMeta;
+      }
+
+      const previousById = new Map(
+        (previousSnapshot?.fixtures || []).map((fixture) => [String(fixture.fixtureId), fixture])
+      );
+      normalized = normalized.map((fixture) => {
+        const oldFixture = previousById.get(String(fixture.fixtureId));
+        if (!hasProviderOdds(fixture.providerOdds) && hasProviderOdds(oldFixture?.providerOdds)) {
+          return {
+            ...fixture,
+            providerOdds: oldFixture.providerOdds,
+            providerOddsStale: true,
+            providerOddsCarriedFrom: previousMeta?.fetchedAt ?? null
+          };
+        }
+        return {
+          ...fixture,
+          providerOddsStale: false,
+          providerOddsCarriedFrom: null
+        };
+      });
+
       const chunks = chunkFixtures(normalized);
       const snapshotId = attemptAt.toString(36);
       for (let i = 0; i < chunks.length; i += 1) {
@@ -255,13 +349,15 @@ export class FiveUsdHub {
         hasMoreAfterGuard: provider.hasMoreAfterGuard,
         include: 'odds,events,stats',
         pageSize: PAGE_SIZE,
-        refreshMs: REFRESH_MS
+        refreshMs: REFRESH_MS,
+        viewerRefreshEnabled: false
       };
       await this.ctx.storage.put('meta', meta);
       await this.ctx.storage.put('state', {
         lastAttemptAt: attemptAt,
         lastSuccessAt: meta.fetchedAt,
-        lastError: null
+        lastError: null,
+        providerRequestsTotal
       });
       if (previousMeta?.snapshotId && previousMeta.snapshotId !== snapshotId) {
         for (let i = 0; i < Number(previousMeta.chunkCount || 0); i += 1) {
@@ -278,43 +374,6 @@ export class FiveUsdHub {
       if (previousMeta) return previousMeta;
       throw error;
     }
-  }
-
-  async readSnapshot() {
-    let meta = await this.meta();
-    if (!meta || !meta.fetchedAt || now() - meta.fetchedAt >= REFRESH_MS) {
-      try { meta = await this.refreshIfDue(false); } catch {}
-    }
-    meta = await this.meta();
-    const state = await this.state();
-    if (!meta) return { ok: false, version: VERSION, provider: PROVIDER, error: state.lastError || 'NO_SNAPSHOT' };
-    const fixtures = [];
-    for (let i = 0; i < Number(meta.chunkCount || 0); i += 1) {
-      const raw = await this.ctx.storage.get(`snapshot:${meta.snapshotId}:${i}`);
-      if (!raw) continue;
-      try {
-        const rows = JSON.parse(raw);
-        if (Array.isArray(rows)) fixtures.push(...rows);
-      } catch {}
-    }
-    const ageMs = Math.max(0, now() - meta.fetchedAt);
-    return {
-      ok: true,
-      version: VERSION,
-      provider: PROVIDER,
-      fetchedAt: meta.fetchedAt,
-      ageMs,
-      stale: ageMs > STALE_AFTER_MS,
-      fixtureCount: fixtures.length,
-      providerRequestCount: meta.providerRequestCount,
-      hasMoreAfterGuard: meta.hasMoreAfterGuard,
-      include: meta.include,
-      pageSize: meta.pageSize,
-      lastAttemptAt: state.lastAttemptAt,
-      lastSuccessAt: state.lastSuccessAt,
-      lastError: state.lastError,
-      fixtures
-    };
   }
 
   async health() {
@@ -334,6 +393,8 @@ export class FiveUsdHub {
       pageSize: PAGE_SIZE,
       include: 'odds,events,stats',
       providerRequestCount: meta?.providerRequestCount ?? 0,
+      providerRequestsTotal: state.providerRequestsTotal || 0,
+      viewerRefreshEnabled: false,
       lastAttemptAt: state.lastAttemptAt,
       lastSuccessAt: state.lastSuccessAt,
       lastError: state.lastError
@@ -350,8 +411,12 @@ export class FiveUsdHub {
         return new Response(JSON.stringify({ ok: false, error: String(error?.message || error) }), { status: 502, headers: { 'content-type': 'application/json' } });
       }
     }
-    if (url.pathname === '/snapshot') return new Response(JSON.stringify(await this.readSnapshot()), { headers: { 'content-type': 'application/json' } });
-    if (url.pathname === '/health') return new Response(JSON.stringify(await this.health()), { headers: { 'content-type': 'application/json' } });
+    if ((url.pathname === '/snapshot' || url.pathname === '/snapshot-cache' || url.pathname === '/snapshot-readonly') && request.method === 'GET') {
+      return new Response(JSON.stringify(await this.readStoredSnapshot()), { headers: { 'content-type': 'application/json' } });
+    }
+    if (url.pathname === '/health' && request.method === 'GET') {
+      return new Response(JSON.stringify(await this.health()), { headers: { 'content-type': 'application/json' } });
+    }
     return new Response('Not found', { status: 404 });
   }
 }
@@ -366,8 +431,8 @@ export default {
     if (request.method === 'OPTIONS') return json(request, null, 204);
     const url = new URL(request.url);
     const stub = hubStub(env);
-    if (request.method === 'GET' && url.pathname === '/snapshot') {
-      const response = await stub.fetch('https://hub.internal/snapshot');
+    if (request.method === 'GET' && (url.pathname === '/snapshot' || url.pathname === '/snapshot-cache' || url.pathname === '/snapshot-readonly')) {
+      const response = await stub.fetch('https://hub.internal/snapshot-cache');
       return json(request, await response.json(), response.status);
     }
     if (request.method === 'GET' && (url.pathname === '/health' || url.pathname === '/status')) {
