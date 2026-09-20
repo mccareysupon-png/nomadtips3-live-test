@@ -1,0 +1,91 @@
+name: Rescue Ball46 Final Live Audit V2
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-ball46-final-live-audit-v2.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit live core and UI assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          B=https://ball46.com; mkdir -p /tmp/b46
+          for f in index.html signal.html statistics.html; do curl -fsSL --retry 5 "$B/$f?audit2=$GITHUB_RUN_ID" -o "/tmp/b46/$f"; done
+          for f in index.html signal.html statistics.html; do grep -Fq 'v2-shared.css' "/tmp/b46/$f"; grep -Fq 'v2-header.css' "/tmp/b46/$f"; grep -Fq 'navigation-stability-v1.css' "/tmp/b46/$f"; done
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/b46/index.html
+          grep -Fq 'bulk-odds-compat-343.js' /tmp/b46/index.html
+          grep -Fq 'signal-next.js' /tmp/b46/signal.html
+          grep -Fq 'page2-workspace-v1.js' /tmp/b46/signal.html
+          grep -Fq 'statistics-units-v1.js' /tmp/b46/statistics.html
+          grep -Fq 'statistics-addk-expand-v1.js' /tmp/b46/statistics.html
+          grep -Fq 'statistics-market-rank-v1.js' /tmp/b46/statistics.html
+          for ep in engine/health full-market/health engine/signals engine/statistics engine/board; do
+            safe=${ep//\//-}; code=$(curl -sS -L --retry 4 -o "/tmp/b46/$safe.json" -w '%{http_code}' "$B/api/$ep?audit2=$GITHUB_RUN_ID"); echo "HTTP $ep $code"; test "$code" = 200;
+          done
+          node - <<'NODE'
+          const e=require('/tmp/b46/engine-health.json'), f=require('/tmp/b46/full-market-health.json'), s=require('/tmp/b46/engine-signals.json'), t=require('/tmp/b46/engine-statistics.json'), b=require('/tmp/b46/engine-board.json');
+          console.log('ENGINE',JSON.stringify(e).slice(0,1400)); console.log('FULL',JSON.stringify(f).slice(0,2200));
+          console.log('SIGNAL_KEYS',Object.keys(s)); console.log('STAT_KEYS',Object.keys(t)); console.log('BOARD_KEYS',Object.keys(b));
+          if(!e.version) throw Error('ENGINE_VERSION_MISSING');
+          if(f.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache') throw Error('WRONG_FULL:'+f.version);
+          if(Number(f.bookmakerCount||f.bookmakerRequestCount||0)<19) throw Error('BOOK_CONFIG_LT19');
+          if(f.cacheOnlyViewer===true) throw Error('CACHE_ONLY_VIEWER');
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[]; if(!fixtures.length) throw Error('BOARD_FIXTURES_EMPTY');
+          const sig=Array.isArray(s.signals)?s.signals:[];
+          console.log('CORE_PASS',JSON.stringify({engine:e.version,full:f.version,books:f.bookmakerCount||f.bookmakerRequestCount,fixtures:fixtures.length,signals:sig.length}));
+          NODE
+
+      - name: Audit real rich odds across fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          (async()=>{
+            const B='https://ball46.com'; const run=process.env.GITHUB_RUN_ID;
+            const board=await fetch(B+'/api/engine/board?audit2odds='+run).then(r=>r.json());
+            const fixtures=Array.isArray(board.fixtures)?board.fixtures:[];
+            const live=fixtures.filter(f=>String(f?.boardState||'').toLowerCase()==='live'||/live|in_play|playing|first|second/i.test(String(f?.status||f?.statusCode||'')));
+            const picks=(live.length?live:fixtures).filter(f=>f?.fixtureId).slice(0,10); if(!picks.length) throw Error('NO_FIXTURES');
+            let best={count:0};
+            for(const f of picks){
+              const id=String(f.fixtureId); const r=await fetch(B+'/api/full-market/fixture-odds?fixtureId='+encodeURIComponent(id)+'&audit2='+run,{cache:'no-store'}); let j={}; try{j=await r.json()}catch{}
+              const rows=Array.isArray(j?.fullOdds?.bookmakers)?j.fullOdds.bookmakers:[];
+              const names=rows.map(x=>String(x?.name||x?.slug||x?.bookmaker?.name||x?.bookmaker?.slug||'').trim()).filter(Boolean);
+              console.log('RICH',JSON.stringify({id,status:r.status,count:rows.length,names,cached:j.cached,stale:j.stale,error:j.error||null,guard:j.guard||null}));
+              if(rows.length>best.count) best={id,count:rows.length,names,status:r.status};
+              if(best.count>=2) break; await sleep(700);
+            }
+            console.log('MULTIBOOK_BEST',JSON.stringify(best)); if(best.count<2) throw Error('NO_REAL_MULTI_BOOK_ODDS');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
+
+      - name: Audit browser rendering geometry and Page 3 chart
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); test -n "$CHROME"
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          CHROME_PATH="$CHROME" node - <<'NODE'
+          const p=require('puppeteer-core');
+          (async()=>{
+            const browser=await p.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage']}); const out=[];
+            for(const file of ['index.html','signal.html','statistics.html']){
+              const page=await browser.newPage(); await page.setViewport({width:1440,height:1000}); const errors=[]; page.on('pageerror',e=>errors.push(String(e.message||e)));
+              await page.goto('https://ball46.com/'+file+'?auditBrowser='+Date.now(),{waitUntil:'networkidle2',timeout:45000}); await new Promise(r=>setTimeout(r,2500));
+              const m=await page.evaluate(()=>{const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return{x:Math.round(r.x),y:Math.round(r.y),w:Math.round(r.width),h:Math.round(r.height)}}; const all=[...document.querySelectorAll('header,[class*="header"],[class*="topbar"]')].filter(e=>e.getBoundingClientRect().width>300); const header=all[0]||null; const charts=[...document.querySelectorAll('canvas,svg,[class*="chart"],[id*="chart"]')].filter(e=>{const r=e.getBoundingClientRect();return r.width>40&&r.height>30}); return {bodyW:document.body.scrollWidth,innerW,header:rect(header),charts:charts.length,text:(document.body.innerText||'').length};});
+              out.push({file,...m,errors:errors.slice(0,8)}); await page.close();
+            }
+            await browser.close(); console.log('BROWSER_AUDIT',JSON.stringify(out));
+            for(const x of out) if(x.bodyW>x.innerW+20) throw Error('HORIZONTAL_OVERFLOW:'+x.file+':'+x.bodyW);
+            const hs=out.map(x=>x.header?.h).filter(Number.isFinite); if(hs.length===3&&Math.max(...hs)-Math.min(...hs)>10) throw Error('HEADER_HEIGHT_MISMATCH:'+hs.join(','));
+            const stat=out.find(x=>x.file==='statistics.html'); if(!stat||stat.charts<1) throw Error('PAGE3_CHART_RENDER_MISSING');
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
