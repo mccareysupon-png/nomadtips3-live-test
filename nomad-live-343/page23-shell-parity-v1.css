@@ -1,0 +1,39 @@
+/* Ball46 Page 2/3 shell parity v1 — geometry only.
+   Page 1 is the master dimension. No API, odds, engine, signal, settlement or data logic. */
+
+/* Desktop/tablet outer shell: match Page 1 exactly. */
+.ball46-product-page .next-shell{
+  width:100%;
+  max-width:1920px;
+  margin:0 auto;
+  padding:18px clamp(10px,1.4vw,22px) 54px;
+}
+
+/* Page 2 desktop workspace: same rail geometry as Page 1. */
+@media(min-width:1181px){
+  .ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+    grid-template-columns:210px minmax(0,1fr) 320px;
+    gap:14px;
+  }
+}
+
+/* Page 1 collapses its right rail at 1180px; Page 2 follows the same breakpoint. */
+@media(min-width:761px) and (max-width:1180px){
+  .ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+    grid-template-columns:190px minmax(0,1fr);
+    gap:14px;
+  }
+  .ball46-product-signals.b46-signal-page-v2 .b46-page2-right{
+    position:static;
+    grid-column:1/-1;
+    max-height:none;
+    overflow:visible;
+  }
+}
+
+/* Mobile outer gutter follows Page 1. Keep each page's internal mobile content unchanged. */
+@media(max-width:760px){
+  .ball46-product-page .next-shell{
+    padding:10px 6px 70px;
+  }
+}
