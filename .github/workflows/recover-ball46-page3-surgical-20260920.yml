@@ -1,0 +1,298 @@
+name: Recover Ball46 Page3 Surgical 20260920
+
+on:
+  push:
+    branches:
+      - recovery/ball46-page3-surgical-20260920
+    paths:
+      - '.github/workflows/recover-ball46-page3-surgical-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ball46-page3-surgical-recovery
+  cancel-in-progress: false
+
+env:
+  BALL46_URL: https://ball46.com
+  WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+  RB0_ARTIFACT_ID: '10600809097'
+  WORKSPACE_REF: '119483dbcb4dc1096170916767c22ed709d1ce65'
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  recover:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout recovery branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Preflight current Production and capture rollback point
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-343-preview/src/index.js
+          mkdir -p /tmp/b46-before /tmp/b46-critical
+
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/wrapper-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('/tmp/wrapper-before.json','utf8'));
+          const x=r[r.length-1];
+          const id=x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||'';
+          if(!id) throw Error('ACTIVE_WRAPPER_VERSION_NOT_FOUND');
+          fs.writeFileSync('/tmp/wrapper-before-id',id);
+          console.log('ROLLBACK_WRAPPER='+id);
+          NODE
+
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?recover=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?recover=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?recover=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=require('/tmp/engine-before.json'),h=require('/tmp/hub-before.json'),f=require('/tmp/full-before.json');
+          if(e.version!=='nomad343-engine-v6.2-viewer-readonly-cron-referee-lock-v1') throw Error('ENGINE_UNEXPECTED:'+e.version);
+          if(h.version!=='nomad343-5usd-hub-v6-viewer-cache-only') throw Error('HUB_UNEXPECTED:'+h.version);
+          if(f.version!=='nomad343-ball46-full-market-v6-central-producer-cache-only') throw Error('FULLMARKET_UNEXPECTED:'+f.version);
+          if(f.cacheOnlyViewer!==true||f.viewerRefreshEnabled!==false||Number(f.bookmakerRequestCount)!==19) throw Error('FULLMARKET_SAFETY_INVARIANT_FAILED');
+          fs.writeFileSync('/tmp/backend-identity.json',JSON.stringify({engine:e.version,hub:h.version,full:f.version},null,2));
+          console.log('BACKENDS_LOCKED',JSON.stringify({engine:e.version,hub:h.version,full:f.version}));
+          NODE
+
+          code=$(curl -sS -L --max-time 30 -H 'content-type: application/json' -d '{"fixtureIds":[]}' -o /tmp/board-cache-before.json -w '%{http_code}' "$BALL46_URL/api/full-market/board-cache?recover=${GITHUB_RUN_ID}")
+          [ "$code" = 200 ]
+          node -e "const j=require('/tmp/board-cache-before.json');if(j.ok!==true||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0)throw Error('BOARD_CACHE_NOT_READONLY')"
+
+          probe="recovery-probe-${GITHUB_RUN_ID}"
+          code=$(curl -sS -L --max-time 30 -o /tmp/fixture-miss-before.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${probe}")
+          [ "$code" = 404 ]
+          node -e "const j=require('/tmp/fixture-miss-before.json');if(j.error!=='FULL_MARKET_CACHE_MISS'||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0)throw Error('FIXTURE_ROUTE_NOT_CACHEONLY')"
+
+          for p in index.html signal.html statistics.html; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$p?recover=${GITHUB_RUN_ID}" -o "/tmp/b46-before/$p"
+          done
+          for p in ball46-next.js signal-next.js statistics-next.js event-flow-343.js live-summary-full-odds-343.js full-market-sidecar-343.js navigation-stability-v1.css navigation-stability-v1.js statistics-performance.css; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$p?recover=${GITHUB_RUN_ID}" -o "/tmp/b46-critical/$p"
+          done
+          sha256sum /tmp/b46-before/* /tmp/b46-critical/* > /tmp/preflight-sha256.txt
+          echo 'PREFLIGHT_PASS'
+
+      - name: Mirror CURRENT Production static assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          mv nomad-live-343 /tmp/repo-assets
+          mkdir -p nomad-live-343
+          find /tmp/repo-assets -type f -printf '%P\n' > /tmp/candidates.txt
+          printf '%s\n' \
+            statistics-units-v1.css statistics-units-v1.js \
+            statistics-outcome-labels-v1.css statistics-outcome-labels-v1.js \
+            statistics-refine-v2.css statistics-refine-v2.js \
+            statistics-addk-expand-v1.css statistics-addk-expand-v1.js \
+            statistics-market-rank-v1.js statistics-workspace-v2.css statistics-workspace-v2.js \
+            navigation-stability-v1.css navigation-stability-v1.js >> /tmp/candidates.txt
+
+          node - <<'NODE' >> /tmp/candidates.txt
+          const fs=require('fs'),path=require('path');
+          for(const f of ['/tmp/b46-before/index.html','/tmp/b46-before/signal.html','/tmp/b46-before/statistics.html']){
+            const s=fs.readFileSync(f,'utf8');
+            const re=/(?:src|href)=["']([^"'?#]+)["']/g; let m;
+            while((m=re.exec(s))){
+              let p=m[1]; if(/^https?:/i.test(p)||p.startsWith('//')) continue;
+              p=p.replace(/^\//,''); if(!p||p.includes('..')) continue; console.log(p);
+            }
+          }
+          NODE
+          sort -u /tmp/candidates.txt -o /tmp/candidates.txt
+
+          ok=0
+          while IFS= read -r rel; do
+            [ -n "$rel" ] || continue
+            mkdir -p "nomad-live-343/$(dirname "$rel")"
+            code=$(curl -sS -L --max-time 20 -o "nomad-live-343/$rel.tmp" -w '%{http_code}' "$BALL46_URL/$rel?mirror=${GITHUB_RUN_ID}" || true)
+            if [ "$code" = 200 ]; then mv "nomad-live-343/$rel.tmp" "nomad-live-343/$rel"; ok=$((ok+1)); else rm -f "nomad-live-343/$rel.tmp"; fi
+          done < /tmp/candidates.txt
+          echo "MIRRORED_PRODUCTION_FILES=$ok"
+          [ "$ok" -ge 80 ]
+
+          cp /tmp/b46-before/index.html nomad-live-343/index.html
+          cp /tmp/b46-before/signal.html nomad-live-343/signal.html
+          cp /tmp/b46-before/statistics.html nomad-live-343/statistics.html
+          echo 'PRODUCTION_MIRROR_PASS'
+
+      - name: Download and verify exact RB0 Page3 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rb0zip /tmp/rb0tar
+          curl -fL --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${RB0_ARTIFACT_ID}/zip" \
+            -o /tmp/rb0.zip
+          unzip -q /tmp/rb0.zip -d /tmp/rb0zip
+          archive=$(find /tmp/rb0zip -type f -name '*.tar.gz' | head -1)
+          [ -n "$archive" ]
+          tar -xzf "$archive" -C /tmp/rb0tar
+          RB0=$(find /tmp/rb0tar -type d -name 'rb0-assets' | head -1)
+          [ -n "$RB0" ]
+          echo "$RB0" > /tmp/rb0-dir
+
+          check(){ f="$1"; want="$2"; got=$(sha256sum "$RB0/$f"|awk '{print $1}'); [ "$got" = "$want" ] || { echo "RB0_HASH_FAIL $f $got"; exit 1; }; }
+          check statistics.html 95e73ccf2539edd482775d2241a7483440f5f075c9b916ed1b3e79c9e2f03f0f
+          check statistics-units-v1.css 7b480317e9244797197952c93b26cbfddbef58463e822d2a0d984d3a7257b5c9
+          check statistics-units-v1.js 1073ccfbae51f0d828a314ebcdacb3ec1cf7b085f2a4ed402e0cc40d04cf537d
+          check statistics-outcome-labels-v1.css 0a0f48dae24abbe1d5425d767f811e6e36a41b42a25727e3ba720135b440a96d
+          check statistics-outcome-labels-v1.js 2126fd106122576763024348c5565ddf3d3ec6c97b4d6333b30569fbf6d9727f
+          check statistics-refine-v2.css ab532a61f0d0050632c9f5e478932405b2cd8c6d6feb5a2b3ec0e5ae5fd1b3c5
+          check statistics-refine-v2.js 33c091f601ae6cd9dfa1c33bded41122a3498cd4615ea6c5a808236732857426
+          check statistics-addk-expand-v1.css 10d468aa8ead49ea247af16f5a207f7f3e2ed581d05a46b5efe209978ad3f167
+          check statistics-addk-expand-v1.js 8cf0f0cc702fa327eefaf3dc16f24c32694ab7dd068b0ffd526dc0ee47efbafc
+          check statistics-market-rank-v1.js 35d9ba9a188b3a1eea769428ec693bfd03e7f8c54a9cd8a5b9d8f5df5a7a1953
+          echo 'RB0_EXACT_HASHES_PASS'
+
+      - name: Overlay ONLY verified Page3 UI files
+        shell: bash
+        run: |
+          set -euo pipefail
+          RB0=$(cat /tmp/rb0-dir)
+          for f in \
+            statistics.html \
+            statistics-units-v1.css statistics-units-v1.js \
+            statistics-outcome-labels-v1.css statistics-outcome-labels-v1.js \
+            statistics-refine-v2.css statistics-refine-v2.js \
+            statistics-addk-expand-v1.css statistics-addk-expand-v1.js \
+            statistics-market-rank-v1.js; do
+            cp "$RB0/$f" "nomad-live-343/$f"
+          done
+
+          curl -fL --retry 3 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${WORKSPACE_REF}/nomad-live-343/statistics-workspace-v2.css" -o nomad-live-343/statistics-workspace-v2.css
+          curl -fL --retry 3 "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${WORKSPACE_REF}/nomad-live-343/statistics-workspace-v2.js" -o nomad-live-343/statistics-workspace-v2.js
+          grep -Fq 'BALL46_STAT_SIDEBAR_PARITY_V2' nomad-live-343/statistics-workspace-v2.css
+          grep -Fq 'BALL46_STAT_WORKSPACE_V2' nomad-live-343/statistics-workspace-v2.js
+          node --check nomad-live-343/statistics-workspace-v2.js
+
+          node - <<'NODE'
+          const fs=require('fs'); const p='nomad-live-343/statistics.html'; let h=fs.readFileSync(p,'utf8');
+          if(!h.includes('statistics-workspace-v2.css')) h=h.replace('</head>','<link rel="stylesheet" href="statistics-workspace-v2.css?v=343-stat-sidebar-parity-v2-20260920a">\n</head>');
+          if(!h.includes('statistics-workspace-v2.js')) h=h.replace('</body>','<script src="statistics-workspace-v2.js?v=343-stat-sidebar-parity-v2-20260920a" defer></script>\n</body>');
+          fs.writeFileSync(p,h);
+          NODE
+
+          ! grep -Fq 'statistics-tabs-v1' nomad-live-343/statistics.html
+          grep -Fq 'statistics-units-v1' nomad-live-343/statistics.html
+          grep -Fq 'statistics-outcome-labels-v1' nomad-live-343/statistics.html
+          grep -Fq 'statistics-refine-v2' nomad-live-343/statistics.html
+          grep -Fq 'statistics-addk-expand-v1' nomad-live-343/statistics.html
+          grep -Fq 'statistics-market-rank-v1' nomad-live-343/statistics.html
+          grep -Fq 'statistics-workspace-v2' nomad-live-343/statistics.html
+
+          for f in statistics-units-v1.js statistics-outcome-labels-v1.js statistics-refine-v2.js statistics-addk-expand-v1.js statistics-market-rank-v1.js; do node --check "nomad-live-343/$f"; done
+          echo 'PAGE3_SURGICAL_OVERLAY_PASS'
+
+      - name: Scope guard - Page1 Page2 and protected runtime unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp -s /tmp/b46-before/index.html nomad-live-343/index.html
+          cmp -s /tmp/b46-before/signal.html nomad-live-343/signal.html
+          for f in ball46-next.js signal-next.js statistics-next.js event-flow-343.js live-summary-full-odds-343.js full-market-sidecar-343.js navigation-stability-v1.css navigation-stability-v1.js statistics-performance.css; do
+            cmp -s "/tmp/b46-critical/$f" "nomad-live-343/$f" || { echo "PROTECTED_RUNTIME_CHANGED:$f"; exit 1; }
+          done
+          echo 'SCOPE_GUARD_PASS'
+
+      - name: Dry run wrapper only - NEVER FullMarket
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config "$WRAPPER_CFG"
+          echo 'WRAPPER_ONLY_DRYRUN_PASS'
+
+      - name: Race guard immediately before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html signal.html statistics.html; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$p?race=${GITHUB_RUN_ID}" -o "/tmp/race-$p"
+            cmp -s "/tmp/b46-before/$p" "/tmp/race-$p" || { echo "PRODUCTION_CHANGED_DURING_RECOVERY:$p"; exit 1; }
+          done
+
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/wrapper-race.json
+          node - <<'NODE'
+          const fs=require('fs');const r=JSON.parse(fs.readFileSync('/tmp/wrapper-race.json','utf8'));const x=r[r.length-1];const id=x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||'';const before=fs.readFileSync('/tmp/wrapper-before-id','utf8').trim();if(id!==before)throw Error('WRAPPER_CHANGED_DURING_RECOVERY:'+id+' != '+before);
+          NODE
+
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?race=${GITHUB_RUN_ID}" -o /tmp/engine-race.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?race=${GITHUB_RUN_ID}" -o /tmp/hub-race.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?race=${GITHUB_RUN_ID}" -o /tmp/full-race.json
+          node - <<'NODE'
+          const e=require('/tmp/engine-race.json'),h=require('/tmp/hub-race.json'),f=require('/tmp/full-race.json'),b=require('/tmp/backend-identity.json');
+          if(e.version!==b.engine||h.version!==b.hub||f.version!==b.full)throw Error('BACKEND_CHANGED_DURING_RECOVERY');
+          if(f.cacheOnlyViewer!==true||f.viewerRefreshEnabled!==false||Number(f.bookmakerRequestCount)!==19)throw Error('FULLMARKET_SAFETY_CHANGED_DURING_RECOVERY');
+          NODE
+          echo 'RACE_GUARD_PASS'
+
+      - name: Deploy recovered Page3 via wrapper only
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --config "$WRAPPER_CFG"
+          echo 'PAGE3_WRAPPER_DEPLOYED'
+          sleep 8
+
+      - name: Post-verify recovered Page3 and protected systems
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html signal.html statistics.html; do curl -fsS -L --max-time 30 "$BALL46_URL/$p?post=${GITHUB_RUN_ID}" -o "/tmp/post-$p"; done
+          cmp -s /tmp/b46-before/index.html /tmp/post-index.html
+          cmp -s /tmp/b46-before/signal.html /tmp/post-signal.html
+
+          for mark in statistics-units-v1 statistics-outcome-labels-v1 statistics-refine-v2 statistics-addk-expand-v1 statistics-market-rank-v1 statistics-workspace-v2; do grep -Fq "$mark" /tmp/post-statistics.html || { echo "PAGE3_MARKER_MISSING:$mark"; exit 1; }; done
+          ! grep -Fq 'statistics-tabs-v1' /tmp/post-statistics.html
+
+          for f in statistics-units-v1.css statistics-units-v1.js statistics-outcome-labels-v1.css statistics-outcome-labels-v1.js statistics-refine-v2.css statistics-refine-v2.js statistics-addk-expand-v1.css statistics-addk-expand-v1.js statistics-market-rank-v1.js statistics-workspace-v2.css statistics-workspace-v2.js; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$f?post=${GITHUB_RUN_ID}" -o "/tmp/post-$f"
+          done
+          for f in ball46-next.js signal-next.js statistics-next.js event-flow-343.js live-summary-full-odds-343.js full-market-sidecar-343.js navigation-stability-v1.css navigation-stability-v1.js statistics-performance.css; do
+            curl -fsS -L --max-time 30 "$BALL46_URL/$f?post=${GITHUB_RUN_ID}" -o "/tmp/post-$f"
+            cmp -s "/tmp/b46-critical/$f" "/tmp/post-$f" || { echo "PROTECTED_RUNTIME_CHANGED_POST:$f"; exit 1; }
+          done
+
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?post=${GITHUB_RUN_ID}" -o /tmp/engine-post.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?post=${GITHUB_RUN_ID}" -o /tmp/hub-post.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?post=${GITHUB_RUN_ID}" -o /tmp/full-post.json
+          node - <<'NODE'
+          const e=require('/tmp/engine-post.json'),h=require('/tmp/hub-post.json'),f=require('/tmp/full-post.json'),b=require('/tmp/backend-identity.json');
+          if(e.version!==b.engine||h.version!==b.hub||f.version!==b.full)throw Error('BACKEND_CHANGED_POST_DEPLOY');
+          if(f.cacheOnlyViewer!==true||f.viewerRefreshEnabled!==false||Number(f.bookmakerRequestCount)!==19)throw Error('FULLMARKET_SAFETY_POST_FAIL');
+          NODE
+          code=$(curl -sS -L --max-time 30 -H 'content-type: application/json' -d '{"fixtureIds":[]}' -o /tmp/board-cache-post.json -w '%{http_code}' "$BALL46_URL/api/full-market/board-cache?post=${GITHUB_RUN_ID}")
+          [ "$code" = 200 ]
+          node -e "const j=require('/tmp/board-cache-post.json');if(j.ok!==true||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0)throw Error('BOARD_CACHE_POST_FAIL')"
+          echo 'BALL46_PAGE3_SURGICAL_RECOVERY_PASS'
+
+      - name: Roll back wrapper only if post-verify fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' && steps.verify.outcome == 'failure' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          id=$(cat /tmp/wrapper-before-id)
+          echo "ROLLBACK_WRAPPER_TO=$id"
+          npx --yes wrangler@4.92.0 versions deploy "${id}@100%" --yes --config "$WRAPPER_CFG"
+          echo 'WRAPPER_ROLLBACK_COMPLETE'
