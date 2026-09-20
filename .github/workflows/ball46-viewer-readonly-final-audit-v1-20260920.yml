@@ -1,0 +1,132 @@
+name: Ball46 Viewer Readonly Final Audit V1 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-viewer-readonly-lock-v1-20260920
+    paths:
+      - .github/workflows/ball46-viewer-readonly-final-audit-v1-20260920.yml
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  BALL46_URL: https://ball46.com
+  EXPECTED_BALL46_VERSION: ac0ca816-54ac-402c-bc50-7d6c88a1d2d1
+  EXPECTED_ENGINE_VERSION: nomad343-engine-v6.2-viewer-readonly-cron-referee-lock-v1
+  GH_TOKEN: ${{ github.token }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Download RB0 snapshot from migration run
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/audit-art /tmp/rb
+          gh run download 35500743275 -n ball46-viewer-readonly-lock-v1-35500743275 -D /tmp/audit-art
+          ls -la /tmp/audit-art
+          tarball=$(find /tmp/audit-art -name 'ball46-viewer-readonly-rb0-35500743275.tar.gz' -print -quit)
+          test -n "$tarball"
+          tar -xzf "$tarball" -C /tmp/rb
+          find /tmp/rb -maxdepth 2 -type f | sort | head -50
+
+      - name: Confirm active Worker versions and backend health
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc --json > /tmp/ball-deploy.json
+          node - <<'NODE'
+          const d=require('/tmp/ball-deploy.json');const latest=d[d.length-1];const v=latest?.versions?.find(x=>Number(x.percentage)===100)?.version_id;console.log('BALL46_ACTIVE',v);if(v!==process.env.EXPECTED_BALL46_VERSION)throw Error('BALL46_VERSION_CHANGED:'+v);
+          NODE
+          for ep in engine hub full-market; do
+            curl -fsS -L --max-time 25 "$BALL46_URL/api/$ep/health?final-audit=$GITHUB_RUN_ID" -o "/tmp/$ep-health.json"
+            echo "--- $ep health ---"; cat "/tmp/$ep-health.json"; echo
+          done
+          node - <<'NODE'
+          const e=require('/tmp/engine-health.json'),h=require('/tmp/hub-health.json'),f=require('/tmp/full-market-health.json');if(e.version!==process.env.EXPECTED_ENGINE_VERSION)throw Error('ENGINE_VERSION:'+e.version);if(h.version!=='nomad343-5usd-hub-v5-last-good-continuity')throw Error('HUB_VERSION:'+h.version);if(f.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache')throw Error('FULL_VERSION:'+f.version);
+          NODE
+
+      - name: Verify Page 1 2 3 are byte-identical to RB0
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 4 --retry-all-errors --max-time 25 "$BALL46_URL/$p?audit=$GITHUB_RUN_ID" -o "/tmp/current-$p"
+            echo "$p RB0=$(sha256sum /tmp/rb/rb0/$p | awk '{print $1}') CURRENT=$(sha256sum /tmp/current-$p | awk '{print $1}')"
+            cmp -s "/tmp/rb/rb0/$p" "/tmp/current-$p" || { echo "PAGE_DIFF:$p"; diff -u "/tmp/rb/rb0/$p" "/tmp/current-$p" | head -80; exit 1; }
+          done
+          echo PAGE_123_BYTE_IDENTICAL_PASS
+
+      - name: Verify public runtime is cache-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?audit=$GITHUB_RUN_ID" -o /tmp/live-summary.js
+          grep -Fq 'BALL46_VIEWER_READONLY_LOCK_V1' /tmp/live-summary.js
+          grep -Fq "const API='/api/full-market/board-cache'" /tmp/live-summary.js
+          ! grep -Fq '/api/full-market/fixture-odds' /tmp/live-summary.js
+          ! grep -Fq 'applyRichOdds' /tmp/live-summary.js
+          ! grep -Fq 'providerOdds:' /tmp/live-summary.js
+          echo LIVE_SUMMARY_CACHE_ONLY_PASS
+
+      - name: Verify provider-trigger routes are blocked
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -L --max-time 20 -o /tmp/full-block.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=lock-test")
+          echo "FULL_FIXTURE_ODDS_CODE=$code BODY=$(cat /tmp/full-block.json)"
+          [ "$code" = 410 ]
+          code=$(curl -sS -L --max-time 20 -o /tmp/scan-block.json -w '%{http_code}' -X POST "$BALL46_URL/api/engine/scan")
+          echo "ENGINE_SCAN_CODE=$code BODY=$(cat /tmp/scan-block.json)"
+          [ "$code" = 403 ]
+          code=$(curl -sS -L --max-time 20 -o /tmp/engine-odds-block.json -w '%{http_code}' "$BALL46_URL/api/engine/fixture-odds?fixtureId=lock-test")
+          echo "ENGINE_FIXTURE_ODDS_CODE=$code BODY=$(cat /tmp/engine-odds-block.json)"
+          [ "$code" = 403 ]
+          echo VIEWER_TRIGGER_ROUTES_BLOCKED_PASS
+
+      - name: Verify board-cache is strictly read-only and load test it
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 20 -X POST -H 'content-type: application/json' --data '{"fixtureIds":["lock-test"]}' "$BALL46_URL/api/full-market/board-cache" -o /tmp/cache-one.json
+          cat /tmp/cache-one.json; echo
+          node - <<'NODE'
+          const j=require('/tmp/cache-one.json');if(j.ok!==true)throw Error('CACHE_NOT_OK');if(j.mode!=='CENTRAL_CACHE_READ_ONLY')throw Error('CACHE_MODE:'+j.mode);if(Number(j.externalRequestsAdded)!==0)throw Error('CACHE_UPSTREAM:'+j.externalRequestsAdded);
+          NODE
+          rm -rf /tmp/load; mkdir -p /tmp/load
+          seq 1 100 | xargs -P20 -I{} sh -c 'curl -fsS -L --max-time 20 -X POST -H "content-type: application/json" --data "{\"fixtureIds\":[\"lock-test\"]}" "$0/api/full-market/board-cache" -o "/tmp/load/c-{}.json"' "$BALL46_URL"
+          node - <<'NODE'
+          const fs=require('fs');for(let i=1;i<=100;i++){const j=JSON.parse(fs.readFileSync(`/tmp/load/c-${i}.json`));if(j.ok!==true||j.mode!=='CENTRAL_CACHE_READ_ONLY'||Number(j.externalRequestsAdded)!==0)throw Error('LOAD_FAIL_'+i)}console.log('CACHE_LOAD_100_PASS externalRequestsAdded=0');
+          NODE
+
+      - name: Verify settings conditions registry and referee continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/settings?audit=$GITHUB_RUN_ID" -o /tmp/settings-now.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/registry?audit=$GITHUB_RUN_ID" -o /tmp/registry-now.json
+          curl -fsS -L --max-time 25 "$BALL46_URL/api/engine/board?audit=$GITHUB_RUN_ID" -o /tmp/board-now.json
+          node - <<'NODE'
+          function clean(x){x=JSON.parse(JSON.stringify(x));delete x.version;return x}
+          const bs=clean(require('/tmp/rb/pre/engine-settings.json')),as=clean(require('/tmp/settings-now.json'));if(JSON.stringify(bs)!==JSON.stringify(as))throw Error('SETTINGS_RUNSTATE_CHANGED');
+          const br=clean(require('/tmp/rb/pre/engine-registry.json')),ar=clean(require('/tmp/registry-now.json'));if(JSON.stringify(br)!==JSON.stringify(ar))throw Error('REGISTRY_CHANGED');
+          const b=require('/tmp/board-now.json');if(b.ok!==true)throw Error('BOARD_BAD');if(!b.referee||Number(b.referee.maxFixturesPerScan)!==4)throw Error('REFEREE_INVARIANT');if((b.referee.errors||[]).length)throw Error('REFEREE_ERRORS');
+          console.log('CONDITION_CONTINUITY_PASS',JSON.stringify({runState:as.runState,fixtures:(b.fixtures||[]).length,referee:b.referee}));
+          NODE
+
+      - name: Final audit marker
+        run: echo BALL46_VIEWER_READONLY_FINAL_AUDIT_PASS
