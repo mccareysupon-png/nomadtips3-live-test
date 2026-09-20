@@ -1,0 +1,54 @@
+/* Ball46 Page 2 hard shell parity v2 — geometry only.
+   Forces Signals page to the same outer dimensions and desktop rail geometry as Page 1.
+   No API, odds, engine, signal, statistics, polling or data logic. */
+
+html body.ball46-product-page.ball46-product-signals main.next-shell{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:1920px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding-left:clamp(10px,1.4vw,22px)!important;
+  padding-right:clamp(10px,1.4vw,22px)!important;
+}
+
+html body.ball46-product-page.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:none!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+
+html body.ball46-product-page.ball46-product-signals.b46-signal-page-v2 .b46-page2-center{
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+}
+
+@media(min-width:1181px){
+  html body.ball46-product-page.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+    grid-template-columns:210px minmax(0,1fr) 320px!important;
+    gap:14px!important;
+  }
+}
+
+@media(min-width:761px) and (max-width:1180px){
+  html body.ball46-product-page.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+    grid-template-columns:190px minmax(0,1fr)!important;
+    gap:14px!important;
+  }
+  html body.ball46-product-page.ball46-product-signals.b46-signal-page-v2 .b46-page2-right{
+    position:static!important;
+    grid-column:1/-1!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+}
+
+@media(max-width:760px){
+  html body.ball46-product-page.ball46-product-signals main.next-shell{
+    padding-left:6px!important;
+    padding-right:6px!important;
+  }
+}
