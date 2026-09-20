@@ -1,0 +1,180 @@
+name: Deploy Ball46 Settlement Watch v3 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-settlement-watch-20260920
+    paths:
+      - .github/workflows/deploy-ball46-settlement-watch-v3-20260920.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ENGINE_DIR: workers/nomadtips3-engine-343
+  BALL46_URL: https://ball46.com
+  BASE_SHA: a3ce69b9a18b7abacd4bae440a320f25a7d84ee8
+  WATCH_VERSION: nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1-watch-v1
+  BASE_VERSION: nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1
+
+jobs:
+  deploy-settlement-watch:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated Settlement Watch branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/ball46-settlement-watch-20260920
+          fetch-depth: 0
+
+      - name: Freeze Production baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?watch=${GITHUB_RUN_ID}-before" -o /tmp/engine-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?watch=${GITHUB_RUN_ID}-before" -o /tmp/stats-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?watch=${GITHUB_RUN_ID}-before" -o /tmp/full-before.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?watch=${GITHUB_RUN_ID}-before" -o /tmp/board-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json','utf8'));
+          if(![process.env.BASE_VERSION,process.env.WATCH_VERSION].includes(String(e.version||''))) throw Error(`PRODUCTION_MOVED:${e.version}`);
+          if(s?.ok!==true||!Array.isArray(s.rows)) throw Error('STATISTICS_UNHEALTHY');
+          if(!f?.version) throw Error('FULL_MARKET_HEALTH_MISSING');
+          if(!Array.isArray(b?.fixtures)) throw Error('ENGINE_BOARD_UNHEALTHY');
+          fs.writeFileSync('/tmp/engine-version-before',String(e.version||''));
+          fs.writeFileSync('/tmp/full-version-before',String(f.version||''));
+          fs.writeFileSync('/tmp/stats-count-before',String(s.rows.length));
+          console.log('SETTLEMENT_WATCH_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version,settled:s.rows.length,boardFixtures:b.fixtures.length}));
+          NODE
+
+      - name: Guard protected code and compile bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check "$ENGINE_DIR/src/index-settlement-watch-v2.js"
+          node --check "$ENGINE_DIR/src/settlement-watch-page.js"
+          cmp <(git show "$BASE_SHA:$ENGINE_DIR/src/index.js") "$ENGINE_DIR/src/index.js"
+          cmp <(git show "$BASE_SHA:$ENGINE_DIR/src/market-core.js") "$ENGINE_DIR/src/market-core.js"
+          cmp <(git show "$BASE_SHA:$ENGINE_DIR/src/ceo-condition.js") "$ENGINE_DIR/src/ceo-condition.js"
+          cmp <(git show "$BASE_SHA:$ENGINE_DIR/wrangler.toml") "$ENGINE_DIR/wrangler.toml"
+          grep -Fq 'WATCH_MAX_CHECKS_PER_SCAN=2' "$ENGINE_DIR/src/index-settlement-watch-v2.js"
+          grep -Fq 'fixtures/${encodeURIComponent(fixtureId)}' "$ENGINE_DIR/src/index-settlement-watch-v2.js"
+          ! grep -Fq '/odds' "$ENGINE_DIR/src/index-settlement-watch-v2.js"
+          ! grep -Fq 'FULL_MARKET.fetch' "$ENGINE_DIR/src/index-settlement-watch-v2.js"
+          ! grep -Fq 'Event Flow' "$ENGINE_DIR/src/settlement-watch-page.js"
+          ! grep -Fq 'Why this signal' "$ENGINE_DIR/src/settlement-watch-page.js"
+          ! grep -Fq 'data-next-toggle' "$ENGINE_DIR/src/settlement-watch-page.js"
+          grep -Fq 'main = "src/index-settlement-watch-v2.js"' "$ENGINE_DIR/wrangler.settlement-watch-v2.toml"
+          npx --yes wrangler@4.92.0 deploy --dry-run --outdir /tmp/settlement-watch-build --config "$ENGINE_DIR/wrangler.settlement-watch-v2.toml"
+          echo SETTLEMENT_WATCH_BUILD_GUARD_PASS
+
+      - name: Run existing Engine regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test "$ENGINE_DIR"/test/*.test.mjs
+          echo SETTLEMENT_WATCH_REGRESSION_PASS
+
+      - name: Recheck Production before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?watch=${GITHUB_RUN_ID}-predeploy" -o /tmp/engine-predeploy.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?watch=${GITHUB_RUN_ID}-predeploy" -o /tmp/full-predeploy.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-predeploy.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-predeploy.json','utf8'));
+          if(![process.env.BASE_VERSION,process.env.WATCH_VERSION].includes(String(e.version||''))) throw Error(`PRODUCTION_MOVED_BEFORE_DEPLOY:${e.version}`);
+          const fullBefore=fs.readFileSync('/tmp/full-version-before','utf8');
+          if(String(f.version||'')!==fullBefore) throw Error(`FULL_MARKET_MOVED:${f.version}`);
+          NODE
+
+      - name: Deploy Settlement Watch only
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(node -p "require('/tmp/engine-predeploy.json').version")"
+          if [ "$before" = "$WATCH_VERSION" ]; then
+            echo PRODUCTION_ALREADY_ON_SETTLEMENT_WATCH
+          else
+            npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.settlement-watch-v2.toml"
+            touch /tmp/deployed-by-this-run
+          fi
+
+      - name: Verify and rollback on failure
+        if: ${{ always() }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set +e
+          if [ ! -f /tmp/deployed-by-this-run ]; then
+            current="$(curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?watch=${GITHUB_RUN_ID}-status" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{try{console.log(JSON.parse(s).version||'')}catch{console.log('')}})" 2>/dev/null)"
+            if [ "$current" != "$WATCH_VERSION" ]; then
+              echo NO_SETTLEMENT_WATCH_DEPLOY_OCCURRED
+              exit 0
+            fi
+          fi
+          status=0
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?watch=${GITHUB_RUN_ID}-${n}" -o /tmp/engine-after.json || true
+            node -e "const j=require('/tmp/engine-after.json');process.exit(j.version===process.env.WATCH_VERSION?0:1)" 2>/dev/null
+            if [ "$?" = 0 ]; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ] || status=1
+          if [ "$status" = 0 ]; then
+            curl -fsS --max-time 45 "$BALL46_URL/api/engine/settlement-watch?watch=${GITHUB_RUN_ID}" -o /tmp/watch.json || status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?watch=${GITHUB_RUN_ID}-after" -o /tmp/stats-after.json || status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?watch=${GITHUB_RUN_ID}-after" -o /tmp/signals-after.json || status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?watch=${GITHUB_RUN_ID}-after" -o /tmp/board-after.json || status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?watch=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json || status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/settlement-watch-page?watch=${GITHUB_RUN_ID}" -o /tmp/watch-page.html || status=1
+          fi
+          if [ "$status" = 0 ]; then
+            node - <<'NODE' || status=1
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const w=JSON.parse(fs.readFileSync('/tmp/watch.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          const g=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const beforeStats=Number(fs.readFileSync('/tmp/stats-count-before','utf8'));
+          const fullBefore=fs.readFileSync('/tmp/full-version-before','utf8');
+          if(e.version!==process.env.WATCH_VERSION) throw Error('WATCH_VERSION_BAD');
+          if(w?.ok!==true||!Array.isArray(w.records)) throw Error('WATCH_ENDPOINT_BAD');
+          if(Number(w?.watch?.requests||0)>2) throw Error('WATCH_RATE_GUARD_BROKEN');
+          if(s?.ok!==true||!Array.isArray(s.rows)||s.rows.length<beforeStats) throw Error('STATISTICS_REGRESSED');
+          if(!Array.isArray(g?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(!Array.isArray(b?.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(String(f.version||'')!==fullBefore) throw Error('FULL_MARKET_CHANGED');
+          console.log('SETTLEMENT_WATCH_PRODUCTION_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settledBefore:beforeStats,settledAfter:s.rows.length,watchRecords:w.records.length,watch:w.watch}));
+          NODE
+            grep -Fq 'Settlement Watch' /tmp/watch-page.html || status=1
+            grep -Fq 'Signal matches stay here until the final result is confirmed' /tmp/watch-page.html || status=1
+            ! grep -Fq 'Event Flow' /tmp/watch-page.html || status=1
+            ! grep -Fq 'Why this signal' /tmp/watch-page.html || status=1
+            ! grep -Fq 'data-next-toggle' /tmp/watch-page.html || status=1
+          fi
+          if [ "$status" != 0 ]; then
+            echo SETTLEMENT_WATCH_VERIFY_FAILED
+            if [ -f /tmp/deployed-by-this-run ]; then
+              echo ROLLING_BACK_TO_EXISTING_ENGINE_ENTRYPOINT
+              npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml" || true
+            fi
+            exit 1
+          fi
+          echo SETTLEMENT_WATCH_VERIFY_PASS
