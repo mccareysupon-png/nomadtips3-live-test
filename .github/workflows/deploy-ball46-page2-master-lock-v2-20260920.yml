@@ -1,0 +1,165 @@
+name: Deploy Ball46 Page2 Master Lock V2 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-page2-master-lock-v2-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-statistics-outcome-labels-v1-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-page2-master-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout current production-compatible source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror production and lock runtime assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?page2master-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html v2-header.css signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-performance.css ball46-product-pages-v1.css; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          protected='v2-header.css signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            sha256sum "/tmp/prod/${f//\//_}" | awk '{print $1}' > "/tmp/${f//\//_}.sha"
+          done
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ('index.html','signal.html','statistics.html'):
+              s=Path('/tmp/prod/'+name).read_text()
+              scripts='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              Path('/tmp/'+name+'.scripts').write_text(scripts)
+              # Only the external geometry loaders and the durable inline master lock may differ.
+              norm=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',s,flags=re.I)
+              norm=re.sub(r'\s*<style[^>]+id=["\']ball46-page2-master-lock-v2["\'][^>]*>.*?</style>','',norm,flags=re.I|re.S)
+              norm=re.sub(r'>\s+<','><',norm).strip()
+              Path('/tmp/'+name+'.normalized').write_text(norm)
+          PY
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?page2master-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?page2master-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Apply durable Page 2 master geometry to three pages only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          style='''<style id="ball46-page2-master-lock-v2">
+:root{--b46-master-shell-max:1600px;--b46-master-shell-gutter:24px;--b46-master-shell-gutter-mobile:12px}
+.v2-topbar .v2-topbar-inner{width:100%!important;max-width:var(--b46-master-shell-max)!important;margin-left:auto!important;margin-right:auto!important}
+body[data-page="live"] .dash-shell,.ball46-product-page .next-shell{width:100%!important;max-width:var(--b46-master-shell-max)!important;margin-left:auto!important;margin-right:auto!important;padding-left:var(--b46-master-shell-gutter)!important;padding-right:var(--b46-master-shell-gutter)!important}
+.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{width:100%!important;max-width:none!important}
+@media(max-width:820px){body[data-page="live"] .dash-shell,.ball46-product-page .next-shell{padding-left:var(--b46-master-shell-gutter-mobile)!important;padding-right:var(--b46-master-shell-gutter-mobile)!important}}
+</style>'''
+          for name in ('index.html','signal.html','statistics.html'):
+              p=Path('nomad-live-343/'+name)
+              h=p.read_text()
+              h=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',h,flags=re.I)
+              h=re.sub(r'\s*<style[^>]+id=["\']ball46-page2-master-lock-v2["\'][^>]*>.*?</style>','',h,flags=re.I|re.S)
+              if '</head>' not in h: raise SystemExit('HEAD_ANCHOR_MISSING:'+name)
+              h=h.replace('</head>',style+'\n</head>',1)
+              p.write_text(h)
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for name in ('index.html','signal.html','statistics.html'):
+              now=Path('nomad-live-343/'+name).read_text()
+              scripts='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',now,re.I))
+              if scripts!=Path('/tmp/'+name+'.scripts').read_text(): raise SystemExit('SCRIPT_SET_CHANGED:'+name)
+              norm=re.sub(r'\s*<link[^>]+(?:page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css[^>]*>','',now,flags=re.I)
+              norm=re.sub(r'\s*<style[^>]+id=["\']ball46-page2-master-lock-v2["\'][^>]*>.*?</style>','',norm,flags=re.I|re.S)
+              norm=re.sub(r'>\s+<','><',norm).strip()
+              if norm!=Path('/tmp/'+name+'.normalized').read_text(): raise SystemExit('NON_GEOMETRY_HTML_CHANGED:'+name)
+          PY
+
+          protected='v2-header.css signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            cmp -s "/tmp/prod/${f//\//_}" "nomad-live-343/$f" || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Page 2 master lock and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in index.html signal.html statistics.html; do
+            ok=0
+            for n in $(seq 1 15); do
+              code=$(curl -sS -L --max-time 20 -o "/tmp/$file.after" -w '%{http_code}' "$BALL46_URL/$file?page2master=${GITHUB_RUN_ID}-${n}") || code=000
+              if [ "$code" = 200 ] && grep -Fq 'id="ball46-page2-master-lock-v2"' "/tmp/$file.after" && grep -Fq -- '--b46-master-shell-max:1600px' "/tmp/$file.after"; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "MASTER_LOCK_MARKER_FAILED:$file"; exit 1; }
+            ! grep -Eq '(page23-shell-parity-v1|page2-shell-master-v2|ball46-master-shell-page2-v1)\.css' "/tmp/$file.after" || { echo "OLD_GEOMETRY_LOADER_REMAINS:$file"; exit 1; }
+          done
+
+          protected='v2-header.css signal-next.js statistics-next.js statistics-units-v1.js statistics-units-v1.css statistics-refine-v2.js statistics-refine-v2.css statistics-outcome-labels-v1.js statistics-outcome-labels-v1.css dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css page2-scroll-five-v1.css statistics-performance.css ball46-product-pages-v1.css'
+          for f in $protected; do
+            safe="${f//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?page2master=${GITHUB_RUN_ID}-protected" -o "/tmp/$safe.after"
+            test "$(sha256sum "/tmp/$safe.after" | awk '{print $1}')" = "$(cat "/tmp/$safe.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?page2master=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?page2master=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('BALL46_PAGE2_MASTER_LOCK_V2_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
