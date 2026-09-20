@@ -1,0 +1,102 @@
+name: Ball46 Statistics Workspace V2 RB0 20260920
+
+on:
+  push:
+    branches: [work/ball46-statistics-workspace-v2-20260920]
+    paths:
+      - '.github/workflows/ball46-statistics-workspace-v2-rb0-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight Production pages and backend
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/rb0/pages /tmp/rb0/backend /tmp/rb0/assets
+          for page in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 5 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/$page?rb0=$GITHUB_RUN_ID" -o "/tmp/rb0/pages/$page"
+            test -s "/tmp/rb0/pages/$page"
+          done
+          grep -Fq 'data-next-stat-markets' /tmp/rb0/pages/statistics.html
+          grep -Fq 'Results History' /tmp/rb0/pages/statistics.html
+          for ep in engine hub full-market; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 30 "$BALL46_URL/api/$ep/health?rb0=$GITHUB_RUN_ID" -o "/tmp/rb0/backend/$ep.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          const out={};
+          for(const n of ['engine','hub','full-market']){
+            const j=JSON.parse(fs.readFileSync(`/tmp/rb0/backend/${n}.json`,'utf8'));
+            if(j?.ok!==true) throw Error(`RB0_${n}_HEALTH_FAIL`);
+            out[n]={version:String(j.version||''),component:String(j.component||''),staleCachePolicy:String(j.staleCachePolicy||'')};
+          }
+          fs.writeFileSync('/tmp/rb0/backend-identity.json',JSON.stringify(out,null,2));
+          console.log('RB0_BACKEND',JSON.stringify(out));
+          NODE
+
+      - name: Mirror only assets referenced by current Production pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import re, urllib.request, urllib.parse
+          base='https://ball46.com/'
+          pages=Path('/tmp/rb0/pages')
+          out=Path('/tmp/rb0/assets')
+          refs=set()
+          for p in pages.glob('*.html'):
+              h=p.read_text(errors='ignore')
+              for ref in re.findall(r'(?:src|href)=["\']([^"\']+)["\']',h,re.I):
+                  ref=ref.split('#',1)[0]
+                  if not ref or ref.startswith(('http:','https:','//','data:','mailto:','#','/api/')):
+                      continue
+                  path=ref.split('?',1)[0].lstrip('/')
+                  pp=PurePosixPath(path)
+                  if '..' in pp.parts or not path:
+                      continue
+                  if re.search(r'\.(?:css|js|svg|png|webp|jpg|jpeg|ico|woff2?)$',path,re.I): refs.add(path)
+          missing=[]
+          for path in sorted(refs):
+              dst=out/path
+              try:
+                  req=urllib.request.Request(base+urllib.parse.quote(path),headers={'User-Agent':'ball46-rb0-snapshot'})
+                  data=urllib.request.urlopen(req,timeout=15).read()
+                  if data:
+                      dst.parent.mkdir(parents=True,exist_ok=True); dst.write_bytes(data)
+                      print('RB0_ASSET',path)
+              except Exception as e:
+                  missing.append({'path':path,'error':str(e)})
+                  print('RB0_MISSING_PRODUCTION_ASSET',path,e)
+          import json
+          Path('/tmp/rb0/missing-production-assets.json').write_text(json.dumps(missing,indent=2))
+          PY
+
+      - name: Hash RB0 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd /tmp/rb0 && find . -type f -print0 | sort -z | xargs -0 sha256sum) > /tmp/rb0-sha256.txt
+          cp /tmp/rb0-sha256.txt /tmp/rb0/rb0-sha256.txt
+          echo "RB0_FILES=$(find /tmp/rb0 -type f | wc -l)"
+          echo 'BALL46_STAT_WORKSPACE_V2_RB0_PASS'
+
+      - name: Upload RB0 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ball46-stat-workspace-v2-rb0-${{ github.run_id }}
+          path: /tmp/rb0
+          if-no-files-found: error
+          retention-days: 30
