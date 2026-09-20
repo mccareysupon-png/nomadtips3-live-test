@@ -1,0 +1,41 @@
+/* Ball46 shared master shell v1 — PAGE 2 is the visual master.
+   Presentation/geometry only. No API, Odds, Engine, Signal, Statistics, polling or data logic. */
+:root{
+  --b46-master-shell-max:1600px;
+  --b46-master-shell-gutter:24px;
+  --b46-master-shell-gutter-mobile:12px;
+}
+
+/* Keep the same shared logo/header component, but align its outer frame to Page 2. */
+.v2-topbar .v2-topbar-inner{
+  width:100%!important;
+  max-width:var(--b46-master-shell-max)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+
+/* Page 1 + Page 2 + Page 3 use one outer content width. */
+body[data-page="live"] .dash-shell,
+.ball46-product-page .next-shell{
+  width:100%!important;
+  max-width:var(--b46-master-shell-max)!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  padding-left:var(--b46-master-shell-gutter)!important;
+  padding-right:var(--b46-master-shell-gutter)!important;
+}
+
+/* Page 2 itself remains the reference; do not change its internal workspace/cards. */
+.ball46-product-signals.b46-signal-page-v2 .b46-page2-workspace{
+  width:100%!important;
+  max-width:none!important;
+}
+
+/* On compact screens, use Page 2's existing 12px content gutter across all pages. */
+@media(max-width:820px){
+  body[data-page="live"] .dash-shell,
+  .ball46-product-page .next-shell{
+    padding-left:var(--b46-master-shell-gutter-mobile)!important;
+    padding-right:var(--b46-master-shell-gutter-mobile)!important;
+  }
+}
