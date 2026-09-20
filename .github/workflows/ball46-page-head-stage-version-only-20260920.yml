@@ -1,0 +1,123 @@
+name: Ball46 Page Head Stage Version Only 20260920
+
+on:
+  push:
+    branches: [work/ball46-page-head-stability-v1-current-20260920]
+    paths:
+      - '.github/workflows/ball46-page-head-stage-version-only-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  TARGET_BASE_VERSION: 9019cd81-673d-488d-b36d-7ae15d4cc6cc
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-page-head-stability-v1-current-20260920
+          fetch-depth: 0
+
+      - name: Guard production and snapshot versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/deployments-before.json
+          npx --yes wrangler@4.92.0 versions list --config wrangler.ball46.jsonc --json >/tmp/versions-before.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs');const d=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));const x=d[d.length-1],t=process.env.TARGET_BASE_VERSION;
+          if(!x?.versions?.some(v=>v.version_id===t&&Number(v.percentage)===100)){console.error('PRODUCTION_CHANGED',JSON.stringify(x));process.exit(1)}
+          console.log('PRODUCTION_LOCKED',t);
+          NODE
+
+      - name: Mirror current production top-level assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp nomad-live-343/page-head-stability-v1.css /tmp/candidate.css
+          mkdir -p /tmp/prod
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            [ "$name" = page-head-stability-v1.css ] && continue
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.txt|*.xml|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;; *) continue ;; esac
+            tmp="/tmp/prod/${name//\//_}"
+            code=$(curl -sS -L --retry 3 --retry-all-errors --retry-delay 1 --max-time 20 -o "$tmp" -w '%{http_code}' "$BALL46_URL/$name?stage=$GITHUB_RUN_ID") || code=000
+            if [ "$code" = 200 ] && [ -s "$tmp" ]; then cp "$tmp" "$f"; else echo "KEEP_SOURCE_NON200:$name:$code"; fi
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+          cp /tmp/candidate.css nomad-live-343/page-head-stability-v1.css
+          cp nomad-live-343/index.html /tmp/index.before
+          cp nomad-live-343/signal.html /tmp/signal.before
+          cp nomad-live-343/statistics.html /tmp/statistics.before
+
+      - name: Add CSS loader only to Page1 Page2 Page3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          loader='<link rel="stylesheet" href="page-head-stability-v1.css?v=343-page-head-stability-v1-20260920a">'
+          def strip(s):
+              s=re.sub(r'\s*<link[^>]+page-head-stability-v1\.css[^>]*>','',s,flags=re.I)
+              return re.sub(r'>\s+<','><',s).strip()
+          for n in ('index','signal','statistics'):
+              p=Path(f'nomad-live-343/{n}.html');s=p.read_text();s=re.sub(r'\s*<link[^>]+page-head-stability-v1\.css[^>]*>','',s,flags=re.I)
+              if '</head>' not in s: raise SystemExit('NO_HEAD:'+n)
+              p.write_text(s.replace('</head>',loader+'\n</head>',1))
+              if strip(Path(f'/tmp/{n}.before').read_text())!=strip(p.read_text()): raise SystemExit('NON_LOADER_CHANGE:'+n)
+          print('HTML_LOADER_ONLY_PASS')
+          PY
+          ! grep -Fq 'fetch(' nomad-live-343/page-head-stability-v1.css
+          ! grep -Fq '/api/' nomad-live-343/page-head-stability-v1.css
+
+      - name: Recheck production before inactive upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/deployments-preupload.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs');const d=JSON.parse(fs.readFileSync('/tmp/deployments-preupload.json','utf8'));const x=d[d.length-1],t=process.env.TARGET_BASE_VERSION;if(!x?.versions?.some(v=>v.version_id===t&&Number(v.percentage)===100)){console.error('PRODUCTION_CHANGED_DURING_STAGE',JSON.stringify(x));process.exit(1)}console.log('PREUPLOAD_LOCK_PASS');
+          NODE
+
+      - name: Upload INACTIVE candidate version only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 versions upload --config wrangler.ball46.jsonc --message "Ball46 page-head stability candidate - inactive" | tee /tmp/version-upload.log
+          echo INACTIVE_VERSION_UPLOAD_COMPLETE
+
+      - name: Identify staged version and prove production unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 versions list --config wrangler.ball46.jsonc --json >/tmp/versions-after.json
+          npx --yes wrangler@4.92.0 deployments list --config wrangler.ball46.jsonc --json >/tmp/deployments-after.json
+          cd ../..
+          node - <<'NODE'
+          const fs=require('fs');
+          const before=new Set(JSON.parse(fs.readFileSync('/tmp/versions-before.json','utf8')).map(x=>x.id));
+          const after=JSON.parse(fs.readFileSync('/tmp/versions-after.json','utf8'));
+          const fresh=after.filter(x=>!before.has(x.id));
+          if(fresh.length!==1){console.error('FRESH_VERSIONS',fresh);process.exit(1)}
+          const id=fresh[0].id;console.log('STAGED_VERSION_ID',id);fs.writeFileSync('/tmp/staged-version-id',id);
+          const d=JSON.parse(fs.readFileSync('/tmp/deployments-after.json','utf8'));const active=d[d.length-1],target=process.env.TARGET_BASE_VERSION;
+          if(!active?.versions?.some(v=>v.version_id===target&&Number(v.percentage)===100)){console.error('PRODUCTION_MOVED',JSON.stringify(active));process.exit(1)}
+          if(active.versions.some(v=>v.version_id===id)){throw Error('CANDIDATE_ACCIDENTALLY_DEPLOYED')}
+          console.log('PRODUCTION_STILL_UNCHANGED',target);
+          NODE
+          echo '--- VERSION UPLOAD LOG ---'
+          cat /tmp/version-upload.log
