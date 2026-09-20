@@ -1,0 +1,112 @@
+/* Ball46 Statistics refinement v2 — presentation only.
+   Thin crisp chart strokes + compact ADD K performance card grouped with market cards. */
+
+/* Every Statistics unit chart: thinnest practical crisp line. */
+.b46-unit-performance-v1 .unit-main-line,
+.b46-unit-performance-v1 .unit-spark-line{
+  stroke-width:1!important;
+  stroke-linecap:butt!important;
+  stroke-linejoin:miter!important;
+  shape-rendering:geometricPrecision;
+}
+.b46-unit-performance-v1 .unit-grid-line,
+.b46-unit-performance-v1 .unit-zero-line,
+.b46-unit-performance-v1 .unit-spark-zero,
+.b46-unit-performance-v1 .unit-hover-guide{
+  stroke-width:.75!important;
+  stroke-linecap:butt!important;
+  shape-rendering:geometricPrecision;
+}
+.b46-unit-performance-v1 .unit-last-dot,
+.b46-unit-performance-v1 .unit-hover-dot{
+  stroke-width:1!important;
+}
+
+/* Group CEO/ADD K card with market performance cards without changing render/data logic. */
+.market-performance-cluster-v2{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+  align-items:start;
+  margin-bottom:16px;
+}
+.market-performance-cluster-v2 > .market-performance-grid{
+  display:contents!important;
+}
+.market-performance-cluster-v2 > .ceo-performance-shell{
+  margin:0!important;
+  min-width:0;
+}
+.market-performance-cluster-v2 .ceo-performance-card{
+  border-radius:12px;
+  box-shadow:var(--shadow-soft);
+}
+.market-performance-cluster-v2 .ceo-performance-head{
+  gap:9px;
+  padding:10px 11px 8px;
+}
+.market-performance-cluster-v2 .ceo-kicker{
+  font-size:6.5px;
+  letter-spacing:.08em;
+}
+.market-performance-cluster-v2 .ceo-performance-head h2{
+  margin:2px 0 0;
+  font-size:10.5px;
+  line-height:1.2;
+}
+.market-performance-cluster-v2 .ceo-performance-head p{
+  display:none;
+}
+.market-performance-cluster-v2 .ceo-sample-badge{
+  padding:3px 5px;
+  font-size:6px;
+  letter-spacing:.025em;
+}
+.market-performance-cluster-v2 .ceo-performance-body{
+  padding:9px 10px 10px;
+}
+.market-performance-cluster-v2 .ceo-scoreline{
+  gap:8px;
+}
+.market-performance-cluster-v2 .ceo-scoreline>div:first-child small{
+  font-size:6.5px;
+}
+.market-performance-cluster-v2 .ceo-scoreline>div:first-child strong{
+  font-size:18px;
+}
+.market-performance-cluster-v2 .ceo-wlp{
+  gap:4px;
+}
+.market-performance-cluster-v2 .ceo-wlp span{
+  padding:3px 5px;
+  font-size:6.8px;
+}
+.market-performance-cluster-v2 .market-result-bar{
+  height:4px;
+  margin:8px 0 9px;
+}
+.market-performance-cluster-v2 .ceo-metrics{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:5px;
+}
+.market-performance-cluster-v2 .ceo-metrics span{
+  padding:6px 7px;
+}
+.market-performance-cluster-v2 .ceo-metrics small{
+  font-size:6.3px;
+}
+.market-performance-cluster-v2 .ceo-metrics b{
+  margin-top:2px;
+  font-size:8.5px;
+}
+/* Compact card keeps the core public metrics: Settled, ROI/Yield and Profit. */
+.market-performance-cluster-v2 .ceo-metrics span:nth-child(2),
+.market-performance-cluster-v2 .ceo-metrics span:nth-child(5),
+.market-performance-cluster-v2 .ceo-market-breakdown,
+.market-performance-cluster-v2 .ceo-footnote{
+  display:none!important;
+}
+
+@media(max-width:820px){
+  .market-performance-cluster-v2{grid-template-columns:1fr;gap:7px}
+}
