@@ -1,0 +1,215 @@
+name: Deploy Ball46 Product Pages 20260920
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-product-pages-20260920.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_BRANCH: work/ball46-product-pages-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-product-pages-ui-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout isolated product branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current Ball46 production and record guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          : > /tmp/protected-js.tsv
+
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?product-pages=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+              *.svg) [[ "$ctype" == *svg* || "$ctype" == *xml* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js statistics-next.js; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          sha256sum /tmp/prod/index.html | awk '{print $1}' > /tmp/index-before.sha
+          sha256sum /tmp/prod/dashboard-v2-stage3.js | awk '{print $1}' > /tmp/dashboard-before.sha
+          sha256sum /tmp/prod/bulk-odds-compat-343.js | awk '{print $1}' > /tmp/bulk-before.sha
+          sha256sum /tmp/prod/full-market-bookmaker-343.js | awk '{print $1}' > /tmp/fullmarketjs-before.sha
+          sha256sum /tmp/prod/live-summary-full-odds-343.js | awk '{print $1}' > /tmp/liveodds-before.sha
+          sha256sum /tmp/prod/signal-next.js | awk '{print $1}' > /tmp/signaljs-before.sha
+          sha256sum /tmp/prod/statistics-next.js | awk '{print $1}' > /tmp/statsjs-before.sha
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for page in ('signal','statistics'):
+              s=Path(f'/tmp/prod/{page}.html').read_text()
+              srcs='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              Path(f'/tmp/{page}-scripts-before.txt').write_text(srcs)
+          PY
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?product-pages=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?product-pages=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version) throw Error('ENGINE_VERSION_MISSING');
+          if(!f.version) throw Error('FULL_MARKET_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          console.log('PRODUCT_PAGES_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
+
+      - name: Apply presentation layer to pages 2 and 3 only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/ball46-product-pages-v1.css
+          cp nomad-live-343/ball46-product-pages-v1.css /tmp/product-css.css
+
+          python3 .github/scripts/patch_ball46_product_pages_20260920.py
+
+          grep -Fq 'ball46-product-pages-v1.css?v=343-product-pages-v1-20260920' nomad-live-343/signal.html
+          grep -Fq 'class="ball46-product-page ball46-product-signals"' nomad-live-343/signal.html
+          grep -Fq 'ball46-product-pages-v1.css?v=343-product-pages-v1-20260920' nomad-live-343/statistics.html
+          grep -Fq 'class="ball46-product-page ball46-product-statistics"' nomad-live-343/statistics.html
+          grep -Fq 'Ball46 Product Pages v1' nomad-live-343/ball46-product-pages-v1.css
+
+          ! grep -Fq '/api/' nomad-live-343/ball46-product-pages-v1.css
+          ! grep -Fq 'fetch(' nomad-live-343/ball46-product-pages-v1.css
+          ! grep -Fq 'XMLHttpRequest' nomad-live-343/ball46-product-pages-v1.css
+          ! grep -Fq '@import' nomad-live-343/ball46-product-pages-v1.css
+          ! grep -Eq 'url\(["'"']?https?://' nomad-live-343/ball46-product-pages-v1.css
+
+          cmp -s /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cmp -s /tmp/prod/bulk-odds-compat-343.js nomad-live-343/bulk-odds-compat-343.js
+          cmp -s /tmp/prod/full-market-bookmaker-343.js nomad-live-343/full-market-bookmaker-343.js
+          cmp -s /tmp/prod/live-summary-full-odds-343.js nomad-live-343/live-summary-full-odds-343.js
+          cmp -s /tmp/prod/signal-next.js nomad-live-343/signal-next.js
+          cmp -s /tmp/prod/statistics-next.js nomad-live-343/statistics-next.js
+          cmp -s /tmp/prod/index.html nomad-live-343/index.html
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for page in ('signal','statistics'):
+              s=Path(f'nomad-live-343/{page}.html').read_text()
+              srcs='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              before=Path(f'/tmp/{page}-scripts-before.txt').read_text()
+              if srcs != before:
+                  raise SystemExit(f'SCRIPT_LIST_CHANGED:{page}')
+          PY
+          echo PRODUCT_PAGES_UI_ONLY_GUARD_PASS
+
+      - name: Commit production-based page loaders only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add nomad-live-343/signal.html nomad-live-343/statistics.html
+          if git diff --cached --quiet; then
+            echo "No HTML loader changes to commit"
+          else
+            git commit -m "feat(ball46): apply premium product layout to signals and statistics"
+            git push origin "HEAD:${SOURCE_BRANCH}"
+          fi
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify live design and protected systems
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?product-pages=${GITHUB_RUN_ID}-${n}" -o /tmp/signal-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/statistics.html?product-pages=${GITHUB_RUN_ID}-${n}" -o /tmp/statistics-after.html || true
+            curl -fsS -L --max-time 25 "$BALL46_URL/ball46-product-pages-v1.css?product-pages=${GITHUB_RUN_ID}-${n}" -o /tmp/product-after.css || true
+            if grep -Fq 'ball46-product-signals' /tmp/signal-after.html && \
+               grep -Fq 'ball46-product-statistics' /tmp/statistics-after.html && \
+               grep -Fq 'Ball46 Product Pages v1' /tmp/product-after.css; then
+              ok=1; break
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          for page in ('signal','statistics'):
+              s=Path(f'/tmp/{page}-after.html').read_text()
+              srcs='\n'.join(re.findall(r'<script[^>]+src=["\']([^"\']+)',s,re.I))
+              before=Path(f'/tmp/{page}-scripts-before.txt').read_text()
+              if srcs != before:
+                  raise SystemExit(f'LIVE_SCRIPT_LIST_CHANGED:{page}')
+          PY
+
+          curl -fsS -L --max-time 25 "$BALL46_URL/index.html?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/index-after.html
+          curl -fsS -L --max-time 25 "$BALL46_URL/dashboard-v2-stage3.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/dashboard-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/bulk-odds-compat-343.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/bulk-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/full-market-bookmaker-343.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/fullmarketjs-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/live-summary-full-odds-343.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/liveodds-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/signal-next.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/signaljs-after.js
+          curl -fsS -L --max-time 25 "$BALL46_URL/statistics-next.js?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/statsjs-after.js
+
+          test "$(sha256sum /tmp/index-after.html | awk '{print $1}')" = "$(cat /tmp/index-before.sha)"
+          test "$(sha256sum /tmp/dashboard-after.js | awk '{print $1}')" = "$(cat /tmp/dashboard-before.sha)"
+          test "$(sha256sum /tmp/bulk-after.js | awk '{print $1}')" = "$(cat /tmp/bulk-before.sha)"
+          test "$(sha256sum /tmp/fullmarketjs-after.js | awk '{print $1}')" = "$(cat /tmp/fullmarketjs-before.sha)"
+          test "$(sha256sum /tmp/liveodds-after.js | awk '{print $1}')" = "$(cat /tmp/liveodds-before.sha)"
+          test "$(sha256sum /tmp/signaljs-after.js | awk '{print $1}')" = "$(cat /tmp/signaljs-before.sha)"
+          test "$(sha256sum /tmp/statsjs-after.js | awk '{print $1}')" = "$(cat /tmp/statsjs-before.sha)"
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?product-pages=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/board?product-pages=${GITHUB_RUN_ID}" -o /tmp/board.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/signals?product-pages=${GITHUB_RUN_ID}" -o /tmp/signals.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/statistics?product-pages=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('SIGNALS_UNHEALTHY');
+          if(st?.ok!==true||!Array.isArray(st.rows)) throw Error('STATISTICS_UNHEALTHY');
+          console.log('BALL46_PRODUCT_PAGES_DEPLOY_PASS',JSON.stringify({fixtures:b.fixtures.length,signals:s.signals.length,stats:st.rows.length,engine:e.version,fullMarket:f.version}));
+          NODE
