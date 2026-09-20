@@ -1,0 +1,82 @@
+name: Emergency rollback Ball46 wrapper signal 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-fullmarket-sidecar-producer-v1-20260920
+    paths:
+      - '.github/workflows/emergency-rollback-ball46-wrapper-signal-20260920.yml'
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+  TARGET_WRAPPER_VERSION: de051ac2-48b2-4618-aca2-79e4b69472ff
+
+jobs:
+  rollback-wrapper-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture protected backend versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?pre=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?pre=${GITHUB_RUN_ID}" -o /tmp/hub-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=require('/tmp/engine-before.json');
+          const h=require('/tmp/hub-before.json');
+          if(!e.version||!h.version) throw Error('BACKEND_HEALTH_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/hub-version',String(h.version));
+          console.log('PROTECTED_BACKENDS',e.version,h.version);
+          NODE
+
+      - name: Confirm target wrapper version exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/deployments-before.json
+          grep -Fq "$TARGET_WRAPPER_VERSION" /tmp/deployments-before.json
+          echo "ROLLBACK_TARGET=$TARGET_WRAPPER_VERSION"
+
+      - name: Roll back Ball46 wrapper and assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_WRAPPER_VERSION" --config "$WRAPPER_CFG"
+
+      - name: Verify wrapper rollback and protected backends
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/deployments-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const r=JSON.parse(fs.readFileSync('/tmp/deployments-after.json','utf8'));
+          const x=r[r.length-1];
+          const active=x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||'';
+          const target=process.env.TARGET_WRAPPER_VERSION;
+          console.log('ACTIVE_WRAPPER',active);
+          if(active!==target) throw Error(`WRAPPER_ROLLBACK_NOT_ACTIVE:${active}`);
+          NODE
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?post=${GITHUB_RUN_ID}" -o /tmp/engine-after.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?post=${GITHUB_RUN_ID}" -o /tmp/hub-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=require('/tmp/engine-after.json');
+          const h=require('/tmp/hub-after.json');
+          if(String(e.version)!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(h.version)!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
+          console.log('ROLLBACK_PASS',JSON.stringify({wrapper:process.env.TARGET_WRAPPER_VERSION,engine:e.version,hub:h.version}));
+          NODE
