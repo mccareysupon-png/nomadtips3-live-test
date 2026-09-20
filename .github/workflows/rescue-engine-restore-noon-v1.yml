@@ -1,0 +1,99 @@
+name: Rescue Ball46 Restore Exact Noon Engine
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-engine-restore-noon-v1.yml']
+permissions:
+  contents: read
+jobs:
+  restore:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BASE_REF: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+      TARGET_ENGINE: 18f72c6a-c69b-4593-9b01-dc08ddffde33
+      EXPECTED_WRAPPER: 3f531205-db00-4942-8242-2d68108ac4e6
+      EXPECTED_FULL: 4f372440-f064-40be-ac74-067f191624db
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BASE_REF }}
+          fetch-depth: 1
+      - name: Guard current wrapper and Full Market before Engine rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          WCFG=workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          FCFG=workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          ECFG=workers/nomadtips3-engine-343/wrangler.toml
+          npx --yes wrangler@4.92.0 deployments list --config "$WCFG" --json >/tmp/w.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FCFG" --json >/tmp/f.json
+          npx --yes wrangler@4.92.0 deployments list --config "$ECFG" --json >/tmp/e-before.json
+          node - <<'NODE'
+          const fs=require('fs'); const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8'));const d=a[a.length-1]||{};return d.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};
+          const w=active('/tmp/w.json'),f=active('/tmp/f.json'),e=active('/tmp/e-before.json');
+          console.log('GUARD',JSON.stringify({wrapper:w,full:f,engine:e}));
+          if(w!==process.env.EXPECTED_WRAPPER)throw Error('WRAPPER_DRIFT:'+w);
+          if(f!==process.env.EXPECTED_FULL)throw Error('FULL_DRIFT:'+f);
+          if(!e)throw Error('ENGINE_ACTIVE_MISSING'); fs.writeFileSync('/tmp/engine-prev',e);
+          NODE
+          npx --yes wrangler@4.92.0 versions list --config "$ECFG" --json >/tmp/e-versions.json
+          grep -Fq "$TARGET_ENGINE" /tmp/e-versions.json
+      - name: Roll back Engine only to exact noon version
+        working-directory: workers/nomadtips3-engine-343
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$TARGET_ENGINE" --config wrangler.toml
+      - name: Verify target Engine active and no wrapper/full drift
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          WCFG=workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          FCFG=workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          ECFG=workers/nomadtips3-engine-343/wrangler.toml
+          npx --yes wrangler@4.92.0 deployments list --config "$WCFG" --json >/tmp/w2.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FCFG" --json >/tmp/f2.json
+          npx --yes wrangler@4.92.0 deployments list --config "$ECFG" --json >/tmp/e2.json
+          node - <<'NODE'
+          const fs=require('fs');const active=p=>{const a=JSON.parse(fs.readFileSync(p,'utf8'));const d=a[a.length-1]||{};return d.versions?.find(x=>Number(x.percentage)===100)?.version_id||''};
+          const w=active('/tmp/w2.json'),f=active('/tmp/f2.json'),e=active('/tmp/e2.json'); console.log('ACTIVE_AFTER',JSON.stringify({wrapper:w,full:f,engine:e}));
+          if(w!==process.env.EXPECTED_WRAPPER)throw Error('WRAPPER_CHANGED'); if(f!==process.env.EXPECTED_FULL)throw Error('FULL_CHANGED'); if(e!==process.env.TARGET_ENGINE)throw Error('ENGINE_TARGET_NOT_ACTIVE:'+e);
+          NODE
+      - name: Verify Engine cycles cleanly and public APIs remain complete
+        shell: bash
+        run: |
+          set -euo pipefail
+          B=https://ball46.com
+          for n in 1 2 3; do
+            for ep in engine/health engine/board engine/signals engine/statistics full-market/health; do
+              safe=${ep//\//-}; code=$(curl -sS -L --retry 4 -o "/tmp/${safe}-${n}.json" -w '%{http_code}' "$B/api/$ep?noonEngine=${GITHUB_RUN_ID}-${n}"); echo "HTTP $n $ep $code"; test "$code" = 200;
+            done
+            node - <<NODE
+          const h=require('/tmp/engine-health-${n}.json'),b=require('/tmp/engine-board-${n}.json'),s=require('/tmp/engine-signals-${n}.json'),t=require('/tmp/engine-statistics-${n}.json'),f=require('/tmp/full-market-health-${n}.json');
+          console.log('CYCLE_${n}',JSON.stringify({health:h,fixtures:Array.isArray(b.fixtures)?b.fixtures.length:null,signals:Array.isArray(s.signals)?s.signals.length:null,stats:Array.isArray(t.rows)?t.rows.length:null,full:f.version}));
+          if(!h.version)throw Error('ENGINE_HEALTH_VERSION_MISSING');
+          if(h.ok===false)throw Error('ENGINE_HEALTH_FALSE:'+String(h.lastError||''));
+          if(!Array.isArray(b.fixtures)||b.fixtures.length<1)throw Error('BOARD_EMPTY');
+          if(!Array.isArray(s.signals))throw Error('SIGNALS_INVALID');
+          if(!Array.isArray(t.rows))throw Error('STATS_INVALID');
+          if(f.version!=='nomad343-ball46-full-market-v6-server-prewarm-cache')throw Error('FULL_CHANGED_VERSION');
+          NODE
+            [ "$n" = 3 ] || sleep 12
+          done
+      - name: Verify Page 3 graph and expanded 19-book Odds in Chrome
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); test -n "$CHROME"
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          CHROME_PATH="$CHROME" node - <<'NODE'
+          const p=require('puppeteer-core');const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const allBooks=['Bet365','Pinnacle','William Hill','Ladbrokes','VCBet','1xBet','Bwin','Easybets','Interwetten','Betfair','SNAI','Macau Slot','Betsson','Bet-at-home','18Bet','10BET','12Bet','Coral','Crown'];
+          (async()=>{const br=await p.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});const res=[];
+          for(const file of ['index.html','signal.html','statistics.html']){const pg=await br.newPage();await pg.setViewport({width:1440,height:1000});const errs=[];pg.on('pageerror',e=>errs.push(String(e.message||e)));await pg.goto('https://ball46.com/'+file+'?finalNoon='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000});await sleep(file==='index.html'?8000:4000);let data=await pg.evaluate(()=>{const vis=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>1&&r.height>1&&s.display!=='none'&&s.visibility!=='hidden'};const h=[...document.querySelectorAll('header,.topbar,[class*="header"],[class*="topbar"]')].find(e=>e.getBoundingClientRect().width>300&&vis(e));const charts=[...document.querySelectorAll('canvas,svg,[class*="chart"],[id*="chart"]')].filter(e=>{const r=e.getBoundingClientRect();return vis(e)&&r.width>40&&r.height>30});return {w:document.body.scrollWidth,vw:innerWidth,hh:h?Math.round(h.getBoundingClientRect().height):null,charts:charts.length}});if(file==='index.html'){const clicked=await pg.evaluate(()=>{const vis=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>80&&r.height>30&&s.display!=='none'&&s.visibility!=='hidden'};const e=[...document.querySelectorAll('.match-row,article')].find(x=>vis(x)&&(x.innerText||'').trim());if(!e)return false;e.click();return true});if(!clicked)throw Error('NO_CARD_TO_EXPAND');await sleep(6000);data.books=await pg.evaluate(bs=>{const t=document.body.innerText||'';return [...new Set(bs.filter(n=>t.toLowerCase().includes(n.toLowerCase())))]},allBooks);}res.push({file,...data,errors:errs});await pg.close();}
+          await br.close();console.log('FINAL_CHROME',JSON.stringify(res));for(const x of res){if(x.w>x.vw+20)throw Error('OVERFLOW:'+x.file);if(x.hh!==64)throw Error('HEADER_NOT_64:'+x.file+':'+x.hh);if(x.errors.length)throw Error('PAGE_ERROR:'+x.file+':'+x.errors.join('|'));}const st=res.find(x=>x.file==='statistics.html');if(!st||st.charts<1)throw Error('PAGE3_GRAPH_MISSING');const ix=res.find(x=>x.file==='index.html');if(!ix||!ix.books||ix.books.length<19)throw Error('EXPANDED_19_BOOKS_MISSING:'+JSON.stringify(ix?.books));console.log('FULL_RESTORE_PASS');})().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
