@@ -2,13 +2,18 @@ import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 import { CEO_STRATEGY, CEO_VERSION, CEO_PRICE_SETTINGS, ceoCandidatesForFixture, ceoPostPricePass } from './ceo-condition.js';
 
-const VERSION='nomad343-engine-v6-ceo-auto-v1.1-ah-guard';
+const VERSION='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
 const MAX_HISTORY_ROWS=180;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
+// Settlement recovery is deliberately throttled so final-score repair cannot become an API storm.
+const MAX_SETTLEMENT_RECOVERY_PER_SCAN=2;
+const SETTLEMENT_RECOVERY_UNRESOLVED_MIN_AGE_MS=90*60_000;
+const SETTLEMENT_RECOVERY_PENDING_MIN_AGE_MS=120*60_000;
+const SETTLEMENT_RECOVERY_RETRY_MS=30*60_000;
 const UI_ODDS_CACHE_MS=60_000;
 const UI_ODDS_STALE_MS=15*60_000;
 const SETTLEMENT_REVISION='bet365-rules-v2';
@@ -213,6 +218,13 @@ function pricePass(key,cfg,price,f){
   }
   return true;
 }
+function recoveryScore(v){return v&&typeof v==='object'?{home:num(v.home),away:num(v.away),halfHome:num(v.half_home??v.halfHome),halfAway:num(v.half_away??v.halfAway)}:{home:null,away:null,halfHome:null,halfAway:null}}
+function recoveryCards(v){const side=x=>x&&typeof x==='object'?{yellow:num(x.yellow),red:num(x.red)}:null;return {home:side(v?.home),away:side(v?.away)}}
+function recoveryBoardState(status,statusCode){const x=`${status||''} ${statusCode||''}`.toLowerCase();if(/unknown|postpon|cancel|canceled|abandon|suspend/.test(x))return'unknown';if(/finished|full_time|full time|\bft\b|ended|\bfull\b|after extra|\baet\b|penalties|\bpen\b/.test(x))return'finished';if(/in_play|in play|live|half|first|second|\b1h\b|\b2h\b/.test(x)||/^\d+$/.test(String(statusCode||'')))return'live';return'scheduled'}
+function normalizeRecoveryFixture(payload,fallbackId){const f=payload?.data?.id!==undefined?payload.data:(payload?.data?.data??payload?.fixture??payload?.data??payload),status=String(f?.status?.name??f?.status??''),statusCode=String(f?.status_code??f?.status?.code??f?.status?.short??''),fixtureId=String(f?.id??f?.fixture_id??f?.fixture?.id??fallbackId);return {fixtureId,status,statusCode,statusReason:f?.status_reason??f?.status?.reason??null,boardState:recoveryBoardState(status,statusCode),minute:num(f?.minute??f?.elapsed??f?.status?.minute??f?.status?.elapsed),goals:recoveryScore(f?.goals??f?.score),corners:recoveryScore(f?.corners),cards:recoveryCards(f?.cards)}}
+async function fetchSettlementRecoveryFixture(fixtureId,env){if(!env.FIVEDOLLAR_API_KEY)throw new Error('FIVEDOLLAR_API_KEY_MISSING');const r=await fetch(`${API_BASE}/fixtures/${encodeURIComponent(fixtureId)}`,{cache:'no-store',headers:{accept:'application/json',authorization:`Bearer ${env.FIVEDOLLAR_API_KEY}`}});const raw=await r.text();let j=null;try{j=JSON.parse(raw)}catch{}if(!r.ok){const e=new Error(`5USD_FIXTURE_HTTP_${r.status}`);e.status=r.status;e.retryAfter=num(r.headers.get('retry-after'));throw e}if(!j||typeof j!=='object')throw new Error('5USD_FIXTURE_SHAPE');return normalizeRecoveryFixture(j,fixtureId)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
 async function fetchFullOdds(fixtureId,env){
   if(env.FULL_MARKET){
     try{
@@ -275,7 +287,21 @@ export class Nomad343Engine extends DurableObject{
       const prevById=new Map((Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[]).map(x=>[String(x?.fixtureId??''),x]));
       const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));
       const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}:${strategyOf(s)}`));const at=Number(hub.fetchedAt||now());
-      const fixtureMap=new Map();for(const f of hub.fixtures||[])fixtureMap.set(String(f.fixtureId),f);
+      const fixtureMap=new Map();for(const f of hub.fixtures||[])fixtureMap.set(String(f.fixtureId),f);for(const f of hub.settlements||[])fixtureMap.set(String(f.fixtureId),f);
+      // Recover terminal state for old unresolved signals and stale pending signals without touching Odds.
+      const recoveryState=await this.ctx.storage.get('settlementRecovery')||{},recoveryById=new Map();
+      for(const sig of signals){
+        if(!['PENDING','UNRESOLVED'].includes(sig.status))continue;
+        const id=String(sig.fixtureId||''),created=Number(sig.createdAt||0);if(!id||!created)continue;
+        const age=startedAt-created,current=fixtureMap.get(id);
+        const eligible=sig.status==='UNRESOLVED'?age>=SETTLEMENT_RECOVERY_UNRESOLVED_MIN_AGE_MS:(!current&&age>=SETTLEMENT_RECOVERY_PENDING_MIN_AGE_MS);
+        if(!eligible)continue;
+        const cur=recoveryById.get(id)||{fixtureId:id,newestCreatedAt:0,oldestCreatedAt:created};cur.newestCreatedAt=Math.max(cur.newestCreatedAt,created);cur.oldestCreatedAt=Math.min(cur.oldestCreatedAt,created);recoveryById.set(id,cur);
+      }
+      const recoveryCandidates=[...recoveryById.values()].filter(x=>startedAt-Number(recoveryState[x.fixtureId]?.lastAttemptAt||0)>=SETTLEMENT_RECOVERY_RETRY_MS).sort((a,b)=>b.newestCreatedAt-a.newestCreatedAt),recoverySelected=recoveryCandidates.slice(0,MAX_SETTLEMENT_RECOVERY_PER_SCAN);
+      let settlementRecoveryRequests=0,settlementRecoveryRecovered=0,settlementRecoveryErrors=[];
+      for(let i=0;i<recoverySelected.length;i++){const id=recoverySelected[i].fixtureId;try{settlementRecoveryRequests++;const f=await fetchSettlementRecoveryFixture(id,this.env);recoveryState[id]={lastAttemptAt:now(),state:f.boardState,status:f.status,statusCode:f.statusCode};if(isFinished(f)||isUnknown(f)){fixtureMap.set(id,f);settlementRecoveryRecovered++;recoveryState[id].recoveredAt=now()}}catch(e){recoveryState[id]={lastAttemptAt:now(),state:'ERROR',error:String(e?.message||e)};settlementRecoveryErrors.push({fixtureId:id,error:String(e?.message||e)});if(i+1<recoverySelected.length)await sleep(800)}}
+      await this.ctx.storage.put('settlementRecovery',Object.fromEntries(Object.entries(recoveryState).sort((a,b)=>Number(b[1]?.lastAttemptAt||0)-Number(a[1]?.lastAttemptAt||0)).slice(0,500)));
       for(const f of hub.fixtures||[]){
         const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];
         if(isLive(f)){const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap)}
@@ -323,8 +349,8 @@ export class Nomad343Engine extends DurableObject{
         if(!result){s.status='UNRESOLVED';s.settlementError='FINAL_DATA_UNAVAILABLE';s.settledAt=s.settledAt||now();s.settlementRevision=SETTLEMENT_REVISION;continue}
         s.status='SETTLED';s.result=result;s.finalScore=clone(f.goals);s.finalCorners=clone(f.corners);s.finalCards=clone(f.cards);s.settledAt=now();s.settlementError=null;s.settlementRevision=SETTLEMENT_REVISION;
       }
-      await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}});
-      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
+      await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors},settlementRecovery:{maxPerScan:MAX_SETTLEMENT_RECOVERY_PER_SCAN,unresolvedMinAgeMs:SETTLEMENT_RECOVERY_UNRESOLVED_MIN_AGE_MS,pendingMinAgeMs:SETTLEMENT_RECOVERY_PENDING_MIN_AGE_MS,retryMs:SETTLEMENT_RECOVERY_RETRY_MS,requests:settlementRecoveryRequests,recovered:settlementRecoveryRecovered,queued:Math.max(0,recoveryCandidates.length-recoverySelected.length),errors:settlementRecoveryErrors}});
+      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),settlementRecoveryRequests,settlementRecoveryRecovered,settlementRecoveryQueued:Math.max(0,recoveryCandidates.length-recoverySelected.length),settlementRecoveryErrors,lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
     }catch(e){const meta={ok:false,startedAt,finishedAt:now(),lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}
   }
   async fetch(request){
