@@ -5,7 +5,6 @@ function engineRequest(request, path) {
   upstream.pathname = path;
   return new Request(upstream, request);
 }
-
 function hubRequest(request, path) {
   const upstream = new URL(request.url);
   upstream.protocol = 'https:';
@@ -13,7 +12,6 @@ function hubRequest(request, path) {
   upstream.pathname = path;
   return new Request(upstream, request);
 }
-
 function fullMarketRequest(request, path) {
   const upstream = new URL(request.url);
   upstream.protocol = 'https:';
@@ -21,10 +19,8 @@ function fullMarketRequest(request, path) {
   upstream.pathname = path;
   return new Request(upstream, request);
 }
-
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
-
 async function noStoreUiAsset(request, env) {
   const response = await env.ASSETS.fetch(request);
   const headers = new Headers(response.headers);
@@ -32,62 +28,48 @@ async function noStoreUiAsset(request, env) {
   headers.set('cache-control', 'no-store, no-cache, must-revalidate, max-age=0');
   headers.set('pragma', 'no-cache');
   headers.set('expires', '0');
-  headers.set('x-nomad-ui-revision', '343-full-market-v1');
+  headers.set('x-nomad-ui-revision', '343-full-market-sidecar-v1');
   if (path.startsWith('/statistics')) headers.set('x-nomad-stat-revision', '343-stat-results-v7-live-mirror');
   if (path.startsWith('/signal')) headers.set('x-nomad-signal-revision', '343-signal-bettor-v4');
-  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-v1');
+  if (path === '/index.html' || path === '/live.js' || path === '/full-odds-main-343.js' || path === '/live-summary-full-odds-343.js' || path === '/full-market-sidecar-343.js' || path.startsWith('/event-flow-343')) headers.set('x-nomad-live-revision', '343-live-full-market-sidecar-v1');
   if (path === '/5usd-control.html') headers.set('x-nomad-control-revision', '343-5usd-control-v1');
   if (path === '/detection-test.html') headers.set('x-nomad-detection-revision', '343-detection-test-v1');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
-
 function fixtureIsLive(fixture) {
   const raw = String(fixture?.boardState ?? fixture?.status ?? fixture?.statusCode ?? '').toLowerCase();
   if (fixture?.boardState === 'finished' || /finished|full_time|full time|\bft\b|ended/.test(raw)) return false;
   return fixture?.boardState === 'live' || /in_play|in play|live|playing|first|second|\b1h\b|\b2h\b/.test(raw);
 }
-
 function liveMinute(fixture) {
   const direct = num(fixture?.minute);
   if (direct !== null) return direct;
   const match = String(fixture?.statusCode ?? '').match(/\d+/);
   return match ? Number(match[0]) : null;
 }
-
 function oddsContainerHasData(value) {
   if (Array.isArray(value)) return value.length > 0;
   if (!value || typeof value !== 'object') return false;
   if (!Object.keys(value).length) return false;
-  const containers = [
-    value.bookmakers, value.odds, value.markets,
-    value?.data?.bookmakers, value?.data?.odds, value?.data?.markets
-  ];
+  const containers = [value.bookmakers, value.odds, value.markets, value?.data?.bookmakers, value?.data?.odds, value?.data?.markets];
   if (containers.some(v => Array.isArray(v) ? v.length > 0 : Boolean(v && typeof v === 'object' && Object.keys(v).length))) return true;
   return Object.keys(value).some(k => /bet365|pinnacle|williamhill|ladbrokes|vcbet|1xbet|bwin|easybets|interwetten|betfair|snai|macauslot|betsson|betathome|18bet|10bet|12bet|coral|crown|bookmaker/i.test(String(k)));
 }
-
 function boardHasBookmakerOdds(board) {
   const fixtures = Array.isArray(board?.fixtures) ? board.fixtures : [];
-  return fixtures.some(fixture =>
-    oddsContainerHasData(fixture?.providerOdds) ||
-    oddsContainerHasData(fixture?.fullOdds) ||
-    oddsContainerHasData(fixture?.odds)
-  );
+  return fixtures.some(fixture => oddsContainerHasData(fixture?.providerOdds) || oddsContainerHasData(fixture?.fullOdds) || oddsContainerHasData(fixture?.odds));
 }
-
 async function engineBoardResponse(request, env) {
   const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
   const engineBoard = engineResponse.ok ? await engineResponse.clone().json().catch(() => null) : null;
   const engineHasOdds = boardHasBookmakerOdds(engineBoard);
   if (engineResponse.ok && engineBoard?.ok === true && engineHasOdds) return engineResponse;
-
   const hubResponse = await env.HUB.fetch(hubRequest(request, '/snapshot'));
   if (!hubResponse.ok) return engineResponse;
   const hub = await hubResponse.json().catch(() => null);
   if (!hub || hub.ok !== true || !Array.isArray(hub.fixtures)) return engineResponse;
   const hubHasOdds = boardHasBookmakerOdds(hub);
   if (engineResponse.ok && !hubHasOdds) return engineResponse;
-
   return Response.json({
     ...hub,
     version: 'ball46-board-fallback-john-continuity-v2-odds-aware',
@@ -102,7 +84,6 @@ async function engineBoardResponse(request, env) {
     referee: { mode: 'HUB_SNAPSHOT_FALLBACK', externalRequestsAdded: 0, requests: 0, queued: 0, errors: [] }
   }, { headers: { 'cache-control': 'no-store', 'x-ball46-board-source': 'hub-snapshot-fallback' } });
 }
-
 async function activeSignals(request, env) {
   const [signalResponse, boardResponse] = await Promise.all([
     env.ENGINE.fetch(engineRequest(request, '/signals')),
@@ -114,7 +95,6 @@ async function activeSignals(request, env) {
   ]);
   if (signalData?.ok !== true) return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
   if (boardData?.ok !== true) return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
-
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
   const liveFixtures = fixtures.filter(fixtureIsLive);
   const liveFixtureMap = new Map(liveFixtures.map(f => [String(f?.fixtureId ?? ''), f]));
@@ -134,7 +114,6 @@ async function activeSignals(request, env) {
       liveUpdatedAt:boardData?.hubFetchedAt??boardData?.fetchedAt??null, liveAgeMs:num(boardData?.hubAgeMs??boardData?.ageMs)
     };
   }).sort((a,b)=>Number(b?.createdAt||0)-Number(a?.createdAt||0));
-
   return Response.json({
     ...signalData,
     signals,
@@ -143,15 +122,14 @@ async function activeSignals(request, env) {
       hubFetchedAt:boardData?.hubFetchedAt??boardData?.fetchedAt??null, hubAgeMs:num(boardData?.hubAgeMs??boardData?.ageMs), stale:Boolean(boardData?.stale) }
   }, { headers:{'cache-control':'no-store'} });
 }
-
 async function fullMarketCompat(request, env, path) {
   if (!env.FULL_MARKET) return Response.json({ok:false,error:'FULL_MARKET_SERVICE_NOT_BOUND'},{status:503,headers:{'cache-control':'no-store'}});
   if (path === '/health' || path === '/status') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/health'));
   if (path === '/fixture-odds') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/fixture-odds'));
+  if (path === '/board-cache') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/board-cache'));
   if (path === '/settings') return env.FULL_MARKET.fetch(fullMarketRequest(request, '/settings'));
   return Response.json({ok:false,error:'FULL_MARKET_ROUTE_NOT_FOUND'},{status:404,headers:{'cache-control':'no-store'}});
 }
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -174,7 +152,7 @@ export default {
       return fullMarketCompat(request, env, path);
     }
     if (request.method === 'GET' && (
-      url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
+      url.pathname === '/index.html' || url.pathname === '/live.js' || url.pathname === '/full-odds-main-343.js' || url.pathname === '/live-summary-full-odds-343.js' || url.pathname === '/full-market-sidecar-343.js' || url.pathname === '/event-flow-343.js' || url.pathname === '/event-flow-343.css' ||
       url.pathname === '/statistics.html' || url.pathname === '/statistics.js' || url.pathname === '/statistics-page-343.css' ||
       url.pathname === '/signal.html' || url.pathname === '/signal.js' || url.pathname === '/signal-compact-343.css' || url.pathname === '/signal-bettor-343.css' ||
       url.pathname === '/5usd-control.html' || url.pathname === '/detection-test.html'
