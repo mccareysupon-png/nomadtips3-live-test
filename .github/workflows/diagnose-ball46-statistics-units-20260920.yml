@@ -1,0 +1,70 @@
+name: Diagnose Ball46 Statistics Units 20260920
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-ball46-statistics-units-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - name: Check Statistics assets with propagation retry
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46.com'
+          files='statistics.html statistics-next.js statistics-units-v1.js statistics-units-v1.css'
+          mkdir -p /tmp/b46diag
+          for f in $files; do
+            ok=0
+            for n in $(seq 1 12); do
+              code=$(curl -sS -L --max-time 20 -o "/tmp/b46diag/${f}" -w '%{http_code}' "$base/$f?diag=${GITHUB_RUN_ID}-${n}") || code=000
+              ctype=$(curl -sSI -L --max-time 20 "$base/$f?diag-head=${GITHUB_RUN_ID}-${n}" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print $0}' | tail -1 || true)
+              echo "ASSET $f attempt=$n status=$code $ctype"
+              if [ "$code" = 200 ]; then ok=1; break; fi
+              sleep 2
+            done
+            [ "$ok" = 1 ] || { echo "ASSET_FAILED:$f"; exit 1; }
+          done
+
+      - name: Verify deployed Statistics wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'statistics-units-v1.css?v=343-stat-units-v1-20260920a' /tmp/b46diag/statistics.html
+          grep -Fq 'statistics-units-v1.js?v=343-stat-units-v1-20260920a' /tmp/b46diag/statistics.html
+          grep -Fq 'statistics-next.js?v=343-stat-units-v1-20260920a' /tmp/b46diag/statistics.html
+          grep -Fq "ball46:statistics" /tmp/b46diag/statistics-next.js
+          grep -Fq 'Overall Cumulative Net Units' /tmp/b46diag/statistics-units-v1.js
+          grep -Fq "if(x==='WIN') return o!==null&&o>1?o-1:null;" /tmp/b46diag/statistics-units-v1.js
+          grep -Fq "if(x==='HALF_WIN') return o!==null&&o>1?(o-1)/2:null;" /tmp/b46diag/statistics-units-v1.js
+          grep -Fq "if(x==='LOSS') return -1;" /tmp/b46diag/statistics-units-v1.js
+          grep -Fq "if(x==='HALF_LOSS') return -.5;" /tmp/b46diag/statistics-units-v1.js
+          grep -Fq "if(x==='PUSH') return 0;" /tmp/b46diag/statistics-units-v1.js
+          ! grep -Fq 'fetch(' /tmp/b46diag/statistics-units-v1.js
+          ! grep -Fq '/api/' /tmp/b46diag/statistics-units-v1.js
+          grep -Fq 'unit-zero-line' /tmp/b46diag/statistics-units-v1.css
+          grep -Fq 'html[data-theme="dark"]' /tmp/b46diag/statistics-units-v1.css
+          echo 'STATISTICS_UNITS_WIRING_PASS'
+
+      - name: Verify live backend health only
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "https://ball46.com/api/engine/health?diag=${GITHUB_RUN_ID}" -o /tmp/engine.json
+          curl -fsS --max-time 20 "https://ball46.com/api/full-market/health?diag=${GITHUB_RUN_ID}" -o /tmp/full.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full.json','utf8'));
+          if(!e.version) throw Error('ENGINE_HEALTH_MISSING');
+          if(!f.version) throw Error('FULL_MARKET_HEALTH_MISSING');
+          console.log('BACKEND_HEALTH_PASS', JSON.stringify({engine:e.version,fullMarket:f.version,staleCachePolicy:f.staleCachePolicy||null}));
+          NODE
