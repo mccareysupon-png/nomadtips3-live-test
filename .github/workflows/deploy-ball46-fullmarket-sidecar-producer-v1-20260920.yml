@@ -1,0 +1,160 @@
+name: Deploy Ball46 Full Market Sidecar Producer V1 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-fullmarket-sidecar-producer-v1-20260920
+    paths:
+      - 'workers/nomadtips3-full-market-343-ball46/**'
+      - 'workers/nomadtips3-343-preview/src/index.js'
+      - 'nomad-live-343/full-market-sidecar-343.js'
+      - 'nomad-live-343/live-summary-full-odds-343.js'
+      - '.github/workflows/deploy-ball46-fullmarket-sidecar-producer-v1-20260920.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+  FULL_CFG: workers/nomadtips3-full-market-343-ball46/wrangler.toml
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Static safety checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check workers/nomadtips3-full-market-343-ball46/src/index.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          node --check nomad-live-343/full-market-sidecar-343.js
+          node --check nomad-live-343/live-summary-full-odds-343.js
+
+          grep -Fq "nomad343-ball46-full-market-v6-central-producer-cache-only" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "viewerRefreshEnabled:false" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "return this.readOnly(id)" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "PRODUCER_ROUTE_PRIVATE" workers/nomadtips3-full-market-343-ball46/src/index.js
+          grep -Fq "url.searchParams.set('bookmakers', BOOKMAKERS.join(','))" workers/nomadtips3-full-market-343-ball46/src/index.js
+          ! grep -Fq "mergeFullOdds" workers/nomadtips3-full-market-343-ball46/src/index.js
+
+          grep -Fq "/api/full-market/board-cache" nomad-live-343/full-market-sidecar-343.js
+          grep -Fq "providerRequestsPerViewer:0" nomad-live-343/full-market-sidecar-343.js
+          grep -Fq "DISPLAY_ALL_RETURNED_BOOKMAKERS" nomad-live-343/full-market-sidecar-343.js
+          grep -Fq "DISPLAY_ALL_RETURNED_MARKETS" nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq "/api/full-market/fixture-odds" nomad-live-343/full-market-sidecar-343.js
+          ! grep -Fq "visibility:hidden!important" nomad-live-343/live-summary-full-odds-343.js
+          ! grep -Fq "/api/full-market/fixture-odds" nomad-live-343/live-summary-full-odds-343.js
+
+          grep -Fq "if (path === '/board-cache')" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'crons = ["*/2 * * * *"]' workers/nomadtips3-full-market-343-ball46/wrangler.toml
+          grep -Fq 'binding = "HUB"' workers/nomadtips3-full-market-343-ball46/wrangler.toml
+
+      - name: Capture production rollback points
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json > /tmp/wrapper-before.json
+          npx --yes wrangler@4.92.0 deployments list --config "$FULL_CFG" --json > /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          function active(path){const r=JSON.parse(fs.readFileSync(path,'utf8')); const x=r[r.length-1]; return x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||''}
+          fs.writeFileSync('/tmp/wrapper-version',active('/tmp/wrapper-before.json'));
+          fs.writeFileSync('/tmp/full-version',active('/tmp/full-before.json'));
+          NODE
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?pre=${GITHUB_RUN_ID}" -o /tmp/engine-before-health.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?pre=${GITHUB_RUN_ID}" -o /tmp/hub-before-health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=require('/tmp/engine-before-health.json'),h=require('/tmp/hub-before-health.json');
+          if(!e.version||!h.version) throw Error('BASELINE_HEALTH_MISSING_VERSION');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/hub-version',String(h.version));
+          console.log('ROLLBACK_POINTS',fs.readFileSync('/tmp/wrapper-version','utf8'),fs.readFileSync('/tmp/full-version','utf8'));
+          console.log('PROTECTED_BACKENDS',e.version,h.version);
+          NODE
+
+      - name: Dry run both workers
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config "$FULL_CFG"
+          npx --yes wrangler@4.92.0 deploy --dry-run --config "$WRAPPER_CFG"
+
+      - name: Deploy central Full Market producer
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config "$FULL_CFG"
+
+      - name: Deploy Ball46 wrapper and UI assets
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config "$WRAPPER_CFG"
+
+      - name: Verify production cache-only viewer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'echo VERIFY_FAILED_ROLLBACK; W=$(cat /tmp/wrapper-version); F=$(cat /tmp/full-version); [ -n "$W" ] && npx --yes wrangler@4.92.0 rollback "$W" --config "$WRAPPER_CFG" || true; [ -n "$F" ] && npx --yes wrangler@4.92.0 rollback "$F" --config "$FULL_CFG" || true' ERR
+
+          ok=0
+          for n in $(seq 1 15); do
+            curl -fsS -L --max-time 30 "$BALL46_URL/api/full-market/health?verify=${GITHUB_RUN_ID}-${n}" -o /tmp/full-health.json || true
+            if grep -Fq 'nomad343-ball46-full-market-v6-central-producer-cache-only' /tmp/full-health.json; then ok=1; break; fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+          node - <<'NODE'
+          const j=require('/tmp/full-health.json');
+          if(j.ok!==true) throw Error('FULL_HEALTH_NOT_OK');
+          if(j.cacheOnlyViewer!==true||j.viewerRefreshEnabled!==false) throw Error('VIEWER_NOT_CACHE_ONLY');
+          if(Number(j.bookmakerRequestCount)!==19) throw Error('BOOKMAKER_REQUEST_SET_NOT_19');
+          if(Number(j.producerMaxCallsPerCycle)!==20) throw Error('PRODUCER_BUDGET_WRONG');
+          NODE
+
+          curl -fsS -L --max-time 30 -H 'content-type: application/json' -d '{"fixtureIds":[]}' "$BALL46_URL/api/full-market/board-cache?verify=${GITHUB_RUN_ID}" -o /tmp/board-cache.json
+          node - <<'NODE'
+          const j=require('/tmp/board-cache.json');
+          if(j.ok!==true||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0) throw Error('BOARD_CACHE_NOT_READ_ONLY');
+          NODE
+
+          PROBE="ci-probe-${GITHUB_RUN_ID}"
+          code=$(curl -sS -L --max-time 30 -o /tmp/fixture-cache.json -w '%{http_code}' "$BALL46_URL/api/full-market/fixture-odds?fixtureId=${PROBE}&verify=${GITHUB_RUN_ID}")
+          [ "$code" = 404 ]
+          node - <<'NODE'
+          const j=require('/tmp/fixture-cache.json');
+          if(j.error!=='FULL_MARKET_CACHE_MISS'||j.cacheOnly!==true||j.viewerRefreshEnabled!==false||Number(j.externalRequestsAdded)!==0) throw Error('FIXTURE_ROUTE_NOT_CACHE_ONLY');
+          NODE
+
+          curl -fsS -L --max-time 30 "$BALL46_URL/live-summary-full-odds-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/live-summary.js
+          curl -fsS -L --max-time 30 "$BALL46_URL/full-market-sidecar-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/sidecar.js
+          grep -Fq '343-live-summary-central-cache-sidecar-v5' /tmp/live-summary.js
+          ! grep -Fq '/api/full-market/fixture-odds' /tmp/live-summary.js
+          ! grep -Fq 'visibility:hidden!important' /tmp/live-summary.js
+          grep -Fq '/api/full-market/board-cache' /tmp/sidecar.js
+          grep -Fq 'providerRequestsPerViewer:0' /tmp/sidecar.js
+          grep -Fq 'DISPLAY_ALL_RETURNED_BOOKMAKERS' /tmp/sidecar.js
+          grep -Fq 'DISPLAY_ALL_RETURNED_MARKETS' /tmp/sidecar.js
+          node --check /tmp/live-summary.js
+          node --check /tmp/sidecar.js
+
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/health?post=${GITHUB_RUN_ID}" -o /tmp/engine-after-health.json
+          curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/health?post=${GITHUB_RUN_ID}" -o /tmp/hub-after-health.json
+          node - <<'NODE'
+          const fs=require('fs'); const e=require('/tmp/engine-after-health.json'),h=require('/tmp/hub-after-health.json');
+          if(String(e.version)!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(h.version)!==fs.readFileSync('/tmp/hub-version','utf8')) throw Error('HUB_CHANGED');
+          console.log('BALL46_FULL_MARKET_SIDECAR_PRODUCER_PASS',JSON.stringify({engine:e.version,hub:h.version}));
+          NODE
+          trap - ERR
