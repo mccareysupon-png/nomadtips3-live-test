@@ -1,0 +1,169 @@
+name: Deploy Ball46 Page2 Scroll From Five 20260920
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Deploy or remove only the Page2 five-match scrollbar
+        required: true
+        default: deploy
+        type: choice
+        options:
+          - deploy
+          - rollback
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-ball46-page2-scroll-five-20260920.yml'
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_BRANCH: work/ball46-page2-workspace-20260920
+  BALL46_URL: https://ball46.com
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy-page2-scroll-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - name: Checkout isolated Page2 UI source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_BRANCH }}
+          fetch-depth: 0
+
+      - name: Mirror current production and lock protected identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in
+              *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) ;;
+              *) continue ;;
+            esac
+            [ "$name" = 'page2-scroll-five-v1.css' ] && continue
+            safe="${name//\//_}"
+            code=$(curl -sS -L --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_URL/$name?page2-scroll-rb0=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || continue
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || continue ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || continue ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || continue ;;
+            esac
+            cp "/tmp/prod/$safe" "$f"
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for f in index.html signal.html statistics.html signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css; do
+            test -s "/tmp/prod/${f//\//_}" || { echo "PRODUCTION_ASSET_MISSING:$f"; exit 1; }
+          done
+
+          for f in index.html statistics.html signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css; do
+            sha256sum "/tmp/prod/${f//\//_}" | awk '{print $1}' > "/tmp/${f//\//_}.sha"
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?page2-scroll-rb0=${GITHUB_RUN_ID}" -o /tmp/engine-before.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?page2-scroll-rb0=${GITHUB_RUN_ID}" -o /tmp/full-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
+          if(!e.version||!f.version) throw Error('HEALTH_VERSION_MISSING');
+          fs.writeFileSync('/tmp/engine-version',String(e.version));
+          fs.writeFileSync('/tmp/full-version',String(f.version));
+          fs.writeFileSync('/tmp/full-policy',String(f.staleCachePolicy||''));
+          NODE
+
+      - name: Apply isolated five-match scrollbar loader
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          test -s nomad-live-343/page2-scroll-five-v1.css
+          grep -Fq ':nth-child(5 of .next-signal-card:not([hidden]))' nomad-live-343/page2-scroll-five-v1.css
+          grep -Fq 'scrollbar-color:#555d59 #edf1ef' nomad-live-343/page2-scroll-five-v1.css
+          grep -Fq 'scrollbar-color:#3d4541 #111613' nomad-live-343/page2-scroll-five-v1.css
+          ! grep -Fq 'fetch(' nomad-live-343/page2-scroll-five-v1.css
+          ! grep -Fq '/api/' nomad-live-343/page2-scroll-five-v1.css
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import os,re
+          p=Path('nomad-live-343/signal.html')
+          s=p.read_text()
+          tag='<link rel="stylesheet" href="page2-scroll-five-v1.css?v=343-page2-scroll-five-v1-20260920">'
+          s=re.sub(r'\s*<link[^>]+page2-scroll-five-v1\.css[^>]*>','',s,flags=re.I)
+          mode=os.environ.get('MODE','deploy')
+          if mode=='deploy':
+              if '</head>' not in s: raise SystemExit('HEAD_ANCHOR_MISSING')
+              s=s.replace('</head>',tag+'\n</head>',1)
+          elif mode!='rollback':
+              raise SystemExit('UNKNOWN_MODE:'+mode)
+          p.write_text(s)
+          PY
+
+          cmp -s /tmp/prod/index.html nomad-live-343/index.html
+          cmp -s /tmp/prod/statistics.html nomad-live-343/statistics.html
+          cmp -s /tmp/prod/signal-next.js nomad-live-343/signal-next.js
+          cmp -s /tmp/prod/dashboard-v2-stage3.js nomad-live-343/dashboard-v2-stage3.js
+          cmp -s /tmp/prod/bulk-odds-compat-343.js nomad-live-343/bulk-odds-compat-343.js
+          cmp -s /tmp/prod/full-market-bookmaker-343.js nomad-live-343/full-market-bookmaker-343.js
+          cmp -s /tmp/prod/live-summary-full-odds-343.js nomad-live-343/live-summary-full-odds-343.js
+          cmp -s /tmp/prod/page2-workspace-v1.js nomad-live-343/page2-workspace-v1.js
+          cmp -s /tmp/prod/page2-workspace-v1.css nomad-live-343/page2-workspace-v1.css
+          cmp -s /tmp/prod/page2-hide-kpis-v1.css nomad-live-343/page2-hide-kpis-v1.css
+
+          if [ "$MODE" = deploy ]; then
+            grep -Fq 'page2-scroll-five-v1.css?v=343-page2-scroll-five-v1-20260920' nomad-live-343/signal.html
+          else
+            ! grep -Fq 'page2-scroll-five-v1.css' nomad-live-343/signal.html
+          fi
+
+      - name: Deploy Ball46 wrapper assets only
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify scrollbar and protected systems
+        shell: bash
+        env:
+          MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'deploy' }}
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 20); do
+            curl -fsS -L --max-time 25 "$BALL46_URL/signal.html?page2-scroll=${GITHUB_RUN_ID}-${n}" -o /tmp/signal-after.html || true
+            if [ "$MODE" = deploy ]; then
+              curl -fsS -L --max-time 25 "$BALL46_URL/page2-scroll-five-v1.css?page2-scroll=${GITHUB_RUN_ID}-${n}" -o /tmp/scroll-after.css || true
+              if grep -Fq 'page2-scroll-five-v1.css?v=343-page2-scroll-five-v1-20260920' /tmp/signal-after.html && grep -Fq ':nth-child(5 of .next-signal-card:not([hidden]))' /tmp/scroll-after.css; then ok=1; break; fi
+            else
+              if ! grep -Fq 'page2-scroll-five-v1.css' /tmp/signal-after.html; then ok=1; break; fi
+            fi
+            sleep 2
+          done
+          [ "$ok" = 1 ]
+
+          for f in index.html statistics.html signal-next.js dashboard-v2-stage3.js bulk-odds-compat-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js page2-workspace-v1.js page2-workspace-v1.css page2-hide-kpis-v1.css; do
+            safe="${f//\//_}"
+            curl -fsS -L --max-time 25 "$BALL46_URL/$f?page2-scroll=${GITHUB_RUN_ID}-protected" -o "/tmp/$safe.after"
+            test "$(sha256sum "/tmp/$safe.after" | awk '{print $1}')" = "$(cat "/tmp/$safe.sha")" || { echo "PROTECTED_ASSET_CHANGED:$f"; exit 1; }
+          done
+
+          curl -fsS --max-time 25 "$BALL46_URL/api/engine/health?page2-scroll=${GITHUB_RUN_ID}-after" -o /tmp/engine-after.json
+          curl -fsS --max-time 25 "$BALL46_URL/api/full-market/health?page2-scroll=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
+          const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
+          if(String(e.version||'')!==fs.readFileSync('/tmp/engine-version','utf8')) throw Error('ENGINE_CHANGED');
+          if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
+          if(String(f.staleCachePolicy||'')!==fs.readFileSync('/tmp/full-policy','utf8')) throw Error('FULL_MARKET_POLICY_CHANGED');
+          console.log('PAGE2_SCROLL_FIVE_PASS',JSON.stringify({engine:e.version,fullMarket:f.version}));
+          NODE
