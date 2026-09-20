@@ -1,0 +1,56 @@
+name: Rescue Ball46 Expand Odds Audit
+on:
+  push:
+    branches: ['rescue/ball46-20260920-full-restore']
+    paths: ['.github/workflows/rescue-ball46-expand-odds-audit.yml']
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Click live match card and inspect multi-book render
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium || command -v chromium-browser || true); test -n "$CHROME"
+          npm install --no-save --no-package-lock puppeteer-core@24 >/dev/null 2>&1
+          CHROME_PATH="$CHROME" node - <<'NODE'
+          const p=require('puppeteer-core'); const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+          const books=['Bet 365','Bet365','Pinnacle','William Hill','Ladbrokes','VCBet','Vcbet','1xBet','Bwin','Easybets','Interwetten','Betfair','SNAI','Macau Slot','Macauslot','Betsson','Bet-at-home','18Bet','10BET','12Bet','12bet','Coral','Crown'];
+          (async()=>{
+            const browser=await p.launch({headless:true,executablePath:process.env.CHROME_PATH,args:['--no-sandbox','--disable-dev-shm-usage']});
+            const page=await browser.newPage(); await page.setViewport({width:1440,height:1100});
+            const api=[]; page.on('response',async r=>{const u=r.url();if(/full-market|engine\/board|fixture-odds/i.test(u))api.push({url:u,status:r.status()})});
+            const errs=[]; page.on('pageerror',e=>errs.push(String(e.message||e)));
+            await page.goto('https://ball46.com/index.html?expandAudit='+Date.now(),{waitUntil:'domcontentloaded',timeout:45000}); await sleep(9000);
+            const before=await page.evaluate(books=>{const t=document.body.innerText||''; return {books:[...new Set(books.filter(n=>t.toLowerCase().includes(n.toLowerCase())))],fixtureEls:[...document.querySelectorAll('[data-fixture-id]')].slice(0,10).map(e=>({tag:e.tagName,cls:e.className,id:e.getAttribute('data-fixture-id'),text:(e.innerText||'').slice(0,180)}))}},books);
+            console.log('BEFORE',JSON.stringify(before));
+            const clicked=await page.evaluate(()=>{
+              const visible=e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>80&&r.height>30&&s.display!=='none'&&s.visibility!=='hidden'};
+              let candidates=[...document.querySelectorAll('[data-fixture-id]')].filter(visible);
+              if(!candidates.length)candidates=[...document.querySelectorAll('.match-card,.fixture-card,.dashboard-match,.match-row,article')].filter(visible);
+              for(const e of candidates){
+                const t=(e.innerText||'').trim(); if(!t)continue;
+                const target=e.querySelector('button,[role="button"],summary,.match-head,.match-main,.match-row')||e;
+                try{target.click(); return {tag:e.tagName,cls:e.className,id:e.getAttribute('data-fixture-id'),target:target.className||target.tagName,text:t.slice(0,220)}}catch(_){ }
+              }
+              return null;
+            });
+            console.log('CLICKED',JSON.stringify(clicked)); await sleep(7000);
+            const after=await page.evaluate(books=>{
+              const t=document.body.innerText||'';
+              const rich=[...document.querySelectorAll('[class*="fmb"],[data-bookmaker],.bookmaker,.bookmaker-row,.odds-book')].filter(e=>{const r=e.getBoundingClientRect();return r.width>1&&r.height>1}).slice(0,80).map(e=>({cls:e.className,book:e.getAttribute('data-bookmaker'),text:(e.innerText||'').slice(0,220)}));
+              return {books:[...new Set(books.filter(n=>t.toLowerCase().includes(n.toLowerCase())))],richCount:rich.length,rich:rich.slice(0,30),htmlHasFmb:document.documentElement.innerHTML.includes('fmb-')};
+            },books);
+            console.log('AFTER',JSON.stringify(after)); console.log('API_CALLS',JSON.stringify(api.slice(-50))); console.log('PAGE_ERRORS',JSON.stringify(errs));
+            await browser.close();
+            if(!clicked) throw Error('NO_MATCH_CARD_CLICKED');
+            const unique=after.books.filter((x,i,a)=>a.findIndex(y=>y.toLowerCase()===x.toLowerCase())===i);
+            if(unique.length<2) throw Error('EXPANDED_CARD_STILL_BET365_ONLY:'+unique.join(','));
+            if(!after.htmlHasFmb) throw Error('FMB_LAYER_NOT_RENDERED');
+            console.log('EXPANDED_MULTI_BOOK_PASS',JSON.stringify({books:unique,richCount:after.richCount}));
+          })().catch(e=>{console.error(e.stack||e);process.exit(1)});
+          NODE
