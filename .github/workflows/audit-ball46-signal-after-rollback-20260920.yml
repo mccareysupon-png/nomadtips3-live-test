@@ -1,0 +1,38 @@
+name: Audit Ball46 signal after rollback 20260920
+
+on:
+  push:
+    branches:
+      - work/ball46-fullmarket-sidecar-producer-v1-20260920
+    paths:
+      - '.github/workflows/audit-ball46-signal-after-rollback-20260920.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read production homepage and signal routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://ball46.com'
+          curl -fsSL --max-time 30 "$base/?audit=${GITHUB_RUN_ID}" -o /tmp/home.html
+          echo '=== HOME STATUS/BYTES ==='
+          wc -c /tmp/home.html
+          echo '=== SIGNAL REFERENCES IN HOME ==='
+          grep -Eio '.{0,90}(signal|prediction|statistics).{0,120}' /tmp/home.html | head -80 || true
+          echo '=== HREFS ==='
+          grep -Eo 'href="[^"]+"' /tmp/home.html | sed 's/^href="//;s/"$//' | sort -u | head -120
+          echo '=== SCRIPTS ==='
+          grep -Eo 'src="[^"]+\.js[^\"]*"' /tmp/home.html | sed 's/^src="//;s/"$//' | sort -u | head -120
+          echo '=== ENGINE SIGNAL ENDPOINT CANDIDATES ==='
+          for p in '/api/engine/signals' '/api/engine/signal' '/api/engine/board'; do
+            code=$(curl -sS -L --max-time 30 -o /tmp/r.json -w '%{http_code}' "$base$p?audit=${GITHUB_RUN_ID}")
+            bytes=$(wc -c < /tmp/r.json)
+            printf '%s HTTP=%s BYTES=%s\n' "$p" "$code" "$bytes"
+            head -c 800 /tmp/r.json | tr '\n' ' '; echo
+          done
