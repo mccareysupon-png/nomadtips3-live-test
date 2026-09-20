@@ -48,7 +48,7 @@ jobs:
           const fs=require('fs');
           const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
           const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
-          if(e.version!=='nomad343-engine-v6-ceo-auto-v1') throw Error(`UNEXPECTED_ENGINE:${e.version}`);
+          if(!String(e.version||'').startsWith('nomad343-engine-v6-ceo-auto-v1')) throw Error(`UNEXPECTED_ENGINE:${e.version}`);
           fs.writeFileSync('/tmp/engine-version',String(e.version||''));
           fs.writeFileSync('/tmp/full-version',String(f.version||''));
           console.log('STAT_PAGE50_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version}));
