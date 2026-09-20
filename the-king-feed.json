@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-19T23:13:30Z",
+  "updated_at": "2026-09-20T01:17:11Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -5799,8 +5799,8 @@
       "edge": 36.0,
       "ev": 0.5519,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_LOSS",
+      "ft": "1-2",
       "locked_at": "2026-09-19T01:54:49Z",
       "source_url": "https://www.goaloo.com/football/usl-league-one-richmond-kickers-vs-charlotte-independence/h2h-2955382",
       "summary_url": "https://www.goaloo.com/football/usl-league-one-richmond-kickers-vs-charlotte-independence/summary-2955382",
@@ -5860,7 +5860,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
     },
     {
       "id": "70ddadf443b760cd-AH-AWAY-1p25",
@@ -25444,8 +25449,8 @@
       "edge": 20.7,
       "ev": 0.3361,
       "required_confidence": 0.56,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "0-1",
       "locked_at": "2026-09-19T01:54:48Z",
       "source_url": "https://www.goaloo.com/football/uruguay-segunda-la-luz-vs-ca-atenas/h2h-3090458",
       "summary_url": "https://www.goaloo.com/football/uruguay-segunda-la-luz-vs-ca-atenas/summary-3090458",
@@ -25505,7 +25510,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
     },
     {
       "id": "76d6e62fd6501f97-OU-UNDER-2p5",
@@ -31794,8 +31804,8 @@
       "edge": 10.9,
       "ev": 0.1296,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "LOSS",
+      "ft": "2-1",
       "locked_at": "2026-09-19T01:54:47Z",
       "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-academia-puerto-cabello-vs-portuguesa-fc/h2h-3091650",
       "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-academia-puerto-cabello-vs-portuguesa-fc/summary-3091650",
@@ -31855,7 +31865,12 @@
         "away_recent": 10,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
     },
     {
       "id": "5643cfc76a9fa3fa-OU-OVER-2p75",
@@ -139933,6 +139948,276 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-19T23:13:30Z"
+    },
+    {
+      "id": "cff64c035bd19153-AH-HOME-0p75",
+      "goaloo_id": "2955382",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 22:00:00",
+      "league": "USL League One",
+      "home": "Richmond Kickers",
+      "away": "Charlotte Independence",
+      "market": "AH",
+      "selection": "HOME",
+      "line": 0.75,
+      "pick": "Richmond Kickers +0.75",
+      "side": "home",
+      "odds": 1.75,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.8834,
+      "model_probability": 0.8834,
+      "market_fair_probability": 0.5232,
+      "market_edge": 0.3602,
+      "edge": 36.0,
+      "ev": 0.5519,
+      "required_confidence": 0.6,
+      "result": "HALF_LOSS",
+      "ft": "1-2",
+      "locked_at": "2026-09-19T01:54:49Z",
+      "source_url": "https://www.goaloo.com/football/usl-league-one-richmond-kickers-vs-charlotte-independence/h2h-2955382",
+      "summary_url": "https://www.goaloo.com/football/usl-league-one-richmond-kickers-vs-charlotte-independence/summary-2955382",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.938,
+        "lambda_away": 0.807,
+        "home_win": 0.6602,
+        "draw": 0.2278,
+        "away_win": 0.112,
+        "h2h_adjustment": -0.015,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": 0.6976,
+          "gd_edge": 0.6695,
+          "clean_sheet_edge": 0.0732,
+          "failed_to_score_edge": 0.4878,
+          "bounded_adjustment": 0.0437,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -0.5,
+      "profit": -50.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
+    },
+    {
+      "id": "901f8140356cb6bc-AH-HOME-m0p0",
+      "goaloo_id": "3090458",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 22:00:00",
+      "league": "Uruguay Segunda",
+      "home": "La Luz",
+      "away": "CA Atenas",
+      "market": "AH",
+      "selection": "HOME",
+      "line": -0.0,
+      "pick": "La Luz -0",
+      "side": "home",
+      "odds": 2.11,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6398,
+      "model_probability": 0.6398,
+      "market_fair_probability": 0.4328,
+      "market_edge": 0.207,
+      "edge": 20.7,
+      "ev": 0.3361,
+      "required_confidence": 0.56,
+      "result": "LOSS",
+      "ft": "0-1",
+      "locked_at": "2026-09-19T01:54:48Z",
+      "source_url": "https://www.goaloo.com/football/uruguay-segunda-la-luz-vs-ca-atenas/h2h-3090458",
+      "summary_url": "https://www.goaloo.com/football/uruguay-segunda-la-luz-vs-ca-atenas/summary-3090458",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.78,
+        "lambda_away": 1.141,
+        "home_win": 0.525,
+        "draw": 0.2508,
+        "away_win": 0.2242,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.0715,
+          "gd_edge": 0.4128,
+          "clean_sheet_edge": 0.0732,
+          "failed_to_score_edge": 0.1707,
+          "bounded_adjustment": 0.0106,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 8,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
+    },
+    {
+      "id": "65bf44dc90d11d59-OU-UNDER-2p25",
+      "goaloo_id": "3091650",
+      "date": "2026-09-19",
+      "kickoff": "2026-09-19 22:00:00",
+      "league": "Primera Division de Venezuela",
+      "home": "Academia Puerto Cabello",
+      "away": "Portuguesa FC",
+      "market": "OU",
+      "selection": "UNDER",
+      "line": 2.25,
+      "pick": "Under 2.25",
+      "side": null,
+      "odds": 1.86,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.602,
+      "model_probability": 0.602,
+      "market_fair_probability": 0.4932,
+      "market_edge": 0.1088,
+      "edge": 10.9,
+      "ev": 0.1296,
+      "required_confidence": 0.6,
+      "result": "LOSS",
+      "ft": "2-1",
+      "locked_at": "2026-09-19T01:54:47Z",
+      "source_url": "https://www.goaloo.com/football/primera-division-de-venezuela-academia-puerto-cabello-vs-portuguesa-fc/h2h-3091650",
+      "summary_url": "https://www.goaloo.com/football/primera-division-de-venezuela-academia-puerto-cabello-vs-portuguesa-fc/summary-3091650",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.003,
+        "lambda_away": 1.013,
+        "home_win": 0.3268,
+        "draw": 0.3286,
+        "away_win": 0.3445,
+        "h2h_adjustment": 0.0025,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2276,
+          "gd_edge": -0.0915,
+          "clean_sheet_edge": 0.0146,
+          "failed_to_score_edge": 0.0683,
+          "bounded_adjustment": -0.0088,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": -1.0,
+      "profit": -100.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-20T01:17:11Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
