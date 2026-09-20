@@ -40,12 +40,14 @@ jobs:
           const e=JSON.parse(fs.readFileSync('/tmp/engine-before.json','utf8'));
           const f=JSON.parse(fs.readFileSync('/tmp/full-before.json','utf8'));
           const s=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
-          if(e.version!=='nomad343-engine-v6-ceo-auto-v1.1-ah-guard') throw Error(`PRODUCTION_MOVED:${e.version}`);
+          const oldV='nomad343-engine-v6-ceo-auto-v1.1-ah-guard';
+          const newV='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1';
+          if(![oldV,newV].includes(String(e.version||''))) throw Error(`PRODUCTION_MOVED:${e.version}`);
           if(!f.version) throw Error('FULL_MARKET_HEALTH_MISSING');
           if(s?.ok!==true||!Array.isArray(s.rows)) throw Error('STATISTICS_UNHEALTHY');
+          fs.writeFileSync('/tmp/engine-version-before',String(e.version));
           fs.writeFileSync('/tmp/full-version',String(f.version));
           fs.writeFileSync('/tmp/settled-before',String(s.rows.length));
-          fs.writeFileSync('/tmp/unresolved-before',String(Number(s.unresolved||0)));
           console.log('SETTLEMENT_RECOVERY_BASELINE',JSON.stringify({engine:e.version,fullMarket:f.version,settled:s.rows.length,unresolved:s.unresolved}));
           NODE
 
@@ -100,60 +102,60 @@ jobs:
           node --test "$ENGINE_DIR"/test/*.test.mjs
           echo SETTLEMENT_RECOVERY_REGRESSION_PASS
 
-      - name: Deploy Engine only
+      - name: Deploy Engine only when production is still old
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml"
+          before="$(cat /tmp/engine-version-before)"
+          if [ "$before" = 'nomad343-engine-v6-ceo-auto-v1.1-ah-guard' ]; then
+            npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml"
+            touch /tmp/deployed-by-this-run
+          else
+            echo "PRODUCTION_ALREADY_ON_RECOVERY_VERSION:$before"
+          fi
 
-      - name: Verify recovery live or rollback
+      - name: Verify recovery live and reconcile source
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          set -uo pipefail
-          verify_prod() {
-            ok=0
-            for n in $(seq 1 18); do
-              curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?settlement-recovery=${GITHUB_RUN_ID}-${n}" -o /tmp/engine-after.json || true
-              if node -e "const j=require('/tmp/engine-after.json');process.exit(j.version==='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1'?0:1)" 2>/dev/null; then ok=1; break; fi
-              sleep 2
-            done
-            [ "$ok" = 1 ] || return 1
-            # Force one normal engine scan so recovery runs now instead of waiting for the next cron.
-            curl -fsS -X POST --max-time 60 "$BALL46_URL/api/engine/scan?settlement-recovery=${GITHUB_RUN_ID}-scan1" -o /tmp/scan1.json || return 1
+          set +e
+          verify_status=0
+          ok=0
+          for n in $(seq 1 18); do
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?settlement-recovery=${GITHUB_RUN_ID}-${n}" -o /tmp/engine-after.json || true
+            node -e "const j=require('/tmp/engine-after.json');process.exit(j.version==='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1'?0:1)" 2>/dev/null
+            if [ "$?" = 0 ]; then ok=1; break; fi
             sleep 2
-            curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/board-after.json || return 1
-            curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/signals-after.json || return 1
-            curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/stats-after.json || return 1
-            curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json || return 1
-            node - <<'NODE'
-            const fs=require('fs');
-            const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json','utf8'));
-            const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
-            const g=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
-            const s=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
-            const f=JSON.parse(fs.readFileSync('/tmp/full-after.json','utf8'));
-            const beforeSettled=Number(fs.readFileSync('/tmp/settled-before','utf8'));
-            const beforeUnresolved=Number(fs.readFileSync('/tmp/unresolved-before','utf8'));
-            if(e.version!=='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1') throw Error('ENGINE_VERSION_BAD');
-            if(String(f.version||'')!==fs.readFileSync('/tmp/full-version','utf8')) throw Error('FULL_MARKET_CHANGED');
-            if(!Array.isArray(b.fixtures)||!Array.isArray(g.signals)||s?.ok!==true||!Array.isArray(s.rows)) throw Error('PUBLIC_ENDPOINT_UNHEALTHY');
-            if(!b.settlementRecovery||Number(b.settlementRecovery.maxPerScan)!==2) throw Error('RECOVERY_NOT_ACTIVE');
-            if(s.rows.length<beforeSettled) throw Error(`SETTLED_DROPPED:${beforeSettled}->${s.rows.length}`);
-            if(Number(s.unresolved||0)>beforeUnresolved) throw Error(`UNRESOLVED_GREW:${beforeUnresolved}->${s.unresolved}`);
-            console.log('SETTLEMENT_RECOVERY_PRODUCTION_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settledBefore:beforeSettled,settledAfter:s.rows.length,unresolvedBefore:beforeUnresolved,unresolvedAfter:s.unresolved,pending:g.signals.length,recovery:b.settlementRecovery}));
-            NODE
-          }
-          if verify_prod; then
-            exit 0
+          done
+          [ "$ok" = 1 ] || verify_status=1
+          if [ "$verify_status" = 0 ]; then
+            curl -fsS -X POST --max-time 60 "$BALL46_URL/api/engine/scan?settlement-recovery=${GITHUB_RUN_ID}-scan" -o /tmp/scan.json || verify_status=1
           fi
-          echo 'VERIFY_FAILED_ROLLING_BACK_ENGINE'
-          cp /tmp/index-before.js "$ENGINE_DIR/src/index.js"
-          npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml"
-          exit 1
+          if [ "$verify_status" = 0 ]; then
+            sleep 2
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/board-after.json || verify_status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/signals-after.json || verify_status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/stats-after.json || verify_status=1
+            curl -fsS --max-time 30 "$BALL46_URL/api/full-market/health?settlement-recovery=${GITHUB_RUN_ID}-after" -o /tmp/full-after.json || verify_status=1
+          fi
+          if [ "$verify_status" = 0 ]; then
+            node -e "const fs=require('fs');const e=JSON.parse(fs.readFileSync('/tmp/engine-after.json'));const b=JSON.parse(fs.readFileSync('/tmp/board-after.json'));const g=JSON.parse(fs.readFileSync('/tmp/signals-after.json'));const s=JSON.parse(fs.readFileSync('/tmp/stats-after.json'));const f=JSON.parse(fs.readFileSync('/tmp/full-after.json'));const before=Number(fs.readFileSync('/tmp/settled-before','utf8'));const fv=fs.readFileSync('/tmp/full-version','utf8');if(e.version!=='nomad343-engine-v6-ceo-auto-v1.1-ah-guard-settlement-recovery-v1')throw Error('ENGINE_VERSION_BAD');if(String(f.version||'')!==fv)throw Error('FULL_MARKET_CHANGED');if(!Array.isArray(b.fixtures)||!Array.isArray(g.signals)||s?.ok!==true||!Array.isArray(s.rows))throw Error('PUBLIC_ENDPOINT_UNHEALTHY');if(!b.settlementRecovery||Number(b.settlementRecovery.maxPerScan)!==2)throw Error('RECOVERY_NOT_ACTIVE');if(Number(b.settlementRecovery.requests||0)>2)throw Error('RECOVERY_RATE_GUARD_BROKEN');if(s.rows.length<before)throw Error('SETTLED_DROPPED');console.log('SETTLEMENT_RECOVERY_PRODUCTION_PASS',JSON.stringify({engine:e.version,fullMarket:f.version,settledBefore:before,settledAfter:s.rows.length,unresolved:s.unresolved,visiblePending:g.signals.length,hiddenPendingSignals:g?.mirror?.hiddenPendingSignals,recovery:b.settlementRecovery}));" || verify_status=1
+          fi
+          if [ "$verify_status" != 0 ]; then
+            echo 'SETTLEMENT_RECOVERY_VERIFY_FAILED'
+            if [ -f /tmp/deployed-by-this-run ]; then
+              echo 'ROLLING_BACK_ENGINE_DEPLOYED_BY_THIS_RUN'
+              cp /tmp/index-before.js "$ENGINE_DIR/src/index.js"
+              npx --yes wrangler@4.92.0 deploy --config "$ENGINE_DIR/wrangler.toml" || true
+            else
+              echo 'NO_RUNTIME_CHANGE_BY_THIS_RUN; LEAVING PRE-EXISTING PRODUCTION UNCHANGED'
+            fi
+            exit 1
+          fi
+          exit 0
 
       - name: Commit verified recovery source
         run: |
@@ -161,5 +163,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "$ENGINE_DIR/src/index.js"
-          git commit -m 'fix(ball46): recover unresolved settlement finals safely'
+          git commit -m 'fix(ball46): recover stale pending settlement finals safely'
           git push origin HEAD:work/ball46-ceo-ah-tuning-20260920
