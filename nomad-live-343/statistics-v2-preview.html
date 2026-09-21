@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f7f6">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="ball46-page-revision" content="statistics-v2-clean-preview-20260921">
+  <title>Statistics V2 Preview | Ball46</title>
+  <link rel="stylesheet" href="statistics-v2-preview.css?v=20260921-1">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html" aria-label="Ball46 home"><span>ball</span><b>46</b></a>
+    <nav class="mainnav" aria-label="Primary navigation">
+      <a href="index.html">Live Scores</a>
+      <a href="signal.html">Signals</a>
+      <a href="statistics-v2-preview.html" class="active" aria-current="page">Statistics</a>
+    </nav>
+    <div class="header-meta"><span>STATISTICS V2</span><b>READ ONLY</b></div>
+  </div>
+</header>
+
+<main class="app-shell">
+  <section class="page-head">
+    <div class="page-head-copy">
+      <p class="eyebrow">BALL46 · PERFORMANCE WORKSPACE</p>
+      <h1>Statistics</h1>
+      <p>Settled signals, market performance and result history in one stable workspace.</p>
+    </div>
+    <div class="feed-state" data-feed-state><i></i><span>Connecting to statistics</span></div>
+  </section>
+
+  <section class="workspace">
+    <aside class="left-rail" aria-label="Statistics navigation">
+      <section class="rail-card match-status-card">
+        <h2>MATCH STATUS</h2>
+        <a class="rail-row" href="index.html"><span><i class="dot all"></i>All matches</span><b data-board-count="all">—</b></a>
+        <a class="rail-row" href="index.html?status=live"><span><i class="dot live"></i>Live</span><b data-board-count="live">—</b></a>
+        <a class="rail-row" href="signal.html"><span><i class="diamond">◆</i>Signal</span><b data-signal-count>—</b></a>
+        <a class="rail-row" href="index.html?status=scheduled"><span><i class="dot upcoming"></i>Upcoming</span><b data-board-count="scheduled">—</b></a>
+        <a class="rail-row" href="index.html?status=unknown"><span><i class="dot waiting"></i>Waiting</span><b data-board-count="unknown">—</b></a>
+        <a class="rail-row" href="index.html?status=finished"><span><i class="dot finished"></i>Finished</span><b data-board-count="finished">—</b></a>
+      </section>
+
+      <section class="rail-card statistics-nav-card">
+        <h2>STATISTICS</h2>
+        <div class="market-nav" data-market-nav></div>
+        <div class="subnav-slot" data-subnav-slot></div>
+      </section>
+    </aside>
+
+    <section class="content-area">
+      <section class="market-hero">
+        <div>
+          <span class="market-kicker">CURRENT VIEW</span>
+          <h2 data-view-title>Total · All Markets</h2>
+          <p data-view-subtitle>All settled Ball46 signals across every tracked market.</p>
+        </div>
+        <div class="view-meta">
+          <span>Last sync</span>
+          <strong data-last-sync>—</strong>
+        </div>
+      </section>
+
+      <section class="kpi-grid" aria-label="Performance summary">
+        <article class="kpi-card"><span>SETTLED</span><strong data-kpi="total">—</strong><small>records in this view</small></article>
+        <article class="kpi-card positive"><span>WIN</span><strong data-kpi="win">—</strong><small>full / half wins</small></article>
+        <article class="kpi-card negative"><span>LOSS</span><strong data-kpi="loss">—</strong><small>full / half losses</small></article>
+        <article class="kpi-card"><span>PUSH</span><strong data-kpi="push">—</strong><small>push / void outcomes</small></article>
+        <article class="kpi-card accent"><span>WIN RATE</span><strong data-kpi="rate">—</strong><small>push excluded</small></article>
+        <article class="kpi-card"><span>AVG ODDS</span><strong data-kpi="odds">—</strong><small>recorded entry price</small></article>
+      </section>
+
+      <section class="trend-panel">
+        <div class="section-head">
+          <div><span class="section-kicker">PERFORMANCE TREND</span><h3>Recent settled outcomes</h3></div>
+          <span class="range-note" data-range-note>Last 30 settled signals</span>
+        </div>
+        <div class="spark-wrap">
+          <svg class="sparkline" data-sparkline viewBox="0 0 1000 72" preserveAspectRatio="none" role="img" aria-label="Performance trend">
+            <line x1="0" y1="36" x2="1000" y2="36" class="spark-zero"></line>
+            <path data-spark-path d="M0 36 L1000 36"></path>
+          </svg>
+        </div>
+      </section>
+
+      <section class="filter-panel">
+        <div class="filter-title"><span>FILTER</span><strong data-filter-label>All results</strong></div>
+        <div class="filter-chips" data-filter-chips></div>
+      </section>
+
+      <section class="results-panel">
+        <div class="section-head results-head">
+          <div><span class="section-kicker">RESULTS HISTORY</span><h3 data-results-title>All settled signals</h3></div>
+          <span class="record-count" data-record-count>0 records</span>
+        </div>
+        <div class="table-wrap">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>Match</th>
+                <th>Market</th>
+                <th>Pick</th>
+                <th>Line</th>
+                <th>Odds</th>
+                <th>Entry</th>
+                <th>FT</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody data-results-body>
+              <tr><td colspan="9"><div class="table-empty">Waiting for settled results…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager" data-pager></div>
+      </section>
+    </section>
+  </section>
+</main>
+
+<nav class="mobile-nav" aria-label="Mobile navigation">
+  <a href="index.html">Live</a>
+  <a href="signal.html">Signals</a>
+  <a class="active" href="statistics-v2-preview.html">Statistics</a>
+</nav>
+
+<script src="statistics-v2-preview.js?v=20260921-1" defer></script>
+</body>
+</html>
