@@ -1,0 +1,25 @@
+name: Diagnose Ball46 Statistics DOM 20260922
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths: ['.github/workflows/diag-ball46-statistics-dom-20260922.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production statistics DOM anchors
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          curl -fsS -L "$BASE/index.html?diag-dom=${GITHUB_RUN_ID}" -o /tmp/index.html
+          echo "STAT_PANEL=$(grep -c 'data-workspace-panel=\"statistics\"' /tmp/index.html || true)"
+          echo "STAT_TOTAL=$(grep -c 'data-sp-kpi=\"total\"' /tmp/index.html || true)"
+          echo "STAT_BODY=$(grep -c 'data-sp-table-body' /tmp/index.html || true)"
+          echo "STAT_COUNT=$(grep -c 'data-sp-record-count' /tmp/index.html || true)"
+          echo "STAT_STATE=$(grep -c 'data-sp-feed-state' /tmp/index.html || true)"
+          echo "WORKSPACE_JS=$(grep -c 'singlepage-workspace-343.js' /tmp/index.html || true)"
+          echo "MOBILE_JS=$(grep -c 'mobile-menu-classic-343.js' /tmp/index.html || true)"
+          echo "EVENT_ICONS=$(grep -c 'event-flow-icons-343.js' /tmp/index.html || true)"
