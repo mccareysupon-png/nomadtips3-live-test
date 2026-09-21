@@ -160,8 +160,10 @@ async function engineBoardResponse(request, env) {
   const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
   const engineBoard = engineResponse.ok ? await engineResponse.clone().json().catch(() => null) : null;
   const engineHasOdds = boardHasBookmakerOdds(engineBoard);
+  const engineHubAgeMs = num(engineBoard?.hubAgeMs);
+  const engineStale = engineBoard?.stale === true || engineBoard?.staleGuard === true || (engineHubAgeMs !== null && engineHubAgeMs > 180_000);
 
-  if (engineResponse.ok && engineBoard?.ok === true && engineHasOdds) {
+  if (engineResponse.ok && engineBoard?.ok === true && !engineStale && engineHasOdds) {
     const enriched = await enrichBoardWithCachedFullMarket(engineBoard, env);
     if (!enriched.changed) return engineResponse;
     return Response.json(enriched.board, { headers:{'cache-control':'no-store','x-ball46-board-source':'engine-plus-central-full-market-cache'} });
@@ -172,13 +174,13 @@ async function engineBoardResponse(request, env) {
   const hub = await hubResponse.json().catch(() => null);
   if (!hub || hub.ok !== true || !Array.isArray(hub.fixtures)) return engineResponse;
   const hubHasOdds = boardHasBookmakerOdds(hub);
-  if (engineResponse.ok && !hubHasOdds) return engineResponse;
+  if (engineResponse.ok && !engineStale && !hubHasOdds) return engineResponse;
 
   const fallbackBoard = {
     ...hub,
     version: 'ball46-board-fallback-john-continuity-v2-odds-aware',
     engineBoardFallback: true,
-    engineBoardFallbackReason: engineResponse.ok ? 'ENGINE_BOARD_ODDS_EMPTY' : 'ENGINE_BOARD_ERROR',
+    engineBoardFallbackReason: engineStale ? 'ENGINE_BOARD_STALE' : (engineResponse.ok ? 'ENGINE_BOARD_ODDS_EMPTY' : 'ENGINE_BOARD_ERROR'),
     engineBoardStatus: engineResponse.status,
     engineBoardHasOdds: engineHasOdds,
     hubBoardHasOdds: hubHasOdds,
@@ -245,7 +247,9 @@ async function discoverLiveFixturesForPrewarm(env) {
   const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
   if (engineResponse.ok) {
     const board = await engineResponse.json().catch(() => null);
-    if (board?.ok === true && Array.isArray(board.fixtures)) return liveFixtureIds(board);
+    const boardAgeMs = num(board?.hubAgeMs);
+    const boardStale = board?.stale === true || board?.staleGuard === true || (boardAgeMs !== null && boardAgeMs > 180_000);
+    if (board?.ok === true && !boardStale && Array.isArray(board.fixtures)) return liveFixtureIds(board);
   }
   const hubResponse = await env.HUB.fetch(hubRequest(request, '/snapshot'));
   if (!hubResponse.ok) return [];
