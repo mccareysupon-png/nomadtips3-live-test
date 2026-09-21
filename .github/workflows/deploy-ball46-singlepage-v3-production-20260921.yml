@@ -1,0 +1,187 @@
+name: Deploy Ball46 Single Page V3 Production 20260921
+
+on:
+  push:
+    branches: [work/ball46-singlepage-workspace-20260921]
+    paths:
+      - '.github/workflows/deploy-ball46-singlepage-v3-production-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BASELINE_SHA: 179eeec2d4aefb12592b036688ab42386bcfb609
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record pre-deploy Ball46 health and odds continuity
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?before=$GITHUB_RUN_ID" -o /tmp/before-board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/before-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('pre-deploy board unhealthy');
+          function has(v){
+            if(Array.isArray(v)) return v.length>0;
+            if(!v||typeof v!=='object') return false;
+            if(!Object.keys(v).length) return false;
+            const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];
+            return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length)) || Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)));
+          }
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          fs.writeFileSync('/tmp/pre-counts.json',JSON.stringify({fixtures:b.fixtures.length,oddsFixtures:odds}));
+          console.log('PRE-DEPLOY',{fixtures:b.fixtures.length,oddsFixtures:odds});
+          NODE
+
+      - name: Guard Engine Hub Odds and production bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$BASELINE_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js; do
+            git diff --quiet "$BASELINE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
+          done
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"FULL_MARKET", "service": "nomadtips3-full-market-343-ball46"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'PASS: production bindings and odds services unchanged.'
+
+      - name: Verify Page 1 dashboard diff is signal snapshot bridge only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$BASELINE_SHA:nomad-live-343/dashboard-v2-stage3.js" > /tmp/dash-base.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dash-current.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/dash-current.js').read_text()
+          s=s.replace('\nlet signalRows=[];','',1)
+          s=s.replace("signalMap=next;signalRows=rows;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{};window.dispatchEvent(new CustomEvent('ball46:signals-snapshot',{detail:{signals:signalRows.slice(),mirror:signalMirror}}))", "signalMap=next;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{}",1)
+          s=s.replace(",getSignals:()=>signalRows.slice(),getSignalMirror:()=>signalMirror",'',1)
+          Path('/tmp/dash-sanitized.js').write_text(s)
+          PY
+          cmp -s /tmp/dash-base.js /tmp/dash-sanitized.js || { echo 'DASHBOARD CHANGED OUTSIDE SAFE SIGNAL BRIDGE'; diff -u /tmp/dash-base.js /tmp/dash-sanitized.js | head -120; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate final single-page production package
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/signal-next.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq '<header class="v2-topbar"' nomad-live-343/index.html
+          ! grep -Fq '<nav class="mobile-nav"' nomad-live-343/index.html
+          ! grep -Fq 'href="signal.html"' nomad-live-343/index.html
+          ! grep -Fq 'href="statistics.html"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="live"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="statistics"' nomad-live-343/index.html
+          grep -Fq 'full-market-bookmaker-343.js' nomad-live-343/index.html
+          grep -Fq 'bulk-odds-compat-343.js' nomad-live-343/index.html
+          grep -Fq 'ball46:signals-snapshot' nomad-live-343/signal-next.js
+          ! grep -Fq '/api/engine/signals' nomad-live-343/signal-next.js
+          ! grep -Fq 'setInterval' nomad-live-343/signal-next.js
+          grep -Fq 'STAT_CACHE_MS=300000' nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq 'statsTimer' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'LEFT RAIL GEOMETRY LOCK V3' nomad-live-343/singlepage-workspace-343.css
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 V3 production package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 V3 production
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Smoke production shell feeds and odds continuity
+        id: smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          for base in "$BALL46_WORKER" "$BALL46_URL" "$BALL46_APEX"; do
+            curl -fsS --max-time 30 "$base/?v3=$GITHUB_RUN_ID" -o /tmp/home.html
+            grep -Fq 'data-workspace-panel="live"' /tmp/home.html
+            grep -Fq 'data-workspace-panel="signal"' /tmp/home.html
+            grep -Fq 'data-workspace-panel="statistics"' /tmp/home.html
+            grep -Fq 'workspace-brand-card' /tmp/home.html
+            ! grep -Fq '<header class="v2-topbar"' /tmp/home.html
+            ! grep -Fq '<nav class="mobile-nav"' /tmp/home.html
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?after=$GITHUB_RUN_ID" -o /tmp/after-board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?after=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?after=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const pre=JSON.parse(fs.readFileSync('/tmp/pre-counts.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/after-board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('board unhealthy after deploy');
+          if(!Array.isArray(s?.signals)) throw Error('signals unhealthy after deploy');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('statistics unhealthy after deploy');
+          function has(v){
+            if(Array.isArray(v)) return v.length>0;
+            if(!v||typeof v!=='object') return false;
+            if(!Object.keys(v).length) return false;
+            const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];
+            return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length)) || Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)));
+          }
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(pre.fixtures>0 && b.fixtures.length===0) throw Error('fixtures dropped to zero');
+          if(pre.oddsFixtures>0 && odds===0) throw Error(`ODDS CONTINUITY FAILED: before ${pre.oddsFixtures}, after 0`);
+          console.log('BALL46 V3 PRODUCTION PASS',{before:pre,after:{fixtures:b.fixtures.length,oddsFixtures:odds},signals:s.signals.length,statistics:t.rows.length});
+          NODE
+
+      - name: Automatic rollback to last known-good baseline on production failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Production smoke failed. Restoring known-good baseline...'
+          git worktree add --detach /tmp/ball46-rollback "$BASELINE_SHA"
+          cd /tmp/ball46-rollback/workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 5
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?rollback=$GITHUB_RUN_ID" -o /tmp/rollback-board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/rollback-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('rollback board unhealthy');
+          console.log('AUTO ROLLBACK PASS',{fixtures:b.fixtures.length});
+          NODE
