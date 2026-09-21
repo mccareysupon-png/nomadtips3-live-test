@@ -4,6 +4,11 @@ const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const qs=()=>new URLSearchParams(location.search);
 const validStatus=new Set(['all','live','scheduled','unknown','finished']);
+function rewritePreviewLinks(){
+  const preview=/index-flow-preview\.html|statistics-v2-preview\.html|signal-flow-preview\.html/.test(location.pathname);
+  if(!preview)return;
+  $$('a[href="signal.html"]').forEach(a=>a.setAttribute('href','signal-flow-preview.html'));
+}
 function applyStatusFromUrl(){
   if(document.body?.dataset?.page!=='live')return;
   const status=qs().get('status');
@@ -20,7 +25,7 @@ function bindStatusToUrl(){
       const status=btn.dataset.statusFilter||'all';
       const q=qs();
       if(status==='all')q.delete('status');else q.set('status',status);
-      const match=q.get('match');if(match)q.delete('match');
+      if(q.get('match'))q.delete('match');
       const next=`${location.pathname}${q.toString()?`?${q}`:''}`;
       history.replaceState(null,'',next);
     });
@@ -51,6 +56,6 @@ function focusRequestedMatch(){
   obs.observe(root,{childList:true,subtree:true});
   setTimeout(()=>obs.disconnect(),15000);
 }
-function init(){applyStatusFromUrl();bindStatusToUrl();mirrorSignalCount();focusRequestedMatch();}
+function init(){rewritePreviewLinks();applyStatusFromUrl();bindStatusToUrl();mirrorSignalCount();focusRequestedMatch();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
