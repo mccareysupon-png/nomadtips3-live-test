@@ -13,26 +13,50 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
+
       - run: npm install -g wrangler@latest
-      - name: Inspect all likely Ball46 runtime configs
+
+      - name: Inspect current worker deployment histories
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set +e
-          echo '=== WRANGLER CONFIGS ==='
-          find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort
+          wrangler --version
+          echo '=== CURRENT WRANGLER CONFIGS ==='
+          find workers -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort
           while IFS= read -r cfg; do
-            if grep -Eqi '343|ball46|hub|engine|market|ultra|preview' "$cfg"; then
-              echo "=== CONFIG: $cfg ==="
-              cat "$cfg"
-              echo '--- deployments ---'
-              wrangler deployments list --config "$cfg" || true
-              echo '--- versions ---'
-              wrangler versions list --config "$cfg" || true
-            fi
-          done < <(find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort)
+            echo "=== CONFIG: $cfg ==="
+            cat "$cfg"
+            echo '--- deployments ---'
+            wrangler deployments list --config "$cfg" || true
+            echo '--- versions ---'
+            wrangler versions list --config "$cfg" || true
+          done < <(find workers -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort)
+
+      - name: Inspect historical Ball46 wrapper deployment history
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set +e
+          HIST=af999592ea6e84fe72cb984670723d52673a5b5e
+          git show "$HIST:workers/nomadtips3-343-preview/wrangler.ball46.jsonc" > /tmp/wrangler.ball46.jsonc 2>/dev/null
+          if [ -s /tmp/wrangler.ball46.jsonc ]; then
+            echo '=== HISTORICAL BALL46 WRAPPER CONFIG ==='
+            cat /tmp/wrangler.ball46.jsonc
+            echo '--- deployments ---'
+            wrangler deployments list --config /tmp/wrangler.ball46.jsonc || true
+            echo '--- versions ---'
+            wrangler versions list --config /tmp/wrangler.ball46.jsonc || true
+          else
+            echo 'Historical Ball46 wrapper config not found at expected commit/path'
+          fi
