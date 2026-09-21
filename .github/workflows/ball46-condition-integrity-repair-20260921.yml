@@ -1,0 +1,123 @@
+name: Ball46 Condition Integrity Repair 20260921
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-condition-integrity-repair-20260921.yml'
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+
+jobs:
+  repair-condition-integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-full-market-20260918
+          fetch-depth: 0
+
+      - name: Patch UNDER evidence gate only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          old="if(sel==='UNDER'){const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return h.strength>=a.strength?h:a}"
+          new="if(sel==='UNDER'){const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return {pass:h.pass&&a.pass,count:Math.min(h.count,a.count),required:h.required,side:'BOTH',mode:'BOTH_LOW',items:[...h.items,...a.items],strength:Math.min(h.strength,a.strength)}}"
+          assert old in s, 'UNDER legacy one-side-low gate not found'
+          s=s.replace(old,new,1)
+          oldv="const VERSION='nomad343-engine-v5-stale-guard';"
+          newv="const VERSION='nomad343-engine-v6-condition-integrity';"
+          assert oldv in s, 'expected engine version not found'
+          s=s.replace(oldv,newv,1)
+          p.write_text(s)
+          PY
+
+          node --check workers/nomadtips3-engine-343/src/index.js
+          git diff --check -- workers/nomadtips3-engine-343/src/index.js
+
+          # Guard unrelated condition semantics and stale fix.
+          grep -F "mode:'BOTH_LOW'" workers/nomadtips3-engine-343/src/index.js
+          grep -F "if(sel==='YES')" workers/nomadtips3-engine-343/src/index.js
+          grep -F "return h.strength>=a.strength?h:a;" workers/nomadtips3-engine-343/src/index.js
+          grep -F "board?.staleGuard===true||board?.stale===true" workers/nomadtips3-engine-343/src/index.js
+          grep -F "nomad343-engine-v6-condition-integrity" workers/nomadtips3-engine-343/src/index.js
+          git diff -- workers/nomadtips3-engine-343/src/index.js
+
+      - name: Persist ENGINE condition patch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'ADD-K Condition Repair'
+          git config user.email 'actions@users.noreply.github.com'
+          changed=$(git diff --name-only)
+          test "$changed" = "workers/nomadtips3-engine-343/src/index.js"
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m 'fix(ball46): require both sides low for under evidence'
+          git push origin HEAD:work/ball46-full-market-20260918
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Deploy ENGINE only
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Verify condition runtime and preserved settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 8
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?conditionfix=$GITHUB_RUN_ID" -o /tmp/health.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?conditionfix=$GITHUB_RUN_ID" -o /tmp/settings.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?conditionfix=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?conditionfix=$GITHUB_RUN_ID" -o /tmp/signals.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          const c=JSON.parse(fs.readFileSync('/tmp/settings.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          if(h?.version!=='nomad343-engine-v6-condition-integrity') throw Error('VERSION_FAIL '+JSON.stringify(h));
+          if(c?.ok!==true || Object.keys(c?.markets||{}).length!==18) throw Error('SETTINGS_FAIL '+JSON.stringify(c));
+          if(!c?.settings || !c?.runState) throw Error('SETTINGS_STATE_MISSING');
+          if(b?.ok!==true || !Array.isArray(b?.fixtures)) throw Error('BOARD_FAIL '+JSON.stringify(b));
+          if(s?.ok!==true || !Array.isArray(s?.signals)) throw Error('SIGNALS_FAIL '+JSON.stringify(s));
+          console.log('CONDITION_REPAIR_PASS',{version:h.version,markets:Object.keys(c.markets).length,fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
+
+      - name: Verify web pages remain untouched and live path advances
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in index.html signal.html statistics.html settings.html; do
+            code=$(curl -sS --max-time 30 -o "/tmp/${p}" -w '%{http_code}' "$BALL46_URL/$p?conditionfix=$GITHUB_RUN_ID-$(date +%s%N)")
+            echo "$p=$code"
+            test "$code" = 200
+            test -s "/tmp/${p}"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?conditionfix=a-$GITHUB_RUN_ID" -o /tmp/a.json
+          sleep 70
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?conditionfix=b-$GITHUB_RUN_ID" -o /tmp/b.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('/tmp/a.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/b.json'));
+          if(a?.ok!==true||b?.ok!==true) throw Error('HUB_FAIL');
+          if(Number(b?.fetchedAt||0)<Number(a?.fetchedAt||0)) throw Error('HUB_TIME_REGRESSED');
+          console.log('LIVE_PATH_PASS',{from:a.fetchedAt,to:b.fetchedAt,stale:b.stale,ageMs:b.ageMs});
+          NODE
