@@ -31,32 +31,23 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
+          import re
           p=Path('workers/nomadtips3-engine-343/src/index.js')
           s=p.read_text()
           pairs=[
             ("const VERSION='nomad343-engine-v6-condition-integrity';","const VERSION='nomad343-engine-v7-history-storage-bound';"),
             ("const HISTORY_MS=180*60_000;","const HISTORY_MS=45*60_000;"),
             ("const MAX_HISTORY_ROWS=180;","const MAX_HISTORY_ROWS=45;"),
-            ("return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:180,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})",
-             "return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:45,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})")
+            ("retainedMinutes:180,maxRows:MAX_HISTORY_ROWS","retainedMinutes:45,maxRows:MAX_HISTORY_ROWS")
           ]
           for old,new in pairs:
-            assert old in s, f'missing expected source: {old[:80]}'
+            assert old in s, f'missing expected source: {old}'
             s=s.replace(old,new,1)
-          old="""      for(const f of hub.fixtures||[]){
-        const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];
-        if(isLive(f)){const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap)}
-        histories[id]=arr.filter(x=>at-x.at<=HISTORY_MS).slice(-MAX_HISTORY_ROWS);
-      }"""
-          new="""      for(const f of hub.fixtures||[]){
-        if(!isLive(f))continue;
-        const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];
-        const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap);
-        histories[id]=arr.filter(x=>at-x.at<=HISTORY_MS).slice(-MAX_HISTORY_ROWS);
-      }"""
-          assert old in s, 'history loop source not found'
-          s=s.replace(old,new,1)
-          p.write_text(s)
+          pattern=r"      for\(const f of hub\.fixtures\|\|\[\]\)\{\n        const id=String\(f\.fixtureId\),arr=Array\.isArray\(oldHist\[id\]\)\?oldHist\[id\]\.slice\(\):\[\];\n        if\(isLive\(f\)\)\{const snap=metricSnapshot\(f,at\);if\(arr\.length&&arr\[arr\.length-1\]\.at===at\)arr\[arr\.length-1\]=snap;else arr\.push\(snap\)\}\n        histories\[id\]=arr\.filter\(x=>at-x\.at<=HISTORY_MS\)\.slice\(-MAX_HISTORY_ROWS\);\n      \}"
+          replacement="      for(const f of hub.fixtures||[]){\n        if(!isLive(f))continue;\n        const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];\n        const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap);\n        histories[id]=arr.filter(x=>at-x.at<=HISTORY_MS).slice(-MAX_HISTORY_ROWS);\n      }"
+          s2,n=re.subn(pattern,replacement,s,count=1)
+          assert n==1, f'history loop replacement count={n}'
+          p.write_text(s2)
           PY
           node --check workers/nomadtips3-engine-343/src/index.js
           git diff --check -- workers/nomadtips3-engine-343/src/index.js
