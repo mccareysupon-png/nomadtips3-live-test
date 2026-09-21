@@ -1,0 +1,24 @@
+name: Diagnose Ball46 Statistics Public Route 20260922
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths: ['.github/workflows/diag-ball46-statistics-public-route-20260922.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for url in \
+            'https://ball46-production.mccarey-supon.workers.dev/api/engine/statistics' \
+            'https://www.ball46.com/api/engine/statistics'; do
+            echo "URL=$url"
+            code=$(curl -sS -L --max-time 25 -o /tmp/out.json -w '%{http_code}' "$url?diag-public=${GITHUB_RUN_ID}") || true
+            echo "HTTP=$code"
+            head -c 300 /tmp/out.json || true
+            echo
+          done
