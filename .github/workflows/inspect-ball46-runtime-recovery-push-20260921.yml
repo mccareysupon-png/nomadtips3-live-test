@@ -1,0 +1,38 @@
+name: Inspect Ball46 runtime recovery push
+
+on:
+  push:
+    branches:
+      - diag/ball46-runtime-recovery-20260921
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g wrangler@latest
+      - name: Inspect all likely Ball46 runtime configs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set +e
+          echo '=== WRANGLER CONFIGS ==='
+          find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort
+          while IFS= read -r cfg; do
+            if grep -Eqi '343|ball46|hub|engine|market|ultra|preview' "$cfg"; then
+              echo "=== CONFIG: $cfg ==="
+              cat "$cfg"
+              echo '--- deployments ---'
+              wrangler deployments list --config "$cfg" || true
+              echo '--- versions ---'
+              wrangler versions list --config "$cfg" || true
+            fi
+          done < <(find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort)
