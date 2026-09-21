@@ -1,0 +1,86 @@
+name: Probe Ball46 live production
+
+on:
+  push:
+    branches:
+      - diag/ball46-runtime-recovery-20260921
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe Ball46 production freshness twice
+        shell: bash
+        run: |
+          set +e
+          python3 - <<'PY'
+          import json, subprocess, time, hashlib, re
+          from datetime import datetime, timezone
+
+          urls = [
+            'https://ball46.com/',
+            'https://ball46.com/api/engine/board',
+            'https://ball46.com/api/hub/snapshot',
+            'https://ball46.com/api/engine/signals',
+            'https://ball46.com/api/full-market/health',
+            'https://ball46.com/api/full-market/board-cache',
+            'https://nomadtips3-engine-343.mccarey-supon.workers.dev/board',
+            'https://nomadtips3-5usd-hub-343.mccarey-supon.workers.dev/snapshot',
+            'https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev/health',
+            'https://nomadtips3-full-market-343-ball46.mccarey-supon.workers.dev/board-cache',
+          ]
+
+          def summarize(body):
+            out = {}
+            try:
+              data = json.loads(body)
+            except Exception:
+              return {'html_or_text_prefix': re.sub(r'\s+',' ',body[:240])}
+            for k in ['ok','version','fetchedAt','updatedAt','generatedAt','timestamp','ageMs','stale','source','engineBoardFallback','engineBoardFallbackReason','hubFetchedAt','hubAgeMs','error']:
+              if k in data: out[k]=data.get(k)
+            fixtures = data.get('fixtures') if isinstance(data,dict) else None
+            if isinstance(fixtures,list):
+              out['fixtures_count']=len(fixtures)
+              samples=[]
+              for f in fixtures[:8]:
+                if not isinstance(f,dict): continue
+                samples.append({k:f.get(k) for k in ['fixtureId','homeName','awayName','home','away','minute','status','statusCode','boardState','goals','score','updatedAt','ageMs'] if k in f})
+              out['fixtures_sample']=samples
+            sig = data.get('signals') if isinstance(data,dict) else None
+            if isinstance(sig,list): out['signals_count']=len(sig)
+            mirror=data.get('mirror') if isinstance(data,dict) else None
+            if isinstance(mirror,dict): out['mirror']=mirror
+            return out
+
+          def fetch(url, bust=False):
+            u=url
+            if bust:
+              u += ('&' if '?' in u else '?') + 'diag_ts=' + str(int(time.time()*1000))
+            hp='/tmp/h.txt'; bp='/tmp/b.txt'
+            p=subprocess.run(['curl','-L','--connect-timeout','15','--max-time','30','-sS','-D',hp,'-o',bp,'-w','%{http_code}',u],capture_output=True,text=True)
+            code=p.stdout.strip()
+            try: body=open(bp,encoding='utf-8',errors='replace').read()
+            except: body=''
+            try: headers=open(hp,encoding='utf-8',errors='replace').read()
+            except: headers=''
+            keep={}
+            for line in headers.splitlines():
+              if ':' in line:
+                k,v=line.split(':',1); kl=k.strip().lower()
+                if kl in ['date','cache-control','age','cf-cache-status','etag','last-modified','x-nomad-ui-revision','x-nomad-live-revision','x-ball46-board-source','server']:
+                  keep[kl]=v.strip()
+            return {'url':u,'code':code,'sha256':hashlib.sha256(body.encode()).hexdigest()[:16],'headers':keep,'summary':summarize(body)}
+
+          for round_no in [1,2]:
+            print(f'===== ROUND {round_no} {datetime.now(timezone.utc).isoformat()} =====')
+            for u in urls:
+              for bust in ([False,True] if 'ball46.com/api/' in u else [False]):
+                try:
+                  print(json.dumps(fetch(u,bust),ensure_ascii=False))
+                except Exception as e:
+                  print(json.dumps({'url':u,'error':repr(e)}))
+            if round_no==1: time.sleep(10)
+          PY
