@@ -1,11 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v6-condition-integrity';
+const VERSION='nomad343-engine-v7-history-storage-bound';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
-const HISTORY_MS=180*60_000;
-const MAX_HISTORY_ROWS=180;
+const HISTORY_MS=45*60_000;
+const MAX_HISTORY_ROWS=45;
 const MAX_SIGNALS=1600;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
 const UI_ODDS_CACHE_MS=60_000;
@@ -249,8 +249,9 @@ export class Nomad343Engine extends DurableObject{
       const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());
       const fixtureMap=new Map();for(const f of hub.fixtures||[])fixtureMap.set(String(f.fixtureId),f);
       for(const f of hub.fixtures||[]){
+        if(!isLive(f))continue;
         const id=String(f.fixtureId),arr=Array.isArray(oldHist[id])?oldHist[id].slice():[];
-        if(isLive(f)){const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap)}
+        const snap=metricSnapshot(f,at);if(arr.length&&arr[arr.length-1].at===at)arr[arr.length-1]=snap;else arr.push(snap);
         histories[id]=arr.filter(x=>at-x.at<=HISTORY_MS).slice(-MAX_HISTORY_ROWS);
       }
       const fixtureCandidates=[];
@@ -323,7 +324,7 @@ export class Nomad343Engine extends DurableObject{
     if(u.pathname==='/board'){const board=await this.ctx.storage.get('board')||{ok:false,version:VERSION,error:'NO_BOARD'};if(board?.staleGuard===true||board?.stale===true)return Response.json({...board,ok:false,error:'HUB_STALE'}, {status:503,headers:{'cache-control':'no-store'}});return Response.json(board,{headers:{'cache-control':'no-store'}})}
     if(u.pathname==='/signals'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}
     if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}
-    if(u.pathname==='/history'&&request.method==='GET'){const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:180,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})}
+    if(u.pathname==='/history'&&request.method==='GET'){const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:45,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})}
     return new Response('Not found',{status:404});
   }
 }
