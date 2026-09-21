@@ -1,0 +1,45 @@
+name: Diagnose Ball46 Statistics 20260922
+
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths:
+      - '.github/workflows/diag-ball46-statistics-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect production statistics API and UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://ball46-production.mccarey-supon.workers.dev'
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BASE/api/engine/statistics?diag=${GITHUB_RUN_ID}" -o /tmp/stats.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BASE/index.html?diag=${GITHUB_RUN_ID}" -o /tmp/index.html
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BASE/singlepage-workspace-343.js?diag=${GITHUB_RUN_ID}" -o /tmp/workspace.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const s=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          const index=fs.readFileSync('/tmp/index.html','utf8');
+          const js=fs.readFileSync('/tmp/workspace.js','utf8');
+          const out={
+            statsOk:s?.ok===true,
+            total:s?.total??null,
+            rows:Array.isArray(s?.rows)?s.rows.length:null,
+            win:s?.win??null,loss:s?.loss??null,push:s?.push??null,
+            hasStatisticsPanel:index.includes('data-workspace-panel="statistics"'),
+            hasStatisticsNav:index.includes('data-stat-market="all"'),
+            workspaceExpectsRows:js.includes("Array.isArray(j?.rows)"),
+            workspaceLoadsStatistics:js.includes('/api/engine/statistics'),
+            hasMobileMenu:index.includes('mobile-menu-classic-343.js'),
+            hasEventIcons:index.includes('event-flow-icons-343.js')
+          };
+          console.log('BALL46_STATS_DIAG',JSON.stringify(out,null,2));
+          if(!out.statsOk) process.exitCode=2;
+          NODE
