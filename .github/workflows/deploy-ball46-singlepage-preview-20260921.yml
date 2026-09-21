@@ -1,0 +1,104 @@
+name: Deploy Ball46 Single Page Workspace Preview 20260921
+
+on:
+  push:
+    branches: [work/ball46-singlepage-workspace-20260921]
+    paths:
+      - 'nomad-live-343/index.html'
+      - 'nomad-live-343/singlepage-workspace-343.css'
+      - 'nomad-live-343/singlepage-workspace-343.js'
+      - '.github/workflows/deploy-ball46-singlepage-preview-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREVIEW_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+  BASELINE_SHA: 179eeec2d4aefb12592b036688ab42386bcfb609
+
+jobs:
+  deploy-singlepage-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard engine and odds scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js; do
+            git diff --quiet "$BASELINE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
+          done
+          grep -Fq '"name": "nomadtips3-343-ultra-preview"' workers/nomadtips3-343-preview/wrangler.jsonc
+          echo 'PASS: single-page preview is presentation/router only.'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate single-page workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/singlepage-workspace-343.js
+          node --check nomad-live-343/signal-next.js
+          grep -Fq 'data-workspace-panel="live"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
+          grep -Fq 'data-workspace-panel="statistics"' nomad-live-343/index.html
+          grep -Fq 'PERFORMANCE TREND' nomad-live-343/index.html
+          grep -Fq 'singlepage-workspace-343.js' nomad-live-343/index.html
+          ! grep -Fq 'href="signal.html"' nomad-live-343/index.html
+          ! grep -Fq 'href="statistics.html"' nomad-live-343/index.html
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run isolated preview worker
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy isolated preview worker
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Smoke single-page workspace and feeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          curl -fsS --max-time 30 "$PREVIEW_URL/?verify=$GITHUB_RUN_ID" -o /tmp/home.html
+          grep -Fq 'data-workspace-panel="live"' /tmp/home.html
+          grep -Fq 'data-workspace-panel="signal"' /tmp/home.html
+          grep -Fq 'data-workspace-panel="statistics"' /tmp/home.html
+          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-1' /tmp/home.html
+          curl -fsS --max-time 30 "$PREVIEW_URL/singlepage-workspace-343.js?verify=$GITHUB_RUN_ID" -o /tmp/sp.js
+          node --check /tmp/sp.js
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('board unhealthy');
+          if(!Array.isArray(s?.signals))throw Error('signals unhealthy');
+          if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('statistics unhealthy');
+          console.log('SINGLEPAGE PREVIEW PASS',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});
+          NODE
