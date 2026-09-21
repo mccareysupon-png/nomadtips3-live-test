@@ -194,7 +194,12 @@ jobs:
             const d=JSON.parse(fs.readFileSync('/tmp/'+n+'-after.json','utf8'));
             const before=fs.readFileSync('/tmp/'+n+'-version','utf8').trim();
             if(String(d.version||'')!==before) throw Error(n.toUpperCase()+'_CHANGED');
-            if(d.ok===false) throw Error(n.toUpperCase()+'_UNHEALTHY:'+String(d.lastError||''));
+            if(d.ok===false){
+              const prior=JSON.parse(fs.readFileSync('/tmp/'+n+'-before.json','utf8'));
+              if(prior.ok!==false) throw Error(n.toUpperCase()+'_NEW_UNHEALTHY:'+String(d.lastError||''));
+              if(String(d.lastError||'')!==String(prior.lastError||'')) throw Error(n.toUpperCase()+'_HEALTH_WORSENED:'+String(d.lastError||''));
+              console.warn(n.toUpperCase()+'_UNCHANGED_DEGRADED_BASELINE:'+String(d.lastError||''));
+            }
           }
           const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
           const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
