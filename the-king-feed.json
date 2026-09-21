@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-20T22:31:51Z",
+  "updated_at": "2026-09-21T01:12:31Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -3259,8 +3259,8 @@
       "edge": 39.6,
       "ev": 0.6532,
       "required_confidence": 0.6,
-      "result": "PENDING",
-      "ft": null,
+      "result": "HALF_WIN",
+      "ft": "2-1",
       "locked_at": "2026-09-20T01:53:50Z",
       "source_url": "https://www.goaloo.com/football/argentine-division-1-belgrano-vs-estudiantes-rio-cuarto/h2h-2962640",
       "summary_url": "https://www.goaloo.com/football/argentine-division-1-belgrano-vs-estudiantes-rio-cuarto/summary-2962640",
@@ -3320,7 +3320,12 @@
         "away_recent": 9,
         "h2h_n": 6,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 0.5,
+      "profit": 38.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-21T01:12:31Z"
     },
     {
       "id": "8140ebf9dfc18547-AH-AWAY-1p25",
@@ -149738,6 +149743,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-20T22:31:51Z"
+    },
+    {
+      "id": "6fc40502b2432fe6-AH-AWAY-1p25",
+      "goaloo_id": "2962640",
+      "date": "2026-09-20",
+      "kickoff": "2026-09-20 22:15:00",
+      "league": "Argentine Division 1",
+      "home": "Belgrano",
+      "away": "Estudiantes Rio Cuarto",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 1.25,
+      "pick": "Estudiantes Rio Cuarto +1.25",
+      "side": "away",
+      "odds": 1.76,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.9355,
+      "model_probability": 0.9355,
+      "market_fair_probability": 0.5393,
+      "market_edge": 0.3962,
+      "edge": 39.6,
+      "ev": 0.6532,
+      "required_confidence": 0.6,
+      "result": "HALF_WIN",
+      "ft": "2-1",
+      "locked_at": "2026-09-20T01:53:50Z",
+      "source_url": "https://www.goaloo.com/football/argentine-division-1-belgrano-vs-estudiantes-rio-cuarto/h2h-2962640",
+      "summary_url": "https://www.goaloo.com/football/argentine-division-1-belgrano-vs-estudiantes-rio-cuarto/summary-2962640",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 0.552,
+        "lambda_away": 1.297,
+        "home_win": 0.1217,
+        "draw": 0.31,
+        "away_win": 0.5683,
+        "h2h_adjustment": 0.0075,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.3772,
+          "gd_edge": -0.6121,
+          "clean_sheet_edge": -0.478,
+          "failed_to_score_edge": -0.2976,
+          "bounded_adjustment": -0.035,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 9,
+        "h2h_n": 6,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 0.5,
+      "profit": 38.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-21T01:12:31Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
