@@ -3,25 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f5f7f6">
+  <meta name="theme-color" content="#edf1f0">
   <meta name="robots" content="noindex,nofollow">
-  <meta name="ball46-page-revision" content="statistics-v2-clean-preview-20260921-balance2">
-  <title>Statistics V2 Preview | Ball46</title>
+  <meta name="ball46-page-revision" content="statistics-v2-flow-preview-20260921">
+  <title>Statistics V2 Flow Preview | Ball46</title>
+  <link rel="stylesheet" href="v2-shared.css?v=343-v2-shared-v1">
+  <link rel="stylesheet" href="v2-header.css?v=343-v2-header-v1">
   <link rel="stylesheet" href="statistics-v2-preview.css?v=20260921-1">
   <link rel="stylesheet" href="statistics-v2-balance.css?v=20260921-2">
+  <link rel="stylesheet" href="statistics-flow-343.css?v=20260921-1">
 </head>
-<body>
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="index.html" aria-label="Ball46 home"><span>ball</span><b>46</b></a>
-    <nav class="mainnav" aria-label="Primary navigation">
-      <a href="index.html">Live Scores</a>
-      <a href="signal.html">Signals</a>
-      <a href="statistics-v2-preview.html" class="active" aria-current="page">Statistics</a>
-    </nav>
-    <div class="header-meta"><span>STATISTICS V2</span><b>READ ONLY</b></div>
-  </div>
-</header>
+<body data-page="statistics">
+<header class="v2-topbar"><div class="v2-topbar-inner"><a class="v2-logo" href="index-flow-preview.html" aria-label="ball46 home"><span class="v2-logo-ball">ball</span><span class="v2-logo-num">46</span></a><nav class="v2-mainnav" aria-label="Primary navigation"><a data-nav="live" href="index-flow-preview.html">Live Scores</a><a data-nav="signal" href="signal.html">Signals</a><a data-nav="statistics" href="statistics-v2-preview.html">Statistics</a></nav><div class="v2-header-utils"><span class="v2-odds-chip">BULK · DEC</span><button type="button" class="v2-theme-btn" data-theme-toggle aria-label="Switch theme">☾ Dark</button></div></div></header>
 
 <main class="app-shell">
   <section class="page-head">
@@ -37,12 +30,12 @@
     <aside class="left-rail" aria-label="Statistics navigation">
       <section class="rail-card match-status-card">
         <h2>MATCH STATUS</h2>
-        <a class="rail-row" href="index.html"><span><i class="dot all"></i>All matches</span><b data-board-count="all">—</b></a>
-        <a class="rail-row" href="index.html?status=live"><span><i class="dot live"></i>Live</span><b data-board-count="live">—</b></a>
+        <a class="rail-row" href="index-flow-preview.html"><span><i class="dot all"></i>All matches</span><b data-board-count="all">—</b></a>
+        <a class="rail-row" href="index-flow-preview.html?status=live"><span><i class="dot live"></i>Live</span><b data-board-count="live">—</b></a>
         <a class="rail-row" href="signal.html"><span><i class="diamond">◆</i>Signal</span><b data-signal-count>—</b></a>
-        <a class="rail-row" href="index.html?status=scheduled"><span><i class="dot upcoming"></i>Upcoming</span><b data-board-count="scheduled">—</b></a>
-        <a class="rail-row" href="index.html?status=unknown"><span><i class="dot waiting"></i>Waiting</span><b data-board-count="unknown">—</b></a>
-        <a class="rail-row" href="index.html?status=finished"><span><i class="dot finished"></i>Finished</span><b data-board-count="finished">—</b></a>
+        <a class="rail-row" href="index-flow-preview.html?status=scheduled"><span><i class="dot upcoming"></i>Upcoming</span><b data-board-count="scheduled">—</b></a>
+        <a class="rail-row" href="index-flow-preview.html?status=unknown"><span><i class="dot waiting"></i>Waiting</span><b data-board-count="unknown">—</b></a>
+        <a class="rail-row" href="index-flow-preview.html?status=finished"><span><i class="dot finished"></i>Finished</span><b data-board-count="finished">—</b></a>
       </section>
 
       <section class="rail-card statistics-nav-card">
@@ -59,10 +52,7 @@
           <h2 data-view-title>Total · All Markets</h2>
           <p data-view-subtitle>All settled Ball46 signals across every tracked market.</p>
         </div>
-        <div class="view-meta">
-          <span>Last sync</span>
-          <strong data-last-sync>—</strong>
-        </div>
+        <div class="view-meta"><span>Last sync</span><strong data-last-sync>—</strong></div>
       </section>
 
       <section class="kpi-grid" aria-label="Performance summary">
@@ -75,60 +65,23 @@
       </section>
 
       <section class="trend-panel">
-        <div class="section-head">
-          <div><span class="section-kicker">PERFORMANCE TREND</span><h3>Recent settled outcomes</h3></div>
-          <span class="range-note" data-range-note>Last 30 settled signals</span>
-        </div>
-        <div class="spark-wrap">
-          <svg class="sparkline" data-sparkline viewBox="0 0 1000 72" preserveAspectRatio="none" role="img" aria-label="Performance trend">
-            <line x1="0" y1="36" x2="1000" y2="36" class="spark-zero"></line>
-            <path data-spark-path d="M0 36 L1000 36"></path>
-          </svg>
-        </div>
+        <div class="section-head"><div><span class="section-kicker">PERFORMANCE TREND</span><h3>Recent settled outcomes</h3></div><span class="range-note" data-range-note>Last 30 settled signals</span></div>
+        <div class="spark-wrap"><svg class="sparkline" data-sparkline viewBox="0 0 1000 72" preserveAspectRatio="none" role="img" aria-label="Performance trend"><line x1="0" y1="36" x2="1000" y2="36" class="spark-zero"></line><path data-spark-path d="M0 36 L1000 36"></path></svg></div>
       </section>
 
-      <section class="filter-panel">
-        <div class="filter-title"><span>FILTER</span><strong data-filter-label>All results</strong></div>
-        <div class="filter-chips" data-filter-chips></div>
-      </section>
+      <section class="filter-panel"><div class="filter-title"><span>FILTER</span><strong data-filter-label>All results</strong></div><div class="filter-chips" data-filter-chips></div></section>
 
       <section class="results-panel">
-        <div class="section-head results-head">
-          <div><span class="section-kicker">RESULTS HISTORY</span><h3 data-results-title>All settled signals</h3></div>
-          <span class="record-count" data-record-count>0 records</span>
-        </div>
-        <div class="table-wrap">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Date & Time</th>
-                <th>Match</th>
-                <th>Market</th>
-                <th>Pick</th>
-                <th>Line</th>
-                <th>Odds</th>
-                <th>Entry</th>
-                <th>FT</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody data-results-body>
-              <tr><td colspan="9"><div class="table-empty">Waiting for settled results…</div></td></tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="section-head results-head"><div><span class="section-kicker">RESULTS HISTORY</span><h3 data-results-title>All settled signals</h3></div><span class="record-count" data-record-count>0 records</span></div>
+        <div class="table-wrap"><table class="results-table"><thead><tr><th>Date & Time</th><th>Match</th><th>Market</th><th>Pick</th><th>Line</th><th>Odds</th><th>Entry</th><th>FT</th><th>Result</th></tr></thead><tbody data-results-body><tr><td colspan="9"><div class="table-empty">Waiting for settled results…</div></td></tr></tbody></table></div>
         <div class="pager" data-pager></div>
       </section>
     </section>
   </section>
 </main>
 
-<nav class="mobile-nav" aria-label="Mobile navigation">
-  <a href="index.html">Live</a>
-  <a href="signal.html">Signals</a>
-  <a class="active" href="statistics-v2-preview.html">Statistics</a>
-</nav>
-
+<nav class="mobile-nav" aria-label="Mobile navigation"><a href="index-flow-preview.html">Live</a><a href="signal.html">Signals</a><a class="active" href="statistics-v2-preview.html">Statistics</a></nav>
+<script src="v2-shared.js?v=343-v2-shared-v1" defer></script>
 <script src="statistics-v2-preview.js?v=20260921-1" defer></script>
 </body>
 </html>
