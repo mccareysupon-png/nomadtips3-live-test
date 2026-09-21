@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-21T01:46:07Z",
+  "updated_at": "2026-09-21T06:30:19Z",
   "dataset": "the-king-live",
   "today": [
     {
@@ -2404,8 +2404,8 @@
       "edge": 30.3,
       "ev": 0.6148,
       "required_confidence": 0.58,
-      "result": "PENDING",
-      "ft": null,
+      "result": "WIN",
+      "ft": "0-2",
       "locked_at": "2026-09-21T01:44:02Z",
       "source_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-new-caledonia-font-color-880000-n-font-vs-solomon-islands/h2h-3089767",
       "summary_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-new-caledonia-font-color-880000-n-font-vs-solomon-islands/summary-3089767",
@@ -2465,7 +2465,12 @@
         "away_recent": 10,
         "h2h_n": 0,
         "primary_source": "Goaloo direct feeds"
-      }
+      },
+      "settlement_score": 1.0,
+      "profit": 151.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-21T06:30:19Z"
     },
     {
       "id": "ffead804a9a0e0d9-AH-HOME-m0p25",
@@ -124593,6 +124598,96 @@
       "settlement_source": "goaloo-bf_us-direct-index",
       "goaloo_terminal_state": -1,
       "settled_at": "2026-09-21T01:12:31Z"
+    },
+    {
+      "id": "3277c365b9385dfa-AH-AWAY-0p0",
+      "goaloo_id": "3089767",
+      "date": "2026-09-21",
+      "kickoff": "2026-09-21 04:00:00",
+      "league": "MSG Prime Minister's Cup",
+      "home": "New Caledonia<font color=#880000>(N)</font>",
+      "away": "Solomon Islands",
+      "market": "AH",
+      "selection": "AWAY",
+      "line": 0.0,
+      "pick": "Solomon Islands +0",
+      "side": "away",
+      "odds": 2.51,
+      "odds_source": "1xBet / Goaloo goal50.xml",
+      "confidence": 0.6672,
+      "model_probability": 0.6672,
+      "market_fair_probability": 0.3646,
+      "market_edge": 0.3026,
+      "edge": 30.3,
+      "ev": 0.6148,
+      "required_confidence": 0.58,
+      "result": "WIN",
+      "ft": "0-2",
+      "locked_at": "2026-09-21T01:44:02Z",
+      "source_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-new-caledonia-font-color-880000-n-font-vs-solomon-islands/h2h-3089767",
+      "summary_url": "https://www.goaloo.com/football/msg-prime-minister-s-cup-new-caledonia-font-color-880000-n-font-vs-solomon-islands/summary-3089767",
+      "policy": "ADD_K_MULTI_170_STRONGEST",
+      "engine": "add-k-multimarket-goaloo-v2-ah-sign",
+      "selection_profile": {
+        "name": "ADD_K_AUTO_1X2_AH_OU",
+        "markets": [
+          "1X2",
+          "AH",
+          "OU"
+        ],
+        "minimum_odds": 1.7,
+        "minimum_ev": 0.02,
+        "recent_sample_min_each": 8,
+        "daily_cap": null,
+        "reverse_prediction": false,
+        "rule": "ONE_STRONGEST_MARKET_PER_MATCH"
+      },
+      "gates": {
+        "data_quality": "PASS",
+        "competition_quality": "PASS",
+        "goaloo_market": "PASS",
+        "odds_min": "PASS",
+        "confidence_by_price": "PASS",
+        "value": "PASS",
+        "reverse_prediction": "OFF",
+        "daily_cap": "UNLIMITED"
+      },
+      "model": {
+        "lambda_home": 1.168,
+        "lambda_away": 1.963,
+        "home_win": 0.1925,
+        "draw": 0.2344,
+        "away_win": 0.5731,
+        "h2h_adjustment": 0.0,
+        "manual_set2": {
+          "venue_ppg_edge": 0.0,
+          "overall_ppg_edge": -0.2309,
+          "gd_edge": -0.6096,
+          "clean_sheet_edge": 0.0341,
+          "failed_to_score_edge": -0.0683,
+          "bounded_adjustment": -0.0232,
+          "venue_ready": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        },
+        "venue_fallback": {
+          "home": true,
+          "away": false,
+          "home_venue_n": 0,
+          "away_venue_n": 6
+        }
+      },
+      "data_quality": {
+        "home_recent": 10,
+        "away_recent": 10,
+        "h2h_n": 0,
+        "primary_source": "Goaloo direct feeds"
+      },
+      "settlement_score": 1.0,
+      "profit": 151.0,
+      "settlement_source": "goaloo-bf_us-direct-index",
+      "goaloo_terminal_state": -1,
+      "settled_at": "2026-09-21T06:30:19Z"
     }
   ],
   "note": "Automated Full-Time Winner First feed. Supplemental markets remain unpublished.",
