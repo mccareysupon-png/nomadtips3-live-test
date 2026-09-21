@@ -1,0 +1,95 @@
+name: Ball46 Emergency Restore Pre Recovery 20260921
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-emergency-restore-pre-recovery-20260921.yml'
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+
+jobs:
+  restore-pre-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve exact deployment before latest recovery deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json > /tmp/deployments.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/deployments.json','utf8'));
+          if(!Array.isArray(d)||d.length<2) throw Error('NOT_ENOUGH_DEPLOYMENTS');
+          const rows=[...d].sort((a,b)=>new Date(a.created_on||0)-new Date(b.created_on||0));
+          const latest=rows[rows.length-1];
+          const previous=rows[rows.length-2];
+          const latestIds=(latest?.versions||[]).map(v=>v.version_id||v.id).filter(Boolean);
+          const prevIds=(previous?.versions||[]).map(v=>v.version_id||v.id).filter(Boolean);
+          if(latestIds.length!==1||prevIds.length!==1) throw Error('AMBIGUOUS_DEPLOYMENT_VERSIONS');
+          fs.appendFileSync(process.env.GITHUB_ENV,`CURRENT_VERSION=${latestIds[0]}\nRESTORE_VERSION=${prevIds[0]}\n`);
+          console.log('CURRENT',latest.created_on,latestIds[0]);
+          console.log('RESTORE',previous.created_on,prevIds[0]);
+          NODE
+
+      - name: Restore exact pre-recovery Worker plus asset snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 rollback "$RESTORE_VERSION" --name ball46-production --message "Emergency restore exact Ball46 version before 2026-09-21 recovery deploy"
+
+      - name: Verify main public pages and APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          for p in index.html signal.html statistics.html settings.html; do
+            code=$(curl -sS --max-time 30 -o "/tmp/${p}" -w '%{http_code}' "$BALL46_URL/$p?restore=$GITHUB_RUN_ID-$(date +%s%N)")
+            echo "$p=$code"
+            test "$code" = 200
+            test -s "/tmp/${p}"
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/health?restore=$GITHUB_RUN_ID" -o /tmp/hub-health.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/health?restore=$GITHUB_RUN_ID" -o /tmp/engine-health.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?restore=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?restore=$GITHUB_RUN_ID" -o /tmp/signals.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const h=JSON.parse(fs.readFileSync('/tmp/hub-health.json'));
+          const e=JSON.parse(fs.readFileSync('/tmp/engine-health.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          if(h?.ok!==true) throw Error('HUB_HEALTH_FAIL '+JSON.stringify(h));
+          if(e?.ok!==true) throw Error('ENGINE_HEALTH_FAIL '+JSON.stringify(e));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('BOARD_FAIL');
+          if(s?.ok!==true||!Array.isArray(s?.signals)) throw Error('SIGNALS_FAIL');
+          console.log('RESTORE_SURFACE_PASS',{hubVersion:h.version,hubAgeMs:h.ageMs,hubStale:h.stale,engineVersion:e.version,engineStaleGuard:e.staleGuard,fixtures:b.fixtures.length,signals:s.signals.length});
+          NODE
+
+      - name: Confirm restored version active
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --name ball46-production --json > /tmp/after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const d=JSON.parse(fs.readFileSync('/tmp/after.json','utf8'));
+          const rows=[...d].sort((a,b)=>new Date(a.created_on||0)-new Date(b.created_on||0));
+          const latest=rows[rows.length-1];
+          const ids=(latest?.versions||[]).map(v=>v.version_id||v.id).filter(Boolean);
+          if(!ids.includes(process.env.RESTORE_VERSION)) throw Error('RESTORE_VERSION_NOT_ACTIVE '+JSON.stringify(latest));
+          console.log('BALL46_EMERGENCY_RESTORE_PASS',process.env.RESTORE_VERSION,latest.created_on);
+          NODE
