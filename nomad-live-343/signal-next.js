@@ -3,6 +3,7 @@
 const API='/api/engine/signals';
 const POLL=30000;
 const openIds=new Set();
+let active=false,timer=0,loading=false;
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const show=v=>v===null||v===undefined||v===''?'—':String(v);
 const num=v=>{if(v===null||v===undefined||v===''||typeof v==='boolean')return null;const n=Number(String(v).replace('%','').trim());return Number.isFinite(n)?n:null};
@@ -29,7 +30,12 @@ function detail(g){const s=g.sample,m=entryMinute(s),league=[s?.league?.country,
 function marketPrimary(g){const s=g.signals[0];const extra=g.signals.length>1?` +${g.signals.length-1}`:'';return`<div class="next-market"><small>PRIMARY SIGNAL${extra}</small><div class="next-market-line"><span class="next-market-name">${esc(s?.marketLabel||s?.market||'—')}</span><span class="next-pick">${esc(pickText(s))}</span><span class="next-price">@ ${esc(show(s?.odds))}</span></div><div class="next-book">${esc(s?.bookmaker||'Bet365')}${extra?` · ${esc(extra)} more active signal${g.signals.length>2?'s':''}`:''}</div></div>`}
 function card(g){const s=g.sample,open=openIds.has(g.id),m=entryMinute(s),league=[s?.league?.country,s?.league?.name].filter(Boolean).join(' · ');return`<article class="next-signal-card${open?' open':''}" data-next-card="${esc(g.id)}"><div class="next-signal-main"><div class="next-match-id"><div class="next-league"><span class="live-badge">LIVE</span><span>${esc(league||'Live match')}</span></div><div class="next-teams">${esc(team(s,'home'))} — ${esc(team(s,'away'))}</div></div><div class="next-score"><strong>${esc(liveScore(s))}</strong><small>${esc(liveMinute(s))}</small></div><div class="next-entry"><small>SIGNAL AT</small><strong>${esc(show(m))}${m==null?'':"'"} · ${esc(entryScore(s))}</strong></div>${marketPrimary(g)}<button type="button" class="next-expand" data-next-toggle="${esc(g.id)}" aria-expanded="${open?'true':'false'}" aria-label="Toggle signal details">${open?'−':'+'}</button></div>${open?detail(g):''}</article>`}
 function render(rows){const groups=group(rows);renderKpis(groups,rows);renderMarkets(rows);const el=document.querySelector('[data-next-signal-list]');if(el)el.innerHTML=groups.length?groups.map(card).join(''):'<div class="next-empty">No active live signals right now.</div>';state('live',`${rows.length} active signal${rows.length===1?'':'s'} · ${groups.length} match${groups.length===1?'':'es'}`)}
-async function load(){try{const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(`HTTP ${r.status}`);render(Array.isArray(j?.signals)?j.signals:[])}catch(err){console.warn('Signal NEXT preview load failed',err);state('warn','Signal feed unavailable');const el=document.querySelector('[data-next-signal-list]');if(el&&!el.children.length)el.innerHTML='<div class="next-empty">Unable to load active signals.</div>'}}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-next-toggle]');if(!b)return;const id=b.getAttribute('data-next-toggle');if(openIds.has(id))openIds.delete(id);else openIds.add(id);load()});
-load();setInterval(load,POLL);
+async function load(){if(!active||loading)return;loading=true;try{const r=await fetch(`${API}?_=${Date.now()}`,{cache:'no-store'}),j=await r.json();if(!r.ok)throw new Error(`HTTP ${r.status}`);render(Array.isArray(j?.signals)?j.signals:[])}catch(err){console.warn('Signal workspace load failed',err);state('warn','Signal feed unavailable');const el=document.querySelector('[data-next-signal-list]');if(el&&!el.children.length)el.innerHTML='<div class="next-empty">Unable to load active signals.</div>'}finally{loading=false}}
+function start(){if(active)return;active=true;load();if(!timer)timer=setInterval(()=>{if(active)load()},POLL)}
+function stop(){active=false;if(timer){clearInterval(timer);timer=0}}
+function syncView(view){if(view==='signal')start();else stop()}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-next-toggle]');if(!b||!active)return;const id=b.getAttribute('data-next-toggle');if(openIds.has(id))openIds.delete(id);else openIds.add(id);load()});
+document.addEventListener('ball46:workspace-view',e=>syncView(e.detail?.view));
+if(document.body?.dataset?.workspaceView==='signal')start();
+window.addEventListener('beforeunload',stop,{once:true});
 })();
