@@ -7,6 +7,7 @@ on:
       - 'nomad-live-343/index.html'
       - 'nomad-live-343/singlepage-workspace-343.css'
       - 'nomad-live-343/singlepage-workspace-343.js'
+      - 'nomad-live-343/signal-next.js'
       - '.github/workflows/deploy-ball46-singlepage-preview-20260921.yml'
   workflow_dispatch:
 
@@ -42,13 +43,13 @@ jobs:
             git diff --quiet "$BASELINE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
           done
           grep -Fq '"name": "nomadtips3-343-ultra-preview"' workers/nomadtips3-343-preview/wrangler.jsonc
-          echo 'PASS: single-page preview is presentation/router only.'
+          echo 'PASS: page-1 engine, bookmaker and odds runtime are unchanged.'
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Validate single-page workspace
+      - name: Validate sidebar-only single-page workspace
         shell: bash
         run: |
           set -euo pipefail
@@ -58,9 +59,20 @@ jobs:
           grep -Fq 'data-workspace-panel="signal"' nomad-live-343/index.html
           grep -Fq 'data-workspace-panel="statistics"' nomad-live-343/index.html
           grep -Fq 'PERFORMANCE TREND' nomad-live-343/index.html
-          grep -Fq 'singlepage-workspace-343.js' nomad-live-343/index.html
+          grep -Fq 'workspace-brand-card' nomad-live-343/index.html
+          grep -Fq 'data-theme-toggle' nomad-live-343/index.html
           ! grep -Fq 'href="signal.html"' nomad-live-343/index.html
           ! grep -Fq 'href="statistics.html"' nomad-live-343/index.html
+          ! grep -Fq '<header class="v2-topbar"' nomad-live-343/index.html
+          ! grep -Fq '<nav class="mobile-nav"' nomad-live-343/index.html
+          ! grep -Fq 'v2-header.css' nomad-live-343/index.html
+          ! grep -Fq 'v2-shared.js' nomad-live-343/index.html
+          grep -Fq 'ball46:workspace-view' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js
+          ! grep -Fq "const SIGNAL_API=" nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "if(state.view!=='statistics'" nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "if(!active||loading)return" nomad-live-343/signal-next.js
+          git diff --check
 
       - name: Validate Cloudflare credentials
         shell: bash
@@ -86,9 +98,15 @@ jobs:
           grep -Fq 'data-workspace-panel="live"' /tmp/home.html
           grep -Fq 'data-workspace-panel="signal"' /tmp/home.html
           grep -Fq 'data-workspace-panel="statistics"' /tmp/home.html
-          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-1' /tmp/home.html
+          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-2' /tmp/home.html
+          grep -Fq 'signal-next.js?v=343-singlepage-signal-2' /tmp/home.html
+          grep -Fq 'workspace-brand-card' /tmp/home.html
+          ! grep -Fq '<header class="v2-topbar"' /tmp/home.html
+          ! grep -Fq '<nav class="mobile-nav"' /tmp/home.html
           curl -fsS --max-time 30 "$PREVIEW_URL/singlepage-workspace-343.js?verify=$GITHUB_RUN_ID" -o /tmp/sp.js
+          curl -fsS --max-time 30 "$PREVIEW_URL/signal-next.js?verify=$GITHUB_RUN_ID" -o /tmp/signal-next.js
           node --check /tmp/sp.js
+          node --check /tmp/signal-next.js
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/stats.json
