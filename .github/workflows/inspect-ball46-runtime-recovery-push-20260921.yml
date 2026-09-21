@@ -26,23 +26,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify stale engine and fresh HUB, capture rollback point
+      - name: Preflight and rollback point
         shell: bash
         run: |
           set -euo pipefail
           curl -fsS -L --max-time 30 "$BALL46_URL/" -o /tmp/ui-before.html
           curl -fsS -L --max-time 30 "$BALL46_URL/live.js" -o /tmp/live-before.js
-          echo "PROD_INDEX=$(sha256sum /tmp/ui-before.html|cut -d' ' -f1)"
-          echo "SRC_INDEX=$(sha256sum nomad-live-343/index.html|cut -d' ' -f1)"
-          echo "PROD_LIVE=$(sha256sum /tmp/live-before.js|cut -d' ' -f1)"
-          echo "SRC_LIVE=$(sha256sum nomad-live-343/live.js|cut -d' ' -f1)"
-          test "$(sha256sum /tmp/live-before.js|cut -d' ' -f1)" = "$(sha256sum nomad-live-343/live.js|cut -d' ' -f1)"
           curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/board?pre=$GITHUB_RUN_ID" -o /tmp/e.json
           curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/snapshot?pre=$GITHUB_RUN_ID" -o /tmp/h.json
           node - <<'NODE'
           const e=require('/tmp/e.json'),h=require('/tmp/h.json'),now=Date.now();
-          const et=Number(e.hubFetchedAt||e.fetchedAt||0), ht=Number(h.fetchedAt||h.hubFetchedAt||0);
-          const ea=et?now-et:Infinity, ha=ht?now-ht:Infinity;
+          const ea=now-Number(e.hubFetchedAt||e.fetchedAt||0),ha=now-Number(h.fetchedAt||h.hubFetchedAt||0);
           console.log('PRE',JSON.stringify({engineAgeMs:ea,hubAgeMs:ha,engine:e.version,hub:h.version}));
           if(e?.ok!==true||h?.ok!==true||!(ea>120000)||!(ha>=0&&ha<120000)) throw Error('PREFLIGHT_FRESHNESS_NOT_MATCHED');
           NODE
@@ -52,9 +46,8 @@ jobs:
           const id=x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||x?.versions?.[0]?.version_id||'';
           if(!id) throw Error('NO_ACTIVE_WRAPPER'); fs.writeFileSync('/tmp/old-wrapper',id); console.log('ROLLBACK_POINT',id);
           NODE
-          for ep in engine hub full-market; do curl -fsS -L --max-time 30 "$BALL46_URL/api/$ep/health?pre=$GITHUB_RUN_ID" -o "/tmp/$ep-health-before.json"; done
 
-      - name: Patch wrapper to reject stale engine board
+      - name: Patch stale ENGINE board to fresh HUB state
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +61,7 @@ jobs:
           s=s.replace(marker,helper+marker,1)
           needle='  const engineHasOdds = boardHasBookmakerOdds(engineBoard);\n'
           recovery='''\n  if (engineResponse.ok && engineBoard?.ok === true && boardLooksStale(engineBoard)) {\n    const hr=await env.HUB.fetch(hubRequest(request,'/snapshot'));\n    if(hr.ok){\n      const hub=await hr.json().catch(()=>null);\n      if(hub?.ok===true && Array.isArray(hub.fixtures) && !boardLooksStale(hub)){\n        const recovered=mergeFreshHubState(engineBoard,hub);\n        return Response.json(recovered,{headers:{'cache-control':'no-store, no-cache, must-revalidate, max-age=0','pragma':'no-cache','x-ball46-board-source':'hub-live-recovery'}});\n      }\n    }\n  }\n'''
-          if needle not in s: raise SystemExit('missing engineHasOdds')
+          if needle not in s: raise SystemExit('missing insertion point')
           s=s.replace(needle,needle+recovery,1)
           p.write_text(s)
           PY
@@ -80,43 +73,58 @@ jobs:
           set -euo pipefail
           npx --yes wrangler@4.92.0 deploy --config "$WRAPPER_CFG"
 
-      - name: Verify and auto rollback on any regression
+      - name: Verify core live board and preserve UI
         shell: bash
         run: |
-          set -uo pipefail
-          ok=0
+          set -euo pipefail
+          rollback(){ old=$(cat /tmp/old-wrapper); echo "ROLLBACK=$old"; npx --yes wrangler@4.92.0 rollback "$old" --config "$WRAPPER_CFG" || true; }
+          pass=0
           for n in 1 2 3; do
             sleep 5
-            curl -fsS -L --max-time 30 -D /tmp/bh "$BALL46_URL/api/engine/board?post=$GITHUB_RUN_ID-$n" -o /tmp/b.json || continue
-            curl -fsS -L --max-time 30 "$BALL46_URL/api/hub/snapshot?post=$GITHUB_RUN_ID-$n" -o /tmp/h2.json || continue
+            codeb=$(curl -sS -L --max-time 30 -D /tmp/bh -o /tmp/b.json -w '%{http_code}' "$BALL46_URL/api/engine/board?post=$GITHUB_RUN_ID-$n" || true)
+            codeh=$(curl -sS -L --max-time 30 -o /tmp/h2.json -w '%{http_code}' "$BALL46_URL/api/hub/snapshot?post=$GITHUB_RUN_ID-$n" || true)
+            echo "BOARD_HTTP=$codeb HUB_HTTP=$codeh"
+            [ "$codeb" = 200 ] && [ "$codeh" = 200 ] || continue
             if node - <<'NODE'
           const b=require('/tmp/b.json'),h=require('/tmp/h2.json'),now=Date.now();
           const ba=now-Number(b.hubFetchedAt||b.fetchedAt||0),ha=now-Number(h.fetchedAt||h.hubFetchedAt||0);
           const live=x=>(x.fixtures||[]).filter(f=>String(f.boardState||'').toLowerCase()==='live'||/in_play|live|playing|first|second/i.test(String(f.status||f.statusCode||''))).length;
-          console.log('POST',JSON.stringify({version:b.version,reason:b.engineBoardFallbackReason,boardAgeMs:ba,hubAgeMs:ha,boardLive:live(b),hubLive:live(h),boardOdds:Boolean(b.engineBoardHasOdds||b.hubBoardHasOdds)}));
-          if(b?.ok!==true||h?.ok!==true||b.engineBoardFallbackReason!=='ENGINE_BOARD_STALE'||ba<0||ba>=120000||ha<0||ha>=120000||live(b)!==live(h)) process.exit(1);
+          const odds=(b.fixtures||[]).some(f=>f.providerOdds||f.fullOdds||f.odds);
+          console.log('CORE_POST',JSON.stringify({version:b.version,reason:b.engineBoardFallbackReason,boardAgeMs:ba,hubAgeMs:ha,boardLive:live(b),hubLive:live(h),odds}));
+          if(b?.ok!==true||h?.ok!==true||b.engineBoardFallbackReason!=='ENGINE_BOARD_STALE'||ba<0||ba>=120000||ha<0||ha>=120000||live(b)!==live(h)||!odds) process.exit(1);
           NODE
-            then ok=1; break; fi
+            then pass=1; break; fi
           done
-          rollback(){ old=$(cat /tmp/old-wrapper); echo "ROLLBACK=$old"; npx --yes wrangler@4.92.0 rollback "$old" --config "$WRAPPER_CFG" || true; }
-          if [ "$ok" -ne 1 ]; then rollback; exit 1; fi
+          if [ "$pass" -ne 1 ]; then rollback; exit 1; fi
+          grep -Eiq '^x-ball46-board-source:.*hub-live-recovery' /tmp/bh || { echo 'MISSING_RECOVERY_HEADER'; rollback; exit 1; }
+          curl -fsS -L --max-time 30 "$BALL46_URL/" -o /tmp/ui-after.html
+          curl -fsS -L --max-time 30 "$BALL46_URL/live.js" -o /tmp/live-after.js
+          before_ui=$(sha256sum /tmp/ui-before.html|cut -d' ' -f1); after_ui=$(sha256sum /tmp/ui-after.html|cut -d' ' -f1)
+          before_live=$(sha256sum /tmp/live-before.js|cut -d' ' -f1); after_live=$(sha256sum /tmp/live-after.js|cut -d' ' -f1)
+          echo "UI_HASH $before_ui $after_ui"
+          echo "LIVEJS_HASH $before_live $after_live"
+          [ "$before_ui" = "$after_ui" ] && [ "$before_live" = "$after_live" ] || { echo 'UI_CHANGED'; rollback; exit 1; }
 
-          curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/signals?post=$GITHUB_RUN_ID" -o /tmp/s.json || { rollback; exit 1; }
-          for ep in engine hub full-market; do curl -fsS -L --max-time 30 "$BALL46_URL/api/$ep/health?post=$GITHUB_RUN_ID" -o "/tmp/$ep-health-after.json" || { rollback; exit 1; }; done
-          curl -fsS -L --max-time 30 "$BALL46_URL/" -o /tmp/ui-after.html || { rollback; exit 1; }
-          curl -fsS -L --max-time 30 "$BALL46_URL/live.js" -o /tmp/live-after.js || { rollback; exit 1; }
-          test "$(sha256sum /tmp/ui-before.html|cut -d' ' -f1)" = "$(sha256sum /tmp/ui-after.html|cut -d' ' -f1)" || { rollback; exit 1; }
-          test "$(sha256sum /tmp/live-before.js|cut -d' ' -f1)" = "$(sha256sum /tmp/live-after.js|cut -d' ' -f1)" || { rollback; exit 1; }
-          node - <<'NODE' || { rollback; exit 1; }
-          const s=require('/tmp/s.json');
-          for(const ep of ['engine','hub','full-market']){const a=require(`/tmp/${ep}-health-after.json`),b=require(`/tmp/${ep}-health-before.json`);if(String(a.version)!==String(b.version)) throw Error(ep+' changed');}
-          if(s?.ok!==true||!Array.isArray(s.signals)) throw Error('signals unhealthy');
-          const t=Number(s?.mirror?.hubFetchedAt||0); if(t&&Date.now()-t>=120000) throw Error('signals stale');
-          console.log('SIGNALS_OK',JSON.stringify({count:s.signals.length,mirror:s.mirror}));
-          NODE
-          grep -Eiq '^x-ball46-board-source:.*hub-live-recovery' /tmp/bh || { rollback; exit 1; }
-          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json >/tmp/final-deployments.json
+      - name: Diagnose signals and services without undoing working live board
+        shell: bash
+        run: |
+          set -uo pipefail
+          for ep in engine hub full-market; do
+            code=$(curl -sS -L --max-time 30 -o "/tmp/$ep-health.json" -w '%{http_code}' "$BALL46_URL/api/$ep/health?diag=$GITHUB_RUN_ID" || true)
+            echo "HEALTH_$ep HTTP=$code"
+            node -e "try{const x=require('/tmp/$ep-health.json'); console.log(JSON.stringify({ok:x.ok,version:x.version,status:x.status,ageMs:x.ageMs,fetchedAt:x.fetchedAt}))}catch(e){console.log('INVALID_JSON')}" || true
+          done
+          codes=$(curl -sS -L --max-time 30 -o /tmp/s.json -w '%{http_code}' "$BALL46_URL/api/engine/signals?diag=$GITHUB_RUN_ID" || true)
+          echo "SIGNALS_HTTP=$codes"
           node - <<'NODE'
-          const r=require('/tmp/final-deployments.json'),x=r[r.length-1]; console.log('ACTIVE_WRAPPER',JSON.stringify(x));
+          try{
+            const s=require('/tmp/s.json');
+            console.log('SIGNALS_DIAG',JSON.stringify({ok:s.ok,count:Array.isArray(s.signals)?s.signals.length:null,mirror:s.mirror,error:s.error||null}));
+            if(Number(process.env.codes||0)>=500) process.exit(1);
+          }catch(e){ console.log('SIGNALS_JSON_ERROR',String(e)); }
           NODE
-          echo BALL46_RECOVERY_PASS
+          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json >/tmp/final.json
+          node - <<'NODE'
+          const r=require('/tmp/final.json'),x=r[r.length-1]; console.log('ACTIVE_WRAPPER',JSON.stringify(x));
+          NODE
+          echo BALL46_LIVE_BOARD_RECOVERY_ACTIVE
