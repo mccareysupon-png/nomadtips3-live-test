@@ -1,0 +1,44 @@
+name: Ball46 Condition Runtime Audit Temp 20260921
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-condition-runtime-audit-temp-20260921.yml'
+
+env:
+  BALL46_URL: https://www.ball46.com
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Read live condition state
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?audit=$GITHUB_RUN_ID" -o /tmp/settings.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?audit=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?audit=$GITHUB_RUN_ID" -o /tmp/signals.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const c=JSON.parse(fs.readFileSync('/tmp/settings.json'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const active=Object.entries(c.runState||{}).filter(([,v])=>v).map(([k])=>k);
+          const states={};
+          for(const f of b.fixtures||[]){
+            for(const [m,a] of Object.entries(f.analysis||{})){
+              const st=String(a?.state||'NONE');
+              states[m]??={}; states[m][st]=(states[m][st]||0)+1;
+            }
+          }
+          const cfg={};
+          for(const k of active){const x=c.settings?.[k]||{};cfg[k]={minute:[x.minuteFrom,x.minuteTo],window:x.rollingWindowMinutes,required:x.evidenceRequired,odds:[x.oddsMin,x.oddsMax],sideMode:x.sideMode??null,lineMin:x.lineMin??null,lineMax:x.lineMax??null,lineGapMax:x.lineGapMax??null};}
+          console.log('ACTIVE_MARKETS',JSON.stringify(active));
+          console.log('ACTIVE_CONFIG',JSON.stringify(cfg));
+          console.log('ANALYSIS_STATES',JSON.stringify(states));
+          console.log('SIGNAL_COUNTS',JSON.stringify({total:(s.signals||[]).length,pending:(s.signals||[]).filter(x=>x.status==='PENDING').length}));
+          console.log('FIXTURES',(b.fixtures||[]).length);
+          NODE
