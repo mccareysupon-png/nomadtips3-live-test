@@ -7,6 +7,7 @@ const $$=s=>[...document.querySelectorAll(s)];
 const qs=()=>new URLSearchParams(location.search);
 const validStatus=new Set(['all','live','scheduled','unknown','finished']);
 let flowTimer=0;
+let linkObserver=null;
 
 function classify(f){
   const raw=String(f?.boardState??f?.status??f?.statusCode??'').toLowerCase();
@@ -14,6 +15,36 @@ function classify(f){
   if(/live|in.?play|playing|\b1h\b|\b2h\b/.test(raw))return'live';
   if(/schedule|upcoming|not.?started|\bns\b/.test(raw))return'scheduled';
   return'unknown';
+}
+function productionHref(href){
+  if(!href)return href;
+  return href
+    .replace('index-flow-preview.html','index.html')
+    .replace('signal-flow-preview.html','signal.html')
+    .replace('statistics-v2-preview.html','statistics.html');
+}
+function rewriteWorkspaceLinks(root=document){
+  root.querySelectorAll?.('a[href]').forEach(a=>{
+    const next=productionHref(a.getAttribute('href'));
+    if(next&&next!==a.getAttribute('href'))a.setAttribute('href',next);
+  });
+}
+function observeWorkspaceLinks(){
+  rewriteWorkspaceLinks(document);
+  if(!document.body)return;
+  linkObserver=new MutationObserver(mutations=>{
+    for(const m of mutations){
+      for(const node of m.addedNodes){
+        if(node?.nodeType!==1)continue;
+        if(node.matches?.('a[href]')){
+          const next=productionHref(node.getAttribute('href'));
+          if(next&&next!==node.getAttribute('href'))node.setAttribute('href',next);
+        }
+        rewriteWorkspaceLinks(node);
+      }
+    }
+  });
+  linkObserver.observe(document.body,{childList:true,subtree:true});
 }
 function setCount(key,value){
   $$(`[data-flow-count="${key}"]`).forEach(el=>el.textContent=String(value));
@@ -90,7 +121,7 @@ function bindLiveSignalDeepLinks(){
     if(!cell)return;
     const row=cell.closest('[data-match-id]');if(!row)return;
     e.preventDefault();e.stopPropagation();
-    location.href=`signal-flow-preview.html?fixture=${encodeURIComponent(row.dataset.matchId||'')}`;
+    location.href=`signal.html?fixture=${encodeURIComponent(row.dataset.matchId||'')}`;
   },true);
 }
 function marketFromText(text){
@@ -112,7 +143,7 @@ function decorateSignalCards(){
     const market=marketFromText(card.querySelector('.next-market-name')?.textContent);
     const actions=document.createElement('div');
     actions.className='flow-context-actions';
-    actions.innerHTML=`<a href="index-flow-preview.html?match=${encodeURIComponent(fixture)}">View match</a><a href="statistics-v2-preview.html${market==='all'?'':`?market=${market}`}">View statistics</a>`;
+    actions.innerHTML=`<a href="index.html?match=${encodeURIComponent(fixture)}">View match</a><a href="statistics.html${market==='all'?'':`?market=${market}`}">View statistics</a>`;
     const detail=card.querySelector('.next-signal-detail');
     if(detail)card.insertBefore(actions,detail);else card.appendChild(actions);
   });
@@ -145,6 +176,7 @@ function observeSignalCards(){
   new MutationObserver(run).observe(root,{childList:true,subtree:true});
 }
 function init(){
+  observeWorkspaceLinks();
   applyStatusFromUrl();
   bindStatusToUrl();
   mirrorSignalCount();
@@ -156,5 +188,5 @@ function init(){
   if(document.body?.dataset?.page==='signal')flowTimer=setInterval(hydrateSignalWorkspaceCounts,FLOW_POLL_MS);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
-window.addEventListener('beforeunload',()=>{if(flowTimer)clearInterval(flowTimer)},{once:true});
+window.addEventListener('beforeunload',()=>{if(flowTimer)clearInterval(flowTimer);if(linkObserver)linkObserver.disconnect()},{once:true});
 })();
