@@ -70,10 +70,6 @@ jobs:
           recovery='''\n  if (engineResponse.ok && engineBoard?.ok === true && boardLooksStale(engineBoard)) {\n    const hr=await env.HUB.fetch(hubRequest(request,'/snapshot'));\n    if(hr.ok){\n      const hub=await hr.json().catch(()=>null);\n      if(hub?.ok===true && Array.isArray(hub.fixtures) && !boardLooksStale(hub)){\n        const recovered=mergeFreshHubState(engineBoard,hub);\n        const enriched=await enrichBoardWithCachedFullMarket(recovered,env);\n        return Response.json(enriched.board,{headers:{'cache-control':'no-store, no-cache, must-revalidate, max-age=0','pragma':'no-cache','x-ball46-board-source':enriched.changed?'hub-live-recovery-plus-central-full-market-cache':'hub-live-recovery'}});\n      }\n    }\n  }\n'''
           if needle not in s: raise SystemExit('missing engineHasOdds')
           s=s.replace(needle,needle+recovery,1)
-          old="    if (board?.ok === true && Array.isArray(board.fixtures)) return liveFixtureIds(board);"
-          new="    if (board?.ok === true && Array.isArray(board.fixtures) && !boardLooksStale(board)) return liveFixtureIds(board);"
-          if old not in s: raise SystemExit('missing prewarm marker')
-          s=s.replace(old,new,1)
           p.write_text(s)
           PY
           node --check workers/nomadtips3-343-preview/src/index.js
@@ -112,7 +108,7 @@ jobs:
           test "$(sha256sum /tmp/ui-before.html|cut -d' ' -f1)" = "$(sha256sum /tmp/ui-after.html|cut -d' ' -f1)" || { rollback; exit 1; }
           test "$(sha256sum /tmp/live-before.js|cut -d' ' -f1)" = "$(sha256sum /tmp/live-after.js|cut -d' ' -f1)" || { rollback; exit 1; }
           node - <<'NODE' || { rollback; exit 1; }
-          const fs=require('fs'),s=require('/tmp/s.json');
+          const s=require('/tmp/s.json');
           for(const ep of ['engine','hub','full-market']){const a=require(`/tmp/${ep}-health-after.json`),b=require(`/tmp/${ep}-health-before.json`);if(String(a.version)!==String(b.version)) throw Error(ep+' changed');}
           if(s?.ok!==true||!Array.isArray(s.signals)) throw Error('signals unhealthy');
           const t=Number(s?.mirror?.hubFetchedAt||0); if(t&&Date.now()-t>=120000) throw Error('signals stale');
