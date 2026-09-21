@@ -115,6 +115,32 @@
   body[data-workspace-view="signal"] .workspace.singlepage>.left-rail>.workspace-stats-card{display:none!important}
   body[data-workspace-view="statistics"] .b46-mobile-status-menu{display:none!important}
 
+  /* Page 3 / Statistics mobile visibility hardening. Uses the native statistics panel and feed. */
+  body[data-workspace-view="statistics"] [data-workspace-panel="statistics"],
+  body[data-workspace-view="statistics"] .sp-stats-content,
+  body[data-workspace-view="statistics"] .sp-results{
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  body[data-workspace-view="statistics"] .sp-table-wrap{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto!important;
+    overflow-y:visible;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior-x:contain;
+  }
+  body[data-workspace-view="statistics"] .workspace-view-state{
+    display:block!important;
+    max-width:46%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    text-align:right;
+  }
+
   /* Classic mobile bottom navigation. This never appears on PC. */
   .b46-mobile-workspace-nav{
     position:fixed;
