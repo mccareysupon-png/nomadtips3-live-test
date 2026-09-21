@@ -1,0 +1,126 @@
+name: Deploy Ball46 Legacy Pages Off Production V4 20260921
+
+on:
+  push:
+    branches: [work/ball46-remove-legacy-pages-20260921]
+    paths:
+      - '.github/workflows/deploy-ball46-legacy-pages-off-production-v4-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASE_SHA: 7c9e26118244dc14a676e7f887d97bdf899553fd
+  WORKER: https://ball46-production.mccarey-supon.workers.dev
+  WWW: https://www.ball46.com
+  APEX: https://ball46.com
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+
+      - name: Guard Page 1 and physical deletion
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in workers/nomadtips3-engine-343/src/index.js workers/nomadtips3-343-preview/wrangler.ball46.jsonc nomad-live-343/index.html nomad-live-343/dashboard-v2-stage3.js nomad-live-343/bulk-odds-compat-343.js nomad-live-343/full-market-bookmaker-343.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/expanded-match-343.js nomad-live-343/signal-next.js nomad-live-343/singlepage-workspace-343.js; do git diff --quiet "$BASE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN PAGE1 CHANGE $p"; exit 1; }; done
+          node --check workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'LEGACY_STANDALONE_PATHS' workers/nomadtips3-343-preview/src/index.js
+          for p in signal.html statistics.html signal-next.html statistics-next.html signal.js statistics.js statistics-next.js signal-focus-343.js signal-bettor-343.css signal-compact-343.css signal-v2-clean-343.css statistics-page-343.css statistics-v2-clean-343.css content-rails-343.css v2-header.css; do test ! -e "nomad-live-343/$p" || { echo "LEGACY FILE EXISTS $p"; exit 1; }; done
+          ! grep -Eq 'signal\.html|statistics\.html' nomad-live-343/sitemap.xml
+          grep -Fq 'signal-next.js' nomad-live-343/index.html
+          grep -Fq 'singlepage-workspace-343.js' nomad-live-343/index.html
+
+      - name: Capture current Odds baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          for n in $(seq 1 6); do curl -fsS --connect-timeout 6 --max-time 20 "$WORKER/api/engine/board?pre=$GITHUB_RUN_ID-$n" -o /tmp/preboard.json && break || sleep 2; done
+          test -s /tmp/preboard.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/preboard.json'));if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('pre board');function h(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(k))}const odds=b.fixtures.filter(f=>h(f.providerOdds)||h(f.fullOdds)||h(f.odds)).length;fs.writeFileSync('/tmp/pre.json',JSON.stringify({fixtures:b.fixtures.length,odds}));console.log({fixtures:b.fixtures.length,odds});
+          NODE
+
+      - name: Dry-run production package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy legacy page shutdown
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify standalone HTML pages are off on Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in signal.html statistics.html signal-next.html statistics-next.html; do
+            ok=0
+            for n in $(seq 1 20); do
+              code=$(curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' "$WORKER/$p?off=$GITHUB_RUN_ID-$n" || true)
+              echo "$p try=$n -> $code"
+              if [ "$code" = 410 ]; then ok=1; break; fi
+              sleep 2
+            done
+            test "$ok" = 1
+          done
+
+      - name: Verify Worker Page 1 and Golden Odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 6 --max-time 20 "$WORKER/?off=$GITHUB_RUN_ID" -o /tmp/home.html
+          grep -Fq 'signal-next.js' /tmp/home.html
+          grep -Fq 'singlepage-workspace-343.js' /tmp/home.html
+          rm -f /tmp/postboard.json
+          for n in $(seq 1 8); do curl -fsS --connect-timeout 6 --max-time 20 "$WORKER/api/engine/board?post=$GITHUB_RUN_ID-$n" -o /tmp/postboard.json && break || sleep 2; done
+          test -s /tmp/postboard.json
+          node - <<'NODE'
+          const fs=require('fs'),pre=JSON.parse(fs.readFileSync('/tmp/pre.json')),b=JSON.parse(fs.readFileSync('/tmp/postboard.json'));if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('post board');function h(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(k))}const odds=b.fixtures.filter(f=>h(f.providerOdds)||h(f.fullOdds)||h(f.odds)).length;if(pre.fixtures>0&&!b.fixtures.length)throw Error('fixtures zero');if(pre.odds>0&&!odds)throw Error('odds zero');console.log('WORKER PAGE1 PASS',{before:pre,after:{fixtures:b.fixtures.length,odds}});
+          NODE
+
+      - name: Verify WWW and Apex main legacy pages are off
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$WWW" "$APEX"; do
+            ok=0
+            for n in $(seq 1 25); do
+              home=$(curl -sS --connect-timeout 5 --max-time 10 -o /tmp/site.html -w '%{http_code}' "$base/?off=$GITHUB_RUN_ID-$n" || true)
+              s=$(curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' "$base/signal.html?off=$GITHUB_RUN_ID-$n" || true)
+              t=$(curl -sS --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' "$base/statistics.html?off=$GITHUB_RUN_ID-$n" || true)
+              echo "$base try=$n home=$home signal=$s stats=$t"
+              if [ "$home" = 200 ] && grep -Fq 'singlepage-workspace-343.js' /tmp/site.html && [ "$s" = 410 ] && [ "$t" = 410 ]; then ok=1; break; fi
+              sleep 3
+            done
+            test "$ok" = 1
+          done
+          rm -f /tmp/wwwboard.json
+          for n in $(seq 1 8); do curl -fsS --connect-timeout 6 --max-time 20 "$WWW/api/engine/board?offfinal=$GITHUB_RUN_ID-$n" -o /tmp/wwwboard.json && break || sleep 2; done
+          test -s /tmp/wwwboard.json
+          node - <<'NODE'
+          const fs=require('fs'),pre=JSON.parse(fs.readFileSync('/tmp/pre.json')),b=JSON.parse(fs.readFileSync('/tmp/wwwboard.json'));if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('www board');function h(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(k))}const odds=b.fixtures.filter(f=>h(f.providerOdds)||h(f.fullOdds)||h(f.odds)).length;if(pre.odds>0&&!odds)throw Error('www odds zero');console.log('WWW PAGE1 PASS',{fixtures:b.fixtures.length,odds});
+          NODE
+
+      - name: Automatic rollback to Performance V1 on any failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git worktree add --detach /tmp/ball46-off-rollback "$BASE_SHA"
+          cd /tmp/ball46-off-rollback/workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 5
+          curl -fsS --connect-timeout 6 --max-time 30 "$WORKER/api/engine/board?rollback=$GITHUB_RUN_ID" -o /tmp/rb.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/rb.json'));if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('rollback unhealthy');console.log('PERFORMANCE V1 RESTORED',{fixtures:b.fixtures.length});
+          NODE
