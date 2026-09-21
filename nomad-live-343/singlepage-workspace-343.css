@@ -1,6 +1,6 @@
 /* Ball46 3.43 · single-page workspace · presentation only */
 .workspace.singlepage{grid-template-columns:210px minmax(0,1fr);gap:14px;align-items:start}
-.workspace.singlepage>.left-rail{position:sticky;top:78px;align-self:start;max-height:calc(100vh - 94px);overflow:auto}
+.workspace.singlepage>.left-rail{position:sticky;top:14px;align-self:start;max-height:calc(100vh - 28px);overflow:auto}
 .workspace-stage{min-width:0}
 .workspace-panel[hidden]{display:none!important}
 .workspace-panel{min-width:0}
@@ -25,3 +25,11 @@
 html[data-theme="dark"] .workspace-nav-row.active,html[data-theme="dark"] .sp-filter-chip.active,html[data-theme="dark"] .sp-page.active{background:#173c2d}
 @media(max-width:1180px){.live-stage-grid{grid-template-columns:minmax(0,1fr) 270px}.sp-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.sp-kpi{border-bottom:1px solid var(--line)}.sp-kpi:nth-child(3n){border-right:0}.sp-kpi:nth-child(n+4){border-bottom:0}}
 @media(max-width:760px){.workspace.singlepage{grid-template-columns:1fr}.workspace.singlepage>.left-rail{position:static;max-height:none;overflow:visible}.live-stage-grid{grid-template-columns:1fr}.live-stage-grid>.right-rail{display:none}.workspace-stats-card{display:block}.workspace-stats-card .workspace-nav-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:6px}.workspace-stats-card .workspace-nav-row{min-height:31px;border:1px solid var(--line);border-radius:7px;padding:0 6px;justify-content:center;font-size:8px}.workspace-stats-card .workspace-nav-row b,.workspace-stats-card .workspace-nav-mark{display:none}.sp-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.sp-kpi{height:56px;padding:7px 9px}.sp-kpi strong{font-size:13px}.sp-kpi small{display:none}.sp-trend{height:164px;padding:11px}.sp-spark,.sp-spark svg{height:112px}.sp-filters{grid-template-columns:1fr;gap:5px}.sp-filter-chips{flex-wrap:nowrap;overflow-x:auto}.sp-filter-chip{min-width:max-content}.sp-table{min-width:850px}.workspace-view-head{min-height:58px;padding:10px 11px}.workspace-view-head h2{font-size:16px}.workspace-view-head p{display:none}}
+
+/* sidebar owns navigation and utilities; legacy header is gone */
+.workspace-brand-card{padding:0;overflow:hidden}
+.workspace-brand-row{min-height:48px;padding:0 10px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.workspace-brand{display:flex;align-items:baseline;font-weight:950;letter-spacing:-1.1px;font-size:19px;line-height:1}.workspace-brand span{color:var(--text)}.workspace-brand b{color:var(--green);font-size:20px}
+.workspace-theme-btn{height:27px;padding:0 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:8px;font-weight:850;cursor:pointer}.workspace-theme-btn:hover{color:var(--text);border-color:var(--green)}
+.workspace-brand-meta{min-height:27px;padding:0 10px 0 12px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:7px;font-weight:850;letter-spacing:.07em}.workspace-brand-meta b{color:var(--green);font-size:7px}
+@media(max-width:760px){.workspace-brand-card{display:block}.workspace-brand-row{min-height:44px}.workspace-brand-meta{display:none}}
