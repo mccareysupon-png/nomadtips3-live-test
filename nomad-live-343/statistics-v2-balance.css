@@ -1,0 +1,56 @@
+/* Ball46 Statistics V2 visual-balance + integration pass 2026-09-21 */
+:root{--rail:210px;--topbar:64px}
+
+/* calm summary strip: numbers stay readable but no longer dominate */
+.kpi-grid{
+  min-height:64px;
+  gap:0;
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.kpi-card{
+  height:64px;
+  padding:9px 12px 8px;
+  border:0;
+  border-right:1px solid var(--line);
+  border-radius:0;
+  box-shadow:none;
+  background:var(--panel);
+}
+.kpi-card:last-child{border-right:0}
+.kpi-card.accent{border-color:transparent;background:var(--panel-2)}
+.kpi-card span{font-size:7.5px;letter-spacing:.09em}
+.kpi-card strong{margin-top:5px;font-size:15px;line-height:1.05;letter-spacing:-.2px;font-weight:850}
+.kpi-card small{margin-top:4px;font-size:7px;color:var(--muted)}
+
+/* chart becomes the visual anchor without becoming heavy */
+.trend-panel{height:178px;padding:14px 16px 12px;border-color:var(--line-strong,var(--line));background:var(--panel)}
+.trend-panel .section-head{height:39px}.trend-panel .section-head h3{font-size:12.5px}
+.spark-wrap,.sparkline{height:118px}.sparkline path{stroke:var(--green);stroke-width:1}.spark-zero{stroke:var(--line);stroke-width:1;stroke-dasharray:2 6}.range-note{font-size:7.5px;color:var(--muted)}
+
+/* same geometry family as page 1 */
+.app-shell{max-width:1920px;padding:18px clamp(10px,1.4vw,22px) 32px}
+.page-head{height:82px;margin-bottom:14px}.workspace{grid-template-columns:var(--rail) minmax(0,1fr);gap:14px}
+.left-rail{top:78px}.market-hero{height:76px;padding:12px 16px}.market-hero h2{font-size:18px;margin-top:3px}.market-hero p{font-size:9.5px}.content-area{gap:10px}
+
+/* replace preview hard whites with Ball46 theme tokens */
+.rail-card,.market-hero,.filter-panel,.results-panel,.feed-state,.page-btn,.filter-chip{background:var(--panel)}
+.rail-card h2,.subnav-slot,.results-table th,.pager{background:var(--panel-2)}
+.rail-row,.market-btn{background:var(--panel);color:var(--text)}
+.rail-row:hover,.market-btn:hover,.subnav-btn:hover{background:var(--panel-2)}
+.subnav-btn{color:var(--text)}
+.market-btn.active,.filter-chip.active,.page-btn.active{background:var(--nav);border-color:var(--nav);color:#fff}
+.results-table td{color:var(--text);border-color:var(--line)}.results-table tbody tr:hover{background:var(--panel-2)}
+.match-cell strong{color:var(--text)}
+
+html[data-theme="dark"] .kpi-card.positive strong{color:var(--green)}
+html[data-theme="dark"] .kpi-card.negative strong{color:var(--red)}
+html[data-theme="dark"] .result-pill.win{background:color-mix(in srgb,var(--green) 16%,var(--panel));color:var(--green)}
+html[data-theme="dark"] .result-pill.loss{background:color-mix(in srgb,var(--red) 14%,var(--panel));color:var(--red)}
+html[data-theme="dark"] .result-pill.push{background:var(--panel-2);color:var(--muted)}
+
+@media(max-width:1050px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));min-height:122px}.kpi-card{height:61px;border-bottom:1px solid var(--line)}.kpi-card:nth-child(3n){border-right:0}.kpi-card:nth-child(n+4){border-bottom:0}}
+@media(max-width:760px){:root{--topbar:58px}.app-shell{padding:10px 6px 70px}.page-head{height:76px;margin-bottom:10px}.market-hero{height:68px;padding:9px 11px}.kpi-grid{min-height:112px;gap:0}.kpi-card{height:56px;padding:7px 9px}.kpi-card strong{font-size:13px;margin-top:4px}.kpi-card small{display:none}.trend-panel{height:164px;padding:11px 11px 9px}.trend-panel .section-head{height:36px}.spark-wrap,.sparkline{height:112px}.left-rail{top:auto}}

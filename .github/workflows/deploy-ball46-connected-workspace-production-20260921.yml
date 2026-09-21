@@ -1,0 +1,140 @@
+name: Deploy Ball46 Connected Workspace Production 20260921
+
+on:
+  push:
+    branches: [work/ball46-statistics-v2-clean-preview-20260921]
+    paths:
+      - 'nomad-live-343/index.html'
+      - 'nomad-live-343/signal.html'
+      - 'nomad-live-343/statistics.html'
+      - 'nomad-live-343/statistics-flow-343.js'
+      - 'nomad-live-343/statistics-flow-343.css'
+      - 'nomad-live-343/statistics-v2-preview.js'
+      - 'nomad-live-343/statistics-v2-preview.css'
+      - 'nomad-live-343/statistics-v2-balance.css'
+      - '.github/workflows/deploy-ball46-connected-workspace-production-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BALL46_URL: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  ROLLBACK_SHA: 179eeec2d4aefb12592b036688ab42386bcfb609
+
+jobs:
+  deploy-ball46-connected-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Guard Ball46-only runtime scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$ROLLBACK_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js; do
+            git diff --quiet "$ROLLBACK_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
+          done
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          echo 'PASS: engine, hub, odds bridge and worker runtime are unchanged.'
+
+      - name: Validate connected production workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/statistics-flow-343.js
+          node --check nomad-live-343/statistics-v2-preview.js
+          node --check nomad-live-343/signal-next.js
+          grep -Fq 'CONNECTED WORKSPACE' nomad-live-343/index.html
+          grep -Fq 'href="signal.html"' nomad-live-343/index.html
+          grep -Fq 'href="statistics.html?market=ah"' nomad-live-343/index.html
+          grep -Fq 'data-page="signal"' nomad-live-343/signal.html
+          grep -Fq 'data-page="statistics"' nomad-live-343/statistics.html
+          grep -Fq 'PERFORMANCE TREND' nomad-live-343/statistics.html
+          grep -Fq "location.href=\`signal.html?fixture=" nomad-live-343/statistics-flow-343.js
+          ! grep -Fq '<nav class="v2-mainnav"' nomad-live-343/index.html
+          ! grep -Fq '<nav class="v2-mainnav"' nomad-live-343/signal.html
+          ! grep -Fq '<nav class="v2-mainnav"' nomad-live-343/statistics.html
+          ! grep -Fq 'noindex,nofollow' nomad-live-343/index.html
+          ! grep -Fq 'noindex,nofollow' nomad-live-343/signal.html
+          ! grep -Fq 'noindex,nofollow' nomad-live-343/statistics.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Ball46 production package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Ball46 production only
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Smoke Ball46 connected workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          for base in "$BALL46_WORKER" "$BALL46_URL" "$BALL46_APEX"; do
+            curl -fsS --max-time 30 "$base/?verify=$GITHUB_RUN_ID" -o /tmp/home.html
+            grep -Fq 'CONNECTED WORKSPACE' /tmp/home.html
+            ! grep -Fq '<nav class="v2-mainnav"' /tmp/home.html
+          done
+          curl -fsS --max-time 30 "$BALL46_URL/signal.html?verify=$GITHUB_RUN_ID" -o /tmp/signal.html
+          curl -fsS --max-time 30 "$BALL46_URL/statistics.html?verify=$GITHUB_RUN_ID" -o /tmp/statistics.html
+          grep -Fq 'Active Signals' /tmp/signal.html
+          grep -Fq 'PERFORMANCE TREND' /tmp/statistics.html
+          grep -Fq 'statistics-v2-preview.js?v=20260921-prod1' /tmp/statistics.html
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const board=JSON.parse(fs.readFileSync('/tmp/board.json','utf8'));
+          const signals=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const stats=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(board?.ok!==true||!Array.isArray(board?.fixtures)) throw Error('board unhealthy');
+          if(!Array.isArray(signals?.signals)) throw Error('signals unhealthy');
+          if(stats?.ok!==true||!Array.isArray(stats?.rows)) throw Error('statistics unhealthy');
+          console.log('BALL46 PASS',{fixtures:board.fixtures.length,signals:signals.signals.length,statistics:stats.rows.length});
+          NODE
+          echo 'PASS: Ball46 connected workspace and all three data flows are live.'
+
+      - name: Roll back Ball46 if post-deploy validation fails
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Rolling Ball46 back to $ROLLBACK_SHA"
+          git checkout --detach "$ROLLBACK_SHA"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 4
+          curl -fsS --max-time 30 "$BALL46_URL/?rollback=$GITHUB_RUN_ID" -o /tmp/rollback-home.html
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?rollback=$GITHUB_RUN_ID" -o /tmp/rollback-board.json
+          node -e 'const b=require("/tmp/rollback-board.json");if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error("rollback board unhealthy");console.log("ROLLBACK PASS",b.fixtures.length)'
