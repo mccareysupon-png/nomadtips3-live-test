@@ -1,12 +1,13 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v8-storage-diagnostic';
+const VERSION='nomad343-engine-v9-signal-chunks';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=45*60_000;
 const MAX_HISTORY_ROWS=45;
 const MAX_SIGNALS=1600;
+const SIGNAL_CHUNK_SIZE=100;
 const MAX_ODDS_FIXTURES_PER_SCAN=4;
 const UI_ODDS_CACHE_MS=60_000;
 const UI_ODDS_STALE_MS=15*60_000;
@@ -231,6 +232,8 @@ export class Nomad343Engine extends DurableObject{
   constructor(ctx,env){super(ctx,env);this.scanPromise=null}
   async readSettings(){const raw=await this.ctx.storage.get('settings')||{};return sanitizeSettings(raw)}
   async readRun(){const raw=await this.ctx.storage.get('runState')||{};return sanitizeRun(raw)}
+  async readSignals(){const idx=await this.ctx.storage.get('signalIndex');if(idx?.version===1&&idx?.generation!==undefined){const chunks=Math.max(0,Math.round(Number(idx.chunks)||0)),out=[];for(let i=0;i<chunks;i++){const key=`signalChunk:${idx.generation}:${String(i).padStart(3,'0')}`,chunk=await this.ctx.storage.get(key);if(!Array.isArray(chunk))throw new Error(`SIGNAL_CHUNK_MISSING index=${i} key=${key}`);out.push(...chunk)}return out.slice(-MAX_SIGNALS)}const legacy=await this.ctx.storage.get('signals');return Array.isArray(legacy)?legacy:[]}
+  async writeSignals(rows){const list=(Array.isArray(rows)?rows:[]).slice(-MAX_SIGNALS),previous=await this.ctx.storage.get('signalIndex'),generation=String(now()),chunks=Math.ceil(list.length/SIGNAL_CHUNK_SIZE);let maxChunkBytes=0,totalBytes=0;for(let i=0;i<chunks;i++){const chunk=list.slice(i*SIGNAL_CHUNK_SIZE,(i+1)*SIGNAL_CHUNK_SIZE),bytes=new TextEncoder().encode(JSON.stringify(chunk)).length,key=`signalChunk:${generation}:${String(i).padStart(3,'0')}`;maxChunkBytes=Math.max(maxChunkBytes,bytes);totalBytes+=bytes;if(bytes>1800000)throw new Error(`SIGNAL_CHUNK_TOO_BIG index=${i} bytes=${bytes}`);try{await this.ctx.storage.put(key,chunk)}catch(e){throw new Error(`STORE_SIGNAL_CHUNK index=${i} bytes=${bytes}: ${String(e?.message||e)}`)}}await this.ctx.storage.put('signalIndex',{version:1,generation,chunks,count:list.length,chunkSize:SIGNAL_CHUNK_SIZE,maxChunkBytes,totalBytes,updatedAt:now()});await this.ctx.storage.delete('signals');if(previous?.version===1&&previous?.generation!==undefined&&String(previous.generation)!==generation){const oldChunks=Math.max(0,Math.round(Number(previous.chunks)||0));for(let i=0;i<oldChunks;i++)await this.ctx.storage.delete(`signalChunk:${previous.generation}:${String(i).padStart(3,'0')}`)}return {count:list.length,chunks,chunkSize:SIGNAL_CHUNK_SIZE,maxChunkBytes,totalBytes}}
   async scanIfDue(){const last=await this.ctx.storage.get('lastScan');if(last?.finishedAt&&now()-last.finishedAt<MIN_SCAN_GAP_MS)return last;if(this.scanPromise)return this.scanPromise;this.scanPromise=this.scan().finally(()=>{this.scanPromise=null});return this.scanPromise}
   async scan(){
     const startedAt=now();
@@ -238,12 +241,12 @@ export class Nomad343Engine extends DurableObject{
       const hr=await this.env.HUB.fetch('https://hub.internal/snapshot');const hub=await hr.json();if(!hub?.ok)throw new Error(hub?.error||'HUB_NOT_READY');
       const hubAgeMs=num(hub?.ageMs),hubStale=hub?.stale===true||(hubAgeMs!==null&&hubAgeMs>180_000);
       if(hubStale){
-        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.ctx.storage.get('signals')||[],fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];
+        const prevBoard=await this.ctx.storage.get('board')||{},signals=await this.readSignals(),fixtures=Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[];
         await this.ctx.storage.put('board',{...prevBoard,ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs,stale:true,staleGuard:true});
         const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:fixtures.length,liveCount:fixtures.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled:0,refereeRequests:0,refereeQueued:0,staleGuard:true,skipReason:'HUB_STALE',lastError:null};
         await this.ctx.storage.put('lastScan',meta);return meta;
       }
-      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.ctx.storage.get('signals')||[],prevBoard=await this.ctx.storage.get('board')||{};
+      const settings=await this.readSettings(),run=await this.readRun(),oldHist=await this.ctx.storage.get('histories')||{},signals=await this.readSignals(),prevBoard=await this.ctx.storage.get('board')||{};
       const prevById=new Map((Array.isArray(prevBoard?.fixtures)?prevBoard.fixtures:[]).map(x=>[String(x?.fixtureId??''),x]));
       const pendingFixtureIds=new Set(signals.filter(s=>['PENDING','UNRESOLVED'].includes(s.status)).map(s=>String(s.fixtureId)));
       const histories={},board=[],seen=new Set(signals.map(s=>`${s.fixtureId}:${s.market}`));const at=Number(hub.fetchedAt||now());
@@ -297,9 +300,9 @@ export class Nomad343Engine extends DurableObject{
       const byteSize=v=>new TextEncoder().encode(JSON.stringify(v)).length;
       const storageBytes={histories:byteSize(histories),signals:byteSize(signalStore),board:byteSize(boardStore)};
       try{await this.ctx.storage.put('histories',histories)}catch(e){throw new Error(`STORE_HISTORIES bytes=${storageBytes.histories}: ${String(e?.message||e)}`)}
-      try{await this.ctx.storage.put('signals',signalStore)}catch(e){throw new Error(`STORE_SIGNALS bytes=${storageBytes.signals}: ${String(e?.message||e)}`)}
+      const signalStorage=await this.writeSignals(signalStore)
       try{await this.ctx.storage.put('board',boardStore)}catch(e){throw new Error(`STORE_BOARD bytes=${storageBytes.board}: ${String(e?.message||e)}`)}
-      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
+      const meta={ok:true,startedAt,finishedAt:now(),fixtureCount:board.length,liveCount:board.filter(isLive).length,signalCount:signals.filter(s=>s.status==='PENDING').length,unresolvedCount:signals.filter(s=>s.status==='UNRESOLVED').length,reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),signalStorage,lastError:null};await this.ctx.storage.put('lastScan',meta);return meta;
     }catch(e){const meta={ok:false,startedAt,finishedAt:now(),lastError:String(e?.message||e)};await this.ctx.storage.put('lastScan',meta);return meta}
   }
   async fetch(request){
@@ -327,8 +330,8 @@ export class Nomad343Engine extends DurableObject{
     if(u.pathname==='/settings'&&request.method==='PUT'){const body=await request.json().catch(()=>({}));const current=await this.readSettings(),settings=sanitizeSettings({...current,...(body.settings||{})}),run=sanitizeRun({...await this.readRun(),...(body.runState||{})});await this.ctx.storage.put('settings',settings);await this.ctx.storage.put('runState',run);return Response.json({ok:true,settings,runState:run,markets:MARKET_RULES})}
     if(u.pathname==='/scan'&&request.method==='POST')return Response.json(await this.scan());
     if(u.pathname==='/board'){const board=await this.ctx.storage.get('board')||{ok:false,version:VERSION,error:'NO_BOARD'};if(board?.staleGuard===true||board?.stale===true)return Response.json({...board,ok:false,error:'HUB_STALE'}, {status:503,headers:{'cache-control':'no-store'}});return Response.json(board,{headers:{'cache-control':'no-store'}})}
-    if(u.pathname==='/signals'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}
-    if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}
+    if(u.pathname==='/signals'){const s=await this.readSignals();return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}
+    if(u.pathname==='/statistics'){const s=await this.readSignals();return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}
     if(u.pathname==='/history'&&request.method==='GET'){const fixtureId=String(u.searchParams.get('fixtureId')||'').trim();if(!fixtureId)return Response.json({ok:false,error:'FIXTURE_ID_REQUIRED'},{status:400});const minutes=Math.max(2,Math.min(30,Math.round(num(u.searchParams.get('window'))??10))),histories=await this.ctx.storage.get('histories')||{},rows=Array.isArray(histories[fixtureId])?histories[fixtureId]:[];return Response.json({ok:true,version:'nomad343-flow-history-v1',fixtureId,retainedMinutes:45,maxRows:MAX_HISTORY_ROWS,pressureWindowMinutes:minutes,weights:PRESSURE_WEIGHTS,firstAt:rows[0]?.at??null,lastAt:rows[rows.length-1]?.at??null,rows,pressure:pressureSeries(rows,minutes)})}
     return new Response('Not found',{status:404});
   }
