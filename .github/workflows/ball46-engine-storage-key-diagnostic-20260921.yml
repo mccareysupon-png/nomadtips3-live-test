@@ -1,0 +1,92 @@
+name: Ball46 Engine Storage Key Diagnostic 20260921
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-engine-storage-key-diagnostic-20260921.yml'
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-full-market-20260918
+          fetch-depth: 0
+
+      - name: Add labeled storage writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          oldv="const VERSION='nomad343-engine-v7-history-storage-bound';"
+          newv="const VERSION='nomad343-engine-v8-storage-diagnostic';"
+          assert oldv in s
+          s=s.replace(oldv,newv,1)
+          old="await this.ctx.storage.put('histories',histories);await this.ctx.storage.put('signals',signals.slice(-MAX_SIGNALS));await this.ctx.storage.put('board',{ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}});"
+          new="""const signalStore=signals.slice(-MAX_SIGNALS),boardStore={ok:true,version:VERSION,hubVersion:hub.version,hubFetchedAt:hub.fetchedAt,hubAgeMs:hub.ageMs,stale:hub.stale,counts:hub.counts,fixtures:board,runState:run,referee:{maxFixturesPerScan:MAX_ODDS_FIXTURES_PER_SCAN,requests:refereeRequests,queued:Math.max(0,fixtureCandidates.length-selected.length),errors:refereeErrors}};
+      const byteSize=v=>new TextEncoder().encode(JSON.stringify(v)).length;
+      const storageBytes={histories:byteSize(histories),signals:byteSize(signalStore),board:byteSize(boardStore)};
+      try{await this.ctx.storage.put('histories',histories)}catch(e){throw new Error(`STORE_HISTORIES bytes=${storageBytes.histories}: ${String(e?.message||e)}`)}
+      try{await this.ctx.storage.put('signals',signalStore)}catch(e){throw new Error(`STORE_SIGNALS bytes=${storageBytes.signals}: ${String(e?.message||e)}`)}
+      try{await this.ctx.storage.put('board',boardStore)}catch(e){throw new Error(`STORE_BOARD bytes=${storageBytes.board}: ${String(e?.message||e)}`)}"""
+          assert old in s, 'storage write chain not found'
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check workers/nomadtips3-engine-343/src/index.js
+          git diff --check -- workers/nomadtips3-engine-343/src/index.js
+          grep -F "STORE_HISTORIES" workers/nomadtips3-engine-343/src/index.js
+          grep -F "STORE_SIGNALS" workers/nomadtips3-engine-343/src/index.js
+          grep -F "STORE_BOARD" workers/nomadtips3-engine-343/src/index.js
+          grep -F "mode:'BOTH_LOW'" workers/nomadtips3-engine-343/src/index.js
+
+      - name: Persist diagnostic engine patch only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "workers/nomadtips3-engine-343/src/index.js"
+          git config user.name 'ADD-K Engine Diagnostic'
+          git config user.email 'actions@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m 'diag(ball46): label durable storage write failures'
+          git push origin HEAD:work/ball46-full-market-20260918
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Deploy ENGINE only
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Force scan and expose exact storage key
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          curl -fsS --max-time 60 -X POST "$ENGINE_URL/scan?storagediag=$GITHUB_RUN_ID" -o /tmp/scan.json
+          curl -fsS --max-time 30 "$ENGINE_URL/health?storagediag=$GITHUB_RUN_ID" -o /tmp/health.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const scan=JSON.parse(fs.readFileSync('/tmp/scan.json'));
+          const h=JSON.parse(fs.readFileSync('/tmp/health.json'));
+          console.log('STORAGE_DIAGNOSTIC',JSON.stringify({scanOk:scan.ok,lastError:scan.lastError,healthOk:h.ok,version:h.version}));
+          if(scan.ok!==true && !/^STORE_(HISTORIES|SIGNALS|BOARD) bytes=/.test(String(scan.lastError||''))) throw Error('UNLABELED_FAILURE '+JSON.stringify(scan));
+          NODE
