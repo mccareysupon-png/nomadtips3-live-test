@@ -69,12 +69,3 @@ h = h.replace('singlepage-workspace-343.css?v=343-singlepage-20260921-2','single
 h = h.replace('signal-next.js?v=343-singlepage-signal-2','signal-next.js?v=343-singlepage-signal-3')
 h = h.replace('singlepage-workspace-343.js?v=343-singlepage-20260921-2','singlepage-workspace-343.js?v=343-singlepage-20260921-3')
 idx.write_text(h)
-
-# 6) Adjust preview guard for exact additive dashboard signal bridge.
-wf = Path('.github/workflows/deploy-ball46-singlepage-preview-20260921.yml')
-w = wf.read_text()
-w = w.replace('            nomad-live-343/dashboard-v2-stage3.js \\\n', '')
-w = w.replace("          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js\n", "          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js\n          grep -Fq 'ball46:signals-snapshot' nomad-live-343/signal-next.js\n          ! grep -Fq \"/api/engine/signals\" nomad-live-343/signal-next.js\n          ! grep -Fq 'setInterval' nomad-live-343/signal-next.js\n          grep -Fq 'STAT_CACHE_MS=300000' nomad-live-343/singlepage-workspace-343.js\n          ! grep -Fq 'statsTimer' nomad-live-343/singlepage-workspace-343.js\n")
-w = w.replace("          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-2' /tmp/home.html\n", "          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-3' /tmp/home.html\n")
-w = w.replace("          grep -Fq 'signal-next.js?v=343-singlepage-signal-2' /tmp/home.html\n", "          grep -Fq 'signal-next.js?v=343-singlepage-signal-3' /tmp/home.html\n")
-wf.write_text(w)
