@@ -1,0 +1,266 @@
+name: Deploy Ball46 Classic Mobile Menu 20260922
+
+on:
+  push:
+    branches: [work/ball46-mobile-menu-classic-20260922]
+    paths:
+      - '.github/workflows/deploy-ball46-mobile-menu-classic-20260922.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  deploy-mobile-menu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Lock Golden core and validate mobile layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "PROTECTED_SOURCE_CHANGED:$p"; exit 1; }
+          done
+          node --check nomad-live-343/mobile-menu-classic-343.js
+          grep -Fq '@media(max-width:760px)' nomad-live-343/mobile-menu-classic-343.css
+          grep -Fq '.b46-mobile-workspace-nav{display:none}' nomad-live-343/mobile-menu-classic-343.css
+          ! grep -Fq 'fetch(' nomad-live-343/mobile-menu-classic-343.js
+          ! grep -Fq '/api/' nomad-live-343/mobile-menu-classic-343.js
+          ! grep -Fq 'setInterval' nomad-live-343/mobile-menu-classic-343.js
+          ! grep -Fq 'XMLHttpRequest' nomad-live-343/mobile-menu-classic-343.js
+          git diff --check
+
+      - name: Capture current Production and mirror live assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/prod /tmp/hdr
+
+          fetch_prod(){
+            name="$1"
+            safe="${name//\//_}"
+            mkdir -p "$(dirname "nomad-live-343/$name")"
+            code=$(curl -sS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 -D "/tmp/hdr/$safe" -o "/tmp/prod/$safe" -w '%{http_code}' "$BALL46_WORKER/$name?mobile-pre=${GITHUB_RUN_ID}") || true
+            [ "$code" = 200 ] || return 0
+            ctype=$(tr -d '\r' < "/tmp/hdr/$safe" | awk 'BEGIN{IGNORECASE=1}/^content-type:/{print tolower($0)}' | tail -1)
+            case "$name" in
+              *.js) [[ "$ctype" == *javascript* || "$ctype" == *text/plain* ]] || return 0 ;;
+              *.css) [[ "$ctype" == *text/css* || "$ctype" == *text/plain* ]] || return 0 ;;
+              *.html) [[ "$ctype" == *text/html* || "$ctype" == *text/plain* ]] || return 0 ;;
+            esac
+            cp "/tmp/prod/$safe" "nomad-live-343/$name"
+          }
+
+          while IFS= read -r f; do
+            name="${f#nomad-live-343/}"
+            case "$name" in mobile-menu-classic-343.css|mobile-menu-classic-343.js) continue ;; esac
+            case "$name" in *.html|*.js|*.css|*.svg|*.json|*.png|*.webp|*.jpg|*.jpeg|*.ico) fetch_prod "$name" ;; esac
+          done < <(find nomad-live-343 -maxdepth 1 -type f | sort)
+
+          for page in index.html signal.html statistics.html; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$page?mobile-page=${GITHUB_RUN_ID}" -o "/tmp/$page.original"
+            cp "/tmp/$page.original" "nomad-live-343/$page"
+          done
+
+          python3 - <<'PY' > /tmp/referenced-assets.txt
+          from pathlib import Path
+          import re
+          found=set()
+          for page in ('index.html','signal.html','statistics.html'):
+              h=Path('/tmp/'+page+'.original').read_text(errors='ignore')
+              for x in re.findall(r'''(?:src|href)=["']([^"']+)["']''',h,re.I):
+                  x=x.split('?',1)[0].split('#',1)[0].strip()
+                  if not x or '://' in x or x.startswith('//') or x.startswith('data:') or x.startswith('#'): continue
+                  x=x.lstrip('./').lstrip('/')
+                  if '/' in x: continue
+                  if re.search(r'\.(?:js|css|svg|json|png|webp|jpg|jpeg|ico)$',x,re.I): found.add(x)
+          for x in sorted(found): print(x)
+          PY
+          while IFS= read -r name; do
+            [ -n "$name" ] || continue
+            case "$name" in mobile-menu-classic-343.css|mobile-menu-classic-343.js) continue ;; esac
+            fetch_prod "$name"
+          done < /tmp/referenced-assets.txt
+
+          cp -a nomad-live-343 /tmp/ball46-assets-before
+
+          protected='dashboard-v2.css dashboard-v2-stage3.js dashboard-v2-tune.js v2-shared.css v2-shared.js bulk-odds-compat-343.js expanded-match-343.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css'
+          : > /tmp/protected.sha
+          for f in $protected; do
+            test -s "nomad-live-343/$f" || { echo "PROTECTED_PROD_MISSING:$f"; exit 1; }
+            printf '%s  %s\n' "$(sha256sum "nomad-live-343/$f" | awk '{print $1}')" "$f" >> /tmp/protected.sha
+          done
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?mobile-before=${GITHUB_RUN_ID}" -o /tmp/board-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?mobile-before=${GITHUB_RUN_ID}" -o /tmp/signals-before.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?mobile-before=${GITHUB_RUN_ID}" -o /tmp/stats-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/board-before.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-before.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-before.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('PRE_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('PRE_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('PRE_STATS_UNHEALTHY');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          fs.writeFileSync('/tmp/pre-counts.json',JSON.stringify({fixtures:b.fixtures.length,oddsFixtures:odds,signals:s.signals.length,stats:t.rows.length}));
+          console.log('PRE_MOBILE_MENU',JSON.parse(fs.readFileSync('/tmp/pre-counts.json','utf8')));
+          NODE
+
+      - name: Inject mobile menu into current Production shell only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('nomad-live-343/index.html')
+          h=p.read_text()
+          h=re.sub(r'\s*<link[^>]+mobile-menu-classic-343\.css[^>]*>','',h,flags=re.I)
+          h=re.sub(r'\s*<script[^>]+mobile-menu-classic-343\.js[^>]*></script>','',h,flags=re.I)
+          css='<link rel="stylesheet" href="mobile-menu-classic-343.css?v=343-mobile-classic-20260922a">'
+          js='<script src="mobile-menu-classic-343.js?v=343-mobile-classic-20260922a" defer></script>'
+          if '</head>' not in h or '</body>' not in h: raise SystemExit('INDEX_ANCHOR_MISSING')
+          h=h.replace('</head>',css+'\n</head>',1)
+          h=h.replace('</body>',js+'\n</body>',1)
+          p.write_text(h)
+          PY
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          def strip_ours(s):
+              s=re.sub(r'\s*<link[^>]+mobile-menu-classic-343\.css[^>]*>','',s,flags=re.I)
+              s=re.sub(r'\s*<script[^>]+mobile-menu-classic-343\.js[^>]*></script>','',s,flags=re.I)
+              return re.sub(r'>\s+<','><',s).strip()
+          before=Path('/tmp/index.html.original').read_text()
+          now=Path('nomad-live-343/index.html').read_text()
+          if strip_ours(now)!=strip_ours(before): raise SystemExit('NON_MOBILE_HTML_CHANGED')
+          PY
+
+          while read -r expected f; do
+            actual=$(sha256sum "nomad-live-343/$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_LOCAL_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          grep -Fq 'mobile-menu-classic-343.css?v=343-mobile-classic-20260922a' nomad-live-343/index.html
+          grep -Fq 'mobile-menu-classic-343.js?v=343-mobile-classic-20260922a' nomad-live-343/index.html
+
+      - name: Validate credentials and dry run package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy mobile presentation layer
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        shell: bash
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Worker shell and protected services
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_WORKER/index.html?mobile=${GITHUB_RUN_ID}-${n}" -o /tmp/index-after.html \
+              && grep -Fq 'mobile-menu-classic-343.css?v=343-mobile-classic-20260922a' /tmp/index-after.html \
+              && grep -Fq 'mobile-menu-classic-343.js?v=343-mobile-classic-20260922a' /tmp/index-after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'MOBILE_MARKER_NOT_PROPAGATED'; exit 1; }
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/mobile-menu-classic-343.css?verify=${GITHUB_RUN_ID}" -o /tmp/mobile.css
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/mobile-menu-classic-343.js?verify=${GITHUB_RUN_ID}" -o /tmp/mobile.js
+          grep -Fq '@media(max-width:760px)' /tmp/mobile.css
+          grep -Fq 'Mobile workspace navigation' /tmp/mobile.js
+          ! grep -Fq 'fetch(' /tmp/mobile.js
+          ! grep -Fq '/api/' /tmp/mobile.js
+
+          while read -r expected f; do
+            curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/$f?protected=${GITHUB_RUN_ID}" -o "/tmp/protected-$f"
+            actual=$(sha256sum "/tmp/protected-$f" | awk '{print $1}')
+            [ "$actual" = "$expected" ] || { echo "PROTECTED_DEPLOYED_CHANGED:$f"; exit 1; }
+          done < /tmp/protected.sha
+
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?mobile-after=${GITHUB_RUN_ID}" -o /tmp/board-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/signals?mobile-after=${GITHUB_RUN_ID}" -o /tmp/signals-after.json
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/statistics?mobile-after=${GITHUB_RUN_ID}" -o /tmp/stats-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const pre=JSON.parse(fs.readFileSync('/tmp/pre-counts.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals-after.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats-after.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('POST_BOARD_UNHEALTHY');
+          if(!Array.isArray(s?.signals)) throw Error('POST_SIGNALS_UNHEALTHY');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('POST_STATS_UNHEALTHY');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(pre.fixtures>0&&b.fixtures.length===0) throw Error('FIXTURES_DROPPED_TO_ZERO');
+          if(pre.oddsFixtures>0&&odds===0) throw Error(`ODDS_CONTINUITY_FAILED:${pre.oddsFixtures}->0`);
+          console.log('MOBILE_MENU_BACKEND_PASS',{before:pre,after:{fixtures:b.fixtures.length,oddsFixtures:odds,signals:s.signals.length,stats:t.rows.length}});
+          NODE
+
+      - name: Verify WWW propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS -L --retry 2 --retry-all-errors --retry-delay 1 --max-time 20 "$BALL46_URL/index.html?mobile-www=${GITHUB_RUN_ID}-${n}" -o /tmp/www-after.html \
+              && grep -Fq 'mobile-menu-classic-343.css?v=343-mobile-classic-20260922a' /tmp/www-after.html \
+              && grep -Fq 'mobile-menu-classic-343.js?v=343-mobile-classic-20260922a' /tmp/www-after.html; then ok=1; break; fi
+            sleep 3
+          done
+          [ "$ok" = 1 ] || { echo 'WWW_MOBILE_MARKER_NOT_PROPAGATED'; exit 1; }
+
+      - name: Roll back exact pre-mobile shell on failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Mobile menu validation failed; restoring exact pre-mobile static shell.'
+          rm -rf nomad-live-343
+          cp -a /tmp/ball46-assets-before nomad-live-343
+          cd workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 6
+          curl -fsS -L --retry 4 --retry-all-errors --retry-delay 1 --max-time 25 "$BALL46_WORKER/api/engine/board?mobile-rollback=${GITHUB_RUN_ID}" -o /tmp/rollback-board.json
+          node - <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/rollback-board.json','utf8'));if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('ROLLBACK_BOARD_UNHEALTHY');console.log('PRE_MOBILE_SHELL_RESTORED',{fixtures:b.fixtures.length});
+          NODE
