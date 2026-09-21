@@ -1,0 +1,48 @@
+name: Diagnose Ball46 Performance 20260921
+
+on:
+  push:
+    branches: [work/ball46-performance-golden-20260921]
+    paths:
+      - '.github/workflows/diagnose-ball46-performance-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Measure production endpoints and static assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          WWW=https://www.ball46.com
+          WORKER=https://ball46-production.mccarey-supon.workers.dev
+          measure(){
+            local label="$1" url="$2"
+            echo "=== $label ==="
+            for n in 1 2 3; do
+              curl -fsS --connect-timeout 8 --max-time 40 -o /tmp/body \
+                -w "run=$n code=%{http_code} start=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n" \
+                "$url?perf=$GITHUB_RUN_ID-$n" || true
+            done
+          }
+          measure 'WWW HTML' "$WWW/"
+          measure 'WORKER HTML' "$WORKER/"
+          measure 'WWW BOARD' "$WWW/api/engine/board"
+          measure 'WORKER BOARD' "$WORKER/api/engine/board"
+          measure 'WWW SIGNALS' "$WWW/api/engine/signals"
+          measure 'WORKER SIGNALS' "$WORKER/api/engine/signals"
+          measure 'WWW STATISTICS' "$WWW/api/engine/statistics"
+          measure 'WORKER STATISTICS' "$WORKER/api/engine/statistics"
+          echo '=== STATIC HEADERS ==='
+          for p in dashboard-v2.css dashboard-v2-stage3.js full-market-bookmaker-343.js live-summary-full-odds-343.js signal-next.js singlepage-workspace-343.js singlepage-workspace-343.css market-registry-343.js; do
+            echo "--- $p"
+            curl -fsSI --connect-timeout 8 --max-time 20 "$WWW/$p?perf=$GITHUB_RUN_ID" | grep -Ei '^(HTTP/|cache-control:|content-length:|content-type:|etag:|cf-cache-status:|age:)' || true
+          done
+          echo '=== REPO FILE SIZES ==='
+          wc -c nomad-live-343/dashboard-v2.css nomad-live-343/dashboard-v2-stage3.js nomad-live-343/full-market-bookmaker-343.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/signal-next.js nomad-live-343/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.css nomad-live-343/market-registry-343.js
