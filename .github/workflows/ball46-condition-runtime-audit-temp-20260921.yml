@@ -8,37 +8,44 @@ on:
 
 env:
   BALL46_URL: https://www.ball46.com
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
 
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     steps:
-      - name: Read live condition state
+      - name: Probe live condition pipeline directly
         shell: bash
         run: |
           set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?audit=$GITHUB_RUN_ID" -o /tmp/hub.json
           curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?audit=$GITHUB_RUN_ID" -o /tmp/settings.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?audit=$GITHUB_RUN_ID" -o /tmp/board.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?audit=$GITHUB_RUN_ID" -o /tmp/signals.json
-          node - <<'NODE'
+          curl -fsS --max-time 30 "$ENGINE_URL/health?audit=$GITHUB_RUN_ID" -o /tmp/health-before.json
+          before_code=$(curl -sS --max-time 30 -o /tmp/engine-board-before.json -w '%{http_code}' "$ENGINE_URL/board?audit=$GITHUB_RUN_ID")
+          scan_code=$(curl -sS --max-time 60 -X POST -o /tmp/scan.json -w '%{http_code}' "$ENGINE_URL/scan?audit=$GITHUB_RUN_ID")
+          sleep 3
+          curl -fsS --max-time 30 "$ENGINE_URL/health?audit=after-$GITHUB_RUN_ID" -o /tmp/health-after.json
+          after_code=$(curl -sS --max-time 30 -o /tmp/engine-board-after.json -w '%{http_code}' "$ENGINE_URL/board?audit=after-$GITHUB_RUN_ID")
+          curl -fsS --max-time 30 "$ENGINE_URL/signals?audit=$GITHUB_RUN_ID" -o /tmp/signals.json
+          node - "$before_code" "$scan_code" "$after_code" <<'NODE'
           const fs=require('fs');
-          const c=JSON.parse(fs.readFileSync('/tmp/settings.json'));
-          const b=JSON.parse(fs.readFileSync('/tmp/board.json'));
-          const s=JSON.parse(fs.readFileSync('/tmp/signals.json'));
+          const [beforeCode,scanCode,afterCode]=process.argv.slice(2);
+          const rd=p=>JSON.parse(fs.readFileSync(p));
+          const hub=rd('/tmp/hub.json'), c=rd('/tmp/settings.json'), hb=rd('/tmp/health-before.json'), ha=rd('/tmp/health-after.json'), scan=rd('/tmp/scan.json'), b=rd('/tmp/engine-board-after.json'), s=rd('/tmp/signals.json');
           const active=Object.entries(c.runState||{}).filter(([,v])=>v).map(([k])=>k);
-          const states={};
+          const states={}; let analysisFixtures=0;
           for(const f of b.fixtures||[]){
-            for(const [m,a] of Object.entries(f.analysis||{})){
-              const st=String(a?.state||'NONE');
-              states[m]??={}; states[m][st]=(states[m][st]||0)+1;
-            }
+            const entries=Object.entries(f.analysis||{}); if(entries.length)analysisFixtures++;
+            for(const [m,a] of entries){const st=String(a?.state||'NONE');states[m]??={};states[m][st]=(states[m][st]||0)+1;}
           }
-          const cfg={};
-          for(const k of active){const x=c.settings?.[k]||{};cfg[k]={minute:[x.minuteFrom,x.minuteTo],window:x.rollingWindowMinutes,required:x.evidenceRequired,odds:[x.oddsMin,x.oddsMax],sideMode:x.sideMode??null,lineMin:x.lineMin??null,lineMax:x.lineMax??null,lineGapMax:x.lineGapMax??null};}
+          console.log('HTTP_CODES',JSON.stringify({beforeCode,scanCode,afterCode}));
+          console.log('HUB',JSON.stringify({ok:hub.ok,stale:hub.stale,ageMs:hub.ageMs,fetchedAt:hub.fetchedAt,fixtures:(hub.fixtures||[]).length}));
+          console.log('HEALTH_BEFORE',JSON.stringify({ok:hb.ok,version:hb.version,staleGuard:hb.staleGuard,skipReason:hb.skipReason,lastScanAt:hb.at,hubAgeMs:hb.hubAgeMs,fixtures:hb.fixtures}));
+          console.log('SCAN',JSON.stringify({ok:scan.ok,skipped:scan.skipped,reason:scan.reason,staleGuard:scan.staleGuard,hubAgeMs:scan.hubAgeMs,fixtures:scan.fixtures,signals:scan.signals,error:scan.error}));
+          console.log('HEALTH_AFTER',JSON.stringify({ok:ha.ok,version:ha.version,staleGuard:ha.staleGuard,skipReason:ha.skipReason,lastScanAt:ha.at,hubAgeMs:ha.hubAgeMs,fixtures:ha.fixtures}));
           console.log('ACTIVE_MARKETS',JSON.stringify(active));
-          console.log('ACTIVE_CONFIG',JSON.stringify(cfg));
+          console.log('ENGINE_BOARD',JSON.stringify({ok:b.ok,stale:b.stale,staleGuard:b.staleGuard,fixtures:(b.fixtures||[]).length,analysisFixtures}));
           console.log('ANALYSIS_STATES',JSON.stringify(states));
-          console.log('SIGNAL_COUNTS',JSON.stringify({total:(s.signals||[]).length,pending:(s.signals||[]).filter(x=>x.status==='PENDING').length}));
-          console.log('FIXTURES',(b.fixtures||[]).length);
+          console.log('SIGNALS',JSON.stringify({total:(s.signals||[]).length,pending:(s.signals||[]).filter(x=>x.status==='PENDING').length}));
           NODE
