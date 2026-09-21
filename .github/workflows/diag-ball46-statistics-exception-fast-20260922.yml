@@ -1,0 +1,37 @@
+name: Diagnose Ball46 Statistics Exception Fast 20260922
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths: ['.github/workflows/diag-ball46-statistics-exception-fast-20260922.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Capture browser exception fast
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium)
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port=9223 about:blank >/tmp/chrome-fast.log 2>&1 &
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:9223/json >/tmp/pages.json && break; sleep 1; done
+          node - <<'NODE'
+          const http=require('http');
+          const get=u=>new Promise((ok,ko)=>http.get(u,r=>{let s='';r.on('data',d=>s+=d);r.on('end',()=>ok(JSON.parse(s)))}).on('error',ko));
+          (async()=>{
+            if(typeof WebSocket!=='function') throw new Error('NO_GLOBAL_WEBSOCKET');
+            const pages=await get('http://127.0.0.1:9223/json');const ws=new WebSocket(pages[0].webSocketDebuggerUrl);let id=0;const waits=new Map();
+            ws.onmessage=ev=>{const m=JSON.parse(ev.data);if(m.id&&waits.has(m.id)){waits.get(m.id)(m);waits.delete(m.id)}if(m.method==='Runtime.exceptionThrown')console.log('EXCEPTION',JSON.stringify(m.params.exceptionDetails));if(m.method==='Runtime.consoleAPICalled')console.log('CONSOLE',JSON.stringify(m.params.args));};
+            await new Promise((ok,ko)=>{ws.onopen=ok;ws.onerror=ko});
+            const cmd=(method,params={})=>new Promise(r=>{const i=++id;waits.set(i,r);ws.send(JSON.stringify({id:i,method,params}))});
+            await cmd('Runtime.enable');await cmd('Page.enable');
+            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-fast=1'});
+            await new Promise(r=>setTimeout(r,10000));
+            const x=await cmd('Runtime.evaluate',{expression:`JSON.stringify({view:document.body.dataset.workspaceView,feed:document.querySelector('[data-sp-feed-state]')?.textContent,total:document.querySelector('[data-sp-kpi="total"]')?.textContent,panelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden})`,returnByValue:true});
+            console.log('STATE',x.result.result.value);ws.close();
+          })().catch(e=>{console.error('DIAG_FAIL',e);process.exit(1)});
+          NODE
