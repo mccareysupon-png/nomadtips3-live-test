@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           git config user.name 'mccareysupon-png'
           git config user.email 'mccarey.supon@gmail.com'
-          git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal-next.js nomad-live-343/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.css nomad-live-343/index.html .github/workflows/deploy-ball46-singlepage-preview-20260921.yml
+          git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/signal-next.js nomad-live-343/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.css nomad-live-343/index.html
           if git diff --cached --quiet; then
             echo 'No V3 changes needed.'
             exit 0
