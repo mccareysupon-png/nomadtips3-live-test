@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Preflight and rollback point
+      - name: Preflight and capture exact current UI plus rollback point
         shell: bash
         run: |
           set -euo pipefail
@@ -46,6 +46,8 @@ jobs:
           const id=x?.versions?.find(v=>Number(v.percentage)===100)?.version_id||x?.versions?.[0]?.version_id||'';
           if(!id) throw Error('NO_ACTIVE_WRAPPER'); fs.writeFileSync('/tmp/old-wrapper',id); console.log('ROLLBACK_POINT',id);
           NODE
+          cp /tmp/ui-before.html nomad-live-343/index.html
+          echo "PRESERVED_UI=$(sha256sum nomad-live-343/index.html|cut -d' ' -f1)"
 
       - name: Patch stale ENGINE board to fresh HUB state
         shell: bash
@@ -67,13 +69,13 @@ jobs:
           PY
           node --check workers/nomadtips3-343-preview/src/index.js
 
-      - name: Deploy Ball46 wrapper only
+      - name: Deploy Ball46 wrapper only with exact current UI preserved
         shell: bash
         run: |
           set -euo pipefail
           npx --yes wrangler@4.92.0 deploy --config "$WRAPPER_CFG"
 
-      - name: Verify core live board and preserve UI
+      - name: Verify live board and exact UI preservation
         shell: bash
         run: |
           set -euo pipefail
@@ -105,26 +107,25 @@ jobs:
           echo "LIVEJS_HASH $before_live $after_live"
           [ "$before_ui" = "$after_ui" ] && [ "$before_live" = "$after_live" ] || { echo 'UI_CHANGED'; rollback; exit 1; }
 
-      - name: Diagnose signals and services without undoing working live board
+      - name: Verify signals and record active wrapper
         shell: bash
         run: |
-          set -uo pipefail
+          set -euo pipefail
+          codes=$(curl -sS -L --max-time 30 -o /tmp/s.json -w '%{http_code}' "$BALL46_URL/api/engine/signals?diag=$GITHUB_RUN_ID")
+          echo "SIGNALS_HTTP=$codes"
+          [ "$codes" = 200 ]
+          node - <<'NODE'
+          const s=require('/tmp/s.json');
+          console.log('SIGNALS',JSON.stringify({ok:s.ok,count:Array.isArray(s.signals)?s.signals.length:null,mirror:s.mirror,error:s.error||null}));
+          if(s?.ok!==true||!Array.isArray(s.signals)) process.exit(1);
+          const t=Number(s?.mirror?.hubFetchedAt||0); if(t && Date.now()-t>=120000) process.exit(1);
+          NODE
           for ep in engine hub full-market; do
             code=$(curl -sS -L --max-time 30 -o "/tmp/$ep-health.json" -w '%{http_code}' "$BALL46_URL/api/$ep/health?diag=$GITHUB_RUN_ID" || true)
             echo "HEALTH_$ep HTTP=$code"
-            node -e "try{const x=require('/tmp/$ep-health.json'); console.log(JSON.stringify({ok:x.ok,version:x.version,status:x.status,ageMs:x.ageMs,fetchedAt:x.fetchedAt}))}catch(e){console.log('INVALID_JSON')}" || true
           done
-          codes=$(curl -sS -L --max-time 30 -o /tmp/s.json -w '%{http_code}' "$BALL46_URL/api/engine/signals?diag=$GITHUB_RUN_ID" || true)
-          echo "SIGNALS_HTTP=$codes"
-          node - <<'NODE'
-          try{
-            const s=require('/tmp/s.json');
-            console.log('SIGNALS_DIAG',JSON.stringify({ok:s.ok,count:Array.isArray(s.signals)?s.signals.length:null,mirror:s.mirror,error:s.error||null}));
-            if(Number(process.env.codes||0)>=500) process.exit(1);
-          }catch(e){ console.log('SIGNALS_JSON_ERROR',String(e)); }
-          NODE
           npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json >/tmp/final.json
           node - <<'NODE'
           const r=require('/tmp/final.json'),x=r[r.length-1]; console.log('ACTIVE_WRAPPER',JSON.stringify(x));
           NODE
-          echo BALL46_LIVE_BOARD_RECOVERY_ACTIVE
+          echo BALL46_RECOVERY_PASS
