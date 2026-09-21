@@ -1,21 +1,74 @@
 /* Ball46 Statistics V2 flow bridge · preview only */
-.stats-flow-card .rail-title{display:flex;align-items:center;justify-content:space-between}
-.stats-flow-card .flow-link{width:100%;min-height:36px;padding:9px 12px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px;text-decoration:none;font-size:10px;font-weight:760}
-.stats-flow-card .flow-link:hover{background:var(--green-soft);color:var(--green)}
-.stats-flow-card .flow-link.active{background:var(--green-soft);color:var(--green);font-weight:900;box-shadow:inset 3px 0 var(--green)}
-.stats-flow-card .flow-link span{display:flex;align-items:center;gap:8px;min-width:0}
-.stats-flow-card .flow-link b{min-width:26px;text-align:center;padding:3px 5px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:8px}
-.stats-flow-card .flow-link.active b{color:var(--green);border-color:color-mix(in srgb,var(--green) 25%,var(--line));background:color-mix(in srgb,var(--green-soft) 80%,var(--panel))}
-.stats-flow-card .flow-mark{width:7px;height:7px;border-radius:2px;border:1px solid color-mix(in srgb,var(--green) 55%,var(--line));background:var(--green-soft)}
-.stats-flow-card .flow-mark.total{border-radius:50%;background:var(--panel)}
-.stats-flow-card .flow-mark.signal{border:0;background:transparent;color:#d8aa43;width:auto;height:auto;font-size:8px}
+.stats-flow-card .rail-title,.flow-workspace-card .rail-title{display:flex;align-items:center;justify-content:space-between}
+.stats-flow-card .flow-link,.flow-workspace-card .flow-link{width:100%;min-height:36px;padding:9px 12px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px;text-decoration:none;font-size:10px;font-weight:760}
+.stats-flow-card .flow-link:hover,.flow-workspace-card .flow-link:hover{background:var(--green-soft);color:var(--green)}
+.stats-flow-card .flow-link.active,.flow-workspace-card .flow-link.active{background:var(--green-soft);color:var(--green);font-weight:900;box-shadow:inset 3px 0 var(--green)}
+.stats-flow-card .flow-link span,.flow-workspace-card .flow-link span{display:flex;align-items:center;gap:8px;min-width:0}
+.stats-flow-card .flow-link b,.flow-workspace-card .flow-link b{min-width:26px;text-align:center;padding:3px 5px;background:var(--panel-2,var(--surface-2));border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:8px}
+.stats-flow-card .flow-link.active b,.flow-workspace-card .flow-link.active b{color:var(--green);border-color:color-mix(in srgb,var(--green) 25%,var(--line));background:color-mix(in srgb,var(--green-soft) 80%,var(--panel,var(--surface)))}
+.stats-flow-card .flow-mark,.flow-workspace-card .flow-mark{width:7px;height:7px;border-radius:2px;border:1px solid color-mix(in srgb,var(--green) 55%,var(--line));background:var(--green-soft)}
+.stats-flow-card .flow-mark.total,.flow-workspace-card .flow-mark.total{border-radius:50%;background:var(--panel,var(--surface))}
+.stats-flow-card .flow-mark.signal,.flow-workspace-card .flow-mark.signal{border:0;background:transparent;color:#d8aa43;width:auto;height:auto;font-size:8px}
 .flow-preview-note{margin:0 0 10px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--green) 22%,var(--line));border-radius:9px;background:var(--green-soft);color:var(--muted);font-size:8px;font-weight:750}
-html[data-theme="dark"] .stats-flow-card .flow-link{color:var(--text)}
-html[data-theme="dark"] .stats-flow-card .flow-link:hover,html[data-theme="dark"] .stats-flow-card .flow-link.active{background:var(--green-soft);color:var(--green)}
+.flow-workspace-link{text-decoration:none}
+
+/* Signal preview gets the same left-workspace navigation model as Live and Statistics. */
+.flow-page-shell{width:100%;max-width:1480px;margin:0 auto;padding:22px;display:grid;grid-template-columns:190px minmax(0,1fr);gap:16px;align-items:start}
+.flow-primary-rail{position:sticky;top:80px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.flow-primary-rail .rail-card{background:var(--panel,var(--surface));border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+.flow-primary-rail .rail-title{height:31px;margin:0;padding:0 11px;display:flex;align-items:center;background:var(--panel-2,var(--surface-2));border-bottom:1px solid var(--line);font-size:9px;letter-spacing:.12em;color:var(--muted);font-weight:900}
+.flow-main-shell{max-width:none!important;margin:0!important;padding:0 0 54px!important;min-width:0}
+
+/* Header stays brand + utilities only. It is intentionally not a workspace router. */
+.v2-topbar .v2-logo{pointer-events:none;cursor:default}
+
+/* Statistics V2 dark-mode compatibility. The preview CSS has some light-only visual values,
+   so this layer normalizes them to the existing Ball46 theme variables. */
+html[data-theme="dark"] body[data-page="statistics"]{
+  --panel-soft:#1c2720;
+  --line-strong:#34483b;
+  --green-dark:#68d998;
+  --shadow:0 12px 30px rgba(0,0,0,.22);
+}
+html[data-theme="dark"] body[data-page="statistics"] .kpi-grid,
+html[data-theme="dark"] body[data-page="statistics"] .kpi-card,
+html[data-theme="dark"] body[data-page="statistics"] .rail-card,
+html[data-theme="dark"] body[data-page="statistics"] .trend-panel,
+html[data-theme="dark"] body[data-page="statistics"] .filter-panel,
+html[data-theme="dark"] body[data-page="statistics"] .results-panel,
+html[data-theme="dark"] body[data-page="statistics"] .market-hero{background:var(--panel);border-color:var(--line)}
+html[data-theme="dark"] body[data-page="statistics"] .kpi-card{border-right-color:var(--line);border-bottom-color:var(--line)}
+html[data-theme="dark"] body[data-page="statistics"] .kpi-card.accent{background:var(--panel-2)}
+html[data-theme="dark"] body[data-page="statistics"] .spark-zero{stroke:var(--line)}
+html[data-theme="dark"] body[data-page="statistics"] .rail-card h2,
+html[data-theme="dark"] body[data-page="statistics"] .subnav-slot,
+html[data-theme="dark"] body[data-page="statistics"] .results-table th,
+html[data-theme="dark"] body[data-page="statistics"] .pager{background:var(--panel-2)}
+html[data-theme="dark"] body[data-page="statistics"] .rail-row,
+html[data-theme="dark"] body[data-page="statistics"] .market-btn{background:var(--panel);color:var(--text);border-color:var(--line)}
+html[data-theme="dark"] body[data-page="statistics"] .rail-row:hover,
+html[data-theme="dark"] body[data-page="statistics"] .market-btn:hover{background:var(--panel-2)}
+html[data-theme="dark"] .stats-flow-card .flow-link,html[data-theme="dark"] .flow-workspace-card .flow-link{color:var(--text)}
+html[data-theme="dark"] .stats-flow-card .flow-link:hover,html[data-theme="dark"] .stats-flow-card .flow-link.active,html[data-theme="dark"] .flow-workspace-card .flow-link:hover,html[data-theme="dark"] .flow-workspace-card .flow-link.active{background:var(--green-soft);color:var(--green)}
+
 @media(max-width:760px){
   .stats-flow-card{margin-top:8px}
-  .stats-flow-card .rail-title{display:flex;padding:9px 10px}
-  .stats-flow-card .flow-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px}
-  .stats-flow-card .flow-link{min-height:34px;border:1px solid var(--line);border-radius:7px;padding:6px;justify-content:center;text-align:center;font-size:8px}
-  .stats-flow-card .flow-link span{justify-content:center}.stats-flow-card .flow-link b,.stats-flow-card .flow-mark{display:none}
+  .stats-flow-card .rail-title,.flow-workspace-card .rail-title{display:flex;padding:9px 10px;height:auto}
+  .stats-flow-card .flow-links,.flow-workspace-card .flow-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:6px}
+  .stats-flow-card .flow-link,.flow-workspace-card .flow-link{min-height:34px;border:1px solid var(--line);border-radius:7px;padding:6px;justify-content:center;text-align:center;font-size:8px}
+  .stats-flow-card .flow-link span,.flow-workspace-card .flow-link span{justify-content:center}.stats-flow-card .flow-link b,.stats-flow-card .flow-mark,.flow-workspace-card .flow-link b,.flow-workspace-card .flow-mark{display:none}
+
+  .flow-page-shell{display:block;padding:10px 6px 40px}
+  .flow-primary-rail{position:static;display:block;margin-bottom:8px}
+  .flow-primary-rail .rail-card{margin-bottom:8px}
+  .flow-main-shell{padding-bottom:30px!important}
+
+  /* With top and bottom navigation removed, keep the workspace links reachable on Statistics mobile. */
+  body[data-page="statistics"] .match-status-card{display:block!important;margin-bottom:8px}
+  body[data-page="statistics"] .match-status-card h2{display:flex;height:28px;padding:0 8px}
+  body[data-page="statistics"] .match-status-card .rail-row{display:inline-flex;width:auto;min-width:max-content;height:31px;margin:5px 2px;padding:0 8px;border:1px solid var(--line);border-radius:7px;font-size:8px}
+  body[data-page="statistics"] .match-status-card{white-space:nowrap;overflow-x:auto;padding:0 5px 5px}
+  body[data-page="statistics"] .match-status-card .rail-row b{display:none}
+
+  body[data-page="live"] .left-rail .rail-card:first-child{grid-template-columns:repeat(6,minmax(58px,1fr))!important;overflow-x:auto}
 }
