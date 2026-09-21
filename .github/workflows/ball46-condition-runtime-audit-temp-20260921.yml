@@ -15,37 +15,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Probe live condition pipeline directly
+      - name: Expose engine scan failure details
         shell: bash
         run: |
           set -euo pipefail
           curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?audit=$GITHUB_RUN_ID" -o /tmp/hub.json
-          curl -fsS --max-time 30 "$BALL46_URL/api/engine/settings?audit=$GITHUB_RUN_ID" -o /tmp/settings.json
           curl -fsS --max-time 30 "$ENGINE_URL/health?audit=$GITHUB_RUN_ID" -o /tmp/health-before.json
-          before_code=$(curl -sS --max-time 30 -o /tmp/engine-board-before.json -w '%{http_code}' "$ENGINE_URL/board?audit=$GITHUB_RUN_ID")
           scan_code=$(curl -sS --max-time 60 -X POST -o /tmp/scan.json -w '%{http_code}' "$ENGINE_URL/scan?audit=$GITHUB_RUN_ID")
           sleep 3
           curl -fsS --max-time 30 "$ENGINE_URL/health?audit=after-$GITHUB_RUN_ID" -o /tmp/health-after.json
-          after_code=$(curl -sS --max-time 30 -o /tmp/engine-board-after.json -w '%{http_code}' "$ENGINE_URL/board?audit=after-$GITHUB_RUN_ID")
-          curl -fsS --max-time 30 "$ENGINE_URL/signals?audit=$GITHUB_RUN_ID" -o /tmp/signals.json
-          node - "$before_code" "$scan_code" "$after_code" <<'NODE'
+          board_code=$(curl -sS --max-time 30 -o /tmp/board.json -w '%{http_code}' "$ENGINE_URL/board?audit=after-$GITHUB_RUN_ID")
+          node - "$scan_code" "$board_code" <<'NODE'
           const fs=require('fs');
-          const [beforeCode,scanCode,afterCode]=process.argv.slice(2);
           const rd=p=>JSON.parse(fs.readFileSync(p));
-          const hub=rd('/tmp/hub.json'), c=rd('/tmp/settings.json'), hb=rd('/tmp/health-before.json'), ha=rd('/tmp/health-after.json'), scan=rd('/tmp/scan.json'), b=rd('/tmp/engine-board-after.json'), s=rd('/tmp/signals.json');
-          const active=Object.entries(c.runState||{}).filter(([,v])=>v).map(([k])=>k);
-          const states={}; let analysisFixtures=0;
-          for(const f of b.fixtures||[]){
-            const entries=Object.entries(f.analysis||{}); if(entries.length)analysisFixtures++;
-            for(const [m,a] of entries){const st=String(a?.state||'NONE');states[m]??={};states[m][st]=(states[m][st]||0)+1;}
-          }
-          console.log('HTTP_CODES',JSON.stringify({beforeCode,scanCode,afterCode}));
+          const [scanCode,boardCode]=process.argv.slice(2);
+          const hub=rd('/tmp/hub.json'), hb=rd('/tmp/health-before.json'), scan=rd('/tmp/scan.json'), ha=rd('/tmp/health-after.json'), b=rd('/tmp/board.json');
+          const pick=x=>({
+            ok:x?.ok,version:x?.version,startedAt:x?.startedAt,finishedAt:x?.finishedAt,
+            fixtureCount:x?.fixtureCount,liveCount:x?.liveCount,signalCount:x?.signalCount,
+            refereeRequests:x?.refereeRequests,refereeQueued:x?.refereeQueued,
+            staleGuard:x?.staleGuard,skipReason:x?.skipReason,lastError:x?.lastError,
+            error:x?.error,hubAgeMs:x?.hubAgeMs,hubFetchedAt:x?.hubFetchedAt
+          });
+          console.log('HTTP',JSON.stringify({scanCode,boardCode}));
           console.log('HUB',JSON.stringify({ok:hub.ok,stale:hub.stale,ageMs:hub.ageMs,fetchedAt:hub.fetchedAt,fixtures:(hub.fixtures||[]).length}));
-          console.log('HEALTH_BEFORE',JSON.stringify({ok:hb.ok,version:hb.version,staleGuard:hb.staleGuard,skipReason:hb.skipReason,lastScanAt:hb.at,hubAgeMs:hb.hubAgeMs,fixtures:hb.fixtures}));
-          console.log('SCAN',JSON.stringify({ok:scan.ok,skipped:scan.skipped,reason:scan.reason,staleGuard:scan.staleGuard,hubAgeMs:scan.hubAgeMs,fixtures:scan.fixtures,signals:scan.signals,error:scan.error}));
-          console.log('HEALTH_AFTER',JSON.stringify({ok:ha.ok,version:ha.version,staleGuard:ha.staleGuard,skipReason:ha.skipReason,lastScanAt:ha.at,hubAgeMs:ha.hubAgeMs,fixtures:ha.fixtures}));
-          console.log('ACTIVE_MARKETS',JSON.stringify(active));
-          console.log('ENGINE_BOARD',JSON.stringify({ok:b.ok,stale:b.stale,staleGuard:b.staleGuard,fixtures:(b.fixtures||[]).length,analysisFixtures}));
-          console.log('ANALYSIS_STATES',JSON.stringify(states));
-          console.log('SIGNALS',JSON.stringify({total:(s.signals||[]).length,pending:(s.signals||[]).filter(x=>x.status==='PENDING').length}));
+          console.log('HEALTH_BEFORE_DETAIL',JSON.stringify(pick(hb)));
+          console.log('SCAN_DETAIL',JSON.stringify(pick(scan)));
+          console.log('HEALTH_AFTER_DETAIL',JSON.stringify(pick(ha)));
+          console.log('BOARD_DETAIL',JSON.stringify({ok:b.ok,stale:b.stale,staleGuard:b.staleGuard,hubAgeMs:b.hubAgeMs,hubFetchedAt:b.hubFetchedAt,fixtures:(b.fixtures||[]).length}));
           NODE
