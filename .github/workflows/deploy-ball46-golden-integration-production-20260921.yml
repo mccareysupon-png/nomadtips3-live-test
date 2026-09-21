@@ -1,0 +1,182 @@
+name: Deploy Ball46 Golden Integration Production 20260921
+
+on:
+  push:
+    branches: [work/ball46-golden-master-integration-20260921]
+    paths:
+      - '.github/workflows/deploy-ball46-golden-integration-production-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_SHA: 2a992e9aae7bfa13909e9c5b3845a359bf1ec46c
+  BALL46_URL: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  deploy-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Record Golden pre-deploy health and odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! curl -fsS --connect-timeout 8 --max-time 15 "$BALL46_URL/api/engine/board?before=$GITHUB_RUN_ID" -o /tmp/before-board.json; then
+            curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/board?before=$GITHUB_RUN_ID" -o /tmp/before-board.json
+          fi
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/before-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('pre-deploy board unhealthy');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          fs.writeFileSync('/tmp/pre-counts.json',JSON.stringify({fixtures:b.fixtures.length,oddsFixtures:odds}));
+          console.log('PRE-DEPLOY GOLDEN HEALTH',{fixtures:b.fixtures.length,oddsFixtures:odds});
+          NODE
+
+      - name: Guard Golden Master protected runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          git cat-file -e "$GOLDEN_SHA^{commit}"
+          for p in \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/dashboard-v2-tune.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/signal-next.js; do
+            git diff --quiet "$GOLDEN_SHA"..HEAD -- "$p" || { echo "GOLDEN CORE CHANGED: $p"; exit 1; }
+          done
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"ENGINE", "service": "nomadtips3-engine-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"HUB", "service": "nomadtips3-5usd-hub-343"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          grep -Fq '"FULL_MARKET", "service": "nomadtips3-full-market-343-ball46"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+
+      - name: Prove production index is Golden Master plus approved UI only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import subprocess
+          from pathlib import Path
+          golden=subprocess.check_output(['git','show','2a992e9aae7bfa13909e9c5b3845a359bf1ec46c:nomad-live-343/index.html']).decode()
+          current=Path('nomad-live-343/index.html').read_text()
+          registry='<script src="market-registry-343.js?v=343-market-registry-v1" defer></script>'
+          variant='<section class="sp-filters sp-variant-filters" data-sp-variant-filters hidden><div class="sp-filter-title"><span>MARKET TYPE</span><b>Engine registry</b></div><div class="sp-filter-chips" data-sp-variant-chips></div></section>'
+          if current.count(registry)!=1 or current.count(variant)!=1: raise SystemExit('approved Golden additions missing/duplicated')
+          if current.replace(registry,'',1).replace(variant,'',1)!=golden: raise SystemExit('index differs from Golden Master outside approved additions')
+          print('PASS: production index is Golden Master + approved UI additions')
+          PY
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate zero-new-provider-call contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/market-registry-343.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq 'fetch(' nomad-live-343/market-registry-343.js
+          ! grep -Fq 'setInterval' nomad-live-343/market-registry-343.js
+          ! grep -Fq '/api/engine/board' nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq '/api/engine/signals' nomad-live-343/singlepage-workspace-343.js
+          test "$(grep -o '/api/engine/statistics' nomad-live-343/singlepage-workspace-343.js | wc -l | tr -d ' ')" = "1"
+          test "$(grep -o 'fetch(' nomad-live-343/singlepage-workspace-343.js | wc -l | tr -d ' ')" = "1"
+          ! grep -Fq 'setInterval' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'STAT_CACHE_MS=300000' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'data-sp-variant-filters' nomad-live-343/index.html
+          grep -Fq 'LEFT RAIL GEOMETRY LOCK V3' nomad-live-343/singlepage-workspace-343.css
+          for k in ft_1x2 ft_ah ft_over ft_under ht_1x2 ht_ah ht_over ht_under ft_corner_over ft_corner_under ht_corner_over ht_corner_under ft_corner_ah ft_cards_over ft_cards_under ft_cards_ah ft_btts_yes ft_btts_no; do
+            grep -Fq "$k" nomad-live-343/market-registry-343.js || { echo "MISSING MARKET $k"; exit 1; }
+          done
+          git diff --check
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run Golden integration production package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy Golden integration to Ball46 production
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Smoke production and verify odds continuity
+        id: smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          fetch_home(){ local base="$1" out="$2"; for n in 1 2 3; do if curl -fsS --connect-timeout 8 --max-time 20 "$base/?goldenprod=$GITHUB_RUN_ID&try=$n" -o "$out"; then return 0; fi; sleep 2; done; return 1; }
+          fetch_home "$BALL46_WORKER" /tmp/home-worker.html
+          fetch_home "$BALL46_URL" /tmp/home-www.html
+          fetch_home "$BALL46_APEX" /tmp/home-apex.html
+          for f in /tmp/home-worker.html /tmp/home-www.html /tmp/home-apex.html; do
+            grep -Fq 'data-workspace-panel="live"' "$f"
+            grep -Fq 'data-workspace-panel="signal"' "$f"
+            grep -Fq 'data-workspace-panel="statistics"' "$f"
+            grep -Fq 'market-registry-343.js?v=343-market-registry-v1' "$f"
+            grep -Fq 'full-market-bookmaker-343.js' "$f"
+            grep -Fq 'bulk-odds-compat-343.js' "$f"
+          done
+          if ! curl -fsS --connect-timeout 8 --max-time 15 "$BALL46_URL/api/engine/board?after=$GITHUB_RUN_ID" -o /tmp/after-board.json; then
+            curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/board?after=$GITHUB_RUN_ID" -o /tmp/after-board.json
+          fi
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/signals?after=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/statistics?after=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const pre=JSON.parse(fs.readFileSync('/tmp/pre-counts.json','utf8'));
+          const b=JSON.parse(fs.readFileSync('/tmp/after-board.json','utf8'));
+          const s=JSON.parse(fs.readFileSync('/tmp/signals.json','utf8'));
+          const t=JSON.parse(fs.readFileSync('/tmp/stats.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('board unhealthy after deploy');
+          if(!Array.isArray(s?.signals)) throw Error('signals unhealthy after deploy');
+          if(t?.ok!==true||!Array.isArray(t?.rows)) throw Error('statistics unhealthy after deploy');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(pre.fixtures>0&&b.fixtures.length===0) throw Error('fixtures dropped to zero');
+          if(pre.oddsFixtures>0&&odds===0) throw Error(`ODDS CONTINUITY FAILED: before ${pre.oddsFixtures}, after 0`);
+          console.log('BALL46 GOLDEN INTEGRATION PRODUCTION PASS',{before:pre,after:{fixtures:b.fixtures.length,oddsFixtures:odds},signals:s.signals.length,statistics:t.rows.length});
+          NODE
+
+      - name: Automatic rollback to Golden Master on any production failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Production validation failed. Restoring Golden Master...'
+          git worktree add --detach /tmp/ball46-golden-rollback "$GOLDEN_SHA"
+          cd /tmp/ball46-golden-rollback/workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 5
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/board?rollback=$GITHUB_RUN_ID" -o /tmp/rollback-board.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const b=JSON.parse(fs.readFileSync('/tmp/rollback-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('Golden rollback board unhealthy');
+          console.log('GOLDEN MASTER RESTORED',{fixtures:b.fixtures.length});
+          NODE
