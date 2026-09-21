@@ -1,0 +1,110 @@
+name: Deploy Ball46 Performance Preview 20260921
+
+on:
+  push:
+    branches: [work/ball46-performance-golden-20260921]
+    paths:
+      - '.github/workflows/deploy-ball46-performance-preview-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  GOLDEN_PROD_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+  PROD_URL: https://ball46-production.mccarey-supon.workers.dev
+  PREVIEW_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Guard Golden odds renderer and Engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/expanded-match-343.js; do
+            git diff --quiet "$GOLDEN_PROD_SHA"..HEAD -- "$p" || { echo "FORBIDDEN GOLDEN ODDS CHANGE: $p"; exit 1; }
+          done
+      - name: Validate performance package
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "mode:'BOARD_FIRST_THEN_SIGNALS'" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "const STAT_API='/api/engine/statistics-lite';" nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "stats-lite-v1" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "signalBoardData(request, env)" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "max-age=31536000, immutable" workers/nomadtips3-343-preview/src/index.js
+          ! grep -Fq "Promise.all([fetchJson(API),loadSignals()])" nomad-live-343/dashboard-v2-stage3.js
+          git diff --check
+      - name: Validate Cloudflare credentials
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Dry-run isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Smoke Golden odds continuity and performance routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          curl -fsS --max-time 30 "$PROD_URL/api/engine/board?golden=$GITHUB_RUN_ID" -o /tmp/prod-board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?preview=$GITHUB_RUN_ID" -o /tmp/preview-board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?preview=$GITHUB_RUN_ID" -o /tmp/preview-signals.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics-lite?preview=$GITHUB_RUN_ID" -o /tmp/preview-stats.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/?preview=$GITHUB_RUN_ID" -o /tmp/preview-home.html
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/preview-home.html
+          grep -Fq 'live-summary-full-odds-343.js' /tmp/preview-home.html
+          grep -Fq 'singlepage-workspace-343.js' /tmp/preview-home.html
+          node - <<'NODE'
+          const fs=require('fs');
+          const prod=JSON.parse(fs.readFileSync('/tmp/prod-board.json','utf8'));
+          const prev=JSON.parse(fs.readFileSync('/tmp/preview-board.json','utf8'));
+          const sig=JSON.parse(fs.readFileSync('/tmp/preview-signals.json','utf8'));
+          const st=JSON.parse(fs.readFileSync('/tmp/preview-stats.json','utf8'));
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const countOdds=b=>b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(prod?.ok!==true||!Array.isArray(prod.fixtures)) throw Error('production board unhealthy');
+          if(prev?.ok!==true||!Array.isArray(prev.fixtures)) throw Error('preview board unhealthy');
+          if(!Array.isArray(sig?.signals)) throw Error('preview signals unhealthy');
+          if(st?.ok!==true||!Array.isArray(st?.rows)||st?.compact!==true) throw Error('statistics-lite unhealthy');
+          const p=countOdds(prod),q=countOdds(prev),bytes=fs.statSync('/tmp/preview-stats.json').size;
+          if(p>0&&q===0) throw Error(`ODDS LOST: production ${p}, preview 0`);
+          if(bytes>900000) throw Error(`STATISTICS-LITE TOO LARGE: ${bytes}`);
+          console.log('PERFORMANCE PREVIEW PASS',{prodFixtures:prod.fixtures.length,previewFixtures:prev.fixtures.length,prodOdds:p,previewOdds:q,signals:sig.signals.length,statisticsRows:st.rows.length,statisticsBytes:bytes});
+          NODE
+      - name: Measure preview latency
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in api/engine/board api/engine/signals api/engine/statistics-lite; do
+            echo "=== $path ==="
+            for n in 1 2 3; do
+              curl -fsS --connect-timeout 8 --max-time 30 -o /tmp/perf-body \
+                -w "run=$n start=%{time_starttransfer}s total=%{time_total}s bytes=%{size_download}\n" \
+                "$PREVIEW_URL/$path?perf=$GITHUB_RUN_ID-$n"
+            done
+          done
+          echo '=== VERSIONED ASSET CACHE ==='
+          curl -fsSI --max-time 20 "$PREVIEW_URL/singlepage-workspace-343.js?v=343-singlepage-20260921-3" | grep -Ei '^(HTTP/|cache-control:|cf-cache-status:|etag:)' || true
