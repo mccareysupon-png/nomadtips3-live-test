@@ -1,1 +1,0 @@
-(()=>{'use strict';window.NOMAD343_LIVE_PREDICTION_INLINE={version:'343-live-prediction-inline-v3-retired-observer-free',source:'DASHBOARD_SINGLE_OWNER',retired:true,reload:()=>window.NOMAD343_DASHBOARD_V2?.reload?.(),decorate:()=>{}};})();
