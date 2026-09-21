@@ -121,7 +121,7 @@ jobs:
               exit 1
             fi
           done
-          grep -Fq 'live.js' nomad-live-343/index.html
+          grep -Fq 'dashboard-v2-stage3.js' nomad-live-343/index.html
           grep -Fq 'signal-next.js' nomad-live-343/signal.html
           grep -Fq 'statistics-next.js' nomad-live-343/statistics.html
 
