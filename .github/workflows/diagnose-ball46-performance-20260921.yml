@@ -20,6 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          exec > >(tee /tmp/ball46-perf.txt) 2>&1
           WWW=https://www.ball46.com
           WORKER=https://ball46-production.mccarey-supon.workers.dev
           measure(){
@@ -46,3 +47,8 @@ jobs:
           done
           echo '=== REPO FILE SIZES ==='
           wc -c nomad-live-343/dashboard-v2.css nomad-live-343/dashboard-v2-stage3.js nomad-live-343/full-market-bookmaker-343.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/signal-next.js nomad-live-343/singlepage-workspace-343.js nomad-live-343/singlepage-workspace-343.css nomad-live-343/market-registry-343.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ball46-performance-diagnostics
+          path: /tmp/ball46-perf.txt
