@@ -1,0 +1,65 @@
+name: Inspect Ball46 runtime recovery
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Show Wrangler version
+        run: wrangler --version
+
+      - name: Inspect Ball46 wrapper deployments
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo '=== WRAPPER ==='
+          wrangler deployments list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc || true
+          wrangler versions list --config workers/nomadtips3-343-preview/wrangler.ball46.jsonc || true
+
+      - name: Inspect 3.43 auto engine deployments
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo '=== AUTO ENGINE ==='
+          wrangler deployments list --config workers/nomadtips3-343-auto-engine/wrangler.jsonc || true
+          wrangler versions list --config workers/nomadtips3-343-auto-engine/wrangler.jsonc || true
+
+      - name: Discover candidate wrangler configs
+        run: |
+          echo '=== WRANGLER CONFIGS ==='
+          find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort
+
+      - name: Inspect likely Ball46/343 worker configs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set +e
+          while IFS= read -r cfg; do
+            if grep -Eqi '343|ball46|hub|engine|market|ultra|preview' "$cfg"; then
+              echo "=== CONFIG: $cfg ==="
+              cat "$cfg"
+              echo '--- deployments ---'
+              wrangler deployments list --config "$cfg" || true
+              echo '--- versions ---'
+              wrangler versions list --config "$cfg" || true
+            fi
+          done < <(find . -type f \( -name 'wrangler.toml' -o -name 'wrangler.json' -o -name 'wrangler.jsonc' -o -name 'wrangler.*.jsonc' \) -print | sort)
