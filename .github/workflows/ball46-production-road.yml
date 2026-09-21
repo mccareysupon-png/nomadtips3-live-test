@@ -1,0 +1,234 @@
+name: Ball46 Production Road
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Files allowed in this deployment
+        required: true
+        type: choice
+        options:
+          - ui-text-only
+          - ui-runtime
+          - wrapper
+        default: ui-text-only
+      confirm:
+        description: Type DEPLOY BALL46
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ball46-production-road
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref_name == 'production/ball46-canonical'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CONFIG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+      PINNED_BASE: 64a3e64f57c8a6da2fdf4f56fa7cadeb97dbdd28
+      PROD_TAG: ball46-production-source
+      BASE_URL: https://ball46.com
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Checkout canonical production source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: production/ball46-canonical
+
+      - name: Preflight branch, confirmation, secrets and config
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm }}" = "DEPLOY BALL46"
+          test "${GITHUB_REF_NAME}" = "production/ball46-canonical"
+          test -n "${CLOUDFLARE_API_TOKEN:-}"
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}"
+          test -s "$CONFIG"
+          grep -Fq '"name": "ball46-production"' "$CONFIG"
+          grep -Fq '"binding": "ENGINE"' "$CONFIG"
+          grep -Fq '"binding": "HUB"' "$CONFIG"
+          grep -Fq '"binding": "FULL_MARKET"' "$CONFIG"
+          grep -Fq '"directory": "../../nomad-live-343"' "$CONFIG"
+
+      - name: Allow only the requested change scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --force origin "refs/tags/$PROD_TAG:refs/tags/$PROD_TAG" 2>/dev/null || true
+          if git rev-parse -q --verify "refs/tags/$PROD_TAG" >/dev/null; then
+            BASE=$(git rev-parse "refs/tags/$PROD_TAG")
+          else
+            BASE="$PINNED_BASE"
+          fi
+          printf '%s\n' "$BASE" > /tmp/source-before
+          git diff --name-only "$BASE" "$GITHUB_SHA" > /tmp/changed-files
+          test -s /tmp/changed-files
+          echo "Source baseline: $BASE"
+          cat /tmp/changed-files
+          while IFS= read -r file; do
+            case "$file" in
+              .github/workflows/ball46-production-road.yml|.ball46/*)
+                ;;
+              nomad-live-343/*.html|nomad-live-343/*.css|nomad-live-343/*.svg|nomad-live-343/*.png)
+                test "${{ inputs.scope }}" = "ui-text-only" || test "${{ inputs.scope }}" = "ui-runtime" || test "${{ inputs.scope }}" = "wrapper"
+                ;;
+              nomad-live-343/*.js)
+                test "${{ inputs.scope }}" = "ui-runtime" || test "${{ inputs.scope }}" = "wrapper"
+                ;;
+              workers/nomadtips3-343-preview/src/*|workers/nomadtips3-343-preview/wrangler.ball46.jsonc)
+                test "${{ inputs.scope }}" = "wrapper"
+                ;;
+              *)
+                echo "Blocked path: $file" >&2
+                exit 1
+                ;;
+            esac
+          done < /tmp/changed-files
+          if [ "${{ inputs.scope }}" = "ui-text-only" ]; then
+            if grep -E '\.(js|jsonc|toml)$' /tmp/changed-files; then
+              echo "Runtime/config change blocked in ui-text-only mode" >&2
+              exit 1
+            fi
+          fi
+
+      - name: Validate the three public pages before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          for page in index.html signal.html statistics.html; do
+            test -s "nomad-live-343/$page"
+            grep -Fq '<nav class="v2-mainnav"' "nomad-live-343/$page"
+            grep -Fq 'ball46' "nomad-live-343/$page"
+            if grep -Fq 'NOMAD LIVE 3.43' "nomad-live-343/$page"; then
+              echo "Internal label still visible in $page" >&2
+              exit 1
+            fi
+          done
+          grep -Fq 'live.js' nomad-live-343/index.html
+          grep -Fq 'signal-next.js' nomad-live-343/signal.html
+          grep -Fq 'statistics-next.js' nomad-live-343/statistics.html
+
+      - name: Capture rollback version and protected backend identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deployments list --config "$CONFIG" --json > /tmp/deployments-before.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('/tmp/deployments-before.json','utf8'));
+          const d=a[a.length-1]||{};
+          const v=d.versions?.find(x=>Number(x.percentage)===100)?.version_id||'';
+          if(!v) throw Error('ACTIVE_WRAPPER_VERSION_MISSING');
+          fs.writeFileSync('/tmp/wrapper-before',v);
+          console.log('ROLLBACK_VERSION',v);
+          NODE
+          for ep in engine/health hub/health full-market/health; do
+            safe=${ep//\//-}
+            curl -fsSL --retry 4 "$BASE_URL/api/$ep?road=before-$GITHUB_RUN_ID" -o "/tmp/$safe-before.json"
+          done
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const n of ['engine-health','hub-health','full-market-health']){
+            const d=JSON.parse(fs.readFileSync('/tmp/'+n+'-before.json','utf8'));
+            if(!d.version) throw Error(n.toUpperCase()+'_VERSION_MISSING');
+            fs.writeFileSync('/tmp/'+n+'-version',String(d.version));
+          }
+          NODE
+
+      - name: Deploy canonical wrapper and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          touch /tmp/deploy-started
+          npx --yes wrangler@4.92.0 deploy --config "$CONFIG" --message "canonical ${GITHUB_SHA} scope=${{ inputs.scope }}"
+          sleep 5
+          npx --yes wrangler@4.92.0 deployments list --config "$CONFIG" --json > /tmp/deployments-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          const a=JSON.parse(fs.readFileSync('/tmp/deployments-after.json','utf8'));
+          const d=a[a.length-1]||{};
+          const v=d.versions?.find(x=>Number(x.percentage)===100)?.version_id||'';
+          const before=fs.readFileSync('/tmp/wrapper-before','utf8').trim();
+          if(!v||v===before) throw Error('NEW_WRAPPER_VERSION_NOT_ACTIVE');
+          fs.writeFileSync('/tmp/wrapper-after',v);
+          console.log('ACTIVE_WRAPPER_VERSION',v);
+          NODE
+
+      - name: Verify pages, bindings, data and odds after deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for page in index.html signal.html statistics.html; do
+            curl -fsSL --retry 6 "$BASE_URL/$page?road=$GITHUB_RUN_ID" -o "/tmp/$page"
+            grep -Fq 'v2-mainnav' "/tmp/$page"
+            if grep -Fq 'NOMAD LIVE 3.43' "/tmp/$page"; then
+              echo "Internal label is still public on $page" >&2
+              exit 1
+            fi
+          done
+          for ep in engine/health hub/health full-market/health; do
+            safe=${ep//\//-}
+            curl -fsSL --retry 6 "$BASE_URL/api/$ep?road=after-$GITHUB_RUN_ID" -o "/tmp/$safe-after.json"
+          done
+          curl -fsSL --retry 6 "$BASE_URL/api/engine/board?road=after-$GITHUB_RUN_ID" -o /tmp/board-after.json
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const n of ['engine-health','hub-health','full-market-health']){
+            const d=JSON.parse(fs.readFileSync('/tmp/'+n+'-after.json','utf8'));
+            const before=fs.readFileSync('/tmp/'+n+'-version','utf8').trim();
+            if(String(d.version||'')!==before) throw Error(n.toUpperCase()+'_CHANGED');
+            if(d.ok===false) throw Error(n.toUpperCase()+'_UNHEALTHY:'+String(d.lastError||''));
+          }
+          const b=JSON.parse(fs.readFileSync('/tmp/board-after.json','utf8'));
+          const fixtures=Array.isArray(b.fixtures)?b.fixtures:[];
+          if(!fixtures.length) throw Error('BOARD_EMPTY');
+          const usable=o=>{
+            if(!o||typeof o!=='object') return false;
+            const keys=new Set(['line','hdp','handicap','total','home','homeodds','homeprice','draw','drawodds','drawprice','away','awayodds','awayprice','over','overodds','overprice','under','underodds','underprice','yes','no']);
+            const walk=x=>x&&typeof x==='object'&&Object.entries(x).some(([k,v])=>keys.has(k.toLowerCase())&&v!==null&&v!=='' || (v&&typeof v==='object'&&walk(v)));
+            return walk(o);
+          };
+          const withOdds=fixtures.filter(f=>usable(f.providerOdds)||usable(f.fullOdds)||usable(f.odds)).length;
+          console.log(JSON.stringify({fixtures:fixtures.length,fixturesWithOdds:withOdds}));
+          if(withOdds===0) throw Error('ODDS_ZERO_AFTER_DEPLOY');
+          NODE
+
+      - name: Record successful production source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'ball46-production-road'
+          git config user.email 'actions@users.noreply.github.com'
+          git tag -f "$PROD_TAG" "$GITHUB_SHA"
+          git push --force origin "refs/tags/$PROD_TAG"
+          {
+            echo "### Ball46 deployment"
+            echo "- Source: `$GITHUB_SHA`"
+            echo "- Previous wrapper: `$(cat /tmp/wrapper-before)`"
+            echo "- Active wrapper: `$(cat /tmp/wrapper-after)`"
+            echo "- Scope: `${{ inputs.scope }}`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Roll back wrapper automatically when post-deploy checks fail
+        if: failure()
+        shell: bash
+        run: |
+          set -uo pipefail
+          if [ ! -f /tmp/deploy-started ] || [ ! -s /tmp/wrapper-before ]; then
+            echo "No production deployment occurred; rollback not required."
+            exit 0
+          fi
+          PREVIOUS=$(cat /tmp/wrapper-before)
+          echo "Rolling back to $PREVIOUS"
+          npx --yes wrangler@4.92.0 rollback "$PREVIOUS" --config "$CONFIG"
+          sleep 5
+          curl -fsSL --retry 6 "$BASE_URL/api/engine/board?road=rollback-$GITHUB_RUN_ID" -o /tmp/board-rollback.json
+          node -e "const d=require('/tmp/board-rollback.json');if(!Array.isArray(d.fixtures)||!d.fixtures.length)process.exit(1)"
