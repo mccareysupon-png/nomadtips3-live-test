@@ -1,0 +1,55 @@
+name: Apply Ball46 Market Registry V1 20260921
+
+on:
+  push:
+    branches: [work/ball46-singlepage-workspace-20260921]
+    paths:
+      - '.github/scripts/apply_market_registry_v1.py'
+      - '.github/workflows/apply-ball46-market-registry-v1-20260921.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply static market registry integration
+        run: python .github/scripts/apply_market_registry_v1.py
+
+      - name: Validate registry and zero-new-polling contract
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/market-registry-343.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'market-registry-343.js?v=343-market-registry-v1' nomad-live-343/index.html
+          grep -Fq 'data-sp-variant-filters' nomad-live-343/index.html
+          grep -Fq 'function renderVariants()' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "ft_1x2" nomad-live-343/market-registry-343.js
+          grep -Fq "ht_1x2" nomad-live-343/market-registry-343.js
+          grep -Fq "ft_ah" nomad-live-343/market-registry-343.js
+          grep -Fq "ht_ah" nomad-live-343/market-registry-343.js
+          grep -Fq "ft_corner_ah" nomad-live-343/market-registry-343.js
+          grep -Fq "ft_cards_ah" nomad-live-343/market-registry-343.js
+          grep -Fq "ft_btts_yes" nomad-live-343/market-registry-343.js
+          grep -Fq "ft_btts_no" nomad-live-343/market-registry-343.js
+          ! grep -Fq 'fetch(' nomad-live-343/market-registry-343.js
+          ! grep -Fq 'setInterval' nomad-live-343/market-registry-343.js
+          git diff --check
+
+      - name: Commit registry integration
+        run: |
+          set -euo pipefail
+          git config user.name 'mccareysupon-png'
+          git config user.email 'mccarey.supon@gmail.com'
+          git add nomad-live-343/index.html nomad-live-343/singlepage-workspace-343.js
+          if git diff --cached --quiet; then
+            echo 'No registry integration changes needed.'
+            exit 0
+          fi
+          git commit -m 'Use complete static market registry in single-page statistics'
+          git push origin HEAD:work/ball46-singlepage-workspace-20260921
