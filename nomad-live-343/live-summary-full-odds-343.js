@@ -7,21 +7,13 @@
 // - never call 5USD directly from the browser
 // - never poll rich odds automatically
 // - never let a later bulk fixture event overwrite a rich 19-book render
-const VERSION='343-live-summary-john-gated-v7-default-visible-rich';
+const VERSION='343-live-summary-john-gated-v8-expanded-only-rich';
 const API='/api/full-market/fixture-odds';
 const CLIENT_CACHE_MS=45_000;
 const STALE_KEEP_MS=Number.POSITIVE_INFINITY;
 const cache=new Map();
 const inflight=new Map();
 let retryUntil=0;
-const DEFAULT_MAX_PER_MINUTE=6;
-const defaultQueue=[];
-const defaultQueued=new Set();
-const defaultDone=new Set();
-const defaultCalls=[];
-let defaultBusy=false;
-let defaultObserver=null;
-const observedRows=new WeakSet();
 
 const now=()=>Date.now();
 const idOf=f=>String(f?.fixtureId??f?.id??'').trim();
@@ -107,13 +99,6 @@ async function requestRich(id){
   return task;
 }
 
-function trimDefaultCalls(){const cutoff=now()-60_000;while(defaultCalls.length&&defaultCalls[0]<cutoff)defaultCalls.shift()}
-function applyDefaultRich(id,hit){if(!hit?.fullOdds)return false;const dash=window.NOMAD343_DASHBOARD_V2;if(!dash?.applyRichOdds)return false;return dash.applyRichOdds(id,hit.fullOdds,hit.fetchedAt)}
-function pumpDefaultQueue(){if(defaultBusy||!defaultQueue.length)return;trimDefaultCalls();if(defaultCalls.length>=DEFAULT_MAX_PER_MINUTE){const wait=Math.max(1000,60_000-(now()-defaultCalls[0])+250);setTimeout(pumpDefaultQueue,wait);return}const id=defaultQueue.shift();defaultQueued.delete(id);if(defaultDone.has(id)){pumpDefaultQueue();return}defaultBusy=true;defaultCalls.push(now());requestRich(id).then(hit=>{if(applyDefaultRich(id,hit))defaultDone.add(id)}).catch(err=>{const retry=Math.max(5,Number(err?.retryAfter||0));setTimeout(()=>enqueueDefault(id),retry*1000)}).finally(()=>{defaultBusy=false;setTimeout(pumpDefaultQueue,350)})}
-function enqueueDefault(id){id=String(id||'').trim();if(!id||defaultDone.has(id)||defaultQueued.has(id))return;defaultQueued.add(id);defaultQueue.push(id);pumpDefaultQueue()}
-function scanDefaultRows(){if(!defaultObserver)return;document.querySelectorAll('.match-row[data-match-id]').forEach(row=>{if(observedRows.has(row))return;observedRows.add(row);defaultObserver.observe(row)})}
-function startDefaultVisibleEnrichment(){if(typeof IntersectionObserver!=='function')return;defaultObserver=new IntersectionObserver(entries=>{for(const entry of entries){if(!entry.isIntersecting)continue;const row=entry.target;defaultObserver.unobserve(row);enqueueDefault(row?.dataset?.matchId)}},{root:null,rootMargin:'220px 0px',threshold:0.01});scanDefaultRows();setInterval(scanDefaultRows,1500)}
-
 function onFixtureReady(e){
   const fixture=e?.detail?.fixture;
   const id=idOf(fixture);
@@ -144,19 +129,16 @@ function onFixtureReady(e){
 
 function start(){
   document.addEventListener('nomad343:fixture-ready',onFixtureReady);
-  startDefaultVisibleEnrichment();
   window.NOMAD343_LIVE_SUMMARY_FULL_ODDS={
     version:VERSION,
-    mode:'BULK_PLUS_ON_DEMAND_AND_VISIBLE_DEFAULT_RICH',
+    mode:'BULK_PLUS_ON_DEMAND_RICH_FINAL_OWNER',
     renderOwner:'RICH_ODDS_FINAL',
     networkMode:'CENTRAL_GATE_ONLY',
     automaticPolling:false,
-    defaultCardVisibleEnrichment:true,
-    defaultCardMaxRequestsPerMinute:DEFAULT_MAX_PER_MINUTE,
     fanout:false,
     clientCacheMs:CLIENT_CACHE_MS,
     staleKeepMs:STALE_KEEP_MS,
-    source:'ENGINE_BOARD_BULK_PLUS_FULL_MARKET_GATE',
+    source:'ENGINE_BOARD_BULK_PLUS_ON_DEMAND_FULL_MARKET_GATE',
     upstreamRequestsPerExpandedFixture:'0-or-1 (shared server cache)',
     current:id=>cache.get(String(id))||null,
     clear:()=>cache.clear()

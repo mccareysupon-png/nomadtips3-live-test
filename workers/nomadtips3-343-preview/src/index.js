@@ -75,16 +75,6 @@ function boardHasBookmakerOdds(board) {
   );
 }
 
-function mergeLastGood(previous, incoming) {
-  if (incoming === null || incoming === undefined || incoming === '') return previous;
-  if (Array.isArray(incoming)) return incoming.length ? incoming : previous;
-  if (typeof incoming !== 'object') return incoming;
-  const prev = previous && typeof previous === 'object' && !Array.isArray(previous) ? previous : {};
-  const out = { ...prev };
-  for (const [key, value] of Object.entries(incoming)) out[key] = mergeLastGood(prev[key], value);
-  return out;
-}
-
 function liveFixtureIds(board) {
   const seen = new Set();
   const ids = [];
@@ -98,73 +88,13 @@ function liveFixtureIds(board) {
   return ids;
 }
 
-async function fullMarketCacheSnapshot(env, fixtureIds) {
-  if (!env.FULL_MARKET || !fixtureIds.length) return null;
-  const request = new Request('https://full-market.internal/board-cache', {
-    method:'POST',
-    headers:{'content-type':'application/json'},
-    body:JSON.stringify({fixtureIds})
-  });
-  const response = await env.FULL_MARKET.fetch(request);
-  if (!response.ok) return null;
-  const data = await response.json().catch(() => null);
-  return data?.ok === true && data?.entries && typeof data.entries === 'object' ? data : null;
-}
-
-async function enrichBoardWithCachedFullMarket(board, env) {
-  if (!board || board.ok !== true || !Array.isArray(board.fixtures)) return { board, changed:false };
-  const ids = liveFixtureIds(board);
-  if (!ids.length) return { board, changed:false };
-  try {
-    const cache = await fullMarketCacheSnapshot(env, ids);
-    if (!cache) return { board, changed:false };
-    let hits = 0;
-    let staleHits = 0;
-    const fixtures = board.fixtures.map(fixture => {
-      const id = String(fixture?.fixtureId ?? fixture?.id ?? '').trim();
-      const hit = cache.entries?.[id];
-      if (!fixtureIsLive(fixture) || !hit?.fullOdds || typeof hit.fullOdds !== 'object') return fixture;
-      hits += 1;
-      if (hit.stale) staleHits += 1;
-      return {
-        ...fixture,
-        providerOdds: mergeLastGood(fixture?.providerOdds, hit.fullOdds),
-        providerOddsUpdatedAt: Number(hit.fetchedAt || fixture?.providerOddsUpdatedAt || 0) || fixture?.providerOddsUpdatedAt || null,
-        providerOddsFreshAt: Number(hit.fetchedAt || fixture?.providerOddsFreshAt || 0) || fixture?.providerOddsFreshAt || null,
-        providerOddsHeld: Boolean(hit.stale),
-        centralFullMarketCached: true
-      };
-    });
-    if (!hits) return { board, changed:false };
-    return {
-      board:{
-        ...board,
-        fixtures,
-        fullMarketCache:{
-          mode:'SERVER_CENTRAL_LAST_GOOD',
-          requested:ids.length,
-          hits,
-          staleHits,
-          externalRequestsAdded:0,
-          version:cache.version || null
-        }
-      },
-      changed:true
-    };
-  } catch {
-    return { board, changed:false };
-  }
-}
-
 async function engineBoardResponse(request, env) {
   const engineResponse = await env.ENGINE.fetch(engineRequest(request, '/board'));
   const engineBoard = engineResponse.ok ? await engineResponse.clone().json().catch(() => null) : null;
   const engineHasOdds = boardHasBookmakerOdds(engineBoard);
 
   if (engineResponse.ok && engineBoard?.ok === true && engineHasOdds) {
-    const enriched = await enrichBoardWithCachedFullMarket(engineBoard, env);
-    if (!enriched.changed) return engineResponse;
-    return Response.json(enriched.board, { headers:{'cache-control':'no-store','x-ball46-board-source':'engine-plus-central-full-market-cache'} });
+    return engineResponse;
   }
 
   const hubResponse = await env.HUB.fetch(hubRequest(request, '/snapshot'));
@@ -187,8 +117,7 @@ async function engineBoardResponse(request, env) {
     hubAgeMs: hub.ageMs ?? null,
     referee: { mode: 'HUB_SNAPSHOT_FALLBACK', externalRequestsAdded: 0, requests: 0, queued: 0, errors: [] }
   };
-  const enriched = await enrichBoardWithCachedFullMarket(fallbackBoard, env);
-  return Response.json(enriched.board, { headers: { 'cache-control': 'no-store', 'x-ball46-board-source': enriched.changed ? 'hub-plus-central-full-market-cache' : 'hub-snapshot-fallback' } });
+  return Response.json(fallbackBoard, { headers: { 'cache-control': 'no-store', 'x-ball46-board-source': 'hub-snapshot-fallback' } });
 }
 
 async function activeSignals(request, env) {
