@@ -1,0 +1,100 @@
+name: Version Ball46 Performance Assets 20260921
+
+on:
+  push:
+    branches: [work/ball46-performance-golden-20260921]
+    paths:
+      - '.github/workflows/bump-ball46-performance-assets-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  PREVIEW_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+  PROD_URL: https://ball46-production.mccarey-supon.workers.dev
+  GOLDEN_PROD_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  version-and-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Version changed performance assets only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('nomad-live-343/index.html')
+          s=p.read_text()
+          old='dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-v5-default-rich-bridge&order=20260919-2&signal-owner=dashboard-v1'
+          new='dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-v6-board-first&order=20260921-perf1&signal-owner=dashboard-v1'
+          if old in s: s=s.replace(old,new,1)
+          elif new not in s: raise SystemExit('dashboard script version anchor not found')
+          old='singlepage-workspace-343.js?v=343-singlepage-20260921-3'
+          new='singlepage-workspace-343.js?v=343-singlepage-perf-v1-20260921'
+          if old in s: s=s.replace(old,new,1)
+          elif new not in s: raise SystemExit('workspace script version anchor not found')
+          p.write_text(s)
+          PY
+      - name: Guard Golden odds renderer and Engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in workers/nomadtips3-engine-343/src/index.js nomad-live-343/bulk-odds-compat-343.js nomad-live-343/full-market-bookmaker-343.js nomad-live-343/live-summary-full-odds-343.js nomad-live-343/expanded-match-343.js; do
+            git diff --quiet "$GOLDEN_PROD_SHA"..HEAD -- "$p" || { echo "FORBIDDEN GOLDEN ODDS CHANGE: $p"; exit 1; }
+          done
+          grep -Fq '343-dashboard-v2-stage3-v6-board-first' nomad-live-343/index.html
+          grep -Fq '343-singlepage-perf-v1-20260921' nomad-live-343/index.html
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          git diff --check
+      - name: Commit versioned asset URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'mccareysupon-png'
+          git config user.email 'mccarey.supon@gmail.com'
+          git add nomad-live-343/index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'perf(ball46): version board-first workspace assets'
+            git push origin HEAD:work/ball46-performance-golden-20260921
+          fi
+      - name: Dry-run isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+      - name: Deploy isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+      - name: Revalidate preview after asset version bump
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 4
+          curl -fsS --max-time 30 "$PREVIEW_URL/?perfversion=$GITHUB_RUN_ID" -o /tmp/home.html
+          grep -Fq '343-dashboard-v2-stage3-v6-board-first' /tmp/home.html
+          grep -Fq '343-singlepage-perf-v1-20260921' /tmp/home.html
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/home.html
+          grep -Fq 'live-summary-full-odds-343.js' /tmp/home.html
+          curl -fsS --max-time 30 "$PROD_URL/api/engine/board?golden=$GITHUB_RUN_ID" -o /tmp/prod-board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?preview=$GITHUB_RUN_ID" -o /tmp/preview-board.json
+          curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics-lite?preview=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs'); const prod=JSON.parse(fs.readFileSync('/tmp/prod-board.json')); const prev=JSON.parse(fs.readFileSync('/tmp/preview-board.json')); const st=JSON.parse(fs.readFileSync('/tmp/stats.json'));
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const count=b=>(b.fixtures||[]).filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(prod?.ok!==true||prev?.ok!==true) throw Error('board unhealthy'); const a=count(prod),b=count(prev); if(a>0&&b===0) throw Error(`preview odds lost: ${a}->0`);
+          if(st?.ok!==true||st?.compact!==true||!Array.isArray(st?.rows)) throw Error('stats-lite unhealthy'); const bytes=fs.statSync('/tmp/stats.json').size; if(bytes>900000) throw Error(`stats-lite too large ${bytes}`);
+          console.log('VERSIONED PERFORMANCE PREVIEW PASS',{prodOdds:a,previewOdds:b,statsRows:st.rows.length,statsBytes:bytes});
+          NODE
+          curl -fsSI --max-time 20 "$PREVIEW_URL/dashboard-v2-stage3.js?v=343-dashboard-v2-stage3-v6-board-first" | grep -Fqi 'cache-control: public, max-age=31536000, immutable'
