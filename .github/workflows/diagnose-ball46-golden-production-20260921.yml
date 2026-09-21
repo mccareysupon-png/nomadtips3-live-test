@@ -1,0 +1,83 @@
+name: Diagnose Ball46 Golden Production 20260921
+
+on:
+  push:
+    branches: [work/ball46-golden-master-integration-20260921]
+    paths:
+      - '.github/workflows/diagnose-ball46-golden-production-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  BALL46_URL: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Golden Worker shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/?diag=$GITHUB_RUN_ID" -o /tmp/worker.html
+          grep -Fq 'data-workspace-panel="live"' /tmp/worker.html
+          grep -Fq 'data-workspace-panel="signal"' /tmp/worker.html
+          grep -Fq 'data-workspace-panel="statistics"' /tmp/worker.html
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/worker.html
+          grep -Fq 'bulk-odds-compat-343.js' /tmp/worker.html
+          if grep -Fq 'market-registry-343.js?v=343-market-registry-v1' /tmp/worker.html; then echo 'WORKER_VARIANT=integration'; else echo 'WORKER_VARIANT=golden'; fi
+
+      - name: Check Golden WWW shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_URL/?diag=$GITHUB_RUN_ID" -o /tmp/www.html
+          grep -Fq 'data-workspace-panel="live"' /tmp/www.html
+          grep -Fq 'data-workspace-panel="signal"' /tmp/www.html
+          grep -Fq 'data-workspace-panel="statistics"' /tmp/www.html
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/www.html
+          grep -Fq 'bulk-odds-compat-343.js' /tmp/www.html
+          if grep -Fq 'market-registry-343.js?v=343-market-registry-v1' /tmp/www.html; then echo 'WWW_VARIANT=integration'; else echo 'WWW_VARIANT=golden'; fi
+
+      - name: Check Golden Apex shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_APEX/?diag=$GITHUB_RUN_ID" -o /tmp/apex.html
+          grep -Fq 'data-workspace-panel="live"' /tmp/apex.html
+          grep -Fq 'data-workspace-panel="signal"' /tmp/apex.html
+          grep -Fq 'data-workspace-panel="statistics"' /tmp/apex.html
+          grep -Fq 'full-market-bookmaker-343.js' /tmp/apex.html
+          grep -Fq 'bulk-odds-compat-343.js' /tmp/apex.html
+          if grep -Fq 'market-registry-343.js?v=343-market-registry-v1' /tmp/apex.html; then echo 'APEX_VARIANT=integration'; else echo 'APEX_VARIANT=golden'; fi
+
+      - name: Check Golden Worker Board and odds
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/api/engine/board?diag=$GITHUB_RUN_ID" -o /tmp/worker-board.json
+          node - <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/worker-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('worker board unhealthy');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          console.log('WORKER BOARD',{fixtures:b.fixtures.length,oddsFixtures:odds});
+          NODE
+
+      - name: Check Golden WWW Board
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_URL/api/engine/board?diag=$GITHUB_RUN_ID" -o /tmp/www-board.json
+          node - <<'NODE'
+          const fs=require('fs');const b=JSON.parse(fs.readFileSync('/tmp/www-board.json','utf8'));
+          if(b?.ok!==true||!Array.isArray(b?.fixtures)) throw Error('www board unhealthy');
+          console.log('WWW BOARD',{fixtures:b.fixtures.length});
+          NODE
