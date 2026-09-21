@@ -12,6 +12,16 @@
     if(card) card.classList.add('b46-mobile-status-menu');
   }
 
+  function nativeStatisticsRoute(){
+    const q=new URLSearchParams(location.search);
+    q.delete('status');
+    q.set('view','statistics');
+    q.set('market','all');
+    q.delete('filter');
+    q.delete('page');
+    location.href=`${location.pathname}?${q.toString()}`;
+  }
+
   function activate(view){
     if(view==='live'){
       const all=qs('[data-status-filter="all"]');
@@ -23,7 +33,16 @@
     }
     if(view==='statistics'){
       const total=qs('[data-stat-market="all"]');
-      if(total){total.click();return;}
+      if(total){
+        total.click();
+        window.setTimeout(()=>{
+          const panel=qs('[data-workspace-panel="statistics"]');
+          const opened=document.body.dataset.workspaceView==='statistics'&&panel&&!panel.hidden;
+          if(!opened) nativeStatisticsRoute();
+        },160);
+        return;
+      }
+      nativeStatisticsRoute();
     }
   }
 
