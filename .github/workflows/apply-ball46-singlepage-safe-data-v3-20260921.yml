@@ -2,8 +2,10 @@ name: Apply Ball46 Single Page Safe Data V3 20260921
 
 on:
   push:
-    branches: [work/ball46-singlepage-workspace-20260921]
+    branches:
+      - work/ball46-singlepage-workspace-20260921
     paths:
+      - '.github/scripts/apply_ball46_singlepage_v3.py'
       - '.github/workflows/apply-ball46-singlepage-safe-data-v3-20260921.yml'
 
 permissions:
@@ -17,132 +19,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply safe data bridge and geometry lock
-        shell: python
-        run: |
-          from pathlib import Path
-          import re
+      - name: Apply V3 patch
+        run: python .github/scripts/apply_ball46_singlepage_v3.py
 
-          # 1) Expose the signal snapshot already fetched by Page 1.
-          #    This is additive only: no board/odds/bookmaker logic is changed.
-          dash = Path('nomad-live-343/dashboard-v2-stage3.js')
-          s = dash.read_text()
-          if 'let signalRows=[];' not in s:
-              s = s.replace('let signalMirror={};', 'let signalMirror={};\nlet signalRows=[];', 1)
-          old = "signalMap=next;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{}"
-          new = "signalMap=next;signalRows=rows;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{};window.dispatchEvent(new CustomEvent('ball46:signals-snapshot',{detail:{signals:signalRows.slice(),mirror:signalMirror}}))"
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif "ball46:signals-snapshot" not in s:
-              raise SystemExit('dashboard signal hook anchor not found')
-          old_export = "window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_PLUS_CENTRAL_RICH_VISIBLE',applyRichOdds,getFixture:id=>fixtures.find(f=>fixtureKey(f)===String(id))||null}"
-          new_export = "window.NOMAD343_DASHBOARD_V2={version:VERSION,reload:load,mode:'BULK_PLUS_CENTRAL_RICH_VISIBLE',applyRichOdds,getFixture:id=>fixtures.find(f=>fixtureKey(f)===String(id))||null,getSignals:()=>signalRows.slice(),getSignalMirror:()=>signalMirror}"
-          if old_export in s:
-              s = s.replace(old_export, new_export, 1)
-          elif 'getSignals:()=>signalRows.slice()' not in s:
-              raise SystemExit('dashboard export anchor not found')
-          dash.write_text(s)
-
-          # 2) Signal subview consumes Page 1's existing signal snapshot.
-          #    It no longer starts its own API polling loop.
-          sig = Path('nomad-live-343/signal-next.js')
-          s = sig.read_text()
-          s = s.replace("const API='/api/engine/signals';\nconst POLL=30000;\n", '')
-          s = s.replace('let active=false,timer=0,loading=false;', 'let active=false,lastRows=[];')
-          pattern = re.compile(r"async function load\(\)\{.*?function syncView\(view\)\{if\(view==='signal'\)start\(\);else stop\(\)\}", re.S)
-          replacement = """function consume(rows){lastRows=Array.isArray(rows)?rows:[];if(active)render(lastRows)}
-function readPageOneSnapshot(){const api=window.NOMAD343_DASHBOARD_V2;return api&&typeof api.getSignals==='function'?api.getSignals():[]}
-function start(){active=true;consume(readPageOneSnapshot());if(!lastRows.length)state('live','Waiting for Page 1 signal snapshot')}
-function stop(){active=false}
-function syncView(view){if(view==='signal')start();else stop()}"""
-          s2, n = pattern.subn(replacement, s, count=1)
-          if n != 1 and 'function readPageOneSnapshot()' not in s:
-              raise SystemExit('signal polling block anchor not found')
-          s = s2 if n else s
-          s = s.replace("document.addEventListener('click',e=>{const b=e.target.closest('[data-next-toggle]');if(!b||!active)return;const id=b.getAttribute('data-next-toggle');if(openIds.has(id))openIds.delete(id);else openIds.add(id);load()});", "document.addEventListener('click',e=>{const b=e.target.closest('[data-next-toggle]');if(!b||!active)return;const id=b.getAttribute('data-next-toggle');if(openIds.has(id))openIds.delete(id);else openIds.add(id);render(lastRows)});")
-          if "ball46:signals-snapshot" not in s:
-              s = s.replace("document.addEventListener('ball46:workspace-view',e=>syncView(e.detail?.view));", "window.addEventListener('ball46:signals-snapshot',e=>consume(e.detail?.signals));\ndocument.addEventListener('ball46:workspace-view',e=>syncView(e.detail?.view));")
-          s = s.replace("window.addEventListener('beforeunload',stop,{once:true});", "window.addEventListener('beforeunload',stop,{once:true});")
-          sig.write_text(s)
-
-          # 3) Statistics is lazy, storage-only and one-shot cached.
-          #    /statistics reads Durable Object storage; it does not call bookmaker/provider odds.
-          sp = Path('nomad-live-343/singlepage-workspace-343.js')
-          s = sp.read_text()
-          s = s.replace('const POLL_MS=45000;', 'const STAT_CACHE_MS=300000;')
-          s = s.replace("const state={view:'live',market:'all',filter:'all',page:1,rows:[],statsLoaded:false,statsLoading:false,statsTimer:0};", "const state={view:'live',market:'all',filter:'all',page:1,rows:[],statsLoaded:false,statsLoading:false,statsLoadedAt:0};")
-          old = "function stopStatistics(){if(state.statsTimer){clearInterval(state.statsTimer);state.statsTimer=0}}\nfunction startStatistics(){loadStatistics();if(!state.statsTimer)state.statsTimer=setInterval(()=>{if(state.view==='statistics')loadStatistics()},POLL_MS)}"
-          new = "function stopStatistics(){}\nfunction startStatistics(){if(state.statsLoaded&&Date.now()-state.statsLoadedAt<STAT_CACHE_MS){renderStats();return}loadStatistics()}"
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif 'Date.now()-state.statsLoadedAt<STAT_CACHE_MS' not in s:
-              raise SystemExit('statistics polling anchor not found')
-          s = s.replace('state.rows=j.rows;state.statsLoaded=true;renderStats();', 'state.rows=j.rows;state.statsLoaded=true;state.statsLoadedAt=Date.now();renderStats();')
-          # Keep leagues card mounted so left rail geometry never changes between views.
-          s = s.replace("const leagues=$('[data-league-card]');if(leagues)leagues.hidden=view!=='live';", "const leagues=$('[data-league-card]');if(leagues)leagues.hidden=false;")
-          sp.write_text(s)
-
-          # 4) Lock left-rail geometry across every view.
-          css = Path('nomad-live-343/singlepage-workspace-343.css')
-          c = css.read_text()
-          if '/* LEFT RAIL GEOMETRY LOCK V3 */' not in c:
-              c += r'''
-/* LEFT RAIL GEOMETRY LOCK V3 */
-.workspace.singlepage>.left-rail{display:flex;flex-direction:column;gap:10px}
-.workspace.singlepage>.left-rail>.rail-card{margin:0!important;width:100%;box-sizing:border-box;flex:0 0 auto}
-.workspace.singlepage>.left-rail .rail-title{height:30px;min-height:30px;max-height:30px;box-sizing:border-box;display:flex;align-items:center}
-.workspace.singlepage>.left-rail .filter,.workspace.singlepage>.left-rail .workspace-nav-row{height:34px;min-height:34px;max-height:34px;box-sizing:border-box}
-.workspace.singlepage>.left-rail .workspace-brand-card{height:76px;min-height:76px;max-height:76px}
-.workspace.singlepage>.left-rail .workspace-brand-row{height:48px;min-height:48px;max-height:48px}
-.workspace.singlepage>.left-rail .workspace-brand-meta{height:28px;min-height:28px;max-height:28px}
-.workspace.singlepage>.left-rail .workspace-stats-card{min-height:302px}
-.workspace.singlepage>.left-rail [data-league-card]{min-height:110px}
-@media(max-width:760px){.workspace.singlepage>.left-rail{gap:8px}.workspace.singlepage>.left-rail .workspace-brand-card{height:44px;min-height:44px;max-height:44px}.workspace.singlepage>.left-rail .workspace-brand-row{height:44px;min-height:44px;max-height:44px}.workspace.singlepage>.left-rail .workspace-stats-card{min-height:0}.workspace.singlepage>.left-rail [data-league-card]{min-height:0}}
-'''
-          css.write_text(c)
-
-          # 5) Bump asset revisions in page 1 only.
-          idx = Path('nomad-live-343/index.html')
-          h = idx.read_text()
-          h = h.replace('singlepage-workspace-343.css?v=343-singlepage-20260921-2','singlepage-workspace-343.css?v=343-singlepage-20260921-3')
-          h = h.replace('signal-next.js?v=343-singlepage-signal-2','signal-next.js?v=343-singlepage-signal-3')
-          h = h.replace('singlepage-workspace-343.js?v=343-singlepage-20260921-2','singlepage-workspace-343.js?v=343-singlepage-20260921-3')
-          idx.write_text(h)
-
-          # 6) Preview guard: permit only the exact additive dashboard signal bridge.
-          wf = Path('.github/workflows/deploy-ball46-singlepage-preview-20260921.yml')
-          w = wf.read_text()
-          w = w.replace("            nomad-live-343/dashboard-v2-stage3.js \\\n", '')
-          if 'Verify dashboard change is signal-bridge only' not in w:
-              marker = "          echo 'PASS: page-1 engine, bookmaker and odds runtime are unchanged.'\n"
-              extra = r'''          echo 'PASS: page-1 engine, bookmaker and odds runtime are unchanged.'
-
-      - name: Verify dashboard change is signal-bridge only
-        shell: bash
-        run: |
-          set -euo pipefail
-          git show "$BASELINE_SHA:nomad-live-343/dashboard-v2-stage3.js" > /tmp/dash-base.js
-          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dash-current.js
-          python - <<'PY'
-          from pathlib import Path
-          s=Path('/tmp/dash-current.js').read_text()
-          s=s.replace('\nlet signalRows=[];','',1)
-          s=s.replace(";signalRows=rows;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{};window.dispatchEvent(new CustomEvent('ball46:signals-snapshot',{detail:{signals:signalRows.slice(),mirror:signalMirror}}))", ";signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{}",1)
-          s=s.replace(",getSignals:()=>signalRows.slice(),getSignalMirror:()=>signalMirror",'',1)
-          Path('/tmp/dash-sanitized.js').write_text(s)
-          PY
-          cmp -s /tmp/dash-base.js /tmp/dash-sanitized.js || { echo 'FORBIDDEN DASHBOARD CHANGE OUTSIDE SIGNAL BRIDGE'; diff -u /tmp/dash-base.js /tmp/dash-sanitized.js | head -120; exit 1; }
-          grep -Fq "ball46:signals-snapshot" nomad-live-343/dashboard-v2-stage3.js
-          grep -Fq "getSignals:()=>signalRows.slice()" nomad-live-343/dashboard-v2-stage3.js
-'''
-              w = w.replace(marker, extra, 1)
-          w = w.replace("          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js\n", "          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js\n          grep -Fq 'ball46:signals-snapshot' nomad-live-343/signal-next.js\n          ! grep -Fq \"/api/engine/signals\" nomad-live-343/signal-next.js\n          ! grep -Fq 'setInterval' nomad-live-343/signal-next.js\n          grep -Fq 'STAT_CACHE_MS=300000' nomad-live-343/singlepage-workspace-343.js\n          ! grep -Fq 'statsTimer' nomad-live-343/singlepage-workspace-343.js\n")
-          w = w.replace("          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-2' /tmp/home.html\n", "          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-3' /tmp/home.html\n")
-          w = w.replace("          grep -Fq 'signal-next.js?v=343-singlepage-signal-2' /tmp/home.html\n", "          grep -Fq 'signal-next.js?v=343-singlepage-signal-3' /tmp/home.html\n")
-          wf.write_text(w)
-
-      - name: Validate exact scope
-        shell: bash
+      - name: Validate V3 files
         run: |
           set -euo pipefail
           node --check nomad-live-343/dashboard-v2-stage3.js
@@ -156,8 +36,7 @@ function syncView(view){if(view==='signal')start();else stop()}"""
           grep -Fq "LEFT RAIL GEOMETRY LOCK V3" nomad-live-343/singlepage-workspace-343.css
           git diff --check
 
-      - name: Commit safe workspace V3
-        shell: bash
+      - name: Commit V3 workspace
         run: |
           set -euo pipefail
           git config user.name 'mccareysupon-png'
