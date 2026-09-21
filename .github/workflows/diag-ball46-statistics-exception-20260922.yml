@@ -1,0 +1,34 @@
+name: Diagnose Ball46 Statistics Exception 20260922
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths: ['.github/workflows/diag-ball46-statistics-exception-20260922.yml']
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Capture browser exceptions
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium)
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port=9222 about:blank >/tmp/chrome.log 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:9222/json/version >/dev/null && break; sleep 1; done
+          npm install ws@8 --no-save >/dev/null 2>&1
+          node - <<'NODE'
+          const http=require('http');const WebSocket=require('ws');
+          const get=u=>new Promise((ok,ko)=>http.get(u,r=>{let s='';r.on('data',d=>s+=d);r.on('end',()=>ok(JSON.parse(s)))}).on('error',ko));
+          (async()=>{
+            const pages=await get('http://127.0.0.1:9222/json');const ws=new WebSocket(pages[0].webSocketDebuggerUrl);let id=0;const waits=new Map();
+            ws.on('message',buf=>{const m=JSON.parse(buf);if(m.id&&waits.has(m.id)){waits.get(m.id)(m);waits.delete(m.id)}if(m.method==='Runtime.exceptionThrown')console.log('EXCEPTION',JSON.stringify(m.params.exceptionDetails));if(m.method==='Runtime.consoleAPICalled')console.log('CONSOLE',JSON.stringify(m.params));});
+            await new Promise(r=>ws.on('open',r));
+            const cmd=(method,params={})=>new Promise(r=>{const i=++id;waits.set(i,r);ws.send(JSON.stringify({id:i,method,params}))});
+            await cmd('Runtime.enable');await cmd('Page.enable');await cmd('Network.enable');
+            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-exception=1'});
+            await new Promise(r=>setTimeout(r,12000));
+            const x=await cmd('Runtime.evaluate',{expression:`JSON.stringify({view:document.body.dataset.workspaceView,feed:document.querySelector('[data-sp-feed-state]')?.textContent,total:document.querySelector('[data-sp-kpi="total"]')?.textContent,panelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden})`,returnByValue:true});
+            console.log('STATE',x.result.result.value);ws.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
