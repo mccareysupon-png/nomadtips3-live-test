@@ -1,0 +1,156 @@
+name: Deploy Ball46 Legacy Page Removal Production 20260921
+
+on:
+  push:
+    branches: [work/ball46-remove-legacy-pages-20260921]
+    paths:
+      - '.github/workflows/deploy-ball46-remove-legacy-production-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASE_SHA: 7c9e26118244dc14a676e7f887d97bdf899553fd
+  BALL46_WORKER: https://ball46-production.mccarey-supon.workers.dev
+  BALL46_WWW: https://www.ball46.com
+  BALL46_APEX: https://ball46.com
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Record current Board and Odds baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 30 "$BALL46_WORKER/api/engine/board?before=$GITHUB_RUN_ID" -o /tmp/before.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/before.json'));
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('Board unhealthy before cleanup');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          fs.writeFileSync('/tmp/pre.json',JSON.stringify({fixtures:b.fixtures.length,odds}));
+          console.log('PRE CLEANUP',{fixtures:b.fixtures.length,odds});
+          NODE
+
+      - name: Guard Page 1 Golden core and validate deletions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            workers/nomadtips3-engine-343/src/index.js \
+            workers/nomadtips3-343-preview/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            nomad-live-343/index.html \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$BASE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
+          done
+          for p in signal.html statistics.html signal-next.html statistics-next.html signal.js statistics.js statistics-next.js; do
+            test ! -e "nomad-live-343/$p" || { echo "LEGACY FILE STILL EXISTS: $p"; exit 1; }
+          done
+          ! grep -Eq 'signal\.html|statistics\.html' nomad-live-343/sitemap.xml
+          grep -Fq 'signal-next.js' nomad-live-343/index.html
+          grep -Fq 'singlepage-workspace-343.js' nomad-live-343/index.html
+          grep -Fq '"name": "ball46-production"' workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          git diff --check
+
+      - name: Validate Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Dry-run production cleanup package
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Deploy production cleanup
+        id: deploy
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+
+      - name: Verify Worker Page 1 Odds and legacy shutdown
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for n in $(seq 1 15); do
+            if curl -fsS --connect-timeout 8 --max-time 20 "$BALL46_WORKER/?cleanup=$GITHUB_RUN_ID-$n" -o /tmp/home.html \
+              && grep -Fq 'signal-next.js' /tmp/home.html \
+              && grep -Fq 'singlepage-workspace-343.js' /tmp/home.html; then ok=1; break; fi
+            sleep 2
+          done
+          test "$ok" = 1
+          curl -fsS --connect-timeout 8 --max-time 30 "$BALL46_WORKER/api/engine/board?after=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs'),pre=JSON.parse(fs.readFileSync('/tmp/pre.json')),b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('Board unhealthy after cleanup');
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(pre.fixtures>0&&b.fixtures.length===0) throw Error('Fixtures dropped to zero');
+          if(pre.odds>0&&odds===0) throw Error(`GOLDEN ODDS LOST ${pre.odds}->0`);
+          console.log('WORKER CLEANUP PASS',{before:pre,after:{fixtures:b.fixtures.length,odds}});
+          NODE
+          for p in signal.html statistics.html signal-next.html statistics-next.html signal.js statistics.js statistics-next.js; do
+            code=$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' "$BALL46_WORKER/$p?cleanup=$GITHUB_RUN_ID")
+            echo "worker $p -> $code"
+            case "$code" in 404|410) ;; *) exit 1;; esac
+          done
+
+      - name: Verify WWW and Apex propagation
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$BALL46_WWW" "$BALL46_APEX"; do
+            ok=0
+            for n in $(seq 1 20); do
+              home=$(curl -sS --connect-timeout 8 --max-time 20 -o /tmp/site.html -w '%{http_code}' "$base/?cleanup=$GITHUB_RUN_ID-$n")
+              sig=$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' "$base/signal.html?cleanup=$GITHUB_RUN_ID-$n")
+              sta=$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' "$base/statistics.html?cleanup=$GITHUB_RUN_ID-$n")
+              if [ "$home" = 200 ] && grep -Fq 'singlepage-workspace-343.js' /tmp/site.html && { [ "$sig" = 404 ] || [ "$sig" = 410 ]; } && { [ "$sta" = 404 ] || [ "$sta" = 410 ]; }; then ok=1; break; fi
+              sleep 3
+            done
+            test "$ok" = 1
+          done
+          curl -fsS --connect-timeout 8 --max-time 30 "$BALL46_WWW/api/engine/board?final=$GITHUB_RUN_ID" -o /tmp/www-board.json
+          node - <<'NODE'
+          const fs=require('fs'),pre=JSON.parse(fs.readFileSync('/tmp/pre.json')),b=JSON.parse(fs.readFileSync('/tmp/www-board.json'));
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('WWW Board unhealthy');
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(pre.odds>0&&odds===0) throw Error(`WWW GOLDEN ODDS LOST ${pre.odds}->0`);
+          console.log('WWW CLEANUP PASS',{fixtures:b.fixtures.length,odds});
+          NODE
+
+      - name: Automatic rollback on any production failure
+        if: ${{ failure() && steps.deploy.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'Legacy cleanup validation failed. Restoring Performance V1 baseline...'
+          git worktree add --detach /tmp/ball46-cleanup-rollback "$BASE_SHA"
+          cd /tmp/ball46-cleanup-rollback/workers/nomadtips3-343-preview
+          npx --yes wrangler@4.92.0 deploy --config wrangler.ball46.jsonc
+          sleep 5
+          curl -fsS --connect-timeout 8 --max-time 30 "$BALL46_WORKER/api/engine/board?rollback=$GITHUB_RUN_ID" -o /tmp/rollback.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/rollback.json')); if(b?.ok!==true||!Array.isArray(b.fixtures))throw Error('Rollback Board unhealthy'); console.log('PERFORMANCE V1 RESTORED',{fixtures:b.fixtures.length});
+          NODE
