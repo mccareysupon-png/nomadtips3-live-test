@@ -1,4 +1,4 @@
-name: Inspect Ball46 Worker History 20260921 0200
+name: Inspect Ball46 Full Live Chain 20260921
 on:
   push:
     paths:
@@ -8,31 +8,58 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONFIG_REF: af999592ea6e84fe72cb984670723d52673a5b5e
-      WRAPPER_CFG: workers/nomadtips3-343-preview/wrangler.ball46.jsonc
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Checkout known-good config only
+      - name: Checkout known-good configs only
         uses: actions/checkout@v4
         with:
           ref: ${{ env.CONFIG_REF }}
           fetch-depth: 1
-      - name: List deployment and version history
+      - name: Inspect Worker deployment/version histories
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== DEPLOYMENTS ==='
-          npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json | tee /tmp/deployments.json
-          echo '=== VERSIONS ==='
-          npx --yes wrangler@4.92.0 versions list --config "$WRAPPER_CFG" --json | tee /tmp/versions.json
-          echo '=== TARGET WINDOW 2026-09-20 18:30Z..20:30Z (01:30..03:30 Bangkok) ==='
-          node - <<'NODE'
-          const fs=require('fs');
-          const v=JSON.parse(fs.readFileSync('/tmp/versions.json','utf8'));
-          const arr=Array.isArray(v)?v:(v.versions||[]);
-          const lo=Date.parse('2026-09-20T18:30:00Z'), hi=Date.parse('2026-09-20T20:30:00Z');
-          for(const x of arr){
-            const t=Date.parse(x.created_on||x.created_at||x.created||'');
-            if(Number.isFinite(t)&&t>=lo&&t<=hi) console.log(JSON.stringify(x));
+          for item in \
+            'WRAPPER|workers/nomadtips3-343-preview/wrangler.ball46.jsonc' \
+            'ENGINE|workers/nomadtips3-engine-343/wrangler.toml' \
+            'HUB|workers/nomadtips3-5usd-hub-343/wrangler.toml' \
+            'FULL_MARKET|workers/nomadtips3-full-market-343-ball46/wrangler.toml'
+          do
+            IFS='|' read -r label cfg <<< "$item"
+            echo "===== $label DEPLOYMENTS ====="
+            npx --yes wrangler@4.92.0 deployments list --config "$cfg" --json || true
+            echo "===== $label VERSIONS ====="
+            npx --yes wrangler@4.92.0 versions list --config "$cfg" --json || true
+          done
+      - name: Inspect Ball46 live endpoints twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          probe() {
+            local url="$1"
+            echo "===== $url ====="
+            curl -fsS --connect-timeout 10 --max-time 30 -D /tmp/headers "$url" -o /tmp/body || { cat /tmp/headers 2>/dev/null || true; return 0; }
+            sed -n '1,40p' /tmp/headers
+            python - <<'PY'
+import json
+p='/tmp/body'
+raw=open(p,'rb').read()
+print('bytes=',len(raw))
+try:
+    x=json.loads(raw)
+except Exception:
+    print(raw[:1500].decode('utf-8','replace'))
+    raise SystemExit
+print('ok=',x.get('ok'),'version=',x.get('version'),'fetchedAt=',x.get('fetchedAt'),'hubFetchedAt=',x.get('hubFetchedAt'),'ageMs=',x.get('ageMs'),'hubAgeMs=',x.get('hubAgeMs'),'stale=',x.get('stale'),'fixtures=',len(x.get('fixtures') or []),'signals=',len(x.get('signals') or []))
+for f in (x.get('fixtures') or [])[:30]:
+    print('FIX',f.get('fixtureId'),f.get('homeName') or f.get('home'),f.get('awayName') or f.get('away'),'status=',f.get('status'),'code=',f.get('statusCode'),'state=',f.get('boardState'),'min=',f.get('minute'),'goals=',f.get('goals'))
+PY
           }
-          NODE
+          for round in 1 2; do
+            echo "######## ROUND $round $(date -u +%FT%TZ) ########"
+            probe 'https://ball46.com/api/hub/snapshot'
+            probe 'https://ball46.com/api/engine/board'
+            probe 'https://ball46.com/api/engine/signals'
+            if [ "$round" = 1 ]; then sleep 12; fi
+          done
