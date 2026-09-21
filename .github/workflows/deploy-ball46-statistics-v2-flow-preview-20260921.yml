@@ -57,13 +57,13 @@ jobs:
           for p in nomad-live-343/index.html nomad-live-343/signal.html nomad-live-343/statistics.html nomad-live-343/dashboard-v2-stage3.js nomad-live-343/bulk-odds-compat-343.js nomad-live-343/full-market-bookmaker-343.js workers/nomadtips3-343-preview/src/index.js; do
             git diff --quiet "$BASE_SHA"..HEAD -- "$p" || { echo "CORE FILE CHANGED: $p"; exit 1; }
           done
-          echo 'PASS: preview-only scope; production pages and engine bridge untouched.'
+          echo 'PASS: connected workspace remains isolated; production pages and engine bridge untouched.'
 
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Validate preview files
+      - name: Validate connected workspace files
         shell: bash
         run: |
           set -euo pipefail
@@ -71,10 +71,16 @@ jobs:
           node --check nomad-live-343/statistics-flow-343.js
           grep -Fq 'statistics-v2-preview.html?market=ah' nomad-live-343/index-flow-preview.html
           grep -Fq 'signal-flow-preview.html' nomad-live-343/signal-flow-preview.html
+          grep -Fq 'data-flow-count="live"' nomad-live-343/signal-flow-preview.html
           grep -Fq 'v2-shared.js' nomad-live-343/statistics-v2-preview.html
           grep -Fq 'data-theme-toggle' nomad-live-343/statistics-v2-preview.html
           grep -Fq "const STAT_API='/api/engine/statistics'" nomad-live-343/statistics-v2-preview.js
           grep -Fq "const BOARD_API='/api/engine/board'" nomad-live-343/statistics-v2-preview.js
+          grep -Fq 'Promise.allSettled' nomad-live-343/statistics-v2-preview.js
+          grep -Fq 'signal-flow-preview.html?fixture=' nomad-live-343/statistics-flow-343.js
+          if grep -Fq 'fallbackRows' nomad-live-343/statistics-v2-preview.js; then
+            echo 'Synthetic statistics fallback is forbidden in connected mode'; exit 1
+          fi
 
       - name: Validate Cloudflare credentials
         run: |
@@ -98,7 +104,7 @@ jobs:
           for page in index-flow-preview.html signal-flow-preview.html statistics-v2-preview.html; do
             curl -fsS --max-time 30 "$PREVIEW_URL/$page?verify=$GITHUB_RUN_ID" -o "/tmp/$page"
           done
-          grep -Fq 'STATISTICS' /tmp/index-flow-preview.html
+          grep -Fq 'CONNECTED WORKSPACE' /tmp/index-flow-preview.html
           grep -Fq 'Active Signals' /tmp/signal-flow-preview.html
           grep -Fq 'PERFORMANCE TREND' /tmp/statistics-v2-preview.html
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
@@ -114,4 +120,4 @@ jobs:
           if(stats?.ok!==true||!Array.isArray(stats?.rows)) throw Error('statistics unhealthy');
           console.log('PASS board=',board.fixtures.length,'signals=',signals.signals.length,'stats=',stats.rows.length);
           NODE
-          echo "FLOW PREVIEW PASS: $PREVIEW_URL/index-flow-preview.html"
+          echo "CONNECTED FLOW PASS: $PREVIEW_URL/index-flow-preview.html"
