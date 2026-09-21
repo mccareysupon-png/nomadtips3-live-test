@@ -17,21 +17,23 @@ jobs:
         run: |
           set -euo pipefail
           CHROME=$(command -v google-chrome || command -v chromium)
-          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --remote-debugging-port=9223 about:blank >/tmp/chrome-fast.log 2>&1 &
-          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:9223/json >/tmp/pages.json && break; sleep 1; done
+          rm -rf /tmp/b46-profile
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --user-data-dir=/tmp/b46-profile --remote-debugging-address=127.0.0.1 --remote-debugging-port=9223 about:blank >/tmp/chrome-fast.log 2>&1 &
+          ok=0
+          for i in $(seq 1 30); do if curl -fsS http://127.0.0.1:9223/json >/tmp/pages.json; then ok=1; break; fi; sleep 1; done
+          [ "$ok" = 1 ] || { cat /tmp/chrome-fast.log; exit 1; }
           node - <<'NODE'
           const http=require('http');
           const get=u=>new Promise((ok,ko)=>http.get(u,r=>{let s='';r.on('data',d=>s+=d);r.on('end',()=>ok(JSON.parse(s)))}).on('error',ko));
           (async()=>{
-            if(typeof WebSocket!=='function') throw new Error('NO_GLOBAL_WEBSOCKET');
             const pages=await get('http://127.0.0.1:9223/json');const ws=new WebSocket(pages[0].webSocketDebuggerUrl);let id=0;const waits=new Map();
-            ws.onmessage=ev=>{const m=JSON.parse(ev.data);if(m.id&&waits.has(m.id)){waits.get(m.id)(m);waits.delete(m.id)}if(m.method==='Runtime.exceptionThrown')console.log('EXCEPTION',JSON.stringify(m.params.exceptionDetails));if(m.method==='Runtime.consoleAPICalled')console.log('CONSOLE',JSON.stringify(m.params.args));};
+            ws.onmessage=ev=>{const m=JSON.parse(String(ev.data));if(m.id&&waits.has(m.id)){waits.get(m.id)(m);waits.delete(m.id)}if(m.method==='Runtime.exceptionThrown')console.log('EXCEPTION',JSON.stringify(m.params.exceptionDetails));if(m.method==='Runtime.consoleAPICalled')console.log('CONSOLE',JSON.stringify(m.params));if(m.method==='Network.responseReceived'&&String(m.params?.response?.url||'').includes('/api/engine/statistics'))console.log('STAT_RESPONSE',m.params.response.status,m.params.response.url);if(m.method==='Network.loadingFailed')console.log('NETFAIL',JSON.stringify(m.params));};
             await new Promise((ok,ko)=>{ws.onopen=ok;ws.onerror=ko});
-            const cmd=(method,params={})=>new Promise(r=>{const i=++id;waits.set(i,r);ws.send(JSON.stringify({id:i,method,params}))});
-            await cmd('Runtime.enable');await cmd('Page.enable');
-            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-fast=1'});
-            await new Promise(r=>setTimeout(r,10000));
-            const x=await cmd('Runtime.evaluate',{expression:`JSON.stringify({view:document.body.dataset.workspaceView,feed:document.querySelector('[data-sp-feed-state]')?.textContent,total:document.querySelector('[data-sp-kpi="total"]')?.textContent,panelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden})`,returnByValue:true});
-            console.log('STATE',x.result.result.value);ws.close();
+            const cmd=(method,params={})=>new Promise((resolve,reject)=>{const i=++id;const timer=setTimeout(()=>{waits.delete(i);reject(new Error('CDP_TIMEOUT '+method))},15000);waits.set(i,m=>{clearTimeout(timer);resolve(m)});ws.send(JSON.stringify({id:i,method,params}))});
+            await cmd('Runtime.enable');await cmd('Page.enable');await cmd('Network.enable');
+            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-fast=2'});
+            await new Promise(r=>setTimeout(r,12000));
+            const x=await cmd('Runtime.evaluate',{expression:`JSON.stringify({href:location.href,view:document.body?.dataset?.workspaceView,feed:document.querySelector('[data-sp-feed-state]')?.textContent,total:document.querySelector('[data-sp-kpi="total"]')?.textContent,panelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden,ready:document.readyState})`,returnByValue:true});
+            console.log('STATE',x.result?.result?.value);ws.close();
           })().catch(e=>{console.error('DIAG_FAIL',e);process.exit(1)});
           NODE
