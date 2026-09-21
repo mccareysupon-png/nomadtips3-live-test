@@ -1,0 +1,84 @@
+name: Apply Ball46 Single Page Final Spec 20260921
+
+on:
+  push:
+    branches: [work/ball46-singlepage-workspace-20260921]
+    paths:
+      - '.github/workflows/apply-ball46-singlepage-final-spec-20260921.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-final-spec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Remove legacy header and lock sidebar-only shell
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          index = Path('nomad-live-343/index.html')
+          s = index.read_text()
+          s = s.replace('<link rel="stylesheet" href="v2-header.css?v=343-v2-header-v1">','')
+          s = re.sub(r'<header class="v2-topbar">.*?</header>\s*','',s,flags=re.S)
+          s = re.sub(r'<nav class="mobile-nav">.*?</nav>\s*','',s,flags=re.S)
+          s = re.sub(r'<script src="v2-shared\.js[^>]*></script>','',s)
+          brand = '''<div class="rail-card workspace-brand-card"><div class="workspace-brand-row"><div class="workspace-brand" aria-label="Ball46"><span>ball</span><b>46</b></div><button type="button" class="workspace-theme-btn" data-theme-toggle aria-label="Switch theme">☾ Dark</button></div><div class="workspace-brand-meta"><span>LIVE WORKSPACE</span><b>BULK · DEC</b></div></div>\n'''
+          anchor = '<aside class="left-rail">\n'
+          if 'workspace-brand-card' not in s:
+              s = s.replace(anchor, anchor + brand, 1)
+          s = s.replace('singlepage-workspace-343.css?v=343-singlepage-20260921-1','singlepage-workspace-343.css?v=343-singlepage-20260921-2')
+          s = s.replace('signal-next.js?v=343-singlepage-signal-1','signal-next.js?v=343-singlepage-signal-2')
+          s = s.replace('singlepage-workspace-343.js?v=343-singlepage-20260921-1','singlepage-workspace-343.js?v=343-singlepage-20260921-2')
+          index.write_text(s)
+
+          css = Path('nomad-live-343/singlepage-workspace-343.css')
+          c = css.read_text()
+          c = c.replace('top:78px;align-self:start;max-height:calc(100vh - 94px);overflow:auto','top:14px;align-self:start;max-height:calc(100vh - 28px);overflow:auto')
+          if '.workspace-brand-card{' not in c:
+              c += '''\n/* sidebar owns navigation and utilities; legacy header is gone */\n.workspace-brand-card{padding:0;overflow:hidden}\n.workspace-brand-row{min-height:48px;padding:0 10px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:10px}\n.workspace-brand{display:flex;align-items:baseline;font-weight:950;letter-spacing:-1.1px;font-size:19px;line-height:1}.workspace-brand span{color:var(--text)}.workspace-brand b{color:var(--green);font-size:20px}\n.workspace-theme-btn{height:27px;padding:0 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);color:var(--muted);font-size:8px;font-weight:850;cursor:pointer}.workspace-theme-btn:hover{color:var(--text);border-color:var(--green)}\n.workspace-brand-meta{min-height:27px;padding:0 10px 0 12px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:7px;font-weight:850;letter-spacing:.07em}.workspace-brand-meta b{color:var(--green);font-size:7px}\n@media(max-width:760px){.workspace-brand-card{display:block}.workspace-brand-row{min-height:44px}.workspace-brand-meta{display:none}}\n'''
+          css.write_text(c)
+
+          wf = Path('.github/workflows/deploy-ball46-singlepage-preview-20260921.yml')
+          w = wf.read_text()
+          if "      - 'nomad-live-343/signal-next.js'" not in w:
+              w = w.replace("      - 'nomad-live-343/singlepage-workspace-343.js'\n", "      - 'nomad-live-343/singlepage-workspace-343.js'\n      - 'nomad-live-343/signal-next.js'\n")
+          w = w.replace("          ! grep -Fq 'href=\"statistics.html\"' nomad-live-343/index.html\n", "          ! grep -Fq 'href=\"statistics.html\"' nomad-live-343/index.html\n          ! grep -Fq '<header class=\"v2-topbar\"' nomad-live-343/index.html\n          ! grep -Fq '<nav class=\"mobile-nav\"' nomad-live-343/index.html\n          ! grep -Fq 'v2-header.css' nomad-live-343/index.html\n          ! grep -Fq 'v2-shared.js' nomad-live-343/index.html\n          grep -Fq 'workspace-brand-card' nomad-live-343/index.html\n          grep -Fq 'data-theme-toggle' nomad-live-343/index.html\n          grep -Fq 'ball46:workspace-view' nomad-live-343/singlepage-workspace-343.js\n          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js\n          ! grep -Fq \"const SIGNAL_API=\" nomad-live-343/singlepage-workspace-343.js\n")
+          w = w.replace("          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-1' /tmp/home.html\n", "          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-2' /tmp/home.html\n          ! grep -Fq '<header class=\"v2-topbar\"' /tmp/home.html\n          ! grep -Fq '<nav class=\"mobile-nav\"' /tmp/home.html\n          curl -fsS --max-time 30 \"$PREVIEW_URL/signal-next.js?verify=$GITHUB_RUN_ID\" -o /tmp/signal-next.js\n          node --check /tmp/signal-next.js\n")
+          wf.write_text(w)
+
+      - name: Validate final spec before commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/singlepage-workspace-343.js
+          node --check nomad-live-343/signal-next.js
+          ! grep -Fq '<header class="v2-topbar"' nomad-live-343/index.html
+          ! grep -Fq '<nav class="mobile-nav"' nomad-live-343/index.html
+          ! grep -Fq 'v2-header.css' nomad-live-343/index.html
+          ! grep -Fq 'v2-shared.js' nomad-live-343/index.html
+          grep -Fq 'workspace-brand-card' nomad-live-343/index.html
+          grep -Fq 'data-theme-toggle' nomad-live-343/index.html
+          grep -Fq 'ball46:workspace-view' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js
+          git diff --check
+
+      - name: Commit final single-page shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'mccareysupon-png'
+          git config user.email 'mccarey.supon@gmail.com'
+          git add nomad-live-343/index.html nomad-live-343/singlepage-workspace-343.css .github/workflows/deploy-ball46-singlepage-preview-20260921.yml
+          if git diff --cached --quiet; then
+            echo 'No shell changes needed.'
+            exit 0
+          fi
+          git commit -m 'Finalize sidebar-only single-page Ball46 workspace shell'
+          git push origin HEAD:work/ball46-singlepage-workspace-20260921
