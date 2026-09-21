@@ -16,16 +16,11 @@ jobs:
         with:
           ref: ${{ env.CONFIG_REF }}
           fetch-depth: 1
-      - name: Inspect Worker deployment/version histories
+      - name: Inspect Worker deployment and version histories
         shell: bash
         run: |
           set -euo pipefail
-          for item in \
-            'WRAPPER|workers/nomadtips3-343-preview/wrangler.ball46.jsonc' \
-            'ENGINE|workers/nomadtips3-engine-343/wrangler.toml' \
-            'HUB|workers/nomadtips3-5usd-hub-343/wrangler.toml' \
-            'FULL_MARKET|workers/nomadtips3-full-market-343-ball46/wrangler.toml'
-          do
+          for item in 'WRAPPER|workers/nomadtips3-343-preview/wrangler.ball46.jsonc' 'ENGINE|workers/nomadtips3-engine-343/wrangler.toml' 'HUB|workers/nomadtips3-5usd-hub-343/wrangler.toml' 'FULL_MARKET|workers/nomadtips3-full-market-343-ball46/wrangler.toml'; do
             IFS='|' read -r label cfg <<< "$item"
             echo "===== $label DEPLOYMENTS ====="
             npx --yes wrangler@4.92.0 deployments list --config "$cfg" --json || true
@@ -36,30 +31,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          probe() {
-            local url="$1"
-            echo "===== $url ====="
-            curl -fsS --connect-timeout 10 --max-time 30 -D /tmp/headers "$url" -o /tmp/body || { cat /tmp/headers 2>/dev/null || true; return 0; }
-            sed -n '1,40p' /tmp/headers
-            python - <<'PY'
-import json
-p='/tmp/body'
-raw=open(p,'rb').read()
-print('bytes=',len(raw))
-try:
-    x=json.loads(raw)
-except Exception:
-    print(raw[:1500].decode('utf-8','replace'))
-    raise SystemExit
-print('ok=',x.get('ok'),'version=',x.get('version'),'fetchedAt=',x.get('fetchedAt'),'hubFetchedAt=',x.get('hubFetchedAt'),'ageMs=',x.get('ageMs'),'hubAgeMs=',x.get('hubAgeMs'),'stale=',x.get('stale'),'fixtures=',len(x.get('fixtures') or []),'signals=',len(x.get('signals') or []))
-for f in (x.get('fixtures') or [])[:30]:
-    print('FIX',f.get('fixtureId'),f.get('homeName') or f.get('home'),f.get('awayName') or f.get('away'),'status=',f.get('status'),'code=',f.get('statusCode'),'state=',f.get('boardState'),'min=',f.get('minute'),'goals=',f.get('goals'))
-PY
-          }
           for round in 1 2; do
             echo "######## ROUND $round $(date -u +%FT%TZ) ########"
-            probe 'https://ball46.com/api/hub/snapshot'
-            probe 'https://ball46.com/api/engine/board'
-            probe 'https://ball46.com/api/engine/signals'
+            for url in 'https://ball46.com/api/hub/snapshot' 'https://ball46.com/api/engine/board' 'https://ball46.com/api/engine/signals'; do
+              echo "===== $url ====="
+              curl -sS --connect-timeout 10 --max-time 30 -D /tmp/headers "$url" -o /tmp/body || true
+              sed -n '1,40p' /tmp/headers || true
+              echo "bytes=$(wc -c </tmp/body 2>/dev/null || echo 0)"
+              jq -c '{ok,version,fetchedAt,hubFetchedAt,ageMs,hubAgeMs,stale,fixtureCount:((.fixtures//[])|length),signalCount:((.signals//[])|length)}' /tmp/body 2>/dev/null || head -c 1200 /tmp/body || true
+              jq -c '(.fixtures//[])[:40][] | {fixtureId,homeName,awayName,status,statusCode,boardState,minute,goals}' /tmp/body 2>/dev/null || true
+            done
             if [ "$round" = 1 ]; then sleep 12; fi
           done
