@@ -1,0 +1,67 @@
+name: Apply Ball46 Performance V1 20260921
+
+on:
+  push:
+    branches: [work/ball46-performance-golden-20260921]
+    paths:
+      - '.github/workflows/apply-ball46-performance-v1-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GOLDEN_PROD_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Guard Golden odds renderer and Engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            workers/nomadtips3-engine-343/src/index.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/expanded-match-343.js; do
+            git diff --quiet "$GOLDEN_PROD_SHA"..HEAD -- "$p" || { echo "FORBIDDEN GOLDEN ODDS CHANGE: $p"; exit 1; }
+          done
+      - name: Apply performance patch
+        run: python .github/scripts/apply_ball46_performance_v1.py
+      - name: Validate performance contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
+          node --check nomad-live-343/singlepage-workspace-343.js
+          node --check workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "const STAT_API='/api/engine/statistics-lite';" nomad-live-343/singlepage-workspace-343.js
+          grep -Fq "mode:'BOARD_FIRST_THEN_SIGNALS'" nomad-live-343/dashboard-v2-stage3.js
+          ! grep -Fq "Promise.all([fetchJson(API),loadSignals()])" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "signalBoardData(request, env)" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "'/api/engine/statistics-lite'" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "stats-lite-v1" workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "max-age=31536000, immutable" workers/nomadtips3-343-preview/src/index.js
+          ! grep -Fq '/api/engine/board' nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq '/api/engine/signals' nomad-live-343/singlepage-workspace-343.js
+          git diff --check
+      - name: Commit patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'mccareysupon-png'
+          git config user.email 'mccarey.supon@gmail.com'
+          git add nomad-live-343/dashboard-v2-stage3.js nomad-live-343/singlepage-workspace-343.js workers/nomadtips3-343-preview/src/index.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'perf(ball46): board first and compact statistics'
+          git push origin HEAD:work/ball46-performance-golden-20260921
