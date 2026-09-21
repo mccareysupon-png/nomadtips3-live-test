@@ -1,7 +1,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { MARKET_RULES, MARKET_KEYS, cardPointsPair, gapPass, lineGap, settleMarketSignal } from './market-core.js';
 
-const VERSION='nomad343-engine-v5-stale-guard';
+const VERSION='nomad343-engine-v6-condition-integrity';
 const API_BASE='https://api.5dollarfootballapi.com/v1';
 const MIN_SCAN_GAP_MS=60_000;
 const HISTORY_MS=180*60_000;
@@ -158,7 +158,7 @@ function evidenceForSelection(key,selection,roll,cfg){
     if(sel==='YES'){const h=evidenceSide(roll,cfg,'HOME',false),a=evidenceSide(roll,cfg,'AWAY',false);return {pass:h.pass&&a.pass,count:Math.min(h.count,a.count),required:h.required,side:'BOTH',mode:'BOTH_HIGH',items:[...h.items,...a.items],strength:Math.min(h.strength,a.strength)}}
     const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return h.strength>=a.strength?h:a;
   }
-  if(sel==='UNDER'){const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return h.strength>=a.strength?h:a}
+  if(sel==='UNDER'){const h=evidenceSide(roll,cfg,'HOME',true),a=evidenceSide(roll,cfg,'AWAY',true);return {pass:h.pass&&a.pass,count:Math.min(h.count,a.count),required:h.required,side:'BOTH',mode:'BOTH_LOW',items:[...h.items,...a.items],strength:Math.min(h.strength,a.strength)}}
   const h=evidenceSide(roll,cfg,'HOME',false),a=evidenceSide(roll,cfg,'AWAY',false);return h.strength>=a.strength?h:a;
 }
 function scoreTrailingPass(f,selection,max){if(!['HOME','AWAY'].includes(selection))return true;const h=num(f.goals?.home),a=num(f.goals?.away);if(h===null||a===null)return false;const def=selection==='HOME'?a-h:h-a;return def<=Number(max??99)}
