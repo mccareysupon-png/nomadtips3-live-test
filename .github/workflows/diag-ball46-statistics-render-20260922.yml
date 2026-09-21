@@ -1,0 +1,29 @@
+name: Diagnose Ball46 Statistics Render 20260922
+on:
+  push:
+    branches: [diag/ball46-statistics-missing-20260922]
+    paths: ['.github/workflows/diag-ball46-statistics-render-20260922.yml']
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Render statistics route
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          test -n "$CHROME"
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --window-size=1440,1000 --virtual-time-budget=12000 --dump-dom 'https://www.ball46.com/?view=statistics' > /tmp/pc.html 2>/tmp/pc.err || true
+          "$CHROME" --headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage --window-size=390,844 --virtual-time-budget=12000 --dump-dom 'https://www.ball46.com/?view=statistics' > /tmp/mobile.html 2>/tmp/mobile.err || true
+          echo '--- PC ---'
+          grep -o 'data-workspace-view="[^"]*"' /tmp/pc.html | head -1 || true
+          grep -o 'data-sp-kpi="total"[^<]*>[^<]*' /tmp/pc.html | head -1 || true
+          grep -o 'data-sp-feed-state[^>]*>[^<]*' /tmp/pc.html | head -1 || true
+          echo '--- MOBILE ---'
+          grep -o 'data-workspace-view="[^"]*"' /tmp/mobile.html | head -1 || true
+          grep -o 'data-sp-kpi="total"[^<]*>[^<]*' /tmp/mobile.html | head -1 || true
+          grep -o 'data-sp-feed-state[^>]*>[^<]*' /tmp/mobile.html | head -1 || true
+          echo '--- ERRORS ---'
+          tail -30 /tmp/pc.err || true
