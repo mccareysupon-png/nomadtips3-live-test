@@ -1,0 +1,74 @@
+/* Ball46 Statistics V2 visual-balance pass 2026-09-21
+   Preview-only. Makes the chart the primary visual and summary numbers secondary. */
+
+/* calm summary strip: numbers stay readable but no longer dominate */
+.kpi-grid{
+  min-height:64px;
+  gap:0;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.kpi-card{
+  height:64px;
+  padding:9px 12px 8px;
+  border:0;
+  border-right:1px solid #edf1ef;
+  border-radius:0;
+  box-shadow:none;
+  background:#fff;
+}
+.kpi-card:last-child{border-right:0}
+.kpi-card.accent{border-color:transparent;background:#fbfdfc}
+.kpi-card span{font-size:7.5px;letter-spacing:.09em}
+.kpi-card strong{
+  margin-top:5px;
+  font-size:15px;
+  line-height:1.05;
+  letter-spacing:-.2px;
+  font-weight:850;
+}
+.kpi-card small{
+  margin-top:4px;
+  font-size:7px;
+  color:#98a29c;
+}
+
+/* chart becomes the visual anchor without becoming heavy */
+.trend-panel{
+  height:178px;
+  padding:14px 16px 12px;
+  border-color:var(--line-strong);
+}
+.trend-panel .section-head{height:39px}
+.trend-panel .section-head h3{font-size:12.5px}
+.spark-wrap,.sparkline{height:118px}
+.sparkline path{stroke-width:1}
+.spark-zero{stroke:#edf1ef;stroke-width:1;stroke-dasharray:2 6}
+.range-note{font-size:7.5px;color:#8a958e}
+
+/* slightly tighter lead-in so the chart enters the viewport sooner */
+.market-hero{height:76px;padding:12px 16px}
+.market-hero h2{font-size:18px;margin-top:3px}
+.market-hero p{font-size:9.5px}
+.content-area{gap:10px}
+
+@media(max-width:1050px){
+  .kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));min-height:122px}
+  .kpi-card{height:61px;border-bottom:1px solid #edf1ef}
+  .kpi-card:nth-child(3n){border-right:0}
+  .kpi-card:nth-child(n+4){border-bottom:0}
+}
+
+@media(max-width:760px){
+  .market-hero{height:68px;padding:9px 11px}
+  .kpi-grid{min-height:112px;gap:0}
+  .kpi-card{height:56px;padding:7px 9px}
+  .kpi-card strong{font-size:13px;margin-top:4px}
+  .kpi-card small{display:none}
+  .trend-panel{height:164px;padding:11px 11px 9px}
+  .trend-panel .section-head{height:36px}
+  .spark-wrap,.sparkline{height:112px}
+}
