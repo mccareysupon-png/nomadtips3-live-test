@@ -1,0 +1,21 @@
+/* Ball46 Statistics V2 flow bridge · preview only */
+.stats-flow-card .rail-title{display:flex;align-items:center;justify-content:space-between}
+.stats-flow-card .flow-link{width:100%;min-height:36px;padding:9px 12px;border:0;border-top:1px solid var(--line);background:transparent;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px;text-decoration:none;font-size:10px;font-weight:760}
+.stats-flow-card .flow-link:hover{background:var(--green-soft);color:var(--green)}
+.stats-flow-card .flow-link.active{background:var(--green-soft);color:var(--green);font-weight:900;box-shadow:inset 3px 0 var(--green)}
+.stats-flow-card .flow-link span{display:flex;align-items:center;gap:8px;min-width:0}
+.stats-flow-card .flow-link b{min-width:26px;text-align:center;padding:3px 5px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:8px}
+.stats-flow-card .flow-link.active b{color:var(--green);border-color:color-mix(in srgb,var(--green) 25%,var(--line));background:color-mix(in srgb,var(--green-soft) 80%,var(--panel))}
+.stats-flow-card .flow-mark{width:7px;height:7px;border-radius:2px;border:1px solid color-mix(in srgb,var(--green) 55%,var(--line));background:var(--green-soft)}
+.stats-flow-card .flow-mark.total{border-radius:50%;background:var(--panel)}
+.stats-flow-card .flow-mark.signal{border:0;background:transparent;color:#d8aa43;width:auto;height:auto;font-size:8px}
+.flow-preview-note{margin:0 0 10px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--green) 22%,var(--line));border-radius:9px;background:var(--green-soft);color:var(--muted);font-size:8px;font-weight:750}
+html[data-theme="dark"] .stats-flow-card .flow-link{color:var(--text)}
+html[data-theme="dark"] .stats-flow-card .flow-link:hover,html[data-theme="dark"] .stats-flow-card .flow-link.active{background:var(--green-soft);color:var(--green)}
+@media(max-width:760px){
+  .stats-flow-card{margin-top:8px}
+  .stats-flow-card .rail-title{display:flex;padding:9px 10px}
+  .stats-flow-card .flow-links{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;padding:6px}
+  .stats-flow-card .flow-link{min-height:34px;border:1px solid var(--line);border-radius:7px;padding:6px;justify-content:center;text-align:center;font-size:8px}
+  .stats-flow-card .flow-link span{justify-content:center}.stats-flow-card .flow-link b,.stats-flow-card .flow-mark{display:none}
+}
