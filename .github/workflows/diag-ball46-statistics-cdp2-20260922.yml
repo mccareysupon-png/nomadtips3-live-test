@@ -27,7 +27,9 @@ jobs:
           const get=u=>new Promise((ok,ko)=>http.get(u,r=>{let s='';r.on('data',d=>s+=d);r.on('end',()=>ok(JSON.parse(s)))}).on('error',ko));
           (async()=>{
             const pages=await get('http://127.0.0.1:9224/json');
-            const ws=new WebSocket(pages[0].webSocketDebuggerUrl);let id=0;const waits=new Map();
+            const page=pages.find(p=>p.type==='page'&&p.url==='about:blank')||pages.find(p=>p.type==='page');
+            if(!page)throw new Error('NO_PAGE_TARGET');
+            const ws=new WebSocket(page.webSocketDebuggerUrl);let id=0;const waits=new Map();
             ws.onmessage=ev=>{const m=JSON.parse(String(ev.data));if(m.id&&waits.has(m.id)){waits.get(m.id)(m);waits.delete(m.id)}
               if(m.method==='Runtime.exceptionThrown')console.log('EXCEPTION',JSON.stringify(m.params.exceptionDetails));
               if(m.method==='Runtime.consoleAPICalled')console.log('CONSOLE',JSON.stringify(m.params));
@@ -37,7 +39,7 @@ jobs:
             await new Promise((ok,ko)=>{ws.onopen=ok;ws.onerror=ko});
             const cmd=(method,params={})=>new Promise((resolve,reject)=>{const i=++id;const timer=setTimeout(()=>{waits.delete(i);reject(new Error('CDP_TIMEOUT '+method))},15000);waits.set(i,m=>{clearTimeout(timer);resolve(m)});ws.send(JSON.stringify({id:i,method,params}))});
             await cmd('Runtime.enable');await cmd('Page.enable');await cmd('Network.enable');
-            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-cdp2=1'});
+            await cmd('Page.navigate',{url:'https://www.ball46.com/?view=statistics&diag-cdp2=2'});
             await new Promise(r=>setTimeout(r,12000));
             const x=await cmd('Runtime.evaluate',{expression:`JSON.stringify({href:location.href,view:document.body?.dataset?.workspaceView,feed:document.querySelector('[data-sp-feed-state]')?.textContent,total:document.querySelector('[data-sp-kpi="total"]')?.textContent,panelHidden:document.querySelector('[data-workspace-panel="statistics"]')?.hidden,ready:document.readyState})`,returnByValue:true});
             console.log('STATE',x.result?.result?.value);ws.close();
