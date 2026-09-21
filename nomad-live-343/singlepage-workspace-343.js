@@ -1,6 +1,6 @@
 (()=>{
 'use strict';
-const STAT_API='/api/engine/statistics';
+const STAT_API='/api/engine/statistics-lite';
 const PAGE_SIZE=50;
 const STAT_CACHE_MS=300000;
 const $=s=>document.querySelector(s);

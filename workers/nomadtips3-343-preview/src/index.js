@@ -25,6 +25,72 @@ function fullMarketRequest(request, path) {
 const num = value => value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
 const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.stringify(value)) : value ?? null;
 
+const STAT_LITE_CACHE_MS = 30_000;
+let statLiteCache = { at:0, body:null, promise:null };
+
+function compactStatisticsRow(row) {
+  return {
+    id: row?.id ?? null,
+    fixtureId: row?.fixtureId ?? null,
+    league: row?.league ? { country:row.league.country ?? null, name:row.league.name ?? null } : null,
+    home: row?.home ? { name:row.home.name ?? null } : null,
+    away: row?.away ? { name:row.away.name ?? null } : null,
+    market: row?.market ?? null,
+    marketLabel: row?.marketLabel ?? null,
+    providerMarket: row?.providerMarket ?? null,
+    period: row?.period ?? null,
+    selection: row?.selection ?? row?.pick ?? null,
+    pick: row?.pick ?? null,
+    line: row?.line ?? row?.selectionLine ?? null,
+    odds: row?.odds ?? null,
+    bookmaker: row?.bookmaker ?? null,
+    createdAt: row?.createdAt ?? null,
+    settledAt: row?.settledAt ?? row?.reconciledAt ?? null,
+    entryScore: copy(row?.entryScore ?? row?.scoreAt),
+    scoreAt: copy(row?.scoreAt ?? row?.entryScore),
+    finalScore: copy(row?.finalScore),
+    result: row?.result ?? row?.settlement ?? row?.outcome ?? null,
+    settlement: row?.settlement ?? null,
+    outcome: row?.outcome ?? null
+  };
+}
+
+function statLiteResponse(body, cacheState='MISS') {
+  return new Response(body, { headers:{
+    'content-type':'application/json; charset=UTF-8',
+    'cache-control':'public, max-age=15, s-maxage=30, stale-while-revalidate=60',
+    'x-ball46-statistics':'lite-v1',
+    'x-ball46-stat-cache':cacheState
+  }});
+}
+
+async function statisticsLite(request, env) {
+  const age=Date.now()-Number(statLiteCache.at||0);
+  if (statLiteCache.body && age < STAT_LITE_CACHE_MS) return statLiteResponse(statLiteCache.body,'HIT');
+  if (!statLiteCache.promise) {
+    statLiteCache.promise=(async()=>{
+      const upstream=await env.ENGINE.fetch(engineRequest(request,'/statistics'));
+      const data=await upstream.json().catch(()=>null);
+      if (!upstream.ok || data?.ok!==true || !Array.isArray(data?.rows)) {
+        throw Object.assign(new Error('STATISTICS_NOT_READY'),{status:upstream.status||503});
+      }
+      const payload={...data, rows:data.rows.map(compactStatisticsRow), compact:true, compactVersion:'stats-lite-v1'};
+      const body=JSON.stringify(payload);
+      statLiteCache={at:Date.now(),body,promise:null};
+      return body;
+    })().catch(err=>{statLiteCache.promise=null;throw err});
+  }
+  try { return statLiteResponse(await statLiteCache.promise,'MISS'); }
+  catch (err) { return Response.json({ok:false,error:String(err?.message||err)},{status:Number(err?.status||503),headers:{'cache-control':'no-store'}}); }
+}
+
+async function versionedUiAsset(request, env) {
+  const response=await env.ASSETS.fetch(request);
+  const headers=new Headers(response.headers);
+  headers.set('cache-control','public, max-age=31536000, immutable');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+
 async function noStoreUiAsset(request, env) {
   const response = await env.ASSETS.fetch(request);
   const headers = new Headers(response.headers);
@@ -191,17 +257,26 @@ async function engineBoardResponse(request, env) {
   return Response.json(enriched.board, { headers: { 'cache-control': 'no-store', 'x-ball46-board-source': enriched.changed ? 'hub-plus-central-full-market-cache' : 'hub-snapshot-fallback' } });
 }
 
+async function signalBoardData(request, env) {
+  const engineResponse=await env.ENGINE.fetch(engineRequest(request,'/board'));
+  if (engineResponse.ok) {
+    const board=await engineResponse.json().catch(()=>null);
+    if (board?.ok===true && Array.isArray(board?.fixtures)) return board;
+  }
+  const hubResponse=await env.HUB.fetch(hubRequest(request,'/snapshot'));
+  if (!hubResponse.ok) return null;
+  const hub=await hubResponse.json().catch(()=>null);
+  return hub?.ok===true && Array.isArray(hub?.fixtures) ? {...hub,engineBoardFallback:true} : null;
+}
+
 async function activeSignals(request, env) {
-  const [signalResponse, boardResponse] = await Promise.all([
+  const [signalResponse, boardData] = await Promise.all([
     env.ENGINE.fetch(engineRequest(request, '/signals')),
-    engineBoardResponse(request, env)
+    signalBoardData(request, env)
   ]);
-  const [signalData, boardData] = await Promise.all([
-    signalResponse.json().catch(() => ({})),
-    boardResponse.json().catch(() => ({}))
-  ]);
+  const signalData = await signalResponse.json().catch(() => ({}));
   if (signalData?.ok !== true) return Response.json(signalData || { ok: false, error: 'SIGNALS_NOT_READY' }, { status: signalResponse.status || 503 });
-  if (boardData?.ok !== true) return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: boardResponse.status || 503 });
+  if (boardData?.ok !== true) return Response.json({ ok: false, error: 'BOARD_NOT_READY', signals: [] }, { status: 503 });
 
   const fixtures = Array.isArray(boardData?.fixtures) ? boardData.fixtures : [];
   const liveFixtures = fixtures.filter(fixtureIsLive);
@@ -274,6 +349,7 @@ export default {
     }
     if (url.pathname === '/api/engine/board' && request.method === 'GET') return engineBoardResponse(request, env);
     if (url.pathname === '/api/engine/signals' && request.method === 'GET') return activeSignals(request, env);
+    if (url.pathname === '/api/engine/statistics-lite' && request.method === 'GET') return statisticsLite(request, env);
     if (url.pathname.startsWith('/api/engine/')) {
       const path = url.pathname.replace('/api/engine', '') || '/';
       return env.ENGINE.fetch(engineRequest(request, path));
@@ -295,6 +371,7 @@ export default {
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url); assetUrl.pathname='/index.html'; return noStoreUiAsset(new Request(assetUrl,request),env);
     }
+    if (request.method === 'GET' && url.searchParams.has('v') && /\.(?:js|css|svg)$/.test(url.pathname)) return versionedUiAsset(request, env);
     return env.ASSETS.fetch(request);
   },
   async scheduled(_controller, env, ctx) {
