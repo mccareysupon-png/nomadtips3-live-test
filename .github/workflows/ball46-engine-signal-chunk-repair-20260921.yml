@@ -1,0 +1,118 @@
+name: Ball46 Engine Signal Chunk Repair 20260921
+
+on:
+  push:
+    branches: [work/ball46-full-market-20260918]
+    paths:
+      - '.github/workflows/ball46-engine-signal-chunk-repair-20260921.yml'
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  ENGINE_URL: https://nomadtips3-engine-343.mccarey-supon.workers.dev
+  BALL46_URL: https://www.ball46.com
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/ball46-full-market-20260918
+          fetch-depth: 0
+
+      - name: Shard signal ledger storage
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-engine-343/src/index.js')
+          s=p.read_text()
+          pairs=[
+            ("const VERSION='nomad343-engine-v8-storage-diagnostic';","const VERSION='nomad343-engine-v9-signal-chunks';"),
+            ("const MAX_SIGNALS=1600;","const MAX_SIGNALS=1600;\nconst SIGNAL_CHUNK_SIZE=100;"),
+            ("  async readRun(){const raw=await this.ctx.storage.get('runState')||{};return sanitizeRun(raw)}",
+             "  async readRun(){const raw=await this.ctx.storage.get('runState')||{};return sanitizeRun(raw)}\n  async readSignals(){const idx=await this.ctx.storage.get('signalIndex');if(idx?.version===1&&idx?.generation!==undefined){const chunks=Math.max(0,Math.round(Number(idx.chunks)||0)),out=[];for(let i=0;i<chunks;i++){const key=`signalChunk:${idx.generation}:${String(i).padStart(3,'0')}`,chunk=await this.ctx.storage.get(key);if(!Array.isArray(chunk))throw new Error(`SIGNAL_CHUNK_MISSING index=${i} key=${key}`);out.push(...chunk)}return out.slice(-MAX_SIGNALS)}const legacy=await this.ctx.storage.get('signals');return Array.isArray(legacy)?legacy:[]}\n  async writeSignals(rows){const list=(Array.isArray(rows)?rows:[]).slice(-MAX_SIGNALS),previous=await this.ctx.storage.get('signalIndex'),generation=String(now()),chunks=Math.ceil(list.length/SIGNAL_CHUNK_SIZE);let maxChunkBytes=0,totalBytes=0;for(let i=0;i<chunks;i++){const chunk=list.slice(i*SIGNAL_CHUNK_SIZE,(i+1)*SIGNAL_CHUNK_SIZE),bytes=new TextEncoder().encode(JSON.stringify(chunk)).length,key=`signalChunk:${generation}:${String(i).padStart(3,'0')}`;maxChunkBytes=Math.max(maxChunkBytes,bytes);totalBytes+=bytes;if(bytes>1800000)throw new Error(`SIGNAL_CHUNK_TOO_BIG index=${i} bytes=${bytes}`);try{await this.ctx.storage.put(key,chunk)}catch(e){throw new Error(`STORE_SIGNAL_CHUNK index=${i} bytes=${bytes}: ${String(e?.message||e)}`)}}await this.ctx.storage.put('signalIndex',{version:1,generation,chunks,count:list.length,chunkSize:SIGNAL_CHUNK_SIZE,maxChunkBytes,totalBytes,updatedAt:now()});await this.ctx.storage.delete('signals');if(previous?.version===1&&previous?.generation!==undefined&&String(previous.generation)!==generation){const oldChunks=Math.max(0,Math.round(Number(previous.chunks)||0));for(let i=0;i<oldChunks;i++)await this.ctx.storage.delete(`signalChunk:${previous.generation}:${String(i).padStart(3,'0')}`)}return {count:list.length,chunks,chunkSize:SIGNAL_CHUNK_SIZE,maxChunkBytes,totalBytes}}"),
+            ("signals=await this.ctx.storage.get('signals')||[]","signals=await this.readSignals()"),
+            ("signals=await this.ctx.storage.get('signals')||[]","signals=await this.readSignals()"),
+            ("const storageBytes={histories:byteSize(histories),signals:byteSize(signalStore),board:byteSize(boardStore)};","const storageBytes={histories:byteSize(histories),signals:byteSize(signalStore),board:byteSize(boardStore)};"),
+            ("try{await this.ctx.storage.put('signals',signalStore)}catch(e){throw new Error(`STORE_SIGNALS bytes=${storageBytes.signals}: ${String(e?.message||e)}`)}","const signalStorage=await this.writeSignals(signalStore)"),
+            ("reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),lastError:null","reconciled,refereeRequests,refereeQueued:Math.max(0,fixtureCandidates.length-selected.length),signalStorage,lastError:null"),
+            ("if(u.pathname==='/signals'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}","if(u.pathname==='/signals'){const s=await this.readSignals();return Response.json({ok:true,version:VERSION,signals:s.filter(x=>x.status==='PENDING').sort((a,b)=>b.createdAt-a.createdAt),allCount:s.length})}"),
+            ("if(u.pathname==='/statistics'){const s=await this.ctx.storage.get('signals')||[];return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}","if(u.pathname==='/statistics'){const s=await this.readSignals();return Response.json({ok:true,version:VERSION,settlementRevision:SETTLEMENT_REVISION,markets:MARKET_RULES,...statsFrom(s)})}")
+          ]
+          for old,new in pairs:
+            assert old in s, f'missing source: {old[:90]}'
+            s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check workers/nomadtips3-engine-343/src/index.js
+          git diff --check -- workers/nomadtips3-engine-343/src/index.js
+          grep -F "nomad343-engine-v9-signal-chunks" workers/nomadtips3-engine-343/src/index.js
+          grep -F "SIGNAL_CHUNK_SIZE=100" workers/nomadtips3-engine-343/src/index.js
+          grep -F "async readSignals()" workers/nomadtips3-engine-343/src/index.js
+          grep -F "async writeSignals(rows)" workers/nomadtips3-engine-343/src/index.js
+          grep -F "mode:'BOTH_LOW'" workers/nomadtips3-engine-343/src/index.js
+          grep -F "board?.staleGuard===true||board?.stale===true" workers/nomadtips3-engine-343/src/index.js
+
+      - name: Persist engine-only signal storage repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git diff --name-only)" = "workers/nomadtips3-engine-343/src/index.js"
+          git config user.name 'ADD-K Signal Storage Repair'
+          git config user.email 'actions@users.noreply.github.com'
+          git add workers/nomadtips3-engine-343/src/index.js
+          git commit -m 'fix(ball46): shard signal ledger into durable chunks'
+          git push origin HEAD:work/ball46-full-market-20260918
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Deploy ENGINE only
+        working-directory: workers/nomadtips3-engine-343
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.toml
+          npx --yes wrangler@4.92.0 deploy --config wrangler.toml
+
+      - name: Force scan and verify sharded ledger
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 5
+          curl -fsS --max-time 60 -X POST "$ENGINE_URL/scan?signalchunks=$GITHUB_RUN_ID" -o /tmp/scan.json
+          curl -fsS --max-time 30 "$ENGINE_URL/health?signalchunks=$GITHUB_RUN_ID" -o /tmp/health.json
+          curl -fsS --max-time 30 "$ENGINE_URL/signals?signalchunks=$GITHUB_RUN_ID" -o /tmp/signals.json
+          curl -fsS --max-time 30 "$ENGINE_URL/statistics?signalchunks=$GITHUB_RUN_ID" -o /tmp/stats.json
+          node - <<'NODE'
+          const fs=require('fs'),rd=p=>JSON.parse(fs.readFileSync(p));
+          const scan=rd('/tmp/scan.json'),h=rd('/tmp/health.json'),s=rd('/tmp/signals.json'),st=rd('/tmp/stats.json');
+          console.log('SIGNAL_CHUNK_REPAIR',JSON.stringify({scanOk:scan.ok,lastError:scan.lastError,version:h.version,healthOk:h.ok,signalStorage:scan.signalStorage,allCount:s.allCount,pending:(s.signals||[]).length,statsTotal:st.total}));
+          if(scan?.ok!==true)throw Error('SCAN_FAIL '+JSON.stringify(scan));
+          if(h?.ok!==true||h?.version!=='nomad343-engine-v9-signal-chunks')throw Error('HEALTH_FAIL '+JSON.stringify(h));
+          if(!scan?.signalStorage||scan.signalStorage.chunks<1||scan.signalStorage.maxChunkBytes>=1800000)throw Error('CHUNK_STORAGE_FAIL '+JSON.stringify(scan.signalStorage));
+          if(s?.ok!==true||st?.ok!==true)throw Error('READBACK_FAIL');
+          NODE
+
+      - name: Verify public Ball46 uses ENGINE again
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/board?signalchunks=$GITHUB_RUN_ID" -o /tmp/public-board.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?signalchunks=$GITHUB_RUN_ID" -o /tmp/public-signals.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/statistics?signalchunks=$GITHUB_RUN_ID" -o /tmp/public-stats.json
+          node - <<'NODE'
+          const fs=require('fs'),rd=p=>JSON.parse(fs.readFileSync(p));
+          const b=rd('/tmp/public-board.json'),s=rd('/tmp/public-signals.json'),st=rd('/tmp/public-stats.json');
+          let analyzed=0;for(const f of b.fixtures||[])if(Object.keys(f.analysis||{}).length)analyzed++;
+          console.log('PUBLIC_ENGINE_PATH',JSON.stringify({boardVersion:b.version,fixtures:(b.fixtures||[]).length,analyzed,signals:(s.signals||[]).length,allCount:s.allCount,statsTotal:st.total}));
+          if(b?.ok!==true||b?.engineBoardFallback===true)throw Error('PUBLIC_BOARD_FALLBACK '+JSON.stringify({version:b.version,reason:b.engineBoardFallbackReason}));
+          if(s?.ok!==true||st?.ok!==true)throw Error('PUBLIC_READ_FAIL');
+          NODE
