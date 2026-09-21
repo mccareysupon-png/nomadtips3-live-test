@@ -4,11 +4,6 @@ const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 const qs=()=>new URLSearchParams(location.search);
 const validStatus=new Set(['all','live','scheduled','unknown','finished']);
-function rewritePreviewLinks(){
-  const preview=/index-flow-preview\.html|statistics-v2-preview\.html|signal-flow-preview\.html/.test(location.pathname);
-  if(!preview)return;
-  $$('a[href="signal.html"]').forEach(a=>a.setAttribute('href','signal-flow-preview.html'));
-}
 function applyStatusFromUrl(){
   if(document.body?.dataset?.page!=='live')return;
   const status=qs().get('status');
@@ -32,10 +27,10 @@ function bindStatusToUrl(){
   });
 }
 function mirrorSignalCount(){
-  const source=$('[data-signal-count]');
-  const target=$('[data-flow-signal-count]');
-  if(!source||!target)return;
-  const sync=()=>{target.textContent=source.textContent||'0'};
+  const source=$('[data-signal-count]')||$('[data-next-active-signals]');
+  const targets=$$('[data-flow-signal-count]');
+  if(!source||!targets.length)return;
+  const sync=()=>targets.forEach(target=>{target.textContent=source.textContent||'0'});
   sync();
   new MutationObserver(sync).observe(source,{childList:true,characterData:true,subtree:true});
 }
@@ -56,6 +51,6 @@ function focusRequestedMatch(){
   obs.observe(root,{childList:true,subtree:true});
   setTimeout(()=>obs.disconnect(),15000);
 }
-function init(){rewritePreviewLinks();applyStatusFromUrl();bindStatusToUrl();mirrorSignalCount();focusRequestedMatch();}
+function init(){applyStatusFromUrl();bindStatusToUrl();mirrorSignalCount();focusRequestedMatch();}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
