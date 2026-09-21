@@ -8,6 +8,7 @@ on:
       - 'nomad-live-343/singlepage-workspace-343.css'
       - 'nomad-live-343/singlepage-workspace-343.js'
       - 'nomad-live-343/signal-next.js'
+      - 'nomad-live-343/dashboard-v2-stage3.js'
       - '.github/workflows/deploy-ball46-singlepage-preview-20260921.yml'
   workflow_dispatch:
 
@@ -35,7 +36,6 @@ jobs:
           set -euo pipefail
           for p in \
             workers/nomadtips3-343-preview/src/index.js \
-            nomad-live-343/dashboard-v2-stage3.js \
             nomad-live-343/dashboard-v2-tune.js \
             nomad-live-343/bulk-odds-compat-343.js \
             nomad-live-343/full-market-bookmaker-343.js \
@@ -43,7 +43,25 @@ jobs:
             git diff --quiet "$BASELINE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
           done
           grep -Fq '"name": "nomadtips3-343-ultra-preview"' workers/nomadtips3-343-preview/wrangler.jsonc
-          echo 'PASS: page-1 engine, bookmaker and odds runtime are unchanged.'
+          echo 'PASS: Engine, Hub, bookmaker and odds runtime are unchanged.'
+
+      - name: Verify dashboard change is signal bridge only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git show "$BASELINE_SHA:nomad-live-343/dashboard-v2-stage3.js" > /tmp/dash-base.js
+          cp nomad-live-343/dashboard-v2-stage3.js /tmp/dash-current.js
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('/tmp/dash-current.js').read_text()
+          s=s.replace('\nlet signalRows=[];','',1)
+          s=s.replace("signalMap=next;signalRows=rows;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{};window.dispatchEvent(new CustomEvent('ball46:signals-snapshot',{detail:{signals:signalRows.slice(),mirror:signalMirror}}))", "signalMap=next;signalMirror=j?.mirror&&typeof j.mirror==='object'?j.mirror:{}",1)
+          s=s.replace(",getSignals:()=>signalRows.slice(),getSignalMirror:()=>signalMirror",'',1)
+          Path('/tmp/dash-sanitized.js').write_text(s)
+          PY
+          cmp -s /tmp/dash-base.js /tmp/dash-sanitized.js || { echo 'FORBIDDEN DASHBOARD CHANGE OUTSIDE SIGNAL BRIDGE'; diff -u /tmp/dash-base.js /tmp/dash-sanitized.js | head -120; exit 1; }
+          grep -Fq "ball46:signals-snapshot" nomad-live-343/dashboard-v2-stage3.js
+          grep -Fq "getSignals:()=>signalRows.slice()" nomad-live-343/dashboard-v2-stage3.js
 
       - uses: actions/setup-node@v4
         with:
@@ -53,6 +71,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node --check nomad-live-343/dashboard-v2-stage3.js
           node --check nomad-live-343/singlepage-workspace-343.js
           node --check nomad-live-343/signal-next.js
           grep -Fq 'data-workspace-panel="live"' nomad-live-343/index.html
@@ -69,9 +88,12 @@ jobs:
           ! grep -Fq 'v2-shared.js' nomad-live-343/index.html
           grep -Fq 'ball46:workspace-view' nomad-live-343/singlepage-workspace-343.js
           grep -Fq 'ball46:workspace-view' nomad-live-343/signal-next.js
-          ! grep -Fq "const SIGNAL_API=" nomad-live-343/singlepage-workspace-343.js
-          grep -Fq "if(state.view!=='statistics'" nomad-live-343/singlepage-workspace-343.js
-          grep -Fq "if(!active||loading)return" nomad-live-343/signal-next.js
+          grep -Fq 'ball46:signals-snapshot' nomad-live-343/signal-next.js
+          ! grep -Fq '/api/engine/signals' nomad-live-343/signal-next.js
+          ! grep -Fq 'setInterval' nomad-live-343/signal-next.js
+          grep -Fq 'STAT_CACHE_MS=300000' nomad-live-343/singlepage-workspace-343.js
+          ! grep -Fq 'statsTimer' nomad-live-343/singlepage-workspace-343.js
+          grep -Fq 'LEFT RAIL GEOMETRY LOCK V3' nomad-live-343/singlepage-workspace-343.css
           git diff --check
 
       - name: Validate Cloudflare credentials
@@ -98,15 +120,19 @@ jobs:
           grep -Fq 'data-workspace-panel="live"' /tmp/home.html
           grep -Fq 'data-workspace-panel="signal"' /tmp/home.html
           grep -Fq 'data-workspace-panel="statistics"' /tmp/home.html
-          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-2' /tmp/home.html
-          grep -Fq 'signal-next.js?v=343-singlepage-signal-2' /tmp/home.html
+          grep -Fq 'singlepage-workspace-343.js?v=343-singlepage-20260921-3' /tmp/home.html
+          grep -Fq 'signal-next.js?v=343-singlepage-signal-3' /tmp/home.html
           grep -Fq 'workspace-brand-card' /tmp/home.html
           ! grep -Fq '<header class="v2-topbar"' /tmp/home.html
           ! grep -Fq '<nav class="mobile-nav"' /tmp/home.html
+          curl -fsS --max-time 30 "$PREVIEW_URL/dashboard-v2-stage3.js?verify=$GITHUB_RUN_ID" -o /tmp/dashboard.js
           curl -fsS --max-time 30 "$PREVIEW_URL/singlepage-workspace-343.js?verify=$GITHUB_RUN_ID" -o /tmp/sp.js
           curl -fsS --max-time 30 "$PREVIEW_URL/signal-next.js?verify=$GITHUB_RUN_ID" -o /tmp/signal-next.js
+          node --check /tmp/dashboard.js
           node --check /tmp/sp.js
           node --check /tmp/signal-next.js
+          grep -Fq 'ball46:signals-snapshot' /tmp/dashboard.js
+          ! grep -Fq '/api/engine/signals' /tmp/signal-next.js
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/board?verify=$GITHUB_RUN_ID" -o /tmp/board.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/signals?verify=$GITHUB_RUN_ID" -o /tmp/signals.json
           curl -fsS --max-time 30 "$PREVIEW_URL/api/engine/statistics?verify=$GITHUB_RUN_ID" -o /tmp/stats.json
@@ -118,5 +144,5 @@ jobs:
           if(b?.ok!==true||!Array.isArray(b?.fixtures))throw Error('board unhealthy');
           if(!Array.isArray(s?.signals))throw Error('signals unhealthy');
           if(t?.ok!==true||!Array.isArray(t?.rows))throw Error('statistics unhealthy');
-          console.log('SINGLEPAGE PREVIEW PASS',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});
+          console.log('SINGLEPAGE V3 PREVIEW PASS',{fixtures:b.fixtures.length,signals:s.signals.length,statistics:t.rows.length});
           NODE
