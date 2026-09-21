@@ -1,0 +1,135 @@
+name: Tombstone Ball46 Legacy Pages Preview 20260921
+
+on:
+  push:
+    branches: [work/ball46-remove-legacy-pages-20260921]
+    paths:
+      - '.github/workflows/tombstone-ball46-legacy-pages-preview-20260921.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  BASE_SHA: 7c9e26118244dc14a676e7f887d97bdf899553fd
+  PREVIEW: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
+
+jobs:
+  tombstone-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: work/ball46-remove-legacy-pages-20260921
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Guard Golden core before route-only patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          for p in \
+            workers/nomadtips3-engine-343/src/index.js \
+            workers/nomadtips3-343-preview/wrangler.ball46.jsonc \
+            nomad-live-343/index.html \
+            nomad-live-343/dashboard-v2-stage3.js \
+            nomad-live-343/bulk-odds-compat-343.js \
+            nomad-live-343/full-market-bookmaker-343.js \
+            nomad-live-343/live-summary-full-odds-343.js \
+            nomad-live-343/expanded-match-343.js \
+            nomad-live-343/signal-next.js \
+            nomad-live-343/singlepage-workspace-343.js; do
+            git diff --quiet "$BASE_SHA"..HEAD -- "$p" || { echo "FORBIDDEN CORE CHANGE: $p"; exit 1; }
+          done
+
+      - name: Add explicit 410 tombstone routes only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('workers/nomadtips3-343-preview/src/index.js')
+          s=p.read_text()
+          marker="let statLiteCache = { at:0, body:null, promise:null };"
+          block="""
+
+          // Ball46 legacy standalone Page 2/3 shutdown. Keep these routes dead even if an old asset lingers in edge cache.
+          const LEGACY_STANDALONE_PATHS = new Set([
+            '/signal.html','/statistics.html','/signal-next.html','/statistics-next.html',
+            '/signal.js','/statistics.js','/statistics-next.js','/signal-focus-343.js',
+            '/signal-bettor-343.css','/signal-compact-343.css','/signal-v2-clean-343.css',
+            '/statistics-page-343.css','/statistics-v2-clean-343.css','/content-rails-343.css','/v2-header.css'
+          ]);
+          function legacyStandaloneGone() {
+            return new Response('Gone', { status:410, headers:{'cache-control':'no-store','x-ball46-legacy':'standalone-gone'} });
+          }
+          """
+          if 'LEGACY_STANDALONE_PATHS' not in s:
+              if marker not in s: raise SystemExit('cache marker missing')
+              s=s.replace(marker,marker+block,1)
+          route="const url = new URL(request.url);"
+          guard="\n    if ((request.method === 'GET' || request.method === 'HEAD') && LEGACY_STANDALONE_PATHS.has(url.pathname)) return legacyStandaloneGone();"
+          if guard.strip() not in s:
+              if route not in s: raise SystemExit('fetch url marker missing')
+              s=s.replace(route,route+guard,1)
+          p.write_text(s)
+          PY
+          node --check workers/nomadtips3-343-preview/src/index.js
+          grep -Fq 'LEGACY_STANDALONE_PATHS' workers/nomadtips3-343-preview/src/index.js
+          grep -Fq "status:410" workers/nomadtips3-343-preview/src/index.js
+          git diff --check
+
+      - name: Verify route patch touches no Odds logic
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff "$BASE_SHA" -- workers/nomadtips3-343-preview/src/index.js > /tmp/worker.diff
+          grep -Fq 'LEGACY_STANDALONE_PATHS' /tmp/worker.diff
+          ! grep -Eq '^[-+].*(engineBoardResponse|enrichBoardWithCachedFullMarket|fullMarketCacheSnapshot|activeSignals|statisticsLite|prewarmLiveFullMarket)' /tmp/worker.diff
+
+      - name: Commit route tombstone
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'mccareysupon-png'
+          git config user.email 'mccarey.supon@gmail.com'
+          git add workers/nomadtips3-343-preview/src/index.js
+          if ! git diff --cached --quiet; then
+            git commit -m 'Tombstone legacy Ball46 standalone routes'
+            git push origin HEAD:work/ball46-remove-legacy-pages-20260921
+          fi
+
+      - name: Dry-run isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.jsonc
+
+      - name: Deploy isolated preview
+        working-directory: workers/nomadtips3-343-preview
+        run: npx --yes wrangler@4.92.0 deploy --config wrangler.jsonc
+
+      - name: Validate preview Page 1 Odds and tombstones
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS --connect-timeout 8 --max-time 30 "$PREVIEW/?tombstone=$GITHUB_RUN_ID" -o /tmp/home.html
+          grep -Fq 'signal-next.js' /tmp/home.html
+          grep -Fq 'singlepage-workspace-343.js' /tmp/home.html
+          curl -fsS --connect-timeout 8 --max-time 30 "$PREVIEW/api/engine/board?tombstone=$GITHUB_RUN_ID" -o /tmp/board.json
+          node - <<'NODE'
+          const fs=require('fs'),b=JSON.parse(fs.readFileSync('/tmp/board.json'));
+          if(b?.ok!==true||!Array.isArray(b.fixtures)) throw Error('Preview Board unhealthy');
+          function has(v){if(Array.isArray(v))return v.length>0;if(!v||typeof v!=='object')return false;const c=[v.bookmakers,v.odds,v.markets,v?.data?.bookmakers,v?.data?.odds,v?.data?.markets];return c.some(x=>Array.isArray(x)?x.length>0:!!(x&&typeof x==='object'&&Object.keys(x).length))||Object.keys(v).some(k=>/bet365|pinnacle|crown|1xbet|12bet|interwetten|macauslot|18bet|vcbet|easybets|bookmaker/i.test(String(k)))}
+          const odds=b.fixtures.filter(f=>has(f?.providerOdds)||has(f?.fullOdds)||has(f?.odds)).length;
+          if(b.fixtures.length&&odds===0) throw Error('Golden Odds missing in preview');
+          console.log('PREVIEW TOMBSTONE PASS',{fixtures:b.fixtures.length,odds});
+          NODE
+          for p in signal.html statistics.html signal-next.html statistics-next.html signal.js statistics.js statistics-next.js signal-focus-343.js v2-header.css; do
+            code=$(curl -sS --connect-timeout 8 --max-time 20 -o /dev/null -w '%{http_code}' "$PREVIEW/$p?tombstone=$GITHUB_RUN_ID")
+            echo "$p -> $code"
+            test "$code" = 410
+          done
