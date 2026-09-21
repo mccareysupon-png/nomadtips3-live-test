@@ -28,6 +28,18 @@ const copy = value => value && typeof value === 'object' ? JSON.parse(JSON.strin
 const STAT_LITE_CACHE_MS = 30_000;
 let statLiteCache = { at:0, body:null, promise:null };
 
+// Ball46 legacy standalone Page 2/3 shutdown. Keep these routes dead even if an old asset lingers in edge cache.
+const LEGACY_STANDALONE_PATHS = new Set([
+  '/signal.html','/statistics.html','/signal-next.html','/statistics-next.html',
+  '/signal.js','/statistics.js','/statistics-next.js','/signal-focus-343.js',
+  '/signal-bettor-343.css','/signal-compact-343.css','/signal-v2-clean-343.css',
+  '/statistics-page-343.css','/statistics-v2-clean-343.css','/content-rails-343.css','/v2-header.css'
+]);
+function legacyStandaloneGone() {
+  return new Response('Gone', { status:410, headers:{'cache-control':'no-store','x-ball46-legacy':'standalone-gone'} });
+}
+
+
 function compactStatisticsRow(row) {
   return {
     id: row?.id ?? null,
@@ -343,6 +355,7 @@ async function prewarmLiveFullMarket(env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    if ((request.method === 'GET' || request.method === 'HEAD') && LEGACY_STANDALONE_PATHS.has(url.pathname)) return legacyStandaloneGone();
     if (url.pathname.startsWith('/api/hub/')) {
       const path = url.pathname.replace('/api/hub', '') || '/';
       return env.HUB.fetch(hubRequest(request, path));
