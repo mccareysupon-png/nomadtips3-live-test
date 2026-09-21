@@ -371,7 +371,7 @@ export default {
     if (url.pathname === '/') {
       const assetUrl = new URL(request.url); assetUrl.pathname='/index.html'; return noStoreUiAsset(new Request(assetUrl,request),env);
     }
-    if (request.method === 'GET' && url.searchParams.has('v') && /\.(?:js|css|svg)$/.test(url.pathname)) return versionedUiAsset(request, env);
+    if ((request.method === 'GET' || request.method === 'HEAD') && url.searchParams.has('v') && /\.(?:js|css|svg)$/.test(url.pathname)) return versionedUiAsset(request, env);
     return env.ASSETS.fetch(request);
   },
   async scheduled(_controller, env, ctx) {
