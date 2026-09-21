@@ -1,4 +1,4 @@
-name: Inspect Ball46 Worker History 20260920
+name: Inspect Ball46 Worker History 20260921 0200
 on:
   push:
     paths:
@@ -25,12 +25,12 @@ jobs:
           npx --yes wrangler@4.92.0 deployments list --config "$WRAPPER_CFG" --json | tee /tmp/deployments.json
           echo '=== VERSIONS ==='
           npx --yes wrangler@4.92.0 versions list --config "$WRAPPER_CFG" --json | tee /tmp/versions.json
-          echo '=== WINDOW 2026-09-20 04:30Z..06:30Z (11:30..13:30 Bangkok) ==='
+          echo '=== TARGET WINDOW 2026-09-20 18:30Z..20:30Z (01:30..03:30 Bangkok) ==='
           node - <<'NODE'
           const fs=require('fs');
           const v=JSON.parse(fs.readFileSync('/tmp/versions.json','utf8'));
           const arr=Array.isArray(v)?v:(v.versions||[]);
-          const lo=Date.parse('2026-09-20T04:30:00Z'), hi=Date.parse('2026-09-20T06:30:00Z');
+          const lo=Date.parse('2026-09-20T18:30:00Z'), hi=Date.parse('2026-09-20T20:30:00Z');
           for(const x of arr){
             const t=Date.parse(x.created_on||x.created_at||x.created||'');
             if(Number.isFinite(t)&&t>=lo&&t<=hi) console.log(JSON.stringify(x));
