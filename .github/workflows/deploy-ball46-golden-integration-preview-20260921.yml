@@ -20,6 +20,7 @@ env:
   PREVIEW_URL: https://nomadtips3-343-ultra-preview.mccarey-supon.workers.dev
   GOLDEN_SHA: 2a992e9aae7bfa13909e9c5b3845a359bf1ec46c
   GOLDEN_URL: https://www.ball46.com
+  GOLDEN_WORKER: https://ball46-production.mccarey-supon.workers.dev
 
 jobs:
   deploy-preview:
@@ -99,7 +100,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$GOLDEN_URL/api/engine/board?golden=$GITHUB_RUN_ID" -o /tmp/golden-board.json
+          if ! curl -fsS --connect-timeout 8 --max-time 15 "$GOLDEN_URL/api/engine/board?golden=$GITHUB_RUN_ID" -o /tmp/golden-board.json; then
+            echo 'www.ball46.com timed out; checking the same production worker directly.'
+            curl -fsS --connect-timeout 8 --max-time 20 "$GOLDEN_WORKER/api/engine/board?golden=$GITHUB_RUN_ID" -o /tmp/golden-board.json
+          fi
           node - <<'NODE'
           const fs=require('fs');
           const b=JSON.parse(fs.readFileSync('/tmp/golden-board.json','utf8'));
