@@ -13,34 +13,41 @@ env:
 jobs:
   audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 6
     steps:
-      - name: Expose engine scan failure details
+      - name: Classify pending signals and verify next scan
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?audit=$GITHUB_RUN_ID" -o /tmp/hub.json
-          curl -fsS --max-time 30 "$ENGINE_URL/health?audit=$GITHUB_RUN_ID" -o /tmp/health-before.json
-          scan_code=$(curl -sS --max-time 60 -X POST -o /tmp/scan.json -w '%{http_code}' "$ENGINE_URL/scan?audit=$GITHUB_RUN_ID")
-          sleep 3
-          curl -fsS --max-time 30 "$ENGINE_URL/health?audit=after-$GITHUB_RUN_ID" -o /tmp/health-after.json
-          board_code=$(curl -sS --max-time 30 -o /tmp/board.json -w '%{http_code}' "$ENGINE_URL/board?audit=after-$GITHUB_RUN_ID")
-          node - "$scan_code" "$board_code" <<'NODE'
-          const fs=require('fs');
-          const rd=p=>JSON.parse(fs.readFileSync(p));
-          const [scanCode,boardCode]=process.argv.slice(2);
-          const hub=rd('/tmp/hub.json'), hb=rd('/tmp/health-before.json'), scan=rd('/tmp/scan.json'), ha=rd('/tmp/health-after.json'), b=rd('/tmp/board.json');
-          const pick=x=>({
-            ok:x?.ok,version:x?.version,startedAt:x?.startedAt,finishedAt:x?.finishedAt,
-            fixtureCount:x?.fixtureCount,liveCount:x?.liveCount,signalCount:x?.signalCount,
-            refereeRequests:x?.refereeRequests,refereeQueued:x?.refereeQueued,
-            staleGuard:x?.staleGuard,skipReason:x?.skipReason,lastError:x?.lastError,
-            error:x?.error,hubAgeMs:x?.hubAgeMs,hubFetchedAt:x?.hubFetchedAt
-          });
-          console.log('HTTP',JSON.stringify({scanCode,boardCode}));
-          console.log('HUB',JSON.stringify({ok:hub.ok,stale:hub.stale,ageMs:hub.ageMs,fetchedAt:hub.fetchedAt,fixtures:(hub.fixtures||[]).length}));
-          console.log('HEALTH_BEFORE_DETAIL',JSON.stringify(pick(hb)));
-          console.log('SCAN_DETAIL',JSON.stringify(pick(scan)));
-          console.log('HEALTH_AFTER_DETAIL',JSON.stringify(pick(ha)));
-          console.log('BOARD_DETAIL',JSON.stringify({ok:b.ok,stale:b.stale,staleGuard:b.staleGuard,hubAgeMs:b.hubAgeMs,hubFetchedAt:b.hubFetchedAt,fixtures:(b.fixtures||[]).length}));
+          curl -fsS --max-time 30 "$BALL46_URL/api/hub/snapshot?pending=$GITHUB_RUN_ID" -o /tmp/hub-a.json
+          curl -fsS --max-time 30 "$ENGINE_URL/health?pending=$GITHUB_RUN_ID" -o /tmp/health-a.json
+          curl -fsS --max-time 30 "$ENGINE_URL/board?pending=$GITHUB_RUN_ID" -o /tmp/board-a.json
+          curl -fsS --max-time 30 "$ENGINE_URL/signals?pending=$GITHUB_RUN_ID" -o /tmp/signals-a.json
+          curl -fsS --max-time 30 "$BALL46_URL/api/engine/signals?pending=$GITHUB_RUN_ID" -o /tmp/public-signals-a.json
+          node - <<'NODE'
+          const fs=require('fs'),rd=p=>JSON.parse(fs.readFileSync(p));
+          const hub=rd('/tmp/hub-a.json'), h=rd('/tmp/health-a.json'), b=rd('/tmp/board-a.json'), s=rd('/tmp/signals-a.json'), pub=rd('/tmp/public-signals-a.json');
+          const pending=Array.isArray(s.signals)?s.signals:[];
+          const hmap=new Map((hub.fixtures||[]).map(f=>[String(f.fixtureId??f.id??''),f]));
+          const bmap=new Map((b.fixtures||[]).map(f=>[String(f.fixtureId??f.id??''),f]));
+          const status=f=>String(f?.boardState??f?.status??f?.statusCode??'MISSING');
+          const live=f=>f && (f.boardState==='live'||/live|in_play|in play|playing|first|second|\b1h\b|\b2h\b|\bhalf\b/i.test(status(f)));
+          const finished=f=>f && (f.boardState==='finished'||/finished|full_time|full time|\bft\b|ended|\bfull\b/i.test(status(f)));
+          const rows=pending.map(x=>{const id=String(x.fixtureId),hf=hmap.get(id),bf=bmap.get(id);return {id,market:x.market,createdAt:x.createdAt,ageMin:Math.round((Date.now()-Number(x.createdAt||Date.now()))/60000),hubPresent:!!hf,hubStatus:status(hf),hubMinute:hf?.minute??null,hubLive:!!live(hf),hubFinished:!!finished(hf),enginePresent:!!bf,engineStatus:status(bf),engineMinute:bf?.minute??null};});
+          const summary={pending:pending.length,inHub:rows.filter(x=>x.hubPresent).length,hubLive:rows.filter(x=>x.hubLive).length,hubFinished:rows.filter(x=>x.hubFinished).length,missingHub:rows.filter(x=>!x.hubPresent).length,inEngineBoard:rows.filter(x=>x.enginePresent).length,publicVisible:(pub.signals||[]).length,hiddenPending:pub?.mirror?.hiddenPendingSignals??null,healthOk:h.ok,version:h.version,lastError:h.lastError??null,signalStorage:h.signalStorage??null};
+          console.log('PENDING_SUMMARY',JSON.stringify(summary));
+          console.log('PENDING_ROWS',JSON.stringify(rows));
+          if(h.ok!==true||h.version!=='nomad343-engine-v9-signal-chunks')throw Error('ENGINE_NOT_HEALTHY '+JSON.stringify(summary));
+          NODE
+          sleep 75
+          curl -fsS --max-time 30 "$ENGINE_URL/health?pending=after-$GITHUB_RUN_ID" -o /tmp/health-b.json
+          curl -fsS --max-time 30 "$ENGINE_URL/board?pending=after-$GITHUB_RUN_ID" -o /tmp/board-b.json
+          curl -fsS --max-time 30 "$ENGINE_URL/signals?pending=after-$GITHUB_RUN_ID" -o /tmp/signals-b.json
+          node - <<'NODE'
+          const fs=require('fs'),rd=p=>JSON.parse(fs.readFileSync(p));
+          const h=rd('/tmp/health-b.json'),b=rd('/tmp/board-b.json'),s=rd('/tmp/signals-b.json');
+          let analyzed=0;for(const f of b.fixtures||[])if(Object.keys(f.analysis||{}).length)analyzed++;
+          const out={ok:h.ok,version:h.version,lastError:h.lastError??null,startedAt:h.startedAt,finishedAt:h.finishedAt,fixtureCount:h.fixtureCount,liveCount:h.liveCount,signalCount:h.signalCount,unresolvedCount:h.unresolvedCount,signalStorage:h.signalStorage??null,boardFixtures:(b.fixtures||[]).length,analyzed,pending:(s.signals||[]).length,allCount:s.allCount};
+          console.log('NEXT_SCAN_VERIFY',JSON.stringify(out));
+          if(h.ok!==true||h.version!=='nomad343-engine-v9-signal-chunks'||h.lastError)throw Error('NEXT_SCAN_FAILED '+JSON.stringify(out));
           NODE
