@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: work/ball46-full-market-20260918
+          ref: ball46-production-source
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -32,6 +32,10 @@ jobs:
           set -euo pipefail
           curl -fsS -L --max-time 30 "$BALL46_URL/" -o /tmp/ui-before.html
           curl -fsS -L --max-time 30 "$BALL46_URL/live.js" -o /tmp/live-before.js
+          echo "PROD_INDEX=$(sha256sum /tmp/ui-before.html|cut -d' ' -f1)"
+          echo "SRC_INDEX=$(sha256sum nomad-live-343/index.html|cut -d' ' -f1)"
+          echo "PROD_LIVE=$(sha256sum /tmp/live-before.js|cut -d' ' -f1)"
+          echo "SRC_LIVE=$(sha256sum nomad-live-343/live.js|cut -d' ' -f1)"
           test "$(sha256sum /tmp/ui-before.html|cut -d' ' -f1)" = "$(sha256sum nomad-live-343/index.html|cut -d' ' -f1)"
           test "$(sha256sum /tmp/live-before.js|cut -d' ' -f1)" = "$(sha256sum nomad-live-343/live.js|cut -d' ' -f1)"
           curl -fsS -L --max-time 30 "$BALL46_URL/api/engine/board?pre=$GITHUB_RUN_ID" -o /tmp/e.json
