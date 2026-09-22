@@ -15,6 +15,7 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
   GOLDEN_SHA: ad34452074b300787c91c7788c02d0e242854d0d
+  VERIFIED_WORKER_REF: origin/work/ball46-signal-event-flow-line-20260922
 
 jobs:
   deploy-color-semantics:
@@ -33,6 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           git cat-file -e "$GOLDEN_SHA^{commit}"
+          git rev-parse "$VERIFIED_WORKER_REF" >/dev/null
           python3 -m py_compile scripts/patch_ball46_color_semantics_20260922.py
           node --check nomad-live-343/color-semantics-343.js
           grep -Fq 'BALL46_COLOR_SEMANTICS_20260922' nomad-live-343/color-semantics-343.css
@@ -124,6 +126,23 @@ jobs:
             [ "$actual" = "$expected" ] || { echo "MIRRORED_ASSET_CHANGED:$f"; exit 1; }
           done < /tmp/mirrored.sha
 
+      - name: Recover latest verified Ball46 Worker harness
+        shell: bash
+        run: |
+          set -euo pipefail
+          git checkout "$VERIFIED_WORKER_REF" -- workers/nomadtips3-343-preview
+          test -f workers/nomadtips3-343-preview/src/index.js
+          test -f workers/nomadtips3-343-preview/wrangler.ball46.jsonc
+          expected_index=$(git rev-parse "$VERIFIED_WORKER_REF:workers/nomadtips3-343-preview/src/index.js")
+          expected_config=$(git rev-parse "$VERIFIED_WORKER_REF:workers/nomadtips3-343-preview/wrangler.ball46.jsonc")
+          actual_index=$(git hash-object workers/nomadtips3-343-preview/src/index.js)
+          actual_config=$(git hash-object workers/nomadtips3-343-preview/wrangler.ball46.jsonc)
+          [ "$actual_index" = "$expected_index" ] || { echo WORKER_HARNESS_INDEX_MISMATCH; exit 1; }
+          [ "$actual_config" = "$expected_config" ] || { echo WORKER_HARNESS_CONFIG_MISMATCH; exit 1; }
+          echo "$actual_index" > /tmp/worker-index.blob
+          echo "$actual_config" > /tmp/worker-config.blob
+          echo VERIFIED_WORKER_HARNESS_OK
+
       - name: Dry run Production package
         shell: bash
         run: |
@@ -131,6 +150,13 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"; test -n "$CLOUDFLARE_ACCOUNT_ID"
           cd workers/nomadtips3-343-preview
           npx --yes wrangler@4.92.0 deploy --dry-run --config wrangler.ball46.jsonc
+
+      - name: Recheck Worker harness before deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ "$(git hash-object workers/nomadtips3-343-preview/src/index.js)" = "$(cat /tmp/worker-index.blob)" ] || { echo WORKER_INDEX_CHANGED_BEFORE_DEPLOY; exit 1; }
+          [ "$(git hash-object workers/nomadtips3-343-preview/wrangler.ball46.jsonc)" = "$(cat /tmp/worker-config.blob)" ] || { echo WORKER_CONFIG_CHANGED_BEFORE_DEPLOY; exit 1; }
 
       - name: Deploy shared color semantics
         working-directory: workers/nomadtips3-343-preview
